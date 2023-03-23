@@ -85,6 +85,24 @@ class WiFiServiceTest : public PropertyStoreTest {
     service->SetPassphrase(passphrase, &error);
     return error.IsSuccess();
   }
+  bool CheckConnectable(const std::string& security_class,
+                        const char* passphrase,
+                        bool is_1x_connectable) {
+    WiFiServiceRefPtr service = MakeSimpleService(security_class);
+    if (passphrase)
+      SetPassphrase(service, passphrase);
+    MockEapCredentials* eap = SetMockEap(service);
+    EXPECT_CALL(*eap, IsConnectable())
+        .WillRepeatedly(Return(is_1x_connectable));
+    const std::string kKeyManagement8021x(
+        WPASupplicant::kKeyManagementIeee8021X);
+    if (security_class == kSecurityClassWep && is_1x_connectable) {
+      EXPECT_CALL(*eap, key_management())
+          .WillRepeatedly(ReturnRef(kKeyManagement8021x));
+    }
+    service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
+    return service->connectable();
+  }
   WiFiEndpointRefPtr MakeEndpoint(
       const std::string& ssid,
       const std::string& bssid,
@@ -443,17 +461,7 @@ TEST_F(WiFiServiceTest, ConnectReportBSSes) {
 TEST_F(WiFiServiceTest, ConnectConditions) {
   Error error;
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassNone);
-
-  // Without an endpoint, we can't connect
-  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _)).Times(0);
-  wifi_service->Connect(&error, "in test");
-  Mock::VerifyAndClearExpectations(wifi().get());
-
-  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
-      "a", "00:00:00:00:00:01", /*frequency=*/0, /*signal_dbm=*/0);
-  wifi_service->AddEndpoint(endpoint);
-  // With nothing else going on and a connectable endpoint, the service should
-  // attempt to connect.
+  // With nothing else going on, the service should attempt to connect.
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
   wifi_service->Connect(&error, "in test");
   Mock::VerifyAndClearExpectations(wifi().get());
@@ -476,15 +484,6 @@ TEST_F(WiFiServiceTest, ConnectConditions) {
 
 TEST_F(WiFiServiceTest, ConnectTaskPSK) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassPsk);
-  WiFiEndpoint::SecurityFlags flags;
-  flags.wpa_psk = true;
-  WiFiEndpointRefPtr endpoint1 =
-      MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-  wifi_service->AddEndpoint(endpoint1);
-  flags.rsn_psk = true;
-  WiFiEndpointRefPtr endpoint2 =
-      MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-  wifi_service->AddEndpoint(endpoint2);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
   SetPassphrase(wifi_service, "0:mumblemumblem");
   wifi_service->Connect(nullptr, "in test");
@@ -494,11 +493,6 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
 
 TEST_F(WiFiServiceTest, ConnectTaskRawPMK) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassPsk);
-  WiFiEndpoint::SecurityFlags flags;
-  flags.wpa_psk = true;
-  WiFiEndpointRefPtr endpoint =
-      MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-  service->AddEndpoint(endpoint);
   EXPECT_CALL(*wifi(), ConnectTo(service.get(), _));
   SetPassphrase(service, std::string(IEEE_80211::kWPAHexLen, '1'));
   service->Connect(nullptr, "in test");
@@ -511,11 +505,6 @@ TEST_F(WiFiServiceTest, ConnectTaskRawPMK) {
 
 TEST_F(WiFiServiceTest, ConnectTask8021x) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClass8021x);
-  WiFiEndpoint::SecurityFlags flags;
-  flags.wpa_8021x = true;
-  WiFiEndpointRefPtr endpoint =
-      MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-  service->AddEndpoint(endpoint);
   service->mutable_eap()->set_identity("identity");
   service->mutable_eap()->set_password("mumble");
   service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
@@ -531,11 +520,6 @@ TEST_F(WiFiServiceTest, ConnectTask8021x) {
 TEST_F(WiFiServiceTest, ConnectTask8021xWithMockEap) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClass8021x);
   MockEapCredentials* eap = SetMockEap(service);
-  WiFiEndpoint::SecurityFlags flags;
-  flags.wpa_8021x = true;
-  WiFiEndpointRefPtr endpoint =
-      MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-  service->AddEndpoint(endpoint);
   EXPECT_CALL(*eap, IsConnectable()).WillOnce(Return(true));
   EXPECT_CALL(*wifi(), ConnectTo(service.get(), _));
   service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
@@ -560,11 +544,6 @@ MATCHER_P(WEPSecurityArgsKeyIndex, index, "") {
 
 TEST_F(WiFiServiceTest, ConnectTaskWEP) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassWep);
-  WiFiEndpoint::SecurityFlags flags;
-  flags.privacy = true;
-  WiFiEndpointRefPtr endpoint =
-      MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-  wifi_service->AddEndpoint(endpoint);
   SetPassphrase(wifi_service, "0:abcdefghijklm");
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
   wifi_service->Connect(nullptr, "in test");
@@ -599,11 +578,6 @@ TEST_F(WiFiServiceTest, ConnectTaskWEP) {
 // Dynamic WEP + 802.1x.
 TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassWep);
-  WiFiEndpoint::SecurityFlags flags;
-  flags.privacy = true;
-  WiFiEndpointRefPtr endpoint =
-      MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-  wifi_service->AddEndpoint(endpoint);
 
   wifi_service->mutable_eap()->SetKeyManagement("IEEE8021X", nullptr);
   wifi_service->mutable_eap()->set_identity("something");
@@ -653,11 +627,6 @@ TEST_F(WiFiServiceTest, ConnectTaskFT) {
   }
   {
     WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClass8021x);
-    WiFiEndpoint::SecurityFlags flags;
-    flags.wpa_8021x = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-    wifi_service->AddEndpoint(endpoint);
     wifi_service->mutable_eap()->set_identity("identity");
     wifi_service->mutable_eap()->set_password("mumble");
     wifi_service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
@@ -689,9 +658,6 @@ TEST_F(WiFiServiceTest, ConnectTaskFT) {
 TEST_F(WiFiServiceTest, ConnectTaskBSSIDAllowlist) {
   {
     WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassNone);
-    WiFiEndpointRefPtr endpoint =
-        MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
-    wifi_service->AddEndpoint(endpoint);
     EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
     wifi_service->Connect(nullptr, "in test");
 
@@ -705,9 +671,6 @@ TEST_F(WiFiServiceTest, ConnectTaskBSSIDAllowlist) {
   {
     Error error;
     WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassNone);
-    WiFiEndpointRefPtr endpoint =
-        MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
-    wifi_service->AddEndpoint(endpoint);
 
     // The duped bssid's should get filtered out before we pass it to WPA
     // supplicant.
@@ -715,7 +678,7 @@ TEST_F(WiFiServiceTest, ConnectTaskBSSIDAllowlist) {
         "00:00:00:00:00:01", "00:00:00:00:00:01", "00:00:00:00:00:02"};
     std::vector<std::string> not_duped_bssid_allowlist = {"00:00:00:00:00:01",
                                                           "00:00:00:00:00:02"};
-    EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, not_duped_bssid_allowlist, _))
+    EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, not_duped_bssid_allowlist))
         .WillOnce(Return(true));
     EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
 
@@ -976,11 +939,6 @@ TEST_F(WiFiServiceSecurityTest, EndpointsDisappear) {
 
 TEST_F(WiFiServiceTest, LoadAndUnloadPassphrase) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
-  WiFiEndpoint::SecurityFlags flags;
-  flags.wpa_psk = true;
-  WiFiEndpointRefPtr endpoint =
-      MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-  service->AddEndpoint(endpoint);
   FakeStore store;
   const std::string kStorageId = service->GetStorageIdentifier();
   SetWiFiProperties(&store, kStorageId, simple_ssid(), kSecurityClassPsk);
@@ -1003,11 +961,6 @@ TEST_F(WiFiServiceTest, LoadPassphraseClearCredentials) {
   const std::string kPassphrase = "passphrase";
 
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassPsk);
-  WiFiEndpoint::SecurityFlags flags;
-  flags.wpa_psk = true;
-  WiFiEndpointRefPtr endpoint =
-      MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-  service->AddEndpoint(endpoint);
   FakeStore store;
   const std::string kStorageId = service->GetStorageIdentifier();
   SetWiFiProperties(&store, kStorageId, simple_ssid(), kSecurityClassPsk);
@@ -1087,11 +1040,6 @@ TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {
   Error error;
 
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClass8021x);
-  WiFiEndpoint::SecurityFlags flags;
-  flags.wpa_8021x = true;
-  WiFiEndpointRefPtr endpoint =
-      MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-  service->AddEndpoint(endpoint);
   // Hack the GUID in so that we don't have to mess about with WiFi to register
   // our service.  This way, Manager will handle the lookup itself.
   service->SetGuid(guid, nullptr);
@@ -1258,160 +1206,34 @@ TEST_F(WiFiServiceTest, UnloadAndClearCache8021x) {
 }
 
 TEST_F(WiFiServiceTest, Connectable) {
-  {
-    // Open network should be connectable.
-    WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
-    WiFiEndpointRefPtr endpoint =
-        MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
-    service->AddEndpoint(endpoint);
-    MockEapCredentials* eap = SetMockEap(service);
-    EXPECT_CALL(*eap, IsConnectable()).WillRepeatedly(Return(false));
-    service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
-    EXPECT_TRUE(service->connectable());
-  }
+  // Open network should be connectable.
+  EXPECT_TRUE(CheckConnectable(kSecurityClassNone, nullptr, false));
 
-  {
-    // Open network should remain connectable if we try to set a password on it.
-    WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
-    WiFiEndpointRefPtr endpoint =
-        MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
-    service->AddEndpoint(endpoint);
-    SetPassphrase(service, "abcde");
-    MockEapCredentials* eap = SetMockEap(service);
-    EXPECT_CALL(*eap, IsConnectable()).WillRepeatedly(Return(false));
-    service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
-    EXPECT_TRUE(service->connectable());
-  }
+  // Open network should remain connectable if we try to set a password on it.
+  EXPECT_TRUE(CheckConnectable(kSecurityClassNone, "abcde", false));
 
-  {
-    // WEP network with passphrase set should be connectable.
-    WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassWep);
-    WiFiEndpoint::SecurityFlags flags;
-    flags.privacy = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-    service->AddEndpoint(endpoint);
-    SetPassphrase(service, "abcde");
-    MockEapCredentials* eap = SetMockEap(service);
-    EXPECT_CALL(*eap, IsConnectable()).WillRepeatedly(Return(false));
-    service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
-    EXPECT_TRUE(service->connectable());
-  }
+  // WEP network with passphrase set should be connectable.
+  EXPECT_TRUE(CheckConnectable(kSecurityClassWep, "abcde", false));
 
-  {
-    // WEP network without passphrase set should NOT be connectable.
-    WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassWep);
-    WiFiEndpoint::SecurityFlags flags;
-    flags.privacy = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-    service->AddEndpoint(endpoint);
-    MockEapCredentials* eap = SetMockEap(service);
-    EXPECT_CALL(*eap, IsConnectable()).WillRepeatedly(Return(false));
-    service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
-    EXPECT_FALSE(service->connectable());
-  }
+  // WEP network without passphrase set should NOT be connectable.
+  EXPECT_FALSE(CheckConnectable(kSecurityClassWep, nullptr, false));
 
-  {
-    // A bad passphrase should not make a WEP network connectable.
-    WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassWep);
-    WiFiEndpoint::SecurityFlags flags;
-    flags.privacy = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-    service->AddEndpoint(endpoint);
-    SetPassphrase(service, "a");
-    MockEapCredentials* eap = SetMockEap(service);
-    EXPECT_CALL(*eap, IsConnectable()).WillRepeatedly(Return(false));
-    service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
-    EXPECT_FALSE(service->connectable());
-  }
+  // A bad passphrase should not make a WEP network connectable.
+  EXPECT_FALSE(CheckConnectable(kSecurityClassWep, "a", false));
 
   // Similar to WEP, for PSK.
-  {
-    WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
-    WiFiEndpoint::SecurityFlags flags;
-    flags.wpa_psk = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-    service->AddEndpoint(endpoint);
-    SetPassphrase(service, "abcdefgh");
-    MockEapCredentials* eap = SetMockEap(service);
-    EXPECT_CALL(*eap, IsConnectable()).WillRepeatedly(Return(false));
-    service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
-    EXPECT_TRUE(service->connectable());
-  }
-  {
-    WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
-    WiFiEndpoint::SecurityFlags flags;
-    flags.wpa_psk = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-    service->AddEndpoint(endpoint);
-    MockEapCredentials* eap = SetMockEap(service);
-    EXPECT_CALL(*eap, IsConnectable()).WillRepeatedly(Return(false));
-    service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
-    EXPECT_FALSE(service->connectable());
-  }
-  {
-    WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
-    WiFiEndpoint::SecurityFlags flags;
-    flags.wpa_psk = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-    service->AddEndpoint(endpoint);
-    SetPassphrase(service, "a");
-    MockEapCredentials* eap = SetMockEap(service);
-    EXPECT_CALL(*eap, IsConnectable()).WillRepeatedly(Return(false));
-    service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
-    EXPECT_FALSE(service->connectable());
-  }
+  EXPECT_TRUE(CheckConnectable(kSecurityClassPsk, "abcdefgh", false));
+  EXPECT_FALSE(CheckConnectable(kSecurityClassPsk, nullptr, false));
+  EXPECT_FALSE(CheckConnectable(kSecurityClassPsk, "a", false));
 
-  {
-    // 802.1x without connectable EAP credentials should NOT be connectable.
-    WiFiServiceRefPtr service = MakeSimpleService(kSecurityClass8021x);
-    WiFiEndpoint::SecurityFlags flags;
-    flags.wpa_8021x = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-    service->AddEndpoint(endpoint);
-    MockEapCredentials* eap = SetMockEap(service);
-    EXPECT_CALL(*eap, IsConnectable()).WillRepeatedly(Return(false));
-    service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
-    EXPECT_FALSE(service->connectable());
-  }
+  // 802.1x without connectable EAP credentials should NOT be connectable.
+  EXPECT_FALSE(CheckConnectable(kSecurityClass8021x, nullptr, false));
 
-  {
-    // 802.1x with connectable EAP credentials should be connectable.
-    WiFiServiceRefPtr service = MakeSimpleService(kSecurityClass8021x);
-    WiFiEndpoint::SecurityFlags flags;
-    flags.wpa_8021x = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-    service->AddEndpoint(endpoint);
-    MockEapCredentials* eap = SetMockEap(service);
-    EXPECT_CALL(*eap, IsConnectable()).WillRepeatedly(Return(true));
-    service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
-    EXPECT_TRUE(service->connectable());
-  }
+  // 802.1x with connectable EAP credentials should be connectable.
+  EXPECT_TRUE(CheckConnectable(kSecurityClass8021x, nullptr, true));
 
-  {
-    // Dynamic WEP + 802.1X should be connectable under the same conditions.
-    WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassWep);
-    WiFiEndpoint::SecurityFlags flags;
-    flags.privacy = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
-    service->AddEndpoint(endpoint);
-    MockEapCredentials* eap = SetMockEap(service);
-    EXPECT_CALL(*eap, IsConnectable()).WillRepeatedly(Return(true));
-    const std::string kKeyManagement8021x(
-        WPASupplicant::kKeyManagementIeee8021X);
-    EXPECT_CALL(*eap, key_management())
-        .WillRepeatedly(ReturnRef(kKeyManagement8021x));
-    service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
-    EXPECT_TRUE(service->connectable());
-  }
+  // Dynamic WEP + 802.1X should be connectable under the same conditions.
+  EXPECT_TRUE(CheckConnectable(kSecurityClassWep, nullptr, true));
 
   {
     WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassPsk);
@@ -2285,23 +2107,17 @@ TEST_F(WiFiServiceTest, IsVisible) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassNone);
   ServiceMockAdaptor* adaptor = GetAdaptor(wifi_service.get());
 
-  // Adding the first endpoint emits two changes:
-  // Connectable = true, then Visible = true
-  EXPECT_CALL(*adaptor, EmitBoolChanged(kConnectableProperty, true));
+  // Adding the first endpoint emits a change: Visible = true.
   EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, true));
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
   wifi_service->AddEndpoint(endpoint);
-  EXPECT_TRUE(wifi_service->connectable());
   EXPECT_TRUE(wifi_service->IsVisible());
   Mock::VerifyAndClearExpectations(adaptor);
 
-  // Removing the last endpoint emits two changes:
-  // Connectable = false, then Visible = false
-  EXPECT_CALL(*adaptor, EmitBoolChanged(kConnectableProperty, false));
+  // Removing the last endpoint emits a change: Visible = false.
   EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, false));
   wifi_service->RemoveEndpoint(endpoint);
-  EXPECT_FALSE(wifi_service->connectable());
   EXPECT_FALSE(wifi_service->IsVisible());
   Mock::VerifyAndClearExpectations(adaptor);
 
@@ -3108,8 +2924,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSecurity) {
 }
 
 TEST_F(WiFiServiceTest, SetBSSIDAllowlist) {
-  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
-  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _, _)).WillRepeatedly(Return(true));
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
   Error error;
 
   // Default value
@@ -3158,19 +2973,6 @@ TEST_F(WiFiServiceTest, SetBSSIDAllowlist) {
   zeroes_bssid_allowlist = {"00:00:00:00:00:00", "00:00:00:00:00:00"};
   EXPECT_TRUE(service->SetBSSIDAllowlist(zeroes_bssid_allowlist, &error));
   EXPECT_TRUE(error.type() == Error::kInvalidArguments);
-
-  // If we fail to set it in |wifi|, bssid_allowlist doesn't change
-  bssid_allowlist = {};
-  EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
-  EXPECT_EQ(bssid_allowlist, service->GetBSSIDAllowlist(&error));
-
-  Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _, _))
-      .WillRepeatedly(Return(false));
-
-  std::vector<std::string> new_bssid_allowlist = {"00:00:00:00:00:01"};
-  EXPECT_FALSE(service->SetBSSIDAllowlist(new_bssid_allowlist, &error));
-  EXPECT_EQ(bssid_allowlist, service->GetBSSIDAllowlist(&error));
 }
 
 TEST_F(WiFiServiceTest, BSSIDConnectableEndpoints) {
@@ -3191,7 +2993,7 @@ TEST_F(WiFiServiceTest, BSSIDConnectableEndpoints) {
 
 TEST_F(WiFiServiceTest, NoBSSIDConnectableEndpoints) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
-  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _)).WillRepeatedly(Return(true));
 
   WiFiEndpoint::SecurityFlags flags;
   WiFiEndpointRefPtr endpoint = MakeEndpoint(
@@ -3218,7 +3020,7 @@ TEST_F(WiFiServiceTest, NoBSSIDConnectableEndpoints) {
 
 TEST_F(WiFiServiceTest, AllowlistedBSSIDConnectableEndpoints) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
-  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _)).WillRepeatedly(Return(true));
 
   WiFiEndpoint::SecurityFlags flags;
   WiFiEndpointRefPtr endpoint = MakeEndpoint(

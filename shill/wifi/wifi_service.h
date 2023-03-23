@@ -310,7 +310,7 @@ class WiFiService : public Service {
 
   Strings GetBSSIDAllowlist(Error* error);
   Strings GetBSSIDAllowlistConst(Error* error) const;
-  bool SetBSSIDAllowlist(const Strings& bssid_allowlist, Error* error);
+  bool SetBSSIDAllowlist(const Strings& ssid_allowlist, Error* error);
 
  protected:
   // Inherited from Service.

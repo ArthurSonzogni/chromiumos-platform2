@@ -262,19 +262,19 @@ WiFiService::WiFiService(Manager* manager,
 WiFiService::~WiFiService() = default;
 
 bool WiFiService::IsAutoConnectable(const char** reason) const {
-  // Only auto-connect to Services which have visible and connectable Endpoints.
+  if (!Service::IsAutoConnectable(reason)) {
+    return false;
+  }
+
+  // Only auto-connect to Services which have visible Endpoints.
   // (Needed because hidden Services may remain registered with
   // Manager even without visible Endpoints.)
-  if (!HasBSSIDConnectableEndpoints()) {
+  if (!HasEndpoints()) {
     *reason = Service::kAutoConnMediumUnavailable;
     return false;
   }
 
   CHECK(wifi_) << "We have endpoints but no WiFi device is selected?";
-
-  if (!Service::IsAutoConnectable(reason)) {
-    return false;
-  }
 
   // Do not preempt an existing connection (whether pending, or
   // connected, and whether to this service, or another).
@@ -1409,11 +1409,6 @@ bool WiFiService::HasOnlyWPA3Endpoints() const {
 }
 
 void WiFiService::UpdateConnectable() {
-  if (!HasBSSIDConnectableEndpoints()) {
-    SetConnectable(false);
-    return;
-  }
-
   bool is_connectable = false;
   if (security_class() == kSecurityClassNone) {
     DCHECK(passphrase_.empty());
@@ -2037,23 +2032,16 @@ bool WiFiService::SetBSSIDAllowlist(const Strings& bssid_allowlist,
     return false;
   }
 
-  if (wifi_) {
-    Strings strings_bssid_allowlist;
-    for (const auto& bytes : filtered_bssid_allowlist) {
-      strings_bssid_allowlist.push_back(
-          Device::MakeStringFromHardwareAddress(bytes));
-    }
-    // Try to update WPA supplicant as well.
-    if (!wifi_->SetBSSIDAllowlist(this, strings_bssid_allowlist, error)) {
-      // We allow a kNotFound error because it's ok if the network rpcid doesn't
-      // exist yet. We'll eventually set the BSSID allowlist in WPA supplicant
-      // on the initial configuration/connection later.
-      if (error->type() != Error::kNotFound) {
-        // If the network rpcid does exist but we failed for some other reason,
-        // then signal a failure.
-        return false;
-      }
-    }
+  // Update WPA supplicant as well
+  Strings strings_bssid_allowlist;
+  for (const auto& bytes : filtered_bssid_allowlist) {
+    strings_bssid_allowlist.push_back(
+        Device::MakeStringFromHardwareAddress(bytes));
+  }
+  if (wifi_ && !wifi_->SetBSSIDAllowlist(this, strings_bssid_allowlist)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Failed to set BSSID allowlist in WPA supplicant");
+    return false;
   }
 
   bssid_allowlist_ = filtered_bssid_allowlist;

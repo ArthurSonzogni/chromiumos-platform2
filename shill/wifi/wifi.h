@@ -264,8 +264,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // affect the currently connected network if there is one. Any changes will
   // take effect on the next network (re)connection.
   mockable bool SetBSSIDAllowlist(const WiFiService* service,
-                                  const Strings& bssid_allowlist,
-                                  Error* error);
+                                  const Strings& bssid_allowlist);
 
  private:
   // Result from a BSSAdded or BSSRemoved event.
