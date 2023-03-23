@@ -868,16 +868,18 @@ ReclaimVmMemoryResponse ReclaimVmMemoryInternal(pid_t pid, int32_t page_limit) {
 // this is undesirable. Instead we should provide the type in the request, and
 // determine its properties from that.
 VmId::Type ClassifyVm(const StartVmRequest& request) {
-  if (request.vm().dlc_id() == "borealis-dlc")
+  if (request.vm_type() == VmInfo::BOREALIS ||
+      request.vm().dlc_id() == "borealis-dlc")
     return VmId::Type::BOREALIS;
-  if (request.start_termina())
+  if (request.vm_type() == VmInfo::TERMINA || request.start_termina())
     return VmId::Type::TERMINA;
   // Bruschetta VMs are distinguished by having a separate bios, either as an FD
   // or a dlc.
   bool has_bios_fd =
       std::any_of(request.fds().begin(), request.fds().end(),
                   [](int type) { return type == StartVmRequest::BIOS; });
-  if (has_bios_fd || request.vm().dlc_id() == "edk2-ovmf-dlc")
+  if (request.vm_type() == VmInfo::BRUSCHETTA || has_bios_fd ||
+      request.vm().dlc_id() == "edk2-ovmf-dlc")
     return VmId::Type::BRUSCHETTA;
   return VmId::Type::UNKNOWN;
 }
@@ -1867,12 +1869,14 @@ StartVmResponse Service::StartVmInternal(
     return response;
   }
 
-  // Storage ballooning only enabled for ext4 setups of Borealis in order
+  // Storage ballooning enabled for Borealis (for ext4 setups in order
   // to not interfere with the storage management solutions of legacy
-  // setups.
+  // setups) and Bruschetta VMs.
   if (classification == VmId::Type::BOREALIS &&
       GetFilesystem(stateful_path) == "ext4") {
     vm_info->set_storage_ballooning(request.storage_ballooning());
+  } else if (classification == VmId::Type::BRUSCHETTA) {
+    vm_info->set_storage_ballooning(true);
   }
 
   for (const auto& d : request.disks()) {
@@ -4851,8 +4855,10 @@ void Service::HandleStatefulDiskSpaceUpdate(
   }
 
   auto classification = iter->second->GetInfo().type;
-  if (!iter->second->IsSuspended() && (classification == VmId::Type::BOREALIS ||
-                                       classification == VmId::Type::TERMINA)) {
+  if (!iter->second->IsSuspended() &&
+      (classification == VmId::Type::BOREALIS ||
+       classification == VmId::Type::TERMINA ||
+       classification == VmId::Type::BRUSCHETTA)) {
     static_cast<TerminaVm*>(iter->second.get())->HandleStatefulUpdate(update);
   }
 }
