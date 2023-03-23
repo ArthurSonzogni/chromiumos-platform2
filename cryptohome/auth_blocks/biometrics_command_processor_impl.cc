@@ -340,18 +340,26 @@ BiometricsCommandProcessorImpl::BiometricsCommandProcessorImpl(
       on_auth_scan_done_(base::DoNothing()),
       on_session_failed_(base::DoNothing()),
       proxy_(std::move(proxy)) {
+  pending_signal_connections_ = 3;
   proxy_->ConnectToEnrollScanDoneSignal(
       base::BindRepeating(&BiometricsCommandProcessorImpl::OnEnrollScanDone,
                           base::Unretained(this)),
-      /*on_connected_callback=*/base::DoNothing());
+      base::BindOnce(&BiometricsCommandProcessorImpl::OnSignalConnected,
+                     base::Unretained(this)));
   proxy_->ConnectToAuthScanDoneSignal(
       base::BindRepeating(&BiometricsCommandProcessorImpl::OnAuthScanDone,
                           base::Unretained(this)),
-      /*on_connected_callback=*/base::DoNothing());
+      base::BindOnce(&BiometricsCommandProcessorImpl::OnSignalConnected,
+                     base::Unretained(this)));
   proxy_->ConnectToSessionFailedSignal(
       base::BindRepeating(&BiometricsCommandProcessorImpl::OnSessionFailed,
                           base::Unretained(this)),
-      /*on_connected_callback=*/base::DoNothing());
+      base::BindOnce(&BiometricsCommandProcessorImpl::OnSignalConnected,
+                     base::Unretained(this)));
+}
+
+bool BiometricsCommandProcessorImpl::IsReady() {
+  return pending_signal_connections_ == 0;
 }
 
 void BiometricsCommandProcessorImpl::SetEnrollScanDoneCallback(
@@ -461,6 +469,17 @@ void BiometricsCommandProcessorImpl::EndEnrollSession() {
 
 void BiometricsCommandProcessorImpl::EndAuthenticateSession() {
   proxy_->EndAuthSession();
+}
+
+void BiometricsCommandProcessorImpl::OnSignalConnected(
+    const std::string& interface, const std::string& signal, bool success) {
+  if (!success) {
+    // Fail silently because biometrics isn't available on every device.
+    VLOG(1) << "Failed to connect to signal " << signal << " on interface "
+            << interface << ".";
+    return;
+  }
+  pending_signal_connections_--;
 }
 
 void BiometricsCommandProcessorImpl::OnEnrollScanDone(dbus::Signal* signal) {

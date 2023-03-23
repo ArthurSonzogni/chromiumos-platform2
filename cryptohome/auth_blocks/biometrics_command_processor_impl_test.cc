@@ -116,11 +116,20 @@ class BiometricsCommandProcessorImplTest : public BaseTestFixture {
     auto mock_proxy = std::make_unique<biod::MockAuthStackManagerProxyBase>();
     mock_proxy_ = mock_proxy.get();
     EXPECT_CALL(*mock_proxy_, ConnectToEnrollScanDoneSignal(_, _))
-        .WillOnce(SaveArg<0>(&enroll_callback_));
+        .WillOnce([&](auto&& callback, auto&& on_connected_callback) {
+          enroll_callback_ = callback;
+          enroll_connected_callback_ = std::move(on_connected_callback);
+        });
     EXPECT_CALL(*mock_proxy_, ConnectToAuthScanDoneSignal(_, _))
-        .WillOnce(SaveArg<0>(&auth_callback_));
+        .WillOnce([&](auto&& callback, auto&& on_connected_callback) {
+          auth_callback_ = callback;
+          auth_connected_callback_ = std::move(on_connected_callback);
+        });
     EXPECT_CALL(*mock_proxy_, ConnectToSessionFailedSignal(_, _))
-        .WillOnce(SaveArg<0>(&session_failed_callback_));
+        .WillOnce([&](auto&& callback, auto&& on_connected_callback) {
+          session_failed_callback_ = callback;
+          session_failed_connected_callback_ = std::move(on_connected_callback);
+        });
     processor_ =
         std::make_unique<BiometricsCommandProcessorImpl>(std::move(mock_proxy));
   }
@@ -154,11 +163,36 @@ class BiometricsCommandProcessorImplTest : public BaseTestFixture {
   }
 
   base::RepeatingCallback<void(dbus::Signal*)> enroll_callback_;
+  base::OnceCallback<void(const std::string&, const std::string&, bool success)>
+      enroll_connected_callback_;
   base::RepeatingCallback<void(dbus::Signal*)> auth_callback_;
+  base::OnceCallback<void(const std::string&, const std::string&, bool success)>
+      auth_connected_callback_;
   base::RepeatingCallback<void(dbus::Signal*)> session_failed_callback_;
+  base::OnceCallback<void(const std::string&, const std::string&, bool success)>
+      session_failed_connected_callback_;
   biod::MockAuthStackManagerProxyBase* mock_proxy_;
   std::unique_ptr<BiometricsCommandProcessorImpl> processor_;
 };
+
+TEST_F(BiometricsCommandProcessorImplTest, IsReady) {
+  EXPECT_EQ(processor_->IsReady(), false);
+  std::move(enroll_connected_callback_).Run("", "", true);
+  EXPECT_EQ(processor_->IsReady(), false);
+  std::move(auth_connected_callback_).Run("", "", true);
+  EXPECT_EQ(processor_->IsReady(), false);
+  std::move(session_failed_connected_callback_).Run("", "", true);
+  EXPECT_EQ(processor_->IsReady(), true);
+}
+
+TEST_F(BiometricsCommandProcessorImplTest, ConnectToSignalFailed) {
+  // If one of the signal connection failed, the processor shouldn't be in the
+  // ready state.
+  std::move(enroll_connected_callback_).Run("", "", false);
+  std::move(auth_connected_callback_).Run("", "", true);
+  std::move(session_failed_connected_callback_).Run("", "", true);
+  EXPECT_EQ(processor_->IsReady(), false);
+}
 
 TEST_F(BiometricsCommandProcessorImplTest, StartEndEnrollSession) {
   EXPECT_CALL(*mock_proxy_, StartEnrollSession(_))

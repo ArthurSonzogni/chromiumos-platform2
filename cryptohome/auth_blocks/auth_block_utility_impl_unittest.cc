@@ -294,6 +294,14 @@ TEST_F(AuthBlockUtilityImplTest, GetSupportedAuthFactors) {
   SetupBiometricsService();
   EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
       AuthFactorType::kFingerprint, AuthFactorStorageType::kVaultKeyset, {}));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kFingerprint, AuthFactorStorageType::kUserSecretStash,
+      {}));
+
+  EXPECT_CALL(*bio_processor_, IsReady).WillRepeatedly(Return(true));
+
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kFingerprint, AuthFactorStorageType::kVaultKeyset, {}));
   EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
       AuthFactorType::kFingerprint, AuthFactorStorageType::kUserSecretStash,
       {}));
@@ -1942,6 +1950,7 @@ TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationFingerprint) {
 
   // Should succeed after setup the biod service
   SetupBiometricsService();
+  EXPECT_CALL(*bio_processor_, IsReady).WillRepeatedly(Return(true));
 
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                   AuthFactorType::kFingerprint),

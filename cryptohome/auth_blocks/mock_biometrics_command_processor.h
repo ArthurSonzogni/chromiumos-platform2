@@ -23,6 +23,7 @@ class MockBiometricsCommandProcessor : public BiometricsCommandProcessor {
       (base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress,
                                     std::optional<brillo::Blob>)>),
       (override));
+  MOCK_METHOD(bool, IsReady, (), (override));
   MOCK_METHOD(void,
               SetAuthScanDoneCallback,
               (base::RepeatingCallback<void(user_data_auth::AuthScanDone,

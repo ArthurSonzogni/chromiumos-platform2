@@ -95,9 +95,15 @@ CryptoStatus FingerprintAuthBlock::IsSupported(
     Crypto& crypto,
     base::RepeatingCallback<BiometricsAuthBlockService*()>&
         bio_service_getter) {
-  if (!bio_service_getter.Run()) {
+  auto* bio_service = bio_service_getter.Run();
+  if (!bio_service) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoServiceInIsSupported),
+        ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
+  }
+  if (!bio_service->IsReady()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockServiceNotReadyIsSupported),
         ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
   }
 

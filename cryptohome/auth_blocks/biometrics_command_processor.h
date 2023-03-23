@@ -44,6 +44,10 @@ class BiometricsCommandProcessor {
 
   virtual ~BiometricsCommandProcessor() = default;
 
+  // Returns whether this BiometricsCommandProcessor is ready for accepting
+  // commands.
+  virtual bool IsReady() = 0;
+
   // Sets the repeating callback that will be triggered whenever biod emits an
   // EnrollScanDone event. The event will be packed into an
   // AuthEnrollmentProgress proto and a nonce (if enrollment is done).

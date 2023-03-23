@@ -45,6 +45,10 @@ BiometricsAuthBlockService::BiometricsAuthBlockService(
       &BiometricsAuthBlockService::OnSessionFailed, base::Unretained(this)));
 }
 
+bool BiometricsAuthBlockService::IsReady() {
+  return processor_->IsReady();
+}
+
 void BiometricsAuthBlockService::StartEnrollSession(
     AuthFactorType auth_factor_type,
     ObfuscatedUsername obfuscated_username,

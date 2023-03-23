@@ -49,6 +49,11 @@ class BiometricsAuthBlockService {
         []() -> BiometricsAuthBlockService* { return nullptr; });
   }
 
+  // IsReady returns whether the biometrics auth block service is ready. Once
+  // this returns true in a boot cycle, the caller can assume it's always ready.
+  // This can be used to determine biometrics auth factor's availability.
+  bool IsReady();
+
   // StartEnrollSession initiates a biometrics enrollment session. If
   // successful, enroll_signal_sender will be triggered with upcoming enrollment
   // progress signals.

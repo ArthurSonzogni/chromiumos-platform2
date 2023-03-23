@@ -32,6 +32,7 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
       const BiometricsCommandProcessorImpl&) = delete;
 
   // BiometricsCommandProcessor methods.
+  bool IsReady() override;
   void SetEnrollScanDoneCallback(
       base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress,
                                    std::optional<brillo::Blob>)> on_done)
@@ -54,6 +55,11 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
   void EndAuthenticateSession() override;
 
  private:
+  // If signal is successfully connected, decrement the
+  // |pending_signal_connections_| counter.
+  void OnSignalConnected(const std::string& interface,
+                         const std::string& signal,
+                         bool success);
   // This is used as the signal callback we register to the biod proxy. It
   // parses the signal into an AuthEnrollmentProgress proto and triggers
   // on_enroll_scan_done_.
@@ -86,6 +92,11 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
       on_auth_scan_done_;
   base::RepeatingCallback<void()> on_session_failed_;
   std::unique_ptr<biod::AuthStackManagerProxyBase> proxy_;
+  // This will be initialized to the total signals this class subsribes to.
+  // Whenever a signal is connected successfully, the count will be decremented.
+  // When the count is zero, this command processor is in ready state for
+  // commands.
+  int pending_signal_connections_;
 };
 
 }  // namespace cryptohome
