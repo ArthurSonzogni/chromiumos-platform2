@@ -62,9 +62,8 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
   // parses the signal into an AuthScanDone proto and triggers
   // on_auth_scan_done_.
   void OnAuthScanDone(dbus::Signal* signal);
-  // This is used as the OnFinish callback we register to the biod proxy. It in
-  // practice only reports failures encountered in enroll and auth sessions.
-  void OnFinish(bool success);
+  // This is used as the OnSessionFailed callback we register to the biod proxy.
+  void OnSessionFailed(dbus::Signal* signal);
   // This is used as the callback of biod proxy's CreateCredential method. It
   // decrypts the secret data contained in the response with the session key and
   // packs it into OperationOutput.

@@ -22,8 +22,6 @@ static const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
 
 using FinishCallback = base::RepeatingCallback<void(bool success)>;
 
-AuthStackManagerProxyBase::AuthStackManagerProxyBase() : weak_factory_(this) {}
-
 std::unique_ptr<AuthStackManagerProxyBase> AuthStackManagerProxyBase::Create(
     const scoped_refptr<dbus::Bus>& bus, const dbus::ObjectPath& path) {
   auto auth_stack_manager_proxy_base =
@@ -51,13 +49,12 @@ void AuthStackManagerProxyBase::ConnectToAuthScanDoneSignal(
                           std::move(on_connected_callback));
 }
 
-const dbus::ObjectPath AuthStackManagerProxyBase::path() const {
-  return proxy_->object_path();
-}
-
-void AuthStackManagerProxyBase::SetFinishHandler(
-    const FinishCallback& on_finish) {
-  on_finish_ = on_finish;
+void AuthStackManagerProxyBase::ConnectToSessionFailedSignal(
+    SignalCallback signal_callback, OnConnectedCallback on_connected_callback) {
+  proxy_->ConnectToSignal(biod::kAuthStackManagerInterface,
+                          biod::kBiometricsManagerSessionFailedSignal,
+                          std::move(signal_callback),
+                          std::move(on_connected_callback));
 }
 
 void AuthStackManagerProxyBase::StartEnrollSession(
@@ -133,29 +130,7 @@ bool AuthStackManagerProxyBase::Initialize(const scoped_refptr<dbus::Bus>& bus,
   if (!proxy_)
     return false;
 
-  proxy_->ConnectToSignal(
-      biod::kAuthStackManagerInterface,
-      biod::kBiometricsManagerSessionFailedSignal,
-      base::BindRepeating(&AuthStackManagerProxyBase::OnSessionFailed,
-                          weak_factory_.GetWeakPtr()),
-      base::BindOnce(&AuthStackManagerProxyBase::OnSignalConnected,
-                     weak_factory_.GetWeakPtr()));
   return true;
-}
-
-void AuthStackManagerProxyBase::OnFinish(bool success) {
-  if (on_finish_)
-    on_finish_.Run(success);
-}
-
-void AuthStackManagerProxyBase::OnSignalConnected(const std::string& interface,
-                                                  const std::string& signal,
-                                                  bool success) {
-  if (!success) {
-    LOG(ERROR) << "Failed to connect to signal " << signal << " on interface "
-               << interface;
-    OnFinish(false);
-  }
 }
 
 void AuthStackManagerProxyBase::OnStartEnrollSessionResponse(
@@ -178,11 +153,6 @@ void AuthStackManagerProxyBase::OnStartAuthSessionResponse(
 void AuthStackManagerProxyBase::OnAuthenticateCredentialResponse(
     AuthenticateCredentialCallback callback, dbus::Response* response) {
   std::move(callback).Run(HandleAuthenticateCredentialResponse(response));
-}
-
-void AuthStackManagerProxyBase::OnSessionFailed(dbus::Signal* signal) {
-  LOG(ERROR) << "Biometric device failed";
-  OnFinish(false);
 }
 
 dbus::ObjectProxy* AuthStackManagerProxyBase::HandleStartSessionResponse(

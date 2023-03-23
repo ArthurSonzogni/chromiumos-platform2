@@ -28,11 +28,10 @@ class MockAuthStackManagerProxyBase : public AuthStackManagerProxyBase {
                OnConnectedCallback on_connected_callback),
               (override));
 
-  MOCK_METHOD(const dbus::ObjectPath, path, (), (const, override));
-
   MOCK_METHOD(void,
-              SetFinishHandler,
-              (const FinishCallback& on_finish),
+              ConnectToSessionFailedSignal,
+              (SignalCallback signal_callback,
+               OnConnectedCallback on_connected_callback),
               (override));
 
   MOCK_METHOD(void,

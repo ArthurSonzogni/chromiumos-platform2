@@ -22,7 +22,6 @@ namespace biod {
 
 class BRILLO_EXPORT AuthStackManagerProxyBase {
  public:
-  using FinishCallback = base::RepeatingCallback<void(bool success)>;
   using SignalCallback = dbus::ObjectProxy::SignalCallback;
   using OnConnectedCallback = dbus::ObjectProxy::OnConnectedCallback;
   using CreateCredentialCallback =
@@ -48,9 +47,9 @@ class BRILLO_EXPORT AuthStackManagerProxyBase {
       SignalCallback signal_callback,
       OnConnectedCallback on_connected_callback);
 
-  virtual const dbus::ObjectPath path() const;
-
-  virtual void SetFinishHandler(const FinishCallback& on_finish);
+  virtual void ConnectToSessionFailedSignal(
+      SignalCallback signal_callback,
+      OnConnectedCallback on_connected_callback);
 
   // Starts biometrics enroll session asynchronously.
   // |callback| is called when starting the enroll session succeeds/fails.
@@ -82,24 +81,16 @@ class BRILLO_EXPORT AuthStackManagerProxyBase {
       AuthenticateCredentialCallback callback);
 
  protected:
-  AuthStackManagerProxyBase();
+  AuthStackManagerProxyBase() = default;
 
   bool Initialize(const scoped_refptr<dbus::Bus>& bus,
                   const dbus::ObjectPath& path);
-
-  void OnFinish(bool success);
-
-  void OnSignalConnected(const std::string& interface,
-                         const std::string& signal,
-                         bool success);
 
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* proxy_ = nullptr;
 
  private:
   friend class AuthStackManagerProxyBaseTest;
-
-  void OnSessionFailed(dbus::Signal* signal);
 
   // Handler for StartEnrollSession. |callback| will be called on behalf of
   // the caller of StartEnrollSession.
@@ -136,10 +127,6 @@ class BRILLO_EXPORT AuthStackManagerProxyBase {
   // the response. Returns nullopt on error.
   std::optional<AuthenticateCredentialReply>
   HandleAuthenticateCredentialResponse(dbus::Response* response);
-
-  FinishCallback on_finish_;
-
-  base::WeakPtrFactory<AuthStackManagerProxyBase> weak_factory_;
 
   dbus::ObjectProxy* biod_enroll_session_ = nullptr;
   dbus::ObjectProxy* biod_auth_session_ = nullptr;

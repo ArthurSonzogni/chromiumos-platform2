@@ -348,8 +348,10 @@ BiometricsCommandProcessorImpl::BiometricsCommandProcessorImpl(
       base::BindRepeating(&BiometricsCommandProcessorImpl::OnAuthScanDone,
                           base::Unretained(this)),
       /*on_connected_callback=*/base::DoNothing());
-  proxy_->SetFinishHandler(base::BindRepeating(
-      &BiometricsCommandProcessorImpl::OnFinish, base::Unretained(this)));
+  proxy_->ConnectToSessionFailedSignal(
+      base::BindRepeating(&BiometricsCommandProcessorImpl::OnSessionFailed,
+                          base::Unretained(this)),
+      /*on_connected_callback=*/base::DoNothing());
 }
 
 void BiometricsCommandProcessorImpl::SetEnrollScanDoneCallback(
@@ -494,11 +496,9 @@ void BiometricsCommandProcessorImpl::OnAuthScanDone(dbus::Signal* signal) {
                          brillo::BlobFromString(message.auth_nonce()));
 }
 
-void BiometricsCommandProcessorImpl::OnFinish(bool success) {
-  if (!success) {
-    LOG(WARNING) << "Biometrics session failure.";
-    on_session_failed_.Run();
-  }
+void BiometricsCommandProcessorImpl::OnSessionFailed(dbus::Signal* signal) {
+  LOG(WARNING) << "Biometrics session failure.";
+  on_session_failed_.Run();
 }
 
 void BiometricsCommandProcessorImpl::OnCreateCredentialReply(

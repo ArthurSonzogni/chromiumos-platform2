@@ -44,15 +44,6 @@ class AuthStackManagerProxyBaseTest : public testing::Test {
         mock_bus_.get(), dbus::ObjectPath(kBiodServicePath));
   }
 
-  void CallFinish(bool success) { proxy_base_->OnFinish(success); }
-
-  void CallOnSignalConnected(bool success) {
-    proxy_base_->OnSignalConnected("unused interface", "unused signal",
-                                   success);
-  }
-
-  void CallOnSessionFailed() { proxy_base_->OnSessionFailed(nullptr); }
-
   dbus::ObjectProxy* GetBiodEnrollSession() {
     return proxy_base_->biod_enroll_session_;
   }
@@ -68,24 +59,6 @@ class AuthStackManagerProxyBaseTest : public testing::Test {
 };
 
 namespace {
-
-// Test that we can install and exercise a custom finish handler.
-TEST_F(AuthStackManagerProxyBaseTest, RunFinishHandlerWithTrue) {
-  status_ = false;
-  proxy_base_->SetFinishHandler(
-      base::BindLambdaForTesting([this](bool success) { status_ = success; }));
-  CallFinish(true);
-  EXPECT_TRUE(status_);
-}
-
-// Test that we can install and exercise a custom finish handler.
-TEST_F(AuthStackManagerProxyBaseTest, RunFinishHandlerWithFalse) {
-  status_ = true;
-  proxy_base_->SetFinishHandler(
-      base::BindLambdaForTesting([this](bool success) { status_ = success; }));
-  CallFinish(false);
-  EXPECT_FALSE(status_);
-}
 
 // Test that StartEnrollSession returns nullptr if no dbus response.
 TEST_F(AuthStackManagerProxyBaseTest, StartEnrollSessionNoResponse) {
@@ -325,24 +298,6 @@ TEST_F(AuthStackManagerProxyBaseTest, AuthenticateCredentialInvalidResponse) {
             reply_ret = reply;
           }));
   EXPECT_FALSE(reply_ret.has_value());
-}
-
-// Test that OnSessionFailed will call on_finish_ with false
-TEST_F(AuthStackManagerProxyBaseTest, OnSessionFailed) {
-  status_ = true;
-  proxy_base_->SetFinishHandler(
-      base::BindLambdaForTesting([this](bool success) { status_ = success; }));
-  CallOnSessionFailed();
-  EXPECT_FALSE(status_);
-}
-
-// Test that OnSignalConnected if failed will call on_finish_ with false
-TEST_F(AuthStackManagerProxyBaseTest, OnSignalConnectFailed) {
-  status_ = true;
-  proxy_base_->SetFinishHandler(
-      base::BindLambdaForTesting([this](bool success) { status_ = success; }));
-  CallOnSignalConnected(false);
-  EXPECT_FALSE(status_);
 }
 
 }  // namespace

@@ -119,8 +119,8 @@ class BiometricsCommandProcessorImplTest : public BaseTestFixture {
         .WillOnce(SaveArg<0>(&enroll_callback_));
     EXPECT_CALL(*mock_proxy_, ConnectToAuthScanDoneSignal(_, _))
         .WillOnce(SaveArg<0>(&auth_callback_));
-    EXPECT_CALL(*mock_proxy_, SetFinishHandler(_))
-        .WillOnce(SaveArg<0>(&finish_callback_));
+    EXPECT_CALL(*mock_proxy_, ConnectToSessionFailedSignal(_, _))
+        .WillOnce(SaveArg<0>(&session_failed_callback_));
     processor_ =
         std::make_unique<BiometricsCommandProcessorImpl>(std::move(mock_proxy));
   }
@@ -146,11 +146,16 @@ class BiometricsCommandProcessorImplTest : public BaseTestFixture {
     auth_callback_.Run(&auth_scan_done_signal);
   }
 
-  void EmitSessionFailedEvent() { finish_callback_.Run(false); }
+  void EmitSessionFailedEvent() {
+    dbus::Signal session_failed_signal(
+        biod::kBiometricsManagerInterface,
+        biod::kBiometricsManagerSessionFailedSignal);
+    session_failed_callback_.Run(&session_failed_signal);
+  }
 
   base::RepeatingCallback<void(dbus::Signal*)> enroll_callback_;
   base::RepeatingCallback<void(dbus::Signal*)> auth_callback_;
-  base::RepeatingCallback<void(bool)> finish_callback_;
+  base::RepeatingCallback<void(dbus::Signal*)> session_failed_callback_;
   biod::MockAuthStackManagerProxyBase* mock_proxy_;
   std::unique_ptr<BiometricsCommandProcessorImpl> processor_;
 };
