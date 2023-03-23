@@ -222,7 +222,7 @@ class Manager final : public brillo::DBusDaemon {
   // triggers the teardown of the network setup when closed.
   patchpanel::DownstreamNetworkResult OnDownstreamNetworkRequest(
       dbus::MessageReader* reader,
-      bool (*parser)(dbus::MessageReader*, DownstreamNetworkInfo*));
+      std::optional<DownstreamNetworkInfo> (*parser)(dbus::MessageReader*));
 
   // Disable and re-enable IPv6 inside a namespace.
   void RestartIPv6(const std::string& netns_name);

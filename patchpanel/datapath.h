@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/firewall.h"
@@ -127,6 +128,13 @@ struct DownstreamNetworkInfo {
 
   DownstreamNetworkIPv6Mode ipv6_mode;
   // TODO(b/239559602) Add IPv6 configuration.
+
+  // Creates the DownstreamNetworkInfo instance from TetheredNetworkRequest.
+  static std::optional<DownstreamNetworkInfo> Create(
+      const TetheredNetworkRequest& request);
+  // Creates the DownstreamNetworkInfo instance from LocalOnlyNetworkRequest.
+  static std::optional<DownstreamNetworkInfo> Create(
+      const LocalOnlyNetworkRequest& request);
 
   // Creates the configuration of the DHCPServerController.
   std::optional<DHCPServerController::Config> ToDHCPServerConfig() const;

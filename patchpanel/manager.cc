@@ -118,34 +118,22 @@ void FillDeviceDnsProxyProto(
   }
 }
 
-bool ParseTetheredNetworkRequest(dbus::MessageReader* reader,
-                                 DownstreamNetworkInfo* info) {
-  patchpanel::TetheredNetworkRequest request;
+std::optional<DownstreamNetworkInfo> ParseTetheredNetworkRequest(
+    dbus::MessageReader* reader) {
+  TetheredNetworkRequest request;
   if (!reader->PopArrayOfBytesAsProto(&request)) {
-    return false;
+    return std::nullopt;
   }
-  info->topology = DownstreamNetworkTopology::kTethering;
-  // TODO(b/239559602) Enable IPv6 tethering according to upstream technology.
-  info->ipv6_mode = DownstreamNetworkIPv6Mode::kDisabled;
-  info->upstream_ifname = request.upstream_ifname();
-  info->downstream_ifname = request.ifname();
-  // TODO(b/239559602) Copy IPv4 configuration if any.
-  return true;
+  return DownstreamNetworkInfo::Create(request);
 }
 
-bool ParseLocalOnlyNetworkRequest(dbus::MessageReader* reader,
-                                  DownstreamNetworkInfo* info) {
-  patchpanel::LocalOnlyNetworkRequest request;
+std::optional<DownstreamNetworkInfo> ParseLocalOnlyNetworkRequest(
+    dbus::MessageReader* reader) {
+  LocalOnlyNetworkRequest request;
   if (!reader->PopArrayOfBytesAsProto(&request)) {
-    return false;
+    return std::nullopt;
   }
-  info->topology = DownstreamNetworkTopology::kLocalOnly;
-  // TODO(b/239559602) Enable IPv6 LocalOnlyNetwork with RAServer
-  info->ipv6_mode = DownstreamNetworkIPv6Mode::kDisabled;
-  info->downstream_ifname = request.ifname();
-  // TODO(b/239559602) Copy IPv4 configuration if any.
-  // TODO(b/239559602) Copy IPv6 configuration if any.
-  return true;
+  return DownstreamNetworkInfo::Create(request);
 }
 
 void RecordDbusEvent(std::unique_ptr<MetricsLibraryInterface>& metrics,
@@ -1628,9 +1616,9 @@ bool Manager::ValidateDownstreamNetworkRequest(
 
 patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
     dbus::MessageReader* reader,
-    bool (*parser)(dbus::MessageReader*, DownstreamNetworkInfo*)) {
-  DownstreamNetworkInfo info = {};
-  if (!parser(reader, &info)) {
+    std::optional<DownstreamNetworkInfo> (*parser)(dbus::MessageReader*)) {
+  std::optional<DownstreamNetworkInfo> info = parser(reader);
+  if (!info) {
     LOG(ERROR) << __func__ << ": Unable to parse request";
     return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
   }
@@ -1642,7 +1630,7 @@ patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
     return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
   }
 
-  if (!ValidateDownstreamNetworkRequest(info)) {
+  if (!ValidateDownstreamNetworkRequest(*info)) {
     return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
   }
 
@@ -1650,35 +1638,35 @@ patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
 
   base::ScopedFD local_client_fd = AddLifelineFd(std::move(client_fd));
   if (!local_client_fd.is_valid()) {
-    LOG(ERROR) << __func__ << ": " << info << ": Failed to create lifeline fd";
+    LOG(ERROR) << __func__ << ": " << *info << ": Failed to create lifeline fd";
     return patchpanel::DownstreamNetworkResult::ERROR;
   }
 
-  if (!datapath_->StartDownstreamNetwork(info)) {
+  if (!datapath_->StartDownstreamNetwork(*info)) {
     return patchpanel::DownstreamNetworkResult::ERROR;
   }
 
   // Start the DHCP server at downstream.
-  if (info.enable_ipv4_dhcp) {
-    if (dhcp_server_controllers_.find(info.downstream_ifname) !=
+  if (info->enable_ipv4_dhcp) {
+    if (dhcp_server_controllers_.find(info->downstream_ifname) !=
         dhcp_server_controllers_.end()) {
-      LOG(ERROR) << __func__ << ": " << info
+      LOG(ERROR) << __func__ << ": " << *info
                  << ": DHCP server is already running at "
-                 << info.downstream_ifname;
+                 << info->downstream_ifname;
       return patchpanel::DownstreamNetworkResult::INTERFACE_USED;
     }
-    const auto config = info.ToDHCPServerConfig();
+    const auto config = info->ToDHCPServerConfig();
     if (!config) {
-      LOG(ERROR) << "Failed to get DHCP server config:" << info;
+      LOG(ERROR) << "Failed to get DHCP server config:" << *info;
       return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
     }
     auto dhcp_server_controller =
-        std::make_unique<DHCPServerController>(info.downstream_ifname);
+        std::make_unique<DHCPServerController>(info->downstream_ifname);
     // TODO(b/274722417) Handle the DHCP server exits unexpectedly.
     if (!dhcp_server_controller->Start(*config, base::DoNothing())) {
       return patchpanel::DownstreamNetworkResult::DHCP_SERVER_FAILURE;
     }
-    dhcp_server_controllers_[info.downstream_ifname] =
+    dhcp_server_controllers_[info->downstream_ifname] =
         std::move(dhcp_server_controller);
   }
 
@@ -1686,7 +1674,7 @@ patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
   // service.
 
   int fdkey = local_client_fd.release();
-  downstream_networks_[fdkey] = info;
+  downstream_networks_[fdkey] = *info;
   return patchpanel::DownstreamNetworkResult::SUCCESS;
 }
 

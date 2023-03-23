@@ -202,7 +202,29 @@ void Verify_ip_netns_delete(MockProcessRunner& runner,
 
 }  // namespace
 
-TEST(DatapathTest, DownstreamNetworkInfoToDHCPServerConfig) {
+TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
+  TetheredNetworkRequest request;
+  request.set_upstream_ifname("wwan0");
+  request.set_ifname("wlan1");
+
+  const auto info = DownstreamNetworkInfo::Create(request);
+  ASSERT_NE(info, std::nullopt);
+  EXPECT_EQ(info->topology, DownstreamNetworkTopology::kTethering);
+  EXPECT_EQ(info->upstream_ifname, "wwan0");
+  EXPECT_EQ(info->downstream_ifname, "wlan1");
+}
+
+TEST(DatapathTest, DownstreamNetworkInfo_CreateFromLocalOnlyNetworkRequest) {
+  LocalOnlyNetworkRequest request;
+  request.set_ifname("wlan1");
+
+  const auto info = DownstreamNetworkInfo::Create(request);
+  ASSERT_NE(info, std::nullopt);
+  EXPECT_EQ(info->topology, DownstreamNetworkTopology::kLocalOnly);
+  EXPECT_EQ(info->downstream_ifname, "wlan1");
+}
+
+TEST(DatapathTest, DownstreamNetworkInfo_ToDHCPServerConfig) {
   DownstreamNetworkInfo info = {};
   info.ipv4_addr = Ipv4Addr(192, 168, 3, 1);
   info.ipv4_prefix_length = 24;

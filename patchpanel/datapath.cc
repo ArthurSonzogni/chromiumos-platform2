@@ -2081,6 +2081,32 @@ bool Datapath::ModifyPortRule(
   }
 }
 
+std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
+    const TetheredNetworkRequest& request) {
+  auto info = std::make_optional<DownstreamNetworkInfo>();
+
+  info->topology = DownstreamNetworkTopology::kTethering;
+  // TODO(b/239559602) Enable IPv6 tethering according to upstream technology.
+  info->ipv6_mode = DownstreamNetworkIPv6Mode::kDisabled;
+  info->upstream_ifname = request.upstream_ifname();
+  info->downstream_ifname = request.ifname();
+  // TODO(b/239559602) Copy IPv4 configuration if any.
+  return info;
+}
+
+std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
+    const LocalOnlyNetworkRequest& request) {
+  auto info = std::make_optional<DownstreamNetworkInfo>();
+
+  info->topology = DownstreamNetworkTopology::kLocalOnly;
+  // TODO(b/239559602) Enable IPv6 LocalOnlyNetwork with RAServer
+  info->ipv6_mode = DownstreamNetworkIPv6Mode::kDisabled;
+  info->downstream_ifname = request.ifname();
+  // TODO(b/239559602) Copy IPv4 configuration if any.
+  // TODO(b/239559602) Copy IPv6 configuration if any.
+  return info;
+}
+
 std::optional<DHCPServerController::Config>
 DownstreamNetworkInfo::ToDHCPServerConfig() const {
   using shill::IPAddress;
