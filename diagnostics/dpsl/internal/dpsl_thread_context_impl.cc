@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <absl/base/attributes.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/lazy_instance.h>
@@ -23,14 +24,13 @@ namespace {
 
 // Whether an instance of DpslThreadContextImpl was created on the current
 // thread.
-base::LazyInstance<base::ThreadLocalBoolean>::Leaky
-    g_thread_context_impl_created = LAZY_INSTANCE_INITIALIZER;
+ABSL_CONST_INIT thread_local bool g_thread_context_impl_created = false;
 
 }  // namespace
 
 // static
 void DpslThreadContextImpl::CleanThreadCounterForTesting() {
-  g_thread_context_impl_created.Pointer()->Set(false);
+  g_thread_context_impl_created = false;
 }
 
 DpslThreadContextImpl::DpslThreadContextImpl()
@@ -102,9 +102,9 @@ std::unique_ptr<DpslThreadContext> DpslThreadContext::Create(
   CHECK(global_context) << "GlobalContext is nullptr";
 
   // Verify we're not called twice on the current thread.
-  CHECK(!g_thread_context_impl_created.Pointer()->Get())
+  CHECK(!g_thread_context_impl_created)
       << "Duplicate DpslThreadContext instances constructed on the same thread";
-  g_thread_context_impl_created.Pointer()->Set(true);
+  g_thread_context_impl_created = true;
 
   return std::make_unique<DpslThreadContextImpl>();
 }

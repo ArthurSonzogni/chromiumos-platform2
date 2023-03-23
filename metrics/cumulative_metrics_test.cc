@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <absl/base/attributes.h>
 #include <gtest/gtest.h>
 
 #include "base/at_exit.h"
@@ -21,7 +22,7 @@ namespace chromeos_metrics {
 
 namespace {
 
-base::ThreadLocalPointer<base::RunLoop> tls_run_loop;
+ABSL_CONST_INIT thread_local base::RunLoop* tls_run_loop = nullptr;
 
 constexpr char kMetricNameX[] = "x.pi";
 constexpr char kMetricNameY[] = "y.pi";
@@ -55,7 +56,7 @@ static void ReportAccumulators(CumulativeMetrics* cm) {
   }
   // Quit loop.
   if (accumulator_report_count == kTotalReportCount) {
-    tls_run_loop.Get()->Quit();
+    tls_run_loop->Quit();
   }
   accumulator_update_partial_count = 0;
   accumulator_report_count += 1;
@@ -64,7 +65,7 @@ static void ReportAccumulators(CumulativeMetrics* cm) {
 TEST_F(CumulativeMetricsTest, TestLoop) {
   base::SingleThreadTaskExecutor task_executor_;
   base::RunLoop run_loop;
-  tls_run_loop.Set(&run_loop);
+  tls_run_loop = &run_loop;
 
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
