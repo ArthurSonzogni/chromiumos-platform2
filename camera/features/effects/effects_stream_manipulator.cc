@@ -249,7 +249,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   RenderResult RenderEffect(Camera3StreamBuffer& result_buffer,
                             int64_t timestamp);
   bool EnsureImages(buffer_handle_t buffer_handle);
-  bool NV12ToRGBA();
+  CameraEffectError NV12ToRGBA(buffer_handle_t buffer_handle);
   void RGBAToNV12(GLuint texture, uint32_t width, uint32_t height);
   void CreatePipeline(const base::FilePath& dlc_root_path);
   std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc);
@@ -852,26 +852,15 @@ EffectsStreamManipulatorImpl::RenderEffect(Camera3StreamBuffer& result_buffer,
       },
       std::ref(metrics_), manager, buffer_handle));
 
-  bool ret;
-
-  gl_thread_.PostTaskSync(
-      FROM_HERE,
-      base::BindOnce(&EffectsStreamManipulatorImpl::EnsureImages,
-                     base::Unretained(this), buffer_handle),
-      &ret);
-  if (!ret) {
-    LOGF(ERROR) << "Failed to ensure GPU resources";
-    return {CameraEffectError::kGPUImageInitializationFailed};
-  }
-
+  CameraEffectError ret;
   gl_thread_.PostTaskSync(
       FROM_HERE,
       base::BindOnce(&EffectsStreamManipulatorImpl::NV12ToRGBA,
-                     base::Unretained(this)),
+                     base::Unretained(this), buffer_handle),
       &ret);
-  if (!ret) {
+  if (ret != CameraEffectError::kNoError) {
     LOGF(ERROR) << "Failed to convert from YUV to RGB";
-    return {CameraEffectError::kYUVConversionFailed};
+    return {ret};
   }
 
   // Mediapipe requires timestamps to be strictly increasing for a given
@@ -1087,15 +1076,20 @@ bool EffectsStreamManipulatorImpl::EnsureImages(buffer_handle_t buffer_handle) {
   return true;
 }
 
-bool EffectsStreamManipulatorImpl::NV12ToRGBA() {
+CameraEffectError EffectsStreamManipulatorImpl::NV12ToRGBA(
+    buffer_handle_t buffer_handle) {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   TRACE_EFFECTS();
+  if (!EnsureImages(buffer_handle)) {
+    return CameraEffectError::kGPUImageInitializationFailed;
+  }
 
   bool conv_result = image_processor_->NV12ToRGBA(input_image_yuv_.y_texture(),
                                                   input_image_yuv_.uv_texture(),
                                                   input_image_rgba_.texture());
   glFinish();
-  return conv_result;
+  return conv_result ? CameraEffectError::kNoError
+                     : CameraEffectError::kYUVConversionFailed;
 }
 
 void EffectsStreamManipulatorImpl::RGBAToNV12(GLuint texture,
