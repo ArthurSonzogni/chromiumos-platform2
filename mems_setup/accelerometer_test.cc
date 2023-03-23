@@ -82,7 +82,6 @@ TEST_F(AccelerometerTest, CheckPermissionsAndOwnership) {
                                       base::FILE_PERMISSION_WRITE_BY_GROUP |
                                           base::FILE_PERMISSION_READ_BY_GROUP);
 
-#if USE_IIOSERVICE
   // /dev/iio:deviceX
   base::FilePath dev_path =
       base::FilePath(libmems::kDevString).Append(dev_name.c_str());
@@ -90,10 +89,8 @@ TEST_F(AccelerometerTest, CheckPermissionsAndOwnership) {
   CheckPermissionsAndOwnershipForFile(dev_path,
                                       base::FILE_PERMISSION_WRITE_BY_GROUP |
                                           base::FILE_PERMISSION_READ_BY_GROUP);
-#endif  // USE_IIOSERVICE
 }
 
-#if USE_IIOSERVICE
 TEST_F(AccelerometerTest, FrequencyReset) {
   SetSingleSensor(kBaseSensorLocation);
   ConfigureVpd({{"in_accel_x_base_calibbias", "100"}});
@@ -105,7 +102,6 @@ TEST_F(AccelerometerTest, FrequencyReset) {
   EXPECT_TRUE(frequency_opt.has_value());
   EXPECT_EQ(frequency_opt.value(), 0.0);
 }
-#endif  // USE_IIOSERVICE
 
 TEST_F(AccelerometerTest, CheckClock) {
   SetSingleSensor(kBaseSensorLocation);
@@ -300,43 +296,6 @@ TEST_F(AccelerometerTest, TriggerPermissions) {
   mock_delegate_->GetOwnership(trigger_now, nullptr, &gid);
   EXPECT_EQ(kChronosGroupId, gid);
 }
-
-#if !USE_IIOSERVICE
-TEST_F(AccelerometerTest, SingleSensorEnableChannels) {
-  SetSingleSensor(kLidSensorLocation);
-  EXPECT_TRUE(GetConfiguration()->Configure());
-
-  for (auto channel : mock_device_->GetAllChannels()) {
-    if (strcmp(channel->GetId(), "calibration") == 0)
-      continue;
-    EXPECT_EQ(static_cast<FakeIioChannel*>(channel)->IsScanElementsEnabled(),
-              0 != strcmp(channel->GetId(), "timestamp"));
-  }
-}
-
-TEST_F(AccelerometerTest, MultipleSensorEnableChannels) {
-  SetSharedSensor();
-  EXPECT_TRUE(GetConfiguration()->Configure());
-
-  for (auto channel : mock_device_->GetAllChannels()) {
-    if (strcmp(channel->GetId(), "calibration") == 0)
-      continue;
-    EXPECT_EQ(static_cast<FakeIioChannel*>(channel)->IsScanElementsEnabled(),
-              0 != strcmp(channel->GetId(), "timestamp"));
-  }
-}
-
-TEST_F(AccelerometerTest, BufferEnabled) {
-  SetSingleSensor(kLidSensorLocation);
-  EXPECT_FALSE(mock_device_->IsBufferEnabled());
-
-  EXPECT_TRUE(GetConfiguration()->Configure());
-
-  size_t accel_buffer_len = 0;
-  EXPECT_TRUE(mock_device_->IsBufferEnabled(&accel_buffer_len));
-  EXPECT_EQ(1, accel_buffer_len);
-}
-#endif
 
 TEST_F(AccelerometerTest, SingleSensorKbWakeAnglePermissions) {
   base::FilePath kb_path("/sys/class/chromeos/cros_ec/kb_wake_angle");

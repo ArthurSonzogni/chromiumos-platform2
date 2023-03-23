@@ -89,7 +89,6 @@ int main(int argc, char** argv) {
       new mems_setup::Configuration(context.get(), device, delegate.get()));
 
   if (config->Configure()) {
-#if USE_IIOSERVICE
     base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
 
     dbus::Bus::Options options;
@@ -111,7 +110,6 @@ int main(int argc, char** argv) {
 
     proxy->CallMethodAndBlock(&method_call,
                               dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-#endif  // USE_IIOSERVICE
     return 0;
   }
 

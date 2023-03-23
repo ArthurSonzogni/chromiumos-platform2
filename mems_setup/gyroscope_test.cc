@@ -34,7 +34,6 @@ class GyroscopeTest : public SensorTestBase {
   }
 };
 
-#if USE_IIOSERVICE
 TEST_F(GyroscopeTest, FrequencyReset) {
   SetSingleSensor(kBaseSensorLocation);
   ConfigureVpd({{"in_anglvel_x_base_calibbias", "100"}});
@@ -46,7 +45,6 @@ TEST_F(GyroscopeTest, FrequencyReset) {
   EXPECT_TRUE(frequency_opt.has_value());
   EXPECT_EQ(frequency_opt.value(), 0.0);
 }
-#endif  // USE_IIOSERVICE
 
 TEST_F(GyroscopeTest, MissingVpd) {
   SetSingleSensor(kBaseSensorLocation);

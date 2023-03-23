@@ -34,7 +34,6 @@ class LightTest : public SensorTestBase {
   }
 };
 
-#if USE_IIOSERVICE
 TEST_F(LightTest, FrequencyReset) {
   SetSingleSensor(kBaseSensorLocation);
   ConfigureVpd({{"als_cal_intercept", "100"}});
@@ -46,7 +45,6 @@ TEST_F(LightTest, FrequencyReset) {
   EXPECT_TRUE(frequency_opt.has_value());
   EXPECT_EQ(frequency_opt.value(), 0.0);
 }
-#endif  // USE_IIOSERVICE
 
 TEST_F(LightTest, PartialVpd) {
   SetSingleSensor(kBaseSensorLocation);

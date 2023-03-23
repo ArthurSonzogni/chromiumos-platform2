@@ -5,10 +5,10 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":mems_setup" ]
-  if (use.iioservice) {
-    deps += [ ":mems_remove" ]
-  }
+  deps = [
+    ":mems_remove",
+    ":mems_setup",
+  ]
   if (use.test) {
     deps += [ ":mems_setup_testrunner" ]
   }
@@ -18,8 +18,6 @@ group("all") {
 }
 
 pkg_config("target_defaults_pkg_deps") {
-  defines = [ "USE_IIOSERVICE=${use.iioservice}" ]
-
   pkg_deps = [
     "libbrillo",
     "libchrome",
@@ -66,6 +64,7 @@ if (use.test) {
 
   executable("mems_setup_testrunner") {
     sources = [
+      "accel_3d_test.cc",
       "accelerometer_test.cc",
       "als_test.cc",
       "gyroscope_test.cc",
@@ -75,9 +74,6 @@ if (use.test) {
       "test_helper.cc",
       "vpd_loader_test.cc",
     ]
-    if (use.iioservice) {
-      sources += [ "accel_3d_test.cc" ]
-    }
     configs += [
       "//common-mk:test",
       ":mems_setup_testrunner_pkg_deps",

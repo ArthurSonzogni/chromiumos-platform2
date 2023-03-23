@@ -55,11 +55,7 @@ struct LightColorCalibrationEntry {
 };
 
 constexpr char kPowerGroupName[] = "power";
-#if USE_IIOSERVICE
 constexpr char kIioServiceGroupName[] = "iioservice";
-#else
-constexpr char kArcSensorGroupName[] = "arc-sensor";
-#endif  // USE_IIOSERVICE
 
 constexpr char kCalibrationBias[] = "bias";
 constexpr char kCalibrationScale[] = "scale";
@@ -97,9 +93,7 @@ constexpr char kFilesToSetWriteAndOwnership[][24] = {"sampling_frequency",
 
 constexpr char kScanElementsString[] = "scan_elements";
 
-#if USE_IIOSERVICE
 constexpr char kEventsString[] = "events";
-#endif  // USE_IIOSERVICE
 
 }  // namespace
 
@@ -107,11 +101,8 @@ const char* Configuration::GetGroupNameForSysfs() {
   // TODO(chenghaoyang): Remove it when iioservice owns proximity sensors.
   if (kind_ == SensorKind::PROXIMITY)
     return kPowerGroupName;
-#if USE_IIOSERVICE
+
   return kIioServiceGroupName;
-#else
-  return kArcSensorGroupName;
-#endif  // USE_IIOSERVICE
 }
 
 Configuration::Configuration(libmems::IioContext* context,
@@ -137,7 +128,6 @@ bool Configuration::Configure() {
   if (!SetupPermissions())
     return false;
 
-#if USE_IIOSERVICE
   // If the buffer is enabled, which means mems_setup has already been used on
   // this sensor and iioservice is reading the samples from it, skip setting the
   // frequency.
@@ -146,7 +136,6 @@ bool Configuration::Configure() {
     for (auto& channel : sensor_->GetAllChannels())
       channel->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, 0.0);
   }
-#endif  // USE_IIOSERVICE
 
   // Ignores the error as it may fail on kernel 4.4 or HID stack sensors.
   sensor_->WriteStringAttribute("current_timestamp_clock", "boottime");
@@ -529,9 +518,6 @@ bool Configuration::ConfigAccelerometer() {
   if (!AddSysfsTrigger(kAccelSysfsTriggerId))
     return false;
 
-  if (!USE_IIOSERVICE && !EnableAccelScanElements())
-    return false;
-
   if (!EnableKeyboardAngle())
     return false;
 
@@ -572,7 +558,7 @@ bool Configuration::ConfigAccelerometer() {
 }
 
 bool Configuration::ConfigIlluminance() {
-  if (USE_IIOSERVICE && strcmp(sensor_->GetName(), "acpi-als") == 0) {
+  if (strcmp(sensor_->GetName(), "acpi-als") == 0) {
     std::string trigger_name =
         base::StringPrintf(libmems::kHrtimerNameFormatString, sensor_->GetId());
     if (context_->GetTriggersByName(trigger_name).empty()) {
@@ -808,7 +794,6 @@ bool Configuration::SetupPermissions() {
 
   std::string dev_name =
       libmems::IioDeviceImpl::GetStringFromId(sensor_->GetId());
-#if USE_IIOSERVICE
   // /dev/iio:deviceX
   base::FilePath dev_path =
       base::FilePath(libmems::kDevString).Append(dev_name.c_str());
@@ -819,7 +804,6 @@ bool Configuration::SetupPermissions() {
 
   files_to_set_read_own.push_back(dev_path);
   files_to_set_write_own.push_back(dev_path);
-#endif  // USE_IIOSERVICE
 
   // /sys/bus/iio/devices/iio:deviceX
   base::FilePath sys_dev_path = sensor_->GetPath();
@@ -845,7 +829,6 @@ bool Configuration::SetupPermissions() {
       files_to_set_write_own.push_back(file);
   }
 
-#if USE_IIOSERVICE
   // Files under /sys/bus/iio/devices/iio:deviceX/events/.
   files = delegate_->EnumerateAllFiles(sys_dev_path.Append(kEventsString));
   files_to_set_read_own.insert(files_to_set_read_own.end(), files.begin(),
@@ -855,7 +838,6 @@ bool Configuration::SetupPermissions() {
     if (RE2::FullMatch(name, "in_.*_en"))
       files_to_set_write_own.push_back(file);
   }
-#endif  // USE_IIOSERVICE
 
   for (auto file : kFilesToSetReadAndOwnership)
     files_to_set_read_own.push_back(sys_dev_path.Append(file));

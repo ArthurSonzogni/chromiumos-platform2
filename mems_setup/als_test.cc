@@ -37,7 +37,6 @@ class AlsTest : public SensorTestBase {
   }
 };
 
-#if USE_IIOSERVICE
 TEST_F(AlsTest, TriggerSet) {
   SetSingleSensor(kBaseSensorLocation);
   ConfigureVpd({{"als_cal_intercept", "100"}});
@@ -51,7 +50,6 @@ TEST_F(AlsTest, TriggerSet) {
                 .size(),
             1);
 }
-#endif  // USE_IIOSERVICE
 
 TEST_F(AlsTest, PartialVpd) {
   SetSingleSensor(kBaseSensorLocation);
