@@ -64,8 +64,8 @@ int ResolvedFrameRateFromMetadata(const android::CameraMetadata& metadata,
 
   camera_metadata_ro_entry entry =
       metadata.find(ANDROID_CONTROL_AE_TARGET_FPS_RANGE);
-  int target_min_fps = entry.data.i32[0];
-  int target_max_fps = entry.data.i32[1];
+  const int target_min_fps = entry.data.i32[0];
+  const int target_max_fps = entry.data.i32[1];
   int min_diff = std::numeric_limits<int>::max();
   for (const float& frame_rate : format->frame_rates) {
     int fps = std::round(frame_rate);
@@ -395,8 +395,10 @@ CameraClient::BuildStreamOnParameters(
     std::vector<camera3_stream_t*>& streams) {
   VLOGFID(1, id_) << "Number of Streams: " << stream_config->num_streams;
 
-  Size stream_on_resolution(0, 0);
-  int crop_rotate_scale_degrees = 0;
+  StreamOnParameters streamon_params;
+  android::CameraMetadata session_params_metadata(
+      clone_camera_metadata(stream_config->session_parameters));
+
   for (size_t i = 0; i < stream_config->num_streams; i++) {
     VLOGFID(1, id_) << "Stream[" << i
                     << "] type=" << stream_config->streams[i]->stream_type
@@ -424,13 +426,13 @@ CameraClient::BuildStreamOnParameters(
     // Here assume the attribute of all streams are the same.
     switch (stream_config->streams[i]->crop_rotate_scale_degrees) {
       case CAMERA3_STREAM_ROTATION_0:
-        crop_rotate_scale_degrees = 0;
+        streamon_params.crop_rotate_scale_degrees = 0;
         break;
       case CAMERA3_STREAM_ROTATION_90:
-        crop_rotate_scale_degrees = 90;
+        streamon_params.crop_rotate_scale_degrees = 90;
         break;
       case CAMERA3_STREAM_ROTATION_270:
-        crop_rotate_scale_degrees = 270;
+        streamon_params.crop_rotate_scale_degrees = 270;
         break;
       default:
         LOGF(ERROR) << "Unrecognized crop_rotate_scale_degrees: "
@@ -452,54 +454,75 @@ CameraClient::BuildStreamOnParameters(
       continue;
     }
 
+    const Size resolution(stream_config->streams[i]->width,
+                          stream_config->streams[i]->height);
+    int frame_rate = 0;
+
+    if (session_params_metadata.exists(ANDROID_CONTROL_AE_TARGET_FPS_RANGE)) {
+      frame_rate = ResolvedFrameRateFromMetadata(
+          session_params_metadata, qualified_formats_, resolution, id_);
+    } else {
+      const SupportedFormat* format = FindFormatByResolution(
+          qualified_formats_, resolution.width, resolution.height);
+      DCHECK_NE(format, nullptr);
+      frame_rate = GetMaximumFrameRate(*format);
+    }
+
+    constexpr int kMinPreviewFps = 15;
+    // Select the resolution with the highest fps when
+    // other resolutions have too low fps.
+    if (frame_rate > streamon_params.frame_rate &&
+        streamon_params.frame_rate < kMinPreviewFps) {
+      streamon_params.resolution = resolution;
+      streamon_params.frame_rate = frame_rate;
+      continue;
+    }
+
     // Skip resolutions with low fps.
-    constexpr float kMinPreviewFps = 15.0f;
-    const SupportedFormat* format = FindFormatByResolution(
-        qualified_formats_, stream_config->streams[i]->width,
-        stream_config->streams[i]->height);
-    DCHECK_NE(format, nullptr);
-    const float max_fps = GetMaximumFrameRate(*format);
-    if (max_fps != 0.0f && max_fps < kMinPreviewFps) {
+    // Some devices, e.g. Kinect, do not enumerate any frame rates, see
+    // |V4L2CameraDevice::GetFrameRateList()|. The fps is set to 0,
+    // consider them as high fps.
+    if (frame_rate != 0 && frame_rate < kMinPreviewFps) {
       continue;
     }
 
     // Find maximum area of stream_config to stream on.
-    if (stream_config->streams[i]->width * stream_config->streams[i]->height >
-        stream_on_resolution.width * stream_on_resolution.height) {
-      stream_on_resolution.width = stream_config->streams[i]->width;
-      stream_on_resolution.height = stream_config->streams[i]->height;
+    if (streamon_params.resolution < resolution) {
+      streamon_params.resolution = resolution;
+      streamon_params.frame_rate = frame_rate;
     }
   }
 
-  bool use_native_sensor_ratio;
   {
     // Make sure |resolution| is not used outside of this scope.
     Size resolution(0, 0);
-    use_native_sensor_ratio =
+    streamon_params.use_native_sensor_ratio =
         ShouldUseNativeSensorRatio(*stream_config, &resolution);
-    if (use_native_sensor_ratio) {
-      stream_on_resolution = resolution;
+    if (streamon_params.use_native_sensor_ratio) {
+      streamon_params.resolution = resolution;
+      const SupportedFormat* format = FindFormatByResolution(
+          qualified_formats_, streamon_params.resolution.width,
+          streamon_params.resolution.height);
+      DCHECK_NE(format, nullptr);
+      streamon_params.frame_rate = GetMaximumFrameRate(*format);
     }
   }
 
-  android::CameraMetadata session_params_metadata(
-      clone_camera_metadata(stream_config->session_parameters));
-  int frame_rate = 0;
-
+  std::string session_params_fps_range = "[]";
   if (session_params_metadata.exists(ANDROID_CONTROL_AE_TARGET_FPS_RANGE)) {
-    frame_rate = ResolvedFrameRateFromMetadata(
-        session_params_metadata, qualified_formats_, stream_on_resolution, id_);
-  } else {
-    const SupportedFormat* format =
-        FindFormatByResolution(qualified_formats_, stream_on_resolution.width,
-                               stream_on_resolution.height);
-    DCHECK_NE(format, nullptr);
-    frame_rate = GetMaximumFrameRate(*format);
+    auto fps_entry =
+        session_params_metadata.find(ANDROID_CONTROL_AE_TARGET_FPS_RANGE);
+    session_params_fps_range = base::StringPrintf(
+        "[%d,%d]", fps_entry.data.i32[0], fps_entry.data.i32[1]);
   }
+  LOGF(INFO) << "size: " << streamon_params.resolution.ToString()
+             << ", fps: " << streamon_params.frame_rate
+             << ", crop_rotate_scale_degrees: "
+             << streamon_params.crop_rotate_scale_degrees
+             << ", use_native_sensor_ratio: "
+             << streamon_params.use_native_sensor_ratio
+             << ", session_parameters fps: " << session_params_fps_range;
 
-  StreamOnParameters streamon_params = {stream_on_resolution,
-                                        crop_rotate_scale_degrees,
-                                        use_native_sensor_ratio, frame_rate};
   return base::ok(streamon_params);
 }
 

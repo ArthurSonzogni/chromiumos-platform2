@@ -91,10 +91,10 @@ class CameraClient {
  private:
   // StreamOnParameters is a wrapper for the parameters of StreamOn().
   struct StreamOnParameters {
-    Size resolution;
-    int crop_rotate_scale_degrees;
-    bool use_native_sensor_ratio;
-    int frame_rate;
+    Size resolution = {0, 0};
+    int crop_rotate_scale_degrees = 0;
+    bool use_native_sensor_ratio = false;
+    int frame_rate = 0;
   };
 
   using Error = int;
