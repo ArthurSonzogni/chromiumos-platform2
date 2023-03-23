@@ -159,22 +159,24 @@ void DHCPController::InitProxy(const std::string& service) {
   }
 }
 
-void DHCPController::ProcessEventSignal(const std::string& reason,
+void DHCPController::ProcessEventSignal(ClientEventReason reason,
                                         const KeyValueStore& configuration) {
-  if (reason == kReasonFail) {
+  if (reason == ClientEventReason::kFail) {
     LOG(ERROR) << "Received failure event from DHCP client.";
     NotifyFailure();
     return;
-  } else if (reason == kReasonNak) {
+  } else if (reason == ClientEventReason::kNak) {
     // If we got a NAK, this means the DHCP server is active, and any
     // Gateway ARP state we have is no longer sufficient.
     LOG_IF(ERROR, is_gateway_arp_active_)
         << "Received NAK event for our gateway-ARP lease.";
     is_gateway_arp_active_ = false;
     return;
-  } else if (reason != kReasonBound && reason != kReasonRebind &&
-             reason != kReasonReboot && reason != kReasonRenew &&
-             reason != kReasonGatewayArp) {
+  } else if (reason != ClientEventReason::kBound &&
+             reason != ClientEventReason::kRebind &&
+             reason != ClientEventReason::kReboot &&
+             reason != ClientEventReason::kRenew &&
+             reason != ClientEventReason::kGatewayArp) {
     LOG(WARNING) << "Event ignored.";
     return;
   }
@@ -186,7 +188,7 @@ void DHCPController::ProcessEventSignal(const std::string& reason,
   // depend on or change this value.
   set_is_lease_active(true);
 
-  const bool is_gateway_arp = reason == kReasonGatewayArp;
+  const bool is_gateway_arp = reason == ClientEventReason::kGatewayArp;
   // This is a non-authoritative confirmation that we or on the same
   // network as the one we received a lease on previously.  The DHCP
   // client is still running, so we should not cancel the timeout

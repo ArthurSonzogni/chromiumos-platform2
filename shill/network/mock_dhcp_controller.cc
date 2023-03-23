@@ -38,5 +38,5 @@ void MockDHCPController::TriggerDropCallback(bool is_voluntary) {
 }
 
 void MockDHCPController::ProcessEventSignal(
-    const std::string& reason, const KeyValueStore& configuration) {}
+    ClientEventReason reason, const KeyValueStore& configuration) {}
 }  // namespace shill

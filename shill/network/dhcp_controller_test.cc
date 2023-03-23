@@ -4,6 +4,7 @@
 
 #include "shill/network/dhcp_controller.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <sys/time.h>
@@ -326,9 +327,12 @@ class DHCPControllerCallbackTest : public DHCPControllerTest {
 }  // namespace
 
 TEST_F(DHCPControllerCallbackTest, ProcessEventSignalSuccess) {
-  for (const auto& reason :
-       {DHCPController::kReasonBound, DHCPController::kReasonRebind,
-        DHCPController::kReasonReboot, DHCPController::kReasonRenew}) {
+  std::map<std::string, DHCPController::ClientEventReason> cases = {
+      {"Bound", DHCPController::ClientEventReason::kBound},
+      {"Rebind", DHCPController::ClientEventReason::kRebind},
+      {"Reboot", DHCPController::ClientEventReason::kReboot},
+      {"Renew", DHCPController::ClientEventReason::kRenew}};
+  for (const auto& [name, reason] : cases) {
     int address_octet = 0;
     for (const auto lease_time_given : {false, true}) {
       KeyValueStore conf;
@@ -341,8 +345,7 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalSuccess) {
       }
       controller_->ProcessEventSignal(reason, conf);
       ExpectUpdateCallback(true);
-      std::string failure_message = std::string(reason) +
-                                    " failed with lease time " +
+      std::string failure_message = name + " failed with lease time " +
                                     (lease_time_given ? "given" : "not given");
       EXPECT_TRUE(Mock::VerifyAndClearExpectations(this)) << failure_message;
       EXPECT_EQ(base::StringPrintf("%d.0.0.0", address_octet),
@@ -357,7 +360,8 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalFail) {
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   controller_->lease_acquisition_timeout_callback_.Reset(base::DoNothing());
   controller_->lease_expiration_callback_.Reset(base::DoNothing());
-  controller_->ProcessEventSignal(DHCPController::kReasonFail, conf);
+  controller_->ProcessEventSignal(DHCPController::ClientEventReason::kFail,
+                                  conf);
   ExpectFailureCallback();
   Mock::VerifyAndClearExpectations(this);
   EXPECT_TRUE(update_properties_.address.empty());
@@ -370,7 +374,8 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalUnknown) {
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
   EXPECT_CALL(*this, DropCallback(_)).Times(0);
-  controller_->ProcessEventSignal("unknown", conf);
+  controller_->ProcessEventSignal(DHCPController::ClientEventReason::kUnknown,
+                                  conf);
   Mock::VerifyAndClearExpectations(this);
 }
 
@@ -380,7 +385,8 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArp) {
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(0));
   StartInstance();
-  controller_->ProcessEventSignal(DHCPController::kReasonGatewayArp, conf);
+  controller_->ProcessEventSignal(
+      DHCPController::ClientEventReason::kGatewayArp, conf);
   ExpectUpdateCallback(false);
   Mock::VerifyAndClearExpectations(this);
   EXPECT_EQ("4.3.2.1", update_properties_.address);
@@ -388,7 +394,8 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArp) {
   EXPECT_FALSE(ShouldFailOnAcquisitionTimeout());
 
   // An official reply from a DHCP server should reset our GatewayArp state.
-  controller_->ProcessEventSignal(DHCPController::kReasonRenew, conf);
+  controller_->ProcessEventSignal(DHCPController::ClientEventReason::kRenew,
+                                  conf);
   ExpectUpdateCallback(true);
   Mock::VerifyAndClearExpectations(this);
   // Will fail on acquisition timeout since Gateway ARP is not active.
@@ -401,11 +408,13 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArpNak) {
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(0));
   StartInstance();
-  controller_->ProcessEventSignal(DHCPController::kReasonGatewayArp, conf);
+  controller_->ProcessEventSignal(
+      DHCPController::ClientEventReason::kGatewayArp, conf);
   EXPECT_FALSE(ShouldFailOnAcquisitionTimeout());
 
   // Sending a NAK should clear is_gateway_arp_active_.
-  controller_->ProcessEventSignal(DHCPController::kReasonNak, conf);
+  controller_->ProcessEventSignal(DHCPController::ClientEventReason::kNak,
+                                  conf);
   // Will fail on acquisition timeout since Gateway ARP is not active.
   EXPECT_TRUE(ShouldFailOnAcquisitionTimeout());
   Mock::VerifyAndClearExpectations(this);
@@ -434,7 +443,8 @@ TEST_F(DHCPControllerCallbackTest, StoppedDuringFailureCallback) {
   // Stop the DHCP config while it is calling the failure callback.  We
   // need to ensure that no callbacks are left running inadvertently as
   // a result.
-  controller_->ProcessEventSignal(DHCPController::kReasonFail, conf);
+  controller_->ProcessEventSignal(DHCPController::ClientEventReason::kFail,
+                                  conf);
   EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/false))
       .WillOnce(InvokeWithoutArgs(this, &DHCPControllerTest::StopInstance));
   dispatcher()->task_environment().RunUntilIdle();
@@ -453,7 +463,8 @@ TEST_F(DHCPControllerCallbackTest, StoppedDuringSuccessCallback) {
   // the lease after accepting other network parameters from the DHCP
   // IPConfig properties.  We need to ensure that no callbacks are left
   // running inadvertently as a result.
-  controller_->ProcessEventSignal(DHCPController::kReasonBound, conf);
+  controller_->ProcessEventSignal(DHCPController::ClientEventReason::kBound,
+                                  conf);
   EXPECT_CALL(*this, UpdateCallback(_, true))
       .WillOnce(InvokeWithoutArgs(this, &DHCPControllerTest::StopInstance));
   dispatcher()->task_environment().RunUntilIdle();

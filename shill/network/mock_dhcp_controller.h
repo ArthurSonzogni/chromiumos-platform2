@@ -28,7 +28,7 @@ class MockDHCPController : public DHCPController {
                          DropCallback drop_callback) override;
   void TriggerUpdateCallback(const IPConfig::Properties& props);
   void TriggerDropCallback(bool is_voluntary);
-  void ProcessEventSignal(const std::string& reason,
+  void ProcessEventSignal(ClientEventReason reason,
                           const KeyValueStore& configuration) override;
 
   MOCK_METHOD(bool, RequestIP, (), (override));

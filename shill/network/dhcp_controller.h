@@ -55,17 +55,17 @@ class DHCPController {
 
   enum ReleaseReason { kReleaseReasonDisconnect, kReleaseReasonStaticIP };
 
+  enum class ClientEventReason {
+    kUnknown,
+    kBound,
+    kFail,
+    kGatewayArp,
+    kNak,
+    kRebind,
+    kReboot,
+    kRenew
+  };
   enum class ClientStatus { kUnknown, kIPv6Preferred };
-
-  // Constants used as event type got from dhcpcd. Used only
-  // internally, make them public for unit tests.
-  static constexpr char kReasonBound[] = "BOUND";
-  static constexpr char kReasonFail[] = "FAIL";
-  static constexpr char kReasonGatewayArp[] = "GATEWAY-ARP";
-  static constexpr char kReasonNak[] = "NAK";
-  static constexpr char kReasonRebind[] = "REBIND";
-  static constexpr char kReasonReboot[] = "REBOOT";
-  static constexpr char kReasonRenew[] = "RENEW";
 
   DHCPController(ControlInterface* control_interface,
                  EventDispatcher* dispatcher,
@@ -101,7 +101,7 @@ class DHCPController {
   void InitProxy(const std::string& service);
 
   // Processes an Event signal from dhcpcd.
-  mockable void ProcessEventSignal(const std::string& reason,
+  mockable void ProcessEventSignal(ClientEventReason reason,
                                    const KeyValueStore& configuration);
   // Processes a StatusChanged signal from dhcpcd.
   mockable void ProcessStatusChangedSignal(ClientStatus status);

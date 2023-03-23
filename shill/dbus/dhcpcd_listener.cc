@@ -139,10 +139,29 @@ void DHCPCDListener::EventSignal(
     return;
   }
   LOG(INFO) << "Event reason: " << reason << " on " << config->device_name();
+
+  DHCPController::ClientEventReason parsed_reason =
+      DHCPController::ClientEventReason::kUnknown;
+  if (reason == kReasonBound) {
+    parsed_reason = DHCPController::ClientEventReason::kBound;
+  } else if (reason == kReasonFail) {
+    parsed_reason = DHCPController::ClientEventReason::kFail;
+  } else if (reason == kReasonGatewayArp) {
+    parsed_reason = DHCPController::ClientEventReason::kGatewayArp;
+  } else if (reason == kReasonNak) {
+    parsed_reason = DHCPController::ClientEventReason::kNak;
+  } else if (reason == kReasonRebind) {
+    parsed_reason = DHCPController::ClientEventReason::kRebind;
+  } else if (reason == kReasonReboot) {
+    parsed_reason = DHCPController::ClientEventReason::kReboot;
+  } else if (reason == kReasonRenew) {
+    parsed_reason = DHCPController::ClientEventReason::kRenew;
+  }
+
   config->InitProxy(sender);
   KeyValueStore configuration_store =
       KeyValueStore::ConvertFromVariantDictionary(configuration);
-  config->ProcessEventSignal(reason, configuration_store);
+  config->ProcessEventSignal(parsed_reason, configuration_store);
 }
 
 void DHCPCDListener::StatusChangedSignal(const std::string& sender,

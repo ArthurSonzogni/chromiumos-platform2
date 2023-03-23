@@ -39,6 +39,15 @@ class DHCPCDListener final : public DHCPCDListenerInterface {
   static constexpr char kSignalEvent[] = "Event";
   static constexpr char kSignalStatusChanged[] = "StatusChanged";
 
+  // Constants used as event type got from dhcpcd.
+  static constexpr char kReasonBound[] = "BOUND";
+  static constexpr char kReasonFail[] = "FAIL";
+  static constexpr char kReasonGatewayArp[] = "GATEWAY-ARP";
+  static constexpr char kReasonNak[] = "NAK";
+  static constexpr char kReasonRebind[] = "REBIND";
+  static constexpr char kReasonReboot[] = "REBOOT";
+  static constexpr char kReasonRenew[] = "RENEW";
+
   // Possible status string in StatusChanged event from dhcpcd.
   static constexpr char kStatusInit[] = "Init";
   static constexpr char kStatusBound[] = "Bound";
