@@ -25,7 +25,6 @@ using ::testing::Return;
 
 namespace {
 const FilePath kTestUMAEventsFile("test-uma-events");
-const char kTestMounts[] = "test-mounts";
 const FilePath kTestConsentIdFile("test-consent-id");
 const char kValidGuidOld[] = "56ff27bf7f774919b08488416d597fd8";
 const char kValidGuid[] = "56ff27bf-7f77-4919-b084-88416d597fd8";
@@ -51,12 +50,14 @@ class MetricsLibraryTest : public testing::Test {
     lib_.SetAppSyncDaemonStoreForTest(appsync_test_dir_);
     EXPECT_TRUE(base::CreateDirectory(appsync_test_dir_.Append("hash")));
 
-    lib_.SetConsentFileForTest(kTestConsentIdFile);
+    test_consent_id_file_ = test_dir_.Append(kTestConsentIdFile);
+    lib_.SetConsentFileForTest(test_consent_id_file_);
     EXPECT_FALSE(lib_.uma_events_file_.empty());
     lib_.Init();
     EXPECT_FALSE(lib_.uma_events_file_.empty());
-    lib_.SetOutputFile(kTestUMAEventsFile.value());
-    EXPECT_EQ(0, WriteFile(kTestUMAEventsFile, "", 0));
+    test_uma_events_file_ = test_dir_.Append(kTestUMAEventsFile);
+    lib_.SetOutputFile(test_uma_events_file_.value());
+    EXPECT_EQ(0, WriteFile(test_uma_events_file_, "", 0));
     device_policy_ = new policy::MockDevicePolicy();
     EXPECT_CALL(*device_policy_, LoadPolicy(/*delete_invalid_files=*/false))
         .Times(AnyNumber())
@@ -69,12 +70,6 @@ class MetricsLibraryTest : public testing::Test {
     // Defeat metrics enabled caching between tests.
     ClearCachedEnabledTime();
     ClearCachedAppSyncEnabledTime();
-  }
-
-  void TearDown() override {
-    base::DeleteFile(FilePath(kTestMounts));
-    base::DeleteFile(kTestUMAEventsFile);
-    base::DeleteFile(kTestConsentIdFile);
   }
 
   void VerifyEnabledCacheHit(bool to_value);
@@ -114,54 +109,57 @@ class MetricsLibraryTest : public testing::Test {
   base::ScopedTempDir appsync_temp_dir_;
   base::FilePath test_dir_;
   base::FilePath appsync_test_dir_;
+  base::FilePath test_uma_events_file_;
+  base::FilePath test_consent_id_file_;
 };
 
 // Reject symlinks even if they're to normal files.
 TEST_F(MetricsLibraryTest, ConsentIdInvalidSymlinkPath) {
   std::string id;
-  base::DeleteFile(kTestConsentIdFile);
-  ASSERT_EQ(symlink("/bin/sh", kTestConsentIdFile.value().c_str()), 0);
+  base::DeleteFile(test_consent_id_file_);
+  ASSERT_EQ(symlink("/bin/sh", test_consent_id_file_.value().c_str()), 0);
   ASSERT_FALSE(lib_.ConsentId(&id));
 }
 
 // Reject non-files (like directories).
 TEST_F(MetricsLibraryTest, ConsentIdInvalidDirPath) {
   std::string id;
-  base::DeleteFile(kTestConsentIdFile);
-  ASSERT_EQ(mkdir(kTestConsentIdFile.value().c_str(), 0755), 0);
+  base::DeleteFile(test_consent_id_file_);
+  ASSERT_EQ(mkdir(test_consent_id_file_.value().c_str(), 0755), 0);
   ASSERT_FALSE(lib_.ConsentId(&id));
 }
 
 // Reject valid files full of invalid uuids.
 TEST_F(MetricsLibraryTest, ConsentIdInvalidContent) {
   std::string id;
-  base::DeleteFile(kTestConsentIdFile);
+  base::DeleteFile(test_consent_id_file_);
 
-  ASSERT_EQ(base::WriteFile(kTestConsentIdFile, "", 0), 0);
+  ASSERT_EQ(base::WriteFile(test_consent_id_file_, "", 0), 0);
   ASSERT_FALSE(lib_.ConsentId(&id));
 
-  ASSERT_EQ(base::WriteFile(kTestConsentIdFile, "asdf", 4), 4);
+  ASSERT_EQ(base::WriteFile(test_consent_id_file_, "asdf", 4), 4);
   ASSERT_FALSE(lib_.ConsentId(&id));
 
   char buf[100];
   memset(buf, '0', sizeof(buf));
 
   // Reject too long UUIDs that lack dashes.
-  ASSERT_EQ(base::WriteFile(kTestConsentIdFile, buf, 36), 36);
+  ASSERT_EQ(base::WriteFile(test_consent_id_file_, buf, 36), 36);
   ASSERT_FALSE(lib_.ConsentId(&id));
 
   // Reject very long UUIDs.
-  ASSERT_EQ(base::WriteFile(kTestConsentIdFile, buf, sizeof(buf)), sizeof(buf));
+  ASSERT_EQ(base::WriteFile(test_consent_id_file_, buf, sizeof(buf)),
+            sizeof(buf));
   ASSERT_FALSE(lib_.ConsentId(&id));
 }
 
 // Accept old consent ids.
 TEST_F(MetricsLibraryTest, ConsentIdValidContentOld) {
   std::string id;
-  base::DeleteFile(kTestConsentIdFile);
-  ASSERT_GT(
-      base::WriteFile(kTestConsentIdFile, kValidGuidOld, strlen(kValidGuidOld)),
-      0);
+  base::DeleteFile(test_consent_id_file_);
+  ASSERT_GT(base::WriteFile(test_consent_id_file_, kValidGuidOld,
+                            strlen(kValidGuidOld)),
+            0);
   ASSERT_TRUE(lib_.ConsentId(&id));
   ASSERT_EQ(id, kValidGuidOld);
 }
@@ -169,9 +167,10 @@ TEST_F(MetricsLibraryTest, ConsentIdValidContentOld) {
 // Accept current consent ids.
 TEST_F(MetricsLibraryTest, ConsentIdValidContent) {
   std::string id;
-  base::DeleteFile(kTestConsentIdFile);
-  ASSERT_GT(base::WriteFile(kTestConsentIdFile, kValidGuid, strlen(kValidGuid)),
-            0);
+  base::DeleteFile(test_consent_id_file_);
+  ASSERT_GT(
+      base::WriteFile(test_consent_id_file_, kValidGuid, strlen(kValidGuid)),
+      0);
   ASSERT_TRUE(lib_.ConsentId(&id));
   ASSERT_EQ(id, kValidGuid);
 }
@@ -180,8 +179,8 @@ TEST_F(MetricsLibraryTest, ConsentIdValidContent) {
 TEST_F(MetricsLibraryTest, ConsentIdValidContentNewline) {
   std::string id;
   std::string outid = std::string(kValidGuid) + "\n";
-  base::DeleteFile(kTestConsentIdFile);
-  ASSERT_GT(base::WriteFile(kTestConsentIdFile, outid.c_str(), outid.size()),
+  base::DeleteFile(test_consent_id_file_);
+  ASSERT_GT(base::WriteFile(test_consent_id_file_, outid.c_str(), outid.size()),
             0);
   ASSERT_TRUE(lib_.ConsentId(&id));
   ASSERT_EQ(id, kValidGuid);
@@ -365,13 +364,18 @@ TEST_F(MetricsLibraryTest, AreMetricsEnabledCaching) {
 class CMetricsLibraryTest : public testing::Test {
  protected:
   void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    test_dir_ = temp_dir_.GetPath();
+
     lib_ = CMetricsLibraryNew();
     MetricsLibrary& ml = *reinterpret_cast<MetricsLibrary*>(lib_);
     EXPECT_FALSE(ml.uma_events_file_.empty());
     CMetricsLibraryInit(lib_);
     EXPECT_FALSE(ml.uma_events_file_.empty());
-    ml.SetOutputFile(kTestUMAEventsFile.value());
-    EXPECT_EQ(0, WriteFile(kTestUMAEventsFile, "", 0));
+
+    test_uma_events_file_ = test_dir_.Append(kTestUMAEventsFile);
+    ml.SetOutputFile(test_uma_events_file_.value());
+    EXPECT_EQ(0, WriteFile(test_uma_events_file_, "", 0));
     device_policy_ = new policy::MockDevicePolicy();
     EXPECT_CALL(*device_policy_, LoadPolicy(/*delete_invalid_files=*/false))
         .Times(AnyNumber())
@@ -386,11 +390,13 @@ class CMetricsLibraryTest : public testing::Test {
 
   void TearDown() override {
     CMetricsLibraryDelete(lib_);
-    base::DeleteFile(kTestUMAEventsFile);
   }
 
   CMetricsLibrary lib_;
   policy::MockDevicePolicy* device_policy_;  // Not owned.
+  base::ScopedTempDir temp_dir_;
+  base::FilePath test_dir_;
+  base::FilePath test_uma_events_file_;
 };
 
 TEST_F(CMetricsLibraryTest, AreMetricsEnabledFalse) {

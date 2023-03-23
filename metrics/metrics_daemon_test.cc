@@ -55,7 +55,7 @@ const char kFakeVmStatsName[] = "fake-vm-stats";
 const char kFakeScalingMaxFreqPath[] = "fake-scaling-max-freq";
 const char kFakeCpuinfoMaxFreqPath[] = "fake-cpuinfo-max-freq";
 const char kMetricsServer[] = "https://clients4.google.com/uma/v2";
-const char kMetricsFilePath[] = "/var/lib/metrics/uma-events";
+const char kMetricsFilePath[] = "uma-events";
 
 void PerisistentIntegerCreationCallback(const base::FilePath& path) {
   const std::string base_name = path.BaseName().value();
@@ -80,47 +80,52 @@ class MetricsDaemonTest : public testing::Test {
     PersistentInteger::SetCreationCallbackForTesting(
         base::BindRepeating(&PerisistentIntegerCreationCallback));
 
+    // Create the backing directory.
+    CHECK(persistent_integer_backing_dir_.CreateUniqueTempDir());
+    backing_dir_path_ = persistent_integer_backing_dir_.GetPath();
+
+    fake_disk_stats_ = backing_dir_path_.Append(kFakeDiskStatsName);
+    fake_vm_stats_ = backing_dir_path_.Append(kFakeVmStatsName);
+    fake_scaling_max_freq_ = backing_dir_path_.Append(kFakeScalingMaxFreqPath);
+    fake_cpuinfo_max_freq_ = backing_dir_path_.Append(kFakeCpuinfoMaxFreqPath);
+    fake_metrics_file_ = backing_dir_path_.Append(kMetricsFilePath);
+    fake_mm_stat_file_ = backing_dir_path_.Append(MetricsDaemon::kMMStatName);
+
     kFakeDiskStats0 = base::StringPrintf(
         kFakeDiskStatsFormat, kFakeReadSectors[0], kFakeWriteSectors[0]);
     kFakeDiskStats1 = base::StringPrintf(
         kFakeDiskStatsFormat, kFakeReadSectors[1], kFakeWriteSectors[1]);
     CreateFakeDiskStatsFile(kFakeDiskStats0.c_str());
-    CreateUint64ValueFile(base::FilePath(kFakeCpuinfoMaxFreqPath), 10000000);
-    CreateUint64ValueFile(base::FilePath(kFakeScalingMaxFreqPath), 10000000);
-
-    // Create the backing directory.
-    CHECK(persistent_integer_backing_dir_.CreateUniqueTempDir());
-    base::FilePath backing_dir_path = persistent_integer_backing_dir_.GetPath();
+    CreateUint64ValueFile(fake_cpuinfo_max_freq_, 10000000);
+    CreateUint64ValueFile(fake_scaling_max_freq_, 10000000);
 
     test_start_ = base::TimeTicks::Now();
 
-    daemon_.Init(true, false, &metrics_lib_, kFakeDiskStatsName,
-                 kFakeVmStatsName, kFakeScalingMaxFreqPath,
-                 kFakeCpuinfoMaxFreqPath, base::Minutes(30), kMetricsServer,
-                 kMetricsFilePath, "/", backing_dir_path);
+    daemon_.Init(true, false, &metrics_lib_, fake_disk_stats_.value(),
+                 fake_vm_stats_.value(), fake_scaling_max_freq_.value(),
+                 fake_cpuinfo_max_freq_.value(), base::Minutes(30),
+                 kMetricsServer, fake_metrics_file_.value(), "/",
+                 backing_dir_path_);
 
     // Replace original persistent values with mock ones.
-    base::FilePath m1 = backing_dir_path.Append("1.mock");
+    base::FilePath m1 = backing_dir_path_.Append("1.mock");
     daily_active_use_mock_ = new StrictMock<PersistentIntegerMock>(m1);
     daemon_.daily_active_use_.reset(daily_active_use_mock_);
 
-    base::FilePath m2 = backing_dir_path.Append("2.mock");
+    base::FilePath m2 = backing_dir_path_.Append("2.mock");
     kernel_crash_interval_mock_ = new StrictMock<PersistentIntegerMock>(m2);
     daemon_.kernel_crash_interval_.reset(kernel_crash_interval_mock_);
 
-    base::FilePath m3 = backing_dir_path.Append("3.mock");
+    base::FilePath m3 = backing_dir_path_.Append("3.mock");
     user_crash_interval_mock_ = new StrictMock<PersistentIntegerMock>(m3);
     daemon_.user_crash_interval_.reset(user_crash_interval_mock_);
 
-    base::FilePath m4 = backing_dir_path.Append("4.mock");
+    base::FilePath m4 = backing_dir_path_.Append("4.mock");
     unclean_shutdown_interval_mock_ = new StrictMock<PersistentIntegerMock>(m4);
     daemon_.unclean_shutdown_interval_.reset(unclean_shutdown_interval_mock_);
   }
 
   virtual void TearDown() {
-    EXPECT_EQ(0, unlink(kFakeDiskStatsName));
-    EXPECT_EQ(0, unlink(kFakeScalingMaxFreqPath));
-    EXPECT_EQ(0, unlink(kFakeCpuinfoMaxFreqPath));
     PersistentInteger::ClearCreationCallbackForTesting();
   }
 
@@ -196,12 +201,7 @@ class MetricsDaemonTest : public testing::Test {
 
   // Creates or overwrites an input file containing fake disk stats.
   void CreateFakeDiskStatsFile(const char* fake_stats) {
-    if (unlink(kFakeDiskStatsName) < 0) {
-      EXPECT_EQ(errno, ENOENT);
-    }
-    FILE* f = fopen(kFakeDiskStatsName, "w");
-    EXPECT_EQ(1, fwrite(fake_stats, strlen(fake_stats), 1, f));
-    EXPECT_EQ(0, fclose(f));
+    EXPECT_TRUE(base::WriteFile(fake_disk_stats_, std::string(fake_stats)));
   }
 
   // Creates or overwrites the file in |path| so that it contains the printable
@@ -219,6 +219,14 @@ class MetricsDaemonTest : public testing::Test {
   base::TimeTicks test_start_;
   // The temporary directory for backing files.
   base::ScopedTempDir persistent_integer_backing_dir_;
+  // File paths.
+  base::FilePath backing_dir_path_;
+  base::FilePath fake_disk_stats_;
+  base::FilePath fake_vm_stats_;
+  base::FilePath fake_scaling_max_freq_;
+  base::FilePath fake_cpuinfo_max_freq_;
+  base::FilePath fake_metrics_file_;
+  base::FilePath fake_mm_stat_file_;
 
   // Mocks. They are strict mock so that all unexpected
   // calls are marked as failures.
@@ -232,16 +240,16 @@ class MetricsDaemonTest : public testing::Test {
 
 TEST_F(MetricsDaemonTest, CheckSystemCrash) {
   static const char kKernelCrashDetected[] = "test-kernel-crash-detected";
-  EXPECT_FALSE(daemon_.CheckSystemCrash(kKernelCrashDetected));
+  base::FilePath kernel_crash_detected =
+      backing_dir_path_.Append(kKernelCrashDetected);
+  EXPECT_FALSE(daemon_.CheckSystemCrash(kernel_crash_detected.value()));
 
-  base::FilePath crash_detected(kKernelCrashDetected);
-  base::WriteFile(crash_detected, "", 0);
-  EXPECT_TRUE(base::PathExists(crash_detected));
-  EXPECT_TRUE(daemon_.CheckSystemCrash(kKernelCrashDetected));
-  EXPECT_FALSE(base::PathExists(crash_detected));
-  EXPECT_FALSE(daemon_.CheckSystemCrash(kKernelCrashDetected));
-  EXPECT_FALSE(base::PathExists(crash_detected));
-  base::DeleteFile(crash_detected);
+  base::WriteFile(kernel_crash_detected, "", 0);
+  EXPECT_TRUE(base::PathExists(kernel_crash_detected));
+  EXPECT_TRUE(daemon_.CheckSystemCrash(kernel_crash_detected.value()));
+  EXPECT_FALSE(base::PathExists(kernel_crash_detected));
+  EXPECT_FALSE(daemon_.CheckSystemCrash(kernel_crash_detected.value()));
+  EXPECT_FALSE(base::PathExists(kernel_crash_detected));
 }
 
 TEST_F(MetricsDaemonTest, MessageFilter) {
@@ -354,24 +362,24 @@ TEST_F(MetricsDaemonTest, ReadFreqToInt) {
   const int fake_max_freq = 2000000;
   int scaled_freq = 0;
   int max_freq = 0;
-  CreateUint64ValueFile(base::FilePath(kFakeScalingMaxFreqPath),
-                        fake_scaled_freq);
-  CreateUint64ValueFile(base::FilePath(kFakeCpuinfoMaxFreqPath), fake_max_freq);
+  CreateUint64ValueFile(fake_scaling_max_freq_, fake_scaled_freq);
+  CreateUint64ValueFile(fake_cpuinfo_max_freq_, fake_max_freq);
   EXPECT_TRUE(daemon_.testing_);
-  EXPECT_TRUE(daemon_.ReadFreqToInt(kFakeScalingMaxFreqPath, &scaled_freq));
-  EXPECT_TRUE(daemon_.ReadFreqToInt(kFakeCpuinfoMaxFreqPath, &max_freq));
+  EXPECT_TRUE(
+      daemon_.ReadFreqToInt(fake_scaling_max_freq_.value(), &scaled_freq));
+  EXPECT_TRUE(daemon_.ReadFreqToInt(fake_cpuinfo_max_freq_.value(), &max_freq));
   EXPECT_EQ(fake_scaled_freq, scaled_freq);
   EXPECT_EQ(fake_max_freq, max_freq);
 }
 
 TEST_F(MetricsDaemonTest, SendCpuThrottleMetrics) {
-  CreateUint64ValueFile(base::FilePath(kFakeCpuinfoMaxFreqPath), 2001000);
+  CreateUint64ValueFile(fake_cpuinfo_max_freq_, 2001000);
   // Test the 101% and 100% cases.
-  CreateUint64ValueFile(base::FilePath(kFakeScalingMaxFreqPath), 2001000);
+  CreateUint64ValueFile(fake_scaling_max_freq_, 2001000);
   EXPECT_TRUE(daemon_.testing_);
   EXPECT_CALL(metrics_lib_, SendEnumToUMA(_, 101, 101));
   daemon_.SendCpuThrottleMetrics();
-  CreateUint64ValueFile(base::FilePath(kFakeScalingMaxFreqPath), 2000000);
+  CreateUint64ValueFile(fake_scaling_max_freq_, 2000000);
   EXPECT_CALL(metrics_lib_, SendEnumToUMA(_, 100, 101));
   daemon_.SendCpuThrottleMetrics();
 }
@@ -388,9 +396,7 @@ TEST_F(MetricsDaemonTest, SendZramMetrics) {
   const uint64_t zero_pages = 10 * 1000 * 1000 / page_size;
   std::string value_string = "120000000 40000000 0 0 0 2441 0";
 
-  ASSERT_EQ(value_string.length(),
-            base::WriteFile(base::FilePath(MetricsDaemon::kMMStatName),
-                            value_string.c_str(), value_string.length()));
+  ASSERT_TRUE(base::WriteFile(fake_mm_stat_file_, value_string));
 
   const uint64_t real_orig_size = orig_data_size + zero_pages * page_size;
   const uint64_t zero_ratio_percent =
@@ -405,7 +411,7 @@ TEST_F(MetricsDaemonTest, SendZramMetrics) {
   EXPECT_CALL(metrics_lib_, SendToUMA(_, zero_pages, _, _, _));
   EXPECT_CALL(metrics_lib_, SendToUMA(_, zero_ratio_percent, _, _, _));
 
-  EXPECT_TRUE(daemon_.ReportZram(base::FilePath(".")));
+  EXPECT_TRUE(daemon_.ReportZram(backing_dir_path_));
 }
 
 TEST_F(MetricsDaemonTest, SendZramMetricsOld) {
@@ -419,12 +425,13 @@ TEST_F(MetricsDaemonTest, SendZramMetricsOld) {
   const uint64_t page_size = 4096;
   const uint64_t zero_pages = 20 * 1000 * 1000 / page_size;
 
-  base::DeleteFile(base::FilePath(MetricsDaemon::kMMStatName));
-  CreateUint64ValueFile(base::FilePath(MetricsDaemon::kComprDataSizeName),
-                        compr_data_size);
-  CreateUint64ValueFile(base::FilePath(MetricsDaemon::kOrigDataSizeName),
-                        orig_data_size);
-  CreateUint64ValueFile(base::FilePath(MetricsDaemon::kZeroPagesName),
+  CreateUint64ValueFile(
+      backing_dir_path_.Append(MetricsDaemon::kComprDataSizeName),
+      compr_data_size);
+  CreateUint64ValueFile(
+      backing_dir_path_.Append(MetricsDaemon::kOrigDataSizeName),
+      orig_data_size);
+  CreateUint64ValueFile(backing_dir_path_.Append(MetricsDaemon::kZeroPagesName),
                         zero_pages);
 
   const uint64_t real_orig_size = orig_data_size + zero_pages * page_size;
@@ -442,7 +449,7 @@ TEST_F(MetricsDaemonTest, SendZramMetricsOld) {
   EXPECT_CALL(metrics_lib_, SendToUMA(_, zero_ratio_percent, _, _, _));
   EXPECT_CALL(metrics_lib_, SendToUMA(uma_incompressible, _, _, _, _)).Times(0);
 
-  EXPECT_TRUE(daemon_.ReportZram(base::FilePath(".")));
+  EXPECT_TRUE(daemon_.ReportZram(backing_dir_path_));
 }
 
 TEST_F(MetricsDaemonTest, SendZramMetricsWithIncompressiblePageStats) {
@@ -458,9 +465,7 @@ TEST_F(MetricsDaemonTest, SendZramMetricsWithIncompressiblePageStats) {
   const uint64_t incompr_pages = 5 * 1000 * 1000 / page_size;
   std::string value_string = "180000000 60000000 0 0 0 7324 0 1220";
 
-  ASSERT_EQ(value_string.length(),
-            base::WriteFile(base::FilePath(MetricsDaemon::kMMStatName),
-                            value_string.c_str(), value_string.length()));
+  ASSERT_TRUE(base::WriteFile(fake_mm_stat_file_, value_string));
 
   const uint64_t real_orig_size = orig_data_size + zero_pages * page_size;
   const uint64_t zero_ratio_percent =
@@ -482,7 +487,7 @@ TEST_F(MetricsDaemonTest, SendZramMetricsWithIncompressiblePageStats) {
   EXPECT_CALL(metrics_lib_, SendEnumToUMA(_, incompr_pages_ratio_pre, _));
   EXPECT_CALL(metrics_lib_, SendEnumToUMA(_, incompr_pages_ratio_post, _));
 
-  EXPECT_TRUE(daemon_.ReportZram(base::FilePath(".")));
+  EXPECT_TRUE(daemon_.ReportZram(backing_dir_path_));
 }
 
 TEST_F(MetricsDaemonTest, GetDetachableBaseTimes) {
