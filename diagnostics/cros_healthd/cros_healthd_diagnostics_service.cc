@@ -348,10 +348,13 @@ void CrosHealthdDiagnosticsService::RunLanConnectivityRoutine(
 void CrosHealthdDiagnosticsService::RunMemoryRoutine(
     std::optional<uint32_t> max_testing_mem_kib,
     RunMemoryRoutineCallback callback) {
-  if (max_testing_mem_kib.has_value()) {
-    NOTIMPLEMENTED() << "max_testing_mem_kib is not implemented";
-  }
-  RunRoutine(routine_factory_->MakeMemoryRoutine(),
+  auto memory_routine_v2 =
+      std::make_unique<RoutineAdapter>(mojo_ipc::RoutineArgument::Tag::kMemory);
+  routine_service_->CreateRoutine(
+      mojo_ipc::RoutineArgument::NewMemory(
+          mojo_ipc::MemoryRoutineArgument::New(max_testing_mem_kib)),
+      memory_routine_v2->BindNewPipeAndPassReceiver());
+  RunRoutine(std::move(memory_routine_v2),
              mojo_ipc::DiagnosticRoutineEnum::kMemory, std::move(callback));
 }
 

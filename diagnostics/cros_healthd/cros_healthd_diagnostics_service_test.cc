@@ -716,7 +716,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryChargeRoutine) {
 // Test that the memory routine can be run.
 TEST_F(CrosHealthdDiagnosticsServiceTest, RunMemoryRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
-      mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting;
+      mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");

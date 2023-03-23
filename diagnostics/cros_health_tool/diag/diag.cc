@@ -314,7 +314,8 @@ int diag_main(int argc, char** argv) {
         routine_result = actions.ActionRunSignalStrengthRoutine();
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kMemory:
-        routine_result = actions.ActionRunMemoryRoutine(std::nullopt);
+        routine_result =
+            actions.ActionRunMemoryRoutine(FLAGS_max_testing_mem_kib);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kGatewayCanBePinged:
         routine_result = actions.ActionRunGatewayCanBePingedRoutine();
