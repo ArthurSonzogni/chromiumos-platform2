@@ -145,7 +145,7 @@ get_s0ix_count() {
     cat /sys/kernel/debug/telemetry/s0ix_residency_usec
   elif [ -e /sys/kernel/debug/amd_pmc/s0ix_stats ]; then
     # AMD Systems.
-    awk '/Residency/ {print $3}' < /sys/kernel/debug/amd_pmc/s0ix_stats
+    awk '/Exit/ {print $4}' < /sys/kernel/debug/amd_pmc/s0ix_stats
   else
     echo 0
   fi
