@@ -160,7 +160,7 @@ bool MapperWipeTable(const std::string& name) {
 
 // Executes the equivalent of: dmsetup remove <name>
 // Returns true on success.
-bool MapperRemove(const std::string& name) {
+bool MapperRemove(const std::string& name, bool deferred = false) {
   auto task = dm_task_ptr(dm_task_create(DM_DEVICE_REMOVE), &dm_task_destroy);
 
   if (!task) {
@@ -170,6 +170,11 @@ bool MapperRemove(const std::string& name) {
 
   if (!dm_task_set_name(task.get(), name.c_str())) {
     LOG(ERROR) << "dm_task_set_name failed!";
+    return false;
+  }
+
+  if (deferred && dm_task_deferred_remove(task.get())) {
+    LOG(ERROR) << "dm_task_deferred_remove failed!";
     return false;
   }
 
@@ -220,8 +225,11 @@ void ClearVerityDevice(const std::string& name) {
   // successful, this should release any devices held open by the device's
   // table(s).
   MapperWipeTable(name);
-  // Now remove the actual device.
-  MapperRemove(name);
+  // Now remove the actual device. Fall back to deferred remove if the device
+  // is (unlikely) busy: there is a possibility this can happen if udev is still
+  // processing rules associated with the device.
+  if (!MapperRemove(name))
+    MapperRemove(name, /*deferred=*/true);
 }
 
 // Clear the file descriptor behind a loop device.
@@ -481,6 +489,11 @@ bool Unmount(const base::FilePath& mount_point) {
   return umount(mount_point.value().c_str()) == 0;
 }
 
+bool LazyUnmount(const base::FilePath& mount_point) {
+  return umount2(mount_point.value().c_str(), MNT_DETACH | UMOUNT_NOFOLLOW) ==
+         0;
+}
+
 // Returns (mount point, source path) pairs visible to this process. The order
 // can be reversed to help with unmounting.
 std::vector<std::pair<std::string, std::string>> GetAllMountPaths(
@@ -525,8 +538,12 @@ bool CleanupImpl(const base::FilePath& mount_point,
 
   // Unmount the image.
   if (!Unmount(mount_point)) {
-    PLOG(ERROR) << "Unmount failed";
-    return false;
+    PLOG(ERROR) << "Unmount failed; attempting a lazy unmount";
+
+    if (!LazyUnmount(mount_point)) {
+      PLOG(ERROR) << "Lazy unmount failed";
+      return false;
+    }
   }
   // Delete mount target folder
   brillo::DeletePathRecursively(mount_point);
@@ -538,8 +555,11 @@ bool CleanupImpl(const base::FilePath& mount_point,
     // Do not return here, proceed to remove.
   }
   if (!MapperRemove(source_path.value())) {
-    PLOG(ERROR) << "Device mapper remove failed";
-    return false;
+    PLOG(ERROR) << "Device mapper remove failed; attempting a deferred removal";
+    if (!MapperRemove(source_path.value(), /*deferred=*/true)) {
+      PLOG(ERROR) << "Device mapper deferred remove failed.";
+      return false;
+    }
   }
 
   // Clear loop device.
