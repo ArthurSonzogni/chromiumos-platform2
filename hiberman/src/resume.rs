@@ -30,7 +30,6 @@ use crate::hiberlog::redirect_log;
 use crate::hiberlog::replay_logs;
 use crate::hiberlog::HiberlogFile;
 use crate::hiberlog::HiberlogOut;
-use crate::hiberutil::emit_upstart_event;
 use crate::hiberutil::lock_process_memory;
 use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::HibernateError;
@@ -57,7 +56,6 @@ pub struct ResumeConductor {
     options: ResumeOptions,
     metrics_logger: MetricsLogger,
     stateful_block_path: String,
-    tpm_done_event_emitted: bool,
 }
 
 impl ResumeConductor {
@@ -67,7 +65,6 @@ impl ResumeConductor {
             options: Default::default(),
             metrics_logger: MetricsLogger::new()?,
             stateful_block_path: path_to_stateful_block()?,
-            tpm_done_event_emitted: false,
         })
     }
 
@@ -91,8 +88,6 @@ impl ResumeConductor {
         // Now replay earlier logs. Don't wipe the logs out if this is just a dry
         // run.
         // replay_logs(true, !self.options.dry_run);
-        // Allow trunksd to start if not already done.
-        self.emit_tpm_done_event()?;
         // Remove the resume_in_progress token file if it exists.
         remove_resume_in_progress_file();
         // Since resume_inner() returned, we are no longer in a viable resume
@@ -191,8 +186,6 @@ impl ResumeConductor {
         // Start logging to the resume logger.
         redirect_log(HiberlogOut::File(Box::new(log_file)));
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Write)?;
-        // All the TPM work is complete.
-        self.emit_tpm_done_event()?;
 
         let mut buf = [0; 4096];
         let mut bytes_written;
@@ -251,25 +244,6 @@ impl ResumeConductor {
 
         SnapshotDevice::new(SnapshotMode::Read)?
             .set_block_device(&DeviceMapper::device_path(VolumeManager::HIBERIMAGE))
-    }
-
-    /// Emits the signal upstart is waiting for to allow trunksd to start and
-    /// consume all the TPM handles.
-    fn emit_tpm_done_event(&mut self) -> Result<()> {
-        if self.tpm_done_event_emitted {
-            return Ok(());
-        }
-
-        // Trunksd is blocked from starting so that the kernel can use TPM
-        // handles during early resume. Allow trunksd to start now that resume
-        // TPM usage is complete. Note that trunksd will also start if hiberman
-        // exits, so it's only critical that this is run if hiberman is going to
-        // continue running for an indeterminate amount of time.
-        emit_upstart_event("hibernate-tpm-done")
-            .context("Failed to emit hibernate-tpm-done event")?;
-
-        self.tpm_done_event_emitted = true;
-        Ok(())
     }
 
     fn get_tpm_derived_integrity_key(&self) -> Result<HibernateKey> {
