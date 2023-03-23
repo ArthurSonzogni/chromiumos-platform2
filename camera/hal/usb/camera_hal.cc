@@ -320,9 +320,10 @@ int CameraHal::OpenDevice(int id,
     static_metadata = static_metadata_[id].get();
     request_template = request_template_[id].get();
   }
-  cameras_[id].reset(new CameraClient(id, device_infos_[id], *static_metadata,
-                                      *request_template, module, hw_device,
-                                      &privacy_switch_monitor_, client_type));
+  cameras_[id] = std::make_unique<CameraClient>(
+      id, device_infos_[id], *static_metadata, *request_template, module,
+      hw_device, &hw_privacy_switch_monitor_, client_type,
+      sw_privacy_switch_on_);
   if (cameras_[id]->OpenDevice()) {
     cameras_.erase(id);
     return -ENODEV;
@@ -373,6 +374,16 @@ int CameraHal::GetCameraInfo(int id,
   info->conflicting_devices = nullptr;
   info->conflicting_devices_length = 0;
   return 0;
+}
+
+void CameraHal::SetPrivacySwitchState(bool on) {
+  if (sw_privacy_switch_on_ == on) {
+    return;
+  }
+  sw_privacy_switch_on_ = on;
+  for (const auto& [_, camera_client] : cameras_) {
+    camera_client->SetPrivacySwitchState(on);
+  }
 }
 
 int CameraHal::GetCameraInfo(int id, struct camera_info* info) {
@@ -502,7 +513,7 @@ void CameraHal::TearDown() {
 
 void CameraHal::SetPrivacySwitchCallback(
     PrivacySwitchStateChangeCallback callback) {
-  privacy_switch_monitor_.RegisterCallback(std::move(callback));
+  hw_privacy_switch_monitor_.RegisterCallback(std::move(callback));
 }
 
 void CameraHal::CloseDeviceOnOpsThread(int id) {
@@ -730,7 +741,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   request_template_[info.camera_id] =
       ScopedCameraMetadata(request_template.release());
 
-  privacy_switch_monitor_.TrySubscribe(info.camera_id, info.device_path);
+  hw_privacy_switch_monitor_.TrySubscribe(info.camera_id, info.device_path);
 
   if (info.lens_facing == LensFacing::kExternal) {
     callbacks_->camera_device_status_change(callbacks_, info.camera_id,
@@ -758,7 +769,7 @@ void CameraHal::OnDeviceRemoved(ScopedUdevDevicePtr dev) {
     return;
   }
 
-  privacy_switch_monitor_.Unsubscribe(id);
+  hw_privacy_switch_monitor_.Unsubscribe(id);
 
   LOGF(INFO) << "Camera " << id << " at " << path << " removed";
 
@@ -867,6 +878,10 @@ static int get_camera_info_ext(int id,
   return CameraHal::GetInstance().GetCameraInfo(id, info, client_type);
 }
 
+static void set_privacy_switch_state(bool on) {
+  CameraHal::GetInstance().SetPrivacySwitchState(on);
+}
+
 int camera_device_close(struct hw_device_t* hw_device) {
   camera3_device_t* cam_dev = reinterpret_cast<camera3_device_t*>(hw_device);
   CameraClient* cam = static_cast<CameraClient*>(cam_dev->priv);
@@ -909,4 +924,5 @@ cros::cros_camera_hal_t CROS_CAMERA_HAL_INFO_SYM CROS_CAMERA_EXPORT = {
     .tear_down = cros::tear_down,
     .set_privacy_switch_callback = cros::set_privacy_switch_callback,
     .camera_device_open_ext = cros::camera_device_open_ext,
-    .get_camera_info_ext = cros::get_camera_info_ext};
+    .get_camera_info_ext = cros::get_camera_info_ext,
+    .set_privacy_switch_state = cros::set_privacy_switch_state};

@@ -17,6 +17,7 @@
 #include <base/files/scoped_file.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
+#include <linux/videodev2.h>
 
 #include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/timezone.h"
@@ -76,7 +77,8 @@ class V4L2CameraDevice {
  public:
   V4L2CameraDevice();
   V4L2CameraDevice(const DeviceInfo& device_info,
-                   CameraPrivacySwitchMonitor* privacy_switch_monitor);
+                   CameraPrivacySwitchMonitor* privacy_switch_monitor,
+                   bool sw_privacy_switch_on);
   V4L2CameraDevice(const V4L2CameraDevice&) = delete;
   V4L2CameraDevice& operator=(const V4L2CameraDevice&) = delete;
 
@@ -175,6 +177,11 @@ class V4L2CameraDevice {
   // Sets the region of interest.
   int SetRegionOfInterest(const Rect<int>& rectangle);
 
+  // Sets SW privacy switch state. If |on| is false, starts streaming. If |on|
+  // is true, stops streaming. Note that this function does not change the value
+  // of |stream_on_|.
+  int SetPrivacySwitchState(bool on);
+
   // Get all supported formats of device by |device_path|. This function can be
   // called without calling Connect().
   static const SupportedFormats GetDeviceSupportedFormats(
@@ -194,6 +201,9 @@ class V4L2CameraDevice {
 
   // Get clock type in UVC driver to report the same time base in user space.
   static clockid_t GetUvcClock();
+
+  // Get timestamp in user space.
+  static int GetUserSpaceTimestamp(timespec& ts);
 
   // Get the model name from |device_path|.
   static std::string GetModelName(const std::string& device_path);
@@ -257,6 +267,15 @@ class V4L2CameraDevice {
   // Returns true if the current connected device is an external camera.
   bool IsExternalCamera();
 
+  // Call the VIDIOC_QBUF ioctl.
+  int EnqueueBuffer(v4l2_buffer& buffer);
+
+  // Call the VIDIOC_STREAMON ioctl.
+  int StartStreaming();
+
+  // Call the VIDIOC_STREAMOFF ioctl.
+  int StopStreaming();
+
   // The number of video buffers we want to request in kernel.
   const int kNumVideoBuffers = 4;
 
@@ -265,6 +284,9 @@ class V4L2CameraDevice {
 
   // StreamOn state
   bool stream_on_;
+
+  // SW privacy switch state.
+  bool sw_privacy_switch_on_ = false;
 
   // AF state
   bool focus_auto_supported_;

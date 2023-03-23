@@ -64,6 +64,7 @@ class CameraHal : public UdevWatcher::Observer {
   int GetCameraInfo(int camera_id,
                     struct camera_info* info,
                     ClientType client_type);
+  void SetPrivacySwitchState(bool on);
 
   // Runs on device ops thread. Post a task to the thread which is used for
   // OpenDevice.
@@ -78,8 +79,13 @@ class CameraHal : public UdevWatcher::Observer {
   void OnDeviceAdded(ScopedUdevDevicePtr dev) override;
   void OnDeviceRemoved(ScopedUdevDevicePtr dev) override;
 
-  // The monitor for camera privacy switch status changed.
-  CameraPrivacySwitchMonitor privacy_switch_monitor_;
+  // Monitors HW camera privacy switch state changes. The HW privacy switch is
+  // available on some devices.
+  CameraPrivacySwitchMonitor hw_privacy_switch_monitor_;
+
+  // SW privacy switch state. The SW privacy switch is set by OS and independent
+  // from the HW privacy switch that some devices have.
+  bool sw_privacy_switch_on_ = false;
 
   // Cache device information because querying the information is very slow.
   std::map<int, DeviceInfo> device_infos_;

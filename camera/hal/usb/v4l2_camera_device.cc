@@ -235,8 +235,10 @@ V4L2CameraDevice::V4L2CameraDevice()
 
 V4L2CameraDevice::V4L2CameraDevice(
     const DeviceInfo& device_info,
-    CameraPrivacySwitchMonitor* privacy_switch_monitor)
+    CameraPrivacySwitchMonitor* privacy_switch_monitor,
+    bool sw_privacy_switch_on)
     : stream_on_(false),
+      sw_privacy_switch_on_(sw_privacy_switch_on),
       device_info_(device_info),
       privacy_switch_monitor_(privacy_switch_monitor) {}
 
@@ -522,29 +524,23 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     }
     VLOGF(1) << "Exported frame buffer fd: " << expbuf.fd;
     temp_fds.push_back(base::ScopedFD(expbuf.fd));
-    buffers_at_client_[i] = false;
 
-    v4l2_buffer buffer = {};
-    buffer.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    buffer.index = i;
-    buffer.memory = V4L2_MEMORY_MMAP;
-
-    ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QBUF, &buffer));
+    v4l2_buffer buffer = {.index = i,
+                          .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+                          .memory = V4L2_MEMORY_MMAP};
+    ret = EnqueueBuffer(buffer);
     if (ret < 0) {
-      ret = ERRNO_OR_RET(ret);
-      PLOGF(ERROR) << "QBUF (" << i << ") fails";
       return ret;
     }
 
     buffer_sizes->push_back(buffer.length);
   }
 
-  v4l2_buf_type capture_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  ret = ioctl(device_fd_.get(), VIDIOC_STREAMON, &capture_type);
-  if (ret < 0) {
-    ret = ERRNO_OR_RET(ret);
-    PLOGF(ERROR) << "STREAMON fails";
-    return ret;
+  if (!sw_privacy_switch_on_) {
+    ret = StartStreaming();
+    if (ret < 0) {
+      return ret;
+    }
   }
 
   for (size_t i = 0; i < temp_fds.size(); i++) {
@@ -569,12 +565,8 @@ int V4L2CameraDevice::StreamOff() {
     return 0;
   }
 
-  v4l2_buf_type capture_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  int ret = TEMP_FAILURE_RETRY(
-      ioctl(device_fd_.get(), VIDIOC_STREAMOFF, &capture_type));
+  int ret = StopStreaming();
   if (ret < 0) {
-    ret = ERRNO_OR_RET(ret);
-    PLOGF(ERROR) << "STREAMOFF fails";
     return ret;
   }
   v4l2_requestbuffers req_buffers;
@@ -657,10 +649,8 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
   *v4l2_ts = tv.tv_sec * 1'000'000'000LL + tv.tv_usec * 1000;
 
   struct timespec ts;
-  ret = clock_gettime(GetUvcClock(), &ts);
+  ret = GetUserSpaceTimestamp(ts);
   if (ret < 0) {
-    ret = ERRNO_OR_RET(ret);
-    LOGF(ERROR) << "Get clock time fails";
     return ret;
   }
 
@@ -688,19 +678,10 @@ int V4L2CameraDevice::ReuseFrameBuffer(uint32_t buffer_id) {
     LOGF(ERROR) << "Invalid buffer id: " << buffer_id;
     return -EINVAL;
   }
-  v4l2_buffer buffer;
-  memset(&buffer, 0, sizeof(buffer));
-  buffer.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  buffer.memory = V4L2_MEMORY_MMAP;
-  buffer.index = buffer_id;
-  int ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QBUF, &buffer));
-  if (ret < 0) {
-    ret = ERRNO_OR_RET(ret);
-    PLOGF(ERROR) << "QBUF fails";
-    return ret;
-  }
-  buffers_at_client_[buffer.index] = false;
-  return 0;
+  v4l2_buffer buffer = {.index = buffer_id,
+                        .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+                        .memory = V4L2_MEMORY_MMAP};
+  return EnqueueBuffer(buffer);
 }
 
 bool V4L2CameraDevice::IsBufferFilled(uint32_t buffer_id) {
@@ -942,6 +923,45 @@ int V4L2CameraDevice::SetRegionOfInterest(const Rect<int>& rectangle) {
   }
 
   return 0;
+}
+
+int V4L2CameraDevice::SetPrivacySwitchState(bool on) {
+  base::AutoLock l(lock_);
+  if (sw_privacy_switch_on_ == on) {
+    return 0;
+  }
+
+  sw_privacy_switch_on_ = on;
+
+  // If this method is called while not streaming, just update
+  // |sw_privacy_switch_on_|.
+  if (!stream_on_) {
+    return 0;
+  }
+
+  int ret = 0;
+  if (on) {
+    ret = StopStreaming();
+    if (ret < 0) {
+      return ret;
+    }
+    std::fill(buffers_at_client_.begin(), buffers_at_client_.end(), true);
+  } else {
+    for (uint32_t i = 0; i < buffers_at_client_.size(); ++i) {
+      if (!buffers_at_client_[i]) {
+        continue;
+      }
+      v4l2_buffer buffer = {.index = i,
+                            .type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+                            .memory = V4L2_MEMORY_MMAP};
+      ret = EnqueueBuffer(buffer);
+      if (ret < 0) {
+        return ret;
+      }
+    }
+    ret = StartStreaming();
+  }
+  return ret;
 }
 
 // static
@@ -1488,6 +1508,16 @@ clockid_t V4L2CameraDevice::GetUvcClock() {
 }
 
 // static
+int V4L2CameraDevice::GetUserSpaceTimestamp(timespec& ts) {
+  int ret = clock_gettime(V4L2CameraDevice::GetUvcClock(), &ts);
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
+    LOGF(ERROR) << "Get clock time fails";
+  }
+  return ret;
+}
+
+// static
 bool V4L2CameraDevice::IsFocusDistanceSupported(
     const std::string& device_path, ControlRange* focus_distance_range) {
   DCHECK(focus_distance_range != nullptr);
@@ -1591,6 +1621,38 @@ int V4L2CameraDevice::SetPowerLineFrequency() {
 
 bool V4L2CameraDevice::IsExternalCamera() {
   return device_info_.lens_facing == LensFacing::kExternal;
+}
+
+int V4L2CameraDevice::EnqueueBuffer(v4l2_buffer& buffer) {
+  int ret = TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_QBUF, &buffer));
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
+    PLOGF(ERROR) << "QBUF (" << buffer.index << ") fails";
+    return ret;
+  }
+  buffers_at_client_[buffer.index] = false;
+  return 0;
+}
+
+int V4L2CameraDevice::StartStreaming() {
+  v4l2_buf_type capture_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  int ret = ioctl(device_fd_.get(), VIDIOC_STREAMON, &capture_type);
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
+    PLOGF(ERROR) << "STREAMON fails";
+  }
+  return ret;
+}
+
+int V4L2CameraDevice::StopStreaming() {
+  v4l2_buf_type capture_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  int ret = TEMP_FAILURE_RETRY(
+      ioctl(device_fd_.get(), VIDIOC_STREAMOFF, &capture_type));
+  if (ret < 0) {
+    ret = ERRNO_OR_RET(ret);
+    PLOGF(ERROR) << "STREAMOFF fails";
+  }
+  return ret;
 }
 
 }  // namespace cros

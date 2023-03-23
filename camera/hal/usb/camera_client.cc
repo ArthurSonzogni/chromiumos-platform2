@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <absl/time/clock.h>
 #include <base/check.h>
 #include <base/posix/safe_strerror.h>
 #include <sync/sync.h>
@@ -94,12 +95,15 @@ CameraClient::CameraClient(int id,
                            const hw_module_t* module,
                            hw_device_t** hw_device,
                            CameraPrivacySwitchMonitor* privacy_switch_monitor,
-                           ClientType client_type)
+                           ClientType client_type,
+                           bool sw_privacy_switch_on)
     : id_(id),
       device_info_(device_info),
       static_metadata_(clone_camera_metadata(&static_metadata)),
-      device_(new V4L2CameraDevice(device_info, privacy_switch_monitor)),
+      device_(new V4L2CameraDevice(
+          device_info, privacy_switch_monitor, sw_privacy_switch_on)),
       callback_ops_(nullptr),
+      sw_privacy_switch_on_(sw_privacy_switch_on),
       request_thread_("Capture request thread"),
       camera_metrics_(CameraMetrics::New()) {
   memset(&camera3_device_, 0, sizeof(camera3_device_));
@@ -175,6 +179,22 @@ int CameraClient::CloseDevice() {
   StreamOff();
   device_->Disconnect();
   return 0;
+}
+
+void CameraClient::SetPrivacySwitchState(bool on) {
+  if (sw_privacy_switch_on_ == on) {
+    return;
+  }
+  sw_privacy_switch_on_ = on;
+  if (request_handler_) {
+    request_task_runner_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&CameraClient::RequestHandler::SetPrivacySwitchState,
+                       base::Unretained(request_handler_.get()), on));
+  } else {
+    // While not streaming, directly set the state to |device_|.
+    device_->SetPrivacySwitchState(on);
+  }
 }
 
 int CameraClient::Initialize(const camera3_callback_ops_t* callback_ops) {
@@ -494,9 +514,9 @@ base::expected<int, CameraClient::Error> CameraClient::StreamOn(
     }
     request_task_runner_ = request_thread_.task_runner();
 
-    request_handler_.reset(new RequestHandler(
+    request_handler_ = std::make_unique<RequestHandler>(
         id_, device_info_, static_metadata_, device_.get(), callback_ops_,
-        request_task_runner_, metadata_handler_.get()));
+        request_task_runner_, metadata_handler_.get(), sw_privacy_switch_on_);
   }
 
   auto future =
@@ -642,7 +662,8 @@ CameraClient::RequestHandler::RequestHandler(
     V4L2CameraDevice* device,
     const camera3_callback_ops_t* callback_ops,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-    MetadataHandler* metadata_handler)
+    MetadataHandler* metadata_handler,
+    bool sw_privacy_switch_on)
     : device_id_(device_id),
       device_info_(device_info),
       static_metadata_(static_metadata),
@@ -659,7 +680,8 @@ CameraClient::RequestHandler::RequestHandler(
       current_buffer_timestamp_in_user_(0),
       flush_started_(false),
       is_video_recording_(false),
-      max_num_detected_faces_(0) {
+      max_num_detected_faces_(0),
+      sw_privacy_switch_on_(sw_privacy_switch_on) {
   SupportedFormats supported_formats =
       device_->GetDeviceSupportedFormats(device_info_.device_path);
   qualified_formats_ =
@@ -778,7 +800,8 @@ void CameraClient::RequestHandler::HandleRequest(
       .crop_rotate_scale_degrees = use_native_sensor_ratio_,
       .frame_rate = target_frame_rate};
 
-  if (stream_resolution_reconfigure || should_update_frame_rate) {
+  if (stream_resolution_reconfigure || should_update_frame_rate ||
+      sw_privacy_switch_error_occurred_) {
     VLOGFID(1, device_id_) << "Restart stream";
     int ret = StreamOffImpl();
     if (ret) {
@@ -791,6 +814,7 @@ void CameraClient::RequestHandler::HandleRequest(
       HandleAbortedRequest(&capture_result);
       return;
     }
+    sw_privacy_switch_error_occurred_ = false;
   }
 
   // Get frame data from device only for the first buffer.
@@ -885,6 +909,22 @@ int CameraClient::RequestHandler::GetMaxNumDetectedFaces() {
   return max_num_detected_faces_;
 }
 
+void CameraClient::RequestHandler::SetPrivacySwitchState(bool on) {
+  DCHECK(task_runner_->BelongsToCurrentThread());
+  if (sw_privacy_switch_on_ == on) {
+    return;
+  }
+  sw_privacy_switch_on_ = on;
+  if (device_->SetPrivacySwitchState(on) < 0) {
+    LOGF(ERROR) << "Failed to set the SW privacy switch state to"
+                << "V4L2CameraDevice";
+    sw_privacy_switch_error_occurred_ = true;
+    return;
+  }
+  frames_to_skip_after_privacy_switch_disabled_ =
+      device_info_.frames_to_skip_after_streamon;
+}
+
 void CameraClient::RequestHandler::DiscardOutdatedBuffers() {
   int filled_count = 0;
   for (size_t i = 0; i < input_buffers_.size(); i++) {
@@ -973,6 +1013,7 @@ int CameraClient::RequestHandler::StreamOnImpl(
   }
   test_pattern_.reset(new TestPattern(
       Size(entry.data.i32[0], entry.data.i32[1]), stream_on_resolution_));
+  InitializeBlackFrame();
   return 0;
 }
 
@@ -1055,10 +1096,16 @@ int CameraClient::RequestHandler::WriteStreamBuffers(
         *buffer->buffer, buffer->stream->width, buffer->stream->height));
   }
 
-  FrameBuffer* input_frame =
-      test_pattern_->IsTestPatternEnabled()
-          ? test_pattern_->GetTestPattern()
-          : input_buffers_[current_v4l2_buffer_id_].get();
+  FrameBuffer* input_frame;
+  if (sw_privacy_switch_on_ ||
+      frames_to_skip_after_privacy_switch_disabled_ > 0) {
+    --frames_to_skip_after_privacy_switch_disabled_;
+    input_frame = black_frame_.get();
+  } else if (test_pattern_->IsTestPatternEnabled()) {
+    input_frame = test_pattern_->GetTestPattern();
+  } else {
+    input_frame = input_buffers_[current_v4l2_buffer_id_].get();
+  }
 
   std::vector<int> output_frame_status;
   std::vector<human_sensing::CrosFace>* faces_ptr =
@@ -1173,13 +1220,42 @@ void CameraClient::RequestHandler::NotifyRequestError(uint32_t frame_number) {
 int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   int ret;
+  if (sw_privacy_switch_on_) {
+    // Wait for |delta| ns to keep the frame rate constant.
+    struct timespec ts;
+    ret = V4L2CameraDevice::GetUserSpaceTimestamp(ts);
+    if (ret < 0) {
+      return ret;
+    }
+    uint64_t target_ts_ns = current_buffer_timestamp_in_user_ +
+                            static_cast<uint64_t>(1e9 / stream_on_fps_);
+    uint64_t current_ts_ns = ts.tv_sec * 1'000'000'000LL + ts.tv_nsec;
+    if (target_ts_ns > current_ts_ns) {
+      absl::SleepFor(absl::Nanoseconds(target_ts_ns - current_ts_ns));
+    }
+    ret = V4L2CameraDevice::GetUserSpaceTimestamp(ts);
+    if (ret < 0) {
+      return ret;
+    }
+    uint64_t previous_buffer_timestamp_in_user_ =
+        current_buffer_timestamp_in_user_;
+    current_buffer_timestamp_in_user_ =
+        ts.tv_sec * 1'000'000'000LL + ts.tv_nsec;
+    // Increment |current_buffer_timestamp_in_v4l2_| by the same amount as
+    // |current_buffer_timestamp_in_user_|. |current_buffer_timestamp_in_v4l2_|
+    // needs to be monotonically increasing.
+    current_buffer_timestamp_in_v4l2_ +=
+        current_buffer_timestamp_in_user_ - previous_buffer_timestamp_in_user_;
+    return 0;
+  }
+
   uint32_t buffer_id = 0, data_size = 0;
   uint64_t v4l2_ts, user_ts;
   uint64_t delta_user_ts = 0, delta_v4l2_ts = 0;
   // If frame duration between user space and v4l2 buffer shifts 20%,
   // we should return next frame.
   const uint64_t allowed_shift_frame_duration_ns =
-      (1'000'000'000LL / stream_on_fps_) * 0.2;
+      static_cast<uint64_t>((1e9 / stream_on_fps_) * 0.2);
   size_t drop_count = 0;
 
   // Some requests take a long time and cause several frames are buffered in
@@ -1253,6 +1329,9 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
 
 int CameraClient::RequestHandler::EnqueueV4L2Buffer() {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  if (sw_privacy_switch_on_) {
+    return 0;
+  }
   int ret = device_->ReuseFrameBuffer(current_v4l2_buffer_id_);
   if (ret) {
     LOGFID(ERROR, device_id_)
@@ -1272,6 +1351,19 @@ void CameraClient::RequestHandler::FlushDone(
     base::AutoLock l(flush_lock_);
     flush_started_ = false;
   }
+}
+
+void CameraClient::RequestHandler::InitializeBlackFrame() {
+  int number_of_pixels =
+      stream_on_resolution_.width * stream_on_resolution_.height;
+  black_frame_ = std::make_unique<SharedFrameBuffer>(number_of_pixels * 1.5);
+  black_frame_->SetFourcc(V4L2_PIX_FMT_YUV420);
+  black_frame_->SetWidth(stream_on_resolution_.width);
+  black_frame_->SetHeight(stream_on_resolution_.height);
+  black_frame_->SetDataSize(number_of_pixels * 1.5);
+  uint8_t* data = black_frame_->GetData();
+  memset(data, 0, number_of_pixels);
+  memset(data + number_of_pixels, 128, number_of_pixels / 2);
 }
 
 }  // namespace cros

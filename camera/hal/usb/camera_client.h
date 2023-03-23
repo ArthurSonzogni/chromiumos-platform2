@@ -66,7 +66,8 @@ class CameraClient {
                const hw_module_t* module,
                hw_device_t** hw_device,
                CameraPrivacySwitchMonitor* privacy_switch_monitor,
-               ClientType client_type);
+               ClientType client_type,
+               bool sw_privacy_switch_on);
   CameraClient(const CameraClient&) = delete;
   CameraClient& operator=(const CameraClient&) = delete;
   ~CameraClient();
@@ -74,6 +75,7 @@ class CameraClient {
   // Camera Device Operations from CameraHal.
   int OpenDevice();
   int CloseDevice();
+  void SetPrivacySwitchState(bool on);
 
   int GetId() const { return id_; }
 
@@ -181,6 +183,9 @@ class CameraClient {
   // max resolution used for JDA
   Size jda_resolution_cap_;
 
+  // SW privacy switch state.
+  bool sw_privacy_switch_on_;
+
   // RequestHandler is used to handle in-flight requests. All functions in the
   // class run on |request_thread_|. The class will be created in StreamOn and
   // destroyed in StreamOff.
@@ -193,7 +198,8 @@ class CameraClient {
         V4L2CameraDevice* device,
         const camera3_callback_ops_t* callback_ops,
         const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-        MetadataHandler* metadata_handler);
+        MetadataHandler* metadata_handler,
+        bool sw_privacy_switch_on_);
     ~RequestHandler();
 
     // Synchronous call to start streaming.
@@ -211,6 +217,9 @@ class CameraClient {
 
     // Get the maximum number of detected faces.
     int GetMaxNumDetectedFaces();
+
+    // Set SW privacy switch state.
+    void SetPrivacySwitchState(bool on);
 
    private:
     // Start streaming implementation.
@@ -271,6 +280,10 @@ class CameraClient {
 
     // Used to notify caller that all requests are handled.
     void FlushDone(base::OnceCallback<void(int)> callback);
+
+    // Initialize |black_frame_| and fills |black_frame_| with black.
+    // |stream_on_resolution_| must be set before calling this method.
+    void InitializeBlackFrame();
 
     // Variables from CameraClient:
 
@@ -344,6 +357,27 @@ class CameraClient {
 
     // The maximum number of detected faces in the camera opening session.
     size_t max_num_detected_faces_;
+
+    // SW privacy switch state.
+    bool sw_privacy_switch_on_;
+
+    // Set true if SW privacy switch fails to STREAMON/OFF according to the
+    // switch state. When true, need to restart streaming to sync the streaming
+    // state with the SW privacy switch state.
+    bool sw_privacy_switch_error_occurred_ = false;
+
+    // After the SW privacy switch is disabled, skip frames produced by
+    // V4L2CameraDevice |device_| and instead send black frames until
+    // |frames_to_skip_after_privacy_switch_disabled_| becomes 0.
+    // |frames_to_skip_after_privacy_switch_disabled_| will be initialized by
+    // |device_info_.frames_to_skip_after_streamon| after the SW privacy switch
+    // changes ON from OFF. |frames_to_skip_after_privacy_switch_disabled_| will
+    // be decremented every time a frame is produced.
+    uint32_t frames_to_skip_after_privacy_switch_disabled_ = 0;
+
+    // Used to fill in output frames with black pixels when the SW privacy
+    // switch is ON.
+    std::unique_ptr<SharedFrameBuffer> black_frame_;
   };
 
   std::unique_ptr<RequestHandler> request_handler_;
