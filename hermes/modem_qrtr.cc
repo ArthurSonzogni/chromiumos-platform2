@@ -893,7 +893,7 @@ void ModemQrtr::OnDataAvailable(SocketInterface* socket) {
     LOG(ERROR) << "Socket recv failed";
     return;
   }
-  LOG(INFO) << "ModemQrtr recevied raw data (" << bytes_received
+  LOG(INFO) << "ModemQrtr received raw data (" << bytes_received
             << " bytes): " << base::HexEncode(buffer_.data(), bytes_received);
   ProcessQrtrPacket(data.node, data.port, bytes_received);
 }
