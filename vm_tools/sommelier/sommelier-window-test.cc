@@ -24,6 +24,7 @@ using X11Test = X11TestBase;
 
 TEST_F(X11Test, TogglesFullscreenOnWmStateFullscreen) {
   // Arrange: Create an xdg_toplevel surface. Initially it's not fullscreen.
+  AdvertiseOutputs(xwayland.get(), {OutputConfig()});
   sl_window* window = CreateToplevelWindow();
   uint32_t xdg_toplevel_id = XdgToplevelId(window);
   EXPECT_EQ(window->fullscreen, 0);
@@ -456,8 +457,9 @@ TEST_F(X11Test, XdgToplevelConfigureTriggersX11Configure) {
   const int height = 768;
 
   // Assert: Set up expectations for Sommelier to send appropriate X11 requests.
-  int x = (ctx.screen->width_in_pixels - width) / 2;
-  int y = (ctx.screen->height_in_pixels - height) / 2;
+  // (output width/height - width/height) / 2
+  int x = 448;
+  int y = 156;
   EXPECT_CALL(xcb, configure_window(
                        testing::_, window->frame_id,
                        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
@@ -486,11 +488,99 @@ TEST_F(X11Test, XdgToplevelConfigureTriggersX11Configure) {
       ->configure(nullptr, window->xdg_surface, 123 /* serial */);
 }
 
-TEST_F(X11Test, AuraToplevelConfigureTriggersX11Configure) {
+TEST_F(X11Test, XdgToplevelConfigureCentersWindowOnRotatedOutput) {
+  // Arrange
+  AdvertiseOutputs(xwayland.get(), {{.transform = WL_OUTPUT_TRANSFORM_90}});
+  sl_window* window = CreateToplevelWindow();
+  window->managed = 1;     // pretend window is mapped
+  window->size_flags = 0;  // no hinted position or size
+  const int width = 1024;
+  const int height = 768;
+
+  // Assert: Set up expectations for Sommelier to send appropriate X11 requests.
+  // (rotated output width/height - width/height) / 2
+  int x = 28;
+  int y = 576;
+  EXPECT_CALL(xcb, configure_window(
+                       testing::_, window->frame_id,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
+                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                       ValueListMatches(std::vector({x, y, width, height, 0}))))
+      .Times(1);
+  EXPECT_CALL(xcb, configure_window(
+                       testing::_, window->id,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
+                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                       ValueListMatches(std::vector({0, 0, width, height, 0}))))
+      .Times(1);
+
+  // Act: Pretend the host compositor sends us some xdg configure events.
+  wl_array states;
+  wl_array_init(&states);
+  uint32_t* state =
+      static_cast<uint32_t*>(wl_array_add(&states, sizeof(uint32_t)));
+  *state = XDG_TOPLEVEL_STATE_ACTIVATED;
+
+  HostEventHandler(window->xdg_toplevel)
+      ->configure(nullptr, window->xdg_toplevel, width, height, &states);
+  HostEventHandler(window->xdg_surface)
+      ->configure(nullptr, window->xdg_surface, 123 /* serial */);
+}
+
+TEST_F(X11Test,
+       XdgToplevelConfigureCentersWindowCorrectlyWhenMultipleOutputsExist) {
+  // Arrange
+  AdvertiseOutputs(
+      xwayland.get(),
+      {{.x = 0, .y = 0, .width_pixels = 1920, .height_pixels = 1080},
+       {.x = 1920, .y = 500}});
+  sl_window* window = CreateToplevelWindow();
+  window->managed = 1;     // pretend window is mapped
+  window->size_flags = 0;  // no hinted position or size
+  const int width = 1024;
+  const int height = 768;
+  struct sl_host_output* output = NULL;
+  output = wl_container_of(ctx.host_outputs.next->next, output, link);
+  HostEventHandler(window->paired_surface->proxy)
+      ->enter(nullptr, window->paired_surface->proxy, output->proxy);
+
+  // Assert: Set up expectations for Sommelier to send appropriate X11 requests.
+  int x = 1920 + 448;
+  int y = 156;
+  EXPECT_CALL(xcb, configure_window(
+                       testing::_, window->frame_id,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
+                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                       ValueListMatches(std::vector({x, y, width, height, 0}))))
+      .Times(1);
+  EXPECT_CALL(xcb, configure_window(
+                       testing::_, window->id,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
+                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                       ValueListMatches(std::vector({0, 0, width, height, 0}))))
+      .Times(1);
+
+  // Act: Pretend the host compositor sends us some xdg configure events.
+  wl_array states;
+  wl_array_init(&states);
+  uint32_t* state =
+      static_cast<uint32_t*>(wl_array_add(&states, sizeof(uint32_t)));
+  *state = XDG_TOPLEVEL_STATE_ACTIVATED;
+
+  HostEventHandler(window->xdg_toplevel)
+      ->configure(nullptr, window->xdg_toplevel, width, height, &states);
+  HostEventHandler(window->xdg_surface)
+      ->configure(nullptr, window->xdg_surface, 123 /* serial */);
+}
+
+TEST_F(X11DirectScaleTest, AuraToplevelConfigureTriggersX11Configure) {
   // Arrange
   ctx.enable_x11_move_windows = true;
   AdvertiseOutputs(xwayland.get(), {OutputConfig()});
-  ctx.use_direct_scale = 1;
   sl_window* window = CreateToplevelWindow();
   window->managed = 1;     // pretend window is mapped
   window->size_flags = 0;  // no hinted position or size

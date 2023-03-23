@@ -203,6 +203,7 @@ if get_option('with_tests')
     sources: [
       'sommelier-test.cc',
       'sommelier-test-main.cc',
+      'sommelier-output-test.cc',
       'sommelier-window-test.cc',
       'testing/mock-wayland-channel.cc',
       'testing/sommelier-test-util.cc',

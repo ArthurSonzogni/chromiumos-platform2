@@ -184,9 +184,18 @@ static void sl_adjust_window_position_for_screen_size(
     struct sl_window* window) {
   struct sl_context* ctx = window->ctx;
 
-  // Center horizontally/vertically.
-  window->x = ctx->screen->width_in_pixels / 2 - window->width / 2;
-  window->y = ctx->screen->height_in_pixels / 2 - window->height / 2;
+  const sl_host_output* output =
+      window->paired_surface ? window->paired_surface->output.get() : nullptr;
+  if (window->ctx->separate_outputs && output) {
+    window->x =
+        output->virt_x + (output->virt_rotated_width - window->width) / 2;
+    window->y =
+        output->virt_y + (output->virt_rotated_height - window->height) / 2;
+  } else {
+    // Center horizontally/vertically.
+    window->x = ctx->screen->width_in_pixels / 2 - window->width / 2;
+    window->y = ctx->screen->height_in_pixels / 2 - window->height / 2;
+  }
 }
 
 static void sl_set_input_focus(struct sl_context* ctx,
@@ -566,6 +575,7 @@ void sl_registry_handler(void* data,
     output->version = MIN(3, version);
     output->host_global = sl_output_global_create(output);
     wl_list_insert(&ctx->outputs, &output->link);
+    output->host_output = nullptr;
   } else if (strcmp(interface, "wl_seat") == 0) {
     struct sl_seat* seat =
         static_cast<sl_seat*>(malloc(sizeof(struct sl_seat)));
@@ -757,9 +767,9 @@ void sl_registry_handler(void* data,
   }
 }
 
-static void sl_registry_remover(void* data,
-                                struct wl_registry* registry,
-                                uint32_t id) {
+void sl_registry_remover(void* data,
+                         struct wl_registry* registry,
+                         uint32_t id) {
   TRACE_EVENT("other", "sl_registry_remover");
   struct sl_context* ctx = (struct sl_context*)data;
   struct sl_output* output;
@@ -883,6 +893,8 @@ static void sl_registry_remover(void* data,
   wl_list_for_each(output, &ctx->outputs, link) {
     if (output->id == id) {
       sl_global_destroy(output->host_global);
+      if (output->host_output)
+        wl_resource_destroy(output->host_output->resource);
       wl_list_remove(&output->link);
       free(output);
       return;
@@ -3817,6 +3829,8 @@ int real_main(int argc, char** argv) {
       ctx.use_virtgpu_channel = true;
     } else if (strstr(arg, "--noop-driver") == arg) {
       noop_driver = true;
+    } else if (strstr(arg, "--separate-outputs") == arg) {
+      ctx.separate_outputs = true;
 #ifdef PERFETTO_TRACING
     } else if (strstr(arg, "--trace-filename") == arg) {
       ctx.trace_filename = sl_arg_value(arg);

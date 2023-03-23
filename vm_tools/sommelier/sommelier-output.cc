@@ -33,6 +33,24 @@ int dpi_to_physical_mm(double dpi, int px) {
   return px * (INCH_IN_MM / dpi);
 }
 
+void sl_output_apply_rotation(
+    int transform, int width, int height, int* out_width, int* out_height) {
+  switch (transform) {
+    case WL_OUTPUT_TRANSFORM_NORMAL:
+    case WL_OUTPUT_TRANSFORM_180:
+    case WL_OUTPUT_TRANSFORM_FLIPPED:
+    case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+      *out_width = width;
+      *out_height = height;
+      break;
+
+    default:
+      *out_width = height;
+      *out_height = width;
+      break;
+  }
+}
+
 void sl_output_get_host_output_state(struct sl_host_output* host,
                                      int* scale,
                                      int* physical_width,
@@ -147,20 +165,8 @@ void sl_output_get_logical_dimensions(struct sl_host_output* host,
     // for direct scale, we will need the non rotated logical
     // dimensions.
 
-    switch (host->transform) {
-      case WL_OUTPUT_TRANSFORM_NORMAL:
-      case WL_OUTPUT_TRANSFORM_180:
-      case WL_OUTPUT_TRANSFORM_FLIPPED:
-      case WL_OUTPUT_TRANSFORM_FLIPPED_180:
-        *width = host->logical_width;
-        *height = host->logical_height;
-        break;
-
-      default:
-        *width = host->logical_height;
-        *height = host->logical_width;
-        break;
-    }
+    sl_output_apply_rotation(host->transform, host->logical_width,
+                             host->logical_height, width, height);
   }
 }
 
@@ -268,30 +274,92 @@ void sl_output_get_dimensions_original(struct sl_host_output* host,
   *out_height = height;
 }
 
+// Recalculates the virt_x coordinates of outputs when an output is
+// add/removed/changed. skip_host is false if the host is being removed
+// (as it should not exist in the list already) and true if it's being
+// added/changed.
+void sl_output_shift_output_x(struct sl_host_output* host, bool skip_host) {
+  // Outputs are positioned in a line from left to right ordered base on its
+  // x position.
+  struct sl_host_output* output;
+  int next_output_x = 0;
+  wl_list_for_each(output, &host->ctx->host_outputs, link) {
+    if (output->virt_x != next_output_x) {
+      output->virt_x = next_output_x;
+      // Skipping sending current output's details here if skip host is set
+      // as they are sent after this method.
+      if (!skip_host || output != host) {
+        // virt_physical_width/height may have not been set yet.
+        if (!output->virt_physical_width || !output->virt_physical_height) {
+          int scale;
+          int virt_physical_width;
+          int virt_physical_height;
+          int virt_width;
+          int virt_height;
+
+          if (host->ctx->use_direct_scale) {
+            sl_output_init_dimensions_direct(host, &scale, &virt_physical_width,
+                                             &virt_physical_height, &virt_width,
+                                             &virt_height);
+          } else {
+            sl_output_get_dimensions_original(
+                host, &scale, &virt_physical_width, &virt_physical_height,
+                &virt_width, &virt_height);
+          }
+          host->virt_physical_width = virt_physical_width;
+          host->virt_physical_height = virt_physical_height;
+        }
+
+        wl_output_send_geometry(output->resource, output->virt_x,
+                                output->virt_y, output->virt_physical_width,
+                                output->virt_physical_height, output->subpixel,
+                                output->make, output->model, output->transform);
+        if (wl_resource_get_version(output->resource) >=
+            WL_OUTPUT_DONE_SINCE_VERSION)
+          wl_output_send_done(output->resource);
+      }
+    }
+    next_output_x += output->virt_rotated_width;
+  }
+}
+
 void sl_output_send_host_output_state(struct sl_host_output* host) {
   int scale;
-  int physical_width;
-  int physical_height;
-  int width;
-  int height;
+  int virt_physical_width;
+  int virt_physical_height;
+  int virt_width;
+  int virt_height;
 
   if (host->ctx->use_direct_scale) {
-    sl_output_init_dimensions_direct(host, &scale, &physical_width,
-                                     &physical_height, &width, &height);
+    sl_output_init_dimensions_direct(host, &scale, &virt_physical_width,
+                                     &virt_physical_height, &virt_width,
+                                     &virt_height);
   } else {
-    sl_output_get_dimensions_original(host, &scale, &physical_width,
-                                      &physical_height, &width, &height);
+    sl_output_get_dimensions_original(host, &scale, &virt_physical_width,
+                                      &virt_physical_height, &virt_width,
+                                      &virt_height);
   }
 
-  // X/Y are best left at origin as managed X windows are kept centered on
-  // the root window. The result is that all outputs are overlapping and
-  // pointer events can always be dispatched to the visible region of the
-  // window.
-  wl_output_send_geometry(host->resource, 0, 0, physical_width, physical_height,
+  host->virt_physical_width = virt_physical_width;
+  host->virt_physical_height = virt_physical_height;
+
+  sl_output_apply_rotation(host->transform, virt_width, virt_height,
+                           &host->virt_rotated_width,
+                           &host->virt_rotated_height);
+
+  // Shift all outputs that are to the right of host to the right if needed.
+  if (host->ctx->separate_outputs) {
+    sl_output_shift_output_x(host, true);
+  } else {
+    host->virt_x = 0;
+  }
+  host->virt_y = 0;
+  wl_output_send_geometry(host->resource, host->virt_x, host->virt_y,
+                          host->virt_physical_width, host->virt_physical_height,
                           host->subpixel, host->make, host->model,
                           host->transform);
   wl_output_send_mode(host->resource, host->flags | WL_OUTPUT_MODE_CURRENT,
-                      width, height, host->refresh);
+                      virt_width, virt_height, host->refresh);
   if (wl_resource_get_version(host->resource) >= WL_OUTPUT_SCALE_SINCE_VERSION)
     wl_output_send_scale(host->resource, scale);
   if (wl_resource_get_version(host->resource) >= WL_OUTPUT_DONE_SINCE_VERSION)
@@ -321,6 +389,24 @@ static void sl_output_geometry(void* data,
   free(host->make);
   host->make = strdup(make);
   host->transform = transform;
+  if (host->ctx->separate_outputs) {
+    // host_outputs is sorted by x. Delete then re-insert at the correct
+    // position.
+    wl_list_remove(&host->link);
+    // Insert at the end by default. If insert_at is not set in the loop,
+    // hosts's x is larger than all the ones in the list currently.
+    struct wl_list* insert_at = host->ctx->host_outputs.prev;
+    struct sl_host_output* iter;
+    wl_list_for_each(iter, &host->ctx->host_outputs, link) {
+      if (host->x < iter->x) {
+        // This is the first output whose x coordinate is to the right of host,
+        // therefore insert to the left of it.
+        insert_at = iter->link.prev;
+        break;
+      }
+    }
+    wl_list_insert(insert_at, &host->link);
+  }
 }
 
 static void sl_output_mode(void* data,
@@ -429,6 +515,10 @@ static void sl_destroy_host_output(struct wl_resource* resource) {
   wl_list_remove(&host->link);
   free(host->make);
   free(host->model);
+  if (host->ctx->separate_outputs) {
+    // Shift all outputs to the right of the deleted output to the left.
+    sl_output_shift_output_x(host, false);
+  }
   delete host;
 }
 
@@ -484,15 +574,20 @@ static void sl_bind_host_output(struct wl_client* client,
       wl_display_get_registry(ctx->display), output->id, &wl_output_interface,
       wl_resource_get_version(host->resource)));
   wl_output_add_listener(host->proxy, &sl_output_listener, host);
+  output->host_output = host;
   host->aura_output = NULL;
   // We assume that first output is internal by default.
   host->internal = wl_list_empty(&ctx->host_outputs);
   host->x = 0;
   host->y = 0;
+  host->virt_x = 0;
+  host->virt_y = 0;
   host->logical_x = 0;
   host->logical_y = 0;
   host->physical_width = 0;
   host->physical_height = 0;
+  host->virt_physical_width = 0;
+  host->virt_physical_height = 0;
   host->subpixel = WL_OUTPUT_SUBPIXEL_UNKNOWN;
   host->make = strdup("unknown");
   host->model = strdup("unknown");
@@ -500,6 +595,8 @@ static void sl_bind_host_output(struct wl_client* client,
   host->flags = 0;
   host->width = 1024;
   host->height = 768;
+  host->virt_rotated_width = 0;
+  host->virt_rotated_height = 0;
   host->logical_width = 1024;
   host->logical_height = 768;
   host->refresh = 60000;

@@ -154,6 +154,7 @@ executable("sommelier") {
 if (use.test) {
   static_library("libsommelier-test") {
     sources = [
+      "sommelier-output-test.cc",
       "sommelier-test.cc",
       "sommelier-window-test.cc",
       "testing/mock-wayland-channel.cc",

@@ -13,6 +13,8 @@
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "mock-wayland-channel.h"        // NOLINT(build/include_directory)
 #include "sommelier-test-util.h"         // NOLINT(build/include_directory)
+#include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
+#include "xdg-output-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
 
 namespace vm_tools {
@@ -55,20 +57,22 @@ class FakeWaylandClient {
     client = nullptr;
   }
 
-  // Bind to every advertised wl_output and return how many were bound.
-  unsigned int BindToWlOutputs(struct sl_context* ctx) {
+  // Bind to wl_outputs with specified ids and return how many were bound.
+  void BindToWlOutputs(struct sl_context* ctx, std::vector<int> ids) {
     unsigned int bound = 0;
     struct sl_global* global;
     wl_list_for_each(global, &ctx->globals, link) {
-      if (global->interface == &wl_output_interface) {
+      // If global name is in list of ids.
+      if (std::find(ids.begin(), ids.end(), global->name) != ids.end()) {
+        EXPECT_EQ(global->interface, &wl_output_interface);
         outputs.push_back(static_cast<wl_output*>(
             wl_registry_bind(client_registry, global->name, global->interface,
                              WL_OUTPUT_DONE_SINCE_VERSION)));
         bound++;
       }
     }
+    EXPECT_EQ(bound, ids.size());
     wl_display_flush(client_display);
-    return bound;
   }
 
   // Create a surface and return its ID
@@ -119,6 +123,8 @@ struct OutputConfig {
   int32_t transform = WL_OUTPUT_TRANSFORM_NORMAL;
   int32_t scale = 1;
   int32_t output_scale = 1000;
+  int32_t logical_width = 1920;
+  int32_t logical_height = 1080;
 };
 
 // Fixture for tests which exercise only Wayland functionality.
@@ -181,6 +187,8 @@ class WaylandTestBase : public ::testing::Test {
                         XDG_WM_BASE_GET_XDG_SURFACE_SINCE_VERSION);
     sl_registry_handler(&ctx, registry, next_server_id++, "zaura_shell",
                         ZAURA_TOPLEVEL_SET_WINDOW_BOUNDS_SINCE_VERSION);
+    sl_registry_handler(&ctx, registry, next_server_id++, "wp_viewporter",
+                        WP_VIEWPORTER_DESTROY_SINCE_VERSION);
   }
 
   // Set up one or more fake outputs for the test.
@@ -188,26 +196,44 @@ class WaylandTestBase : public ::testing::Test {
                         std::vector<OutputConfig> outputs) {
     // The host compositor should advertise a wl_output global for each output.
     // Sommelier will handle this by forwarding the globals to its client.
+    // global_ids stores the ids of the globals we are advertising so that
+    // we can bind to them later.
+    std::vector<int> global_ids = {};
     for (const auto& output : outputs) {
       UNUSED(output);  // suppress -Wunused-variable
+      global_ids.push_back(ctx.next_global_id);
       uint32_t output_id = next_server_id++;
       sl_registry_handler(&ctx, wl_display_get_registry(ctx.display), output_id,
                           "wl_output", WL_OUTPUT_DONE_SINCE_VERSION);
     }
 
     // host_outputs populates when Sommelier's client binds to those globals.
-    EXPECT_EQ(client->BindToWlOutputs(&ctx), outputs.size());
+    client->BindToWlOutputs(&ctx, global_ids);
     Pump();  // process the bind requests
 
     // Now the outputs are populated, we can advertise their settings.
+
+    // sl_output_shift_output_x modifies ctx.host_outputs, therefore we are
+    // putting them in a separate vector to iterate over. Newly bound outputs
+    // are inserted at the end of the list, there should be as many as there
+    // are configs.
+    std::vector<sl_host_output*> new_outputs = {};
+    int configs_left = outputs.size();
     sl_host_output* host_output;
-    uint32_t i = 0;
-    wl_list_for_each(host_output, &ctx.host_outputs, link) {
-      ConfigureOutput(host_output, outputs[i]);
-      i++;
+    wl_list_for_each_reverse(host_output, &ctx.host_outputs, link) {
+      new_outputs.push_back(host_output);
+      if (--configs_left < 1) {
+        break;
+      }
+    }
+    // Reversing new_outputs as they were added in reverse.
+    std::reverse(new_outputs.begin(), new_outputs.end());
+    int i = 0;
+    for (sl_host_output* output : new_outputs) {
+      ConfigureOutput(output, outputs[i++]);
     }
     // host_outputs should be the requested length.
-    EXPECT_EQ(i, outputs.size());
+    EXPECT_EQ(new_outputs.size(), outputs.size());
   }
 
   void ConfigureOutput(sl_host_output* host_output,
@@ -216,6 +242,12 @@ class WaylandTestBase : public ::testing::Test {
     uint32_t flags = ZAURA_OUTPUT_SCALE_PROPERTY_CURRENT;
     if (config.output_scale == 1000) {
       flags |= ZAURA_OUTPUT_SCALE_PROPERTY_PREFERRED;
+    }
+    // zxdg_output is only bound when using direct scale.
+    if (ctx.use_direct_scale) {
+      HostEventHandler(host_output->zxdg_output)
+          ->logical_size(nullptr, host_output->zxdg_output,
+                         config.logical_width, config.logical_height);
     }
     HostEventHandler(host_output->aura_output)
         ->scale(nullptr, host_output->aura_output, flags, config.output_scale);
@@ -232,6 +264,17 @@ class WaylandTestBase : public ::testing::Test {
         ->scale(nullptr, host_output->proxy, config.scale);
     HostEventHandler(host_output->proxy)->done(nullptr, host_output->proxy);
     Pump();
+  }
+
+  void RemoveOutput(sl_host_output* output) {
+    struct sl_output* sl_output;
+    wl_list_for_each(sl_output, &ctx.outputs, link) {
+      if (output == sl_output->host_output) {
+        sl_registry_remover(&ctx, wl_display_get_registry(ctx.display),
+                            sl_output->id);
+        break;
+      }
+    }
   }
 
   NiceMock<MockWaylandChannel> mock_wayland_channel_;

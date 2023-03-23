@@ -189,6 +189,7 @@ struct sl_context {
   bool use_explicit_fence;
   bool use_virtgpu_channel;
   bool use_direct_scale;
+  bool separate_outputs;
   // Never freed after allocation due the fact sommelier doesn't have a
   // shutdown function yet.
   WaylandChannel* channel;

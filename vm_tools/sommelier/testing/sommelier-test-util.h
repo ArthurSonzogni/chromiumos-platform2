@@ -9,6 +9,8 @@
 
 #include "../sommelier.h"                // NOLINT(build/include_directory)
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
+#include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
+#include "xdg-output-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
 
 namespace vm_tools {
@@ -30,6 +32,10 @@ const xdg_toplevel_listener* HostEventHandler(
 const wl_output_listener* HostEventHandler(struct wl_output* output);
 
 const zaura_output_listener* HostEventHandler(struct zaura_output* output);
+
+const wl_surface_listener* HostEventHandler(struct wl_surface* surface);
+
+const zxdg_output_v1_listener* HostEventHandler(struct zxdg_output_v1* output);
 
 uint32_t XdgToplevelId(sl_window* window);
 uint32_t AuraSurfaceId(sl_window* window);

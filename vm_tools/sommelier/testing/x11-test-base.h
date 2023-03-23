@@ -40,6 +40,7 @@ class X11TestBase : public WaylandTestBase {
     ctx.screen->save_unders = 0;
     ctx.screen->root_depth = 24;
     ctx.screen->allowed_depths_len = 0;
+    ctx.separate_outputs = true;
   }
 
   void Connect() override {
@@ -78,12 +79,37 @@ class X11TestBase : public WaylandTestBase {
     window->host_surface_id = xwayland->CreateSurface();
     sl_window_update(window);
     Pump();
+    // Default to the first output if any exist.
+    if (!wl_list_empty(&ctx.host_outputs)) {
+      struct sl_host_output* output = nullptr;
+      output = wl_container_of(ctx.host_outputs.next, output, link);
+      HostEventHandler(window->paired_surface->proxy)
+          ->enter(nullptr, window->paired_surface->proxy, output->proxy);
+    }
+    Pump();
     return window;
   }
 
  protected:
   NiceMock<MockXcbShim> xcb;
   std::unique_ptr<FakeWaylandClient> xwayland;
+};
+
+// Fixture for unit tests which use direct scale.
+class X11DirectScaleTest : public X11TestBase {
+ public:
+  void InitContext() override {
+    X11TestBase::InitContext();
+    ctx.use_direct_scale = 1;
+  }
+
+  void Connect() override {
+    X11TestBase::Connect();
+    wl_registry* registry = wl_display_get_registry(ctx.display);
+    sl_registry_handler(&ctx, registry, next_server_id++,
+                        "zxdg_output_manager_v1",
+                        WP_VIEWPORTER_DESTROY_SINCE_VERSION);
+  }
 };
 
 }  // namespace sommelier
