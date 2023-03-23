@@ -275,6 +275,22 @@ constexpr struct {
         .data = "none,name=systemd",
         .failure_is_fatal = false,
     },
+    {
+        .source = "securityfs",
+        .target = "/sys/kernel/security",
+        .fstype = "securityfs",
+        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
+        .data = nullptr,
+        .failure_is_fatal = false,
+    },
+    {
+        .source = "tracefs",
+        .target = "/sys/kernel/tracing",
+        .fstype = "tracefs",
+        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
+        .data = nullptr,
+        .failure_is_fatal = false,
+    },
 };
 
 // Symlinks to be created on boot. It's done after all mounts have completed.
