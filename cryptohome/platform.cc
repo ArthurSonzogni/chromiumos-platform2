@@ -409,8 +409,8 @@ bool Platform::GetOwnership(const FilePath& path,
     ret = lstat(path.value().c_str(), &path_status);
 
   if (ret != 0) {
-    PLOG(ERROR) << (follow_links ? "" : "l") << "stat() of " << path.value()
-                << " failed.";
+    PLOG(ERROR) << (follow_links ? "" : "l") << "stat() of \"" << path.value()
+                << "\" failed.";
     return false;
   }
   if (user_id)
@@ -432,8 +432,8 @@ bool Platform::SetOwnership(const FilePath& path,
   else
     ret = lchown(path.value().c_str(), user_id, group_id);
   if (ret) {
-    PLOG(ERROR) << (follow_links ? "" : "l") << "chown() of " << path.value()
-                << " to (" << user_id << "," << group_id << ") failed.";
+    PLOG(ERROR) << (follow_links ? "" : "l") << "chown() of \"" << path.value()
+                << "\" to (" << user_id << "," << group_id << ") failed.";
     return false;
   }
   return true;
@@ -444,7 +444,7 @@ bool Platform::GetPermissions(const FilePath& path, mode_t* mode) const {
 
   struct stat path_status;
   if (stat(path.value().c_str(), &path_status) != 0) {
-    PLOG(ERROR) << "stat() of " << path.value() << " failed.";
+    PLOG(ERROR) << "stat() of \"" << path.value() << "\" failed.";
     return false;
   }
   *mode = path_status.st_mode;
@@ -455,8 +455,8 @@ bool Platform::SetPermissions(const FilePath& path, mode_t mode) {
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
   if (chmod(path.value().c_str(), mode)) {
-    PLOG(ERROR) << "chmod() of " << path.value() << " to (" << std::oct << mode
-                << ") failed.";
+    PLOG(ERROR) << "chmod() of \"" << path.value() << "\" to (" << std::oct
+                << mode << ") failed.";
     return false;
   }
   return true;
@@ -520,7 +520,7 @@ bool Platform::GetQuotaProjectId(const base::FilePath& path,
     std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingFile(path);
   }
   if (brillo::SafeFD::IsError(err)) {
-    PLOG(ERROR) << "Failed to open " << path.value() << " with error "
+    PLOG(ERROR) << "Failed to open \"" << path.value() << "\" with error "
                 << static_cast<int>(err);
     return false;
   }
@@ -549,7 +549,7 @@ bool Platform::SetQuotaProjectId(const base::FilePath& path, int project_id) {
     std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingFile(path);
   }
   if (brillo::SafeFD::IsError(err)) {
-    PLOG(ERROR) << "Failed to open " << path.value() << " with error "
+    PLOG(ERROR) << "Failed to open \"" << path.value() << "\" with error "
                 << static_cast<int>(err);
     return false;
   }
