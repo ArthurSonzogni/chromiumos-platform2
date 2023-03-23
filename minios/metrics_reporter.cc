@@ -8,24 +8,21 @@
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/time/time.h>
 
 #include "minios/metrics_reporter.h"
 #include "minios/utils.h"
 
-namespace {
-
-constexpr char kRecoveryReason[] = "Installer.Recovery.Reason";
-
-// Metrics file path in the stateful partition. See:
-// init/upstart/send-recovery-metrics.conf
-constexpr char kStatefulEventsPath[] = "/stateful/.recovery_histograms";
-
-constexpr int kRecoveryReasonCode_NBR = 200;
-constexpr int kRecoveryReasonCode_MAX = 255;
-
-}  // namespace
-
 namespace minios {
+
+const char kRecoveryDurationMinutes[] = "Installer.Recovery.NbrDurationMinutes";
+const char kRecoveryReason[] = "Installer.Recovery.Reason";
+const char kStatefulEventsPath[] = "/stateful/.recovery_histograms";
+
+const int kRecoveryDurationMinutes_Buckets = 50;
+const int kRecoveryDurationMinutes_MAX = 10 * 24 * 60;  // 10 days
+const int kRecoveryReasonCode_NBR = 200;
+const int kRecoveryReasonCode_MAX = 255;
 
 MetricsReporter::MetricsReporter(
     ProcessManagerInterface* process_manager,
@@ -37,6 +34,10 @@ MetricsReporter::MetricsReporter(
     metrics_lib_ = std::make_unique<MetricsLibrary>();
 
   metrics_lib_->Init();
+}
+
+void MetricsReporter::RecordNBRStart() {
+  start_time_ = base::Time::Now();
 }
 
 void MetricsReporter::ReportNBRComplete() {
@@ -54,8 +55,14 @@ void MetricsReporter::ReportNBRComplete() {
   }
 
   metrics_lib_->SetOutputFile(kStatefulEventsPath);
+  // Report recovery reason code.
   metrics_lib_->SendEnumToUMA(kRecoveryReason, kRecoveryReasonCode_NBR,
                               kRecoveryReasonCode_MAX);
+  // Report duration.
+  base::TimeDelta duration = base::Time::Now() - start_time_;
+  metrics_lib_->SendToUMA(kRecoveryDurationMinutes, duration.InMinutes(),
+                          /*min=*/0, kRecoveryDurationMinutes_MAX,
+                          kRecoveryDurationMinutes_Buckets);
 }
 
 }  // namespace minios

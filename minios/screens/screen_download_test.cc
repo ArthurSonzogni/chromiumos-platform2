@@ -7,9 +7,8 @@
 #include <gtest/gtest.h>
 #include <minios/proto_bindings/minios.pb.h>
 
-#include "metrics/metrics_library_mock.h"
 #include "minios/mock_draw_interface.h"
-#include "minios/mock_process_manager.h"
+#include "minios/mock_metrics_reporter.h"
 #include "minios/mock_recovery_installer.h"
 #include "minios/mock_screen_controller.h"
 #include "minios/mock_update_engine_proxy.h"
@@ -37,21 +36,16 @@ class ScreenDownloadTest : public ::testing::Test {
       std::make_shared<NiceMock<MockDrawInterface>>();
   MockDrawInterface* mock_draw_interface_ptr_ = mock_draw_interface_.get();
 
-  std::unique_ptr<MetricsLibraryMock> mock_metrics_library_ =
-      std::make_unique<MetricsLibraryMock>();
-  MetricsLibraryMock* mock_metrics_library_ptr_ = mock_metrics_library_.get();
-
-  std::unique_ptr<MockProcessManager> mock_process_manager_ =
-      std::make_unique<MockProcessManager>();
-  MockProcessManager* mock_process_manager_ptr_ = mock_process_manager_.get();
+  std::unique_ptr<MockMetricsReporter> mock_metrics_reporter_ =
+      std::make_unique<MockMetricsReporter>();
+  MockMetricsReporter* mock_metrics_reporter_ptr_ =
+      mock_metrics_reporter_.get();
 
   StrictMock<MockScreenControllerInterface> mock_screen_controller_;
 
   ScreenDownload screen_download_{
       std::move(mock_recovery_installer_), std::move(mock_update_engine_proxy_),
-      mock_draw_interface_,
-      std::make_unique<MetricsReporter>(mock_process_manager_ptr_,
-                                        std::move(mock_metrics_library_)),
+      mock_draw_interface_, std::move(mock_metrics_reporter_),
       &mock_screen_controller_};
 };
 
@@ -60,6 +54,8 @@ TEST_F(ScreenDownloadTest, RepartitionDiskFailed) {
   EXPECT_CALL(*mock_recovery_installer_ptr_, RepartitionDisk())
       .WillOnce(testing::Return(false));
   EXPECT_CALL(mock_screen_controller_, OnError(ScreenType::kGeneralError));
+  EXPECT_CALL(*mock_metrics_reporter_ptr_, RecordNBRStart);
+  EXPECT_CALL(*mock_metrics_reporter_ptr_, ReportNBRComplete).Times(0);
   screen_download_.StartRecovery();
 }
 
@@ -77,10 +73,7 @@ TEST_F(ScreenDownloadTest, UpdateEngineProgressComplete) {
   update_engine::StatusResult status;
   status.set_current_operation(update_engine::Operation::UPDATED_NEED_REBOOT);
 
-  EXPECT_CALL(*mock_process_manager_ptr_, RunCommand)
-      .WillOnce(testing::Return(0));
-  EXPECT_CALL(*mock_metrics_library_ptr_, SetOutputFile);
-  EXPECT_CALL(*mock_metrics_library_ptr_, SendEnumToUMA);
+  EXPECT_CALL(*mock_metrics_reporter_ptr_, ReportNBRComplete);
   EXPECT_CALL(mock_screen_controller_,
               OnStateChanged(CheckState(State::COMPLETED)));
   EXPECT_CALL(*mock_update_engine_ptr_, TriggerReboot());
@@ -123,6 +116,8 @@ TEST_F(ScreenDownloadTest, StartUpdateFailed) {
   EXPECT_CALL(*mock_update_engine_ptr_, StartUpdate())
       .WillOnce(testing::Return(false));
   EXPECT_CALL(mock_screen_controller_, OnError(ScreenType::kDownloadError));
+  EXPECT_CALL(*mock_metrics_reporter_ptr_, RecordNBRStart);
+  EXPECT_CALL(*mock_metrics_reporter_ptr_, ReportNBRComplete).Times(0);
   screen_download_.StartRecovery();
 }
 

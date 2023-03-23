@@ -106,6 +106,7 @@ if (use.test) {
       "draw_utils_test.cc",
       "key_reader_test.cc",
       "logger_test.cc",
+      "metrics_reporter_test.cc",
       "network_manager_test.cc",
       "recovery_installer_test.cc",
       "screen_controller_test.cc",

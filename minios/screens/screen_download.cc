@@ -126,6 +126,8 @@ std::string ScreenDownload::GetName() {
 }
 
 void ScreenDownload::StartRecovery() {
+  metrics_reporter_->RecordNBRStart();
+
   if (!recovery_installer_->RepartitionDisk()) {
     LOG(ERROR) << "Could not repartition disk. Unable to continue.";
     screen_controller_->OnError(ScreenType::kGeneralError);

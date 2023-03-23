@@ -13,9 +13,12 @@ class MetricsReporterInterface {
  public:
   virtual ~MetricsReporterInterface() = default;
 
-  // Report the recovery reason to be NBR. The metrics will be written to the
-  // stateful partition to be reported after next boot. See:
-  // init/upstart/send-recovery-metrics.conf
+  // Record the NBR start time.
+  virtual void RecordNBRStart() = 0;
+
+  // Report the recovery reason to be NBR, and the duration for it to complete.
+  // The metrics will be written to the stateful partition to be reported after
+  // next boot. See: init/upstart/send-recovery-metrics.conf
   virtual void ReportNBRComplete() = 0;
 };
 
