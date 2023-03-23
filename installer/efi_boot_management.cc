@@ -536,7 +536,9 @@ class EfiBootManager {
   // being unable to boot without the entry to be sufficiently low that we'd
   // rather allow the install/update to proceed. b/226935367
   // Returns true if we consider this failure "acceptable", false otherwise.
-  bool IsAcceptableWriteFailure(EfiVarError error) { return error == ENOSPC; }
+  bool IsAcceptableWriteFailure(EfiVarError error) {
+    return error == ENOSPC || error == EINTR;
+  }
 
   // This is the high level logic of how we maintain our boot entries:
   // 1. Figure out what an entry pointing at our install would look like.

@@ -674,6 +674,19 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_AcceptableWriteFail) {
               UnorderedElementsAre(Pair("BootOrder", BootOrderData({}))));
 }
 
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_AcceptableWriteEintrFail) {
+  efivar_->SetData({{"BootOrder", {}}});
+  // EINTR is an acceptable fail says b/264907147.
+  efivar_->set_variable_result_ = {EINTR};
+  InstallConfig install_config;
+
+  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
+
+  EXPECT_TRUE(success);
+  EXPECT_THAT(efivar_->data_,
+              UnorderedElementsAre(Pair("BootOrder", BootOrderData({}))));
+}
+
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_BootWriteFail) {
   efivar_->SetData({{"BootOrder", {}}});
   efivar_->set_variable_result_ = {std::nullopt, EPERM};
