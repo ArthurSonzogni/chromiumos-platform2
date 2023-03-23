@@ -594,35 +594,6 @@ std::unique_ptr<VaultKeyset> KeysetManagement::LoadVaultKeysetForUser(
   return keyset;
 }
 
-void KeysetManagement::ResetLECredentialsWithValidatedVK(
-    const VaultKeyset& validated_vk, const ObfuscatedUsername& obfuscated) {
-  std::vector<int> key_indices;
-  if (!GetVaultKeysets(obfuscated, &key_indices)) {
-    LOG(WARNING) << "No valid keysets on disk for " << obfuscated;
-    return;
-  }
-
-  for (int index : key_indices) {
-    std::unique_ptr<VaultKeyset> vk_reset =
-        LoadVaultKeysetForUser(obfuscated, index);
-    if (!vk_reset || !vk_reset->IsLECredential() ||  // Skip non-LE Credentials.
-        crypto_->GetWrongAuthAttempts(vk_reset->GetLELabel()) == 0) {
-      continue;
-    }
-
-    CryptoError err;
-    if (!crypto_->ResetLECredential(*vk_reset, validated_vk, &err)) {
-      LOG(WARNING) << "Failed to reset an LE credential: " << err;
-      continue;
-    }
-
-    vk_reset->SetAuthLocked(false);
-    if (!vk_reset->Save(vk_reset->GetSourceFile())) {
-      LOG(WARNING) << "Failed to clear auth_locked in VaultKeyset on disk.";
-    }
-  }
-}
-
 void KeysetManagement::RemoveLECredentials(
     const ObfuscatedUsername& obfuscated_username) {
   std::vector<int> key_indices;

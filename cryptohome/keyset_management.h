@@ -100,11 +100,6 @@ class KeysetManagement {
   // the metadata.
   CryptohomeStatus RemoveKeysetFile(const VaultKeyset& remove_vk);
 
-  // Attempts to reset all LE credentials associated with a username, given
-  // validated VK |validated_vk|.
-  void ResetLECredentialsWithValidatedVK(const VaultKeyset& validated_vk,
-                                         const ObfuscatedUsername& obfuscated);
-
   // Removes all LE credentials for a user with |obfuscated_username|.
   virtual void RemoveLECredentials(
       const ObfuscatedUsername& obfuscated_username);
