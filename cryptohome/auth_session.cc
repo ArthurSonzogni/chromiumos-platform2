@@ -531,7 +531,7 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
     }
     // TODO(b/229825202): Migrate KeysetManagement and wrap the returned error.
     CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        keyset_management_->AddInitialKeysetWithKeyBlobs(
+        keyset_management_->AddInitialKeyset(
             vk_backup_intent, obfuscated_username_, key_data,
             /*challenge_credentials_keyset_info*/ std::nullopt,
             file_system_keyset_.value(), std::move(*key_blobs.get()),
@@ -556,7 +556,7 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     }
-    CryptohomeStatus status = keyset_management_->AddKeysetWithKeyBlobs(
+    CryptohomeStatus status = keyset_management_->AddKeyset(
         vk_backup_intent, obfuscated_username_, key_label, key_data,
         *vault_keyset_.get(), std::move(*key_blobs.get()),
         std::move(auth_state), true /*clobber*/);
@@ -716,7 +716,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   DCHECK(status.ok());
 
   MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-      keyset_management_->GetValidKeysetWithKeyBlobs(
+      keyset_management_->GetValidKeyset(
           obfuscated_username_, std::move(*key_blobs.get()), key_data_.label());
   if (!vk_status.ok()) {
     vault_keyset_ = nullptr;
@@ -1888,7 +1888,7 @@ void AuthSession::ResaveKeysetOnKeyBlobsGenerated(
     return;
   }
 
-  CryptohomeStatus status = keyset_management_->ReSaveKeysetWithKeyBlobs(
+  CryptohomeStatus status = keyset_management_->ReSaveKeyset(
       updated_vault_keyset, std::move(*key_blobs), std::move(auth_block_state));
   // Updated ketyset is saved on the disk, it is safe to update
   // |vault_keyset_|.
@@ -2871,9 +2871,9 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     // backup VaultKeyset from disk so that migrating a PIN backup VaultKeyset
     // will be possible when/if needed.
     MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        keyset_management_->GetValidKeysetWithKeyBlobs(
-            obfuscated_username_, std::move(*key_blobs.get()),
-            auth_factor_label);
+        keyset_management_->GetValidKeyset(obfuscated_username_,
+                                           std::move(*key_blobs.get()),
+                                           auth_factor_label);
     if (vk_status.ok()) {
       vault_keyset_ = std::move(vk_status).value();
     } else {

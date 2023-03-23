@@ -227,8 +227,8 @@ void MockKeysetCreation(MockAuthBlockUtility& auth_block_utility) {
 void MockInitialKeysetAdding(const ObfuscatedUsername& obfuscated_username,
                              const SerializedVaultKeyset& serialized_vk,
                              MockKeysetManagement& keyset_management) {
-  EXPECT_CALL(keyset_management, AddInitialKeysetWithKeyBlobs(
-                                     _, obfuscated_username, _, _, _, _, _))
+  EXPECT_CALL(keyset_management,
+              AddInitialKeyset(_, obfuscated_username, _, _, _, _, _))
       .WillOnce([=](VaultKeysetIntent, const ObfuscatedUsername&,
                     const KeyData&,
                     const std::optional<
@@ -246,8 +246,7 @@ void MockInitialKeysetAdding(const ObfuscatedUsername& obfuscated_username,
 void MockKeysetLoadingViaBlobs(const ObfuscatedUsername& obfuscated_username,
                                const SerializedVaultKeyset& serialized_vk,
                                MockKeysetManagement& keyset_management) {
-  EXPECT_CALL(keyset_management,
-              GetValidKeysetWithKeyBlobs(obfuscated_username, _, _))
+  EXPECT_CALL(keyset_management, GetValidKeyset(obfuscated_username, _, _))
       .WillOnce([=](const ObfuscatedUsername&, KeyBlobs,
                     const std::optional<std::string>&) {
         auto vk = std::make_unique<VaultKeyset>();
@@ -408,7 +407,7 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
   void ExpectAuth(const Username& username, const brillo::SecureBlob& secret) {
     auto vk = std::make_unique<VaultKeyset>();
     Credentials creds(username, secret);
-    EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+    EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
         .WillOnce(Return(ByMove(std::move(vk))));
     ON_CALL(keyset_management_, UserExists(SanitizeUserName(username)))
         .WillByDefault(Return(true));

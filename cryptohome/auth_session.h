@@ -543,7 +543,7 @@ class AuthSession final {
   // Fetches a valid VaultKeyset for |obfuscated_username_| that matches the
   // label provided by key_data_.label(). The VaultKeyset is loaded and
   // initialized into |vault_keyset_| through
-  // KeysetManagement::GetValidKeysetWithKeyBlobs(). This function is needed for
+  // KeysetManagement::GetValidKeyset(). This function is needed for
   // processing callback results in an asynchronous manner through the |on_done|
   // callback.
   void LoadVaultKeysetAndFsKeys(AuthFactorType request_auth_factor_type,

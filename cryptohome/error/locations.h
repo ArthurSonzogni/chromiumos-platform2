@@ -690,9 +690,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./keyset_management.cc */
   kLocKeysetManagementSaveFailedInEncryptAndSaveKeyset = 432,
   /* ./keyset_management.cc */
-  kLocKeysetManagementVKDuplicateLabelAddKeysetWithKeyBlobs = 433,
+  kLocKeysetManagementVKDuplicateLabelAddKeyset = 433,
   /* ./keyset_management.cc */
-  kLocKeysetManagementKeyQuotaExceededAddKeysetWithKeyBlobs = 434,
+  kLocKeysetManagementKeyQuotaExceededAddKeyset = 434,
   /* ./keyset_management.cc */
   kLocKeysetManagementFailedEncryptAndSaveKeysetWithKeyBlobs = 435,
   /* ./keyset_management.cc */

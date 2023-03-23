@@ -456,7 +456,7 @@ void PersistVaultKeyset(KeysetManagement* keyset_management,
   }
 
   if (old_vault_keyset) {  // Add VaultKeyset.
-    CryptohomeStatus status = keyset_management->AddKeysetWithKeyBlobs(
+    CryptohomeStatus status = keyset_management->AddKeyset(
         VaultKeysetIntent{.backup = false}, obfuscated_username,
         key_data.label(), key_data, *old_vault_keyset, std::move(*key_blobs),
         std::move(auth_state),
@@ -483,7 +483,7 @@ void PersistVaultKeyset(KeysetManagement* keyset_management,
     }
   } else {  // Add Initial VaultKeyset.
     CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        keyset_management->AddInitialKeysetWithKeyBlobs(
+        keyset_management->AddInitialKeyset(
             VaultKeysetIntent{.backup = false}, obfuscated_username, key_data,
             /*challenge_credentials_keyset_info=*/std::nullopt,
             FileSystemKeyset::CreateRandom(), std::move(*key_blobs),

@@ -59,8 +59,7 @@ KeysetManagement::KeysetManagement(
       crypto_(crypto),
       vault_keyset_factory_(std::move(vault_keyset_factory)) {}
 
-MountStatusOr<std::unique_ptr<VaultKeyset>>
-KeysetManagement::GetValidKeysetWithKeyBlobs(
+MountStatusOr<std::unique_ptr<VaultKeyset>> KeysetManagement::GetValidKeyset(
     const ObfuscatedUsername& obfuscated,
     KeyBlobs key_blobs,
     const std::optional<std::string>& label) {
@@ -251,7 +250,7 @@ bool KeysetManagement::GetVaultKeysetLabels(
 }
 
 CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>
-KeysetManagement::AddInitialKeysetWithKeyBlobs(
+KeysetManagement::AddInitialKeyset(
     const VaultKeysetIntent& vk_intent,
     const ObfuscatedUsername& obfuscated_username,
     const KeyData& key_data,
@@ -378,7 +377,7 @@ bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
   return true;
 }
 
-CryptohomeStatus KeysetManagement::ReSaveKeysetWithKeyBlobs(
+CryptohomeStatus KeysetManagement::ReSaveKeyset(
     VaultKeyset& vault_keyset,
     KeyBlobs key_blobs,
     std::unique_ptr<AuthBlockState> auth_state) const {
@@ -417,7 +416,7 @@ CryptohomeStatus KeysetManagement::ReSaveKeysetWithKeyBlobs(
   return OkStatus<CryptohomeError>();
 }
 
-CryptohomeStatus KeysetManagement::AddKeysetWithKeyBlobs(
+CryptohomeStatus KeysetManagement::AddKeyset(
     const VaultKeysetIntent& vk_intent,
     const ObfuscatedUsername& obfuscated_username_new,
     const std::string& key_label,
@@ -434,8 +433,7 @@ CryptohomeStatus KeysetManagement::AddKeysetWithKeyBlobs(
     LOG(INFO) << "Label already exists, clobbering the existing Keyset.";
     if (!clobber) {
       return MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocKeysetManagementVKDuplicateLabelAddKeysetWithKeyBlobs),
+          CRYPTOHOME_ERR_LOC(kLocKeysetManagementVKDuplicateLabelAddKeyset),
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
                           PossibleAction::kReboot}),
           user_data_auth::CryptohomeErrorCode::
@@ -462,8 +460,7 @@ CryptohomeStatus KeysetManagement::AddKeysetWithKeyBlobs(
     if (!file_found) {
       LOG(WARNING) << "Failed to find an available keyset slot";
       return MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocKeysetManagementKeyQuotaExceededAddKeysetWithKeyBlobs),
+          CRYPTOHOME_ERR_LOC(kLocKeysetManagementKeyQuotaExceededAddKeyset),
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
                           PossibleAction::kReboot, PossibleAction::kPowerwash}),
           user_data_auth::CryptohomeErrorCode::
@@ -518,10 +515,10 @@ CryptohomeStatus KeysetManagement::UpdateKeysetWithKeyBlobs(
   }
 
   // We set clobber to be true as we are sure that there is an existing keyset.
-  return AddKeysetWithKeyBlobs(vk_intent, obfuscated_username_new,
-                               key_data_new.label(), key_data_new, vault_keyset,
-                               std::move(key_blobs), std::move(auth_state),
-                               true /* we are updating existing keyset */);
+  return AddKeyset(vk_intent, obfuscated_username_new, key_data_new.label(),
+                   key_data_new, vault_keyset, std::move(key_blobs),
+                   std::move(auth_state),
+                   true /* we are updating existing keyset */);
 }
 
 CryptohomeStatus KeysetManagement::RemoveKeysetFile(

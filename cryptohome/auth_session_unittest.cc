@@ -279,7 +279,7 @@ class AuthSessionTest : public ::testing::Test {
         .WillRepeatedly(Return(true));
     EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
         .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-    EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+    EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
         .WillRepeatedly(make_vk_with_label);
 
     EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
@@ -559,7 +559,7 @@ TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
             .Run(OkStatus<CryptohomeCryptoError>(),
                  std::make_unique<KeyBlobs>());
       });
-  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
       .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
         KeyData key_data;
@@ -694,7 +694,7 @@ TEST_F(AuthSessionTest,
       .WillOnce(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
       .WillRepeatedly(Return(AuthBlockType::kScrypt));
-  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
       .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
         KeyData key_data;
@@ -707,7 +707,7 @@ TEST_F(AuthSessionTest,
   EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_)).WillOnce(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_))
       .WillOnce(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(keyset_management_, ReSaveKeysetWithKeyBlobs(_, _, _));
+  EXPECT_CALL(keyset_management_, ReSaveKeyset(_, _, _));
 
   auto key_blobs = std::make_unique<KeyBlobs>();
   auto auth_block_state2 = std::make_unique<AuthBlockState>();
@@ -786,7 +786,7 @@ TEST_F(AuthSessionTest,
       .WillOnce(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
       .WillRepeatedly(Return(AuthBlockType::kScrypt));
-  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
       .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
         KeyData key_data;
@@ -802,7 +802,7 @@ TEST_F(AuthSessionTest,
       .WillOnce(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_))
       .WillOnce(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(keyset_management_, ReSaveKeysetWithKeyBlobs(_, _, _));
+  EXPECT_CALL(keyset_management_, ReSaveKeyset(_, _, _));
 
   auto key_blobs = std::make_unique<KeyBlobs>();
   auto auth_block_state2 = std::make_unique<AuthBlockState>();
@@ -879,7 +879,7 @@ TEST_F(AuthSessionTest,
       .WillOnce(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
       .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
-  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
       .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
         KeyData key_data;
@@ -997,8 +997,7 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
   request.mutable_auth_factor()->mutable_password_metadata();
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
-  EXPECT_CALL(keyset_management_,
-              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
+  EXPECT_CALL(keyset_management_, AddInitialKeyset(_, _, _, _, _, _, _))
       .WillOnce(
           [](auto, auto, const KeyData& key_data, auto, auto, auto, auto) {
             auto vk = std::make_unique<VaultKeyset>();
@@ -1072,8 +1071,7 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
                  std::make_unique<KeyBlobs>(),
                  std::make_unique<AuthBlockState>());
       });
-  EXPECT_CALL(keyset_management_,
-              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
+  EXPECT_CALL(keyset_management_, AddInitialKeyset(_, _, _, _, _, _, _))
       .WillOnce(
           [](auto, auto, const KeyData& key_data, auto, auto, auto, auto) {
             auto vk = std::make_unique<VaultKeyset>();
@@ -1102,8 +1100,7 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
   request2.mutable_auth_input()->mutable_password_input()->set_secret(
       kFakeOtherPass);
 
-  EXPECT_CALL(keyset_management_,
-              AddKeysetWithKeyBlobs(_, _, _, _, _, _, _, _));
+  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _, _, _, _, _, _));
 
   // Test.
   TestFuture<CryptohomeStatus> add_future2;
@@ -1574,7 +1571,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorWebAuthnIntent) {
             .Run(OkStatus<CryptohomeCryptoError>(),
                  std::make_unique<KeyBlobs>());
       });
-  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
       .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
         KeyData key_data;
@@ -1923,7 +1920,6 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                    std::move(auth_block_state));
         });
-
     // Calling AddAuthFactor.
     user_data_auth::AddAuthFactorRequest add_pin_request;
     add_pin_request.set_auth_session_id(auth_session.serialized_token());
@@ -4049,8 +4045,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
                  std::move(auth_block_state));
       })
       .RetiresOnSaturation();
-  EXPECT_CALL(keyset_management_,
-              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
+  EXPECT_CALL(keyset_management_, AddInitialKeyset(_, _, _, _, _, _, _))
       .WillOnce(
           [](auto, auto, const KeyData& key_data, auto, auto, auto, auto) {
             auto vk = std::make_unique<VaultKeyset>();
@@ -4200,7 +4195,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), make_key_blobs());
       });
-  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
       .WillOnce([&](auto...) { return make_vk(); });
   // These calls will happen during the migration.
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))

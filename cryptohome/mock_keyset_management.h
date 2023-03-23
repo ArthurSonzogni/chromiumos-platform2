@@ -71,17 +71,17 @@ class MockKeysetManagement : public KeysetManagement {
               (VaultKeyset * vault_keyset),
               (const, override));
   MOCK_METHOD(CryptohomeStatus,
-              ReSaveKeysetWithKeyBlobs,
+              ReSaveKeyset,
               (VaultKeyset&, KeyBlobs, std::unique_ptr<AuthBlockState>),
               (const, override));
   MOCK_METHOD(MountStatusOr<std::unique_ptr<VaultKeyset>>,
-              GetValidKeysetWithKeyBlobs,
+              GetValidKeyset,
               (const ObfuscatedUsername&,
                KeyBlobs,
                const std::optional<std::string>&),
               (override));
   MOCK_METHOD(CryptohomeStatus,
-              AddKeysetWithKeyBlobs,
+              AddKeyset,
               (const VaultKeysetIntent&,
                const ObfuscatedUsername&,
                const std::string&,
@@ -93,7 +93,7 @@ class MockKeysetManagement : public KeysetManagement {
               (override));
   MOCK_METHOD(
       CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>,
-      AddInitialKeysetWithKeyBlobs,
+      AddInitialKeyset,
       (const VaultKeysetIntent& vk_intent,
        const ObfuscatedUsername&,
        const KeyData&,
