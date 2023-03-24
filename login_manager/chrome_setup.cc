@@ -32,7 +32,6 @@
 #include <brillo/udev/udev_enumerate.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos-config/libcros_config/cros_config_interface.h>
-#include <chromeos/constants/vm_tools.h>
 #include <chromeos/ui/chromium_command_builder.h>
 #include <chromeos/ui/util.h>
 #include <libsegmentation/feature_management.h>
@@ -386,13 +385,6 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   // This directory also houses the default wayland and arc-bridge sockets that
   // are exported to VMs and Android.
   CHECK(EnsureDirectoryExists(base::FilePath("/run/chrome"), uid, gid, 0755));
-
-  // This directory houses secure wayland sockets that will be used by the
-  // concierge daemon (i.e. sockets used by VMs).
-  const base::FilePath wayland_dir("/run/wayland");
-  CHECK(EnsureDirectoryExists(wayland_dir, kRootUid, kRootGid, 0755));
-  CHECK(EnsureDirectoryExists(
-      wayland_dir.Append(vm_tools::kConciergeSecurityContext), uid, gid, 0755));
 
   // Create a directory where the libassistant V2 can create socket files for
   // gRPC.
