@@ -81,3 +81,13 @@ message Store {
   // chrome://flags overrides.
   repeated FeatureOverride overrides = 3;
 }
+
+// ComputedState is evaluate_seed's output, including both the evaluated state
+// of each feature in the seed as well as the seed that was used to generate
+// that state.
+message ComputedState {
+  // Computed state for each experiment in a seed.
+  repeated FeatureOverride overrides = 1;
+  // Which seed was used to generate the overrides?
+  SeedDetails used_seed = 2;
+}
