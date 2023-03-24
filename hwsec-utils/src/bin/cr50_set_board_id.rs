@@ -51,6 +51,15 @@ fn main() {
     }
     let mut rlz: &str = if args.len() == 3 { args[2] } else { "" };
     let flag: u16 = if phase == "whitelabel_pvt_flags" {
+        // Whitelabel flags are set by using 0xffffffff as the rlz and the
+        // whitelabel flags. Cr50 images that support partial board id will ignore
+        // the board id type if it's 0xffffffff and only set the flags.
+        // Partial board id support was added in 0.3.24 and 0.4.24. Before that
+        // images won't ever ignore the type field. They always set
+        // board_id_type_inv to ~board_id_type. Trying the whitelabel_flags command
+        // on these old images would blow the board id type in addition to the
+        // flags, and prevent setting the RLZ later. Exit here if the image doesn't
+        // support partial board id.
         if GSC_NAME == "cr50" {
             exit_if_not_support_partial_board_id(&mut real_ctx);
         }
@@ -61,10 +70,12 @@ fn main() {
             exit_if_not_support_partial_board_id(&mut real_ctx);
         }
         rlz = "0xffffffff";
+        // Per discussion in b/179626571
         0x3f7f
     } else if phase == "whitelabel_pvt" {
         0x3f80
     } else if phase == "whitelabel_dev" {
+        // Per discussion in b/179626571
         0x3f7f
     } else if phase == "unknown" {
         0xff00
@@ -73,6 +84,8 @@ fn main() {
         || phase.starts_with("evt")
         || phase.starts_with("dvt")
     {
+        // Per discussion related in b/67009607 and
+        // go/cr50-board-id-in-factory#heading=h.7woiaqrgyoe1, 0x8000 is reserved.
         0x7f7f
     } else if phase.starts_with("mp") || phase.starts_with("pvt") {
         0x7f80
@@ -83,6 +96,8 @@ fn main() {
 
     let tmp_vec: Vec<u8>;
     if rlz.is_empty() {
+        // To provision board ID, we use RLZ brand code which is a four letter code
+        // (see full list on go/crosrlz) from cros_config.
         if let Ok(cros_config_exec_result) = real_ctx
             .cmd_runner()
             .run("cros_config", vec!["/", "brand-code"])

@@ -75,11 +75,15 @@ pub fn cr50_check_board_id_and_flag(
     })?;
 
     if board_id.part_1 == ERASED_BOARD_ID.part_1 && board_id.part_2 == ERASED_BOARD_ID.part_2 {
+        // Board ID is type cleared, it's ok to go ahead and set it.
         Ok(())
     } else if board_id.part_1 != new_board_id {
         error!("Board ID had been set differently.");
         Err(Cr50SetBoardIDVerdict::AlreadySetDifferentlyError)
     } else if (board_id.flag ^ (new_flag as u32)) == WHITELABEL {
+        // The 0x4000 bit is the difference between MP and whitelabel flags. Factory
+        // scripts can ignore this mismatch if it's the only difference between the set
+        // board id and the new board id.
         error!("Board ID and flag have already been set. Whitelabel mismatched.");
         Err(Cr50SetBoardIDVerdict::AlreadySetError)
     } else if board_id.flag != new_flag as u32 {
@@ -109,6 +113,10 @@ pub fn cr50_set_board_id_and_flag(
     }
 }
 
+// Exit if cr50 is running an image with a version less than the given prod or
+// prepvt version. The arguments are the lowest prod version the DUT should be
+// running, the lowest prepvt version the DUT should be running, and a
+// description of the feature.
 pub fn check_cr50_support(
     ctx: &mut impl Context,
     target_prod: Version,
@@ -154,6 +162,13 @@ pub fn check_cr50_support(
     }
 }
 
+// Only check and set Board ID in normal mode without debug features turned on
+// and only if the device has been finalized, as evidenced by the software
+// write protect status. In some states scripts should also skip the reboot
+// after update. If the SW WP is disabled or the state can not be gotten, skip
+// reboot. Use ERR_GENERAL when the board id shouldn't be set. Use the
+// ERR_DEVICE_STATE exit status when the reboot and setting the board id should
+// be skipped
 pub fn check_device(ctx: &mut impl Context) -> Result<(), Cr50SetBoardIDVerdict> {
     let flash_output = ctx
         .cmd_runner()
@@ -209,10 +224,6 @@ mod tests {
 
     #[test]
     fn test_cr50_check_board_id_and_flag_ok() {
-        use crate::context::mock::MockContext;
-        use crate::context::Context;
-        use crate::cr50::cr50_check_board_id_and_flag;
-
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["-a", "-i"],
@@ -227,11 +238,6 @@ mod tests {
 
     #[test]
     fn test_cr50_check_board_id_and_flag_part_1_neq_new_board_id() {
-        use crate::context::mock::MockContext;
-        use crate::context::Context;
-        use crate::cr50::cr50_check_board_id_and_flag;
-        use crate::cr50::Cr50SetBoardIDVerdict;
-
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["-a", "-i"],
@@ -249,11 +255,6 @@ mod tests {
 
     #[test]
     fn test_cr50_check_board_id_and_flag_flag_xor_new_flag_eq_whitelabel() {
-        use crate::context::mock::MockContext;
-        use crate::context::Context;
-        use crate::cr50::cr50_check_board_id_and_flag;
-        use crate::cr50::Cr50SetBoardIDVerdict;
-
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["-a", "-i"],
@@ -268,11 +269,6 @@ mod tests {
 
     #[test]
     fn test_cr50_check_board_id_and_flag_board_id_flag_neq_new_flag() {
-        use crate::context::mock::MockContext;
-        use crate::context::Context;
-        use crate::cr50::cr50_check_board_id_and_flag;
-        use crate::cr50::Cr50SetBoardIDVerdict;
-
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["-a", "-i"],
@@ -290,11 +286,6 @@ mod tests {
 
     #[test]
     fn test_cr50_check_board_id_and_flag_else_case() {
-        use crate::context::mock::MockContext;
-        use crate::context::Context;
-        use crate::cr50::cr50_check_board_id_and_flag;
-        use crate::cr50::Cr50SetBoardIDVerdict;
-
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["-a", "-i"],
@@ -309,10 +300,6 @@ mod tests {
 
     #[test]
     fn test_cr50_set_board_id_and_flag_ok() {
-        use crate::context::mock::MockContext;
-        use crate::context::Context;
-        use crate::cr50::cr50_set_board_id_and_flag;
-
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["-a", "-i", "12345678:0000abcd"],
