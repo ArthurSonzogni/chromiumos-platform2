@@ -132,13 +132,16 @@ class MockManager : public Manager {
               (const ServiceRefPtr&),
               (const, override));
   MOCK_METHOD(void, ConnectToBestWiFiService, (), (override));
-  MOCK_METHOD((const std::string&), dhcp_hostname, (), (const, override));
   MOCK_METHOD(const ManagerProperties&, GetProperties, (), (const, override));
   MOCK_METHOD(std::vector<DeviceRefPtr>,
               FilterByTechnology,
               (Technology tech),
               (const, override));
   MOCK_METHOD(void, TetheringStatusChanged, (), ());
+  MOCK_METHOD(DHCPProvider::Options,
+              CreateDefaultDHCPOption,
+              (),
+              (const, override));
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }

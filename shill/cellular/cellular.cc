@@ -1476,7 +1476,7 @@ void Cellular::LinkUp(int data_interface_index) {
              (bearer && bearer->ipv4_config_method() ==
                             CellularBearer::IPConfigMethod::kDHCP)) {
     SLOG(2) << LoggingTag() << ": Start DHCP to acquire IPv4 configuration.";
-    dhcp_opts = DHCPProvider::Options::Create(*manager());
+    dhcp_opts = manager()->CreateDefaultDHCPOption();
     dhcp_opts->use_arp_gateway = false;
   }
 

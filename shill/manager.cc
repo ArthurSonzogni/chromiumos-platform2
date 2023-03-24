@@ -1127,6 +1127,13 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
   }
 }
 
+DHCPProvider::Options Manager::CreateDefaultDHCPOption() const {
+  return DHCPProvider::Options{
+      .use_arp_gateway = props_.arp_gateway,
+      .hostname = props_.dhcp_hostname,
+  };
+}
+
 void Manager::UpdateEnabledTechnologies() {
   Error error;
   adaptor_->EmitStringsChanged(kEnabledTechnologiesProperty,

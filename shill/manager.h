@@ -386,14 +386,11 @@ class Manager {
   PortalDetector::ProbingConfiguration GetPortalDetectorProbingConfiguration()
       const;
 
-  bool GetArpGateway() const { return props_.arp_gateway; }
+  // Creates a default DHCP Options object using the DHCP Manager properties.
+  mockable DHCPProvider::Options CreateDefaultDHCPOption() const;
 
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();
-
-  virtual const std::string& dhcp_hostname() const {
-    return props_.dhcp_hostname;
-  }
 
   // Writes the Service |to_update| to persistent storage. If the Service is
   // ephemeral, it is moved to the current Profile.

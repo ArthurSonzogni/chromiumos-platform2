@@ -24,7 +24,6 @@ namespace shill {
 class ControlInterface;
 class DHCPCDListenerInterface;
 class EventDispatcher;
-class Manager;
 class Metrics;
 
 // DHCPProvider is a singleton providing the main DHCP configuration entrypoint.
@@ -40,10 +39,6 @@ class DHCPProvider {
  public:
   // Options to create a DHCP controller.
   struct Options {
-    // Creates a default Options object using the dhcp properties provided in
-    // Manager.
-    // TODO(b/232177767): Consider moving this function into Manager.
-    static Options Create(const Manager& manager);
     // If true, the DHCP client will ARP for the gateway IP address as an
     // additional safeguard against the issued IP address being in-use by
     // another station.

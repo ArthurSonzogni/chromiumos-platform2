@@ -137,7 +137,6 @@ class EthernetTest : public testing::Test {
   std::string ifname_ = "eth0";
   std::string hwaddr_ = "000102030405";
   RpcIdentifier dbus_path_ = RpcIdentifier("/interface/path");
-  std::string dhcp_hostname_ = "chromeos";
 
   bool GetLinkUp() { return ethernet_->link_up_; }
   void SetLinkUp(bool link_up) { ethernet_->link_up_ = link_up; }
@@ -156,7 +155,6 @@ class EthernetTest : public testing::Test {
 
   const PropertyStore& GetStore() { return ethernet_->store(); }
   void StartEthernet() {
-    ON_CALL(manager_, dhcp_hostname()).WillByDefault(ReturnRef(dhcp_hostname_));
     EXPECT_CALL(ethernet_provider_, CreateService(_))
         .WillOnce(Return(mock_service_));
     EXPECT_CALL(ethernet_provider_, RegisterService(Eq(mock_service_)));

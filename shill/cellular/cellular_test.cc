@@ -148,7 +148,6 @@ class CellularTest : public testing::Test {
         manager_(&control_interface_, &dispatcher_, &metrics_),
         modem_info_(&control_interface_, &manager_),
         device_info_(&manager_),
-        dhcp_hostname_("chromeos"),
         mock_mobile_operator_info_(nullptr),
         profile_(new NiceMock<MockProfile>(&manager_)) {
     cellular_service_provider_.set_profile_for_testing(profile_);
@@ -174,7 +173,6 @@ class CellularTest : public testing::Test {
     device_->set_network_for_testing(std::move(network));
 
     EXPECT_CALL(manager_, DeregisterService(_)).Times(AnyNumber());
-    ON_CALL(manager_, dhcp_hostname()).WillByDefault(ReturnRef(dhcp_hostname_));
     EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
                 GetActivationState(_, _))
         .WillRepeatedly(Return(PendingActivationStore::kStateActivated));
@@ -551,8 +549,6 @@ class CellularTest : public testing::Test {
   NiceMock<MockDeviceInfo> device_info_;
   NiceMock<MockProcessManager> process_manager_;
   NiceMock<MockRTNLHandler> rtnl_handler_;
-
-  std::string dhcp_hostname_;
 
   bool create_gsm_card_proxy_from_factory_;
   std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy_;

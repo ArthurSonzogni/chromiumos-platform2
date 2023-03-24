@@ -670,8 +670,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     static_cast<Device*>(wifi_.get())->rtnl_handler_ = &rtnl_handler_;
     ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
-    EXPECT_CALL(manager_, dhcp_hostname())
-        .WillRepeatedly(ReturnRef(dhcp_hostname_));
+    EXPECT_CALL(manager_, CreateDefaultDHCPOption())
+        .WillRepeatedly(Return(DHCPProvider::Options{
+            .use_arp_gateway = true,
+            .hostname = dhcp_hostname_,
+        }));
     EXPECT_CALL(*supplicant_bss_proxy_, Die()).Times(AnyNumber());
   }
 

@@ -248,7 +248,7 @@ void Ethernet::ConnectTo(EthernetService* service) {
     return;
   }
   SelectService(service);
-  auto dhcp_opts = DHCPProvider::Options::Create(*manager());
+  auto dhcp_opts = manager()->CreateDefaultDHCPOption();
   dhcp_opts.use_arp_gateway = false;
   Network::StartOptions opts = {
       .dhcp = dhcp_opts,
