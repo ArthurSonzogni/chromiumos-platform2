@@ -10,14 +10,58 @@ Run `cca help` for more information about the supported subcommands.
 
 import argparse
 import codecs
+import enum
 import logging
 import pathlib
 import shutil
 import sys
-from typing import List, Optional
+from typing import List, Optional, Type
 
 from cros_camera_app import app
 from cros_camera_app import device
+
+
+class EnumAction(argparse.Action):
+    """Action that converts between the string choices and Enum for argparse."""
+
+    def __init__(
+        self,
+        option_strings: str,
+        dest: str,
+        enum_type: Type[enum.Enum],
+        **kwargs,
+    ):
+        """Initializes the instance.
+
+        Args:
+            option_strings: The option strings that trigger this action.
+            dest: The name of the attribute to hold the selected enum value.
+            enum_type: The enum class to use for argument choices.
+            **kwargs: Additional keyword arguments to pass to argparse.Action.
+        """
+        self._enum_type = enum_type
+        kwargs["choices"] = [e.name.lower() for e in enum_type]
+        super().__init__(option_strings, dest, **kwargs)
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str,
+        option_string=None,
+    ):
+        """Converts the selected value to an enum and updates the namespace.
+
+        Args:
+            parser: The argument parser instance.
+            namespace: The namespace to hold the selected enum value.
+            values: The selected value as a string.
+            option_string: The option string that triggered this action.
+        """
+        del parser  # unused
+        del option_string  # unused
+        enum_value = self._enum_type[values.upper()]
+        setattr(namespace, self.dest, enum_value)
 
 
 def cmd_setup(args: argparse.Namespace):
@@ -27,10 +71,8 @@ def cmd_setup(args: argparse.Namespace):
 
 # TODO(shik): Wake up the display if it's sleeping.
 def cmd_open(args: argparse.Namespace):
-    facing = args.facing and app.Facing[args.facing.upper()]
-    mode = args.mode and app.Mode[args.mode.upper()]
     cca = app.CameraApp()
-    cca.open(facing=facing, mode=mode)
+    cca.open(facing=args.facing, mode=args.mode)
 
 
 def cmd_close(args: argparse.Namespace):
@@ -42,9 +84,8 @@ def cmd_close(args: argparse.Namespace):
 # TODO(shik): Provide an option to reuse the existing CCA session and not to
 # close the app afterward.
 def cmd_take_photo(args: argparse.Namespace):
-    facing = args.facing and app.Facing[args.facing.upper()]
     cca = app.CameraApp()
-    path = cca.take_photo(facing=facing)
+    path = cca.take_photo(facing=args.facing)
     if args.output:
         shutil.copy2(path, args.output)
         logging.info("Copied photo from %s to %s", path, args.output)
@@ -79,12 +120,14 @@ def parse_args(argv: Optional[List[str]]) -> argparse.Namespace:
     open_parser.add_argument(
         "--facing",
         help="facing of the camera to be opened",
-        choices=[f.name.lower() for f in app.Facing],
+        action=EnumAction,
+        enum_type=app.Facing,
     )
     open_parser.add_argument(
         "--mode",
         help="target capture mode in app",
-        choices=[m.name.lower() for m in app.Mode],
+        action=EnumAction,
+        enum_type=app.Mode,
     )
     open_parser.set_defaults(func=cmd_open)
 
@@ -103,7 +146,8 @@ def parse_args(argv: Optional[List[str]]) -> argparse.Namespace:
     take_photo_parser.add_argument(
         "--facing",
         help="facing of the camera to be captured",
-        choices=[f.name.lower() for f in app.Facing],
+        action=EnumAction,
+        enum_type=app.Facing,
     )
     take_photo_parser.add_argument(
         "--output",
