@@ -3,14 +3,15 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback.h>
-#include <base/run_loop.h>
-#include <base/test/bind.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_path.h>
@@ -52,15 +53,9 @@ class SystemConfigTest : public ::testing::Test {
   void TearDown() override { task_environment_.RunUntilIdle(); }
 
   bool NvmeSelfTestSupportedSync() {
-    base::RunLoop run_loop;
-    bool result;
-    system_config()->NvmeSelfTestSupported(
-        base::BindLambdaForTesting([&](bool response) {
-          result = response;
-          run_loop.Quit();
-        }));
-    run_loop.Run();
-    return result;
+    base::test::TestFuture<bool> future;
+    system_config()->NvmeSelfTestSupported(future.GetCallback());
+    return future.Get();
   }
 
   void SetDebugdAvailability(bool available) {
@@ -204,10 +199,7 @@ TEST_F(SystemConfigTest, NvmeSupportedFalse) {
 TEST_F(SystemConfigTest, NvmeSelfTestSupportedTrue) {
   constexpr char kResult[] = "test      : 0x100\noacs      : 0x17 ";
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeIdentityOption, _, _, _))
-      .WillOnce(WithArg<1>(
-          [&](base::OnceCallback<void(const std::string&)> callback) {
-            std::move(callback).Run(kResult);
-          }));
+      .WillOnce(base::test::RunOnceCallback<1>(std::string(kResult)));
   SetDebugdAvailability(true);
   EXPECT_TRUE(NvmeSelfTestSupportedSync());
 }
@@ -215,10 +207,7 @@ TEST_F(SystemConfigTest, NvmeSelfTestSupportedTrue) {
 TEST_F(SystemConfigTest, NvmeSelfTestSupportedFalse) {
   constexpr char kResult[] = "test      : 0x100\noacs      : 0x27 ";
   EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeIdentityOption, _, _, _))
-      .WillOnce(WithArg<1>(
-          [&](base::OnceCallback<void(const std::string&)> callback) {
-            std::move(callback).Run(kResult);
-          }));
+      .WillOnce(base::test::RunOnceCallback<1>(std::string(kResult)));
   SetDebugdAvailability(true);
   EXPECT_FALSE(NvmeSelfTestSupportedSync());
 }
