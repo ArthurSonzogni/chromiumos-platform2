@@ -94,6 +94,44 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
         std::move(mock_cr50_utils), std::move(mock_write_protect_utils));
   }
 
+  RmadState CreateFinalizeRequest(FinalizeState_FinalizeChoice choice) const {
+    RmadState state;
+    state.mutable_finalize()->set_choice(choice);
+    return state;
+  }
+
+  void ExpectTransitionSucceeded(scoped_refptr<FinalizeStateHandler> handler,
+                                 const RmadState& state,
+                                 RmadState::StateCase expected_state_case) {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_OK);
+    EXPECT_EQ(state_case, expected_state_case);
+  }
+
+  void ExpectTransitionFailedWithError(
+      scoped_refptr<FinalizeStateHandler> handler,
+      const RmadState& state,
+      RmadErrorCode expected_error) {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, expected_error);
+    EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
+  }
+
+  void ExpectSignal(FinalizeStatus_Status expected_status,
+                    double expected_progress,
+                    FinalizeStatus_Error expected_error =
+                        FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN) {
+    EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
+        .WillOnce(Invoke([expected_status, expected_progress,
+                          expected_error](const FinalizeStatus& status) {
+          EXPECT_EQ(status.status(), expected_status);
+          EXPECT_DOUBLE_EQ(status.progress(), expected_progress);
+          EXPECT_EQ(status.error(), expected_error);
+        }));
+    task_environment_.FastForwardBy(
+        FinalizeStateHandler::kReportStatusInterval);
+  }
+
  protected:
   StrictMock<SignalSender> signal_sender_;
 
@@ -103,36 +141,22 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
   base::RunLoop run_loop_;
 };
 
-TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled_Success) {
+TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled_Succeeded) {
   auto handler = CreateStateHandler({false, true}, true, true,
                                     kValidBoardIdFlags, kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
-      .WillOnce(Invoke([](const FinalizeStatus& status) {
-        EXPECT_EQ(status.status(),
-                  FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
-        EXPECT_EQ(status.progress(), 1);
-        EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
-      }));
   handler->RunState();
-  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
-TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpEnabled_Success) {
+TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpEnabled_Succeeded) {
   auto handler = CreateStateHandler({true, true}, false, true,
                                     kValidBoardIdType, kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
-      .WillOnce(Invoke([](const FinalizeStatus& status) {
-        EXPECT_EQ(status.status(),
-                  FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
-        EXPECT_EQ(status.progress(), 1);
-        EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
-      }));
   handler->RunState();
-  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_EnableSwwpFailed) {
@@ -140,16 +164,9 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_EnableSwwpFailed) {
                                     kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
-      .WillOnce(Invoke([](const FinalizeStatus& status) {
-        EXPECT_EQ(status.status(),
-                  FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
-        EXPECT_EQ(status.progress(), 0);
-        EXPECT_EQ(status.error(),
-                  FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_SWWP);
-      }));
   handler->RunState();
-  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0,
+               FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_SWWP);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_DisableFactoryModeFailed) {
@@ -157,16 +174,9 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_DisableFactoryModeFailed) {
                                     kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
-      .WillOnce(Invoke([](const FinalizeStatus& status) {
-        EXPECT_EQ(status.status(),
-                  FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
-        EXPECT_EQ(status.progress(), 0.5);
-        EXPECT_EQ(status.error(),
-                  FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);
-      }));
   handler->RunState();
-  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.5,
+               FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled) {
@@ -174,16 +184,9 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled) {
                                     kValidBoardIdType, kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
-      .WillOnce(Invoke([](const FinalizeStatus& status) {
-        EXPECT_EQ(status.status(),
-                  FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
-        EXPECT_EQ(status.progress(), 0.8);
-        EXPECT_EQ(status.error(),
-                  FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);
-      }));
   handler->RunState();
-  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.8,
+               FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId) {
@@ -191,15 +194,9 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId) {
                                     kInvalidBoardIdType, kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
-      .WillOnce(Invoke([](const FinalizeStatus& status) {
-        EXPECT_EQ(status.status(),
-                  FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
-        EXPECT_EQ(status.progress(), 0.9);
-        EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
-      }));
   handler->RunState();
-  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.9,
+               FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId_Bypass) {
@@ -210,15 +207,8 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId_Bypass) {
   // Bypass board ID check.
   EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDirPath)));
 
-  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
-      .WillOnce(Invoke([](const FinalizeStatus& status) {
-        EXPECT_EQ(status.status(),
-                  FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
-        EXPECT_EQ(status.progress(), 1);
-        EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
-      }));
   handler->RunState();
-  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags) {
@@ -226,15 +216,9 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags) {
                                     kValidBoardIdType, kInvalidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
-      .WillOnce(Invoke([](const FinalizeStatus& status) {
-        EXPECT_EQ(status.status(),
-                  FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
-        EXPECT_EQ(status.progress(), 0.9);
-        EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
-      }));
   handler->RunState();
-  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.9,
+               FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags_Bypass) {
@@ -245,31 +229,21 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags_Bypass) {
   // Bypass board ID check.
   EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDirPath)));
 
-  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
-      .WillOnce(Invoke([](const FinalizeStatus& status) {
-        EXPECT_EQ(status.status(),
-                  FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
-        EXPECT_EQ(status.progress(), 1);
-        EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
-      }));
   handler->RunState();
-  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
-TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Success) {
+TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Succeeded) {
   auto handler = CreateStateHandler({false, true}, true, true,
                                     kValidBoardIdType, kValidBoardIdFlags);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   task_environment_.RunUntilIdle();
 
-  RmadState state;
-  state.mutable_finalize()->set_choice(
-      FinalizeState::RMAD_FINALIZE_CHOICE_CONTINUE);
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+  ExpectTransitionSucceeded(
+      handler,
+      CreateFinalizeRequest(FinalizeState::RMAD_FINALIZE_CHOICE_CONTINUE),
+      RmadState::StateCase::kRepairComplete);
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
@@ -278,13 +252,10 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
 
-  RmadState state;
-  state.mutable_finalize()->set_choice(
-      FinalizeState::RMAD_FINALIZE_CHOICE_CONTINUE);
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_WAIT);
-  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
+  ExpectTransitionFailedWithError(
+      handler,
+      CreateFinalizeRequest(FinalizeState::RMAD_FINALIZE_CHOICE_CONTINUE),
+      RMAD_ERROR_WAIT);
 
   task_environment_.RunUntilIdle();
 }
@@ -296,11 +267,8 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingState) {
   handler->RunState();
   task_environment_.RunUntilIdle();
 
-  RmadState state;
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_REQUEST_INVALID);
-  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
+  ExpectTransitionFailedWithError(handler, RmadState(),
+                                  RMAD_ERROR_REQUEST_INVALID);
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingArgs) {
@@ -310,13 +278,10 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingArgs) {
   handler->RunState();
   task_environment_.RunUntilIdle();
 
-  RmadState state;
-  state.mutable_finalize()->set_choice(
-      FinalizeState::RMAD_FINALIZE_CHOICE_UNKNOWN);
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_MISSING);
-  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
+  ExpectTransitionFailedWithError(
+      handler,
+      CreateFinalizeRequest(FinalizeState::RMAD_FINALIZE_CHOICE_UNKNOWN),
+      RMAD_ERROR_REQUEST_ARGS_MISSING);
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_BlockingFailure_Retry) {
@@ -327,39 +292,23 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_BlockingFailure_Retry) {
   task_environment_.RunUntilIdle();
 
   // Get blocking failure.
-  {
-    RmadState state;
-    state.mutable_finalize()->set_choice(
-        FinalizeState::RMAD_FINALIZE_CHOICE_CONTINUE);
-
-    auto [error, state_case] = handler->GetNextStateCase(state);
-    EXPECT_EQ(error, RMAD_ERROR_FINALIZATION_FAILED);
-    EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
-  }
+  ExpectTransitionFailedWithError(
+      handler,
+      CreateFinalizeRequest(FinalizeState::RMAD_FINALIZE_CHOICE_CONTINUE),
+      RMAD_ERROR_FINALIZATION_FAILED);
 
   // Request a retry.
-  {
-    RmadState state;
-    state.mutable_finalize()->set_choice(
-        FinalizeState::RMAD_FINALIZE_CHOICE_RETRY);
-
-    auto [error, state_case] = handler->GetNextStateCase(state);
-    EXPECT_EQ(error, RMAD_ERROR_WAIT);
-    EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
-  }
+  ExpectTransitionFailedWithError(
+      handler, CreateFinalizeRequest(FinalizeState::RMAD_FINALIZE_CHOICE_RETRY),
+      RMAD_ERROR_WAIT);
 
   task_environment_.RunUntilIdle();
 
   // Still fails.
-  {
-    RmadState state;
-    state.mutable_finalize()->set_choice(
-        FinalizeState::RMAD_FINALIZE_CHOICE_CONTINUE);
-
-    auto [error, state_case] = handler->GetNextStateCase(state);
-    EXPECT_EQ(error, RMAD_ERROR_FINALIZATION_FAILED);
-    EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
-  }
+  ExpectTransitionFailedWithError(
+      handler,
+      CreateFinalizeRequest(FinalizeState::RMAD_FINALIZE_CHOICE_CONTINUE),
+      RMAD_ERROR_FINALIZATION_FAILED);
 }
 
 }  // namespace rmad
