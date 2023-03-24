@@ -8,7 +8,9 @@
 #include <utility>
 #include <openssl/err.h>
 
+#include <base/check.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <crypto/scoped_openssl_types.h>
 
 #include "libhwsec-foundation/crypto/aes.h"
