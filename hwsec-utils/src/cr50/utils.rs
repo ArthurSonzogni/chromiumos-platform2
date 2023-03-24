@@ -186,3 +186,41 @@ pub fn get_challenge_string(ctx: &mut impl Context) -> Result<String, HwsecError
         .map_err(|_| HwsecError::GsctoolResponseBadFormatError)?
         .replace("Challange:", ""))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::extract_rw_fw_version_from_gsctool_response;
+    use crate::cr50::Version;
+    use crate::error::HwsecError;
+
+    #[test]
+    fn test_extract_rw_fw_version_from_gsctool_response_ok() {
+        let result = extract_rw_fw_version_from_gsctool_response("RW_FW_VER=0.0.1");
+        assert_eq!(
+            result,
+            Ok(Version {
+                epoch: 0,
+                major: 0,
+                minor: 1
+            })
+        );
+    }
+
+    #[test]
+    fn test_extract_rw_fw_version_from_gsctool_response_no_version_after_rw_fw_substring() {
+        let result = extract_rw_fw_version_from_gsctool_response("RW_FW_VER=");
+        assert_eq!(result, Err(HwsecError::GsctoolResponseBadFormatError));
+    }
+
+    #[test]
+    fn test_extract_rw_fw_version_from_gsctool_response_no_rw_fw_substring() {
+        let result = extract_rw_fw_version_from_gsctool_response("0.0.1");
+        assert_eq!(result, Err(HwsecError::GsctoolResponseBadFormatError));
+    }
+
+    #[test]
+    fn test_extract_rw_fw_version_from_gsctool_response_not_valid_version() {
+        let result = extract_rw_fw_version_from_gsctool_response("RW_FW_VER=123");
+        assert_eq!(result, Err(HwsecError::GsctoolResponseBadFormatError));
+    }
+}

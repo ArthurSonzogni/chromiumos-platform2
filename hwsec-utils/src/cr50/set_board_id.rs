@@ -162,6 +162,25 @@ pub fn check_cr50_support(
     }
 }
 
+pub fn check_cr50_support_partial_board_id(
+    ctx: &mut impl Context,
+) -> Result<(), Cr50SetBoardIDVerdict> {
+    check_cr50_support(
+        ctx,
+        Version {
+            epoch: 0,
+            major: 3,
+            minor: 24,
+        },
+        Version {
+            epoch: 0,
+            major: 4,
+            minor: 24,
+        },
+        "partial board id",
+    )
+}
+
 // Only check and set Board ID in normal mode without debug features turned on
 // and only if the device has been finalized, as evidenced by the software
 // write protect status. In some states scripts should also skip the reboot
@@ -219,6 +238,8 @@ pub fn check_device(ctx: &mut impl Context) -> Result<(), Cr50SetBoardIDVerdict>
 mod tests {
     use crate::context::mock::MockContext;
     use crate::context::Context;
+    use crate::cr50::check_cr50_support_partial_board_id;
+    use crate::cr50::cr50_check_board_id_and_flag;
     use crate::cr50::cr50_set_board_id_and_flag;
     use crate::cr50::Cr50SetBoardIDVerdict;
 
@@ -328,4 +349,56 @@ mod tests {
 
     // TODO (b/249410379): design more unit tests,
     // continue from testing cr50_set_board_id_and_flag
+    #[test]
+    fn test_check_cr50_support_ok() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["-a", "-f", "-M"],
+            0,
+            "RW_FW_VER=1.0.0",
+            "",
+        );
+
+        let result = check_cr50_support_partial_board_id(&mut mock_ctx);
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn test_check_cr50_support_failed_to_get_version() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx
+            .cmd_runner()
+            .add_gsctool_interaction(vec!["-a", "-f", "-M"], 0, "", "");
+
+        let result = check_cr50_support_partial_board_id(&mut mock_ctx);
+        assert_eq!(result, Err(Cr50SetBoardIDVerdict::GeneralError));
+    }
+
+    #[test]
+    fn test_check_cr50_support_prod_version_too_old() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["-a", "-f", "-M"],
+            0,
+            "RW_FW_VER=0.3.23",
+            "",
+        );
+
+        let result = check_cr50_support_partial_board_id(&mut mock_ctx);
+        assert_eq!(result, Err(Cr50SetBoardIDVerdict::GeneralError));
+    }
+
+    #[test]
+    fn test_check_cr50_support_prepvt_version_too_old() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["-a", "-f", "-M"],
+            0,
+            "RW_FW_VER=0.4.23",
+            "",
+        );
+
+        let result = check_cr50_support_partial_board_id(&mut mock_ctx);
+        assert_eq!(result, Err(Cr50SetBoardIDVerdict::GeneralError));
+    }
 }

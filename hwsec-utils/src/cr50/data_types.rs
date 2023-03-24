@@ -14,6 +14,7 @@ pub struct RmaSnBits {
     pub sn_bits: SnBits,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct Version {
     pub epoch: u8,
     pub major: u8,

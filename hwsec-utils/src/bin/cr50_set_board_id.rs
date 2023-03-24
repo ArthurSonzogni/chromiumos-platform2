@@ -8,32 +8,18 @@ use std::process::exit;
 use hwsec_utils::command_runner::CommandRunner;
 use hwsec_utils::context::Context;
 use hwsec_utils::context::RealContext;
-use hwsec_utils::cr50::check_cr50_support;
+use hwsec_utils::cr50::check_cr50_support_partial_board_id;
 use hwsec_utils::cr50::check_device;
 use hwsec_utils::cr50::cr50_check_board_id_and_flag;
 use hwsec_utils::cr50::cr50_set_board_id_and_flag;
 use hwsec_utils::cr50::Cr50SetBoardIDVerdict;
-use hwsec_utils::cr50::Version;
 use hwsec_utils::cr50::GSC_NAME;
 use log::error;
 
 fn exit_if_not_support_partial_board_id(ctx: &mut impl Context) {
-    check_cr50_support(
-        ctx,
-        Version {
-            epoch: 0,
-            major: 3,
-            minor: 24,
-        },
-        Version {
-            epoch: 0,
-            major: 4,
-            minor: 24,
-        },
-        "partial board id",
-    )
-    .map_err(|e| exit(e as i32))
-    .unwrap();
+    check_cr50_support_partial_board_id(ctx)
+        .map_err(|e| exit(e as i32))
+        .unwrap();
 }
 fn main() {
     let mut real_ctx = RealContext::new();
