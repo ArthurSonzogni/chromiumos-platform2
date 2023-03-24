@@ -280,11 +280,12 @@ uint32_t UserProximityWatcher::GetUsableSensorRoles(const SensorType type,
         return responsibility;
 
       if (use_proximity_for_cellular_ &&
-          path.find("-lte", proximity_index) != std::string::npos)
+          (path.find("lte", proximity_index) != std::string::npos ||
+           path.find("cellular", proximity_index) != std::string::npos))
         responsibility |= UserProximityObserver::SensorRole::SENSOR_ROLE_LTE;
 
       if (use_proximity_for_wifi_ &&
-          path.find("-wifi", proximity_index) != std::string::npos)
+          path.find("wifi", proximity_index) != std::string::npos)
         responsibility |= UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI;
       break;
     }

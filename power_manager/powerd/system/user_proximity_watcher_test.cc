@@ -210,6 +210,16 @@ TEST_F(UserProximityWatcherTest, DetectUsableLteDevice) {
   EXPECT_EQ(1, GetNumOpenedSensors());
 }
 
+TEST_F(UserProximityWatcherTest, DetectUsableCellularDevice) {
+  Init(UserProximityWatcher::SensorType::SAR,
+       UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, nullptr);
+
+  AddDevice("/sys/mockproximity", "/dev/proximity-cellular");
+  EXPECT_EQ(JoinActions("OnNewSensor(roles=0x2)", nullptr),
+            observer_->GetActions());
+  EXPECT_EQ(1, GetNumOpenedSensors());
+}
+
 TEST_F(UserProximityWatcherTest, DetectNotUsableWifiDevice) {
   Init(UserProximityWatcher::SensorType::SAR,
        UserProximityObserver::SensorRole::SENSOR_ROLE_LTE, nullptr);
