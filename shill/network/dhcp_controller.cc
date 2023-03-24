@@ -51,9 +51,6 @@ constexpr char kDHCPCDUser[] = "dhcp";
 constexpr char kDHCPCDGroup[] = "dhcp";
 constexpr char kDHCPCDPathFormatPID[] = "var/run/dhcpcd/dhcpcd-%s-4.pid";
 
-// TODO(b/175350963): Make this configurable through Chrome flag.
-constexpr bool kEnableRFC8925 = false;
-
 }  // namespace
 
 DHCPController::DHCPController(ControlInterface* control_interface,
@@ -62,6 +59,7 @@ DHCPController::DHCPController(ControlInterface* control_interface,
                                const std::string& device_name,
                                const std::string& lease_file_suffix,
                                bool arp_gateway,
+                               bool enable_rfc_8925,
                                const std::string& hostname,
                                Technology technology,
                                Metrics* metrics)
@@ -73,6 +71,7 @@ DHCPController::DHCPController(ControlInterface* control_interface,
       pid_(0),
       is_lease_active_(false),
       arp_gateway_(arp_gateway),
+      enable_rfc_8925_(enable_rfc_8925),
       is_gateway_arp_active_(false),
       hostname_(hostname),
       lease_acquisition_timeout_(kAcquisitionTimeout),
@@ -382,7 +381,7 @@ std::vector<std::string> DHCPController::GetFlags() {
     flags.push_back("--unicast");  // Enable unicast ARP on renew.
   }
 
-  if (kEnableRFC8925) {
+  if (enable_rfc_8925_) {
     // Request option 108 to prefer IPv6-only. If server also supports this, no
     // dhcp lease will be assigned and dhcpcd will notify shill with an
     // IPv6OnlyPreferred StatusChanged event.

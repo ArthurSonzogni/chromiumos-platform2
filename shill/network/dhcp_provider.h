@@ -43,6 +43,9 @@ class DHCPProvider {
     // additional safeguard against the issued IP address being in-use by
     // another station.
     bool use_arp_gateway = false;
+    // If true, the DHCP client will request option 108 to prefer IPv6-only on a
+    // capable network.
+    bool use_rfc_8925 = false;
     // The DHCP lease file will contain the suffix supplied in |lease_name| if
     // non-empty, otherwise the interface name will be used.
     std::string lease_name;

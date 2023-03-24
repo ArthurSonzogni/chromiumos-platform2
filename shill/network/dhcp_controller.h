@@ -73,6 +73,7 @@ class DHCPController {
                  const std::string& device_name,
                  const std::string& lease_file_suffix,
                  bool arp_gateway,
+                 bool enable_rfc_8925,
                  const std::string& hostname,
                  Technology technology,
                  Metrics* metrics);
@@ -248,6 +249,10 @@ class DHCPController {
   // Specifies whether to supply an argument to the DHCP client to validate
   // the acquired IP address using an ARP request to the gateway IP address.
   bool arp_gateway_;
+
+  // Specifies whether request option 108 to prefer IPv6-only on a capable
+  // network.
+  bool enable_rfc_8925_;
 
   // Whether it is valid to retain the lease acquired via gateway ARP.
   bool is_gateway_arp_active_;

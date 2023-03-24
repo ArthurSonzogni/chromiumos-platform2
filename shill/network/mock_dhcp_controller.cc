@@ -16,6 +16,7 @@ MockDHCPController::MockDHCPController(ControlInterface* control_interface,
                      device_name,
                      /*lease_file_suffix=*/"",
                      /*arp_gateway=*/false,
+                     /*enable_rfc_8925=*/false,
                      /*hostname=*/"",
                      Technology::kUnknown,
                      /*metrics=*/nullptr) {}

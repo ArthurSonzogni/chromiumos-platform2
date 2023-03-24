@@ -195,6 +195,7 @@ Manager::Manager(ControlInterface* control_interface,
                             &Manager::GetAlwaysOnVpnPackage,
                             &Manager::SetAlwaysOnVpnPackage);
   store_.RegisterBool(kArpGatewayProperty, &props_.arp_gateway);
+  store_.RegisterBool(kEnableRFC8925Property, &props_.enable_rfc_8925);
   HelpRegisterConstDerivedStrings(kAvailableTechnologiesProperty,
                                   &Manager::AvailableTechnologies);
   HelpRegisterDerivedString(kCheckPortalListProperty,
@@ -1130,6 +1131,7 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
 DHCPProvider::Options Manager::CreateDefaultDHCPOption() const {
   return DHCPProvider::Options{
       .use_arp_gateway = props_.arp_gateway,
+      .use_rfc_8925 = props_.enable_rfc_8925,
       .hostname = props_.dhcp_hostname,
   };
 }

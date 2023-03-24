@@ -66,6 +66,7 @@ class DefaultProfile : public Profile {
   static const char kStorageProhibitedTechnologies[];
   static const char kStorageDhcpHostname[];
   static const char kStorageWifiGlobalFTEnabled[];
+  static constexpr char kStorageEnableRFC8925[] = "RFC8925";
 
   void HelpRegisterConstDerivedBool(const std::string& name,
                                     bool (DefaultProfile::*get)(Error* error));

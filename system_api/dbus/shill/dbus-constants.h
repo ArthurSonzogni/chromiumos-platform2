@@ -95,6 +95,7 @@ const char kDhcpPropertyHostnameProperty[] = "DHCPProperty.Hostname";
 const char kDisableWiFiVHTProperty[] = "DisableWiFiVHT";
 const char kDNSProxyDOHProvidersProperty[] = "DNSProxyDOHProviders";
 const char kEnabledTechnologiesProperty[] = "EnabledTechnologies";
+const char kEnableRFC8925Property[] = "EnableRFC8925";
 const char kLOHSConfigProperty[] = "LOHSConfig";
 const char kPortalFallbackHttpUrlsProperty[] = "PortalFallbackHttpUrls";
 const char kPortalFallbackHttpsUrlsProperty[] = "PortalFallbackHttpsUrls";

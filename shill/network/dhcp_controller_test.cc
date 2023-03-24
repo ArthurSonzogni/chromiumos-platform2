@@ -49,6 +49,7 @@ namespace shill {
 namespace {
 constexpr bool kArpGateway = true;
 constexpr char kDeviceName[] = "eth0";
+constexpr bool kEnableRFC8925 = false;
 constexpr char kHostName[] = "hostname";
 constexpr char kLeaseFileSuffix[] = "leasefilesuffix";
 constexpr bool kHasHostname = true;
@@ -71,6 +72,7 @@ class DHCPControllerTest : public PropertyStoreTest {
                                        kDeviceName,
                                        kLeaseFileSuffix,
                                        kArpGateway,
+                                       kEnableRFC8925,
                                        kHostName,
                                        Technology::kUnknown,
                                        &metrics_)) {
@@ -144,7 +146,8 @@ void DHCPControllerTest::CreateMockMinijailConfig(
     bool arp_gateway) {
   controller_.reset(new DHCPController(
       control_interface(), dispatcher(), &provider_, kDeviceName, lease_suffix,
-      arp_gateway, hostname, Technology::kUnknown, metrics()));
+      arp_gateway, /*enable_rfc_8925=*/false, hostname, Technology::kUnknown,
+      metrics()));
   controller_->process_manager_ = &process_manager_;
 }
 

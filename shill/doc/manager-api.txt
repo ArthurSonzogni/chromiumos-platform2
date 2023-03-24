@@ -583,6 +583,11 @@ Properties	object ActiveProfile [readonly]
 			(see the caveat in Devices). Order carries no meaning and is not
 			guaranteed to be consistent.
 
+		boolean EnableRFC8925 [readwrite]
+			Specify whether DHCPv4 client should follow RFC 8925 to request option
+			108, which will in result volunteer to drop IPv4 and prefer operating as
+			IPv6-only, if the network itself is also IPv6-only capable.
+
 		string IgnoredDNSSearchPaths [readwrite]
 
 			A comma-separated list of DNS domain suffixes which should be

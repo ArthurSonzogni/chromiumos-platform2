@@ -1478,6 +1478,7 @@ void Cellular::LinkUp(int data_interface_index) {
     SLOG(2) << LoggingTag() << ": Start DHCP to acquire IPv4 configuration.";
     dhcp_opts = manager()->CreateDefaultDHCPOption();
     dhcp_opts->use_arp_gateway = false;
+    dhcp_opts->use_rfc_8925 = false;
   }
 
   Network::StartOptions opts = {

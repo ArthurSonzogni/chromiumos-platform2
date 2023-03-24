@@ -84,6 +84,8 @@ struct ManagerProperties {
   // Whether to ARP for the default gateway in the DHCP client after
   // acquiring a lease.
   bool arp_gateway = true;
+  // Whether DHCP client should request for IPv6-only mode on a capable network.
+  bool enable_rfc_8925 = false;
   // Comma-separated list of technologies for which auto-connect is disabled.
   std::string no_auto_connect_technologies;
   // Comma-separated list of technologies that should never be enabled.
