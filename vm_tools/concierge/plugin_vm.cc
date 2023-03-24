@@ -24,7 +24,9 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/net_util.h>
+#include <vm_applications/apps.pb.h>
 
+#include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/tap_device_builder.h"
@@ -203,7 +205,7 @@ VmInterface::Info PluginVm::GetInfo() {
       .seneschal_server_handle = seneschal_server_handle(),
       .permission_token = permission_token_,
       .status = VmInterface::Status::RUNNING,
-      .type = VmInfo::PLUGIN_VM,
+      .type = VmId::Type::PLUGIN_VM,
   };
 
   return info;

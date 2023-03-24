@@ -135,6 +135,7 @@ message VmInfo {
     ARC_VM = 2;
     PLUGIN_VM = 3;
     BOREALIS = 4;
+    BRUSCHETTA = 5;
   };
 
   // What type of VM this is.

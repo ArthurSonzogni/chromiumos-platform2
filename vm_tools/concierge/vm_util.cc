@@ -41,6 +41,8 @@
 #include <brillo/process/process.h>
 
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <vm_applications/apps.pb.h>
+#include <vm_concierge/concierge_service.pb.h>
 
 #include "base/memory/ptr_util.h"
 #include "vm_tools/concierge/crosvm_control.h"
@@ -1009,5 +1011,22 @@ VmStartChecker::VmStartChecker(int32_t signal_fd,
     : signal_fd_(signal_fd),
       event_fd_(std::move(event_fd)),
       epoll_fd_(std::move(epoll_fd)) {}
+
+VmInfo_VmType ToLegacyVmType(apps::VmType type) {
+  switch (type) {
+    case apps::VmType::TERMINA:
+      return VmInfo::TERMINA;
+    case apps::PLUGIN_VM:
+      return VmInfo::PLUGIN_VM;
+    case apps::BOREALIS:
+      return VmInfo::BOREALIS;
+    case apps::ARCVM:
+      return VmInfo::ARC_VM;
+    case apps::BRUSCHETTA:
+      return VmInfo::BRUSCHETTA;
+    default:
+      return VmInfo::UNKNOWN;
+  }
+}
 
 }  // namespace vm_tools::concierge

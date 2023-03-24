@@ -411,7 +411,7 @@ void TerminaVmTest::SetUp() {
   vm_ = TerminaVm::CreateForTesting(
       std::move(subnet), vsock_cid, temp_dir_.GetPath(), base::FilePath(),
       std::move(stateful_device), stateful_size, mem_mib, kKernelVersion,
-      std::move(stub), VmInfo::TERMINA, std::move(vm_builder));
+      std::move(stub), std::move(vm_builder));
   ASSERT_TRUE(vm_);
 }
 

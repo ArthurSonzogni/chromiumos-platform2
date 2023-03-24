@@ -89,6 +89,7 @@
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
 
 #include "vm_tools/common/naming.h"
+#include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/dlc_helper.h"
 #include "vm_tools/concierge/future.h"
@@ -887,12 +888,19 @@ ReclaimVmMemoryResponse ReclaimVmMemoryInternal(pid_t pid, int32_t page_limit) {
 // TODO(b/213090722): Determining a VM's type based on its properties like
 // this is undesirable. Instead we should provide the type in the request, and
 // determine its properties from that.
-VmInfo::VmType ClassifyVm(const StartVmRequest& request) {
+VmId::Type ClassifyVm(const StartVmRequest& request) {
   if (request.vm().dlc_id() == "borealis-dlc")
-    return VmInfo::BOREALIS;
+    return VmId::Type::BOREALIS;
   if (request.start_termina())
-    return VmInfo::TERMINA;
-  return VmInfo::UNKNOWN;
+    return VmId::Type::TERMINA;
+  // Bruschetta VMs are distinguished by having a separate bios, either as an FD
+  // or a dlc.
+  bool has_bios_fd =
+      std::any_of(request.fds().begin(), request.fds().end(),
+                  [](int type) { return type == StartVmRequest::BIOS; });
+  if (has_bios_fd || request.vm().dlc_id() == "edk2-ovmf-dlc")
+    return VmId::Type::BRUSCHETTA;
+  return VmId::Type::UNKNOWN;
 }
 
 }  // namespace
@@ -1770,9 +1778,9 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
 
-  VmInfo::VmType classification = ClassifyVm(request);
+  VmId::Type classification = ClassifyVm(request);
   VmInfo* vm_info = response.mutable_vm_info();
-  vm_info->set_vm_type(classification);
+  vm_info->set_vm_type(ToLegacyVmType(classification));
 
   std::optional<VmStartImageFds> vm_start_image_fds =
       GetVmStartImageFds(reader, request.fds());
@@ -1782,7 +1790,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   }
 
   // Make sure we have our signal connected if starting a Termina VM.
-  if (classification == VmInfo::TERMINA &&
+  if (classification == VmId::Type::TERMINA &&
       !is_tremplin_started_signal_connected_) {
     LOG(ERROR) << "Can't start Termina VM without TremplinStartedSignal";
     response.set_failure_reason("TremplinStartedSignal not connected");
@@ -1813,7 +1821,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
       GetImageSpec(request.vm(), vm_start_image_fds->kernel_fd,
                    vm_start_image_fds->rootfs_fd, vm_start_image_fds->initrd_fd,
                    vm_start_image_fds->bios_fd, vm_start_image_fds->pflash_fd,
-                   classification == VmInfo::TERMINA, &failure_reason);
+                   classification == VmId::Type::TERMINA, &failure_reason);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Failed to get image paths: " << failure_reason;
     response.set_failure_reason("Failed to get image paths: " + failure_reason);
@@ -1899,7 +1907,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   // Storage ballooning only enabled for ext4 setups of Borealis in order
   // to not interfere with the storage management solutions of legacy
   // setups.
-  if (classification == VmInfo::BOREALIS &&
+  if (classification == VmId::Type::BOREALIS &&
       GetFilesystem(stateful_path) == "ext4") {
     vm_info->set_storage_ballooning(request.storage_ballooning());
   }
@@ -1987,7 +1995,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   const bool enable_render_server = request.enable_vulkan();
   // Enable foz db list (dynamic un/loading for RO mesa shader cache) only for
   // Borealis, for now.
-  const bool enable_foz_db_list = classification == VmInfo::BOREALIS;
+  const bool enable_foz_db_list = classification == VmId::Type::BOREALIS;
 
   VMGpuCacheSpec gpu_cache_spec;
   if (request.enable_gpu()) {
@@ -2102,27 +2110,8 @@ StartVmResponse Service::StartVm(StartVmRequest request,
                           .writable = request.writable_rootfs()});
   }
 
-  // TODO(b/271760729): Bru doesn't have a type in the VmInfo::VmType. Rather
-  // than decode one to the other like below, we should use apps::VmType
-  // universally.
-  apps::VmType wayland_server_type = apps::UNKNOWN;
-  switch (classification) {
-    case VmInfo::TERMINA:
-      wayland_server_type = apps::TERMINA;
-      break;
-    case VmInfo::ARC_VM:
-    case VmInfo::PLUGIN_VM:
-      NOTREACHED();
-      break;
-    case VmInfo::BOREALIS:
-      wayland_server_type = apps::BOREALIS;
-      break;
-    default:
-      wayland_server_type = apps::UNKNOWN;
-      break;
-  }
   VmWlInterface::Result wl_result =
-      VmWlInterface::CreateWaylandServer(bus_, vm_id, wayland_server_type);
+      VmWlInterface::CreateWaylandServer(bus_, vm_id, classification);
   if (!wl_result.has_value()) {
     response.set_failure_reason("Unable to start a wayland server: " +
                                 wl_result.error());
@@ -2567,7 +2556,7 @@ GetVmInfoResponse Service::GetVmInfo(const GetVmInfoRequest& request) {
   vm_info->set_cid(vm.cid);
   vm_info->set_seneschal_server_handle(vm.seneschal_server_handle);
   vm_info->set_permission_token(vm.permission_token);
-  vm_info->set_vm_type(vm.type);
+  vm_info->set_vm_type(ToLegacyVmType(vm.type));
   vm_info->set_storage_ballooning(vm.storage_ballooning);
 
   response.set_success(true);
@@ -3960,7 +3949,7 @@ ListVmsResponse Service::ListVms(const ListVmsRequest& request) {
     proto_info->set_pid(info.pid);
     proto_info->set_cid(info.cid);
     proto_info->set_seneschal_server_handle(info.seneschal_server_handle);
-    proto_info->set_vm_type(info.type);
+    proto_info->set_vm_type(ToLegacyVmType(info.type));
     proto_info->set_storage_ballooning(info.storage_ballooning);
     // The vms_ member only contains VMs with running crosvm instances. So the
     // STOPPED case below should not be possible.
@@ -4872,8 +4861,8 @@ void Service::HandleStatefulDiskSpaceUpdate(
   }
 
   auto classification = iter->second->GetInfo().type;
-  if (!iter->second->IsSuspended() && (classification == VmInfo::BOREALIS ||
-                                       classification == VmInfo::TERMINA)) {
+  if (!iter->second->IsSuspended() && (classification == VmId::Type::BOREALIS ||
+                                       classification == VmId::Type::TERMINA)) {
     static_cast<TerminaVm*>(iter->second.get())->HandleStatefulUpdate(update);
   }
 }

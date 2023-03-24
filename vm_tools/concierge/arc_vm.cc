@@ -37,7 +37,9 @@
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/patchpanel/net_util.h>
 #include <vboot/crossystem.h>
+#include <vm_applications/apps.pb.h>
 
+#include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_util.h"
@@ -756,7 +758,7 @@ VmInterface::Info ArcVm::GetInfo() {
       .vm_memory_id = vm_memory_id_,
       .seneschal_server_handle = seneschal_server_handle(),
       .status = VmInterface::Status::RUNNING,
-      .type = VmInfo::ARC_VM,
+      .type = VmId::Type::ARCVM,
   };
 
   return info;

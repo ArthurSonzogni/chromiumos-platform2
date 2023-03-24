@@ -111,7 +111,7 @@ class TerminaVm final : public VmBaseImpl {
       dbus::ObjectProxy* vm_permission_service_proxy,
       scoped_refptr<dbus::Bus> bus,
       VmId id,
-      VmInfo::VmType classification,
+      VmId::Type classification,
       VmBuilder vm_builder,
       std::unique_ptr<ScopedWlSocket> socket);
   ~TerminaVm() override;
@@ -252,7 +252,6 @@ class TerminaVm final : public VmBaseImpl {
       int64_t mem_mib,
       std::string kernel_version,
       std::unique_ptr<vm_tools::Maitred::Stub> stub,
-      VmInfo::VmType classification,
       VmBuilder vm_builder);
 
  private:
@@ -269,7 +268,7 @@ class TerminaVm final : public VmBaseImpl {
             dbus::ObjectProxy* vm_permission_service_proxy,
             scoped_refptr<dbus::Bus> bus,
             VmId id,
-            VmInfo::VmType classification,
+            VmId::Type classification,
             std::unique_ptr<ScopedWlSocket> socket);
 
   // Constructor for testing only.
@@ -281,8 +280,7 @@ class TerminaVm final : public VmBaseImpl {
             std::string stateful_device,
             uint64_t stateful_size,
             int64_t mem_mib,
-            VmFeatures features,
-            VmInfo::VmType classification);
+            VmFeatures features);
   TerminaVm(const TerminaVm&) = delete;
   TerminaVm& operator=(const TerminaVm&) = delete;
 
@@ -371,7 +369,7 @@ class TerminaVm final : public VmBaseImpl {
 
   // Record's this VM's "type" in the classification sense (e.g. termina,
   // borealis, other...).
-  const VmInfo::VmType classification_;
+  const VmId::Type classification_;
 
   // The manatee-client D-Bus client to talk to dugong that will eventually
   // talk to the hypervisor.

@@ -39,6 +39,7 @@
 #include <sys/epoll.h>
 #include <vm_concierge/concierge_service.pb.h>
 
+#include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/vm_builder.h"
@@ -120,7 +121,7 @@ TerminaVm::TerminaVm(
     dbus::ObjectProxy* vm_permission_service_proxy,
     scoped_refptr<dbus::Bus> bus,
     VmId id,
-    VmInfo::VmType classification,
+    VmId::Type classification,
     std::unique_ptr<ScopedWlSocket> socket)
     : VmBaseImpl(std::move(network_client),
                  vsock_cid,
@@ -152,8 +153,7 @@ TerminaVm::TerminaVm(
     std::string stateful_device,
     uint64_t stateful_size,
     int64_t mem_mib,
-    VmFeatures features,
-    VmInfo::VmType classification)
+    VmFeatures features)
     : VmBaseImpl(nullptr /* network_client */,
                  vsock_cid,
                  std::move(seneschal_server_proxy),
@@ -168,7 +168,7 @@ TerminaVm::TerminaVm(
       mem_mib_(mem_mib),
       log_path_(std::move(log_path)),
       id_(VmId("foo", "bar")),
-      classification_(classification) {
+      classification_(VmId::Type::UNKNOWN) {
   CHECK(subnet_);
 }
 
@@ -190,7 +190,7 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     dbus::ObjectProxy* vm_permission_service_proxy,
     scoped_refptr<dbus::Bus> bus,
     VmId id,
-    VmInfo::VmType classification,
+    VmId::Type classification,
     VmBuilder vm_builder,
     std::unique_ptr<ScopedWlSocket> socket) {
   auto vm = base::WrapUnique(new TerminaVm(
@@ -240,7 +240,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
 
   // TODO(b/193370101) Remove borealis specific code once crostini uses
   // permission service.
-  if (classification_ == VmInfo::BOREALIS) {
+  if (classification_ == VmId::Type::BOREALIS) {
     // Register the VM with permission service and obtain permission
     // token.
     if (!vm_permission::RegisterVm(bus_, vm_permission_service_proxy_, id_,
@@ -286,7 +286,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
         .EnableBigGl(features_.big_gl)
         .EnableVirtgpuNativeContext(features_.virtgpu_native_context);
 
-    if (classification_ == VmInfo::BOREALIS) {
+    if (classification_ == VmId::Type::BOREALIS) {
       vm_builder.SetGpuCacheSize(kGpuCacheSizeStringBorealis);
       // For Borealis, place the render server process in
       // the GPU server cpuset cgroup.
@@ -298,7 +298,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
 
     if (features_.render_server) {
       vm_builder.EnableRenderServer(true);
-      if (classification_ == VmInfo::BOREALIS) {
+      if (classification_ == VmId::Type::BOREALIS) {
         vm_builder.SetRenderServerCacheSize(
             kRenderServerCacheSizeStringBorealis);
       } else {
@@ -309,7 +309,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
 
   // Enable dGPU passthrough argument is only supported on Borealis VM.
   if (features_.dgpu_passthrough) {
-    if (classification_ == VmInfo::BOREALIS) {
+    if (classification_ == VmId::Type::BOREALIS) {
       vm_builder.EnableDGpuPassthrough(true);
     } else {
       LOG(ERROR) << "--enable-dgpu-passthrough is only supported on Borealis.";
@@ -325,7 +325,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
 
   // TODO(b/193370101) Remove borealis specific code once crostini uses
   // permission service.
-  if (classification_ == VmInfo::BOREALIS) {
+  if (classification_ == VmId::Type::BOREALIS) {
     if (vm_permission::IsMicrophoneEnabled(bus_, vm_permission_service_proxy_,
                                            permission_token_)) {
       vm_builder.AppendAudioDevice(
@@ -393,7 +393,7 @@ bool TerminaVm::SetTimezone(const std::string& timezone,
   request.set_timezone_name(timezone);
   // Borealis needs timezone info to be bind-mounted due to Steam bug, see
   // TODO(b/237960004): Clean up this exception once Steam bug is fixed.
-  request.set_use_bind_mount(GetInfo().type == VmInfo::BOREALIS);
+  request.set_use_bind_mount(classification_ == VmId::Type::BOREALIS);
   ::vm_tools::EmptyMessage response;
 
   auto result = stub_->SetTimezone(&ctx, request, &response);
@@ -1150,7 +1150,6 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
     int64_t mem_mib,
     std::string kernel_version,
     std::unique_ptr<vm_tools::Maitred::Stub> stub,
-    VmInfo::VmType classification,
     VmBuilder vm_builder) {
   VmFeatures features{
       .gpu = false,
@@ -1161,7 +1160,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
   auto vm = base::WrapUnique(new TerminaVm(
       std::move(subnet), vsock_cid, nullptr, std::move(runtime_dir),
       std::move(log_path), std::move(stateful_device), std::move(stateful_size),
-      mem_mib, features, classification));
+      mem_mib, features));
   vm->set_kernel_version_for_testing(kernel_version);
   vm->set_stub_for_testing(std::move(stub));
 

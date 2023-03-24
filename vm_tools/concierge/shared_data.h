@@ -16,6 +16,7 @@
 #include <base/system/sys_info.h>
 
 #include "vm_tools/concierge/service.h"
+#include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools {
 namespace concierge {
@@ -153,7 +154,7 @@ void Service::StartVmHelper(
     vm_info->set_pid(vm.pid);
     vm_info->set_cid(vm.cid);
     vm_info->set_seneschal_server_handle(vm.seneschal_server_handle);
-    vm_info->set_vm_type(vm.type);
+    vm_info->set_vm_type(ToLegacyVmType(vm.type));
     switch (vm.status) {
       case VmInterface::Status::STARTING: {
         response.set_status(VM_STATUS_STARTING);

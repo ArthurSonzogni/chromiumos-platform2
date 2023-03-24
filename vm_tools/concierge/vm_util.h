@@ -30,7 +30,14 @@ class FilePath;
 }  // namespace base
 
 namespace vm_tools {
+
+namespace apps {
+enum VmType : int;
+}
+
 namespace concierge {
+
+enum VmInfo_VmType : int;
 
 // Path to process file descriptors.
 constexpr char kProcFileDescriptorsPath[] = "/proc/self/fd/";
@@ -174,6 +181,10 @@ std::string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
 // the given string is unknown.
 std::optional<AsyncExecutor> StringToAsyncExecutor(
     const std::string& async_executor);
+
+// Convert the given |type| to the legacy VM type defined in
+// vm_concierge/concierge.pb
+VmInfo_VmType ToLegacyVmType(apps::VmType type);
 
 class CustomParametersForDev {
  public:

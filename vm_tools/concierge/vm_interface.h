@@ -16,6 +16,7 @@
 #include <spaced/proto_bindings/spaced.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 
+#include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/balloon_policy.h"
 
 namespace vm_tools {
@@ -73,7 +74,7 @@ class VmInterface {
     Status status;
 
     // Type of the VM.
-    VmInfo::VmType type;
+    VmId::Type type;
 
     // Whether the VM is using storage ballooning.
     bool storage_ballooning;
