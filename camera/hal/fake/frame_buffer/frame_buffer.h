@@ -67,6 +67,19 @@ class FrameBuffer {
             typename = std::enable_if_t<std::is_base_of_v<FrameBuffer, T>>>
   static std::unique_ptr<T> Scale(FrameBuffer& buffer, Size size);
 
+  // Convert the content of the buffer to output buffer. The resolution of the
+  // input and output buffer should be the same, and the input buffer should be
+  // in NV12 format. This also fill the camera3_jpeg_blob_t JPEG trailer if the
+  // target format is V4L2_PIX_FMT_JPEG.
+  [[nodiscard]] static bool ConvertFromNv12(FrameBuffer& buffer,
+                                            FrameBuffer& output_buffer);
+
+  // Convert the content of the buffer to output buffer. The resolution of the
+  // input and output buffer should be the same, and the output buffer should
+  // be in NV12 format.
+  [[nodiscard]] static bool ConvertToNv12(FrameBuffer& buffer,
+                                          FrameBuffer& output_buffer);
+
  protected:
   FrameBuffer();
 

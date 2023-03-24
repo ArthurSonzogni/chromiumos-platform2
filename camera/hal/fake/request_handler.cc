@@ -175,9 +175,7 @@ absl::Status RequestHandler::StreamOnImpl(
   for (auto stream : streams) {
     Size size(stream->width, stream->height);
 
-    auto fake_stream = FakeStream::Create(
-        static_metadata_, size,
-        static_cast<android_pixel_format_t>(stream->format), spec_.frames);
+    auto fake_stream = FakeStream::Create(size, spec_.frames);
     if (fake_stream == nullptr) {
       return absl::InternalError("error initializing fake stream");
     }

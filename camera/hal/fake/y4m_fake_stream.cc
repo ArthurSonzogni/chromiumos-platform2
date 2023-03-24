@@ -37,47 +37,6 @@ static const size_t kY4mFrameDelimiterLength = sizeof(kY4mFrameDelimiter) - 1;
 
 static const char kY4mHeaderMagic[] = "YUV4MPEG2";
 
-std::unique_ptr<FrameBuffer> ConvertI420ToNv12(
-    std::unique_ptr<FrameBuffer> buffer) {
-  auto output_buffer = FrameBuffer::Create<GrallocFrameBuffer>(
-      buffer->GetSize(), V4L2_PIX_FMT_NV12);
-
-  if (output_buffer == nullptr) {
-    LOGF(WARNING) << "Failed to allocate output buffer";
-    return nullptr;
-  }
-
-  auto mapped_buffer = buffer->Map();
-  if (mapped_buffer == nullptr) {
-    LOGF(WARNING) << "Failed to map input buffer";
-    return nullptr;
-  }
-
-  auto y_plane = mapped_buffer->plane(0);
-  auto u_plane = mapped_buffer->plane(1);
-  auto v_plane = mapped_buffer->plane(2);
-
-  auto mapped_output_buffer = output_buffer->Map();
-  if (mapped_buffer == nullptr) {
-    LOGF(WARNING) << "Failed to map output buffer";
-    return nullptr;
-  }
-
-  auto output_y_plane = mapped_output_buffer->plane(0);
-  auto output_uv_plane = mapped_output_buffer->plane(1);
-
-  int ret = libyuv::I420ToNV12(
-      y_plane.addr, y_plane.stride, u_plane.addr, u_plane.stride, v_plane.addr,
-      v_plane.stride, output_y_plane.addr, output_y_plane.stride,
-      output_uv_plane.addr, output_uv_plane.stride, buffer->GetSize().width,
-      buffer->GetSize().height);
-  if (ret != 0) {
-    LOGF(WARNING) << "I420ToNV12() failed with " << ret;
-    return nullptr;
-  }
-  return output_buffer;
-}
-
 }  // namespace
 
 Y4mFakeStream::Y4mFakeStream(const base::FilePath& file_path)
@@ -164,11 +123,8 @@ bool Y4mFakeStream::ParseY4mHeader(const std::string& header) {
   return true;
 }
 
-bool Y4mFakeStream::Initialize(const android::CameraMetadata& static_metadata,
-                               Size size,
-                               android_pixel_format_t format,
-                               const FramesSpec& spec) {
-  if (!FakeStream::Initialize(static_metadata, size, format, spec)) {
+bool Y4mFakeStream::Initialize(Size size, const FramesSpec& spec) {
+  if (!FakeStream::Initialize(size, spec)) {
     return false;
   }
 
@@ -291,15 +247,22 @@ std::unique_ptr<FrameBuffer> Y4mFakeStream::ReadNextFrameI420() {
   return temp_buffer;
 }
 
-bool Y4mFakeStream::FillBuffer(buffer_handle_t output_buffer) {
+bool Y4mFakeStream::FillBuffer(buffer_handle_t output_buffer_handle) {
   auto temp_i420_buffer = ReadNextFrameI420();
   if (temp_i420_buffer == nullptr) {
     LOGF(WARNING) << "Failed to read next frame";
     return false;
   }
 
-  auto temp_buffer = ConvertI420ToNv12(std::move(temp_i420_buffer));
+  auto temp_buffer = FrameBuffer::Create<GrallocFrameBuffer>(
+      temp_i420_buffer->GetSize(), V4L2_PIX_FMT_NV12);
+
   if (temp_buffer == nullptr) {
+    LOGF(WARNING) << "Failed to allocate temp buffer";
+    return false;
+  }
+
+  if (!FrameBuffer::ConvertToNv12(*temp_i420_buffer, *temp_buffer)) {
     LOGF(WARNING) << "Failed to convert i420 to nv12";
     return false;
   }
@@ -310,15 +273,15 @@ bool Y4mFakeStream::FillBuffer(buffer_handle_t output_buffer) {
     return false;
   }
 
-  auto converted_buffer = ConvertBuffer(std::move(buffer), format_);
-  if (converted_buffer == nullptr) {
-    LOGF(WARNING) << "Failed to convert buffer format";
+  auto output_buffer = GrallocFrameBuffer::Wrap(output_buffer_handle);
+  if (output_buffer == nullptr) {
+    LOGF(WARNING) << "Failed to wrap output buffer";
     return false;
   }
 
   // TODO(pihsun): We could potentially save multiple copies here by directly
   // converting into the output buffer.
-  return CopyBuffer(*converted_buffer, output_buffer);
+  return FrameBuffer::ConvertFromNv12(*buffer, *output_buffer);
 }
 
 }  // namespace cros

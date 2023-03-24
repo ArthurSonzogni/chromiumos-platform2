@@ -51,9 +51,9 @@ bool GrallocFrameBuffer::ScopedMapping::is_valid() const {
 
 // static
 std::unique_ptr<GrallocFrameBuffer> GrallocFrameBuffer::Wrap(
-    buffer_handle_t buffer, Size size) {
+    buffer_handle_t buffer) {
   auto frame_buffer = base::WrapUnique(new GrallocFrameBuffer());
-  if (!frame_buffer->Initialize(buffer, size)) {
+  if (!frame_buffer->Initialize(buffer)) {
     return nullptr;
   }
   return frame_buffer;
@@ -62,7 +62,7 @@ std::unique_ptr<GrallocFrameBuffer> GrallocFrameBuffer::Wrap(
 GrallocFrameBuffer::GrallocFrameBuffer()
     : buffer_manager_(CameraBufferManager::GetInstance()) {}
 
-bool GrallocFrameBuffer::Initialize(buffer_handle_t buffer, Size size) {
+bool GrallocFrameBuffer::Initialize(buffer_handle_t buffer) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (buffer_manager_ == nullptr) {
@@ -77,7 +77,12 @@ bool GrallocFrameBuffer::Initialize(buffer_handle_t buffer, Size size) {
   }
 
   buffer_ = buffer;
-  size_ = size;
+  size_ = Size(buffer_manager_->GetWidth(buffer_),
+               buffer_manager_->GetHeight(buffer_));
+  if (!size_.is_valid()) {
+    LOGF(ERROR) << "Failed to get buffer size";
+    return false;
+  }
   fourcc_ = buffer_manager_->GetV4L2PixelFormat(buffer_);
   if (fourcc_ == 0) {
     LOGF(ERROR) << "Failed to get V4L2 pixel format";

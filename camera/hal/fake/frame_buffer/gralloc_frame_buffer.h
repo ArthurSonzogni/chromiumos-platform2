@@ -51,9 +51,8 @@ class GrallocFrameBuffer : public FrameBuffer {
   buffer_handle_t GetBufferHandle() const { return buffer_; }
 
   // Wraps external buffer from upper framework. Fill |size_| according to the
-  // parameters. Returns nullptr when there's error.
-  static std::unique_ptr<GrallocFrameBuffer> Wrap(buffer_handle_t buffer,
-                                                  Size size);
+  // buffer size. Returns nullptr when there's error.
+  static std::unique_ptr<GrallocFrameBuffer> Wrap(buffer_handle_t buffer);
 
  private:
   friend class FrameBuffer;
@@ -61,8 +60,8 @@ class GrallocFrameBuffer : public FrameBuffer {
   GrallocFrameBuffer();
 
   // Wraps external buffer from upper framework. Fill |size_| according to the
-  // parameters.
-  [[nodiscard]] bool Initialize(buffer_handle_t buffer, Size size);
+  // buffer size.
+  [[nodiscard]] bool Initialize(buffer_handle_t buffer);
 
   // Allocate the buffer internally.
   [[nodiscard]] bool Initialize(Size size, uint32_t fourcc) override;

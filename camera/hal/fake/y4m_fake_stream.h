@@ -25,10 +25,7 @@ class Y4mFakeStream : public FakeStream {
   friend class FakeStream;
   explicit Y4mFakeStream(const base::FilePath& file_path);
 
-  [[nodiscard]] bool Initialize(const android::CameraMetadata& static_metadata,
-                                Size size,
-                                android_pixel_format_t format,
-                                const FramesSpec& spec) override;
+  [[nodiscard]] bool Initialize(Size size, const FramesSpec& spec) override;
 
   [[nodiscard]] bool FillBuffer(buffer_handle_t buffer) override;
 
