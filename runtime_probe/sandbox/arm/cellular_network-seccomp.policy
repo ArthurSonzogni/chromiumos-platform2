@@ -6,6 +6,7 @@
 rseq: 1
 
 ARM_set_tls: 1
+_llseek: 1
 access: 1
 brk: 1
 clock_getres: 1
@@ -23,6 +24,7 @@ fstat64: 1
 fstatat64: 1
 fstatfs64: 1
 fstatfs: 1
+getdents64: 1
 geteuid32: 1
 getpid: 1
 getresgid32: 1

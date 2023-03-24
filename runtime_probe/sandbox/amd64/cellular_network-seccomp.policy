@@ -18,6 +18,7 @@ faccessat: 1
 faccessat2: 1
 fcntl: 1
 fstat: 1
+getdents64: 1
 geteuid: 1
 getpid: 1
 getresgid: 1
