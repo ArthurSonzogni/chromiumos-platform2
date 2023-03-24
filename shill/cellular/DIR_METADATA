@@ -20,6 +20,7 @@ chromeos {
         project: "chromeos/config-internal"
         path: "test/plans/v2/ctpv1_compatible/cellular_cq.star"
       }
+      path_regexp_excludes: "shill/cellular/.*_test\\.cc"
     }
   }
 }
