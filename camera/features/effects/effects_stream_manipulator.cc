@@ -181,6 +181,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   bool ProcessCaptureResult(Camera3CaptureDescriptor result) override;
   void Notify(camera3_notify_msg_t msg) override;
   bool Flush() override;
+  scoped_refptr<base::SingleThreadTaskRunner> GetTaskRunner() override;
   void OnFrameProcessed(int64_t timestamp,
                         GLuint texture,
                         uint32_t width,
@@ -238,15 +239,22 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
     base::OnceClosure cleanup_closure;
   };
 
+  struct PipelineResult {
+    GLuint texture;
+    int width;
+    int height;
+  };
+
   void OnOptionsUpdated(const base::Value::Dict& json_values);
 
   void SetEffect(EffectsConfig new_config);
   bool SetupGlThread();
+  void ShutdownOnGlThread();
   RenderResult RenderEffect(Camera3StreamBuffer& result_buffer,
                             int64_t timestamp);
   bool EnsureImages(buffer_handle_t buffer_handle);
-  CameraEffectError NV12ToRGBA(buffer_handle_t buffer_handle);
-  void RGBAToNV12(GLuint texture, uint32_t width, uint32_t height);
+  bool NV12ToRGBA();
+  bool RGBAToNV12();
   void CreatePipeline(const base::FilePath& dlc_root_path);
   std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc);
   void UploadAndResetMetricsData();
@@ -261,15 +269,20 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   StreamManipulator::Callbacks callbacks_;
 
   EffectsConfig active_runtime_effects_config_
-      GUARDED_BY_CONTEXT(sequence_checker_) = EffectsConfig();
+      GUARDED_BY_CONTEXT(gl_thread_checker_) = EffectsConfig();
   // Config state. last_set_effect_ can be different to
   // active_runtime_effects_config_ when the effect is set
   // via the ReloadableConfig mechanism.
-  EffectsConfig last_set_effect_config_ GUARDED_BY_CONTEXT(sequence_checker_) =
+  EffectsConfig last_set_effect_config_ GUARDED_BY_CONTEXT(gl_thread_checker_) =
       EffectsConfig();
 
   std::unique_ptr<EffectsPipeline> pipeline_
-      GUARDED_BY_CONTEXT(sequence_checker_);
+      GUARDED_BY_CONTEXT(gl_thread_checker_);
+  base::WaitableEvent pipeline_result_ready_{
+      base::WaitableEvent::ResetPolicy::AUTOMATIC};
+  base::WaitableEvent pipeline_result_consumed_{
+      base::WaitableEvent::ResetPolicy::AUTOMATIC};
+  PipelineResult pipeline_result_{};
 
   std::vector<std::unique_ptr<StreamContext>> stream_contexts_
       GUARDED_BY(stream_contexts_lock_);
@@ -282,23 +295,21 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   SharedImage input_image_rgba_ GUARDED_BY_CONTEXT(gl_thread_checker_);
 
   SharedImage input_image_yuv_ GUARDED_BY_CONTEXT(gl_thread_checker_);
-  absl::Status frame_status_ = absl::OkStatus();
 
   std::unique_ptr<EglContext> egl_context_
       GUARDED_BY_CONTEXT(gl_thread_checker_);
   std::unique_ptr<GpuImageProcessor> image_processor_
       GUARDED_BY_CONTEXT(gl_thread_checker_);
 
-  int64_t last_timestamp_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
+  int64_t last_timestamp_ GUARDED_BY_CONTEXT(gl_thread_checker_) = 0;
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_
-      GUARDED_BY_CONTEXT(sequence_checker_);
+      GUARDED_BY_CONTEXT(gl_thread_checker_);
 
   CameraThread gl_thread_;
   scoped_refptr<base::SingleThreadTaskRunner> process_thread_;
 
   void (*set_effect_callback_)(bool);
 
-  SEQUENCE_CHECKER(sequence_checker_);
   THREAD_CHECKER(gl_thread_checker_);
 
   EffectsMetricsData metrics_;
@@ -328,7 +339,6 @@ EffectsStreamManipulatorImpl::EffectsStreamManipulatorImpl(
       still_capture_processor_(std::move(still_capture_processor)),
       gl_thread_("EffectsGlThread"),
       set_effect_callback_(callback) {
-  DETACH_FROM_SEQUENCE(sequence_checker_);
   DETACH_FROM_THREAD(gl_thread_checker_);
 
   if (!config_.IsValid()) {
@@ -358,21 +368,26 @@ EffectsStreamManipulatorImpl::EffectsStreamManipulatorImpl(
 
 EffectsStreamManipulatorImpl::~EffectsStreamManipulatorImpl() {
   DeleteEffectsMarkerFile();
-  if (process_thread_) {
-    process_thread_->DeleteSoon(FROM_HERE, std::move(marker_file_timer_));
-  }
-
   // UploadAndResetMetricsData currently posts a task to the gl_thread task
   // runner (see constructor above). If we change that, we need to ensure the
   // upload task is complete before the destructor exits, or change the
   // behaviour to be synchronous in this situation.
+  UploadAndResetMetricsData();
+  gl_thread_.PostTaskSync(
+      FROM_HERE,
+      base::BindOnce(&EffectsStreamManipulatorImpl::ShutdownOnGlThread,
+                     base::Unretained(this)));
+  gl_thread_.Stop();
+  ResetState();
+}
+
+void EffectsStreamManipulatorImpl::ShutdownOnGlThread() {
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
+  marker_file_timer_.reset();
   if (pipeline_) {
     pipeline_->Wait();
     pipeline_.reset();
   }
-  UploadAndResetMetricsData();
-  gl_thread_.Stop();
-  ResetState();
 }
 
 EffectsStreamManipulatorImpl::StreamContext*
@@ -687,7 +702,7 @@ std::optional<int64_t> EffectsStreamManipulatorImpl::TryGetSensorTimestamp(
 
 bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   TRACE_EFFECTS("frame_number", result.frame_number());
 
   auto processing_time_start = base::TimeTicks::Now();
@@ -817,7 +832,7 @@ EffectsStreamManipulatorImpl::RenderResult
 EffectsStreamManipulatorImpl::RenderEffect(Camera3StreamBuffer& result_buffer,
                                            int64_t timestamp) {
   TRACE_EFFECTS();
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   DCHECK(result_buffer.status() == CAMERA3_BUFFER_STATUS_OK);
   if (!result_buffer.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
     LOGF(ERROR) << "Timed out waiting for input buffer";
@@ -841,15 +856,14 @@ EffectsStreamManipulatorImpl::RenderEffect(Camera3StreamBuffer& result_buffer,
       },
       std::ref(metrics_), manager, buffer_handle));
 
-  CameraEffectError ret;
-  gl_thread_.PostTaskSync(
-      FROM_HERE,
-      base::BindOnce(&EffectsStreamManipulatorImpl::NV12ToRGBA,
-                     base::Unretained(this), buffer_handle),
-      &ret);
-  if (ret != CameraEffectError::kNoError) {
+  if (!EnsureImages(buffer_handle)) {
+    LOGF(ERROR) << "Failed to ensure GPU resources";
+    return {CameraEffectError::kGPUImageInitializationFailed};
+  }
+
+  if (!NV12ToRGBA()) {
     LOGF(ERROR) << "Failed to convert from YUV to RGB";
-    return {ret};
+    return {CameraEffectError::kYUVConversionFailed};
   }
 
   // Mediapipe requires timestamps to be strictly increasing for a given
@@ -859,14 +873,31 @@ EffectsStreamManipulatorImpl::RenderEffect(Camera3StreamBuffer& result_buffer,
   timestamp = std::max(timestamp, last_timestamp_ + 1);
   last_timestamp_ = timestamp;
 
-  frame_status_ = absl::OkStatus();
   pipeline_->ProcessFrame(timestamp, input_image_rgba_.texture().handle(),
                           input_image_rgba_.texture().width(),
                           input_image_rgba_.texture().height());
+
+  // The pipeline produces a GL texture, which needs to be synchronously
+  // converted to YUV on this thread (because that's where the GL context
+  // is bound). However, the pipeline must be prevented from recycling the
+  // texture while the color space conversion is in progress. To facilitate
+  // this, we:
+  //
+  // 1. Synchronously wait until OnFrameProcessed gets called.
+  // 2. Convert RGB to YUV.
+  // 3. Unblock OnFrameProcessed to return the texture to the pipeline.
+  //
+  pipeline_result_ready_.Wait();
+  bool conv_result = RGBAToNV12();
+  pipeline_result_ = {};
+  pipeline_result_consumed_.Signal();
+
+  // Make sure the pipeline has fully finished.
   pipeline_->Wait();
-  if (!frame_status_.ok()) {
-    LOG(ERROR) << frame_status_.message();
-    return {CameraEffectError::kPipelineFailed};
+
+  if (!conv_result) {
+    LOGF(ERROR) << "Failed to convert from RGB to YUV";
+    return {CameraEffectError::kYUVConversionFailed};
   }
   result_buffer.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_OK;
   return RenderResult{.cleanup_closure = deregister_action.Release()};
@@ -880,14 +911,24 @@ bool EffectsStreamManipulatorImpl::Flush() {
   return true;
 }
 
+scoped_refptr<base::SingleThreadTaskRunner>
+EffectsStreamManipulatorImpl::GetTaskRunner() {
+  return gl_thread_.task_runner();
+}
+
 void EffectsStreamManipulatorImpl::OnFrameProcessed(int64_t timestamp,
                                                     GLuint texture,
                                                     uint32_t width,
                                                     uint32_t height) {
-  gl_thread_.PostTaskSync(
-      FROM_HERE,
-      base::BindOnce(&EffectsStreamManipulatorImpl::RGBAToNV12,
-                     base::Unretained(this), texture, width, height));
+  TRACE_EFFECTS();
+  pipeline_result_.texture = texture;
+  pipeline_result_.width = width;
+  pipeline_result_.height = height;
+  pipeline_result_ready_.Signal();
+
+  // Synchronously wait until the texture is consumed before the pipeline
+  // recycles it.
+  pipeline_result_consumed_.Wait();
 }
 
 void EffectsStreamManipulatorImpl::ReturnStillCaptureResult(
@@ -1003,7 +1044,7 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
 }
 
 void EffectsStreamManipulatorImpl::SetEffect(EffectsConfig new_config) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   if (pipeline_) {
     pipeline_->SetEffect(&new_config, set_effect_callback_);
     last_set_effect_config_ = new_config;
@@ -1065,39 +1106,30 @@ bool EffectsStreamManipulatorImpl::EnsureImages(buffer_handle_t buffer_handle) {
   return true;
 }
 
-CameraEffectError EffectsStreamManipulatorImpl::NV12ToRGBA(
-    buffer_handle_t buffer_handle) {
+bool EffectsStreamManipulatorImpl::NV12ToRGBA() {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   TRACE_EFFECTS();
-  if (!EnsureImages(buffer_handle)) {
-    return CameraEffectError::kGPUImageInitializationFailed;
-  }
-
   bool conv_result = image_processor_->NV12ToRGBA(input_image_yuv_.y_texture(),
                                                   input_image_yuv_.uv_texture(),
                                                   input_image_rgba_.texture());
   glFinish();
-  return conv_result ? CameraEffectError::kNoError
-                     : CameraEffectError::kYUVConversionFailed;
+  return conv_result;
 }
 
-void EffectsStreamManipulatorImpl::RGBAToNV12(GLuint texture,
-                                              uint32_t width,
-                                              uint32_t height) {
+bool EffectsStreamManipulatorImpl::RGBAToNV12() {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
+  DCHECK(pipeline_result_.texture);
   TRACE_EFFECTS();
 
-  Texture2D texture_2d(texture, kRGBAFormat, width, height);
+  Texture2D texture_2d(pipeline_result_.texture, kRGBAFormat,
+                       pipeline_result_.width, pipeline_result_.height);
   bool conv_result = image_processor_->RGBAToNV12(
       texture_2d, input_image_yuv_.y_texture(), input_image_yuv_.uv_texture());
   glFinish();
   texture_2d.Release();
 
   input_image_yuv_ = SharedImage();
-
-  if (!conv_result) {
-    frame_status_ = absl::InternalError("Failed to convert from RGB to YUV");
-  }
+  return conv_result;
 }
 
 void EffectsStreamManipulatorImpl::CreatePipeline(
