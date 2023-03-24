@@ -6,6 +6,7 @@
 #define MISSIVE_ANALYTICS_METRICS_H_
 
 #include <string>
+#include <type_traits>
 
 #include <base/memory/scoped_refptr.h>
 #include <base/task/sequenced_task_runner.h>
@@ -40,6 +41,22 @@ class Metrics {
   static bool SendEnumToUMA(const std::string& name,
                             int sample,
                             int exclusive_max);
+
+  // A convenient wrapper of `SendEnumToUMA` that accepts an enum type directly.
+  // Note that its behavior is different from
+  // `MetricsLibraryInterface::SendEnumToUMA(const std::string& name, T
+  // sample)`, where `T::kMaxValue` is an inclusive max (i.e., sample can equal
+  // `T::kMaxValue`), whereas here sample can only be smaller than
+  // `T::MaxValue`.
+  template <typename T>
+  static bool SendEnumToUMA(const std::string& name,
+                            T sample,
+                            T exclusive_max = T::MaxValue) {
+    static_assert(std::is_enum_v<T>, "T is not an enum.");
+    DCHECK_LT(static_cast<int>(sample), static_cast<int>(exclusive_max));
+    return SendEnumToUMA(name, static_cast<int>(sample),
+                         static_cast<int>(exclusive_max));
+  }
 
   // Proxy of `MetricsLibraryInterface::SendPercentageToUMA`.
   static bool SendPercentageToUMA(const std::string& name, int sample);

@@ -14,15 +14,22 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
+#include <base/test/task_environment.h>
 #include <base/test/test_file_util.h>
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/analytics/metrics.h"
+#include "missive/analytics/metrics_test_util.h"
+
 namespace reporting {
 namespace {
 
+using ::testing::Eq;
 using ::testing::HasSubstr;
+using ::testing::Return;
+using ::testing::StrEq;
 
 constexpr char kDeletionTagFile[] = ".DELETE-MISSIVE";
 
@@ -50,6 +57,7 @@ class MigrationTest : public ::testing::Test {
   }
 
   void TearDown() override {
+    task_environment_.RunUntilIdle();  // To make Metrics function being called.
     brillo::LogToString(false);
     brillo::ClearLog();
   }
@@ -162,6 +170,18 @@ class MigrationTest : public ::testing::Test {
     }
   }
 
+  // Expect a migration status being reported.
+  void ExpectMigrationStatusMetrics(MigrationStatusForUma status) const {
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendEnumToUMA(StrEq(kMigrationStatusUmaName),
+                      Eq(static_cast<int>(status)),
+                      Eq(static_cast<int>(MigrationStatusForUma::MaxValue))))
+        .WillOnce(Return(true));
+  }
+
+  base::test::TaskEnvironment task_environment_;  // needed by metrics tests.
+  analytics::Metrics::TestEnvironment metrics_test_environment_;
   base::ScopedTempDir src_;
   base::ScopedTempDir dest_;
   base::FilePath deletion_tag_file_path_;
@@ -170,6 +190,8 @@ class MigrationTest : public ::testing::Test {
 TEST_F(MigrationTest, DestinationNotExist) {
   const auto dest_path = dest_.GetPath();
   ASSERT_TRUE(dest_.Delete());
+
+  ExpectMigrationStatusMetrics(MigrationStatusForUma::DestinationNotExist);
 
   auto [dir, status] = Migrate(src_.GetPath(), dest_path);
 
@@ -187,6 +209,8 @@ TEST_F(MigrationTest, SourceNotExist) {
   brillo::ClearLog();
   ScopedMinLogLevelSetter scoped_min_log_setter(-1);
 
+  ExpectMigrationStatusMetrics(MigrationStatusForUma::NotNeeded);
+
   auto [dir, status] = Migrate(src_path, dest_.GetPath());
 
   EXPECT_EQ(dir, dest_.GetPath());
@@ -203,6 +227,8 @@ TEST_F(MigrationTest, SourceIsEmpty) {
   brillo::ClearLog();
   ScopedMinLogLevelSetter scoped_min_log_setter(-1);
 
+  ExpectMigrationStatusMetrics(MigrationStatusForUma::NotNeeded);
+
   auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
   EXPECT_EQ(dir, dest_.GetPath());
@@ -218,6 +244,8 @@ TEST_F(MigrationTest, DeletionTagFileFound) {
   SetUpFilesInSource();
   ASSERT_TRUE(base::WriteFile(deletion_tag_file_path_, ""));
   brillo::ClearLog();
+
+  ExpectMigrationStatusMetrics(MigrationStatusForUma::Success);
 
   auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
@@ -236,6 +264,8 @@ TEST_F(MigrationTest, DestinationEmpty) {
   SetUpFilesInSource();
   ASSERT_TRUE(base::IsDirectoryEmpty(dest_.GetPath()));
 
+  ExpectMigrationStatusMetrics(MigrationStatusForUma::Success);
+
   auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
   EXPECT_THAT(dir, dest_.GetPath());
@@ -248,6 +278,8 @@ TEST_F(MigrationTest, DestinationEmpty) {
 TEST_F(MigrationTest, DestinationNotEmpty) {
   SetUpFilesInSource();
   SetUpFilesInDestination();
+
+  ExpectMigrationStatusMetrics(MigrationStatusForUma::Success);
 
   auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
@@ -266,6 +298,8 @@ TEST_F(MigrationTest, SrcDeletionFailsWithoutDeletionTagFile) {
   // Make files in subdir0 undeletable.
   ASSERT_TRUE(base::MakeFileUnwritable(src_.GetPath().Append("subdir0")));
 
+  ExpectMigrationStatusMetrics(MigrationStatusForUma::FailToDeleteSourceFiles);
+
   auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
   EXPECT_EQ(dir, dest_.GetPath());
@@ -281,6 +315,8 @@ TEST_F(MigrationTest, SrcDeletionFailsWithDeletionTagFile) {
   ASSERT_TRUE(base::WriteFile(deletion_tag_file_path_, ""));
   // Make files in subdir1 undeletable.
   ASSERT_TRUE(base::MakeFileUnwritable(src_.GetPath().Append("subdir1")));
+
+  ExpectMigrationStatusMetrics(MigrationStatusForUma::FailToDeleteSourceFiles);
 
   auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
@@ -298,6 +334,9 @@ TEST_F(MigrationTest, NonEmptyDestDeletionFails) {
   // Make files in sub_dir0 undeletable.
   ASSERT_TRUE(base::MakeFileUnwritable(dest_.GetPath().Append("sub_dir0")));
 
+  ExpectMigrationStatusMetrics(
+      MigrationStatusForUma::FailToDeleteDestinationFiles);
+
   auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
   EXPECT_EQ(dir, src_.GetPath());
@@ -311,6 +350,8 @@ TEST_F(MigrationTest, NonEmptyDestDeletionFails) {
 TEST_F(MigrationTest, UnwritableDest) {
   SetUpFilesInSource();
   ASSERT_TRUE(base::MakeFileUnwritable(dest_.GetPath()));
+
+  ExpectMigrationStatusMetrics(MigrationStatusForUma::FailToCopy);
 
   auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 

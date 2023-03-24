@@ -70,19 +70,6 @@ MissiveImpl::MissiveImpl(
       create_storage_factory_(std::move(create_storage_factory)) {
   // Constructor may even be called not on any seq task runner.
   DETACH_FROM_SEQUENCE(sequence_checker_);
-
-  // Migrate from /var/cache to /var/spool
-  Status migration_status;
-  std::tie(reporting_storage_dir_, migration_status) =
-      Migrate(base::FilePath("/var/cache/reporting"),
-              base::FilePath("/var/spool/reporting"));
-  if (!migration_status.ok()) {
-    LOG(ERROR) << migration_status.error_message();
-  }
-
-  // A safeguard: reporting_storage_dir_ must not be empty upon finishing
-  // construction.
-  DCHECK(!reporting_storage_dir_.empty());
 }
 
 MissiveImpl::~MissiveImpl() {
@@ -95,8 +82,22 @@ void MissiveImpl::StartUp(scoped_refptr<dbus::Bus> bus,
   sequenced_task_runner_ = base::SequencedTaskRunnerHandle::Get();
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   analytics::Metrics::Initialize();
+
   DCHECK(upload_client_factory_) << "May be called only once";
   DCHECK(create_storage_factory_) << "May be called only once";
+
+  // Migrate from /var/cache to /var/spool
+  Status migration_status;
+  std::tie(reporting_storage_dir_, migration_status) =
+      Migrate(base::FilePath("/var/cache/reporting"),
+              base::FilePath("/var/spool/reporting"));
+  if (!migration_status.ok()) {
+    LOG(ERROR) << migration_status.error_message();
+  }
+  // A safeguard: reporting_storage_dir_ must not be empty upon finishing
+  // construction.
+  DCHECK(!reporting_storage_dir_.empty());
+
   std::move(upload_client_factory_)
       .Run(bus, base::BindPostTask(
                     sequenced_task_runner_,

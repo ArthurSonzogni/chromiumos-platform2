@@ -10,11 +10,15 @@
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/util/file.h"
 
 namespace reporting {
 
 namespace {
+
+using Metrics = analytics::Metrics;
+
 constexpr char kDeletionTagFile[] = ".DELETE-MISSIVE";
 
 // Deletes the directory we migrate from. Deletes files other than
@@ -32,13 +36,17 @@ Status DeleteSrcDir(const base::FilePath& src) {
                 return path != deletion_tag_file_path;
               },
               deletion_tag_file_path))) {
+    Metrics::SendEnumToUMA(kMigrationStatusUmaName,
+                           MigrationStatusForUma::FailToDeleteSourceFiles);
     return Status{error::INTERNAL,
                   base::StrCat({"Failed to delete files in ",
                                 src.MaybeAsASCII(), ". Migration failed."})};
   }
 
-  // Delete other files.
+  // Delete the deletion tag file.
   if (!base::DeleteFile(deletion_tag_file_path)) {
+    Metrics::SendEnumToUMA(kMigrationStatusUmaName,
+                           MigrationStatusForUma::FailToDeleteDeletionTagFile);
     return Status{error::INTERNAL, base::StrCat({"Failed to delete ",
                                                  deletion_tag_file_path.value(),
                                                  ". Migration failed."})};
@@ -52,16 +60,20 @@ Status DeleteSrcDir(const base::FilePath& src) {
 std::tuple<base::FilePath, Status> Migrate(const base::FilePath& src,
                                            const base::FilePath& dest) {
   if (!base::DirectoryExists(dest)) {
+    Metrics::SendEnumToUMA(kMigrationStatusUmaName,
+                           MigrationStatusForUma::DestinationNotExist);
     return {src, Status{error::FAILED_PRECONDITION,
                         base::StrCat({dest.MaybeAsASCII(),
-                                      " does not exist. It should be created "
-                                      "in the upstart script."})}};
+                                      " does not exist. It should have been "
+                                      "created in the upstart script."})}};
   }
 
   if (!base::DirectoryExists(src) || base::IsDirectoryEmpty(src)) {
     // The migration has been successfully done before or has never been needed.
     VLOG(1) << "Detected empty directory or not detected " << src.MaybeAsASCII()
             << ", migration not needed.";
+    Metrics::SendEnumToUMA(kMigrationStatusUmaName,
+                           MigrationStatusForUma::NotNeeded);
     return {dest, Status::StatusOK()};
   }
 
@@ -72,8 +84,11 @@ std::tuple<base::FilePath, Status> Migrate(const base::FilePath& src,
     LOG(INFO) << "Detected file " << deletion_tag_file_path.MaybeAsASCII()
               << ", start deleting files in " << src.MaybeAsASCII() << "...";
     if (Status deletion_status = DeleteSrcDir(src); !deletion_status.ok()) {
+      // UMA stats already reported in DeleteSrcDir
       return {dest, deletion_status};
     }
+    Metrics::SendEnumToUMA(kMigrationStatusUmaName,
+                           MigrationStatusForUma::Success);
     return {dest, Status::StatusOK()};
   }
 
@@ -84,6 +99,9 @@ std::tuple<base::FilePath, Status> Migrate(const base::FilePath& src,
     if (!DeleteFilesWarnIfFailed(base::FileEnumerator(
             dest, /*recursive=*/true,
             base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES))) {
+      Metrics::SendEnumToUMA(
+          kMigrationStatusUmaName,
+          MigrationStatusForUma::FailToDeleteDestinationFiles);
       return {src, Status{error::INTERNAL,
                           base::StrCat({"Failed to delete files in ",
                                         dest.MaybeAsASCII(),
@@ -100,6 +118,8 @@ std::tuple<base::FilePath, Status> Migrate(const base::FilePath& src,
   if (!base::CopyDirectory(
           // Without .Append("."), src would be copied as a sub dir of dest
           src.Append("."), dest, /*recursive=*/true)) {
+    Metrics::SendEnumToUMA(kMigrationStatusUmaName,
+                           MigrationStatusForUma::FailToCopy);
     return {src,
             Status{error::INTERNAL,
                    base::StrCat({"Failed to copy files from ",
@@ -109,6 +129,8 @@ std::tuple<base::FilePath, Status> Migrate(const base::FilePath& src,
 
   // Create the tag file that signals it is ready to delete src.
   if (!base::WriteFile(deletion_tag_file_path, "")) {
+    Metrics::SendEnumToUMA(kMigrationStatusUmaName,
+                           MigrationStatusForUma::FailToCreateDeletionTagFile);
     return {base::PathExists(deletion_tag_file_path) ? dest : src,
             Status{error::INTERNAL,
                    base::StrCat({"Failed to create ",
@@ -117,9 +139,12 @@ std::tuple<base::FilePath, Status> Migrate(const base::FilePath& src,
 
   // Cleanup everything in src
   if (Status deletion_status = DeleteSrcDir(src); !deletion_status.ok()) {
+    // UMA stats already reported in DeleteSrcDir
     return {dest, deletion_status};
   }
 
+  Metrics::SendEnumToUMA(kMigrationStatusUmaName,
+                         MigrationStatusForUma::Success);
   return {dest, Status::StatusOK()};
 }
 }  // namespace reporting
