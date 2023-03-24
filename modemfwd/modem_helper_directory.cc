@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/containers/contains.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/proto_file_io.h>
 
@@ -20,7 +21,8 @@
 
 namespace {
 
-constexpr char kManifestName[] = "helper_manifest.prototxt";
+constexpr char kManifestName[] = "helper_manifest.textproto";
+constexpr char kManifestNameLegacy[] = "helper_manifest.prototxt";
 
 }  // namespace
 
@@ -90,8 +92,10 @@ std::unique_ptr<ModemHelperDirectory> CreateModemHelperDirectory(
     const std::string& variant,
     scoped_refptr<dbus::Bus> bus) {
   HelperManifest parsed_manifest;
-  if (!brillo::ReadTextProtobuf(directory.Append(kManifestName),
-                                &parsed_manifest))
+  auto file_name = base::PathExists(directory.Append(kManifestName))
+                       ? kManifestName
+                       : kManifestNameLegacy;
+  if (!brillo::ReadTextProtobuf(directory.Append(file_name), &parsed_manifest))
     return nullptr;
 
   auto helper_dir = std::make_unique<ModemHelperDirectoryImpl>(

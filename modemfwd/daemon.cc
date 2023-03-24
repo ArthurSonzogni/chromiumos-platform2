@@ -40,7 +40,8 @@
 
 namespace {
 
-const char kManifestName[] = "firmware_manifest.prototxt";
+const char kManifestName[] = "firmware_manifest.textproto";
+const char kManifestNameLegacy[] = "firmware_manifest.prototxt";
 constexpr base::TimeDelta kWedgeCheckDelay = base::Minutes(5);
 constexpr base::TimeDelta kRebootCheckDelay = base::Minutes(1);
 constexpr base::TimeDelta kDlcRemovalDelay = base::Minutes(2);
@@ -214,8 +215,11 @@ int Daemon::SetupFirmwareDirectory() {
   CHECK(!fw_manifest_dir_path_.empty());
 
   std::map<std::string, Dlc> dlc_per_variant;
-  fw_index_ = ParseFirmwareManifestV2(
-      fw_manifest_dir_path_.Append(kManifestName), dlc_per_variant);
+  auto file_name = base::PathExists(fw_manifest_dir_path_.Append(kManifestName))
+                       ? kManifestName
+                       : kManifestNameLegacy;
+  fw_index_ = ParseFirmwareManifestV2(fw_manifest_dir_path_.Append(file_name),
+                                      dlc_per_variant);
   if (!fw_index_) {
     auto err = Error::Create(
         FROM_HERE, kErrorResultInitManifestFailure,
