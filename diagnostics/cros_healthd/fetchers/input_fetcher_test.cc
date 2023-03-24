@@ -4,7 +4,7 @@
 
 #include <utility>
 
-#include <base/test/bind.h>
+#include <base/test/test_future.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
@@ -26,15 +26,9 @@ class InputFetcherTest : public ::testing::Test {
   }
 
   mojom::InputResultPtr FetchInput() {
-    base::RunLoop run_loop;
-    mojom::InputResultPtr res;
-    input_fetcher_.Fetch(
-        base::BindLambdaForTesting([&](mojom::InputResultPtr res_inner) {
-          res = std::move(res_inner);
-          run_loop.Quit();
-        }));
-    run_loop.Run();
-    return res;
+    base::test::TestFuture<mojom::InputResultPtr> future;
+    input_fetcher_.Fetch(future.GetCallback());
+    return future.Take();
   }
 
   FakeChromiumDataCollector& fake_chromium_data_collector() {

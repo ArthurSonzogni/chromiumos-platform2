@@ -12,9 +12,9 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -37,14 +37,6 @@ constexpr uint32_t kFirstFanSpeedRpm = 2255;
 constexpr uint32_t kSecondFanSpeedRpm = 1263;
 constexpr uint64_t kOverflowingValue = 0xFFFFFFFFFF;
 
-// Saves |response| to |response_destination|.
-void OnGetFanSpeedResponseReceived(mojom::FanResultPtr* response_destination,
-                                   base::OnceClosure quit_closure,
-                                   mojom::FanResultPtr response) {
-  *response_destination = std::move(response);
-  std::move(quit_closure).Run();
-}
-
 class FanUtilsTest : public ::testing::Test {
  protected:
   FanUtilsTest() = default;
@@ -58,14 +50,9 @@ class FanUtilsTest : public ::testing::Test {
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   mojom::FanResultPtr FetchFanInfo() {
-    base::RunLoop run_loop;
-    mojom::FanResultPtr result;
-    fan_fetcher_.FetchFanInfo(base::BindOnce(&OnGetFanSpeedResponseReceived,
-                                             &result, run_loop.QuitClosure()));
-
-    run_loop.Run();
-
-    return result;
+    base::test::TestFuture<mojom::FanResultPtr> future;
+    fan_fetcher_.FetchFanInfo(future.GetCallback());
+    return future.Take();
   }
 
  private:

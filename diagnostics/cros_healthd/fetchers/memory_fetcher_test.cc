@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 #include <base/files/file_path.h>
-#include <base/run_loop.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gmock/gmock-actions.h>
@@ -77,12 +77,6 @@ constexpr char kFakeCpuInfoTmeContent[] =
     "blah\t: blah"
     "\0";
 
-// Saves |response| to |response_destination|.
-void OnGetMemoryResponse(mojom::MemoryResultPtr* response_update,
-                         mojom::MemoryResultPtr response) {
-  *response_update = std::move(response);
-}
-
 void VerifyMemoryEncryptionInfo(
     const mojom::MemoryEncryptionInfoPtr& actual_data,
     mojom::EncryptionState expected_state,
@@ -134,12 +128,9 @@ class MemoryFetcherTest : public ::testing::Test {
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   mojom::MemoryResultPtr FetchMemoryInfo() {
-    base::RunLoop run_loop;
-    mojom::MemoryResultPtr result;
-    memory_fetcher_.FetchMemoryInfo(
-        base::BindOnce(&OnGetMemoryResponse, &result));
-    run_loop.RunUntilIdle();
-    return result;
+    base::test::TestFuture<mojom::MemoryResultPtr> future;
+    memory_fetcher_.FetchMemoryInfo(future.GetCallback());
+    return future.Take();
   }
 
  private:

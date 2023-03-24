@@ -10,10 +10,9 @@
 #include <vector>
 
 #include <base/check_op.h>
-#include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
-#include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <brillo/variant_dictionary.h>
 #include <fwupd/dbus-proxy-mocks.h>
 #include <libfwupd/fwupd-enums.h>
@@ -175,31 +174,18 @@ class BusFetcherTest : public BaseFileTest {
   }
 
   std::vector<mojom::BusDevicePtr> FetchBusDevicesSync() {
-    base::RunLoop run_loop;
-    mojom::BusResultPtr result;
-    FetchBusDevices(&mock_context_, base::BindLambdaForTesting(
-                                        [&](mojom::BusResultPtr response) {
-                                          result = std::move(response);
-                                          run_loop.Quit();
-                                        }));
-    run_loop.Run();
-    EXPECT_TRUE(result->is_bus_devices());
-    return std::move(result->get_bus_devices());
+    base::test::TestFuture<mojom::BusResultPtr> future;
+    FetchBusDevices(&mock_context_, future.GetCallback());
+    EXPECT_TRUE(future.Get()->is_bus_devices());
+    return std::move(future.Take()->get_bus_devices());
   }
 
   base::flat_map<base::FilePath, mojom::BusDevicePtr>
   FetchSysfsPathsBusDeviceMapSync() {
-    base::RunLoop run_loop;
-    base::flat_map<base::FilePath, mojom::BusDevicePtr> result;
-    FetchSysfsPathsBusDeviceMap(
-        &mock_context_,
-        base::BindLambdaForTesting(
-            [&](base::flat_map<base::FilePath, mojom::BusDevicePtr> response) {
-              result = std::move(response);
-              run_loop.Quit();
-            }));
-    run_loop.Run();
-    return result;
+    base::test::TestFuture<base::flat_map<base::FilePath, mojom::BusDevicePtr>>
+        future;
+    FetchSysfsPathsBusDeviceMap(&mock_context_, future.GetCallback());
+    return future.Take();
   }
 
  protected:

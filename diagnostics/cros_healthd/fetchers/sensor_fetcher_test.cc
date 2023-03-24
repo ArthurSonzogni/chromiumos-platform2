@@ -7,8 +7,8 @@
 #include <utility>
 
 #include <base/files/file_util.h>
-#include <base/run_loop.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
@@ -35,14 +35,6 @@ constexpr int kInvalidCommandCode = 1;
 // Failure error code for getting lid angle.
 constexpr int kExitFailureCode = 253;
 
-// Saves |response| to |response_destination|.
-void OnGetSensorResponseReceived(mojom::SensorResultPtr* response_destination,
-                                 base::OnceClosure quit_closure,
-                                 mojom::SensorResultPtr response) {
-  *response_destination = std::move(response);
-  std::move(quit_closure).Run();
-}
-
 class SensorFetcherTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -59,13 +51,9 @@ class SensorFetcherTest : public ::testing::Test {
   }
 
   mojom::SensorResultPtr FetchSensorInfoSync() {
-    base::RunLoop run_loop;
-    mojom::SensorResultPtr result;
-    FetchSensorInfo(&mock_context_,
-                    base::BindOnce(&OnGetSensorResponseReceived, &result,
-                                   run_loop.QuitClosure()));
-    run_loop.Run();
-    return result;
+    base::test::TestFuture<mojom::SensorResultPtr> future;
+    FetchSensorInfo(&mock_context_, future.GetCallback());
+    return future.Take();
   }
 
   void SetExecutorResponse(const std::string& out, int32_t return_code) {

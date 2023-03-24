@@ -13,9 +13,9 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -69,13 +69,6 @@ constexpr bool kExpectedEncriptionOn = true;
 constexpr int32_t kExpectedLinkQuality = 60;
 constexpr int32_t kExpectedSignalLevel = -50;
 
-// Saves |response| to |response_destination|.
-void OnGetNetworkInterfaceResponse(
-    mojom::NetworkInterfaceResultPtr* response_update,
-    mojom::NetworkInterfaceResultPtr response) {
-  *response_update = std::move(response);
-}
-
 }  // namespace
 
 class NetworkInterfaceFetcherTest : public ::testing::Test {
@@ -98,13 +91,9 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   mojom::NetworkInterfaceResultPtr FetchNetworkInterfaceInfoSync() {
-    base::RunLoop run_loop;
-    mojom::NetworkInterfaceResultPtr result;
-    FetchNetworkInterfaceInfo(
-        &mock_context_,
-        base::BindOnce(&OnGetNetworkInterfaceResponse, &result));
-    run_loop.RunUntilIdle();
-    return result;
+    base::test::TestFuture<mojom::NetworkInterfaceResultPtr> future;
+    FetchNetworkInterfaceInfo(&mock_context_, future.GetCallback());
+    return future.Take();
   }
 
   void MockIw(IwCommand cmd,

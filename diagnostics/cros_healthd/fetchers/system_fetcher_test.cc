@@ -11,12 +11,11 @@
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/test/bind.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
@@ -235,16 +234,9 @@ class SystemUtilsTest : public BaseFileTest {
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   mojom::SystemResultPtr FetchSystemInfoSync() {
-    base::RunLoop run_loop;
-    mojom::SystemResultPtr result;
-    FetchSystemInfo(
-        &mock_context_,
-        base::BindLambdaForTesting([&](mojom::SystemResultPtr result_inner) {
-          result = std::move(result_inner);
-          run_loop.Quit();
-        }));
-    run_loop.Run();
-    return result;
+    base::test::TestFuture<mojom::SystemResultPtr> future;
+    FetchSystemInfo(&mock_context_, future.GetCallback());
+    return future.Take();
   }
 
   mojom::SystemInfoPtr expected_system_info_;

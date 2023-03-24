@@ -4,8 +4,8 @@
 
 #include <utility>
 
-#include <base/run_loop.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -17,27 +17,14 @@
 namespace diagnostics {
 namespace {
 
-// Saves |response| to |response_destination|.
-void OnGetNetworkInfoReceived(
-    ash::cros_healthd::mojom::NetworkResultPtr* response_destination,
-    base::OnceClosure quit_closure,
-    ash::cros_healthd::mojom::NetworkResultPtr response) {
-  *response_destination = std::move(response);
-  std::move(quit_closure).Run();
-}
-
 class NetworkFetcherTest : public testing::Test {
  protected:
   NetworkFetcherTest() = default;
 
   ash::cros_healthd::mojom::NetworkResultPtr FetchNetworkInfo() {
-    base::RunLoop run_loop;
-    ash::cros_healthd::mojom::NetworkResultPtr result;
-    network_fetcher_.FetchNetworkInfo(base::BindOnce(
-        &OnGetNetworkInfoReceived, &result, run_loop.QuitClosure()));
-
-    run_loop.Run();
-    return result;
+    base::test::TestFuture<ash::cros_healthd::mojom::NetworkResultPtr> future;
+    network_fetcher_.FetchNetworkInfo(future.GetCallback());
+    return future.Take();
   }
 
   FakeNetworkHealthAdapter* network_adapter() {

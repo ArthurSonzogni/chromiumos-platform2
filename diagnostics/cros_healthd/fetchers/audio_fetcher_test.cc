@@ -6,9 +6,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/run_loop.h>
-#include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
@@ -110,15 +109,9 @@ class AudioFetcherTest : public ::testing::Test {
   }
 
   mojom::AudioResultPtr FetchAudioInfoSync() {
-    base::RunLoop run_loop;
-    mojom::AudioResultPtr result;
-    FetchAudioInfo(&mock_context_, base::BindLambdaForTesting(
-                                       [&](mojom::AudioResultPtr response) {
-                                         result = std::move(response);
-                                         run_loop.Quit();
-                                       }));
-    run_loop.Run();
-    return result;
+    base::test::TestFuture<mojom::AudioResultPtr> future;
+    FetchAudioInfo(&mock_context_, future.GetCallback());
+    return future.Take();
   }
 
  private:

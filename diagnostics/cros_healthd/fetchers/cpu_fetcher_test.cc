@@ -15,10 +15,9 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -338,15 +337,9 @@ class CpuFetcherTest : public testing::Test {
   }
 
   mojo_ipc::CpuResultPtr FetchCpuInfoSync() {
-    base::RunLoop run_loop;
-    mojo_ipc::CpuResultPtr result;
-    FetchCpuInfo(&mock_context_, base::BindLambdaForTesting(
-                                     [&](mojo_ipc::CpuResultPtr response) {
-                                       result = std::move(response);
-                                       run_loop.Quit();
-                                     }));
-    run_loop.Run();
-    return result;
+    base::test::TestFuture<mojo_ipc::CpuResultPtr> future;
+    FetchCpuInfo(&mock_context_, future.GetCallback());
+    return future.Take();
   }
 
   const std::vector<std::pair<std::string, uint64_t>>& GetCStateVector(

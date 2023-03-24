@@ -5,9 +5,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/run_loop.h>
-#include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <fwupd/dbus-proxy-mocks.h>
 #include <gtest/gtest.h>
 
@@ -54,16 +53,9 @@ class AudioHardwareFetcherTest : public BaseFileTest {
   }
 
   mojom::AudioHardwareResultPtr FetchAudioHardwareInfoSync() {
-    base::RunLoop run_loop;
-    mojom::AudioHardwareResultPtr result;
-    FetchAudioHardwareInfo(
-        &mock_context_,
-        base::BindLambdaForTesting([&](mojom::AudioHardwareResultPtr response) {
-          result = std::move(response);
-          run_loop.Quit();
-        }));
-    run_loop.Run();
-    return result;
+    base::test::TestFuture<mojom::AudioHardwareResultPtr> future;
+    FetchAudioHardwareInfo(&mock_context_, future.GetCallback());
+    return future.Take();
   }
 
  private:

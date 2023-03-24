@@ -13,9 +13,9 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/run_loop.h>
 #include <base/strings/string_split.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
@@ -180,23 +180,6 @@ constexpr char kProcPidStatusContentsNegativeUidValue[] =
 // string, so there is no invalid data for this file.
 constexpr char kFakeProcPidCmdlineContents[] = "/usr/bin/fake_exe --arg=yes";
 
-// Saves |response| to |response_destination|.
-void OnMojoResponseReceived(mojom::ProcessResultPtr* response_destination,
-                            base::OnceClosure quit_closure,
-                            mojom::ProcessResultPtr response) {
-  DCHECK(response_destination);
-  *response_destination = std::move(response);
-  std::move(quit_closure).Run();
-}
-void OnMojoResponseReceivedMultiple(
-    mojom::MultipleProcessResultPtr* response_destination,
-    base::OnceClosure quit_closure,
-    mojom::MultipleProcessResultPtr response) {
-  DCHECK(response_destination);
-  *response_destination = std::move(response);
-  std::move(quit_closure).Run();
-}
-
 class ProcessFetcherTest : public testing::Test {
  protected:
   ProcessFetcherTest() = default;
@@ -221,28 +204,18 @@ class ProcessFetcherTest : public testing::Test {
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   mojom::ProcessResultPtr FetchProcessInfo() {
-    mojom::ProcessResultPtr result;
-    base::RunLoop run_loop;
+    base::test::TestFuture<mojom::ProcessResultPtr> future;
     ProcessFetcher(&mock_context_, temp_dir_path())
-        .FetchProcessInfo(kPid, base::BindOnce(&OnMojoResponseReceived, &result,
-                                               run_loop.QuitClosure()));
-    run_loop.Run();
-
-    return result;
+        .FetchProcessInfo(kPid, future.GetCallback());
+    return future.Take();
   }
 
   mojom::MultipleProcessResultPtr FetchMultipleProcessInfo(bool ignore) {
-    mojom::MultipleProcessResultPtr result;
-    base::RunLoop run_loop;
+    base::test::TestFuture<mojom::MultipleProcessResultPtr> future;
     std::vector<uint32_t> pids{kFirstPid, kSecondPid, kThirdPid};
     ProcessFetcher(&mock_context_, temp_dir_path())
-        .FetchMultipleProcessInfo(
-            pids, ignore,
-            base::BindOnce(&OnMojoResponseReceivedMultiple, &result,
-                           run_loop.QuitClosure()));
-    run_loop.Run();
-
-    return result;
+        .FetchMultipleProcessInfo(pids, ignore, future.GetCallback());
+    return future.Take();
   }
 
   bool WriteProcPidStatData(const std::string& new_data,

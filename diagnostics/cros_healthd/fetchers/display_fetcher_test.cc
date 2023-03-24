@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -17,28 +18,14 @@ namespace {
 
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
-// Saves |response| to |response_destination|.
-void OnGetDisplayInfoResponseReceived(
-    mojo_ipc::DisplayResultPtr* response_destination,
-    base::RepeatingClosure quit_closure,
-    mojo_ipc::DisplayResultPtr response) {
-  *response_destination = std::move(response);
-  quit_closure.Run();
-}
-
 class DisplayFetcherTest : public ::testing::Test {
  protected:
   DisplayFetcherTest() = default;
 
   mojo_ipc::DisplayResultPtr FetchDisplayInfo() {
-    base::RunLoop run_loop;
-    mojo_ipc::DisplayResultPtr result;
-    display_fetcher_.FetchDisplayInfo(base::BindOnce(
-        &OnGetDisplayInfoResponseReceived, &result, run_loop.QuitClosure()));
-
-    run_loop.Run();
-
-    return result;
+    base::test::TestFuture<mojo_ipc::DisplayResultPtr> future;
+    display_fetcher_.FetchDisplayInfo(future.GetCallback());
+    return future.Take();
   }
 
  private:
