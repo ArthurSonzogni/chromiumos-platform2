@@ -90,6 +90,8 @@ constexpr char kMountEncryptedFailedFile[] = "mount_encrypted_failed";
 constexpr char kEncryptedStatefulMnt[] = "encrypted";
 // This file is written to when /var is too full and the logs are deleted.
 constexpr char kReclaimFullVar[] = ".reclaim_full_var";
+// This value is threshold for determining that /var is full.
+const int kVarFullThreshold = 10485760;
 
 constexpr char kDaemonStore[] = "daemon-store";
 constexpr char kEtc[] = "etc";
@@ -230,7 +232,7 @@ bool ChromeosStartup::IsVarFull() {
     return false;
   }
 
-  return (st.f_bavail < 10000 || st.f_favail < 100);
+  return (st.f_bavail < kVarFullThreshold / st.f_bsize || st.f_favail < 100);
 }
 
 ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,

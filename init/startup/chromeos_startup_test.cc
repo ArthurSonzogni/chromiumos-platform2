@@ -831,8 +831,9 @@ TEST_F(IsVarFullTest, Failure) {
   base::FilePath var = base_dir.Append("var");
 
   struct statvfs st;
-  st.f_bavail = 11000;
+  st.f_bavail = 2600;
   st.f_favail = 110;
+  st.f_bsize = 4096;
   platform_->SetStatvfsResultForPath(var, st);
 
   bool res = startup_->IsVarFull();
@@ -843,8 +844,9 @@ TEST_F(IsVarFullTest, TrueBavail) {
   base::FilePath var = base_dir.Append("var");
 
   struct statvfs st;
-  st.f_bavail = 9000;
+  st.f_bavail = 1000;
   st.f_favail = 110;
+  st.f_bsize = 4096;
   platform_->SetStatvfsResultForPath(var, st);
 
   bool res = startup_->IsVarFull();
@@ -857,6 +859,7 @@ TEST_F(IsVarFullTest, TrueFavail) {
   struct statvfs st;
   st.f_bavail = 11000;
   st.f_favail = 90;
+  st.f_bsize = 4096;
   platform_->SetStatvfsResultForPath(var, st);
 
   bool res = startup_->IsVarFull();
