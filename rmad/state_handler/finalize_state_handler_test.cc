@@ -40,6 +40,16 @@ constexpr char kInvalidBoardIdType[] = "ffffffff";
 constexpr char kValidBoardIdFlags[] = "00007f80";
 constexpr char kInvalidBoardIdFlags[] = "00007f7f";
 
+struct StateHandlerArgs {
+  // First WP check to know if factory mode is enabled.
+  // Second WP check after disabling factory mode. WP is expected to be enabled.
+  std::vector<bool> hwwp_status_list = {false, true};
+  bool enable_swwp_success = true;
+  bool disable_factory_mode_success = true;
+  std::string board_id_type = kValidBoardIdType;
+  std::string board_id_flags = kValidBoardIdFlags;
+};
+
 }  // namespace
 
 namespace rmad {
@@ -55,43 +65,45 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
                 (const));
   };
 
-  scoped_refptr<FinalizeStateHandler> CreateStateHandler(
-      const std::vector<bool>& wp_status_list,
-      bool enable_swwp_success,
-      bool disable_factory_mode_success,
-      const std::string& board_id_type,
-      const std::string& board_id_flags) {
+  scoped_refptr<FinalizeStateHandler> CreateInitializedStateHandler(
+      const StateHandlerArgs& args = {}) {
     // Mock |Cr50Utils|.
     auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
     ON_CALL(*mock_cr50_utils, DisableFactoryMode())
-        .WillByDefault(Return(disable_factory_mode_success));
+        .WillByDefault(Return(args.disable_factory_mode_success));
     ON_CALL(*mock_cr50_utils, GetBoardIdType(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(board_id_type), Return(true)));
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(args.board_id_type), Return(true)));
     ON_CALL(*mock_cr50_utils, GetBoardIdFlags(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(board_id_flags), Return(true)));
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(args.board_id_flags), Return(true)));
 
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<StrictMock<MockWriteProtectUtils>>();
     {
       InSequence seq;
-      for (bool enabled : wp_status_list) {
+      for (bool enabled : args.hwwp_status_list) {
         EXPECT_CALL(*mock_write_protect_utils,
                     GetHardwareWriteProtectionStatus(_))
             .WillOnce(DoAll(SetArgPointee<0, bool>(enabled), Return(true)));
       }
     }
     EXPECT_CALL(*mock_write_protect_utils, EnableSoftwareWriteProtection())
-        .WillRepeatedly(Return(enable_swwp_success));
+        .WillRepeatedly(Return(args.enable_swwp_success));
 
     // Register signal callback.
     daemon_callback_->SetFinalizeSignalCallback(
         base::BindRepeating(&SignalSender::SendFinalizeProgressSignal,
                             base::Unretained(&signal_sender_)));
 
-    return base::MakeRefCounted<FinalizeStateHandler>(
+    // Initialization should always succeed.
+    auto handler = base::MakeRefCounted<FinalizeStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
         std::move(mock_cr50_utils), std::move(mock_write_protect_utils));
+    EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+    return handler;
   }
 
   RmadState CreateFinalizeRequest(FinalizeState_FinalizeChoice choice) const {
@@ -142,27 +154,24 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled_Succeeded) {
-  auto handler = CreateStateHandler({false, true}, true, true,
-                                    kValidBoardIdFlags, kValidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  auto handler = CreateInitializedStateHandler();
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpEnabled_Succeeded) {
-  auto handler = CreateStateHandler({true, true}, false, true,
-                                    kValidBoardIdType, kValidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  StateHandlerArgs args = {.hwwp_status_list = {true, true}};
+  auto handler = CreateInitializedStateHandler(args);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_EnableSwwpFailed) {
-  auto handler = CreateStateHandler({false}, false, true, kValidBoardIdType,
-                                    kValidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  StateHandlerArgs args = {.hwwp_status_list = {false},
+                           .enable_swwp_success = false};
+  auto handler = CreateInitializedStateHandler(args);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0,
@@ -170,9 +179,9 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_EnableSwwpFailed) {
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_DisableFactoryModeFailed) {
-  auto handler = CreateStateHandler({false}, true, false, kValidBoardIdType,
-                                    kValidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  StateHandlerArgs args = {.hwwp_status_list = {false},
+                           .disable_factory_mode_success = false};
+  auto handler = CreateInitializedStateHandler(args);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.5,
@@ -180,9 +189,8 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_DisableFactoryModeFailed) {
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled) {
-  auto handler = CreateStateHandler({false, false}, true, true,
-                                    kValidBoardIdType, kValidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  StateHandlerArgs args = {.hwwp_status_list = {false, false}};
+  auto handler = CreateInitializedStateHandler(args);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.8,
@@ -190,9 +198,8 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled) {
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId) {
-  auto handler = CreateStateHandler({false, true}, true, true,
-                                    kInvalidBoardIdType, kValidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  StateHandlerArgs args = {.board_id_type = kInvalidBoardIdType};
+  auto handler = CreateInitializedStateHandler(args);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.9,
@@ -200,9 +207,8 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId) {
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId_Bypass) {
-  auto handler = CreateStateHandler({false, true}, true, true,
-                                    kInvalidBoardIdType, kValidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  StateHandlerArgs args = {.board_id_type = kInvalidBoardIdType};
+  auto handler = CreateInitializedStateHandler(args);
 
   // Bypass board ID check.
   EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDirPath)));
@@ -212,9 +218,8 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId_Bypass) {
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags) {
-  auto handler = CreateStateHandler({false, true}, true, true,
-                                    kValidBoardIdType, kInvalidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  StateHandlerArgs args = {.board_id_flags = kInvalidBoardIdFlags};
+  auto handler = CreateInitializedStateHandler(args);
 
   handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.9,
@@ -222,9 +227,8 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags) {
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags_Bypass) {
-  auto handler = CreateStateHandler({false, true}, true, true,
-                                    kValidBoardIdType, kInvalidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  StateHandlerArgs args = {.board_id_flags = kInvalidBoardIdFlags};
+  auto handler = CreateInitializedStateHandler(args);
 
   // Bypass board ID check.
   EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDirPath)));
@@ -234,9 +238,7 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags_Bypass) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Succeeded) {
-  auto handler = CreateStateHandler({false, true}, true, true,
-                                    kValidBoardIdType, kValidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  auto handler = CreateInitializedStateHandler();
   handler->RunState();
   task_environment_.RunUntilIdle();
 
@@ -247,9 +249,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Succeeded) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
-  auto handler = CreateStateHandler({false, true}, true, true,
-                                    kValidBoardIdType, kValidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  auto handler = CreateInitializedStateHandler();
   handler->RunState();
 
   ExpectTransitionFailedWithError(
@@ -261,9 +261,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler({false, true}, true, true,
-                                    kValidBoardIdType, kValidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  auto handler = CreateInitializedStateHandler();
   handler->RunState();
   task_environment_.RunUntilIdle();
 
@@ -272,9 +270,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingState) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingArgs) {
-  auto handler = CreateStateHandler({false, true}, true, true,
-                                    kValidBoardIdType, kValidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  auto handler = CreateInitializedStateHandler();
   handler->RunState();
   task_environment_.RunUntilIdle();
 
@@ -285,9 +281,9 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingArgs) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_BlockingFailure_Retry) {
-  auto handler = CreateStateHandler({false, false}, true, false,
-                                    kValidBoardIdType, kValidBoardIdFlags);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  StateHandlerArgs args = {.hwwp_status_list = {false, false},
+                           .disable_factory_mode_success = false};
+  auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
   task_environment_.RunUntilIdle();
 
