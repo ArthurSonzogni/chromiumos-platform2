@@ -78,6 +78,7 @@ chromite_root = os.path.join(
 sys.path.insert(0, chromite_root)
 
 # pylint: disable=wrong-import-position
+from chromite.format import formatters
 from chromite.lib import commandline
 from chromite.lib import cros_build_lib
 
@@ -1007,15 +1008,6 @@ def RunLinters(name, gndata, settings=None):
     return issues
 
 
-def GetGnPath():
-    """Get path to gn executable.
-
-    Returns:
-        Path string.
-    """
-    return os.path.join(chromite_root, "chroot", "usr", "bin", "gn")
-
-
 def CheckGnFile(gnfile, check_format: bool = False):
     """Check |gnfile| for common mistakes.
 
@@ -1039,7 +1031,7 @@ def CheckGnFile(gnfile, check_format: bool = False):
     issues += settings.issues
 
     # Parse and check
-    gn_path = GetGnPath()
+    gn_path = formatters.gn._find_gn()  # pylint: disable=protected-access
     if not os.path.exists(gn_path):
         logging.error(
             'gn command not found: "%s"; make sure it is installed.', gn_path
