@@ -437,6 +437,7 @@ type cros_var_lib_shill, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_tpm, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_tpm_manager, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_trim, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_u2f, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_ui, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_update_engine, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_ureadahead, file_type, cros_file_type, cros_var_file_type;

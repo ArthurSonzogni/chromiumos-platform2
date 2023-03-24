@@ -326,6 +326,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/tpm(/.*)?              u:object_r:cros_var_lib_tpm:s0
 /var/lib/tpm_manager(/.*)?      u:object_r:cros_var_lib_tpm_manager:s0
 /var/lib/trim(/.*)?             u:object_r:cros_var_lib_trim:s0
+/var/lib/u2f(/.*)?              u:object_r:cros_var_lib_u2f:s0
 /var/lib/ui(/.*)?               u:object_r:cros_var_lib_ui:s0
 /var/lib/update_engine(/.*)?    u:object_r:cros_var_lib_update_engine:s0
 /var/lib/ureadahead(/.*)?       u:object_r:cros_var_lib_ureadahead:s0
