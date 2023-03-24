@@ -20,7 +20,7 @@ BASE_REQUIRED_SYSCALLS = [
 ]
 
 if (getenv("ARCH") == "arm") {
-  BASE_ARM_REQUIRED_SYSCALLS = [
+  BASE_REQUIRED_SYSCALLS += [
     "clock_getres_time64",
     "clock_gettime64",
   ]
@@ -47,9 +47,6 @@ install_and_check_seccomp_policy("diagnostics_seccomp") {
   install_path = "/usr/share/policy"
 
   required_syscalls = BASE_REQUIRED_SYSCALLS
-  if (_arch == "arm") {
-    required_syscalls += BASE_ARM_REQUIRED_SYSCALLS
-  }
   denied_syscalls = BASE_DENIED_SYSCALLS
 }
 
@@ -67,9 +64,6 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
                         # This syscall is required by all executor delegates.
                         "getrandom",
                       ]
-  if (_arch == "arm") {
-    required_syscalls += BASE_ARM_REQUIRED_SYSCALLS
-  }
   denied_syscalls = BASE_DENIED_SYSCALLS
 }
 
@@ -81,8 +75,5 @@ install_and_check_seccomp_policy("diagnostics_seccomp_healthd") {
   install_path = "/usr/share/policy"
 
   required_syscalls = BASE_REQUIRED_SYSCALLS
-  if (_arch == "arm") {
-    required_syscalls += BASE_ARM_REQUIRED_SYSCALLS
-  }
   denied_syscalls = []
 }
