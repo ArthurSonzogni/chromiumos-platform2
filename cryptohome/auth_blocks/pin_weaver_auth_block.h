@@ -41,7 +41,7 @@ class PinWeaverAuthBlock : public SyncAuthBlock {
   // removed.
   CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) override;
 
-  bool IsLocked(uint64_t label);
+  uint32_t GetLockoutDelay(uint64_t label);
 
  private:
   // Handler for Low Entropy credentials.

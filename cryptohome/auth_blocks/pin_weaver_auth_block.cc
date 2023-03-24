@@ -346,17 +346,28 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
       &key_blobs->reset_secret.value());
 
   if (!ret.ok()) {
-    // Include the kLeLockedOut action if it is caused by invalid LE secret and
-    // locked.
-    if (ret->local_lecred_error() == LE_CRED_ERROR_INVALID_LE_SECRET &&
-        IsLocked(auth_state->le_label.value())) {
-      return MakeStatus<CryptohomeCryptoError>(
-                 CRYPTOHOME_ERR_LOC(
-                     kLocPinWeaverAuthBlockCheckCredLockedInDerive),
-                 ErrorActionSet(
-                     {ErrorAction::kAuth, ErrorAction::kLeLockedOut}),
-                 CryptoError::CE_CREDENTIAL_LOCKED)
-          .Wrap(std::move(ret));
+    // If the underlying credential is currently locked, include the
+    // kLeLockedOut action.
+    if (GetLockoutDelay(auth_state->le_label.value()) > 0) {
+      // If it is caused by invalid LE secret
+      if (ret->local_lecred_error() == LE_CRED_ERROR_INVALID_LE_SECRET) {
+        return MakeStatus<CryptohomeCryptoError>(
+                   CRYPTOHOME_ERR_LOC(
+                       kLocPinWeaverAuthBlockCheckCredLockedInDerive),
+                   ErrorActionSet(
+                       {ErrorAction::kAuth, ErrorAction::kLeLockedOut}),
+                   CryptoError::CE_CREDENTIAL_LOCKED)
+            .Wrap(std::move(ret));
+        // Or the LE node specified by le_label in PinWeaver is under a lockout
+        // timer from previous failed attempts.
+      } else if (ret->local_lecred_error() == LE_CRED_ERROR_TOO_MANY_ATTEMPTS) {
+        return MakeStatus<CryptohomeCryptoError>(
+                   CRYPTOHOME_ERR_LOC(
+                       kLocPinWeaverAuthBlockCheckCredTPMLockedInDerive),
+                   ErrorActionSet(
+                       {ErrorAction::kAuth, ErrorAction::kLeLockedOut}))
+            .Wrap(std::move(ret));
+      }
     }
 
     return MakeStatus<CryptohomeCryptoError>(
@@ -395,21 +406,16 @@ CryptohomeStatus PinWeaverAuthBlock::PrepareForRemoval(
   return le_manager_->RemoveCredential(state->le_label.value());
 }
 
-bool PinWeaverAuthBlock::IsLocked(uint64_t label) {
+uint32_t PinWeaverAuthBlock::GetLockoutDelay(uint64_t label) {
   LECredStatusOr<uint32_t> delay = le_manager_->GetDelayInSeconds(label);
   if (!delay.ok()) {
     LOG(ERROR)
         << "Failed to obtain the delay in seconds in pinweaver auth block: "
         << std::move(delay).status();
-    return false;
+    return 0;
   }
 
-  // The pin is locked forever.
-  if (delay.value() == kInfiniteDelay) {
-    return true;
-  }
-
-  return false;
+  return delay.value();
 }
 
 }  // namespace cryptohome

@@ -1375,6 +1375,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionManagerAuthSessionActive = 2309,
   /* ./auth_session_manager.cc */
   kLocAuthSessionManagerAuthSessionNotFound = 2310,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockCheckCredTPMLockedInDerive = 2311,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2500
   //// See location_db.py for more info.

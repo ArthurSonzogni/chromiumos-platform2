@@ -652,7 +652,7 @@ base::flat_set<AuthIntent> AuthBlockUtilityImpl::GetSupportedIntentsFromState(
 
   PinWeaverAuthBlock pinweaver_auth_block =
       PinWeaverAuthBlock(crypto_->le_manager());
-  if (pinweaver_auth_block.IsLocked(state->le_label.value())) {
+  if (pinweaver_auth_block.GetLockoutDelay(state->le_label.value()) > 0) {
     supported_intents.clear();
   }
 

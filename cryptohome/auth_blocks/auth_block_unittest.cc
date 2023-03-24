@@ -710,6 +710,47 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
                 ->local_crypto_error());
 }
 
+TEST(PinWeaverAuthBlockTest, CheckCredentialFailureLeFiniteTimeout) {
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
+  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+
+  brillo::SecureBlob le_secret(kDefaultAesKeySize);
+  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
+
+  NiceMock<MockLECredentialManager> le_cred_manager;
+
+  ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
+      .WillByDefault(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LECredError::LE_CRED_ERROR_TOO_MANY_ATTEMPTS));
+  EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
+      .Times(Exactly(1));
+  // Simulate a 30 second timeout duration on the le credential.
+  EXPECT_CALL(le_cred_manager, GetDelayInSeconds(_)).WillOnce(ReturnValue(30));
+
+  PinWeaverAuthBlock auth_block(&le_cred_manager);
+  PinWeaverAuthBlockState state;
+  state.le_label = 0;
+  state.salt = salt;
+  state.chaps_iv = chaps_iv;
+  state.fek_iv = fek_iv;
+  AuthBlockState auth_state;
+  auth_state.state = std::move(state);
+
+  KeyBlobs key_blobs;
+  AuthInput auth_input = {vault_key};
+  EXPECT_EQ(CryptoError::CE_TPM_DEFEND_LOCK,
+            auth_block.Derive(auth_input, auth_state, &key_blobs)
+                ->local_crypto_error());
+}
+
 TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
   const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
       CryptohomeError::ErrorLocationPair(
