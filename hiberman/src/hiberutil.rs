@@ -6,6 +6,7 @@
 
 use std::convert::TryInto;
 use std::ffi::CString;
+use std::ffi::OsStr;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
@@ -20,6 +21,9 @@ use std::time::Duration;
 
 use anyhow::Context;
 use anyhow::Result;
+use libc;
+use libc::c_ulong;
+use libc::c_void;
 use libchromeos::sys::syscall;
 use log::debug;
 use log::error;
@@ -468,4 +472,65 @@ pub fn emergency_reboot(reason: &str) {
 fn reboot_system() -> Result<()> {
     error!("Rebooting system!");
     checked_command(&mut Command::new("/sbin/reboot")).context("Failed to reboot system")
+}
+
+/// Invoke initctl to fire off an upstart event.
+pub fn emit_upstart_event(name: &str) -> Result<()> {
+    debug!("Emitting upstart event: {}", name);
+    checked_command(Command::new("/sbin/initctl").args(["emit", "--no-wait", name]))
+        .context("Failed to create initctl command")
+}
+
+pub fn mount_filesystem<P: AsRef<OsStr>>(
+    block_device: P,
+    mountpoint: P,
+    fs_type: &str,
+    flags: u64,
+    data: &str,
+) -> Result<()> {
+    let bdev_cstr = CString::new(block_device.as_ref().as_bytes())?;
+    let mp_cstr = CString::new(mountpoint.as_ref().as_bytes())?;
+    let fs_cstr = CString::new(fs_type)?;
+    let data_cstr = CString::new(data)?;
+
+    debug!(
+        "Mounting {} to {}",
+        bdev_cstr.to_string_lossy(),
+        mp_cstr.to_string_lossy()
+    );
+
+    // This is safe because mount does not affect memory layout.
+    unsafe {
+        let rc = libc::mount(
+            bdev_cstr.as_ptr(),
+            mp_cstr.as_ptr(),
+            fs_cstr.as_ptr(),
+            flags as c_ulong,
+            data_cstr.as_ptr() as *const c_void,
+        );
+
+        if rc < 0 {
+            return Err(libchromeos::sys::Error::last())
+                .context(format!("Failed to mount {}", bdev_cstr.to_string_lossy()));
+        }
+    }
+
+    Ok(())
+}
+
+pub fn unmount_filesystem<P: AsRef<OsStr>>(mountpoint: P) -> Result<()> {
+    let mp_cstr = CString::new(mountpoint.as_ref().as_bytes())?;
+
+    debug!("Unmounting {}", mp_cstr.to_string_lossy());
+
+    // This is safe because unmount does not affect memory.
+    unsafe {
+        let rc = libc::umount(mp_cstr.as_ptr());
+        if rc < 0 {
+            return Err(libchromeos::sys::Error::last())
+                .context(format!("Failed to unmount {}", mp_cstr.to_string_lossy()));
+        }
+    }
+
+    Ok(())
 }

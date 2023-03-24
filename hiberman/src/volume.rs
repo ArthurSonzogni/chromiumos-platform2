@@ -8,16 +8,11 @@
 
 use anyhow::Context;
 use anyhow::Result;
-use hex::encode;
-use libc::c_ulong;
-use libc::c_void;
-use libc::{self};
 use log::debug;
 use log::error;
 use log::info;
 use log::warn;
 
-use std::ffi::CString;
 use std::ffi::OsStr;
 use std::fs::create_dir;
 use std::fs::read_dir;
@@ -29,7 +24,6 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::io::IoSlice;
 use std::io::Write;
-use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -48,6 +42,7 @@ use crate::hiberutil::get_device_mounted_at_dir;
 use crate::hiberutil::get_page_size;
 use crate::hiberutil::get_total_memory_pages;
 use crate::hiberutil::log_io_duration;
+use crate::hiberutil::mount_filesystem;
 use crate::hiberutil::stateful_block_partition_one;
 use crate::hiberutil::HibernateError;
 use crate::lvm::activate_lv;
@@ -158,7 +153,6 @@ enum HibernateVolume {
 
 pub struct VolumeManager {
     vg_name: String,
-    hibermeta_mount: Option<ActiveMount>,
 }
 
 impl VolumeManager {
@@ -170,10 +164,7 @@ impl VolumeManager {
     pub fn new() -> Result<Self> {
         let partition1 = stateful_block_partition_one()?;
         let vg_name = get_vg_name(&partition1)?;
-        Ok(Self {
-            vg_name,
-            hibermeta_mount: None,
-        })
+        Ok(Self { vg_name })
     }
 
     /// Activate the thinpool in RO mode.
@@ -205,14 +196,7 @@ impl VolumeManager {
             let hibermeta_dir = Path::new(HIBERMETA_DIR);
             let path = lv_path(&self.vg_name, HIBERMETA_VOLUME_NAME);
             info!("Mounting hibermeta");
-            self.hibermeta_mount = Some(ActiveMount::new(
-                path.as_path(),
-                hibermeta_dir,
-                "ext4",
-                0,
-                "",
-                false,
-            )?);
+            mount_filesystem(path.as_path(), hibermeta_dir, "ext4", 0, "")?;
         }
 
         Ok(())
@@ -724,77 +708,6 @@ fn zero_init_blockdev(path: &Path, num_bytes: u64) -> Result<()> {
     }
 
     Ok(())
-}
-
-/// Object that tracks the lifetime of a mount, which is potentially unmounted
-/// when this object is dropped.
-struct ActiveMount {
-    path: Option<CString>,
-}
-
-impl ActiveMount {
-    /// Mount a new file system somewhere.
-    pub fn new<P: AsRef<OsStr>>(
-        device: P,
-        path: P,
-        fs_type: &str,
-        flags: c_ulong,
-        data: &str,
-        unmount_on_drop: bool,
-    ) -> Result<Self> {
-        let device_string = CString::new(device.as_ref().as_bytes())?;
-        let path_string = CString::new(path.as_ref().as_bytes())?;
-        let fs_string = CString::new(fs_type)?;
-        let data_string = CString::new(data)?;
-        info!(
-            "Mounting {} to {}",
-            device_string.to_string_lossy(),
-            path_string.to_string_lossy()
-        );
-        // This is safe because mount does not affect memory layout.
-        unsafe {
-            let rc = libc::mount(
-                device_string.as_ptr(),
-                path_string.as_ptr(),
-                fs_string.as_ptr(),
-                flags,
-                data_string.as_ptr() as *const c_void,
-            );
-            if rc < 0 {
-                return Err(libchromeos::sys::Error::last())
-                    .context("Failed to mount hibernate volume");
-            }
-        }
-
-        let path = if unmount_on_drop {
-            Some(path_string)
-        } else {
-            None
-        };
-
-        Ok(Self { path })
-    }
-}
-
-impl Drop for ActiveMount {
-    fn drop(&mut self) {
-        let path = self.path.take();
-        if let Some(path) = path {
-            // Attempt to unmount the file system.
-            // This is safe because unmount does not affect memory.
-            unsafe {
-                info!("Unmounting {}", path.to_string_lossy());
-                let rc = libc::umount(path.as_ptr());
-                if rc < 0 {
-                    warn!(
-                        "Failed to unmount {}: {}",
-                        path.to_string_lossy(),
-                        libchromeos::sys::Error::last()
-                    );
-                }
-            }
-        }
-    }
 }
 
 /// Object that tracks the lifetime of a temporarily suspended dm-target, and
