@@ -794,7 +794,6 @@ if (use.test) {
       "testrunner.cc",
       "tethering_manager_test.cc",
       "throttler_test.cc",
-      "timeout_set_test.cc",
       "upstart/mock_upstart.cc",
       "upstart/mock_upstart_proxy.cc",
       "upstart/upstart_test.cc",
