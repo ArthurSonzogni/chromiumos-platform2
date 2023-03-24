@@ -73,7 +73,11 @@ class FingerprintAuthBlock : public AuthBlock {
   void ContinueSelect(
       SelectFactorCallback callback,
       std::vector<AuthFactor> auth_factors,
+      uint64_t rate_limiter_label,
       CryptohomeStatusOr<BiometricsAuthBlockService::OperationOutput> output);
+
+  // Check whether the rate-limiter leaf is locked-out currently.
+  bool IsLocked(uint64_t label);
 
   LECredentialManager* le_manager_;
   BiometricsAuthBlockService* service_;

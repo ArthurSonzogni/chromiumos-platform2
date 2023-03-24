@@ -25,6 +25,7 @@
 #include "cryptohome/error/cryptohome_le_cred_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
+#include "cryptohome/error/utilities.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/le_credential_manager.h"
 
@@ -385,9 +386,10 @@ void FingerprintAuthBlock::SelectFactor(const AuthInput& auth_input,
       .iv = brillo::Blob(reply->iv.begin(), reply->iv.end()),
   };
   service_->MatchCredential(
-      input, base::BindOnce(&FingerprintAuthBlock::ContinueSelect,
-                            weak_factory_.GetWeakPtr(), std::move(callback),
-                            std::move(auth_factors)));
+      input,
+      base::BindOnce(&FingerprintAuthBlock::ContinueSelect,
+                     weak_factory_.GetWeakPtr(), std::move(callback),
+                     std::move(auth_factors), *auth_input.rate_limiter_label));
 }
 
 CryptohomeStatus FingerprintAuthBlock::PrepareForRemoval(
@@ -488,11 +490,21 @@ void FingerprintAuthBlock::ContinueCreate(
 void FingerprintAuthBlock::ContinueSelect(
     SelectFactorCallback callback,
     std::vector<AuthFactor> auth_factors,
+    uint64_t rate_limiter_label,
     CryptohomeStatusOr<BiometricsAuthBlockService::OperationOutput> output) {
   if (!output.ok()) {
-    // TODO(b/272685339): Report LE_LOCKED_OUT if this attempt triggered the
-    // rate limit.
     LOG(ERROR) << "Failed to authenticate biometrics credential.";
+    if (IsLocked(rate_limiter_label)) {
+      std::move(callback).Run(
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocFingerprintAuthBlockAuthenticateCredentialLockedInSelect),
+              ErrorActionSet({ErrorAction::kAuth, ErrorAction::kLeLockedOut}),
+              user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED)
+              .Wrap(std::move(output).err_status()),
+          std::nullopt, std::nullopt);
+      return;
+    }
     std::move(callback).Run(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
@@ -535,6 +547,22 @@ void FingerprintAuthBlock::ContinueSelect(
           ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
           user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND),
       std::nullopt, std::nullopt);
+}
+
+bool FingerprintAuthBlock::IsLocked(uint64_t label) {
+  LECredStatusOr<uint32_t> delay = le_manager_->GetDelayInSeconds(label);
+  if (!delay.ok()) {
+    LOG(ERROR)
+        << "Failed to obtain the delay in seconds in fingerprint auth block: "
+        << std::move(delay).status();
+    return false;
+  }
+
+  if (delay.value() > 0) {
+    return true;
+  }
+
+  return false;
 }
 
 }  // namespace cryptohome
