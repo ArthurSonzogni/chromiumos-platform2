@@ -41,6 +41,10 @@ bool IsOfficialImage();
 // Returns true if we are mocking metrics consent as granted.
 bool HasMockConsent();
 
+// Returns true if we are running ui.ChromeCrashEarly.loose and want to allow
+// larger core files in that mode.
+bool UseLooseCoreSizeForChromeCrashEarly();
+
 // Determines whether feedback is allowed, based on:
 // * The presence/absence of mock consent
 // * Whether this is a developer image

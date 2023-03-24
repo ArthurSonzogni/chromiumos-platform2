@@ -121,6 +121,13 @@ bool HasMockConsent() {
       paths::GetAt(paths::kSystemRunStateDirectory, paths::kMockConsent));
 }
 
+bool UseLooseCoreSizeForChromeCrashEarly() {
+  return util::IsReallyTestImage() &&
+         base::PathExists(
+             paths::GetAt(paths::kSystemRunStateDirectory,
+                          paths::kRunningLooseChromeCrashEarlyTestFile));
+}
+
 bool IsFeedbackAllowed(MetricsLibraryInterface* metrics_lib) {
   if (HasMockConsent()) {
     LOG(INFO) << "mock-consent file present; assuming consent";

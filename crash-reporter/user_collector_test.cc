@@ -9,10 +9,12 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
 
+#include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/strcat.h>
@@ -658,6 +660,7 @@ struct CopyStdinToCoreFileTestParams {
   std::string input;
   std::optional<std::string> existing_file_contents;
   bool handling_early_chrome_crash;
+  bool in_loose_mode;
   bool expected_result;
   // std::nullopt means we expect the file to not exist.
   std::optional<std::string> expected_file_contents;
@@ -735,18 +738,21 @@ CopyStdinToCoreFileTest::GetCopyStdinToCoreFileTestParams() {
                                     /*input=*/kSmallCore,
                                     /*existing_file_contents=*/std::nullopt,
                                     /*handling_early_chrome_crash=*/false,
+                                    /*in_loose_mode=*/false,
                                     /*expected_result=*/true,
                                     /*expected_file_contents=*/kSmallCore},
       CopyStdinToCoreFileTestParams{/*test_name=*/"NormalHalf",
                                     /*input=*/kHalfSizeCore,
                                     /*existing_file_contents=*/std::nullopt,
                                     /*handling_early_chrome_crash=*/false,
+                                    /*in_loose_mode=*/false,
                                     /*expected_result=*/true,
                                     /*expected_file_contents=*/kHalfSizeCore},
       CopyStdinToCoreFileTestParams{/*test_name=*/"NormalMax",
                                     /*input=*/kMaxSizeCore,
                                     /*existing_file_contents=*/std::nullopt,
                                     /*handling_early_chrome_crash=*/false,
+                                    /*in_loose_mode=*/false,
                                     /*expected_result=*/true,
                                     /*expected_file_contents=*/kMaxSizeCore},
       CopyStdinToCoreFileTestParams{
@@ -754,6 +760,7 @@ CopyStdinToCoreFileTest::GetCopyStdinToCoreFileTestParams() {
           /*input=*/kOversizedChromeCore,
           /*existing_file_contents=*/std::nullopt,
           /*handling_early_chrome_crash=*/false,
+          /*in_loose_mode=*/false,
           /*expected_result=*/true,
           /*expected_file_contents=*/kOversizedChromeCore},
       // We remove the file on failure, even if it already existed, so
@@ -763,6 +770,7 @@ CopyStdinToCoreFileTest::GetCopyStdinToCoreFileTestParams() {
           /*input=*/kSmallCore,
           /*existing_file_contents=*/kPreexistingFileContents,
           /*handling_early_chrome_crash=*/false,
+          /*in_loose_mode=*/false,
           /*expected_result=*/false,
           /*expected_file_contents=*/std::nullopt},
 
@@ -772,24 +780,28 @@ CopyStdinToCoreFileTest::GetCopyStdinToCoreFileTestParams() {
                                     /*input=*/kSmallCore,
                                     /*existing_file_contents=*/std::nullopt,
                                     /*handling_early_chrome_crash=*/true,
+                                    /*in_loose_mode=*/false,
                                     /*expected_result=*/true,
                                     /*expected_file_contents=*/kSmallCore},
       CopyStdinToCoreFileTestParams{/*test_name=*/"ChromeHalf",
                                     /*input=*/kHalfSizeCore,
                                     /*existing_file_contents=*/std::nullopt,
                                     /*handling_early_chrome_crash=*/true,
+                                    /*in_loose_mode=*/false,
                                     /*expected_result=*/true,
                                     /*expected_file_contents=*/kHalfSizeCore},
       CopyStdinToCoreFileTestParams{/*test_name=*/"ChromeMax",
                                     /*input=*/kMaxSizeCore,
                                     /*existing_file_contents=*/std::nullopt,
                                     /*handling_early_chrome_crash=*/true,
+                                    /*in_loose_mode=*/false,
                                     /*expected_result=*/true,
                                     /*expected_file_contents=*/kMaxSizeCore},
       CopyStdinToCoreFileTestParams{/*test_name=*/"ChromeOversize",
                                     /*input=*/kOversizedChromeCore,
                                     /*existing_file_contents=*/std::nullopt,
                                     /*handling_early_chrome_crash=*/true,
+                                    /*in_loose_mode=*/false,
                                     /*expected_result=*/false,
                                     /*expected_file_contents=*/std::nullopt},
       CopyStdinToCoreFileTestParams{
@@ -797,8 +809,26 @@ CopyStdinToCoreFileTest::GetCopyStdinToCoreFileTestParams() {
           /*input=*/kSmallCore,
           /*existing_file_contents=*/kPreexistingFileContents,
           /*handling_early_chrome_crash=*/true,
+          /*in_loose_mode=*/false,
           /*expected_result=*/false,
           /*expected_file_contents=*/std::nullopt},
+
+      // Loose mode tests: the oversized core should be accepted as well.
+      CopyStdinToCoreFileTestParams{/*test_name=*/"ChromeLooseSmall",
+                                    /*input=*/kSmallCore,
+                                    /*existing_file_contents=*/std::nullopt,
+                                    /*handling_early_chrome_crash=*/true,
+                                    /*in_loose_mode=*/true,
+                                    /*expected_result=*/true,
+                                    /*expected_file_contents=*/kSmallCore},
+      CopyStdinToCoreFileTestParams{
+          /*test_name=*/"ChromeLooseOversize",
+          /*input=*/kOversizedChromeCore,
+          /*existing_file_contents=*/std::nullopt,
+          /*handling_early_chrome_crash=*/true,
+          /*in_loose_mode=*/true,
+          /*expected_result=*/true,
+          /*expected_file_contents=*/kOversizedChromeCore},
   };
 }
 
@@ -820,6 +850,30 @@ TEST_P(CopyStdinToCoreFileTest, Test) {
   if (params.existing_file_contents) {
     ASSERT_TRUE(
         base::WriteFile(kOutputPath, params.existing_file_contents.value()));
+  }
+
+  if (params.in_loose_mode) {
+    base::File::Error error;
+    // Ensure util::IsReallyTestImage() returns true.
+    const base::FilePath kFakeCrashReporterStateDirectory =
+        paths::Get(paths::kCrashReporterStateDirectory);
+    ASSERT_TRUE(base::CreateDirectoryAndGetError(
+        kFakeCrashReporterStateDirectory, &error))
+        << base::File::ErrorToString(error);
+    const base::FilePath kLsbRelease =
+        kFakeCrashReporterStateDirectory.Append(paths::kLsbRelease);
+    ASSERT_TRUE(
+        base::WriteFile(kLsbRelease, "CHROMEOS_RELEASE_TRACK=test-channel"));
+
+    const base::FilePath kFakeRunStateDirectory =
+        paths::Get(paths::kSystemRunStateDirectory);
+    ASSERT_TRUE(
+        base::CreateDirectoryAndGetError(kFakeRunStateDirectory, &error))
+        << base::File::ErrorToString(error);
+    const base::FilePath kLooseModeFile = kFakeRunStateDirectory.Append(
+        paths::kRunningLooseChromeCrashEarlyTestFile);
+
+    ASSERT_TRUE(test_util::CreateFile(kLooseModeFile, ""));
   }
 
   collector_.handling_early_chrome_crash_ = params.handling_early_chrome_crash;

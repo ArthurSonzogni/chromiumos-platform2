@@ -138,6 +138,12 @@ constexpr char kBootConsentFile[] = "/home/chronos/boot-collect-consent";
 // For example: /sys/class/watchdog/watchdog0/bootstatus
 constexpr char kWatchdogSysPath[] = "/sys/class/watchdog/";
 
+// A file inside kSystemRunStateDirectory. Used by ui.ChromeCrashEarly.loose to
+// indicate we should relax the normal size limits on core files in
+// Chrome early-crash mode.
+constexpr char kRunningLooseChromeCrashEarlyTestFile[] =
+    "running-loose-chrome-crash-early-test";
+
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
 base::FilePath Get(base::StringPiece file_path);

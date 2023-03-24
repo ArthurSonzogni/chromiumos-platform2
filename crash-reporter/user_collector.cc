@@ -414,9 +414,14 @@ bool UserCollector::CopyPipeToCoreFile(int input_fd,
   }
 
   if (handling_early_chrome_crash_) {
+    int max_core_size = kMaxChromeCoreSize;
+    if (util::UseLooseCoreSizeForChromeCrashEarly()) {
+      max_core_size = kMaxChromeCoreSizeLoose;
+    }
+
     // See comments for kMaxChromeCoreSize in the header for why we do this.
     std::optional<int> res =
-        CopyFirstNBytesOfFdToNewFile(input_fd, core_path, kMaxChromeCoreSize);
+        CopyFirstNBytesOfFdToNewFile(input_fd, core_path, max_core_size);
     if (!res) {
       LOG(ERROR) << "Could not write core file " << core_path.value();
       if (!base::DeleteFile(core_path)) {
@@ -427,16 +432,16 @@ bool UserCollector::CopyPipeToCoreFile(int input_fd,
 
     // Check that we wrote out the entire core file. Partial core files aren't
     // going to usable.
-    if (res.value() < kMaxChromeCoreSize) {
+    if (res.value() < max_core_size) {
       return true;
     }
 
-    // If res.value() == kMaxChromeCoreSize, then we can only tell if we wrote
+    // If res.value() == max_core_size, then we can only tell if we wrote
     // out all the input by trying to read one more byte and seeing if we were
     // at EOF.
     char n_plus_one_byte;
     if (read(input_fd, &n_plus_one_byte, 1) == 0) {
-      // Core was exactly kMaxChromeCoreSize.
+      // Core was exactly max_core_size.
       return true;
     }
 

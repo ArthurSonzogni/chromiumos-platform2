@@ -183,8 +183,9 @@ class UserCollector : public UserCollectorBase {
   // cases, crashes are being caught by the much-faster crashpad-to-
   // chrome_collector path anyways. We sometimes try to grab a Chrome core
   // (if we think it's likely crashpad will miss it -- see
-  // ShouldCaptureEarlyChromeCrash), but we protect ourselves by stopping if
-  // the core file exceeds kMaxChromeCoreSize.
+  // ShouldCaptureEarlyChromeCrash), but we protect ourselves by stopping if the
+  // core file exceeds kMaxChromeCoreSize (except in some tests, which use
+  // kMaxChromeCoreSizeLoose).
   bool handling_early_chrome_crash_;
 
   // For handling_early_chrome_crash_ mode:
@@ -197,6 +198,11 @@ class UserCollector : public UserCollectorBase {
   // for growth while still protecting us from filling up the disk with a
   // massively-oversized core.)
   static constexpr int kMaxChromeCoreSize = 40 * 1024 * 1024;
+
+  // The maximum size when running the "loose" variant of the
+  // ui.ChromeCrashEarly tast test. We need this for Chrome CQ -- Chrome CQ
+  // tests non-is_official_build Chrome builds, which produce larger cores.
+  static constexpr int kMaxChromeCoreSizeLoose = 100 * 1024 * 1024;
 
   // Force a core2md failure for testing.
   bool core2md_failure_;
