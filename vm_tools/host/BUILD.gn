@@ -8,7 +8,6 @@ import("//common-mk/pkg_config.gni")
 group("host") {
   deps = [
     ":cicerone_client",
-    ":concierge_client",
     ":maitred_client",
     ":seneschal",
     ":seneschal_client",
@@ -217,18 +216,6 @@ executable("vm_concierge") {
   deps = [
     ":libconcierge",
     "//vm_tools:libvm_tools_common",
-  ]
-}
-
-executable("concierge_client") {
-  sources = [ "../concierge/client.cc" ]
-  configs += [ ":host_target_defaults" ]
-  deps = [ "//vm_tools:libvm_tools_common" ]
-  pkg_deps = [
-    "libqcow_utils",
-    "protobuf",
-    "system_api",
-    "vboot_host",
   ]
 }
 
