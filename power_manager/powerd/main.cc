@@ -35,10 +35,8 @@
 #include <metrics/metrics_library.h>
 #include <ml/dbus-proxies.h>
 
-#if USE_IIOSERVICE
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
-#endif  // USE_IIOSERVICE
 
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/prefs.h"
@@ -50,14 +48,9 @@
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 #include "power_manager/powerd/system/ambient_light_sensor_interface.h"
-#if USE_IIOSERVICE
-#include "power_manager/powerd/system/ambient_light_sensor_manager_mojo.h"
-#else  // !USE_IIOSERVICE
-#include "power_manager/powerd/system/ambient_light_sensor_manager_file.h"
-#endif  // USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_manager_interface.h"
+#include "power_manager/powerd/system/ambient_light_sensor_manager_mojo.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_mojo.h"
-#include "power_manager/powerd/system/ambient_light_sensor_watcher_udev.h"
 #include "power_manager/powerd/system/audio_client.h"
 #include "power_manager/powerd/system/cros_ec_helper.h"
 #include "power_manager/powerd/system/dark_resume.h"
@@ -65,7 +58,6 @@
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/event_device.h"
-#include "power_manager/powerd/system/external_ambient_light_sensor_factory_file.h"
 #include "power_manager/powerd/system/external_ambient_light_sensor_factory_mojo.h"
 #include "power_manager/powerd/system/input_watcher.h"
 #include "power_manager/powerd/system/internal_backlight.h"
@@ -122,24 +114,12 @@ class DaemonDelegateImpl : public DaemonDelegate {
   CreateAmbientLightSensorManager(
       PrefsInterface* prefs,
       system::SensorServiceHandler* sensor_service_handler) override {
-#if USE_IIOSERVICE
     auto light_sensor_manager =
         std::make_unique<system::AmbientLightSensorManagerMojo>(
             prefs, sensor_service_handler);
-#else   // !USE_IIOSERVICE
-    auto light_sensor_manager =
-        std::make_unique<system::AmbientLightSensorManagerFile>(prefs);
-    light_sensor_manager->Run(false /* read_immediately */);
-#endif  // USE_IIOSERVICE
     return light_sensor_manager;
   }
 
-  std::unique_ptr<system::AmbientLightSensorWatcherInterface>
-  CreateAmbientLightSensorWatcher(system::UdevInterface* udev) override {
-    auto watcher = std::make_unique<system::AmbientLightSensorWatcherUdev>();
-    watcher->Init(udev);
-    return watcher;
-  }
   std::unique_ptr<system::AmbientLightSensorWatcherInterface>
   CreateAmbientLightSensorWatcher(
       system::SensorServiceHandler* sensor_service_handler) override {
@@ -147,10 +127,6 @@ class DaemonDelegateImpl : public DaemonDelegate {
         sensor_service_handler);
   }
 
-  std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
-  CreateExternalAmbientLightSensorFactory() override {
-    return std::make_unique<system::ExternalAmbientLightSensorFactoryFile>();
-  }
   std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
   CreateExternalAmbientLightSensorFactory(
       system::AmbientLightSensorWatcherMojo* watcher) override {

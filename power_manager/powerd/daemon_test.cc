@@ -244,18 +244,9 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     return std::move(passed_ambient_light_sensor_manager_);
   }
   std::unique_ptr<system::AmbientLightSensorWatcherInterface>
-  CreateAmbientLightSensorWatcher(system::UdevInterface* udev) override {
-    EXPECT_EQ(udev_, udev);
-    return std::move(passed_ambient_light_sensor_watcher_);
-  }
-  std::unique_ptr<system::AmbientLightSensorWatcherInterface>
   CreateAmbientLightSensorWatcher(
       system::SensorServiceHandler* sensor_service_handler) override {
     return std::move(passed_ambient_light_sensor_watcher_);
-  }
-  std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
-  CreateExternalAmbientLightSensorFactory() override {
-    return std::move(passed_external_ambient_light_sensor_factory_);
   }
   std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
   CreateExternalAmbientLightSensorFactory(

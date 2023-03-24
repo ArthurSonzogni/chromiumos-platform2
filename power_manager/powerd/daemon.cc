@@ -54,9 +54,6 @@
 #include "power_manager/powerd/policy/thermal_event_handler.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper_interface.h"
 #include "power_manager/powerd/system/ambient_light_sensor_manager_interface.h"
-#if USE_IIOSERVICE
-#include <mojo_service_manager/lib/connect.h>
-#endif  // USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_interface.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_mojo.h"
 #include "power_manager/powerd/system/arc_timer_manager.h"
@@ -412,23 +409,16 @@ void Daemon::Init() {
   sensor_service_handler_ = delegate_->CreateSensorServiceHandler();
   if (!disable_mojo_for_testing_)
     ConnectToMojoServiceManager();
-#endif  // USE_IIOSERVICE
 
   if (BoolPrefIsTrue(kExternalAmbientLightSensorPref)) {
-#if USE_IIOSERVICE
     ambient_light_sensor_watcher_ = delegate_->CreateAmbientLightSensorWatcher(
         sensor_service_handler_.get());
     external_ambient_light_sensor_factory_ =
         delegate_->CreateExternalAmbientLightSensorFactory(
             static_cast<system::AmbientLightSensorWatcherMojo*>(
                 ambient_light_sensor_watcher_.get()));
-#else   // !USE_IIOSERVICE
-    ambient_light_sensor_watcher_ =
-        delegate_->CreateAmbientLightSensorWatcher(udev_.get());
-    external_ambient_light_sensor_factory_ =
-        delegate_->CreateExternalAmbientLightSensorFactory();
-#endif  // USE_IIOSERVICE
   }
+#endif  // USE_IIOSERVICE
   display_watcher_ = delegate_->CreateDisplayWatcher(udev_.get());
   display_power_setter_ =
       delegate_->CreateDisplayPowerSetter(dbus_wrapper_.get());
@@ -437,8 +427,10 @@ void Daemon::Init() {
 
   // Ignore the ALS and backlights in factory mode.
   if (!factory_mode_) {
+#if USE_IIOSERVICE
     light_sensor_manager_ = delegate_->CreateAmbientLightSensorManager(
         prefs_.get(), sensor_service_handler_.get());
+#endif  // USE_IIOSERVICE
 
     if (BoolPrefIsTrue(kExternalDisplayOnlyPref)) {
       display_backlight_controller_ =
@@ -458,7 +450,9 @@ void Daemon::Init() {
         display_backlight_controller_ =
             delegate_->CreateInternalBacklightController(
                 display_backlight_.get(), prefs_.get(),
-                light_sensor_manager_->GetSensorForInternalBacklight(),
+                light_sensor_manager_
+                    ? light_sensor_manager_->GetSensorForInternalBacklight()
+                    : nullptr,
                 display_power_setter_.get(), dbus_wrapper_.get(), lid_state);
       }
     }
@@ -484,7 +478,9 @@ void Daemon::Init() {
       keyboard_backlight_controller_ =
           delegate_->CreateKeyboardBacklightController(
               keyboard_backlight_.get(), prefs_.get(),
-              light_sensor_manager_->GetSensorForKeyboardBacklight(),
+              light_sensor_manager_
+                  ? light_sensor_manager_->GetSensorForKeyboardBacklight()
+                  : nullptr,
               dbus_wrapper_.get(), lid_state, tablet_mode);
       all_backlight_controllers_.push_back(
           keyboard_backlight_controller_.get());

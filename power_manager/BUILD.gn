@@ -60,7 +60,6 @@ group("all") {
       ":ambient_light_handler_fuzzer",
       ":internal_backlight_controller_fuzzer",
       ":powerd_acpi_wakeup_helper_fuzzer",
-      ":powerd_als_fuzzer",
       ":powerd_internal_backlight_fuzzer",
       ":powerd_suspend_configurator_fuzzer",
       ":thermal_device_fuzzer",
@@ -199,14 +198,11 @@ static_library("libsystem") {
     "powerd/system/acpi_wakeup_helper.cc",
     "powerd/system/ambient_light_sensor.cc",
     "powerd/system/ambient_light_sensor_delegate.cc",
-    "powerd/system/ambient_light_sensor_delegate_file.cc",
     "powerd/system/ambient_light_sensor_delegate_mojo.cc",
     "powerd/system/ambient_light_sensor_info.cc",
-    "powerd/system/ambient_light_sensor_manager_file.cc",
     "powerd/system/ambient_light_sensor_manager_mojo.cc",
     "powerd/system/ambient_light_sensor_watcher_interface.cc",
     "powerd/system/ambient_light_sensor_watcher_mojo.cc",
-    "powerd/system/ambient_light_sensor_watcher_udev.cc",
     "powerd/system/arc_timer_manager.cc",
     "powerd/system/async_file_reader.cc",
     "powerd/system/audio_client.cc",
@@ -220,7 +216,6 @@ static_library("libsystem") {
     "powerd/system/display/display_watcher.cc",
     "powerd/system/display/external_display.cc",
     "powerd/system/event_device.cc",
-    "powerd/system/external_ambient_light_sensor_factory_file.cc",
     "powerd/system/external_ambient_light_sensor_factory_mojo.cc",
     "powerd/system/input_watcher.cc",
     "powerd/system/internal_backlight.cc",
@@ -608,14 +603,11 @@ if (use.test) {
   executable("power_manager_system_test") {
     sources = [
       "powerd/system/acpi_wakeup_helper_test.cc",
-      "powerd/system/ambient_light_sensor_delegate_file_test.cc",
       "powerd/system/ambient_light_sensor_delegate_mojo_test.cc",
       "powerd/system/ambient_light_sensor_delegate_test.cc",
-      "powerd/system/ambient_light_sensor_manager_file_test.cc",
       "powerd/system/ambient_light_sensor_manager_mojo_test.cc",
       "powerd/system/ambient_light_sensor_test.cc",
       "powerd/system/ambient_light_sensor_watcher_mojo_test.cc",
-      "powerd/system/ambient_light_sensor_watcher_udev_test.cc",
       "powerd/system/arc_timer_manager_test.cc",
       "powerd/system/async_file_reader_test.cc",
       "powerd/system/audio_client_test.cc",
@@ -762,6 +754,12 @@ if (use.amd64) {
 }
 
 if (use.fuzzer) {
+  pkg_config("fuzzer_config") {
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+    ]
+  }
   static_library("libpolicy_test") {
     sources = [ "powerd/policy/ambient_light_pref_fuzz_util.cc" ]
     configs += [ ":target_defaults" ]
@@ -835,29 +833,6 @@ if (use.fuzzer) {
       ":libpowerd",
       ":libsystem_stub",
       ":libutil_test",
-    ]
-  }
-}
-
-# Fuzzer target.
-if (use.fuzzer) {
-  pkg_config("fuzzer_config") {
-    pkg_deps = [
-      "libbrillo-test",
-      "libchrome-test",
-    ]
-  }
-  executable("powerd_als_fuzzer") {
-    sources = [ "powerd/system/fuzzers/powerd_als_fuzzer.cc" ]
-    configs += [
-      "//common-mk/common_fuzzer:common_fuzzer",
-      "//common-mk:test",
-      ":fuzzer_config",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libsystem",
-      ":libutil",
     ]
   }
 }

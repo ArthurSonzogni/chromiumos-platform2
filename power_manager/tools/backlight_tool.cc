@@ -25,11 +25,9 @@
 #include <chromeos/mojo/service_constants.h>
 #include <dbus/bus.h>
 #include <libec/ec_command_factory.h>
-#if USE_IIOSERVICE
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo_service_manager/lib/connect.h>
-#endif  // USE_IIOSERVICE
 
 #include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/power_constants.h"
@@ -38,11 +36,7 @@
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
-#if USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_manager_mojo.h"
-#else  // !USE_IIOSERVICE
-#include "power_manager/powerd/system/ambient_light_sensor_manager_file.h"
-#endif  // USE_IIOSERVICE
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
@@ -60,18 +54,14 @@ using power_manager::policy::BacklightController;
 using power_manager::policy::InternalBacklightController;
 using power_manager::policy::KeyboardBacklightController;
 using power_manager::system::AmbientLightSensorInterface;
-#if USE_IIOSERVICE
 using power_manager::system::AmbientLightSensorManagerMojo;
-using power_manager::system::SensorServiceHandler;
-#else   // !USE_IIOSERVICE
-using power_manager::system::AmbientLightSensorManagerFile;
-#endif  // USE_IIOSERVICE
 using power_manager::system::AmbientLightSensorStub;
 using power_manager::system::BacklightStub;
 using power_manager::system::DBusWrapperStub;
 using power_manager::system::DisplayPowerSetterStub;
 using power_manager::system::InternalBacklight;
 using power_manager::system::PowerSupply;
+using power_manager::system::SensorServiceHandler;
 using power_manager::system::UdevStub;
 using power_manager::util::ClampPercent;
 
@@ -252,7 +242,6 @@ void GetAmbientLightLux(bool keyboard) {
     Abort("Ambient light sensor not enabled");
   }
 
-#if USE_IIOSERVICE
   mojo::core::Init();
   mojo::core::ScopedIPCSupport ipc_support(
       base::SingleThreadTaskRunner::GetCurrentDefault(),
@@ -277,10 +266,6 @@ void GetAmbientLightLux(bool keyboard) {
       chromeos::mojo_services::kIioSensor, std::nullopt,
       sensor_service_remote.InitWithNewPipeAndPassReceiver().PassPipe());
   sensor_service_handler.SetUpChannel(std::move(sensor_service_remote));
-#else   // !USE_IIOSERVICE
-  AmbientLightSensorManagerFile manager(&prefs);
-  manager.Run(true /* read_immediately */);
-#endif  // USE_IIOSERVICE
 
   AmbientLightSensorInterface* sensor =
       keyboard ? manager.GetSensorForKeyboardBacklight()
@@ -303,38 +288,6 @@ void GetAmbientLightLux(bool keyboard) {
 
   CHECK_GE(lux, 0);
   printf("%i\n", lux);
-}
-
-// Prints the path to the ambient light sensor illuminance file that powerd
-// would monitor and a trailing newline to stdout. Prints an error and aborts
-// with status code 1 if the ALS has been disabled or no path was found.
-void PrintAmbientLightPath(bool keyboard) {
-#if USE_IIOSERVICE
-  Abort("Ambient light sensor illuminance file path not available");
-#else   // !USE_IIOSERVICE
-  Prefs prefs;
-  CHECK(prefs.Init(Prefs::GetDefaultStore(), Prefs::GetDefaultSources()));
-  int64_t num_als = 0;
-  if (!prefs.GetInt64(power_manager::kHasAmbientLightSensorPref, &num_als) ||
-      !num_als) {
-    Abort("Ambient light sensor not enabled");
-  }
-
-  AmbientLightSensorManagerFile als_manager(&prefs);
-  als_manager.Run(true /* read_immediately */);
-
-  AmbientLightSensorInterface* sensor =
-      keyboard ? als_manager.GetSensorForKeyboardBacklight()
-               : als_manager.GetSensorForInternalBacklight();
-  if (!sensor)
-    Abort("Ambient light sensor not found");
-
-  base::FilePath path = sensor->GetIlluminancePath();
-  if (path.empty())
-    Abort("Ambient light sensor illuminance file not found");
-
-  printf("%s\n", path.value().c_str());
-#endif  // USE_IIOSERVICE
 }
 
 }  // namespace
@@ -428,7 +381,8 @@ int main(int argc, char* argv[]) {
   }
 
   if (FLAGS_get_ambient_light_path) {
-    PrintAmbientLightPath(FLAGS_keyboard);
+    // TODO(chenghaoyang): Check if there's still any usage of this flag.
+    Abort("Ambient light sensor illuminance file path not available");
     return 0;
   }
 
