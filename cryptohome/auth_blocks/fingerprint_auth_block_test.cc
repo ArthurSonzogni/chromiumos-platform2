@@ -208,6 +208,9 @@ TEST_F(FingerprintAuthBlockTest, CreateSuccess) {
           .server_nonce = BlobToSecureBlob(kFakeGscNonce),
           .iv = BlobToSecureBlob(kFakeGscIv),
           .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+  EXPECT_CALL(mock_le_manager_,
+              ResetCredential(kFakeRateLimiterLabel, kFakeResetSecret, false))
+      .WillOnce(ReturnOk<CryptohomeLECredError>());
   EXPECT_CALL(
       *mock_processor_,
       CreateCredential(
@@ -326,6 +329,9 @@ TEST_F(FingerprintAuthBlockTest, CreateCreateCredentialFailed) {
           .server_nonce = BlobToSecureBlob(kFakeGscNonce),
           .iv = BlobToSecureBlob(kFakeGscIv),
           .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+  EXPECT_CALL(mock_le_manager_,
+              ResetCredential(kFakeRateLimiterLabel, kFakeResetSecret, false))
+      .WillOnce(ReturnOk<CryptohomeLECredError>());
   EXPECT_CALL(*mock_processor_, CreateCredential(_, _, _))
       .WillOnce([&](auto&&, auto&&, auto&& callback) {
         std::move(callback).Run(MakeStatus<CryptohomeError>(
@@ -366,6 +372,9 @@ TEST_F(FingerprintAuthBlockTest, CreateInsertCredentialFailed) {
           .server_nonce = BlobToSecureBlob(kFakeGscNonce),
           .iv = BlobToSecureBlob(kFakeGscIv),
           .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+  EXPECT_CALL(mock_le_manager_,
+              ResetCredential(kFakeRateLimiterLabel, kFakeResetSecret, false))
+      .WillOnce(ReturnOk<CryptohomeLECredError>());
   EXPECT_CALL(
       *mock_processor_,
       CreateCredential(
@@ -424,6 +433,9 @@ TEST_F(FingerprintAuthBlockTest, CreateWithNoLimiterSuccess) {
           .server_nonce = BlobToSecureBlob(kFakeGscNonce),
           .iv = BlobToSecureBlob(kFakeGscIv),
           .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+  EXPECT_CALL(mock_le_manager_,
+              ResetCredential(kFakeRateLimiterLabel, _, false))
+      .WillOnce(ReturnOk<CryptohomeLECredError>());
   EXPECT_CALL(
       *mock_processor_,
       CreateCredential(

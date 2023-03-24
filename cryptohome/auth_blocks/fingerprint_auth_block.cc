@@ -242,6 +242,14 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
         nullptr, nullptr);
     return;
   }
+  LECredStatus reset_status = le_manager_->ResetCredential(
+      *rate_limiter_label, *reset_secret, /*strong_reset=*/false);
+  if (!reset_status.ok()) {
+    // TODO(b/275027852): Report metrics because we silently fail here.
+    LOG(WARNING)
+        << "Failed to reset rate-limiter during KeyBlobs creation. This "
+           "doesn't block the creation but shouldn't normally happen.";
+  }
   BiometricsAuthBlockService::OperationInput input{
       .nonce =
           brillo::Blob(reply->server_nonce.begin(), reply->server_nonce.end()),
