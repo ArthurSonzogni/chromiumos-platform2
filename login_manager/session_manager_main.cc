@@ -45,6 +45,7 @@
 #include "login_manager/file_checker.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/regen_mitigator.h"
+#include "login_manager/scheduler_util.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/session_manager_service.h"
 #include "login_manager/system_utils_impl.h"
@@ -90,6 +91,7 @@ static const char kHelpMessage[] =
 
 using login_manager::BrowserJob;
 using login_manager::BrowserJobInterface;
+using login_manager::ConfigureNonUrgentCpuset;
 using login_manager::FileChecker;
 using login_manager::LoginMetrics;
 using login_manager::PerformChromeSetup;
@@ -134,9 +136,13 @@ int main(int argc, char* argv[]) {
       base::SplitString(command_flag, base::kWhitespaceASCII,
                         base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
-  // Set things up for running Chrome.
   std::unique_ptr<brillo::CrosConfig> cros_config =
       std::make_unique<brillo::CrosConfig>();
+
+  // Detect small cores and restrict non-urgent tasks to small cores.
+  ConfigureNonUrgentCpuset(cros_config.get());
+
+  // Set things up for running Chrome.
   bool is_developer_end_user = false;
   map<string, string> env_var_map;
   vector<string> args, env_vars;
