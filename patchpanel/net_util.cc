@@ -53,6 +53,16 @@ const flags_info_t kRtentryRTF = {
 
 }  // namespace
 
+std::optional<uint32_t> Ipv4Addr(const std::string& bytes) {
+  if (bytes.length() != 4) {
+    return std::nullopt;
+  }
+  return Ipv4Addr(static_cast<unsigned char>(bytes[0]),
+                  static_cast<unsigned char>(bytes[1]),
+                  static_cast<unsigned char>(bytes[2]),
+                  static_cast<unsigned char>(bytes[3]));
+}
+
 uint32_t Ipv4Netmask(int prefix_len) {
   return htonl((0xffffffffull << (32 - prefix_len)) & 0xffffffff);
 }

@@ -21,6 +21,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -2090,7 +2091,41 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
   info->ipv6_mode = DownstreamNetworkIPv6Mode::kDisabled;
   info->upstream_ifname = request.upstream_ifname();
   info->downstream_ifname = request.ifname();
-  // TODO(b/239559602) Copy IPv4 configuration if any.
+
+  // Fill the DHCP parameters if needed.
+  if (request.has_ipv4_config()) {
+    const auto ipv4_config = request.ipv4_config();
+
+    info->enable_ipv4_dhcp = true;
+    if (ipv4_config.has_ipv4_subnet()) {
+      // Fill the parameters from protobuf.
+      const auto ipv4_addr = Ipv4Addr(ipv4_config.gateway_addr());
+      const auto ipv4_dhcp_start_addr = Ipv4Addr(ipv4_config.dhcp_start_addr());
+      const auto ipv4_dhcp_end_addr = Ipv4Addr(ipv4_config.dhcp_end_addr());
+      if (!ipv4_addr || !ipv4_dhcp_start_addr || !ipv4_dhcp_end_addr) {
+        LOG(ERROR) << "Invalid arguments, gateway_addr: "
+                   << ipv4_config.gateway_addr()
+                   << ", dhcp_start_addr: " << ipv4_config.dhcp_start_addr()
+                   << ", dhcp_end_addr: " << ipv4_config.dhcp_end_addr();
+        return std::nullopt;
+      }
+
+      info->ipv4_addr = *ipv4_addr;
+      info->ipv4_prefix_length =
+          static_cast<int>(ipv4_config.ipv4_subnet().prefix_len());
+      info->ipv4_dhcp_start_addr = *ipv4_dhcp_start_addr;
+      info->ipv4_dhcp_end_addr = *ipv4_dhcp_end_addr;
+    } else {
+      // Randomly pick a /24 subnet from 172.16.0.0/16 prefix, which is a subnet
+      // of the Class B private prefix 172.16.0.0/12.
+      const uint8_t x = static_cast<uint8_t>(base::RandInt(0, 255));
+      info->ipv4_addr = Ipv4Addr(172, 16, x, 1);
+      info->ipv4_prefix_length = 24;
+      info->ipv4_dhcp_start_addr = Ipv4Addr(172, 16, x, 50);
+      info->ipv4_dhcp_end_addr = Ipv4Addr(172, 16, x, 150);
+    }
+  }
+
   return info;
 }
 

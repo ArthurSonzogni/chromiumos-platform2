@@ -1611,6 +1611,8 @@ bool Manager::ValidateDownstreamNetworkRequest(
   //    DownstreamNetworkInfo,
   //    - if there are IPv4 and/or IPv6 configurations, check the prefixes are
   //      correct and available.
+  //    - check the downstream subnet doesn't conflict with any IPv4
+  //      configuration of the currently connected networks.
   return true;
 }
 

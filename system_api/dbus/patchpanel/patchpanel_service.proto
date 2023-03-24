@@ -524,7 +524,7 @@ message IPv4Configuration {
   // This configuration can be static and applied manually by clients, or
   // managed dynamically and automatically with DHCP in which case the DHCP
   // address range is the full prefix.
-  IPv4Subnet ipv4_subnet = 1;
+  optional IPv4Subnet ipv4_subnet = 1;
 
   // IPv4 address used by the DUT on the network, represented as 4 bytes in
   // network order. This address will be used for the DHCP server if DHCP is
@@ -532,7 +532,7 @@ message IPv4Configuration {
   // if DHCP is used. If empty, a random address in the chosen IPv4 subnet will
   // be used. This address is always pingable for clients connected to the
   // network and can be resolved with ARP.
-  bytes gateway_addr = 2;
+  optional bytes gateway_addr = 2;
 
   // If true, a DHCP service is started on the network.
   bool use_dhcp = 3;
@@ -549,6 +549,11 @@ message IPv4Configuration {
   // If DHCP is used, these additional options will be advertised by the DHCP
   // service.
   repeated DhcpOption options = 4;
+
+  // The DHCP range represented as 4 bytes in network order. It should be set
+  // iff |use_dhcp| is true and |ipv4_subnet| is set.
+  optional bytes dhcp_start_addr = 5;
+  optional bytes dhcp_end_addr = 6;
 }
 
 // Describes possible errors when creating a downstream network for
@@ -622,7 +627,7 @@ message TetheredNetworkRequest {
 
   // IPv4 configuration for this network. Optional if the upstream is an
   // IPv6-only network.
-  IPv4Configuration ipv4_config = 4;
+  optional IPv4Configuration ipv4_config = 4;
 
   // Optional. If true, IPv6 RAs from the upstream networks and IPv6 neighbor
   // discovery packets are not served or forwarded on the downstream network

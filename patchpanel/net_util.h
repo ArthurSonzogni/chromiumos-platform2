@@ -19,6 +19,7 @@
 #include <sys/un.h>
 
 #include <iostream>
+#include <optional>
 #include <string>
 
 #include <base/strings/stringprintf.h>
@@ -40,6 +41,10 @@ BRILLO_EXPORT constexpr uint32_t Ipv4Addr(uint8_t b0,
   return (static_cast<uint32_t>(b3) << 24) | (static_cast<uint32_t>(b2) << 16) |
          (static_cast<uint32_t>(b1) << 8) | static_cast<uint32_t>(b0);
 }
+
+// Returns the network-byte order int32 representation of the IPv4 address.
+// |bytes| is a raw byte array in network order.
+BRILLO_EXPORT std::optional<uint32_t> Ipv4Addr(const std::string& bytes);
 
 // Returns the netmask in network byte order given a prefixl length.
 BRILLO_EXPORT uint32_t Ipv4Netmask(int prefix_len);

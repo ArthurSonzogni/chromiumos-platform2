@@ -203,15 +203,61 @@ void Verify_ip_netns_delete(MockProcessRunner& runner,
 }  // namespace
 
 TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
+  const uint32_t subnet_ip = Ipv4Addr(192, 168, 3, 0);
+  const uint32_t host_ip = Ipv4Addr(192, 168, 3, 1);
+  const uint32_t start_ip = Ipv4Addr(192, 168, 3, 50);
+  const uint32_t end_ip = Ipv4Addr(192, 168, 3, 150);
+  const uint32_t prefix_len = 24;
+
+  IPv4Subnet* ipv4_subnet = new IPv4Subnet();
+  ipv4_subnet->set_addr(&subnet_ip, sizeof(subnet_ip));
+  ipv4_subnet->set_prefix_len(prefix_len);
+
+  IPv4Configuration* ipv4_config = new IPv4Configuration();
+  ipv4_config->set_allocated_ipv4_subnet(ipv4_subnet);
+  ipv4_config->set_gateway_addr(&host_ip, sizeof(host_ip));
+  ipv4_config->set_use_dhcp(true);
+  ipv4_config->set_dhcp_start_addr(&start_ip, sizeof(start_ip));
+  ipv4_config->set_dhcp_end_addr(&end_ip, sizeof(end_ip));
+
   TetheredNetworkRequest request;
   request.set_upstream_ifname("wwan0");
   request.set_ifname("wlan1");
+  request.set_allocated_ipv4_config(ipv4_config);
 
   const auto info = DownstreamNetworkInfo::Create(request);
   ASSERT_NE(info, std::nullopt);
   EXPECT_EQ(info->topology, DownstreamNetworkTopology::kTethering);
   EXPECT_EQ(info->upstream_ifname, "wwan0");
   EXPECT_EQ(info->downstream_ifname, "wlan1");
+  EXPECT_EQ(info->ipv4_addr, host_ip);
+  EXPECT_EQ(info->ipv4_prefix_length, prefix_len);
+  EXPECT_EQ(info->ipv4_dhcp_start_addr, start_ip);
+  EXPECT_EQ(info->ipv4_dhcp_end_addr, end_ip);
+}
+
+TEST(DatapathTest,
+     DownstreamNetworkInfo_CreateFromTetheredNetworkRequestRandom) {
+  using shill::IPAddress;
+
+  TetheredNetworkRequest request;
+  const auto info = DownstreamNetworkInfo::Create(request);
+  ASSERT_NE(info, std::nullopt);
+
+  // When the request doesn't have |ipv4_config|, the info should be randomly
+  // assigned the valid host IP and DHCP range.
+  const auto host_ip = IPAddress::CreateFromStringAndPrefix(
+      IPv4AddressToString(info->ipv4_addr),
+      static_cast<unsigned int>(info->ipv4_prefix_length));
+  const auto dhcp_start_ip = IPAddress::CreateFromString(
+      IPv4AddressToString(info->ipv4_dhcp_start_addr));
+  const auto dhcp_end_ip = IPAddress::CreateFromString(
+      IPv4AddressToString(info->ipv4_dhcp_end_addr));
+  ASSERT_NE(host_ip, std::nullopt);
+  ASSERT_NE(dhcp_start_ip, std::nullopt);
+  ASSERT_NE(dhcp_end_ip, std::nullopt);
+  EXPECT_TRUE(host_ip->CanReachAddress(*dhcp_start_ip));
+  EXPECT_TRUE(host_ip->CanReachAddress(*dhcp_end_ip));
 }
 
 TEST(DatapathTest, DownstreamNetworkInfo_CreateFromLocalOnlyNetworkRequest) {
