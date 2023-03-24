@@ -18,7 +18,7 @@ namespace {
 
 uint64_t CurrentTimestamp() {
   struct timespec ts;
-  if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
+  if (clock_gettime(CLOCK_BOOTTIME, &ts) < 0) {
     PLOGF(ERROR) << "Get clock time fails";
     // TODO(pihsun): Handle error
     return 0;
@@ -111,9 +111,6 @@ void RequestHandler::HandleRequest(std::unique_ptr<CaptureRequest> request) {
   constexpr int64_t kOneSecOfNanoUnit = 1000000000LL;
   int64_t min_frame_duration = kOneSecOfNanoUnit / max_fps;
 
-  android::CameraMetadata result_metadata = request_metadata;
-  CHECK(FillResultMetadata(&result_metadata).ok());
-
   uint64_t current_timestamp = CurrentTimestamp();
   if (last_response_timestamp_ != 0 &&
       current_timestamp - last_response_timestamp_ < min_frame_duration) {
@@ -122,6 +119,9 @@ void RequestHandler::HandleRequest(std::unique_ptr<CaptureRequest> request) {
         min_frame_duration - (current_timestamp - last_response_timestamp_)));
     current_timestamp = CurrentTimestamp();
   }
+
+  android::CameraMetadata result_metadata = request_metadata;
+  CHECK(FillResultMetadata(&result_metadata, current_timestamp).ok());
 
   last_response_timestamp_ = current_timestamp;
   NotifyShutter(frame_number, current_timestamp);

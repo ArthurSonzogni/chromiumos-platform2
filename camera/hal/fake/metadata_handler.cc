@@ -281,7 +281,7 @@ absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
 
   // android.sensor
   update_static(ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE,
-                ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE_REALTIME);
+                ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE_UNKNOWN);
 
   // TODO(pihsun): Support test patterns
   update_static(ANDROID_SENSOR_AVAILABLE_TEST_PATTERN_MODES,
@@ -412,7 +412,8 @@ absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
              : absl::InternalError("metadata update");
 }
 
-absl::Status FillResultMetadata(android::CameraMetadata* metadata) {
+absl::Status FillResultMetadata(android::CameraMetadata* metadata,
+                                uint64_t timestamp) {
   MetadataUpdater update(metadata);
 
   update(ANDROID_CONTROL_AE_STATE, ANDROID_CONTROL_AE_STATE_CONVERGED);
@@ -421,6 +422,7 @@ absl::Status FillResultMetadata(android::CameraMetadata* metadata) {
   update(ANDROID_FLASH_STATE, ANDROID_FLASH_STATE_UNAVAILABLE);
   update(ANDROID_LENS_STATE, ANDROID_LENS_STATE_STATIONARY);
   update(ANDROID_REQUEST_PIPELINE_DEPTH, uint8_t{2});
+  update(ANDROID_SENSOR_TIMESTAMP, static_cast<int64_t>(timestamp));
 
   return update.ok() ? absl::OkStatus()
                      : absl::InternalError("metadata update");

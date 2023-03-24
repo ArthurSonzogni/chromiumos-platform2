@@ -27,7 +27,8 @@ absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
                                  android::CameraMetadata* request_metadata,
                                  const CameraSpec& spec);
 
-absl::Status FillResultMetadata(android::CameraMetadata* metadata);
+absl::Status FillResultMetadata(android::CameraMetadata* metadata,
+                                uint64_t timestamp);
 
 // MetadataHandler is used for saving metadata states of CameraClient.
 class MetadataHandler {
