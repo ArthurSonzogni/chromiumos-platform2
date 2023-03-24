@@ -5,23 +5,26 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_POWERD_ADAPTER_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_POWERD_ADAPTER_IMPL_H_
 
-#include <memory>
 #include <optional>
 
-#include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <dbus/bus.h>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 
 #include "diagnostics/cros_healthd/system/powerd_adapter.h"
 
+namespace org {
+namespace chromium {
+class PowerManagerProxyInterface;
+}  // namespace chromium
+}  // namespace org
+
 namespace diagnostics {
 
-// PowerdAdapter interface implementation that observes D-Bus signals from
-// powerd daemon.
+// PowerdAdapter interface implementation that communicates with powerd.
 class PowerdAdapterImpl : public PowerdAdapter {
  public:
-  explicit PowerdAdapterImpl(const scoped_refptr<dbus::Bus>& bus);
+  explicit PowerdAdapterImpl(
+      org::chromium::PowerManagerProxyInterface* power_manager_proxy);
   PowerdAdapterImpl(const PowerdAdapterImpl&) = delete;
   PowerdAdapterImpl& operator=(const PowerdAdapterImpl&) = delete;
   ~PowerdAdapterImpl() override;
@@ -31,10 +34,11 @@ class PowerdAdapterImpl : public PowerdAdapter {
       override;
 
  private:
-  // Owned by external D-Bus bus passed in constructor.
-  dbus::ObjectProxy* bus_proxy_;
+  // Unowned pointer that should outlive this instance.
+  org::chromium::PowerManagerProxyInterface* const power_manager_proxy_ =
+      nullptr;
 
-  base::WeakPtrFactory<PowerdAdapterImpl> weak_ptr_factory_;
+  base::WeakPtrFactory<PowerdAdapterImpl> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics

@@ -84,7 +84,6 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
       dbus_bus, kFwupdServiceName);
   power_manager_proxy_ =
       std::make_unique<org::chromium::PowerManagerProxy>(dbus_bus);
-  powerd_adapter_ = std::make_unique<PowerdAdapterImpl>(dbus_bus);
   tpm_manager_proxy_ =
       std::make_unique<org::chromium::TpmManagerProxy>(dbus_bus);
 
@@ -114,6 +113,8 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
   // Create others.
   cros_config_ = std::make_unique<brillo::CrosConfig>();
 
+  powerd_adapter_ =
+      std::make_unique<PowerdAdapterImpl>(power_manager_proxy_.get());
   system_config_ =
       std::make_unique<SystemConfig>(cros_config_.get(), debugd_proxy_.get());
   system_utils_ = std::make_unique<SystemUtilitiesImpl>();
