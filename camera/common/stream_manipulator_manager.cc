@@ -27,6 +27,10 @@
 #include "features/zsl/zsl_stream_manipulator.h"
 #include "gpu/gpu_resources.h"
 
+#if USE_CAMERA_FEATURE_DIAGNOSTICS
+#include "common/analyze_frame/frame_analysis_stream_manipulator.h"
+#endif
+
 #if USE_CAMERA_FEATURE_HDRNET
 #include "features/gcam_ae/gcam_ae_stream_manipulator.h"
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
@@ -199,6 +203,12 @@ StreamManipulatorManager::StreamManipulatorManager(
   // TODO(jcliang): See if we want to move ZSL to feature profile.
   stream_manipulators_.emplace_back(std::make_unique<ZslStreamManipulator>());
   LOGF(INFO) << "ZslStreamManipulator enabled";
+
+#if USE_CAMERA_FEATURE_DIAGNOSTICS
+  stream_manipulators_.emplace_back(
+      std::make_unique<FrameAnalysisStreamManipulator>());
+  LOGF(INFO) << "Frame analysis stream manipulator enabled";
+#endif
 
   if (create_options.sw_privacy_switch_stream_manipulator_enabled) {
     stream_manipulators_.emplace_back(
