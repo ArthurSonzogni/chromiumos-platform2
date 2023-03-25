@@ -93,6 +93,16 @@ def cmd_take_photo(args: argparse.Namespace):
         logging.info("Saved photo at %s", path)
 
 
+def cmd_record_video(args: argparse.Namespace):
+    cca = app.CameraApp()
+    path = cca.record_video(facing=args.facing, duration=args.duration)
+    if args.output:
+        shutil.copy2(path, args.output)
+        logging.info("Copied video from %s to %s", path, args.output)
+    else:
+        logging.info("Saved video at %s", path)
+
+
 def parse_args(argv: Optional[List[str]]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="ChromeOS Camera App (CCA) CLI."
@@ -155,6 +165,30 @@ def parse_args(argv: Optional[List[str]]) -> argparse.Namespace:
         type=pathlib.Path,
     )
     take_photo_parser.set_defaults(func=cmd_take_photo)
+
+    record_video_parser = subparsers.add_parser(
+        "record-video",
+        help="Record a video",
+        description="Record a video using CCA.",
+    )
+    record_video_parser.add_argument(
+        "--facing",
+        help="facing of the camera to be recorded",
+        action=EnumAction,
+        enum_type=app.Facing,
+    )
+    record_video_parser.add_argument(
+        "--duration",
+        help="duration in seconds to be recorded",
+        type=float,
+        default=3,
+    )
+    record_video_parser.add_argument(
+        "--output",
+        help="output path to save the video",
+        type=pathlib.Path,
+    )
+    record_video_parser.set_defaults(func=cmd_record_video)
 
     return parser.parse_args(argv)
 

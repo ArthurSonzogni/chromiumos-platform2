@@ -149,6 +149,7 @@ class CCA {
 
   /**
    * Performs the specified action.
+   * TODO(shik): Support non-English names.
    * @param {string} name The action name in a11y tree.
    * @return {!Promise<void>}
    */
@@ -189,9 +190,18 @@ class CCA {
    * @return {!Promise<void>}
    */
   async takePhoto() {
-    // TODO(shik): Support non-English names.
     await this.doAction('Take photo');
     // TODO(shik): Wait until the photo is saved.
+  }
+
+  async startRecording() {
+    await this.doAction('Start recording');
+    // TODO(shik): Wait until the recording is started.
+  }
+
+  async stopRecording() {
+    await this.doAction('Stop recording');
+    // TODO(shik): Wait until the video is saved.
   }
 }
 

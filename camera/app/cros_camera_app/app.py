@@ -8,9 +8,12 @@ Use this module to write automation script in Python if the command-line tool
 is not powerful enough in your use cases.
 """
 
+import contextlib
 import enum
 import json
+import logging
 import pathlib
+import time
 from typing import Optional
 
 from cros_camera_app import chrome
@@ -123,6 +126,29 @@ class CameraApp:
         """Closes all the camera app windows."""
         self._cr.close_targets(_CCA_URL)
 
+    @contextlib.contextmanager
+    def session(
+        self,
+        *,
+        facing: Optional[Facing] = None,
+        mode: Optional[Mode] = None,
+    ):
+        """Context manager to start/stop a session automatically.
+
+        Args:
+            facing: The facing of the camera to be opened.
+            mode: The target capture mode in app.
+        """
+        # TODO(shik): Support reusing an existing CCA instance by switching to
+        # the correct mode and facing. For now, close any existing CCA window
+        # and restart from a clean state.
+        self.close()
+        self.open(facing=facing, mode=mode)
+        try:
+            yield
+        finally:
+            self.close()
+
     def take_photo(self, *, facing: Optional[Facing] = None) -> pathlib.Path:
         """Takes a photo.
 
@@ -132,16 +158,30 @@ class CameraApp:
         Returns:
             The path of the captured photo.
         """
-        # TODO(shik): Support reusing the existing CCA instance. For now, close
-        # any existing CCA window and restart from a clean state.
-        self.close()
-        self.open(facing=facing)
-
-        # TODO(shik): Use a contextlib.contextmanager managed CCA session
-        # helper function.
-        try:
+        with self.session(facing=facing, mode=Mode.PHOTO):
             watcher = device.FileWatcher(_CAMERA_DIR, "*.jpg")
             self.ext.call("ext.cca.takePhoto")
             return watcher.poll_new_file()
-        finally:
-            self.close()
+
+    def record_video(
+        self,
+        *,
+        facing: Optional[Facing] = None,
+        duration: float = 3,
+    ) -> pathlib.Path:
+        """Records a video.
+
+        Args:
+            facing: The facing of the camera to be recorded.
+            duration: The duration in seconds to be recorded.
+
+        Returns:
+            The path of the recorded video.
+        """
+        with self.session(facing=facing, mode=Mode.VIDEO):
+            watcher = device.FileWatcher(_CAMERA_DIR, "*.mp4")
+            self.ext.call("ext.cca.startRecording")
+            logging.info("Recording video for %g seconds", duration)
+            time.sleep(duration)
+            self.ext.call("ext.cca.stopRecording")
+            return watcher.poll_new_file()
