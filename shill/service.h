@@ -1087,8 +1087,8 @@ class Service : public base::RefCounted<Service> {
   int portal_detection_count_ = 0;
 
   // Uplink and downlink speed for the service in Kbps.
-  uint32_t uplink_speed_kbps_;
-  uint32_t downlink_speed_kbps_;
+  uint32_t uplink_speed_kbps_ = 0;
+  uint32_t downlink_speed_kbps_ = 0;
 };
 
 }  // namespace shill
