@@ -351,11 +351,6 @@ class ManagerTest : public PropertyStoreTest {
     return temp_service;
   }
 
-  void VerifyPassiveMode() {
-    EXPECT_NE(nullptr, manager()->device_claimer_);
-    EXPECT_TRUE(manager()->device_claimer_->default_claimer());
-  }
-
   void SelectServiceForDevice(scoped_refptr<MockService> service,
                               scoped_refptr<MockDevice> device) {
     manager()->RegisterDevice(device);
@@ -549,28 +544,6 @@ void ReturnSuccess(ResultOnceCallback callback) {
 TEST_F(ManagerTest, Contains) {
   EXPECT_TRUE(manager()->store().Contains(kStateProperty));
   EXPECT_FALSE(manager()->store().Contains(""));
-}
-
-TEST_F(ManagerTest, PassiveModeDeviceRegistration) {
-  manager()->SetPassiveMode();
-  VerifyPassiveMode();
-
-  ON_CALL(*mock_devices_[0], technology())
-      .WillByDefault(Return(Technology::kEthernet));
-
-  // Device not released, should not be registered.
-  manager()->RegisterDevice(mock_devices_[0]);
-  EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
-
-  // Device is released, should be registered.
-  bool claimer_removed;
-  Error error;
-  manager()->ReleaseDevice("", mock_devices_[0]->link_name(), &claimer_removed,
-                           &error);
-  EXPECT_TRUE(error.IsSuccess());
-  EXPECT_FALSE(claimer_removed);
-  manager()->RegisterDevice(mock_devices_[0]);
-  EXPECT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
 }
 
 TEST_F(ManagerTest, DeviceRegistration) {
@@ -4211,23 +4184,6 @@ TEST_F(ManagerTest, ReleaseDeviceFromWrongClaimer) {
       error,
       ErrorIs(Error::kInvalidArguments,
               "Invalid claimer name claimer2. Claimer claimer1 already exist"));
-}
-
-TEST_F(ManagerTest, ReleaseDeviceFromDefaultClaimer) {
-  const char kDeviceName[] = "device1";
-
-  manager()->SetPassiveMode();
-  VerifyPassiveMode();
-
-  Error error;
-  manager()->ClaimDevice("", kDeviceName, &error);
-  EXPECT_TRUE(error.IsSuccess());
-
-  // Release a device with default claimer. Claimer should not be resetted.
-  bool claimer_removed;
-  manager()->ReleaseDevice("", kDeviceName, &claimer_removed, &error);
-  EXPECT_FALSE(claimer_removed);
-  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(ManagerTest, ReleaseDeviceFromNonDefaultClaimer) {

@@ -37,10 +37,6 @@ if [ -n "${ALLOWED_DEVICES}" ]; then
   set -- "$@" --devices-allowed="${ALLOWED_DEVICES}"
 fi
 
-if [ -n "${SHILL_PASSIVE_MODE}" ]; then
-  set -- "$@" --passive-mode
-fi
-
 # Run shill as shill user/group in a minijail:
 #   -G so shill programs can inherit supplementary groups.
 #   -n to run shill with no_new_privs.

@@ -437,12 +437,6 @@ class Manager {
   void AddDefaultServiceObserver(DefaultServiceObserver* observer);
   void RemoveDefaultServiceObserver(DefaultServiceObserver* observer);
 
-  // Running in passive mode, manager will not manage any devices (all devices
-  // are blocked) by default. Remote application can specify devices for
-  // shill to manage through ReleaseInterface/ClaimInterface DBus API using
-  // default claimer (with "" as claimer_name).
-  virtual void SetPassiveMode();
-
   // Decides whether Ethernet-like devices are treated as unknown devices
   // if they do not indicate a driver name.
   virtual void SetIgnoreUnknownEthernet(bool ignore);

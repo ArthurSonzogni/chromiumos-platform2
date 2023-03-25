@@ -125,9 +125,6 @@ const Technology kNoAutoConnectTechnologiesBeforeLoggedIn[] = {
     Technology::kCellular,
 };
 
-// Name of the default claimer.
-constexpr char kDefaultClaimerName[] = "";
-
 // Backoff time increment used to compute the delay before always-on VPN next
 // attempt after a connection failure.
 constexpr base::TimeDelta kAlwaysOnVpnBackoffDelay = base::Milliseconds(500);
@@ -1181,15 +1178,6 @@ void Manager::UpdateUninitializedTechnologies() {
   Error error;
   adaptor_->EmitStringsChanged(kUninitializedTechnologiesProperty,
                                UninitializedTechnologies(&error));
-}
-
-void Manager::SetPassiveMode() {
-  CHECK(!device_claimer_);
-  // Create a default device claimer to claim devices from  shill as they're
-  // detected.  Devices will be managed by remote application, which will use
-  // the default claimer to specify the devices for shill to manage.
-  device_claimer_.reset(
-      new DeviceClaimer(kDefaultClaimerName, &device_info_, true));
 }
 
 void Manager::SetIgnoreUnknownEthernet(bool ignore) {

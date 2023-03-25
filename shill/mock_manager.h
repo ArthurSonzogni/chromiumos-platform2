@@ -118,7 +118,6 @@ class MockManager : public Manager {
               (const std::string&, Error*),
               (override));
   MOCK_METHOD(void, SetIgnoreUnknownEthernet, (bool), (override));
-  MOCK_METHOD(void, SetPassiveMode, (), (override));
   MOCK_METHOD(bool, ignore_unknown_ethernet, (), (const, override));
   MOCK_METHOD(int64_t, GetSuspendDurationUsecs, (), (const, override));
   MOCK_METHOD(void,

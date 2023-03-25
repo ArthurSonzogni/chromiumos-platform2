@@ -41,7 +41,6 @@ class DaemonTask {
     std::vector<std::string> devices_blocked;
     std::vector<std::string> devices_allowed;
     bool ignore_unknown_ethernet = false;
-    bool passive_mode = false;
   };
 
   DaemonTask(const Settings& settings, Config* config);

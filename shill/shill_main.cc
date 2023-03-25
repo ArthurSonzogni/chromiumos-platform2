@@ -38,10 +38,6 @@ const char kDevicesBlocked[] = "devices-blocked";
 const char kDevicesAllowed[] = "devices-allowed";
 // Ignore Ethernet-like devices that don't have any driver information.
 const char kIgnoreUnknownEthernet[] = "ignore-unknown-ethernet";
-// When in passive mode, Shill will not manage any devices by default.
-// Remote service can instruct Shill to manage/unmanage devices through
-// org.chromium.flimflam.Manager's ClaimInterface/ReleaseInterface APIs.
-const char kPassiveMode[] = "passive-mode";
 // Default priority order of the technologies.
 const char kTechnologyOrder[] = "default-technology-order";
 // Flag that causes shill to show the help message and exit.
@@ -159,8 +155,6 @@ int main(int argc, char** argv) {
 
   settings.ignore_unknown_ethernet =
       cl->HasSwitch(switches::kIgnoreUnknownEthernet);
-
-  settings.passive_mode = cl->HasSwitch(switches::kPassiveMode);
 
   // Initialize Mojo for the whole process.
   mojo::core::Init();

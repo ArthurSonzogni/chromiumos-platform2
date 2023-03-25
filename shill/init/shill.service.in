@@ -12,7 +12,6 @@ Conflicts=pre-shutdown.service
 # Default parameters to be overridden by systemd configuration.
 Environment="SHILL_LOG_LEVEL=0" \
 	"SHILL_LOG_SCOPES=" \
-	"SHILL_PASSIVE_MODE=" \
 	"BLOCKED_DEVICES=" \
 	"SHILL_TEST_DEVICES="
 Restart=on-failure

@@ -53,9 +53,6 @@ void DaemonTask::ApplySettings() {
   manager_->SetTechnologyOrder(settings_.default_technology_order, &error);
   CHECK(error.IsSuccess());  // Command line should have been validated.
   manager_->SetIgnoreUnknownEthernet(settings_.ignore_unknown_ethernet);
-  if (settings_.passive_mode) {
-    manager_->SetPassiveMode();
-  }
 }
 
 bool DaemonTask::Quit(base::OnceClosure completion_callback) {
