@@ -61,7 +61,7 @@ static std::string PanicShowExtraCm(const struct panic_data* pdata) {
 
 static std::string ParsePanicInfoCm(const struct panic_data* pdata) {
   const uint32_t* lregs = pdata->cm.regs;
-  const uint32_t* sregs = NULL;
+  const uint32_t* sregs = nullptr;
   enum { ORIG_UNKNOWN = 0, ORIG_PROCESS, ORIG_HANDLER } origin = ORIG_UNKNOWN;
   int i;
   const char* panic_origins[3] = {"", "PROCESS", "HANDLER"};

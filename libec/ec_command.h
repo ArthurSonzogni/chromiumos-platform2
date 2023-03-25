@@ -266,7 +266,7 @@ bool EcCommand<Params, Response>::Run(ec::EcUsbEndpointInterface& uep) {
 
   size_t req_len = sizeof(struct ec_host_request) + cmd_.outsize;
   uint8_t* req_buf = reinterpret_cast<uint8_t*>(malloc(req_len));
-  if (req_buf == NULL) {
+  if (req_buf == nullptr) {
     LOG(ERROR) << "Failed to allocate memory for request";
     uep.ReleaseInterface();
     return false;
@@ -286,7 +286,7 @@ bool EcCommand<Params, Response>::Run(ec::EcUsbEndpointInterface& uep) {
 
   size_t res_len = sizeof(struct ec_host_response) + cmd_.insize;
   uint8_t* res_buf = reinterpret_cast<uint8_t*>(malloc(res_len));
-  if (res_buf == NULL) {
+  if (res_buf == nullptr) {
     LOG(ERROR) << "Failed to allocate memory for response";
     free(req);
     uep.ReleaseInterface();
