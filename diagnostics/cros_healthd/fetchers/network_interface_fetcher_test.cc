@@ -47,6 +47,10 @@ constexpr char kFakeGetLinkOutput[] =
     "\tsignal: -50 dBm\n"
     "\trx bitrate: 800.0 MBit/s VHT-MCS 9 80MHz short GI VHT-NSS 2\n"
     "\ttx bitrate: 600.0 MBit/s VHT-MCS 7 80MHz VHT-NSS 2\n";
+constexpr char kFakeGetLinkOutputWithoutRxBitrate[] =
+    "Connected to 11:22:33:44:55:66 (on wlan0)\n"
+    "\tsignal: -50 dBm\n"
+    "\ttx bitrate: 600.0 MBit/s VHT-MCS 7 80MHz VHT-NSS 2\n";
 constexpr char kFakeGetLinkDeviceNotConnectedOutput[] = "Not connected.\n";
 constexpr char kFakeGetInfoOutput[] = "txpower 22.00 dBm\n";
 constexpr char kFakeGetScanDumpOutput[] =
@@ -126,7 +130,7 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
 };
 
 // Test TestFetchNetworkInterfaceInfo matching with expected result.
-TEST_F(NetworkInterfaceFetcherTest, TestFetchNetworkInterfaceInfo) {
+TEST_F(NetworkInterfaceFetcherTest, FetchNetworkInterfaceInfo) {
   MockIw(IwCommand::kDev, "", EXIT_SUCCESS, kFakeGetInterfacesOutput);
   MockIw(IwCommand::kLink, kExpectedInterfaceName, EXIT_SUCCESS,
          kFakeGetLinkOutput);
@@ -163,7 +167,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestFetchNetworkInterfaceInfo) {
 }
 
 // Test case: GetInterfaces return failure.
-TEST_F(NetworkInterfaceFetcherTest, TestGetInterfacesReturnFailure) {
+TEST_F(NetworkInterfaceFetcherTest, GetInterfacesReturnFailure) {
   MockIw(IwCommand::kDev, "", EXIT_FAILURE, "Something wrong!!!");
 
   auto result = FetchNetworkInterfaceInfoSync();
@@ -172,7 +176,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestGetInterfacesReturnFailure) {
 }
 
 // Test case: GetLink return failure.
-TEST_F(NetworkInterfaceFetcherTest, TestGetLinkReturnFailure) {
+TEST_F(NetworkInterfaceFetcherTest, GetLinkReturnFailure) {
   MockIw(IwCommand::kLink, kExpectedInterfaceName, EXIT_FAILURE,
          "Something wrong!!!");
 
@@ -182,7 +186,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestGetLinkReturnFailure) {
 }
 
 // Test case: GetInfo return failure.
-TEST_F(NetworkInterfaceFetcherTest, TestGetInfoReturnFailure) {
+TEST_F(NetworkInterfaceFetcherTest, GetInfoReturnFailure) {
   MockIw(IwCommand::kInfo, kExpectedInterfaceName, EXIT_FAILURE,
          "Something wrong!!!");
 
@@ -192,7 +196,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestGetInfoReturnFailure) {
 }
 
 // Test case: GetScanDump return failure.
-TEST_F(NetworkInterfaceFetcherTest, TestGetScanDumpReturnFailure) {
+TEST_F(NetworkInterfaceFetcherTest, GetScanDumpReturnFailure) {
   MockIw(IwCommand::kScanDump, kExpectedInterfaceName, EXIT_FAILURE,
          "Something wrong!!!");
 
@@ -203,7 +207,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestGetScanDumpReturnFailure) {
 
 // Test case: wireless device not connected to an access point. Expecting only
 // non-link data is available.
-TEST_F(NetworkInterfaceFetcherTest, TestWirelessNotConnected) {
+TEST_F(NetworkInterfaceFetcherTest, WirelessNotConnected) {
   MockIw(IwCommand::kLink, kExpectedInterfaceName, EXIT_SUCCESS,
          kFakeGetLinkDeviceNotConnectedOutput);
 
@@ -226,7 +230,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestWirelessNotConnected) {
 }
 
 // Test case: wireless adapter not found.
-TEST_F(NetworkInterfaceFetcherTest, TestNoWirelessAdapterFound) {
+TEST_F(NetworkInterfaceFetcherTest, NoWirelessAdapterFound) {
   MockIw(IwCommand::kDev, "", EXIT_SUCCESS,
          kFakeGetInterfacesNoWirelessAdapterOutput);
 
@@ -236,7 +240,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestNoWirelessAdapterFound) {
 }
 
 // Test case: missing /sys/module/iwlmvm/parameters/power_scheme file.
-TEST_F(NetworkInterfaceFetcherTest, TestMissingPowerSchemeFile) {
+TEST_F(NetworkInterfaceFetcherTest, MissingPowerSchemeFile) {
   MockReadPowerSchema(std::nullopt);
 
   auto result = FetchNetworkInterfaceInfoSync();
@@ -254,8 +258,26 @@ TEST_F(NetworkInterfaceFetcherTest, TestMissingPowerSchemeFile) {
   }
 }
 
+// Test case: missing rx bitrate is set to 0.
+TEST_F(NetworkInterfaceFetcherTest, MissingRxBitrateSetToZero) {
+  MockIw(IwCommand::kLink, kExpectedInterfaceName, EXIT_SUCCESS,
+         kFakeGetLinkOutputWithoutRxBitrate);
+
+  auto result = FetchNetworkInterfaceInfoSync();
+  ASSERT_TRUE(result->is_network_interface_info());
+  const auto& network_infos = result->get_network_interface_info();
+  const auto& network_info = network_infos.at(0);
+  ASSERT_FALSE(network_info.is_null());
+  EXPECT_TRUE(network_info->is_wireless_interface_info());
+  const auto& wireless_info = network_info->get_wireless_interface_info();
+  ASSERT_FALSE(wireless_info.is_null());
+  const auto& link_info = wireless_info->wireless_link_info;
+  ASSERT_FALSE(link_info.is_null());
+  EXPECT_EQ(link_info->rx_bit_rate_mbps, 0);
+}
+
 // Test case: test wireless device name
-TEST_F(NetworkInterfaceFetcherTest, TestInterfaceName) {
+TEST_F(NetworkInterfaceFetcherTest, InterfaceName) {
   EXPECT_TRUE(IsValidWirelessInterfaceName("wlan0"));
   EXPECT_TRUE(IsValidWirelessInterfaceName("mlan0"));
   EXPECT_TRUE(IsValidWirelessInterfaceName("wlan8"));

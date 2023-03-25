@@ -219,7 +219,6 @@ void State::HandleLink(Context* context,
         std::string(__func__) + ": cannot create key value pairs.");
     return;
   }
-  bool rx_bitrate_found = false;
   bool tx_bitrate_found = false;
   bool signal_found = false;
   for (int i = 0; i < keyVals.size(); i++) {
@@ -236,10 +235,8 @@ void State::HandleLink(Context* context,
         signal_found = true;
       }
     } else if (keyVals[i].first == "rx bitrate") {
-      if (GetDoubleValueWithUnit(keyVals[i].second, "MBit/s",
-                                 &link_info->rx_bit_rate_mbps)) {
-        rx_bitrate_found = true;
-      }
+      GetDoubleValueWithUnit(keyVals[i].second, "MBit/s",
+                             &link_info->rx_bit_rate_mbps);
     } else if (keyVals[i].first == "tx bitrate") {
       if (GetDoubleValueWithUnit(keyVals[i].second, "MBit/s",
                                  &link_info->tx_bit_rate_mbps)) {
@@ -252,12 +249,6 @@ void State::HandleLink(Context* context,
     error_ =
         CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                std::string(__func__) + ": signal not found.");
-    return;
-  }
-  if (!rx_bitrate_found) {
-    error_ = CreateAndLogProbeError(
-        mojom::ErrorType::kParseError,
-        std::string(__func__) + ": rx bitrate not found.");
     return;
   }
   if (!tx_bitrate_found) {
