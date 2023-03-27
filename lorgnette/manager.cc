@@ -190,7 +190,7 @@ Manager::Manager(
       [](base::WeakPtr<Manager> manager,
          const ScanStatusChangedSignal& signal) {
         if (manager) {
-          manager->SendScanStatusChangedSignal(impl::SerializeProto(signal));
+          manager->SendScanStatusChangedSignal(signal);
         }
       },
       weak_factory_.GetWeakPtr());
@@ -215,7 +215,7 @@ void Manager::RegisterAsync(
 }
 
 bool Manager::ListScanners(brillo::ErrorPtr* error,
-                           std::vector<uint8_t>* scanner_list_out) {
+                           ListScannersResponse* scanner_list_out) {
   LOG(INFO) << "Starting ListScanners()";
   if (!sane_client_) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
@@ -343,20 +343,16 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
     *response.add_scanners() = std::move(scanner);
   }
 
-  std::vector<uint8_t> serialized;
-  serialized.resize(response.ByteSizeLong());
-  response.SerializeToArray(serialized.data(), serialized.size());
-
   if (!activity_callback_.is_null())
     activity_callback_.Run(Daemon::kNormalShutdownTimeout);
 
-  *scanner_list_out = std::move(serialized);
+  *scanner_list_out = std::move(response);
   return true;
 }
 
 bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
                                      const std::string& device_name,
-                                     std::vector<uint8_t>* capabilities_out) {
+                                     ScannerCapabilities* capabilities_out) {
   LOG(INFO) << "Starting GetScannerCapabilities for device: " << device_name;
   if (!capabilities_out) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
@@ -414,30 +410,18 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
       capabilities.add_color_modes(color_mode);
   }
 
-  std::vector<uint8_t> serialized;
-  serialized.resize(capabilities.ByteSizeLong());
-  capabilities.SerializeToArray(serialized.data(), serialized.size());
-
   if (!activity_callback_.is_null())
     activity_callback_.Run(Daemon::kNormalShutdownTimeout);
 
-  *capabilities_out = std::move(serialized);
+  *capabilities_out = std::move(capabilities);
   return true;
 }
 
-std::vector<uint8_t> Manager::StartScan(
-    const std::vector<uint8_t>& start_scan_request) {
+StartScanResponse Manager::StartScan(const StartScanRequest& request) {
   LOG(INFO) << "Starting StartScan";
   StartScanResponse response;
   response.set_state(SCAN_STATE_FAILED);
   response.set_scan_failure_mode(SCAN_FAILURE_MODE_UNKNOWN);
-
-  StartScanRequest request;
-  if (!request.ParseFromArray(start_scan_request.data(),
-                              start_scan_request.size())) {
-    response.set_failure_reason("Failed to parse StartScanRequest");
-    return impl::SerializeProto(response);
-  }
 
   brillo::ErrorPtr error;
   ScanFailureMode failure_mode(SCAN_FAILURE_MODE_UNKNOWN);
@@ -445,14 +429,14 @@ std::vector<uint8_t> Manager::StartScan(
   if (!StartScanInternal(&error, &failure_mode, request, &device)) {
     response.set_failure_reason(SerializeError(error));
     response.set_scan_failure_mode(failure_mode);
-    return impl::SerializeProto(response);
+    return response;
   }
 
   std::optional<std::string> source_name = device->GetDocumentSource(&error);
   if (!source_name.has_value()) {
     response.set_failure_reason("Failed to get DocumentSource: " +
                                 SerializeError(error));
-    return impl::SerializeProto(response);
+    return response;
   }
   SourceType source_type = GuessSourceType(source_name.value());
 
@@ -483,24 +467,16 @@ std::vector<uint8_t> Manager::StartScan(
   response.set_scan_uuid(uuid);
   response.set_state(SCAN_STATE_IN_PROGRESS);
   response.set_scan_failure_mode(SCAN_FAILURE_MODE_NO_FAILURE);
-  return impl::SerializeProto(response);
+  return response;
 }
 
 void Manager::GetNextImage(
-    std::unique_ptr<DBusMethodResponse<std::vector<uint8_t>>> method_response,
-    const std::vector<uint8_t>& get_next_image_request,
+    std::unique_ptr<DBusMethodResponse<GetNextImageResponse>> method_response,
+    const GetNextImageRequest& request,
     const base::ScopedFD& out_fd) {
   GetNextImageResponse response;
   response.set_success(false);
   response.set_scan_failure_mode(SCAN_FAILURE_MODE_UNKNOWN);
-
-  GetNextImageRequest request;
-  if (!request.ParseFromArray(get_next_image_request.data(),
-                              get_next_image_request.size())) {
-    response.set_failure_reason("Failed to parse GetNextImageRequest");
-    method_response->Return(impl::SerializeProto(response));
-    return;
-  }
 
   std::string uuid = request.scan_uuid();
   LOG(INFO) << __func__ << ": Starting GetNextImage for " << uuid;
@@ -510,7 +486,7 @@ void Manager::GetNextImage(
     if (!base::Contains(active_scans_, uuid)) {
       LOG(ERROR) << __func__ << ": No active scan found for " << uuid;
       response.set_failure_reason("No scan job with UUID " + uuid + " found");
-      method_response->Return(impl::SerializeProto(response));
+      method_response->Return(response);
       return;
     }
     scan_state = &active_scans_[uuid];
@@ -519,7 +495,7 @@ void Manager::GetNextImage(
       LOG(ERROR) << __func__ << ": Active scan already in use for " << uuid;
       response.set_failure_reason("Scan job with UUID " + uuid +
                                   " is currently busy");
-      method_response->Return(impl::SerializeProto(response));
+      method_response->Return(response);
       return;
     }
     scan_state->in_use = true;
@@ -550,7 +526,7 @@ void Manager::GetNextImage(
   if (!out_file) {
     response.set_failure_reason("Failed to setup output file: " +
                                 SerializeError(error));
-    method_response->Return(impl::SerializeProto(response));
+    method_response->Return(response);
     return;
   }
 
@@ -558,22 +534,14 @@ void Manager::GetNextImage(
             << uuid;
   response.set_success(true);
   response.set_scan_failure_mode(SCAN_FAILURE_MODE_NO_FAILURE);
-  method_response->Return(impl::SerializeProto(response));
+  method_response->Return(response);
 
   GetNextImageInternal(uuid, scan_state, std::move(out_file));
 }
 
-std::vector<uint8_t> Manager::CancelScan(
-    const std::vector<uint8_t>& cancel_scan_request) {
+CancelScanResponse Manager::CancelScan(const CancelScanRequest& request) {
   CancelScanResponse response;
 
-  CancelScanRequest request;
-  if (!request.ParseFromArray(cancel_scan_request.data(),
-                              cancel_scan_request.size())) {
-    response.set_success(false);
-    response.set_failure_reason("Failed to parse CancelScanRequest");
-    return impl::SerializeProto(response);
-  }
   std::string uuid = request.scan_uuid();
   LOG(INFO) << __func__ << ": cancel requested for " << uuid;
   {
@@ -582,7 +550,7 @@ std::vector<uint8_t> Manager::CancelScan(
       LOG(WARNING) << __func__ << ": No active scan found for " << uuid;
       response.set_success(false);
       response.set_failure_reason("No scan job with UUID " + uuid + " found");
-      return impl::SerializeProto(response);
+      return response;
     }
 
     ScanJobState& scan_state = active_scans_[uuid];
@@ -590,7 +558,7 @@ std::vector<uint8_t> Manager::CancelScan(
       LOG(INFO) << __func__ << ": Already cancelled scan " << uuid;
       response.set_success(false);
       response.set_failure_reason("Job has already been cancelled");
-      return impl::SerializeProto(response);
+      return response;
     }
 
     if (scan_state.in_use) {
@@ -603,7 +571,7 @@ std::vector<uint8_t> Manager::CancelScan(
         response.set_success(false);
         response.set_failure_reason("Failed to cancel scan: " +
                                     SerializeError(error));
-        return impl::SerializeProto(response);
+        return response;
       }
       // When the job that is actively using the device finishes, it will erase
       // the job, freeing the device for use by other scans.
@@ -621,7 +589,7 @@ std::vector<uint8_t> Manager::CancelScan(
     activity_callback_.Run(Daemon::kNormalShutdownTimeout);
 
   response.set_success(true);
-  return impl::SerializeProto(response);
+  return response;
 }
 
 void Manager::SetProgressSignalInterval(base::TimeDelta interval) {

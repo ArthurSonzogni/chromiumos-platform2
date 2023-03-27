@@ -92,18 +92,17 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
 
   // Implementation of MethodInterface.
   bool ListScanners(brillo::ErrorPtr* error,
-                    std::vector<uint8_t>* scanner_list_out) override;
+                    ListScannersResponse* scanner_list_out) override;
   bool GetScannerCapabilities(brillo::ErrorPtr* error,
                               const std::string& device_name,
-                              std::vector<uint8_t>* capabilities) override;
-  std::vector<uint8_t> StartScan(
-      const std::vector<uint8_t>& start_scan_request) override;
+                              ScannerCapabilities* capabilities) override;
+  StartScanResponse StartScan(const StartScanRequest& request) override;
   void GetNextImage(
-      std::unique_ptr<DBusMethodResponse<std::vector<uint8_t>>> response,
-      const std::vector<uint8_t>& get_next_image_request,
+      std::unique_ptr<DBusMethodResponse<GetNextImageResponse>> response,
+      const GetNextImageRequest& get_next_image_request,
       const base::ScopedFD& out_fd) override;
-  std::vector<uint8_t> CancelScan(
-      const std::vector<uint8_t>& cancel_scan_request) override;
+  CancelScanResponse CancelScan(
+      const CancelScanRequest& cancel_scan_request) override;
 
   void SetProgressSignalInterval(base::TimeDelta interval);
 

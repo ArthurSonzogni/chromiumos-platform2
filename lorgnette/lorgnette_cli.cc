@@ -85,19 +85,11 @@ std::optional<lorgnette::CancelScanResponse> CancelScan(
     ManagerProxy* manager, const std::string& uuid) {
   lorgnette::CancelScanRequest request;
   request.set_scan_uuid(uuid);
-  std::vector<uint8_t> request_in(request.ByteSizeLong());
-  request.SerializeToArray(request_in.data(), request_in.size());
 
   brillo::ErrorPtr error;
-  std::vector<uint8_t> response_out;
-  if (!manager->CancelScan(request_in, &response_out, &error)) {
-    LOG(ERROR) << "Cancelling scan failed: " << error->GetMessage();
-    return std::nullopt;
-  }
-
   lorgnette::CancelScanResponse response;
-  if (!response.ParseFromArray(response_out.data(), response_out.size())) {
-    LOG(ERROR) << "Failed to parse CancelScanResponse";
+  if (!manager->CancelScan(request, &response, &error)) {
+    LOG(ERROR) << "Cancelling scan failed: " << error->GetMessage();
     return std::nullopt;
   }
 
@@ -135,7 +127,7 @@ class ScanHandler {
 
  private:
   void HandleScanStatusChangedSignal(
-      const std::vector<uint8_t>& signal_serialized);
+      const lorgnette::ScanStatusChangedSignal& signal_serialized);
 
   void OnConnectedCallback(const std::string& interface_name,
                            const std::string& signal_name,
@@ -186,19 +178,10 @@ bool ScanHandler::StartScan(
   request.mutable_settings()->set_image_format(image_format);
   format_extension_ = ExtensionForFormat(image_format);
 
-  std::vector<uint8_t> request_in(request.ByteSizeLong());
-  request.SerializeToArray(request_in.data(), request_in.size());
-
   brillo::ErrorPtr error;
-  std::vector<uint8_t> response_out;
-  if (!manager_->StartScan(request_in, &response_out, &error)) {
-    LOG(ERROR) << "StartScan failed: " << error->GetMessage();
-    return false;
-  }
-
   lorgnette::StartScanResponse response;
-  if (!response.ParseFromArray(response_out.data(), response_out.size())) {
-    LOG(ERROR) << "Failed to parse StartScanResponse";
+  if (!manager_->StartScan(request, &response, &error)) {
+    LOG(ERROR) << "StartScan failed: " << error->GetMessage();
     return false;
   }
 
@@ -216,15 +199,8 @@ bool ScanHandler::StartScan(
 }
 
 void ScanHandler::HandleScanStatusChangedSignal(
-    const std::vector<uint8_t>& signal_serialized) {
+    const lorgnette::ScanStatusChangedSignal& signal) {
   if (!scan_uuid_.has_value()) {
-    return;
-  }
-
-  lorgnette::ScanStatusChangedSignal signal;
-  if (!signal.ParseFromArray(signal_serialized.data(),
-                             signal_serialized.size())) {
-    LOG(ERROR) << "Failed to parse ScanStatusSignal";
     return;
   }
 
@@ -264,8 +240,6 @@ std::optional<lorgnette::GetNextImageResponse> ScanHandler::GetNextImage(
     const base::FilePath& output_path) {
   lorgnette::GetNextImageRequest request;
   request.set_scan_uuid(scan_uuid_.value());
-  std::vector<uint8_t> request_in(request.ByteSizeLong());
-  request.SerializeToArray(request_in.data(), request_in.size());
 
   base::File output_file(
       output_path, base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
@@ -276,17 +250,11 @@ std::optional<lorgnette::GetNextImageResponse> ScanHandler::GetNextImage(
   }
 
   brillo::ErrorPtr error;
-  std::vector<uint8_t> response_out;
-  if (!manager_->GetNextImage(request_in,
-                              base::ScopedFD(output_file.TakePlatformFile()),
-                              &response_out, &error)) {
-    LOG(ERROR) << "GetNextImage failed: " << error->GetMessage();
-    return std::nullopt;
-  }
-
   lorgnette::GetNextImageResponse response;
-  if (!response.ParseFromArray(response_out.data(), response_out.size())) {
-    LOG(ERROR) << "Failed to parse StartScanResponse";
+  if (!manager_->GetNextImage(request,
+                              base::ScopedFD(output_file.TakePlatformFile()),
+                              &response, &error)) {
+    LOG(ERROR) << "GetNextImage failed: " << error->GetMessage();
     return std::nullopt;
   }
 
@@ -325,16 +293,9 @@ void ScanHandler::RequestNextPage() {
 
 std::optional<std::vector<std::string>> ListScanners(ManagerProxy* manager) {
   brillo::ErrorPtr error;
-  std::vector<uint8_t> out_scanner_list;
-  if (!manager->ListScanners(&out_scanner_list, &error)) {
-    LOG(ERROR) << "ListScanners failed: " << error->GetMessage();
-    return std::nullopt;
-  }
-
   lorgnette::ListScannersResponse scanner_list;
-  if (!scanner_list.ParseFromArray(out_scanner_list.data(),
-                                   out_scanner_list.size())) {
-    LOG(ERROR) << "Failed to parse ListScanners response";
+  if (!manager->ListScanners(&scanner_list, &error)) {
+    LOG(ERROR) << "ListScanners failed: " << error->GetMessage();
     return std::nullopt;
   }
 
@@ -353,17 +314,12 @@ std::optional<std::vector<std::string>> ListScanners(ManagerProxy* manager) {
 std::optional<lorgnette::ScannerCapabilities> GetScannerCapabilities(
     ManagerProxy* manager, const std::string& scanner_name) {
   brillo::ErrorPtr error;
-  std::vector<uint8_t> serialized;
-  if (!manager->GetScannerCapabilities(scanner_name, &serialized, &error)) {
+  lorgnette::ScannerCapabilities capabilities;
+  if (!manager->GetScannerCapabilities(scanner_name, &capabilities, &error)) {
     LOG(ERROR) << "GetScannerCapabilities failed: " << error->GetMessage();
     return std::nullopt;
   }
 
-  lorgnette::ScannerCapabilities capabilities;
-  if (!capabilities.ParseFromArray(serialized.data(), serialized.size())) {
-    LOG(ERROR) << "Failed to parse ScannerCapabilities response";
-    return std::nullopt;
-  }
   return capabilities;
 }
 

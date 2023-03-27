@@ -69,15 +69,12 @@ void ValidateSignals(const std::vector<ScanStatusChangedSignal>& signals,
 }
 
 template <typename T>
-std::unique_ptr<MockDBusMethodResponse<std::vector<uint8_t>>>
-BuildMockDBusResponse(T* response) {
-  auto dbus_response =
-      std::make_unique<MockDBusMethodResponse<std::vector<uint8_t>>>();
+std::unique_ptr<MockDBusMethodResponse<T>> BuildMockDBusResponse(T* response) {
+  auto dbus_response = std::make_unique<MockDBusMethodResponse<T>>();
   dbus_response->set_return_callback(base::BindOnce(
-      [](T* response_out, const std::vector<uint8_t>& serialized_response) {
+      [](T* response_out, const T& response_in) {
         ASSERT_TRUE(response_out);
-        ASSERT_TRUE(response_out->ParseFromArray(serialized_response.data(),
-                                                 serialized_response.size()));
+        *response_out = response_in;
       },
       base::Unretained(response)));
   return dbus_response;
@@ -188,14 +185,7 @@ class ManagerTest : public testing::Test {
     request.mutable_settings()->set_color_mode(color_mode);
     request.mutable_settings()->set_source_name(source_name);
     request.mutable_settings()->set_image_format(image_format);
-
-    std::vector<uint8_t> serialized_response =
-        manager_.StartScan(impl::SerializeProto(request));
-
-    StartScanResponse response;
-    EXPECT_TRUE(response.ParseFromArray(serialized_response.data(),
-                                        serialized_response.size()));
-    return response;
+    return manager_.StartScan(request);
   }
 
   GetNextImageResponse GetNextImage(const std::string& scan_uuid,
@@ -204,22 +194,14 @@ class ManagerTest : public testing::Test {
     request.set_scan_uuid(scan_uuid);
 
     GetNextImageResponse response;
-    manager_.GetNextImage(BuildMockDBusResponse(&response),
-                          impl::SerializeProto(request), output_fd);
+    manager_.GetNextImage(BuildMockDBusResponse(&response), request, output_fd);
     return response;
   }
 
   CancelScanResponse CancelScan(const std::string& scan_uuid) {
     CancelScanRequest request;
     request.set_scan_uuid(scan_uuid);
-
-    std::vector<uint8_t> serialized_response =
-        manager_.CancelScan(impl::SerializeProto(request));
-
-    CancelScanResponse response;
-    EXPECT_TRUE(response.ParseFromArray(serialized_response.data(),
-                                        serialized_response.size()));
-    return response;
+    return manager_.CancelScan(request);
   }
 
   // Run a one-page scan to completion, and verify that it was successful.
@@ -282,10 +264,10 @@ TEST_F(ManagerTest, GetColorModeFromDevice) {
 }
 
 TEST_F(ManagerTest, GetScannerCapabilitiesInvalidIppUsbFailure) {
-  std::vector<uint8_t> serialized;
+  ScannerCapabilities response;
   brillo::ErrorPtr error;
   EXPECT_FALSE(
-      manager_.GetScannerCapabilities(&error, "ippusb:invalid", &serialized));
+      manager_.GetScannerCapabilities(&error, "ippusb:invalid", &response));
   EXPECT_NE(error, nullptr);
   EXPECT_NE(error->GetMessage().find("ippusb"), std::string::npos);
 }
@@ -305,12 +287,8 @@ TEST_F(ManagerTest, GetScannerCapabilitiesSuccess) {
   device->SetValidOptionValues(opts);
   sane_client_->SetDeviceForName("TestDevice", std::move(device));
 
-  std::vector<uint8_t> serialized;
-  EXPECT_TRUE(
-      manager_.GetScannerCapabilities(nullptr, "TestDevice", &serialized));
-
   ScannerCapabilities caps;
-  EXPECT_TRUE(caps.ParseFromArray(serialized.data(), serialized.size()));
+  EXPECT_TRUE(manager_.GetScannerCapabilities(nullptr, "TestDevice", &caps));
 
   EXPECT_THAT(caps.resolutions(), ElementsAre(100, 200, 300, 600));
 

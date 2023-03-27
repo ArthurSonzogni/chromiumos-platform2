@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
-<node name="/org/chromium/lorgnette/Manager" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensio
-ns-v0">
+<node name="/org/chromium/lorgnette/Manager" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.lorgnette.Manager">
     <method name="ListScanners">
       <tp:docstring>
@@ -11,6 +10,8 @@ ns-v0">
           The list of connected scanners. Returns a protobuf representing a list
           of SaneDevice structs as provided by SANE.
         </tp:docstring>
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::ListScannersResponse" />
       </arg>
     </method>
     <method name="GetScannerCapabilities">
@@ -26,6 +27,8 @@ ns-v0">
         <tp:docstring>
           Serialized ScannerCapabilities proto.
         </tp:docstring>
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::ScannerCapabilities" />
       </arg>
     </method>
     <method name="StartScan">
@@ -35,12 +38,18 @@ ns-v0">
         Initiates a connection to the scanner and prepares for scanning. Once
         called, the client can call GetNextImage to fetch image data.
       </tp:docstring>
-      <arg name="start_scan_request" type="ay" direction="in"/>
+      <arg name="start_scan_request" type="ay" direction="in">
         <tp:docstring>
           Serialized StartScanRequest proto specifying the scanner to use and
           the settings for the scan.
         </tp:docstring>
-      <arg name="start_scan_response" type="ay" direction="out"/>
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::StartScanRequest" />
+      </arg>
+      <arg name="start_scan_response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::StartScanResponse" />
+      </arg>
     </method>
     <method name="GetNextImage">
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
@@ -51,33 +60,49 @@ ns-v0">
         A response will be sent once image acquisition has started successfully
         or if acquiring the image failed.
       </tp:docstring>
-      <arg name="get_next_image_request" type="ay" direction="in"/>
+      <arg name="get_next_image_request" type="ay" direction="in">
         <tp:docstring>
           Serialized GetNextImageRequest proto specifying the scan job uuid.
         </tp:docstring>
-      <arg name="out_fd" type="h" direction="in"/>
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::GetNextImageRequest" />
+      </arg>
+      <arg name="out_fd" type="h" direction="in">
         <tp:docstring>
           Output file descriptor. PNG image data will be written to this fd.
         </tp:docstring>
-      <arg name="get_next_image_response" type="ay" direction="out" />
+      </arg>
+      <arg name="get_next_image_response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::GetNextImageResponse" />
+      </arg>
     </method>
     <method name="CancelScan">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
       <tp:docstring>
         Attempts to cancel the scan job specified by the given UUID.
       </tp:docstring>
-      <arg name="cancel_scan_request" type="ay" direction="in"/>
+      <arg name="cancel_scan_request" type="ay" direction="in">
         <tp:docstring>
           Serialized CancelScanRequest proto specifying the scan job to cancel.
         </tp:docstring>
-      <arg name="cancel_scan_response" type="ay" direction="out" />
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::CancelScanRequest" />
+      </arg>
+      <arg name="cancel_scan_response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::CancelScanResponse" />
+      </arg>
     </method>
     <signal name="ScanStatusChanged">
-      <arg name="scan_status_changed_signal" type="ay" direction="out" />
+      <arg name="scan_status_changed_signal" type="ay" direction="out">
         <tp:docstring>
           A serialized ScanStatusChangedSignal proto, containing a scan id, scan
           state, and potentially a failure reason or progress percentage.
         </tp:docstring>
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::ScanStatusChangedSignal" />
+      </arg>
     </signal>
   </interface>
 </node>
