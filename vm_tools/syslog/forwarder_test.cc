@@ -39,8 +39,8 @@ constexpr struct {
             .tm_year = 125,
         },
         // clang-format on
-        .content = u8"网页 图片 资讯更多 »",
-        .result = u8"<11>Jan 17 23:54:11 VM(0): 网页 图片 资讯更多 »",
+        .content = "网页 图片 资讯更多 »",
+        .result = "<11>Jan 17 23:54:11 VM(0): 网页 图片 资讯更多 »",
     },
     {
         .severity = vm_tools::EMERGENCY,
@@ -55,10 +55,9 @@ constexpr struct {
         },
         // clang-format on
         .content = "Invalid\xED\xBA\xAD code\xF4\xAF\xBF\xBF points",
-        .result =
-            u8"<8>Dec 24 18:33:58 VM(0): "
-            u8"Invalid\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD "
-            u8"code\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD points",
+        .result = "<8>Dec 24 18:33:58 VM(0): "
+                  "Invalid\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD "
+                  "code\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD points",
     },
     {
         .severity = vm_tools::DEBUG,
@@ -73,8 +72,8 @@ constexpr struct {
         },
         // clang-format on
         .content = "Non-\xEF\xBF\xBE character \xEF\xB7\xA1 code points",
-        .result = u8"<15>Jan  1 00:00:00 VM(0): Non-#177776 character "
-                  u8"#176741 code points",
+        .result = "<15>Jan  1 00:00:00 VM(0): Non-#177776 character "
+                  "#176741 code points",
     },
     {
         .severity = vm_tools::NOTICE,
@@ -92,12 +91,12 @@ constexpr struct {
                    "전체Παγκόσμιος网页на русском, "
                    "non\xF7\x9F\xBF\xBF-character, and\xEF\xBF\xBE control "
                    "\xEF\xB7\xAA code points",
-        .result = u8"<13>Jun  2 17:15:47 VM(0): Mix of#221 val#034id, "
-                  u8"invalid\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD, "
-                  u8"전체Παγκόσμιος网页на русском, "
-                  u8"non\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD-"
-                  u8"character, and#177776 control #176752 "
-                  u8"code points",
+        .result = "<13>Jun  2 17:15:47 VM(0): Mix of#221 val#034id, "
+                  "invalid\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD, "
+                  "전체Παγκόσμιος网页на русском, "
+                  "non\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD-"
+                  "character, and#177776 control #176752 "
+                  "code points",
     },
 };
 
@@ -130,11 +129,11 @@ TEST(ForwarderTest, EndToEnd) {
 
   for (const auto& test_case : kEndToEndTests) {
     char buf[1024];
-
     ssize_t len = strlen(test_case.result);
+    ASSERT_LE(len + 1, sizeof(buf));
     EXPECT_EQ(recv(receiver.get(), buf, sizeof(buf), 0), len);
 
-    EXPECT_EQ(string(buf, len), string(test_case.result));
+    EXPECT_EQ(std::string(buf, len), std::string(test_case.result));
   }
 }
 

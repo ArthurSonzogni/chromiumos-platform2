@@ -518,7 +518,7 @@ TEST_F(DesktopFileTest, GenerateArgvComplexArgs) {
 
 TEST_F(DesktopFileTest, GenerateArgvWithQuotingAndEscaping) {
   EXPECT_EQ(ValidateDesktopFile(
-                u8R"xxx(
+                R"xxx(
                 [Desktop Entry]
                 Type=Application
                 Name=QuothTRaven
@@ -536,12 +536,12 @@ TEST_F(DesktopFileTest, GenerateArgvWithQuotingAndEscaping) {
                     false,
                     {},
                     "",
-                    u8R"xxx(quoth-t-raven %% "A B %f %i C \" B \\ " "C D")xxx",
+                    R"xxx(quoth-t-raven %% "A B %f %i C \" B \\ " "C D")xxx",
                 },
                 true)
                 ->GenerateArgvWithFiles(std::vector<std::string>()),
-            std::vector<std::string>({"quoth-t-raven", "%",
-                                      u8R"xxx(A B %f %i C " B \ )xxx", "C D"}));
+            std::vector<std::string>(
+                {"quoth-t-raven", "%", R"xxx(A B %f %i C " B \ )xxx", "C D"}));
 }
 
 TEST_F(DesktopFileTest, MissingNameFails) {
