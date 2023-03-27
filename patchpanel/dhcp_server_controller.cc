@@ -24,9 +24,11 @@ constexpr char kLeaseTime[] = "12h";  // 12 hours
 using Config = DHCPServerController::Config;
 
 // static
-std::optional<Config> Config::Create(const shill::IPAddress& host_ip,
-                                     const shill::IPAddress& start_ip,
-                                     const shill::IPAddress& end_ip) {
+std::optional<Config> Config::Create(
+    const shill::IPAddress& host_ip,
+    const shill::IPAddress& start_ip,
+    const shill::IPAddress& end_ip,
+    const std::vector<shill::IPAddress>& dns_servers) {
   DCHECK(host_ip.IsValid());
   DCHECK(start_ip.IsValid());
   DCHECK(end_ip.IsValid());
@@ -48,20 +50,32 @@ std::optional<Config> Config::Create(const shill::IPAddress& host_ip,
     return std::nullopt;
   }
 
+  // Join the DNS server with the ',' delimiter.
+  std::string dns_servers_str;
+  for (const auto& ip : dns_servers) {
+    DCHECK(ip.IsValid());
+    if (!dns_servers_str.empty()) {
+      dns_servers_str += ",";
+    }
+    dns_servers_str += ip.ToString();
+  }
+
   const auto netmask = shill::IPAddress::GetAddressMaskFromPrefix(
       kValidFamily, host_ip.prefix());
   return Config(host_ip.ToString(), netmask.ToString(), start_ip.ToString(),
-                end_ip.ToString());
+                end_ip.ToString(), dns_servers_str);
 }
 
 Config::Config(const std::string& host_ip,
                const std::string& netmask,
                const std::string& start_ip,
-               const std::string& end_ip)
+               const std::string& end_ip,
+               const std::string& dns_servers)
     : host_ip_(host_ip),
       netmask_(netmask),
       start_ip_(start_ip),
-      end_ip_(end_ip) {}
+      end_ip_(end_ip),
+      dns_servers_(dns_servers) {}
 
 std::ostream& operator<<(std::ostream& os, const Config& config) {
   os << "{host_ip: " << config.host_ip() << ", netmask: " << config.netmask()
@@ -86,7 +100,7 @@ bool DHCPServerController::Start(const Config& config,
   }
 
   LOG(INFO) << "Starting DHCP server at: " << ifname_ << ", config: " << config;
-  const std::vector<std::string> dnsmasq_args = {
+  std::vector<std::string> dnsmasq_args = {
       "--dhcp-authoritative",  // dnsmasq is the only DHCP server on a network.
       "--keep-in-foreground",  // Use foreground mode to prevent forking.
       "--log-dhcp",            // Log the DHCP event.
@@ -102,6 +116,10 @@ bool DHCPServerController::Start(const Config& config,
       base::StringPrintf("--dhcp-option=option:router,%s",
                          config.host_ip().c_str()),
   };
+  if (!config.dns_servers().empty()) {
+    dnsmasq_args.push_back(base::StringPrintf(
+        "--dhcp-option=option:dns-server,%s", config.dns_servers().c_str()));
+  }
 
   shill::ProcessManager::MinijailOptions minijail_options = {};
   minijail_options.user = kPatchpaneldUser;

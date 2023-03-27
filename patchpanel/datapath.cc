@@ -2162,7 +2162,7 @@ DownstreamNetworkInfo::ToDHCPServerConfig() const {
   if (!host_ip || !start_ip || !end_ip) {
     return std::nullopt;
   }
-  return DHCPServerController::Config::Create(*host_ip, *start_ip, *end_ip);
+  return DHCPServerController::Config::Create(*host_ip, *start_ip, *end_ip, {});
 }
 
 std::ostream& operator<<(std::ostream& stream,

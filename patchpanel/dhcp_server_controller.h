@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/memory/weak_ptr.h>
 #include <shill/net/ip_address.h>
@@ -28,21 +29,27 @@ class DHCPServerController {
     // subnet that the DHCP server serves.
     // |start_ip| and |end_ip| defines the DHCP IP range, which should be under
     // the same subnet as the DHCP server serves.
-    static std::optional<Config> Create(const shill::IPAddress& host_ip,
-                                        const shill::IPAddress& start_ip,
-                                        const shill::IPAddress& end_ip);
+    // |dns_servers| is the list of DNS servers. The default DNS server will be
+    // used if the list is empty.
+    static std::optional<Config> Create(
+        const shill::IPAddress& host_ip,
+        const shill::IPAddress& start_ip,
+        const shill::IPAddress& end_ip,
+        const std::vector<shill::IPAddress>& dns_servers);
 
     // Getter methods of each field.
     const std::string& host_ip() const { return host_ip_; }
     const std::string& netmask() const { return netmask_; }
     const std::string& start_ip() const { return start_ip_; }
     const std::string& end_ip() const { return end_ip_; }
+    const std::string& dns_servers() const { return dns_servers_; }
 
    private:
     Config(const std::string& host_ip,
            const std::string& netmask,
            const std::string& start_ip,
-           const std::string& end_ip);
+           const std::string& end_ip,
+           const std::string& dns_servers);
 
     friend std::ostream& operator<<(std::ostream& os, const Config& config);
 
@@ -50,6 +57,8 @@ class DHCPServerController {
     std::string netmask_;
     std::string start_ip_;
     std::string end_ip_;
+    // The comma-split string for the list of DNS servers.
+    std::string dns_servers_;
   };
 
   explicit DHCPServerController(const std::string& ifname);
