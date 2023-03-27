@@ -18,6 +18,8 @@ group("all") {
 }
 
 pkg_config("target_defaults_pkg_deps") {
+  defines = [ "USE_IIOSERVICE_PROXIMITY=${use.iioservice_proximity}" ]
+
   pkg_deps = [
     "libbrillo",
     "libchrome",

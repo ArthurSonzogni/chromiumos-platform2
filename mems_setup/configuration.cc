@@ -55,7 +55,9 @@ struct LightColorCalibrationEntry {
   libmems::IioChannel* chn;
 };
 
+#if !USE_IIOSERVICE_PROXIMITY
 constexpr char kPowerGroupName[] = "power";
+#endif  // !USE_IIOSERVICE_PROXIMITY
 constexpr char kIioServiceGroupName[] = "iioservice";
 
 constexpr char kCalibrationBias[] = "bias";
@@ -97,9 +99,10 @@ constexpr char kEventsString[] = "events";
 }  // namespace
 
 const char* Configuration::GetGroupNameForSysfs() {
-  // TODO(chenghaoyang): Remove it when iioservice owns proximity sensors.
+#if !USE_IIOSERVICE_PROXIMITY
   if (kind_ == SensorKind::PROXIMITY)
     return kPowerGroupName;
+#endif  // !USE_IIOSERVICE_PROXIMITY
 
   return kIioServiceGroupName;
 }
