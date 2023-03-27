@@ -693,13 +693,6 @@ TEST_F(GetPreservedFilesListTest, SafeWipe) {
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
                                          preserved_files.end());
   std::set<std::string> expected_preserved_set{
-      "unencrypted/preserve/powerwash_count",
-      "unencrypted/preserve/tpm_firmware_update_request",
-      "unencrypted/preserve/update_engine/prefs/rollback-happened",
-      "unencrypted/preserve/update_engine/prefs/rollback-version",
-      "unencrypted/preserve/update_engine/prefs/last-active-ping-day",
-      "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day",
-      "unencrypted/preserve/last_active_dates",
       "unencrypted/cros-components/offline-demo-mode-resources/image.squash",
       "unencrypted/cros-components/offline-demo-mode-resources/"
       "imageloader.json",
@@ -710,7 +703,14 @@ TEST_F(GetPreservedFilesListTest, SafeWipe) {
       "unencrypted/cros-components/offline-demo-mode-resources/"
       "manifest.fingerprint",
       "unencrypted/cros-components/offline-demo-mode-resources/manifest.json",
-      "unencrypted/cros-components/offline-demo-mode-resources/table"};
+      "unencrypted/cros-components/offline-demo-mode-resources/table",
+      "unencrypted/preserve/last_active_dates",
+      "unencrypted/preserve/powerwash_count",
+      "unencrypted/preserve/tpm_firmware_update_request",
+      "unencrypted/preserve/update_engine/prefs/last-active-ping-day",
+      "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day",
+      "unencrypted/preserve/update_engine/prefs/rollback-happened",
+      "unencrypted/preserve/update_engine/prefs/rollback-version"};
   SetCompare(expected_preserved_set, preserved_set);
 }
 
@@ -726,13 +726,6 @@ TEST_F(GetPreservedFilesListTest, SafeAndRollbackWipe) {
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
                                          preserved_files.end());
   std::set<std::string> expected_preserved_set{
-      "unencrypted/preserve/powerwash_count",
-      "unencrypted/preserve/tpm_firmware_update_request",
-      "unencrypted/preserve/update_engine/prefs/rollback-happened",
-      "unencrypted/preserve/update_engine/prefs/rollback-version",
-      "unencrypted/preserve/update_engine/prefs/last-active-ping-day",
-      "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day",
-      "unencrypted/preserve/last_active_dates",
       "unencrypted/cros-components/offline-demo-mode-resources/image.squash",
       "unencrypted/cros-components/offline-demo-mode-resources/"
       "imageloader.json",
@@ -744,8 +737,15 @@ TEST_F(GetPreservedFilesListTest, SafeAndRollbackWipe) {
       "manifest.fingerprint",
       "unencrypted/cros-components/offline-demo-mode-resources/manifest.json",
       "unencrypted/cros-components/offline-demo-mode-resources/table",
+      "unencrypted/preserve/last_active_dates",
+      "unencrypted/preserve/powerwash_count",
       "unencrypted/preserve/rollback_data",
-      "unencrypted/preserve/rollback_data_tpm"};
+      "unencrypted/preserve/rollback_data_tpm",
+      "unencrypted/preserve/tpm_firmware_update_request",
+      "unencrypted/preserve/update_engine/prefs/last-active-ping-day",
+      "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day",
+      "unencrypted/preserve/update_engine/prefs/rollback-happened",
+      "unencrypted/preserve/update_engine/prefs/rollback-version"};
   SetCompare(expected_preserved_set, preserved_set);
 }
 
@@ -761,14 +761,6 @@ TEST_F(GetPreservedFilesListTest, SafeAndAdMigrationWipe) {
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
                                          preserved_files.end());
   std::set<std::string> expected_preserved_set{
-      "unencrypted/preserve/powerwash_count",
-      "unencrypted/preserve/tpm_firmware_update_request",
-      "unencrypted/preserve/update_engine/prefs/rollback-happened",
-      "unencrypted/preserve/update_engine/prefs/rollback-version",
-      "unencrypted/preserve/update_engine/prefs/last-active-ping-day",
-      "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day",
-      "unencrypted/preserve/last_active_dates",
-      "unencrypted/preserve/chromad_migration_skip_oobe",
       "unencrypted/cros-components/offline-demo-mode-resources/image.squash",
       "unencrypted/cros-components/offline-demo-mode-resources/"
       "imageloader.json",
@@ -779,7 +771,15 @@ TEST_F(GetPreservedFilesListTest, SafeAndAdMigrationWipe) {
       "unencrypted/cros-components/offline-demo-mode-resources/"
       "manifest.fingerprint",
       "unencrypted/cros-components/offline-demo-mode-resources/manifest.json",
-      "unencrypted/cros-components/offline-demo-mode-resources/table"};
+      "unencrypted/cros-components/offline-demo-mode-resources/table",
+      "unencrypted/preserve/chromad_migration_skip_oobe",
+      "unencrypted/preserve/last_active_dates",
+      "unencrypted/preserve/powerwash_count",
+      "unencrypted/preserve/tpm_firmware_update_request",
+      "unencrypted/preserve/update_engine/prefs/last-active-ping-day",
+      "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day",
+      "unencrypted/preserve/update_engine/prefs/rollback-happened",
+      "unencrypted/preserve/update_engine/prefs/rollback-version"};
   SetCompare(expected_preserved_set, preserved_set);
 }
 
@@ -794,10 +794,10 @@ TEST_F(GetPreservedFilesListTest, FactoryWipe) {
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
                                          preserved_files.end());
   std::set<std::string> expected_preserved_set{
-      "unencrypted/import_extensions/extensions/fileA.crx",
-      "unencrypted/import_extensions/extensions/fileB.crx",
       "unencrypted/dlc-factory-images/test-dlc1/package/dlc.img",
-      "unencrypted/dlc-factory-images/test-dlc2/package/dlc.img"};
+      "unencrypted/dlc-factory-images/test-dlc2/package/dlc.img",
+      "unencrypted/import_extensions/extensions/fileA.crx",
+      "unencrypted/import_extensions/extensions/fileB.crx"};
   SetCompare(expected_preserved_set, preserved_set);
 }
 
@@ -814,13 +814,6 @@ TEST_F(GetPreservedFilesListTest, SafeRollbackFactoryWipe) {
   std::set<base::FilePath> preserved_set(preserved_files.begin(),
                                          preserved_files.end());
   std::set<std::string> expected_preserved_set{
-      "unencrypted/preserve/powerwash_count",
-      "unencrypted/preserve/tpm_firmware_update_request",
-      "unencrypted/preserve/update_engine/prefs/rollback-happened",
-      "unencrypted/preserve/update_engine/prefs/rollback-version",
-      "unencrypted/preserve/update_engine/prefs/last-active-ping-day",
-      "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day",
-      "unencrypted/preserve/last_active_dates",
       "unencrypted/cros-components/offline-demo-mode-resources/image.squash",
       "unencrypted/cros-components/offline-demo-mode-resources/"
       "imageloader.json",
@@ -832,12 +825,19 @@ TEST_F(GetPreservedFilesListTest, SafeRollbackFactoryWipe) {
       "manifest.fingerprint",
       "unencrypted/cros-components/offline-demo-mode-resources/manifest.json",
       "unencrypted/cros-components/offline-demo-mode-resources/table",
-      "unencrypted/preserve/rollback_data",
-      "unencrypted/preserve/rollback_data_tpm",
+      "unencrypted/dlc-factory-images/test-dlc1/package/dlc.img",
+      "unencrypted/dlc-factory-images/test-dlc2/package/dlc.img",
       "unencrypted/import_extensions/extensions/fileA.crx",
       "unencrypted/import_extensions/extensions/fileB.crx",
-      "unencrypted/dlc-factory-images/test-dlc1/package/dlc.img",
-      "unencrypted/dlc-factory-images/test-dlc2/package/dlc.img"};
+      "unencrypted/preserve/last_active_dates",
+      "unencrypted/preserve/powerwash_count",
+      "unencrypted/preserve/rollback_data",
+      "unencrypted/preserve/rollback_data_tpm",
+      "unencrypted/preserve/tpm_firmware_update_request",
+      "unencrypted/preserve/update_engine/prefs/last-active-ping-day",
+      "unencrypted/preserve/update_engine/prefs/last-roll-call-ping-day",
+      "unencrypted/preserve/update_engine/prefs/rollback-happened",
+      "unencrypted/preserve/update_engine/prefs/rollback-version"};
   SetCompare(expected_preserved_set, preserved_set);
 }
 
@@ -1073,11 +1073,11 @@ class AttemptSwitchToFastWipeTest : public ::testing::Test {
         fake_stateful_.Append("encrypted.key"),
         fake_stateful_.Append("encrypted.needs-finalization"),
         fake_stateful_.Append("home/.shadow/cryptohome.key"),
+        fake_stateful_.Append("home/.shadow/extra_dir/master"),
+        fake_stateful_.Append("home/.shadow/other_dir/master"),
+        fake_stateful_.Append("home/.shadow/random_dir/master"),
         fake_stateful_.Append("home/.shadow/salt"),
         fake_stateful_.Append("home/.shadow/salt.sum"),
-        fake_stateful_.Append("home/.shadow/random_dir/master"),
-        fake_stateful_.Append("home/.shadow/other_dir/master"),
-        fake_stateful_.Append("home/.shadow/extra_dir/master"),
     });
 
     shredded_paths_ = std::vector<base::FilePath>(
@@ -1246,15 +1246,15 @@ class ShredRotationalStatefulFilesTest : public ::testing::Test {
     base::FilePath shadow = fake_stateful_.Append("home/.shadow");
 
     deleted_paths_ = std::vector<base::FilePath>({
+        fake_stateful_.Append("dev_image/fileA"),
+        fake_stateful_.Append("dev_image/fileB"),
         fake_stateful_.Append("encrypted.block"),
         fake_stateful_.Append("var_overlay/fileA"),
         fake_stateful_.Append("var_overlay/fileB"),
-        fake_stateful_.Append("dev_image/fileA"),
-        fake_stateful_.Append("dev_image/fileB"),
+        shadow.Append("other/vault/fileA"),
         shadow.Append("uninteresting/vault/fileA"),
         shadow.Append("uninteresting/vault/fileB"),
         shadow.Append("uninteresting/vault/fileC"),
-        shadow.Append("other/vault/fileA"),
         shadow.Append("vault/fileA"),
         shadow.Append("vault/fileB"),
     });
@@ -1332,18 +1332,18 @@ class WipeKeysetsTest : public ::testing::Test {
         fake_stateful_.Append("encrypted.key"),
         fake_stateful_.Append("encrypted.needs-finalization"),
         fake_stateful_.Append("home/.shadow/cryptohome.key"),
+        fake_stateful_.Append("home/.shadow/extra_dir/master"),
+        fake_stateful_.Append("home/.shadow/other_dir/master"),
+        fake_stateful_.Append("home/.shadow/random_dir/master"),
         fake_stateful_.Append("home/.shadow/salt"),
         fake_stateful_.Append("home/.shadow/salt.sum"),
-        fake_stateful_.Append("home/.shadow/random_dir/master"),
-        fake_stateful_.Append("home/.shadow/other_dir/master"),
-        fake_stateful_.Append("home/.shadow/extra_dir/master"),
     });
 
     ignored_paths_ = std::vector<base::FilePath>({
-        fake_stateful_.Append("uninteresting/file/definitely/not/an/rsa/key"),
-        fake_stateful_.Append("hopefully/not/a/copy/of/etc/passwd"),
         fake_stateful_.Append("home/.shadow/extra_dir/unimportant"),
         fake_stateful_.Append("home/.shadow/other_dir/unimportant"),
+        fake_stateful_.Append("hopefully/not/a/copy/of/etc/passwd"),
+        fake_stateful_.Append("uninteresting/file/definitely/not/an/rsa/key"),
     });
 
     for (const base::FilePath& path : deleted_paths_) {
