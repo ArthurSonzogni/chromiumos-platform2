@@ -118,24 +118,6 @@ void FillDeviceDnsProxyProto(
   }
 }
 
-std::optional<DownstreamNetworkInfo> ParseTetheredNetworkRequest(
-    dbus::MessageReader* reader) {
-  TetheredNetworkRequest request;
-  if (!reader->PopArrayOfBytesAsProto(&request)) {
-    return std::nullopt;
-  }
-  return DownstreamNetworkInfo::Create(request);
-}
-
-std::optional<DownstreamNetworkInfo> ParseLocalOnlyNetworkRequest(
-    dbus::MessageReader* reader) {
-  LocalOnlyNetworkRequest request;
-  if (!reader->PopArrayOfBytesAsProto(&request)) {
-    return std::nullopt;
-  }
-  return DownstreamNetworkInfo::Create(request);
-}
-
 void RecordDbusEvent(std::unique_ptr<MetricsLibraryInterface>& metrics,
                      DbusUmaEvent event) {
   metrics->SendEnumToUMA(kDbusUmaEventMetrics, event);
@@ -1233,6 +1215,44 @@ std::unique_ptr<dbus::Response> Manager::OnSetDnsRedirectionRule(
   return dbus_response;
 }
 
+std::optional<DownstreamNetworkInfo> Manager::ParseTetheredNetworkRequest(
+    dbus::MessageReader* reader) {
+  using shill::IPAddress;
+
+  TetheredNetworkRequest request;
+  if (!reader->PopArrayOfBytesAsProto(&request)) {
+    return std::nullopt;
+  }
+
+  // Get the DNS server from shill.
+  ShillClient::Device shill_device;
+  if (!shill_client_->GetDeviceProperties(request.upstream_ifname(),
+                                          &shill_device)) {
+    LOG(ERROR) << "Failed to get DNS servers of upstream interface";
+    return std::nullopt;
+  }
+  std::vector<IPAddress> dns_servers;
+  for (const auto& ip_str : shill_device.ipconfig.ipv4_dns_addresses) {
+    const auto ip = IPAddress::CreateFromString(ip_str, IPAddress::kFamilyIPv4);
+    if (!ip) {
+      LOG(ERROR) << "Invalid DNS server: " << ip_str;
+      return std::nullopt;
+    }
+    dns_servers.push_back(*ip);
+  }
+
+  return DownstreamNetworkInfo::Create(request, dns_servers);
+}
+
+std::optional<DownstreamNetworkInfo> Manager::ParseLocalOnlyNetworkRequest(
+    dbus::MessageReader* reader) {
+  LocalOnlyNetworkRequest request;
+  if (!reader->PopArrayOfBytesAsProto(&request)) {
+    return std::nullopt;
+  }
+  return DownstreamNetworkInfo::Create(request);
+}
+
 std::unique_ptr<dbus::Response> Manager::OnCreateTetheredNetwork(
     dbus::MethodCall* method_call) {
   RecordDbusEvent(metrics_, DbusUmaEvent::kCreateTetheredNetwork);
@@ -1243,8 +1263,9 @@ std::unique_ptr<dbus::Response> Manager::OnCreateTetheredNetwork(
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
 
-  auto response_code =
-      OnDownstreamNetworkRequest(&reader, &ParseTetheredNetworkRequest);
+  auto response_code = OnDownstreamNetworkRequest(
+      &reader, base::BindOnce(&Manager::ParseTetheredNetworkRequest,
+                              base::Unretained(this)));
   if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(metrics_, DbusUmaEvent::kCreateTetheredNetworkSuccess);
   }
@@ -1265,8 +1286,9 @@ std::unique_ptr<dbus::Response> Manager::OnCreateLocalOnlyNetwork(
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
 
-  auto response_code =
-      OnDownstreamNetworkRequest(&reader, &ParseLocalOnlyNetworkRequest);
+  auto response_code = OnDownstreamNetworkRequest(
+      &reader, base::BindOnce(&Manager::ParseLocalOnlyNetworkRequest,
+                              base::Unretained(this)));
   if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(metrics_, DbusUmaEvent::kCreateLocalOnlyNetworkSuccess);
   }
@@ -1618,8 +1640,9 @@ bool Manager::ValidateDownstreamNetworkRequest(
 
 patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
     dbus::MessageReader* reader,
-    std::optional<DownstreamNetworkInfo> (*parser)(dbus::MessageReader*)) {
-  std::optional<DownstreamNetworkInfo> info = parser(reader);
+    base::OnceCallback<
+        std::optional<DownstreamNetworkInfo>(dbus::MessageReader*)> parser) {
+  std::optional<DownstreamNetworkInfo> info = std::move(parser).Run(reader);
   if (!info) {
     LOG(ERROR) << __func__ << ": Unable to parse request";
     return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;

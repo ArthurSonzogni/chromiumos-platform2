@@ -169,6 +169,16 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<dbus::Response> OnSetDnsRedirectionRule(
       dbus::MethodCall* method_call);
 
+  // Parses the TetheredNetworkRequest from DBus message, and convert it to
+  // DownstreamNetworkInfo.
+  std::optional<DownstreamNetworkInfo> ParseTetheredNetworkRequest(
+      dbus::MessageReader* reader);
+
+  // Parses the LocalOnlyNetworkRequest from DBus message, and convert it to
+  // DownstreamNetworkInfo.
+  std::optional<DownstreamNetworkInfo> ParseLocalOnlyNetworkRequest(
+      dbus::MessageReader* reader);
+
   // Handles DBus requests for creating an L3 network on a network interface
   // and tethered to an upstream network.
   std::unique_ptr<dbus::Response> OnCreateTetheredNetwork(
@@ -220,9 +230,11 @@ class Manager final : public brillo::DBusDaemon {
   // CreateTetheredNetwork or CreatedLocalOnlyNetwork on the network interface
   // specified by the request. If successful, |client_fd| is monitored and
   // triggers the teardown of the network setup when closed.
+  // Note that |parser| is called synchronously in the method.
   patchpanel::DownstreamNetworkResult OnDownstreamNetworkRequest(
       dbus::MessageReader* reader,
-      std::optional<DownstreamNetworkInfo> (*parser)(dbus::MessageReader*));
+      base::OnceCallback<
+          std::optional<DownstreamNetworkInfo>(dbus::MessageReader*)> parser);
 
   // Disable and re-enable IPv6 inside a namespace.
   void RestartIPv6(const std::string& netns_name);

@@ -17,6 +17,7 @@
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
+#include <shill/net/ip_address.h>
 
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/firewall.h"
@@ -125,13 +126,17 @@ struct DownstreamNetworkInfo {
   // IPv4 DHCP IP range, only valid when |enable_ipv4_dhcp| is true.
   uint32_t ipv4_dhcp_start_addr;
   uint32_t ipv4_dhcp_end_addr;
+  // The DNS server of the DHCP option, only used when |enable_ipv4_dhcp| is
+  // true.
+  std::vector<shill::IPAddress> dhcp_dns_servers;
 
   DownstreamNetworkIPv6Mode ipv6_mode;
   // TODO(b/239559602) Add IPv6 configuration.
 
   // Creates the DownstreamNetworkInfo instance from TetheredNetworkRequest.
   static std::optional<DownstreamNetworkInfo> Create(
-      const TetheredNetworkRequest& request);
+      const TetheredNetworkRequest& request,
+      const std::vector<shill::IPAddress>& dhcp_dns_servers);
   // Creates the DownstreamNetworkInfo instance from LocalOnlyNetworkRequest.
   static std::optional<DownstreamNetworkInfo> Create(
       const LocalOnlyNetworkRequest& request);

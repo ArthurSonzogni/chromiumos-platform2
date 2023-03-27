@@ -203,11 +203,17 @@ void Verify_ip_netns_delete(MockProcessRunner& runner,
 }  // namespace
 
 TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
+  using shill::IPAddress;
+
   const uint32_t subnet_ip = Ipv4Addr(192, 168, 3, 0);
   const uint32_t host_ip = Ipv4Addr(192, 168, 3, 1);
   const uint32_t start_ip = Ipv4Addr(192, 168, 3, 50);
   const uint32_t end_ip = Ipv4Addr(192, 168, 3, 150);
   const uint32_t prefix_len = 24;
+  const std::vector<IPAddress> dns_servers = {
+      *IPAddress::CreateFromString("1.2.3.4"),
+      *IPAddress::CreateFromString("5.6.7.8"),
+  };
 
   IPv4Subnet* ipv4_subnet = new IPv4Subnet();
   ipv4_subnet->set_addr(&subnet_ip, sizeof(subnet_ip));
@@ -225,7 +231,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   request.set_ifname("wlan1");
   request.set_allocated_ipv4_config(ipv4_config);
 
-  const auto info = DownstreamNetworkInfo::Create(request);
+  const auto info = DownstreamNetworkInfo::Create(request, dns_servers);
   ASSERT_NE(info, std::nullopt);
   EXPECT_EQ(info->topology, DownstreamNetworkTopology::kTethering);
   EXPECT_EQ(info->upstream_ifname, "wwan0");
@@ -234,6 +240,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   EXPECT_EQ(info->ipv4_prefix_length, prefix_len);
   EXPECT_EQ(info->ipv4_dhcp_start_addr, start_ip);
   EXPECT_EQ(info->ipv4_dhcp_end_addr, end_ip);
+  EXPECT_EQ(info->dhcp_dns_servers, dns_servers);
 }
 
 TEST(DatapathTest,
@@ -241,7 +248,7 @@ TEST(DatapathTest,
   using shill::IPAddress;
 
   TetheredNetworkRequest request;
-  const auto info = DownstreamNetworkInfo::Create(request);
+  const auto info = DownstreamNetworkInfo::Create(request, {});
   ASSERT_NE(info, std::nullopt);
 
   // When the request doesn't have |ipv4_config|, the info should be randomly
@@ -271,12 +278,16 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromLocalOnlyNetworkRequest) {
 }
 
 TEST(DatapathTest, DownstreamNetworkInfo_ToDHCPServerConfig) {
+  using shill::IPAddress;
+
   DownstreamNetworkInfo info = {};
   info.ipv4_addr = Ipv4Addr(192, 168, 3, 1);
   info.ipv4_prefix_length = 24;
   info.enable_ipv4_dhcp = true;
   info.ipv4_dhcp_start_addr = Ipv4Addr(192, 168, 3, 50);
   info.ipv4_dhcp_end_addr = Ipv4Addr(192, 168, 3, 100);
+  info.dhcp_dns_servers.push_back(*IPAddress::CreateFromString("1.2.3.4"));
+  info.dhcp_dns_servers.push_back(*IPAddress::CreateFromString("5.6.7.8"));
 
   const auto config = info.ToDHCPServerConfig();
   ASSERT_NE(config, std::nullopt);
@@ -284,6 +295,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_ToDHCPServerConfig) {
   EXPECT_EQ(config->netmask(), "255.255.255.0");
   EXPECT_EQ(config->start_ip(), "192.168.3.50");
   EXPECT_EQ(config->end_ip(), "192.168.3.100");
+  EXPECT_EQ(config->dns_servers(), "1.2.3.4,5.6.7.8");
 }
 
 TEST(DatapathTest, IpFamily) {

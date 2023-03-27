@@ -2083,7 +2083,8 @@ bool Datapath::ModifyPortRule(
 }
 
 std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
-    const TetheredNetworkRequest& request) {
+    const TetheredNetworkRequest& request,
+    const std::vector<shill::IPAddress>& dhcp_dns_servers) {
   auto info = std::make_optional<DownstreamNetworkInfo>();
 
   info->topology = DownstreamNetworkTopology::kTethering;
@@ -2124,6 +2125,9 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
       info->ipv4_dhcp_start_addr = Ipv4Addr(172, 16, x, 50);
       info->ipv4_dhcp_end_addr = Ipv4Addr(172, 16, x, 150);
     }
+
+    // Fill the DNS server.
+    info->dhcp_dns_servers = dhcp_dns_servers;
   }
 
   return info;
@@ -2162,7 +2166,8 @@ DownstreamNetworkInfo::ToDHCPServerConfig() const {
   if (!host_ip || !start_ip || !end_ip) {
     return std::nullopt;
   }
-  return DHCPServerController::Config::Create(*host_ip, *start_ip, *end_ip, {});
+  return DHCPServerController::Config::Create(*host_ip, *start_ip, *end_ip,
+                                              dhcp_dns_servers);
 }
 
 std::ostream& operator<<(std::ostream& stream,
