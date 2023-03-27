@@ -24,6 +24,7 @@
 #include "missive/proto/record_constants.pb.h"
 #include "missive/util/status.h"
 #include "re2/re2.h"
+#include "secagentd/metrics_sender.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd {
@@ -36,9 +37,14 @@ void SendMessageStatusCallback(
     reporting::Destination destination,
     std::optional<reporting::ReportQueue::EnqueueCallback> cb,
     reporting::Status status) {
+  metrics::SendMessage send_message_metric = metrics::SendMessage::kSuccess;
   if (!status.ok()) {
     LOG(ERROR) << destination << ", status=" << status;
+    send_message_metric =
+        static_cast<metrics::SendMessage>(status.error_code());
   }
+  MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kSendMessage,
+                                                   send_message_metric);
 
   if (cb.has_value()) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(

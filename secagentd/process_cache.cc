@@ -32,6 +32,7 @@
 #include "openssl/sha.h"
 #include "re2/re2.h"
 #include "secagentd/bpf/process.h"
+#include "secagentd/metrics_sender.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace {
@@ -342,6 +343,7 @@ ProcessCache::InclusiveGetProcess(const InternalProcessKeyType& key) {
   }
   auto it = process_cache_->Get(key);
   if (it != process_cache_->end()) {
+    cache_metric_ = metrics::Cache::kCacheHit;
     return it;
   }
 
@@ -351,11 +353,13 @@ ProcessCache::InclusiveGetProcess(const InternalProcessKeyType& key) {
     statusor = MakeFromProcfs(key);
     if (!statusor.ok()) {
       LOG(ERROR) << statusor.status();
+      cache_metric_ = metrics::Cache::kCacheMiss;
       return process_cache_->end();
     }
   }
 
   it = process_cache_->Put(key, std::move(*statusor));
+  cache_metric_ = metrics::Cache::kProcfsFilled;
   return it;
 }
 
@@ -397,6 +401,10 @@ std::vector<std::unique_ptr<pb::Process>> ProcessCache::GetProcessHierarchy(
   base::AutoLock lock(process_cache_lock_);
   for (int i = 0; i < num_generations; ++i) {
     auto it = InclusiveGetProcess(lookup_key);
+    if (lookup_key.pid != 0) {
+      MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kCache,
+                                                       cache_metric_);
+    }
     if (it != process_cache_->end()) {
       auto process_proto = std::make_unique<pb::Process>();
       process_proto->CopyFrom(*it->second.process_proto);

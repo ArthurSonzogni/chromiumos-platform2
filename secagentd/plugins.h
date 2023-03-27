@@ -20,6 +20,7 @@
 #include "base/timer/timer.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/message_sender.h"
+#include "secagentd/metrics_sender.h"
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/process_cache.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
@@ -31,7 +32,7 @@ namespace secagentd {
 namespace testing {
 class AgentPluginTestFixture;
 class ProcessPluginTestFixture;
-}
+}  // namespace testing
 
 class PluginInterface {
  public:
@@ -148,6 +149,11 @@ class AgentPlugin : public PluginInterface {
   base::OnceCallback<void()> daemon_cb_;
   base::Lock tcb_attributes_lock_;
   base::TimeDelta heartbeat_timer_ = base::Minutes(5);
+  metrics::CrosBootmode cros_bootmode_metric_ =
+      metrics::CrosBootmode::kValueNotSet;
+  metrics::UefiBootmode uefi_bootmode_metric_ = metrics::UefiBootmode::kSuccess;
+  metrics::Tpm tpm_metric_ = metrics::Tpm::kValueNotSet;
+  bool sent_metrics_ = false;
 };
 
 class PluginFactoryInterface {

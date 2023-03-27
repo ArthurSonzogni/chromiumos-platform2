@@ -18,6 +18,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/synchronization/lock.h"
 #include "secagentd/bpf/process.h"
+#include "secagentd/metrics_sender.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd {
@@ -156,6 +157,7 @@ class ProcessCache : public ProcessCacheInterface {
   const base::FilePath root_path_;
   InternalFilterRuleSetType filter_rules_parent_;
   InternalFilterRuleSetType filter_rules_process_;
+  metrics::Cache cache_metric_ = metrics::Cache::kCacheHit;
   int64_t earliest_seen_exec_rel_s_;
 };
 

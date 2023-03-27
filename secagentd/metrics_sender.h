@@ -47,6 +47,87 @@ enum class BpfAttachResult {
 static constexpr EnumMetric<BpfAttachResult> kProcessBpfAttach = {
     .name = "Bpf.Process.AttachResult"};
 
+// This should always follow the missive status code.
+// https://chromium.googlesource.com/chromiumos/platform2/+/6142bdcb70dc0987f9234c2294660f798d5df05a/missive/util/status.h#26
+enum class SendMessage {
+  kSuccess,
+  kCancelled,
+  kUnknown,
+  kInvalidArgument,
+  kDeadlineExceeded,
+  kNotFound,
+  kAlreadyExists,
+  kPermissionDenied,
+  kResourceExhausted,
+  kFailedPrecondition,
+  kAborted,
+  kOutOfRange,
+  kUnimplemetned,
+  kInternal,
+  kUnavailable,
+  kDataLoss,
+  kUnauthenticated,
+  // The value should always be kept last.
+  kMaxValue = kUnauthenticated,
+};
+
+static constexpr EnumMetric<SendMessage> kSendMessage = {
+    .name = "SendMessageResult"};
+
+enum class CrosBootmode {
+  kSuccess,
+  kValueNotSet,
+  kUnavailable,
+  kFailedRetrieval,
+  kMaxValue = kFailedRetrieval,
+};
+
+static constexpr EnumMetric<CrosBootmode> kCrosBootmode = {.name =
+                                                               "Bootmode.Cros"};
+
+enum class UefiBootmode {
+  kSuccess,
+  kFileNotFound,
+  kFailedToReadBootParams,
+  kBootParamInvalidSize,
+  kMaxValue = kBootParamInvalidSize,
+};
+
+static constexpr EnumMetric<UefiBootmode> kUefiBootmode = {.name =
+                                                               "Bootmode.Uefi"};
+
+enum class Tpm {
+  kSuccess,
+  kValueNotSet,
+  kUnavailable,
+  kFailedRetrieval,
+  kMaxValue = kFailedRetrieval,
+};
+
+static constexpr EnumMetric<Tpm> kTpm = {.name = "Tpm"};
+
+enum class Cache {
+  kCacheHit,
+  kCacheMiss,
+  kProcfsFilled,
+  kMaxValue = kProcfsFilled,
+};
+
+static constexpr EnumMetric<Cache> kCache = {.name = "Cache"};
+
+enum class ProcessEvent {
+  kFullEvent,
+  kSpawnPidNotInCache,
+  kProcessPidNotInCache,
+  kParentPidNotInCache,
+  kParentStillAlive,
+  kMaxValue = kParentStillAlive,
+};
+
+static constexpr EnumMetric<ProcessEvent> kExecEvent = {
+    .name = "Process.ExecEvent"};
+static constexpr EnumMetric<ProcessEvent> kTerminateEvent = {
+    .name = "Process.TerminateEvent"};
 }  // namespace metrics
 
 // Class for sending UMA metrics. Expected to be accessed as a Singleton via

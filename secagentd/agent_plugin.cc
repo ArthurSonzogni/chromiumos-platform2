@@ -29,6 +29,7 @@
 #include "base/time/time.h"
 #include "missive/proto/record_constants.pb.h"
 #include "secagentd/message_sender.h"
+#include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
@@ -140,11 +141,13 @@ void AgentPlugin::GetUefiSecureBootInformation(
   if (!base::ReadFileToStringWithMaxSize(boot_params_filepath, &content,
                                          sizeof(boot_params))) {
     LOG(ERROR) << "Failed to read file: " << boot_params_filepath.value();
+    uefi_bootmode_metric_ = metrics::UefiBootmode::kFailedToReadBootParams;
     return;
   }
   if (content.size() != sizeof(boot_params)) {
     LOG(ERROR) << boot_params_filepath.value()
                << " boot params invalid file size";
+    uefi_bootmode_metric_ = metrics::UefiBootmode::kBootParamInvalidSize;
     return;
   }
   const boot_params* boot =
@@ -160,12 +163,14 @@ void AgentPlugin::GetUefiSecureBootInformation(
 #else
   LOG(WARNING)
       << "Header bootparam.h is not present. Assuming not uefi secure boot.";
+  uefi_bootmode_metric_ = metrics::UefiBootmode::kFileNotFound;
 #endif
 }
 
 void AgentPlugin::GetCrosSecureBootInformation(bool available) {
   if (!available) {
     LOG(ERROR) << "Failed waiting for attestation to become available";
+    cros_bootmode_metric_ = metrics::CrosBootmode::kUnavailable;
     return;
   }
 
@@ -179,9 +184,11 @@ void AgentPlugin::GetCrosSecureBootInformation(bool available) {
       error.get()) {
     LOG(ERROR) << "Failed to get boot information "
                << BrilloErrorToString(error.get());
+    cros_bootmode_metric_ = metrics::CrosBootmode::kFailedRetrieval;
     return;
   }
 
+  cros_bootmode_metric_ = metrics::CrosBootmode::kSuccess;
   base::AutoLock lock(tcb_attributes_lock_);
   if (out_reply.verified_boot()) {
     tcb_attributes_.set_firmware_secure_boot(
@@ -197,6 +204,7 @@ void AgentPlugin::GetCrosSecureBootInformation(bool available) {
 void AgentPlugin::GetTpmInformation(bool available) {
   if (!available) {
     LOG(ERROR) << "Failed waiting for tpm_manager to become available";
+    tpm_metric_ = metrics::Tpm::kUnavailable;
     return;
   }
 
@@ -210,8 +218,11 @@ void AgentPlugin::GetTpmInformation(bool available) {
       error.get()) {
     LOG(ERROR) << "Failed to get TPM information "
                << BrilloErrorToString(error.get());
+    tpm_metric_ = metrics::Tpm::kFailedRetrieval;
     return;
   }
+  tpm_metric_ = metrics::Tpm::kSuccess;
+
   base::AutoLock lock(tcb_attributes_lock_);
   auto security_chip = tcb_attributes_.mutable_security_chip();
   if (out_reply.has_gsc_version()) {
@@ -284,6 +295,17 @@ void AgentPlugin::StartEventStatusCallback(reporting::Status status) {
         base::BindOnce(&AgentPlugin::SendAgentStartEvent,
                        weak_ptr_factory_.GetWeakPtr()),
         base::Seconds(3));
+  }
+
+  // Should be sent once per daemon lifetime.
+  if (!sent_metrics_) {
+    MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kCrosBootmode,
+                                                     cros_bootmode_metric_);
+    MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kUefiBootmode,
+                                                     uefi_bootmode_metric_);
+    MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kTpm,
+                                                     tpm_metric_);
+    sent_metrics_ = true;
   }
 }
 

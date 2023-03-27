@@ -18,6 +18,7 @@
 #include "missive/proto/record_constants.pb.h"
 #include "secagentd/bpf/process.h"
 #include "secagentd/message_sender.h"
+#include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
@@ -208,17 +209,32 @@ std::unique_ptr<pb::ProcessExecEvent> ProcessPlugin::MakeExecEvent(
   if (hierarchy.empty()) {
     LOG(ERROR) << "PID:" << process_start.task_info.pid
                << " not found in the process cache.";
-
-    return process_exec_event;
   }
-  process_exec_event->set_allocated_spawn_process(hierarchy[0].release());
+
+  if (hierarchy.size() > 0) {
+    process_exec_event->set_allocated_spawn_process(hierarchy[0].release());
+  }
 
   if (hierarchy.size() > 1) {
     process_exec_event->set_allocated_process(hierarchy[1].release());
   }
+
   if (hierarchy.size() > 2) {
     process_exec_event->set_allocated_parent_process(hierarchy[2].release());
   }
+
+  // Exec event metrics.
+  metrics::ProcessEvent exec_event_metric = metrics::ProcessEvent::kFullEvent;
+  if (hierarchy.empty()) {
+    exec_event_metric = metrics::ProcessEvent::kSpawnPidNotInCache;
+  } else if (hierarchy.size() == 1) {
+    exec_event_metric = metrics::ProcessEvent::kProcessPidNotInCache;
+  } else if (hierarchy.size() == 2 && process_exec_event->has_process() &&
+             process_exec_event->process().canonical_pid() > 1) {
+    exec_event_metric = metrics::ProcessEvent::kParentPidNotInCache;
+  }
+  MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kExecEvent,
+                                                   exec_event_metric);
 
   return process_exec_event;
 }
@@ -232,7 +248,7 @@ std::unique_ptr<pb::ProcessTerminateEvent> ProcessPlugin::MakeTerminateEvent(
       process_exit.task_info.pid, process_exit.task_info.start_time, 2);
 
   // If that fails, fill in the task info that we got from BPF.
-  if (hierarchy.size() == 0) {
+  if (hierarchy.empty()) {
     ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
         process_exit.task_info, process_terminate_event->mutable_process());
     // Maybe the parent is still alive and in procfs.
@@ -243,16 +259,32 @@ std::unique_ptr<pb::ProcessTerminateEvent> ProcessPlugin::MakeTerminateEvent(
       process_terminate_event->set_allocated_parent_process(
           parent[0].release());
     }
-
-    return process_terminate_event;
   }
 
-  process_terminate_event->set_allocated_process(hierarchy[0].release());
+  if (hierarchy.size() > 0) {
+    process_terminate_event->set_allocated_process(hierarchy[0].release());
+  }
 
   if (hierarchy.size() > 1) {
     process_terminate_event->set_allocated_parent_process(
         hierarchy[1].release());
   }
+
+  // Terminate event metrics.
+  metrics::ProcessEvent terminate_event_metric =
+      metrics::ProcessEvent::kFullEvent;
+  if (hierarchy.empty()) {
+    if (process_terminate_event->has_process()) {
+      terminate_event_metric = metrics::ProcessEvent::kParentStillAlive;
+    } else {
+      terminate_event_metric = metrics::ProcessEvent::kProcessPidNotInCache;
+    }
+  } else if (hierarchy.size() == 1 && process_terminate_event->has_process() &&
+             process_terminate_event->process().canonical_pid() > 1) {
+    terminate_event_metric = metrics::ProcessEvent::kParentPidNotInCache;
+  }
+  MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kTerminateEvent,
+                                                   terminate_event_metric);
 
   return process_terminate_event;
 }
