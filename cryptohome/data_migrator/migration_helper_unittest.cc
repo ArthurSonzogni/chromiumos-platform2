@@ -8,17 +8,13 @@
 #include <vector>
 
 #include <fcntl.h>
-#include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <sys/xattr.h>
-#include <unistd.h>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -34,7 +30,6 @@ extern "C" {
 }
 
 using base::FilePath;
-using base::ScopedTempDir;
 using testing::_;
 using testing::DoDefault;
 using testing::Invoke;

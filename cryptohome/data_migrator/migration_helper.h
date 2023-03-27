@@ -8,16 +8,13 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/synchronization/atomic_flag.h>
-#include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
 #include <brillo/brillo_export.h>
-#include <chromeos/dbus/service_constants.h>
 
 #include "cryptohome/data_migrator/metrics.h"
 #include "cryptohome/data_migrator/migration_helper_delegate.h"

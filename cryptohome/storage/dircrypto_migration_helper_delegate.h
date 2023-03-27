@@ -10,7 +10,7 @@
 
 #include <base/files/file_path.h>
 
-#include "cryptohome/data_migrator/migration_helper.h"
+#include "cryptohome/data_migrator/metrics.h"
 #include "cryptohome/data_migrator/migration_helper_delegate.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/platform.h"
@@ -32,7 +32,7 @@ class DircryptoMigrationHelperDelegate
   DircryptoMigrationHelperDelegate& operator=(
       const DircryptoMigrationHelperDelegate&) = delete;
 
-  // dircrypto_data_migrator::MigrationHelperDelegate overrides:
+  // data_migrator::MigrationHelperDelegate overrides:
   bool ShouldReportProgress() override;
   bool ShouldMigrateFile(const base::FilePath& child) override;
   bool ShouldCopyQuotaProjectId() override;

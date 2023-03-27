@@ -13,8 +13,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <string.h>
-#include <sys/capability.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -24,10 +22,10 @@
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/synchronization/condition_variable.h>
 #include <base/system/sys_info.h>
 #include <base/threading/thread.h>
 #include <base/timer/elapsed_timer.h>
-#include <chromeos/dbus/service_constants.h>
 
 extern "C" {
 #include <linux/fs.h>

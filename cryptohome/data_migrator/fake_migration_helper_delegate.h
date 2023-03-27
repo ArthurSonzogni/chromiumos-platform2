@@ -42,7 +42,7 @@ class FakeMigrationHelperDelegate : public MigrationHelperDelegate {
   // means that we fail to convert |uid_from|.
   void AddUidMapping(uid_t uid_from, const std::optional<uid_t>& uid_to);
 
-  // dircrypto_data_migrator::MigrationHelperDelegate overrides:
+  // MigrationHelperDelegate overrides:
   bool ShouldMigrateFile(const base::FilePath& child) override;
   bool ShouldCopyQuotaProjectId() override;
   bool ShouldSkipFileOnIOErrors() override;
