@@ -5,6 +5,7 @@
 #include "system-proxy/server_proxy.h"
 
 #include <signal.h>
+#include <string.h>
 
 #include <iostream>
 #include <string>
@@ -201,13 +202,18 @@ void ServerProxy::HandleStdinReadable() {
   }
 
   if (config.has_listening_address()) {
-    if (listening_addr_ != 0) {
+    if (!listening_addr_.empty()) {
       LOG(ERROR)
           << "Failure to set configurations: listening port was already set."
           << std::endl;
       return;
     }
-    listening_addr_ = config.listening_address().addr();
+    const auto& addr = config.listening_address().addr();
+    if (addr.size() != 4) {
+      LOG(ERROR) << "Invalid listening address: " << addr;
+      return;
+    }
+    listening_addr_ = {addr.begin(), addr.end()};
     listening_port_ = config.listening_address().port();
     CreateListeningSocket();
   }
@@ -266,7 +272,8 @@ void ServerProxy::CreateListeningSocket() {
   struct sockaddr_in addr = {0};
   addr.sin_family = AF_INET;
   addr.sin_port = htons(listening_port_);
-  addr.sin_addr.s_addr = listening_addr_;
+  memcpy(&addr.sin_addr.s_addr, listening_addr_.data(),
+         sizeof(addr.sin_addr.s_addr));
   if (!listening_fd_->Bind((const struct sockaddr*)&addr, sizeof(addr))) {
     PLOG(ERROR) << "Cannot bind source socket" << std::endl;
     return;

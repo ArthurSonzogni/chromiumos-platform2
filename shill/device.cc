@@ -392,8 +392,8 @@ void Device::FetchTrafficCounters(const ServiceRefPtr& old_service,
 void Device::OnNeighborReachabilityEvent(
     int interface_index,
     const IPAddress& ip_address,
-    patchpanel::NeighborReachabilityEventSignal::Role role,
-    patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
+    patchpanel::Client::NeighborRole role,
+    patchpanel::Client::NeighborStatus status) {
   // Does nothing in the general case.
 }
 
@@ -493,7 +493,7 @@ void Device::OnConnected() {}
 void Device::GetTrafficCountersCallback(
     const ServiceRefPtr& old_service,
     const ServiceRefPtr& new_service,
-    const std::vector<patchpanel::TrafficCounter>& counters) {
+    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
   if (old_service) {
     old_service->RefreshTrafficCounters(counters);
   }
@@ -507,7 +507,8 @@ void Device::GetTrafficCountersCallback(
 }
 
 void Device::GetTrafficCountersPatchpanelCallback(
-    unsigned int id, const std::vector<patchpanel::TrafficCounter>& counters) {
+    unsigned int id,
+    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
   auto iter = traffic_counters_callback_map_.find(id);
   if (iter == traffic_counters_callback_map_.end() || iter->second.is_null()) {
     LOG(ERROR) << LoggingTag() << ": No callback found for ID " << id;

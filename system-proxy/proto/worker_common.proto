@@ -28,7 +28,7 @@ message Credentials {
 message SocketAddress {
   // A listening ipv4 address for the local proxy server, serialized in
   // network-byte-order.
-  optional uint32 addr = 1;
+  optional bytes addr = 1;
   // This value should fit in a uint16_t.
   optional uint32 port = 2;
 }

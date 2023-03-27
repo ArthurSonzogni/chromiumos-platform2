@@ -1372,14 +1372,14 @@ void DeviceInfo::OnPatchpanelClientReady() {
 }
 
 void DeviceInfo::OnNeighborReachabilityEvent(
-    const patchpanel::NeighborReachabilityEventSignal& signal) {
-  SLOG(2) << __func__ << ": " << signal;
-  auto device = GetDevice(signal.ifindex());
+    const patchpanel::Client::NeighborReachabilityEvent& event) {
+  SLOG(2) << __func__ << ": " << event;
+  auto device = GetDevice(event.ifindex);
   if (!device) {
-    LOG(ERROR) << __func__ << " " << signal << ": device not found";
+    LOG(ERROR) << __func__ << " " << event << ": device not found";
     return;
   }
-  device->network()->OnNeighborReachabilityEvent(signal);
+  device->network()->OnNeighborReachabilityEvent(event);
 }
 
 bool DeviceInfo::GetUserId(const std::string& user_name, uid_t* uid) const {

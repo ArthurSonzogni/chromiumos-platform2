@@ -10,6 +10,7 @@
 
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/network/network.h"
 #include "shill/refptr_types.h"
@@ -154,12 +155,10 @@ class TetheringManager : public Network::EventHandler {
   void OnNetworkValidationStop(int interface_index) override;
   void OnIPv4ConfiguredWithDHCPLease(int interface_index) override;
   void OnIPv6ConfiguredWithSLAACAddress(int interface_index) override;
-  void OnNeighborReachabilityEvent(
-      int interface_index,
-      const IPAddress& ip_address,
-      patchpanel::NeighborReachabilityEventSignal::Role role,
-      patchpanel::NeighborReachabilityEventSignal::EventType event_type)
-      override;
+  void OnNeighborReachabilityEvent(int interface_index,
+                                   const IPAddress& ip_address,
+                                   patchpanel::Client::NeighborRole,
+                                   patchpanel::Client::NeighborStatus) override;
 
   bool SetAndPersistConfig(const KeyValueStore& config, Error* error);
   // Populate the shill D-Bus parameter map |properties| with the

@@ -946,7 +946,7 @@ void TetheringManager::OnIPv6ConfiguredWithSLAACAddress(int interface_index) {}
 void TetheringManager::OnNeighborReachabilityEvent(
     int interface_index,
     const IPAddress& ip_address,
-    patchpanel::NeighborReachabilityEventSignal::Role role,
-    patchpanel::NeighborReachabilityEventSignal::EventType event_type) {}
+    patchpanel::Client::NeighborRole role,
+    patchpanel::Client::NeighborStatus status) {}
 
 }  // namespace shill

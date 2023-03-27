@@ -24,9 +24,11 @@
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/message_loops/base_message_loop.h>
+#include <chromeos/patchpanel/net_util.h>
 #include <chromeos/patchpanel/socket.h>
 #include <chromeos/patchpanel/socket_forwarder.h>
 #include "bindings/worker_common.pb.h"
+
 #include "system-proxy/protobuf_util.h"
 #include "system-proxy/proxy_connect_job.h"
 
@@ -154,7 +156,7 @@ TEST_F(ServerProxyTest, FetchCredentials) {
 
 TEST_F(ServerProxyTest, FetchListeningAddress) {
   worker::SocketAddress address;
-  address.set_addr(INADDR_ANY);
+  address.set_addr(std::vector<uint8_t>{0, 0, 0, 0}.data(), 4);
   address.set_port(kTestPort);
   worker::WorkerConfigs configs;
   *configs.mutable_listening_address() = address;
@@ -164,7 +166,8 @@ TEST_F(ServerProxyTest, FetchListeningAddress) {
   EXPECT_TRUE(WriteProtobuf(stdin_write_fd_.get(), configs));
   brillo_loop_.RunOnce(false);
 
-  EXPECT_EQ(server_proxy_->listening_addr_, INADDR_ANY);
+  EXPECT_EQ(patchpanel::IPv4AddressToString(server_proxy_->listening_addr_),
+            "0.0.0.0");
   EXPECT_EQ(server_proxy_->listening_port_, kTestPort);
 }
 
@@ -176,7 +179,7 @@ TEST_F(ServerProxyTest, FetchListeningAddress) {
 // - client is sent an HTTP error code in case of failure;
 // - the failed connection job is removed from the queue.
 TEST_F(ServerProxyTest, HandleConnectRequest) {
-  server_proxy_->listening_addr_ = htonl(INADDR_LOOPBACK);
+  server_proxy_->listening_addr_ = std::vector<uint8_t>{127, 0, 0, 1};
   server_proxy_->listening_port_ = kTestPort;
   // Redirect the worker stdin and stdout pipes.
   RedirectStdPipes();
@@ -296,7 +299,7 @@ TEST_F(ServerProxyTest, HandlePendingJobs) {
 // Test to ensure proxy resolution requests are correctly handled if the
 // associated job is canceled before resolution.
 TEST_F(ServerProxyTest, HandleCanceledJobWhilePendingProxyResolution) {
-  server_proxy_->listening_addr_ = htonl(INADDR_LOOPBACK);
+  server_proxy_->listening_addr_ = std::vector<uint8_t>{127, 0, 0, 1};
   server_proxy_->listening_port_ = 3129;
   // Redirect the worker stdin and stdout pipes.
   RedirectStdPipes();

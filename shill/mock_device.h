@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/memory/ref_counted.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
 
 #include "shill/device.h"
@@ -55,8 +56,8 @@ class MockDevice : public Device {
               OnNeighborReachabilityEvent,
               (int,
                const IPAddress&,
-               patchpanel::NeighborReachabilityEventSignal::Role,
-               patchpanel::NeighborReachabilityEventSignal::EventType),
+               patchpanel::Client::NeighborRole,
+               patchpanel::Client::NeighborStatus),
               (override));
 };
 

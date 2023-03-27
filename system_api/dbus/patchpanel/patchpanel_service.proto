@@ -28,6 +28,7 @@ message ArcStartupResponse {}
 
 // Notification that the ARC++ container is shutting down.
 message ArcShutdownRequest {
+  // TODO(hugobenichi) Deprecate this unused argument.
   // The PID of the ARC++ container; must match the PID that was sent at
   // startup.
   // Required.

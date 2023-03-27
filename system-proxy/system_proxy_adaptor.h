@@ -12,7 +12,6 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/http/http_proxy.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "bindings/worker_common.pb.h"
 #include "system_proxy/org.chromium.SystemProxy.h"

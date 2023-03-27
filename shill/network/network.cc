@@ -715,45 +715,46 @@ std::vector<IPAddress> Network::GetAddresses() const {
 }
 
 void Network::OnNeighborReachabilityEvent(
-    const patchpanel::NeighborReachabilityEventSignal& signal) {
-  using SignalProto = patchpanel::NeighborReachabilityEventSignal;
+    const patchpanel::Client::NeighborReachabilityEvent& event) {
+  using Role = patchpanel::Client::NeighborRole;
+  using Status = patchpanel::Client::NeighborStatus;
 
-  const auto ip_address = IPAddress::CreateFromString(signal.ip_addr());
+  const auto ip_address = IPAddress::CreateFromString(event.ip_addr);
   if (!ip_address.has_value()) {
     LOG(ERROR) << logging_tag_ << ": " << __func__ << ": invalid IP address "
-               << signal.ip_addr();
+               << event.ip_addr;
     return;
   }
 
-  switch (signal.type()) {
-    case SignalProto::FAILED:
-    case SignalProto::REACHABLE:
+  switch (event.status) {
+    case Status::kFailed:
+    case Status::kReachable:
       break;
     default:
-      LOG(ERROR) << logging_tag_ << ": " << __func__ << ": invalid event type "
-                 << signal.type();
+      LOG(ERROR) << logging_tag_ << ": " << __func__ << ": invalid event "
+                 << event;
       return;
   }
 
-  if (signal.type() == SignalProto::FAILED) {
+  if (event.status == Status::kFailed) {
     metrics_->NotifyNeighborLinkMonitorFailure(
-        technology_, ip_address->family(), signal.role());
+        technology_, ip_address->family(), event.role);
   }
 
   if (state_ == State::kIdle) {
     LOG(INFO) << logging_tag_ << ": " << __func__ << ": Idle state, ignoring "
-              << signal;
+              << event;
     return;
   }
 
   if (ignore_link_monitoring_) {
     LOG(INFO) << logging_tag_ << ": " << __func__
-              << " link monitor events ignored, ignoring " << signal;
+              << " link monitor events ignored, ignoring " << event;
     return;
   }
 
-  if (signal.role() == SignalProto::GATEWAY ||
-      signal.role() == SignalProto::GATEWAY_AND_DNS_SERVER) {
+  if (event.role == Role::kGateway ||
+      event.role == Role::kGatewayAndDnsServer) {
     IPConfig* ipconfig;
     bool* gateway_found;
     if (ip_address->family() == IPAddress::kFamilyIPv4) {
@@ -773,23 +774,23 @@ void Network::OnNeighborReachabilityEvent(
       LOG(INFO) << logging_tag_ << ": " << __func__ << ": "
                 << IPAddress::GetAddressFamilyName(ip_address->family())
                 << " not configured, ignoring neighbor reachability event "
-                << signal;
+                << event;
       return;
     }
     // Ignore reachability events related to a prior connection.
-    if (ipconfig->properties().gateway != signal.ip_addr()) {
+    if (ipconfig->properties().gateway != event.ip_addr) {
       LOG(INFO) << logging_tag_ << ": " << __func__
                 << ": ignored neighbor reachability event with conflicting "
                    "gateway address "
-                << signal;
+                << event;
       return;
     }
     *gateway_found = true;
   }
 
   for (auto* ev : event_handlers_) {
-    ev->OnNeighborReachabilityEvent(interface_index_, *ip_address,
-                                    signal.role(), signal.type());
+    ev->OnNeighborReachabilityEvent(interface_index_, *ip_address, event.role,
+                                    event.status);
   }
 }
 

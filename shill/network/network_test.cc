@@ -12,9 +12,9 @@
 #include <base/notreached.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/metrics.h"
 #include "shill/mock_connection.h"
@@ -433,7 +433,8 @@ TEST_F(NetworkTest, DHCPRenewWithoutController) {
 }
 
 TEST_F(NetworkTest, NeighborReachabilityEvents) {
-  using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
+  using Role = patchpanel::Client::NeighborRole;
+  using Status = patchpanel::Client::NeighborStatus;
 
   const std::string ipv4_addr_str = "192.168.1.1";
   const std::string ipv6_addr_str = "fe80::1aa9:5ff:abcd:1234";
@@ -453,22 +454,20 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
 
   // Connected network with IPv4 configured, reachability event matching the
   // IPv4 gateway.
-  EXPECT_CALL(event_handler_,
-              OnNeighborReachabilityEvent(network_->interface_index(),
-                                          ipv4_addr, NeighborSignal::GATEWAY,
-                                          NeighborSignal::REACHABLE))
+  EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(
+                                  network_->interface_index(), ipv4_addr,
+                                  Role::kGateway, Status::kReachable))
       .Times(1);
-  EXPECT_CALL(event_handler2_,
-              OnNeighborReachabilityEvent(network_->interface_index(),
-                                          ipv4_addr, NeighborSignal::GATEWAY,
-                                          NeighborSignal::REACHABLE))
+  EXPECT_CALL(event_handler2_, OnNeighborReachabilityEvent(
+                                   network_->interface_index(), ipv4_addr,
+                                   Role::kGateway, Status::kReachable))
       .Times(1);
-  NeighborSignal signal1;
-  signal1.set_ifindex(1);
-  signal1.set_ip_addr(ipv4_addr_str);
-  signal1.set_role(NeighborSignal::GATEWAY);
-  signal1.set_type(NeighborSignal::REACHABLE);
-  network_->OnNeighborReachabilityEvent(signal1);
+  patchpanel::Client::NeighborReachabilityEvent event1;
+  event1.ifindex = 1;
+  event1.ip_addr = ipv4_addr_str;
+  event1.role = Role::kGateway;
+  event1.status = Status::kReachable;
+  network_->OnNeighborReachabilityEvent(event1);
   EXPECT_TRUE(network_->ipv4_gateway_found());
   EXPECT_FALSE(network_->ipv6_gateway_found());
   Mock::VerifyAndClearExpectations(&event_handler_);
@@ -476,40 +475,40 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
 
   // Connected network with IPv6 configured, reachability event matching the
   // IPv6 gateway.
-  EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(
-                                  network_->interface_index(), ipv6_addr,
-                                  NeighborSignal::GATEWAY_AND_DNS_SERVER,
-                                  NeighborSignal::REACHABLE))
+  EXPECT_CALL(event_handler_,
+              OnNeighborReachabilityEvent(network_->interface_index(),
+                                          ipv6_addr, Role::kGatewayAndDnsServer,
+                                          Status::kReachable))
       .Times(1);
-  EXPECT_CALL(event_handler2_, OnNeighborReachabilityEvent(
-                                   network_->interface_index(), ipv6_addr,
-                                   NeighborSignal::GATEWAY_AND_DNS_SERVER,
-                                   NeighborSignal::REACHABLE))
+  EXPECT_CALL(event_handler2_,
+              OnNeighborReachabilityEvent(network_->interface_index(),
+                                          ipv6_addr, Role::kGatewayAndDnsServer,
+                                          Status::kReachable))
       .Times(1);
-  NeighborSignal signal2;
-  signal2.set_ifindex(1);
-  signal2.set_ip_addr(ipv6_addr_str);
-  signal2.set_role(NeighborSignal::GATEWAY_AND_DNS_SERVER);
-  signal2.set_type(NeighborSignal::REACHABLE);
-  network_->OnNeighborReachabilityEvent(signal2);
+  patchpanel::Client::NeighborReachabilityEvent event2;
+  event2.ifindex = 1;
+  event2.ip_addr = ipv6_addr_str;
+  event2.role = Role::kGatewayAndDnsServer;
+  event2.status = Status::kReachable;
+  network_->OnNeighborReachabilityEvent(event2);
   EXPECT_TRUE(network_->ipv4_gateway_found());
   EXPECT_TRUE(network_->ipv6_gateway_found());
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
 
   // Signals for unrelated gateway addresses are ignored
-  NeighborSignal signal3;
-  signal3.set_ifindex(1);
-  signal3.set_ip_addr("172.16.1.1");
-  signal3.set_role(NeighborSignal::GATEWAY);
-  signal3.set_type(NeighborSignal::REACHABLE);
-  NeighborSignal signal4;
-  signal4.set_ifindex(1);
-  signal4.set_ip_addr("fe80::1122:ccdd:7890:f1g2");
-  signal4.set_role(NeighborSignal::GATEWAY);
-  signal4.set_type(NeighborSignal::REACHABLE);
-  network_->OnNeighborReachabilityEvent(signal3);
-  network_->OnNeighborReachabilityEvent(signal4);
+  patchpanel::Client::NeighborReachabilityEvent event3;
+  event3.ifindex = 1;
+  event3.ip_addr = "172.16.1.1";
+  event3.role = Role::kGateway;
+  event3.status = Status::kReachable;
+  patchpanel::Client::NeighborReachabilityEvent event4;
+  event4.ifindex = 1;
+  event4.ip_addr = "fe80::1122:ccdd:7890:f1g2";
+  event4.role = Role::kGateway;
+  event4.status = Status::kReachable;
+  network_->OnNeighborReachabilityEvent(event3);
+  network_->OnNeighborReachabilityEvent(event4);
   EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(_, _, _, _)).Times(0);
   EXPECT_CALL(event_handler2_, OnNeighborReachabilityEvent(_, _, _, _))
       .Times(0);
@@ -533,30 +532,28 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(_, _, _, _)).Times(0);
   EXPECT_CALL(event_handler2_, OnNeighborReachabilityEvent(_, _, _, _))
       .Times(0);
-  network_->OnNeighborReachabilityEvent(signal1);
-  network_->OnNeighborReachabilityEvent(signal2);
+  network_->OnNeighborReachabilityEvent(event1);
+  network_->OnNeighborReachabilityEvent(event2);
   EXPECT_FALSE(network_->ipv4_gateway_found());
   EXPECT_FALSE(network_->ipv6_gateway_found());
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
 
   // Connected and IPv4 configured, IPv6 reachability signals are ignored.
-  EXPECT_CALL(event_handler_,
-              OnNeighborReachabilityEvent(network_->interface_index(),
-                                          ipv4_addr, NeighborSignal::GATEWAY,
-                                          NeighborSignal::REACHABLE))
+  EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(
+                                  network_->interface_index(), ipv4_addr,
+                                  Role::kGateway, Status::kReachable))
       .Times(1);
-  EXPECT_CALL(event_handler2_,
-              OnNeighborReachabilityEvent(network_->interface_index(),
-                                          ipv4_addr, NeighborSignal::GATEWAY,
-                                          NeighborSignal::REACHABLE))
+  EXPECT_CALL(event_handler2_, OnNeighborReachabilityEvent(
+                                   network_->interface_index(), ipv4_addr,
+                                   Role::kGateway, Status::kReachable))
       .Times(1);
   network_->set_ipconfig(
       std::make_unique<IPConfig>(&control_interface_, kTestIfname));
   network_->ipconfig()->UpdateProperties(ipv4_props);
   SetNetworkStateToConnected();
-  network_->OnNeighborReachabilityEvent(signal1);
-  network_->OnNeighborReachabilityEvent(signal2);
+  network_->OnNeighborReachabilityEvent(event1);
+  network_->OnNeighborReachabilityEvent(event2);
   EXPECT_TRUE(network_->ipv4_gateway_found());
   EXPECT_FALSE(network_->ipv6_gateway_found());
   Mock::VerifyAndClearExpectations(&event_handler_);
@@ -565,15 +562,15 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   // Disconnected, reconnected and IPv6 configured, IPv4 reachability signals
   // are ignored.
   ExpectCreateDHCPController(true);
-  EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(
-                                  network_->interface_index(), ipv6_addr,
-                                  NeighborSignal::GATEWAY_AND_DNS_SERVER,
-                                  NeighborSignal::REACHABLE))
+  EXPECT_CALL(event_handler_,
+              OnNeighborReachabilityEvent(network_->interface_index(),
+                                          ipv6_addr, Role::kGatewayAndDnsServer,
+                                          Status::kReachable))
       .Times(1);
-  EXPECT_CALL(event_handler2_, OnNeighborReachabilityEvent(
-                                   network_->interface_index(), ipv6_addr,
-                                   NeighborSignal::GATEWAY_AND_DNS_SERVER,
-                                   NeighborSignal::REACHABLE))
+  EXPECT_CALL(event_handler2_,
+              OnNeighborReachabilityEvent(network_->interface_index(),
+                                          ipv6_addr, Role::kGatewayAndDnsServer,
+                                          Status::kReachable))
       .Times(1);
   network_->Stop();
   network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{},
@@ -582,8 +579,8 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
       std::make_unique<IPConfig>(&control_interface_, kTestIfname));
   network_->ip6config()->UpdateProperties(ipv6_props);
   SetNetworkStateToConnected();
-  network_->OnNeighborReachabilityEvent(signal1);
-  network_->OnNeighborReachabilityEvent(signal2);
+  network_->OnNeighborReachabilityEvent(event1);
+  network_->OnNeighborReachabilityEvent(event2);
   EXPECT_FALSE(network_->ipv4_gateway_found());
   EXPECT_TRUE(network_->ipv6_gateway_found());
   Mock::VerifyAndClearExpectations(&event_handler_);
@@ -606,8 +603,8 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   network_->ipconfig()->UpdateProperties(ipv4_props);
   network_->ip6config()->UpdateProperties(ipv6_props);
   SetNetworkStateToConnected();
-  network_->OnNeighborReachabilityEvent(signal1);
-  network_->OnNeighborReachabilityEvent(signal2);
+  network_->OnNeighborReachabilityEvent(event1);
+  network_->OnNeighborReachabilityEvent(event2);
   EXPECT_FALSE(network_->ipv4_gateway_found());
   EXPECT_FALSE(network_->ipv6_gateway_found());
   Mock::VerifyAndClearExpectations(&event_handler_);

@@ -180,13 +180,13 @@ class Proxy : public brillo::DBusDaemon {
 
   // Notified by patchpanel whenever a change occurs in one of its virtual
   // network devices.
-  void OnVirtualDeviceChanged(
-      const patchpanel::NetworkDeviceChangedSignal& signal);
+  void OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent event,
+                              const patchpanel::Client::VirtualDevice& device);
 
   // Start and stop DNS redirection rules upon virtual device changed.
-  void StartGuestDnsRedirection(const patchpanel::NetworkDevice& device,
+  void StartGuestDnsRedirection(const patchpanel::Client::VirtualDevice& device,
                                 sa_family_t sa_family);
-  void StopGuestDnsRedirection(const patchpanel::NetworkDevice& device,
+  void StopGuestDnsRedirection(const patchpanel::Client::VirtualDevice& device,
                                sa_family_t sa_family);
 
   // Helper func for setting the dns-proxy IPv4 and IPv6 address in shill.
@@ -288,7 +288,7 @@ class Proxy : public brillo::DBusDaemon {
   std::unique_ptr<SessionMonitor> session_;
 
   base::ScopedFD ns_fd_;
-  patchpanel::ConnectNamespaceResponse ns_;
+  patchpanel::Client::ConnectedNamespace ns_;
   std::string ns_peer_ipv6_address_;
 
   std::unique_ptr<Resolver> resolver_;

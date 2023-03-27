@@ -3982,22 +3982,22 @@ void WiFi::GetDeviceHardwareIds(int* vendor,
 void WiFi::OnNeighborReachabilityEvent(
     int net_interface_index,
     const IPAddress& ip_address,
-    patchpanel::NeighborReachabilityEventSignal::Role role,
-    patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
-  using EventSignal = patchpanel::NeighborReachabilityEventSignal;
+    patchpanel::Client::NeighborRole role,
+    patchpanel::Client::NeighborStatus status) {
+  using Role = patchpanel::Client::NeighborRole;
+  using Status = patchpanel::Client::NeighborStatus;
 
   DCHECK(net_interface_index == interface_index());
 
   // Checks if the signal is for the gateway of the current connection.
-  if (role != EventSignal::GATEWAY &&
-      role != EventSignal::GATEWAY_AND_DNS_SERVER) {
+  if (role != Role::kGateway && role != Role::kGatewayAndDnsServer) {
     return;
   }
 
-  switch (event_type) {
-    case EventSignal::REACHABLE:
+  switch (status) {
+    case Status::kReachable:
       return;
-    case EventSignal::FAILED:
+    case Status::kFailed:
       OnLinkMonitorFailure(ip_address.family());
       return;
     default:

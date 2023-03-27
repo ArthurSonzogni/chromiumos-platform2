@@ -970,7 +970,7 @@ TEST_F(MetricsTest, NotifyApChannelSwitch) {
 }
 
 TEST_F(MetricsTest, NotifyNeighborLinkMonitorFailure) {
-  using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
+  using Role = patchpanel::Client::NeighborRole;
   const std::string wifi_histogram =
       "Network.Shill.Wifi.NeighborLinkMonitorFailure";
   const std::string eth_histogram =
@@ -980,71 +980,67 @@ TEST_F(MetricsTest, NotifyNeighborLinkMonitorFailure) {
                                       Metrics::kNeighborIPv4GatewayFailure,
                                       Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv4, NeighborSignal::GATEWAY);
+      Technology::kWiFi, IPAddress::kFamilyIPv4, Role::kGateway);
 
   EXPECT_CALL(library_, SendEnumToUMA(wifi_histogram,
                                       Metrics::kNeighborIPv4DNSServerFailure,
                                       Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv4, NeighborSignal::DNS_SERVER);
+      Technology::kWiFi, IPAddress::kFamilyIPv4, Role::kDnsServer);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(wifi_histogram,
                             Metrics::kNeighborIPv4GatewayAndDNSServerFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv4,
-      NeighborSignal::GATEWAY_AND_DNS_SERVER);
+      Technology::kWiFi, IPAddress::kFamilyIPv4, Role::kGatewayAndDnsServer);
 
   EXPECT_CALL(library_, SendEnumToUMA(wifi_histogram,
                                       Metrics::kNeighborIPv6GatewayFailure,
                                       Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv6, NeighborSignal::GATEWAY);
+      Technology::kWiFi, IPAddress::kFamilyIPv6, Role::kGateway);
 
   EXPECT_CALL(library_, SendEnumToUMA(wifi_histogram,
                                       Metrics::kNeighborIPv6DNSServerFailure,
                                       Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv6, NeighborSignal::DNS_SERVER);
+      Technology::kWiFi, IPAddress::kFamilyIPv6, Role::kDnsServer);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(wifi_histogram,
                             Metrics::kNeighborIPv6GatewayAndDNSServerFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWiFi, IPAddress::kFamilyIPv6,
-      NeighborSignal::GATEWAY_AND_DNS_SERVER);
+      Technology::kWiFi, IPAddress::kFamilyIPv6, Role::kGatewayAndDnsServer);
 
   EXPECT_CALL(library_, SendEnumToUMA(eth_histogram,
                                       Metrics::kNeighborIPv4DNSServerFailure,
                                       Metrics::kNeighborLinkMonitorFailureMax));
-  metrics_.NotifyNeighborLinkMonitorFailure(Technology::kEthernet,
-                                            IPAddress::kFamilyIPv4,
-                                            NeighborSignal::DNS_SERVER);
+  metrics_.NotifyNeighborLinkMonitorFailure(
+      Technology::kEthernet, IPAddress::kFamilyIPv4, Role::kDnsServer);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(eth_histogram,
                             Metrics::kNeighborIPv4GatewayAndDNSServerFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
-  metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kEthernet, IPAddress::kFamilyIPv4,
-      NeighborSignal::GATEWAY_AND_DNS_SERVER);
+  metrics_.NotifyNeighborLinkMonitorFailure(Technology::kEthernet,
+                                            IPAddress::kFamilyIPv4,
+                                            Role::kGatewayAndDnsServer);
 
   EXPECT_CALL(library_, SendEnumToUMA(eth_histogram,
                                       Metrics::kNeighborIPv6DNSServerFailure,
                                       Metrics::kNeighborLinkMonitorFailureMax));
-  metrics_.NotifyNeighborLinkMonitorFailure(Technology::kEthernet,
-                                            IPAddress::kFamilyIPv6,
-                                            NeighborSignal::DNS_SERVER);
+  metrics_.NotifyNeighborLinkMonitorFailure(
+      Technology::kEthernet, IPAddress::kFamilyIPv6, Role::kDnsServer);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(eth_histogram,
                             Metrics::kNeighborIPv6GatewayAndDNSServerFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
-  metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kEthernet, IPAddress::kFamilyIPv6,
-      NeighborSignal::GATEWAY_AND_DNS_SERVER);
+  metrics_.NotifyNeighborLinkMonitorFailure(Technology::kEthernet,
+                                            IPAddress::kFamilyIPv6,
+                                            Role::kGatewayAndDnsServer);
 }
 
 TEST_F(MetricsTest, NotifyWiFiBadPassphraseNonUserInitiatedNeverConnected) {

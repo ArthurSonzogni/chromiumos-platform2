@@ -5,6 +5,7 @@
 #ifndef PATCHPANEL_DBUS_CLIENT_H_
 #define PATCHPANEL_DBUS_CLIENT_H_
 
+#include <initializer_list>
 #include <memory>
 #include <ostream>
 #include <set>
@@ -13,6 +14,7 @@
 #include <vector>
 
 #include "base/files/scoped_file.h"
+#include "base/functional/callback.h"
 #include <brillo/brillo_export.h>
 // Ignore Wconversion warnings in dbus headers.
 #pragma GCC diagnostic push
@@ -20,23 +22,169 @@
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 #pragma GCC diagnostic pop
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 namespace patchpanel {
 
 // Simple wrapper around patchpanel DBus API. All public functions are blocking
 // DBus calls to patchpaneld (asynchronous calls are mentioned explicitly). The
 // method names and protobuf schema used by patchpanel DBus API are defined in
-// platform2/system_api/dbus/patchpanel. Access control for clients is defined
-// in platform2/patchpanel/dbus.
+// platform2/system_api/dbus/patchpanel. Types and classes generated from the
+// patchpanel protobuf schema are not directly used and are instead wrapped with
+// lightweight structs and enums defined in this file. Access control for
+// clients is defined // in platform2/patchpanel/dbus.
 class BRILLO_EXPORT Client {
  public:
+  // See TrafficCounter.IpFamily in patchpanel_service.proto.
+  enum class IPFamily {
+    kIPv4,
+    kIPv6,
+  };
+
+  // See IPv4Subnet in patchpanel_service.proto.
+  struct IPv4Subnet {
+    std::vector<uint8_t> base_addr;
+    int prefix_len;
+  };
+
+  // See TrafficCounter.Source in patchpanel_service.proto.
+  enum class TrafficSource {
+    kUnknown,
+    kChrome,
+    kUser,
+    kArc,
+    kCrosVm,
+    kPluginVm,
+    kUpdateEngine,
+    kVpn,
+    kSystem,
+  };
+
+  static constexpr std::initializer_list<TrafficSource> kAllTrafficSources = {
+      TrafficSource::kUnknown,      TrafficSource::kChrome,
+      TrafficSource::kUser,         TrafficSource::kArc,
+      TrafficSource::kCrosVm,       TrafficSource::kPluginVm,
+      TrafficSource::kUpdateEngine, TrafficSource::kVpn,
+      TrafficSource::kSystem,
+  };
+
+  // See TrafficCounter in patchpanel_service.proto.
+  struct TrafficCounter {
+    uint64_t rx_bytes;
+    uint64_t tx_bytes;
+    uint64_t rx_packets;
+    uint64_t tx_packets;
+    TrafficSource source;
+    std::string ifname;
+    IPFamily ip_family;
+  };
+
+  // See NetworkDevice.GuestType in patchpanel_service.proto.
+  enum class GuestType {
+    kArcContainer,
+    kArcVm,
+    kTerminaVm,
+    kPluginVm,
+  };
+
+  // See NetworkDeviceChangedSignal in patchpanel_service.proto.
+  enum class VirtualDeviceEvent {
+    kAdded,
+    kRemoved,
+  };
+
+  // See NetworkDevice in patchpanel_service.proto.
+  struct VirtualDevice {
+    std::string ifname;
+    std::string phys_ifname;
+    std::string guest_ifname;
+    std::vector<uint8_t> ipv4_addr;
+    std::vector<uint8_t> host_ipv4_addr;
+    IPv4Subnet ipv4_subnet;
+    GuestType guest_type;
+    std::vector<uint8_t> dns_proxy_ipv4_addr;
+    std::vector<uint8_t> dns_proxy_ipv6_addr;
+  };
+
+  // See ConnectNamespaceResponse in patchpanel_service.proto.
+  struct ConnectedNamespace {
+    IPv4Subnet ipv4_subnet;
+    std::string peer_ifname;
+    std::vector<uint8_t> peer_ipv4_address;
+    std::string host_ifname;
+    std::vector<uint8_t> host_ipv4_address;
+    std::string netns_name;
+  };
+
+  // See DownstreamNetwork in patchpanel_service.proto.
+  struct DownstreamNetwork {
+    std::string ifname;
+    IPv4Subnet ipv4_subnet;
+    std::vector<uint8_t> ipv4_gateway_addr;
+  };
+
+  // See NetworkClientInfo in patchpanel_service.proto.
+  struct NetworkClientInfo {
+    std::vector<uint8_t> mac_addr;
+    std::vector<uint8_t> ipv4_addr;
+    std::vector<std::vector<uint8_t>> ipv6_addresses;
+    std::string hostname;
+    std::string vendor_class;
+  };
+
+  // See ModifyPortRuleRequest.Operation in patchpanel_service.proto.
+  enum class FirewallRequestOperation {
+    kCreate,
+    kDelete,
+  };
+
+  // See ModifyPortRuleRequest.RuleType in patchpanel_service.proto.
+  enum class FirewallRequestType {
+    kAccess,
+    kLockdown,
+    kForwarding,
+  };
+
+  // See ModifyPortRuleRequest.Protocol in patchpanel_service.proto.
+  enum class FirewallRequestProtocol {
+    kTcp,
+    kUdp,
+  };
+
+  // See SetDnsRedirectionRuleRequest in patchpanel_service.proto.
+  enum class DnsRedirectionRequestType {
+    kDefault,
+    kArc,
+    kUser,
+    kExcludeDestination,
+  };
+
+  // See NeighborReachabilityEventSignal.Role in patchpanel_service.proto.
+  enum class NeighborRole {
+    kGateway,
+    kDnsServer,
+    kGatewayAndDnsServer,
+  };
+
+  // See NeighborReachabilityEventSignal.EventType in patchpanel_service.proto.
+  enum class NeighborStatus {
+    kFailed,
+    kReachable,
+  };
+
+  // See NeighborReachabilityEventSignal in patchpanel_service.proto.
+  struct NeighborReachabilityEvent {
+    int ifindex;
+    std::string ip_addr;
+    NeighborRole role;
+    NeighborStatus status;
+  };
+
   using GetTrafficCountersCallback =
       base::OnceCallback<void(const std::vector<TrafficCounter>&)>;
   using NeighborReachabilityEventHandler =
-      base::RepeatingCallback<void(const NeighborReachabilityEventSignal&)>;
-  using NetworkDeviceChangedSignalHandler =
-      base::RepeatingCallback<void(const NetworkDeviceChangedSignal&)>;
+      base::RepeatingCallback<void(const NeighborReachabilityEvent&)>;
+  using VirtualDeviceEventHandler =
+      base::RepeatingCallback<void(VirtualDeviceEvent, const VirtualDevice&)>;
   using CreateTetheredNetworkCallback =
       base::OnceCallback<void(base::ScopedFD)>;
   using CreateLocalOnlyNetworkCallback =
@@ -44,7 +192,7 @@ class BRILLO_EXPORT Client {
   using DownstreamNetworkInfoCallback =
       base::OnceCallback<void(bool success,
                               const DownstreamNetwork& downstream_network,
-                              const std::vector<NetworkClientInfo> clients)>;
+                              const std::vector<NetworkClientInfo>& clients)>;
 
   // This variation creates a dbus object internally
   static std::unique_ptr<Client> New();
@@ -53,6 +201,12 @@ class BRILLO_EXPORT Client {
   // Only used in tests.
   static std::unique_ptr<Client> New(const scoped_refptr<dbus::Bus>& bus,
                                      dbus::ObjectProxy* proxy);
+
+  static bool IsArcGuest(GuestType guest_type);
+  static std::string TrafficSourceName(TrafficSource source);
+  static std::string ProtocolName(FirewallRequestProtocol protocol);
+  static std::string NeighborRoleName(NeighborRole role);
+  static std::string NeighborStatusName(NeighborStatus status);
 
   virtual ~Client() = default;
 
@@ -68,17 +222,17 @@ class BRILLO_EXPORT Client {
   virtual bool NotifyArcStartup(pid_t pid) = 0;
   virtual bool NotifyArcShutdown() = 0;
 
-  virtual std::vector<NetworkDevice> NotifyArcVmStartup(uint32_t cid) = 0;
+  virtual std::vector<VirtualDevice> NotifyArcVmStartup(uint32_t cid) = 0;
   virtual bool NotifyArcVmShutdown(uint32_t cid) = 0;
 
   virtual bool NotifyTerminaVmStartup(uint32_t cid,
-                                      NetworkDevice* device,
+                                      VirtualDevice* device,
                                       IPv4Subnet* container_subnet) = 0;
   virtual bool NotifyTerminaVmShutdown(uint32_t cid) = 0;
 
   virtual bool NotifyPluginVmStartup(uint64_t vm_id,
                                      int subnet_index,
-                                     NetworkDevice* device) = 0;
+                                     VirtualDevice* device) = 0;
   virtual bool NotifyPluginVmShutdown(uint64_t vm_id) = 0;
 
   // Reset the VPN routing intent mark on a socket to the default policy for
@@ -95,15 +249,15 @@ class BRILLO_EXPORT Client {
   virtual bool BypassVpn(int socket) = 0;
 
   // Sends a ConnectNamespaceRequest for the given namespace pid. Returns a
-  // pair with a valid ScopedFD and the ConnectNamespaceResponse proto message
+  // pair with a valid ScopedFD and the ConnectedNamespace response
   // received if the request succeeded. Closing the ScopedFD will teardown the
   // veth and routing setup and free the allocated IPv4 subnet.
-  virtual std::pair<base::ScopedFD, patchpanel::ConnectNamespaceResponse>
-  ConnectNamespace(pid_t pid,
-                   const std::string& outbound_ifname,
-                   bool forward_user_traffic,
-                   bool route_on_vpn,
-                   TrafficCounter::Source traffic_source) = 0;
+  virtual std::pair<base::ScopedFD, ConnectedNamespace> ConnectNamespace(
+      pid_t pid,
+      const std::string& outbound_ifname,
+      bool forward_user_traffic,
+      bool route_on_vpn,
+      TrafficSource traffic_source) = 0;
 
   // Gets the traffic counters kept by patchpanel asynchronously, |callback|
   // will be called with the counters once they are ready, or with an empty
@@ -116,9 +270,9 @@ class BRILLO_EXPORT Client {
 
   // Sends a ModifyPortRuleRequest to modify iptables ingress rules.
   // This should only be called by permission_broker's 'devbroker'.
-  virtual bool ModifyPortRule(patchpanel::ModifyPortRuleRequest::Operation op,
-                              patchpanel::ModifyPortRuleRequest::RuleType type,
-                              patchpanel::ModifyPortRuleRequest::Protocol proto,
+  virtual bool ModifyPortRule(FirewallRequestOperation op,
+                              FirewallRequestType type,
+                              FirewallRequestProtocol proto,
                               const std::string& input_ifname,
                               const std::string& input_dst_ip,
                               uint32_t input_dst_port,
@@ -136,19 +290,19 @@ class BRILLO_EXPORT Client {
   // a ScopedFD. The rules lifetime is tied to the file descriptor. This returns
   // an invalid file descriptor upon failure.
   virtual base::ScopedFD RedirectDns(
-      patchpanel::SetDnsRedirectionRuleRequest::RuleType type,
+      DnsRedirectionRequestType type,
       const std::string& input_ifname,
       const std::string& proxy_address,
       const std::vector<std::string>& nameservers,
       const std::string& host_ifname) = 0;
 
   // Obtains a list of NetworkDevices currently managed by patchpanel.
-  virtual std::vector<NetworkDevice> GetDevices() = 0;
+  virtual std::vector<VirtualDevice> GetDevices() = 0;
 
   // Registers a handler that will be called upon receiving a signal indicating
   // that a network device managed by patchpanel was added or removed.
-  virtual void RegisterNetworkDeviceChangedSignalHandler(
-      NetworkDeviceChangedSignalHandler handler) = 0;
+  virtual void RegisterVirtualDeviceEventHandler(
+      VirtualDeviceEventHandler handler) = 0;
 
   // Registers a handler that will be called on receiving a neighbor
   // reachability event. Currently these events are generated only for WiFi
@@ -167,7 +321,6 @@ class BRILLO_EXPORT Client {
   virtual bool CreateTetheredNetwork(
       const std::string& downstream_ifname,
       const std::string& upstream_ifname,
-      TetheredNetworkRequest::UpstreamTechnology upstream_technology,
       CreateTetheredNetworkCallback callback) = 0;
 
   // Sends request for creating a local-only L3 network on |ifname|.
@@ -192,7 +345,7 @@ class BRILLO_EXPORT Client {
 };
 
 BRILLO_EXPORT std::ostream& operator<<(
-    std::ostream& stream, const NeighborReachabilityEventSignal& signal);
+    std::ostream& stream, const Client::NeighborReachabilityEvent& event);
 
 }  // namespace patchpanel
 

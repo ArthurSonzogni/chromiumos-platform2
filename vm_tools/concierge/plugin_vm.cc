@@ -23,6 +23,7 @@
 #include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <chromeos/patchpanel/net_util.h>
 
 #include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
@@ -48,9 +49,15 @@ constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
 constexpr size_t kGuestAddressOffset = 1;
 
 std::unique_ptr<patchpanel::Subnet> MakeSubnet(
-    const patchpanel::IPv4Subnet& subnet) {
-  return std::make_unique<patchpanel::Subnet>(
-      subnet.base_addr(), subnet.prefix_len(), base::DoNothing());
+    const patchpanel::Client::IPv4Subnet& subnet) {
+  if (subnet.base_addr.size() != 4) {
+    return nullptr;
+  }
+  uint32_t addr =
+      patchpanel::Ipv4Addr(subnet.base_addr[0], subnet.base_addr[1],
+                           subnet.base_addr[2], subnet.base_addr[3]);
+  return std::make_unique<patchpanel::Subnet>(addr, subnet.prefix_len,
+                                              base::DoNothing());
 }
 
 void TrySuspendVm(scoped_refptr<dbus::Bus> bus,
@@ -662,20 +669,24 @@ bool PluginVm::Start(base::FilePath stateful_dir,
   }
 
   // Get the network interface.
-  patchpanel::NetworkDevice network_device;
+  patchpanel::Client::VirtualDevice network_device;
   if (!network_client_->NotifyPluginVmStartup(id_hash_, subnet_index,
                                               &network_device)) {
     LOG(ERROR) << "No network devices available";
     return false;
   }
-  subnet_ = MakeSubnet(network_device.ipv4_subnet());
+  subnet_ = MakeSubnet(network_device.ipv4_subnet);
+  if (!subnet_) {
+    LOG(ERROR) << "Failed to read IPv4 subnet assigned to VM";
+    return false;
+  }
 
   // Open the tap device.
-  base::ScopedFD tap_fd = OpenTapDevice(
-      network_device.ifname(), enable_vnet_hdr, nullptr /*ifname_out*/);
+  base::ScopedFD tap_fd = OpenTapDevice(network_device.ifname, enable_vnet_hdr,
+                                        nullptr /*ifname_out*/);
   if (!tap_fd.is_valid()) {
     LOG(ERROR) << "Unable to open and configure TAP device "
-               << network_device.ifname();
+               << network_device.ifname;
     return false;
   }
 

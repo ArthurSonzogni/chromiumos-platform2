@@ -151,18 +151,18 @@ class DeviceTest : public testing::Test {
     device_->network()->OnDHCPDrop(/*is_voluntary=*/false);
   }
 
-  patchpanel::TrafficCounter CreateCounter(
+  patchpanel::Client::TrafficCounter CreateCounter(
       const std::valarray<uint64_t>& vals,
-      patchpanel::TrafficCounter::Source source,
-      const std::string& device_name) {
+      patchpanel::Client::TrafficSource source,
+      const std::string& ifname) {
     EXPECT_EQ(4, vals.size());
-    patchpanel::TrafficCounter counter;
-    counter.set_rx_bytes(vals[0]);
-    counter.set_tx_bytes(vals[1]);
-    counter.set_rx_packets(vals[2]);
-    counter.set_tx_packets(vals[3]);
-    counter.set_source(source);
-    counter.set_device(device_name);
+    patchpanel::Client::TrafficCounter counter;
+    counter.rx_bytes = vals[0];
+    counter.tx_bytes = vals[1];
+    counter.rx_packets = vals[2];
+    counter.tx_packets = vals[3];
+    counter.source = source;
+    counter.ifname = ifname;
     return counter;
   }
 
@@ -601,15 +601,15 @@ TEST_F(DeviceTest, SetMacAddress) {
 }
 
 TEST_F(DeviceTest, FetchTrafficCounters) {
-  auto source0 = patchpanel::TrafficCounter::CHROME;
-  auto source1 = patchpanel::TrafficCounter::USER;
+  auto source0 = patchpanel::Client::TrafficSource::kChrome;
+  auto source1 = patchpanel::Client::TrafficSource::kUser;
   std::valarray<uint64_t> counter_arr0{2842, 1243, 240598, 43095};
   std::valarray<uint64_t> counter_arr1{4554666, 43543, 5999, 500000};
-  patchpanel::TrafficCounter counter0 =
+  patchpanel::Client::TrafficCounter counter0 =
       CreateCounter(counter_arr0, source0, kDeviceName);
-  patchpanel::TrafficCounter counter1 =
+  patchpanel::Client::TrafficCounter counter1 =
       CreateCounter(counter_arr1, source1, kDeviceName);
-  std::vector<patchpanel::TrafficCounter> counters{counter0, counter1};
+  std::vector<patchpanel::Client::TrafficCounter> counters{counter0, counter1};
   patchpanel_client_->set_stored_traffic_counters(counters);
 
   EXPECT_EQ(nullptr, device_->selected_service_);

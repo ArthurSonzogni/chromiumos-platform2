@@ -137,7 +137,7 @@ void Controller::OnPatchpanelReady(bool success) {
     QuitWithExitCode(EX_UNAVAILABLE);
     return;
   }
-  patchpanel_->RegisterNetworkDeviceChangedSignalHandler(base::BindRepeating(
+  patchpanel_->RegisterVirtualDeviceEventHandler(base::BindRepeating(
       &Controller::OnVirtualDeviceChanged, weak_factory_.GetWeakPtr()));
 
   // Process the current set of patchpanel devices and launch any required
@@ -423,12 +423,13 @@ void Controller::EvalProxyExit(const ProxyProc& proc) {
 }
 
 void Controller::OnVirtualDeviceChanged(
-    const patchpanel::NetworkDeviceChangedSignal& signal) {
-  switch (signal.event()) {
-    case patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED:
-      VirtualDeviceAdded(signal.device());
+    patchpanel::Client::VirtualDeviceEvent event,
+    const patchpanel::Client::VirtualDevice& device) {
+  switch (event) {
+    case patchpanel::Client::VirtualDeviceEvent::kAdded:
+      VirtualDeviceAdded(device);
       break;
-    case patchpanel::NetworkDeviceChangedSignal::DEVICE_REMOVED:
+    case patchpanel::Client::VirtualDeviceEvent::kRemoved:
       // For b/266496850, we prevented ARC proxies from being terminated in
       // order to preserve its namespace and IPv6 addresses. This allows less
       // usage of IPv6 on ARC restarts. For the longer term solution, we'd want
@@ -441,10 +442,10 @@ void Controller::OnVirtualDeviceChanged(
   }
 }
 
-void Controller::VirtualDeviceAdded(const patchpanel::NetworkDevice& device) {
-  if (device.guest_type() == patchpanel::NetworkDevice::ARC ||
-      device.guest_type() == patchpanel::NetworkDevice::ARCVM) {
-    RunProxy(Proxy::Type::kARC, device.phys_ifname());
+void Controller::VirtualDeviceAdded(
+    const patchpanel::Client::VirtualDevice& device) {
+  if (patchpanel::Client::IsArcGuest(device.guest_type)) {
+    RunProxy(Proxy::Type::kARC, device.phys_ifname);
   }
 }
 

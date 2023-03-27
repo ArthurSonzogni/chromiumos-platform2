@@ -22,7 +22,6 @@
 #include <base/time/time.h>
 #include <chromeos/patchpanel/message_dispatcher.h>
 #include <chromeos/patchpanel/net_util.h>
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <shill/dbus-constants.h>
 #include <shill/net/rtnl_handler.h>
 
@@ -209,16 +208,16 @@ void Proxy::OnPatchpanelReady(bool success) {
   // The default network proxy might actually be carrying Chrome, Crostini or
   // if a VPN is on, even ARC traffic, but we attribute this as as "user"
   // sourced.
-  patchpanel::TrafficCounter::Source traffic_source;
+  patchpanel::Client::TrafficSource traffic_source;
   switch (opts_.type) {
     case Type::kSystem:
-      traffic_source = patchpanel::TrafficCounter::SYSTEM;
+      traffic_source = patchpanel::Client::TrafficSource::kSystem;
       break;
     case Type::kARC:
-      traffic_source = patchpanel::TrafficCounter::ARC;
+      traffic_source = patchpanel::Client::TrafficSource::kArc;
       break;
     default:
-      traffic_source = patchpanel::TrafficCounter::USER;
+      traffic_source = patchpanel::Client::TrafficSource::kUser;
   }
 
   // Note that using getpid() here requires that this minijail is not creating a
@@ -238,7 +237,7 @@ void Proxy::OnPatchpanelReady(bool success) {
   ns_fd_ = std::move(res.first);
   ns_ = res.second;
   LOG(INFO) << *this << " Successfully connected private network namespace: "
-            << ns_.host_ifname() << " <--> " << ns_.peer_ifname();
+            << ns_.host_ifname << " <--> " << ns_.peer_ifname;
 
   // Now it's safe to connect shill.
   InitShill();
@@ -246,7 +245,7 @@ void Proxy::OnPatchpanelReady(bool success) {
   // Track single-networked guests' start up and shut down for redirecting
   // traffic to the proxy.
   if (opts_.type == Type::kDefault)
-    patchpanel_->RegisterNetworkDeviceChangedSignalHandler(base::BindRepeating(
+    patchpanel_->RegisterVirtualDeviceEventHandler(base::BindRepeating(
         &Proxy::OnVirtualDeviceChanged, weak_factory_.GetWeakPtr()));
 }
 
@@ -261,20 +260,20 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
   // Reset last created rules.
   lifeline_fds_.erase(std::make_pair(ifname, sa_family));
 
-  patchpanel::SetDnsRedirectionRuleRequest::RuleType type;
+  patchpanel::Client::DnsRedirectionRequestType type;
   switch (opts_.type) {
     case Type::kSystem:
-      type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION;
+      type = patchpanel::Client::DnsRedirectionRequestType::kExcludeDestination;
       break;
     case Type::kDefault:
-      type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT;
+      type = patchpanel::Client::DnsRedirectionRequestType::kDefault;
       // If |ifname| is empty, request SetDnsRedirectionRule rule for USER.
       if (ifname.empty()) {
-        type = patchpanel::SetDnsRedirectionRuleRequest::USER;
+        type = patchpanel::Client::DnsRedirectionRequestType::kUser;
       }
       break;
     case Type::kARC:
-      type = patchpanel::SetDnsRedirectionRuleRequest::ARC;
+      type = patchpanel::Client::DnsRedirectionRequestType::kArc;
       break;
     default:
       LOG(DFATAL) << *this << " Unexpected proxy type " << opts_.type;
@@ -284,9 +283,9 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
   const auto& peer_addr =
       sa_family == AF_INET6
           ? ns_peer_ipv6_address_
-          : patchpanel::IPv4AddressToString(ns_.peer_ipv4_address());
+          : patchpanel::IPv4AddressToString(ns_.peer_ipv4_address);
   auto fd = patchpanel_->RedirectDns(type, ifname, peer_addr, nameservers,
-                                     ns_.host_ifname());
+                                     ns_.host_ifname);
   // Restart the proxy if DNS redirection rules are failed to be set up. This
   // is necessary because when DNS proxy is running, /etc/resolv.conf is
   // replaced by the IP address of system proxy. This causes non-system traffic
@@ -364,7 +363,7 @@ void Proxy::OnShillReset(bool reset) {
     // If applicable, restore the address of the system proxy.
     if (opts_.type == Type::kSystem && ns_fd_.is_valid()) {
       SetShillDNSProxyAddresses(
-          patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
+          patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
           ns_peer_ipv6_address_);
       // Start DNS redirection rule to exclude traffic with destination not
       // equal to the underlying name server.
@@ -401,10 +400,10 @@ void Proxy::Enable() {
 
   if (opts_.type == Type::kSystem) {
     SetShillDNSProxyAddresses(
-        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
+        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
         ns_peer_ipv6_address_);
     SendIPAddressesToController(
-        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
+        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
         ns_peer_ipv6_address_);
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
@@ -540,10 +539,10 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   // choice but to just crash out and try again.
   if (opts_.type == Type::kSystem) {
     SetShillDNSProxyAddresses(
-        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
+        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
         ns_peer_ipv6_address_, true /* die_on_failure */);
     SendIPAddressesToController(
-        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
+        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
         ns_peer_ipv6_address_);
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
@@ -947,7 +946,7 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
   }
 
   // Listen only for the peer interface IPv6 changes.
-  if (msg.interface_index() != if_nametoindex(ns_.peer_ifname().c_str())) {
+  if (msg.interface_index() != if_nametoindex(ns_.peer_ifname.c_str())) {
     return;
   }
 
@@ -973,10 +972,10 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
       }
       if (opts_.type == Type::kSystem && device_) {
         SetShillDNSProxyAddresses(
-            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
+            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
             ns_peer_ipv6_address_);
         SendIPAddressesToController(
-            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
+            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address),
             ns_peer_ipv6_address_);
         StartDnsRedirection("" /* ifname */, AF_INET6);
       }
@@ -992,9 +991,9 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
       }
       if (opts_.type == Type::kSystem && device_) {
         SetShillDNSProxyAddresses(
-            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()), "");
+            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address), "");
         SendIPAddressesToController(
-            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()), "");
+            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address), "");
         StopDnsRedirection("" /* ifname */, AF_INET6);
       }
       return;
@@ -1004,39 +1003,40 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
 }
 
 void Proxy::OnVirtualDeviceChanged(
-    const patchpanel::NetworkDeviceChangedSignal& signal) {
-  switch (signal.event()) {
-    case patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED:
-      StartGuestDnsRedirection(signal.device(), AF_INET);
-      StartGuestDnsRedirection(signal.device(), AF_INET6);
+    patchpanel::Client::VirtualDeviceEvent event,
+    const patchpanel::Client::VirtualDevice& device) {
+  switch (event) {
+    case patchpanel::Client::VirtualDeviceEvent::kAdded:
+      StartGuestDnsRedirection(device, AF_INET);
+      StartGuestDnsRedirection(device, AF_INET6);
       break;
-    case patchpanel::NetworkDeviceChangedSignal::DEVICE_REMOVED:
-      StopGuestDnsRedirection(signal.device(), AF_INET);
-      StopGuestDnsRedirection(signal.device(), AF_INET6);
+    case patchpanel::Client::VirtualDeviceEvent::kRemoved:
+      StopGuestDnsRedirection(device, AF_INET);
+      StopGuestDnsRedirection(device, AF_INET6);
       break;
     default:
       NOTREACHED();
   }
 }
 
-void Proxy::StartGuestDnsRedirection(const patchpanel::NetworkDevice& device,
-                                     sa_family_t sa_family) {
-  if (!device_ || base::Contains(lifeline_fds_,
-                                 std::make_pair(device.ifname(), sa_family))) {
+void Proxy::StartGuestDnsRedirection(
+    const patchpanel::Client::VirtualDevice& device, sa_family_t sa_family) {
+  if (!device_ ||
+      base::Contains(lifeline_fds_, std::make_pair(device.ifname, sa_family))) {
     return;
   }
 
-  switch (device.guest_type()) {
-    case patchpanel::NetworkDevice::TERMINA_VM:
-    case patchpanel::NetworkDevice::PLUGIN_VM:
+  switch (device.guest_type) {
+    case patchpanel::Client::GuestType::kTerminaVm:
+    case patchpanel::Client::GuestType::kPluginVm:
       if (opts_.type == Type::kDefault) {
-        StartDnsRedirection(device.ifname(), sa_family);
+        StartDnsRedirection(device.ifname, sa_family);
       }
       return;
-    case patchpanel::NetworkDevice::ARC:
-    case patchpanel::NetworkDevice::ARCVM:
-      if (opts_.type == Type::kARC && opts_.ifname == device.phys_ifname()) {
-        StartDnsRedirection(device.ifname(), sa_family);
+    case patchpanel::Client::GuestType::kArcContainer:
+    case patchpanel::Client::GuestType::kArcVm:
+      if (opts_.type == Type::kARC && opts_.ifname == device.phys_ifname) {
+        StartDnsRedirection(device.ifname, sa_family);
       }
       return;
     default:
@@ -1044,13 +1044,13 @@ void Proxy::StartGuestDnsRedirection(const patchpanel::NetworkDevice& device,
   }
 }
 
-void Proxy::StopGuestDnsRedirection(const patchpanel::NetworkDevice& device,
-                                    sa_family_t sa_family) {
-  switch (device.guest_type()) {
-    case patchpanel::NetworkDevice::TERMINA_VM:
-    case patchpanel::NetworkDevice::PLUGIN_VM:
+void Proxy::StopGuestDnsRedirection(
+    const patchpanel::Client::VirtualDevice& device, sa_family_t sa_family) {
+  switch (device.guest_type) {
+    case patchpanel::Client::GuestType::kTerminaVm:
+    case patchpanel::Client::GuestType::kPluginVm:
       if (opts_.type == Type::kDefault) {
-        StopDnsRedirection(device.ifname(), sa_family);
+        StopDnsRedirection(device.ifname, sa_family);
       }
       return;
     default:
@@ -1058,8 +1058,8 @@ void Proxy::StopGuestDnsRedirection(const patchpanel::NetworkDevice& device,
       // will also be removed. This will undo the created firewall rules.
       // However, if IPv6 is removed, firewall rules created need to be
       // removed.
-      if (opts_.type == Type::kARC && opts_.ifname == device.phys_ifname()) {
-        StopDnsRedirection(device.ifname(), sa_family);
+      if (opts_.type == Type::kARC && opts_.ifname == device.phys_ifname) {
+        StopDnsRedirection(device.ifname, sa_family);
       }
       return;
   }

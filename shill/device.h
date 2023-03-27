@@ -18,7 +18,6 @@
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
@@ -255,9 +254,8 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   void OnNeighborReachabilityEvent(
       int interface_index,
       const IPAddress& ip_address,
-      patchpanel::NeighborReachabilityEventSignal::Role role,
-      patchpanel::NeighborReachabilityEventSignal::EventType event_type)
-      override;
+      patchpanel::Client::NeighborRole role,
+      patchpanel::Client::NeighborStatus status) override;
 
   // Returns a string formatted as "$ifname $service_log_name", or
   // "$ifname no_service" if |selected_service_| is currently not defined.
@@ -454,9 +452,10 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   void GetTrafficCountersCallback(
       const ServiceRefPtr& old_service,
       const ServiceRefPtr& new_service,
-      const std::vector<patchpanel::TrafficCounter>& counters);
+      const std::vector<patchpanel::Client::TrafficCounter>& counters);
   void GetTrafficCountersPatchpanelCallback(
-      unsigned int id, const std::vector<patchpanel::TrafficCounter>& counters);
+      unsigned int id,
+      const std::vector<patchpanel::Client::TrafficCounter>& counters);
 
   // Asynchronously get all the traffic counters for this device during a
   // selected_service_ change and update the counters and snapshots for the old
@@ -516,9 +515,9 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   // Maps the callback ID, created when FetchTrafficCounters is called, to the
   // corresponding callback.
-  std::map<
-      unsigned int,
-      base::OnceCallback<void(const std::vector<patchpanel::TrafficCounter>&)>>
+  std::map<unsigned int,
+           base::OnceCallback<void(
+               const std::vector<patchpanel::Client::TrafficCounter>&)>>
       traffic_counters_callback_map_;
 
   base::WeakPtrFactory<Device> weak_ptr_factory_;

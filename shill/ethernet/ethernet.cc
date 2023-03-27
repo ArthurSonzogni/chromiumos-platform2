@@ -921,13 +921,13 @@ bool Ethernet::RunEthtoolCmd(ifreq* interface_command) {
 void Ethernet::OnNeighborReachabilityEvent(
     int net_interface_index,
     const IPAddress& ip_address,
-    patchpanel::NeighborReachabilityEventSignal::Role role,
-    patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
+    patchpanel::Client::NeighborRole role,
+    patchpanel::Client::NeighborStatus status) {
   DCHECK(net_interface_index == interface_index());
 
-  using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
-  if (role != NeighborSignal::GATEWAY &&
-      role != NeighborSignal::GATEWAY_AND_DNS_SERVER) {
+  using Role = patchpanel::Client::NeighborRole;
+  using Status = patchpanel::Client::NeighborStatus;
+  if (role != Role::kGateway && role != Role::kGatewayAndDnsServer) {
     return;
   }
 
@@ -940,7 +940,7 @@ void Ethernet::OnNeighborReachabilityEvent(
   // When a reachability failure event is received and the connection is thought
   // to be healthy, make sure that network validation runs to confirm if there
   // is no link connectivity anymore.
-  if (event_type == NeighborSignal::FAILED &&
+  if (status == Status::kFailed &&
       selected_service()->state() == Service::kStateOnline) {
     LOG(INFO) << LoggingTag()
               << ": gateway reachability failure in 'online' state.";
@@ -953,7 +953,7 @@ void Ethernet::OnNeighborReachabilityEvent(
   // When a reachability success event is received and the connection is thought
   // to be unhealthy, make sure that network validation runs to confirm if link
   // connectivity has been recovered.
-  if (event_type == NeighborSignal::REACHABLE &&
+  if (status == Status::kReachable &&
       selected_service()->state() == Service::kStateNoConnectivity) {
     LOG(INFO) << LoggingTag()
               << ": gateway reachability event in 'no-connectivity' state.";

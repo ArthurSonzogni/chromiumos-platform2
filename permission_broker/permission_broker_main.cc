@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+#include <string>
+
 #include <base/command_line.h>
-#include <base/logging.h>
-#include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/flag_helper.h>

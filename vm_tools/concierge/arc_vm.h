@@ -19,6 +19,7 @@
 #include <base/notreached.h>
 #include <base/sequence_checker.h>
 #include <base/threading/thread.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <chromeos/patchpanel/mac_address_generator.h>
 #include <libcrossystem/crossystem.h>
 #include <vm_concierge/concierge_service.pb.h>
@@ -176,7 +177,7 @@ class ArcVm final : public VmBaseImpl {
   void HandleLmkdVsockAccept();
   void HandleLmkdVsockRead();
 
-  std::vector<patchpanel::NetworkDevice> network_devices_;
+  std::vector<patchpanel::Client::VirtualDevice> network_devices_;
 
   // Proxy to the server providing shared directory access for this VM.
   std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy_;

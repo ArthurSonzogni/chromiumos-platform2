@@ -2772,10 +2772,11 @@ void Manager::InitializePatchpanelClient() {
 }
 
 void Manager::RefreshAllTrafficCountersCallback(
-    const std::vector<patchpanel::TrafficCounter>& counters) {
-  std::map<std::string, std::vector<patchpanel::TrafficCounter>> counter_map;
+    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
+  std::map<std::string, std::vector<patchpanel::Client::TrafficCounter>>
+      counter_map;
   for (const auto& counter : counters) {
-    std::string link_name = counter.device();
+    std::string link_name = counter.ifname;
     counter_map[link_name].push_back(counter);
   }
   for (const auto& device : devices_) {

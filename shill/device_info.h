@@ -17,8 +17,8 @@
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
@@ -257,7 +257,7 @@ class DeviceInfo {
   bool IsGuestDevice(const std::string& interface_name) const;
 
   void OnNeighborReachabilityEvent(
-      const patchpanel::NeighborReachabilityEventSignal& signal);
+      const patchpanel::Client::NeighborReachabilityEvent& event);
 
   // Callback registered in CreateWireGuardInterface() and
   // CreateXFRMInterface(). Invoked by RTNLHandler, to notify the

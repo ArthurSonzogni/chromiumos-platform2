@@ -14,7 +14,7 @@
 
 #include <base/functional/callback.h>
 #include <base/time/time.h>
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
+#include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/connection.h"
 #include "shill/connection_diagnostics.h"
@@ -97,8 +97,8 @@ class Network {
     virtual void OnNeighborReachabilityEvent(
         int interface_index,
         const IPAddress& ip_address,
-        patchpanel::NeighborReachabilityEventSignal::Role role,
-        patchpanel::NeighborReachabilityEventSignal::EventType event_type) = 0;
+        patchpanel::Client::NeighborRole role,
+        patchpanel::Client::NeighborStatus status) = 0;
 
     // Called every time PortalDetector finishes a network validation attempt
     // starts. If network validation is used for this Service, PortalDetector
@@ -256,7 +256,7 @@ class Network {
 
   // Responds to a neighbor reachability event from patchpanel.
   mockable void OnNeighborReachabilityEvent(
-      const patchpanel::NeighborReachabilityEventSignal& signal);
+      const patchpanel::Client::NeighborReachabilityEvent& event);
 
   // Starts a new network validation cycle and starts a first portal detection
   // attempt. If portal detection was already running, a new network validation

@@ -88,8 +88,8 @@
 #include <base/functional/callback_forward.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/device.h"
 #include "shill/mockable.h"
@@ -240,9 +240,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnNeighborReachabilityEvent(
       int interface_index,
       const IPAddress& ip_address,
-      patchpanel::NeighborReachabilityEventSignal::Role role,
-      patchpanel::NeighborReachabilityEventSignal::EventType event_type)
-      override;
+      patchpanel::Client::NeighborRole role,
+      patchpanel::Client::NeighborStatus status) override;
 
   mockable int16_t GetSignalLevelForActiveService();
 

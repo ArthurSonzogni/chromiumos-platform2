@@ -21,7 +21,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/default_service_observer.h"
 #include "shill/device.h"
@@ -743,7 +742,7 @@ class Manager {
   void InitializePatchpanelClient();
 
   void RefreshAllTrafficCountersCallback(
-      const std::vector<patchpanel::TrafficCounter>& counters);
+      const std::vector<patchpanel::Client::TrafficCounter>& counters);
   void RefreshAllTrafficCountersTask();
 
   // Returns the names of all of the claimed devices by ClaimDevice().

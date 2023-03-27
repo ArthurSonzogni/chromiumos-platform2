@@ -31,17 +31,17 @@ class BRILLO_EXPORT FakeClient : public Client {
   bool NotifyArcStartup(pid_t pid) override;
   bool NotifyArcShutdown() override;
 
-  std::vector<NetworkDevice> NotifyArcVmStartup(uint32_t cid) override;
+  std::vector<Client::VirtualDevice> NotifyArcVmStartup(uint32_t cid) override;
   bool NotifyArcVmShutdown(uint32_t cid) override;
 
   bool NotifyTerminaVmStartup(uint32_t cid,
-                              NetworkDevice* device,
-                              IPv4Subnet* container_subnet) override;
+                              Client::VirtualDevice* device,
+                              Client::IPv4Subnet* container_subnet) override;
   bool NotifyTerminaVmShutdown(uint32_t cid) override;
 
   bool NotifyPluginVmStartup(uint64_t vm_id,
                              int subnet_index,
-                             NetworkDevice* device) override;
+                             Client::VirtualDevice* device) override;
   bool NotifyPluginVmShutdown(uint64_t vm_id) override;
 
   bool DefaultVpnRouting(int socket) override;
@@ -50,19 +50,19 @@ class BRILLO_EXPORT FakeClient : public Client {
 
   bool BypassVpn(int socket) override;
 
-  std::pair<base::ScopedFD, patchpanel::ConnectNamespaceResponse>
-  ConnectNamespace(pid_t pid,
-                   const std::string& outbound_ifname,
-                   bool forward_user_traffic,
-                   bool route_on_vpn,
-                   TrafficCounter::Source traffic_source) override;
+  std::pair<base::ScopedFD, Client::ConnectedNamespace> ConnectNamespace(
+      pid_t pid,
+      const std::string& outbound_ifname,
+      bool forward_user_traffic,
+      bool route_on_vpn,
+      Client::TrafficSource traffic_source) override;
 
   void GetTrafficCounters(const std::set<std::string>& devices,
-                          GetTrafficCountersCallback callback) override;
+                          Client::GetTrafficCountersCallback callback) override;
 
-  bool ModifyPortRule(patchpanel::ModifyPortRuleRequest::Operation op,
-                      patchpanel::ModifyPortRuleRequest::RuleType type,
-                      patchpanel::ModifyPortRuleRequest::Protocol proto,
+  bool ModifyPortRule(Client::FirewallRequestOperation op,
+                      Client::FirewallRequestType type,
+                      Client::FirewallRequestProtocol proto,
                       const std::string& input_ifname,
                       const std::string& input_dst_ip,
                       uint32_t input_dst_port,
@@ -71,47 +71,47 @@ class BRILLO_EXPORT FakeClient : public Client {
 
   bool SetVpnLockdown(bool enable) override;
 
-  base::ScopedFD RedirectDns(
-      patchpanel::SetDnsRedirectionRuleRequest::RuleType type,
-      const std::string& input_ifname,
-      const std::string& proxy_address,
-      const std::vector<std::string>& nameservers,
-      const std::string& host_ifname) override;
+  base::ScopedFD RedirectDns(Client::DnsRedirectionRequestType type,
+                             const std::string& input_ifname,
+                             const std::string& proxy_address,
+                             const std::vector<std::string>& nameservers,
+                             const std::string& host_ifname) override;
 
-  std::vector<NetworkDevice> GetDevices() override;
+  std::vector<Client::VirtualDevice> GetDevices() override;
 
-  void RegisterNetworkDeviceChangedSignalHandler(
-      NetworkDeviceChangedSignalHandler handler) override;
+  void RegisterVirtualDeviceEventHandler(
+      VirtualDeviceEventHandler handler) override;
 
   void RegisterNeighborReachabilityEventHandler(
-      NeighborReachabilityEventHandler handler) override;
+      Client::NeighborReachabilityEventHandler handler) override;
 
   bool CreateTetheredNetwork(
       const std::string& downstream_ifname,
       const std::string& upstream_ifname,
-      TetheredNetworkRequest::UpstreamTechnology upstream_technology,
-      CreateTetheredNetworkCallback callback) override;
+      Client::CreateTetheredNetworkCallback callback) override;
 
-  bool CreateLocalOnlyNetwork(const std::string& ifname,
-                              CreateLocalOnlyNetworkCallback callback) override;
+  bool CreateLocalOnlyNetwork(
+      const std::string& ifname,
+      Client::CreateLocalOnlyNetworkCallback callback) override;
 
   bool GetDownstreamNetworkInfo(
       const std::string& ifname,
-      DownstreamNetworkInfoCallback callback) override;
+      Client::DownstreamNetworkInfoCallback callback) override;
 
-  // Triggers registered handlers for NeighborReachabilityEventSignal.
+  // Triggers registered handlers for NeighborReachabilityEvent.
   void TriggerNeighborReachabilityEvent(
-      const NeighborReachabilityEventSignal& signal);
+      const Client::NeighborReachabilityEvent& signal);
 
   void set_stored_traffic_counters(
-      const std::vector<TrafficCounter>& counters) {
+      const std::vector<Client::TrafficCounter>& counters) {
     stored_traffic_counters_ = counters;
   }
 
  private:
-  std::vector<TrafficCounter> stored_traffic_counters_;
-  std::vector<NeighborReachabilityEventHandler> neighbor_handlers_;
-  NetworkDeviceChangedSignalHandler network_device_changed_handler_;
+  std::vector<Client::TrafficCounter> stored_traffic_counters_;
+  std::vector<Client::NeighborReachabilityEventHandler>
+      neighbor_event_handlers_;
+  VirtualDeviceEventHandler virtual_device_event_handlers_;
 };
 
 }  // namespace patchpanel

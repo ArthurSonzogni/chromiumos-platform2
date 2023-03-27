@@ -116,7 +116,7 @@ class ServerProxy {
                                const std::string& credentials);
 
   // The proxy listening address in network-byte order.
-  uint32_t listening_addr_ = 0;
+  std::vector<uint8_t> listening_addr_;
   int listening_port_;
 
   // The user name and password to use for proxy authentication in the format

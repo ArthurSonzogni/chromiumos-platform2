@@ -102,9 +102,10 @@ void SandboxedWorker::SetCredentials(const worker::Credentials& credentials) {
   }
 }
 
-bool SandboxedWorker::SetListeningAddress(uint32_t addr, int port) {
+bool SandboxedWorker::SetListeningAddress(const std::vector<uint8_t>& addr,
+                                          int port) {
   worker::SocketAddress address;
-  address.set_addr(addr);
+  address.set_addr(addr.data(), addr.size());
   address.set_port(port);
   worker::WorkerConfigs configs;
   *configs.mutable_listening_address() = address;

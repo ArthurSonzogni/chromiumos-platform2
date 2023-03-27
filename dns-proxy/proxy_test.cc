@@ -62,6 +62,17 @@ MATCHER_P(EqualsProto,
   return expected_serialized == actual_serialized;
 }
 
+patchpanel::Client::VirtualDevice virtualdev(
+    patchpanel::Client::GuestType guest_type,
+    const std::string& ifname,
+    const std::string& phys_ifname) {
+  patchpanel::Client::VirtualDevice device;
+  device.ifname = ifname;
+  device.phys_ifname = phys_ifname;
+  device.guest_type = guest_type;
+  return device;
+}
+
 class FakeShillClient : public shill::FakeClient {
  public:
   FakeShillClient(scoped_refptr<dbus::Bus> bus,
@@ -95,24 +106,24 @@ class FakePatchpanelClient : public patchpanel::FakeClient {
   ~FakePatchpanelClient() = default;
 
   void SetConnectNamespaceResult(
-      int fd, const patchpanel::ConnectNamespaceResponse& resp) {
+      int fd, const patchpanel::Client::ConnectedNamespace& resp) {
     ns_fd_ = fd;
     ns_resp_ = resp;
   }
 
-  std::pair<base::ScopedFD, patchpanel::ConnectNamespaceResponse>
+  std::pair<base::ScopedFD, patchpanel::Client::ConnectedNamespace>
   ConnectNamespace(pid_t pid,
                    const std::string& outbound_ifname,
                    bool forward_user_traffic,
                    bool route_on_vpn,
-                   patchpanel::TrafficCounter::Source traffic_source) override {
+                   patchpanel::Client::TrafficSource traffic_source) override {
     ns_ifname_ = outbound_ifname;
     ns_rvpn_ = route_on_vpn;
     ns_ts_ = traffic_source;
     return {base::ScopedFD(ns_fd_), ns_resp_};
   }
 
-  base::ScopedFD RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::RuleType,
+  base::ScopedFD RedirectDns(patchpanel::Client::DnsRedirectionRequestType,
                              const std::string&,
                              const std::string&,
                              const std::vector<std::string>&,
@@ -122,9 +133,9 @@ class FakePatchpanelClient : public patchpanel::FakeClient {
 
   std::string ns_ifname_;
   bool ns_rvpn_;
-  patchpanel::TrafficCounter::Source ns_ts_;
+  patchpanel::Client::TrafficSource ns_ts_;
   int ns_fd_;
-  patchpanel::ConnectNamespaceResponse ns_resp_;
+  patchpanel::Client::ConnectedNamespace ns_resp_;
 };
 
 class FakeSessionMonitor : public SessionMonitor {
@@ -152,41 +163,44 @@ class MockPatchpanelClient : public patchpanel::Client {
               (override));
   MOCK_METHOD(bool, NotifyArcStartup, (pid_t), (override));
   MOCK_METHOD(bool, NotifyArcShutdown, (), (override));
-  MOCK_METHOD(std::vector<patchpanel::NetworkDevice>,
+  MOCK_METHOD(std::vector<patchpanel::Client::VirtualDevice>,
               NotifyArcVmStartup,
               (uint32_t),
               (override));
   MOCK_METHOD(bool, NotifyArcVmShutdown, (uint32_t), (override));
   MOCK_METHOD(bool,
               NotifyTerminaVmStartup,
-              (uint32_t, patchpanel::NetworkDevice*, patchpanel::IPv4Subnet*),
+              (uint32_t,
+               patchpanel::Client::VirtualDevice*,
+               patchpanel::Client::IPv4Subnet*),
               (override));
   MOCK_METHOD(bool, NotifyTerminaVmShutdown, (uint32_t), (override));
   MOCK_METHOD(bool,
               NotifyPluginVmStartup,
-              (uint64_t, int, patchpanel::NetworkDevice*),
+              (uint64_t, int, patchpanel::Client::VirtualDevice*),
               (override));
   MOCK_METHOD(bool, NotifyPluginVmShutdown, (uint64_t), (override));
   MOCK_METHOD(bool, DefaultVpnRouting, (int), (override));
   MOCK_METHOD(bool, RouteOnVpn, (int), (override));
   MOCK_METHOD(bool, BypassVpn, (int), (override));
-  MOCK_METHOD((std::pair<base::ScopedFD, patchpanel::ConnectNamespaceResponse>),
-              ConnectNamespace,
-              (pid_t pid,
-               const std::string& outbound_ifname,
-               bool forward_user_traffic,
-               bool route_on_vpn,
-               patchpanel::TrafficCounter::Source traffic_source),
-              (override));
+  MOCK_METHOD(
+      (std::pair<base::ScopedFD, patchpanel::Client::ConnectedNamespace>),
+      ConnectNamespace,
+      (pid_t pid,
+       const std::string& outbound_ifname,
+       bool forward_user_traffic,
+       bool route_on_vpn,
+       patchpanel::Client::TrafficSource traffic_source),
+      (override));
   MOCK_METHOD(void,
               GetTrafficCounters,
               (const std::set<std::string>&, GetTrafficCountersCallback),
               (override));
   MOCK_METHOD(bool,
               ModifyPortRule,
-              (patchpanel::ModifyPortRuleRequest::Operation,
-               patchpanel::ModifyPortRuleRequest::RuleType,
-               patchpanel::ModifyPortRuleRequest::Protocol,
+              (patchpanel::Client::FirewallRequestOperation,
+               patchpanel::Client::FirewallRequestType,
+               patchpanel::Client::FirewallRequestProtocol,
                const std::string&,
                const std::string&,
                uint32_t,
@@ -195,19 +209,19 @@ class MockPatchpanelClient : public patchpanel::Client {
               (override));
   MOCK_METHOD(base::ScopedFD,
               RedirectDns,
-              (patchpanel::SetDnsRedirectionRuleRequest::RuleType,
+              (patchpanel::Client::DnsRedirectionRequestType,
                const std::string&,
                const std::string&,
                const std::vector<std::string>&,
                const std::string&),
               (override));
-  MOCK_METHOD(std::vector<patchpanel::NetworkDevice>,
+  MOCK_METHOD(std::vector<patchpanel::Client::VirtualDevice>,
               GetDevices,
               (),
               (override));
   MOCK_METHOD(void,
-              RegisterNetworkDeviceChangedSignalHandler,
-              (NetworkDeviceChangedSignalHandler),
+              RegisterVirtualDeviceEventHandler,
+              (patchpanel::Client::VirtualDeviceEventHandler),
               (override));
   MOCK_METHOD(void,
               RegisterNeighborReachabilityEventHandler,
@@ -218,7 +232,6 @@ class MockPatchpanelClient : public patchpanel::Client {
               CreateTetheredNetwork,
               (const std::string&,
                const std::string&,
-               patchpanel::TetheredNetworkRequest::UpstreamTechnology,
                patchpanel::Client::CreateTetheredNetworkCallback));
   MOCK_METHOD(bool,
               CreateLocalOnlyNetwork,
@@ -436,45 +449,45 @@ TEST_F(ProxyTest, SystemProxy_ConnectedNamedspace) {
   auto pp = PatchpanelClient();
   auto* pp_ptr = pp.get();
   pp->SetConnectNamespaceResult(make_fd(),
-                                patchpanel::ConnectNamespaceResponse());
+                                patchpanel::Client::ConnectedNamespace{});
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(pp),
               ShillClient(), MessageDispatcher());
   proxy.OnPatchpanelReady(true);
   EXPECT_TRUE(pp_ptr->ns_ifname_.empty());
   EXPECT_FALSE(pp_ptr->ns_rvpn_);
-  EXPECT_EQ(pp_ptr->ns_ts_, patchpanel::TrafficCounter::SYSTEM);
+  EXPECT_EQ(pp_ptr->ns_ts_, patchpanel::Client::TrafficSource::kSystem);
 }
 
 TEST_F(ProxyTest, DefaultProxy_ConnectedNamedspace) {
   auto pp = PatchpanelClient();
   auto* pp_ptr = pp.get();
   pp->SetConnectNamespaceResult(make_fd(),
-                                patchpanel::ConnectNamespaceResponse());
+                                patchpanel::Client::ConnectedNamespace{});
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(pp),
               ShillClient(), MessageDispatcher());
   proxy.OnPatchpanelReady(true);
   EXPECT_TRUE(pp_ptr->ns_ifname_.empty());
   EXPECT_TRUE(pp_ptr->ns_rvpn_);
-  EXPECT_EQ(pp_ptr->ns_ts_, patchpanel::TrafficCounter::USER);
+  EXPECT_EQ(pp_ptr->ns_ts_, patchpanel::Client::TrafficSource::kUser);
 }
 
 TEST_F(ProxyTest, ArcProxy_ConnectedNamedspace) {
   auto pp = PatchpanelClient();
   auto* pp_ptr = pp.get();
   pp->SetConnectNamespaceResult(make_fd(),
-                                patchpanel::ConnectNamespaceResponse());
+                                patchpanel::Client::ConnectedNamespace{});
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
               std::move(pp), ShillClient(), MessageDispatcher());
   proxy.OnPatchpanelReady(true);
   EXPECT_EQ(pp_ptr->ns_ifname_, "eth0");
   EXPECT_FALSE(pp_ptr->ns_rvpn_);
-  EXPECT_EQ(pp_ptr->ns_ts_, patchpanel::TrafficCounter::ARC);
+  EXPECT_EQ(pp_ptr->ns_ts_, patchpanel::Client::TrafficSource::kArc);
 }
 
 TEST_F(ProxyTest, ShillResetRestoresAddressProperty) {
   auto pp = PatchpanelClient();
-  patchpanel::ConnectNamespaceResponse resp;
-  resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
+  patchpanel::Client::ConnectedNamespace resp;
+  resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
   pp->SetConnectNamespaceResult(make_fd(), resp);
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(pp),
               ShillClient(), MessageDispatcher());
@@ -570,6 +583,7 @@ TEST_F(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient(), std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
+  proxy.ns_peer_ipv6_address_ = "::1";
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -578,6 +592,7 @@ TEST_F(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
   proxy.doh_config_.set_resolver(mock_resolver);
   shill::Client::Device dev;
   dev.ipconfig.ipv4_dns_addresses = {"8.8.8.8"};
+  dev.ipconfig.ipv6_dns_addresses = {"2001:4860:4860::8888"};
   dev.state = shill::Client::Device::ConnectionState::kOnline;
   EXPECT_CALL(*mock_resolver, SetNameServers(_));
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _))
@@ -592,6 +607,7 @@ TEST_F(ProxyTest, SystemProxy_IgnoresVPN) {
   TestProxy proxy(Proxy::Options{.type = Proxy::Type::kSystem},
                   PatchpanelClient(), ShillClient(), std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
+  proxy.ns_peer_ipv6_address_ = "::1";
   auto resolver = std::make_unique<MockResolver>();
   MockResolver* mock_resolver = resolver.get();
   ON_CALL(*mock_resolver, ListenUDP(_)).WillByDefault(Return(true));
@@ -608,6 +624,7 @@ TEST_F(ProxyTest, SystemProxy_IgnoresVPN) {
   dev.type = shill::Client::Device::Type::kWifi;
   dev.state = shill::Client::Device::ConnectionState::kOnline;
   dev.ipconfig.ipv4_dns_addresses = {"8.8.8.8"};
+  dev.ipconfig.ipv6_dns_addresses = {"2001:4860:4860::8888"};
   proxy.OnDefaultDeviceChanged(&dev);
   EXPECT_TRUE(proxy.device_);
   EXPECT_EQ(proxy.device_->type, shill::Client::Device::Type::kWifi);
@@ -626,6 +643,7 @@ TEST_F(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN) {
                   PatchpanelClient(), std::move(shill),
                   std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
+  proxy.ns_peer_ipv6_address_ = "::1";
   auto resolver = std::make_unique<MockResolver>();
   MockResolver* mock_resolver = resolver.get();
   ON_CALL(*mock_resolver, ListenUDP(_)).WillByDefault(Return(true));
@@ -646,6 +664,8 @@ TEST_F(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN) {
   shill_ptr->default_device_->state =
       shill::Client::Device::ConnectionState::kOnline;
   shill_ptr->default_device_->ipconfig.ipv4_dns_addresses = {"8.8.8.8"};
+  shill_ptr->default_device_->ipconfig.ipv6_dns_addresses = {
+      "2001:4860:4860::8888"};
   proxy.OnDefaultDeviceChanged(&vpn);
   EXPECT_TRUE(proxy.device_);
   EXPECT_EQ(proxy.device_->type, shill::Client::Device::Type::kWifi);
@@ -719,6 +739,7 @@ TEST_F(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient(), std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
+  proxy.ns_peer_ipv6_address_ = "::1";
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -757,6 +778,7 @@ TEST_F(ProxyTest, DeviceChangeEventIgnored) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
               ShillClient(), std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
+  proxy.ns_peer_ipv6_address_ = "::1";
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -1111,17 +1133,18 @@ TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
   // to the underlying network's name server.
   EXPECT_CALL(
       *mock_client,
-      RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,
-                  _, "10.10.10.10", _, _))
+      RedirectDns(
+          patchpanel::Client::DnsRedirectionRequestType::kExcludeDestination, _,
+          "10.10.10.10", _, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::TrafficCounter::Source traffic_source) {
-        patchpanel::ConnectNamespaceResponse resp;
-        resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
+                         patchpanel::Client::TrafficSource traffic_source) {
+        patchpanel::Client::ConnectedNamespace resp;
+        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 
@@ -1142,8 +1165,9 @@ TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
                                                 "2001:4860:4860::8844"};
   EXPECT_CALL(
       *mock_client,
-      RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,
-                  _, "10.10.10.10", _, _))
+      RedirectDns(
+          patchpanel::Client::DnsRedirectionRequestType::kExcludeDestination, _,
+          "10.10.10.10", _, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _))
       .WillOnce(Return(true));
@@ -1151,21 +1175,16 @@ TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
   proxy.OnDefaultDeviceChanged(&default_device);
 
   // Plugin VM started.
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* plugin_vm_dev = signal.mutable_device();
-  plugin_vm_dev->set_ifname("vmtap1");
-  plugin_vm_dev->set_phys_ifname("eth0");
-  plugin_vm_dev->set_guest_type(patchpanel::NetworkDevice::PLUGIN_VM);
-  proxy.OnVirtualDeviceChanged(signal);
+  auto event1 = patchpanel::Client::VirtualDeviceEvent::kAdded;
+  auto plugin_vm_dev =
+      virtualdev(patchpanel::Client::GuestType::kPluginVm, "vmtap1", "eth0");
+  proxy.OnVirtualDeviceChanged(event1, plugin_vm_dev);
 
   // ARC started.
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* arc_dev = signal.mutable_device();
-  arc_dev->set_ifname("arc_eth0");
-  arc_dev->set_phys_ifname("eth0");
-  arc_dev->set_guest_type(patchpanel::NetworkDevice::ARC);
-  proxy.OnVirtualDeviceChanged(signal);
+  auto event2 = patchpanel::Client::VirtualDeviceEvent::kAdded;
+  auto arc_dev = virtualdev(patchpanel::Client::GuestType::kArcContainer,
+                            "arc_eth0", "eth0");
+  proxy.OnVirtualDeviceChanged(event2, arc_dev);
 }
 
 TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
@@ -1182,35 +1201,33 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::TrafficCounter::Source traffic_source) {
-        patchpanel::ConnectNamespaceResponse resp;
-        resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
+                         patchpanel::Client::TrafficSource traffic_source) {
+        patchpanel::Client::ConnectedNamespace resp;
+        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 
   // Set devices created before the proxy started.
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("vmtap0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::TERMINA_VM);
+  auto dev =
+      virtualdev(patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0");
 
-  EXPECT_CALL(
-      *mock_client,
-      RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _, _, _))
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser,
+                          _, _, _, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(*mock_client, GetDevices())
-      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}))
-      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
-  EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
-                          "vmtap0", "10.10.10.10", IsEmpty(), _))
+      .WillOnce(Return(std::vector<patchpanel::Client::VirtualDevice>{dev}))
+      .WillOnce(Return(std::vector<patchpanel::Client::VirtualDevice>{dev}));
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
+                  "vmtap0", "10.10.10.10", IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
-  EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
-                          "vmtap0", "::1", IsEmpty(), _))
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
+                  "vmtap0", "::1", IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   proxy.OnPatchpanelReady(true);
@@ -1226,19 +1243,19 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
                                                  "2001:4860:4860::8844"};
   default_device.ipconfig.ipv6_dns_addresses = ipv6_dns_addresses;
   EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
-                          ipv4_dns_addresses, _))
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser,
+                          _, _, ipv4_dns_addresses, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
-                          ipv6_dns_addresses, _))
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser,
+                          _, _, ipv6_dns_addresses, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnDefaultDeviceChanged(&default_device);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 4);
 
   // Guest stopped.
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_REMOVED);
-  proxy.OnVirtualDeviceChanged(signal);
+  auto event = patchpanel::Client::VirtualDeviceEvent::kRemoved;
+  proxy.OnVirtualDeviceChanged(event, dev);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 }
 
@@ -1255,9 +1272,9 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::TrafficCounter::Source traffic_source) {
-        patchpanel::ConnectNamespaceResponse resp;
-        resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
+                         patchpanel::Client::TrafficSource traffic_source) {
+        patchpanel::Client::ConnectedNamespace resp;
+        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _, _)).Times(0);
@@ -1274,38 +1291,37 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
                                                  "2001:4860:4860::8844"};
   default_device.ipconfig.ipv6_dns_addresses = ipv6_dns_addresses;
   EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
-                          ipv4_dns_addresses, _))
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser,
+                          _, _, ipv4_dns_addresses, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
-                          ipv6_dns_addresses, _))
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser,
+                          _, _, ipv6_dns_addresses, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnDefaultDeviceChanged(&default_device);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 
   // Guest started.
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("vmtap0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::PLUGIN_VM);
+  auto event1 = patchpanel::Client::VirtualDeviceEvent::kAdded;
+  auto plugin_vm_dev =
+      virtualdev(patchpanel::Client::GuestType::kPluginVm, "vmtap0", "eth0");
 
-  EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
-                          "vmtap0", "10.10.10.10", IsEmpty(), _))
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
+                  "vmtap0", "10.10.10.10", IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
-  EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
-                          "vmtap0", "::1", IsEmpty(), _))
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
+                  "vmtap0", "::1", IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
-  proxy.OnVirtualDeviceChanged(signal);
+  proxy.OnVirtualDeviceChanged(event1, plugin_vm_dev);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 4);
 
   // Guest stopped.
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_REMOVED);
-  proxy.OnVirtualDeviceChanged(signal);
+  auto event2 = patchpanel::Client::VirtualDeviceEvent::kRemoved;
+  proxy.OnVirtualDeviceChanged(event2, plugin_vm_dev);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 }
 
@@ -1319,41 +1335,41 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
   proxy.ns_peer_ipv6_address_ = "::1";
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
-  EXPECT_CALL(
-      *mock_client,
-      RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _, _, _))
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser,
+                          _, _, _, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
-  EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT, _,
-                          _, _, _))
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault, _, _,
+                  _, _))
       .Times(0);
 
   // Expect ConnectNamespace call and set the namespace address.
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::TrafficCounter::Source traffic_source) {
-        patchpanel::ConnectNamespaceResponse resp;
-        resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
+                         patchpanel::Client::TrafficSource traffic_source) {
+        patchpanel::Client::ConnectedNamespace resp;
+        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 
   // Set devices created before the proxy started.
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("arc_eth0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::ARCVM);
+  auto event1 = patchpanel::Client::VirtualDeviceEvent::kAdded;
+  auto arc_dev = virtualdev(patchpanel::Client::GuestType::kArcContainer,
+                            "arc_eth0", "eth0");
+  proxy.OnVirtualDeviceChanged(event1, arc_dev);
 
   EXPECT_CALL(*mock_client, GetDevices())
-      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+      .WillOnce(
+          Return(std::vector<patchpanel::Client::VirtualDevice>{arc_dev}));
   proxy.OnPatchpanelReady(true);
   proxy.Enable();
   EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 
-  proxy.OnVirtualDeviceChanged(signal);
+  proxy.OnVirtualDeviceChanged(event1, arc_dev);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 }
 
@@ -1362,7 +1378,7 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(client),
               ShillClient(), MessageDispatcher());
-  proxy.ns_.set_peer_ifname("");
+  proxy.ns_.peer_ifname = "";
   proxy.Enable();
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
@@ -1376,8 +1392,9 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
 
   EXPECT_CALL(
       *mock_client,
-      RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,
-                  _, "::1", _, _))
+      RedirectDns(
+          patchpanel::Client::DnsRedirectionRequestType::kExcludeDestination, _,
+          "::1", _, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   // Proxy's ConnectedNamespace peer interface name is set to empty and
@@ -1399,7 +1416,7 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Deleted) {
   auto client = std::make_unique<MockPatchpanelClient>();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(client),
               ShillClient(), MessageDispatcher());
-  proxy.ns_.set_peer_ifname("");
+  proxy.ns_.peer_ifname = "";
   proxy.Enable();
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
@@ -1428,15 +1445,15 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::TrafficCounter::Source traffic_source) {
-        patchpanel::ConnectNamespaceResponse resp;
-        resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
+                         patchpanel::Client::TrafficSource traffic_source) {
+        patchpanel::Client::ConnectedNamespace resp;
+        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 
-  EXPECT_CALL(
-      *mock_client,
-      RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _, _, _))
+  EXPECT_CALL(*mock_client,
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser,
+                          _, _, _, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnPatchpanelReady(true);
   proxy.Enable();
@@ -1450,30 +1467,27 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
   default_device.ipconfig.ipv6_dns_addresses = {"2001:4860:4860::8888",
                                                 "2001:4860:4860::8844"};
   EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
-                          ipv4_dns_addresses, _))
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser,
+                          _, _, ipv4_dns_addresses, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnDefaultDeviceChanged(&default_device);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
 
   // Guest started.
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("vmtap0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::PLUGIN_VM);
-
-  EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
-                          "vmtap0", "10.10.10.10", IsEmpty(), _))
+  auto event1 = patchpanel::Client::VirtualDeviceEvent::kAdded;
+  auto dev =
+      virtualdev(patchpanel::Client::GuestType::kPluginVm, "vmtap0", "eth0");
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
+                  "vmtap0", "10.10.10.10", IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
-  proxy.OnVirtualDeviceChanged(signal);
+  proxy.OnVirtualDeviceChanged(event1, dev);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 
   // Guest stopped.
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_REMOVED);
-  proxy.OnVirtualDeviceChanged(signal);
+  auto event2 = patchpanel::Client::VirtualDeviceEvent::kRemoved;
+  proxy.OnVirtualDeviceChanged(event2, dev);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 1);
 }
 
@@ -1482,16 +1496,12 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
               ShillClient(), MessageDispatcher());
-  proxy.ns_.set_peer_ifname("");
+  proxy.ns_.peer_ifname = "";
   proxy.Enable();
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("vmtap0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::TERMINA_VM);
+  auto dev =
+      virtualdev(patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0");
 
   std::string peer_ipv6_addr = "::1";
   struct in6_addr ipv6_addr;
@@ -1502,14 +1512,15 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   proxy.doh_config_.set_nameservers({"8.8.8.8", "8.8.4.4"}, ipv6_dns_addresses);
 
   EXPECT_CALL(*mock_client, GetDevices())
-      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+      .WillOnce(Return(std::vector<patchpanel::Client::VirtualDevice>{dev}));
   EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::USER, _, _,
-                          ipv6_dns_addresses, _))
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser,
+                          _, _, ipv6_dns_addresses, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
-  EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
-                          "vmtap0", peer_ipv6_addr, IsEmpty(), _))
+  EXPECT_CALL(
+      *mock_client,
+      RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
+                  "vmtap0", peer_ipv6_addr, IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   // Proxy's ConnectedNamespace peer interface name is set to empty and
@@ -1532,7 +1543,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
               ShillClient(), MessageDispatcher());
-  proxy.ns_.set_peer_ifname("");
+  proxy.ns_.peer_ifname = "";
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
   proxy.lifeline_fds_.emplace(std::make_pair("", AF_INET6),
@@ -1540,15 +1551,10 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
   proxy.lifeline_fds_.emplace(std::make_pair("vmtap0", AF_INET6),
                               base::ScopedFD(make_fd()));
 
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("vmtap0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::TERMINA_VM);
-
+  auto dev =
+      virtualdev(patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0");
   EXPECT_CALL(*mock_client, GetDevices())
-      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+      .WillOnce(Return(std::vector<patchpanel::Client::VirtualDevice>{dev}));
 
   shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
                          shill::RTNLMessage::kModeDelete, 0 /* flags */,
@@ -1565,16 +1571,9 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
               ShillClient(), MessageDispatcher());
-  proxy.ns_.set_peer_ifname("");
+  proxy.ns_.peer_ifname = "";
   proxy.Enable();
   proxy.device_ = std::make_unique<shill::Client::Device>();
-
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("vmtap0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::TERMINA_VM);
 
   std::string peer_ipv6_addr = "::1";
   struct in6_addr ipv6_addr;
@@ -1585,8 +1584,11 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   proxy.doh_config_.set_nameservers({"8.8.8.8", "8.8.4.4"}, ipv6_dns_addresses);
   proxy.device_.reset(new shill::Client::Device{});
 
+  auto dev =
+      virtualdev(patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0");
   EXPECT_CALL(*mock_client, GetDevices())
-      .WillRepeatedly(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+      .WillRepeatedly(
+          Return(std::vector<patchpanel::Client::VirtualDevice>{dev}));
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _, _)).Times(0);
 
   // Proxy's ConnectedNamespace peer interface name is set to empty and
@@ -1628,28 +1630,23 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::TrafficCounter::Source traffic_source) {
-        patchpanel::ConnectNamespaceResponse resp;
-        resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
+                         patchpanel::Client::TrafficSource traffic_source) {
+        patchpanel::Client::ConnectedNamespace resp;
+        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 
   // Set devices created before the proxy started.
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("arc_eth0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::ARCVM);
-
+  auto dev =
+      virtualdev(patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0");
   EXPECT_CALL(*mock_client, GetDevices())
-      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+      .WillOnce(Return(std::vector<patchpanel::Client::VirtualDevice>{dev}));
   EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::ARC,
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
                           "arc_eth0", "10.10.10.10", IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::ARC,
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
                           "arc_eth0", "::1", IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy.OnPatchpanelReady(true);
@@ -1671,9 +1668,9 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::TrafficCounter::Source traffic_source) {
-        patchpanel::ConnectNamespaceResponse resp;
-        resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
+                         patchpanel::Client::TrafficSource traffic_source) {
+        patchpanel::Client::ConnectedNamespace resp;
+        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _, _)).Times(0);
@@ -1682,22 +1679,19 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
 
   // Guest started.
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("arc_eth0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::ARC);
+  auto event1 = patchpanel::Client::VirtualDeviceEvent::kAdded;
+  auto dev = virtualdev(patchpanel::Client::GuestType::kArcContainer,
+                        "arc_eth0", "eth0");
 
   EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::ARC,
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
                           "arc_eth0", "10.10.10.10", IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::ARC,
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
                           "arc_eth0", "::1", IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
-  proxy.OnVirtualDeviceChanged(signal);
+  proxy.OnVirtualDeviceChanged(event1, dev);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 2);
 }
 
@@ -1717,27 +1711,24 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::TrafficCounter::Source traffic_source) {
-        patchpanel::ConnectNamespaceResponse resp;
-        resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
+                         patchpanel::Client::TrafficSource traffic_source) {
+        patchpanel::Client::ConnectedNamespace resp;
+        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 
   // Set devices created before the proxy started.
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("vmtap0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::TERMINA_VM);
+  auto event1 = patchpanel::Client::VirtualDeviceEvent::kAdded;
+  auto dev =
+      virtualdev(patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0");
 
   EXPECT_CALL(*mock_client, GetDevices())
-      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+      .WillOnce(Return(std::vector<patchpanel::Client::VirtualDevice>{dev}));
   proxy.OnPatchpanelReady(true);
   proxy.Enable();
   EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
 
-  proxy.OnVirtualDeviceChanged(signal);
+  proxy.OnVirtualDeviceChanged(event1, dev);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
 }
 
@@ -1757,27 +1748,24 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
   EXPECT_CALL(*mock_client, ConnectNamespace(_, _, _, _, _))
       .WillRepeatedly([](pid_t pid, const std::string& outbound_ifname,
                          bool forward_user_traffic, bool route_on_vpn,
-                         patchpanel::TrafficCounter::Source traffic_source) {
-        patchpanel::ConnectNamespaceResponse resp;
-        resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
+                         patchpanel::Client::TrafficSource traffic_source) {
+        patchpanel::Client::ConnectedNamespace resp;
+        resp.peer_ipv4_address = std::vector<uint8_t>{10, 10, 10, 10};
         return std::make_pair(base::ScopedFD(make_fd()), resp);
       });
 
   // Set devices created before the proxy started.
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("arc_eth0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::ARCVM);
+  auto event1 = patchpanel::Client::VirtualDeviceEvent::kAdded;
+  auto dev =
+      virtualdev(patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0");
 
   EXPECT_CALL(*mock_client, GetDevices())
-      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+      .WillOnce(Return(std::vector<patchpanel::Client::VirtualDevice>{dev}));
   proxy.OnPatchpanelReady(true);
   proxy.Enable();
   EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
 
-  proxy.OnVirtualDeviceChanged(signal);
+  proxy.OnVirtualDeviceChanged(event1, dev);
   EXPECT_EQ(proxy.lifeline_fds_.size(), 0);
 }
 
@@ -1786,25 +1774,20 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
               std::move(client), ShillClient(), MessageDispatcher());
-  proxy.ns_.set_peer_ifname("");
+  proxy.ns_.peer_ifname = "";
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.Enable();
-
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("arc_eth0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::ARCVM);
 
   std::string peer_ipv6_addr = "::1";
   struct in6_addr ipv6_addr;
   inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
 
+  auto dev =
+      virtualdev(patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0");
   EXPECT_CALL(*mock_client, GetDevices())
-      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+      .WillOnce(Return(std::vector<patchpanel::Client::VirtualDevice>{dev}));
   EXPECT_CALL(*mock_client,
-              RedirectDns(patchpanel::SetDnsRedirectionRuleRequest::ARC,
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
                           "arc_eth0", peer_ipv6_addr, IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
@@ -1828,21 +1811,16 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted) {
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
               std::move(client), ShillClient(), MessageDispatcher());
-  proxy.ns_.set_peer_ifname("");
+  proxy.ns_.peer_ifname = "";
 
   proxy.device_.reset(new shill::Client::Device{});
   proxy.lifeline_fds_.emplace(std::make_pair("arc_eth0", AF_INET6),
                               base::ScopedFD(make_fd()));
 
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("arc_eth0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::ARCVM);
-
+  auto dev =
+      virtualdev(patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0");
   EXPECT_CALL(*mock_client, GetDevices())
-      .WillOnce(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+      .WillOnce(Return(std::vector<patchpanel::Client::VirtualDevice>{dev}));
 
   shill::RTNLMessage msg(shill::RTNLMessage::kTypeAddress,
                          shill::RTNLMessage::kModeDelete, 0 /* flags */,
@@ -1859,23 +1837,19 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
               std::move(client), ShillClient(), MessageDispatcher());
-  proxy.ns_.set_peer_ifname("");
+  proxy.ns_.peer_ifname = "";
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.Enable();
-
-  patchpanel::NetworkDeviceChangedSignal signal;
-  signal.set_event(patchpanel::NetworkDeviceChangedSignal::DEVICE_ADDED);
-  auto* dev = signal.mutable_device();
-  dev->set_ifname("arc_eth0");
-  dev->set_phys_ifname("eth0");
-  dev->set_guest_type(patchpanel::NetworkDevice::ARCVM);
 
   std::string peer_ipv6_addr = "::1";
   struct in6_addr ipv6_addr;
   inet_pton(AF_INET6, peer_ipv6_addr.c_str(), &ipv6_addr.s6_addr);
 
+  auto dev =
+      virtualdev(patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0");
   EXPECT_CALL(*mock_client, GetDevices())
-      .WillRepeatedly(Return(std::vector<patchpanel::NetworkDevice>{*dev}));
+      .WillRepeatedly(
+          Return(std::vector<patchpanel::Client::VirtualDevice>{dev}));
   EXPECT_CALL(*mock_client, RedirectDns(_, _, _, _, _)).Times(0);
 
   // Proxy's ConnectedNamespace peer interface name is set to empty and

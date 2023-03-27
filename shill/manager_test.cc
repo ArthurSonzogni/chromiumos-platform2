@@ -4227,12 +4227,12 @@ TEST_F(ManagerTest, SetAlwaysOnVpnPackage) {
 }
 
 TEST_F(ManagerTest, RefreshAllTrafficCountersTask) {
-  patchpanel::TrafficCounter counter0, counter1;
-  counter0.set_device(mock_devices_[0]->link_name());
-  counter0.set_source(patchpanel::TrafficCounter::VPN);
-  counter1.set_device(mock_devices_[2]->link_name());
-  counter1.set_source(patchpanel::TrafficCounter::UPDATE_ENGINE);
-  std::vector<patchpanel::TrafficCounter> counters{counter0, counter1};
+  patchpanel::Client::TrafficCounter counter0, counter1;
+  counter0.ifname = mock_devices_[0]->link_name();
+  counter0.source = patchpanel::Client::TrafficSource::kVpn;
+  counter1.ifname = mock_devices_[2]->link_name();
+  counter1.source = patchpanel::Client::TrafficSource::kUpdateEngine;
+  std::vector<patchpanel::Client::TrafficCounter> counters{counter0, counter1};
   patchpanel_client_->set_stored_traffic_counters(counters);
 
   manager()->RegisterDevice(mock_devices_[0]);

@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -25,7 +26,7 @@ class MockPortTracker : public PortTracker {
 
   MOCK_METHOD(bool,
               ModifyPortRule,
-              (patchpanel::ModifyPortRuleRequest::Operation, const PortRule&),
+              (patchpanel::Client::FirewallRequestOperation, const PortRule&),
               (override));
 
   MOCK_METHOD(int, AddLifelineFd, (int), (override));

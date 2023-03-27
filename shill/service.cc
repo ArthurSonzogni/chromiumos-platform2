@@ -66,9 +66,9 @@ const char kServiceSortTechnologySpecific[] = "TechnologySpecific";
 constexpr char kEphemeralPriorityProperty[] = "EphemeralPriority";
 
 std::valarray<uint64_t> CounterToValArray(
-    const patchpanel::TrafficCounter& counter) {
-  return std::valarray<uint64_t>{counter.rx_bytes(), counter.tx_bytes(),
-                                 counter.rx_packets(), counter.tx_packets()};
+    const patchpanel::Client::TrafficCounter& counter) {
+  return std::valarray<uint64_t>{counter.rx_bytes, counter.tx_bytes,
+                                 counter.rx_packets, counter.tx_packets};
 }
 
 // Extracts enum value but with enum's underlying type.
@@ -776,10 +776,7 @@ bool Service::Load(const StoreInterface* storage) {
   // now that the credentials have been loaded.
   storage->GetBool(id, kStorageHasEverConnected, &has_ever_connected_);
 
-  for (patchpanel::TrafficCounter::Source source =
-           patchpanel::TrafficCounter::Source_MIN;
-       source <= patchpanel::TrafficCounter::Source_MAX;
-       source = patchpanel::TrafficCounter::Source(source + 1)) {
+  for (auto source : patchpanel::Client::kAllTrafficSources) {
     std::valarray<uint64_t> counter_array(kTrafficCounterArraySize);
     for (size_t i = 0; i < kTrafficCounterArraySize; i++) {
       storage->GetUint64(id,
@@ -907,10 +904,7 @@ bool Service::Save(StoreInterface* storage) {
     eap()->Save(storage, id, save_credentials_);
   }
 
-  for (patchpanel::TrafficCounter::Source source =
-           patchpanel::TrafficCounter::Source_MIN;
-       source < patchpanel::TrafficCounter::Source_MAX;
-       source = patchpanel::TrafficCounter::Source(source + 1)) {
+  for (auto source : patchpanel::Client::kAllTrafficSources) {
     bool in_storage = current_traffic_counters_.find(source) !=
                       current_traffic_counters_.end();
     for (size_t i = 0; i < kTrafficCounterArraySize; i++) {
@@ -1423,44 +1417,44 @@ bool Service::IsMeteredByServiceProperties() const {
 }
 
 void Service::InitializeTrafficCounterSnapshot(
-    const std::vector<patchpanel::TrafficCounter>& counters) {
+    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
   for (const auto& counter : counters) {
-    traffic_counter_snapshot_[counter.source()] = CounterToValArray(counter);
+    traffic_counter_snapshot_[counter.source] = CounterToValArray(counter);
   }
 }
 
 void Service::RefreshTrafficCounters(
-    const std::vector<patchpanel::TrafficCounter>& counters) {
+    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
   for (const auto& counter : counters) {
     std::valarray<uint64_t> counter_array = CounterToValArray(counter);
-    if (current_traffic_counters_.find(counter.source()) ==
+    if (current_traffic_counters_.find(counter.source) ==
         current_traffic_counters_.end()) {
-      current_traffic_counters_[counter.source()] =
+      current_traffic_counters_[counter.source] =
           std::valarray<uint64_t>(kTrafficCounterArraySize);
     }
-    if (traffic_counter_snapshot_[counter.source()].size() ==
+    if (traffic_counter_snapshot_[counter.source].size() ==
         kTrafficCounterArraySize) {
-      current_traffic_counters_[counter.source()] +=
-          counter_array - traffic_counter_snapshot_[counter.source()];
+      current_traffic_counters_[counter.source] +=
+          counter_array - traffic_counter_snapshot_[counter.source];
     } else {
       LOG(WARNING) << "Uninitialized traffic counter snapshot for source "
-                   << patchpanel::TrafficCounter::Source_Name(counter.source());
+                   << patchpanel::Client::TrafficSourceName(counter.source);
     }
-    traffic_counter_snapshot_[counter.source()] = counter_array;
+    traffic_counter_snapshot_[counter.source] = counter_array;
   }
   SaveToProfile();
 }
 
 void Service::RequestTrafficCountersCallback(
     ResultVariantDictionariesCallback callback,
-    const std::vector<patchpanel::TrafficCounter>& counters) {
+    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
   RefreshTrafficCounters(counters);
   std::vector<brillo::VariantDictionary> traffic_counters;
   for (const auto& [source, counters] : current_traffic_counters_) {
     brillo::VariantDictionary dict;
     // Select only the first two |counters| elements, corresponding to rx_bytes
     // and tx_bytes.
-    dict.emplace("source", patchpanel::TrafficCounter::Source_Name(source));
+    dict.emplace("source", patchpanel::Client::TrafficSourceName(source));
     dict.emplace("rx_bytes", counters[TrafficCounterVals::kRxBytes]);
     dict.emplace("tx_bytes", counters[TrafficCounterVals::kTxBytes]);
     traffic_counters.push_back(std::move(dict));
@@ -1509,9 +1503,8 @@ bool Service::CompareWithSameTechnology(const ServiceRefPtr& service,
 
 // static
 std::string Service::GetCurrentTrafficCounterKey(
-    patchpanel::TrafficCounter::Source source, std::string suffix) {
-  return std::string(kStorageCurrentTrafficCounterPrefix) +
-         patchpanel::TrafficCounter::Source_Name(source) + suffix;
+    patchpanel::Client::TrafficSource source, std::string suffix) {
+  return patchpanel::Client::TrafficSourceName(source) + suffix;
 }
 
 // static

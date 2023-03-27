@@ -73,16 +73,19 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     client->NotifyArcStartup(provider.ConsumeIntegral<pid_t>());
     client->NotifyArcVmStartup(provider.ConsumeIntegral<uint32_t>());
     client->NotifyArcVmShutdown(provider.ConsumeIntegral<uint32_t>());
-    NetworkDevice device;
-    device.set_ifname(provider.ConsumeRandomLengthString(IFNAMSIZ * 2));
-    device.set_ipv4_addr(provider.ConsumeIntegral<uint32_t>());
-    device.mutable_ipv4_subnet()->set_base_addr(
-        provider.ConsumeIntegral<uint32_t>());
-    device.mutable_ipv4_subnet()->set_prefix_len(
-        provider.ConsumeIntegral<uint32_t>());
-    IPv4Subnet subnet;
-    subnet.set_base_addr(provider.ConsumeIntegral<uint32_t>());
-    subnet.set_prefix_len(provider.ConsumeIntegral<uint32_t>());
+    Client::VirtualDevice device;
+    device.ifname = provider.ConsumeRandomLengthString(IFNAMSIZ * 2);
+    device.phys_ifname = provider.ConsumeRandomLengthString(IFNAMSIZ * 2);
+    device.guest_ifname = provider.ConsumeRandomLengthString(IFNAMSIZ * 2);
+    device.ipv4_addr = provider.ConsumeBytes<uint8_t>(4);
+    device.host_ipv4_addr = provider.ConsumeBytes<uint8_t>(4);
+    device.ipv4_subnet.base_addr = provider.ConsumeBytes<uint8_t>(4);
+    device.ipv4_subnet.prefix_len = provider.ConsumeIntegral<int32_t>();
+    device.dns_proxy_ipv4_addr = provider.ConsumeBytes<uint8_t>(4);
+    device.dns_proxy_ipv6_addr = provider.ConsumeBytes<uint8_t>(16);
+    Client::IPv4Subnet subnet;
+    subnet.base_addr = provider.ConsumeBytes<uint8_t>(4);
+    subnet.prefix_len = provider.ConsumeIntegral<int32_t>();
     client->NotifyTerminaVmStartup(provider.ConsumeIntegral<uint32_t>(),
                                    &device, &subnet);
     client->NotifyTerminaVmShutdown(provider.ConsumeIntegral<uint32_t>());
@@ -97,7 +100,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     client->ConnectNamespace(provider.ConsumeIntegral<pid_t>(),
                              provider.ConsumeRandomLengthString(100),
                              provider.ConsumeBool(), provider.ConsumeBool(),
-                             TrafficCounter::SYSTEM);
+                             Client::TrafficSource::kSystem);
     std::set<std::string> devices_for_counters;
     for (int i = 0; i < 10; i++) {
       if (provider.ConsumeBool()) {

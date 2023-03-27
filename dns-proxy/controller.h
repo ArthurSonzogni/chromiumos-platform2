@@ -123,9 +123,9 @@ class Controller : public brillo::DBusDaemon {
 
   // Notified by patchpanel whenever a change occurs in one of its virtual
   // network devices.
-  void OnVirtualDeviceChanged(
-      const patchpanel::NetworkDeviceChangedSignal& signal);
-  void VirtualDeviceAdded(const patchpanel::NetworkDevice& device);
+  void OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent event,
+                              const patchpanel::Client::VirtualDevice& device);
+  void VirtualDeviceAdded(const patchpanel::Client::VirtualDevice& device);
 
   // Triggered by the Chrome features client in response to checking
   // IsDNSProxyEnabled.

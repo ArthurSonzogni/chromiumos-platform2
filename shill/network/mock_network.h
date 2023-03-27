@@ -12,8 +12,8 @@
 
 #include <base/functional/callback.h>
 #include <base/time/time.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/ipconfig.h"
 #include "shill/network/network.h"
@@ -71,7 +71,7 @@ class MockNetwork : public Network {
   MOCK_METHOD(const IPAddress*, local, (), (const, override));
   MOCK_METHOD(void,
               OnNeighborReachabilityEvent,
-              (const patchpanel::NeighborReachabilityEventSignal& signal));
+              (const patchpanel::Client::NeighborReachabilityEvent&));
   MOCK_METHOD(bool, ipv4_gateway_found, (), (const, override));
   MOCK_METHOD(bool, ipv6_gateway_found, (), (const, override));
   MOCK_METHOD(bool, StartPortalDetection, (bool), (override));
@@ -101,8 +101,8 @@ class MockNetworkEventHandler : public Network::EventHandler {
               OnNeighborReachabilityEvent,
               (int,
                const IPAddress&,
-               patchpanel::NeighborReachabilityEventSignal::Role,
-               patchpanel::NeighborReachabilityEventSignal::EventType));
+               patchpanel::Client::NeighborRole,
+               patchpanel::Client::NeighborStatus));
   MOCK_METHOD(void, OnNetworkValidationStart, (int), (override));
   MOCK_METHOD(void, OnNetworkValidationStop, (int), (override));
   MOCK_METHOD(void,

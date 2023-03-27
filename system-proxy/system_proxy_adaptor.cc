@@ -339,9 +339,10 @@ void SystemProxyAdaptor::ConnectNamespaceTask(SandboxedWorker* worker,
 
   // TODO(acostinas): The source will need to be updated to accommodate Crostini
   // when proxy support is added.
-  auto traffic_source = user_traffic ? patchpanel::TrafficCounter::ARC
-                                     : patchpanel::TrafficCounter::SYSTEM;
-  std::pair<base::ScopedFD, patchpanel::ConnectNamespaceResponse> result =
+  auto traffic_source = user_traffic
+                            ? patchpanel::Client::TrafficSource::kArc
+                            : patchpanel::Client::TrafficSource::kSystem;
+  std::pair<base::ScopedFD, patchpanel::Client::ConnectedNamespace> result =
       patchpanel_client->ConnectNamespace(
           worker->pid(), "" /* outbound_ifname */, user_traffic,
           true /* route_on_vpn */, traffic_source);
@@ -357,7 +358,7 @@ void SystemProxyAdaptor::ConnectNamespaceTask(SandboxedWorker* worker,
   }
 
   worker->SetNetNamespaceLifelineFd(std::move(result.first));
-  if (!worker->SetListeningAddress(result.second.peer_ipv4_address(),
+  if (!worker->SetListeningAddress(result.second.peer_ipv4_address,
                                    kProxyPort)) {
     return;
   }

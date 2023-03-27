@@ -14,7 +14,7 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
+#include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/certificate_file.h"
 #include "shill/device.h"
@@ -91,9 +91,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   void OnNeighborReachabilityEvent(
       int interface_index,
       const IPAddress& ip_address,
-      patchpanel::NeighborReachabilityEventSignal::Role role,
-      patchpanel::NeighborReachabilityEventSignal::EventType event_type)
-      override;
+      patchpanel::Client::NeighborRole role,
+      patchpanel::Client::NeighborStatus status) override;
 
   virtual bool link_up() const { return link_up_; }
 

@@ -13,9 +13,9 @@
 #include <vector>
 
 #include <base/strings/string_piece_forward.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/default_service_observer.h"
 #include "shill/error.h"
@@ -1429,10 +1429,9 @@ class Metrics : public DefaultServiceObserver {
 
   // Notifies this object of a failure in patchpanel::NeighborLinkMonitor for
   // a WiFi connection.
-  void NotifyNeighborLinkMonitorFailure(
-      Technology tech,
-      IPAddress::Family family,
-      patchpanel::NeighborReachabilityEventSignal::Role role);
+  void NotifyNeighborLinkMonitorFailure(Technology tech,
+                                        IPAddress::Family family,
+                                        patchpanel::Client::NeighborRole role);
 
   // Notifies this object that an AP was discovered and of that AP's 802.11k
   // support.

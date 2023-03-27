@@ -22,6 +22,7 @@
 #include <base/notreached.h>
 #include <brillo/process/process.h>
 #include <dbus/exported_object.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <chromeos/patchpanel/subnet.h>
 #include <vm_concierge/concierge_service.pb.h>
 

@@ -18,8 +18,8 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
@@ -60,7 +60,7 @@ class Service : public base::RefCounted<Service> {
   // Map from traffic source to a valarray containing {rx_bytes, tx_bytes,
   // rx_packets, tx_packets} in that order.
   using TrafficCounterMap =
-      std::map<patchpanel::TrafficCounter::Source, std::valarray<uint64_t>>;
+      std::map<patchpanel::Client::TrafficSource, std::valarray<uint64_t>>;
 
   // Enum values representing values retrieved from patchpanel.
   enum TrafficCounterVals {
@@ -622,12 +622,12 @@ class Service : public base::RefCounted<Service> {
   // Initializes the traffic_counter_snapshot_ map to the counter values. The
   // snapshots should never be updated without also refreshing the counters.
   mockable void InitializeTrafficCounterSnapshot(
-      const std::vector<patchpanel::TrafficCounter>& counters);
+      const std::vector<patchpanel::Client::TrafficCounter>& counters);
   // Increment the current_traffic_counters_ map by the difference between the
   // counter values and the traffic_counter_snapshot_ values, and then update
   // the snapshots as well in one atomic step.
   mockable void RefreshTrafficCounters(
-      const std::vector<patchpanel::TrafficCounter>& counters);
+      const std::vector<patchpanel::Client::TrafficCounter>& counters);
   // Requests traffic counters from patchpanel and returns the result in
   // |callback|.
   mockable void RequestTrafficCounters(
@@ -956,13 +956,13 @@ class Service : public base::RefCounted<Service> {
   // Get the storage key for current traffic counters corresponding
   // to |source| and |suffix| (one of kStorageTrafficCounterSuffixes).
   static std::string GetCurrentTrafficCounterKey(
-      patchpanel::TrafficCounter::Source source, std::string suffix);
+      patchpanel::Client::TrafficSource source, std::string suffix);
 
   // Refreshes and processes the traffic counters using |counters| and returns
   // the result through |callback|.
   void RequestTrafficCountersCallback(
       ResultVariantDictionariesCallback callback,
-      const std::vector<patchpanel::TrafficCounter>& counters);
+      const std::vector<patchpanel::Client::TrafficCounter>& counters);
 
   // Invokes |static_ipconfig_changed_callback_| to notify the listener of the
   // change of static IP config.

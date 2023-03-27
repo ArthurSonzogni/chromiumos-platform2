@@ -25,7 +25,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
+#include <chromeos/patchpanel/dbus/client.h>
 
 #include "base/time/time.h"
 #include "shill/dbus/dbus_control.h"
@@ -1163,12 +1163,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     return wifi_->SuspectCredentials(service, failure);
   }
 
-  void OnNeighborReachabilityEvent(
-      const IPAddress& ip_address,
-      patchpanel::NeighborReachabilityEventSignal::Role role,
-      patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
+  void OnNeighborReachabilityEvent(const IPAddress& ip_address,
+                                   patchpanel::Client::NeighborRole role,
+                                   patchpanel::Client::NeighborStatus status) {
     wifi_->OnNeighborReachabilityEvent(wifi_->interface_index(), ip_address,
-                                       role, event_type);
+                                       role, status);
   }
 
   MOCK_METHOD(void, ReliableLinkCallback, ());
@@ -3814,7 +3813,8 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   StartWiFi();
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
 
-  using EventSignal = patchpanel::NeighborReachabilityEventSignal;
+  using Role = patchpanel::Client::NeighborRole;
+  using Status = patchpanel::Client::NeighborStatus;
 
   const std::string kGatewayIPAddressString = "192.168.1.1";
   SetupConnectionAndIPConfig(kGatewayIPAddressString);
@@ -3836,8 +3836,8 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   // We haven't heard the gateway is reachable, so we assume the problem is
   // gateway, rather than link.
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
-  OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
-                              EventSignal::FAILED);
+  OnNeighborReachabilityEvent(kGatewayIPAddress, Role::kGateway,
+                              Status::kFailed);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 
   // Gateway has been discovered now.
@@ -3847,8 +3847,8 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   reset_service();
   OnSupplicantVanish();
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
-  OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
-                              EventSignal::FAILED);
+  OnNeighborReachabilityEvent(kGatewayIPAddress, Role::kGateway,
+                              Status::kFailed);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 
   // Normal case: call Reattach.
@@ -3856,16 +3856,16 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   OnSupplicantAppear();
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach())
       .WillOnce(Return(true));
-  OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
-                              EventSignal::FAILED);
+  OnNeighborReachabilityEvent(kGatewayIPAddress, Role::kGateway,
+                              Status::kFailed);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 
   // Service is unreliable, skip reassociate attempt.
   reset_service();
   service->set_unreliable(true);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
-  OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
-                              EventSignal::FAILED);
+  OnNeighborReachabilityEvent(kGatewayIPAddress, Role::kGateway,
+                              Status::kFailed);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }
 
@@ -3874,16 +3874,15 @@ TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
   SelectService(service);
 
   // To make the call lines shorter.
-  using EventSignal = patchpanel::NeighborReachabilityEventSignal;
-  constexpr auto kReachable = EventSignal::REACHABLE;
-  constexpr auto kGateway = EventSignal::GATEWAY;
-  constexpr auto kFailed = EventSignal::FAILED;
+  using Role = patchpanel::Client::NeighborRole;
+  using Status = patchpanel::Client::NeighborStatus;
 
   // Make the object ready to respond to link monitor failures.
   constexpr auto kGatewayIPAddressString = "192.168.0.1";
   SetupConnectionAndIPConfig(kGatewayIPAddressString);
   const auto kGatewayIPAddress = *IPAddress::CreateFromString("192.168.0.1");
-  OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kReachable);
+  OnNeighborReachabilityEvent(kGatewayIPAddress, Role::kGateway,
+                              Status::kReachable);
 
   time_t current_time = 1000;
   EXPECT_CALL(time_, GetSecondsBoottime(_))
@@ -3896,7 +3895,8 @@ TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
   EXPECT_CALL(*metrics(),
               SendToUMA(Metrics::kMetricUnreliableLinkSignalStrength, _))
       .Times(0);
-  OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kFailed);
+  OnNeighborReachabilityEvent(kGatewayIPAddress, Role::kGateway,
+                              Status::kFailed);
   EXPECT_FALSE(service->unreliable());
 
   // Another link monitor failure after 3 minutes, report signal strength.
@@ -3904,7 +3904,8 @@ TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
   EXPECT_CALL(*metrics(),
               SendToUMA(Metrics::kMetricUnreliableLinkSignalStrength, _))
       .Times(1);
-  OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kFailed);
+  OnNeighborReachabilityEvent(kGatewayIPAddress, Role::kGateway,
+                              Status::kFailed);
   EXPECT_TRUE(service->unreliable());
 
   // Device is connected with the reliable link callback setup, then
@@ -3915,7 +3916,8 @@ TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
   EXPECT_CALL(*metrics(),
               SendToUMA(Metrics::kMetricUnreliableLinkSignalStrength, _))
       .Times(1);
-  OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kFailed);
+  OnNeighborReachabilityEvent(kGatewayIPAddress, Role::kGateway,
+                              Status::kFailed);
   EXPECT_TRUE(service->unreliable());
   EXPECT_TRUE(ReliableLinkCallbackIsCancelled());
 
@@ -3926,7 +3928,8 @@ TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
   EXPECT_CALL(*metrics(),
               SendToUMA(Metrics::kMetricUnreliableLinkSignalStrength, _))
       .Times(0);
-  OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kFailed);
+  OnNeighborReachabilityEvent(kGatewayIPAddress, Role::kGateway,
+                              Status::kFailed);
   EXPECT_FALSE(service->unreliable());
 }
 

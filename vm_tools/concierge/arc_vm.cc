@@ -35,6 +35,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <chromeos/constants/vm_tools.h>
+#include <chromeos/patchpanel/net_util.h>
 #include <vboot/crossystem.h>
 
 #include "vm_tools/concierge/tap_device_builder.h"
@@ -312,9 +313,9 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   bool no_tap_fd_added = true;
   for (const auto& dev : network_devices_) {
     auto fd =
-        OpenTapDevice(dev.ifname(), true /*vnet_hdr*/, nullptr /*ifname_out*/);
+        OpenTapDevice(dev.ifname, true /*vnet_hdr*/, nullptr /*ifname_out*/);
     if (!fd.is_valid()) {
-      LOG(ERROR) << "Unable to open and configure TAP device " << dev.ifname();
+      LOG(ERROR) << "Unable to open and configure TAP device " << dev.ifname;
     } else {
       vm_builder.AppendTapFd(std::move(fd));
       no_tap_fd_added = false;
@@ -739,8 +740,14 @@ bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
 
 uint32_t ArcVm::IPv4Address() const {
   for (const auto& dev : network_devices_) {
-    if (dev.ifname() == "arc0")
-      return dev.ipv4_addr();
+    if (dev.ifname != "arc0") {
+      continue;
+    }
+    if (dev.ipv4_addr.size() != 4) {
+      return 0;
+    }
+    return patchpanel::Ipv4Addr(dev.ipv4_addr[0], dev.ipv4_addr[1],
+                                dev.ipv4_addr[2], dev.ipv4_addr[3]);
   }
   return 0;
 }

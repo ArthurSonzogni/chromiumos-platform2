@@ -613,18 +613,18 @@ void Metrics::NotifySuspendActionsCompleted(bool success) {
 void Metrics::NotifyNeighborLinkMonitorFailure(
     Technology tech,
     IPAddress::Family family,
-    patchpanel::NeighborReachabilityEventSignal::Role role) {
+    patchpanel::Client::NeighborRole role) {
   NeighborLinkMonitorFailure failure = kNeighborLinkMonitorFailureUnknown;
-  using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
+  using Role = patchpanel::Client::NeighborRole;
   if (family == IPAddress::kFamilyIPv4) {
     switch (role) {
-      case NeighborSignal::GATEWAY:
+      case Role::kGateway:
         failure = kNeighborIPv4GatewayFailure;
         break;
-      case NeighborSignal::DNS_SERVER:
+      case Role::kDnsServer:
         failure = kNeighborIPv4DNSServerFailure;
         break;
-      case NeighborSignal::GATEWAY_AND_DNS_SERVER:
+      case Role::kGatewayAndDnsServer:
         failure = kNeighborIPv4GatewayAndDNSServerFailure;
         break;
       default:
@@ -632,13 +632,13 @@ void Metrics::NotifyNeighborLinkMonitorFailure(
     }
   } else if (family == IPAddress::kFamilyIPv6) {
     switch (role) {
-      case NeighborSignal::GATEWAY:
+      case Role::kGateway:
         failure = kNeighborIPv6GatewayFailure;
         break;
-      case NeighborSignal::DNS_SERVER:
+      case Role::kDnsServer:
         failure = kNeighborIPv6DNSServerFailure;
         break;
-      case NeighborSignal::GATEWAY_AND_DNS_SERVER:
+      case Role::kGatewayAndDnsServer:
         failure = kNeighborIPv6GatewayAndDNSServerFailure;
         break;
       default:

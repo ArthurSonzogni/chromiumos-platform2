@@ -33,8 +33,9 @@
 #include <base/system/sys_info.h>
 #include <base/time/time.h>
 #include <google/protobuf/repeated_field.h>
-#include <grpcpp/grpcpp.h>
 #include <chromeos/constants/vm_tools.h>
+#include <chromeos/patchpanel/net_util.h>
+#include <grpcpp/grpcpp.h>
 #include <sys/epoll.h>
 #include <vm_concierge/concierge_service.pb.h>
 
@@ -92,9 +93,15 @@ constexpr char kRenderServerCacheSizeStringBorealis[] = "1000M";
 constexpr int kInvalidDiskIndex = -1;
 
 std::unique_ptr<patchpanel::Subnet> MakeSubnet(
-    const patchpanel::IPv4Subnet& subnet) {
-  return std::make_unique<patchpanel::Subnet>(
-      subnet.base_addr(), subnet.prefix_len(), base::DoNothing());
+    const patchpanel::Client::IPv4Subnet& subnet) {
+  if (subnet.base_addr.size() != 4) {
+    return nullptr;
+  }
+  uint32_t addr =
+      patchpanel::Ipv4Addr(subnet.base_addr[0], subnet.base_addr[1],
+                           subnet.base_addr[2], subnet.base_addr[3]);
+  return std::make_unique<patchpanel::Subnet>(addr, subnet.prefix_len,
+                                              base::DoNothing());
 }
 
 std::optional<std::vector<std::unique_ptr<brillo::ProcessImpl>>>
@@ -251,7 +258,7 @@ std::string TerminaVm::GetCrosVmSerial(std::string hardware,
 
 bool TerminaVm::Start(VmBuilder vm_builder) {
   // Get the network interface.
-  patchpanel::IPv4Subnet container_subnet;
+  patchpanel::Client::IPv4Subnet container_subnet;
   if (!network_client_->NotifyTerminaVmStartup(vsock_cid_, &network_device_,
                                                &container_subnet)) {
     LOG(ERROR) << "No network devices available";
@@ -279,15 +286,23 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     }
   }
 
-  subnet_ = MakeSubnet(network_device_.ipv4_subnet());
+  subnet_ = MakeSubnet(network_device_.ipv4_subnet);
+  if (!subnet_) {
+    LOG(ERROR) << "Failed to read IPv4 subnet assigned to VM";
+    return false;
+  }
   container_subnet_ = MakeSubnet(container_subnet);
+  if (!container_subnet_) {
+    LOG(ERROR) << "Failed to read IPv4 subnet assigned to container guest";
+    return false;
+  }
 
   // Open the tap device.
   base::ScopedFD tap_fd = OpenTapDevice(
-      network_device_.ifname(), true /*vnet_hdr*/, nullptr /*ifname_out*/);
+      network_device_.ifname, true /*vnet_hdr*/, nullptr /*ifname_out*/);
   if (!tap_fd.is_valid()) {
     LOG(ERROR) << "Unable to open and configure TAP device "
-               << network_device_.ifname();
+               << network_device_.ifname;
     return false;
   }
 

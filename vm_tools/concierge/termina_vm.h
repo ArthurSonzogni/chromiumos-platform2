@@ -21,9 +21,9 @@
 #include <base/time/time.h>
 #include <brillo/process/process.h>
 #include <chromeos/patchpanel/mac_address_generator.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <chromeos/patchpanel/subnet.h>
 #include <manatee/dbus-proxies.h>
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
@@ -354,8 +354,8 @@ class TerminaVm final : public VmBaseImpl {
   // An optional /28 container subnet.
   std::unique_ptr<patchpanel::Subnet> container_subnet_;
 
-  // Termina network device.
-  patchpanel::NetworkDevice network_device_;
+  // Termina virtual network device created by patchpanel.
+  patchpanel::Client::VirtualDevice network_device_;
 
   // Flags passed to vmc start.
   VmFeatures features_;

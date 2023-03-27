@@ -78,9 +78,25 @@ std::string IPv4AddressToString(uint32_t addr) {
   return !inet_ntop(AF_INET, &ia, buf, sizeof(buf)) ? "" : buf;
 }
 
+std::string IPv4AddressToString(std::vector<uint8_t> addr) {
+  if (addr.size() != 4) {
+    return "";
+  }
+  return IPv4AddressToString(Ipv4Addr(addr[0], addr[1], addr[2], addr[3]));
+}
+
 std::string IPv6AddressToString(const struct in6_addr& addr) {
   char buf[INET6_ADDRSTRLEN] = {0};
   return !inet_ntop(AF_INET6, &addr, buf, sizeof(buf)) ? "" : buf;
+}
+
+std::string IPv6AddressToString(const std::vector<uint8_t>& addr) {
+  if (addr.size() != 16) {
+    return "";
+  }
+  struct in6_addr in6_addr;
+  memcpy(in6_addr.s6_addr, addr.data(), sizeof(in6_addr.s6_addr));
+  return IPv6AddressToString(in6_addr);
 }
 
 struct in_addr StringToIPv4Address(const std::string& buf) {
@@ -100,6 +116,14 @@ struct in6_addr StringToIPv6Address(const std::string& buf) {
 }
 
 std::string IPv4AddressToCidrString(uint32_t addr, int prefix_length) {
+  return IPv4AddressToString(addr) + "/" + std::to_string(prefix_length);
+}
+
+std::string IPv4AddressToCidrString(std::vector<uint8_t> addr,
+                                    int prefix_length) {
+  if (addr.size() != 4) {
+    return "";
+  }
   return IPv4AddressToString(addr) + "/" + std::to_string(prefix_length);
 }
 
