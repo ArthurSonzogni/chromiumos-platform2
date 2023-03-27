@@ -40,9 +40,6 @@ class ResolvConf {
   virtual bool SetDNSProxyAddresses(
       const std::vector<std::string>& proxy_addrs);
 
-  // Remove any created domain name service file.
-  virtual bool ClearDNS();
-
  private:
   friend class ResolvConfTest;
   friend class base::NoDestructor<ResolvConf>;

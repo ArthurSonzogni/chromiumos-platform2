@@ -51,11 +51,9 @@ class ResolvConfTest : public Test {
     path_ = temp_dir_.GetPath().Append("resolv_conf");
     resolv_conf_->set_path(path_);
     EXPECT_FALSE(base::PathExists(path_));
-    EXPECT_TRUE(resolv_conf_->ClearDNS());
   }
 
   void TearDown() override {
-    EXPECT_TRUE(resolv_conf_->ClearDNS());
     resolv_conf_->set_path(base::FilePath(""));  // Don't try to save the store.
     ASSERT_TRUE(temp_dir_.Delete());
   }
@@ -114,7 +112,7 @@ TEST_F(ResolvConfTest, ProxyClear) {
   EXPECT_TRUE(resolv_conf_->SetDNSProxyAddresses({kNameServerProxy}));
   EXPECT_TRUE(base::PathExists(path_));
   EXPECT_TRUE(resolv_conf_->SetDNSProxyAddresses({}));
-  EXPECT_FALSE(base::PathExists(path_));
+  EXPECT_TRUE(base::PathExists(path_));
 }
 
 TEST_F(ResolvConfTest, ProxyToggle) {

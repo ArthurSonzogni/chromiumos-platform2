@@ -54,9 +54,10 @@ bool ResolvConf::Emit() {
   // dns-proxy always used if set.
   const auto name_servers =
       !dns_proxy_addrs_.empty() ? dns_proxy_addrs_ : name_servers_;
-  if (name_servers.empty() && domain_search_list_.empty()) {
-    LOG(ERROR) << "DNS list is empty";
-    return ClearDNS();
+  if (name_servers.empty()) {
+    LOG(WARNING) << "DNS list is empty";
+    base::WriteFile(path_, /*data=*/"", /*size=*/0);
+    return true;
   }
 
   std::vector<std::string> lines;
@@ -101,7 +102,6 @@ bool ResolvConf::Emit() {
 
   const auto contents = base::JoinString(lines, "\n");
 
-  LOG(INFO) << "Writing DNS out to " << path_.value();
   int count = base::WriteFile(path_, contents.c_str(), contents.size());
 
   return count == static_cast<int>(contents.size());
@@ -111,18 +111,6 @@ bool ResolvConf::SetDNSProxyAddresses(
     const std::vector<std::string>& proxy_addrs) {
   dns_proxy_addrs_ = proxy_addrs;
   return Emit();
-}
-
-bool ResolvConf::ClearDNS() {
-  if (path_.empty()) {
-    LOG(DFATAL) << "No path set";
-    return false;
-  }
-
-  name_servers_.clear();
-  domain_search_list_.clear();
-  dns_proxy_addrs_.clear();
-  return base::DeleteFile(path_);
 }
 
 }  // namespace dns_proxy
