@@ -221,6 +221,15 @@ int diag_main(int argc, char** argv) {
       return RunV2Routine(
           mojo_ipc::RoutineArgument::NewMemory(std::move(argument)));
     }
+    if (FLAGS_routine == "cpu_stress_v2") {
+      auto argument = mojo_ipc::CpuStressRoutineArgument::New();
+      if (command_line->HasSwitch("cpu_stress_length_seconds")) {
+        argument->exec_duration =
+            base::Seconds(FLAGS_cpu_stress_length_seconds);
+      }
+      return RunV2Routine(
+          mojo_ipc::RoutineArgument::NewCpuStress(std::move(argument)));
+    }
 
     std::map<std::string, mojo_ipc::DiagnosticRoutineEnum>
         switch_to_diagnostic_routine;
