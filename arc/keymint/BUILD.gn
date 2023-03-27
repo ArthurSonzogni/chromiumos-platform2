@@ -2,11 +2,226 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+keymint_src = "../../../aosp/system/keymint"
+libcppbor_src = "../../../aosp/system/libcppbor"
+libbase_src = "../../../aosp/system/libbase"
+liblog_src = "../../../aosp/system/logging/liblog"
+libcutils_src = "../../../aosp/system/core/libcutils"
+
 group("all") {
-  deps = [ ":arc-keymasterd" ]
+  deps = [ ":arc-keymintd" ]
 }
 
 # Binary
 executable("arc-keymintd") {
   sources = [ "main.cc" ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libmojo",
+  ]
+  deps = [
+    ":keymint_mojo_bindings",
+    ":libcppbor_external",
+    ":libkeymint",
+    ":libkeymint-support",
+    ":liblog",
+  ]
+}
+
+# Mojo bindings
+generate_mojom_bindings("keymint_mojo_bindings") {
+  sources = [ "mojo/keymint.mojom" ]
+}
+
+# LibKeyMint Support
+shared_library("libkeymint-support") {
+  configs += [ ":support_config" ]
+  deps = [
+    ":libbase",
+    ":libcppbor_external",
+    ":libcutils",
+    ":liblog",
+  ]
+}
+
+# KeyMint Support Config
+config("support_config") {
+  include_dirs = [
+    "${libbase_src}/include",
+    "${liblog_src}/include",
+    "${libcutils_src}/include",
+    "${libcppbor_src}/include/cppbor",
+  ]
+  cflags_cc = [ "-std=c++17" ]
+  cflags = [
+    "-Wno-defaulted-function-deleted",
+    "-Wno-format-nonliteral",
+    "-Wno-implicit-fallthrough",
+  ]
+  defines = [
+    "__ANDROID_API__=32",  # Android T
+  ]
+}
+
+shared_library("libkeymint") {
+  sources = [
+    "${keymint_src}/android_keymaster/android_keymaster.cpp",
+    "${keymint_src}/android_keymaster/android_keymaster_messages.cpp",
+    "${keymint_src}/android_keymaster/android_keymaster_utils.cpp",
+    "${keymint_src}/android_keymaster/authorization_set.cpp",
+    "${keymint_src}/android_keymaster/keymaster_enforcement.cpp",
+    "${keymint_src}/android_keymaster/keymaster_tags.cpp",
+    "${keymint_src}/android_keymaster/logger.cpp",
+    "${keymint_src}/android_keymaster/operation.cpp",
+    "${keymint_src}/android_keymaster/operation_table.cpp",
+    "${keymint_src}/android_keymaster/pure_soft_secure_key_storage.cpp",
+    "${keymint_src}/android_keymaster/remote_provisioning_utils.cpp",
+    "${keymint_src}/android_keymaster/serializable.cpp",
+    "${keymint_src}/cppcose/cppcose.cpp",
+    "${keymint_src}/key_blob_utils/auth_encrypted_key_blob.cpp",
+    "${keymint_src}/key_blob_utils/integrity_assured_key_blob.cpp",
+    "${keymint_src}/key_blob_utils/ocb.c",
+    "${keymint_src}/key_blob_utils/ocb_utils.cpp",
+    "${keymint_src}/key_blob_utils/software_keyblobs.cpp",
+    "${keymint_src}/km_openssl/aes_key.cpp",
+    "${keymint_src}/km_openssl/aes_operation.cpp",
+    "${keymint_src}/km_openssl/asymmetric_key.cpp",
+    "${keymint_src}/km_openssl/asymmetric_key_factory.cpp",
+    "${keymint_src}/km_openssl/attestation_record.cpp",
+    "${keymint_src}/km_openssl/attestation_utils.cpp",
+    "${keymint_src}/km_openssl/block_cipher_operation.cpp",
+    "${keymint_src}/km_openssl/certificate_utils.cpp",
+    "${keymint_src}/km_openssl/ckdf.cpp",
+    "${keymint_src}/km_openssl/curve25519_key.cpp",
+    "${keymint_src}/km_openssl/ec_key.cpp",
+    "${keymint_src}/km_openssl/ec_key_factory.cpp",
+    "${keymint_src}/km_openssl/ecdh_operation.cpp",
+    "${keymint_src}/km_openssl/ecdsa_operation.cpp",
+    "${keymint_src}/km_openssl/ecies_kem.cpp",
+    "${keymint_src}/km_openssl/hkdf.cpp",
+    "${keymint_src}/km_openssl/hmac.cpp",
+    "${keymint_src}/km_openssl/hmac_key.cpp",
+    "${keymint_src}/km_openssl/hmac_operation.cpp",
+    "${keymint_src}/km_openssl/iso18033kdf.cpp",
+    "${keymint_src}/km_openssl/kdf.cpp",
+    "${keymint_src}/km_openssl/nist_curve_key_exchange.cpp",
+    "${keymint_src}/km_openssl/openssl_err.cpp",
+    "${keymint_src}/km_openssl/openssl_utils.cpp",
+    "${keymint_src}/km_openssl/rsa_key.cpp",
+    "${keymint_src}/km_openssl/rsa_key_factory.cpp",
+    "${keymint_src}/km_openssl/rsa_operation.cpp",
+    "${keymint_src}/km_openssl/software_random_source.cpp",
+    "${keymint_src}/km_openssl/symmetric_key.cpp",
+    "${keymint_src}/km_openssl/triple_des_key.cpp",
+    "${keymint_src}/km_openssl/triple_des_operation.cpp",
+    "${keymint_src}/km_openssl/wrapped_key.cpp",
+  ]
+  public_configs = [ ":libkeymint_config" ]
+  configs += [ ":boringssl_config" ]
+  deps = [ ":libcppbor_external" ]
+}
+
+# KeyMint Config
+config("libkeymint_config") {
+  include_dirs = [
+    "${keymint_src}/include",
+    "${libcppbor_src}/include/cppbor",
+  ]
+  cflags = [
+    "-Wno-defaulted-function-deleted",
+    "-Wno-format-nonliteral",
+    "-Wno-implicit-fallthrough",
+    "-Wno-unqualified-std-cast-call",
+  ]
+}
+
+# Lib Base
+static_library("libbase") {
+  sources = [
+    "${libbase_src}/abi_compatibility.cpp",
+    "${libbase_src}/chrono_utils.cpp",
+    "${libbase_src}/cmsg.cpp",
+    "${libbase_src}/errors_unix.cpp",
+    "${libbase_src}/file.cpp",
+    "${libbase_src}/hex.cpp",
+    "${libbase_src}/logging.cpp",
+    "${libbase_src}/mapped_file.cpp",
+    "${libbase_src}/parsebool.cpp",
+    "${libbase_src}/parsenetaddress.cpp",
+    "${libbase_src}/posix_strerror_r.cpp",
+    "${libbase_src}/process.cpp",
+    "${libbase_src}/properties.cpp",
+    "${libbase_src}/stringprintf.cpp",
+    "${libbase_src}/strings.cpp",
+    "${libbase_src}/test_utils.cpp",
+    "${libbase_src}/threads.cpp",
+  ]
+  configs += [
+    "//common-mk:pic",
+    ":support_config",
+  ]
+}
+
+# Liblog
+static_library("liblog") {
+  sources = [
+    "${liblog_src}/log_event_list.cpp",
+    "${liblog_src}/log_event_write.cpp",
+    "${liblog_src}/log_time.cpp",
+    "${liblog_src}/logger_write.cpp",
+    "${liblog_src}/logprint.cpp",
+    "${liblog_src}/properties.cpp",
+  ]
+  configs += [
+    "//common-mk:pic",
+    ":support_config",
+  ]
+  include_dirs = [ "${liblog_src}/include" ]
+  deps = [ ":libbase" ]
+}
+
+# LibCutils
+static_library("libcutils") {
+  sources = [
+    "${libcutils_src}/config_utils.cpp",
+    "${libcutils_src}/hashmap.cpp",
+    "${libcutils_src}/load_file.cpp",
+    "${libcutils_src}/native_handle.cpp",
+    "${libcutils_src}/threads.cpp",
+    "${libcutils_src}/trace-host.cpp",
+  ]
+  configs += [
+    "//common-mk:pic",
+    ":support_config",
+  ]
+  include_dirs = [ "${libcutils_src}/include" ]
+  libs = [ "rt" ]
+  deps = [ ":liblog" ]
+}
+
+# Libcppbor
+static_library("libcppbor_external") {
+  sources = [
+    "${libcppbor_src}/src/cppbor.cpp",
+    "${libcppbor_src}/src/cppbor_parse.cpp",
+  ]
+  configs += [
+    "//common-mk:pic",
+    ":support_config",
+  ]
+  include_dirs = [ "${libcppbor_src}/include/cppbor" ]
+  deps = [ ":libbase" ]
+}
+
+# BoringSSL
+config("boringssl_config") {
+  libs = [
+    "boringcrypto",
+    "pthread",
+  ]
 }
