@@ -10,6 +10,8 @@
 
 module ash.cros_healthd.mojom;
 
+import "diagnostics/mojom/external/time.mojom";
+
 // Routines interface exposed by the cros_healthd daemon.
 //
 // NextMinVersion: 1, NextIndex: 1
@@ -32,17 +34,18 @@ interface CrosHealthdRoutinesService {
 
 // Possible routines the RoutineControl API can create.
 //
-// NextMinVersion: 3, NextIndex: 3
+// NextMinVersion: 4, NextIndex: 4
 [Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
   // Any unrecognized Mojo field will deserialize to this field. Don't use this.
   [Default, MinVersion=1] bool unrecognizedArgument @0;
-
   // Arguments to create a memory routine.
   MemoryRoutineArgument memory@1;
   // Arguments to create an audio driver malfunction test routine.
   [MinVersion=2] AudioDriverRoutineArgument audio_driver@2;
+  // Arguments to create a cpu stress routine.
+  [MinVersion=3] CpuStressRoutineArgument cpu_stress@3;
 };
 
 // This routine checks whether there is any memory problem by
@@ -64,6 +67,18 @@ struct MemoryRoutineArgument {
 //
 // NextMinVersion: 1, NextIndex: 0
 struct AudioDriverRoutineArgument {};
+
+// This routine checks whether there is any CPU problem by stress testing the
+// CPU.
+//
+// NextMinVersion: 1, NextIndex: 1
+struct CpuStressRoutineArgument {
+  // |exec_duration| determines how long the stressapptest binary will run. If
+  // the provided value is null, default to running for 1 minute. The duration
+  // is rounded to the nearest seconds towards zero (see behaviour of
+  // std::trunc()).
+  ash.cros_healthd.external.mojo_base.mojom.TimeDelta? exec_duration@0;
+};
 
 // Interface exposed to clients for controlling a routine.
 //
@@ -151,6 +166,7 @@ struct RoutineStateFinished {
 union RoutineDetail {
   MemoryRoutineDetail memory;
   AudioDriverRoutineDetail audio_driver;
+  CpuStressRoutineDetail cpu_stress;
 };
 
 // Details regarding memory routine.
@@ -171,6 +187,12 @@ struct AudioDriverRoutineDetail {
   bool internal_card_detected@0;
   // Whether or not all audio devices succeed to open.
   bool audio_devices_succeed_to_open@1;
+};
+
+// Details regarding cpu stress routine.
+//
+// NextMinVersion: 1, NextIndex: 0
+struct CpuStressRoutineDetail {
 };
 
 // Enumeration of each possible memtester test item.

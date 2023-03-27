@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
 
 namespace diagnostics {
@@ -29,6 +30,11 @@ void RoutineService::CreateRoutine(
     case mojom::RoutineArgument::Tag::kAudioDriver:
       AddRoutine(std::make_unique<AudioDriverRoutine>(
                      context_, routine_arg->get_audio_driver()),
+                 std::move(routine_receiver));
+      break;
+    case mojom::RoutineArgument::Tag::kCpuStress:
+      AddRoutine(std::make_unique<CpuStressRoutineV2>(
+                     context_, routine_arg->get_cpu_stress()),
                  std::move(routine_receiver));
       break;
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:

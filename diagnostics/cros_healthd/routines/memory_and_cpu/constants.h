@@ -30,6 +30,12 @@ const base::TimeDelta kUrandomDefaultLength = base::Seconds(10);
 // out of memory error.
 constexpr int kCpuMemoryRoutineReservedSizeKiB = 500 * 1024;  // 500 MiB.
 
+// This is the minimum required memory to run stressapptest successfully,
+// otherwise the program will crash.
+// The stressapptest will fail when page number is small (b/80264616), and we
+// choose an arbitrary value that is large enough to not crash the app.
+const int kStressAppTestRoutineMinimumRequiredKiB = 128 * 1024;  // 128 MiB.
+
 // Default runtime for routines which stress the CPU.
 const base::TimeDelta kDefaultCpuStressRuntime = base::Minutes(1);
 
