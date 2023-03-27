@@ -17,35 +17,6 @@ namespace {
 // sub-collection belonging directly to it has level 2 etc..
 constexpr int kMaxCollectionLevel = 16;
 
-// Converts the least significant 4 bits to hexadecimal digit (ASCII char).
-char ToHexDigit(uint8_t v) {
-  v &= 0x0f;
-  if (v < 10)
-    return ('0' + v);
-  return ('a' + (v - 10));
-}
-
-// Converts byte to 2-digit hexadecimal representation.
-std::string ToHexByte(uint8_t v) {
-  std::string s(2, '0');
-  s[0] = ToHexDigit(v >> 4);
-  s[1] = ToHexDigit(v);
-  return s;
-}
-
-// Converts sequence of bytes to a sequence of 2-digits hexadecimals
-// separated by single space.
-std::string ToHexSeq(const uint8_t* begin, const uint8_t* end) {
-  std::string s;
-  if (begin >= end)
-    return s;
-  s = ToHexByte(*begin);
-  for (++begin; begin < end; ++begin) {
-    s += " " + ToHexByte(*begin);
-  }
-  return s;
-}
-
 // Decodes 1-, 2- or 4-bytes integers (two's-complement binary encoding).
 // Returns false if (data.size() != BytesCount) or (out == nullptr).
 template <size_t BytesCount>
@@ -175,102 +146,17 @@ uint16_t ParseUInt16(const uint8_t*& ptr) {
 
 }  //  namespace
 
-std::string_view ToStrViewVerbose(ParserCode code) {
-  static const std::string kLimitOnCollectionLevelMsg =
-      "The frame has too many recursive collections; the maximum allowed "
-      "number of levels is " +
-      ToString(kMaxCollectionLevel) + ".";
-  static const std::string kLimitOnGroupsCountMsg =
-      "The frame has too many attribute groups; the maximum allowed "
-      "number is " +
-      ToString(static_cast<int>(kMaxCountOfAttributeGroups)) + ".";
-  switch (code) {
-    case ParserCode::kOK:
-      return "No errors.";
-    case ParserCode::kAttributeNameIsEmpty:
-      return "Attribute with an empty name was spotted.";
-    case ParserCode::kValueMismatchTagConverted:
-      return "Value with mismatched tag was spotted. The value was converted "
-             "to the attribute's type.";
-    case ParserCode::kValueMismatchTagOmitted:
-      return "A value with incompatible tag was spotted. The value was "
-             "ignored.";
-    case ParserCode::kAttributeNameConflict:
-      return "An attribute with duplicate name was spotted. The attribute was "
-             "ignored.";
-    case ParserCode::kBooleanValueOutOfRange:
-      return "A boolean value has an integer different from 0 and 1. The value "
-             "was set to true.";
-    case ParserCode::kValueInvalidSize:
-      return "A value has invalid size. The value was ignored.";
-    case ParserCode::kAttributeNoValues:
-      return "An attribute has no valid values. The attribute was ignored.";
-    case ParserCode::kErrorWhenAddingAttribute:
-      return "Internal parser error: cannot add an attribute. The attribute "
-             "was ignored.";
-    case ParserCode::kOutOfBandAttributeWithManyValues:
-      return "An out-of-band attribute has more than one value. Additional "
-             "values were ignored.";
-    case ParserCode::kOutOfBandValueWithNonEmptyData:
-      return "A value in an out-of-band attribute has a non-empty data field. "
-             "Additional data was ignored.";
-    case ParserCode::kUnexpectedEndOfFrame:
-      return "Unexpected end of frame.";
-    case ParserCode::kGroupTagWasExpected:
-      return "begin-attribute-group-tag was expected but other value was read.";
-    case ParserCode::kEmptyNameExpectedInTNV:
-      return "Tag-Name-Value was supposed to have an empty name, but the name "
-             "is non-empty.";
-    case ParserCode::kEmptyValueExpectedInTNV:
-      return "Tag-Name-Value was supposed to have an empty value, but the "
-             "value is non-empty.";
-    case ParserCode::kNegativeNameLengthInTNV:
-      return "name-length in Tag-Name-Value is negative.";
-    case ParserCode::kNegativeValueLengthInTNV:
-      return "value-length in Tag-Name-Value is negative.";
-    case ParserCode::kTNVWithUnexpectedValueTag:
-      return "TNV with unexpected value-tag was spotted. The parser stopped.";
-    case ParserCode::kUnsupportedValueTag:
-      return "Attribute's value with unsupported syntax. The value was "
-             "omitted.";
-    case ParserCode::kUnexpectedEndOfGroup:
-      return "Unexpected end of attribute-group. The parser stopped.";
-    case ParserCode::kLimitOnCollectionsLevelExceeded:
-      return kLimitOnCollectionLevelMsg;
-    case ParserCode::kLimitOnGroupsCountExceeded:
-      return kLimitOnGroupsCountMsg;
-    case ParserCode::kErrorWhenAddingGroup:
-      return "Internal parser error: cannot add a group. The group was "
-             "omitted.";
-  }
-}
-
 void Parser::LogParserError(ParserCode error_code, const uint8_t* ptr) {
   if (error_code == ParserCode::kOK) {
     // ignore
     return;
   }
-  Log l;
-  l.message = ToStrViewVerbose(error_code);
-  l.parser_context = parser_context_.AsString();
-  // Let's try to save to frame_context the closest neighborhood of ptr.
+  ssize_t buf_offset = -1;
   if (ptr != nullptr && ptr >= buffer_begin_ && ptr <= buffer_end_) {
     // Current position in the buffer.
-    l.buf_offset = ptr - buffer_begin_;
-    // Calculates the size in bytes of left neighborhood.
-    int left_margin = 13;
-    if (buffer_begin_ + left_margin > ptr)
-      left_margin = ptr - buffer_begin_;
-    // Calculates the size in bytes of right neighborhood.
-    int right_margin = 14;
-    if (ptr + right_margin > buffer_end_)
-      right_margin = buffer_end_ - ptr;
-    // Prints the content of the closest neighborhood to frame_context.
-    l.frame_context = ToHexSeq(ptr - left_margin, ptr) + "|" +
-                      ToHexSeq(ptr, ptr + right_margin);
+    buf_offset = ptr - buffer_begin_;
   }
-  errors_->push_back(l);
-  log_->AddParserError({parser_context_, error_code});
+  log_->AddParserError({parser_context_, error_code, buf_offset});
 }
 
 void Parser::LogParserErrors(const std::vector<ParserCode>& error_codes) {
@@ -471,7 +357,7 @@ std::vector<ParserCode> LoadAttrValues(Collection* coll,
   return errors;
 }
 
-bool Parser::SaveFrameToPackage(bool log_unknown_values, Frame* package) {
+bool Parser::SaveFrameToPackage(Frame* package) {
   for (size_t i = 0; i < frame_->groups_tags_.size(); ++i) {
     GroupTag gn = frame_->groups_tags_[i];
     parser_context_ = AttrPath(gn);
@@ -484,9 +370,6 @@ bool Parser::SaveFrameToPackage(bool log_unknown_values, Frame* package) {
     }
     RawCollection raw_coll;
     if (!ParseRawGroup(&(frame_->groups_content_[i]), &raw_coll)) {
-      if (!errors_->empty())
-        errors_->back().message +=
-            " This is critical error, parsing was cancelled.";
       return false;
     }
     DecodeCollection(&raw_coll, &*coll);

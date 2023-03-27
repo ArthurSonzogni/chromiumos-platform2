@@ -63,7 +63,6 @@ install_config("install_headers") {
     "ipp_attribute.h",
     "ipp_enums.h",
     "ipp_export.h",
-    "ipp_log.h",
     "parser.h",
     "validator.h",
   ]

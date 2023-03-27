@@ -14,7 +14,6 @@
 #include "colls_view.h"
 #include "ipp_enums.h"
 #include "ipp_export.h"
-#include "ipp_log.h"
 
 namespace ipp {
 

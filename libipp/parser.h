@@ -59,6 +59,8 @@ LIBIPP_EXPORT std::string_view ToStrView(ParserCode code);
 struct ParserError {
   AttrPath path;
   ParserCode code;
+  // Position in the input buffer, set to -1 if unknown.
+  ssize_t buf_offset = -1;
 };
 
 // Returns a one line string representation of the `error`. There is no EOL
