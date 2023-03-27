@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_MOCK_EXECUTOR_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_MOCK_EXECUTOR_H_
 
+#include <cstdint>
 #include <string>
 #include <gmock/gmock.h>
 #include <vector>
@@ -115,6 +116,14 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
            process_control),
       (override));
   MOCK_METHOD(void, GetPsr, (GetPsrCallback), (override));
+  MOCK_METHOD(void,
+              RunStressAppTest,
+              (uint32_t test_mem_mib,
+               uint32_t test_seconds,
+               ash::cros_healthd::mojom::StressAppTestType test_type,
+               mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+                   receiver),
+              (override));
 };
 
 }  // namespace diagnostics

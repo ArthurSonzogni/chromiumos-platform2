@@ -54,6 +54,7 @@ constexpr char kIwBinary[] = "/usr/sbin/iw";
 constexpr char kMemtesterBinary[] = "/usr/sbin/memtester";
 constexpr char kHciconfigBinary[] = "/usr/bin/hciconfig";
 constexpr char kCrosEcDevice[] = "/dev/cros_ec";
+constexpr char kStressAppTestBinary[] = "/usr/bin/stressapptest";
 
 }  // namespace
 }  // namespace path
@@ -84,6 +85,8 @@ constexpr char kMemtester[] = "memtester-seccomp.policy";
 constexpr char kReadOnlyFetchers[] = "readonly-fetchers-seccomp.policy";
 // SECCOMP policy for psr related routines.
 constexpr char kPsr[] = "psr-seccomp.policy";
+// SECCOMP policy for stressapptest.
+constexpr char kStressAppTest[] = "stressapptest-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -492,6 +495,31 @@ void Executor::MonitorTouchpad(
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),
                      std::move(process_control_receiver)));
+}
+
+void Executor::RunStressAppTest(
+    uint32_t test_mem_mib,
+    uint32_t test_seconds,
+    mojom::StressAppTestType test_type,
+    mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver) {
+  // Run with |test_mem_mib| memory and run for |test_seconds| seconds.
+  std::vector<std::string> command = {path::kStressAppTestBinary,
+                                      "-W",
+                                      "-s",
+                                      base::NumberToString(test_seconds),
+                                      "-M",
+                                      base::NumberToString(test_mem_mib)};
+  if (test_type == mojom::StressAppTestType::kCpuCache) {
+    command.push_back("--cc_test");
+  }
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kStressAppTest, kCrosHealthdSandboxUser,
+      CAP_TO_MASK(CAP_IPC_LOCK),
+      /*readonly_mount_points=*/std::vector<base::FilePath>{},
+      /*writable_mount_points=*/std::vector<base::FilePath>{});
+
+  RunLongRunningProcess(std::move(process), std::move(receiver),
+                        /*combine_stdout_and_stderr=*/true);
 }
 
 void Executor::FetchBootPerformance(FetchBootPerformanceCallback callback) {

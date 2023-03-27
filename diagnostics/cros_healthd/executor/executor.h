@@ -96,6 +96,12 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
           process_control_receiver) override;
   void GetPsr(GetPsrCallback callback) override;
+  void RunStressAppTest(
+      uint32_t test_mem_mib,
+      uint32_t test_seconds,
+      ash::cros_healthd::mojom::StressAppTestType test_type,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver)
+      override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process
