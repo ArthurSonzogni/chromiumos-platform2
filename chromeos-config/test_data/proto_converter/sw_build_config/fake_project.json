@@ -944,7 +944,7 @@
           "form-factor": "DETACHABLE",
           "has-backlight": true,
           "psu-type": "battery",
-          "recovery-input": "POWER_BUTTON",
+          "recovery-input": "KEYBOARD",
           "storage-type": "EMMC"
         },
         "identity": {
@@ -1138,7 +1138,7 @@
           "form-factor": "DETACHABLE",
           "has-backlight": true,
           "psu-type": "battery",
-          "recovery-input": "POWER_BUTTON",
+          "recovery-input": "KEYBOARD",
           "storage-type": "EMMC"
         },
         "identity": {
@@ -1354,7 +1354,7 @@
           "form-factor": "DETACHABLE",
           "has-backlight": true,
           "psu-type": "battery",
-          "recovery-input": "POWER_BUTTON",
+          "recovery-input": "KEYBOARD",
           "storage-type": "EMMC"
         },
         "identity": {
@@ -1558,7 +1558,7 @@
           "has-backlight": true,
           "has-privacy-screen": true,
           "psu-type": "battery",
-          "recovery-input": "POWER_BUTTON",
+          "recovery-input": "KEYBOARD",
           "storage-type": "EMMC"
         },
         "identity": {
@@ -1761,7 +1761,7 @@
           "has-backlight": true,
           "has-privacy-screen": true,
           "psu-type": "battery",
-          "recovery-input": "POWER_BUTTON",
+          "recovery-input": "KEYBOARD",
           "storage-type": "EMMC"
         },
         "identity": {

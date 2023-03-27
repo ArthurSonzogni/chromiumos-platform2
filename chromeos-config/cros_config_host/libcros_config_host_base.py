@@ -786,14 +786,16 @@ class CrosConfigBaseImpl(object):
             form_factor = device.GetProperties(
                 "/hardware-properties/form-factor"
             )
+            # Make sure that `mapping` is consistent with `recovery_input`
+            # in src/config/util/hw_topology.star
             mapping = {
                 "CLAMSHELL": "KEYBOARD",
                 "CONVERTIBLE": "KEYBOARD",
-                "DETACHABLE": "POWER_BUTTON",
+                "DETACHABLE": "KEYBOARD",
                 "CHROMEBASE": "RECOVERY_BUTTON",
                 "CHROMEBOX": "RECOVERY_BUTTON",
                 "CHROMEBIT": "RECOVERY_BUTTON",
-                "CHROMESLATE": "POWER_BUTTON",
+                "CHROMESLATE": "KEYBOARD",
             }
             if form_factor and form_factor in mapping:
                 generated_recovery = mapping[form_factor]
