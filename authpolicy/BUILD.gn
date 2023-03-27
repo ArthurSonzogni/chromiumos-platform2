@@ -121,7 +121,6 @@ static_library("libauthpolicy") {
     "log_colors.cc",
     "path_service.cc",
     "platform_helper.cc",
-    "policy/device_policy_encoder.cc",
     "policy/extension_policy_encoder.cc",
     "policy/policy_encoder_helper.cc",
     "policy/preg_parser.cc",

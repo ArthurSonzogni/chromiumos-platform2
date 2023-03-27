@@ -11,7 +11,6 @@
 #include <base/files/file_path.h>
 #include <components/policy/core/common/registry_dict.h>
 
-#include "authpolicy/policy/device_policy_encoder.h"
 #include "authpolicy/policy/extension_policy_encoder.h"
 #include "authpolicy/policy/policy_encoder_helper.h"
 #include "authpolicy/policy/user_policy_encoder.h"
@@ -65,18 +64,6 @@ bool ParsePRegFilesIntoDevicePolicy(
   // nullptr if there is no recommended policy.
   std::unique_ptr<RegistryDict> recommended_dict =
       mandatory_dict.RemoveKey(kKeyRecommended);
-
-  // Convert recommended policies first. If a policy is both recommended and
-  // mandatory, it will be overwritten to be mandatory below.
-  if (recommended_dict) {
-    DevicePolicyEncoder enc(recommended_dict.get(), POLICY_LEVEL_RECOMMENDED);
-    enc.LogPolicyValues(log_policy_values);
-    enc.EncodePolicy(policy);
-  }
-
-  DevicePolicyEncoder enc(&mandatory_dict, POLICY_LEVEL_MANDATORY);
-  enc.LogPolicyValues(log_policy_values);
-  enc.EncodePolicy(policy);
 
   return true;
 }
