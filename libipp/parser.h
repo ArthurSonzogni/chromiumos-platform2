@@ -18,8 +18,7 @@ namespace ipp {
 // The errors spotted by the parser. Comments next to the values describe
 // actions taken by the parser.
 enum class ParserCode : uint8_t {
-  kOK = 0,
-  kBooleanValueOutOfRange,            // the boolean value was set to 1
+  kBooleanValueOutOfRange = 0,        // the boolean value was set to 1
   kValueMismatchTagConverted,         // the value was converted
   kOutOfBandValueWithNonEmptyData,    // the data field was ignored
   kOutOfBandAttributeWithManyValues,  // additional values were ignored

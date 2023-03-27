@@ -17,8 +17,6 @@ namespace ipp {
 
 std::string_view ToStrView(ParserCode code) {
   switch (code) {
-    case ParserCode::kOK:
-      return "OK";
     case ParserCode::kBooleanValueOutOfRange:
       return "BooleanValueOutOfRange";
     case ParserCode::kValueMismatchTagConverted:

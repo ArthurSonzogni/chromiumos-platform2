@@ -147,10 +147,6 @@ uint16_t ParseUInt16(const uint8_t*& ptr) {
 }  //  namespace
 
 void Parser::LogParserError(ParserCode error_code, const uint8_t* ptr) {
-  if (error_code == ParserCode::kOK) {
-    // ignore
-    return;
-  }
   ssize_t buf_offset = -1;
   if (ptr != nullptr && ptr >= buffer_begin_ && ptr <= buffer_end_) {
     // Current position in the buffer.
@@ -199,130 +195,153 @@ struct RawCollection {
 };
 
 // Parse a value of type `attr_type` from `raw_value` to `output` when possible.
+// Returns true <=> parsing was successful. All spotted errors are added to
+// `errors`.
 template <typename ApiType>
-ParserCode LoadAttrValue(ValueTag attr_type,
-                         const RawValue& raw_value,
-                         ApiType& output);
+bool LoadAttrValue(ValueTag attr_type,
+                   const RawValue& raw_value,
+                   ApiType& output,
+                   std::vector<ParserCode>& errors);
 
 template <>
-ParserCode LoadAttrValue<std::string>(ValueTag attr_type,
-                                      const RawValue& raw_value,
-                                      std::string& output) {
+bool LoadAttrValue<std::string>(ValueTag attr_type,
+                                const RawValue& raw_value,
+                                std::string& output,
+                                std::vector<ParserCode>& errors) {
   if (!IsString(raw_value.tag) && raw_value.tag != ValueTag::octetString) {
-    return ParserCode::kValueMismatchTagOmitted;
+    errors.push_back(ParserCode::kValueMismatchTagOmitted);
+    return false;
   }
   output = LoadString(raw_value.data);
-  return (attr_type == raw_value.tag) ? ParserCode::kOK
-                                      : ParserCode::kValueMismatchTagConverted;
+  if (attr_type != raw_value.tag)
+    errors.push_back(ParserCode::kValueMismatchTagConverted);
+  return true;
 }
 
 template <>
-ParserCode LoadAttrValue<int32_t>(ValueTag attr_type,
-                                  const RawValue& raw_value,
-                                  int32_t& output) {
+bool LoadAttrValue<int32_t>(ValueTag attr_type,
+                            const RawValue& raw_value,
+                            int32_t& output,
+                            std::vector<ParserCode>& errors) {
   switch (raw_value.tag) {
     case ValueTag::boolean: {
       if (!LoadInteger<1>(raw_value.data, &output)) {
-        return ParserCode::kValueInvalidSize;
+        errors.push_back(ParserCode::kValueInvalidSize);
+        return false;
       }
       if (attr_type != ValueTag::boolean) {
-        return ParserCode::kValueMismatchTagConverted;
+        errors.push_back(ParserCode::kValueMismatchTagConverted);
       }
       if (output < 0 || output > 1) {
         output = 1;
-        return ParserCode::kBooleanValueOutOfRange;
+        errors.push_back(ParserCode::kBooleanValueOutOfRange);
       }
-      return ParserCode::kOK;
+      return true;
     }
     case ValueTag::integer:
     case ValueTag::enum_: {
       if (!LoadInteger<4>(raw_value.data, &output)) {
-        return ParserCode::kValueInvalidSize;
+        errors.push_back(ParserCode::kValueInvalidSize);
+        return false;
       }
       if (attr_type != raw_value.tag) {
-        return ParserCode::kValueMismatchTagConverted;
+        errors.push_back(ParserCode::kValueMismatchTagConverted);
       }
-      return ParserCode::kOK;
+      return true;
     }
     default:
-      return ParserCode::kValueMismatchTagOmitted;
+      errors.push_back(ParserCode::kValueMismatchTagOmitted);
+      return false;
   }
 }
 
 template <>
-ParserCode LoadAttrValue<DateTime>(ValueTag attr_type,
-                                   const RawValue& raw_value,
-                                   DateTime& output) {
+bool LoadAttrValue<DateTime>(ValueTag attr_type,
+                             const RawValue& raw_value,
+                             DateTime& output,
+                             std::vector<ParserCode>& errors) {
   if (raw_value.tag != ValueTag::dateTime) {
-    return ParserCode::kValueMismatchTagOmitted;
+    errors.push_back(ParserCode::kValueMismatchTagOmitted);
+    return false;
   }
   if (!LoadDateTime(raw_value.data, &output)) {
-    return ParserCode::kValueInvalidSize;
+    errors.push_back(ParserCode::kValueInvalidSize);
+    return false;
   }
-  return ParserCode::kOK;
+  return true;
 }
 
 template <>
-ParserCode LoadAttrValue<Resolution>(ValueTag attr_type,
-                                     const RawValue& raw_value,
-                                     Resolution& output) {
+bool LoadAttrValue<Resolution>(ValueTag attr_type,
+                               const RawValue& raw_value,
+                               Resolution& output,
+                               std::vector<ParserCode>& errors) {
   if (raw_value.tag != ValueTag::resolution) {
-    return ParserCode::kValueMismatchTagOmitted;
+    errors.push_back(ParserCode::kValueMismatchTagOmitted);
+    return false;
   }
   if (!LoadResolution(raw_value.data, &output)) {
-    return ParserCode::kValueInvalidSize;
+    errors.push_back(ParserCode::kValueInvalidSize);
+    return false;
   }
-  return ParserCode::kOK;
+  return true;
 }
 
 template <>
-ParserCode LoadAttrValue<RangeOfInteger>(ValueTag attr_type,
-                                         const RawValue& raw_value,
-                                         RangeOfInteger& output) {
+bool LoadAttrValue<RangeOfInteger>(ValueTag attr_type,
+                                   const RawValue& raw_value,
+                                   RangeOfInteger& output,
+                                   std::vector<ParserCode>& errors) {
   if (raw_value.tag == ValueTag::integer) {
     if (!LoadInteger<4>(raw_value.data, &output.min_value)) {
-      return ParserCode::kValueInvalidSize;
+      errors.push_back(ParserCode::kValueInvalidSize);
+      return false;
     }
     output.max_value = output.min_value;
-    return ParserCode::kOK;
+    return true;
   }
   if (raw_value.tag != ValueTag::rangeOfInteger) {
-    return ParserCode::kValueMismatchTagOmitted;
+    errors.push_back(ParserCode::kValueMismatchTagOmitted);
+    return false;
   }
   if (!LoadRangeOfInteger(raw_value.data, &output)) {
-    return ParserCode::kValueInvalidSize;
+    errors.push_back(ParserCode::kValueInvalidSize);
+    return false;
   }
-  return ParserCode::kOK;
+  return true;
 }
 
 template <>
-ParserCode LoadAttrValue<StringWithLanguage>(ValueTag attr_type,
-                                             const RawValue& raw_value,
-                                             StringWithLanguage& output) {
+bool LoadAttrValue<StringWithLanguage>(ValueTag attr_type,
+                                       const RawValue& raw_value,
+                                       StringWithLanguage& output,
+                                       std::vector<ParserCode>& errors) {
   if (raw_value.tag == ValueTag::nameWithLanguage ||
       raw_value.tag == ValueTag::textWithLanguage) {
     if (!LoadStringWithLanguage(raw_value.data, &output)) {
-      return ParserCode::kValueInvalidSize;
+      errors.push_back(ParserCode::kValueInvalidSize);
+      return false;
     }
     if (raw_value.tag != attr_type) {
-      return ParserCode::kValueMismatchTagConverted;
+      errors.push_back(ParserCode::kValueMismatchTagConverted);
     }
-    return ParserCode::kOK;
+    return true;
   }
   if (IsString(raw_value.tag)) {
     output.language.clear();
     output.value = LoadString(raw_value.data);
     if (raw_value.tag == ValueTag::nameWithoutLanguage &&
         attr_type != ValueTag::nameWithLanguage) {
-      return ParserCode::kValueMismatchTagConverted;
+      errors.push_back(ParserCode::kValueMismatchTagConverted);
     }
     if (raw_value.tag == ValueTag::textWithoutLanguage &&
         attr_type != ValueTag::textWithLanguage) {
-      return ParserCode::kValueMismatchTagConverted;
+      errors.push_back(ParserCode::kValueMismatchTagConverted);
     }
-    return ParserCode::kOK;
+    return true;
   }
-  return ParserCode::kValueMismatchTagOmitted;
+  errors.push_back(ParserCode::kValueMismatchTagOmitted);
+  return false;
 }
 
 // Parse an attribute of type `attr_type` from `raw_attr` and add it to `coll`
@@ -336,14 +355,8 @@ std::vector<ParserCode> LoadAttrValues(Collection* coll,
   vals.reserve(raw_attr.values.size());
   for (const RawValue& raw_value : raw_attr.values) {
     ApiType val;
-    ParserCode code = LoadAttrValue<ApiType>(attr_type, raw_value, val);
-    if (code == ParserCode::kOK ||
-        code == ParserCode::kValueMismatchTagConverted ||
-        code == ParserCode::kBooleanValueOutOfRange) {
+    if (LoadAttrValue<ApiType>(attr_type, raw_value, val, errors)) {
       vals.push_back(std::move(val));
-    }
-    if (code != ParserCode::kOK) {
-      errors.push_back(code);
     }
   }
   if (vals.empty()) {
