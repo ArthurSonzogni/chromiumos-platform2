@@ -268,9 +268,16 @@ void CrosHealthdDiagnosticsService::RunCpuStressRoutine(
     mojo_ipc::NullableUint32Ptr length_seconds,
     RunCpuStressRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
-  if (!length_seconds.is_null())
+  if (!length_seconds.is_null()) {
     exec_duration = base::Seconds(length_seconds->value);
-  RunRoutine(routine_factory_->MakeCpuStressRoutine(exec_duration),
+  }
+  auto cpu_stress_routine_v2 = std::make_unique<RoutineAdapter>(
+      mojo_ipc::RoutineArgument::Tag::kCpuStress);
+  routine_service_->CreateRoutine(
+      mojo_ipc::RoutineArgument::NewCpuStress(
+          mojo_ipc::CpuStressRoutineArgument::New(exec_duration)),
+      cpu_stress_routine_v2->BindNewPipeAndPassReceiver());
+  RunRoutine(std::move(cpu_stress_routine_v2),
              mojo_ipc::DiagnosticRoutineEnum::kCpuStress, std::move(callback));
 }
 
