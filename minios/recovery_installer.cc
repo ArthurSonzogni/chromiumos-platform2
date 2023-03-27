@@ -19,7 +19,7 @@ bool RecoveryInstaller::RepartitionDisk() {
   }
 
   base::FilePath console = GetLogConsole();
-  if (!process_manager_->RunCommand(
+  if (process_manager_->RunCommand(
           {
             "/bin/chromeos-install", "--skip_rootfs", "--skip_dst_removable",
                 "--yes",
@@ -34,11 +34,7 @@ bool RecoveryInstaller::RepartitionDisk() {
               .output = console.value(),
           })) {
     PLOG(WARNING) << "Repartitioning the disk failed";
-    // TODO(b/187206298): Chromeos-install script returns EBFD. Ignore for now.
-    if (errno != EBADF)
-      return false;
-    LOG(INFO)
-        << "Ignoring the Bad File Descriptor error and continuing recovery.";
+    return false;
   }
   repartition_completed_ = true;
   LOG(INFO) << "Successfully repartitioned disk.";

@@ -42,17 +42,15 @@ MetricsReporter::MetricsReporter(
 void MetricsReporter::ReportNBRComplete() {
   base::FilePath console = GetLogConsole();
   if (!process_manager_ ||
-      !process_manager_->RunCommand(
+      process_manager_->RunCommand(
           {"/usr/bin/stateful_partition_for_recovery", "--mount"},
           ProcessManager::IORedirection{
               .input = console.value(),
               .output = console.value(),
           })) {
-    // Ignore EBADF (b/187206298).
-    if (errno != EBADF) {
-      PLOG(WARNING) << "Failed to mount stateful partition.";
-      return;
-    }
+    PLOG(WARNING)
+        << "Failed to mount stateful partition, skip metrics reporting.";
+    return;
   }
 
   metrics_lib_->SetOutputFile(kStatefulEventsPath);

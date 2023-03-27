@@ -78,7 +78,7 @@ TEST_F(ScreenDownloadTest, UpdateEngineProgressComplete) {
   status.set_current_operation(update_engine::Operation::UPDATED_NEED_REBOOT);
 
   EXPECT_CALL(*mock_process_manager_ptr_, RunCommand)
-      .WillOnce(testing::Return(true));
+      .WillOnce(testing::Return(0));
   EXPECT_CALL(*mock_metrics_library_ptr_, SetOutputFile);
   EXPECT_CALL(*mock_metrics_library_ptr_, SendEnumToUMA);
   EXPECT_CALL(mock_screen_controller_,

@@ -19,13 +19,13 @@ class RecoveryInstallerTest : public ::testing::Test {
 
 TEST_F(RecoveryInstallerTest, RepartitionDiskFailure) {
   EXPECT_CALL(mock_process_manager_, RunCommand(_, _))
-      .WillOnce(testing::Return(false));
+      .WillOnce(testing::Return(1));
   EXPECT_FALSE(recovery_installer_.RepartitionDisk());
 }
 
 TEST_F(RecoveryInstallerTest, RepeatedRepartitionDisk) {
   EXPECT_CALL(mock_process_manager_, RunCommand(_, _))
-      .WillOnce(testing::Return(true));
+      .WillOnce(testing::Return(0));
   EXPECT_TRUE(recovery_installer_.RepartitionDisk());
 
   // Does not call to repartition the disk again since it completed successfully

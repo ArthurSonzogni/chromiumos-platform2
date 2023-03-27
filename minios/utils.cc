@@ -139,11 +139,11 @@ bool GetCrosRegionData(ProcessManagerInterface* process_manager,
 bool TriggerShutdown() {
   ProcessManager process_manager;
   base::FilePath console = GetLogConsole();
-  if (!process_manager.RunCommand({"/sbin/poweroff", "-f"},
-                                  ProcessManager::IORedirection{
-                                      .input = console.value(),
-                                      .output = console.value(),
-                                  })) {
+  if (process_manager.RunCommand({"/sbin/poweroff", "-f"},
+                                 ProcessManager::IORedirection{
+                                     .input = console.value(),
+                                     .output = console.value(),
+                                 })) {
     LOG(ERROR) << "Could not trigger shutdown";
     return false;
   }
