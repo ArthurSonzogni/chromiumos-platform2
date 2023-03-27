@@ -30,5 +30,7 @@ fi
 date '+%s.%N' >'./timestamp'
 bootstat archive
 # -Pp: don't follow source symlinks; preserve mode, owner and file times.
-cp --remove-destination -Pp /tmp/uptime-* /tmp/disk-* /tmp/sync-rtc-* .
+cp --remove-destination -Pp /tmp/uptime-* /tmp/disk-* /tmp/sync-rtc-* \
+  /proc/sys/kernel/random/boot_id \
+  .
 date '+%s.%N' >>'./timestamp'
