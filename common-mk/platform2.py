@@ -102,6 +102,7 @@ _IUSE = [
     "hw_details",
     "hwid_override",
     "iioservice",
+    "iioservice_proximity",
     "inference_accuracy_eval",
     "intel_oemcrypto",
     "internal",
