@@ -1585,6 +1585,28 @@ def _build_hardware_properties(hw_topology):
     if privacy_screen.present == topology_pb2.HardwareFeatures.PRESENT:
         result["has-privacy-screen"] = True
 
+    sensors = hw_topology.accelerometer_gyroscope_magnetometer.hardware_feature
+    acc = sensors.accelerometer
+    if acc.base_accelerometer == topology_pb2.HardwareFeatures.PRESENT:
+        result["has-base-accelerometer"] = True
+    if acc.lid_accelerometer == topology_pb2.HardwareFeatures.PRESENT:
+        result["has-lid-accelerometer"] = True
+    gyro = sensors.gyroscope
+    if gyro.base_gyroscope == topology_pb2.HardwareFeatures.PRESENT:
+        result["has-base-gyroscope"] = True
+    if gyro.lid_gyroscope == topology_pb2.HardwareFeatures.PRESENT:
+        result["has-lid-gyroscope"] = True
+    magn = sensors.magnetometer
+    if magn.base_magnetometer == topology_pb2.HardwareFeatures.PRESENT:
+        result["has-base-magnetometer"] = True
+    if magn.lid_magnetometer == topology_pb2.HardwareFeatures.PRESENT:
+        result["has-lid-magnetometer"] = True
+    light_sensor = sensors.light_sensor
+    if light_sensor.base_lightsensor == topology_pb2.HardwareFeatures.PRESENT:
+        result["has-base-light-sensor"] = True
+    if light_sensor.lid_lightsensor == topology_pb2.HardwareFeatures.PRESENT:
+        result["has-lid-light-sensor"] = True
+
     return result
 
 
