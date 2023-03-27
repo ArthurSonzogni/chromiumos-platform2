@@ -208,10 +208,11 @@ std::unique_ptr<pb::ProcessExecEvent> ProcessPlugin::MakeExecEvent(
   if (hierarchy.empty()) {
     LOG(ERROR) << "PID:" << process_start.task_info.pid
                << " not found in the process cache.";
+
+    return process_exec_event;
   }
-  if (hierarchy.size() > 0) {
-    process_exec_event->set_allocated_spawn_process(hierarchy[0].release());
-  }
+  process_exec_event->set_allocated_spawn_process(hierarchy[0].release());
+
   if (hierarchy.size() > 1) {
     process_exec_event->set_allocated_process(hierarchy[1].release());
   }
@@ -229,13 +230,6 @@ std::unique_ptr<pb::ProcessTerminateEvent> ProcessPlugin::MakeTerminateEvent(
   // complete information.
   auto hierarchy = process_cache_->GetProcessHierarchy(
       process_exit.task_info.pid, process_exit.task_info.start_time, 2);
-  if (hierarchy.size() > 0) {
-    process_terminate_event->set_allocated_process(hierarchy[0].release());
-  }
-  if (hierarchy.size() > 1) {
-    process_terminate_event->set_allocated_parent_process(
-        hierarchy[1].release());
-  }
 
   // If that fails, fill in the task info that we got from BPF.
   if (hierarchy.size() == 0) {
@@ -249,7 +243,17 @@ std::unique_ptr<pb::ProcessTerminateEvent> ProcessPlugin::MakeTerminateEvent(
       process_terminate_event->set_allocated_parent_process(
           parent[0].release());
     }
+
+    return process_terminate_event;
   }
+
+  process_terminate_event->set_allocated_process(hierarchy[0].release());
+
+  if (hierarchy.size() > 1) {
+    process_terminate_event->set_allocated_parent_process(
+        hierarchy[1].release());
+  }
+
   return process_terminate_event;
 }
 
