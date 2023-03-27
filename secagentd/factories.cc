@@ -12,39 +12,37 @@
 #include "attestation-client/attestation/dbus-proxies.h"
 #include "base/memory/scoped_refptr.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
+#include "secagentd/bpf_skeletons/skeleton_process_bpf.h"
+#include "secagentd/common.h"
 #include "secagentd/message_sender.h"
+#include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
+#include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd {
 
-absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
-AbslFormatConvert(const Types::BpfSkeleton& type,
-                  const absl::FormatConversionSpec&,
-                  absl::FormatSink* output_sink) {
-  static const absl::flat_hash_map<Types::BpfSkeleton, std::string>
-      kTypeToString{{Types::BpfSkeleton::kProcess, "Process"}};
-  auto i = kTypeToString.find(type);
-  output_sink->Append(i != kTypeToString.end() ? i->second : "Unknown");
-  return {.value = true};
-}
-
-std::ostream& operator<<(std::ostream& out, const Types::BpfSkeleton& type) {
-  out << absl::StreamFormat("%s", type);
-  return out;
-}
+namespace pb = cros_xdr::reporting;
 
 std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
-    BpfSkeletonType type, BpfCallbacks cbs) {
+    Types::BpfSkeleton type, BpfCallbacks cbs) {
   if (created_skeletons_.contains(type)) {
     return nullptr;
   }
 
   std::unique_ptr<BpfSkeletonInterface> rv{nullptr};
   switch (type) {
-    case BpfSkeletonType::kProcess:
-      rv = di_.process ? std::move(di_.process)
-                       : std::make_unique<ProcessBpfSkeleton>();
+    case Types::BpfSkeleton::kProcess:
+      if (di_.process) {
+        rv = std::move(di_.process);
+      } else {
+        SkeletonCallbacks<process_bpf> skel_cbs;
+        skel_cbs.destroy = base::BindRepeating(process_bpf__destroy);
+        skel_cbs.open_opts = base::BindRepeating(process_bpf__open_opts);
+        rv = std::make_unique<BpfSkeleton<process_bpf>>(
+            "process", skel_cbs,
+            SkeletonMetrics{.attach_result = metrics::kProcessBpfAttach});
+      }
       break;
     default:
       LOG(ERROR) << "Failed to create skeleton: unhandled type " << type;
@@ -62,36 +60,19 @@ std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
   return rv;
 }
 
-absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
-AbslFormatConvert(const Types::Plugin& type,
-                  const absl::FormatConversionSpec&,
-                  absl::FormatSink* sink) {
-  static const absl::flat_hash_map<Types::Plugin, std::string> kTypeToString{
-      {Types::Plugin::kProcess, "Process"}, {Types::Plugin::kAgent, "Agent"}};
-
-  auto i = kTypeToString.find(type);
-  sink->Append(i != kTypeToString.end() ? i->second : "Unknown");
-  return {.value = true};
-}
-
-std::ostream& operator<<(std::ostream& out, const Types::Plugin& type) {
-  out << absl::StreamFormat("%s", type);
-  return out;
-}
-
 PluginFactory::PluginFactory() {
   bpf_skeleton_factory_ = ::base::MakeRefCounted<BpfSkeletonFactory>();
 }
 
 std::unique_ptr<PluginInterface> PluginFactory::Create(
-    PluginType type,
+    Types::Plugin type,
     scoped_refptr<MessageSenderInterface> message_sender,
     scoped_refptr<ProcessCacheInterface> process_cache,
     scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
     uint32_t batch_interval_s) {
   std::unique_ptr<PluginInterface> rv{nullptr};
   switch (type) {
-    case PluginType::kProcess:
+    case Types::Plugin::kProcess:
       rv = std::make_unique<ProcessPlugin>(
           bpf_skeleton_factory_, message_sender, process_cache,
           policies_features_broker, batch_interval_s);

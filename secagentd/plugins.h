@@ -152,10 +152,8 @@ class AgentPlugin : public PluginInterface {
 
 class PluginFactoryInterface {
  public:
-  enum class PluginType { kAgent, kProcess };
-
   virtual std::unique_ptr<PluginInterface> Create(
-      PluginType type,
+      Types::Plugin type,
       scoped_refptr<MessageSenderInterface> message_sender,
       scoped_refptr<ProcessCacheInterface> process_cache,
       scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
@@ -171,19 +169,14 @@ class PluginFactoryInterface {
   virtual ~PluginFactoryInterface() = default;
 };
 
-namespace Types {
-using Plugin = PluginFactoryInterface::PluginType;
-}  // namespace Types
-
 // Support absl format for PluginType.
 absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
-AbslFormatConvert(const PluginFactoryInterface::PluginType& type,
+AbslFormatConvert(const Types::Plugin& type,
                   const absl::FormatConversionSpec& conversion_spec,
                   absl::FormatSink* output_sink);
 
 // Support streaming for PluginType.
-std::ostream& operator<<(std::ostream& out,
-                         const PluginFactoryInterface::PluginType& type);
+std::ostream& operator<<(std::ostream& out, const Types::Plugin& type);
 
 class PluginFactory : public PluginFactoryInterface {
  public:
@@ -192,7 +185,7 @@ class PluginFactory : public PluginFactoryInterface {
       scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory)
       : bpf_skeleton_factory_(bpf_skeleton_factory) {}
   std::unique_ptr<PluginInterface> Create(
-      PluginType type,
+      Types::Plugin type,
       scoped_refptr<MessageSenderInterface> message_sender,
       scoped_refptr<ProcessCacheInterface> process_cache,
       scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,

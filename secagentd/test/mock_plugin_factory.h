@@ -9,6 +9,7 @@
 #include <string>
 
 #include "gmock/gmock.h"  // IWYU pragma: keep
+#include "secagentd/common.h"
 #include "secagentd/plugins.h"
 
 namespace secagentd::testing {
@@ -18,7 +19,7 @@ class MockPluginFactory : public PluginFactoryInterface {
   MOCK_METHOD(
       std::unique_ptr<PluginInterface>,
       Create,
-      (PluginType type,
+      (Types::Plugin type,
        scoped_refptr<MessageSenderInterface> message_sender,
        scoped_refptr<ProcessCacheInterface> process_cache,
        scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,

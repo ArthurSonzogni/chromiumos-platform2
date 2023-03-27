@@ -148,7 +148,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEvent) {
   }
 
   const bpf::cros_event a = {
-      .data.process_event = {.type = bpf::process_start_type,
+      .data.process_event = {.type = bpf::kProcessStartEvent,
                              .data.process_start = {.task_info =
                                                         {
                                                             .pid = kPids[0],
@@ -165,7 +165,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEvent) {
                                                             .net_ns = 6,
                                                             .ipc_ns = 7,
                                                         }}},
-      .type = bpf::process_type,
+      .type = bpf::kProcessEvent,
   };
   EXPECT_CALL(*process_cache_,
               PutFromBpfExec(Ref(a.data.process_event.data.process_start)));
@@ -236,7 +236,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventBatched) {
   }
 
   const bpf::cros_event a = {
-      .data.process_event = {.type = bpf::process_start_type,
+      .data.process_event = {.type = bpf::kProcessStartEvent,
                              .data.process_start = {.task_info =
                                                         {
                                                             .pid = kPids[0],
@@ -253,7 +253,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventBatched) {
                                                             .net_ns = 6,
                                                             .ipc_ns = 7,
                                                         }}},
-      .type = bpf::process_type,
+      .type = bpf::kProcessEvent,
   };
   EXPECT_CALL(*process_cache_,
               PutFromBpfExec(Ref(a.data.process_event.data.process_start)));
@@ -319,7 +319,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginCoalesceTerminate) {
   terminate_hierarchy_very_old[0]->set_process_uuid(kUuidVeryOld);
 
   const bpf::cros_event exec = {
-      .data.process_event = {.type = bpf::process_start_type,
+      .data.process_event = {.type = bpf::kProcessStartEvent,
                              .data.process_start =
                                  {
                                      .task_info =
@@ -328,10 +328,10 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginCoalesceTerminate) {
                                              .start_time = kSpawnStartTime,
                                          },
                                  }},
-      .type = bpf::process_type,
+      .type = bpf::kProcessEvent,
   };
   const bpf::cros_event terminate = {
-      .data.process_event = {.type = bpf::process_exit_type,
+      .data.process_event = {.type = bpf::kProcessExitEvent,
                              .data.process_start =
                                  {
                                      .task_info =
@@ -340,10 +340,10 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginCoalesceTerminate) {
                                              .start_time = kSpawnStartTime,
                                          },
                                  }},
-      .type = bpf::process_type,
+      .type = bpf::kProcessEvent,
   };
   const bpf::cros_event terminate_very_old = {
-      .data.process_event = {.type = bpf::process_exit_type,
+      .data.process_event = {.type = bpf::kProcessExitEvent,
                              .data.process_start =
                                  {
                                      .task_info =
@@ -353,7 +353,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginCoalesceTerminate) {
                                                  kSpawnStartTimeVeryOld,
                                          },
                                  }},
-      .type = bpf::process_type,
+      .type = bpf::kProcessEvent,
   };
   EXPECT_CALL(*process_cache_,
               PutFromBpfExec(Ref(exec.data.process_event.data.process_start)));
@@ -429,13 +429,13 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {
   }
 
   const bpf::cros_event a = {
-      .data.process_event = {.type = bpf::process_start_type,
+      .data.process_event = {.type = bpf::kProcessStartEvent,
                              .data.process_start.task_info =
                                  {
                                      .pid = kPids[0],
                                      .start_time = kSpawnStartTime,
                                  }},
-      .type = bpf::process_type,
+      .type = bpf::kProcessEvent,
   };
   EXPECT_CALL(*process_cache_,
               PutFromBpfExec(Ref(a.data.process_event.data.process_start)));
@@ -483,7 +483,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginFilteredExecEvent) {
   }
 
   const bpf::cros_event a = {
-      .data.process_event = {.type = bpf::process_start_type,
+      .data.process_event = {.type = bpf::kProcessStartEvent,
                              .data.process_start =
                                  {
                                      .task_info =
@@ -492,7 +492,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginFilteredExecEvent) {
                                              .start_time = kSpawnStartTime,
                                          },
                                  }},
-      .type = bpf::process_type,
+      .type = bpf::kProcessEvent,
   };
   EXPECT_CALL(*process_cache_,
               PutFromBpfExec(Ref(a.data.process_event.data.process_start)));
@@ -514,7 +514,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheHit) {
   }
 
   const bpf::cros_event a = {
-      .data.process_event = {.type = bpf::process_exit_type,
+      .data.process_event = {.type = bpf::kProcessExitEvent,
                              .data.process_exit =
                                  {
                                      .task_info =
@@ -524,7 +524,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheHit) {
                                          },
                                      .is_leaf = true,
                                  }},
-      .type = bpf::process_type,
+      .type = bpf::kProcessEvent,
   };
   EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[0], kStartTime, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
@@ -574,7 +574,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
   parent_hierarchy[0]->mutable_image()->set_pathname(kParentImage);
 
   const bpf::cros_event a = {
-      .data.process_event = {.type = bpf::process_exit_type,
+      .data.process_event = {.type = bpf::kProcessExitEvent,
                              .data.process_exit =
                                  {
                                      .task_info =
@@ -587,7 +587,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
                                          },
                                      .is_leaf = false,
                                  }},
-      .type = bpf::process_type,
+      .type = bpf::kProcessEvent,
   };
   EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[0], kStartTimes[0], 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
@@ -643,7 +643,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginFilteredExitEvent) {
   }
 
   const bpf::cros_event a = {
-      .data.process_event = {.type = bpf::process_exit_type,
+      .data.process_event = {.type = bpf::kProcessExitEvent,
                              .data.process_exit =
                                  {
                                      .task_info =
@@ -653,7 +653,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginFilteredExitEvent) {
                                          },
                                      .is_leaf = true,
                                  }},
-      .type = bpf::process_type,
+      .type = bpf::kProcessEvent,
   };
   EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[0], kStartTime, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));

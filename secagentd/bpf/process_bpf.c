@@ -121,8 +121,8 @@ int BPF_PROG(handle_sched_process_exec,
   if (event == NULL) {
     return 0;
   }
-  event->type = process_type;
-  event->data.process_event.type = process_start_type;
+  event->type = kProcessEvent;
+  event->data.process_event.type = kProcessStartEvent;
   struct cros_process_start* p =
       &(event->data.process_event.data.process_start);
 
@@ -157,8 +157,8 @@ int BPF_PROG(handle_sched_process_exit, struct task_struct* current) {
   if (event == NULL) {
     return 0;
   }
-  event->type = process_type;
-  event->data.process_event.type = process_exit_type;
+  event->type = kProcessEvent;
+  event->data.process_event.type = kProcessExitEvent;
   struct cros_process_exit* p = &(event->data.process_event.data.process_exit);
 
   fill_task_info(&p->task_info, current);

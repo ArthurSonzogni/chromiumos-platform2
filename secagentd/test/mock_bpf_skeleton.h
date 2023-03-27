@@ -32,7 +32,7 @@ class MockSkeletonFactory : public BpfSkeletonFactoryInterface {
  public:
   MOCK_METHOD(std::unique_ptr<BpfSkeletonInterface>,
               Create,
-              (BpfSkeletonType type, BpfCallbacks cbs),
+              (Types::BpfSkeleton type, BpfCallbacks cbs),
               (override));
 };
 }  // namespace secagentd

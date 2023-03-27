@@ -104,9 +104,9 @@ struct cros_process_change_namespace {
 // Indicates the type of process event is contained within the
 // event structure.
 enum cros_process_event_type {
-  process_start_type,
-  process_exit_type,
-  process_change_namespace_type
+  kProcessStartEvent,
+  kProcessExitEvent,
+  kProcessChangeNamespaceEvent
 };
 
 // Contains information needed to report process security
@@ -121,7 +121,7 @@ struct cros_process_event {
 };
 
 // The type of security event an event structure contains.
-enum cros_event_type { process_type };
+enum cros_event_type { kProcessEvent };
 
 // The security event structure that contains security event information
 // provided by a BPF application.

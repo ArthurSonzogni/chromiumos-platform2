@@ -5,6 +5,7 @@
 #ifndef SECAGENTD_BPF_SKELETON_WRAPPERS_H_
 #define SECAGENTD_BPF_SKELETON_WRAPPERS_H_
 
+#include <bpf/libbpf.h>
 #include <memory>
 #include <string>
 #include <utility>
@@ -15,9 +16,11 @@
 #include "absl/strings/str_format.h"
 #include "base/files/file_descriptor_watcher_posix.h"
 #include "base/functional/callback.h"
+#include "base/functional/callback_forward.h"
+#include "base/strings/strcat.h"
 #include "secagentd/bpf/process.h"
-#include "secagentd/bpf_skeletons/skeleton_process_bpf.h"
-
+#include "secagentd/common.h"
+#include "secagentd/metrics_sender.h"
 namespace secagentd {
 
 // Directory with min_core_btf payloads. Must match the ebuild.
@@ -59,20 +62,122 @@ class BpfSkeletonInterface {
   virtual void RegisterCallbacks(BpfCallbacks cbs) = 0;
 };
 
-class ProcessBpfSkeleton : public BpfSkeletonInterface {
+template <typename T>
+struct SkeletonCallbacks {
+  base::RepeatingCallback<void(T* obj)> destroy;
+  base::RepeatingCallback<T*()> open;
+  base::RepeatingCallback<T*(const struct bpf_object_open_opts* opts)>
+      open_opts;
+};
+
+struct SkeletonMetrics {
+  const metrics::EnumMetric<metrics::BpfAttachResult> attach_result;
+};
+
+template <typename SkeletonType>
+class BpfSkeleton : public BpfSkeletonInterface {
  public:
-  ~ProcessBpfSkeleton() override;
-  int ConsumeEvent() override;
+  BpfSkeleton(std::string_view plugin_name,
+              const SkeletonCallbacks<SkeletonType>& skel_cb,
+              const SkeletonMetrics& metrics)
+      : name_(plugin_name), skel_cbs_(skel_cb), metrics_(metrics) {}
+  ~BpfSkeleton() override {
+    // The file descriptor being watched must outlive the controller.
+    // Force rb_watch_readable_ destruction before closing fd.
+    rb_watch_readable_ = nullptr;
+    if (rb_ != nullptr) {
+      // Free and close all ring buffer fds.
+      ring_buffer__free(rb_);
+    }
+    if (skel_ != nullptr) {
+      skel_cbs_.destroy.Run(skel_);
+    }
+  }
+  int ConsumeEvent() override {
+    if (rb_ == nullptr) {
+      return -1;
+    }
+    return ring_buffer__consume(rb_);
+  }
 
  protected:
   friend class BpfSkeletonFactory;
+  absl::Status LoadAndAttach() override {
+    if (callbacks_.ring_buffer_event_callback.is_null() ||
+        callbacks_.ring_buffer_read_ready_callback.is_null()) {
+      return absl::InternalError(base::StrCat(
+          {name_,
+           ": LoadAndAttach failed, one or more provided callbacks "
+           "are null."}));
+    }
+    libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
+#if defined(USE_MIN_CORE_BTF) && USE_MIN_CORE_BTF == 1
+    // Ask libbpf to load a BTF that's tailored specifically to this BPF. Note
+    // that this is more of a suggestion because libbpf will silently ignore the
+    // request if it doesn't like the type of BPF or its access patterns.
+    const std::string btf_path =
+        base::StrCat({secagentd::kMinCoreBtfDir, name_, "_bpf.min.btf"});
+    DECLARE_LIBBPF_OPTS(bpf_object_open_opts, open_opts,
+                        .btf_custom_path = btf_path.c_str());
+    skel_ = skel_cbs_.open_opts.Run(&open_opts);
+#else
+    // Let libbpf extract BTF from /sys/kernel/btf/vmlinux.
+    skel_ = skel_cbs_.open.Run();
+#endif  // USE_MIN_CORE_BTF
 
-  absl::Status LoadAndAttach() override;
-  void RegisterCallbacks(BpfCallbacks cbs) override;
+    if (!skel_) {
+      MetricsSender::GetInstance().SendEnumMetricToUMA(
+          metrics_.attach_result, metrics::BpfAttachResult::kErrorOpen);
+      return absl::InternalError(
+          base::StrCat({name_, "BPF skeleton failed to open."}));
+    }
+    if (bpf_object__load_skeleton(skel_->skeleton)) {
+      MetricsSender::GetInstance().SendEnumMetricToUMA(
+          metrics_.attach_result, metrics::BpfAttachResult::kErrorLoad);
+      return absl::InternalError(base::StrCat(
+          {name_, ": application failed loading and verification."}));
+    }
+
+    if (bpf_object__attach_skeleton(skel_->skeleton)) {
+      MetricsSender::GetInstance().SendEnumMetricToUMA(
+          metrics_.attach_result, metrics::BpfAttachResult::kErrorLoad);
+      return absl::InternalError(
+          base::StrCat({name_, ": program failed to attach."}));
+    }
+
+    int map_fd = bpf_map__fd(skel_->maps.rb);
+    int epoll_fd{-1};
+
+    // ring_buffer__new will fail with an invalid fd but we explicitly check
+    // anyways for code clarity.
+    if (map_fd >= 0) {
+      rb_ = ring_buffer__new(
+          map_fd, indirect_c_callback,
+          static_cast<void*>(&callbacks_.ring_buffer_event_callback), nullptr);
+      epoll_fd = ring_buffer__epoll_fd(rb_);
+    }
+
+    if (map_fd < 0 || !rb_ || epoll_fd < 0) {
+      MetricsSender::GetInstance().SendEnumMetricToUMA(
+          metrics_.attach_result, metrics::BpfAttachResult::kErrorRingBuffer);
+      return absl::InternalError(
+          base::StrCat({name_, ": Ring buffer creation failed."}));
+    }
+
+    rb_watch_readable_ = base::FileDescriptorWatcher::WatchReadable(
+        epoll_fd, callbacks_.ring_buffer_read_ready_callback);
+    MetricsSender::GetInstance().SendEnumMetricToUMA(
+        metrics_.attach_result, metrics::BpfAttachResult::kSuccess);
+    return absl::OkStatus();
+  }
+  void RegisterCallbacks(BpfCallbacks cbs) override { callbacks_ = cbs; }
 
  private:
   BpfCallbacks callbacks_;
-  process_bpf* skel_{nullptr};
+  std::string name_;
+  SkeletonType* skel_{nullptr};
+  const SkeletonCallbacks<SkeletonType> skel_cbs_;
+  const SkeletonMetrics metrics_;
   struct ring_buffer* rb_{nullptr};
   std::unique_ptr<base::FileDescriptorWatcher::Controller> rb_watch_readable_;
 };
@@ -80,7 +185,6 @@ class ProcessBpfSkeleton : public BpfSkeletonInterface {
 class BpfSkeletonFactoryInterface
     : public ::base::RefCounted<BpfSkeletonFactoryInterface> {
  public:
-  enum class BpfSkeletonType { kProcess };
   struct SkeletonInjections {
     std::unique_ptr<BpfSkeletonInterface> process;
   };
@@ -88,36 +192,22 @@ class BpfSkeletonFactoryInterface
   // Creates a BPF Handler class that loads and attaches a BPF application.
   // The passed in callback will be invoked when an event is available from the
   // BPF application.
-  virtual std::unique_ptr<BpfSkeletonInterface> Create(BpfSkeletonType type,
+  virtual std::unique_ptr<BpfSkeletonInterface> Create(Types::BpfSkeleton type,
                                                        BpfCallbacks cbs) = 0;
   virtual ~BpfSkeletonFactoryInterface() = default;
 };
-
-namespace Types {
-using BpfSkeleton = BpfSkeletonFactoryInterface::BpfSkeletonType;
-}  // namespace Types
-
-// Support absl format for BpfSkeletonType.
-absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
-AbslFormatConvert(const BpfSkeletonFactoryInterface::BpfSkeletonType& type,
-                  const absl::FormatConversionSpec& spec,
-                  absl::FormatSink* sink);
-
-std::ostream& operator<<(
-    std::ostream& out,
-    const BpfSkeletonFactoryInterface::BpfSkeletonType& type);
 
 class BpfSkeletonFactory : public BpfSkeletonFactoryInterface {
  public:
   BpfSkeletonFactory() = default;
   explicit BpfSkeletonFactory(SkeletonInjections di) : di_(std::move(di)) {}
 
-  std::unique_ptr<BpfSkeletonInterface> Create(BpfSkeletonType type,
+  std::unique_ptr<BpfSkeletonInterface> Create(Types::BpfSkeleton type,
                                                BpfCallbacks cbs) override;
 
  private:
   SkeletonInjections di_;
-  absl::flat_hash_set<BpfSkeletonType> created_skeletons_;
+  absl::flat_hash_set<Types::BpfSkeleton> created_skeletons_;
 };
 
 }  //  namespace secagentd

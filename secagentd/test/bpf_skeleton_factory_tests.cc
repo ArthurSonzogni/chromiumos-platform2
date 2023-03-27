@@ -7,6 +7,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "gtest/gtest.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
+#include "secagentd/common.h"
 #include "secagentd/test/mock_bpf_skeleton.h"
 
 namespace secagentd {

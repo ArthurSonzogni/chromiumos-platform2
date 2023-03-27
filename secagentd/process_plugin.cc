@@ -92,12 +92,12 @@ std::string ProcessPlugin::GetName() const {
 
 void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
   auto atomic_event = std::make_unique<pb::ProcessEventAtomicVariant>();
-  if (bpf_event.type != bpf::process_type) {
+  if (bpf_event.type != bpf::kProcessEvent) {
     LOG(ERROR) << "ProcessBPF: unknown BPF event type.";
     return;
   }
   const bpf::cros_process_event& pe = bpf_event.data.process_event;
-  if (pe.type == bpf::process_start_type) {
+  if (pe.type == bpf::kProcessStartEvent) {
     const bpf::cros_process_start& process_start = pe.data.process_start;
     // Record the newly spawned process into our cache.
     process_cache_->PutFromBpfExec(process_start);
@@ -111,7 +111,7 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
       return;
     }
     atomic_event->set_allocated_process_exec(exec_event.release());
-  } else if (pe.type == bpf::process_exit_type) {
+  } else if (pe.type == bpf::kProcessExitEvent) {
     const bpf::cros_process_exit& process_exit = pe.data.process_exit;
     auto terminate_event = MakeTerminateEvent(process_exit);
     if (process_exit.is_leaf) {

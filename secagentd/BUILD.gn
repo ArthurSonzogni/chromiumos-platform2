@@ -65,13 +65,12 @@ pkg_config("target_defaults") {
 static_library("libsecagent") {
   sources = [
     "agent_plugin.cc",
-    "bpf_utils.cc",
+    "common.cc",
     "daemon.cc",
     "factories.cc",
     "message_sender.cc",
     "metrics_sender.cc",
     "policies_features_broker.cc",
-    "process_bpf_skeleton.cc",
     "process_cache.cc",
     "process_plugin.cc",
   ]

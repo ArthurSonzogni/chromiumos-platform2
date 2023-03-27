@@ -18,6 +18,7 @@
 #include "gmock/gmock.h"  // IWYU pragma: keep
 #include "gtest/gtest.h"
 #include "metrics/metrics_library.h"
+#include "secagentd/common.h"
 #include "secagentd/plugins.h"
 #include "secagentd/test/mock_message_sender.h"
 #include "secagentd/test/mock_plugin_factory.h"
@@ -107,7 +108,7 @@ class DaemonTestFixture : public ::testing::TestWithParam<FeaturedAndPolicy> {
 
     // Check process plugin.
     EXPECT_CALL(*plugin_factory_ref,
-                Create(PluginFactory::PluginType::kProcess, _, _, _, _))
+                Create(Types::Plugin::kProcess, _, _, _, _))
         .WillOnce(Return(ByMove(std::move(process_plugin_))));
     EXPECT_CALL(*process_plugin_ref_, Activate);
   }

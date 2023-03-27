@@ -152,7 +152,7 @@ void Daemon::StartXDRReporting() {
 }
 
 void Daemon::RunPlugins() {
-  if (CreatePlugin(PluginFactory::PluginType::kProcess) != EX_OK) {
+  if (CreatePlugin(Types::Plugin::kProcess) != EX_OK) {
     QuitWithExitCode(EX_SOFTWARE);
   }
 
@@ -165,10 +165,10 @@ void Daemon::RunPlugins() {
   }
 }
 
-int Daemon::CreatePlugin(PluginFactory::PluginType type) {
+int Daemon::CreatePlugin(Types::Plugin type) {
   std::unique_ptr<PluginInterface> plugin;
   switch (type) {
-    case PluginFactory::PluginType::kProcess: {
+    case Types::Plugin::kProcess: {
       plugin = plugin_factory_->Create(
           Types::Plugin::kProcess, message_sender_, process_cache_,
           policies_features_broker_, plugin_batch_interval_s_);
