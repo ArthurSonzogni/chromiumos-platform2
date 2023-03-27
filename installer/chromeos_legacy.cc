@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/environment.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -114,7 +115,8 @@ bool EfiGrubCfg::UpdateBootParameters(BootSlot slot,
 }
 
 bool UpdateLegacyKernel(const InstallConfig& install_config) {
-  bool is_install = getenv("IS_INSTALL");
+  auto env = base::Environment::Create();
+  bool is_install = env->HasVar("IS_INSTALL");
 
   const base::FilePath root_mount(install_config.root.mount());
   const base::FilePath boot_mount(install_config.boot.mount());

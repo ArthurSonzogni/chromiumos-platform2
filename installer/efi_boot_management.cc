@@ -29,6 +29,7 @@
 
 #include <base/containers/contains.h>
 #include <base/containers/cxx20_erase.h>
+#include <base/environment.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -735,7 +736,8 @@ bool UpdateEfiBootEntries(const InstallConfig& install_config) {
     // On install if we can't manage efi entries we can't be sure that we've
     // created a system that will boot (some firmware can't find the default
     // location).
-    const bool management_required = getenv(kEnvIsInstall);
+    auto env = base::Environment::Create();
+    const bool management_required = env->HasVar(kEnvIsInstall);
     if (management_required) {
       efi_boot_manager.SendEfiManagementEvent(
           EfiManagementEvent::kRequiredEntryManagementFailed);

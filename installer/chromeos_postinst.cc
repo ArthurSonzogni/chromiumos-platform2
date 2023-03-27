@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include <base/environment.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -501,10 +502,12 @@ bool ESPPostInstall(const InstallConfig& install_config) {
 //
 bool ChromeosChrootPostinst(const InstallConfig& install_config,
                             int* exit_code) {
+  auto env = base::Environment::Create();
+
   // Extract External ENVs
-  bool is_factory_install = getenv(kEnvIsFactoryInstall);
-  bool is_recovery_install = getenv(kEnvIsRecoveryInstall);
-  bool is_install = getenv(kEnvIsInstall);
+  bool is_factory_install = env->HasVar(kEnvIsFactoryInstall);
+  bool is_recovery_install = env->HasVar(kEnvIsRecoveryInstall);
+  bool is_install = env->HasVar(kEnvIsInstall);
   bool is_update = !is_factory_install && !is_recovery_install && !is_install &&
                    !IsRunningMiniOS();
 
