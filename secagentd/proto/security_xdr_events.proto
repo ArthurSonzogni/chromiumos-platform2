@@ -93,13 +93,22 @@ message AgentHeartbeatEvent {
   optional TcbAttributes tcb = 1;
 }
 
+message AgentEventAtomicVariant {
+  optional CommonEventVariantDataFields common = 1;
+  oneof variant_type {
+    AgentStartEvent agent_start = 2;
+    AgentHeartbeatEvent agent_heartbeat = 3;
+  }
+}
+
 // Agent Events wrapper.
 message XdrAgentEvent {
   optional CommonEventDataFields common = 1;
   oneof message_type {
-    AgentStartEvent agent_start = 2;
-    AgentHeartbeatEvent agent_heartbeat = 3;
+    AgentStartEvent agent_start = 2 [deprecated = true];
+    AgentHeartbeatEvent agent_heartbeat = 3 [deprecated = true];
   }
+  repeated AgentEventAtomicVariant batched_events = 4;
 }
 
 // Acting process (forked and) exec'd a new child process.
@@ -121,6 +130,7 @@ message ProcessTerminateEvent {
 // batch.
 message CommonEventVariantDataFields {
   optional int64 create_timestamp_us = 1;
+  optional string device_user = 2;
 }
 
 // Singular Process event.
