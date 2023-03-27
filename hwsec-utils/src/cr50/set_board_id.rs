@@ -236,9 +236,12 @@ pub fn check_device(ctx: &mut impl Context) -> Result<(), Cr50SetBoardIDVerdict>
 
 #[cfg(test)]
 mod tests {
+    use crate::command_runner::MockCommandInput;
+    use crate::command_runner::MockCommandOutput;
     use crate::context::mock::MockContext;
     use crate::context::Context;
     use crate::cr50::check_cr50_support_partial_board_id;
+    use crate::cr50::check_device;
     use crate::cr50::cr50_check_board_id_and_flag;
     use crate::cr50::cr50_set_board_id_and_flag;
     use crate::cr50::Cr50SetBoardIDVerdict;
@@ -400,5 +403,70 @@ mod tests {
 
         let result = check_cr50_support_partial_board_id(&mut mock_ctx);
         assert_eq!(result, Err(Cr50SetBoardIDVerdict::GeneralError));
+    }
+
+    #[test]
+    fn test_check_device_ok() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_expectation(
+            MockCommandInput::new("flashrom", vec!["-p", "host", "--wp-status"]),
+            MockCommandOutput::new(0, "", ""),
+        );
+        mock_ctx.cmd_runner().add_expectation(
+            MockCommandInput::new(
+                "crossystem",
+                vec![r"'mainfw_type?normal'", r"'cros_debug?0'"],
+            ),
+            MockCommandOutput::new(0, "", ""),
+        );
+        let result = check_device(&mut mock_ctx);
+        assert_eq!(result, Err(Cr50SetBoardIDVerdict::Successful));
+    }
+
+    #[test]
+    fn test_check_device_flashrom_error() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_expectation(
+            MockCommandInput::new("flashrom", vec!["-p", "host", "--wp-status"]),
+            MockCommandOutput::new(1, "", ""),
+        );
+        let result = check_device(&mut mock_ctx);
+        assert_eq!(result, Err(Cr50SetBoardIDVerdict::DeviceStateError));
+    }
+
+    #[test]
+    fn test_check_device_not_running_normal_image() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_expectation(
+            MockCommandInput::new("flashrom", vec!["-p", "host", "--wp-status"]),
+            MockCommandOutput::new(0, "", ""),
+        );
+        mock_ctx.cmd_runner().add_expectation(
+            MockCommandInput::new(
+                "crossystem",
+                vec![r"'mainfw_type?normal'", r"'cros_debug?0'"],
+            ),
+            MockCommandOutput::new(1, "", ""),
+        );
+        let result = check_device(&mut mock_ctx);
+        assert_eq!(result, Err(Cr50SetBoardIDVerdict::GeneralError));
+    }
+
+    #[test]
+    fn test_check_device_write_protect_is_disabled() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_expectation(
+            MockCommandInput::new("flashrom", vec!["-p", "host", "--wp-status"]),
+            MockCommandOutput::new(0, "write protect is disabled", ""),
+        );
+        mock_ctx.cmd_runner().add_expectation(
+            MockCommandInput::new(
+                "crossystem",
+                vec![r"'mainfw_type?normal'", r"'cros_debug?0'"],
+            ),
+            MockCommandOutput::new(0, "", ""),
+        );
+        let result = check_device(&mut mock_ctx);
+        assert_eq!(result, Err(Cr50SetBoardIDVerdict::DeviceStateError));
     }
 }
