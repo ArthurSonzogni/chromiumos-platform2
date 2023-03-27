@@ -255,7 +255,6 @@ if (use.test) {
       "anonymizer_test.cc",
       "auth_data_cache_test.cc",
       "authpolicy_flags_test.cc",
-      "authpolicy_test.cc",
       "gpo_version_cache_test.cc",
       "policy/extension_policy_encoder_test.cc",
       "policy/preg_parser_test.cc",
