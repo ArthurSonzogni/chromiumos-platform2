@@ -24,7 +24,6 @@ config("target_defaults") {
     "-Werror",
     "-Wextra",
     "-Wpedantic",
-    "-Weverything",
 
     # Allow C++20 designated initializers.
     "-Wno-c++20-designator",
