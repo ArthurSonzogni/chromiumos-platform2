@@ -14,12 +14,9 @@
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
+#include "cryptohome/crc.h"
 #include "cryptohome/mock_firmware_management_parameters.h"
 #include "cryptohome/mock_platform.h"
-
-extern "C" {
-#include "cryptohome/crc8.h"
-}
 
 namespace cryptohome {
 using brillo::SecureBlob;
@@ -386,7 +383,7 @@ TEST_F(FirmwareManagementParametersTest, LoadMinorVersion) {
 
   // Recalculate CRC
   nvram_data[0] =
-      crc8(nvram_data.data() + FirmwareManagementParameters::kCrcDataOffset,
+      Crc8(nvram_data.data() + FirmwareManagementParameters::kCrcDataOffset,
            nvram_data.size() - FirmwareManagementParameters::kCrcDataOffset);
 
   EXPECT_CALL(hwsec_, GetSpaceState(_))
@@ -412,7 +409,7 @@ TEST_F(FirmwareManagementParametersTest, LoadMajorVersion) {
 
   // Recalculate CRC
   nvram_data[0] =
-      crc8(nvram_data.data() + FirmwareManagementParameters::kCrcDataOffset,
+      Crc8(nvram_data.data() + FirmwareManagementParameters::kCrcDataOffset,
            nvram_data.size() - FirmwareManagementParameters::kCrcDataOffset);
 
   EXPECT_CALL(hwsec_, GetSpaceState(_))

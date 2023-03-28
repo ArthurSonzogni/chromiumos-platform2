@@ -310,7 +310,7 @@ if (use.test) {
       "cleanup/mock_disk_cleanup.cc",
       "cleanup/mock_disk_cleanup_routines.cc",
       "cleanup/user_oldest_activity_timestamp_manager_unittest.cc",
-      "crc32_unittest.cc",
+      "crc_unittest.cc",
       "credential_verifier_unittest.cc",
       "credentials_unittest.cc",
       "crypto_unittest.cc",

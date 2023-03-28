@@ -406,7 +406,6 @@ static_library("libcrostpm") {
     "../auth_session.cc",
     "../auth_session_manager.cc",
     "../auth_session_proto_utils.cc",
-    "../crc8.c",
     "../crypto.cc",
     "../crypto_error.cc",
     "../cryptohome_key_loader.cc",

@@ -18,9 +18,7 @@
 #include <brillo/secure_blob.h>
 #include <openssl/sha.h>
 
-extern "C" {
-#include "cryptohome/crc8.h"
-}
+#include "cryptohome/crc.h"
 
 using brillo::SecureBlob;
 
@@ -158,7 +156,7 @@ bool FirmwareManagementParameters::Load(void) {
 
   // Verify the CRC
   uint8_t crc =
-      crc8(nvram_data.data() + kCrcDataOffset, nvram_size - kCrcDataOffset);
+      Crc8(nvram_data.data() + kCrcDataOffset, nvram_size - kCrcDataOffset);
   if (crc != raw_->crc) {
     LOG(ERROR) << "Load() got bad CRC";
     return false;
@@ -214,7 +212,7 @@ bool FirmwareManagementParameters::Store(
 
   // Recalculate the CRC
   const uint8_t* raw8 = reinterpret_cast<uint8_t*>(raw_.get());
-  raw_->crc = crc8(raw8 + kCrcDataOffset, raw_->struct_size - kCrcDataOffset);
+  raw_->crc = Crc8(raw8 + kCrcDataOffset, raw_->struct_size - kCrcDataOffset);
 
   // Write the data to nvram
   brillo::Blob nvram_data(raw_->struct_size);

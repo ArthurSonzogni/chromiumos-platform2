@@ -85,7 +85,7 @@ extern "C" {
 #include <vboot/crossystem.h>
 }
 
-#include "cryptohome/crc32.h"
+#include "cryptohome/crc.h"
 #include "cryptohome/dircrypto_util.h"
 
 using base::FilePath;
