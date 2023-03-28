@@ -21,6 +21,10 @@ class MetricsLibraryMock : public MetricsLibraryInterface {
               (override));
   MOCK_METHOD(bool, SendEnumToUMA, (const std::string&, int, int), (override));
   MOCK_METHOD(bool,
+              SendRepeatedEnumToUMA,
+              (const std::string&, int, int, int),
+              (override));
+  MOCK_METHOD(bool,
               SendLinearToUMA,
               (const std::string&, int, int),
               (override));

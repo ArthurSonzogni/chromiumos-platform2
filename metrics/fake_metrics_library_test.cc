@@ -71,6 +71,25 @@ TEST_F(FakeMetricsLibraryTest, SendEnumToUMA) {
               ElementsAre(kMetricsValue20, kMetricsValue21));
 }
 
+TEST_F(FakeMetricsLibraryTest, SendRepeatedEnumToUMA) {
+  enum TestEnum {
+    kMetricsValue1,
+    kMetricsValue2,
+    kMetricsValueMax,
+  };
+  lib().SendRepeatedEnumToUMA("metric", kMetricsValue1, kMetricsValueMax, 1);
+  lib().SendRepeatedEnumToUMA("metric", kMetricsValue2, kMetricsValueMax, 2);
+  lib().SendRepeatedEnumToUMA("metric", kMetricsValue1, kMetricsValueMax, 3);
+  EXPECT_EQ(lib().NumCalls("metric"), 6);
+  EXPECT_EQ(lib().GetLast("metric"), kMetricsValue1);
+  EXPECT_THAT(lib().GetCalls("metric"), ElementsAre(0, 1, 1, 0, 0, 0));
+
+  // Check max size.
+  EXPECT_FALSE(lib().SendRepeatedEnumToUMA("metric", kMetricsValue2,
+                                           kMetricsValueMax, 512));
+  EXPECT_EQ(lib().GetLast("metric"), kMetricsValue1);
+}
+
 TEST_F(FakeMetricsLibraryTest, SendLinearToUMA) {
   lib().SendLinearToUMA("metric1", 1, 100);
   lib().SendLinearToUMA("metric2", 20, 100);

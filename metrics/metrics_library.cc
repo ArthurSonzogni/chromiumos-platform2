@@ -46,6 +46,7 @@ constexpr char kDaemonStoreConsentFile[] = "consent-enabled";
 constexpr char kDaemonStoreOptinFile[] = "opted-in";
 constexpr char kCrosEventHistogramName[] = "Platform.CrOSEvent";
 const int kCrosEventHistogramMax = 100;
+const int kMaxNumberOfSamples = 512;
 
 // Add new cros events here.
 //
@@ -366,8 +367,24 @@ void MetricsLibrary::SetConsentFileForTest(const base::FilePath& consent_file) {
 bool MetricsLibrary::SendEnumToUMA(const std::string& name,
                                    int sample,
                                    int max) {
+  return SendRepeatedEnumToUMA(name, sample, max, 1);
+}
+
+bool MetricsLibrary::SendRepeatedEnumToUMA(const std::string& name,
+                                           int sample,
+                                           int max,
+                                           int num_samples) {
+  if (num_samples >= kMaxNumberOfSamples) {
+    // Emit warning for now to monitor if usage is too great.
+    LOG(ERROR) << "num_samples must be less than" << kMaxNumberOfSamples
+               << ". num_samples=" << num_samples;
+    return false;
+  }
+
   return metrics::SerializationUtils::WriteMetricsToFile(
-      {metrics::MetricSample::LinearHistogramSample(name, sample, max)},
+      std::vector<metrics::MetricSample>(
+          num_samples,
+          metrics::MetricSample::LinearHistogramSample(name, sample, max)),
       uma_events_file_.value());
 }
 

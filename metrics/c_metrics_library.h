@@ -34,6 +34,13 @@ int CMetricsLibrarySendEnumToUMA(CMetricsLibrary handle,
                                  int sample,
                                  int max);
 
+// C wrapper for MetricsLibrary::SendRepeatedEnumToUMA.
+int CMetricsLibrarySendRepeatedEnumToUMA(CMetricsLibrary handle,
+                                         const char* name,
+                                         int sample,
+                                         int max,
+                                         int num_samples);
+
 // C wrapper for MetricsLibrary::SendLinearToUMA.
 int CMetricsLibrarySendLinearToUMA(CMetricsLibrary handle,
                                    const char* name,

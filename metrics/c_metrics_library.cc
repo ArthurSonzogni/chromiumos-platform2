@@ -50,6 +50,18 @@ extern "C" int CMetricsLibrarySendEnumToUMA(CMetricsLibrary handle,
   return lib->SendEnumToUMA(std::string(name), sample, max);
 }
 
+extern "C" int CMetricsLibrarySendRepeatedEnumToUMA(CMetricsLibrary handle,
+                                                    const char* name,
+                                                    int sample,
+                                                    int max,
+                                                    int num_samples) {
+  MetricsLibrary* lib = reinterpret_cast<MetricsLibrary*>(handle);
+  if (lib == NULL)
+    return 0;
+  return lib->SendRepeatedEnumToUMA(std::string(name), sample, max,
+                                    num_samples);
+}
+
 extern "C" int CMetricsLibrarySendLinearToUMA(CMetricsLibrary handle,
                                               const char* name,
                                               int sample,

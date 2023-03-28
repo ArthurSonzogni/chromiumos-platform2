@@ -4,6 +4,8 @@
 
 #include "metrics/fake_metrics_library.h"
 
+const int kMaxNumberOfSamples = 512;
+
 void FakeMetricsLibrary::Init() {}
 
 bool FakeMetricsLibrary::AreMetricsEnabled() {
@@ -27,7 +29,20 @@ bool FakeMetricsLibrary::SendToUMA(
 bool FakeMetricsLibrary::SendEnumToUMA(const std::string& name,
                                        int sample,
                                        int exclusive_max) {
-  metrics_[name].push_back(sample);
+  return SendRepeatedEnumToUMA(name, sample, exclusive_max, 1);
+}
+
+bool FakeMetricsLibrary::SendRepeatedEnumToUMA(const std::string& name,
+                                               int sample,
+                                               int exclusive_max,
+                                               int num_samples) {
+  if (num_samples >= kMaxNumberOfSamples) {
+    return false;
+  }
+
+  std::vector<int> samples = std::vector<int>(num_samples, sample);
+  auto arr = &metrics_[name];
+  arr->insert(std::end(*arr), std::begin(samples), std::end(samples));
   return true;
 }
 

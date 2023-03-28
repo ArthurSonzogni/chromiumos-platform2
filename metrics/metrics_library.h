@@ -41,6 +41,26 @@ class MetricsLibraryInterface {
   virtual bool SendEnumToUMA(const std::string& name,
                              int sample,
                              int exclusive_max) = 0;
+  template <typename T>
+  bool SendRepeatedEnumToUMA(const std::string& name,
+                             T sample,
+                             int num_samples) {
+    static_assert(std::is_enum<T>::value, "T is not an enum.");
+    // This also ensures that an enumeration that doesn't define kMaxValue fails
+    // with a semi-useful error ("no member named 'kMaxValue' in ...").
+    static_assert(static_cast<uintmax_t>(T::kMaxValue) <=
+                      static_cast<uintmax_t>(INT_MAX) - 1,
+                  "Enumeration's kMaxValue is out of range of INT_MAX!");
+    DCHECK_LE(static_cast<uintmax_t>(sample),
+              static_cast<uintmax_t>(T::kMaxValue));
+    return SendRepeatedEnumToUMA(name, static_cast<int>(sample),
+                                 static_cast<int>(T::kMaxValue) + 1,
+                                 num_samples);
+  }
+  virtual bool SendRepeatedEnumToUMA(const std::string& name,
+                                     int sample,
+                                     int exclusive_max,
+                                     int num_samples) = 0;
   virtual bool SendLinearToUMA(const std::string& name,
                                int sample,
                                int max) = 0;
@@ -177,6 +197,15 @@ class MetricsLibrary : public MetricsLibraryInterface {
   bool SendEnumToUMA(const std::string& name,
                      int sample,
                      int exclusive_max) override;
+
+  // Sends |num_samples| samples with the same value to chrome.
+  // Otherwise equivalent to SendEnumToUMA().
+  // Warning: Use sparingly as too many samples being sent can cause
+  // messages to be dropped (Limit of 100k per 30 seconds).
+  bool SendRepeatedEnumToUMA(const std::string& name,
+                             int sample,
+                             int exclusive_max,
+                             int num_samples) override;
 
   // Sends linear histogram data to Chrome for transport to UMA and
   // returns true on success. These methods result in the equivalent of an

@@ -36,6 +36,10 @@ class FakeMetricsLibrary : public MetricsLibraryInterface {
   bool SendEnumToUMA(const std::string& name,
                      int sample,
                      int exclusive_max) override;
+  bool SendRepeatedEnumToUMA(const std::string& name,
+                             int sample,
+                             int exclusive_max,
+                             int num_samples) override;
   bool SendLinearToUMA(const std::string& name, int sample, int max) override;
   bool SendPercentageToUMA(const std::string& name, int sample) override;
   bool SendBoolToUMA(const std::string& name, bool sample) override;

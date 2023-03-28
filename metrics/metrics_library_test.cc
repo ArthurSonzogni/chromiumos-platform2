@@ -319,6 +319,21 @@ TEST_F(MetricsLibraryTest, SendEnumToUMAMax) {
   metrics_library->SendEnumToUMA("My.Enumeration", MyEnum::kSecondValue);
 }
 
+TEST_F(MetricsLibraryTest, SendEnumRepeatedToUMA) {
+  enum class MyEnum {
+    kFirstValue = 0,
+    kSecondValue = 1,
+    kMaxValue = kSecondValue,
+  };
+  std::unique_ptr<MetricsLibraryMock> mock =
+      std::make_unique<MetricsLibraryMock>();
+  EXPECT_CALL(*mock, SendRepeatedEnumToUMA("My.Enumeration", 1, 2, 3)).Times(1);
+  MetricsLibraryInterface* metrics_library =
+      static_cast<MetricsLibraryInterface*>(mock.get());
+  metrics_library->SendRepeatedEnumToUMA("My.Enumeration", MyEnum::kSecondValue,
+                                         3);
+}
+
 void MetricsLibraryTest::VerifyEnabledCacheHit(bool to_value) {
   // We might step from one second to the next one time, but not 100
   // times in a row.
@@ -388,9 +403,7 @@ class CMetricsLibraryTest : public testing::Test {
     ml.cached_enabled_time_ = 0;
   }
 
-  void TearDown() override {
-    CMetricsLibraryDelete(lib_);
-  }
+  void TearDown() override { CMetricsLibraryDelete(lib_); }
 
   CMetricsLibrary lib_;
   policy::MockDevicePolicy* device_policy_;  // Not owned.

@@ -124,7 +124,7 @@ class FakeSingleThreadTaskRunner : public base::SingleThreadTaskRunner {
         break;
       base::TimeDelta time_to_task = task_time - tick_clock_->NowTicks();
       // Verify the assumption that posted tasks are posted in order of their
-      // expected execution - if this assumtion starts not holding,
+      // expected execution - if this assumption starts not holding,
       // |pending_tasks_| should be switched to priority_queue.
       ASSERT_GE(time_to_task, base::TimeDelta());
 
@@ -187,6 +187,14 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
   bool IsAppSyncEnabled() override { return true; }
 
   bool SendEnumToUMA(const std::string& name, int sample, int max) override {
+    ADD_FAILURE() << "Should not be reached";
+    return false;
+  }
+
+  bool SendRepeatedEnumToUMA(const std::string& name,
+                             int sample,
+                             int max,
+                             int num_samples) override {
     ADD_FAILURE() << "Should not be reached";
     return false;
   }
