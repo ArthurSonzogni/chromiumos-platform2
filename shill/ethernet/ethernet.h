@@ -188,6 +188,10 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // with that Device.
   bool RunEthtoolCmd(ifreq* interface_command);
 
+  // Gets driver name from ETHTOOL and notifies driver name of an ethernet
+  // connection to metrics.
+  void NotifyEthernetDriverName();
+
   EthernetServiceRefPtr service_;
   bool link_up_;
 

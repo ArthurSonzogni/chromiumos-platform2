@@ -155,6 +155,15 @@ class EthernetTest : public testing::Test {
 
   const PropertyStore& GetStore() { return ethernet_->store(); }
   void StartEthernet() {
+    // We do not care about Sockets call but they are used in Ethernet::Start
+    // to get ethernet driver name.
+    int kFakeFd = 789;
+    EXPECT_CALL(*mock_sockets_, Socket(_, _, _))
+        .WillRepeatedly(Return(kFakeFd));
+    EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, _))
+        .WillRepeatedly(Return(1));
+    EXPECT_CALL(*mock_sockets_, Close(kFakeFd)).WillRepeatedly(Return(1));
+
     EXPECT_CALL(ethernet_provider_, CreateService(_))
         .WillOnce(Return(mock_service_));
     EXPECT_CALL(ethernet_provider_, RegisterService(Eq(mock_service_)));
@@ -355,14 +364,6 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
 }
 
 TEST_F(EthernetTest, ConnectToSuccess) {
-  // We do not care about Sockets call but they are used in UpdateLinkSpeed()
-  // in ethernet_->ConnectTo.
-  constexpr int kFakeFd = 789;
-  EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).WillOnce(Return(kFakeFd));
-  EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, _))
-      .WillOnce(Return(1));
-  EXPECT_CALL(*mock_sockets_, Close(kFakeFd));
-
   auto dhcp_controller = new MockDHCPController(&control_interface_, ifname_);
   StartEthernet();
   SetLinkUp(true);

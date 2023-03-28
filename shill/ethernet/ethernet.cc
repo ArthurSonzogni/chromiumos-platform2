@@ -69,6 +69,14 @@ constexpr char kVpdEthernetMacFilePath[] = "/sys/firmware/vpd/ro/ethernet_mac0";
 // Path to file with |dock_mac| VPD field value.
 constexpr char kVpdDockMacFilePath[] = "/sys/firmware/vpd/ro/dock_mac";
 
+// Constant used to notify metrics of failed attempt to get ethernet driver name
+// from ETHTOOL.
+constexpr char kEthernetDriverNameError[] = "error";
+
+// kDriverNameSize represents maximal length of driver name, this number is
+// taken from definition of driver field of ethtool_dvrinfo struct.
+constexpr int kDriverNameSize = 32;
+
 // Factor used to convert mbps to kbps.
 constexpr uint32_t kMbpsToKbpsFactor = 1e3;
 
@@ -177,6 +185,8 @@ void Ethernet::Start(EnabledStateChangedCallback callback) {
     service_ = GetProvider()->CreateService(weak_ptr_factory_.GetWeakPtr());
   }
   RegisterService(service_);
+
+  NotifyEthernetDriverName();
 
   std::move(callback).Run(Error(Error::kSuccess));
 }
@@ -951,6 +961,90 @@ void Ethernet::OnNeighborReachabilityEvent(
     // validation is expected to be short so a restart is always forced.
     UpdatePortalDetector(/*restart=*/true);
   }
+}
+
+void Ethernet::NotifyEthernetDriverName() {
+  struct ethtool_drvinfo drv;
+  struct ifreq ifr;
+  char dvrname[kDriverNameSize];
+  std::string driver;
+
+  memset(&drv, 0, sizeof(drv));
+  memset(&ifr, 0, sizeof(ifr));
+
+  drv.cmd = ETHTOOL_GDRVINFO;
+  ifr.ifr_data = &drv;
+
+  if (!RunEthtoolCmd(&ifr)) {
+    LOG(ERROR) << "Failed to get ethernet driver name";
+    driver = kEthernetDriverNameError;
+  } else {
+    strncpy(dvrname, drv.driver, sizeof(dvrname));
+    // Add a trailing \0 to avoid driver name we got from dvr.driver
+    // is not \0 terminated.
+    dvrname[kDriverNameSize - 1] = '\0';
+    driver = dvrname;
+  }
+
+  Metrics::EthernetDriver driver_enum;
+  if (driver == "alx") {
+    driver_enum = Metrics::kEthernetDriverAlx;
+  } else if (driver == "aqc111") {
+    driver_enum = Metrics::kEthernetDriverAqc111;
+  } else if (driver == "asix") {
+    driver_enum = Metrics::kEthernetDriverAsix;
+  } else if (driver == "atlantic") {
+    driver_enum = Metrics::kEthernetDriverAtlantic;
+  } else if (driver == "ax88179_178a") {
+    driver_enum = Metrics::kEthernetDriverAx88179_178a;
+  } else if (driver == "cdc_eem") {
+    driver_enum = Metrics::kEthernetDriverCdcEem;
+  } else if (driver == "cdc_ether") {
+    driver_enum = Metrics::kEthernetDriverCdcEther;
+  } else if (driver == "cdc_mbim") {
+    driver_enum = Metrics::kEthernetDriverCdcMbim;
+  } else if (driver == "cdc_ncm") {
+    driver_enum = Metrics::kEthernetDriverCdcNcm;
+  } else if (driver == "dm9601") {
+    driver_enum = Metrics::kEthernetDriverDm9601;
+  } else if (driver == "e100") {
+    driver_enum = Metrics::kEthernetDriverE100;
+  } else if (driver == "e1000") {
+    driver_enum = Metrics::kEthernetDriverE1000;
+  } else if (driver == "e1000e") {
+    driver_enum = Metrics::kEthernetDriverE1000e;
+  } else if (driver == "igb") {
+    driver_enum = Metrics::kEthernetDriverIgb;
+  } else if (driver == "igbvf") {
+    driver_enum = Metrics::kEthernetDriverIgbvf;
+  } else if (driver == "igc") {
+    driver_enum = Metrics::kEthernetDriverIgc;
+  } else if (driver == "ipheth") {
+    driver_enum = Metrics::kEthernetDriverIpheth;
+  } else if (driver == "jme") {
+    driver_enum = Metrics::kEthernetDriverJme;
+  } else if (driver == "mcs7830") {
+    driver_enum = Metrics::kEthernetDriverMcs7830;
+  } else if (driver == "pegasus") {
+    driver_enum = Metrics::kEthernetDriverPegasus;
+  } else if (driver == "r8152") {
+    driver_enum = Metrics::kEthernetDriverR8152;
+  } else if (driver == "r8169") {
+    driver_enum = Metrics::kEthernetDriverR8169;
+  } else if (driver == "rtl8150") {
+    driver_enum = Metrics::kEthernetDriverRtl8150;
+  } else if (driver == "smsc75xx") {
+    driver_enum = Metrics::kEthernetDriverSmsc75xx;
+  } else if (driver == "smsc95xx") {
+    driver_enum = Metrics::kEthernetDriverSmsc95xx;
+  } else if (driver == "tg3") {
+    driver_enum = Metrics::kEthernetDriverTg3;
+  } else if (driver == "error") {
+    driver_enum = Metrics::kEthernetDriverError;
+  } else {
+    driver_enum = Metrics::kEthernetDriverUnknown;
+  }
+  metrics()->SendEnumToUMA(Metrics::kMetricEthernetDriver, driver_enum);
 }
 
 }  // namespace shill

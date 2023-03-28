@@ -601,6 +601,42 @@ class Metrics : public DefaultServiceObserver {
       .max = kVpnDriverMax,
   };
 
+  enum EthernetDriver {
+    kEthernetDriverUnknown = 0,
+    kEthernetDriverAlx = 1,
+    kEthernetDriverAqc111 = 2,
+    kEthernetDriverAsix = 3,
+    kEthernetDriverAtlantic = 4,
+    kEthernetDriverAx88179_178a = 5,
+    kEthernetDriverCdcEem = 6,
+    kEthernetDriverCdcEther = 7,
+    kEthernetDriverCdcMbim = 8,
+    kEthernetDriverCdcNcm = 9,
+    kEthernetDriverDm9601 = 10,
+    kEthernetDriverE100 = 11,
+    kEthernetDriverE1000 = 12,
+    kEthernetDriverE1000e = 13,
+    kEthernetDriverIgb = 14,
+    kEthernetDriverIgbvf = 15,
+    kEthernetDriverIgc = 16,
+    kEthernetDriverIpheth = 17,
+    kEthernetDriverJme = 18,
+    kEthernetDriverMcs7830 = 19,
+    kEthernetDriverPegasus = 20,
+    kEthernetDriverR8152 = 21,
+    kEthernetDriverR8169 = 22,
+    kEthernetDriverRtl8150 = 23,
+    kEthernetDriverSmsc75xx = 24,
+    kEthernetDriverSmsc95xx = 25,
+    kEthernetDriverTg3 = 26,
+    kEthernetDriverError = 27,
+    kEthernetDriverMax
+  };
+  static constexpr EnumMetric<FixedName> kMetricEthernetDriver = {
+      .n = FixedName{"Network.Shill.Ethernet.Driver"},
+      .max = kEthernetDriverMax,
+  };
+
   // Remote authentication statistics for VPN connections.
   enum VpnRemoteAuthenticationType {
     kVpnRemoteAuthenticationTypeOpenVpnDefault = 0,
