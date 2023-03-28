@@ -43,7 +43,7 @@ class Configuration {
 
   bool GetDevlinks(const std::string& syspath, std::vector<std::string>* out);
 
-  bool SetIioRisingFallingValue(const base::Value& config_dict,
+  bool SetIioRisingFallingValue(const base::Value::Dict& config_dict,
                                 const std::string& config_postfix,
                                 const std::string& path_prefix,
                                 const std::string& postfix);

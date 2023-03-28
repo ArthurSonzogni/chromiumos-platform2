@@ -679,16 +679,16 @@ bool Configuration::ConfigProximity() {
       LOG(ERROR) << "Failed to parse : " << config_json_data.value();
       return false;
     }
-    if (!config_root.value().is_dict()) {
+    if (!config_root->is_dict()) {
       LOG(ERROR) << "Failed to parse root dictionary from "
                  << config_json_data.value();
       return false;
     }
 
-    const base::Value& config_dict = std::move(config_root.value());
+    const base::Value::Dict config_dict = std::move(*config_root).TakeDict();
 
     std::optional<double> sampling_frequency =
-        config_dict.FindDoubleKey("samplingFrequency");
+        config_dict.FindDouble("samplingFrequency");
     if (sampling_frequency.has_value()) {
       if (!sensor_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr,
                                          sampling_frequency.value())) {
@@ -697,12 +697,14 @@ bool Configuration::ConfigProximity() {
       }
     }
 
-    const base::Value* channel_list = config_dict.FindListKey("channelConfig");
+    const base::Value::List* channel_list =
+        config_dict.FindList("channelConfig");
     if (channel_list) {
       // Semtech supports multiple channels, a given observer may received
       // FAR/NEAR message from multiple channels.
-      for (const base::Value& channel : channel_list->GetList()) {
-        const std::string* channel_name = channel.FindStringKey("channel");
+      for (const base::Value& channel : *channel_list) {
+        const base::Value::Dict& channel_dict = channel.GetDict();
+        const std::string* channel_name = channel_dict.FindString("channel");
         if (!channel_name) {
           LOG(ERROR) << "channel identifier required";
           return false;
@@ -713,7 +715,7 @@ bool Configuration::ConfigProximity() {
           return false;
         }
 
-        std::optional<int> hardwaregain = channel.FindIntKey("hardwaregain");
+        std::optional<int> hardwaregain = channel_dict.FindInt("hardwaregain");
         if (hardwaregain.has_value()) {
           auto* iio_channel = sensor_->GetChannel("proximity" + *channel_name);
           if (!iio_channel || !iio_channel->WriteNumberAttribute(
@@ -724,13 +726,13 @@ bool Configuration::ConfigProximity() {
         }
 
         if (!SetIioRisingFallingValue(
-                channel, "", "events/in_proximity" + *channel_name + "_",
+                channel_dict, "", "events/in_proximity" + *channel_name + "_",
                 "_value")) {
           return false;
         }
 
         if (!SetIioRisingFallingValue(
-                channel, "Hysteresis",
+                channel_dict, "Hysteresis",
                 "events/in_proximity" + *channel_name + "_", "_hysteresis")) {
           return false;
         }
@@ -749,14 +751,15 @@ bool Configuration::IsIioActivitySensor(const std::string& sys_path) {
   return sys_path.find("-activity") != std::string::npos;
 }
 
-bool Configuration::SetIioRisingFallingValue(const base::Value& config_dict,
-                                             const std::string& config_postfix,
-                                             const std::string& path_prefix,
-                                             const std::string& postfix) {
+bool Configuration::SetIioRisingFallingValue(
+    const base::Value::Dict& config_dict,
+    const std::string& config_postfix,
+    const std::string& path_prefix,
+    const std::string& postfix) {
   std::string rising_config = "threshRising" + config_postfix;
   std::string falling_config = "threshFalling" + config_postfix;
-  std::optional<int> rising_value = config_dict.FindIntKey(rising_config);
-  std::optional<int> falling_value = config_dict.FindIntKey(falling_config);
+  std::optional<int> rising_value = config_dict.FindInt(rising_config);
+  std::optional<int> falling_value = config_dict.FindInt(falling_config);
 
   if (!rising_value.has_value() && !falling_value.has_value())
     return true;
