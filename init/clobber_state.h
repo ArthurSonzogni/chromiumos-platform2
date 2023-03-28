@@ -7,8 +7,10 @@
 
 #include <sys/stat.h>
 
+#include <functional>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -16,9 +18,13 @@
 #include <base/files/file_path.h>
 #include <base/time/time.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/process/process.h>
 
 #include "init/clobber_ui.h"
 #include "init/crossystem.h"
+
+constexpr char kThinpool[] = "thinpool";
+constexpr char kUnencrypted[] = "unencrypted";
 
 class ClobberState {
  public:
@@ -45,6 +51,9 @@ class ClobberState {
     // Preserve the flag file used to skip some OOBE screens during the Chromad
     // to cloud migration.
     bool ad_migration_wipe = false;
+    // Preserve LVM stateful without wiping entire stateful partition.
+    // (Only supported/enforced on LVM stateful devices)
+    bool preserve_lvs = false;
   };
 
   // The index of each partition within the gpt partition table.
@@ -70,6 +79,27 @@ class ClobberState {
     // The partition number for the currently booted kernel partition.
     int active_kernel_partition = -1;
   };
+
+  struct PreserveLogicalVolumesWipeInfo {
+    std::string lv_name;
+    bool preserve = false;
+    bool zero = false;
+
+    struct Hash {
+      auto operator()(const PreserveLogicalVolumesWipeInfo& info) const {
+        // Use the logical volume name for uniqueness.
+        return std::hash<std::string>{}(info.lv_name);
+      }
+    };
+
+    bool operator==(const PreserveLogicalVolumesWipeInfo& o) const {
+      // Again, use the logical volume name for uniqueness.
+      return this->lv_name == o.lv_name;
+    }
+  };
+  using PreserveLogicalVolumesWipeInfos =
+      std::unordered_set<PreserveLogicalVolumesWipeInfo,
+                         PreserveLogicalVolumesWipeInfo::Hash>;
 
   // Extracts ClobberState's arguments from argv.
   static Arguments ParseArgv(int argc, char const* const argv[]);
@@ -148,8 +178,28 @@ class ClobberState {
   static void EnsureKernelIsBootable(const base::FilePath root_disk,
                                      int kernel_partition);
 
+  void CreateUnencryptedStatefulLV(const brillo::VolumeGroup& vg,
+                                   const brillo::Thinpool& thinpool,
+                                   uint64_t lv_size);
+
+  std::optional<uint64_t> GetPartitionSize(const base::FilePath& base_device);
+
+  // Creates the necessary LVM devices specifically for preserving logical
+  // volumes option during clobber.
+  void CreateLogicalVolumeStackForPreserved();
+
+  // Creates the necessary LVM devices.
   void CreateLogicalVolumeStack();
+
+  // Removes the necessary LVM devices.
   void RemoveLogicalVolumeStack();
+
+  // Safe wipe of logical volumes.
+  // Returns false if there are any failures during the safe wiping
+  // (zeroing/preserving/removing) of individual logical volumes.
+  bool PreserveLogicalVolumesWipe(const PreserveLogicalVolumesWipeInfos& infos);
+  bool ProcessInfo(const brillo::VolumeGroup& vg,
+                   const PreserveLogicalVolumesWipeInfo& info);
 
   ClobberState(const Arguments& args,
                std::unique_ptr<CrosSystem> cros_system,
@@ -233,12 +283,19 @@ class ClobberState {
   // an MTD device or not.
   // `device_path` should be the path under /dev/, e.g. /dev/sda3, /dev/ubi5_0.
   // `discard` to discard the blocks after wiping.
-  bool WipeDevice(const base::FilePath& device_name, bool discard = false);
+  virtual bool WipeDevice(const base::FilePath& device_name,
+                          bool discard = false);
 
-  // Makes a new filesystem on `wipe_info_.stateful_device`.
-  int CreateStatefulFileSystem();
+  // Makes a new filesystem on `stateful_filesystem_device`.
+  int CreateStatefulFileSystem(const std::string& stateful_filesystem_device);
 
   void Reboot();
+
+  // Helper to wrap calls removing logical volumes and device level wipes.
+  void ResetStatefulPartition();
+
+  // Returns the argument list for preserved wipe of LVM.
+  PreserveLogicalVolumesWipeInfos PreserveLogicalVolumesWipeArgs();
 
   Arguments args_;
   std::unique_ptr<CrosSystem> cros_system_;
@@ -251,6 +308,9 @@ class ClobberState {
   DeviceWipeInfo wipe_info_;
   base::TimeTicks wipe_start_time_;
   std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
+
+  // Must be last in member variable list.
+  base::WeakPtrFactory<ClobberState> weak_ptr_factory_;
 };
 
 #endif  // INIT_CLOBBER_STATE_H_

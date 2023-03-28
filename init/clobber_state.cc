@@ -25,6 +25,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -332,6 +333,8 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
       args.rma_wipe = true;
     } else if (arg == "ad_migration") {
       args.ad_migration_wipe = true;
+    } else if (arg == "preserve_lvs") {
+      args.preserve_lvs = true;
     }
   }
 
@@ -770,6 +773,8 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
   // 512 bytes.
   const uint64_t zero_block_size = base::bits::AlignUp(
       static_cast<uint64_t>(to_write / 20), uint64_t{128 * 1024 * 1024});
+  const uint64_t zero_block_size_1mib = base::bits::AlignUp(
+      static_cast<uint64_t>(to_write / 20), uint64_t{1024 * 1024});
 
   base::FilePath base_dev =
       brillo::GetBackingPhysicalDeviceForBlock(st.st_rdev);
@@ -777,6 +782,10 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
       brillo::GetStorageDevice(base_dev);
   while (total_written < to_write) {
     uint64_t write_size = std::min(zero_block_size, to_write - total_written);
+    // For `discard` case, chunk smaller for first 128MiB wipes.
+    if (discard && total_written < zero_block_size) {
+      write_size = std::min(zero_block_size_1mib, to_write - total_written);
+    }
     if (!storage_device->WipeBlkDev(device_path, total_written, write_size,
                                     false, discard)) {
       break;
@@ -803,6 +812,12 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
     if (bytes_written < 0) {
       PLOG(ERROR) << "Failed to write to " << device_path.value();
       LOG(ERROR) << "Wrote " << total_written << " bytes before failing";
+      return false;
+    }
+    if (discard && !storage_device->DiscardBlockDevice(
+                       device_path, total_written, write_size)) {
+      PLOG(ERROR) << "Failed to discard blocks of " << device_path.value()
+                  << " at offset=" << total_written << " size=" << write_size;
       return false;
     }
     total_written += bytes_written;
@@ -908,7 +923,8 @@ ClobberState::ClobberState(const Arguments& args,
       stateful_(kStatefulPath),
       dev_("/dev"),
       sys_("/sys"),
-      lvm_(std::move(lvm)) {}
+      lvm_(std::move(lvm)),
+      weak_ptr_factory_(this) {}
 
 std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
   std::vector<std::string> stateful_paths;
@@ -1055,6 +1071,151 @@ void ClobberState::RemoveLogicalVolumeStack() {
   pv->Remove();
 }
 
+bool ClobberState::ProcessInfo(const brillo::VolumeGroup& vg,
+                               const PreserveLogicalVolumesWipeInfo& info) {
+  auto lv = lvm_->GetLogicalVolume(vg, info.lv_name);
+  if (!lv || !lv->IsValid()) {
+    LOG(INFO) << "Skipping over logical volume: " << info.lv_name;
+    return true;
+  }
+
+  // Zero the logical volume.
+  if (info.zero) {
+    if (!WipeDevice(lv->GetPath(), /*discard=*/true)) {
+      LOG(ERROR) << "Failed to wipe logical volume: " << info.lv_name;
+      return false;
+    }
+  }
+
+  // Preserve the logical volume.
+  if (info.preserve) {
+    LOG(INFO) << "Preserving logical volume: " << info.lv_name;
+  } else if (!lv->Remove()) {
+    LOG(ERROR) << "Failed to remove logical volume: " << info.lv_name;
+    return false;
+  }
+
+  return true;
+}
+
+bool ClobberState::PreserveLogicalVolumesWipe(
+    const PreserveLogicalVolumesWipeInfos& infos) {
+  auto pv = lvm_->GetPhysicalVolume({wipe_info_.stateful_partition_device});
+  if (!pv || !pv->IsValid()) {
+    LOG(WARNING) << "Failed to get physical volume.";
+    return false;
+  }
+  auto vg = lvm_->GetVolumeGroup(*pv);
+  if (!vg || !vg->IsValid()) {
+    LOG(WARNING) << "Failed to get volume group.";
+    return false;
+  }
+
+  // Remove all logical volumes we don't need to handle with care.
+  for (auto& lv : lvm_->ListLogicalVolumes(*vg)) {
+    const auto& lv_raw_name = lv.GetRawName();
+    auto it = infos.find({.lv_name = lv_raw_name});
+    bool found = it != infos.end();
+
+    if (found)
+      continue;
+
+    if (!lv.Remove()) {
+      LOG(ERROR) << "Failed to remove logical volume: " << lv_raw_name;
+      return false;
+    }
+  }
+
+  // We must handle logical volume with additional care based on the
+  // `PreserveLogicalVolumesWipeInfo`.
+  for (const auto& info : infos) {
+    if (info.lv_name == kUnencrypted)
+      continue;
+    if (!ProcessInfo(*vg, info))
+      return false;
+  }
+  // Note: Always process unencrypted stateful last.
+  // This is so when there are crashes, the powerwash file is still accessible
+  // within unencrypted logical volume to go through and perform the powerwash
+  // again.
+  {
+    auto lv_name = kUnencrypted;
+    auto info_it = infos.find({.lv_name = lv_name});
+    if (info_it == infos.end()) {
+      LOG(ERROR) << "Missing " << lv_name
+                 << " in preserve logical volumes wipe info.";
+      return false;
+    }
+    if (!ProcessInfo(*vg, *info_it))
+      return false;
+  }
+
+  // TODO(b/222344877): Rename the volume group using `vgrename`.
+  return true;
+}
+
+void ClobberState::CreateUnencryptedStatefulLV(const brillo::VolumeGroup& vg,
+                                               const brillo::Thinpool& thinpool,
+                                               uint64_t lv_size) {
+  base::Value::Dict lv_config;
+  lv_config.Set("name", kUnencrypted);
+  lv_config.Set("size", base::NumberToString(lv_size));
+
+  std::optional<brillo::LogicalVolume> lv =
+      lvm_->CreateLogicalVolume(vg, thinpool, lv_config);
+  if (!lv || !lv->IsValid()) {
+    LOG(ERROR) << "Failed to create " << kUnencrypted << " logical volume.";
+    return;
+  }
+
+  lv->Activate();
+}
+
+std::optional<uint64_t> ClobberState::GetPartitionSize(
+    const base::FilePath& base_device) {
+  uint64_t partition_size = GetBlkSize(base_device) / (1024 * 1024);
+  if (partition_size < kMinStatefulPartitionSizeMb) {
+    LOG(ERROR) << "Invalid partition size (" << partition_size
+               << ") for: " << base_device.value();
+    return std::nullopt;
+  }
+  return {partition_size};
+}
+
+void ClobberState::CreateLogicalVolumeStackForPreserved() {
+  std::optional<uint64_t> partition_size =
+      GetPartitionSize(wipe_info_.stateful_partition_device);
+  if (!partition_size) {
+    LOG(ERROR) << "Failed to get partition size.";
+    return;
+  }
+
+  auto pv = lvm_->GetPhysicalVolume({wipe_info_.stateful_partition_device});
+  if (!pv || !pv->IsValid()) {
+    LOG(WARNING) << "Failed to get physical volume.";
+    return;
+  }
+
+  auto vg = lvm_->GetVolumeGroup(*pv);
+  if (!vg || !vg->IsValid()) {
+    LOG(WARNING) << "Failed to get volume group.";
+    return;
+  }
+
+  wipe_info_.stateful_filesystem_device = base::FilePath(
+      base::StringPrintf("/dev/%s/unencrypted", vg->GetName().c_str()));
+
+  std::optional<brillo::Thinpool> thinpool = lvm_->GetThinpool(*vg, kThinpool);
+  if (!thinpool || !thinpool->IsValid()) {
+    LOG(ERROR) << "Failed to get thinpool.";
+    return;
+  }
+
+  int64_t thinpool_size = partition_size.value() * kThinpoolSizePercent / 100;
+  uint64_t lv_size = thinpool_size * kLogicalVolumeSizePercent / 100;
+  CreateUnencryptedStatefulLV(*vg, *thinpool, lv_size);
+}
+
 void ClobberState::CreateLogicalVolumeStack() {
   base::FilePath base_device = wipe_info_.stateful_partition_device;
   std::string vg_name = GenerateRandomVolumeGroupName();
@@ -1064,9 +1225,9 @@ void ClobberState::CreateLogicalVolumeStack() {
   // Get partition size to determine the sizes of the thin pool and the
   // logical volume. Use partition size in megabytes: thinpool (and logical
   // volume) sizes need to be a multiple of 512.
-  uint64_t partition_size = GetBlkSize(base_device) / (1024 * 1024);
-  if (partition_size < kMinStatefulPartitionSizeMb) {
-    LOG(ERROR) << "Invalid partition size.";
+  std::optional<uint64_t> partition_size = GetPartitionSize(base_device);
+  if (!partition_size) {
+    LOG(ERROR) << "Failed to get partition size.";
     return;
   }
 
@@ -1087,10 +1248,10 @@ void ClobberState::CreateLogicalVolumeStack() {
   vg->Activate();
 
   base::Value thinpool_config(base::Value::Type::DICT);
-  int64_t thinpool_size = partition_size * kThinpoolSizePercent / 100;
+  int64_t thinpool_size = partition_size.value() * kThinpoolSizePercent / 100;
   int64_t thinpool_metadata_size =
       thinpool_size * kThinpoolMetadataSizePercent / 100;
-  thinpool_config.SetStringKey("name", "thinpool");
+  thinpool_config.SetStringKey("name", kThinpool);
   thinpool_config.SetStringKey("size", base::NumberToString(thinpool_size));
   thinpool_config.SetStringKey("metadata_size",
                                base::NumberToString(thinpool_metadata_size));
@@ -1102,32 +1263,14 @@ void ClobberState::CreateLogicalVolumeStack() {
     return;
   }
 
-  base::Value::Dict lv_config;
-  lv_config.Set("name", "unencrypted");
-  lv_config.Set("size", base::NumberToString(thinpool_size *
-                                             kLogicalVolumeSizePercent / 100));
-
-  std::optional<brillo::LogicalVolume> lv =
-      lvm_->CreateLogicalVolume(*vg, *thinpool, lv_config);
-  if (!lv || !lv->IsValid()) {
-    LOG(ERROR) << "Failed to create logical volume.";
-    return;
-  }
-
-  lv->Activate();
+  uint64_t lv_size = thinpool_size * kLogicalVolumeSizePercent / 100;
+  CreateUnencryptedStatefulLV(*vg, *thinpool, lv_size);
 }
 
-int ClobberState::CreateStatefulFileSystem() {
+int ClobberState::CreateStatefulFileSystem(
+    const std::string& stateful_filesystem_device) {
   base::FilePath temp_file;
   base::CreateTemporaryFile(&temp_file);
-
-  if (args_.setup_lvm) {
-    CreateLogicalVolumeStack();
-  } else {
-    // Set up the stateful filesystem on top of the stateful partition.
-    wipe_info_.stateful_filesystem_device =
-        wipe_info_.stateful_partition_device;
-  }
 
   brillo::ProcessImpl mkfs;
   if (wipe_info_.is_mtd_flash) {
@@ -1135,13 +1278,13 @@ int ClobberState::CreateStatefulFileSystem() {
     mkfs.AddArg("-y");
     mkfs.AddStringOption("-x", "none");
     mkfs.AddIntOption("-R", 0);
-    mkfs.AddArg(wipe_info_.stateful_filesystem_device.value());
+    mkfs.AddArg(stateful_filesystem_device);
   } else {
     mkfs.AddArg("/sbin/mkfs.ext4");
     // Check if encryption is supported. If yes, enable the flag during mkfs.
     if (base::PathExists(base::FilePath(kExt4DircryptoSupportedPath)))
       mkfs.AddStringOption("-O", "encrypt");
-    mkfs.AddArg(wipe_info_.stateful_filesystem_device.value());
+    mkfs.AddArg(stateful_filesystem_device);
     // TODO(wad) tune2fs.
   }
   mkfs.RedirectOutput(temp_file.value());
@@ -1359,18 +1502,34 @@ int ClobberState::Run() {
   // Make sure the stateful partition has been unmounted.
   UnmountStateful(stateful_);
 
-  // Attempt to remove the logical volume stack unconditionally: this covers the
-  // situation where a device may rollback to a version that doesn't support
-  // the LVM stateful partition setup.
-  RemoveLogicalVolumeStack();
+  base::ScopedClosureRunner reset_stateful(base::BindOnce(
+      &ClobberState::ResetStatefulPartition, weak_ptr_factory_.GetWeakPtr()));
 
-  // Destroy user data: wipe the stateful partition.
-  if (!WipeDevice(wipe_info_.stateful_partition_device)) {
-    LOG(ERROR) << "Unable to wipe device "
-               << wipe_info_.stateful_partition_device.value();
+  if (args_.preserve_lvs) {
+    if (!PreserveLogicalVolumesWipe(PreserveLogicalVolumesWipeArgs())) {
+      args_.preserve_lvs = false;
+      LOG(WARNING) << "Preserve logical voluems wipe failed "
+                   << "(falling back to default LVM stateful wipe).";
+    } else {
+      LOG(INFO) << "Preserve logical volumes, skipping device level wipe.";
+      reset_stateful.ReplaceClosure(base::DoNothing());
+    }
   }
 
-  ret = CreateStatefulFileSystem();
+  reset_stateful.RunAndReset();
+
+  // `preserve_lvs` precedence check over `setup_lvm`.
+  if (args_.preserve_lvs) {
+    CreateLogicalVolumeStackForPreserved();
+  } else if (args_.setup_lvm) {
+    CreateLogicalVolumeStack();
+  } else {
+    // Set up the stateful filesystem on top of the stateful partition.
+    wipe_info_.stateful_filesystem_device =
+        wipe_info_.stateful_partition_device;
+  }
+
+  ret = CreateStatefulFileSystem(wipe_info_.stateful_filesystem_device.value());
   if (ret)
     LOG(ERROR) << "Unable to create stateful file system. Error code: " << ret;
 
@@ -1688,4 +1847,34 @@ void ClobberState::Reboot() {
   }
   // If we've reached here, reboot (probably) failed.
   LOG(ERROR) << "Requesting reboot failed with failure code " << ret;
+}
+
+void ClobberState::ResetStatefulPartition() {
+  // Attempt to remove the logical volume stack unconditionally: this covers the
+  // situation where a device may rollback to a version that doesn't support
+  // the LVM stateful partition setup.
+  RemoveLogicalVolumeStack();
+
+  // Destroy user data: wipe the stateful partition.
+  if (!WipeDevice(wipe_info_.stateful_partition_device)) {
+    LOG(ERROR) << "Unable to wipe device "
+               << wipe_info_.stateful_partition_device.value();
+  }
+}
+
+ClobberState::PreserveLogicalVolumesWipeInfos
+ClobberState::PreserveLogicalVolumesWipeArgs() {
+  // TODO(b/222344877): Add DLC logical volumes here.
+  return {
+      {
+          .lv_name = kThinpool,
+          .preserve = true,
+          .zero = false,
+      },
+      {
+          .lv_name = kUnencrypted,
+          .preserve = false,
+          .zero = true,
+      },
+  };
 }

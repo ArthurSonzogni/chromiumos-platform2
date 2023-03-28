@@ -28,6 +28,8 @@
 namespace {
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::Return;
+using ::testing::StrictMock;
 
 // Commands for disk formatting utility sfdisk.
 // Specify that partition table should use gpt format.
@@ -76,6 +78,7 @@ TEST(ParseArgv, EmptyArgs) {
   EXPECT_FALSE(args.keepimg);
   EXPECT_FALSE(args.safe_wipe);
   EXPECT_FALSE(args.rollback_wipe);
+  EXPECT_FALSE(args.preserve_lvs);
 }
 
 TEST(ParseArgv, AllArgsIndividual) {
@@ -87,6 +90,7 @@ TEST(ParseArgv, AllArgsIndividual) {
   EXPECT_TRUE(args.keepimg);
   EXPECT_TRUE(args.safe_wipe);
   EXPECT_TRUE(args.rollback_wipe);
+  EXPECT_FALSE(args.preserve_lvs);
 }
 
 TEST(ParseArgv, AllArgsSquished) {
@@ -98,6 +102,7 @@ TEST(ParseArgv, AllArgsSquished) {
   EXPECT_TRUE(args.keepimg);
   EXPECT_TRUE(args.safe_wipe);
   EXPECT_TRUE(args.rollback_wipe);
+  EXPECT_FALSE(args.preserve_lvs);
 }
 
 TEST(ParseArgv, SomeArgsIndividual) {
@@ -108,6 +113,7 @@ TEST(ParseArgv, SomeArgsIndividual) {
   EXPECT_TRUE(args.keepimg);
   EXPECT_FALSE(args.safe_wipe);
   EXPECT_TRUE(args.rollback_wipe);
+  EXPECT_FALSE(args.preserve_lvs);
 }
 
 TEST(ParseArgv, SomeArgsSquished) {
@@ -118,6 +124,31 @@ TEST(ParseArgv, SomeArgsSquished) {
   EXPECT_FALSE(args.keepimg);
   EXPECT_TRUE(args.safe_wipe);
   EXPECT_TRUE(args.rollback_wipe);
+  EXPECT_FALSE(args.preserve_lvs);
+}
+
+TEST(ParseArgv, PreserveLogicalVolumesWipe) {
+  {
+    std::vector<const char*> argv{"clobber-state", "preserve_lvs"};
+    ClobberState::Arguments args =
+        ClobberState::ParseArgv(argv.size(), &argv[0]);
+    EXPECT_FALSE(args.safe_wipe);
+    EXPECT_TRUE(args.preserve_lvs);
+  }
+  {
+    std::vector<const char*> argv{"clobber-state", "safe preserve_lvs"};
+    ClobberState::Arguments args =
+        ClobberState::ParseArgv(argv.size(), &argv[0]);
+    EXPECT_TRUE(args.safe_wipe);
+    EXPECT_TRUE(args.preserve_lvs);
+  }
+  {
+    std::vector<const char*> argv{"clobber-state", "safe", "preserve_lvs"};
+    ClobberState::Arguments args =
+        ClobberState::ParseArgv(argv.size(), &argv[0]);
+    EXPECT_TRUE(args.safe_wipe);
+    EXPECT_TRUE(args.preserve_lvs);
+  }
 }
 
 TEST(IncrementFileCounter, Nonexistent) {
@@ -865,6 +896,10 @@ class ClobberStateMock : public ClobberState {
     secure_erase_supported_ = supported;
   }
 
+  void SetWipeDevice(bool ret) { wipe_device_ret_ = ret; }
+
+  uint64_t WipeDeviceCalled() { return wipe_device_called_; }
+
  protected:
   int Stat(const base::FilePath& path, struct stat* st) override {
     if (st == nullptr || result_map_.count(path.value()) == 0) {
@@ -889,10 +924,19 @@ class ClobberStateMock : public ClobberState {
     return "STATEFULSTATEFUL";
   }
 
+  bool WipeDevice(const base::FilePath& device_name,
+                  bool discard = false) override {
+    ++wipe_device_called_;
+    return wipe_device_ret_;
+  }
+
  private:
   std::unordered_map<std::string, struct stat> result_map_;
   uint64_t stateful_partition_size_ = 5ULL * 1024 * 1024 * 1024;
   bool secure_erase_supported_;
+
+  uint64_t wipe_device_called_ = 0;
+  bool wipe_device_ret_ = true;
 };
 
 class IsRotationalTest : public ::testing::Test {
@@ -1728,4 +1772,301 @@ TEST_F(LogicalVolumeStatefulPartitionTest, CreateLogicalVolumeStackCheck) {
       .WillOnce(Return(true));
 
   clobber_.CreateLogicalVolumeStack();
+}
+
+class LogicalVolumeStatefulPartitionMockedTest : public ::testing::Test {
+ public:
+  LogicalVolumeStatefulPartitionMockedTest()
+      : clobber_(ClobberState::Arguments(),
+                 std::make_unique<CrosSystemFake>(),
+                 std::make_unique<ClobberUi>(DevNull())),
+        mock_lvm_command_runner_(
+            std::make_shared<brillo::MockLvmCommandRunner>()) {}
+
+  LogicalVolumeStatefulPartitionMockedTest(
+      const LogicalVolumeStatefulPartitionMockedTest&) = delete;
+  LogicalVolumeStatefulPartitionMockedTest& operator=(
+      const LogicalVolumeStatefulPartitionMockedTest&) = delete;
+
+  void SetUp() override {
+    auto mock_lvm =
+        std::make_unique<StrictMock<brillo::MockLogicalVolumeManager>>();
+    mock_lvm_ptr_ = mock_lvm.get();
+
+    clobber_.SetLogicalVolumeManagerForTesting(std::move(mock_lvm));
+  }
+
+ protected:
+  ClobberStateMock clobber_;
+  std::shared_ptr<brillo::MockLvmCommandRunner> mock_lvm_command_runner_;
+  brillo::MockLogicalVolumeManager* mock_lvm_ptr_ = nullptr;
+};
+
+TEST_F(LogicalVolumeStatefulPartitionMockedTest,
+       PreserveLogicalVolumesWipeNoPhysicalVolume) {
+  std::optional<brillo::PhysicalVolume> pv;
+  EXPECT_CALL(*mock_lvm_ptr_, GetPhysicalVolume(_)).WillOnce(Return(pv));
+  EXPECT_FALSE(clobber_.PreserveLogicalVolumesWipe({}));
+  EXPECT_EQ(clobber_.WipeDeviceCalled(), 0);
+}
+
+TEST_F(LogicalVolumeStatefulPartitionMockedTest,
+       PreserveLogicalVolumesWipeNoVolumeGroup) {
+  auto pv = std::make_optional(brillo::PhysicalVolume(
+      base::FilePath{"/foobar"}, mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetPhysicalVolume(_)).WillOnce(Return(pv));
+
+  std::optional<brillo::VolumeGroup> vg;
+  EXPECT_CALL(*mock_lvm_ptr_, GetVolumeGroup(_)).WillOnce(Return(vg));
+
+  EXPECT_FALSE(clobber_.PreserveLogicalVolumesWipe({}));
+
+  EXPECT_EQ(clobber_.WipeDeviceCalled(), 0);
+}
+
+TEST_F(LogicalVolumeStatefulPartitionMockedTest,
+       PreserveLogicalVolumesWipeEmptyInfoNoLvs) {
+  auto pv = std::make_optional(brillo::PhysicalVolume(
+      base::FilePath{"/foobar"}, mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetPhysicalVolume(_)).WillOnce(Return(pv));
+
+  auto vg = std::make_optional(
+      brillo::VolumeGroup("foobar_vg", mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetVolumeGroup(_)).WillOnce(Return(vg));
+
+  std::vector<brillo::LogicalVolume> lvs;
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+
+  // Must always have unencrypted.
+  EXPECT_FALSE(clobber_.PreserveLogicalVolumesWipe({}));
+
+  EXPECT_EQ(clobber_.WipeDeviceCalled(), 0);
+}
+
+TEST_F(LogicalVolumeStatefulPartitionMockedTest,
+       PreserveLogicalVolumesWipeEmptyInfo) {
+  auto pv = std::make_optional(brillo::PhysicalVolume(
+      base::FilePath{"/foobar"}, mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetPhysicalVolume(_)).WillOnce(Return(pv));
+
+  auto vg = std::make_optional(
+      brillo::VolumeGroup("foobar_vg", mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetVolumeGroup(_)).WillOnce(Return(vg));
+
+  std::vector<brillo::LogicalVolume> lvs{
+      brillo::LogicalVolume{"lv-name-1", "vg-name-1", mock_lvm_command_runner_},
+  };
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+
+  EXPECT_CALL(*mock_lvm_command_runner_.get(),
+              RunCommand(std::vector<std::string>{"lvremove", "--force",
+                                                  lvs[0].GetName()}))
+      .WillOnce(Return(true));
+
+  EXPECT_FALSE(clobber_.PreserveLogicalVolumesWipe({}));
+}
+
+TEST_F(LogicalVolumeStatefulPartitionMockedTest,
+       PreserveLogicalVolumesWipeIncludeInfoNoLvs) {
+  auto pv = std::make_optional(brillo::PhysicalVolume(
+      base::FilePath{"/foobar"}, mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetPhysicalVolume(_)).WillOnce(Return(pv));
+
+  auto vg = std::make_optional(
+      brillo::VolumeGroup("foobar_vg", mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetVolumeGroup(_)).WillOnce(Return(vg));
+
+  auto lv = std::make_optional(brillo::LogicalVolume(
+      kUnencrypted, vg->GetName(), mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetLogicalVolume(_, kUnencrypted))
+      .WillOnce(Return(lv));
+
+  std::vector<brillo::LogicalVolume> lvs;
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+
+  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
+      {
+          .lv_name = kUnencrypted,
+          .preserve = true,
+          .zero = false,
+      },
+  }));
+
+  EXPECT_EQ(clobber_.WipeDeviceCalled(), 0);
+}
+
+TEST_F(LogicalVolumeStatefulPartitionMockedTest,
+       PreserveLogicalVolumesWipeNoInfoMatch) {
+  auto pv = std::make_optional(brillo::PhysicalVolume(
+      base::FilePath{"/foobar"}, mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetPhysicalVolume(_)).WillOnce(Return(pv));
+
+  auto vg = std::make_optional(
+      brillo::VolumeGroup("foobar_vg", mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetVolumeGroup(_)).WillOnce(Return(vg));
+
+  auto lv = std::make_optional(brillo::LogicalVolume(
+      kUnencrypted, vg->GetName(), mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetLogicalVolume(_, kUnencrypted))
+      .WillOnce(Return(lv));
+
+  std::vector<brillo::LogicalVolume> lvs{
+      brillo::LogicalVolume{"lv-name-1", "vg-name-1", mock_lvm_command_runner_},
+  };
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+
+  EXPECT_CALL(*mock_lvm_command_runner_.get(),
+              RunCommand(std::vector<std::string>{"lvremove", "--force",
+                                                  lvs[0].GetName()}))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
+      {
+          .lv_name = kUnencrypted,
+          .preserve = true,
+          .zero = false,
+      },
+  }));
+
+  EXPECT_EQ(clobber_.WipeDeviceCalled(), 0);
+}
+
+TEST_F(LogicalVolumeStatefulPartitionMockedTest,
+       PreserveLogicalVolumesWipeInfoMatchPreserve) {
+  auto pv = std::make_optional(brillo::PhysicalVolume(
+      base::FilePath{"/foobar"}, mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetPhysicalVolume(_)).WillOnce(Return(pv));
+
+  auto vg = std::make_optional(
+      brillo::VolumeGroup("foobar_vg", mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetVolumeGroup(_)).WillOnce(Return(vg));
+
+  auto lv = std::make_optional(brillo::LogicalVolume(
+      kUnencrypted, vg->GetName(), mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetLogicalVolume(_, kUnencrypted))
+      .WillOnce(Return(lv));
+
+  std::vector<brillo::LogicalVolume> lvs{
+      brillo::LogicalVolume{kUnencrypted, "vg-name-1",
+                            mock_lvm_command_runner_},
+  };
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+
+  EXPECT_CALL(*mock_lvm_command_runner_.get(),
+              RunCommand(std::vector<std::string>{"lvremove", "--force",
+                                                  lvs[0].GetName()}))
+      .Times(0);
+
+  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
+      {
+          .lv_name = kUnencrypted,
+          .preserve = true,
+          .zero = false,
+      },
+  }));
+
+  EXPECT_EQ(clobber_.WipeDeviceCalled(), 0);
+}
+
+TEST_F(LogicalVolumeStatefulPartitionMockedTest,
+       PreserveLogicalVolumesWipeInfoMatchZero) {
+  auto pv = std::make_optional(brillo::PhysicalVolume(
+      base::FilePath{"/foobar"}, mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetPhysicalVolume(_)).WillOnce(Return(pv));
+
+  auto vg = std::make_optional(
+      brillo::VolumeGroup("foobar_vg", mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetVolumeGroup(_)).WillOnce(Return(vg));
+
+  auto lv = std::make_optional(brillo::LogicalVolume(
+      kUnencrypted, vg->GetName(), mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetLogicalVolume(_, kUnencrypted))
+      .WillOnce(Return(lv));
+
+  std::vector<brillo::LogicalVolume> lvs{
+      brillo::LogicalVolume{kUnencrypted, "vg-name-1",
+                            mock_lvm_command_runner_},
+  };
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+
+  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
+      {
+          .lv_name = kUnencrypted,
+          .preserve = false,
+          .zero = true,
+      },
+  }));
+
+  EXPECT_EQ(clobber_.WipeDeviceCalled(), 1);
+}
+
+TEST_F(LogicalVolumeStatefulPartitionMockedTest,
+       PreserveLogicalVolumesWipeInfoMatchPreserveAndZero) {
+  auto pv = std::make_optional(brillo::PhysicalVolume(
+      base::FilePath{"/foobar"}, mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetPhysicalVolume(_)).WillOnce(Return(pv));
+
+  auto vg = std::make_optional(
+      brillo::VolumeGroup("foobar_vg", mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetVolumeGroup(_)).WillOnce(Return(vg));
+
+  auto lv = std::make_optional(brillo::LogicalVolume(
+      kUnencrypted, vg->GetName(), mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetLogicalVolume(_, kUnencrypted))
+      .WillOnce(Return(lv));
+
+  std::vector<brillo::LogicalVolume> lvs{
+      brillo::LogicalVolume{kUnencrypted, "vg-name-1",
+                            mock_lvm_command_runner_},
+  };
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+
+  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
+      {
+          .lv_name = kUnencrypted,
+          .preserve = true,
+          .zero = true,
+      },
+  }));
+
+  EXPECT_EQ(clobber_.WipeDeviceCalled(), 1);
+}
+
+TEST_F(LogicalVolumeStatefulPartitionMockedTest,
+       PreserveLogicalVolumesWipeInfoMatchPreserveAndZeroWithNoMatchLv) {
+  auto pv = std::make_optional(brillo::PhysicalVolume(
+      base::FilePath{"/foobar"}, mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetPhysicalVolume(_)).WillOnce(Return(pv));
+
+  auto vg = std::make_optional(
+      brillo::VolumeGroup("foobar_vg", mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetVolumeGroup(_)).WillOnce(Return(vg));
+
+  auto lv = std::make_optional(brillo::LogicalVolume(
+      kUnencrypted, vg->GetName(), mock_lvm_command_runner_));
+  EXPECT_CALL(*mock_lvm_ptr_, GetLogicalVolume(_, kUnencrypted))
+      .WillOnce(Return(lv));
+
+  std::vector<brillo::LogicalVolume> lvs{
+      brillo::LogicalVolume{"foobar", "vg-name-1", mock_lvm_command_runner_},
+      brillo::LogicalVolume{kThinpool, "vg-name-1", mock_lvm_command_runner_},
+  };
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+
+  for (const auto& lv : lvs) {
+    EXPECT_CALL(*mock_lvm_command_runner_.get(),
+                RunCommand(std::vector<std::string>{"lvremove", "--force",
+                                                    lv.GetName()}))
+        .WillOnce(Return(true));
+  }
+
+  EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
+      {
+          .lv_name = kUnencrypted,
+          .preserve = true,
+          .zero = true,
+      },
+  }));
+
+  EXPECT_EQ(clobber_.WipeDeviceCalled(), 1);
 }
