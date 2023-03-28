@@ -107,6 +107,12 @@ class CgptManagerInterface {
                                        std::optional<uint64_t> start,
                                        std::optional<uint64_t> count) = 0;
 
+  // In some circumstances devices will have a damaged GPT  (at least
+  // b/257478857, possibly other cases). This tries to fix it.
+  //
+  // Returns kSuccess or an appropriate error code.
+  virtual CgptErrorCode RepairPartitionTable() = 0;
+
   // Get the device path (e.g. "/dev/sda") that was passed in to |Initialize|.
   virtual const base::FilePath& DeviceName() const = 0;
 };
@@ -135,6 +141,7 @@ class CgptManager : public CgptManagerInterface {
   CgptErrorCode SetSectorRange(PartitionNum partition_number,
                                std::optional<uint64_t> start,
                                std::optional<uint64_t> count) override;
+  CgptErrorCode RepairPartitionTable() override;
   const base::FilePath& DeviceName() const override;
 
  private:

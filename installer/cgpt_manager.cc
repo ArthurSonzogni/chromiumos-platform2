@@ -393,6 +393,25 @@ CgptErrorCode CgptManager::SetSectorRange(PartitionNum partition_number,
   return CgptErrorCode::kSuccess;
 }
 
+CgptErrorCode CgptManager::RepairPartitionTable() {
+  if (!is_initialized_)
+    return CgptErrorCode::kNotInitialized;
+
+  CgptRepairParams params;
+  memset(&params, 0, sizeof(params));
+
+  params.drive_name = const_cast<char*>(device_name_.value().c_str());
+  params.drive_size = device_size_;
+  // This prints the result of the validity check.
+  params.verbose = true;
+
+  int retval = CgptRepair(&params);
+  if (retval != CGPT_OK)
+    return CgptErrorCode::kUnknownError;
+
+  return CgptErrorCode::kSuccess;
+}
+
 const base::FilePath& CgptManager::DeviceName() const {
   return device_name_;
 }

@@ -46,6 +46,7 @@ class MockCgptManager : public CgptManagerInterface {
                std::optional<uint64_t> start,
                std::optional<uint64_t> count),
               (override));
+  MOCK_METHOD(CgptErrorCode, RepairPartitionTable, (), (override));
   MOCK_METHOD(const base::FilePath&, DeviceName, (), (const override));
 };
 

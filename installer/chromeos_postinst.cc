@@ -383,6 +383,15 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
   return rollback_successful;
 }
 
+// Try to repair the partition table, but don't worry if we can't.
+void RepairPartitionTable(CgptManager& cgpt_manager) {
+  CgptErrorCode result = cgpt_manager.RepairPartitionTable();
+  if (result != CgptErrorCode::kSuccess) {
+    LOG(WARNING) << "Error while trying to repair partition table."
+                 << " Probably everything is fine.";
+  }
+}
+
 // Non-Chromebook/box bootloaders and their config files are stored on the
 // EFI System Partition (ESP). Mount the partition and "Do post install stuff"
 // for these bootloaders.
@@ -563,6 +572,13 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       LOG(INFO) << "Updating partition table for deferred update APPLY.";
       [[fallthrough]];
     case DeferUpdateAction::kAuto: {
+      // Keep this before the |UpdatePartitionTable| and subsequent
+      // |udevadm settle|. This prevents the updates to the GPT from failing,
+      // and can also cause the partitions to be re-read.
+      if (USE_POSTINSTALL_CGPT_REPAIR) {
+        RepairPartitionTable(cgpt_manager);
+      }
+
       if (!UpdatePartitionTable(cgpt_manager, install_config, is_update)) {
         LOG(ERROR) << "UpdatePartitionTable failed.";
         return false;

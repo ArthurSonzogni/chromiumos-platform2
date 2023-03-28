@@ -136,6 +136,7 @@ _IUSE = [
     "pinweaver",
     "pinweaver_csme",
     "postinst_metrics",
+    "postinstall_cgpt_repair",
     "postinstall_config_efi_and_legacy",
     "power_management",
     "prjquota",
