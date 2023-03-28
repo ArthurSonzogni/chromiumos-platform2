@@ -29,13 +29,14 @@ class DHCPServerController {
     // subnet that the DHCP server serves.
     // |start_ip| and |end_ip| defines the DHCP IP range, which should be under
     // the same subnet as the DHCP server serves.
-    // |dns_servers| is the list of DNS servers. The default DNS server will be
-    // used if the list is empty.
+    // |dns_servers| is the list of DNS servers.
+    // |domain_searches| is the list of the domain search.
     static std::optional<Config> Create(
         const shill::IPAddress& host_ip,
         const shill::IPAddress& start_ip,
         const shill::IPAddress& end_ip,
-        const std::vector<shill::IPAddress>& dns_servers);
+        const std::vector<shill::IPAddress>& dns_servers,
+        const std::vector<std::string>& domain_searches);
 
     // Getter methods of each field.
     const std::string& host_ip() const { return host_ip_; }
@@ -43,13 +44,15 @@ class DHCPServerController {
     const std::string& start_ip() const { return start_ip_; }
     const std::string& end_ip() const { return end_ip_; }
     const std::string& dns_servers() const { return dns_servers_; }
+    const std::string& domain_searches() const { return domain_searches_; }
 
    private:
     Config(const std::string& host_ip,
            const std::string& netmask,
            const std::string& start_ip,
            const std::string& end_ip,
-           const std::string& dns_servers);
+           const std::string& dns_servers,
+           const std::string& domain_searches);
 
     friend std::ostream& operator<<(std::ostream& os, const Config& config);
 
@@ -59,6 +62,8 @@ class DHCPServerController {
     std::string end_ip_;
     // The comma-split string for the list of DNS servers.
     std::string dns_servers_;
+    // The comma-split string for the list of domain search.
+    std::string domain_searches_;
   };
 
   explicit DHCPServerController(const std::string& ifname);

@@ -1224,7 +1224,7 @@ std::optional<DownstreamNetworkInfo> Manager::ParseTetheredNetworkRequest(
     return std::nullopt;
   }
 
-  // Get the DNS server from shill.
+  // Get the DNS server and domain search from shill.
   ShillClient::Device shill_device;
   if (!shill_client_->GetDeviceProperties(request.upstream_ifname(),
                                           &shill_device)) {
@@ -1241,7 +1241,10 @@ std::optional<DownstreamNetworkInfo> Manager::ParseTetheredNetworkRequest(
     dns_servers.push_back(*ip);
   }
 
-  return DownstreamNetworkInfo::Create(request, dns_servers);
+  // TODO(b/275278561): Get the domain search from shill.
+  const std::vector<std::string> domain_searches;
+
+  return DownstreamNetworkInfo::Create(request, dns_servers, domain_searches);
 }
 
 std::optional<DownstreamNetworkInfo> Manager::ParseLocalOnlyNetworkRequest(

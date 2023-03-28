@@ -53,7 +53,13 @@ class DHCPServerControllerTest : public ::testing::Test {
         CreateAndUnwrapIPAddress("1.2.3.4"),
         CreateAndUnwrapIPAddress("5.6.7.8"),
     };
-    return Config::Create(host_ip, start_ip, end_ip, dns_servers).value();
+    const std::vector<std::string> domain_searches = {
+        "domain.local0",
+        "domain.local1",
+    };
+    return Config::Create(host_ip, start_ip, end_ip, dns_servers,
+                          domain_searches)
+        .value();
   }
 
   StrictMock<shill::MockProcessManager> process_manager_;
@@ -66,7 +72,7 @@ TEST_F(DHCPServerControllerTest, ConfigWithWrongSubnet) {
   const auto start_ip = CreateAndUnwrapIPAddress("192.168.5.50");
   const auto end_ip = CreateAndUnwrapIPAddress("192.168.5.100");
 
-  EXPECT_EQ(Config::Create(host_ip, start_ip, end_ip, {}), std::nullopt);
+  EXPECT_EQ(Config::Create(host_ip, start_ip, end_ip, {}, {}), std::nullopt);
 }
 
 TEST_F(DHCPServerControllerTest, ConfigWithWrongRange) {
@@ -75,7 +81,7 @@ TEST_F(DHCPServerControllerTest, ConfigWithWrongRange) {
   const auto start_ip = CreateAndUnwrapIPAddress("192.168.1.100");
   const auto end_ip = CreateAndUnwrapIPAddress("192.168.1.50");
 
-  EXPECT_EQ(Config::Create(host_ip, start_ip, end_ip, {}), std::nullopt);
+  EXPECT_EQ(Config::Create(host_ip, start_ip, end_ip, {}, {}), std::nullopt);
 }
 
 TEST_F(DHCPServerControllerTest, ValidConfig) {
@@ -86,7 +92,12 @@ TEST_F(DHCPServerControllerTest, ValidConfig) {
       CreateAndUnwrapIPAddress("1.2.3.4"),
       CreateAndUnwrapIPAddress("5.6.7.8"),
   };
-  const auto config = Config::Create(host_ip, start_ip, end_ip, dns_servers);
+  const std::vector<std::string> domain_searches = {
+      "domain.local0",
+      "domain.local1",
+  };
+  const auto config =
+      Config::Create(host_ip, start_ip, end_ip, dns_servers, domain_searches);
 
   ASSERT_NE(config, std::nullopt);
   EXPECT_EQ(config->host_ip(), "192.168.1.1");
@@ -96,14 +107,15 @@ TEST_F(DHCPServerControllerTest, ValidConfig) {
   EXPECT_EQ(config->dns_servers(), "1.2.3.4,5.6.7.8");
 }
 
-TEST_F(DHCPServerControllerTest, ValidConfigWithoutDnsServer) {
+TEST_F(DHCPServerControllerTest, ValidConfigWithoutOptionalArgument) {
   const auto host_ip = CreateAndUnwrapIPAddress("192.168.1.1", 24);
   const auto start_ip = CreateAndUnwrapIPAddress("192.168.1.50");
   const auto end_ip = CreateAndUnwrapIPAddress("192.168.1.100");
-  const auto config = Config::Create(host_ip, start_ip, end_ip, {});
+  const auto config = Config::Create(host_ip, start_ip, end_ip, {}, {});
 
   ASSERT_NE(config, std::nullopt);
   EXPECT_EQ(config->dns_servers(), "");
+  EXPECT_EQ(config->domain_searches(), "");
 }
 
 TEST_F(DHCPServerControllerTest, StartSuccessfulAtFirstTime) {
@@ -121,6 +133,7 @@ TEST_F(DHCPServerControllerTest, StartSuccessfulAtFirstTime) {
       "--dhcp-option=option:netmask,255.255.255.0",
       "--dhcp-option=option:router,192.168.1.1",
       "--dhcp-option=option:dns-server,1.2.3.4,5.6.7.8",
+      "--dhcp-option=option:domain-search,domain.local0,domain.local1",
   };
   constexpr pid_t pid = 5;
 

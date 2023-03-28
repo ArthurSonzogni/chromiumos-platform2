@@ -214,6 +214,8 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
       *IPAddress::CreateFromString("1.2.3.4"),
       *IPAddress::CreateFromString("5.6.7.8"),
   };
+  const std::vector<std::string> domain_sesarches = {"domain.local0",
+                                                     "domain.local1"};
 
   IPv4Subnet* ipv4_subnet = new IPv4Subnet();
   ipv4_subnet->set_addr(&subnet_ip, sizeof(subnet_ip));
@@ -231,7 +233,8 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   request.set_ifname("wlan1");
   request.set_allocated_ipv4_config(ipv4_config);
 
-  const auto info = DownstreamNetworkInfo::Create(request, dns_servers);
+  const auto info =
+      DownstreamNetworkInfo::Create(request, dns_servers, domain_sesarches);
   ASSERT_NE(info, std::nullopt);
   EXPECT_EQ(info->topology, DownstreamNetworkTopology::kTethering);
   EXPECT_EQ(info->upstream_ifname, "wwan0");
@@ -241,6 +244,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   EXPECT_EQ(info->ipv4_dhcp_start_addr, start_ip);
   EXPECT_EQ(info->ipv4_dhcp_end_addr, end_ip);
   EXPECT_EQ(info->dhcp_dns_servers, dns_servers);
+  EXPECT_EQ(info->dhcp_domain_searches, domain_sesarches);
 }
 
 TEST(DatapathTest,
@@ -248,7 +252,7 @@ TEST(DatapathTest,
   using shill::IPAddress;
 
   TetheredNetworkRequest request;
-  const auto info = DownstreamNetworkInfo::Create(request, {});
+  const auto info = DownstreamNetworkInfo::Create(request, {}, {});
   ASSERT_NE(info, std::nullopt);
 
   // When the request doesn't have |ipv4_config|, the info should be randomly
@@ -288,6 +292,8 @@ TEST(DatapathTest, DownstreamNetworkInfo_ToDHCPServerConfig) {
   info.ipv4_dhcp_end_addr = Ipv4Addr(192, 168, 3, 100);
   info.dhcp_dns_servers.push_back(*IPAddress::CreateFromString("1.2.3.4"));
   info.dhcp_dns_servers.push_back(*IPAddress::CreateFromString("5.6.7.8"));
+  info.dhcp_domain_searches.push_back("domain.local0");
+  info.dhcp_domain_searches.push_back("domain.local1");
 
   const auto config = info.ToDHCPServerConfig();
   ASSERT_NE(config, std::nullopt);
@@ -296,6 +302,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_ToDHCPServerConfig) {
   EXPECT_EQ(config->start_ip(), "192.168.3.50");
   EXPECT_EQ(config->end_ip(), "192.168.3.100");
   EXPECT_EQ(config->dns_servers(), "1.2.3.4,5.6.7.8");
+  EXPECT_EQ(config->domain_searches(), "domain.local0,domain.local1");
 }
 
 TEST(DatapathTest, IpFamily) {

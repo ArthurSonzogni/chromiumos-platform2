@@ -11,6 +11,7 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "patchpanel/system.h"
@@ -28,7 +29,8 @@ std::optional<Config> Config::Create(
     const shill::IPAddress& host_ip,
     const shill::IPAddress& start_ip,
     const shill::IPAddress& end_ip,
-    const std::vector<shill::IPAddress>& dns_servers) {
+    const std::vector<shill::IPAddress>& dns_servers,
+    const std::vector<std::string>& domain_searches) {
   DCHECK(host_ip.IsValid());
   DCHECK(start_ip.IsValid());
   DCHECK(end_ip.IsValid());
@@ -50,32 +52,32 @@ std::optional<Config> Config::Create(
     return std::nullopt;
   }
 
-  // Join the DNS server with the ',' delimiter.
-  std::string dns_servers_str;
+  // Transform std::vector<IPAddress> to std::vector<std::string>.
+  std::vector<std::string> dns_server_strs;
   for (const auto& ip : dns_servers) {
     DCHECK(ip.IsValid());
-    if (!dns_servers_str.empty()) {
-      dns_servers_str += ",";
-    }
-    dns_servers_str += ip.ToString();
+    dns_server_strs.push_back(ip.ToString());
   }
 
   const auto netmask = shill::IPAddress::GetAddressMaskFromPrefix(
       kValidFamily, host_ip.prefix());
   return Config(host_ip.ToString(), netmask.ToString(), start_ip.ToString(),
-                end_ip.ToString(), dns_servers_str);
+                end_ip.ToString(), base::JoinString(dns_server_strs, ","),
+                base::JoinString(domain_searches, ","));
 }
 
 Config::Config(const std::string& host_ip,
                const std::string& netmask,
                const std::string& start_ip,
                const std::string& end_ip,
-               const std::string& dns_servers)
+               const std::string& dns_servers,
+               const std::string& domain_searches)
     : host_ip_(host_ip),
       netmask_(netmask),
       start_ip_(start_ip),
       end_ip_(end_ip),
-      dns_servers_(dns_servers) {}
+      dns_servers_(dns_servers),
+      domain_searches_(domain_searches) {}
 
 std::ostream& operator<<(std::ostream& os, const Config& config) {
   os << "{host_ip: " << config.host_ip() << ", netmask: " << config.netmask()
@@ -119,6 +121,11 @@ bool DHCPServerController::Start(const Config& config,
   if (!config.dns_servers().empty()) {
     dnsmasq_args.push_back(base::StringPrintf(
         "--dhcp-option=option:dns-server,%s", config.dns_servers().c_str()));
+  }
+  if (!config.domain_searches().empty()) {
+    dnsmasq_args.push_back(
+        base::StringPrintf("--dhcp-option=option:domain-search,%s",
+                           config.domain_searches().c_str()));
   }
 
   shill::ProcessManager::MinijailOptions minijail_options = {};
