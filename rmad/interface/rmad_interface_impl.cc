@@ -324,19 +324,17 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
   auto [next_state_case_error, next_state_case] =
       try_at_boot ? current_state_handler->TryGetNextStateCaseAtBoot()
                   : current_state_handler->GetNextStateCase(request.state());
-  if (next_state_case_error != RMAD_ERROR_OK) {
+  if (next_state_case == current_state_case_) {
     DLOG(INFO) << "Transitioning to next state rejected by state "
                << current_state_case_;
-    CHECK(next_state_case == current_state_case_)
-        << "State transition should not happen with errors.";
     // Staying at the same state. Run it again.
     current_state_handler->RunState();
     reply.set_error(next_state_case_error);
     return reply;
   }
 
-  CHECK(next_state_case != current_state_case_)
-      << "Staying at the same state without errors.";
+  CHECK(next_state_case_error == RMAD_ERROR_OK)
+      << "State transition should not happen with errors.";
 
   if (RmadErrorCode error =
           GetInitializedStateHandler(next_state_case, &next_state_handler);

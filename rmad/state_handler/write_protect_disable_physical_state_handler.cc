@@ -86,27 +86,40 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
     LOG(ERROR) << "RmadState missing |physical write protection| state.";
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
-  if (!IsReadyForTransition()) {
-    // Wait for the polling loop to perform tasks.
-    return NextStateCaseWrapper(RMAD_ERROR_WAIT);
+
+  // The state will reboot automatically when write protect is disabled. Before
+  // that, always return RMAD_ERROR_WAIT.
+  return NextStateCaseWrapper(RMAD_ERROR_WAIT);
+}
+
+BaseStateHandler::GetNextStateCaseReply
+WriteProtectDisablePhysicalStateHandler::TryGetNextStateCaseAtBoot() {
+  // If conditions are met, we can transition to the next state.
+  if (IsReadyForTransition()) {
+    if (cr50_utils_->IsFactoryModeEnabled()) {
+      json_store_->SetValue(
+          kWpDisableMethod,
+          WpDisableMethod_Name(
+              RMAD_WP_DISABLE_METHOD_PHYSICAL_ASSEMBLE_DEVICE));
+      MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsWpDisableMethod,
+          WpDisableMethod_Name(
+              RMAD_WP_DISABLE_METHOD_PHYSICAL_ASSEMBLE_DEVICE));
+    } else {
+      json_store_->SetValue(
+          kWpDisableMethod,
+          WpDisableMethod_Name(
+              RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN));
+      MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsWpDisableMethod,
+          WpDisableMethod_Name(
+              RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN));
+    }
+    return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
   }
 
-  if (cr50_utils_->IsFactoryModeEnabled()) {
-    json_store_->SetValue(
-        kWpDisableMethod,
-        WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_PHYSICAL_ASSEMBLE_DEVICE));
-    MetricsUtils::SetMetricsValue(
-        json_store_, kMetricsWpDisableMethod,
-        WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_PHYSICAL_ASSEMBLE_DEVICE));
-  } else {
-    json_store_->SetValue(
-        kWpDisableMethod,
-        WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN));
-    MetricsUtils::SetMetricsValue(
-        json_store_, kMetricsWpDisableMethod,
-        WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN));
-  }
-  return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
+  // Otherwise, stay on the same state.
+  return NextStateCaseWrapper(GetStateCase());
 }
 
 bool WriteProtectDisablePhysicalStateHandler::IsReadyForTransition() const {

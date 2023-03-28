@@ -72,6 +72,12 @@ RmadErrorCode RepairCompleteStateHandler::InitializeState() {
     StorePowerwashCount(unencrypted_preserve_path_);
   }
 
+  // Check if powerwash is actually required.
+  if (IsPowerwashComplete(unencrypted_preserve_path_) ||
+      IsPowerwashDisabled(working_dir_path_)) {
+    state_.mutable_repair_complete()->set_powerwash_required(false);
+  }
+
   return RMAD_ERROR_OK;
 }
 
@@ -105,56 +111,72 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
   state_ = state;
   StoreState();
 
-  if (state_.repair_complete().powerwash_required() &&
-      !IsPowerwashComplete(unencrypted_preserve_path_) &&
-      !IsPowerwashDisabled(working_dir_path_)) {
-    // Request a powerwash if we want to wipe the device, and powerwash is not
-    // done yet.
+  // If powerwash is required, request a powerwash and reboot.
+  if (state_.repair_complete().powerwash_required()) {
     RequestRmaPowerwash();
     return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
                                 RMAD_ADDITIONAL_ACTIVITY_REBOOT);
-  } else {
-    // Clear the state file and shutdown/reboot/cutoff if the device doesn't
-    // need to do a powerwash, or a powerwash is already done.
-    if (!MetricsUtils::UpdateStateMetricsOnStateTransition(
-            json_store_, GetStateCase(), RmadState::STATE_NOT_SET,
-            base::Time::Now().ToDoubleT()) ||
-        !MetricsUtils::SetMetricsValue(json_store_, kMetricsIsComplete, true) ||
-        !metrics_utils_->RecordAll(json_store_)) {
-      LOG(ERROR) << "RepairCompleteState: Failed to record metrics to the file";
-      // TODO(genechang): We should block here if the metrics library is ready.
-    }
-
-    if (!json_store_->ClearAndDeleteFile()) {
-      LOG(ERROR) << "RepairCompleteState: Failed to clear RMA state file";
-      return NextStateCaseWrapper(RMAD_ERROR_CANNOT_WRITE);
-    }
-
-    switch (state.repair_complete().shutdown()) {
-      case RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT:
-        // Wait for a while before reboot.
-        action_timer_.Start(FROM_HERE, kShutdownDelay, this,
-                            &RepairCompleteStateHandler::Reboot);
-        locked_error_ = RMAD_ERROR_EXPECT_REBOOT;
-        break;
-      case RepairCompleteState::RMAD_REPAIR_COMPLETE_SHUTDOWN:
-        // Wait for a while before shutdown.
-        action_timer_.Start(FROM_HERE, kShutdownDelay, this,
-                            &RepairCompleteStateHandler::Shutdown);
-        locked_error_ = RMAD_ERROR_EXPECT_SHUTDOWN;
-        break;
-      case RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF:
-        // Wait for a while before cutoff.
-        action_timer_.Start(FROM_HERE, kShutdownDelay, this,
-                            &RepairCompleteStateHandler::RequestBatteryCutoff);
-        locked_error_ = RMAD_ERROR_EXPECT_SHUTDOWN;
-        break;
-      default:
-        break;
-    }
-    CHECK(locked_error_ != RMAD_ERROR_NOT_SET);
-    return {.error = locked_error_, .state_case = GetStateCase()};
   }
+
+  // Exit RMA.
+  return ExitRma();
+}
+
+BaseStateHandler::GetNextStateCaseReply
+RepairCompleteStateHandler::TryGetNextStateCaseAtBoot() {
+  // Exit RMA only if the user has selected a shutdown option before the reboot,
+  // and powerwash is no longer required.
+  if (state_.repair_complete().shutdown() !=
+          RepairCompleteState::RMAD_REPAIR_COMPLETE_UNKNOWN &&
+      !state_.repair_complete().powerwash_required()) {
+    return ExitRma();
+  }
+
+  // Otherwise, stay on the same state.
+  return NextStateCaseWrapper(GetStateCase());
+}
+
+BaseStateHandler::GetNextStateCaseReply RepairCompleteStateHandler::ExitRma() {
+  // Clear the state file and shutdown/reboot/cutoff if the device doesn't
+  // need to do a powerwash, or a powerwash is already done.
+  if (!MetricsUtils::UpdateStateMetricsOnStateTransition(
+          json_store_, GetStateCase(), RmadState::STATE_NOT_SET,
+          base::Time::Now().ToDoubleT()) ||
+      !MetricsUtils::SetMetricsValue(json_store_, kMetricsIsComplete, true) ||
+      !metrics_utils_->RecordAll(json_store_)) {
+    LOG(ERROR) << "RepairCompleteState: Failed to record metrics to the file";
+    // TODO(genechang): We should block here if the metrics library is ready.
+  }
+
+  if (!json_store_->ClearAndDeleteFile()) {
+    LOG(ERROR) << "RepairCompleteState: Failed to clear RMA state file";
+    return NextStateCaseWrapper(RMAD_ERROR_CANNOT_WRITE);
+  }
+
+  switch (state_.repair_complete().shutdown()) {
+    case RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT:
+      // Wait for a while before reboot.
+      action_timer_.Start(FROM_HERE, kShutdownDelay, this,
+                          &RepairCompleteStateHandler::Reboot);
+      locked_error_ = RMAD_ERROR_EXPECT_REBOOT;
+      break;
+    case RepairCompleteState::RMAD_REPAIR_COMPLETE_SHUTDOWN:
+      // Wait for a while before shutdown.
+      action_timer_.Start(FROM_HERE, kShutdownDelay, this,
+                          &RepairCompleteStateHandler::Shutdown);
+      locked_error_ = RMAD_ERROR_EXPECT_SHUTDOWN;
+      break;
+    case RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF:
+      // Wait for a while before cutoff.
+      action_timer_.Start(FROM_HERE, kShutdownDelay, this,
+                          &RepairCompleteStateHandler::RequestBatteryCutoff);
+      locked_error_ = RMAD_ERROR_EXPECT_SHUTDOWN;
+      break;
+    default:
+      break;
+  }
+  CHECK(locked_error_ != RMAD_ERROR_NOT_SET);
+  return NextStateCaseWrapper(locked_error_);
 }
 
 void RepairCompleteStateHandler::RequestRmaPowerwash() {

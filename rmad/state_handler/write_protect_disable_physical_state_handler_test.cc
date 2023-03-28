@@ -143,20 +143,17 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Failed) {
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
-       GetNextStateCase_Success_FactoryModeEnabled) {
+       TryGetNextStateCaseAtBoot_Succeeded_FactoryModeEnabled) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   EXPECT_TRUE(json_store_->SetValue(kEcRebooted, true));
   auto handler = CreateStateHandler({false}, true, true, false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
 
-  RmadState state;
-  state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
+  auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableComplete);
 
+  // Check |json_store_|.
   std::string wp_disable_method_name;
   WpDisableMethod wp_disable_method;
   EXPECT_TRUE(json_store_->GetValue(kWpDisableMethod, &wp_disable_method_name));
@@ -173,20 +170,17 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
-       GetNextStateCase_Success_KeepDeviceOpen) {
+       GetNextStateCase_Succeeded_KeepDeviceOpen) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
   EXPECT_TRUE(json_store_->SetValue(kEcRebooted, true));
   auto handler = CreateStateHandler({false}, false, true, false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
 
-  RmadState state;
-  state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
+  auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableComplete);
 
+  // Check |json_store_|.
   std::string wp_disable_method_name;
   WpDisableMethod wp_disable_method;
   EXPECT_TRUE(json_store_->GetValue(kWpDisableMethod, &wp_disable_method_name));
@@ -202,6 +196,18 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
       WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method));
   EXPECT_EQ(wp_disable_method,
             RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN);
+}
+
+TEST_F(WriteProtectDisablePhysicalStateHandlerTest, GetNextStateCase_Failed) {
+  // WP still enabled.
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
+  EXPECT_TRUE(json_store_->SetValue(kEcRebooted, true));
+  auto handler = CreateStateHandler({true}, true, true, false, true);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,

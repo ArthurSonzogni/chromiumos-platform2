@@ -114,17 +114,6 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
     return NextStateCaseWrapper(RMAD_ERROR_EXPECT_REBOOT);
   }
 
-  // If factory mode is already enabled, we can transition to the next state
-  // immediately.
-  if (IsFactoryModeEnabled()) {
-    json_store_->SetValue(kWpDisableMethod,
-                          WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_RSU));
-    MetricsUtils::SetMetricsValue(
-        json_store_, kMetricsWpDisableMethod,
-        WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_RSU));
-    return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
-  }
-
   // Do RSU. If RSU succeeds, cr50 will cut off its connection with AP until the
   // next boot, so we need a reboot here for factory mode to take effect.
   if (!cr50_utils_->PerformRsu(state.wp_disable_rsu().unlock_code())) {
@@ -152,6 +141,22 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
   reboot_scheduled_ = true;
   return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
                               RMAD_ADDITIONAL_ACTIVITY_REBOOT);
+}
+
+BaseStateHandler::GetNextStateCaseReply
+WriteProtectDisableRsuStateHandler::TryGetNextStateCaseAtBoot() {
+  // If factory mode is already enabled, we can transition to the next state.
+  if (IsFactoryModeEnabled()) {
+    json_store_->SetValue(kWpDisableMethod,
+                          WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_RSU));
+    MetricsUtils::SetMetricsValue(
+        json_store_, kMetricsWpDisableMethod,
+        WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_RSU));
+    return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
+  }
+
+  // Otherwise, stay on the same state.
+  return NextStateCaseWrapper(GetStateCase());
 }
 
 bool WriteProtectDisableRsuStateHandler::IsFactoryModeEnabled() const {

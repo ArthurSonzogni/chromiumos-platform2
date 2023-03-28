@@ -158,16 +158,13 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
-       GetNextStateCase_Success_Continue) {
+       TryGetNextStateCaseAtBoot_Succeeded) {
   bool powerwash_requested = false, reboot_toggled = false;
   auto handler =
       CreateStateHandler(true, true, &powerwash_requested, &reboot_toggled);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  RmadState state;
-  state.set_allocated_wp_disable_rsu(new WriteProtectDisableRsuState);
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
+  auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableComplete);
   EXPECT_FALSE(powerwash_requested);
@@ -187,6 +184,20 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
   EXPECT_TRUE(
       WpDisableMethod_Parse(wp_disable_method_name, &wp_disable_method));
   EXPECT_EQ(wp_disable_method, RMAD_WP_DISABLE_METHOD_RSU);
+}
+
+TEST_F(WriteProtectDisableRsuStateHandlerTest,
+       TryGetNextStateCaseAtBoot_Failed) {
+  bool powerwash_requested = false, reboot_toggled = false;
+  auto handler =
+      CreateStateHandler(false, true, &powerwash_requested, &reboot_toggled);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
+  EXPECT_FALSE(powerwash_requested);
+  EXPECT_FALSE(reboot_toggled);
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Success_Rsu) {

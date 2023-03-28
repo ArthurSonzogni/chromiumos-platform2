@@ -46,9 +46,7 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
   // Try to auto-transition at boot.
-  GetNextStateCaseReply TryGetNextStateCaseAtBoot() override {
-    return GetNextStateCase(state_);
-  }
+  GetNextStateCaseReply TryGetNextStateCaseAtBoot() override;
 
   // Override powerwash function. Allow disabling powerwash if running in a
   // debug build.
