@@ -294,8 +294,6 @@ class VirtualMachine {
   // Starts an LXD container.
   StartLxdContainerStatus StartLxdContainer(
       const std::string& container_name,
-      const std::string& container_private_key,
-      const std::string& host_public_key,
       const std::string& token,
       tremplin::StartContainerRequest::PrivilegeLevel privilege_level,
       bool disable_audio_capture,

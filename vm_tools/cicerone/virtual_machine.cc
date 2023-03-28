@@ -368,8 +368,6 @@ VirtualMachine::DeleteLxdContainerStatus VirtualMachine::DeleteLxdContainer(
 
 VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
     const std::string& container_name,
-    const std::string& container_private_key,
-    const std::string& host_public_key,
     const std::string& token,
     tremplin::StartContainerRequest::PrivilegeLevel privilege_level,
     bool disable_audio_capture,
@@ -384,8 +382,6 @@ VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
   vm_tools::tremplin::StartContainerResponse response;
 
   request.set_container_name(container_name);
-  request.set_container_private_key(container_private_key);
-  request.set_host_public_key(host_public_key);
   request.set_token(token);
   request.set_privilege_level(privilege_level);
   request.set_disable_audio_capture(disable_audio_capture);

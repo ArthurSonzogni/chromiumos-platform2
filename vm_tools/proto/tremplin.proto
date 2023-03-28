@@ -139,11 +139,11 @@ message StartContainerRequest {
   // Name of the container to start within the VM.
   string container_name = 1;
 
-  // SSH public key.
-  string host_public_key = 2;
+  // Deprecated: SSH public key is not used.
+  string host_public_key = 2 [deprecated = true];
 
-  // SSH private key.
-  string container_private_key = 3;
+  // Deprecated: SSH private key is not used.
+  string container_private_key = 3 [deprecated = true];
 
   // Container token.
   string token = 4;
