@@ -199,13 +199,13 @@ void NetInterface::AddAddress(struct ifaddrs* ifa) {
 
 Value NetInterface::ToValue() const {
   Value dv(Value::Type::DICT);
-  if (!ipv4_.DictEmpty())
+  if (!ipv4_.GetDict().empty())
     dv.SetKey("ipv4", ipv4_.Clone());
-  if (!ipv6_.DictEmpty())
+  if (!ipv6_.GetDict().empty())
     dv.SetKey("ipv6", ipv6_.Clone());
   if (flags_.GetList().size())
     dv.SetKey("flags", flags_.Clone());
-  if (!signal_strengths_.DictEmpty())
+  if (!signal_strengths_.GetDict().empty())
     dv.SetKey("signal-strengths", signal_strengths_.Clone());
   dv.SetStringKey("mac", mac_);
   return dv;
