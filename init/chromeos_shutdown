@@ -5,6 +5,7 @@
 
 # Some startup functions are split into a separate library which may be
 # different for different targets (e.g., regular Chrome OS vs. embedded).
+# shellcheck source=encrypted_stateful/startup_utils.sh
 . /usr/share/cros/startup_utils.sh
 
 # Shutdown is best-effort. We don't want to die on errors.
@@ -103,12 +104,12 @@ collect_shutdown_umount_failure_logs() {
     # Parse pids of processes with active mount namespaces. PID is the fourth
     # field and the first line refers to the root mount namespace.
     for pid in $(lsns --raw -n -t mnt | cut -f4 -d' ' | tail -n+2); do
-      echo "====== PID: ${pid} Comm: $(cat /proc/${pid}/comm) ======"
+      echo "====== PID: ${pid} Comm: $(cat "/proc/${pid}/comm") ======"
       # Use findmnt to look inside the mount namespace for any mounts that
       # refer to the (enc)stateful partition. These mounts may keep the
       # stateful partition from unmounting cleanly.
       echo "Open mounts into (enc)stateful:"
-      findmnt --raw -N ${pid} | grep -e stateful -e mmcblk0p1 -e nvme0n1p1 \
+      findmnt --raw -N "${pid}" | grep -e stateful -e mmcblk0p1 -e nvme0n1p1 \
         -e sda1
     done
 
@@ -159,7 +160,7 @@ if [ "${CROS_DEBUG}" = "1" ] && [ -f "${STATEFUL_UPDATE}" ]; then
   if [ -r "${TARGET_VERSION}" ] && [ ! -L "${TARGET_VERSION}" ]; then
     # Used later to clear Quota parameters from stateful.
     UPDATE_TARGET="$(cut -d '.' -f 1 "${TARGET_VERSION}")"
-    STATE_DEV="$(findmnt -n -o SOURCE -M ${STATEFUL_PARTITION})"
+    STATE_DEV="$(findmnt -n -o SOURCE -M "${STATEFUL_PARTITION}")"
     rm -f "${TARGET_VERSION}"
   fi
 
@@ -171,8 +172,9 @@ if [ "${CROS_DEBUG}" = "1" ] && [ -f "${STATEFUL_UPDATE}" ]; then
 
     # We preserve a few files. Make sure preservation directory starts empty.
     rm -rf "${PRESERVE_DIR}/log"
+    # shellcheck disable=SC2174
     mkdir -p -m 0755 "${PRESERVE_DIR}"
-    cp -a "${MNTS}/var/log" "${PRESERVE_DIR}"
+    cp -a "/var/log" "${PRESERVE_DIR}"
     dev_push_paths_to_preserve
 
     # We are about to put this into a directory that will shortly be wiped
@@ -235,6 +237,7 @@ fi
 exit "$(( rc | $? ))"
 ) >/run/mount_encrypted/umount-encrypted.log 2>&1
 
+# shellcheck disable=SC2181
 if [ "$?" -ne 0 ]; then
   # Collect information about active mount namespaces and if there are bind
   # mounts open inside these namespaces into the (enc)stateful partition.
@@ -266,6 +269,7 @@ sync
 
 # Display low battery icon if shutting down due to low battery.
 # SHUTDOWN_REASON is passed in with the runlevel event from power manager.
+# shellcheck disable=SC2154
 if [ "${SHUTDOWN_REASON}" = "low-battery" ]; then
   display_low_battery_alert
 fi
