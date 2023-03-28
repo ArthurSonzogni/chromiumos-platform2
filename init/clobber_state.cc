@@ -961,6 +961,10 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
       // be removed when all devices produced before 2023 are EOL.
       stateful_paths.push_back("unencrypted/preserve/rollback_data");
     }
+
+    // Preserve the latest GSC crash ID to prevent uploading previously seen GSC
+    // crashes on every boot.
+    stateful_paths.push_back("unencrypted/preserve/gsc_prev_crash_log_id");
   }
 
   // Preserve RMA state file in RMA mode.
