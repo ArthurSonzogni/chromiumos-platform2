@@ -13,6 +13,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/no_destructor.h>
 #include <base/strings/string_split.h>
 #include <re2/re2.h>
 
@@ -25,16 +26,23 @@ namespace {
 
 constexpr int64_t kLogMaxSize = 20'000;
 constexpr int64_t kLogRemainingSize = 10'000;
-char lastError[256] = {'\0'};
 
-base::FilePath logFile;
-base::FilePath permanentLogFile;
+// This should be read-only after the initialize.
+const base::FilePath& LogFile(const char* path = "") {
+  static base::NoDestructor<base::FilePath> log_file(path);
+  return *log_file;
+}
 
-// Set the error in order to let consumer, e.g tcsd, fetch the error by
-// FetchAuthFailureError().
-void SetLastError(const std::string& msg) {
-  std::string error_msg = msg + ": " + strerror(errno);
-  strncpy(lastError, error_msg.c_str(), sizeof(lastError) - 1);
+// This should be read-only after the initialize.
+const base::FilePath& PermanentLogFile(const char* path = "") {
+  static base::NoDestructor<base::FilePath> permanent_log_file(path);
+  return *permanent_log_file;
+}
+
+// This would be read/write on multiple places.
+std::string& LastError() {
+  thread_local std::string last_error;
+  return last_error;
 }
 
 // Append |msg| to |log_path|, and limit the size of log to |kLogMaxSize|;
@@ -63,8 +71,8 @@ bool AppendMessage(const base::FilePath& log_path, const std::string& msg) {
   return true;
 }
 
-// Handle any log message in this file, and send them to |logFile| and
-// |permanentLogFile| which is set by InitializeAuthFailureLogging().
+// Handle any log message in this file, and send them to |log_file| and
+// |permanent_log_file| which is set by InitializeAuthFailureLogging().
 bool LogMessageHandler(int severity,
                        const char* file,
                        int line,
@@ -74,8 +82,9 @@ bool LogMessageHandler(int severity,
   if (strncmp(file, __FILE__, sizeof(__FILE__)) != 0) {
     return false;
   }
-  if (!AppendMessage(logFile, str) || !AppendMessage(permanentLogFile, str)) {
-    SetLastError("error logging");
+  if (!AppendMessage(LogFile(), str) ||
+      !AppendMessage(PermanentLogFile(), str)) {
+    LastError() = std::string("error logging");
   }
   return severity != logging::LOGGING_FATAL;
 }
@@ -119,13 +128,14 @@ uint32_t GetCommandHash(const base::FilePath& log_path) {
 }  // namespace
 
 extern "C" int FetchAuthFailureError(char out[], size_t size) {
-  if (size <= 1)
+  if (size <= LastError().length() + 1) {
     return 0;
-  if (lastError[0] == '\0')
-    return 0;
-  strncpy(out, lastError, size - 1);
-  out[size - 1] = '\0';
-  lastError[0] = '\0';
+  }
+
+  size_t result_len = LastError().copy(out, LastError().length());
+  out[result_len] = '\0';
+
+  LastError().clear();
   return 1;
 }
 
@@ -133,8 +143,8 @@ extern "C" void InitializeAuthFailureLogging(const char* log_path,
                                              const char* permanent_log_path) {
   CHECK(logging::GetLogMessageHandler() == nullptr)
       << "LogMessageHandler has already been set";
-  logFile = base::FilePath(log_path);
-  permanentLogFile = base::FilePath(permanent_log_path);
+  LogFile(log_path);
+  PermanentLogFile(permanent_log_path);
   logging::SetLogMessageHandler(LogMessageHandler);
 }
 
@@ -150,7 +160,7 @@ extern "C" int CheckAuthFailureHistory(const char* current_path,
 
   int64_t size;
   if (!base::GetFileSize(current_log, &size)) {
-    SetLastError("error checking file size");
+    LastError() = std::string("error checking file size");
     return 0;
   }
   // If there is no failure log in |current_log|, nothing to do here.
@@ -159,7 +169,7 @@ extern "C" int CheckAuthFailureHistory(const char* current_path,
   }
 
   if (!base::Move(current_log, previous_log)) {
-    SetLastError("error moving file");
+    LastError() = std::string("error moving file");
     return 0;
   }
   if (auth_failure_hash) {
