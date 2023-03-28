@@ -140,6 +140,7 @@ goproto_library("system_api-power_manager-goprotos") {
   proto_out_dir = "go/src/"
   sources = [
     "${proto_in_dir}/backlight.proto",
+    "${proto_in_dir}/battery_saver.proto",
     "${proto_in_dir}/charge_history_state.proto",
     "${proto_in_dir}/idle.proto",
     "${proto_in_dir}/input_event.proto",
