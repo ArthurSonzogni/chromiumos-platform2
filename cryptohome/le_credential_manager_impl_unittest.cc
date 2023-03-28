@@ -361,8 +361,6 @@ TEST_F(LECredentialManagerImplUnitTest, CheckPcrAuth) {
 }
 
 // Verify invalid secrets and getting locked out due to too many attempts.
-// TODO(pmalani): Update this once we have started modelling the delay schedule
-// correctly.
 TEST_F(LECredentialManagerImplUnitTest, LockedOutSecret) {
   uint64_t label1 = CreateLockedOutCredential();
   brillo::SecureBlob he_secret;
@@ -607,7 +605,7 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsert) {
   ASSERT_TRUE(snapshot.CreateUniqueTempDir());
   ASSERT_TRUE(base::CopyDirectory(CredDirPath(), snapshot.GetPath(), true));
 
-  // Another Insert & Remove after taking the snapshot.
+  // Another Insert after taking the snapshot.
   uint64_t label2;
   ASSERT_THAT(le_mgr_->InsertCredential(
                   std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
@@ -619,12 +617,24 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsert) {
   RestoreSnapshot(snapshot.GetPath());
   InitLEManager();
 
+  // label2 does not exist after restoration since the log replay only
+  // confirms the tree root hash was correctly computed via logged operations.
+  // But the concrete data associated with the leaf insertion is not logged.
+  // So the inserted leaf is subsequently removed.
+  brillo::SecureBlob unused_reset_secret;
+  brillo::SecureBlob unused_he_secret;
+  EXPECT_THAT(le_mgr_->CheckCredential(label2, kLeSecret1, &unused_he_secret,
+                                       &unused_reset_secret),
+              NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_LABEL))));
+
   // Subsequent operation should work.
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   EXPECT_THAT(
       le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret),
       IsOk());
+  EXPECT_EQ(he_secret, kHeSecret1);
+  EXPECT_EQ(reset_secret, kResetSecret1);
 }
 
 // Initialize the LECredManager and take a snapshot after an operation,
@@ -657,12 +667,29 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsertRemove) {
   RestoreSnapshot(snapshot->GetPath());
   InitLEManager();
 
-  // Subsequent operation should work.
+  // label1 should not exist after removal replay.
+  brillo::SecureBlob returned_he_secret, returned_reset_secret;
+  EXPECT_THAT(le_mgr_->CheckCredential(label1, kLeSecret1, &returned_he_secret,
+                                       &returned_reset_secret),
+              NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_LABEL))));
+
+  // label2 also does not exist since the insertion replay only
+  // confirms the insertion happened but the
+  // data associated with the leaf insertion is not logged and
+  // the leaf of label2 is removed after restoration..
+  EXPECT_THAT(le_mgr_->CheckCredential(label2, kLeSecret1, &returned_he_secret,
+                                       &returned_reset_secret),
+              NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_LABEL))));
+
+  // Continue operating after the restore shall succeed.
   uint64_t label3;
   EXPECT_THAT(le_mgr_->InsertCredential(
                   std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
                   kHeSecret1, kResetSecret1, delay_sched,
                   /*expiration_delay=*/std::nullopt, &label3),
+              IsOk());
+  EXPECT_THAT(le_mgr_->CheckCredential(label3, kLeSecret1, &returned_he_secret,
+                                       &returned_reset_secret),
               IsOk());
 }
 
@@ -671,8 +698,10 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsertRemove) {
 // "losing" the last |kLogSize| operations). The log functionality should
 // restore the "lost" state.
 TEST_F(LECredentialManagerImplUnitTest, LogReplayLostChecks) {
+  // A special schedule that locks out the credential
+  // after |kFakeLogSize| failed checks.
   std::map<uint32_t, uint32_t> delay_sched = {
-      {kLEMaxIncorrectAttempt, UINT32_MAX},
+      {kFakeLogSize, UINT32_MAX},
   };
   uint64_t label1;
   ASSERT_THAT(le_mgr_->InsertCredential(
@@ -689,7 +718,8 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostChecks) {
 
   std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
 
-  // Perform incorrect checks to fill up the replay log.
+  // Perform incorrect checks to fill up the replay log
+  // and locks out the credential with label |label1|
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   for (int i = 0; i < kFakeLogSize; i++) {
@@ -703,9 +733,11 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostChecks) {
   InitLEManager();
 
   // Subsequent operations should work.
+  // failed credential checks are replayed and the credential
+  // with label |label1| remains locked-out.
   EXPECT_THAT(
       le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret),
-      IsOk());
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_TOO_MANY_ATTEMPTS))));
   EXPECT_THAT(
       le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret),
       IsOk());
@@ -971,7 +1003,6 @@ TEST_F(LECredentialManagerImplUnitTest, FailedLogReplayTooManyOps) {
   InitLEManager();
 
   // Subsequent operations should fail.
-  // TODO(crbug.com/809710): Should we reset the tree in this case?
   EXPECT_THAT(
       le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret),
       NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_HASH_TREE))));
@@ -1013,7 +1044,6 @@ TEST_F(LECredentialManagerImplUnitTest, FailedSyncDiskCorrupted) {
   InitLEManager();
 
   // Any operation should now fail.
-  // TODO(crbug.com/809710): Should we reset the tree in this case?
   he_secret.clear();
   EXPECT_THAT(
       le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret),
