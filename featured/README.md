@@ -46,3 +46,26 @@ as the allow-list in service.cc (see `CheckPathPrefix`).
 We are actively working (in 2023) on support for "early boot" features in
 featured. The primary user interface for these will be via `feature_library`,
 but featured will perform some work to support this, largely behind the scenes.
+
+## Upstart Configurations
+
+Featured starts relatively late in boot, during
+[system-services](https://www.chromium.org/chromium-os/chromiumos-design-docs/boot-design/#system-services-startup),
+since Chrome needs to be available for platform-features.json support to work.
+
+Additionally, featured waits for user login to enable platform-features.json
+features for two reasons:
+1. **Safety:** It is easier to roll back after user login since it is more
+likely for the platform to have connected to the network and downloaded a new
+seed.
+2. **Compatibility:** Historically, we have checked after login. There is no
+strong reason to change that, and changing it could break existing users.
+
+Upon crashes or abnormal exits (non-zero status code), featured restarts with
+the intention that if we fail initially, we want to re-try and make sure
+platform-features.json (and eventually "early boot" features) will work.
+
+We are actively working (in 2023) on support for "early boot" features in
+featured. To support "early boot" features, featured startup will be moved
+earlier to start during
+[basic services](https://www.chromium.org/chromium-os/chromiumos-design-docs/boot-design/#basic-services-startup).
