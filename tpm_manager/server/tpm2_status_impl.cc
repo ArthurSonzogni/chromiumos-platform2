@@ -19,9 +19,6 @@ namespace tpm_manager {
 
 namespace {
 
-// The minimum Ti50 sepc level.
-constexpr uint64_t kMinTi50SpecLevel = 162;
-
 // Keep it with sync to UMA enum list
 // https://chromium.googlesource.com/chromium/src/+/HEAD/tools/metrics/histograms/enums.xml
 // These values are persisted to logs, and should therefore never be renumbered
@@ -278,18 +275,10 @@ bool Tpm2StatusImpl::SupportPinweaver() {
 }
 
 GscVersion Tpm2StatusImpl::GetGscVersion() {
-  // The Cr50 & Ti50 have the same vendor & manufacturer name.
-  if (trunks_tpm_utility_->IsGsc()) {
-    uint64_t level = trunks_tpm_state_->GetSpecificationLevel();
-    uint64_t revision = trunks_tpm_state_->GetSpecificationRevision();
-    uint64_t spec_level = (level << 32) | revision;
-
-    // The Ti50 TPM2 spec level should >= kMinTi50SpecLevel.
-    if (spec_level >= kMinTi50SpecLevel) {
-      return GscVersion::GSC_VERSION_TI50;
-    }
-
+  if (USE_CR50_ONBOARD) {
     return GscVersion::GSC_VERSION_CR50;
+  } else if (USE_TI50_ONBOARD) {
+    return GscVersion::GSC_VERSION_TI50;
   }
 
   return GscVersion::GSC_VERSION_NOT_GSC;

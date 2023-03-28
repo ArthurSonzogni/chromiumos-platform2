@@ -292,28 +292,9 @@ TEST_F(Tpm2StatusTest, NotSupportPinweaver) {
   EXPECT_FALSE(tpm_status_->SupportPinweaver());
 }
 
-TEST_F(Tpm2StatusTest, GetGscVersionCr50) {
-  EXPECT_CALL(mock_tpm_utility_, IsGsc).WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_tpm_state_, GetSpecificationLevel).WillRepeatedly(Return(0));
-  EXPECT_CALL(mock_tpm_state_, GetSpecificationRevision)
-      .WillRepeatedly(Return(116));
-
-  EXPECT_EQ(tpm_status_->GetGscVersion(), GscVersion::GSC_VERSION_CR50);
-}
-
-TEST_F(Tpm2StatusTest, GetGscVersionTi50) {
-  EXPECT_CALL(mock_tpm_utility_, IsGsc).WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_tpm_state_, GetSpecificationLevel).WillRepeatedly(Return(0));
-  EXPECT_CALL(mock_tpm_state_, GetSpecificationRevision)
-      .WillRepeatedly(Return(162));
-
-  EXPECT_EQ(tpm_status_->GetGscVersion(), GscVersion::GSC_VERSION_TI50);
-}
-
-TEST_F(Tpm2StatusTest, GetGscVersionNotGsc) {
-  EXPECT_CALL(mock_tpm_utility_, IsGsc).WillRepeatedly(Return(false));
-
-  EXPECT_EQ(tpm_status_->GetGscVersion(), GscVersion::GSC_VERSION_NOT_GSC);
+TEST_F(Tpm2StatusTest, GetGscVersion) {
+  // Running this command should not crash.
+  tpm_status_->GetGscVersion();
 }
 
 TEST_F(Tpm2StatusTest, GetRoVerificationStatusSuccess) {

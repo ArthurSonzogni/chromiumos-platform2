@@ -47,6 +47,8 @@ config("target_defaults") {
     "USE_TPM2=${use.tpm2}",
     "USE_TPM_INSECURE_FALLBACK=${use.tpm_insecure_fallback}",
     "USE_OS_INSTALL_SERVICE=${use.os_install_service}",
+    "USE_CR50_ONBOARD=${use.cr50_onboard}",
+    "USE_TI50_ONBOARD=${use.ti50_onboard}",
   ]
 }
 
