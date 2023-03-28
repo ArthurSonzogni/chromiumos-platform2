@@ -3210,7 +3210,7 @@ void WiFi::OnSupplicantPresence(bool present) {
 }
 
 void WiFi::OnWiFiDebugScopeChanged(bool enabled) {
-  SLOG(this, 2) << "WiFi debug scope changed; enable is now " << enabled;
+  LOG(INFO) << "WiFi debug scope changed; enable is now " << enabled;
   if (!supplicant_present_) {
     SLOG(this, 2) << "Supplicant process proxy not connected.";
     return;
