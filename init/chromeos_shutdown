@@ -178,7 +178,8 @@ if [ "${CROS_DEBUG}" = "1" ] && [ -f "${STATEFUL_UPDATE}" ]; then
     # We are about to put this into a directory that will shortly be wiped
     # out. Keep a timestamp where it will be preserved as well.
     PRESERVE_METRICS="${PRESERVE_DIR}/log/metrics"
-    bootstat_archive "${PRESERVE_METRICS}/shutdown.$(date '+%Y%m%d%H%M%S')"
+    bootstat_archive \
+      "${PRESERVE_METRICS}/shutdown.$(date --utc '+%Y%m%d%H%M%S')"
   fi
 fi
 
@@ -191,7 +192,7 @@ crash_reporter --log_to_stderr --clean_shutdown
 sync
 
 # Measure shutdown time up to this point.
-bootstat_archive "/var/log/metrics/shutdown.$(date '+%Y%m%d%H%M%S')"
+bootstat_archive "/var/log/metrics/shutdown.$(date --utc '+%Y%m%d%H%M%S')"
 
 # To be safe, flush buffers to disk again before unmounting. (From
 # https://crbug.com/760007 it seems that a failed umount can get the filesystem
