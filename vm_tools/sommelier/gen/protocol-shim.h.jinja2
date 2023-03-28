@@ -19,6 +19,7 @@ class {{ interface.name }} {
     {{ interface.name }}() = default;
     {{ interface.name }}({{ interface.name }}&&) = delete;
     {{ interface.name }}& operator=({{ interface.name }}&&) = delete;
+    virtual ~{{interface.name}}() = default;
 
     {# Logic comes from wayland scanner -#}
     {# Stub logic -> https://chromium.googlesource.com/external/wayland/wayland/+/refs/heads/master/src/scanner.c#1007 -#}
