@@ -18,7 +18,7 @@ using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
-using cryptohome::error::CryptohomeTPMError;
+using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
 using hwsec::TPMRetryAction;
@@ -36,11 +36,11 @@ namespace {
 void OnKeySignatureChallengeResponse(
     ChallengeCredentialsOperation::KeySignatureChallengeCallback
         response_callback,
-    TPMStatusOr<std::unique_ptr<KeyChallengeResponse>> response_status) {
+    CryptoStatusOr<std::unique_ptr<KeyChallengeResponse>> response_status) {
   if (!response_status.ok()) {
     LOG(ERROR) << "Signature challenge request failed";
     std::move(response_callback)
-        .Run(MakeStatus<CryptohomeTPMError>(
+        .Run(MakeStatus<CryptohomeCryptoError>(
                  CRYPTOHOME_ERR_LOC(
                      kLocChalCredOperationNoResponseInOnSigResponse))
                  .Wrap(std::move(response_status).err_status()));
@@ -53,11 +53,11 @@ void OnKeySignatureChallengeResponse(
       !response->signature_response_data().has_signature()) {
     LOG(ERROR) << "Signature challenge response is invalid";
     std::move(response_callback)
-        .Run(MakeStatus<CryptohomeTPMError>(
+        .Run(MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocChalCredOperationResponseInvalidInOnSigResponse),
             ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-            TPMRetryAction::kNoRetry));
+            CryptoError::CE_OTHER_FATAL));
     return;
   }
   std::move(response_callback)

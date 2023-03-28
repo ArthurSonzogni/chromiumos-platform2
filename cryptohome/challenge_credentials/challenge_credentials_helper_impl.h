@@ -73,8 +73,9 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   // Wrapper for the completion callback of GenerateNew(). Cleans up resources
   // associated with the operation and forwards results to the original
   // callback.
-  void OnGenerateNewCompleted(GenerateNewCallback original_callback,
-                              TPMStatusOr<GenerateNewOrDecryptResult> result);
+  void OnGenerateNewCompleted(
+      GenerateNewCallback original_callback,
+      CryptoStatusOr<GenerateNewOrDecryptResult> result);
 
   // Wrapper for the completion callback of Decrypt(). Cleans up resources
   // associated with the operation and forwards results to the original
@@ -85,24 +86,24 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
       const structure::SignatureChallengeInfo& keyset_challenge_info,
       int attempt_number,
       DecryptCallback original_callback,
-      TPMStatusOr<GenerateNewOrDecryptResult> result);
+      CryptoStatusOr<GenerateNewOrDecryptResult> result);
 
   // Wrapper for the completion callback of VerifyKey(). Cleans up resources
   // associated with the operation and forwards results to the original
   // callback.
   void OnVerifyKeyCompleted(VerifyKeyCallback original_callback,
-                            TPMStatus verify_status);
+                            CryptoStatus verify_status);
 
   // This will check if the current TPM is available. If it is available an
   // OKStatus will be returned, if we fail to check or it is unvavailable an
   // error status will be returned.
-  TPMStatus CheckTPMStatus();
+  CryptoStatus CheckTPMStatus();
 
   // This will check if the current TPM (if that's the underlying secure
   // element) is vulnerable to ROCA vulnerability. If not, an OkStatus is
   // returned. If we fail to check or if it is vulnerable, an error status will
   // be returned.
-  TPMStatus CheckSrkRocaStatus();
+  CryptoStatus CheckSrkRocaStatus();
 
   // A cache of the TPM IsReady result. This checks for the availability of a
   // TPM on device.

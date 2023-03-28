@@ -1688,7 +1688,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
                     std::unique_ptr<KeyChallengeService> key_challenge_service,
                     ChallengeCredentialsHelper::VerifyKeyCallback callback) {
       if (is_key_valid) {
-        std::move(callback).Run(OkStatus<error::CryptohomeTPMError>());
+        std::move(callback).Run(OkStatus<error::CryptohomeCryptoError>());
       } else {
         const error::CryptohomeError::ErrorLocationPair
             kErrorLocationPlaceholder =
@@ -1697,10 +1697,10 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
                         ::cryptohome::error::CryptohomeError::ErrorLocation>(1),
                     "Testing1");
 
-        std::move(callback).Run(MakeStatus<error::CryptohomeTPMError>(
+        std::move(callback).Run(MakeStatus<error::CryptohomeCryptoError>(
             kErrorLocationPlaceholder,
             error::ErrorActionSet({error::ErrorAction::kIncorrectAuth}),
-            hwsec::TPMRetryAction::kUserAuth));
+            CryptoError::CE_OTHER_CRYPTO));
       }
     }
 

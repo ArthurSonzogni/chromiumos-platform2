@@ -23,14 +23,12 @@
 
 using brillo::Blob;
 using brillo::SecureBlob;
+using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
 using cryptohome::error::NoErrorAction;
-using hwsec::TPMError;
-using hwsec::TPMErrorBase;
-using hwsec::TPMRetryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -93,9 +91,9 @@ ChallengeCredentialsDecryptOperation::~ChallengeCredentialsDecryptOperation() =
 
 void ChallengeCredentialsDecryptOperation::Start() {
   DCHECK(thread_checker_.CalledOnValidThread());
-  StatusChain<CryptohomeTPMError> status = StartProcessing();
+  StatusChain<CryptohomeCryptoError> status = StartProcessing();
   if (!status.ok()) {
-    Resolve(MakeStatus<CryptohomeTPMError>(
+    Resolve(MakeStatus<CryptohomeCryptoError>(
                 CRYPTOHOME_ERR_LOC(kLocChalCredDecryptCantStartProcessing),
                 NoErrorAction())
                 .Wrap(std::move(status)));
@@ -104,40 +102,40 @@ void ChallengeCredentialsDecryptOperation::Start() {
 }
 
 void ChallengeCredentialsDecryptOperation::Abort(
-    TPMStatus status [[clang::param_typestate(unconsumed)]]) {
+    CryptoStatus status [[clang::param_typestate(unconsumed)]]) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  Resolve(MakeStatus<CryptohomeTPMError>(
+  Resolve(MakeStatus<CryptohomeCryptoError>(
               CRYPTOHOME_ERR_LOC(kLocChalCredDecryptOperationAborted))
               .Wrap(std::move(status)));
   // |this| can be already destroyed at this point.
 }
 
-StatusChain<CryptohomeTPMError>
+StatusChain<CryptohomeCryptoError>
 ChallengeCredentialsDecryptOperation::StartProcessing() {
   if (!hwsec_) {
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptNoHwsecBackend),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        TPMRetryAction::kNoRetry);
+        CryptoError::CE_OTHER_FATAL);
   }
   if (!public_key_info_.signature_algorithm.size()) {
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptNoPubKeySigSize),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        TPMRetryAction::kNoRetry);
+        CryptoError::CE_OTHER_FATAL);
   }
 
   if (public_key_info_.public_key_spki_der !=
       keyset_challenge_info_.public_key_spki_der) {
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptSPKIPubKeyMismatch),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        TPMRetryAction::kNoRetry);
+        CryptoError::CE_OTHER_FATAL);
   }
 
-  StatusChain<CryptohomeTPMError> status = StartProcessingSalt();
+  StatusChain<CryptohomeCryptoError> status = StartProcessingSalt();
   if (!status.ok()) {
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(kLocChalCredDecryptSaltProcessingFailed),
                NoErrorAction())
         .Wrap(std::move(status));
@@ -147,26 +145,26 @@ ChallengeCredentialsDecryptOperation::StartProcessing() {
   return StartProcessingSealedSecret();
 }
 
-StatusChain<CryptohomeTPMError>
+StatusChain<CryptohomeCryptoError>
 ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
   if (keyset_challenge_info_.salt.empty()) {
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptNoSalt),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        TPMRetryAction::kNoRetry);
+        CryptoError::CE_OTHER_FATAL);
   }
   if (public_key_info_.public_key_spki_der.empty()) {
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocChalCredDecryptNoSPKIPubKeyDERWhileProcessingSalt),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        TPMRetryAction::kNoRetry);
+        CryptoError::CE_OTHER_FATAL);
   }
   if (!keyset_challenge_info_.salt_signature_algorithm.has_value()) {
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptNoSaltSigAlgoWhileProcessingSalt),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        TPMRetryAction::kNoRetry);
+        CryptoError::CE_OTHER_FATAL);
   }
   const Blob& salt = keyset_challenge_info_.salt;
   // IMPORTANT: Verify that the salt is correctly prefixed. See the comment on
@@ -178,10 +176,10 @@ ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
   if (salt.size() <= salt_constant_prefix.size() ||
       !std::equal(salt_constant_prefix.begin(), salt_constant_prefix.end(),
                   salt.begin())) {
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptSaltPrefixIncorrect),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        TPMRetryAction::kNoRetry);
+        CryptoError::CE_OTHER_FATAL);
   }
   MakeKeySignatureChallenge(
       account_id_, public_key_info_.public_key_spki_der, salt,
@@ -189,17 +187,17 @@ ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
       base::BindOnce(
           &ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse,
           weak_ptr_factory_.GetWeakPtr()));
-  return OkStatus<CryptohomeTPMError>();
+  return OkStatus<CryptohomeCryptoError>();
 }
 
-StatusChain<CryptohomeTPMError>
+StatusChain<CryptohomeCryptoError>
 ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
   if (public_key_info_.public_key_spki_der.empty()) {
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocChalCredDecryptNoSPKIPubKeyDERWhileProcessingSecret),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        TPMRetryAction::kNoRetry);
+        CryptoError::CE_OTHER_FATAL);
   }
 
   std::vector<HwsecAlgorithm> key_sealing_algorithms;
@@ -212,13 +210,11 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
           keyset_challenge_info_.sealed_secret,
           public_key_info_.public_key_spki_der, key_sealing_algorithms);
   if (!challenge.ok()) {
-    TPMStatus status =
-        MakeStatus<CryptohomeTPMError>(std::move(challenge).err_status());
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
-                   kLocChalCredDecryptCreateUnsealingSessionFailed),
-               NoErrorAction())
-        .Wrap(std::move(status));
+                   kLocChalCredDecryptCreateUnsealingSessionFailed))
+        .Wrap(
+            MakeStatus<CryptohomeTPMError>(std::move(challenge).err_status()));
   }
 
   challenge_id_ = challenge.value().challenge_id;
@@ -230,14 +226,14 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
       base::BindOnce(
           &ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse,
           weak_ptr_factory_.GetWeakPtr()));
-  return OkStatus<CryptohomeTPMError>();
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 void ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse(
-    TPMStatusOr<std::unique_ptr<brillo::Blob>> salt_signature) {
+    CryptoStatusOr<std::unique_ptr<brillo::Blob>> salt_signature) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (!salt_signature.ok()) {
-    Resolve(MakeStatus<CryptohomeTPMError>(
+    Resolve(MakeStatus<CryptohomeCryptoError>(
                 CRYPTOHOME_ERR_LOC(kLocChalCredDecryptSaltResponseNoSignature))
                 .Wrap(std::move(salt_signature).err_status()));
     // |this| can be already destroyed at this point.
@@ -248,11 +244,11 @@ void ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse(
 }
 
 void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
-    TPMStatusOr<std::unique_ptr<brillo::Blob>> challenge_signature_status) {
+    CryptoStatusOr<std::unique_ptr<brillo::Blob>> challenge_signature_status) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (!challenge_signature_status.ok()) {
     Resolve(
-        MakeStatus<CryptohomeTPMError>(
+        MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocChalCredDecryptUnsealingResponseNoSignature))
             .Wrap(std::move(challenge_signature_status).err_status()));
     // |this| can be already destroyed at this point.
@@ -263,10 +259,10 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
       std::move(challenge_signature_status).value();
 
   if (!challenge_id_.has_value()) {
-    Resolve(MakeStatus<CryptohomeTPMError>(
+    Resolve(MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptUnsealingResponseNoChallenge),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        TPMRetryAction::kNoRetry));
+        CryptoError::CE_OTHER_FATAL));
     return;
   }
 
@@ -276,9 +272,8 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
   if (!unsealed_secret.ok()) {
     TPMStatus status =
         MakeStatus<CryptohomeTPMError>(std::move(unsealed_secret).err_status());
-    Resolve(MakeStatus<CryptohomeTPMError>(
-                CRYPTOHOME_ERR_LOC(kLocChalCredDecryptUnsealFailed),
-                NoErrorAction())
+    Resolve(MakeStatus<CryptohomeCryptoError>(
+                CRYPTOHOME_ERR_LOC(kLocChalCredDecryptUnsealFailed))
                 .Wrap(std::move(status)));
     // |this| can be already destroyed at this point.
     return;
@@ -298,7 +293,7 @@ void ChallengeCredentialsDecryptOperation::ProceedIfChallengesDone() {
 }
 
 void ChallengeCredentialsDecryptOperation::Resolve(
-    TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+    CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
         result) {
   // Invalidate weak pointers in order to cancel all jobs that are currently
   // waiting, to prevent them from running and consuming resources after our

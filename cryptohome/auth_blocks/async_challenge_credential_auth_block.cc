@@ -159,7 +159,7 @@ void AsyncChallengeCredentialAuthBlock::Create(const AuthInput& auth_input,
 
 void AsyncChallengeCredentialAuthBlock::CreateContinue(
     CreateCallback callback,
-    TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+    CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
         result) {
   if (!result.ok()) {
     LOG(ERROR) << __func__ << ": Failed to obtain challenge-response passkey.";
@@ -318,7 +318,7 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
 void AsyncChallengeCredentialAuthBlock::DeriveContinue(
     DeriveCallback callback,
     const AuthBlockState& scrypt_state,
-    TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+    CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
         result) {
   if (!result.ok()) {
     LOG(ERROR) << __func__ << ": Failed to obtain challenge-response passkey.";

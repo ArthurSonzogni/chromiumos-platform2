@@ -33,7 +33,7 @@ class ChallengeCredentialsVerifyKeyOperation final
   // An OK status is returned for successful verification. A status with
   // kIncorrectAuth is returned if it failed and the user is at fault.
   // Otherwise, other actions are returned.
-  using CompletionCallback = base::OnceCallback<void(TPMStatus status)>;
+  using CompletionCallback = base::OnceCallback<void(CryptoStatus status)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
@@ -51,14 +51,14 @@ class ChallengeCredentialsVerifyKeyOperation final
 
   // ChallengeCredentialsOperation:
   void Start() override;
-  void Abort(TPMStatus status) override;
+  void Abort(CryptoStatus status) override;
 
  private:
   void OnChallengeResponse(
       const brillo::Blob& public_key_spki_der,
       structure::ChallengeSignatureAlgorithm challenge_algorithm,
       const brillo::Blob& challenge,
-      TPMStatusOr<std::unique_ptr<brillo::Blob>> challenge_signature);
+      CryptoStatusOr<std::unique_ptr<brillo::Blob>> challenge_signature);
 
   hwsec::CryptohomeFrontend* const hwsec_;
   const Username account_id_;

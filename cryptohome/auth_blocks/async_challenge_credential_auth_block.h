@@ -62,7 +62,7 @@ class AsyncChallengeCredentialAuthBlock : public AuthBlock {
   // secret from the key challenge service.
   void CreateContinue(
       CreateCallback callback,
-      TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
           result);
 
   // This continues the deriving process after decrypted the high entropy secret
@@ -70,7 +70,7 @@ class AsyncChallengeCredentialAuthBlock : public AuthBlock {
   void DeriveContinue(
       DeriveCallback callback,
       const AuthBlockState& scrypt_state,
-      TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
           result);
 
   ChallengeCredentialsHelper* const challenge_credentials_helper_;

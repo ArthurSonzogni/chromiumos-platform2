@@ -21,14 +21,14 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_verify_key_operation.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/utilities.h"
 #include "cryptohome/key_challenge_service.h"
 
 using brillo::Blob;
+using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
-using hwsec::TPMError;
-using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
@@ -40,11 +40,10 @@ namespace cryptohome {
 
 namespace {
 
-bool IsOperationFailureTransient(const StatusChain<CryptohomeTPMError>& status
-                                 [[clang::param_typestate(unconsumed)]]) {
-  TPMRetryAction action = status->ToTPMRetryAction();
-  return action == TPMRetryAction::kCommunication ||
-         action == TPMRetryAction::kLater;
+bool IsOperationFailureTransient(
+    const StatusChain<CryptohomeCryptoError>& status
+    [[clang::param_typestate(unconsumed)]]) {
+  return ContainsActionInStack(status, ErrorAction::kRetry);
 }
 
 // Returns whether the Chrome OS image is a test one.
@@ -71,19 +70,19 @@ ChallengeCredentialsHelperImpl::~ChallengeCredentialsHelperImpl() {
   DCHECK(thread_checker_.CalledOnValidThread());
 }
 
-TPMStatus ChallengeCredentialsHelperImpl::CheckTPMStatus() {
-  // Prepare the TPMStatus for fault case because it will be used in
+CryptoStatus ChallengeCredentialsHelperImpl::CheckTPMStatus() {
+  // Prepare the CryptoStatus for fault case because it will be used in
   // multiple places.
-  auto tpm_unavailable_status = MakeStatus<CryptohomeTPMError>(
+  auto tpm_unavailable_status = MakeStatus<CryptohomeCryptoError>(
       CRYPTOHOME_ERR_LOC(kLocChalCredHelperTpmUnavailableInCheckTpmStatus),
       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
                       ErrorAction::kReboot, ErrorAction::kPowerwash}),
-      TPMRetryAction::kReboot, user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+      CryptoError::CE_OTHER_FATAL);
 
   // Have we checked before?
   if (tpm_ready_.has_value()) {
     if (tpm_ready_.value()) {
-      return OkStatus<CryptohomeTPMError>();
+      return OkStatus<CryptohomeCryptoError>();
     } else {
       return tpm_unavailable_status;
     }
@@ -103,16 +102,16 @@ TPMStatus ChallengeCredentialsHelperImpl::CheckTPMStatus() {
   }
 
   tpm_ready_ = true;
-  return OkStatus<CryptohomeTPMError>();
+  return OkStatus<CryptohomeCryptoError>();
 }
 
-TPMStatus ChallengeCredentialsHelperImpl::CheckSrkRocaStatus() {
-  // Prepare the TPMStatus for vulnerable case because it will be used in
+CryptoStatus ChallengeCredentialsHelperImpl::CheckSrkRocaStatus() {
+  // Prepare the CryptoStatus for vulnerable case because it will be used in
   // multiple places.
-  auto vulnerable_status = MakeStatus<CryptohomeTPMError>(
+  auto vulnerable_status = MakeStatus<CryptohomeCryptoError>(
       CRYPTOHOME_ERR_LOC(kLocChalCredHelperROCAVulnerableInCheckSrkRocaStatus),
       ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
-      TPMRetryAction::kNoRetry,
+      CryptoError::CE_OTHER_FATAL,
       user_data_auth::CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED);
 
   // Have we checked before?
@@ -120,7 +119,7 @@ TPMStatus ChallengeCredentialsHelperImpl::CheckSrkRocaStatus() {
     if (roca_vulnerable_.value()) {
       return vulnerable_status;
     }
-    return OkStatus<CryptohomeTPMError>();
+    return OkStatus<CryptohomeCryptoError>();
   }
 
   // Fail if the security chip is known to be vulnerable and we're not in a test
@@ -129,11 +128,13 @@ TPMStatus ChallengeCredentialsHelperImpl::CheckSrkRocaStatus() {
   if (!is_srk_roca_vulnerable.ok()) {
     LOG(ERROR) << "Failed to get the hwsec SRK ROCA vulnerable status: "
                << is_srk_roca_vulnerable.status();
-    return MakeStatus<CryptohomeTPMError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocChalCredHelperCantQueryROCAVulnInCheckSrkRocaStatus),
-        ErrorActionSet({ErrorAction::kReboot}), TPMRetryAction::kReboot,
-        user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocChalCredHelperCantQueryROCAVulnInCheckSrkRocaStatus),
+               ErrorActionSet({ErrorAction::kReboot}),
+               CryptoError::CE_OTHER_FATAL)
+        .Wrap(MakeStatus<CryptohomeTPMError>(
+            std::move(is_srk_roca_vulnerable).err_status()));
   }
 
   if (is_srk_roca_vulnerable.value()) {
@@ -148,7 +149,7 @@ TPMStatus ChallengeCredentialsHelperImpl::CheckSrkRocaStatus() {
   }
 
   roca_vulnerable_ = false;
-  return OkStatus<CryptohomeTPMError>();
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 void ChallengeCredentialsHelperImpl::GenerateNew(
@@ -161,9 +162,9 @@ void ChallengeCredentialsHelperImpl::GenerateNew(
   DCHECK(!callback.is_null());
 
   // Check if TPM is enabled.
-  TPMStatus status = CheckTPMStatus();
+  CryptoStatus status = CheckTPMStatus();
   if (!status.ok()) {
-    // We can forward the TPMStatus directly without wrapping because the
+    // We can forward the CryptoStatus directly without wrapping because the
     // callback will usually Wrap() the resulting error status anyway.
     std::move(callback).Run(std::move(status));
     return;
@@ -196,9 +197,9 @@ void ChallengeCredentialsHelperImpl::Decrypt(
   DCHECK(!callback.is_null());
 
   // Check if TPM is enabled.
-  TPMStatus status = CheckTPMStatus();
+  CryptoStatus status = CheckTPMStatus();
   if (!status.ok()) {
-    // We can forward the TPMStatus directly without wrapping because the
+    // We can forward the CryptoStatus directly without wrapping because the
     // callback will usually Wrap() the resulting error status anyway.
     std::move(callback).Run(std::move(status));
     return;
@@ -226,9 +227,9 @@ void ChallengeCredentialsHelperImpl::VerifyKey(
   DCHECK(!callback.is_null());
 
   // Check if TPM is enabled.
-  TPMStatus status = CheckTPMStatus();
+  CryptoStatus status = CheckTPMStatus();
   if (!status.ok()) {
-    // We can forward the TPMStatus directly without wrapping because the
+    // We can forward the CryptoStatus directly without wrapping because the
     // callback will usually Wrap() the resulting error status anyway.
     std::move(callback).Run(std::move(status));
     return;
@@ -275,9 +276,9 @@ void ChallengeCredentialsHelperImpl::CancelRunningOperation() {
     DLOG(INFO) << "Cancelling an old challenge-response credentials operation";
     // Note: kReboot is specified here instead of kRetry because kRetry could
     // trigger upper layer to retry immediately, causing failures again.
-    operation_->Abort(MakeStatus<CryptohomeTPMError>(
+    operation_->Abort(MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredHelperConcurrencyNotAllowed),
-        ErrorActionSet({ErrorAction::kReboot}), TPMRetryAction::kReboot));
+        ErrorActionSet({ErrorAction::kReboot}), CryptoError::CE_OTHER_FATAL));
     operation_.reset();
     // It's illegal for the consumer code to request a new operation in
     // immediate response to completion of a previous one.
@@ -287,7 +288,7 @@ void ChallengeCredentialsHelperImpl::CancelRunningOperation() {
 
 void ChallengeCredentialsHelperImpl::OnGenerateNewCompleted(
     GenerateNewCallback original_callback,
-    TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+    CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
         result) {
   DCHECK(thread_checker_.CalledOnValidThread());
   CancelRunningOperation();
@@ -300,7 +301,7 @@ void ChallengeCredentialsHelperImpl::OnDecryptCompleted(
     const structure::SignatureChallengeInfo& keyset_challenge_info,
     int attempt_number,
     DecryptCallback original_callback,
-    TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+    CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
         result) {
   DCHECK(thread_checker_.CalledOnValidThread());
   CancelRunningOperation();
@@ -319,7 +320,7 @@ void ChallengeCredentialsHelperImpl::OnDecryptCompleted(
 }
 
 void ChallengeCredentialsHelperImpl::OnVerifyKeyCompleted(
-    VerifyKeyCallback original_callback, TPMStatus verify_status) {
+    VerifyKeyCallback original_callback, CryptoStatus verify_status) {
   DCHECK(thread_checker_.CalledOnValidThread());
   CancelRunningOperation();
   std::move(original_callback).Run(std::move(verify_status));

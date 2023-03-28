@@ -48,7 +48,7 @@ class SmartCardVerifier final : public AsyncCredentialVerifier {
 
   // This continues the verification process after running a lightweight check
   // in the key challenge service.
-  void OnVerifyContinue(StatusCallback callback, TPMStatus status) const;
+  void OnVerifyContinue(StatusCallback callback, CryptoStatus status) const;
 
   // Challenge credential helper utility object. This object is required
   // for using a challenge response authblock.

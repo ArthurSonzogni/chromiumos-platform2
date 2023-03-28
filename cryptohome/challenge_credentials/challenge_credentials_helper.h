@@ -73,18 +73,18 @@ class ChallengeCredentialsHelper {
   // which can be used for decryption of the user's vault keyset, and
   // |signature_challenge_info|, which contains the data to be stored in the
   // auth block state. If the operation fails, the argument will be the
-  // TPMStatus on the details of the failure.
+  // CryptoStatus on the details of the failure.
   using GenerateNewCallback =
-      base::OnceCallback<void(TPMStatusOr<GenerateNewOrDecryptResult>)>;
+      base::OnceCallback<void(CryptoStatusOr<GenerateNewOrDecryptResult>)>;
 
   // This callback reports result of a Decrypt() call.
   //
   // If the operation succeeds, result struct will contain the passkey, which
   // can be used for decryption of the user's vault keyset. The
   // signature_challenge_info field is always nullptr. If the operation fails,
-  // the argument will be the TPMStatus on details of the failure.
+  // the argument will be the CryptoStatus on details of the failure.
   using DecryptCallback =
-      base::OnceCallback<void(TPMStatusOr<GenerateNewOrDecryptResult>)>;
+      base::OnceCallback<void(CryptoStatusOr<GenerateNewOrDecryptResult>)>;
 
   // This callback reports result of a VerifyKey() call.
   //
@@ -93,7 +93,7 @@ class ChallengeCredentialsHelper {
   // An OK status is returned for successful verification. A status with
   // kIncorrectAuth is returned if it failed and the user is at fault.
   // Otherwise, other actions are returned.
-  using VerifyKeyCallback = base::OnceCallback<void(TPMStatus)>;
+  using VerifyKeyCallback = base::OnceCallback<void(CryptoStatus)>;
 
   // The maximum number of attempts that will be made for a single operation
   // when it fails with a transient error.

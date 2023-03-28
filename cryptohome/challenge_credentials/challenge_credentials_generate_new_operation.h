@@ -40,7 +40,7 @@ class ChallengeCredentialsGenerateNewOperation final
   // user's vault keyset, and |signature_challenge_info| containing the data to
   // be stored in the auth block state.
   using CompletionCallback = base::OnceCallback<void(
-      TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>)>;
+      CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
@@ -63,24 +63,24 @@ class ChallengeCredentialsGenerateNewOperation final
 
   // ChallengeCredentialsOperation:
   void Start() override;
-  void Abort(TPMStatus status) override;
+  void Abort(CryptoStatus status) override;
 
  private:
   // Starts the processing. Returns |false| on fatal error.
-  TPMStatus StartProcessing();
+  CryptoStatus StartProcessing();
 
   // Generates a salt. Returns |false| on fatal error.
-  TPMStatus GenerateSalt();
+  CryptoStatus GenerateSalt();
 
   // Makes a challenge request against the salt. Returns |false| on fatal error.
-  TPMStatus StartGeneratingSaltSignature();
+  CryptoStatus StartGeneratingSaltSignature();
 
   // Creates a TPM-protected signature-sealed secret.
-  TPMStatus CreateTpmProtectedSecret();
+  CryptoStatus CreateTpmProtectedSecret();
 
   // Called when signature for the salt is received.
   void OnSaltChallengeResponse(
-      TPMStatusOr<std::unique_ptr<brillo::Blob>> salt_signature);
+      CryptoStatusOr<std::unique_ptr<brillo::Blob>> salt_signature);
 
   // Generates the result if all necessary pieces are computed.
   void ProceedIfComputationsDone();

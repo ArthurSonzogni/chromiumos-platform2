@@ -12,7 +12,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-
 using brillo::Blob;
 using brillo::SecureBlob;
 
@@ -26,7 +25,7 @@ MakeChallengeCredentialsGenerateNewResultWriter(
   return base::BindOnce(
       [](std::unique_ptr<
              ChallengeCredentialsHelper::GenerateNewOrDecryptResult>* result,
-         TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+         CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
              returned) {
         ASSERT_FALSE(*result);
         if (returned.ok()) {
@@ -50,7 +49,7 @@ MakeChallengeCredentialsDecryptResultWriter(
   return base::BindOnce(
       [](std::unique_ptr<
              ChallengeCredentialsHelper::GenerateNewOrDecryptResult>* result,
-         TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+         CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
              returned) {
         ASSERT_FALSE(*result);
         if (returned.ok()) {

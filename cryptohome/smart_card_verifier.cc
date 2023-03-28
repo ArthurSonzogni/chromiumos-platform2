@@ -111,7 +111,7 @@ void SmartCardVerifier::VerifyAsync(const AuthInput& auth_input,
 }
 
 void SmartCardVerifier::OnVerifyContinue(StatusCallback callback,
-                                         TPMStatus status) const {
+                                         CryptoStatus status) const {
   if (!status.ok()) {
     std::move(callback).Run(
         MakeStatus<CryptohomeError>(

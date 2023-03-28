@@ -41,7 +41,7 @@ class ChallengeCredentialsDecryptOperation final
   // If the operation succeeds, |passkey| can be used for decryption of the
   // user's vault keyset.
   using CompletionCallback = base::OnceCallback<void(
-      TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>)>;
+      CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
@@ -60,36 +60,39 @@ class ChallengeCredentialsDecryptOperation final
 
   // ChallengeCredentialsOperation:
   void Start() override;
-  void Abort(TPMStatus status) override;
+  void Abort(CryptoStatus status) override;
 
  private:
   // Starts the processing.
-  hwsec_foundation::status::StatusChain<cryptohome::error::CryptohomeTPMError>
+  hwsec_foundation::status::StatusChain<
+      cryptohome::error::CryptohomeCryptoError>
   StartProcessing();
 
   // Makes a challenge request with the salt.
-  hwsec_foundation::status::StatusChain<cryptohome::error::CryptohomeTPMError>
+  hwsec_foundation::status::StatusChain<
+      cryptohome::error::CryptohomeCryptoError>
   StartProcessingSalt();
 
   // Begins unsealing the secret, and makes a challenge request for unsealing
   // it.
-  hwsec_foundation::status::StatusChain<cryptohome::error::CryptohomeTPMError>
+  hwsec_foundation::status::StatusChain<
+      cryptohome::error::CryptohomeCryptoError>
   StartProcessingSealedSecret();
 
   // Called when signature for the salt is received.
   void OnSaltChallengeResponse(
-      TPMStatusOr<std::unique_ptr<brillo::Blob>> salt_signature);
+      CryptoStatusOr<std::unique_ptr<brillo::Blob>> salt_signature);
 
   // Called when signature for the unsealing challenge is received.
   void OnUnsealingChallengeResponse(
-      TPMStatusOr<std::unique_ptr<brillo::Blob>> challenge_signature);
+      CryptoStatusOr<std::unique_ptr<brillo::Blob>> challenge_signature);
 
   // Generates the result if all necessary challenges are completed.
   void ProceedIfChallengesDone();
 
   // Completes with returning the specified results.
   void Resolve(
-      TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>);
+      CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>);
 
   const Username account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;

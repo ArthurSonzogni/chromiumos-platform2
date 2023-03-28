@@ -21,11 +21,10 @@
 using brillo::Blob;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
+using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
-using hwsec::TPMErrorBase;
-using hwsec::TPMRetryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -98,7 +97,7 @@ ChallengeCredentialsGenerateNewOperation::
 
 void ChallengeCredentialsGenerateNewOperation::Start() {
   DCHECK(thread_checker_.CalledOnValidThread());
-  TPMStatus status = StartProcessing();
+  CryptoStatus status = StartProcessing();
   if (!status.ok()) {
     LOG(ERROR) << "Failed to start the generation operation";
     Abort(std::move(status));
@@ -107,11 +106,11 @@ void ChallengeCredentialsGenerateNewOperation::Start() {
 }
 
 void ChallengeCredentialsGenerateNewOperation::Abort(
-    TPMStatus status [[clang::param_typestate(unconsumed)]]) {
+    CryptoStatus status [[clang::param_typestate(unconsumed)]]) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  TPMStatus return_status =
-      MakeStatus<CryptohomeTPMError>(CRYPTOHOME_ERR_LOC(kLocChalCredNewAborted))
-          .Wrap(std::move(status));
+  CryptoStatus return_status = MakeStatus<CryptohomeCryptoError>(
+                                   CRYPTOHOME_ERR_LOC(kLocChalCredNewAborted))
+                                   .Wrap(std::move(status));
 
   // Invalidate weak pointers in order to cancel all jobs that are currently
   // waiting, to prevent them from running and consuming resources after our
@@ -126,23 +125,23 @@ void ChallengeCredentialsGenerateNewOperation::Abort(
   // |this| can be already destroyed at this point.
 }
 
-TPMStatus ChallengeCredentialsGenerateNewOperation::StartProcessing() {
+CryptoStatus ChallengeCredentialsGenerateNewOperation::StartProcessing() {
   if (!hwsec_) {
     LOG(ERROR) << "Signature sealing is disabled";
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredNewNoBackend),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        TPMRetryAction::kNoRetry);
+        CryptoError::CE_OTHER_CRYPTO);
   }
   if (!public_key_info_.signature_algorithm.size()) {
     LOG(ERROR) << "The key does not support any signature algorithm";
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredNewNoAlgorithm),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        TPMRetryAction::kNoRetry);
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
-  TPMStatus status = GenerateSalt();
+  CryptoStatus status = GenerateSalt();
   if (!status.ok()) {
     return status;
   }
@@ -157,20 +156,20 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::StartProcessing() {
     return status;
   }
   ProceedIfComputationsDone();
-  return OkStatus<CryptohomeTPMError>();
+  return OkStatus<CryptohomeCryptoError>();
 }
 
-TPMStatus ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
+CryptoStatus ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
   hwsec::StatusOr<Blob> salt_random_bytes =
       hwsec_->GetRandomBlob(kChallengeCredentialsSaltRandomByteCount);
   if (!salt_random_bytes.ok()) {
     LOG(ERROR) << "Failed to generate random bytes for the salt: "
                << salt_random_bytes.status();
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(kLocChalCredNewGenerateRandomSaltFailed),
                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
                                ErrorAction::kReboot}),
-               TPMRetryAction::kReboot)
+               CryptoError::CE_OTHER_CRYPTO)
         .Wrap(MakeStatus<CryptohomeTPMError>(
             std::move(salt_random_bytes).err_status()));
   }
@@ -180,10 +179,10 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
   // on GetChallengeCredentialsSaltConstantPrefix() for details.
   salt_ = CombineBlobs(
       {GetChallengeCredentialsSaltConstantPrefix(), salt_random_bytes.value()});
-  return OkStatus<CryptohomeTPMError>();
+  return OkStatus<CryptohomeCryptoError>();
 }
 
-TPMStatus
+CryptoStatus
 ChallengeCredentialsGenerateNewOperation::StartGeneratingSaltSignature() {
   DCHECK(!salt_.empty());
   std::optional<structure::ChallengeSignatureAlgorithm>
@@ -191,10 +190,10 @@ ChallengeCredentialsGenerateNewOperation::StartGeneratingSaltSignature() {
           ChooseSaltSignatureAlgorithm(public_key_info_);
   if (!chosen_salt_signature_algorithm) {
     LOG(ERROR) << "Failed to choose salt signature algorithm";
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredNewCantChooseSaltSignatureAlgorithm),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        TPMRetryAction::kNoRetry);
+        CryptoError::CE_OTHER_CRYPTO);
   }
   salt_signature_algorithm_ = *chosen_salt_signature_algorithm;
   MakeKeySignatureChallenge(
@@ -203,10 +202,11 @@ ChallengeCredentialsGenerateNewOperation::StartGeneratingSaltSignature() {
       base::BindOnce(
           &ChallengeCredentialsGenerateNewOperation::OnSaltChallengeResponse,
           weak_ptr_factory_.GetWeakPtr()));
-  return OkStatus<CryptohomeTPMError>();
+  return OkStatus<CryptohomeCryptoError>();
 }
 
-TPMStatus ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
+CryptoStatus
+ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
   hwsec::StatusOr<SecureBlob> tpm_protected_secret_value =
       hwsec_->GetRandomSecureBlob(kSecretSizeBytes);
   if (!tpm_protected_secret_value.ok()) {
@@ -214,7 +214,7 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
                << tpm_protected_secret_value.status();
     TPMStatus status = MakeStatus<CryptohomeTPMError>(
         std::move(tpm_protected_secret_value).err_status());
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(kLocChalCredGenRandFailed))
         .Wrap(std::move(status));
   }
@@ -233,7 +233,7 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
                << sealed_data.status();
     TPMStatus status =
         MakeStatus<CryptohomeTPMError>(std::move(sealed_data).err_status());
-    return MakeStatus<CryptohomeTPMError>(
+    return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(kLocChalCredNewSealFailed))
         .Wrap(std::move(status));
   }
@@ -242,11 +242,11 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
       std::move(tpm_protected_secret_value).value());
   tpm_sealed_secret_data_ = std::move(sealed_data).value();
 
-  return OkStatus<CryptohomeTPMError>();
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 void ChallengeCredentialsGenerateNewOperation::OnSaltChallengeResponse(
-    TPMStatusOr<std::unique_ptr<Blob>> salt_signature) {
+    CryptoStatusOr<std::unique_ptr<Blob>> salt_signature) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (!salt_signature.ok()) {
     LOG(ERROR) << "Salt signature challenge failed";

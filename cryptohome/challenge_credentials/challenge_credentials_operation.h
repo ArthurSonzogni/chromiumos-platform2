@@ -33,7 +33,7 @@ class ChallengeCredentialsOperation {
   // If the challenge succeeded, then |signature| will contain the signature of
   // the challenge. Otherwise, it will be null.
   using KeySignatureChallengeCallback = base::OnceCallback<void(
-      TPMStatusOr<std::unique_ptr<brillo::Blob>> signature)>;
+      CryptoStatusOr<std::unique_ptr<brillo::Blob>> signature)>;
 
   virtual ~ChallengeCredentialsOperation();
 
@@ -46,7 +46,7 @@ class ChallengeCredentialsOperation {
   // Should complete the operation with an error result.
   //
   // If the completion already happened, should do nothing.
-  virtual void Abort(TPMStatus status) = 0;
+  virtual void Abort(CryptoStatus status) = 0;
 
  protected:
   static brillo::SecureBlob ConstructPasskey(
@@ -81,7 +81,7 @@ class ChallengeCredentialsOperation {
 
   template <typename CompletionCallback>
   static void CompleteWithError(CompletionCallback* completion_callback,
-                                TPMStatus status
+                                CryptoStatus status
                                 [[clang::param_typestate(unconsumed)]]) {
     if (completion_callback->is_null())
       return;

@@ -28,43 +28,6 @@ namespace error {
 class CryptohomeTPMError : public CryptohomeCryptoError {
  public:
   struct MakeStatusTrait : public hwsec_foundation::status::AlwaysNotOk {
-    // |Unactioned| represents an intermediate state, when we create an error
-    // without fully specifying that error. That allows to require Wrap to be
-    // called, or otherwise a type mismatch error will be raised.
-    class Unactioned {
-     public:
-      Unactioned(const ErrorLocationPair& loc,
-                 const std::set<CryptohomeError::Action>& actions);
-
-      [[clang::return_typestate(unconsumed)]]  //
-      hwsec_foundation::status::StatusChain<CryptohomeTPMError>
-      Wrap(hwsec_foundation::status::StatusChain<CryptohomeTPMError> status
-           [[clang::param_typestate(unconsumed)]]  //
-           [[clang::return_typestate(consumed)]]) &&;
-
-     private:
-      const ErrorLocationPair unified_loc_;
-      const std::set<CryptohomeError::Action> actions_;
-    };
-
-    // Creates a stub which has to wrap another |hwsec::TPMErrorBase| or
-    // |CryptohomeTPMError| to become a valid status chain.
-    Unactioned operator()(const ErrorLocationPair& loc,
-                          const std::set<CryptohomeError::Action>& actions);
-
-    // Creates a stub which has to wrap another |hwsec::TPMErrorBase| or
-    // |CryptohomeTPMError| to become a valid status chain.
-    // This variant doesn't have any ErrorAction.
-    Unactioned operator()(const ErrorLocationPair& loc);
-
-    // Create an error directly.
-    hwsec_foundation::status::StatusChain<CryptohomeTPMError> operator()(
-        const ErrorLocationPair& loc,
-        std::set<CryptohomeError::Action> actions,
-        const hwsec::TPMRetryAction retry,
-        const std::optional<user_data_auth::CryptohomeErrorCode> ec =
-            std::nullopt);
-
     // Create an error by converting |hwsec::TPMErrorBase|
     hwsec_foundation::status::StatusChain<CryptohomeTPMError> operator()(
         hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> error);

@@ -41,7 +41,7 @@
 #include "cryptohome/username.h"
 
 using cryptohome::error::ContainsActionInStack;
-using cryptohome::error::CryptohomeTPMError;
+using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
 using hwsec::TPMRetryAction;
@@ -180,10 +180,10 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateCredentialsFailed) {
               GenerateNew(kFakeAccountId, _, _, _, _))
       .WillOnce(
           [&](auto&&, auto public_key_info, auto&&, auto&&, auto&& callback) {
-            std::move(callback).Run(MakeStatus<CryptohomeTPMError>(
+            std::move(callback).Run(MakeStatus<CryptohomeCryptoError>(
                 kErrorLocationPlaceholder,
                 ErrorActionSet({ErrorAction::kIncorrectAuth}),
-                TPMRetryAction::kUserAuth));
+                CryptoError::CE_OTHER_CRYPTO));
           });
 
   base::RunLoop run_loop;
@@ -452,10 +452,10 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveFailed) {
   EXPECT_CALL(challenge_credentials_helper_,
               Decrypt(kFakeAccountId, _, _, _, _))
       .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&& callback) {
-        std::move(callback).Run(MakeStatus<CryptohomeTPMError>(
+        std::move(callback).Run(MakeStatus<CryptohomeCryptoError>(
             kErrorLocationPlaceholder,
             ErrorActionSet({ErrorAction::kIncorrectAuth}),
-            TPMRetryAction::kUserAuth));
+            CryptoError::CE_OTHER_CRYPTO));
       });
 
   base::RunLoop run_loop;
