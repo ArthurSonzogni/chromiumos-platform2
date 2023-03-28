@@ -348,6 +348,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/faillog                u:object_r:cros_var_log_faillog:s0
 /var/log/hammerd.log            u:object_r:cros_hammerd_log:s0
 /var/log/hypervisor.log         u:object_r:cros_var_log_hypervisor:s0
+/var/log/lorgnette(/.*)?        u:object_r:cros_var_log_lorgnette:s0
 /var/log/messages               u:object_r:cros_syslog:s0
 /var/log/metrics(/.*)?          u:object_r:cros_var_log_metrics:s0
 /var/log/modemfwd(/.*)?         u:object_r:cros_var_log_modemfwd:s0
@@ -449,6 +450,7 @@ has_arc(`
 /run/lock/power_override        u:object_r:cros_run_lock_power_override:s0
 /run/lockbox(/.*)?              u:object_r:cros_run_lockbox:s0
 /run/log                        u:object_r:cros_run_log:s0
+/run/lorgnette(/.*)?            u:object_r:cros_run_lorgnette:s0
 /run/metrics                    u:object_r:cros_run_metrics:s0
 /run/metrics/external           u:object_r:cros_run_metrics_external:s0
 /run/mojo                       u:object_r:cros_run_mojo:s0
