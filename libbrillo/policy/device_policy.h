@@ -136,11 +136,6 @@ class DevicePolicy {
   // true on success.
   virtual bool GetReportBootMode(bool* report_boot_mode) const = 0;
 
-  // Writes the value of the EphemeralUsersEnabled policy in
-  // |ephemeral_users_enabled|. Returns true on success.
-  virtual bool GetEphemeralUsersEnabled(
-      bool* ephemeral_users_enabled) const = 0;
-
   // Writes the value of the EphemeralUsersEnabled policy and the values from
   // DeviceLocalAccountInfoProto EphemeralMode to |ephemeral_settings|.
   // Returns true if either of the policies are present.

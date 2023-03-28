@@ -330,15 +330,6 @@ bool DevicePolicyImpl::GetReportBootMode(bool* report_boot_mode) const {
   return true;
 }
 
-bool DevicePolicyImpl::GetEphemeralUsersEnabled(
-    bool* ephemeral_users_enabled) const {
-  if (!device_policy_.has_ephemeral_users_enabled())
-    return false;
-  *ephemeral_users_enabled =
-      device_policy_.ephemeral_users_enabled().ephemeral_users_enabled();
-  return true;
-}
-
 bool DevicePolicyImpl::GetEphemeralSettings(
     EphemeralSettings* ephemeral_settings) const {
   if (!device_policy_.has_ephemeral_users_enabled() &&
