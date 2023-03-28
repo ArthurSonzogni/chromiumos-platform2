@@ -21,14 +21,14 @@ using ReturnCode = FieldConverter::ReturnCode;
 
 TEST(StringFieldConverterTest, TestIntToString) {
   base::Value dict_value(base::Value::Type::DICT);
-  dict_value.SetIntKey("key", 123);
+  dict_value.GetDict().Set("key", 123);
 
   auto converter = StringFieldConverter::Build("");
 
   ASSERT_EQ(converter->Convert("key", &dict_value), ReturnCode::OK)
       << "failed to convert 123 to string";
 
-  auto* string_value = dict_value.FindStringKey("key");
+  auto* string_value = dict_value.GetDict().FindString("key");
   ASSERT_NE(string_value, nullptr);
   ASSERT_EQ(*string_value, "123");
 }
@@ -128,14 +128,14 @@ TEST(IntegerFieldConverterTest, TestDoubleToInt) {
 TEST(DoubleFieldConverterTest, TestStringToDouble) {
   for (const auto s : {"123.5", "  123.5", "123.5  ", "  123.5  "}) {
     base::Value dict_value(base::Value::Type::DICT);
-    dict_value.SetStringKey("key", s);
+    dict_value.GetDict().Set("key", s);
 
     auto converter = DoubleFieldConverter::Build("");
 
     ASSERT_EQ(converter->Convert("key", &dict_value), ReturnCode::OK)
         << "failed to convert string: " << s;
 
-    auto double_value = dict_value.FindDoubleKey("key");
+    auto double_value = dict_value.GetDict().FindDouble("key");
     ASSERT_TRUE(double_value.has_value());
     ASSERT_EQ(*double_value, 123.5) << s << " is not converted to 123.5";
   }

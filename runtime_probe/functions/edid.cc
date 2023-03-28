@@ -22,26 +22,26 @@ namespace runtime_probe {
 
 namespace {
 
-base::Value ProbeEdidPath(const base::FilePath& edid_path) {
+base::Value::Dict ProbeEdidPath(const base::FilePath& edid_path) {
   VLOG(2) << "Processing the node \"" << edid_path.value() << "\"";
 
   std::string raw_bytes;
   if (!base::ReadFileToString(edid_path, &raw_bytes))
-    return base::Value(base::Value::Type::DICT);
+    return {};
   if (raw_bytes.length() == 0)
-    return base::Value(base::Value::Type::DICT);
+    return {};
 
-  base::Value res(base::Value::Type::DICT);
   auto edid =
       Edid::From(std::vector<uint8_t>(raw_bytes.begin(), raw_bytes.end()));
   if (!edid) {
-    return res;
+    return {};
   }
-  res.SetStringKey("vendor", edid->vendor);
-  res.SetStringKey("product_id", base::StringPrintf("%04x", edid->product_id));
-  res.SetIntKey("width", edid->width);
-  res.SetIntKey("height", edid->height);
-  res.SetStringKey("path", edid_path.value());
+  base::Value::Dict res;
+  res.Set("vendor", edid->vendor);
+  res.Set("product_id", base::StringPrintf("%04x", edid->product_id));
+  res.Set("width", edid->width);
+  res.Set("height", edid->height);
+  res.Set("path", edid_path.value());
   return res;
 }
 
@@ -55,7 +55,7 @@ EdidFunction::DataType EdidFunction::EvalImpl() const {
         Context::Get()->root_dir().Append(edid_pattern);
     for (const auto& edid_path : Glob(rooted_edid_pattern)) {
       auto node_res = ProbeEdidPath(edid_path);
-      if (node_res.DictEmpty())
+      if (node_res.empty())
         continue;
 
       result.Append(std::move(node_res));

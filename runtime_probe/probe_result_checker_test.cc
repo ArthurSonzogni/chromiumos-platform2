@@ -92,23 +92,25 @@ TEST(ProbeResultCheckerDictTest, TestApplySuccess) {
   ASSERT_TRUE(probe_result.has_value());
   ASSERT_TRUE(probe_result->is_dict());
 
+  const auto& probe_result_dict = probe_result->GetDict();
+
   auto checker = ProbeResultCheckerDict::FromValue(*expect);
 
   ASSERT_TRUE(checker->Apply(&*probe_result));
 
-  auto* str_value = probe_result->FindStringKey("str");
+  auto* str_value = probe_result_dict.FindString("str");
   ASSERT_NE(str_value, nullptr);
   ASSERT_EQ(*str_value, "string result");
 
-  auto int_value = probe_result->FindIntKey("int");
+  auto int_value = probe_result_dict.FindInt("int");
   ASSERT_TRUE(int_value.has_value());
   ASSERT_EQ(*int_value, 1024);
 
-  auto* hex_value = probe_result->FindStringKey("hex");
+  auto* hex_value = probe_result_dict.FindString("hex");
   ASSERT_NE(hex_value, nullptr);
   ASSERT_EQ(*hex_value, "123");
 
-  auto double_value = probe_result->FindDoubleKey("double");
+  auto double_value = probe_result_dict.FindDouble("double");
   ASSERT_TRUE(double_value.has_value());
   ASSERT_EQ(*double_value, 100);
 }
@@ -140,19 +142,21 @@ TEST(ProbeResultCheckerDictTest, TestApplyWithLimitsSuccess) {
 
   ASSERT_TRUE(checker->Apply(&*probe_result));
 
-  auto* str_value = probe_result->FindStringKey("str");
+  const auto& probe_result_dict = probe_result->GetDict();
+
+  auto* str_value = probe_result_dict.FindString("str");
   ASSERT_NE(str_value, nullptr);
   ASSERT_EQ(*str_value, "string result");
 
-  auto int_value = probe_result->FindIntKey("int");
+  auto int_value = probe_result_dict.FindInt("int");
   ASSERT_TRUE(int_value.has_value());
   ASSERT_EQ(*int_value, 1024);
 
-  auto* hex_value = probe_result->FindStringKey("hex");
+  auto* hex_value = probe_result_dict.FindString("hex");
   ASSERT_NE(hex_value, nullptr);
   ASSERT_EQ(*hex_value, "123");
 
-  auto double_value = probe_result->FindDoubleKey("double");
+  auto double_value = probe_result_dict.FindDouble("double");
   ASSERT_TRUE(double_value.has_value());
   ASSERT_EQ(*double_value, 100);
 }
