@@ -31,6 +31,7 @@ executable("executor-delegate") {
   ]
   deps = [
     "//diagnostics/cros_healthd/delegate/fetchers",
+    "//diagnostics/cros_healthd/delegate/routines",
     "//diagnostics/cros_healthd/delegate/utils",
     "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
   ]

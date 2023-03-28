@@ -16,15 +16,16 @@
 //  repeatedly within a duration.
 int main(int argc, char** argv) {
   DEFINE_uint64(time, 10, "duration in seconds to run routine for.");
-  DEFINE_uint64(max_num, diagnostics::kMaxPrimeNumber,
+  DEFINE_uint64(max_num, diagnostics::PrimeNumberSearch::kMaxPrimeNumber,
                 "search for prime number less or equal to max_num. "
                 "Max and default is 1000000");
   brillo::FlagHelper::Init(argc, argv, "prime_search - diagnostic routine.");
 
   base::TimeTicks end_time = base::TimeTicks::Now() + base::Seconds(FLAGS_time);
 
-  uint64_t max_num = diagnostics::kMaxPrimeNumber;
-  if (FLAGS_max_num <= diagnostics::kMaxPrimeNumber && FLAGS_max_num >= 2)
+  uint64_t max_num = diagnostics::PrimeNumberSearch::kMaxPrimeNumber;
+  if (FLAGS_max_num <= diagnostics::PrimeNumberSearch::kMaxPrimeNumber &&
+      FLAGS_max_num >= 2)
     max_num = FLAGS_max_num;
 
   auto prime_number_search =

@@ -1,4 +1,4 @@
-// Copyright 2020 The ChromiumOS Authors
+// Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,17 +7,17 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_number_search.h"
+#include "diagnostics/cros_healthd/delegate/routines/prime_number_search.h"
 
 namespace diagnostics {
 namespace {
 
 using ::testing::Return;
 
-class MockPrimeNumberSearchTest : public PrimeNumberSearch {
+class MockPrimeNumberSearchTest : public PrimeNumberSearchDelegate {
  public:
   explicit MockPrimeNumberSearchTest(uint64_t max_num)
-      : PrimeNumberSearch(max_num) {}
+      : PrimeNumberSearchDelegate(max_num) {}
   MockPrimeNumberSearchTest(const MockPrimeNumberSearchTest&) = delete;
   MockPrimeNumberSearchTest& operator=(const MockPrimeNumberSearchTest&) =
       delete;
@@ -28,7 +28,7 @@ class MockPrimeNumberSearchTest : public PrimeNumberSearch {
 
 // Tests if different numbers are prime by using the IsPrime() calculation.
 TEST(PrimeNumberSearchTest, IsPrime) {
-  PrimeNumberSearch prime_search(4);
+  PrimeNumberSearchDelegate prime_search(4);
 
   EXPECT_FALSE(prime_search.IsPrime(0));
   EXPECT_FALSE(prime_search.IsPrime(1));
@@ -50,7 +50,8 @@ TEST(PrimeNumberSearchTest, IsPrime) {
 
 // Test that all values under kMaxPrimeNumber are calculated correctly.
 TEST(PrimeNumbersSearchTest, RunFull) {
-  PrimeNumberSearch prime_search(PrimeNumberSearch::kMaxPrimeNumber);
+  PrimeNumberSearchDelegate prime_search(
+      PrimeNumberSearchDelegate::kMaxPrimeNumber);
   EXPECT_TRUE(prime_search.Run());
 }
 
