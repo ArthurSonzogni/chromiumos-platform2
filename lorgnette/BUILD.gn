@@ -9,11 +9,11 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":install_dbus_config",
-    ":install_debug",
     ":install_init",
     ":install_system_service",
     ":lorgnette",
     ":lorgnette_cli",
+    "//lorgnette/tmpfiles.d",
   ]
   if (use.test) {
     deps += [ ":lorgnette_unittest" ]
@@ -62,6 +62,7 @@ pkg_config("liblorgnette_config") {
 static_library("liblorgnette") {
   sources = [
     "daemon.cc",
+    "debug_log.cc",
     "enums.cc",
     "epson_probe.cc",
     "firewall_manager.cc",
@@ -111,11 +112,6 @@ install_config("install_init") {
   install_path = "/etc/init"
 }
 
-install_config("install_debug") {
-  sources = [ "init/lorgnette-debug.conf" ]
-  install_path = "/usr/share/lorgnette"
-}
-
 if (use.test) {
   pkg_config("liblorgnette_config_test") {
     pkg_deps = [ "libpermission_broker-client-test" ]
@@ -123,6 +119,7 @@ if (use.test) {
 
   executable("lorgnette_unittest") {
     sources = [
+      "debug_log_test.cc",
       "firewall_manager_test.cc",
       "image_readers/jpeg_reader_test.cc",
       "image_readers/png_reader_test.cc",
