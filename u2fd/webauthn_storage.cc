@@ -170,10 +170,10 @@ bool WebAuthnStorage::LoadRecords() {
       read_all_records_successfully = false;
       continue;
     }
-    base::Value record_dictionary = std::move(*record_value);
+    base::Value::Dict record_dictionary = std::move(*record_value).TakeDict();
 
     const std::string* credential_id_hex =
-        record_dictionary.FindStringKey(kCredentialIdKey);
+        record_dictionary.FindString(kCredentialIdKey);
     std::string credential_id;
     if (!credential_id_hex ||
         !base::HexStringToString(*credential_id_hex, &credential_id)) {
@@ -183,8 +183,7 @@ bool WebAuthnStorage::LoadRecords() {
       continue;
     }
 
-    const std::string* secret_base64 =
-        record_dictionary.FindStringKey(kSecretKey);
+    const std::string* secret_base64 = record_dictionary.FindString(kSecretKey);
     std::string secret;
     if (!secret_base64 || !base::Base64Decode(*secret_base64, &secret)) {
       LOG(ERROR) << "Cannot read credential secret from " << record_path.value()
@@ -194,7 +193,7 @@ bool WebAuthnStorage::LoadRecords() {
     }
 
     const std::string* key_blob_base64 =
-        record_dictionary.FindStringKey(kKeyBlobKey);
+        record_dictionary.FindString(kKeyBlobKey);
     std::string key_blob;
     // key blob can be empty for backward compatibility. New key blobs generated
     // in gsc case are empty strings.
@@ -205,7 +204,7 @@ bool WebAuthnStorage::LoadRecords() {
       continue;
     }
 
-    const std::string* rp_id = record_dictionary.FindStringKey(kRpIdKey);
+    const std::string* rp_id = record_dictionary.FindString(kRpIdKey);
     if (!rp_id) {
       LOG(ERROR) << "Cannot read rp_id from " << record_path.value() << ".";
       read_all_records_successfully = false;
@@ -213,7 +212,7 @@ bool WebAuthnStorage::LoadRecords() {
     }
 
     const std::string* rp_display_name =
-        record_dictionary.FindStringKey(kRpDisplayNameKey);
+        record_dictionary.FindString(kRpDisplayNameKey);
     if (!rp_display_name) {
       LOG(ERROR) << "Cannot read rp_display_name from " << record_path.value()
                  << ".";
@@ -221,8 +220,7 @@ bool WebAuthnStorage::LoadRecords() {
       continue;
     }
 
-    const std::string* user_id_hex =
-        record_dictionary.FindStringKey(kUserIdKey);
+    const std::string* user_id_hex = record_dictionary.FindString(kUserIdKey);
     std::string user_id;
     if (!user_id_hex) {
       LOG(ERROR) << "Cannot read user_id from " << record_path.value() << ".";
@@ -239,7 +237,7 @@ bool WebAuthnStorage::LoadRecords() {
     }
 
     const std::string* user_display_name =
-        record_dictionary.FindStringKey(kUserDisplayNameKey);
+        record_dictionary.FindString(kUserDisplayNameKey);
     if (!user_display_name) {
       LOG(ERROR) << "Cannot read user_display_name from " << record_path.value()
                  << ".";
@@ -248,7 +246,7 @@ bool WebAuthnStorage::LoadRecords() {
     }
 
     const std::optional<double> timestamp =
-        record_dictionary.FindDoubleKey(kCreatedTimestampKey);
+        record_dictionary.FindDouble(kCreatedTimestampKey);
     if (!timestamp) {
       LOG(ERROR) << "Cannot read timestamp from " << record_path.value() << ".";
       read_all_records_successfully = false;
@@ -256,7 +254,7 @@ bool WebAuthnStorage::LoadRecords() {
     }
 
     const std::optional<bool> is_resident_key =
-        record_dictionary.FindBoolKey(kIsResidentKeyKey);
+        record_dictionary.FindBool(kIsResidentKeyKey);
     if (!is_resident_key.has_value()) {
       LOG(ERROR) << "Cannot read is_resident_key from " << record_path.value()
                  << ".";
