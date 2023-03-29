@@ -10,9 +10,9 @@
 #include <utility>
 #include <vector>
 
-#include <absl/time/clock.h>
 #include <base/check.h>
 #include <base/posix/safe_strerror.h>
+#include <base/threading/platform_thread.h>
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
 
@@ -1231,7 +1231,8 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
                             static_cast<uint64_t>(1e9 / stream_on_fps_);
     uint64_t current_ts_ns = ts.tv_sec * 1'000'000'000LL + ts.tv_nsec;
     if (target_ts_ns > current_ts_ns) {
-      absl::SleepFor(absl::Nanoseconds(target_ts_ns - current_ts_ns));
+      base::PlatformThread::Sleep(
+          base::Nanoseconds(target_ts_ns - current_ts_ns));
     }
     ret = V4L2CameraDevice::GetUserSpaceTimestamp(ts);
     if (ret < 0) {
