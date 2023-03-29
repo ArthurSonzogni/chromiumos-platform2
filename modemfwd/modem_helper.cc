@@ -32,11 +32,6 @@ namespace modemfwd {
 
 namespace {
 
-// This lock file prevents powerd from suspending the system. Take it
-// while we are attempting to flash the modem.
-constexpr char kPowerOverrideLockFilePath[] =
-    "/run/lock/power_override/modemfwd.lock";
-
 constexpr char kModemfwdLogDirectory[] = "/var/log/modemfwd";
 constexpr char kSeccompPolicyDirectory[] = "/usr/share/policy";
 constexpr char kUpstartServiceName[] = "com.ubuntu.Upstart";
@@ -187,40 +182,16 @@ bool RunHelperProcess(const HelperInfo& helper_info,
 }
 
 // Ensures we reboot the modem to prevent us from leaving it in a bad state.
-// Also takes a power override lock so we don't suspend while we're in the
-// middle of flashing and ensures it's cleaned up later.
 class FlashMode {
  public:
-  static std::unique_ptr<FlashMode> Create(const HelperInfo& helper_info) {
-    const base::FilePath lock_path(kPowerOverrideLockFilePath);
-    // If the lock directory doesn't exist, then powerd is probably not running.
-    // Don't worry about it in that case.
-    if (base::DirectoryExists(lock_path.DirName())) {
-      base::File lock_file(lock_path,
-                           base::File::FLAG_CREATE | base::File::FLAG_WRITE);
-      if (lock_file.IsValid()) {
-        std::string lock_contents = base::StringPrintf("%d", getpid());
-        lock_file.WriteAtCurrentPos(lock_contents.data(), lock_contents.size());
-      }
-    }
-
-    if (!RunHelperProcess(helper_info, {kPrepareToFlash}, nullptr)) {
-      base::DeleteFile(lock_path);
-      return nullptr;
-    }
-
-    return base::WrapUnique(new FlashMode(helper_info));
-  }
+  explicit FlashMode(const HelperInfo& helper_info)
+      : helper_info_(helper_info) {}
 
   ~FlashMode() {
     RunHelperProcess(helper_info_, {kReboot}, nullptr);
-    base::DeleteFile(base::FilePath(kPowerOverrideLockFilePath));
   }
 
  private:
-  // Use the static factory method above.
-  explicit FlashMode(const HelperInfo& helper_info)
-      : helper_info_(helper_info) {}
   FlashMode(const FlashMode&) = delete;
   FlashMode& operator=(const FlashMode&) = delete;
 
@@ -276,9 +247,7 @@ class ModemHelperImpl : public ModemHelper {
 
   // modemfwd::ModemHelper overrides.
   bool FlashFirmwares(const std::vector<FirmwareConfig>& configs) override {
-    auto flash_mode = FlashMode::Create(helper_info_);
-    if (!flash_mode)
-      return false;
+    FlashMode flash_mode(helper_info_);
 
     if (!configs.size())
       return false;
