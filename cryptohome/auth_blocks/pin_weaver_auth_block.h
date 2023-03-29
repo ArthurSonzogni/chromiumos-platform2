@@ -16,6 +16,15 @@
 
 namespace cryptohome {
 
+// Define the standard lockout policy to use for all LE credentials. This policy
+// will allow for 5 attempts with no delay, and then permanent lockout until the
+// credential is reset.
+const LECredentialManager::DelaySchedule& LockoutDelaySchedule();
+
+// Define the PIN delay policy. This applies a gradually increasing delay after
+// more and more attempts are made.
+const LECredentialManager::DelaySchedule& PinDelaySchedule();
+
 class PinWeaverAuthBlock : public SyncAuthBlock {
  public:
   // Implement the GenericAuthBlock concept.

@@ -16,6 +16,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <base/no_destructor.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
@@ -34,6 +35,7 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/le_credential_manager.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -52,7 +54,6 @@ using ::hwsec_foundation::status::OkStatus;
 using ::hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
-
 namespace {
 
 constexpr int kDefaultSecretSize = 32;
@@ -72,23 +73,35 @@ void LogLERetCode(int le_error) {
 // secret.
 constexpr char kHESecretHmacData[] = "vkk_seed";
 
-// A default delay schedule to be used for LE Credentials.
-// The format for a delay schedule entry is as follows:
-//
-// (number_of_incorrect_attempts, delay before_next_attempt)
-//
-// The default schedule is for the first 5 incorrect attempts to have no delay,
-// and no further attempts allowed.
-constexpr uint32_t kAttemptsLimit = 5;
+// Constants used to define delay schedules.
+constexpr uint32_t kLockoutAttemptLimit = 5;
 constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
-constexpr struct {
-  uint32_t attempts;
-  uint32_t delay;
-} kDefaultDelaySchedule[] = {
-    {kAttemptsLimit, kInfiniteDelay},
-};
 
 }  // namespace
+
+const LECredentialManager::DelaySchedule& LockoutDelaySchedule() {
+  static base::NoDestructor<LECredentialManager::DelaySchedule> kValue(
+      LECredentialManager::DelaySchedule{
+          {kLockoutAttemptLimit, kInfiniteDelay},
+      });
+  return *kValue;
+}
+
+const LECredentialManager::DelaySchedule& PinDelaySchedule() {
+  // TODO(b/272566923): finalize the policy.
+  static base::NoDestructor<LECredentialManager::DelaySchedule> kValue(
+      LECredentialManager::DelaySchedule{
+          {4, 30},
+          {6, 1 * base::Time::kSecondsPerMinute},
+          {9, 10 * base::Time::kSecondsPerMinute},
+          {12, 30 * base::Time::kSecondsPerMinute},
+          {14, 1 * base::Time::kSecondsPerHour},
+          {16, 2 * base::Time::kSecondsPerHour},
+          {18, 5 * base::Time::kSecondsPerHour},
+          {20, 12 * base::Time::kSecondsPerHour},
+      });
+  return *kValue;
+}
 
 CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
   DCHECK(crypto.GetHwsec());
@@ -235,10 +248,7 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   // LECredentialManager.
 
   // Use the default delay schedule for now.
-  std::map<uint32_t, uint32_t> delay_sched;
-  for (const auto& entry : kDefaultDelaySchedule) {
-    delay_sched[entry.attempts] = entry.delay;
-  }
+  const auto& delay_sched = LockoutDelaySchedule();
 
   std::vector<hwsec::OperationPolicySetting> policies = {
       hwsec::OperationPolicySetting{
