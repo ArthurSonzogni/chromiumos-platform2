@@ -766,7 +766,13 @@ bool MigrationHelper::CopyAttributes(const base::FilePath& child,
                                     FailureLocationType::kSource);
     return false;
   }
-  if (!platform_->SetExtFileAttributes(to, flags)) {
+  /*
+   * Exclude deprecated flags that was used by an older version of
+   * e2fsprogs.
+   * Setting older flags on newer kernel is prohibited and will fail with
+   * EOPNOTSUPP.
+   */
+  if (!platform_->SetExtFileAttributes(to, flags & ~EXT4_EOFBLOCKS_FL)) {
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child,
                                     FailureLocationType::kDest);
     return false;

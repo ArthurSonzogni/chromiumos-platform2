@@ -39,6 +39,17 @@ extern "C" {
 
 #include "cryptohome/dircrypto_util.h"
 
+#ifndef EXT4_EOFBLOCKS_FL
+/*
+ * Older kernel were using this bit to help cleanup.
+ * Deprecated in 5.10 and beyond, it may not be present in kernel
+ * includes anymore.
+ * Make sure it is defined to we can omit when setting extended files
+ * attributes.
+ */
+#define EXT4_EOFBLOCKS_FL 0x00400000
+#endif
+
 namespace base {
 class Thread;
 class Time;

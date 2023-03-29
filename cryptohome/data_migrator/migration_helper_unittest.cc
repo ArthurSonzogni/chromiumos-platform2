@@ -354,7 +354,7 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
       kFromFilePath, kReferrerURLXattrName, kValue, sizeof(kValue)));
 
   // Set ext2 attributes
-  int ext2_attrs = FS_SYNC_FL | FS_NODUMP_FL;
+  int ext2_attrs = FS_SYNC_FL | FS_NODUMP_FL | EXT4_EOFBLOCKS_FL;
   ASSERT_TRUE(platform_.SetExtFileAttributes(kFromFilePath, ext2_attrs));
 
   // Set project quota ID.
@@ -404,10 +404,10 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
       kToFilePath, kReferrerURLXattrName, nullptr, 0));
   ASSERT_EQ(ENODATA, errno);
 
-  // Verify ext2 flags were copied
+  // Verify ext2 flags were copied, but older flags are excluded.
   int new_ext2_attrs;
   ASSERT_TRUE(platform_.GetExtFileAttributes(kToFilePath, &new_ext2_attrs));
-  EXPECT_EQ(ext2_attrs, new_ext2_attrs);
+  EXPECT_EQ(ext2_attrs & ~EXT4_EOFBLOCKS_FL, new_ext2_attrs);
 
   int to_project_id = 0;
   ASSERT_TRUE(platform_.GetQuotaProjectId(kToFilePath, &to_project_id));
