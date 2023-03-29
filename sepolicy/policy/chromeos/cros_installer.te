@@ -16,6 +16,7 @@ allow cros_installer cros_os_install_service:fifo_file { getattr write };
 allow cros_installer {
   cros_coreutils_exec
   cros_mount_exec
+  cros_udevadm_exec
   cros_umount_exec
 }:file rx_file_perms;
 
