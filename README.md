@@ -99,6 +99,7 @@ copies.
 | [libipp](./libipp/) | Library for building and parsing IPP (Internet Printing Protocol) frames |
 | [libmems](./libmems/) | Utility library to configure, manage and retrieve events from IIO sensors |
 | [libpasswordprovider](./libpasswordprovider/) | Password Provider library for securely managing credentials with system services |
+| [libsegmentation](./libsegmentation/) | Library to check which software features are allowed |
 | [login_manager](./login_manager/) | Session manager for handling the life cycle of the main session (e.g. Chrome) |
 | [lorgnette](./lorgnette/) | Daemon for managing attached USB scanners via [SANE](https://en.wikipedia.org/wiki/Scanner_Access_Now_Easy) |
 | [lvmd](./lvmd/) | ChromeOS LVM daemon |
