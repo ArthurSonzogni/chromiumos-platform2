@@ -451,9 +451,6 @@ class Manager {
   void set_suppress_autoconnect(bool val) { suppress_autoconnect_ = val; }
   bool suppress_autoconnect() const { return suppress_autoconnect_; }
 
-  // Called when remote device claimer vanishes.
-  virtual void OnDeviceClaimerVanished();
-
   RpcIdentifiers EnumerateDevices(Error* error);
 
   bool SetNetworkThrottlingStatus(ResultOnceCallback callback,

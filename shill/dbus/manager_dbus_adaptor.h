@@ -14,11 +14,9 @@
 #include "dbus_bindings/org.chromium.flimflam.Manager.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus/dbus_adaptor.h"
-#include "shill/dbus/dbus_service_watcher.h"
 
 namespace shill {
 
-class DBusServiceWatcherFactory;
 class Manager;
 
 // Subclass of DBusAdaptor for Manager objects
@@ -146,19 +144,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
 
  private:
   friend class ManagerDBusAdaptorTest;
-  // Tests that require access to |watcher_for_device_claimer_|.
-  FRIEND_TEST(ManagerDBusAdaptorTest, ClaimInterface);
-  FRIEND_TEST(ManagerDBusAdaptorTest, OnDeviceClaimerVanished);
-  FRIEND_TEST(ManagerDBusAdaptorTest, ReleaseInterface);
-
-  void OnDeviceClaimerVanished();
 
   Manager* manager_;
-  // We store a pointer to |proxy_bus_| in order to create a
-  // DBusServiceWatcher objects.
-  scoped_refptr<dbus::Bus> proxy_bus_;
-  DBusServiceWatcherFactory* dbus_service_watcher_factory_;
-  std::unique_ptr<DBusServiceWatcher> watcher_for_device_claimer_;
 };
 
 }  // namespace shill

@@ -1281,11 +1281,6 @@ void Manager::EmitDeviceProperties() {
                                UninitializedTechnologies(&error));
 }
 
-void Manager::OnDeviceClaimerVanished() {
-  // Reset device claimer.
-  device_claimer_.reset();
-}
-
 RpcIdentifiers Manager::EnumerateDevices(Error* /*error*/) {
   RpcIdentifiers device_rpc_ids;
   for (const auto& device : devices_) {

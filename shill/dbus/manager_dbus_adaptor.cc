@@ -12,7 +12,6 @@
 #include <base/logging.h>
 
 #include "shill/callbacks.h"
-#include "shill/dbus/dbus_service_watcher_factory.h"
 #include "shill/device.h"
 #include "shill/error.h"
 #include "shill/geolocation_info.h"
@@ -40,9 +39,7 @@ ManagerDBusAdaptor::ManagerDBusAdaptor(
     Manager* manager)
     : org::chromium::flimflam::ManagerAdaptor(this),
       DBusAdaptor(adaptor_bus, kPath),
-      manager_(manager),
-      proxy_bus_(proxy_bus),
-      dbus_service_watcher_factory_(DBusServiceWatcherFactory::GetInstance()) {}
+      manager_(manager) {}
 
 ManagerDBusAdaptor::~ManagerDBusAdaptor() {
   manager_ = nullptr;
@@ -404,14 +401,6 @@ bool ManagerDBusAdaptor::ClaimInterface(brillo::ErrorPtr* error,
   // indicate default claimer instead (b/27924738).
   std::string claimer = (claimer_name == "" ? "" : message->GetSender());
   manager_->ClaimDevice(claimer, interface_name, &e);
-  if (e.IsSuccess() && claimer_name != "") {
-    // Only setup watcher for non-default claimer.
-    watcher_for_device_claimer_ =
-        dbus_service_watcher_factory_->CreateDBusServiceWatcher(
-            proxy_bus_, claimer,
-            base::BindRepeating(&ManagerDBusAdaptor::OnDeviceClaimerVanished,
-                                base::Unretained(this)));
-  }
   return !e.ToChromeosError(error);
 }
 
@@ -427,16 +416,7 @@ bool ManagerDBusAdaptor::ReleaseInterface(brillo::ErrorPtr* error,
   // indicate default claimer instead (b/27924738).
   manager_->ReleaseDevice(claimer_name == "" ? "" : message->GetSender(),
                           interface_name, &claimer_removed, &e);
-  if (claimer_removed) {
-    watcher_for_device_claimer_.reset();
-  }
   return !e.ToChromeosError(error);
-}
-
-void ManagerDBusAdaptor::OnDeviceClaimerVanished() {
-  SLOG(this, 3) << __func__;
-  manager_->OnDeviceClaimerVanished();
-  watcher_for_device_claimer_.reset();
 }
 
 bool ManagerDBusAdaptor::SetDNSProxyAddresses(

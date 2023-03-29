@@ -13,8 +13,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/dbus/mock_dbus_service_watcher.h"
-#include "shill/dbus/mock_dbus_service_watcher_factory.h"
 #include "shill/error.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
@@ -41,10 +39,7 @@ class ManagerDBusAdaptorTest : public Test {
 
   ~ManagerDBusAdaptorTest() override = default;
 
-  void SetUp() override {
-    manager_adaptor_.dbus_service_watcher_factory_ =
-        &dbus_service_watcher_factory_;
-  }
+  void SetUp() override {}
 
   void TearDown() override {}
 
@@ -55,7 +50,6 @@ class ManagerDBusAdaptorTest : public Test {
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
-  MockDBusServiceWatcherFactory dbus_service_watcher_factory_;
   ManagerDBusAdaptor manager_adaptor_;
 };
 
@@ -75,36 +69,24 @@ TEST_F(ManagerDBusAdaptorTest, ClaimInterface) {
   std::unique_ptr<dbus::Response> message(dbus::Response::CreateEmpty());
 
   // Watcher for device claimer is not created when we fail to claim the device.
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
   EXPECT_CALL(manager_, ClaimDevice(_, kInterfaceName, _))
       .WillOnce(WithArg<2>(Invoke(SetErrorTypeFailure)));
-  EXPECT_CALL(dbus_service_watcher_factory_, CreateDBusServiceWatcher(_, _, _))
-      .Times(0);
   manager_adaptor_.ClaimInterface(&error, message.get(), kNonDefaultClaimerName,
                                   kInterfaceName);
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
 
   // Watcher for device claimer is not created when we succeed in claiming the
   // device from the default claimer.
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
   EXPECT_CALL(manager_, ClaimDevice(_, kInterfaceName, _))
       .WillOnce(WithArg<2>(Invoke(SetErrorTypeSuccess)));
-  EXPECT_CALL(dbus_service_watcher_factory_, CreateDBusServiceWatcher(_, _, _))
-      .Times(0);
   manager_adaptor_.ClaimInterface(&error, message.get(), kDefaultClaimerName,
                                   kInterfaceName);
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
 
   // Watcher for device claimer is created when we succeed in claiming the
   // device from a non-default claimer.
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
   EXPECT_CALL(manager_, ClaimDevice(_, kInterfaceName, _))
       .WillOnce(WithArg<2>(Invoke(SetErrorTypeSuccess)));
-  EXPECT_CALL(dbus_service_watcher_factory_, CreateDBusServiceWatcher(_, _, _))
-      .WillOnce(Return(ByMove(std::make_unique<MockDBusServiceWatcher>())));
   manager_adaptor_.ClaimInterface(&error, message.get(), kNonDefaultClaimerName,
                                   kInterfaceName);
-  EXPECT_NE(nullptr, manager_adaptor_.watcher_for_device_claimer_);
 }
 
 TEST_F(ManagerDBusAdaptorTest, ReleaseInterface) {
@@ -113,35 +95,18 @@ TEST_F(ManagerDBusAdaptorTest, ReleaseInterface) {
   std::string kInterfaceName = "test_interface";
   std::unique_ptr<dbus::Response> message(dbus::Response::CreateEmpty());
 
-  // Setup watcher for device claimer.
-  manager_adaptor_.watcher_for_device_claimer_.reset(
-      new MockDBusServiceWatcher());
-
   // If the device claimer is not removed, do not reset the watcher for device
   // claimer.
   EXPECT_CALL(manager_, ReleaseDevice(_, kInterfaceName, _, _))
       .WillOnce(SetArgPointee<2>(false));
   manager_adaptor_.ReleaseInterface(&error, message.get(), kClaimerName,
                                     kInterfaceName);
-  EXPECT_NE(nullptr, manager_adaptor_.watcher_for_device_claimer_);
 
   // If the device claimer is removed, reset the watcher for device claimer.
   EXPECT_CALL(manager_, ReleaseDevice(_, kInterfaceName, _, _))
       .WillOnce(SetArgPointee<2>(true));
   manager_adaptor_.ReleaseInterface(&error, message.get(), kClaimerName,
                                     kInterfaceName);
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
-}
-
-TEST_F(ManagerDBusAdaptorTest, OnDeviceClaimerVanished) {
-  // Setup watcher for device claimer.
-  manager_adaptor_.watcher_for_device_claimer_.reset(
-      new MockDBusServiceWatcher());
-
-  // Reset watcher for device claimer after the device claimer vanishes.
-  EXPECT_CALL(manager_, OnDeviceClaimerVanished());
-  manager_adaptor_.OnDeviceClaimerVanished();
-  EXPECT_EQ(nullptr, manager_adaptor_.watcher_for_device_claimer_);
 }
 
 }  // namespace shill

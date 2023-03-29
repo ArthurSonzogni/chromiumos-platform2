@@ -128,7 +128,6 @@ class MockManager : public Manager {
               ReleaseDevice,
               (const std::string&, const std::string&, bool*, Error*),
               (override));
-  MOCK_METHOD(void, OnDeviceClaimerVanished, (), (override));
   MOCK_METHOD(std::vector<std::string>,
               GetDeviceInterfaceNames,
               (),

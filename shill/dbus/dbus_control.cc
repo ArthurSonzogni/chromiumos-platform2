@@ -21,7 +21,6 @@
 #endif  // DISABLE_FLOSS
 #include "shill/dbus/dbus_objectmanager_proxy.h"
 #include "shill/dbus/dbus_properties_proxy.h"
-#include "shill/dbus/dbus_service_watcher.h"
 #include "shill/dbus/device_dbus_adaptor.h"
 #include "shill/dbus/dhcpcd_listener.h"
 #include "shill/dbus/dhcpcd_proxy.h"
