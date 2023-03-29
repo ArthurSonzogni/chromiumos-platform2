@@ -89,6 +89,7 @@ bool DHCPServerController::Start(const Config& config,
       "--log-dhcp",            // Log the DHCP event.
       "--no-ping",             // (b/257377981): Speed up the negotiation.
       "--port=0",              // Disable DNS.
+      "--leasefile-ro",        // Do not use leasefile.
       base::StringPrintf("--interface=%s", ifname_.c_str()),
       base::StringPrintf("--dhcp-range=%s,%s,%s,%s", config.start_ip().c_str(),
                          config.end_ip().c_str(), config.netmask().c_str(),
@@ -102,8 +103,9 @@ bool DHCPServerController::Start(const Config& config,
   shill::ProcessManager::MinijailOptions minijail_options = {};
   minijail_options.user = kPatchpaneldUser;
   minijail_options.group = kPatchpaneldGroup;
-  minijail_options.capmask =
-      CAP_TO_MASK(CAP_NET_RAW) | CAP_TO_MASK(CAP_NET_BIND_SERVICE);
+  minijail_options.capmask = CAP_TO_MASK(CAP_NET_ADMIN) |
+                             CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
+                             CAP_TO_MASK(CAP_NET_RAW);
 
   const pid_t pid = process_manager_->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kDnsmasqPath), dnsmasq_args, /*environment=*/{},

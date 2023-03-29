@@ -96,6 +96,7 @@ TEST_F(DHCPServerControllerTest, StartSuccessfulAtFirstTime) {
       "--log-dhcp",
       "--no-ping",
       "--port=0",
+      "--leasefile-ro",
       "--interface=wlan0",
       "--dhcp-range=192.168.1.50,192.168.1.100,255.255.255.0,12h",
       "--dhcp-option=option:netmask,255.255.255.0",
