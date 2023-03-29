@@ -43,8 +43,8 @@ void SendMessageStatusCallback(
     send_message_metric =
         static_cast<metrics::SendMessage>(status.error_code());
   }
-  MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kSendMessage,
-                                                   send_message_metric);
+  MetricsSender::GetInstance().IncrementBatchedMetric(metrics::kSendMessage,
+                                                      send_message_metric);
 
   if (cb.has_value()) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(

@@ -402,8 +402,8 @@ std::vector<std::unique_ptr<pb::Process>> ProcessCache::GetProcessHierarchy(
   for (int i = 0; i < num_generations; ++i) {
     auto it = InclusiveGetProcess(lookup_key);
     if (lookup_key.pid != 0) {
-      MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kCache,
-                                                       cache_metric_);
+      MetricsSender::GetInstance().IncrementBatchedMetric(metrics::kCache,
+                                                          cache_metric_);
     }
     if (it != process_cache_->end()) {
       auto process_proto = std::make_unique<pb::Process>();

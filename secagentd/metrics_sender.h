@@ -5,12 +5,24 @@
 #ifndef SECAGENTD_METRICS_SENDER_H_
 #define SECAGENTD_METRICS_SENDER_H_
 
+#include <algorithm>
+#include <iostream>
+#include <map>
 #include <memory>
+#include <string>
+#include <unordered_map>
 #include <utility>
 
+#include "base/functional/bind.h"
+#include "base/functional/callback.h"
+#include "base/functional/callback_forward.h"
+#include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/no_destructor.h"
 #include "base/strings/strcat.h"
+#include "base/task/task_runner.h"
+#include "base/task/thread_pool.h"
+#include "base/timer/timer.h"
 #include "metrics/metrics_library.h"
 
 namespace secagentd {
@@ -19,7 +31,12 @@ class MetricsSenderTestFixture;
 }  // namespace testing
 namespace metrics {
 
+using MetricsMap = std::unordered_map<std::string, int>;
+
 static constexpr auto kMetricNamePrefix = "ChromeOS.Secagentd.";
+static constexpr int kMaxMapValue = 256;
+// Matches the time at which the metrics file is flushed (30s).
+static constexpr int kBatchTimer = 30;
 
 template <class E>
 struct EnumMetric {
@@ -136,6 +153,9 @@ class MetricsSender {
  public:
   static MetricsSender& GetInstance();
 
+  // Starts job to set up timer.
+  void InitBatchedMetrics();
+
   // Send a metrics::EnumMetric sample to UMA. Synchronously calls into
   // MetricsLibrary.
   // Warning: Not safe for use in hot paths. Limit usage to infrequent events
@@ -146,6 +166,32 @@ class MetricsSender {
         base::StrCat({metrics::kMetricNamePrefix, metric.name}), sample);
   }
 
+  // Creates a key with the given metric sample pair and increments the map
+  // value by one.
+  template <typename M>
+  void IncrementBatchedMetric(M metric, typename M::Enum sample) {
+    int sample_val = static_cast<int>(sample);
+    // The key is name and sample separated by a colon.
+    std::string key =
+        base::StrCat({metric.name, ":", std::to_string(sample_val)});
+    if (exclusive_max_map_.find(metric.name) == exclusive_max_map_.end()) {
+      LOG(ERROR) << "Key not found in exclusive_max_map. Key = " << metric.name;
+      return;
+    }
+    auto success_value = success_value_map_.find(metric.name);
+    if (success_value == success_value_map_.end()) {
+      LOG(ERROR) << "Key not found in success_value_map. Key = " << metric.name;
+      return;
+    }
+    batch_count_map_[key]++;
+
+    // Trigger a flush if count is high and not success value.
+    if (batch_count_map_[key] >= metrics::kMaxMapValue &&
+        sample_val != success_value->second) {
+      Flush();
+    }
+  }
+
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_library) {
     metrics_library_ = std::move(metrics_library);
@@ -154,6 +200,15 @@ class MetricsSender {
  private:
   friend class base::NoDestructor<MetricsSender>;
   friend class testing::MetricsSenderTestFixture;
+
+  // Sends all metrics contained in the metrics map.
+  void SendBatchedMetricsToUMA(metrics::MetricsMap map_copy);
+
+  // Starts job for SendMetricsToUMA and clears metrics_map_.
+  void Flush();
+
+  // Starts the batch timer using task_runner_.
+  void StartBatchTimer();
 
   // Allow calling the private test-only constructor without befriending
   // unique_ptr.
@@ -166,7 +221,25 @@ class MetricsSender {
   explicit MetricsSender(
       std::unique_ptr<MetricsLibraryInterface> metrics_library);
 
+  base::RepeatingTimer flush_batched_metrics_timer_;
+  base::WeakPtrFactory<MetricsSender> weak_ptr_factory_;
+  scoped_refptr<base::SequencedTaskRunner> task_runner_ =
+      base::ThreadPool::CreateSequencedTaskRunner({});
   std::unique_ptr<MetricsLibraryInterface> metrics_library_;
+  metrics::MetricsMap batch_count_map_;
+  const metrics::MetricsMap exclusive_max_map_ = {
+      {metrics::kSendMessage.name,
+       static_cast<int>(metrics::SendMessage::kMaxValue) + 1},
+      {metrics::kCache.name, static_cast<int>(metrics::Cache::kMaxValue) + 1},
+      {metrics::kExecEvent.name,
+       static_cast<int>(metrics::ProcessEvent::kMaxValue) + 1},
+      {metrics::kTerminateEvent.name,
+       static_cast<int>(metrics::ProcessEvent::kMaxValue) + 1}};
+  const metrics::MetricsMap success_value_map_ = {
+      {metrics::kSendMessage.name, 0},
+      {metrics::kCache.name, 0},
+      {metrics::kExecEvent.name, 0},
+      {metrics::kTerminateEvent.name, 0}};
 };
 }  // namespace secagentd
 

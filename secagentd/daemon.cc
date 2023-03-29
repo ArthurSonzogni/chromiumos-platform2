@@ -126,6 +126,8 @@ void Daemon::CheckPolicyAndFeature() {
 }
 
 void Daemon::StartXDRReporting() {
+  MetricsSender::GetInstance().InitBatchedMetrics();
+
   using CbType = base::OnceCallback<void()>;
   CbType cb_for_agent =
       base::BindOnce(&Daemon::RunPlugins, weak_ptr_factory_.GetWeakPtr());

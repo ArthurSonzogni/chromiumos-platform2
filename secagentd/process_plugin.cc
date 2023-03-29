@@ -233,8 +233,8 @@ std::unique_ptr<pb::ProcessExecEvent> ProcessPlugin::MakeExecEvent(
              process_exec_event->process().canonical_pid() > 1) {
     exec_event_metric = metrics::ProcessEvent::kParentPidNotInCache;
   }
-  MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kExecEvent,
-                                                   exec_event_metric);
+  MetricsSender::GetInstance().IncrementBatchedMetric(metrics::kExecEvent,
+                                                      exec_event_metric);
 
   return process_exec_event;
 }
@@ -283,8 +283,8 @@ std::unique_ptr<pb::ProcessTerminateEvent> ProcessPlugin::MakeTerminateEvent(
              process_terminate_event->process().canonical_pid() > 1) {
     terminate_event_metric = metrics::ProcessEvent::kParentPidNotInCache;
   }
-  MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kTerminateEvent,
-                                                   terminate_event_metric);
+  MetricsSender::GetInstance().IncrementBatchedMetric(metrics::kTerminateEvent,
+                                                      terminate_event_metric);
 
   return process_terminate_event;
 }
