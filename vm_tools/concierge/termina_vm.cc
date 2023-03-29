@@ -362,12 +362,14 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
       vm_builder.AppendAudioDevice(
           VmBuilder::AudioDeviceType::kVirtio,
           "capture=true,backend=cras,client_type=borealis,"
-          "socket_type=unified,num_output_devices=3,num_input_devices=3");
+          "socket_type=unified,num_output_devices=3,num_input_devices=3,"
+          "num_output_streams=5,num_input_streams=5");
     } else {
       vm_builder.AppendAudioDevice(
           VmBuilder::AudioDeviceType::kVirtio,
           "backend=cras,client_type=borealis,socket_type=unified,"
-          "num_output_devices=3,num_input_devices=3");
+          "num_output_devices=3,num_input_devices=3,"
+          "num_output_streams=5,num_input_streams=5");
     }
   } else {
     if (features_.audio_capture) {
