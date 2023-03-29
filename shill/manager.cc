@@ -780,20 +780,11 @@ void Manager::ClaimDevice(const std::string& claimer_name,
     return;
   }
 
-  // Verify default claimer.
-  if (claimer_name.empty() &&
-      (!device_claimer_ || !device_claimer_->default_claimer())) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "No default claimer");
-    return;
-  }
-
   // Create a new device claimer if one doesn't exist yet.
   if (!device_claimer_) {
     // Start a device claimer.  No need to verify the existence of the claimer,
     // since we are using message sender as the claimer name.
-    device_claimer_.reset(
-        new DeviceClaimer(claimer_name, &device_info_, false));
+    device_claimer_.reset(new DeviceClaimer(claimer_name, &device_info_));
   }
 
   // Verify claimer's name, since we only allow one claimer to exist at a time.
@@ -847,10 +838,8 @@ void Manager::ReleaseDevice(const std::string& claimer_name,
   // claimer if it failed to release the given device.
   device_claimer_->Release(device_name, error);
 
-  // Reset claimer if this is not the default claimer and no more devices are
-  // claimed by this claimer.
-  if (!device_claimer_->default_claimer() &&
-      !device_claimer_->DevicesClaimed()) {
+  // Reset claimer if no more devices are claimed by this claimer.
+  if (!device_claimer_->DevicesClaimed()) {
     device_claimer_.reset();
     *claimer_removed = true;
   }
@@ -1194,17 +1183,6 @@ bool Manager::IsSuspending() {
 
 void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
   LOG(INFO) << "Device " << to_manage->link_name() << " registered.";
-  // Manager is running in passive mode when default claimer is created, which
-  // means devices are being managed by remote application. Only manage the
-  // device if it was explicitly released by remote application through
-  // default claimer.
-  if (device_claimer_ && device_claimer_->default_claimer()) {
-    if (!device_claimer_->IsDeviceReleased(to_manage->link_name())) {
-      Error error;
-      device_claimer_->Claim(to_manage->link_name(), &error);
-      return;
-    }
-  }
 
   for (const auto& device : devices_) {
     if (to_manage == device)

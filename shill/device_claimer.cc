@@ -12,11 +12,8 @@
 namespace shill {
 
 DeviceClaimer::DeviceClaimer(const std::string& service_name,
-                             DeviceInfo* device_info,
-                             bool default_claimer)
-    : service_name_(service_name),
-      device_info_(device_info),
-      default_claimer_(default_claimer) {}
+                             DeviceInfo* device_info)
+    : service_name_(service_name), device_info_(device_info) {}
 
 DeviceClaimer::~DeviceClaimer() {
   // Release claimed devices if there is any.

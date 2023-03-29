@@ -21,9 +21,7 @@ class DeviceInfo;
 // from/to shill.
 class DeviceClaimer {
  public:
-  DeviceClaimer(const std::string& service_name,
-                DeviceInfo* device_info,
-                bool default_claimer);
+  DeviceClaimer(const std::string& service_name, DeviceInfo* device_info);
   DeviceClaimer(const DeviceClaimer&) = delete;
   DeviceClaimer& operator=(const DeviceClaimer&) = delete;
 
@@ -42,8 +40,6 @@ class DeviceClaimer {
 
   const std::string& name() const { return service_name_; }
 
-  virtual bool default_claimer() const { return default_claimer_; }
-
   const std::set<std::string>& claimed_device_names() const {
     return claimed_device_names_;
   }
@@ -57,10 +53,6 @@ class DeviceClaimer {
   std::string service_name_;
 
   DeviceInfo* device_info_;
-
-  // Flag indicating if this is the default claimer. When set to true, this
-  // claimer will only be deleted when shill terminates.
-  bool default_claimer_;
 };
 
 }  // namespace shill
