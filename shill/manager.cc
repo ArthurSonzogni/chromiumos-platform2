@@ -183,6 +183,7 @@ Manager::Manager(ControlInterface* control_interface,
       termination_actions_(dispatcher),
       is_wake_on_lan_enabled_(true),
       ignore_unknown_ethernet_(false),
+      device_claimer_(&device_info_),
       suppress_autoconnect_(false),
       is_connected_state_(false),
       has_user_session_(false),
@@ -778,15 +779,8 @@ void Manager::ClaimDevice(const std::string& device_name, Error* error) {
     return;
   }
 
-  // Create a new device claimer if one doesn't exist yet.
-  if (!device_claimer_) {
-    // Start a device claimer.  No need to verify the existence of the claimer,
-    // since we are using message sender as the claimer name.
-    device_claimer_.reset(new DeviceClaimer(&device_info_));
-  }
-
   // Error will be populated by the claimer if failed to claim the device.
-  if (!device_claimer_->Claim(device_name, error)) {
+  if (!device_claimer_.Claim(device_name, error)) {
     return;
   }
 
@@ -803,20 +797,9 @@ void Manager::ReleaseDevice(const std::string& device_name, Error* error) {
     return;
   }
 
-  if (!device_claimer_) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Device claimer doesn't exist");
-    return;
-  }
-
   // Release the device from the claimer. Error should be populated by the
   // claimer if it failed to release the given device.
-  device_claimer_->Release(device_name, error);
-
-  // Reset claimer if no more devices are claimed by this claimer.
-  if (!device_claimer_->DevicesClaimed()) {
-    device_claimer_.reset();
-  }
+  device_claimer_.Release(device_name, error);
 }
 
 void Manager::RemoveService(const ServiceRefPtr& service) {
@@ -1223,15 +1206,8 @@ void Manager::DeregisterDeviceByLinkName(const std::string& link_name) {
 }
 
 std::vector<std::string> Manager::ClaimedDevices(Error* error) {
-  std::vector<std::string> results;
-  if (!device_claimer_) {
-    return results;
-  }
-
-  const auto& devices = device_claimer_->claimed_device_names();
-  results.resize(devices.size());
-  std::copy(devices.begin(), devices.end(), results.begin());
-  return results;
+  const std::set<std::string>& devices = device_claimer_.claimed_device_names();
+  return {devices.begin(), devices.end()};
 }
 
 void Manager::LoadDeviceFromProfiles(const DeviceRefPtr& device) {

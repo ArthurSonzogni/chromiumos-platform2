@@ -4049,8 +4049,6 @@ TEST_F(ManagerTest, ClaimBlockedDevice) {
   manager()->ClaimDevice(kDeviceName, &error);
   EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ("Not allowed to claim unmanaged device", error.message());
-  // Verify device claimer is not created.
-  EXPECT_EQ(nullptr, manager()->device_claimer_);
 }
 
 TEST_F(ManagerTest, ReleaseBlockedDevice) {
@@ -4110,8 +4108,6 @@ TEST_F(ManagerTest, ClaimDevice) {
   manager()->ClaimDevice(kDeviceName, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(manager()->device_info()->IsDeviceBlocked(kDeviceName));
-  // Verify device claimer is created.
-  EXPECT_NE(nullptr, manager()->device_claimer_);
 }
 
 TEST_F(ManagerTest, ClaimRegisteredDevice) {

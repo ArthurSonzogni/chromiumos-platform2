@@ -25,6 +25,7 @@
 
 #include "shill/default_service_observer.h"
 #include "shill/device.h"
+#include "shill/device_claimer.h"
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
@@ -50,7 +51,6 @@ class BluetoothManagerInterface;
 class CellularServiceProvider;
 class ControlInterface;
 class DefaultProfile;
-class DeviceClaimer;
 class Error;
 class EthernetEapProvider;
 class EthernetProvider;
@@ -748,8 +748,7 @@ class Manager {
       const std::vector<patchpanel::TrafficCounter>& counters);
   void RefreshAllTrafficCountersTask();
 
-  // Returns the names of all of the devices that have been claimed by the
-  // current DeviceClaimer.  Returns an empty vector if no DeviceClaimer is set.
+  // Returns the names of all of the claimed devices by ClaimDevice().
   std::vector<std::string> ClaimedDevices(Error* error);
 
   void StartConnectivityTest(const DeviceRefPtr& device);
@@ -864,9 +863,8 @@ class Manager {
   std::map<unsigned int, Service::ConnectState> watched_service_states_;
 
   // Device claimer is a remote application/service that claim/release devices
-  // from/to shill. To reduce complexity, only allow one device claimer at a
-  // time.
-  std::unique_ptr<DeviceClaimer> device_claimer_;
+  // from/to shill.
+  DeviceClaimer device_claimer_;
 
   // When true, suppresses autoconnects in Manager::AutoConnect.
   bool suppress_autoconnect_;
