@@ -49,6 +49,12 @@ using ::testing::WithArgs;
 constexpr char kTestDataRoot[] =
     "cros_healthd/routines/memory_and_cpu/testdata";
 
+#if ULONG_MAX == 4294967295UL
+constexpr int kBitFlipPercentage = 57;
+#elif ULONG_MAX == 18446744073709551615ULL
+constexpr int kBitFlipPercentage = 42;
+#endif
+
 class RoutineObserverImpl : public mojom::RoutineObserver {
  public:
   explicit RoutineObserverImpl(base::OnceClosure on_finished)
@@ -159,13 +165,12 @@ class MemoryRoutineV2Test : public MemoryRoutineV2TestBase {
         base::BindOnce([](uint32_t error, const std::string& reason) {
           CHECK(false) << "An exception has occurred when it shouldn't have.";
         }));
-    mojo::PendingRemote<mojom::RoutineObserver> remote;
-    auto observer_ = std::make_unique<RoutineObserverImpl>(
+    auto observer = std::make_unique<RoutineObserverImpl>(
         base::BindOnce(run_loop.QuitClosure()));
-    routine_->AddObserver(observer_->receiver_.BindNewPipeAndPassRemote());
+    routine_->AddObserver(observer->receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     run_loop.Run();
-    return std::move(observer_->state_);
+    return std::move(observer->state_);
   }
 
   void RunRoutineAndWaitForException() {
@@ -305,6 +310,54 @@ TEST_F(MemoryRoutineV2Test, SettingMaxTestingMemKibValue) {
       &mock_context_, mojom::MemoryRoutineArgument::New(1000));
   RunRoutineAndWaitForExit();
   EXPECT_EQ(received_testing_mem_kib_, 1000);
+}
+
+// Test that the memory routine is able to detect incremental progress.
+TEST_F(MemoryRoutineV2Test, IncrementalProgress) {
+  std::string progress_0_output, progress_bit_flip_output,
+      all_test_passed_output;
+  EXPECT_TRUE(base::ReadFileToString(
+      base::FilePath(kTestDataRoot).Append("progress_0_output"),
+      &progress_0_output));
+  EXPECT_TRUE(base::ReadFileToString(
+      base::FilePath(kTestDataRoot).Append("progress_bit_flip_output"),
+      &progress_bit_flip_output));
+  EXPECT_TRUE(base::ReadFileToString(
+      base::FilePath(kTestDataRoot).Append("all_test_passed_output"),
+      &all_test_passed_output));
+  // Check that the output are strictly increasing by checking if the outputs
+  // are prefix of each other.
+  EXPECT_TRUE(base::StartsWith(progress_bit_flip_output, progress_0_output,
+                               base::CompareCase::SENSITIVE));
+  EXPECT_TRUE(base::StartsWith(all_test_passed_output, progress_bit_flip_output,
+                               base::CompareCase::SENSITIVE));
+
+  SetExecutorOutputFromTestFile("progress_0_output");
+
+  routine_->SetOnExceptionCallback(
+      base::BindOnce([](uint32_t error, const std::string& reason) {
+        CHECK(false) << "An exception has occurred when it shouldn't have.";
+      }));
+  auto observer = std::make_unique<RoutineObserverImpl>(base::DoNothing());
+  routine_->AddObserver(observer->receiver_.BindNewPipeAndPassRemote());
+  routine_->Start();
+
+  // Fast forward for observer to update percentage.
+  task_environment_.FastForwardBy(kMemoryRoutineUpdatePeriod);
+  EXPECT_EQ(observer->state_->percentage, 0);
+
+  SetExecutorOutputFromTestFile("progress_bit_flip_output");
+
+  // Fast forward for observer to update percentage.
+  task_environment_.FastForwardBy(kMemoryRoutineUpdatePeriod);
+  EXPECT_EQ(observer->state_->percentage, kBitFlipPercentage);
+
+  SetExecutorOutputFromTestFile("all_test_passed_output");
+  SetExecutorReturnCode(EXIT_SUCCESS);
+
+  // Fast forward for observer to set finished state.
+  task_environment_.FastForwardBy(kMemoryRoutineUpdatePeriod);
+  EXPECT_EQ(observer->state_->percentage, 100);
 }
 
 }  // namespace
