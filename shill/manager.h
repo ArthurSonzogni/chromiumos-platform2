@@ -260,19 +260,10 @@ class Manager {
   void RemoveProfile(const std::string& name, Error* error);
   // Called by a profile when its properties change.
   void OnProfileChanged(const ProfileRefPtr& profile);
-  // Give the ownership of the device with name |device_name| to claimer with
-  // name |claimer_name|. This will cause shill to stop managing this device.
-  virtual void ClaimDevice(const std::string& claimer_name,
-                           const std::string& interface_name,
-                           Error* error);
-  // Claimer |claimer_name| release the ownership of the device with
-  // |interface_name| back to shill. This method will set |claimer_removed|
-  // to true iff Claimer |claimer_name| is not the default claimer and no
-  // longer claims any devices.
-  virtual void ReleaseDevice(const std::string& claimer_name,
-                             const std::string& interface_name,
-                             bool* claimer_removed,
-                             Error* error);
+  // Let shill stop managing |interface_name|.
+  virtual void ClaimDevice(const std::string& interface_name, Error* error);
+  // Let shill manage |interface_name| again.
+  virtual void ReleaseDevice(const std::string& interface_name, Error* error);
 
   // Called by a service to remove its associated configuration.  If |service|
   // is associated with a non-ephemeral profile, this configuration entry
@@ -550,7 +541,7 @@ class Manager {
   FRIEND_TEST(DeviceTest, StartProhibited);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, ClaimBlockedDevice);
-  FRIEND_TEST(ManagerTest, ClaimDeviceWithoutClaimer);
+  FRIEND_TEST(ManagerTest, ClaimDevice);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, ScanAndConnectToBestServices);
   FRIEND_TEST(ManagerTest, CreateConnectivityReport);

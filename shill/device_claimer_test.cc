@@ -17,14 +17,12 @@ using ::testing::Mock;
 
 namespace shill {
 
-const char kServiceName[] = "org.chromium.TestService";
 const char kTestDevice1Name[] = "test_device1";
 const char kTestDevice2Name[] = "test_device2";
 
 class DeviceClaimerTest : public testing::Test {
  public:
-  DeviceClaimerTest()
-      : device_info_(nullptr), device_claimer_(kServiceName, &device_info_) {}
+  DeviceClaimerTest() : device_info_(nullptr), device_claimer_(&device_info_) {}
 
  protected:
   MockDeviceInfo device_info_;

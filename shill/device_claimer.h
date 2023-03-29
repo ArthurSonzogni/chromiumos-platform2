@@ -21,7 +21,7 @@ class DeviceInfo;
 // from/to shill.
 class DeviceClaimer {
  public:
-  DeviceClaimer(const std::string& service_name, DeviceInfo* device_info);
+  DeviceClaimer(DeviceInfo* device_info);
   DeviceClaimer(const DeviceClaimer&) = delete;
   DeviceClaimer& operator=(const DeviceClaimer&) = delete;
 
@@ -34,8 +34,6 @@ class DeviceClaimer {
   // otherwise.
   virtual bool DevicesClaimed();
 
-  const std::string& name() const { return service_name_; }
-
   const std::set<std::string>& claimed_device_names() const {
     return claimed_device_names_;
   }
@@ -43,8 +41,6 @@ class DeviceClaimer {
  private:
   // The name of devices that have been claimed by this claimer.
   std::set<std::string> claimed_device_names_;
-  // Service name of the claimer.
-  std::string service_name_;
 
   DeviceInfo* device_info_;
 };

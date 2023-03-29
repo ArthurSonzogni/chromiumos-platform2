@@ -392,30 +392,21 @@ bool ManagerDBusAdaptor::CreateConnectivityReport(brillo::ErrorPtr* error) {
 
 bool ManagerDBusAdaptor::ClaimInterface(brillo::ErrorPtr* error,
                                         dbus::Message* message,
-                                        const std::string& claimer_name,
+                                        const std::string& /*claimer_name*/,
                                         const std::string& interface_name) {
   SLOG(this, 2) << __func__;
   Error e;
-  // Empty claimer name is used to indicate default claimer.
-  // TODO(samueltan): update this API or make a new API to use a flag to
-  // indicate default claimer instead (b/27924738).
-  std::string claimer = (claimer_name == "" ? "" : message->GetSender());
-  manager_->ClaimDevice(claimer, interface_name, &e);
+  manager_->ClaimDevice(interface_name, &e);
   return !e.ToChromeosError(error);
 }
 
 bool ManagerDBusAdaptor::ReleaseInterface(brillo::ErrorPtr* error,
                                           dbus::Message* message,
-                                          const std::string& claimer_name,
+                                          const std::string& /*claimer_name*/,
                                           const std::string& interface_name) {
   SLOG(this, 2) << __func__;
   Error e;
-  bool claimer_removed;
-  // Empty claimer name is used to indicate default claimer.
-  // TODO(samueltan): update this API or make a new API to use a flag to
-  // indicate default claimer instead (b/27924738).
-  manager_->ReleaseDevice(claimer_name == "" ? "" : message->GetSender(),
-                          interface_name, &claimer_removed, &e);
+  manager_->ReleaseDevice(interface_name, &e);
   return !e.ToChromeosError(error);
 }
 

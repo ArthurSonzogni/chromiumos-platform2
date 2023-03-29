@@ -762,9 +762,7 @@ bool Manager::DeviceManagementAllowed(const std::string& device_name) {
   return false;
 }
 
-void Manager::ClaimDevice(const std::string& claimer_name,
-                          const std::string& device_name,
-                          Error* error) {
+void Manager::ClaimDevice(const std::string& device_name, Error* error) {
   SLOG(2) << __func__;
 
   // Basic check for device name.
@@ -784,16 +782,7 @@ void Manager::ClaimDevice(const std::string& claimer_name,
   if (!device_claimer_) {
     // Start a device claimer.  No need to verify the existence of the claimer,
     // since we are using message sender as the claimer name.
-    device_claimer_.reset(new DeviceClaimer(claimer_name, &device_info_));
-  }
-
-  // Verify claimer's name, since we only allow one claimer to exist at a time.
-  if (device_claimer_->name() != claimer_name) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Invalid claimer name " + claimer_name +
-                              ". Claimer " + device_claimer_->name() +
-                              " already exist");
-    return;
+    device_claimer_.reset(new DeviceClaimer(&device_info_));
   }
 
   // Error will be populated by the claimer if failed to claim the device.
@@ -805,13 +794,8 @@ void Manager::ClaimDevice(const std::string& claimer_name,
   DeregisterDeviceByLinkName(device_name);
 }
 
-void Manager::ReleaseDevice(const std::string& claimer_name,
-                            const std::string& device_name,
-                            bool* claimer_removed,
-                            Error* error) {
+void Manager::ReleaseDevice(const std::string& device_name, Error* error) {
   SLOG(2) << __func__;
-
-  *claimer_removed = false;
 
   if (!DeviceManagementAllowed(device_name)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
@@ -825,15 +809,6 @@ void Manager::ReleaseDevice(const std::string& claimer_name,
     return;
   }
 
-  // Verify claimer's name, since we only allow one claimer to exist at a time.
-  if (device_claimer_->name() != claimer_name) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Invalid claimer name " + claimer_name +
-                              ". Claimer " + device_claimer_->name() +
-                              " already exist");
-    return;
-  }
-
   // Release the device from the claimer. Error should be populated by the
   // claimer if it failed to release the given device.
   device_claimer_->Release(device_name, error);
@@ -841,7 +816,6 @@ void Manager::ReleaseDevice(const std::string& claimer_name,
   // Reset claimer if no more devices are claimed by this claimer.
   if (!device_claimer_->DevicesClaimed()) {
     device_claimer_.reset();
-    *claimer_removed = true;
   }
 }
 

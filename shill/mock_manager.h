@@ -120,14 +120,8 @@ class MockManager : public Manager {
   MOCK_METHOD(void, SetIgnoreUnknownEthernet, (bool), (override));
   MOCK_METHOD(bool, ignore_unknown_ethernet, (), (const, override));
   MOCK_METHOD(int64_t, GetSuspendDurationUsecs, (), (const, override));
-  MOCK_METHOD(void,
-              ClaimDevice,
-              (const std::string&, const std::string&, Error*),
-              (override));
-  MOCK_METHOD(void,
-              ReleaseDevice,
-              (const std::string&, const std::string&, bool*, Error*),
-              (override));
+  MOCK_METHOD(void, ClaimDevice, (const std::string&, Error*), (override));
+  MOCK_METHOD(void, ReleaseDevice, (const std::string&, Error*), (override));
   MOCK_METHOD(std::vector<std::string>,
               GetDeviceInterfaceNames,
               (),

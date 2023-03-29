@@ -4039,7 +4039,6 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
 }
 
 TEST_F(ManagerTest, ClaimBlockedDevice) {
-  const std::string kClaimerName = "test_claimer";
   const std::string kDeviceName = "test_device";
 
   // Set blocked devices.
@@ -4047,7 +4046,7 @@ TEST_F(ManagerTest, ClaimBlockedDevice) {
   manager()->SetBlockedDevices(blocked_devices);
 
   Error error;
-  manager()->ClaimDevice(kClaimerName, kDeviceName, &error);
+  manager()->ClaimDevice(kDeviceName, &error);
   EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ("Not allowed to claim unmanaged device", error.message());
   // Verify device claimer is not created.
@@ -4055,7 +4054,6 @@ TEST_F(ManagerTest, ClaimBlockedDevice) {
 }
 
 TEST_F(ManagerTest, ReleaseBlockedDevice) {
-  const std::string kClaimerName = "test_claimer";
   const std::string kDeviceName = "test_device";
 
   // Set blocked devices.
@@ -4063,10 +4061,8 @@ TEST_F(ManagerTest, ReleaseBlockedDevice) {
   manager()->SetBlockedDevices(blocked_devices);
 
   Error error;
-  bool claimer_removed;
-  manager()->ReleaseDevice(kClaimerName, kDeviceName, &claimer_removed, &error);
+  manager()->ReleaseDevice(kDeviceName, &error);
   EXPECT_TRUE(error.IsFailure());
-  EXPECT_FALSE(claimer_removed);
   EXPECT_EQ("Not allowed to release unmanaged device", error.message());
 }
 
@@ -4106,42 +4102,16 @@ TEST_F(ManagerTest, DevicesIsManagedByDefault) {
   EXPECT_TRUE(manager()->DeviceManagementAllowed("test_device"));
 }
 
-TEST_F(ManagerTest, ClaimDeviceWithoutClaimer) {
-  const char kClaimerName[] = "test_claimer1";
+TEST_F(ManagerTest, ClaimDevice) {
   const char kDeviceName[] = "test_device";
 
   // Claim device when device claimer doesn't exist yet.
   Error error;
-  manager()->ClaimDevice(kClaimerName, kDeviceName, &error);
+  manager()->ClaimDevice(kDeviceName, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(manager()->device_info()->IsDeviceBlocked(kDeviceName));
   // Verify device claimer is created.
   EXPECT_NE(nullptr, manager()->device_claimer_);
-}
-
-TEST_F(ManagerTest, ClaimDeviceWithClaimer) {
-  const char kClaimer1Name[] = "test_claimer1";
-  const char kClaimer2Name[] = "test_claimer2";
-  const char kDeviceName[] = "test_device";
-
-  // Claim device with empty string name.
-  const char kEmptyDeviceNameError[] = "Empty device name";
-  Error error;
-  manager()->ClaimDevice(kClaimer1Name, "", &error);
-  EXPECT_EQ(std::string(kEmptyDeviceNameError), error.message());
-
-  // Device claim succeed.
-  error.Reset();
-  manager()->ClaimDevice(kClaimer1Name, kDeviceName, &error);
-  EXPECT_TRUE(error.IsSuccess());
-
-  // Claimer mismatch, current implementation only allows one claimer at a time.
-  const char kInvalidClaimerError[] =
-      "Invalid claimer name test_claimer2. Claimer test_claimer1 already exist";
-  error.Reset();
-  manager()->ClaimDevice(kClaimer2Name, kDeviceName, &error);
-  EXPECT_TRUE(error.IsFailure());
-  EXPECT_EQ(std::string(kInvalidClaimerError), error.message());
 }
 
 TEST_F(ManagerTest, ClaimRegisteredDevice) {
@@ -4154,59 +4124,28 @@ TEST_F(ManagerTest, ClaimRegisteredDevice) {
 
   // Claim the registered device.
   Error error;
-  manager()->ClaimDevice("claimer1", mock_devices_[0]->link_name(), &error);
+  manager()->ClaimDevice(mock_devices_[0]->link_name(), &error);
   EXPECT_TRUE(error.IsSuccess());
 
   // Expect device to not be registered anymore.
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kWiFi));
 }
 
-TEST_F(ManagerTest, ReleaseDeviceWithoutClaimer) {
-  bool claimer_removed;
-  Error error;
-  manager()->ReleaseDevice("claimer1", "device1", &claimer_removed, &error);
-  EXPECT_FALSE(claimer_removed);
-  EXPECT_THAT(
-      error, ErrorIs(Error::kInvalidArguments, "Device claimer doesn't exist"));
-}
-
-TEST_F(ManagerTest, ReleaseDeviceFromWrongClaimer) {
-  const char kDeviceName[] = "device1";
-
-  Error error;
-  manager()->ClaimDevice("claimer1", kDeviceName, &error);
-  EXPECT_TRUE(error.IsSuccess());
-
-  bool claimer_removed;
-  manager()->ReleaseDevice("claimer2", kDeviceName, &claimer_removed, &error);
-  EXPECT_FALSE(claimer_removed);
-  EXPECT_THAT(
-      error,
-      ErrorIs(Error::kInvalidArguments,
-              "Invalid claimer name claimer2. Claimer claimer1 already exist"));
-}
-
-TEST_F(ManagerTest, ReleaseDeviceFromNonDefaultClaimer) {
-  const char kClaimerName[] = "claimer1";
+TEST_F(ManagerTest, ReleaseDevice) {
   const char kDevice1Name[] = "device1";
   const char kDevice2Name[] = "device2";
 
   Error error;
-  manager()->ClaimDevice(kClaimerName, kDevice1Name, &error);
+  manager()->ClaimDevice(kDevice1Name, &error);
   EXPECT_TRUE(error.IsSuccess());
-  manager()->ClaimDevice(kClaimerName, kDevice2Name, &error);
+  manager()->ClaimDevice(kDevice2Name, &error);
   EXPECT_TRUE(error.IsSuccess());
 
-  bool claimer_removed;
-  manager()->ReleaseDevice(kClaimerName, kDevice1Name, &claimer_removed,
-                           &error);
-  EXPECT_FALSE(claimer_removed);
+  manager()->ReleaseDevice(kDevice1Name, &error);
   EXPECT_TRUE(error.IsSuccess());
 
   // Release last device with non-default claimer. Claimer should be resetted.
-  manager()->ReleaseDevice(kClaimerName, kDevice2Name, &claimer_removed,
-                           &error);
-  EXPECT_TRUE(claimer_removed);
+  manager()->ReleaseDevice(kDevice2Name, &error);
   EXPECT_TRUE(error.IsSuccess());
 }
 
