@@ -15,7 +15,7 @@ group("all") {
     ":libcrossystem_static",
   ]
   if (use.test) {
-    deps += [ ":libcrossytem_tests" ]
+    deps += [ ":libcrossystem_tests" ]
   }
 }
 
@@ -82,7 +82,7 @@ generate_pkg_config("libcrossystem_pc") {
 }
 
 if (use.test) {
-  executable("libcrossytem_tests") {
+  executable("libcrossystem_tests") {
     sources = [ "crossystem_test.cc" ]
     configs += [
       "//common-mk:test",
