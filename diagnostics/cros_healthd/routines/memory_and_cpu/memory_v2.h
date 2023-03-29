@@ -26,6 +26,9 @@
 
 namespace diagnostics {
 
+// Update the progress bar every kMemoryRoutineUpdatePeriod.
+inline constexpr base::TimeDelta kMemoryRoutineUpdatePeriod = base::Seconds(1);
+
 // The memory routine checks that the device's memory is working correctly.
 class MemoryRoutineV2 final : public BaseRoutineControl {
  public:

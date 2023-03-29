@@ -28,8 +28,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-// Update the progress bar every kUpdatePeriod.
-constexpr base::TimeDelta kUpdatePeriod = base::Seconds(1);
 // The minimum required memory in KiB for memtester to run successfully.
 constexpr uint32_t kMemoryRoutineMinimumRequireKiB = 4;
 // Regex to parse out the amount of memory tested. An example input would be:
@@ -376,7 +374,7 @@ void MemoryRoutineV2::UpdatePercentage() {
         FROM_HERE,
         base::BindOnce(&MemoryRoutineV2::UpdatePercentage,
                        weak_ptr_factory_.GetWeakPtr()),
-        kUpdatePeriod);
+        kMemoryRoutineUpdatePeriod);
   }
 }
 
@@ -394,7 +392,7 @@ void MemoryRoutineV2::SetUpStdout(mojo::ScopedHandle handle) {
       FROM_HERE,
       base::BindOnce(&MemoryRoutineV2::UpdatePercentage,
                      weak_ptr_factory_.GetWeakPtr()),
-      kUpdatePeriod);
+      kMemoryRoutineUpdatePeriod);
 }
 
 // Parses memtester output and return memtester details.
