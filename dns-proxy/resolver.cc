@@ -280,11 +280,12 @@ void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
       ARES_SUCCESS, ARES_EFORMERR, ARES_ENODATA, ARES_ENOTIMP};
   if (probe_state && probe_state->validated &&
       !base::Contains(query_success_statuses, status)) {
+    auto target = probe_state->target;
+    // |probe_state| will be invalidated by RestartProbe.
     RestartProbe(probe_state);
     int attempt = sock_fd->num_retries + 1;
-    LOG(ERROR) << *this << " Do53 query to " << probe_state->target
-               << " failed after " << attempt
-               << " attempt: " << ares_strerror(status) << ". "
+    LOG(ERROR) << *this << " Do53 query to " << target << " failed after "
+               << attempt << " attempt: " << ares_strerror(status) << ". "
                << validated_name_servers_.size() << "/" << name_servers_.size()
                << " validated name servers";
   }
@@ -331,12 +332,13 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
                                 size_t len) {
   // Query failed, restart probing.
   if (probe_state && probe_state->validated && res.http_code != kHTTPOk) {
+    auto target = probe_state->target;
+    // |probe_state| will be invalidated by RestartProbe.
     RestartProbe(probe_state);
     int attempt = sock_fd->num_retries + 1;
-    LOG(WARNING) << *this << " DoH query to " << probe_state->target
-                 << " failed after " << attempt
-                 << " attempt, http status code: " << res.http_code << ". "
-                 << validated_doh_providers_.size() << "/"
+    LOG(WARNING) << *this << " DoH query to " << target << " failed after "
+                 << attempt << " attempt, http status code: " << res.http_code
+                 << ". " << validated_doh_providers_.size() << "/"
                  << doh_providers_.size() << " validated DoH providers";
   }
 

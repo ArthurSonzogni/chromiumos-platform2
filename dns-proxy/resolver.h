@@ -243,7 +243,8 @@ class Resolver {
   std::vector<std::string> GetActiveNameServers();
 
   // Restart probe upon DNS query failure. |probe_state| store the data needed
-  // for probing, DoH provider or name server.
+  // for probing, DoH provider or name server. |probe_state| is invalidated
+  // after this call.
   void RestartProbe(base::WeakPtr<ProbeState> probe_state);
 
   // Start a probe to validate a DoH provider or name server defines inside
