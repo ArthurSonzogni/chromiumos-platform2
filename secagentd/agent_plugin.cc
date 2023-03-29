@@ -28,6 +28,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
 #include "missive/proto/record_constants.pb.h"
+#include "secagentd/device_user.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
@@ -39,18 +40,6 @@ namespace {
 
 constexpr int kWaitForServicesTimeoutMs = 2000;
 constexpr char kBootDataFilepath[] = "/sys/kernel/boot_params/data";
-
-// Converts a brillo::Error* to string for printing.
-std::string BrilloErrorToString(brillo::Error* err) {
-  std::string result;
-  if (err) {
-    result = base::StrCat({"(", err->GetDomain(), ", ", err->GetCode(), ", ",
-                           err->GetMessage(), ")"});
-  } else {
-    result = "(null)";
-  }
-  return result;
-}
 
 std::string TpmPropertyToStr(uint32_t value) {
   std::string str;
@@ -72,12 +61,14 @@ namespace pb = cros_xdr::reporting;
 
 AgentPlugin::AgentPlugin(
     scoped_refptr<MessageSenderInterface> message_sender,
+    scoped_refptr<DeviceUserInterface> device_user,
     std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy,
     std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy,
     base::OnceCallback<void()> cb,
     uint32_t heartbeat_timer)
     : weak_ptr_factory_(this),
       message_sender_(message_sender),
+      device_user_(device_user),
       heartbeat_timer_(base::Seconds(std::max(heartbeat_timer, uint32_t(1)))) {
   CHECK(message_sender != nullptr);
   attestation_proxy_ = std::move(attestation_proxy);
@@ -182,9 +173,8 @@ void AgentPlugin::GetCrosSecureBootInformation(bool available) {
   if (!attestation_proxy_->GetStatus(request, &out_reply, &error,
                                      kWaitForServicesTimeoutMs) ||
       error.get()) {
-    LOG(ERROR) << "Failed to get boot information "
-               << BrilloErrorToString(error.get());
     cros_bootmode_metric_ = metrics::CrosBootmode::kFailedRetrieval;
+    LOG(ERROR) << "Failed to get boot information " << error->GetMessage();
     return;
   }
 
@@ -216,8 +206,7 @@ void AgentPlugin::GetTpmInformation(bool available) {
   if (!tpm_manager_proxy_->GetTpmStatus(status_request, &status_reply, &error,
                                         kWaitForServicesTimeoutMs) ||
       error.get()) {
-    LOG(ERROR) << "Failed to get TPM status "
-               << BrilloErrorToString(error.get());
+    LOG(ERROR) << "Failed to get TPM status " << error->GetMessage();
     tpm_metric_ = metrics::Tpm::kFailedRetrieval;
     return;
   }
@@ -233,9 +222,8 @@ void AgentPlugin::GetTpmInformation(bool available) {
   if (!tpm_manager_proxy_->GetVersionInfo(version_request, &version_reply,
                                           &error, kWaitForServicesTimeoutMs) ||
       error.get()) {
-    LOG(ERROR) << "Failed to get TPM information "
-               << BrilloErrorToString(error.get());
     tpm_metric_ = metrics::Tpm::kFailedRetrieval;
+    LOG(ERROR) << "Failed to get TPM information " << error->GetMessage();
     return;
   }
   tpm_metric_ = metrics::Tpm::kSuccess;

@@ -54,6 +54,7 @@ pkg_config("target_defaults") {
     "libfeatures",
     "libmissiveclient",
     "libmetrics",
+    "libsession_manager-client",
     "libtpm_manager-client",
     "openssl",
     "protobuf",
@@ -68,6 +69,7 @@ static_library("libsecagent") {
     "agent_plugin.cc",
     "common.cc",
     "daemon.cc",
+    "device_user.cc",
     "factories.cc",
     "message_sender.cc",
     "metrics_sender.cc",
@@ -80,6 +82,7 @@ static_library("libsecagent") {
   deps = [
     ":bpf_process",
     "proto:security_xdr_events_proto",
+    "//common-mk/external_dependencies:policy-protos",
   ]
 }
 

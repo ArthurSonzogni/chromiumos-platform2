@@ -12,6 +12,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "brillo/daemons/dbus_daemon.h"
 #include "dbus/mock_bus.h"
+#include "secagentd/device_user.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
@@ -38,6 +39,7 @@ struct Inject {
   scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
+  scoped_refptr<DeviceUserInterface> device_user_;
   scoped_refptr<::dbus::Bus> dbus_;
 };
 
@@ -77,6 +79,7 @@ class Daemon : public brillo::DBusDaemon {
   scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
+  scoped_refptr<DeviceUserInterface> device_user_;
   std::unique_ptr<PluginFactoryInterface> plugin_factory_;
   std::vector<std::unique_ptr<PluginInterface>> plugins_;
   std::unique_ptr<PluginInterface> agent_plugin_;

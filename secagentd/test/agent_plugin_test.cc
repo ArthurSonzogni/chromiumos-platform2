@@ -31,6 +31,7 @@
 #include "missive/util/status.h"
 #include "secagentd/plugins.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
+#include "secagentd/test/mock_device_user.h"
 #include "secagentd/test/mock_message_sender.h"
 #include "tpm_manager/dbus-constants.h"
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
@@ -88,7 +89,7 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
 
   void CreateAgentPlugin(base::RunLoop* run_loop) {
     plugin_ = plugin_factory_->CreateAgentPlugin(
-        message_sender_, std::move(attestation_proxy_),
+        message_sender_, device_user_, std::move(attestation_proxy_),
         std::move(tpm_manager_proxy_),
         base::BindOnce(
             [](base::RunLoop* run_loop) {
@@ -167,6 +168,7 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> attestation_object_proxy_;
   scoped_refptr<dbus::MockObjectProxy> tpm_manager_object_proxy_;
+  scoped_refptr<MockDeviceUser> device_user_;
   std::unique_ptr<PluginFactory> plugin_factory_;
   std::unique_ptr<PluginInterface> plugin_;
   AgentPlugin* agent_plugin_;
@@ -325,8 +327,17 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesUnvailable) {
 TEST_F(AgentPluginTestFixture, TestSendStartEventServicesFailedToRetrieve) {
   SetupObjectProxies(true);
 
-  EXPECT_CALL(*attestation_proxy_, GetStatus).WillOnce(Return(false));
-  EXPECT_CALL(*tpm_manager_proxy_, GetTpmStatus).WillOnce(Return(false));
+  EXPECT_CALL(*attestation_proxy_, GetStatus)
+      .WillOnce(WithArgs<2>(Invoke([](brillo::ErrorPtr* error) {
+        *error = brillo::Error::Create(FROM_HERE, "", "", "GetStatus failed");
+        return false;
+      })));
+  EXPECT_CALL(*tpm_manager_proxy_, GetTpmStatus)
+      .WillOnce(WithArgs<2>(Invoke([](brillo::ErrorPtr* error) {
+        *error =
+            brillo::Error::Create(FROM_HERE, "", "", "GetTpmStatus failed");
+        return false;
+      })));
 
   auto agent_message = std::make_unique<pb::XdrAgentEvent>();
   EXPECT_CALL(*message_sender_,

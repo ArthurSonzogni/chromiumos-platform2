@@ -10,6 +10,7 @@
 
 #include "gmock/gmock.h"  // IWYU pragma: keep
 #include "secagentd/common.h"
+#include "secagentd/device_user.h"
 #include "secagentd/plugins.h"
 
 namespace secagentd::testing {
@@ -23,12 +24,14 @@ class MockPluginFactory : public PluginFactoryInterface {
        scoped_refptr<MessageSenderInterface> message_sender,
        scoped_refptr<ProcessCacheInterface> process_cache,
        scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+       scoped_refptr<DeviceUserInterface> device_user,
        uint32_t batch_interval_s),
       (override));
 
   MOCK_METHOD(std::unique_ptr<PluginInterface>,
               CreateAgentPlugin,
               (scoped_refptr<MessageSenderInterface> message_sender,
+               scoped_refptr<DeviceUserInterface> device_user,
                std::unique_ptr<org::chromium::AttestationProxyInterface>
                    attestation_proxy,
                std::unique_ptr<org::chromium::TpmManagerProxyInterface>

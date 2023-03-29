@@ -20,6 +20,7 @@
 #include "metrics/metrics_library.h"
 #include "secagentd/common.h"
 #include "secagentd/plugins.h"
+#include "secagentd/test/mock_device_user.h"
 #include "secagentd/test/mock_message_sender.h"
 #include "secagentd/test/mock_plugin_factory.h"
 #include "secagentd/test/mock_policies_features_broker.h"
@@ -57,6 +58,7 @@ class DaemonTestFixture : public ::testing::TestWithParam<FeaturedAndPolicy> {
     process_cache_ = base::MakeRefCounted<MockProcessCache>();
     policies_features_broker_ =
         base::MakeRefCounted<MockPoliciesFeaturesBroker>();
+    device_user_ = base::MakeRefCounted<MockDeviceUser>();
 
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
@@ -67,6 +69,7 @@ class DaemonTestFixture : public ::testing::TestWithParam<FeaturedAndPolicy> {
         message_sender_,
         process_cache_,
         policies_features_broker_,
+        device_user_,
         new dbus::MockBus(options),
     };
 
@@ -100,7 +103,7 @@ class DaemonTestFixture : public ::testing::TestWithParam<FeaturedAndPolicy> {
   void EnableReporting() {
     // Check agent plugin.
     EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin)
-        .WillOnce(WithArg<3>(Invoke([this](base::OnceCallback<void()> cb) {
+        .WillOnce(WithArg<4>(Invoke([this](base::OnceCallback<void()> cb) {
           std::move(cb).Run();
           return std::move(agent_plugin_);
         })));
@@ -108,7 +111,7 @@ class DaemonTestFixture : public ::testing::TestWithParam<FeaturedAndPolicy> {
 
     // Check process plugin.
     EXPECT_CALL(*plugin_factory_ref,
-                Create(Types::Plugin::kProcess, _, _, _, _))
+                Create(Types::Plugin::kProcess, _, _, _, _, _))
         .WillOnce(Return(ByMove(std::move(process_plugin_))));
     EXPECT_CALL(*process_plugin_ref_, Activate);
   }
@@ -123,6 +126,7 @@ class DaemonTestFixture : public ::testing::TestWithParam<FeaturedAndPolicy> {
   scoped_refptr<MockMessageSender> message_sender_;
   scoped_refptr<MockProcessCache> process_cache_;
   scoped_refptr<MockPoliciesFeaturesBroker> policies_features_broker_;
+  scoped_refptr<DeviceUserInterface> device_user_;
 };
 
 TEST_F(DaemonTestFixture, TestReportingEnabled) {

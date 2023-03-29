@@ -69,13 +69,14 @@ std::unique_ptr<PluginInterface> PluginFactory::Create(
     scoped_refptr<MessageSenderInterface> message_sender,
     scoped_refptr<ProcessCacheInterface> process_cache,
     scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+    scoped_refptr<DeviceUserInterface> device_user,
     uint32_t batch_interval_s) {
   std::unique_ptr<PluginInterface> rv{nullptr};
   switch (type) {
     case Types::Plugin::kProcess:
       rv = std::make_unique<ProcessPlugin>(
           bpf_skeleton_factory_, message_sender, process_cache,
-          policies_features_broker, batch_interval_s);
+          policies_features_broker, device_user, batch_interval_s);
       break;
 
     default:
@@ -86,12 +87,13 @@ std::unique_ptr<PluginInterface> PluginFactory::Create(
 
 std::unique_ptr<PluginInterface> PluginFactory::CreateAgentPlugin(
     scoped_refptr<MessageSenderInterface> message_sender,
+    scoped_refptr<DeviceUserInterface> device_user,
     std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy,
     std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy,
     base::OnceCallback<void()> cb,
     uint32_t set_heartbeat_period_s_for_testing) {
   return std::make_unique<AgentPlugin>(
-      message_sender, std::move(attestation_proxy),
+      message_sender, device_user, std::move(attestation_proxy),
       std::move(tpm_manager_proxy), std::move(cb),
       set_heartbeat_period_s_for_testing);
 }

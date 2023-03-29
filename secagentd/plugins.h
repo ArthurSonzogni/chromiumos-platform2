@@ -19,6 +19,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/timer/timer.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
+#include "secagentd/device_user.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/policies_features_broker.h"
@@ -49,6 +50,7 @@ class ProcessPlugin : public PluginInterface {
       scoped_refptr<MessageSenderInterface> message_sender,
       scoped_refptr<ProcessCacheInterface> process_cache,
       scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+      scoped_refptr<DeviceUserInterface> device_user,
       uint32_t batch_interval_s);
   // Load, verify and attach the process BPF applications.
   absl::Status Activate() override;
@@ -93,6 +95,7 @@ class ProcessPlugin : public PluginInterface {
   scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
+  scoped_refptr<DeviceUserInterface> device_user_;
   scoped_refptr<BpfSkeletonFactoryInterface> factory_;
   std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
   std::unique_ptr<BatchSenderType> batch_sender_;
@@ -101,6 +104,7 @@ class ProcessPlugin : public PluginInterface {
 class AgentPlugin : public PluginInterface {
  public:
   explicit AgentPlugin(scoped_refptr<MessageSenderInterface> message_sender,
+                       scoped_refptr<DeviceUserInterface> device_user,
                        std::unique_ptr<org::chromium::AttestationProxyInterface>
                            attestation_proxy,
                        std::unique_ptr<org::chromium::TpmManagerProxyInterface>
@@ -144,6 +148,7 @@ class AgentPlugin : public PluginInterface {
   cros_xdr::reporting::TcbAttributes tcb_attributes_;
   base::WeakPtrFactory<AgentPlugin> weak_ptr_factory_;
   scoped_refptr<MessageSenderInterface> message_sender_;
+  scoped_refptr<DeviceUserInterface> device_user_;
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
   base::OnceCallback<void()> daemon_cb_;
@@ -162,9 +167,11 @@ class PluginFactoryInterface {
       scoped_refptr<MessageSenderInterface> message_sender,
       scoped_refptr<ProcessCacheInterface> process_cache,
       scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+      scoped_refptr<DeviceUserInterface> device_user,
       uint32_t batch_interval_s) = 0;
   virtual std::unique_ptr<PluginInterface> CreateAgentPlugin(
       scoped_refptr<MessageSenderInterface> message_sender,
+      scoped_refptr<DeviceUserInterface> device_user,
       std::unique_ptr<org::chromium::AttestationProxyInterface>
           attestation_proxy,
       std::unique_ptr<org::chromium::TpmManagerProxyInterface>
@@ -194,9 +201,11 @@ class PluginFactory : public PluginFactoryInterface {
       scoped_refptr<MessageSenderInterface> message_sender,
       scoped_refptr<ProcessCacheInterface> process_cache,
       scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+      scoped_refptr<DeviceUserInterface> device_user,
       uint32_t batch_interval_s) override;
   std::unique_ptr<PluginInterface> CreateAgentPlugin(
       scoped_refptr<MessageSenderInterface> message_sender,
+      scoped_refptr<DeviceUserInterface> device_user,
       std::unique_ptr<org::chromium::AttestationProxyInterface>
           attestation_proxy,
       std::unique_ptr<org::chromium::TpmManagerProxyInterface>

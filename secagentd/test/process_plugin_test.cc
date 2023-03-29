@@ -19,6 +19,7 @@
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "secagentd/test/mock_bpf_skeleton.h"
+#include "secagentd/test/mock_device_user.h"
 #include "secagentd/test/mock_message_sender.h"
 #include "secagentd/test/mock_policies_features_broker.h"
 #include "secagentd/test/mock_process_cache.h"
@@ -70,7 +71,7 @@ class ProcessPluginTestFixture : public ::testing::Test {
 
     plugin_ = plugin_factory_->Create(Types::Plugin::kProcess, message_sender_,
                                       process_cache_, policies_features_broker_,
-                                      kBatchInterval);
+                                      device_user_, kBatchInterval);
     EXPECT_NE(nullptr, plugin_);
     SetPluginBatchSenderForTesting(plugin_.get(), std::move(batch_sender));
 
@@ -98,6 +99,7 @@ class ProcessPluginTestFixture : public ::testing::Test {
   scoped_refptr<MockMessageSender> message_sender_;
   scoped_refptr<MockProcessCache> process_cache_;
   scoped_refptr<MockPoliciesFeaturesBroker> policies_features_broker_;
+  scoped_refptr<MockDeviceUser> device_user_;
   BatchSenderType* batch_sender_;
   std::unique_ptr<PluginFactory> plugin_factory_;
   std::unique_ptr<MockBpfSkeleton> bpf_skeleton_;
@@ -109,7 +111,7 @@ class ProcessPluginTestFixture : public ::testing::Test {
 TEST_F(ProcessPluginTestFixture, TestActivationFailureBadSkeleton) {
   auto plugin = plugin_factory_->Create(
       Types::Plugin::kProcess, message_sender_, process_cache_,
-      policies_features_broker_, kBatchInterval);
+      policies_features_broker_, device_user_, kBatchInterval);
   EXPECT_TRUE(plugin);
   SetPluginBatchSenderForTesting(plugin.get(),
                                  std::make_unique<BatchSenderType>());

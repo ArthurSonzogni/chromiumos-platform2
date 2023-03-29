@@ -36,6 +36,7 @@ Daemon::Daemon(struct Inject injected) : weak_ptr_factory_(this) {
   message_sender_ = std::move(injected.message_sender_);
   process_cache_ = std::move(injected.process_cache_);
   policies_features_broker_ = std::move(injected.policies_features_broker_);
+  device_user_ = std::move(injected.device_user_);
   bus_ = std::move(injected.dbus_);
   MetricsSender::GetInstance().SetMetricsLibraryForTesting(
       std::move(injected.metrics_library_));
@@ -89,6 +90,11 @@ int Daemon::OnInit() {
                             weak_ptr_factory_.GetWeakPtr()));
   }
 
+  if (device_user_ == nullptr) {
+    device_user_ = base::MakeRefCounted<DeviceUser>(
+        std::make_unique<org::chromium::SessionManagerInterfaceProxy>(bus_));
+  }
+
   return EX_OK;
 }
 
@@ -126,6 +132,7 @@ void Daemon::CheckPolicyAndFeature() {
 }
 
 void Daemon::StartXDRReporting() {
+  device_user_->RegisterSessionChangeHandler();
   MetricsSender::GetInstance().InitBatchedMetrics();
 
   using CbType = base::OnceCallback<void()>;
@@ -136,7 +143,8 @@ void Daemon::StartXDRReporting() {
     std::swap(cb_for_agent, cb_for_now);
   }
   agent_plugin_ = plugin_factory_->CreateAgentPlugin(
-      message_sender_, std::make_unique<org::chromium::AttestationProxy>(bus_),
+      message_sender_, device_user_,
+      std::make_unique<org::chromium::AttestationProxy>(bus_),
       std::make_unique<org::chromium::TpmManagerProxy>(bus_),
       std::move(cb_for_agent), heartbeat_period_s_);
   if (!agent_plugin_) {
@@ -173,7 +181,7 @@ int Daemon::CreatePlugin(Types::Plugin type) {
     case Types::Plugin::kProcess: {
       plugin = plugin_factory_->Create(
           Types::Plugin::kProcess, message_sender_, process_cache_,
-          policies_features_broker_, plugin_batch_interval_s_);
+          policies_features_broker_, device_user_, plugin_batch_interval_s_);
       break;
     }
     default:
