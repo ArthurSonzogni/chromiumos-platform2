@@ -40,6 +40,7 @@ class EventDeviceStub : public EventDeviceInterface {
   void set_has_left_button(bool has_button) { has_left_button_ = has_button; }
   void set_initial_lid_state(LidState state) { initial_lid_state_ = state; }
   void set_initial_tablet_mode(TabletMode mode) { initial_tablet_mode_ = mode; }
+  void set_device_disconnected() { device_disconnected_ = true; }
 
   // Appends an event with the passed-in values to the list to be returned by
   // the next call to ReadEvents(). Arguments correspond to fields in the
@@ -61,7 +62,7 @@ class EventDeviceStub : public EventDeviceInterface {
   bool HasLeftButton() override;
   LidState GetInitialLidState() override;
   TabletMode GetInitialTabletMode() override;
-  bool ReadEvents(std::vector<input_event>* events_out) override;
+  ReadResult ReadEvents(std::vector<input_event>* events_out) override;
   void WatchForEvents(const base::RepeatingClosure& new_events_cb) override;
 
  private:
@@ -74,6 +75,7 @@ class EventDeviceStub : public EventDeviceInterface {
   bool is_power_button_ = false;
   bool hover_supported_ = false;
   bool has_left_button_ = false;
+  bool device_disconnected_ = false;
   LidState initial_lid_state_ = LidState::OPEN;
   TabletMode initial_tablet_mode_ = TabletMode::OFF;
 

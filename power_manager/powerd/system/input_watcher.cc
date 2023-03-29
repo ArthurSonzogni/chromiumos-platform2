@@ -168,8 +168,13 @@ LidState InputWatcher::QueryLidState() {
   while (true) {
     // Stop when we fail to read any more events.
     std::vector<input_event> events;
-    if (!lid_device_->ReadEvents(&events))
+    auto ret = lid_device_->ReadEvents(&events);
+    if (ret == EventDeviceInterface::ReadResult::kFailure) {
       break;
+    } else if (ret == EventDeviceInterface::ReadResult::kNoDevice) {
+      HandleRemovedInput(GetDeviceInputNumber(lid_device_));
+      return LidState::NOT_PRESENT;
+    }
 
     // Get the state from the last lid event (|events| may also contain non-lid
     // events).
@@ -259,12 +264,28 @@ uint32_t InputWatcher::GetDeviceTypes(
   return device_types;
 }
 
-void InputWatcher::OnNewEvents(EventDeviceInterface* device) {
+int InputWatcher::GetDeviceInputNumber(
+    const EventDeviceInterface* device) const {
+  for (const auto& entry : event_devices_) {
+    if (entry.second.get() == device)
+      return entry.first;
+  }
+  return -1;
+}
+
+void InputWatcher::OnNewEvents(int input_num, EventDeviceInterface* device) {
   SendQueuedEvents();
 
   std::vector<input_event> events;
-  if (!device->ReadEvents(&events))
-    return;
+  switch (device->ReadEvents(&events)) {
+    case EventDeviceInterface::ReadResult::kFailure:
+      return;
+    case EventDeviceInterface::ReadResult::kNoDevice:
+      HandleRemovedInput(input_num);
+      return;
+    case EventDeviceInterface::ReadResult::kSuccess:
+      break;
+  }
 
   VLOG(1) << "Read " << events.size() << " event(s) from "
           << device->GetDebugName();
@@ -454,9 +475,9 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
   }
 
   if (should_watch) {
-    device->WatchForEvents(base::BindRepeating(&InputWatcher::OnNewEvents,
-                                               weak_ptr_factory_.GetWeakPtr(),
-                                               base::Unretained(device.get())));
+    device->WatchForEvents(base::BindRepeating(
+        &InputWatcher::OnNewEvents, weak_ptr_factory_.GetWeakPtr(), input_num,
+        base::Unretained(device.get())));
     event_devices_.insert(std::make_pair(input_num, device));
   } else {
     VLOG(1) << "Event device with phys path " << device->GetDebugName()

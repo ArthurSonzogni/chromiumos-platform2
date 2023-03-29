@@ -62,9 +62,12 @@ class EventDeviceInterface {
   // Must not be called after ReadEvents() or WatchForEvents().
   virtual TabletMode GetInitialTabletMode() = 0;
 
-  // Reads a number of events into |events_out|. Returns true if the operation
-  // was successful and events were present.
-  virtual bool ReadEvents(std::vector<input_event>* events_out) = 0;
+  // Reads a number of events into |events_out|. Returns kSuccess if the
+  // operation was successful and events were present. kFailure indicates a read
+  // error, while kNoDevice is a non-recoverable failure due to the device being
+  // removed.
+  enum class ReadResult { kFailure, kSuccess, kNoDevice };
+  virtual ReadResult ReadEvents(std::vector<input_event>* events_out) = 0;
 
   // Start watching this device for incoming events, and run |new_events_cb|
   // when events are ready to be read with ReadEvents(). Shall only be called

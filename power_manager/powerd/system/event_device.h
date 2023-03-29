@@ -38,7 +38,7 @@ class EventDevice : public EventDeviceInterface {
   bool HasLeftButton() override;
   LidState GetInitialLidState() override;
   TabletMode GetInitialTabletMode() override;
-  bool ReadEvents(std::vector<input_event>* events_out) override;
+  ReadResult ReadEvents(std::vector<input_event>* events_out) override;
   void WatchForEvents(const base::RepeatingClosure& new_events_cb) override;
 
  private:

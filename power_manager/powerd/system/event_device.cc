@@ -138,7 +138,8 @@ bool EventDevice::GetSwitchBit(int bit) {
   return BITMASK_GET_BIT(bitmask, bit);
 }
 
-bool EventDevice::ReadEvents(std::vector<input_event>* events_out) {
+EventDevice::ReadResult EventDevice::ReadEvents(
+    std::vector<input_event>* events_out) {
   TRACE_EVENT("power", "EventDevice::ReadEvents", "fd", fd_, "path",
               path_.value());
   DCHECK(events_out);
@@ -148,25 +149,28 @@ bool EventDevice::ReadEvents(std::vector<input_event>* events_out) {
   ssize_t read_size = HANDLE_EINTR(read(fd_, events, sizeof(events)));
   if (read_size < 0) {
     // ENODEV is expected if the device was just unplugged.
-    if (errno != EAGAIN && errno != EWOULDBLOCK && errno != ENODEV)
+    if (errno == ENODEV) {
+      return ReadResult::kNoDevice;
+    }
+    if (errno != EAGAIN && errno != EWOULDBLOCK)
       PLOG(ERROR) << "Reading events from " << path_.value() << " failed";
-    return false;
+    return ReadResult::kFailure;
   } else if (read_size == 0) {
     LOG(ERROR) << "Read returned 0 when reading events from " << path_.value();
-    return false;
+    return ReadResult::kFailure;
   }
 
   const size_t num_events = read_size / sizeof(struct input_event);
   if (read_size % sizeof(struct input_event)) {
     LOG(ERROR) << "Read " << read_size << " byte(s) while expecting "
                << sizeof(struct input_event) << "-byte events";
-    return false;
+    return ReadResult::kFailure;
   }
 
   events_out->reserve(num_events);
   for (size_t i = 0; i < num_events; ++i)
     events_out->push_back(events[i]);
-  return true;
+  return ReadResult::kSuccess;
 }
 
 void EventDevice::WatchForEvents(const base::RepeatingClosure& new_events_cb) {

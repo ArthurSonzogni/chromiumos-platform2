@@ -97,8 +97,11 @@ class InputWatcher : public InputWatcherInterface,
   // Returns a bitfield of DeviceType values describing |device|.
   uint32_t GetDeviceTypes(const EventDeviceInterface* device) const;
 
+  // Get the input number corresponding to |device|.
+  int GetDeviceInputNumber(const EventDeviceInterface* device) const;
+
   // Flushes queued events and reads new events from |device|.
-  void OnNewEvents(EventDeviceInterface* device);
+  void OnNewEvents(int input_num, EventDeviceInterface* device);
 
   // Updates internal state and notifies observers in response to |event|.
   // |device_types| is a DeviceType bitfield describing the device from which

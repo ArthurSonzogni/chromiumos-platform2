@@ -729,4 +729,32 @@ TEST_F(InputWatcherTest, TolerateMissingDevInputDirectory) {
   EXPECT_FALSE(input_watcher_->IsUSBInputDeviceConnected());
 }
 
+TEST_F(InputWatcherTest, HandleRemovedDevice) {
+  // Checks that a device that starts reporting ENODEV is properly removed.
+  std::shared_ptr<EventDeviceStub> device(new EventDeviceStub());
+  device->set_is_power_button(true);
+  EXPECT_EQ(device.use_count(), 1);
+
+  AddDevice("event" + base::NumberToString(1), device, "foo");
+  Init();
+  EXPECT_EQ(device.use_count(), 3);
+
+  device->set_device_disconnected();
+  device->NotifyAboutEvents();
+
+  // The device should have gotten removed since it was disconnected.
+  EXPECT_EQ(device.use_count(), 2);
+}
+
+TEST_F(InputWatcherTest, HandleRemovedLidSwitch) {
+  // Checks that a lid switch that starts reporting ENODEV is properly removed.
+  std::shared_ptr<EventDeviceStub> device(new EventDeviceStub());
+  device->set_is_lid_switch(true);
+  AddDevice("event" + base::NumberToString(1), device, "foo");
+  Init();
+  EXPECT_EQ(input_watcher_->QueryLidState(), LidState::OPEN);
+  device->set_device_disconnected();
+  EXPECT_EQ(input_watcher_->QueryLidState(), LidState::NOT_PRESENT);
+}
+
 }  // namespace power_manager::system

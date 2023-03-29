@@ -66,13 +66,16 @@ TabletMode EventDeviceStub::GetInitialTabletMode() {
   return initial_tablet_mode_;
 }
 
-bool EventDeviceStub::ReadEvents(std::vector<input_event>* events_out) {
+EventDeviceStub::ReadResult EventDeviceStub::ReadEvents(
+    std::vector<input_event>* events_out) {
+  if (device_disconnected_)
+    return ReadResult::kNoDevice;
   if (events_.empty())
-    return false;
+    return ReadResult::kFailure;
 
   events_out->swap(events_);
   events_.clear();
-  return true;
+  return ReadResult::kSuccess;
 }
 
 void EventDeviceStub::WatchForEvents(
