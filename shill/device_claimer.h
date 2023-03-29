@@ -34,10 +34,6 @@ class DeviceClaimer {
   // otherwise.
   virtual bool DevicesClaimed();
 
-  // Return true if the specified device is released by this claimer, false
-  // otherwise.
-  virtual bool IsDeviceReleased(const std::string& device_name);
-
   const std::string& name() const { return service_name_; }
 
   const std::set<std::string>& claimed_device_names() const {
@@ -47,8 +43,6 @@ class DeviceClaimer {
  private:
   // The name of devices that have been claimed by this claimer.
   std::set<std::string> claimed_device_names_;
-  // The name of devices that have been released by this claimer.
-  std::set<std::string> released_device_names_;
   // Service name of the claimer.
   std::string service_name_;
 

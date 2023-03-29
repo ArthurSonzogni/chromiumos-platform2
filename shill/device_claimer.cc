@@ -39,7 +39,6 @@ bool DeviceClaimer::Claim(const std::string& device_name, Error* error) {
   device_info_->BlockDevice(device_name);
 
   claimed_device_names_.insert(device_name);
-  released_device_names_.erase(device_name);
   return true;
 }
 
@@ -55,17 +54,11 @@ bool DeviceClaimer::Release(const std::string& device_name, Error* error) {
   device_info_->AllowDevice(device_name);
 
   claimed_device_names_.erase(device_name);
-  released_device_names_.insert(device_name);
   return true;
 }
 
 bool DeviceClaimer::DevicesClaimed() {
   return !claimed_device_names_.empty();
-}
-
-bool DeviceClaimer::IsDeviceReleased(const std::string& device_name) {
-  return released_device_names_.find(device_name) !=
-         released_device_names_.end();
 }
 
 }  // namespace shill
