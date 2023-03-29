@@ -166,7 +166,7 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
   // Verify ext2 flags were copied
   int new_ext2_attrs;
   ASSERT_TRUE(platform_.GetExtFileAttributes(kToDirPath, &new_ext2_attrs));
-  EXPECT_EQ(ext2_attrs, new_ext2_attrs & ext2_attrs);
+  EXPECT_EQ(ext2_attrs, new_ext2_attrs);
 
   int to_project_id = 0;
   ASSERT_TRUE(platform_.GetQuotaProjectId(kToDirPath, &to_project_id));
@@ -407,7 +407,7 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   // Verify ext2 flags were copied
   int new_ext2_attrs;
   ASSERT_TRUE(platform_.GetExtFileAttributes(kToFilePath, &new_ext2_attrs));
-  EXPECT_EQ(ext2_attrs, new_ext2_attrs & ext2_attrs);
+  EXPECT_EQ(ext2_attrs, new_ext2_attrs);
 
   int to_project_id = 0;
   ASSERT_TRUE(platform_.GetQuotaProjectId(kToFilePath, &to_project_id));
