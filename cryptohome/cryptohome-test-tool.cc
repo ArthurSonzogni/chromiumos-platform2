@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 
+#include <cstddef>
 #include <cstdlib>
 #include <memory>
 #include <string>
@@ -12,7 +13,9 @@
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/no_destructor.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
 #include <brillo/flag_helper.h>
@@ -23,7 +26,6 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
-#include "base/no_destructor.h"
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
@@ -33,6 +35,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
@@ -577,8 +580,14 @@ bool DoCreateVaultKeyset(const Username& username,
   crypto.Init();
   KeysetManagement keyset_management(platform, &crypto,
                                      std::make_unique<VaultKeysetFactory>());
+  // We do not support using live features in the test tool. The async tool
+  // wrapped around a never-available features will just report the default
+  // features.
+  AsyncInitFeatures async_features(
+      base::BindRepeating([]() -> Features* { return nullptr; }));
+
   AuthBlockUtilityImpl auth_block_utility(
-      &keyset_management, &crypto, platform,
+      &keyset_management, &crypto, platform, &async_features,
       /*fp_service=*/nullptr, BiometricsAuthBlockService::NullGetter());
 
   // Manipulate or drop fields as necessary from KeyData.

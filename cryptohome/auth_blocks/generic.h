@@ -29,6 +29,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
+#include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_objects.h"
@@ -144,12 +145,14 @@ class GenericAuthBlockFunctions {
  public:
   GenericAuthBlockFunctions(
       Platform* platform,
+      AsyncInitFeatures* features,
       ChallengeCredentialsHelper* challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory,
       base::RepeatingCallback<BiometricsAuthBlockService*()> bio_service_getter,
       Crypto* crypto)
       : bio_service_getter_(std::move(bio_service_getter)),
         parameters_(std::forward_as_tuple(*platform,
+                                          *features,
                                           challenge_credentials_helper,
                                           key_challenge_service_factory,
                                           bio_service_getter_,
@@ -196,6 +199,7 @@ class GenericAuthBlockFunctions {
   // must instead use a pointer, and auth block functions that consume it MUST
   // check it for null and gracefully (i.e. no CHECK) fail.
   std::tuple<Platform&,
+             AsyncInitFeatures&,
              ChallengeCredentialsHelper*,
              KeyChallengeServiceFactory*,
              base::RepeatingCallback<BiometricsAuthBlockService*()>&,

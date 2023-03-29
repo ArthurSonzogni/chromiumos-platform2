@@ -235,7 +235,9 @@ UserDataAuth::UserDataAuth()
       default_arc_disk_quota_(nullptr),
       arc_disk_quota_(nullptr),
       default_features_(nullptr),
-      features_(nullptr) {}
+      features_(nullptr),
+      async_init_features_(base::BindRepeating(&UserDataAuth::GetFeatures,
+                                               base::Unretained(this))) {}
 
 UserDataAuth::~UserDataAuth() {
   if (low_disk_space_handler_) {
@@ -328,7 +330,7 @@ bool UserDataAuth::Initialize() {
 
   if (!auth_block_utility_) {
     default_auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
-        keyset_management_, crypto_, platform_,
+        keyset_management_, crypto_, platform_, &async_init_features_,
         std::make_unique<FingerprintAuthBlockService>(
             base::BindRepeating(&UserDataAuth::GetFingerprintManager,
                                 base::Unretained(this)),
@@ -562,6 +564,10 @@ void UserDataAuth::InitializeFeatureLibrary() {
     }
   }
   auth_session_manager_->set_features(features_);
+}
+
+Features* UserDataAuth::GetFeatures() {
+  return features_;
 }
 
 void UserDataAuth::InitializeChallengeCredentialsHelper() {

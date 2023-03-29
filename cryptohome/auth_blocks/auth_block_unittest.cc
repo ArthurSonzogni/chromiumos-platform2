@@ -34,6 +34,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
+#include "cryptohome/fake_features.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -413,7 +414,8 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
                           reset_secret};
   KeyBlobs vkk_data;
 
-  PinWeaverAuthBlock auth_block(&le_cred_manager);
+  FakeFeaturesForTesting features;
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
   AuthBlockState auth_state;
   EXPECT_TRUE(auth_block.Create(user_input, &auth_state, &vkk_data).ok());
   EXPECT_TRUE(
@@ -444,7 +446,8 @@ TEST(PinWeaverAuthBlockTest, CreateFailureLeManager) {
           kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LECredError::LE_CRED_ERROR_HASH_TREE));
 
-  PinWeaverAuthBlock auth_block_fail(&le_cred_manager_fail);
+  FakeFeaturesForTesting features;
+  PinWeaverAuthBlock auth_block_fail(features.async, &le_cred_manager_fail);
   // Call the Create() method.
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt, Username(),
@@ -462,8 +465,9 @@ TEST(PinWeaverAuthBlockTest, CreateFailureNoUserInput) {
   brillo::SecureBlob reset_secret(32, 'S');
 
   NiceMock<MockLECredentialManager> le_cred_manager;
+  FakeFeaturesForTesting features;
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
 
-  PinWeaverAuthBlock auth_block(&le_cred_manager);
   AuthInput auth_input = {
       .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername),
       .reset_secret = reset_secret};
@@ -481,8 +485,9 @@ TEST(PinWeaverAuthBlockTest, CreateFailureNoObfuscated) {
   brillo::SecureBlob reset_secret(32, 'S');
 
   NiceMock<MockLECredentialManager> le_cred_manager;
+  FakeFeaturesForTesting features;
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
 
-  PinWeaverAuthBlock auth_block(&le_cred_manager);
   AuthInput auth_input = {.user_input = user_input,
                           .reset_secret = reset_secret};
   KeyBlobs vkk_data;
@@ -497,8 +502,9 @@ TEST(PinWeaverAuthBlockTest, CreateFailureNoResetSecret) {
   brillo::SecureBlob user_input(20, 'C');
 
   NiceMock<MockLECredentialManager> le_cred_manager;
+  FakeFeaturesForTesting features;
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
 
-  PinWeaverAuthBlock auth_block(&le_cred_manager);
   AuthInput auth_input = {
       .user_input = user_input,
       .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername)};
@@ -517,7 +523,8 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureMissingLeLabel) {
   brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
 
   NiceMock<MockLECredentialManager> le_cred_manager;
-  PinWeaverAuthBlock auth_block(&le_cred_manager);
+  FakeFeaturesForTesting features;
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
 
   // Construct the auth block state. le_label is not set.
   AuthBlockState auth_state;
@@ -541,7 +548,8 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureMissingSalt) {
   brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
 
   NiceMock<MockLECredentialManager> le_cred_manager;
-  PinWeaverAuthBlock auth_block(&le_cred_manager);
+  FakeFeaturesForTesting features;
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
 
   // Construct the auth block state. salt is not set.
   AuthBlockState auth_state;
@@ -565,7 +573,8 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureNoUserInput) {
   brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
 
   NiceMock<MockLECredentialManager> le_cred_manager;
-  PinWeaverAuthBlock auth_block(&le_cred_manager);
+  FakeFeaturesForTesting features;
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
 
   // Construct the auth block state.
   AuthBlockState auth_state;
@@ -590,13 +599,12 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
   NiceMock<MockLECredentialManager> le_cred_manager;
-
   ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
       .WillByDefault(ReturnError<CryptohomeLECredError>());
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
-
-  PinWeaverAuthBlock auth_block(&le_cred_manager);
+  FakeFeaturesForTesting features;
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;
@@ -634,13 +642,12 @@ TEST(PinWeaverAuthBlockTest, DeriveOptionalValuesTest) {
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
   NiceMock<MockLECredentialManager> le_cred_manager;
-
   ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
       .WillByDefault(ReturnError<CryptohomeLECredError>());
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
-
-  PinWeaverAuthBlock auth_block(&le_cred_manager);
+  FakeFeaturesForTesting features;
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
 
   // Construct the vault keyset.
   // Notice that it does not set fek_iv and le_chaps_iv;
@@ -680,7 +687,6 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
   NiceMock<MockLECredentialManager> le_cred_manager;
-
   ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
       .WillByDefault(ReturnError<CryptohomeLECredError>(
           kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
@@ -688,8 +694,8 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
   EXPECT_CALL(le_cred_manager, GetDelayInSeconds(_)).WillOnce(ReturnValue(0));
-
-  PinWeaverAuthBlock auth_block(&le_cred_manager);
+  FakeFeaturesForTesting features;
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;
@@ -726,7 +732,6 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureLeFiniteTimeout) {
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
   NiceMock<MockLECredentialManager> le_cred_manager;
-
   ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
       .WillByDefault(ReturnError<CryptohomeLECredError>(
           kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
@@ -735,8 +740,9 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureLeFiniteTimeout) {
       .Times(Exactly(1));
   // Simulate a 30 second timeout duration on the le credential.
   EXPECT_CALL(le_cred_manager, GetDelayInSeconds(_)).WillOnce(ReturnValue(30));
+  FakeFeaturesForTesting features;
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
 
-  PinWeaverAuthBlock auth_block(&le_cred_manager);
   PinWeaverAuthBlockState state;
   state.le_label = 0;
   state.salt = salt;
@@ -767,7 +773,6 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
   ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
 
   NiceMock<MockLECredentialManager> le_cred_manager;
-
   ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
       .WillByDefault(ReturnError<CryptohomeLECredError>(
           kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
@@ -805,8 +810,8 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
           LE_CRED_ERROR_PCR_NOT_MATCH));
   EXPECT_CALL(le_cred_manager, GetDelayInSeconds(_))
       .WillRepeatedly(ReturnValue(0));
-
-  PinWeaverAuthBlock auth_block(&le_cred_manager);
+  FakeFeaturesForTesting features;
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "UserDataAuth.pb.h"
-#include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/userdataauth.h"
 
 #include <memory>
@@ -11,11 +9,14 @@
 
 #include <base/containers/span.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/test/bind.h>
 #include <base/test/mock_callback.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <gmock/gmock-matchers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
@@ -23,6 +24,7 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
+#include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session.h"
@@ -33,6 +35,8 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/fake_features.h"
+#include "cryptohome/features.h"
 #include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_install_attributes.h"
@@ -387,7 +391,7 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
  protected:
   AuthSessionInterfaceTest() {
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-        &keyset_management_, &crypto_, &platform_,
+        &keyset_management_, &crypto_, &platform_, &features_.async,
         FingerprintAuthBlockService::MakeNullService(),
         BiometricsAuthBlockService::NullGetter());
     CreateAuthSessionManager(auth_block_utility_impl_.get());
@@ -442,6 +446,7 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
         });
   }
 
+  FakeFeaturesForTesting features_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
 };
 

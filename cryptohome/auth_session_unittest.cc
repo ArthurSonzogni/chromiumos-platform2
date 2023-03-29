@@ -47,6 +47,7 @@
 #include "cryptohome/credential_verifier_test_utils.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_credential_verifier.h"
@@ -957,8 +958,9 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
 // for a new user.
 TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
   // We need to use a real AuthBlockUtilityImpl for this test.
+  FakeFeaturesForTesting features;
   AuthBlockUtilityImpl real_auth_block_utility(
-      &keyset_management_, &crypto_, &platform_,
+      &keyset_management_, &crypto_, &platform_, &features.async,
       FingerprintAuthBlockService::MakeNullService(),
       BiometricsAuthBlockService::NullGetter());
   auto test_backing_apis = backing_apis_;

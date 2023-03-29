@@ -36,6 +36,7 @@
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/fake_features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
@@ -730,7 +731,9 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   // Setup pin credentials.
   std::unique_ptr<AuthBlockState> auth_block_state =
       std::make_unique<AuthBlockState>();
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(crypto_.le_manager());
+  FakeFeaturesForTesting features;
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(features.async,
+                                                         crypto_.le_manager());
 
   AuthInput auth_input = {brillo::SecureBlob(kNewPasskey),
                           false,

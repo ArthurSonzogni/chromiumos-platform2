@@ -11,6 +11,7 @@
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/le_credential_manager.h"
 
@@ -31,9 +32,11 @@ class PinWeaverAuthBlock : public SyncAuthBlock {
   static constexpr auto kType = AuthBlockType::kPinWeaver;
   using StateType = PinWeaverAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
-  static std::unique_ptr<AuthBlock> New(LECredentialManager* le_manager);
+  static std::unique_ptr<AuthBlock> New(AsyncInitFeatures& features,
+                                        LECredentialManager* le_manager);
 
-  explicit PinWeaverAuthBlock(LECredentialManager* le_manager);
+  PinWeaverAuthBlock(AsyncInitFeatures& features,
+                     LECredentialManager* le_manager);
 
   PinWeaverAuthBlock(const PinWeaverAuthBlock&) = delete;
   PinWeaverAuthBlock& operator=(const PinWeaverAuthBlock&) = delete;
@@ -53,6 +56,8 @@ class PinWeaverAuthBlock : public SyncAuthBlock {
   uint32_t GetLockoutDelay(uint64_t label);
 
  private:
+  // Feature lookup interface.
+  AsyncInitFeatures* features_;
   // Handler for Low Entropy credentials.
   LECredentialManager* le_manager_;
 };

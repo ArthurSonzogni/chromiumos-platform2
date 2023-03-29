@@ -54,6 +54,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/error/utilities.h"
+#include "cryptohome/fake_features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/fingerprint_manager.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -145,7 +146,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   // mocks built into this test fixture.
   void MakeAuthBlockUtilityImpl() {
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-        keyset_management_.get(), &crypto_, &platform_,
+        keyset_management_.get(), &crypto_, &platform_, &features_.async,
         MakeFingerprintAuthBlockService(),
         base::BindRepeating(&AuthBlockUtilityImplTest::GetBioService,
                             base::Unretained(this)));
@@ -190,6 +191,8 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   user_data_auth::FingerprintScanResult result_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
   NiceMock<MockBiometricsCommandProcessor>* bio_processor_;
+
+  FakeFeaturesForTesting features_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
 };
 
@@ -1528,7 +1531,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   KeyBlobs out_key_blobs;
   // Insert MockKeysetManagement into AuthBlockUtility
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      &keyset_management, &crypto_, &platform_,
+      &keyset_management, &crypto_, &platform_, &features_.async,
       MakeFingerprintAuthBlockService(),
       BiometricsAuthBlockService::NullGetter());
   // Test

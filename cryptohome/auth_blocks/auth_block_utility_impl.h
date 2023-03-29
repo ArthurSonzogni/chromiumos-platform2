@@ -25,6 +25,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_objects.h"
@@ -44,6 +45,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   AuthBlockUtilityImpl(KeysetManagement* keyset_management,
                        Crypto* crypto,
                        Platform* platform,
+                       AsyncInitFeatures* features,
                        std::unique_ptr<FingerprintAuthBlockService> fp_service,
                        base::RepeatingCallback<BiometricsAuthBlockService*()>
                            bio_service_getter);
@@ -151,6 +153,10 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // Non-owned platform object used in this class. Must be alive for the entire
   // lifecycle of the class.
   Platform* const platform_;
+
+  // Non-owned features object used in this class. Must be alive for the entire
+  // lifetime of the class.
+  AsyncInitFeatures* const features_;
 
   // Challenge credential helper utility object. This object is required
   // for using a challenge response authblock.

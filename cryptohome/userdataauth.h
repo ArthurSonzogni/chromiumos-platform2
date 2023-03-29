@@ -925,6 +925,10 @@ class UserDataAuth {
   // value in AuthSession manager.
   void InitializeFeatureLibrary();
 
+  // Called on Mount thread. This returns the feature library, or null if it has
+  // not yet been initialized.
+  Features* GetFeatures();
+
   // =============== PinWeaver Related Methods ===============
 
   // Called on Mount thread. Pairing secret (Pk) is established once per
@@ -1253,6 +1257,7 @@ class UserDataAuth {
 
   // This holds the object that checks for feature enabled.
   Features* features_;
+  AsyncInitFeatures async_init_features_;
 
   friend class AuthSessionTestWithKeysetManagement;
   FRIEND_TEST(AuthSessionTestWithKeysetManagement,

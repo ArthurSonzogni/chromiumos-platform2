@@ -118,16 +118,19 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(
     KeysetManagement* keyset_management,
     Crypto* crypto,
     Platform* platform,
+    AsyncInitFeatures* features,
     std::unique_ptr<FingerprintAuthBlockService> fp_service,
     base::RepeatingCallback<BiometricsAuthBlockService*()> bio_service_getter)
     : keyset_management_(keyset_management),
       crypto_(crypto),
       platform_(platform),
+      features_(features),
       fp_service_(std::move(fp_service)),
       bio_service_getter_(bio_service_getter) {
   DCHECK(keyset_management);
   DCHECK(crypto_);
   DCHECK(platform_);
+  DCHECK(features_);
 }
 
 AuthBlockUtilityImpl::~AuthBlockUtilityImpl() = default;
@@ -498,9 +501,9 @@ CryptoStatusOr<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
 
 CryptoStatus AuthBlockUtilityImpl::IsAuthBlockSupported(
     AuthBlockType auth_block_type) const {
-  GenericAuthBlockFunctions generic(platform_, challenge_credentials_helper_,
-                                    key_challenge_service_factory_,
-                                    bio_service_getter_, crypto_);
+  GenericAuthBlockFunctions generic(
+      platform_, features_, challenge_credentials_helper_,
+      key_challenge_service_factory_, bio_service_getter_, crypto_);
   return generic.IsSupported(auth_block_type);
 }
 
@@ -513,9 +516,9 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(AuthBlockType auth_block_type,
                    kLocAuthBlockUtilNotSupportedInGetAsyncAuthBlockWithType))
         .Wrap(std::move(status));
   }
-  GenericAuthBlockFunctions generic(platform_, challenge_credentials_helper_,
-                                    key_challenge_service_factory_,
-                                    bio_service_getter_, crypto_);
+  GenericAuthBlockFunctions generic(
+      platform_, features_, challenge_credentials_helper_,
+      key_challenge_service_factory_, bio_service_getter_, crypto_);
   auto auth_block = generic.GetAuthBlockWithType(auth_block_type, auth_input);
   if (!auth_block) {
     return MakeStatus<CryptohomeCryptoError>(
@@ -600,9 +603,9 @@ void AuthBlockUtilityImpl::AssignAuthBlockStateToVaultKeyset(
 
 std::optional<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
     const AuthBlockState& auth_block_state) const {
-  GenericAuthBlockFunctions generic(platform_, challenge_credentials_helper_,
-                                    key_challenge_service_factory_,
-                                    bio_service_getter_, crypto_);
+  GenericAuthBlockFunctions generic(
+      platform_, features_, challenge_credentials_helper_,
+      key_challenge_service_factory_, bio_service_getter_, crypto_);
   return generic.GetAuthBlockTypeFromState(auth_block_state);
 }
 
@@ -651,7 +654,7 @@ base::flat_set<AuthIntent> AuthBlockUtilityImpl::GetSupportedIntentsFromState(
   }
 
   PinWeaverAuthBlock pinweaver_auth_block =
-      PinWeaverAuthBlock(crypto_->le_manager());
+      PinWeaverAuthBlock(*features_, crypto_->le_manager());
   if (pinweaver_auth_block.GetLockoutDelay(state->le_label.value()) > 0) {
     supported_intents.clear();
   }

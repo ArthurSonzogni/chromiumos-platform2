@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <memory>
 
+#include <base/functional/callback.h>
 #include <base/memory/scoped_refptr.h>
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
@@ -52,9 +53,9 @@ class Features {
 
   // Platform feature library can only initialized with a bus instance.
   explicit Features(scoped_refptr<dbus::Bus> bus, bool test_instance = false);
+
   Features(const Features&) = delete;
   Features& operator=(const Features&) = delete;
-  Features() = delete;
   ~Features() = default;
 
   // Fetches the value from the finch server using the feature library.
@@ -65,16 +66,42 @@ class Features {
   // defaults.
   void SetDefaultForFeature(ActiveFeature active_feature, bool enabled);
 
- protected:
-  // Get the variation feature that is used to fetch the feature value
-  // from the finch server.
-  const VariationsFeature& GetVariationFeatureFor(ActiveFeature active_feature);
+ private:
   // fake_platform_features_ptr_ is used for testing instances. The pointer is
   // owned by this class.
   feature::FakePlatformFeatures* fake_platform_features_ptr_ = nullptr;
   // Default feature library used to fetch features values from finch.
   std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib_;
   bool test_instance_ = false;
+};
+
+// Thin wrapper around a Features object that is asynchronously initialized.
+// Because the standard Features object depends on D-Bus, it can't generally be
+// initialized at program startup. This makes it difficult to use in other
+// objects constructed at start up time. The wrapper simplifies this by
+// providing an object that checks if the wrapped instance is available yet, and
+// falls back to the default value if it is not.
+class AsyncInitFeatures {
+ public:
+  // Construct a wrapper around a callback that will return null until the
+  // Features object is available.
+  explicit AsyncInitFeatures(base::RepeatingCallback<Features*()> getter);
+
+  // Construct a wrapper around a pre-existing features object that always
+  // exists. This seems redundant (why wrap the object at all?) but is helpful
+  // when testing uses that normally need to be wrapped but don't need to be
+  // wrapped in test.
+  explicit AsyncInitFeatures(Features& features);
+
+  AsyncInitFeatures(const AsyncInitFeatures&) = delete;
+  AsyncInitFeatures& operator=(const AsyncInitFeatures&) = delete;
+
+  // Provides the same value as Features::IsFeatureEnabled if it is available,
+  // otherwise provides the default value for the feature.
+  bool IsFeatureEnabled(Features::ActiveFeature active_feature);
+
+ private:
+  base::RepeatingCallback<Features*()> getter_;
 };
 
 }  // namespace cryptohome

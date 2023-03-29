@@ -20,8 +20,6 @@
 #include <cryptohome/cryptorecovery/cryptorecovery.pb.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
-#include <dbus/bus.h>
-#include <dbus/mock_bus.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/backend/mock_backend.h>
@@ -42,6 +40,7 @@
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/fake_features.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/features.h"
 #include "cryptohome/le_credential_manager_impl.h"
@@ -318,15 +317,16 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
   UserSessionMap user_session_map_;
   KeysetManagement keyset_management_{&platform_, &crypto_,
                                       std::make_unique<VaultKeysetFactory>()};
+  FakeFeaturesForTesting features_;
   AuthBlockUtilityImpl auth_block_utility_{
-      &keyset_management_, &crypto_, &platform_,
+      &keyset_management_,
+      &crypto_,
+      &platform_,
+      &features_.async,
       FingerprintAuthBlockService::MakeNullService(),
       BiometricsAuthBlockService::NullGetter()};
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
-  scoped_refptr<NiceMock<dbus::MockBus>> dbus_bus_ =
-      base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
-  Features features_{dbus_bus_, true /*testing*/};
 
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
@@ -335,7 +335,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
                                          &auth_block_utility_,
                                          &auth_factor_manager_,
                                          &user_secret_stash_storage_,
-                                         &features_};
+                                         &features_.object};
 };
 
 class AuthSessionWithTpmSimulatorUssMigrationTest
@@ -353,7 +353,8 @@ class AuthSessionWithTpmSimulatorUssMigrationTest
     uss_experiment_override_ =
         std::make_unique<SetUssExperimentOverride>(enable_uss);
 
-    features_.SetDefaultForFeature(Features::kUSSMigration, true /*enabled*/);
+    features_.object.SetDefaultForFeature(Features::kUSSMigration,
+                                          /*enabled=*/true);
   }
 
  private:

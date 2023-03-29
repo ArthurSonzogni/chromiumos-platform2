@@ -17,7 +17,6 @@
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
-#include <dbus/mock_bus.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/factory/factory_impl.h>
@@ -37,6 +36,7 @@
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/fake_features.h"
 #include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
@@ -130,7 +130,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         &crypto_, &platform_, &user_session_map_, &keyset_management_,
         &auth_block_utility_, &auth_factor_manager_,
         &user_secret_stash_storage_);
-    features_ = std::make_unique<Features>(dbus_bus_, true /*testing*/);
     // Initializing UserData class.
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
@@ -147,7 +146,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     userdataauth_.set_mount_task_runner(
         task_environment_.GetMainThreadTaskRunner());
     userdataauth_.set_auth_block_utility(&auth_block_utility_);
-    userdataauth_.set_features(features_.get());
+    userdataauth_.set_features(&features_.object);
     file_system_keyset_ = FileSystemKeyset::CreateRandom();
     AddUser(kUsername, kPassword);
     PrepareDirectoryStructure();
@@ -413,8 +412,12 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   UserSessionMap user_session_map_;
   KeysetManagement keyset_management_{&platform_, &crypto_,
                                       CreateMockVaultKeysetFactory()};
+  FakeFeaturesForTesting features_;
   AuthBlockUtilityImpl auth_block_utility_{
-      &keyset_management_, &crypto_, &platform_,
+      &keyset_management_,
+      &crypto_,
+      &platform_,
+      &features_.async,
       FingerprintAuthBlockService::MakeNullService(),
       BiometricsAuthBlockService::NullGetter()};
   NiceMock<MockAuthBlockUtility> mock_auth_block_utility_;
@@ -443,9 +446,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       user_activity_timestamp_manager_;
   NiceMock<MockInstallAttributes> install_attrs_;
   UserDataAuth userdataauth_;
-  scoped_refptr<NiceMock<dbus::MockBus>> dbus_bus_ =
-      base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
-  std::unique_ptr<Features> features_;
 
   // Store user info for users that will be setup.
   std::vector<UserInfo> users_;

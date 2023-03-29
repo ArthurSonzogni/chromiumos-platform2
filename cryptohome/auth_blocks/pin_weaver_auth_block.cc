@@ -147,16 +147,20 @@ CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
 }
 
 std::unique_ptr<AuthBlock> PinWeaverAuthBlock::New(
-    LECredentialManager* le_manager) {
+    AsyncInitFeatures& features, LECredentialManager* le_manager) {
   if (le_manager) {
     return std::make_unique<SyncToAsyncAuthBlockAdapter>(
-        std::make_unique<PinWeaverAuthBlock>(le_manager));
+        std::make_unique<PinWeaverAuthBlock>(features, le_manager));
   }
   return nullptr;
 }
 
-PinWeaverAuthBlock::PinWeaverAuthBlock(LECredentialManager* le_manager)
-    : SyncAuthBlock(kLowEntropyCredential), le_manager_(le_manager) {
+PinWeaverAuthBlock::PinWeaverAuthBlock(AsyncInitFeatures& features,
+                                       LECredentialManager* le_manager)
+    : SyncAuthBlock(kLowEntropyCredential),
+      features_(&features),
+      le_manager_(le_manager) {
+  CHECK(features_);
   CHECK_NE(le_manager, nullptr);
 }
 

@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <utility>
+#include "base/functional/bind.h"
 
 #include <base/check.h>
 #include <base/no_destructor.h>
@@ -13,18 +14,21 @@
 #include <featured/feature_library.h>
 
 namespace cryptohome {
+namespace {
 
-const VariationsFeature& Features::GetVariationFeatureFor(
-    ActiveFeature active_feature) {
+const VariationsFeature& GetVariationFeatureFor(
+    Features::ActiveFeature active_feature) {
   switch (active_feature) {
-    case kUSSMigration:
+    case Features::kUSSMigration:
       return kCrOSLateBootMigrateToUserSecretStash;
-    case kModernPin:
+    case Features::kModernPin:
       return kCrOSLateBootEnableModernPin;
-    case KMigratePin:
+    case Features::KMigratePin:
       return kCrOSLateBootMigrateToModernPin;
   }
 }
+
+}  // namespace
 
 Features::Features(scoped_refptr<dbus::Bus> bus, bool test_instance)
     : test_instance_(test_instance) {
@@ -49,6 +53,23 @@ void Features::SetDefaultForFeature(ActiveFeature active_feature,
   CHECK(test_instance_);
   fake_platform_features_ptr_->SetEnabled(
       GetVariationFeatureFor(active_feature).name, enabled);
+}
+
+AsyncInitFeatures::AsyncInitFeatures(
+    base::RepeatingCallback<Features*()> getter)
+    : getter_(std::move(getter)) {}
+
+AsyncInitFeatures::AsyncInitFeatures(Features& features)
+    : AsyncInitFeatures(base::BindRepeating(
+          [](Features* features) { return features; }, &features)) {}
+
+bool AsyncInitFeatures::IsFeatureEnabled(
+    Features::ActiveFeature active_feature) {
+  if (Features* features = getter_.Run()) {
+    return features->IsFeatureEnabled(active_feature);
+  }
+  const auto& variations_feature = GetVariationFeatureFor(active_feature);
+  return variations_feature.default_state == FEATURE_ENABLED_BY_DEFAULT;
 }
 
 }  // namespace cryptohome
