@@ -73,6 +73,8 @@ if (use.test) {
   executable("libipp_test") {
     sources = [
       "attribute_test.cc",
+      "binary_content.cc",
+      "binary_content.h",
       "colls_view_test.cc",
       "errors_test.cc",
       "frame_test.cc",
