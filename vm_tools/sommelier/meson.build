@@ -196,10 +196,16 @@ executable('sommelier',
 )
 
 if get_option('with_tests')
+  testing_include_directory = include_directories('testing')
+
   sommelier_test = executable('sommelier_test',
     install: true,
     sources: [
-      'sommelier_test.cc',
+      'sommelier-test.cc',
+      'sommelier-test-main.cc',
+      'sommelier-window-test.cc',
+      'testing/mock-wayland-channel.cc',
+      'testing/sommelier-test-util.cc',
     ] + wl_outs,
     link_with: libsommelier,
     dependencies: [
@@ -208,7 +214,7 @@ if get_option('with_tests')
       dependency('pixman-1')
     ],
     cpp_args: cpp_args + sommelier_defines,
-    include_directories: includes,
+    include_directories: includes + testing_include_directory,
   )
 
   test('sommelier_test', sommelier_test)
