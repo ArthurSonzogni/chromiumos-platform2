@@ -25,6 +25,10 @@ generate_mojom_bindings("cros_healthd_mojo_bindings") {
     "nullable_primitives.mojom",
     "wilco_ec.mojom",
   ]
+  mojo_extra_args = [
+    "--typemap",
+    rebase_path("//diagnostics/mojom/external/type_mappings.json"),
+  ]
 }
 
 generate_mojom_bindings("wilco_dtc_supportd_mojo_bindings") {
