@@ -13,7 +13,7 @@
 #include <vector>
 
 #include <base/functional/callback.h>
-#include <base/run_loop.h>
+#include <base/test/test_future.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <gmock/gmock.h>
@@ -65,8 +65,8 @@ class SocketForwarderTest : public ::testing::Test {
 };
 
 TEST_F(SocketForwarderTest, ForwardDataAndClose) {
-  base::RunLoop loop;
-  forwarder_->SetStopQuitClosureForTesting(loop.QuitClosure());
+  base::test::TestFuture<void> signal;
+  forwarder_->SetStopQuitClosureForTesting(signal.GetCallback());
   forwarder_->Start();
 
   std::vector<char> msg(kDataSize, 1);
@@ -77,7 +77,7 @@ TEST_F(SocketForwarderTest, ForwardDataAndClose) {
   EXPECT_NE(shutdown(peer0_->fd(), SHUT_WR), -1);
   EXPECT_NE(shutdown(peer1_->fd(), SHUT_WR), -1);
 
-  loop.Run();
+  EXPECT_TRUE(signal.Wait());
 
   EXPECT_FALSE(forwarder_->IsRunning());
 
@@ -92,14 +92,14 @@ TEST_F(SocketForwarderTest, ForwardDataAndClose) {
 }
 
 TEST_F(SocketForwarderTest, PeerSignalEPOLLHUP) {
-  base::RunLoop loop;
-  forwarder_->SetStopQuitClosureForTesting(loop.QuitClosure());
+  base::test::TestFuture<void> signal;
+  forwarder_->SetStopQuitClosureForTesting(signal.GetCallback());
   forwarder_->Start();
 
   // Close the destination peer.
   peer1_.reset();
 
-  loop.Run();
+  EXPECT_TRUE(signal.Wait());
 
   EXPECT_FALSE(forwarder_->IsRunning());
 }

@@ -17,6 +17,7 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/task/bind_post_task.h>
 #include <base/time/time.h>
 
 namespace patchpanel {
@@ -71,7 +72,8 @@ bool SocketForwarder::IsRunning() const {
 }
 
 void SocketForwarder::SetStopQuitClosureForTesting(base::OnceClosure closure) {
-  stop_quit_closure_for_testing_ = std::move(closure);
+  stop_quit_closure_for_testing_ =
+      BindPostTaskToCurrentDefault(std::move(closure));
 }
 
 void SocketForwarder::Run() {
