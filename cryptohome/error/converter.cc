@@ -23,75 +23,35 @@ namespace error {
 
 namespace {
 
-// Functions for mapping the ErrorAction in cryptohome into PossibleAction and
-// PrimaryAction that the chromium side can understand.
-std::optional<user_data_auth::PrimaryAction> ErrorActionToPrimaryAction(
-    ErrorAction err) {
-  switch (err) {
-    // Explicitly lists out all error actions to return nullopt instead of using
-    // the default case, such that compile errors are emitted when a new entry
-    // is introduced in the enum but not added here.
-    case ErrorAction::kNull:
-    case ErrorAction::kRetry:
-    case ErrorAction::kReboot:
-    case ErrorAction::kAuth:
-    case ErrorAction::kDeleteVault:
-    case ErrorAction::kPowerwash:
-    case ErrorAction::kDevCheckUnexpectedState:
-    case ErrorAction::kFatal:
-      return std::nullopt;
-    // Primary actions:
-    case ErrorAction::kCreateRequired:
-      return user_data_auth::PrimaryAction::PRIMARY_CREATE_REQUIRED;
-    case ErrorAction::kNotifyOldEncryption:
-      return user_data_auth::PrimaryAction::
-          PRIMARY_NOTIFY_OLD_ENCRYPTION_POLICY;
-    case ErrorAction::kResumePreviousMigration:
-      return user_data_auth::PrimaryAction::PRIMARY_RESUME_PREVIOUS_MIGRATION;
-    case ErrorAction::kTpmUpdateRequired:
+user_data_auth::PrimaryAction PrimaryActionToProto(PrimaryAction action) {
+  switch (action) {
+    case PrimaryAction::kTpmUpdateRequired:
       return user_data_auth::PrimaryAction::PRIMARY_TPM_UDPATE_REQUIRED;
-    case ErrorAction::kTpmNeedsReboot:
-      return user_data_auth::PrimaryAction::PRIMARY_TPM_NEEDS_REBOOT;
-    case ErrorAction::kTpmLockout:
+    case PrimaryAction::kTpmLockout:
       return user_data_auth::PrimaryAction::PRIMARY_TPM_LOCKOUT;
-    case ErrorAction::kIncorrectAuth:
+    case PrimaryAction::kIncorrectAuth:
       return user_data_auth::PrimaryAction::PRIMARY_INCORRECT_AUTH;
-    case ErrorAction::kLeLockedOut:
+    case PrimaryAction::kLeLockedOut:
       return user_data_auth::PrimaryAction::PRIMARY_LE_LOCKED_OUT;
   }
 }
 
-std::optional<user_data_auth::PossibleAction> ErrorActionToPossibleAction(
-    ErrorAction err) {
-  switch (err) {
-    // Explicitly lists out all error actions to return nullopt instead of using
-    // the default case, such that compile errors are emitted when a new entry
-    // is introduced in the enum but not added here.
-    case ErrorAction::kNull:
-    case ErrorAction::kCreateRequired:
-    case ErrorAction::kNotifyOldEncryption:
-    case ErrorAction::kResumePreviousMigration:
-    case ErrorAction::kTpmUpdateRequired:
-    case ErrorAction::kTpmNeedsReboot:
-    case ErrorAction::kTpmLockout:
-    case ErrorAction::kIncorrectAuth:
-    case ErrorAction::kLeLockedOut:
-      return std::nullopt;
-    // Possible actions:
-    case ErrorAction::kRetry:
+user_data_auth::PossibleAction PossibleActionToProto(PossibleAction action) {
+  switch (action) {
+    case PossibleAction::kRetry:
       return user_data_auth::PossibleAction::POSSIBLY_RETRY;
-    case ErrorAction::kReboot:
+    case PossibleAction::kReboot:
       return user_data_auth::PossibleAction::POSSIBLY_REBOOT;
-    case ErrorAction::kAuth:
+    case PossibleAction::kAuth:
       return user_data_auth::PossibleAction::POSSIBLY_AUTH;
-    case ErrorAction::kDeleteVault:
+    case PossibleAction::kDeleteVault:
       return user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT;
-    case ErrorAction::kPowerwash:
+    case PossibleAction::kPowerwash:
       return user_data_auth::PossibleAction::POSSIBLY_POWERWASH;
-    case ErrorAction::kDevCheckUnexpectedState:
+    case PossibleAction::kDevCheckUnexpectedState:
       return user_data_auth::PossibleAction::
           POSSIBLY_DEV_CHECK_UNEXPECTED_STATE;
-    case ErrorAction::kFatal:
+    case PossibleAction::kFatal:
       return user_data_auth::PossibleAction::POSSIBLY_FATAL;
   }
 }
@@ -114,41 +74,31 @@ std::string ErrorIDFromStack(
 // PrimaryAction means that cryptohome is certain that an action will resolve
 // the issue, or there's a specific reason why it failed. PossibleAction means
 // that cryptohome is uncertain if some actions would resolve the issue but it's
-// worth a try anyway.
+// worth a try anyway. Currently when there are multiple primary actions in the
+// stack, the first one (upper-layer) is used. This behavior might be changed in
+// the future.
+// TODO(b/275676828): Determine best way to choose one primary action from the
+// stack.
 void ActionsFromStack(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& stack,
-    user_data_auth::PrimaryAction* primary,
-    std::set<user_data_auth::PossibleAction>* possible) {
+    std::optional<PrimaryAction>& primary,
+    PossibleActions& possible) {
   // Check to see if we've any PrimaryAction in the stack.
-  *primary = user_data_auth::PrimaryAction::PRIMARY_NONE;
   for (const auto& err : stack.const_range()) {
     // NOTE(b/229708597) The underlying StatusChain will prohibit the iteration
     // of the stack soon, and therefore other users of StatusChain should avoid
     // iterating through the StatusChain without consulting the owner of the
     // bug.
-    for (const auto& a : err->local_actions()) {
-      auto primary_result = ErrorActionToPrimaryAction(a);
-      if (primary_result.has_value()) {
-        // The recommended action is a PrimaryAction.
-        if (*primary != user_data_auth::PrimaryAction::PRIMARY_NONE) {
-          LOG(WARNING) << "Multiple PrimaryAction in an error, got: "
-                       << static_cast<int>(*primary) << " and "
-                       << static_cast<int>(*primary_result);
-        }
-        *primary = *primary_result;
-      }
-
-      // Obtain the possible actions while we're at it.
-      auto possible_result = ErrorActionToPossibleAction(a);
-      if (possible_result) {
-        possible->insert(*possible_result);
-      }
+    if (std::holds_alternative<PrimaryAction>(err->local_actions())) {
+      primary = std::get<PrimaryAction>(err->local_actions());
+      break;
     }
+    possible |= std::get<PossibleActions>(err->local_actions());
   }
 
-  if (*primary != user_data_auth::PrimaryAction::PRIMARY_NONE) {
+  if (primary.has_value()) {
     // If we are sure, we'll not propose actions that we're not certain about.
-    possible->clear();
+    possible.reset();
     return;
   }
 
@@ -193,12 +143,19 @@ user_data_auth::CryptohomeErrorInfo CryptohomeErrorToUserDataAuthError(
 
   // Get the location and recommended actions.
   result.set_error_id(ErrorIDFromStack(err));
-  user_data_auth::PrimaryAction primary;
-  std::set<user_data_auth::PossibleAction> possible;
-  ActionsFromStack(err, &primary, &possible);
-  result.set_primary_action(primary);
-  for (const auto& a : possible) {
-    result.add_possible_actions(a);
+  std::optional<PrimaryAction> primary;
+  PossibleActions possible;
+  ActionsFromStack(err, primary, possible);
+  if (primary.has_value()) {
+    result.set_primary_action(PrimaryActionToProto(*primary));
+  } else {
+    result.set_primary_action(user_data_auth::PrimaryAction::PRIMARY_NONE);
+    for (size_t i = 0; i < possible.size(); ++i) {
+      if (possible[i]) {
+        result.add_possible_actions(
+            PossibleActionToProto(static_cast<PossibleAction>(i)));
+      }
+    }
   }
 
   // Get the legacy CryptohomeErrorCode as well.

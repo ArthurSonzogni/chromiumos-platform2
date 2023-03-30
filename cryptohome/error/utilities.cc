@@ -13,14 +13,35 @@ namespace error {
 template <typename ErrorType>
 bool ContainsActionInStack(
     const hwsec_foundation::status::StatusChain<ErrorType>& error,
-    const ErrorAction action) {
+    PrimaryAction action) {
   for (const auto& err : error.const_range()) {
     // NOTE(b/229708597) The underlying StatusChain will prohibit the iteration
     // of the stack soon, and therefore other users of StatusChain should avoid
     // iterating through the StatusChain without consulting the owner of the
     // bug.
-    const auto actions = err->local_actions();
-    if (actions.count(action) != 0) {
+    if (!std::holds_alternative<PrimaryAction>(err->local_actions())) {
+      continue;
+    }
+    if (std::get<PrimaryAction>(err->local_actions()) == action) {
+      return true;
+    }
+  }
+  return false;
+}
+
+template <typename ErrorType>
+bool ContainsActionInStack(
+    const hwsec_foundation::status::StatusChain<ErrorType>& error,
+    PossibleAction action) {
+  for (const auto& err : error.const_range()) {
+    // NOTE(b/229708597) The underlying StatusChain will prohibit the iteration
+    // of the stack soon, and therefore other users of StatusChain should avoid
+    // iterating through the StatusChain without consulting the owner of the
+    // bug.
+    if (std::holds_alternative<PrimaryAction>(err->local_actions())) {
+      continue;
+    }
+    if (std::get<PossibleActions>(err->local_actions())[action]) {
       return true;
     }
   }
@@ -30,13 +51,22 @@ bool ContainsActionInStack(
 // Instantiate for common types.
 template bool ContainsActionInStack(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& error,
-    const ErrorAction action);
+    PrimaryAction action);
 template bool ContainsActionInStack(
     const hwsec_foundation::status::StatusChain<CryptohomeCryptoError>& error,
-    const ErrorAction action);
+    PrimaryAction action);
 template bool ContainsActionInStack(const hwsec_foundation::status::StatusChain<
                                         error::CryptohomeLECredError>& error,
-                                    const ErrorAction action);
+                                    PrimaryAction action);
+template bool ContainsActionInStack(
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& error,
+    PossibleAction action);
+template bool ContainsActionInStack(
+    const hwsec_foundation::status::StatusChain<CryptohomeCryptoError>& error,
+    PossibleAction action);
+template bool ContainsActionInStack(const hwsec_foundation::status::StatusChain<
+                                        error::CryptohomeLECredError>& error,
+                                    PossibleAction action);
 
 }  // namespace error
 

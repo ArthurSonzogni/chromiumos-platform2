@@ -26,8 +26,9 @@
 #include "cryptohome/le_credential_manager.h"
 
 using ::cryptohome::error::CryptohomeCryptoError;
-using ::cryptohome::error::ErrorAction;
 using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::Hkdf;
@@ -105,7 +106,7 @@ CryptoStatus Create(LECredentialManager* le_manager,
     LOG(ERROR) << "Failed to create secret for revocation: vkk_key is not set";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRevocationNoVkkKeyInCreate),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -126,7 +127,7 @@ CryptoStatus Create(LECredentialManager* le_manager,
                     &kdf_skey)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRevocationDeriveSecretsFailedInCreate),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -170,7 +171,7 @@ CryptoStatus Create(LECredentialManager* le_manager,
     LOG(ERROR) << "vkk_key HKDF derivation failed for revocation";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRevocationHkdfFailedInCreate),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -187,7 +188,7 @@ CryptoStatus Derive(LECredentialManager* le_manager,
     LOG(ERROR) << "Failed to derive secret for revocation: vkk_key is not set";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRevocationNoVkkKeyInDerive),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -196,7 +197,7 @@ CryptoStatus Derive(LECredentialManager* le_manager,
         << "Failed to derive secret: revocation_state.le_label is not set";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRevocationNoLeLabelInDerive),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -210,7 +211,7 @@ CryptoStatus Derive(LECredentialManager* le_manager,
                     &kdf_skey)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRevocationDeriveSecretsFailedInDerive),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -242,7 +243,7 @@ CryptoStatus Derive(LECredentialManager* le_manager,
     LOG(ERROR) << "vkk_key HKDF derivation failed for revocation";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRevocationHkdfFailedInDerive),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -259,7 +260,7 @@ CryptoStatus Revoke(AuthBlockType auth_block_type,
         << "Failed to revoke secret: revocation_state.le_label is not set";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRevocationNoLeLabelInRevoke),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 

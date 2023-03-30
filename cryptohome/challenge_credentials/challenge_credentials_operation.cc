@@ -19,8 +19,10 @@ using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
 using cryptohome::error::CryptohomeCryptoError;
-using cryptohome::error::ErrorAction;
+using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::Sha256;
 using hwsec_foundation::status::MakeStatus;
@@ -56,7 +58,7 @@ void OnKeySignatureChallengeResponse(
         .Run(MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocChalCredOperationResponseInvalidInOnSigResponse),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_FATAL));
     return;
   }

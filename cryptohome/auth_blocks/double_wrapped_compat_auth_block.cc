@@ -22,8 +22,9 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 using cryptohome::error::CryptohomeCryptoError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -64,7 +65,7 @@ CryptoStatus DoubleWrappedCompatAuthBlock::Create(
   LOG(FATAL) << "Cannot create a keyset wrapped with both scrypt and TPM.";
   return MakeStatus<CryptohomeCryptoError>(
       CRYPTOHOME_ERR_LOC(kLocDoubleWrappedAuthBlockUnsupportedInCreate),
-      ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+      ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
       CryptoError::CE_OTHER_CRYPTO);
 }
 
@@ -78,7 +79,7 @@ CryptoStatus DoubleWrappedCompatAuthBlock::Derive(const AuthInput& auth_input,
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocDoubleWrappedAuthBlockInvalidBlockStateInDerive),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 

@@ -29,7 +29,7 @@ using hwsec_foundation::status::StatusChain;
 
 TEST_F(CryptohomeTPM1ErrorTest, FromTPM1ErrorSize) {
   auto tpm_err = MakeStatus<TPM1Error>(TPM_E_SIZE);
-  // TPM_E_SIZE results in TPMRetryAction::kReboot and ErrorAction::kReboot.
+  // TPM_E_SIZE results in TPMRetryAction::kReboot and PossibleAction::kReboot.
 
   auto err1 = MakeStatus<CryptohomeTPMError>(std::move(tpm_err));
 
@@ -37,14 +37,14 @@ TEST_F(CryptohomeTPM1ErrorTest, FromTPM1ErrorSize) {
   EXPECT_EQ(err1->local_location(),
             static_cast<CryptohomeError::ErrorLocation>(TPM_E_SIZE) |
                 hwsec::unified_tpm_error::kUnifiedErrorBit);
-  EXPECT_EQ(err1->local_actions(), ErrorActionSet({ErrorAction::kReboot}));
+  EXPECT_EQ(err1->local_actions(), ErrorActionSet({PossibleAction::kReboot}));
   EXPECT_EQ(err1->ToTPMRetryAction(), TPMRetryAction::kReboot);
 }
 
 TEST_F(CryptohomeTPM1ErrorTest, FromTPM1ErrorDefend) {
   auto tpm_err = MakeStatus<TPM1Error>(TPM_E_DEFEND_LOCK_RUNNING);
   // TPM_E_DEFEND_LOCK_RUNNING results in TPMRetryAction::kDefend and
-  // ErrorAction::kTpmLockout.
+  // PrimaryAction::kTpmLockout.
 
   auto err1 = MakeStatus<CryptohomeTPMError>(std::move(tpm_err));
 
@@ -53,14 +53,14 @@ TEST_F(CryptohomeTPM1ErrorTest, FromTPM1ErrorDefend) {
       err1->local_location(),
       static_cast<CryptohomeError::ErrorLocation>(TPM_E_DEFEND_LOCK_RUNNING) |
           hwsec::unified_tpm_error::kUnifiedErrorBit);
-  EXPECT_EQ(err1->local_actions(), ErrorActionSet({ErrorAction::kTpmLockout}));
+  EXPECT_EQ(err1->local_actions(), ErrorActionSet(PrimaryAction::kTpmLockout));
   EXPECT_EQ(err1->ToTPMRetryAction(), TPMRetryAction::kDefend);
 }
 
 TEST_F(CryptohomeTPM1ErrorTest, FromTPM1ErrorComm) {
   auto tpm_err = MakeStatus<TPM1Error>(TSS_E_COMM_FAILURE);
   // TSS_E_COMM_FAILURE results in TPMRetryAction::kCommunication and
-  // ErrorAction::kReboot.
+  // PossibleAction::kReboot.
 
   auto err1 = MakeStatus<CryptohomeTPMError>(std::move(tpm_err));
 
@@ -68,7 +68,7 @@ TEST_F(CryptohomeTPM1ErrorTest, FromTPM1ErrorComm) {
   EXPECT_EQ(err1->local_location(),
             static_cast<CryptohomeError::ErrorLocation>(TSS_E_COMM_FAILURE) |
                 hwsec::unified_tpm_error::kUnifiedErrorBit);
-  EXPECT_EQ(err1->local_actions(), ErrorActionSet({ErrorAction::kReboot}));
+  EXPECT_EQ(err1->local_actions(), ErrorActionSet({PossibleAction::kReboot}));
   EXPECT_EQ(err1->ToTPMRetryAction(), TPMRetryAction::kCommunication);
 }
 

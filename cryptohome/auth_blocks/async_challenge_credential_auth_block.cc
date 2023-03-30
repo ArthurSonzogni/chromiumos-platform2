@@ -29,8 +29,9 @@
 #include "cryptohome/username.h"
 
 using cryptohome::error::CryptohomeCryptoError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -44,7 +45,7 @@ CryptoStatus AsyncChallengeCredentialAuthBlock::IsSupported(Crypto& crypto) {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocAsyncChalCredAuthBlockHwsecReadyErrorInIsSupported),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
             std::move(is_ready).err_status()));
   }
@@ -52,7 +53,7 @@ CryptoStatus AsyncChallengeCredentialAuthBlock::IsSupported(Crypto& crypto) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocAsyncChalCredAuthBlockHwsecNotReadyInIsSupported),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -98,7 +99,7 @@ void AsyncChallengeCredentialAuthBlock::Create(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocAsyncChalCredAuthBlockNoKeyServiceInCreate),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr, nullptr);
     return;
@@ -109,7 +110,7 @@ void AsyncChallengeCredentialAuthBlock::Create(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocAsyncChalCredAuthBlockNoInputUserInCreate),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr, nullptr);
     return;
@@ -120,8 +121,8 @@ void AsyncChallengeCredentialAuthBlock::Create(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocAsyncChalCredAuthBlockNoInputAuthInCreate),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr, nullptr);
     return;
@@ -133,8 +134,8 @@ void AsyncChallengeCredentialAuthBlock::Create(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocAsyncChalCredAuthBlockNoInputAlgInCreate),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr, nullptr);
     return;
@@ -220,7 +221,7 @@ void AsyncChallengeCredentialAuthBlock::CreateContinue(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAsyncChalCredAuthBlockScryptDerivationFailedInCreate),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr, nullptr);
   }
@@ -234,8 +235,8 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocAsyncChalCredAuthBlockNoInputAuthInDerive),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr);
     return;
@@ -246,7 +247,7 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocAsyncChalCredAuthBlockNoKeyServiceInDerive),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr);
     return;
@@ -261,7 +262,7 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAsyncChalCredAuthBlockInvalidBlockStateInDerive),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_FATAL),
         nullptr);
     return;
@@ -275,7 +276,7 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAsyncChalCredAuthBlockNoChallengeInfoInDerive),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr);
     return;
@@ -291,7 +292,7 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAsyncChalCredAuthBlockNoAlgorithmInfoInDerive),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr);
     return;

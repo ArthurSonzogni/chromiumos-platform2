@@ -33,8 +33,9 @@
 #include "cryptohome/vault_keyset.pb.h"
 
 using cryptohome::error::CryptohomeCryptoError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::CreateSecureRandomBlob;
@@ -59,7 +60,7 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocTpmNotBoundToPcrAuthBlockHwsecReadyErrorInIsSupported),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
             std::move(is_ready).err_status()));
   }
@@ -67,7 +68,7 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocTpmNotBoundToPcrAuthBlockHwsecNotReadyInIsSupported),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -78,7 +79,7 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
         CRYPTOHOME_ERR_LOC(
             kLocTpmNotBoundToPcrAuthBlockNoKeyLoaderInIsSupported),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -112,7 +113,7 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
     LOG(ERROR) << "Missing user_input";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocTpmNotBoundToPcrAuthBlockNoUserInputInDerive),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -124,7 +125,7 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
         CRYPTOHOME_ERR_LOC(
             kLocTpmNotBoundToPcrAuthBlockInvalidBlockStateInDerive),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -132,16 +133,16 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
     LOG(ERROR) << "Invalid TpmNotBoundToPcrAuthBlockState: missing salt";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocTpmNotBoundToPcrAuthBlockNoSaltInDerive),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   if (!tpm_state->tpm_key.has_value()) {
     LOG(ERROR) << "Invalid TpmNotBoundToPcrAuthBlockState: missing tpm_key";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocTpmNotBoundToPcrAuthBlockNoTpmKeyInDerive),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   if (!tpm_state->scrypt_derived.has_value()) {
@@ -150,8 +151,8 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocTpmNotBoundToPcrAuthBlockNoScryptDerivedInDerive),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -183,15 +184,14 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
     if (!tpm_state->tpm_public_key_hash.has_value()) {
       return MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(kLocTpmNotBoundToPcrAuthBlockNoPubKeyHashInDerive),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kAuth}),
           CryptoError::CE_NO_PUBLIC_KEY_HASH);
     }
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocTpmNotBoundToPcrAuthBlockDecryptFailedInDerive),
-               ErrorActionSet(
-                   {ErrorAction::kIncorrectAuth, ErrorAction::kAuth}))
+               ErrorActionSet(PrimaryAction::kIncorrectAuth))
         .Wrap(std::move(error));
   }
 
@@ -207,7 +207,7 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
     LOG(ERROR) << "Missing user_input";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocTpmNotBoundToPcrAuthBlockNoUserInputInCreate),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -220,8 +220,8 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocTpmNotBoundToPcrAuthBlockNoCryptohomeKeyInCreate),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
-                        ErrorAction::kPowerwash}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry,
+                        PossibleAction::kPowerwash}),
         CryptoError::CE_TPM_CRYPTO);
   }
 
@@ -234,7 +234,7 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocTpmNotBoundToPcrAuthBlockScryptDeriveFailedInCreate),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -249,8 +249,8 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocTpmNotBoundToPcrAuthBlockEncryptFailedInCreate),
-               ErrorActionSet({ErrorAction::kReboot,
-                               ErrorAction::kDevCheckUnexpectedState}))
+               ErrorActionSet({PossibleAction::kReboot,
+                               PossibleAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
             std::move(result).err_status()));
   }
@@ -259,8 +259,8 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocTpmNotBoundToPcrAuthBlockObscureMessageFailedInCreate),
-        ErrorActionSet(
-            {ErrorAction::kReboot, ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kReboot,
+                        PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_TPM_REBOOT);
   }
 
@@ -313,7 +313,7 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
       return MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(
               kLocTpmNotBoundToPcrAuthBlockScryptDeriveFailedInDecrypt),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           CryptoError::CE_OTHER_FATAL);
     }
   } else {
@@ -321,7 +321,7 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
       return MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(
               kLocTpmNotBoundToPcrAuthBlockPasskeyToAesKeyFailedInDecrypt),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           CryptoError::CE_OTHER_CRYPTO);
     }
   }
@@ -331,8 +331,8 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocTpmNotBoundToPcrAuthBlockUnobscureMessageFailedInDecrypt),
-        ErrorActionSet(
-            {ErrorAction::kReboot, ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kReboot,
+                        PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_TPM_REBOOT);
   }
 
@@ -347,9 +347,9 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocTpmNotBoundToPcrAuthBlockDecryptFailedInDecrypt),
-               ErrorActionSet({ErrorAction::kReboot,
-                               ErrorAction::kDevCheckUnexpectedState,
-                               ErrorAction::kAuth}))
+               ErrorActionSet({PossibleAction::kReboot,
+                               PossibleAction::kDevCheckUnexpectedState,
+                               PossibleAction::kAuth}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
             std::move(result).err_status()));
   }
@@ -366,7 +366,7 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
       return MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(
               kLocTpmNotBoundToPcrAuthBlockVKKConversionFailedInDecrypt),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           CryptoError::CE_OTHER_FATAL);
     }
   }

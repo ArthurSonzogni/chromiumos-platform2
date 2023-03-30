@@ -102,7 +102,8 @@ class GenericAuthBlockFunctions {
   CryptoStatus IsSupportedImpl(AuthBlockType auth_block_type, TypeContainer<>) {
     return hwsec_foundation::status::MakeStatus<error::CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocGenericAuthBlockIsSupportedNotFound),
-        error::ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
+        error::ErrorActionSet(
+            {error::PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 

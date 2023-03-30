@@ -44,8 +44,9 @@ using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
 using cryptohome::cryptorecovery::RecoveryCryptoImpl;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeLECredError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 
 using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;
@@ -440,7 +441,7 @@ TEST(PinWeaverAuthBlockTest, CreateFailureLeManager) {
   NiceMock<MockLECredentialManager> le_cred_manager_fail;
   ON_CALL(le_cred_manager_fail, InsertCredential(_, _, _, _, _, _, _))
       .WillByDefault(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LECredError::LE_CRED_ERROR_HASH_TREE));
 
   PinWeaverAuthBlock auth_block_fail(&le_cred_manager_fail);
@@ -682,7 +683,7 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
 
   ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
       .WillByDefault(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LECredError::LE_CRED_ERROR_INVALID_LE_SECRET));
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
@@ -728,7 +729,7 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureLeFiniteTimeout) {
 
   ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
       .WillByDefault(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LECredError::LE_CRED_ERROR_TOO_MANY_ATTEMPTS));
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
@@ -769,38 +770,38 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
 
   ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
       .WillByDefault(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LE_CRED_ERROR_HASH_TREE));
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
       .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LE_CRED_ERROR_INVALID_LE_SECRET))
       .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LE_CRED_ERROR_INVALID_RESET_SECRET))
       .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LE_CRED_ERROR_TOO_MANY_ATTEMPTS))
       .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LE_CRED_ERROR_HASH_TREE))
       .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LE_CRED_ERROR_INVALID_LABEL))
       .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LE_CRED_ERROR_NO_FREE_LABEL))
       .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LE_CRED_ERROR_INVALID_METADATA))
       .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LE_CRED_ERROR_UNCLASSIFIED))
       .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LE_CRED_ERROR_LE_LOCKED))
       .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LE_CRED_ERROR_PCR_NOT_MATCH));
   EXPECT_CALL(le_cred_manager, GetDelayInSeconds(_))
       .WillRepeatedly(ReturnValue(0));

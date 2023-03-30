@@ -32,8 +32,9 @@
 #include "cryptohome/storage/file_system_keyset.h"
 
 using ::cryptohome::error::CryptohomeError;
-using ::cryptohome::error::ErrorAction;
 using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
 using ::hwsec_foundation::AesGcmDecrypt;
 using ::hwsec_foundation::AesGcmEncrypt;
 using ::hwsec_foundation::CreateSecureRandomBlob;
@@ -171,49 +172,49 @@ CryptohomeStatusOr<FileSystemKeyset> GetFileSystemKeyFromPayload(
     LOG(ERROR) << "UserSecretStashPayload has no FEK";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSNoFEKInGetFSKeyFromPayload),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (uss_payload.fnek.empty()) {
     LOG(ERROR) << "UserSecretStashPayload has no FNEK";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSNoFNEKInGetFSKeyFromPayload),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (uss_payload.fek_salt.empty()) {
     LOG(ERROR) << "UserSecretStashPayload has no FEK salt";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSNoFEKSaltInGetFSKeyFromPayload),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (uss_payload.fnek_salt.empty()) {
     LOG(ERROR) << "UserSecretStashPayload has no FNEK salt";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSNoFNEKSaltInGetFSKeyFromPayload),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (uss_payload.fek_sig.empty()) {
     LOG(ERROR) << "UserSecretStashPayload has no FEK signature";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSNoFEKSigInGetFSKeyFromPayload),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (uss_payload.fnek_sig.empty()) {
     LOG(ERROR) << "UserSecretStashPayload has no FNEK signature";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSNoFNEKSigInGetFSKeyFromPayload),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (uss_payload.chaps_key.empty()) {
     LOG(ERROR) << "UserSecretStashPayload has no Chaps key";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSNoChapsKeyInGetFSKeyFromPayload),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   FileSystemKey file_system_key = {
@@ -314,8 +315,8 @@ CryptohomeStatus GetContainerFromFlatbuffer(
   if (flatbuffer.empty()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSEmptySerializedInGetContainerFromFB),
-        ErrorActionSet({ErrorAction::kDeleteVault, ErrorAction::kAuth,
-                        ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDeleteVault, PossibleAction::kAuth,
+                        PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -325,7 +326,7 @@ CryptohomeStatus GetContainerFromFlatbuffer(
     LOG(ERROR) << "Failed to deserialize UserSecretStashContainer";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSDeserializeFailedInGetContainerFromFB),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -333,7 +334,7 @@ CryptohomeStatus GetContainerFromFlatbuffer(
     LOG(ERROR) << "UserSecretStashContainer has no algorithm set";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSNoAlgInGetContainerFromFB),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (deserialized.value().encryption_algorithm.value() !=
@@ -342,7 +343,7 @@ CryptohomeStatus GetContainerFromFlatbuffer(
                << static_cast<int>(deserialized->encryption_algorithm.value());
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSUnknownAlgInGetContainerFromFB),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -350,7 +351,7 @@ CryptohomeStatus GetContainerFromFlatbuffer(
     LOG(ERROR) << "UserSecretStash has empty ciphertext";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSNoCiphertextInGetContainerFromFB),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   *ciphertext = deserialized.value().ciphertext;
@@ -359,7 +360,7 @@ CryptohomeStatus GetContainerFromFlatbuffer(
     LOG(ERROR) << "UserSecretStash has empty IV";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSNoIVInGetContainerFromFB),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (deserialized.value().iv.size() != kAesGcmIVSize) {
@@ -368,7 +369,7 @@ CryptohomeStatus GetContainerFromFlatbuffer(
                << ", expected: " << kAesGcmIVSize;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSIVWrongSizeInGetContainerFromFB),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   *iv = deserialized.value().iv;
@@ -377,7 +378,7 @@ CryptohomeStatus GetContainerFromFlatbuffer(
     LOG(ERROR) << "UserSecretStash has empty AES-GCM tag";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSNoGCMTagInGetContainerFromFB),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (deserialized.value().gcm_tag.size() != kAesGcmTagSize) {
@@ -386,7 +387,7 @@ CryptohomeStatus GetContainerFromFlatbuffer(
                << ", expected: " << kAesGcmTagSize;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSTagWrongSizeInGetContainerFromFB),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   *tag = deserialized.value().gcm_tag;
@@ -410,7 +411,7 @@ CryptohomeStatusOr<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
                     "unwrapping.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSEmptyWrappingIDInUnwrapMKFromBlocks),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (wrapping_key.size() != kAesGcm256KeySize) {
@@ -420,7 +421,7 @@ CryptohomeStatusOr<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
                  << ".";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSWrongWKSizeInUnwrapMKFromBlocks),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -431,7 +432,7 @@ CryptohomeStatusOr<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
         << "UserSecretStash wrapped key block with the given ID not found.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSWrappedBlockNotFoundInUnwrapMKFromBlocks),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   const UserSecretStash::WrappedKeyBlock& wrapped_key_block =
@@ -446,14 +447,14 @@ CryptohomeStatusOr<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
                << ".";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSUnknownAlgInUnwrapMKFromBlocks),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (wrapped_key_block.encrypted_key.empty()) {
     LOG(ERROR) << "UserSecretStash wrapped main key has empty encrypted key.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSEmptyEncKeyInUnwrapMKFromBlocks),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (wrapped_key_block.iv.size() != kAesGcmIVSize) {
@@ -462,7 +463,7 @@ CryptohomeStatusOr<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
                << ".";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSWrongIVSizeInUnwrapMKFromBlocks),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (wrapped_key_block.gcm_tag.size() != kAesGcmTagSize) {
@@ -472,7 +473,7 @@ CryptohomeStatusOr<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
         << ".";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSWrongTagSizeInUnwrapMKFromBlocks),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -485,7 +486,7 @@ CryptohomeStatusOr<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
     LOG(ERROR) << "Failed to unwrap UserSecretStash main key";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSDecryptFailedInUnwrapMKFromBlocks),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   return main_key;
@@ -542,7 +543,7 @@ UserSecretStash::FromEncryptedContainer(const brillo::Blob& flatbuffer,
                << main_key.size() << ", expected: " << kAesGcm256KeySize;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSInvalidKeySizeInFromEncContainer),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -596,7 +597,7 @@ UserSecretStash::FromEncryptedPayload(
     LOG(ERROR) << "Failed to decrypt UserSecretStash payload";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSAesGcmFailedInFromEncPayload),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -606,7 +607,7 @@ UserSecretStash::FromEncryptedPayload(
     LOG(ERROR) << "Failed to deserialize UserSecretStashPayload";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSDeserializeFailedInFromEncPayload),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -735,7 +736,7 @@ CryptohomeStatusOr<UserMetadata> UserSecretStash::GetUserMetadata(
     LOG(ERROR) << "Failed to deserialize UserSecretStashContainer";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSDeserializeFailedInGeUserMetadata),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   return deserialized.value().user_metadata;
@@ -815,7 +816,7 @@ CryptohomeStatus UserSecretStash::AddWrappedMainKey(
     NOTREACHED() << "Empty UserSecretStash main key is passed for wrapping.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSMainKeyEmptyInAddWrappedMainKey),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
   if (wrapping_id.empty()) {
@@ -823,7 +824,7 @@ CryptohomeStatus UserSecretStash::AddWrappedMainKey(
         << "Empty wrapping ID is passed for UserSecretStash main key wrapping.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSWrappingIDEmptyInAddWrappedMainKey),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
   if (wrapping_key.size() != kAesGcm256KeySize) {
@@ -833,7 +834,7 @@ CryptohomeStatus UserSecretStash::AddWrappedMainKey(
                  << ".";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSWrappingWrongSizeInAddWrappedMainKey),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
@@ -843,8 +844,8 @@ CryptohomeStatus UserSecretStash::AddWrappedMainKey(
                   "already exists.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSDuplicateWrappingInAddWrappedMainKey),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
 
@@ -855,7 +856,7 @@ CryptohomeStatus UserSecretStash::AddWrappedMainKey(
     LOG(ERROR) << "Failed to wrap UserSecretStash main key.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSEncryptFailedInAddWrappedMainKey),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
 
@@ -918,8 +919,8 @@ CryptohomeStatusOr<brillo::Blob> UserSecretStash::GetEncryptedContainer(
     LOG(ERROR) << "Failed to serialize UserSecretStashPayload";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSPayloadSerializeFailedInGetEncContainer),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -929,8 +930,8 @@ CryptohomeStatusOr<brillo::Blob> UserSecretStash::GetEncryptedContainer(
     LOG(ERROR) << "Failed to encrypt UserSecretStash";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSPayloadEncryptFailedInGetEncContainer),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -962,8 +963,8 @@ CryptohomeStatusOr<brillo::Blob> UserSecretStash::GetEncryptedContainer(
     LOG(ERROR) << "Failed to serialize UserSecretStashContainer";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSContainerSerializeFailedInGetEncContainer),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   return serialized_contaner.value();

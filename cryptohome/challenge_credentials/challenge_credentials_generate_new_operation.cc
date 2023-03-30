@@ -23,8 +23,9 @@ using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeTPMError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -130,14 +131,14 @@ CryptoStatus ChallengeCredentialsGenerateNewOperation::StartProcessing() {
     LOG(ERROR) << "Signature sealing is disabled";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredNewNoBackend),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   if (!public_key_info_.signature_algorithm.size()) {
     LOG(ERROR) << "The key does not support any signature algorithm";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredNewNoAlgorithm),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -167,8 +168,8 @@ CryptoStatus ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
                << salt_random_bytes.status();
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(kLocChalCredNewGenerateRandomSaltFailed),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                               ErrorAction::kReboot}),
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                               PossibleAction::kReboot}),
                CryptoError::CE_OTHER_CRYPTO)
         .Wrap(MakeStatus<CryptohomeTPMError>(
             std::move(salt_random_bytes).err_status()));
@@ -192,7 +193,7 @@ ChallengeCredentialsGenerateNewOperation::StartGeneratingSaltSignature() {
     LOG(ERROR) << "Failed to choose salt signature algorithm";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredNewCantChooseSaltSignatureAlgorithm),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   salt_signature_algorithm_ = *chosen_salt_signature_algorithm;

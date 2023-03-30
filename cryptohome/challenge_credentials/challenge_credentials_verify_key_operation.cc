@@ -23,8 +23,9 @@ using brillo::Blob;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeTPMError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec::TPMError;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
@@ -146,7 +147,7 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
     Complete(&completion_callback_,
              MakeStatus<CryptohomeCryptoError>(
                  CRYPTOHOME_ERR_LOC(kLocChalCredVerifyNoAlgorithm),
-                 ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                 ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
                  CryptoError::CE_OTHER_CRYPTO));
     return;
   }
@@ -157,7 +158,7 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
     Complete(&completion_callback_,
              MakeStatus<CryptohomeCryptoError>(
                  CRYPTOHOME_ERR_LOC(kLocChalCredVerifyNoAlgorithmChosen),
-                 ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                 ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
                  CryptoError::CE_OTHER_CRYPTO));
     return;
   }
@@ -214,7 +215,7 @@ void ChallengeCredentialsVerifyKeyOperation::OnChallengeResponse(
     Complete(&completion_callback_,
              MakeStatus<CryptohomeCryptoError>(
                  CRYPTOHOME_ERR_LOC(kLocChalCredVerifyInvalidSignature),
-                 ErrorActionSet({ErrorAction::kIncorrectAuth}),
+                 ErrorActionSet(PrimaryAction::kIncorrectAuth),
                  CryptoError::CE_OTHER_CRYPTO));
     return;
   }

@@ -25,8 +25,9 @@
 
 using brillo::SecureBlob;
 using cryptohome::error::CryptohomeError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::BigNumToSecureBlob;
 using hwsec_foundation::CreateBigNumContext;
 using hwsec_foundation::EllipticCurve;

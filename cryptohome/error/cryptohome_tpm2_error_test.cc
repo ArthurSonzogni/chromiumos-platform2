@@ -29,7 +29,7 @@ using hwsec_foundation::status::StatusChain;
 
 TEST_F(CryptohomeTPM2ErrorTest, FromTPM2ErrorHandle) {
   auto tpm_err = MakeStatus<TPM2Error>(trunks::TPM_RC_HANDLE);
-  // TPM_RC_HANDLE results in TPMRetryAction::kLater and ErrorAction::kRetry.
+  // TPM_RC_HANDLE results in TPMRetryAction::kLater and PossibleAction::kRetry.
 
   auto err1 = MakeStatus<CryptohomeTPMError>(std::move(tpm_err));
 
@@ -37,14 +37,14 @@ TEST_F(CryptohomeTPM2ErrorTest, FromTPM2ErrorHandle) {
   EXPECT_EQ(err1->local_location(),
             static_cast<CryptohomeError::ErrorLocation>(trunks::TPM_RC_HANDLE) |
                 hwsec::unified_tpm_error::kUnifiedErrorBit);
-  EXPECT_EQ(err1->local_actions(), ErrorActionSet({ErrorAction::kRetry}));
+  EXPECT_EQ(err1->local_actions(), ErrorActionSet({PossibleAction::kRetry}));
   EXPECT_EQ(err1->ToTPMRetryAction(), TPMRetryAction::kLater);
 }
 
 TEST_F(CryptohomeTPM2ErrorTest, FromTPM2Error) {
   auto tpm_err = MakeStatus<TPM2Error>(trunks::TRUNKS_RC_WRITE_ERROR);
   // trunks::TRUNKS_RC_WRITE_ERROR results in TPMRetryAction::kCommunication and
-  // ErrorAction::kReboot.
+  // PossibleAction::kReboot.
 
   auto err1 = MakeStatus<CryptohomeTPMError>(std::move(tpm_err));
 
@@ -53,7 +53,7 @@ TEST_F(CryptohomeTPM2ErrorTest, FromTPM2Error) {
             static_cast<CryptohomeError::ErrorLocation>(
                 trunks::TRUNKS_RC_WRITE_ERROR) |
                 hwsec::unified_tpm_error::kUnifiedErrorBit);
-  EXPECT_EQ(err1->local_actions(), ErrorActionSet({ErrorAction::kReboot}));
+  EXPECT_EQ(err1->local_actions(), ErrorActionSet({PossibleAction::kReboot}));
   EXPECT_EQ(err1->ToTPMRetryAction(), TPMRetryAction::kCommunication);
 }
 

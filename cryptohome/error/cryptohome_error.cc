@@ -44,25 +44,20 @@ StatusChain<CryptohomeError> CryptohomeError::MakeStatusTrait::Unactioned::Wrap(
 
 StatusChain<CryptohomeError> CryptohomeError::MakeStatusTrait::operator()(
     const ErrorLocationPair& loc,
-    const std::set<Action>& actions,
+    const ErrorActionSet& actions,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec) {
   return NewStatus<CryptohomeError>(loc, std::move(actions), ec);
 }
 
 CryptohomeError::CryptohomeError(
     const ErrorLocationPair& loc,
-    const std::set<Action>& actions,
+    const ErrorActionSet& actions,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec)
     : loc_(std::move(loc)), actions_(actions), ec_(ec) {}
 
 std::string CryptohomeError::ToString() const {
   std::stringstream ss;
-  ss << "Loc: " << loc_.name() << "/" << loc_.location() << " Actions: (";
-  std::vector<std::string> actions_str;
-  for (const auto& action : actions_) {
-    actions_str.push_back(std::to_string(static_cast<int>(action)));
-  }
-  ss << base::JoinString(actions_str, ", ") << ")";
+  ss << "Loc: " << loc_.name() << "/" << loc_.location();
   return ss.str();
 }
 

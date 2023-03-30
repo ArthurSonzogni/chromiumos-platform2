@@ -7,45 +7,81 @@
 
 #include <set>
 
+#include <base/logging.h>
+
 namespace cryptohome {
 
 namespace error {
 
-// Note that entries in ErrorAction may be logged in Cryptohome*Error classes,
-// and as such should not be changed without removing the logging mentioned
-// above.
-enum class ErrorAction {
-  // This entry is not used.
-  kNull = 0,
-
-  // The entries below are specific actions on the Chromium side. See
-  // PrimaryAction enum in system_api/dbus/cryptohome/UserDataAuth.proto for
-  // documentation on each of the enums below.
-  kCreateRequired = 301,
-  kNotifyOldEncryption,
-  kResumePreviousMigration,
+// PrimaryActions are actions that cryptohome is sure about why the error
+// happened. Therefore when a primary actions is specified, no other possible
+// actions will be included in the error info. Check the ActionsFromStack
+// function to see how we determine the correct primary action when there are
+// more than one in the chain.
+enum class PrimaryAction {
+  // Note that this enum is reordered compared to when PrimaryAction and
+  // PossibleAction were in the same enum. Please refer to old code if you want
+  // to understand cryptohome error logs from previous versions.
   kTpmUpdateRequired,
-  kTpmNeedsReboot,
   kTpmLockout,
   kIncorrectAuth,
   kLeLockedOut,
+  kMaxValue = kLeLockedOut,
+};
 
-  // The entries below are generic possible resolution to an issue. See
-  // PossibleAction enum in system_api/dbus/cryptohome/UserDataAuth.proto for
-  // documentation on each of the enums below.
-  kRetry = 501,
+constexpr size_t kPrimaryActionEnumSize =
+    static_cast<size_t>(PrimaryAction::kMaxValue) + 1;
+
+// PossibleAction are actions that cryptohome isn't sure about why the error
+// happened, but recommends some possible actions that might fix the error. All
+// possible actions are included in the error info when there are no primary
+// actions.
+enum class PossibleAction {
+  kRetry,
   kReboot,
   kAuth,
   kDeleteVault,
   kPowerwash,
   kDevCheckUnexpectedState,
   kFatal,
+  kMaxValue = kFatal,
 };
 
-using ErrorActionSet = std::set<ErrorAction>;
+constexpr size_t kPossibleActionEnumSize =
+    static_cast<size_t>(PossibleAction::kMaxValue) + 1;
+
+class PossibleActions : public std::bitset<kPossibleActionEnumSize> {
+ public:
+  PossibleActions() = default;
+  explicit PossibleActions(std::initializer_list<PossibleAction> init) {
+    for (PossibleAction action : init) {
+      operator[](action) = true;
+    }
+  }
+
+  using std::bitset<kPossibleActionEnumSize>::operator[];
+
+  bool operator[](PossibleAction pos) const {
+    return bitset::operator[](static_cast<size_t>(pos));
+  }
+  reference operator[](PossibleAction pos) {
+    return bitset::operator[](static_cast<size_t>(pos));
+  }
+};
+
+// ErrorActionSet describes the actions attached in a cryptohome error location.
+// It may be either a primary action or a set of possible actions.
+class ErrorActionSet : public std::variant<PrimaryAction, PossibleActions> {
+ public:
+  using std::variant<PrimaryAction, PossibleActions>::variant;
+  // This constructor is needed to allow the
+  // ErrorActionSet({PossibleAction::X, PossibleAction::Y}) syntax.
+  ErrorActionSet(std::initializer_list<PossibleAction> init)
+      : ErrorActionSet(PossibleActions(init)) {}
+};
 
 inline ErrorActionSet NoErrorAction() {
-  return {};
+  return PossibleActions{};
 }
 
 }  // namespace error

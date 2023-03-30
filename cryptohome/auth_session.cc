@@ -70,8 +70,9 @@ using cryptohome::error::ContainsActionInStack;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::kAesBlockSize;
@@ -152,13 +153,13 @@ CryptohomeStatusOr<AuthInput> UpdateAuthInputWithResetParamsFromPasswordVk(
   if (!vault_keyset.HasWrappedResetSeed()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUpdateAuthInputNoWrappedSeedInVaultKeyset),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   if (vault_keyset.GetResetSeed().empty()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUpdateAuthInputResetSeedEmptyInVaultKeyset),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   AuthInput out_auth_input = auth_input;
@@ -184,7 +185,7 @@ CryptohomeStatus RemoveKeysetByLabel(
     LOG(WARNING) << "RemoveKeysetByLabel: key to remove not found.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionVKNotFoundInRemoveKeysetByLabel),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
   }
 
@@ -195,7 +196,7 @@ CryptohomeStatus RemoveKeysetByLabel(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocAuthSessionRemoveFailedInRemoveKeysetByLabel),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
                user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
         .Wrap(std::move(status));
   }
@@ -219,7 +220,7 @@ CryptohomeStatus CleanUpBackupKeyset(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocAuthSessionRemoveFailedInCleanUpBackupKeyset),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
                user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
         .Wrap(std::move(status));
   }
@@ -238,7 +239,7 @@ CryptohomeStatus CleanUpAllBackupKeysets(
       return MakeStatus<CryptohomeError>(
                  CRYPTOHOME_ERR_LOC(
                      kLocAuthSessionRemoveFailedInCleanUpAllBackupKeysets),
-                 ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                 ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
                  user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
           .Wrap(std::move(status));
     }
@@ -402,8 +403,8 @@ CryptohomeStatus AuthSession::ExtendTimeoutTimer(
     // AuthSession timed out before timeout_timer_.Stop() could be called.
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionTimedOutInExtend),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
-                        ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry,
+                        PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   }
 
@@ -438,8 +439,8 @@ CryptohomeStatus AuthSession::OnUserCreated() {
         LOG(ERROR) << "User secret stash creation failed";
         return MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionCreateUSSFailedInOnUserCreated),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot}),
             user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
       }
       user_secret_stash_ = std::move(uss_status).value();
@@ -464,7 +465,7 @@ void AuthSession::CreateAndPersistVaultKeyset(
     if (callback_error.ok()) {
       callback_error = MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInCallbackInAddKeyset),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           CryptoError::CE_OTHER_CRYPTO,
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
@@ -529,8 +530,8 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
       LOG(ERROR) << "AddInitialKeyset: file_system_keyset is invalid.";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNoFSKeyInAddKeyset),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kReboot}),
           user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     }
     // TODO(b/229825202): Migrate KeysetManagement and wrap the returned error.
@@ -544,8 +545,8 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
       vault_keyset_ = nullptr;
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionAddInitialFailedInAddKeyset),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kReboot}),
           user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     }
     LOG(INFO) << "AuthSession: added initial keyset " << key_data.label()
@@ -557,7 +558,7 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
       // is corrupted and the authentication completed via USS.
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNoVkInAddKeyset),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     }
     CryptohomeStatus status = keyset_management_->AddKeysetWithKeyBlobs(
@@ -588,7 +589,7 @@ void AuthSession::UpdateVaultKeyset(
     if (callback_error.ok()) {
       callback_error = MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInCallbackInUpdateKeyset),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           CryptoError::CE_OTHER_CRYPTO,
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
@@ -639,7 +640,7 @@ void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
     LOG(ERROR) << "Error in obtaining AuthBlock state for key derivation.";
     std::move(on_done).Run(MakeStatus<error::CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionBlockStateMissingInAuthViaVaultKey),
-        ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({error::PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
     return;
   }
@@ -651,7 +652,7 @@ void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
     LOG(ERROR) << "Failed to determine auth block type from auth block state";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAuthViaVaultKey),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
     return;
   }
@@ -687,7 +688,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     // it doesn't make it into the VaultKeyset::Decrypt(); so auth_lock should
     // be set here.
     if (!status.ok() &&
-        ContainsActionInStack(status, error::ErrorAction::kLeLockedOut)) {
+        ContainsActionInStack(status, error::PrimaryAction::kLeLockedOut)) {
       // Get the corresponding encrypted vault keyset for the user and the label
       // to set the auth_locked.
       std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
@@ -704,7 +705,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
       status = MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(
               kLocAuthSessionNullParamInCallbackInLoadVaultKeyset),
-          ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({error::PossibleAction::kDevCheckUnexpectedState}),
           CryptoError::CE_OTHER_CRYPTO,
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
@@ -855,7 +856,7 @@ void AuthSession::AuthenticateAuthFactor(
     LOG(ERROR) << "Unexpected AuthInput type.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionNoAuthFactorTypeInAuthAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
@@ -871,7 +872,7 @@ void AuthSession::AuthenticateAuthFactor(
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthSessionMismatchedZeroLabelSizeAuthAuthFactor),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_INVALID_ARGUMENT));
         return;
@@ -889,7 +890,7 @@ void AuthSession::AuthenticateAuthFactor(
                            auth_intent_, *request_auth_factor_type)) {
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionVerifierNotValidInAuthAuthFactor),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
         return;
@@ -919,7 +920,7 @@ void AuthSession::AuthenticateAuthFactor(
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthSessionMismatchedSingleLabelSizeAuthAuthFactor),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_INVALID_ARGUMENT));
         return;
@@ -967,7 +968,7 @@ void AuthSession::AuthenticateAuthFactor(
                      << username_;
           std::move(on_done).Run(MakeStatus<CryptohomeError>(
               CRYPTOHOME_ERR_LOC(kLocAuthSessionUserNotFoundInAuthAuthFactor),
-              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
               user_data_auth::CryptohomeErrorCode::
                   CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND));
           return;
@@ -976,7 +977,7 @@ void AuthSession::AuthenticateAuthFactor(
                    << auth_factor_labels[0];
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInAuthAuthFactor),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_KEY_NOT_FOUND));
         return;
@@ -1001,7 +1002,7 @@ void AuthSession::AuthenticateAuthFactor(
               << "Unexpected mismatch in type from label and auth_input.";
           std::move(on_done).Run(MakeStatus<CryptohomeError>(
               CRYPTOHOME_ERR_LOC(kLocAuthSessionMismatchedAuthTypes),
-              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
               user_data_auth::CryptohomeErrorCode::
                   CRYPTOHOME_ERROR_INVALID_ARGUMENT));
           return;
@@ -1031,7 +1032,7 @@ void AuthSession::AuthenticateAuthFactor(
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthSessionMismatchedMultipLabelSizeAuthAuthFactor),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_INVALID_ARGUMENT));
         return;
@@ -1055,7 +1056,7 @@ void AuthSession::AuthenticateAuthFactor(
             std::move(on_done).Run(MakeStatus<CryptohomeError>(
                 CRYPTOHOME_ERR_LOC(
                     kLocAuthSessionUserNotFoundInMultiLabelAuthAuthFactor),
-                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
                 user_data_auth::CryptohomeErrorCode::
                     CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND));
             return;
@@ -1064,7 +1065,7 @@ void AuthSession::AuthenticateAuthFactor(
           std::move(on_done).Run(MakeStatus<CryptohomeError>(
               CRYPTOHOME_ERR_LOC(
                   kLocAuthSessionFactorNotFoundInMultiLabelAuthAuthFactor),
-              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
               user_data_auth::CryptohomeErrorCode::
                   CRYPTOHOME_ERROR_KEY_NOT_FOUND));
           return;
@@ -1078,7 +1079,7 @@ void AuthSession::AuthenticateAuthFactor(
               << "Unexpected mismatch in type from label and auth_input.";
           std::move(on_done).Run(MakeStatus<CryptohomeError>(
               CRYPTOHOME_ERR_LOC(kLocAuthSessionMultiLabelMismatchedAuthTypes),
-              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
               user_data_auth::CryptohomeErrorCode::
                   CRYPTOHOME_ERROR_INVALID_ARGUMENT));
           return;
@@ -1092,7 +1093,7 @@ void AuthSession::AuthenticateAuthFactor(
           std::move(on_done).Run(MakeStatus<CryptohomeCryptoError>(
               CRYPTOHOME_ERR_LOC(
                   kLocAuthSessionInvalidBlockTypeInAuthAuthFactor),
-              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
               CryptoError::CE_OTHER_CRYPTO));
           return;
         }
@@ -1103,7 +1104,7 @@ void AuthSession::AuthenticateAuthFactor(
             std::move(on_done).Run(MakeStatus<CryptohomeCryptoError>(
                 CRYPTOHOME_ERR_LOC(
                     kLocAuthSessionMismatchedBlockTypesInAuthAuthFactor),
-                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
                 CryptoError::CE_OTHER_CRYPTO));
             return;
           }
@@ -1119,7 +1120,7 @@ void AuthSession::AuthenticateAuthFactor(
                         "with USS storage type.";
           std::move(on_done).Run(MakeStatus<CryptohomeError>(
               CRYPTOHOME_ERR_LOC(kLocAuthSessionMultiLabelInvalidStorageType),
-              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
               user_data_auth::CryptohomeErrorCode::
                   CRYPTOHOME_ERROR_INVALID_ARGUMENT));
           return;
@@ -1167,7 +1168,7 @@ void AuthSession::RemoveAuthFactor(
   if (status_ != AuthStatus::kAuthStatusAuthenticated) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUnauthedInRemoveAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
     return;
   }
@@ -1181,7 +1182,7 @@ void AuthSession::RemoveAuthFactor(
     LOG(ERROR) << "AuthSession: Key to remove not found: " << auth_factor_label;
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInRemoveAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
     return;
   }
@@ -1190,7 +1191,7 @@ void AuthSession::RemoveAuthFactor(
     LOG(ERROR) << "AuthSession: Cannot remove the last auth factor.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionLastFactorInRemoveAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
     return;
@@ -1202,7 +1203,7 @@ void AuthSession::RemoveAuthFactor(
     LOG(ERROR) << "AuthSession: Cannot remove the authenticated VaultKeyset.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionRemoveSameVKInRemoveAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
     return;
@@ -1238,7 +1239,7 @@ void AuthSession::RemoveAuthFactor(
     LOG(ERROR) << "AuthSession: Failed to remove VaultKeyset.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionRemoveVKFailedInRemoveAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
     return;
@@ -1323,7 +1324,7 @@ CryptohomeStatus AuthSession::RemoveAuthFactorFromUssInMemory(
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocAuthSessionRemoveMainKeyFailedInRemoveSecretFromUss),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
   }
 
@@ -1340,7 +1341,7 @@ void AuthSession::UpdateAuthFactor(
   if (status_ != AuthStatus::kAuthStatusAuthenticated) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUnauthedInUpdateAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
     return;
   }
@@ -1349,7 +1350,7 @@ void AuthSession::UpdateAuthFactor(
     LOG(ERROR) << "AuthSession: Old auth factor label is empty.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionNoOldLabelInUpdateAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
@@ -1361,7 +1362,7 @@ void AuthSession::UpdateAuthFactor(
                << request.auth_factor_label();
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInUpdateAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
     return;
   }
@@ -1375,7 +1376,7 @@ void AuthSession::UpdateAuthFactor(
         << "AuthSession: Failed to parse updated auth factor parameters.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUnknownFactorInUpdateAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
@@ -1384,7 +1385,7 @@ void AuthSession::UpdateAuthFactor(
   if (request.auth_factor_label() != auth_factor_label) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionDifferentLabelInUpdateAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
@@ -1393,7 +1394,7 @@ void AuthSession::UpdateAuthFactor(
   if (stored_auth_factor->auth_factor().type() != auth_factor_type) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionDifferentTypeInUpdateAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
@@ -1442,7 +1443,7 @@ void AuthSession::UpdateAuthFactor(
       auth_factor_type != AuthFactorType::kCryptohomeRecovery) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionConverterFailsInUpdateFactorViaVK),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error));
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}), error));
     return;
   }
 
@@ -1500,7 +1501,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
     if (callback_error.ok()) {
       callback_error = MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInUpdateViaUSS),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           CryptoError::CE_OTHER_CRYPTO,
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
@@ -1631,7 +1632,7 @@ void AuthSession::PrepareAuthFactor(
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocAuthSessionInvalidAuthFactorTypeInPrepareAuthFactor),
-        ErrorActionSet({ErrorAction::kRetry}),
+        ErrorActionSet({PossibleAction::kRetry}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     std::move(on_done).Run(std::move(status));
     return;
@@ -1641,7 +1642,7 @@ void AuthSession::PrepareAuthFactor(
   if (!purpose.has_value()) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidPurposeInPrepareAuthFactor),
-        ErrorActionSet({ErrorAction::kRetry}),
+        ErrorActionSet({PossibleAction::kRetry}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     std::move(on_done).Run(std::move(status));
     return;
@@ -1675,7 +1676,7 @@ void AuthSession::PrepareAuthFactor(
     // return an invalid argument error.
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionPrepareBadAuthFactorType),
-        ErrorActionSet({ErrorAction::kRetry}),
+        ErrorActionSet({PossibleAction::kRetry}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     std::move(on_done).Run(std::move(status));
   }
@@ -1702,7 +1703,7 @@ void AuthSession::TerminateAuthFactor(
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocAuthSessionInvalidAuthFactorTypeInTerminateAuthFactor),
-        ErrorActionSet({ErrorAction::kRetry}),
+        ErrorActionSet({PossibleAction::kRetry}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     std::move(on_done).Run(std::move(status));
     return;
@@ -1713,7 +1714,7 @@ void AuthSession::TerminateAuthFactor(
   if (!auth_block_utility_->IsPrepareAuthFactorRequired(*auth_factor_type)) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionTerminateBadAuthFactorType),
-        ErrorActionSet({ErrorAction::kRetry}),
+        ErrorActionSet({PossibleAction::kRetry}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     std::move(on_done).Run(std::move(status));
     return;
@@ -1724,7 +1725,7 @@ void AuthSession::TerminateAuthFactor(
   if (iter == active_auth_factor_tokens_.end()) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionTerminateInactiveAuthFactor),
-        ErrorActionSet({ErrorAction::kRetry}),
+        ErrorActionSet({PossibleAction::kRetry}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     std::move(on_done).Run(std::move(status));
     return;
@@ -1750,13 +1751,14 @@ void AuthSession::GetRecoveryRequest(
   if (!stored_auth_factor) {
     LOG(ERROR) << "Authentication key not found: "
                << request.auth_factor_label();
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocAuthSessionFactorNotFoundInGetRecoveryRequest),
-                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-                       user_data_auth::CryptohomeErrorCode::
-                           CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionFactorNotFoundInGetRecoveryRequest),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_KEY_NOT_FOUND));
     return;
   }
 
@@ -1769,7 +1771,7 @@ void AuthSession::GetRecoveryRequest(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocWrongAuthFactorInGetRecoveryRequest),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_KEY_NOT_FOUND));
     return;
@@ -1778,13 +1780,14 @@ void AuthSession::GetRecoveryRequest(
   auto* state = std::get_if<::cryptohome::CryptohomeRecoveryAuthBlockState>(
       &(stored_auth_factor->auth_factor().auth_block_state().state));
   if (!state) {
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocNoRecoveryAuthBlockStateInGetRecoveryRequest),
-                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-                       user_data_auth::CryptohomeErrorCode::
-                           CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocNoRecoveryAuthBlockStateInGetRecoveryRequest),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_KEY_NOT_FOUND));
     return;
   }
 
@@ -1907,7 +1910,7 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAuthentication(
   if (!auth_input.has_value()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocCreateFailedInAuthInputForAuth),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
   return std::move(auth_input.value());
@@ -1925,7 +1928,7 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForMigration(
   if (!vault_keyset_) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocNoVkInAuthInputForMigration),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -1957,7 +1960,7 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
   if (!auth_input.has_value()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocCreateFailedInAuthInputForAdd),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
@@ -1979,7 +1982,7 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
       LOG(ERROR) << "Found rate-limiter with no reset secret.";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocRateLimiterNoResetSecretInAuthInputForAdd),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
     auth_input->rate_limiter_label = rate_limiter_label;
@@ -2003,7 +2006,7 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
     if (!vault_keyset_) {
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocNoVkInAuthInputForAdd),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
 
@@ -2049,8 +2052,8 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForSelectFactor(
       LOG(ERROR) << "No rate limiter ID in user metadata.";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNoRateLimiterInAuthInputForSelect),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kAuth}),
           user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
     }
 
@@ -2238,7 +2241,7 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
     if (callback_error.ok()) {
       callback_error = MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInPersistToUSS),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           CryptoError::CE_OTHER_CRYPTO,
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
@@ -2398,8 +2401,8 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocAuthSessionDeriveUSSSecretFailedInAddSecretToUSS),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
-                        ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry,
+                        PossibleAction::kDeleteVault}),
         user_data_auth::CRYPTOHOME_UPDATE_CREDENTIALS_FAILED);
   }
 
@@ -2426,7 +2429,7 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
     if (!key_blobs.reset_secret.has_value()) {
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocNewRateLimiterWithNoSecretInAddSecretToUSS),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     }
     // Note that both setters don't allow overwrite, so if we run into a
@@ -2440,14 +2443,14 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
             key_blobs.rate_limiter_label.value())) {
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAddRateLimiterLabelFailedInAddSecretToUSS),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     }
     if (!user_secret_stash_->SetRateLimiterResetSecret(
             auth_factor.type(), key_blobs.reset_secret.value())) {
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAddRateLimiterSecretFailedInAddSecretToUSS),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     }
   } else if (NeedsResetSecret(auth_factor.type()) &&
@@ -2458,7 +2461,7 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
     // TODO(b/229834676): Migrate USS and wrap the error.
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionAddResetSecretFailedInAddSecretToUSS),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry}),
         user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
   }
 
@@ -2477,7 +2480,7 @@ void AuthSession::AddAuthFactor(
   if (status_ != AuthStatus::kAuthStatusAuthenticated) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUnauthedInAddAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
     return;
   }
@@ -2490,7 +2493,7 @@ void AuthSession::AddAuthFactor(
     LOG(ERROR) << "Failed to parse new auth factor parameters";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUnknownFactorInAddAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
@@ -2525,7 +2528,7 @@ void AuthSession::AddAuthFactor(
       // The initial keyset cannot be a PIN, when using vault keysets.
       std::move(on_done).Run(MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionTryAddInitialPinInAddAuthfActor),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
       return;
     }
@@ -2576,7 +2579,7 @@ void AuthSession::AddAuthFactorImpl(
       auth_factor_type != AuthFactorType::kFingerprint) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionVKConverterFailsInAddAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error));
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}), error));
     return;
   }
 
@@ -2628,7 +2631,7 @@ void AuthSession::AddAuthFactorForEphemeral(
   if (!auth_input.user_input.has_value()) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocNoUserInputInAddFactorForEphemeral),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
@@ -2637,7 +2640,7 @@ void AuthSession::AddAuthFactorForEphemeral(
     // Overriding the verifier for a given label is not supported.
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVerifierAlreadySetInAddFactorForEphemeral),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
     return;
   }
@@ -2648,7 +2651,7 @@ void AuthSession::AddAuthFactorForEphemeral(
   if (!verifier) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVerifierSettingErrorInAddFactorForEphemeral),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
     return;
   }
@@ -2674,7 +2677,7 @@ void AuthSession::AuthenticateViaUserSecretStash(
                << auth_factor.label();
     std::move(on_done).Run(MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAuthViaUSS),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO));
     return;
   }
@@ -2725,7 +2728,7 @@ void AuthSession::AuthenticateViaSingleFactor(
     // TODO(b/229834676): Migrate The USS VKK converter then wrap the error.
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionVKConverterFailedInAuthAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error));
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}), error));
     return;
   }
   // Record current time for timing for how long AuthenticateAuthFactor will
@@ -2753,7 +2756,7 @@ void AuthSession::AuthenticateViaSelectedAuthFactor(
     if (callback_error.ok()) {
       callback_error = MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInAuthViaSelected),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           CryptoError::CE_OTHER_CRYPTO,
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
@@ -2785,7 +2788,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     if (callback_error.ok()) {
       callback_error = MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInLoadUSS),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           CryptoError::CE_OTHER_CRYPTO,
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
@@ -2806,7 +2809,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
         << "Failed to derive credential secret for authenticating auth factor";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveUSSSecretFailedInLoadUSS),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
     return;
   }
@@ -3069,7 +3072,7 @@ CryptohomeStatus AuthSession::PrepareWebAuthnSecret() {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocAuthSessionPrepareWebAuthnSecretNoFileSystemKeyset),
-        ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({error::PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO,
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
   }
@@ -3078,7 +3081,7 @@ CryptohomeStatus AuthSession::PrepareWebAuthnSecret() {
     LOG(ERROR) << "No user session found when preparing WebAuthn secret.";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionPrepareWebAuthnSecretNoUserSession),
-        ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({error::PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO,
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
   }

@@ -20,8 +20,9 @@
 
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeTPMError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec::TPMErrorBase;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
@@ -70,8 +71,9 @@ CryptoStatus TpmAuthBlockUtils::IsTPMPubkeyHash(
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocTpmAuthBlockUtilsGetPubkeyFailedInPubkeyHash),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                               ErrorAction::kReboot, ErrorAction::kPowerwash}))
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                               PossibleAction::kReboot,
+                               PossibleAction::kPowerwash}))
         .Wrap(TPMErrorToCryptohomeCryptoError(
             std::move(pub_key_hash).err_status()));
   }
@@ -81,8 +83,8 @@ CryptoStatus TpmAuthBlockUtils::IsTPMPubkeyHash(
                             pub_key_hash->size()))) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocTpmAuthBlockUtilsHashIncorrectInPubkeyHash),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot, PossibleAction::kPowerwash}),
         CryptoError::CE_TPM_FATAL);
   }
   return OkStatus<CryptohomeCryptoError>();
@@ -97,8 +99,8 @@ CryptoStatus TpmAuthBlockUtils::CheckTPMReadiness(
     ReportCryptohomeError(kDecryptAttemptButTpmKeyMissing);
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocTpmAuthBlockUtilsNoTpmKeyInCheckReadiness),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot, PossibleAction::kPowerwash}),
         CryptoError::CE_TPM_FATAL);
   }
 
@@ -117,8 +119,8 @@ CryptoStatus TpmAuthBlockUtils::CheckTPMReadiness(
     ReportCryptohomeError(kDecryptAttemptButTpmNotOwned);
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocTpmAuthBlockUtilsTpmNotOwnedInCheckReadiness),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot, PossibleAction::kPowerwash}),
         CryptoError::CE_TPM_FATAL);
   }
 
@@ -129,8 +131,8 @@ CryptoStatus TpmAuthBlockUtils::CheckTPMReadiness(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocTpmAuthBlockUtilsNoCryptohomeKeyInCheckReadiness),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot, PossibleAction::kPowerwash}),
         CryptoError::CE_TPM_REBOOT);
   }
 
@@ -143,9 +145,9 @@ CryptoStatus TpmAuthBlockUtils::CheckTPMReadiness(
       return MakeStatus<CryptohomeCryptoError>(
                  CRYPTOHOME_ERR_LOC(
                      kLocTpmAuthBlockUtilsCHKeyMismatchInCheckReadiness),
-                 ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                                 ErrorAction::kReboot,
-                                 ErrorAction::kPowerwash}))
+                 ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                                 PossibleAction::kReboot,
+                                 PossibleAction::kPowerwash}))
           .Wrap(std::move(error));
     }
   }

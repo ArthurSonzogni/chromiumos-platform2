@@ -21,8 +21,11 @@
 #include "cryptohome/error/location_utils.h"
 
 using cryptohome::error::CryptohomeCryptoError;
-using cryptohome::error::ErrorAction;
+using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
+using hwsec::TPMRetryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -82,8 +85,8 @@ void OnDBusChallengeKeySuccess(
         .Run(MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocKeyChallengeServiceEmptyResponseInChallengeKey),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot}),
             CryptoError::CE_OTHER_FATAL));
     return;
   }
@@ -95,7 +98,7 @@ void OnDBusChallengeKeySuccess(
         .Run(MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocKeyChallengeServiceParseFailedInChallengeKey),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_FATAL));
     return;
   }
@@ -122,15 +125,15 @@ void OnDBusChallengeKeyFailure(
     // error.
     status = MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocKeyChallengeServiceKnownDBusErrorInChallengeKey),
-        ErrorActionSet({ErrorAction::kIncorrectAuth}),
+        ErrorActionSet(PrimaryAction::kIncorrectAuth),
         CryptoError::CE_OTHER_CRYPTO);
   } else {
     LOG(INFO) << "Key challenge failed: unknown dbus error";
     status = MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocKeyChallengeServiceUnknownDBusErrorInChallengeKey),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot}),
         CryptoError::CE_OTHER_FATAL);
   }
   KeyChallengeService::ResponseCallback original_callback =
@@ -229,7 +232,7 @@ void KeyChallengeServiceImpl::ChallengeKey(
         .Run(MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocKeyChallengeServiceInvalidDBusNameInChallengeKey),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_FATAL));
     return;
   }

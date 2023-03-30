@@ -33,7 +33,7 @@ class CryptohomeLECredError : public CryptohomeCryptoError {
     class Unactioned {
      public:
       Unactioned(const ErrorLocationPair& loc,
-                 const std::set<CryptohomeError::Action>& actions,
+                 const ErrorActionSet& actions,
                  const std::optional<user_data_auth::CryptohomeErrorCode> ec);
 
       [[clang::return_typestate(unconsumed)]]  //
@@ -44,7 +44,7 @@ class CryptohomeLECredError : public CryptohomeCryptoError {
 
      private:
       const ErrorLocationPair loc_;
-      const std::set<CryptohomeError::Action> actions_;
+      const ErrorActionSet actions_;
       const std::optional<user_data_auth::CryptohomeErrorCode> ec_;
     };
 
@@ -52,7 +52,7 @@ class CryptohomeLECredError : public CryptohomeCryptoError {
     // become a valid status chain.
     Unactioned operator()(
         const ErrorLocationPair& loc,
-        const std::set<CryptohomeError::Action>& actions,
+        const ErrorActionSet& actions,
         const std::optional<user_data_auth::CryptohomeErrorCode> ec =
             std::nullopt);
 
@@ -66,7 +66,7 @@ class CryptohomeLECredError : public CryptohomeCryptoError {
     // Create an error directly.
     hwsec_foundation::status::StatusChain<CryptohomeLECredError> operator()(
         const ErrorLocationPair& loc,
-        const std::set<CryptohomeError::Action> actions,
+        const ErrorActionSet actions,
         const LECredError lecred_err,
         const std::optional<user_data_auth::CryptohomeErrorCode> ec =
             std::nullopt);
@@ -79,7 +79,7 @@ class CryptohomeLECredError : public CryptohomeCryptoError {
   // conversion from lecred_err.
   CryptohomeLECredError(
       const ErrorLocationPair& loc,
-      const std::set<Action>& actions,
+      const ErrorActionSet& actions,
       const LECredError lecred_err,
       const std::optional<user_data_auth::CryptohomeErrorCode> ec);
 

@@ -91,8 +91,9 @@ using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
 using cryptohome::error::CryptohomeTPMError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 
 using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;
@@ -3824,7 +3825,7 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintFailure) {
                     PreparedAuthFactorToken::Consumer callback) {
         std::move(callback).Run(MakeStatus<CryptohomeError>(
             kErrorLocationPlaceholder,
-            ErrorActionSet({ErrorAction::kIncorrectAuth}),
+            ErrorActionSet(PrimaryAction::kIncorrectAuth),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
       });

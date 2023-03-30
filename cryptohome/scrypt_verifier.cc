@@ -27,8 +27,9 @@ namespace cryptohome {
 namespace {
 
 using ::cryptohome::error::CryptohomeError;
-using ::cryptohome::error::ErrorAction;
 using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::Scrypt;
 using ::hwsec_foundation::status::MakeStatus;
@@ -71,7 +72,7 @@ CryptohomeStatus ScryptVerifier::VerifySync(const AuthInput& input) const {
   if (!input.user_input) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocScryptVerifierVerifyNoUserInput),
-        ErrorActionSet({ErrorAction::kIncorrectAuth}),
+        ErrorActionSet(PrimaryAction::kIncorrectAuth),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
   // Scrypt the input using the verifier salt.
@@ -81,14 +82,14 @@ CryptohomeStatus ScryptVerifier::VerifySync(const AuthInput& input) const {
     LOG(ERROR) << "Scrypt failed.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocScryptVerifierVerifyScryptFailed),
-        ErrorActionSet({ErrorAction::kIncorrectAuth}),
+        ErrorActionSet(PrimaryAction::kIncorrectAuth),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
   // Compare the encrypted input against the hashed secret.
   if (verifier_.size() != hashed_secret.size()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocScryptVerifierVerifyWrongScryptOutputSize),
-        ErrorActionSet({ErrorAction::kIncorrectAuth}),
+        ErrorActionSet(PrimaryAction::kIncorrectAuth),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
   if (brillo::SecureMemcmp(hashed_secret.data(), verifier_.data(),
@@ -97,7 +98,7 @@ CryptohomeStatus ScryptVerifier::VerifySync(const AuthInput& input) const {
   } else {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocScryptVerifierVerifySecretMismatch),
-        ErrorActionSet({ErrorAction::kIncorrectAuth}),
+        ErrorActionSet(PrimaryAction::kIncorrectAuth),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
 }

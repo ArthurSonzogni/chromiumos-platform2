@@ -40,8 +40,9 @@
 #include "cryptohome/filesystem_layout.h"
 
 using cryptohome::error::CryptohomeCryptoError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using ::hwsec_foundation::AesGcmDecrypt;
 using ::hwsec_foundation::AesGcmEncrypt;
 using ::hwsec_foundation::BigNumToSecureBlob;
@@ -181,11 +182,11 @@ ErrorActionSet ErrorActionSetFromRecoveryResponseError(
       return {};
     case RecoveryError::RECOVERY_ERROR_FATAL:
     case RecoveryError::RECOVERY_ERROR_AUTH:
-      return ErrorActionSet({ErrorAction::kFatal});
+      return ErrorActionSet({PossibleAction::kFatal});
     case RecoveryError::RECOVERY_ERROR_TRANSIENT:
     case RecoveryError::RECOVERY_ERROR_EPOCH:
     case RecoveryError::RECOVERY_ERROR_AUTH_EXPIRED:
-      return ErrorActionSet({ErrorAction::kRetry});
+      return ErrorActionSet({PossibleAction::kRetry});
   }
 }
 
@@ -813,7 +814,7 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoNoContextInDecryptResponse),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -834,7 +835,7 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoBadPayloadInDecryptResponse),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kFatal}),
         CryptoError::CE_RECOVERY_FATAL);
   }
 
@@ -845,7 +846,7 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoBadADInDecryptResponse),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kFatal}),
         CryptoError::CE_RECOVERY_FATAL);
   }
 
@@ -856,7 +857,7 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoBadLedgerSignedProof),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kFatal}),
         CryptoError::CE_RECOVERY_FATAL);
   }
 
@@ -865,7 +866,7 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoNoEpochKeyInDecryptResponse),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kFatal}),
         CryptoError::CE_RECOVERY_FATAL);
   }
   brillo::SecureBlob epoch_pub_key(request.epoch_response.epoch_pub_key());
@@ -876,7 +877,7 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoBadEpochKeyInDecryptResponse),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kFatal}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   // Performs scalar multiplication of epoch_pub_point and channel_priv_key.
@@ -903,7 +904,7 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoDHFailedInDecryptResponse),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kFatal}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   brillo::SecureBlob shared_secret_point_blob;
@@ -917,7 +918,7 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
         CRYPTOHOME_ERR_LOC(
             kLocRecoveryCryptoEncodePointFailedInDecryptResponse),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kFatal}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   brillo::SecureBlob aes_gcm_key;
@@ -931,7 +932,7 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoECDHFailedInDecryptResponse),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kFatal}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -948,7 +949,7 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoAESFailedInDecryptResponse),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kFatal}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   if (!DeserializeHsmResponsePlainTextFromCbor(response_plain_text_cbor,
@@ -957,7 +958,7 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoBadPlainTextInDecryptResponse),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kFatal}),
         CryptoError::CE_RECOVERY_FATAL);
   }
   return OkStatus<CryptohomeCryptoError>();

@@ -29,8 +29,9 @@ constexpr uint32_t kBitsPerLevel = 2;
 
 using ::cryptohome::error::CryptohomeLECredError;
 using ::cryptohome::error::CryptohomeTPMError;
-using ::cryptohome::error::ErrorAction;
 using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
 using ::hwsec_foundation::GetSecureRandom;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
@@ -105,7 +106,7 @@ LECredStatus LECredentialManagerImpl::RemoveCredential(uint64_t label) {
   if (!hash_tree_->IsValid() || !Sync()) {
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInRemoveCred),
-        ErrorActionSet({ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kReboot}),
         LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
@@ -131,7 +132,7 @@ LECredStatus LECredentialManagerImpl::RemoveCredential(uint64_t label) {
                << result.status();
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManRemoveCredFailedInRemoveCred),
-        ErrorActionSet({ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kReboot}),
         LECredError::LE_CRED_ERROR_HASH_TREE);
   }
   root_hash_ = result->new_root;
@@ -151,7 +152,7 @@ LECredStatus LECredentialManagerImpl::RemoveCredential(uint64_t label) {
     is_locked_ = true;
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManRemoveLabelFailedInRemoveCred),
-        ErrorActionSet({ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kReboot}),
         LECredError::LE_CRED_ERROR_HASH_TREE);
   }
   ReportLEResult(kLEOpRemove, kLEActionSaveToDisk, LE_CRED_SUCCESS);
@@ -169,7 +170,7 @@ LECredStatus LECredentialManagerImpl::CheckSecret(
   if (!hash_tree_->IsValid() || !Sync()) {
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInCheckSecret),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
@@ -202,7 +203,7 @@ LECredStatus LECredentialManagerImpl::CheckSecret(
                    LE_CRED_ERROR_INVALID_METADATA);
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidMetadataInCheckSecret),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_INVALID_METADATA);
   }
 
@@ -219,7 +220,7 @@ LECredStatus LECredentialManagerImpl::CheckSecret(
                << result.status();
     return MakeStatus<CryptohomeLECredError>(
                CRYPTOHOME_ERR_LOC(kLocLECredManPinWeaverFailedInCheckSecret),
-               ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+               ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
                LECredError::LE_CRED_ERROR_HASH_TREE)
         .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).err_status()));
   }
@@ -244,7 +245,7 @@ LECredStatus LECredentialManagerImpl::CheckSecret(
       is_locked_ = true;
       return MakeStatus<CryptohomeLECredError>(
           CRYPTOHOME_ERR_LOC(kLocLECredManStoreLabelFailedInCheckSecret),
-          ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+          ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
           LECredError::LE_CRED_ERROR_HASH_TREE);
     }
   }
@@ -265,7 +266,7 @@ LECredStatus LECredentialManagerImpl::CheckSecret(
 
   return MakeStatus<CryptohomeLECredError>(
              CRYPTOHOME_ERR_LOC(kLocLECredManTpmFailedInCheckSecret),
-             ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}))
+             ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}))
       .Wrap(std::move(converted));
 }
 
@@ -301,7 +302,7 @@ LECredStatusOr<uint32_t> LECredentialManagerImpl::GetDelayInSeconds(
   if (!hash_tree_->IsValid()) {
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInGetDelayInSeconds),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_HASH_TREE);
   }
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
@@ -327,7 +328,7 @@ LECredStatusOr<uint32_t> LECredentialManagerImpl::GetDelayInSeconds(
                    LE_CRED_ERROR_INVALID_METADATA);
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidMetadataInGetDelayInSeconds),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_INVALID_METADATA);
   }
 
@@ -339,7 +340,7 @@ LECredStatusOr<uint32_t> LECredentialManagerImpl::GetDelayInSeconds(
     return MakeStatus<CryptohomeLECredError>(
                CRYPTOHOME_ERR_LOC(
                    kLocLECredManPinWeaverFailedInGetDelayInSeconds),
-               ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+               ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
                LECredError::LE_CRED_ERROR_HASH_TREE)
         .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).err_status()));
   }
@@ -352,7 +353,7 @@ LECredentialManagerImpl::GetExpirationInSeconds(uint64_t label) {
   if (!hash_tree_->IsValid()) {
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInGetExpirationInSeconds),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_HASH_TREE);
   }
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
@@ -379,7 +380,7 @@ LECredentialManagerImpl::GetExpirationInSeconds(uint64_t label) {
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(
             kLocLECredManInvalidMetadataInGetExpirationInSeconds),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_INVALID_METADATA);
   }
 
@@ -392,7 +393,7 @@ LECredentialManagerImpl::GetExpirationInSeconds(uint64_t label) {
     return MakeStatus<CryptohomeLECredError>(
                CRYPTOHOME_ERR_LOC(
                    kLocLECredManPinWeaverFailedInGetExpirationInSeconds),
-               ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+               ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
                LECredError::LE_CRED_ERROR_HASH_TREE)
         .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).err_status()));
   }
@@ -420,7 +421,7 @@ LECredentialManagerImpl::StartBiometricsAuth(
   if (!hash_tree_->IsValid() || !Sync()) {
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInStartBiometricsAuth),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
@@ -443,7 +444,7 @@ LECredentialManagerImpl::StartBiometricsAuth(
                    LE_CRED_ERROR_INVALID_METADATA);
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidMetadataInStartBiometricsAuth),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_INVALID_METADATA);
   }
 
@@ -460,7 +461,7 @@ LECredentialManagerImpl::StartBiometricsAuth(
     return MakeStatus<CryptohomeLECredError>(
                CRYPTOHOME_ERR_LOC(
                    kLocLECredManPinWeaverFailedInStartBiometricsAuth),
-               ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+               ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
                LECredError::LE_CRED_ERROR_HASH_TREE)
         .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).err_status()));
   }
@@ -487,7 +488,7 @@ LECredentialManagerImpl::StartBiometricsAuth(
       return MakeStatus<CryptohomeLECredError>(
           CRYPTOHOME_ERR_LOC(
               kLocLECredManStoreLabelFailedInStartBiometricsAuth),
-          ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+          ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
           LECredError::LE_CRED_ERROR_HASH_TREE);
     }
   }
@@ -499,7 +500,7 @@ LECredentialManagerImpl::StartBiometricsAuth(
   if (!converted.ok()) {
     return MakeStatus<CryptohomeLECredError>(
                CRYPTOHOME_ERR_LOC(kLocLECredManTpmFailedInStartBiometricsAuth),
-               ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}))
+               ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}))
         .Wrap(std::move(converted));
   }
 
@@ -507,7 +508,7 @@ LECredentialManagerImpl::StartBiometricsAuth(
       !result->encrypted_he_secret.has_value()) {
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidOutputInStartBiometricsAuth),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
@@ -533,7 +534,7 @@ LECredStatus LECredentialManagerImpl::InsertLeaf(
   if (!hash_tree_->IsValid() || !Sync()) {
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInInsertCred),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
@@ -541,7 +542,8 @@ LECredStatus LECredentialManagerImpl::InsertLeaf(
       (!is_rate_limiter && (!le_secret || !he_secret))) {
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidParamInInsertCred),
-        error::ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
+        error::ErrorActionSet(
+            {error::PossibleAction::kDevCheckUnexpectedState}),
         LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
@@ -555,7 +557,7 @@ LECredStatus LECredentialManagerImpl::InsertLeaf(
                    LE_CRED_ERROR_NO_FREE_LABEL);
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManLabelUnavailableInInsertCred),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_NO_FREE_LABEL);
   }
 
@@ -565,7 +567,7 @@ LECredStatus LECredentialManagerImpl::InsertLeaf(
     ReportLEResult(uma_log_op, kLEActionLoadFromDisk, LE_CRED_ERROR_HASH_TREE);
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManEmptyAuxInInsertCred),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
@@ -585,7 +587,7 @@ LECredStatus LECredentialManagerImpl::InsertLeaf(
     ReportLEResult(uma_log_op, kLEActionBackend, LE_CRED_ERROR_HASH_TREE);
     return MakeStatus<CryptohomeLECredError>(
                CRYPTOHOME_ERR_LOC(kLocLECredManTpmFailedInInsertCred),
-               ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+               ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
                LECredError::LE_CRED_ERROR_HASH_TREE)
         .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).err_status()));
   }
@@ -623,7 +625,7 @@ LECredStatus LECredentialManagerImpl::InsertLeaf(
 
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManStoreFailedInInsertCred),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
@@ -644,7 +646,7 @@ LECredStatus LECredentialManagerImpl::RetrieveLabelInfo(
                << label.value();
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManTreeGetDataFailedInRetrieveLabel),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_INVALID_LABEL);
   }
 
@@ -653,7 +655,7 @@ LECredStatus LECredentialManagerImpl::RetrieveLabelInfo(
     LOG(ERROR) << "Label doesn't exist in hash tree: " << label.value();
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManNonexistentInRetrieveLabel),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_INVALID_LABEL);
   }
 
@@ -663,7 +665,7 @@ LECredStatus LECredentialManagerImpl::RetrieveLabelInfo(
                << label.value();
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManEmptyAuxInRetrieveLabel),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
         LECredError::LE_CRED_ERROR_HASH_TREE);
   }
   return OkStatus<CryptohomeLECredError>();
@@ -709,7 +711,7 @@ LECredStatus LECredentialManagerImpl::ConvertTpmError(
       // Incorrect password.
       return MakeStatus<CryptohomeLECredError>(
           CRYPTOHOME_ERR_LOC(kLocLECredManInvalidLESecretInConvertTpmError),
-          ErrorActionSet({ErrorAction::kIncorrectAuth}), conv_err);
+          ErrorActionSet(PrimaryAction::kIncorrectAuth), conv_err);
 
     case LE_CRED_ERROR_INVALID_RESET_SECRET:
       // The reset secret is invalid. We don't expect this to occur so
@@ -717,14 +719,14 @@ LECredStatus LECredentialManagerImpl::ConvertTpmError(
       // non-LE auth methods to get around this, so kAuth is specified.
       return MakeStatus<CryptohomeLECredError>(
           CRYPTOHOME_ERR_LOC(kLocLECredManInvalidResetSecretInConvertTpmError),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kAuth}),
           conv_err);
     case LE_CRED_ERROR_TOO_MANY_ATTEMPTS:
       // Too many attempts.
       return MakeStatus<CryptohomeLECredError>(
           CRYPTOHOME_ERR_LOC(kLocLECredManTooManyAttemptsInConvertTpmError),
-          ErrorActionSet({ErrorAction::kLeLockedOut}), conv_err);
+          ErrorActionSet(PrimaryAction::kLeLockedOut), conv_err);
     case LE_CRED_ERROR_PCR_NOT_MATCH:
       // In usual operation, we don't expect PCR to be incorrect, so
       // kDevCheckUnexpectedState is specified. If the PCR is incorrect, a
@@ -733,9 +735,9 @@ LECredStatus LECredentialManagerImpl::ConvertTpmError(
       // might allow us to restart from a correct PCR value.
       return MakeStatus<CryptohomeLECredError>(
           CRYPTOHOME_ERR_LOC(kLocLECredManPCRNotMatchInConvertTpmError),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                          ErrorAction::kAuth, ErrorAction::kReboot,
-                          ErrorAction::kPowerwash}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kAuth, PossibleAction::kReboot,
+                          PossibleAction::kPowerwash}),
           conv_err);
 
     case LE_CRED_ERROR_HASH_TREE:
@@ -745,8 +747,8 @@ LECredStatus LECredentialManagerImpl::ConvertTpmError(
       // delete the vault start fresh so kDeleteVault is specified.
       return MakeStatus<CryptohomeLECredError>(
           CRYPTOHOME_ERR_LOC(kLocLECredManHashTreeInConvertTpmError),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                          ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kAuth, PossibleAction::kDeleteVault}),
           conv_err);
 
     default:

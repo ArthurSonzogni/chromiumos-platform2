@@ -118,7 +118,7 @@ bool TestPasswordBasedAuthBlock(SyncAuthBlock& auth_block) {
     return false;
   }
   if (!error::ContainsActionInStack(derivation_status.err_status(),
-                                    error::ErrorAction::kIncorrectAuth)) {
+                                    error::PrimaryAction::kIncorrectAuth)) {
     LOG(ERROR) << "Derivation with wrong password returned wrong action: "
                << derivation_status.status();
     return false;

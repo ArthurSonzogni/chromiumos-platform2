@@ -35,8 +35,9 @@
 using brillo::cryptohome::home::GetGuestUsername;
 using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::error::CryptohomeMountError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::Sha256;
 using hwsec_foundation::status::MakeStatus;
@@ -79,8 +80,9 @@ MountStatus RealUserSession::MountVault(
   if (!status.ok()) {
     return MakeStatus<CryptohomeMountError>(
         CRYPTOHOME_ERR_LOC(kLocUserSessionMountFailedInMountVault),
-        ErrorActionSet({ErrorAction::kRetry, ErrorAction::kReboot,
-                        ErrorAction::kDeleteVault, ErrorAction::kPowerwash}),
+        ErrorActionSet({PossibleAction::kRetry, PossibleAction::kReboot,
+                        PossibleAction::kDeleteVault,
+                        PossibleAction::kPowerwash}),
         status->error());
   }
 
@@ -105,7 +107,7 @@ MountStatus RealUserSession::MountEphemeral(const Username& username) {
   if (homedirs_->IsOrWillBeOwner(username)) {
     return MakeStatus<CryptohomeMountError>(
         CRYPTOHOME_ERR_LOC(kLocUserSessionOwnerNotSupportedInMountEphemeral),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER);
   }
 
@@ -119,8 +121,8 @@ MountStatus RealUserSession::MountEphemeral(const Username& username) {
 
   return MakeStatus<CryptohomeMountError>(
       CRYPTOHOME_ERR_LOC(kLocUserSessionMountFailedInMountEphemeral),
-      ErrorActionSet(
-          {ErrorAction::kRetry, ErrorAction::kReboot, ErrorAction::kPowerwash}),
+      ErrorActionSet({PossibleAction::kRetry, PossibleAction::kReboot,
+                      PossibleAction::kPowerwash}),
       status->error());
 }
 
@@ -135,8 +137,8 @@ MountStatus RealUserSession::MountGuest() {
   }
   return MakeStatus<CryptohomeMountError>(
       CRYPTOHOME_ERR_LOC(kLocUserSessionMountEphemeralFailed),
-      ErrorActionSet(
-          {ErrorAction::kRetry, ErrorAction::kReboot, ErrorAction::kPowerwash}),
+      ErrorActionSet({PossibleAction::kRetry, PossibleAction::kReboot,
+                      PossibleAction::kPowerwash}),
       status->error(), std::nullopt);
 }
 

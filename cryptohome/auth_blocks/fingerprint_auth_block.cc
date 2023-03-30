@@ -34,8 +34,9 @@ namespace cryptohome {
 namespace {
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::status::MakeStatus;
@@ -100,12 +101,12 @@ CryptoStatus FingerprintAuthBlock::IsSupported(
   if (!bio_service) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoServiceInIsSupported),
-        ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
+        ErrorActionSet({PossibleAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
   }
   if (!bio_service->IsReady()) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockServiceNotReadyIsSupported),
-        ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
+        ErrorActionSet({PossibleAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
   }
 
   hwsec::CryptohomeFrontend* frontend = crypto.GetHwsec();
@@ -115,14 +116,14 @@ CryptoStatus FingerprintAuthBlock::IsSupported(
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocFingerprintAuthBlockHwsecReadyErrorInIsSupported),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
             std::move(is_ready).err_status()));
   }
   if (!is_ready.value()) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockHwsecNotReadyInIsSupported),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -139,14 +140,14 @@ CryptoStatus FingerprintAuthBlock::IsSupported(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocFingerprintAuthBlockPinWeaverNotEnabledInIsSupported),
-        ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
+        ErrorActionSet({PossibleAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
   }
 
   if (!crypto.le_manager()) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNullLeManagerInIsSupported),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -171,7 +172,7 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoUsernameInCreate),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr, nullptr);
     return;
@@ -196,7 +197,7 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
           MakeStatus<CryptohomeCryptoError>(
               CRYPTOHOME_ERR_LOC(
                   kLocFingerprintAuthBlockCreateRateLimiterFailedInCreate),
-              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+              ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
               .Wrap(std::move(label).err_status()),
           nullptr, nullptr);
       return;
@@ -208,7 +209,7 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoResetSecretInCreate),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
         nullptr, nullptr);
     return;
@@ -221,7 +222,7 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoNonceInCreate),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr, nullptr);
     return;
@@ -273,7 +274,7 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoAuthSecretInDerive),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr);
     return;
@@ -283,7 +284,7 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoAuthPinInDerive),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr);
     return;
@@ -296,7 +297,7 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocFingerprintAuthBlockWrongAuthBlockStateInDerive),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr);
     return;
@@ -308,7 +309,7 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocFingerprintAuthBlockNoGscSecretLabelInDerive),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         nullptr);
     return;
@@ -326,7 +327,7 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocFingerprintAuthBlockCheckCredentialFailedInCreate),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
             .Wrap(std::move(status).err_status()),
         nullptr);
     return;
@@ -352,7 +353,7 @@ void FingerprintAuthBlock::SelectFactor(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoUsernameInSelect),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         std::nullopt, std::nullopt);
     return;
@@ -365,7 +366,7 @@ void FingerprintAuthBlock::SelectFactor(const AuthInput& auth_input,
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoNonceInSelect),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
         std::nullopt, std::nullopt);
     return;
@@ -405,7 +406,7 @@ CryptohomeStatus FingerprintAuthBlock::PrepareForRemoval(
   return MakeStatus<CryptohomeCryptoError>(
       CRYPTOHOME_ERR_LOC(
           kLocFingerprintAuthBlockPrepareForRemovalUnimplemented),
-      ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+      ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
       CryptoError::CE_OTHER_FATAL);
 }
 
@@ -507,7 +508,7 @@ void FingerprintAuthBlock::ContinueSelect(
           MakeStatus<CryptohomeError>(
               CRYPTOHOME_ERR_LOC(
                   kLocFingerprintAuthBlockAuthenticateCredentialLockedInSelect),
-              ErrorActionSet({ErrorAction::kAuth, ErrorAction::kLeLockedOut}),
+              ErrorActionSet(PrimaryAction::kLeLockedOut),
               user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED)
               .Wrap(std::move(output).err_status()),
           std::nullopt, std::nullopt);
@@ -552,7 +553,7 @@ void FingerprintAuthBlock::ContinueSelect(
   std::move(callback).Run(
       MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockFactorNotFoundInSelect),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND),
       std::nullopt, std::nullopt);
 }

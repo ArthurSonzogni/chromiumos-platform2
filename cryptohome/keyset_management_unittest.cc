@@ -50,8 +50,9 @@
 
 using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::CryptohomeError;
-using ::cryptohome::error::ErrorAction;
 using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnError;
@@ -825,8 +826,8 @@ TEST_F(KeysetManagementTest, GetValidKeysetCryptoError) {
     EXPECT_CALL(*mock_vk, Load(_)).WillOnce(Return(true));
     EXPECT_CALL(*mock_vk, DecryptEx(_))
         .WillOnce(ReturnError<CryptohomeCryptoError>(
-            kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kReboot}),
-            key));
+            kErrorLocationForTesting1,
+            ErrorActionSet({PossibleAction::kReboot}), key));
 
     MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
         keyset_management_->GetValidKeysetWithKeyBlobs(users_[0].obfuscated,

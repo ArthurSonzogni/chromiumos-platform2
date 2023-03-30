@@ -38,8 +38,9 @@
 #include "cryptohome/vault_keyset.pb.h"
 
 using ::cryptohome::error::CryptohomeCryptoError;
-using ::cryptohome::error::ErrorAction;
 using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::HmacSha256;
@@ -96,14 +97,14 @@ CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocPinWeaverAuthBlockHwsecReadyErrorInIsSupported),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
             std::move(is_ready).err_status()));
   }
   if (!is_ready.value()) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockHwsecNotReadyInIsSupported),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -118,14 +119,14 @@ CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
   if (!has_pinweaver.value()) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoPinWeaverInIsSupported),
-        ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
+        ErrorActionSet({PossibleAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
   }
 
   if (!crypto.le_manager()) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNullLeManagerInIsSupported),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -155,14 +156,14 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
     LOG(ERROR) << "Missing user_input";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoUserInputInCreate),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   if (!auth_input.obfuscated_username.has_value()) {
     LOG(ERROR) << "Missing obfuscated_username";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoUsernameInCreate),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   if (!auth_input.reset_secret.has_value() &&
@@ -171,7 +172,7 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocPinWeaverAuthBlockNoResetSecretOrResetSeedInCreate),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -204,7 +205,7 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
                            {&le_secret, &kdf_skey})) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockScryptDeriveFailedInCreate),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -285,7 +286,7 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
     LOG(ERROR) << "Missing user_input";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoUserInputInDerive),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -295,7 +296,7 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockInvalidBlockStateInDerive),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -305,16 +306,16 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
     LOG(ERROR) << "Invalid PinWeaverAuthBlockState: missing le_label";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoLabelInDerive),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   if (!auth_state->salt.has_value()) {
     LOG(ERROR) << "Invalid PinWeaverAuthBlockState: missing salt";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoSaltInDerive),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   brillo::SecureBlob salt = auth_state->salt.value();
@@ -322,7 +323,7 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
                            {&le_secret, &kdf_skey})) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockDeriveScryptFailedInDerive),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_FATAL);
   }
 
@@ -354,8 +355,7 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
         return MakeStatus<CryptohomeCryptoError>(
                    CRYPTOHOME_ERR_LOC(
                        kLocPinWeaverAuthBlockCheckCredLockedInDerive),
-                   ErrorActionSet(
-                       {ErrorAction::kAuth, ErrorAction::kLeLockedOut}),
+                   ErrorActionSet(PrimaryAction::kLeLockedOut),
                    CryptoError::CE_CREDENTIAL_LOCKED)
             .Wrap(std::move(ret));
         // Or the LE node specified by le_label in PinWeaver is under a lockout
@@ -364,8 +364,7 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
         return MakeStatus<CryptohomeCryptoError>(
                    CRYPTOHOME_ERR_LOC(
                        kLocPinWeaverAuthBlockCheckCredTPMLockedInDerive),
-                   ErrorActionSet(
-                       {ErrorAction::kAuth, ErrorAction::kLeLockedOut}))
+                   ErrorActionSet(PrimaryAction::kLeLockedOut))
             .Wrap(std::move(ret));
       }
     }
@@ -391,7 +390,7 @@ CryptohomeStatus PinWeaverAuthBlock::PrepareForRemoval(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocPinWeaverAuthBlockFailedToGetStateFailedInPrepareForRemoval),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_FATAL);
   }
 
@@ -400,7 +399,7 @@ CryptohomeStatus PinWeaverAuthBlock::PrepareForRemoval(
     LOG(ERROR) << "PinWeaver AuthBlockState does not have le_label";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoLabelInPrepareForRemoval),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_FATAL);
   }
   return le_manager_->RemoveCredential(state->le_label.value());

@@ -48,8 +48,9 @@ using base::FilePath;
 using brillo::SecureBlob;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::AesDecryptDeprecated;
 using hwsec_foundation::AesEncryptDeprecated;
 using hwsec_foundation::CreateSecureRandomBlob;
@@ -249,8 +250,8 @@ CryptohomeStatus VaultKeyset::EncryptEx(const KeyBlobs& key_blobs,
                     " set up an LE credential.";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocVaultKeysetNoResetSeedInEncryptEx),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                          ErrorAction::kDeleteVault, ErrorAction::kAuth}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kDeleteVault, PossibleAction::kAuth}),
           user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
     }
     auth_locked_ = false;
@@ -297,8 +298,8 @@ CryptoStatus VaultKeyset::DecryptEx(const KeyBlobs& key_blobs) {
   if (!loaded_) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetNotLoadedInDecryptEx),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -342,7 +343,7 @@ CryptoStatus VaultKeyset::UnwrapVKKVaultKeyset(
     LOG(ERROR) << "AES decryption failed for vault keyset.";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetKeysetDecryptFailedInUnwrapVKK),
-        ErrorActionSet({ErrorAction::kIncorrectAuth}),
+        ErrorActionSet(PrimaryAction::kIncorrectAuth),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -351,7 +352,7 @@ CryptoStatus VaultKeyset::UnwrapVKKVaultKeyset(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetKeysetParseFailedInUnwrapVKK),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -365,8 +366,8 @@ CryptoStatus VaultKeyset::UnwrapVKKVaultKeyset(
       LOG(ERROR) << "AES decryption failed for chaps key.";
       return MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(kLocVaultKeysetChapsDecryptFailedInUnwrapVKK),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kAuth}),
           CryptoError::CE_OTHER_CRYPTO);
     }
 
@@ -387,8 +388,8 @@ CryptoStatus VaultKeyset::UnwrapVKKVaultKeyset(
       LOG(ERROR) << "AES decryption failed for reset seed.";
       return MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(kLocVaultKeysetResetSeedDecryptFailedInUnwrapVKK),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kAuth}),
           CryptoError::CE_OTHER_CRYPTO);
     }
 
@@ -410,7 +411,7 @@ CryptoStatus VaultKeyset::UnwrapScryptVaultKeyset(
     // incorrect password.
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetKeysetDecryptFailedInUnwrapScrypt),
-        ErrorActionSet({ErrorAction::kIncorrectAuth}),
+        ErrorActionSet(PrimaryAction::kIncorrectAuth),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -423,8 +424,8 @@ CryptoStatus VaultKeyset::UnwrapScryptVaultKeyset(
                                   &chaps_key)) {
       return MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(kLocVaultKeysetChapsDecryptFailedInUnwrapScrypt),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kAuth}),
           CryptoError::CE_OTHER_CRYPTO);
     }
     SetChapsKey(chaps_key);
@@ -440,8 +441,8 @@ CryptoStatus VaultKeyset::UnwrapScryptVaultKeyset(
       return MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(
               kLocVaultKeysetResetSeedDecryptFailedInUnwrapScrypt),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kAuth}),
           CryptoError::CE_OTHER_CRYPTO);
     }
     SetResetSeed(reset_seed);
@@ -456,7 +457,7 @@ CryptoStatus VaultKeyset::UnwrapScryptVaultKeyset(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetBlobUnderflowInUnwrapScrypt),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   decrypted.resize(decrypted.size() - SHA_DIGEST_LENGTH);
@@ -464,7 +465,7 @@ CryptoStatus VaultKeyset::UnwrapScryptVaultKeyset(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetKeysetParseFailedInUnwrapScrypt),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   return OkStatus<CryptohomeCryptoError>();
@@ -477,7 +478,7 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
     LOG(ERROR) << "Fields missing from KeyBlobs.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetMissingFieldInWrapAESD),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -486,7 +487,7 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
     LOG(ERROR) << "Failure serializing keyset to buffer";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetSerializationFailedInWrapAESD),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -495,7 +496,7 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
                             blobs.vkk_iv.value(), &vault_cipher_text)) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetEncryptFailedInWrapAESD),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   wrapped_keyset_ = vault_cipher_text;
@@ -507,7 +508,7 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
                               blobs.chaps_iv.value(), &wrapped_chaps_key)) {
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocVaultKeysetEncryptChapsFailedInWrapAESD),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
     wrapped_chaps_key_ = wrapped_chaps_key;
@@ -523,7 +524,7 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
       LOG(ERROR) << "AES encryption of Reset seed failed.";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocVaultKeysetEncryptResetSeedInWrapAESD),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
     wrapped_reset_seed_ = wrapped_reset_seed;
@@ -539,7 +540,7 @@ CryptohomeStatus VaultKeyset::WrapScryptVaultKeyset(
     LOG(ERROR) << "Low entropy credentials cannot be scrypt-wrapped.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetLENotSupportedInWrapScrypt),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
 
@@ -548,7 +549,7 @@ CryptohomeStatus VaultKeyset::WrapScryptVaultKeyset(
     LOG(ERROR) << "Failure serializing keyset to buffer";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetSerializeFailedInWrapScrypt),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
 
@@ -573,7 +574,7 @@ CryptohomeStatus VaultKeyset::WrapScryptVaultKeyset(
   if (state == nullptr) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetAuthBlockStateFailedInWrapScrypt),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
 
@@ -583,7 +584,7 @@ CryptohomeStatus VaultKeyset::WrapScryptVaultKeyset(
     LOG(ERROR) << "Scrypt encrypt of keyset blob failed.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetEncryptKeysetFailedInWrapScrypt),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
   wrapped_keyset_ = cipher_text;
@@ -596,7 +597,7 @@ CryptohomeStatus VaultKeyset::WrapScryptVaultKeyset(
       LOG(ERROR) << "Scrypt encrypt of chaps key blob failed.";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocVaultKeysetEncryptChapsFailedInWrapScrypt),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
     }
     wrapped_chaps_key_ = wrapped_chaps_key;
@@ -612,7 +613,7 @@ CryptohomeStatus VaultKeyset::WrapScryptVaultKeyset(
       LOG(ERROR) << "Scrypt encrypt of reset seed failed.";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocVaultKeysetEncryptResetSeedFailedInWrapScrypt),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
     }
 
@@ -651,8 +652,8 @@ CryptoStatus VaultKeyset::UnwrapVaultKeyset(
     DLOG(FATAL) << "An invalid key combination exists";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetInvalidCombinationInUnwrapVK),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kDeleteVault, ErrorAction::kAuth}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kDeleteVault, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 

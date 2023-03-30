@@ -48,8 +48,9 @@ using brillo::SecureBlob;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeLECredError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::GetSecureRandom;
 using hwsec_foundation::HmacSha256;
@@ -1149,7 +1150,7 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
   EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
       .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
           LE_CRED_ERROR_NO_FREE_LABEL));
 
   pin_vault_keyset_.CreateFromFileSystemKeyset(

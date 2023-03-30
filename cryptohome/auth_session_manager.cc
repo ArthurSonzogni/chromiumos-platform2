@@ -27,8 +27,9 @@ namespace cryptohome {
 namespace {
 
 using cryptohome::error::CryptohomeError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 
@@ -202,14 +203,14 @@ CryptohomeStatus InUseAuthSession::AuthSessionStatus() {
       LOG(ERROR) << "Existing AuthSession is locked in a previous opertaion.";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionManagerAuthSessionActive),
-          ErrorActionSet({ErrorAction::kReboot}),
+          ErrorActionSet({PossibleAction::kReboot}),
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
     } else {
       LOG(ERROR) << "Invalid AuthSession token provided.";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionManagerAuthSessionNotFound),
-          ErrorActionSet({ErrorAction::kReboot}),
+          ErrorActionSet({PossibleAction::kReboot}),
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
     }

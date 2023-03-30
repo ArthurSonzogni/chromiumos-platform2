@@ -43,7 +43,7 @@ class CryptohomeTPMError : public CryptohomeCryptoError {
   // libhwsec's tpm_error.h for more information on the unified error code.
   CryptohomeTPMError(
       const ErrorLocationPair& loc,
-      const std::set<CryptohomeError::Action>& actions,
+      const ErrorActionSet& actions,
       const hwsec::TPMRetryAction retry,
       const std::optional<user_data_auth::CryptohomeErrorCode> ec);
 

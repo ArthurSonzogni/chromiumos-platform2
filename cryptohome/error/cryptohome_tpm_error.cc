@@ -27,33 +27,25 @@ using hwsec_foundation::status::StatusChain;
 
 // PopulateActionFromRetry is a helper function that converts the libhwsec
 // TPMRetryAction into CryptohomeError's Action.
-void PopulateActionFromRetry(const hwsec::TPMRetryAction retry,
-                             std::set<CryptohomeError::Action>* actions) {
+ErrorActionSet PopulateActionFromRetry(const hwsec::TPMRetryAction retry) {
   switch (retry) {
     case hwsec::TPMRetryAction::kReboot:
-      actions->insert(ErrorAction::kReboot);
-      break;
+      return ErrorActionSet({PossibleAction::kReboot});
     case hwsec::TPMRetryAction::kCommunication:
     case hwsec::TPMRetryAction::kSession:
     case hwsec::TPMRetryAction::kLater:
-      actions->insert(ErrorAction::kReboot);
-      actions->insert(ErrorAction::kRetry);
-      break;
+      return ErrorActionSet({PossibleAction::kRetry, PossibleAction::kReboot});
     case hwsec::TPMRetryAction::kDefend:
-      actions->insert(ErrorAction::kTpmLockout);
-      break;
+      return ErrorActionSet(PrimaryAction::kTpmLockout);
     case hwsec::TPMRetryAction::kUserAuth:
-      actions->insert(ErrorAction::kAuth);
-      break;
+      return ErrorActionSet({PossibleAction::kAuth});
     case hwsec::TPMRetryAction::kNoRetry:
     case hwsec::TPMRetryAction::kEllipticCurveScalarOutOfRange:
     case hwsec::TPMRetryAction::kUserPresence:
     case hwsec::TPMRetryAction::kSpaceNotFound:
-      actions->insert(ErrorAction::kDevCheckUnexpectedState);
-      break;
+      return ErrorActionSet({PossibleAction::kDevCheckUnexpectedState});
     case hwsec::TPMRetryAction::kNone:
-      // No action.
-      break;
+      return NoErrorAction();
   }
 }
 
@@ -74,9 +66,8 @@ StatusChain<CryptohomeTPMError> FromTPMErrorBase(
   CryptohomeError::ErrorLocation loc = last->UnifiedErrorCode();
 
   // Populate the retry actions and status string.
-  std::set<CryptohomeError::Action> actual_actions;
   auto retry = status->ToTPMRetryAction();
-  PopulateActionFromRetry(retry, &actual_actions);
+  ErrorActionSet actual_actions = PopulateActionFromRetry(retry);
   std::string loc_str =
       base::StringPrintf("(%s)", status.ToFullString().c_str());
 
@@ -89,7 +80,7 @@ StatusChain<CryptohomeTPMError> FromTPMErrorBase(
 
 CryptohomeTPMError::CryptohomeTPMError(
     const ErrorLocationPair& loc,
-    const std::set<CryptohomeError::Action>& actions,
+    const ErrorActionSet& actions,
     const hwsec::TPMRetryAction retry,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec)
     : CryptohomeCryptoError(

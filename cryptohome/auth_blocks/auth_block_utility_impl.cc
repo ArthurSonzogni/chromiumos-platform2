@@ -54,11 +54,11 @@
 #include "cryptohome/smart_card_verifier.h"
 #include "cryptohome/vault_keyset.h"
 
-using cryptohome::error::ContainsActionInStack;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -297,8 +297,8 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(
         CryptohomeStatus status = MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthBlockUtilPrepareForAuthFingerprintNoService),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_INVALID_ARGUMENT);
         std::move(callback).Run(std::move(status));
@@ -317,8 +317,8 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(
       // These factors do not require Prepare.
       CryptohomeStatus status = MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilPrepareInvalidAuthFactorType),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kAuth}),
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_INVALID_ARGUMENT);
       std::move(callback).Run(std::move(status));
@@ -338,8 +338,8 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAdd(
         CryptohomeStatus status = MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthBlockUtilPrepareForAddFingerprintNoService),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_INVALID_ARGUMENT);
         std::move(callback).Run(std::move(status));
@@ -360,8 +360,8 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAdd(
       CryptohomeStatus status = MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(
               kLocAuthBlockUtilPrepareForAddInvalidAuthFactorType),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kAuth}),
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_INVALID_ARGUMENT);
       std::move(callback).Run(std::move(status));
@@ -477,7 +477,7 @@ CryptoStatusOr<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
   // Default status if there are no entries in the returned priority list.
   CryptoStatus status = MakeStatus<CryptohomeCryptoError>(
       CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilEmptyListInGetAuthBlockWithType),
-      ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+      ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
       CryptoError::CE_OTHER_CRYPTO);
   for (AuthBlockType candidate_type :
        GetAuthBlockPriorityListForCreation(auth_factor_type)) {
@@ -492,7 +492,7 @@ CryptoStatusOr<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
   return MakeStatus<CryptohomeCryptoError>(
              CRYPTOHOME_ERR_LOC(
                  kLocAuthBlockUtilNoSupportedInGetAuthBlockWithType),
-             ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
       .Wrap(std::move(status));
 }
 
@@ -522,7 +522,7 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(AuthBlockType auth_block_type,
         CRYPTOHOME_ERR_LOC(
             kLocAuthBlockUtilUnknownUnsupportedInGetAsyncAuthBlockWithType),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   return auth_block;
@@ -668,7 +668,7 @@ CryptohomeStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocAuthBlockUtilUnsupportedInPrepareAuthBlockForRemoval),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -707,7 +707,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
     LOG(ERROR) << "CryptohomeRecoveryAuthBlockState is invalid";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocAuthBlockStateInvalidInGenerateRecoveryRequest),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -719,7 +719,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocFailedDeserializeHsmPayloadInGenerateRecoveryRequest),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -731,7 +731,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocFailedParseEpochResponseInGenerateRecoveryRequest),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -739,7 +739,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocFailedToGetRecoveryCryptoBackendInGenerateRecoveryRequest),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -765,7 +765,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
     // TODO(b/231297066): send more specific error.
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocFailedGenerateRecoveryRequest),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 

@@ -20,8 +20,9 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 using ::cryptohome::error::CryptohomeCryptoError;
-using ::cryptohome::error::ErrorAction;
 using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::kAesBlockSize;
 using ::hwsec_foundation::kDefaultAesKeySize;
@@ -60,7 +61,7 @@ CryptoStatus CreateScryptHelper(const brillo::SecureBlob& input_key,
     LOG(ERROR) << "Scrypt for derived key creation failed.";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocScryptAuthBlockScryptFailedDerivedKeyInCreate),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_SCRYPT_CRYPTO);
   }
   return OkStatus<CryptohomeCryptoError>();
@@ -76,7 +77,7 @@ CryptoStatus ScryptAuthBlock::Create(const AuthInput& auth_input,
   if (!error.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(kLocScryptAuthBlockInputKeyFailedInCreate),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
         .Wrap(std::move(error));
   }
 
@@ -85,7 +86,7 @@ CryptoStatus ScryptAuthBlock::Create(const AuthInput& auth_input,
   if (!error.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(kLocScryptAuthBlockChapsKeyFailedInCreate),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
         .Wrap(std::move(error));
   }
 
@@ -95,7 +96,7 @@ CryptoStatus ScryptAuthBlock::Create(const AuthInput& auth_input,
   if (!error.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(kLocScryptAuthBlockResetKeyFailedInCreate),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
         .Wrap(std::move(error));
   }
 
@@ -125,7 +126,7 @@ CryptoStatus ScryptAuthBlock::Derive(const AuthInput& auth_input,
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocScryptAuthBlockInvalidBlockStateInDerive),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -133,8 +134,8 @@ CryptoStatus ScryptAuthBlock::Derive(const AuthInput& auth_input,
     LOG(ERROR) << "Invalid ScryptAuthBlockState: missing salt";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocScryptAuthBlockNoSaltInDerive),
-        ErrorActionSet({ErrorAction::kAuth, ErrorAction::kReboot,
-                        ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kAuth, PossibleAction::kReboot,
+                        PossibleAction::kDeleteVault}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -143,8 +144,8 @@ CryptoStatus ScryptAuthBlock::Derive(const AuthInput& auth_input,
     LOG(ERROR) << "Invalid ScryptAuthBlockState: missing N, R, P factors";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocScryptAuthBlockNofactorsInDerive),
-        ErrorActionSet({ErrorAction::kAuth, ErrorAction::kReboot,
-                        ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kAuth, PossibleAction::kReboot,
+                        PossibleAction::kDeleteVault}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -157,7 +158,7 @@ CryptoStatus ScryptAuthBlock::Derive(const AuthInput& auth_input,
               &derived_key)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocScryptAuthBlockScryptFailedInDeriveFromSalt),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_SCRYPT_CRYPTO);
   }
   key_blobs->vkk_key = std::move(derived_key);
@@ -170,7 +171,7 @@ CryptoStatus ScryptAuthBlock::Derive(const AuthInput& auth_input,
       return MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(
               kLocScryptAuthBlockScryptFailedInDeriveFromChapsSalt),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           CryptoError::CE_SCRYPT_CRYPTO);
     }
     key_blobs->scrypt_chaps_key = std::move(derived_scrypt_chaps_key);
@@ -185,7 +186,7 @@ CryptoStatus ScryptAuthBlock::Derive(const AuthInput& auth_input,
       return MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(
               kLocScryptAuthBlockScryptFailedInDeriveFromResetSeedSalt),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           CryptoError::CE_SCRYPT_CRYPTO);
     }
     key_blobs->scrypt_reset_seed_key = std::move(derived_scrypt_reset_seed_key);

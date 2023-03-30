@@ -124,7 +124,7 @@ TEST_F(ErrorReportingTest, DevCheckUnexpectedState) {
   // Setup the errors.
   auto err1 = MakeStatus<CryptohomeError>(
       kErrorLocationForTesting1,
-      ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+      ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
 
   auto err2 =

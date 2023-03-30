@@ -14,8 +14,9 @@
 
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeLECredError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnError;
@@ -97,11 +98,11 @@ TEST(RevocationTest, RevokeSucceedsWithLeCredErrorInvalidLabel) {
   RevocationState state = {.le_label = 0};
   uint64_t label;
   EXPECT_CALL(le_cred_manager, RemoveCredential(_))
-      .WillOnce(DoAll(
-          SaveArg<0>(&label),
-          ReturnError<CryptohomeLECredError>(
-              kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
-              LE_CRED_ERROR_INVALID_LABEL)));
+      .WillOnce(DoAll(SaveArg<0>(&label),
+                      ReturnError<CryptohomeLECredError>(
+                          kErrorLocationForTesting1,
+                          ErrorActionSet({PossibleAction::kFatal}),
+                          LE_CRED_ERROR_INVALID_LABEL)));
   // Revoke succeeds after LE_CRED_ERROR_INVALID_LABEL.
   ASSERT_THAT(
       Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state),
@@ -118,11 +119,11 @@ TEST(RevocationTest, RevokeSucceedsWithLeCredErrorHashTree) {
   RevocationState state = {.le_label = 0};
   uint64_t label;
   EXPECT_CALL(le_cred_manager, RemoveCredential(_))
-      .WillOnce(DoAll(
-          SaveArg<0>(&label),
-          ReturnError<CryptohomeLECredError>(
-              kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
-              LE_CRED_ERROR_HASH_TREE)));
+      .WillOnce(DoAll(SaveArg<0>(&label),
+                      ReturnError<CryptohomeLECredError>(
+                          kErrorLocationForTesting1,
+                          ErrorActionSet({PossibleAction::kFatal}),
+                          LE_CRED_ERROR_HASH_TREE)));
   // Revoke succeeds after LE_CRED_ERROR_HASH_TREE.
   ASSERT_THAT(
       Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state),
@@ -139,11 +140,11 @@ TEST(RevocationTest, RevokeFailsWithLeCredErrorUnclassified) {
   RevocationState state = {.le_label = 0};
   uint64_t label;
   EXPECT_CALL(le_cred_manager, RemoveCredential(_))
-      .WillOnce(DoAll(
-          SaveArg<0>(&label),
-          ReturnError<CryptohomeLECredError>(
-              kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
-              LE_CRED_ERROR_UNCLASSIFIED)));
+      .WillOnce(DoAll(SaveArg<0>(&label),
+                      ReturnError<CryptohomeLECredError>(
+                          kErrorLocationForTesting1,
+                          ErrorActionSet({PossibleAction::kFatal}),
+                          LE_CRED_ERROR_UNCLASSIFIED)));
   // Revoke fails after LE_CRED_ERROR_UNCLASSIFIED.
   auto status =
       Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state);
@@ -160,11 +161,11 @@ TEST(RevocationTest, RevokeFailsWithLeCredErrorInvalidLeSecret) {
   RevocationState state = {.le_label = 0};
   uint64_t label;
   EXPECT_CALL(le_cred_manager, RemoveCredential(_))
-      .WillOnce(DoAll(
-          SaveArg<0>(&label),
-          ReturnError<CryptohomeLECredError>(
-              kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
-              LE_CRED_ERROR_INVALID_LE_SECRET)));
+      .WillOnce(DoAll(SaveArg<0>(&label),
+                      ReturnError<CryptohomeLECredError>(
+                          kErrorLocationForTesting1,
+                          ErrorActionSet({PossibleAction::kFatal}),
+                          LE_CRED_ERROR_INVALID_LE_SECRET)));
   // Revoke fails after LE_CRED_ERROR_INVALID_LE_SECRET.
   auto status =
       Revoke(AuthBlockType::kCryptohomeRecovery, &le_cred_manager, state);

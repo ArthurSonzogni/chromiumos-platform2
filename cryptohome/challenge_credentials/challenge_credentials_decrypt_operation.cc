@@ -26,9 +26,10 @@ using brillo::SecureBlob;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeTPMError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
 using cryptohome::error::NoErrorAction;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -115,13 +116,13 @@ ChallengeCredentialsDecryptOperation::StartProcessing() {
   if (!hwsec_) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptNoHwsecBackend),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_FATAL);
   }
   if (!public_key_info_.signature_algorithm.size()) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptNoPubKeySigSize),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_FATAL);
   }
 
@@ -129,7 +130,7 @@ ChallengeCredentialsDecryptOperation::StartProcessing() {
       keyset_challenge_info_.public_key_spki_der) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptSPKIPubKeyMismatch),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_FATAL);
   }
 
@@ -150,20 +151,20 @@ ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
   if (keyset_challenge_info_.salt.empty()) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptNoSalt),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_FATAL);
   }
   if (public_key_info_.public_key_spki_der.empty()) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocChalCredDecryptNoSPKIPubKeyDERWhileProcessingSalt),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_FATAL);
   }
   if (!keyset_challenge_info_.salt_signature_algorithm.has_value()) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptNoSaltSigAlgoWhileProcessingSalt),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_FATAL);
   }
   const Blob& salt = keyset_challenge_info_.salt;
@@ -178,7 +179,7 @@ ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
                   salt.begin())) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptSaltPrefixIncorrect),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_FATAL);
   }
   MakeKeySignatureChallenge(
@@ -196,7 +197,7 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocChalCredDecryptNoSPKIPubKeyDERWhileProcessingSecret),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_FATAL);
   }
 
@@ -261,7 +262,7 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
   if (!challenge_id_.has_value()) {
     Resolve(MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredDecryptUnsealingResponseNoChallenge),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_FATAL));
     return;
   }

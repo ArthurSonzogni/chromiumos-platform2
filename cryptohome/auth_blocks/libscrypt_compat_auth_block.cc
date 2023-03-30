@@ -19,8 +19,9 @@
 #include "cryptohome/key_objects.h"
 
 using ::cryptohome::error::CryptohomeCryptoError;
-using ::cryptohome::error::ErrorAction;
 using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::kDefaultScryptParams;
 using ::hwsec_foundation::kLibScryptDerivedKeySize;
@@ -49,7 +50,7 @@ CryptoStatus CreateScryptHelper(const brillo::SecureBlob& input_key,
     LOG(ERROR) << "scrypt failed";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocScryptCompatAuthBlockScryptFailedInCreateHelper),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_SCRYPT_CRYPTO);
   }
 
@@ -65,8 +66,8 @@ CryptoStatus ParseHeaderAndDerive(const brillo::SecureBlob& wrapped_blob,
     LOG(ERROR) << "Failed to parse header.";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocScryptCompatAuthBlockParseFailedInParseHeader),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
         CryptoError::CE_SCRYPT_CRYPTO);
   }
 
@@ -77,7 +78,7 @@ CryptoStatus ParseHeaderAndDerive(const brillo::SecureBlob& wrapped_blob,
     LOG(ERROR) << "scrypt failed";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocScryptCompatAuthBlockScryptFailedInParseHeader),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_SCRYPT_CRYPTO);
   }
 
@@ -105,7 +106,7 @@ CryptoStatus LibScryptCompatAuthBlock::Create(const AuthInput& auth_input,
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocScryptCompatAuthBlockInputKeyFailedInCreate),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
         .Wrap(std::move(error));
   }
 
@@ -119,7 +120,7 @@ CryptoStatus LibScryptCompatAuthBlock::Create(const AuthInput& auth_input,
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocScryptCompatAuthBlockChapsKeyFailedInCreate),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
         .Wrap(std::move(error));
   }
 
@@ -134,7 +135,7 @@ CryptoStatus LibScryptCompatAuthBlock::Create(const AuthInput& auth_input,
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocScryptCompatAuthBlockResetKeyFailedInCreate),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
         .Wrap(std::move(error));
   }
 
@@ -163,7 +164,7 @@ CryptoStatus LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocScryptCompatAuthBlockInvalidBlockStateInDerive),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -172,8 +173,8 @@ CryptoStatus LibScryptCompatAuthBlock::Derive(const AuthInput& auth_input,
         << "Invalid LibScryptCompatAuthBlockState: missing wrapped_keyset";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocScryptCompatAuthBlockNoWrappedKeysetInDerive),
-        ErrorActionSet({ErrorAction::kAuth, ErrorAction::kReboot,
-                        ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kAuth, PossibleAction::kReboot,
+                        PossibleAction::kDeleteVault}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 

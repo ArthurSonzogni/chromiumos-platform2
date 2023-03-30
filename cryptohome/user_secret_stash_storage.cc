@@ -19,8 +19,9 @@
 #include "cryptohome/platform.h"
 
 using ::cryptohome::error::CryptohomeError;
-using ::cryptohome::error::ErrorAction;
 using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 using ::hwsec_foundation::status::StatusChain;
@@ -53,8 +54,8 @@ CryptohomeStatus UserSecretStashStorage::Persist(
                << obfuscated_username;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSStorageWriteFailedInPersist),
-        ErrorActionSet(
-            {ErrorAction::kReboot, ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kReboot,
+                        PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   return OkStatus<CryptohomeError>();
@@ -75,9 +76,9 @@ CryptohomeStatusOr<brillo::Blob> UserSecretStashStorage::LoadPersisted(
   if (file_read_failure) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSStorageReadFailedInLoadPersisted),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kDeleteVault,
-                        ErrorAction::kAuth,
-                        ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kDeleteVault,
+                        PossibleAction::kAuth,
+                        PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   return uss_container_flatbuffer;

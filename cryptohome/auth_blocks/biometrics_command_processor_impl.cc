@@ -29,8 +29,9 @@ namespace {
 
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::EllipticCurve;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
@@ -45,14 +46,14 @@ CryptohomeStatusOr<crypto::ScopedEC_KEY> GenerateEcKey() {
   if (!ec.has_value()) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorCreateEcFailedInGenKey),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   crypto::ScopedEC_KEY key = ec->GenerateKey(context.get());
   if (!key) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorNullCreatedKeyInGenKey),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   return key;
@@ -68,7 +69,7 @@ CryptohomeStatusOr<biod::FpPublicKey> GetFpPublicKeyFromEcKey(
   if (!ec.has_value()) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorCreateEcFailedInGetKey),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -77,14 +78,14 @@ CryptohomeStatusOr<biod::FpPublicKey> GetFpPublicKeyFromEcKey(
   if (!out_x || !out_y) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorCreateBigNumsFailedInGetKey),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   if (!EC_POINT_get_affine_coordinates(ec->GetGroup(), pub_point, out_x.get(),
                                        out_y.get(), context.get())) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorGetCoordsFailedInGetKey),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   brillo::SecureBlob out_x_blob, out_y_blob;
@@ -92,7 +93,7 @@ CryptohomeStatusOr<biod::FpPublicKey> GetFpPublicKeyFromEcKey(
       !hwsec_foundation::BigNumToSecureBlob(*out_y, 32, &out_y_blob)) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorPointToBlobFailedInGetKey),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -114,7 +115,7 @@ CryptohomeStatusOr<crypto::ScopedEC_POINT> GetEcPointFromFpPublicKey(
   if (!ec.has_value()) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorCreateEcFailedInGetPoint),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -122,7 +123,7 @@ CryptohomeStatusOr<crypto::ScopedEC_POINT> GetEcPointFromFpPublicKey(
   if (!point) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorNullCreatedPointInGetPoint),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   const brillo::SecureBlob in_x_blob(brillo::BlobFromString(key.x())),
@@ -134,14 +135,14 @@ CryptohomeStatusOr<crypto::ScopedEC_POINT> GetEcPointFromFpPublicKey(
   if (!in_x || !in_y) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorKeyToBigNumFailedInGetPoint),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   if (!EC_POINT_set_affine_coordinates(ec->GetGroup(), point.get(), in_x.get(),
                                        in_y.get(), context.get())) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorSetCoordsFailedInGetPoint),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
   return point;
@@ -160,7 +161,7 @@ CryptohomeStatusOr<brillo::SecureBlob> DecryptSecret(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocBiometricsProcessorCreateEcFailedInDecryptSecret),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -171,7 +172,7 @@ CryptohomeStatusOr<brillo::SecureBlob> DecryptSecret(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocBiometricsProcessorComputeSharedPointFailedInDecryptSecret),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -181,7 +182,7 @@ CryptohomeStatusOr<brillo::SecureBlob> DecryptSecret(
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocBiometricsProcessorComputeSharedSecretFailedInDecryptSecret),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -197,7 +198,7 @@ CryptohomeStatusOr<brillo::SecureBlob> DecryptSecret(
     LOG(ERROR) << "Failed to decrypt encrypted_secret.";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorDecryptFailedInDecryptSecret),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
 
@@ -243,15 +244,15 @@ CryptohomeStatus CreateCredentialStatusToCryptohomeStatus(
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(
               kLocBiometricsProcessorCreateCredentialWrongSession),
-          ErrorActionSet({ErrorAction::kRetry, ErrorAction::kReboot}),
+          ErrorActionSet({PossibleAction::kRetry, PossibleAction::kReboot}),
           user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
     // Error codes other than INCORRECT_STATE shouldn't usually happen.
     default:
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(
               kLocBiometricsProcessorCreateCredentialBiodInternalError),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kReboot}),
           user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
   }
 }
@@ -266,20 +267,20 @@ CryptohomeStatus AuthenticateCredentialStatusToCryptohomeStatus(
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(
               kLocBiometricsProcessorMatchCredentialWrongSession),
-          ErrorActionSet({ErrorAction::kRetry, ErrorAction::kReboot}),
+          ErrorActionSet({PossibleAction::kRetry, PossibleAction::kReboot}),
           user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
     case biod::AuthenticateCredentialReply::NO_TEMPLATES:
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorMatchCredentialNoRecords),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
     // Other error codes shouldn't usually happen.
     default:
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(
               kLocBiometricsProcessorMatchCredentialBiodInternalError),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kReboot}),
           user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
   }
 }
@@ -299,13 +300,13 @@ CryptohomeStatus ScanResultToCryptohomeStatus(biod::ScanResult scan_result) {
     case biod::SCAN_RESULT_NO_MATCH:
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorMatchCredentialNoMatch),
-          ErrorActionSet({ErrorAction::kIncorrectAuth}),
+          ErrorActionSet(PrimaryAction::kIncorrectAuth),
           user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_RETRY_REQUIRED);
     default:
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(
               kLocBiometricsProcessorMatchCredentialUnexpectedScanResult),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_RETRY_REQUIRED);
   }
 }
@@ -527,7 +528,7 @@ void BiometricsCommandProcessorImpl::OnCreateCredentialReply(
   if (!reply.has_value()) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorCreateCredentialBiodNoResp),
-        ErrorActionSet({ErrorAction::kRetry, ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kRetry, PossibleAction::kReboot}),
         user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
     return;
   }
@@ -562,7 +563,7 @@ void BiometricsCommandProcessorImpl::OnAuthenticateCredentialReply(
   if (!reply.has_value()) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsProcessorMatchCredentialBiodNoResp),
-        ErrorActionSet({ErrorAction::kRetry, ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kRetry, PossibleAction::kReboot}),
         user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
     return;
   }

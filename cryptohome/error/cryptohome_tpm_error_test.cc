@@ -51,7 +51,7 @@ TEST_F(CryptohomeTPMErrorTest, FromTPMError) {
       err1->local_location(),
       (0x0132 + hwsec::unified_tpm_error::kUnifiedErrorHashedTpmErrorBase) |
           hwsec::unified_tpm_error::kUnifiedErrorBit);
-  EXPECT_EQ(err1->local_actions(), ErrorActionSet({ErrorAction::kReboot}));
+  EXPECT_EQ(err1->local_actions(), ErrorActionSet({PossibleAction::kReboot}));
   EXPECT_EQ(err1->ToTPMRetryAction(), hwsec::TPMRetryAction::kReboot);
 }
 
@@ -71,7 +71,7 @@ TEST_F(CryptohomeTPMErrorTest, FromTPMErrorStacked) {
       (0x0132 + hwsec::unified_tpm_error::kUnifiedErrorHashedTpmErrorBase) |
           hwsec::unified_tpm_error::kUnifiedErrorBit);
   // Retry actions should be from the last in the chain.
-  EXPECT_EQ(err1->local_actions(), ErrorActionSet({ErrorAction::kReboot}));
+  EXPECT_EQ(err1->local_actions(), ErrorActionSet({PossibleAction::kReboot}));
   EXPECT_EQ(err1->ToTPMRetryAction(), hwsec::TPMRetryAction::kReboot);
 }
 

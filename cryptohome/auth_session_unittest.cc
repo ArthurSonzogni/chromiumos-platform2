@@ -1699,7 +1699,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
 
         std::move(callback).Run(MakeStatus<error::CryptohomeCryptoError>(
             kErrorLocationPlaceholder,
-            error::ErrorActionSet({error::ErrorAction::kIncorrectAuth}),
+            error::ErrorActionSet(error::PrimaryAction::kIncorrectAuth),
             CryptoError::CE_OTHER_CRYPTO));
       }
     }
@@ -2246,7 +2246,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                 MakeStatus<CryptohomeCryptoError>(
                     kErrorLocationForTestingAuthSession,
                     error::ErrorActionSet(
-                        {error::ErrorAction::kDevCheckUnexpectedState}),
+                        {error::PossibleAction::kDevCheckUnexpectedState}),
                     CryptoError::CE_OTHER_CRYPTO),
                 nullptr, nullptr));
       });
@@ -2667,7 +2667,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                 MakeStatus<CryptohomeCryptoError>(
                     kErrorLocationForTestingAuthSession,
                     error::ErrorActionSet(
-                        {error::ErrorAction::kDevCheckUnexpectedState}),
+                        {error::PossibleAction::kDevCheckUnexpectedState}),
                     CryptoError::CE_OTHER_CRYPTO),
                 nullptr));
       });
@@ -4077,7 +4077,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
             .Run(MakeStatus<CryptohomeCryptoError>(
                      kErrorLocationForTestingAuthSession,
                      error::ErrorActionSet(
-                         {error::ErrorAction::kDevCheckUnexpectedState}),
+                         {error::PossibleAction::kDevCheckUnexpectedState}),
                      CryptoError::CE_OTHER_CRYPTO),
                  nullptr, nullptr);
       });

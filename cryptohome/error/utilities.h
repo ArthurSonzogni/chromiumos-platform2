@@ -12,11 +12,19 @@ namespace cryptohome {
 
 namespace error {
 
-// Returns true iff any error in the chain contains the given action.
+// TODO(b/275676828): Make this check reflects the actual behavior of error
+// converting.
+// Returns true iff any error in the chain contains the given
+// action.
 template <typename ErrorType>
 bool ContainsActionInStack(
     const hwsec_foundation::status::StatusChain<ErrorType>& error,
-    const ErrorAction action);
+    const PrimaryAction action);
+
+template <typename ErrorType>
+bool ContainsActionInStack(
+    const hwsec_foundation::status::StatusChain<ErrorType>& error,
+    const PossibleAction action);
 
 }  // namespace error
 

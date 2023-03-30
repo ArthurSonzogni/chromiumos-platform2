@@ -51,7 +51,7 @@ class ErrorConverterTest : public ::testing::Test {
 
 TEST_F(ErrorConverterTest, BasicConversionTest) {
   StatusChain<CryptohomeError> err1 = MakeStatus<CryptohomeError>(
-      kErrorLocationForTesting2, ErrorActionSet({ErrorAction::kPowerwash}),
+      kErrorLocationForTesting2, ErrorActionSet({PossibleAction::kPowerwash}),
       user_data_auth::CryptohomeErrorCode::
           CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
 
@@ -87,13 +87,13 @@ TEST_F(ErrorConverterTest, Success) {
 
 TEST_F(ErrorConverterTest, WrappedPossibleAction) {
   StatusChain<CryptohomeError> err1 = MakeStatus<CryptohomeError>(
-      kErrorLocationForTesting2, ErrorActionSet({ErrorAction::kPowerwash}),
+      kErrorLocationForTesting2, ErrorActionSet({PossibleAction::kPowerwash}),
       user_data_auth::CryptohomeErrorCode::
           CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
 
   StatusChain<CryptohomeError> err2 =
       MakeStatus<CryptohomeError>(kErrorLocationForTesting1,
-                                  ErrorActionSet({ErrorAction::kReboot}))
+                                  ErrorActionSet({PossibleAction::kReboot}))
           .Wrap(std::move(err1));
 
   user_data_auth::CryptohomeErrorCode ec =
@@ -116,13 +116,13 @@ TEST_F(ErrorConverterTest, WrappedPossibleAction) {
 TEST_F(ErrorConverterTest, WrappedPrimaryAction) {
   StatusChain<CryptohomeError> err1 = MakeStatus<CryptohomeError>(
       kErrorLocationForTesting2,
-      ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
+      ErrorActionSet(PrimaryAction::kTpmUpdateRequired),
       user_data_auth::CryptohomeErrorCode::
           CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
 
   StatusChain<CryptohomeError> err2 =
       MakeStatus<CryptohomeError>(kErrorLocationForTesting1,
-                                  ErrorActionSet({ErrorAction::kReboot}))
+                                  ErrorActionSet({PossibleAction::kReboot}))
           .Wrap(std::move(err1));
 
   user_data_auth::CryptohomeErrorCode ec;

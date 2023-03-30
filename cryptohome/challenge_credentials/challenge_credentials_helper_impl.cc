@@ -27,8 +27,9 @@
 using brillo::Blob;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeTPMError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
@@ -43,7 +44,7 @@ namespace {
 bool IsOperationFailureTransient(
     const StatusChain<CryptohomeCryptoError>& status
     [[clang::param_typestate(unconsumed)]]) {
-  return ContainsActionInStack(status, ErrorAction::kRetry);
+  return ContainsActionInStack(status, PossibleAction::kRetry);
 }
 
 // Returns whether the Chrome OS image is a test one.
@@ -75,8 +76,8 @@ CryptoStatus ChallengeCredentialsHelperImpl::CheckTPMStatus() {
   // multiple places.
   auto tpm_unavailable_status = MakeStatus<CryptohomeCryptoError>(
       CRYPTOHOME_ERR_LOC(kLocChalCredHelperTpmUnavailableInCheckTpmStatus),
-      ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                      ErrorAction::kReboot, ErrorAction::kPowerwash}),
+      ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                      PossibleAction::kReboot, PossibleAction::kPowerwash}),
       CryptoError::CE_OTHER_FATAL);
 
   // Have we checked before?
@@ -110,7 +111,7 @@ CryptoStatus ChallengeCredentialsHelperImpl::CheckSrkRocaStatus() {
   // multiple places.
   auto vulnerable_status = MakeStatus<CryptohomeCryptoError>(
       CRYPTOHOME_ERR_LOC(kLocChalCredHelperROCAVulnerableInCheckSrkRocaStatus),
-      ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
+      ErrorActionSet(PrimaryAction::kTpmUpdateRequired),
       CryptoError::CE_OTHER_FATAL,
       user_data_auth::CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED);
 
@@ -131,7 +132,7 @@ CryptoStatus ChallengeCredentialsHelperImpl::CheckSrkRocaStatus() {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocChalCredHelperCantQueryROCAVulnInCheckSrkRocaStatus),
-               ErrorActionSet({ErrorAction::kReboot}),
+               ErrorActionSet({PossibleAction::kReboot}),
                CryptoError::CE_OTHER_FATAL)
         .Wrap(MakeStatus<CryptohomeTPMError>(
             std::move(is_srk_roca_vulnerable).err_status()));
@@ -278,7 +279,8 @@ void ChallengeCredentialsHelperImpl::CancelRunningOperation() {
     // trigger upper layer to retry immediately, causing failures again.
     operation_->Abort(MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocChalCredHelperConcurrencyNotAllowed),
-        ErrorActionSet({ErrorAction::kReboot}), CryptoError::CE_OTHER_FATAL));
+        ErrorActionSet({PossibleAction::kReboot}),
+        CryptoError::CE_OTHER_FATAL));
     operation_.reset();
     // It's illegal for the consumer code to request a new operation in
     // immediate response to completion of a previous one.

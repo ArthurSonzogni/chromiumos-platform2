@@ -34,8 +34,9 @@
 
 using brillo::Blob;
 using cryptohome::error::CryptohomeError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -60,7 +61,7 @@ CryptohomeStatusOr<base::FilePath> GetAuthFactorPathFromStringType(
                << " of type " << auth_factor_type_string;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocGetAuthFactorPathInvalidLabel),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
@@ -81,7 +82,7 @@ CryptohomeStatusOr<base::FilePath> GetAuthFactorPath(
                << auth_factor_label;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocGetAuthFactorPathWrongTypeString),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
@@ -396,7 +397,7 @@ CryptohomeStatus AuthFactorManager::SaveAuthFactor(
     LOG(ERROR) << "Failed to get auth factor path in Save.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerGetPathFailedInSave),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
@@ -407,7 +408,7 @@ CryptohomeStatus AuthFactorManager::SaveAuthFactor(
                << " of type " << AuthFactorTypeToString(auth_factor.type());
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerSerializeFailedInSave),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -419,7 +420,7 @@ CryptohomeStatus AuthFactorManager::SaveAuthFactor(
                << " for " << obfuscated_username;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerWriteFailedInSave),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -436,7 +437,7 @@ AuthFactorManager::LoadAuthFactor(const ObfuscatedUsername& obfuscated_username,
     LOG(ERROR) << "Failed to get auth factor path in Load.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerGetPathFailedInLoad),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
@@ -447,7 +448,7 @@ AuthFactorManager::LoadAuthFactor(const ObfuscatedUsername& obfuscated_username,
                << " for " << obfuscated_username;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerReadFailedInLoad),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   // This check is redundant to the flatbuffer parsing below, but we check it
@@ -456,7 +457,7 @@ AuthFactorManager::LoadAuthFactor(const ObfuscatedUsername& obfuscated_username,
   if (file_contents.empty()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerEmptyReadInLoad),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -469,7 +470,7 @@ AuthFactorManager::LoadAuthFactor(const ObfuscatedUsername& obfuscated_username,
                << " for " << obfuscated_username;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerParseFailedInLoad),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
@@ -566,7 +567,7 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
     LOG(ERROR) << "Failed to get auth factor path in Remove.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerGetPathFailedInRemove),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
@@ -580,7 +581,7 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocAuthFactorManagerPrepareForRemovalFailedInRemove),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
         .Wrap(std::move(status));
   }
 
@@ -598,8 +599,8 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
                  << obfuscated_username;
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerDeleteFailedInRemove),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                          ErrorAction::kRetry, ErrorAction::kReboot}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kRetry, PossibleAction::kReboot}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
   }

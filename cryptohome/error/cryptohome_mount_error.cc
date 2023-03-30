@@ -22,7 +22,7 @@ namespace error {
 
 CryptohomeMountError::MakeStatusTrait::MountErrorUnset::MountErrorUnset(
     const ErrorLocationPair& loc,
-    const std::set<CryptohomeError::Action>& actions,
+    const ErrorActionSet& actions,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec)
     : loc_(loc), actions_(actions), ec_(ec) {}
 
@@ -39,7 +39,7 @@ CryptohomeMountError::MakeStatusTrait::MountErrorUnset::Wrap(
 CryptohomeMountError::MakeStatusTrait::MountErrorUnset
 CryptohomeMountError::MakeStatusTrait::operator()(
     const ErrorLocationPair& loc,
-    const std::set<CryptohomeError::Action>& actions,
+    const ErrorActionSet& actions,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec) {
   return CryptohomeMountError::MakeStatusTrait::MountErrorUnset(
       loc, std::move(actions), ec);
@@ -81,7 +81,7 @@ CryptohomeMountError::MakeStatusTrait::ActionsUnset::Wrap(
 StatusChain<CryptohomeMountError>
 CryptohomeMountError::MakeStatusTrait::operator()(
     const ErrorLocationPair& loc,
-    const std::set<CryptohomeError::Action>& actions,
+    const ErrorActionSet& actions,
     const MountError mount_err,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec) {
   return NewStatus<CryptohomeMountError>(loc, std::move(actions), mount_err,
@@ -90,7 +90,7 @@ CryptohomeMountError::MakeStatusTrait::operator()(
 
 CryptohomeMountError::CryptohomeMountError(
     const ErrorLocationPair& loc,
-    const std::set<Action>& actions,
+    const ErrorActionSet& actions,
     const MountError mount_error,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec)
     : CryptohomeError(std::move(loc),

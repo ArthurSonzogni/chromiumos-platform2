@@ -53,27 +53,25 @@ TEST_F(CryptohomeErrorTest, BasicFields) {
   auto err1 =
       MakeStatus<CryptohomeError>(kErrorLocationForTesting1, NoErrorAction());
   EXPECT_EQ(err1->local_location(), kErrorLocationForTesting1.location());
-  EXPECT_EQ(err1->local_actions().size(), 0);
+  EXPECT_EQ(err1->local_actions(), NoErrorAction());
 
   auto err2 = MakeStatus<CryptohomeError>(
       kErrorLocationForTesting2,
-      ErrorActionSet({ErrorAction::kRetry, ErrorAction::kPowerwash}));
+      ErrorActionSet({PossibleAction::kRetry, PossibleAction::kPowerwash}));
   EXPECT_EQ(err2->local_location(), kErrorLocationForTesting2.location());
-  EXPECT_EQ(err2->local_actions(),
-            std::set<CryptohomeError::Action>(
-                {ErrorAction::kRetry, ErrorAction::kPowerwash}));
+  EXPECT_EQ(
+      err2->local_actions(),
+      ErrorActionSet({PossibleAction::kRetry, PossibleAction::kPowerwash}));
 }
 
 TEST_F(CryptohomeErrorTest, ToString) {
   auto err2 = MakeStatus<CryptohomeError>(
       kErrorLocationForTesting2,
-      ErrorActionSet({ErrorAction::kRetry, ErrorAction::kPowerwash}));
+      ErrorActionSet({PossibleAction::kRetry, PossibleAction::kPowerwash}));
 
   std::stringstream ss;
   ss << "Loc: " << kErrorLocationForTesting2.name() << "/"
-     << kErrorLocationForTesting2.location() << " Actions: ("
-     << static_cast<int>(ErrorAction::kRetry) << ", "
-     << static_cast<int>(ErrorAction::kPowerwash) << ")";
+     << kErrorLocationForTesting2.location();
 
   EXPECT_EQ(err2->ToString(), ss.str());
 }

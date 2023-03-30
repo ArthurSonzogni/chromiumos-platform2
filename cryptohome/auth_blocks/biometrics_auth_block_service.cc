@@ -21,8 +21,9 @@ namespace cryptohome {
 
 namespace {
 using cryptohome::error::CryptohomeError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 }  // namespace
@@ -56,7 +57,7 @@ void BiometricsAuthBlockService::StartEnrollSession(
   if (active_token_ || pending_token_) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsServiceStartEnrollConcurrentSession),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_BIOMETRICS_BUSY);
     std::move(on_done).Run(std::move(status));
     return;
@@ -76,7 +77,7 @@ void BiometricsAuthBlockService::CreateCredential(OperationInput payload,
   if (!active_token_ || active_token_->type() != Token::TokenType::kEnroll) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsServiceCreateCredentialNoSession),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
     return;
@@ -103,7 +104,7 @@ void BiometricsAuthBlockService::StartAuthenticateSession(
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocBiometricsServiceStartAuthenticateConcurrentSession),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_BIOMETRICS_BUSY);
     std::move(on_done).Run(std::move(status));
     return;
@@ -124,7 +125,7 @@ void BiometricsAuthBlockService::MatchCredential(OperationInput payload,
       active_token_->type() != Token::TokenType::kAuthenticate) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsServiceMatchCredentialNoSession),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
     return;
@@ -186,7 +187,7 @@ void BiometricsAuthBlockService::CheckSessionStartResult(
   if (active_token_) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsServiceCheckStartConcurrentSession),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_BIOMETRICS_BUSY);
     std::move(on_done).Run(std::move(status));
     return;
@@ -194,7 +195,7 @@ void BiometricsAuthBlockService::CheckSessionStartResult(
   if (!pending_token_) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsServiceStartSessionNoToken),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
     std::move(on_done).Run(std::move(status));
@@ -204,7 +205,7 @@ void BiometricsAuthBlockService::CheckSessionStartResult(
   if (!success) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocBiometricsServiceStartSessionFailure),
-        ErrorActionSet({ErrorAction::kRetry}),
+        ErrorActionSet({PossibleAction::kRetry}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
     std::move(on_done).Run(std::move(status));

@@ -33,12 +33,12 @@ using hwsec_foundation::status::StatusChain;
 
 TEST_F(CryptohomeLECredErrorTest, BasicConstruction) {
   auto err1 = MakeStatus<CryptohomeLECredError>(
-      kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+      kErrorLocationForTesting1, ErrorActionSet({PossibleAction::kFatal}),
       LECredError::LE_CRED_ERROR_TOO_MANY_ATTEMPTS);
 
   ASSERT_FALSE(err1.ok());
   EXPECT_EQ(err1->local_location(), kErrorLocationForTesting1.location());
-  EXPECT_EQ(err1->local_actions(), ErrorActionSet({ErrorAction::kFatal}));
+  EXPECT_EQ(err1->local_actions(), ErrorActionSet({PossibleAction::kFatal}));
   EXPECT_EQ(
       err1->local_legacy_error().value(),
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK);

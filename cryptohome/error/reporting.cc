@@ -45,8 +45,12 @@ void ReportHashedStack(const user_data_auth::CryptohomeErrorInfo& info) {
 // Report all node that contains kDevCheckUnexpectedState.
 void ReportDevCheckUnexpectedState(const StatusChain<CryptohomeError>& stack) {
   for (const auto& err : stack.const_range()) {
-    const auto& actions = err->local_actions();
-    if (actions.count(ErrorAction::kDevCheckUnexpectedState) != 0) {
+    if (!std::holds_alternative<PossibleActions>(err->local_actions())) {
+      continue;
+    }
+    const auto& possible_actions =
+        std::get<PossibleActions>(err->local_actions());
+    if (possible_actions[PossibleAction::kDevCheckUnexpectedState]) {
       auto loc = err->local_location();
       ReportCryptohomeErrorDevCheckUnexpectedState(static_cast<uint32_t>(loc));
     }

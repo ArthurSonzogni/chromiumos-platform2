@@ -22,7 +22,7 @@ namespace error {
 
 CryptohomeLECredError::MakeStatusTrait::Unactioned::Unactioned(
     const ErrorLocationPair& loc,
-    const std::set<CryptohomeError::Action>& actions,
+    const ErrorActionSet& actions,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec)
     : loc_(loc), actions_(actions), ec_(ec) {}
 
@@ -39,7 +39,7 @@ CryptohomeLECredError::MakeStatusTrait::Unactioned::Wrap(
 CryptohomeLECredError::MakeStatusTrait::Unactioned
 CryptohomeLECredError::MakeStatusTrait::operator()(
     const ErrorLocationPair& loc,
-    const std::set<CryptohomeError::Action>& actions,
+    const ErrorActionSet& actions,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec) {
   return CryptohomeLECredError::MakeStatusTrait::Unactioned(
       loc, std::move(actions), ec);
@@ -56,7 +56,7 @@ CryptohomeLECredError::MakeStatusTrait::operator()(
 StatusChain<CryptohomeLECredError>
 CryptohomeLECredError::MakeStatusTrait::operator()(
     const ErrorLocationPair& loc,
-    const std::set<CryptohomeError::Action> actions,
+    const ErrorActionSet actions,
     const LECredError lecred_err,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec) {
   return NewStatus<CryptohomeLECredError>(loc, std::move(actions), lecred_err,
@@ -65,7 +65,7 @@ CryptohomeLECredError::MakeStatusTrait::operator()(
 
 CryptohomeLECredError::CryptohomeLECredError(
     const ErrorLocationPair& loc,
-    const std::set<Action>& actions,
+    const ErrorActionSet& actions,
     const LECredError lecred_error,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec)
     : CryptohomeCryptoError(

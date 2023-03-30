@@ -14,8 +14,9 @@
 namespace cryptohome {
 
 using error::CryptohomeError;
-using error::ErrorAction;
 using error::ErrorActionSet;
+using error::PossibleAction;
+using error::PrimaryAction;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 using ::hwsec_foundation::status::StatusChain;
@@ -52,7 +53,7 @@ void SmartCardVerifier::VerifyAsync(const AuthInput& auth_input,
     LOG(ERROR) << __func__ << ": No valid key challenge service.";
     std::move(callback).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocSmartCardVerifierNoKeyService),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
@@ -62,7 +63,7 @@ void SmartCardVerifier::VerifyAsync(const AuthInput& auth_input,
     LOG(ERROR) << __func__ << ": No valid username.";
     std::move(callback).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocSmartCardVerifierNoInputUser),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
@@ -73,7 +74,7 @@ void SmartCardVerifier::VerifyAsync(const AuthInput& auth_input,
     std::move(callback).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocSmartCardVerifierNoInputAuth),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
@@ -86,7 +87,7 @@ void SmartCardVerifier::VerifyAsync(const AuthInput& auth_input,
     std::move(callback).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocSmartCardVerifierNoInputAlg),
         ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;

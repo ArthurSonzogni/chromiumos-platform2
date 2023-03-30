@@ -990,8 +990,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareGuestVaultAfterFailedGuest) {
   EXPECT_CALL(*user_session, MountGuest()).WillOnce(Invoke([&]() {
     return MakeStatus<CryptohomeMountError>(
         fake_error_location,
-        error::ErrorActionSet({error::ErrorAction::kReboot}), MOUNT_ERROR_FATAL,
-        std::nullopt);
+        error::ErrorActionSet({error::PossibleAction::kReboot}),
+        MOUNT_ERROR_FATAL, std::nullopt);
   }));
 
   auto user_session2 = std::make_unique<MockUserSession>();
@@ -1034,7 +1034,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
       .WillOnce(Invoke([&](const Username&) {
         return MakeStatus<CryptohomeMountError>(
             fake_error_location,
-            error::ErrorActionSet({error::ErrorAction::kReboot}),
+            error::ErrorActionSet({error::PossibleAction::kReboot}),
             MOUNT_ERROR_FATAL, std::nullopt);
       }));
 
@@ -1105,7 +1105,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
                            const CryptohomeVault::Options&) {
         return MakeStatus<CryptohomeMountError>(
             fake_error_location,
-            error::ErrorActionSet({error::ErrorAction::kReboot}),
+            error::ErrorActionSet({error::PossibleAction::kReboot}),
             MOUNT_ERROR_FATAL, std::nullopt);
       }));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))

@@ -85,8 +85,9 @@ using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
 using cryptohome::error::CryptohomeTPMError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::Sha1;
@@ -1079,7 +1080,7 @@ user_data_auth::UnmountReply UserDataAuth::Unmount() {
   if (!unmount_ok) {
     result = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthRemoveAllMountsFailedInUnmount),
-        ErrorActionSet({ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kReboot}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
   }
   user_data_auth::UnmountReply reply;
@@ -1343,8 +1344,8 @@ CryptohomeStatus UserDataAuth::InitForChallengeResponseAuth() {
     LOG(ERROR) << "Cannot do challenge-response mount without system D-Bus bus";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoDBusInInitChalRespAuth),
-        ErrorActionSet(
-            {ErrorAction::kReboot, ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kReboot,
+                        PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
   }
   key_challenge_service_factory_->SetMountThreadBus(mount_thread_bus_);
@@ -1366,7 +1367,7 @@ user_data_auth::ListKeysReply UserDataAuth::ListKeys(
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoIDInListKeys),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
         &reply);
     return reply;
@@ -1378,7 +1379,7 @@ user_data_auth::ListKeysReply UserDataAuth::ListKeys(
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthInvalidIDInListKeys),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
         &reply);
     return reply;
@@ -1389,7 +1390,7 @@ user_data_auth::ListKeysReply UserDataAuth::ListKeys(
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserNonexistentInListKeys),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND),
         &reply);
     return reply;
@@ -1401,8 +1402,8 @@ user_data_auth::ListKeysReply UserDataAuth::ListKeys(
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthListFailedInListKeys),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot}),
             user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND),
         &reply);
     return reply;
@@ -1422,7 +1423,7 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoIDInRemove),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
         &reply);
     return reply;
@@ -1448,8 +1449,8 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocUserDataAuthNoAccountIdWithAuthSessionInRemove),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot}),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
         &reply);
     return reply;
@@ -1463,7 +1464,7 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserActiveInRemove),
-            ErrorActionSet({ErrorAction::kReboot}),
+            ErrorActionSet({PossibleAction::kReboot}),
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY),
         &reply);
     return reply;
@@ -1474,7 +1475,8 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthRemoveFailedInRemove),
-            ErrorActionSet({ErrorAction::kPowerwash, ErrorAction::kReboot}),
+            ErrorActionSet(
+                {PossibleAction::kPowerwash, PossibleAction::kReboot}),
             user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED),
         &reply);
     return reply;
@@ -1504,7 +1506,7 @@ UserDataAuth::ResetApplicationContainer(
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoIDInResetAppContainer),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
         &reply);
     return reply;
@@ -1516,7 +1518,7 @@ UserDataAuth::ResetApplicationContainer(
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserInactiveInResetAppContainer),
-            ErrorActionSet({ErrorAction::kReboot}),
+            ErrorActionSet({PossibleAction::kReboot}),
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY),
         &reply);
     return reply;
@@ -1526,7 +1528,7 @@ UserDataAuth::ResetApplicationContainer(
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserFailedResetAppContainer),
-            ErrorActionSet({ErrorAction::kReboot}),
+            ErrorActionSet({PossibleAction::kReboot}),
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY),
         &reply);
     return reply;
@@ -2067,8 +2069,8 @@ void UserDataAuth::StartAuthSession(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoIntentInStartAuthSession),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot}),
             user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL));
     return;
   }
@@ -2082,8 +2084,8 @@ void UserDataAuth::StartAuthSession(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthCreateFailedInStartAuthSession),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}))
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot}))
             .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
@@ -2098,8 +2100,9 @@ void UserDataAuth::StartAuthSession(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthNotConfiguredInStartAuthSession),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                            ErrorAction::kDeleteVault, ErrorAction::kAuth}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kDeleteVault,
+                            PossibleAction::kAuth}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_UNUSABLE_VAULT));
     return;
@@ -2227,8 +2230,8 @@ CryptohomeStatusOr<InUseAuthSession> UserDataAuth::GetAuthenticatedAuthSession(
     LOG(ERROR) << "AuthSession not found.";
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInGetAuthedAS),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                               ErrorAction::kReboot}),
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                               PossibleAction::kReboot}),
                user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
         .Wrap(std::move(auth_session_status));
   }
@@ -2238,8 +2241,8 @@ CryptohomeStatusOr<InUseAuthSession> UserDataAuth::GetAuthenticatedAuthSession(
     LOG(ERROR) << "AuthSession is not authenticated.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotAuthedInGetAuthedAS),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
@@ -2269,7 +2272,7 @@ CryptohomeStatusOr<UserSession*> UserDataAuth::GetMountableUserSession(
     LOG(ERROR) << "Can not mount non-anonymous while guest session is active.";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthGuestAlreadyMountedInGetMountableUS),
-        ErrorActionSet({ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kReboot}),
         user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
   }
 
@@ -2280,7 +2283,7 @@ CryptohomeStatusOr<UserSession*> UserDataAuth::GetMountableUserSession(
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocUserDataAuthSessionAlreadyMountedInGetMountableUS),
-        ErrorActionSet({ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kReboot}),
         user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
   }
 
@@ -2446,7 +2449,7 @@ CryptohomeStatus UserDataAuth::PrepareGuestVaultImpl() {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocUserDataAuthOtherSessionActiveInPrepareGuestVault),
-        ErrorActionSet({ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kReboot}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
   }
 
@@ -2481,7 +2484,7 @@ CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocUserDataAuthOtherSessionActiveInPrepareEphemeralVault),
-        ErrorActionSet({ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kReboot}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
   }
@@ -2493,8 +2496,8 @@ CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocUserDataAuthNoAuthSessionInPrepareEphemeralVault),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot}),
         user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   }
 
@@ -2502,8 +2505,8 @@ CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocUserDataAuthNonEphemeralAuthSessionInPrepareEphemeralVault),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot, PossibleAction::kPowerwash}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
@@ -2566,9 +2569,9 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocUserDataAuthEphemeralAuthSessionAttemptPreparePersistentVault),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kDeleteVault, ErrorAction::kReboot,
-                        ErrorAction::kPowerwash}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kDeleteVault, PossibleAction::kReboot,
+                        PossibleAction::kPowerwash}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
@@ -2577,9 +2580,9 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
   if (!homedirs_->Exists(obfuscated_username)) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthNonExistentInPreparePersistentVault),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kDeleteVault, ErrorAction::kReboot,
-                        ErrorAction::kPowerwash}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kDeleteVault, PossibleAction::kReboot,
+                        PossibleAction::kPowerwash}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
   }
@@ -2626,8 +2629,8 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUserDataAuthSessionNotFoundInCreatePersistentUser),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                               ErrorAction::kReboot}),
+               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                               PossibleAction::kReboot}),
                user_data_auth::CryptohomeErrorCode::
                    CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
         .Wrap(std::move(auth_session_status));
@@ -2637,8 +2640,8 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocUserDataAuthEphemeralAuthSessionAttemptCreatePersistentUser),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot, PossibleAction::kPowerwash}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
@@ -2653,8 +2656,8 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
     // TODO(b/208898186, dlunev): replace with a more appropriate error
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserExistsInCreatePersistentUser),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kDeleteVault}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
   }
@@ -2666,8 +2669,8 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
     return MakeStatus<CryptohomeMountError>(
         CRYPTOHOME_ERR_LOC(
             kLocUserDataAuthCheckExistsFailedInCreatePersistentUser),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot}),
         mount_error, MountErrorToCryptohomeError(mount_error));
   }
 
@@ -2678,8 +2681,9 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
   if (auth_session->user_exists()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserDirExistsInCreatePersistentUser),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kDeleteVault, ErrorAction::kPowerwash}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kDeleteVault,
+                        PossibleAction::kPowerwash}),
         user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
   }
 
@@ -2699,8 +2703,8 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
                << obfuscated_username;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthCreateFailedInCreatePersistentUser),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot, PossibleAction::kPowerwash}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
@@ -2759,8 +2763,8 @@ void UserDataAuth::AuthenticateAuthFactor(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInAuthAuthFactor),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
             .Wrap(std::move(auth_session_status).err_status()));
@@ -2778,7 +2782,7 @@ void UserDataAuth::AuthenticateAuthFactor(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataMalformedRequestInAuthAuthFactor),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
@@ -2868,13 +2872,14 @@ void UserDataAuth::ListAuthFactors(
                             keyset_management_->UserExists(obfuscated_username);
   bool is_ephemeral_user = user_session && user_session->IsEphemeral();
   if (!is_persistent_user && !is_ephemeral_user) {
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocUserDataAuthUserNonexistentInListAuthFactors),
-                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-                       user_data_auth::CryptohomeErrorCode::
-                           CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthUserNonexistentInListAuthFactors),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
 
@@ -3023,7 +3028,7 @@ void UserDataAuth::GetAuthFactorExtendedInfo(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthFactorExtendedInfoTypeFailure),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_KEY_NOT_FOUND));
     return;
@@ -3036,7 +3041,7 @@ void UserDataAuth::GetAuthFactorExtendedInfo(
             MakeStatus<CryptohomeError>(
                 CRYPTOHOME_ERR_LOC(
                     kLocUserDataAuthFactorExtendedInfoRecoveryIdFailure),
-                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
                 user_data_auth::CryptohomeErrorCode::
                     CRYPTOHOME_ERROR_INVALID_ARGUMENT));
         return;
@@ -3050,7 +3055,7 @@ void UserDataAuth::GetAuthFactorExtendedInfo(
             MakeStatus<CryptohomeError>(
                 CRYPTOHOME_ERR_LOC(
                     kLocUserDataAuthRecoveryObjectFailureGetRecoveryId),
-                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
                 user_data_auth::CryptohomeErrorCode::
                     CRYPTOHOME_ERROR_RECOVERY_FATAL));
         return;
@@ -3087,7 +3092,7 @@ void UserDataAuth::PrepareAuthFactor(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocUserDataAuthPrepareAuthFactorAuthSessionNotFound),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
             .Wrap(std::move(auth_session_status).err_status()));
@@ -3114,7 +3119,7 @@ void UserDataAuth::TerminateAuthFactor(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocUserDataAuthTerminateAuthFactorAuthSessionNotFound),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
             .Wrap(std::move(auth_session_status).err_status()));
@@ -3176,8 +3181,8 @@ void UserDataAuth::GetRecoveryRequest(
                    MakeStatus<CryptohomeError>(
                        CRYPTOHOME_ERR_LOC(
                            kLocUserDataAuthSessionNotFoundInGetRecoveryRequest),
-                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                                       ErrorAction::kReboot}),
+                       ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                                       PossibleAction::kReboot}),
                        user_data_auth::CryptohomeErrorCode::
                            CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
                        .Wrap(std::move(auth_session_status).err_status()));

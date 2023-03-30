@@ -33,9 +33,6 @@ class CryptohomeError : public hwsec_foundation::status::Error {
   // codes converted from TPMError and related.
   using ErrorLocation = int64_t;
 
-  // Pull the ErrorAction enum in for convenience.
-  using Action = ErrorAction;
-
   // Holder for the string and numerical representation of the error location.
   class ErrorLocationPair {
    public:
@@ -85,14 +82,14 @@ class CryptohomeError : public hwsec_foundation::status::Error {
     // Direct creation.
     hwsec_foundation::status::StatusChain<CryptohomeError> operator()(
         const ErrorLocationPair& loc,
-        const std::set<Action>& actions,
+        const ErrorActionSet& actions,
         const std::optional<user_data_auth::CryptohomeErrorCode> ec =
             std::nullopt);
   };
 
   // Standard constructor taking the error location and actions.
   CryptohomeError(const ErrorLocationPair& loc,
-                  const std::set<Action>& actions,
+                  const ErrorActionSet& actions,
                   const std::optional<user_data_auth::CryptohomeErrorCode> ec =
                       std::nullopt);
 
@@ -102,7 +99,7 @@ class CryptohomeError : public hwsec_foundation::status::Error {
   ErrorLocation local_location() const { return loc_.location(); }
 
   // Return the recommended actions in this error (but not the wrapped ones).
-  const std::set<Action>& local_actions() const { return actions_; }
+  const ErrorActionSet& local_actions() const { return actions_; }
 
   // Return the legacy error code.
   std::optional<user_data_auth::CryptohomeErrorCode> local_legacy_error()
@@ -118,7 +115,7 @@ class CryptohomeError : public hwsec_foundation::status::Error {
   ErrorLocationPair loc_;
 
   // What do we recommend the upper layers do?
-  std::set<Action> actions_;
+  ErrorActionSet actions_;
 
   // The legacy dbus error code.
   std::optional<user_data_auth::CryptohomeErrorCode> ec_;

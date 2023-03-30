@@ -311,7 +311,7 @@ TEST_F(AuthFactorManagerTest, RemoveFailure) {
         return MakeStatus<error::CryptohomeCryptoError>(
             error_location_for_testing_auth_factor,
             error::ErrorActionSet(
-                {error::ErrorAction::kDevCheckUnexpectedState}),
+                {error::PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO);
       });
 

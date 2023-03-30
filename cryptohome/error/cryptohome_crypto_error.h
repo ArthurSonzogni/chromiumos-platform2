@@ -33,7 +33,7 @@ class CryptohomeCryptoError : public CryptohomeMountError {
     class Unactioned {
      public:
       Unactioned(const ErrorLocationPair& loc,
-                 const std::set<CryptohomeError::Action>& actions,
+                 const ErrorActionSet& actions,
                  const std::optional<user_data_auth::CryptohomeErrorCode> ec);
 
       [[clang::return_typestate(unconsumed)]]  //
@@ -44,7 +44,7 @@ class CryptohomeCryptoError : public CryptohomeMountError {
 
      private:
       const ErrorLocationPair loc_;
-      const std::set<CryptohomeError::Action> actions_;
+      const ErrorActionSet actions_;
       const std::optional<user_data_auth::CryptohomeErrorCode> ec_;
     };
 
@@ -52,7 +52,7 @@ class CryptohomeCryptoError : public CryptohomeMountError {
     // become a valid status chain.
     Unactioned operator()(
         const ErrorLocationPair& loc,
-        const std::set<CryptohomeError::Action>& actions,
+        const ErrorActionSet& actions,
         const std::optional<user_data_auth::CryptohomeErrorCode> ec =
             std::nullopt);
 
@@ -66,7 +66,7 @@ class CryptohomeCryptoError : public CryptohomeMountError {
     // Create an error directly.
     hwsec_foundation::status::StatusChain<CryptohomeCryptoError> operator()(
         const ErrorLocationPair& loc,
-        const std::set<CryptohomeError::Action>& actions,
+        const ErrorActionSet& actions,
         const CryptoError crypto_err,
         const std::optional<user_data_auth::CryptohomeErrorCode> ec =
             std::nullopt);
@@ -79,7 +79,7 @@ class CryptohomeCryptoError : public CryptohomeMountError {
   // conversion from crypto_err.
   CryptohomeCryptoError(
       const ErrorLocationPair& loc,
-      const std::set<Action>& actions,
+      const ErrorActionSet& actions,
       const CryptoError crypto_err,
       const std::optional<user_data_auth::CryptohomeErrorCode> ec);
 

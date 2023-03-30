@@ -42,8 +42,9 @@
 using base::FilePath;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -69,7 +70,7 @@ KeysetManagement::GetValidKeysetWithKeyBlobs(
     return MakeStatus<CryptohomeMountError>(
         CRYPTOHOME_ERR_LOC(
             kLocKeysetManagementGetKeysetsFailedInGetValidKeyset),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kDeleteVault}),
         MOUNT_ERROR_VAULT_UNRECOVERABLE);
   }
 
@@ -111,7 +112,7 @@ KeysetManagement::GetValidKeysetWithKeyBlobs(
     LOG(ERROR) << "No parsable keysets found for " << obfuscated;
     return MakeStatus<CryptohomeMountError>(
         CRYPTOHOME_ERR_LOC(kLocKeysetManagementNoKeysetsInGetValidKeyset),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kDeleteVault}),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kDeleteVault}),
         MOUNT_ERROR_VAULT_UNRECOVERABLE);
   } else if (last_crypto_error.ok()) {
     // If we're searching by label, don't let a no-key-found become
@@ -124,8 +125,8 @@ KeysetManagement::GetValidKeysetWithKeyBlobs(
       return MakeStatus<CryptohomeMountError>(
           CRYPTOHOME_ERR_LOC(
               kLocKeysetManagementKeysetNotDecryptedInGetValidKeyset),
-          ErrorActionSet({ErrorAction::kAuth, ErrorAction::kReboot,
-                          ErrorAction::kDeleteVault}),
+          ErrorActionSet({PossibleAction::kAuth, PossibleAction::kReboot,
+                          PossibleAction::kDeleteVault}),
           MOUNT_ERROR_KEY_FAILURE);
 
     } else {
@@ -133,7 +134,8 @@ KeysetManagement::GetValidKeysetWithKeyBlobs(
       return MakeStatus<CryptohomeMountError>(
           CRYPTOHOME_ERR_LOC(
               kLocKeysetManagementNoKeysetsDecryptedInGetValidKeyset),
-          ErrorActionSet({ErrorAction::kReboot, ErrorAction::kDeleteVault}),
+          ErrorActionSet(
+              {PossibleAction::kReboot, PossibleAction::kDeleteVault}),
           MOUNT_ERROR_FATAL);
     }
   } else {
@@ -434,8 +436,8 @@ CryptohomeStatus KeysetManagement::AddKeysetWithKeyBlobs(
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(
               kLocKeysetManagementVKDuplicateLabelAddKeysetWithKeyBlobs),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kReboot}),
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_KEY_LABEL_EXISTS);
     }
@@ -462,8 +464,8 @@ CryptohomeStatus KeysetManagement::AddKeysetWithKeyBlobs(
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(
               kLocKeysetManagementKeyQuotaExceededAddKeysetWithKeyBlobs),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                          ErrorAction::kReboot, ErrorAction::kPowerwash}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                          PossibleAction::kReboot, PossibleAction::kPowerwash}),
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED);
     }
@@ -510,8 +512,8 @@ CryptohomeStatus KeysetManagement::UpdateKeysetWithKeyBlobs(
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocKeysetManagementLabelNotFoundUpdateKeysetWithKeyBlobs),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_LABEL_EXISTS);
   }
 
@@ -531,7 +533,7 @@ CryptohomeStatus KeysetManagement::RemoveKeysetFile(
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(
               kLocKeysetManagementFailedRemoveInRemoveKeysetFile),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   return OkStatus<CryptohomeError>();
@@ -543,7 +545,7 @@ CryptohomeStatus KeysetManagement::ForceRemoveKeyset(
   if (index < 0 || index >= kKeyFileMax) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocKeysetManagementInvalidIndexInRemoveKeyset),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
@@ -569,7 +571,7 @@ CryptohomeStatus KeysetManagement::ForceRemoveKeyset(
   if (!rm_status.ok()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocKeysetManagementDeleteFailedInRemoveKeyset),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
@@ -827,8 +829,8 @@ CryptohomeStatus KeysetManagement::EncryptAndSaveKeyset(
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocKeysetManagementSaveFailedInEncryptAndSaveKeyset),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }

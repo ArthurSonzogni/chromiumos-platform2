@@ -33,15 +33,14 @@ using hwsec_foundation::status::StatusChain;
 
 TEST_F(CryptohomeMountErrorTest, BasicConstruction) {
   auto err1 = MakeStatus<CryptohomeMountError>(
-      kErrorLocationForTesting1,
-      ErrorActionSet({ErrorAction::kResumePreviousMigration}),
+      kErrorLocationForTesting1, ErrorActionSet(PrimaryAction::kIncorrectAuth),
       MountError::MOUNT_ERROR_KEY_FAILURE,
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
 
   ASSERT_FALSE(err1.ok());
   EXPECT_EQ(err1->local_location(), kErrorLocationForTesting1.location());
   EXPECT_EQ(err1->local_actions(),
-            ErrorActionSet({ErrorAction::kResumePreviousMigration}));
+            ErrorActionSet(PrimaryAction::kIncorrectAuth));
   EXPECT_EQ(
       err1->local_legacy_error().value(),
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);

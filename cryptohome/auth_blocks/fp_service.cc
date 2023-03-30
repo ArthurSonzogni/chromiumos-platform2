@@ -20,8 +20,9 @@ namespace cryptohome {
 namespace {
 
 using cryptohome::error::CryptohomeError;
-using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using cryptohome::error::PossibleAction;
+using cryptohome::error::PrimaryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 
@@ -54,7 +55,7 @@ void FingerprintAuthBlockService::CheckSessionStartResult(
   if (!success) {
     CryptohomeStatus cryptohome_status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceStartSessionFailure),
-        ErrorActionSet({ErrorAction::kRetry}),
+        ErrorActionSet({PossibleAction::kRetry}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
     std::move(on_done).Run(std::move(cryptohome_status));
@@ -65,7 +66,7 @@ void FingerprintAuthBlockService::CheckSessionStartResult(
   if (!fp_manager) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceCheckSessionStartCouldNotGetFpManager),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
     std::move(on_done).Run(std::move(status));
@@ -99,7 +100,7 @@ CryptohomeStatus FingerprintAuthBlockService::Verify() {
   if (!fp_manager) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceVerifyCouldNotGetFpManager),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
   }
@@ -109,7 +110,7 @@ CryptohomeStatus FingerprintAuthBlockService::Verify() {
   if (!active_token_) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceCheckResultNoAuthSession),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
   }
@@ -121,13 +122,13 @@ CryptohomeStatus FingerprintAuthBlockService::Verify() {
     case FingerprintScanStatus::FAILED_RETRY_ALLOWED:
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocFpServiceCheckResultFailedYesRetry),
-          ErrorActionSet({ErrorAction::kIncorrectAuth}),
+          ErrorActionSet(PrimaryAction::kIncorrectAuth),
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_FINGERPRINT_RETRY_REQUIRED);
     case FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED:
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocFpServiceCheckResultFailedNoRetry),
-          ErrorActionSet({ErrorAction::kLeLockedOut, ErrorAction::kAuth}),
+          ErrorActionSet(PrimaryAction::kLeLockedOut),
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_FINGERPRINT_DENIED);
   }
@@ -140,7 +141,7 @@ void FingerprintAuthBlockService::Start(
   if (!fp_manager) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceStartScanCouldNotGetFpManager),
-        ErrorActionSet({ErrorAction::kRetry}),
+        ErrorActionSet({PossibleAction::kRetry}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_ATTESTATION_NOT_READY);
     std::move(on_done).Run(std::move(status));
@@ -150,7 +151,7 @@ void FingerprintAuthBlockService::Start(
   if (active_token_) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceStartConcurrentSession),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_DENIED);
     std::move(on_done).Run(std::move(status));
