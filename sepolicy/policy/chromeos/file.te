@@ -398,6 +398,10 @@ type cros_var_cache_diagnostics, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_fwupd, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_dlcservice, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_dlcservice_images, file_type, cros_file_type, cros_var_file_type;
+# /var/cache/reporting is deprecated but the following line must still be kept
+# for backward compatibility purposes. See comments titled {{{ Notes on
+# /var/cache/reporting }}} in platform2/missived/tmpfiles.d/missived.conf for
+# details.
 type cros_var_cache_reporting, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_tlsdated, file_type, cros_file_type, cros_var_file_type;
 
