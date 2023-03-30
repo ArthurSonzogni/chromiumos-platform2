@@ -134,6 +134,28 @@ TEST_F(ErrorConverterTest, WrappedPrimaryAction) {
   EXPECT_EQ(info.possible_actions_size(), 0);
 }
 
+// IncorrectAuth should be overridden by other primary actions.
+TEST_F(ErrorConverterTest, WrappedPrimaryIncorrectAuthPlusOthers) {
+  StatusChain<CryptohomeError> err1 = MakeStatus<CryptohomeError>(
+      kErrorLocationForTesting2,
+      ErrorActionSet(PrimaryAction::kTpmUpdateRequired),
+      user_data_auth::CryptohomeErrorCode::
+          CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+
+  StatusChain<CryptohomeError> err2 =
+      MakeStatus<CryptohomeError>(kErrorLocationForTesting1,
+                                  ErrorActionSet(PrimaryAction::kIncorrectAuth))
+          .Wrap(std::move(err1));
+
+  user_data_auth::CryptohomeErrorCode ec;
+  user_data_auth::CryptohomeErrorInfo info =
+      CryptohomeErrorToUserDataAuthError(err2, &ec);
+
+  EXPECT_EQ(info.primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_TPM_UDPATE_REQUIRED);
+  EXPECT_EQ(info.possible_actions_size(), 0);
+}
+
 }  // namespace
 
 }  // namespace error
