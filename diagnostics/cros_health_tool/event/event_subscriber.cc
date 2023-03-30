@@ -509,6 +509,26 @@ void OutputStylusEventInfo(const mojom::StylusEventInfoPtr& info) {
   }
 }
 
+void OutputCrashEventInfo(const mojom::CrashEventInfoPtr& info) {
+  base::Value::Dict output;
+  output.Set("crash_type", static_cast<int>(info->crash_type));
+  output.Set("local_id", info->local_id);
+  output.Set("capture_time", info->capture_time.ToDoubleT());
+  if (!info->upload_info.is_null()) {
+    base::Value::Dict upload_info;
+    upload_info.Set("crash_report_id", info->upload_info->crash_report_id);
+    upload_info.Set("creation_time",
+                    info->upload_info->creation_time.ToDoubleT());
+    upload_info.Set("offset", static_cast<int>(info->upload_info->offset));
+    output.Set("upload_info", std::move(upload_info));
+  }
+  std::string json;
+  base::JSONWriter::WriteWithOptions(
+      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
+      &json);
+  std::cout << "Crash event received: " << json << std::endl;
+}
+
 }  // namespace
 
 EventSubscriber::EventSubscriber() {
@@ -595,6 +615,9 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
       break;
     case mojom::EventInfo::Tag::kStylusEventInfo:
       OutputStylusEventInfo(info->get_stylus_event_info());
+      break;
+    case mojom::EventInfo::Tag::kCrashEventInfo:
+      OutputCrashEventInfo(info->get_crash_event_info());
       break;
   }
 }

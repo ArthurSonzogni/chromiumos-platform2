@@ -554,7 +554,7 @@ interface EventObserver {
 
 // Union of event info.
 //
-// NextMinVersion: 9, NextIndex: 15
+// NextMinVersion: 10, NextIndex: 16
 [Stable, Extensible]
 union EventInfo {
   // The default value for forward compatibility. All the unknown type will be
@@ -590,11 +590,13 @@ union EventInfo {
   [MinVersion=7] StylusGarageEventInfo stylus_garage_event_info@13;
   // Stylus event info.
   [MinVersion=8] StylusEventInfo stylus_event_info@14;
+  // Crash event info.
+  [MinVersion=9] CrashEventInfo crash_event_info@15;
 };
 
 // An enumeration of event categories.
 //
-// NextMinVersion: 10, NextIndex: 16
+// NextMinVersion: 11, NextIndex: 17
 [Stable, Extensible]
 enum EventCategoryEnum {
   // This is required for backwards compatibility, should not be used.
@@ -614,4 +616,5 @@ enum EventCategoryEnum {
   [MinVersion=7] kTouchscreen = 13,
   [MinVersion=8] kStylusGarage = 14,
   [MinVersion=9] kStylus = 15,
+  [MinVersion=10] kCrash = 16,
 };

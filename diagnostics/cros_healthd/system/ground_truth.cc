@@ -57,6 +57,7 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
     case mojom::EventCategoryEnum::kBluetooth:
     case mojom::EventCategoryEnum::kPower:
     case mojom::EventCategoryEnum::kAudio:
+    case mojom::EventCategoryEnum::kCrash:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     // Need to be determined by boxster/cros_config.
     case mojom::EventCategoryEnum::kKeyboardDiagnostic:

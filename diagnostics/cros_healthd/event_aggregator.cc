@@ -9,6 +9,7 @@
 #include "diagnostics/cros_healthd/events/audio_events_impl.h"
 #include "diagnostics/cros_healthd/events/audio_jack_events_impl.h"
 #include "diagnostics/cros_healthd/events/bluetooth_events_impl.h"
+#include "diagnostics/cros_healthd/events/crash_events.h"
 #include "diagnostics/cros_healthd/events/lid_events_impl.h"
 #include "diagnostics/cros_healthd/events/power_events_impl.h"
 #include "diagnostics/cros_healthd/events/stylus_events_impl.h"
@@ -40,6 +41,7 @@ EventAggregator::EventAggregator(Context* context) : context_(context) {
   touchscreen_events_ = std::make_unique<TouchscreenEventsImpl>(context_);
   stylus_garage_events_ = std::make_unique<StylusGarageEventsImpl>(context_);
   stylus_events_ = std::make_unique<StylusEventsImpl>(context_);
+  crash_events_ = std::make_unique<CrashEvents>(context_);
 }
 
 EventAggregator::~EventAggregator() = default;
@@ -95,6 +97,9 @@ void EventAggregator::AddObserver(
       break;
     case mojom::EventCategoryEnum::kStylus:
       stylus_events_->AddObserver(std::move(observer));
+      break;
+    case mojom::EventCategoryEnum::kCrash:
+      crash_events_->AddObserver(std::move(observer));
       break;
   }
 }

@@ -151,6 +151,8 @@ constexpr char kFailToLaunchDelegate[] = "Failed to launch delegate";
 
 base::FilePath FileEnumToFilePath(mojom::Executor::File file_enum) {
   switch (file_enum) {
+    case mojom::Executor::File::kCrashLog:
+      return base::FilePath{"/var/log/chrome/Crash Reports/uploads.log"};
     // Path to the UEFI SecureBoot file. This file can be read by root only.
     // It's one of EFI globally defined variables (EFI_GLOBAL_VARIABLE, fixed
     // UUID 8be4df61-93ca-11d2-aa0d-00e098032b8c) See also:
@@ -267,6 +269,8 @@ Executor::Executor(
 
 Executor::~Executor() = default;
 
+// TODO(b/266018436): Improve this function to support reading only part of a
+// file.
 void Executor::ReadFile(File file_enum, ReadFileCallback callback) {
   base::FilePath file = FileEnumToFilePath(file_enum);
   std::string content = "";

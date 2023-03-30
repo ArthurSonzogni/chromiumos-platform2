@@ -45,6 +45,7 @@ constexpr std::pair<const char*, mojom::EventCategoryEnum> kCategorySwitches[] =
         {"touchscreen", mojom::EventCategoryEnum::kTouchscreen},
         {"stylus_garage", mojom::EventCategoryEnum::kStylusGarage},
         {"stylus", mojom::EventCategoryEnum::kStylus},
+        {"crash", mojom::EventCategoryEnum::kCrash},
 };
 
 // Create a stringified list of the category names for use in help.
@@ -110,6 +111,7 @@ int event_main(int argc, char** argv) {
       case mojom::EventCategoryEnum::kTouchscreen:
       case mojom::EventCategoryEnum::kStylusGarage:
       case mojom::EventCategoryEnum::kStylus:
+      case mojom::EventCategoryEnum::kCrash:
         event_subscriber.SubscribeToEvents(run_loop.QuitClosure(), category);
         break;
       case mojom::EventCategoryEnum::kNetwork:

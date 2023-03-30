@@ -1272,6 +1272,34 @@ event --help`.
 | OnDeviceRemoved | - | Fired when a Bluetooth device is removed. |
 | OnDevicePropertyChanged | - | Fired when a property of a Bluetooth device is changed. |
 
+### Crashes
+
+| Interface | Additional data | Description |
+| --------- | --------------- | ----------- |
+| OnEvent | [CrashEventInfo](#CrashEventInfo) | Fired when a crash occurs, with up to 20min delay. |
+
+#### CrashEventInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| crash_type | CrashEventInfo::CrashType | Type of the crash. Corresponding to "fatal_crash_type" in uploads.log. |
+| local_id | string | ID that represents crash locally. Corresponding to "path_hash" in uploads.log. |
+| capture_time | ash.cros_healthd.external.mojo_base.mojom.Time | The time at which the crash event is captured by the system. Corresponding to "capture_time" in uploads.log. |
+| upload_info | CrashUploadInfo? | Information available for uploaded crash events only. Missing if the crash hasn't been uploaded by crash_sender yet. |
+
+##### CrashEventInfo::CrashType
+| Enum | Description |
+| ---- | ----------- |
+| kUnknown | Unknown crash type. |
+| kKernel | Kernel crashes. |
+| kEmbeddedController | EC crashes. |
+
+#### CrashUploadInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| crash_report_id | string | Corresponding to "upload_id" in uploads.log. |
+| creation_time | ash.cros_healthd.external.mojo_base.mojom.Time | The creation time of the uploads.log file. Used to distinguish uploads.log file in case it has been deleted and recreated. |
+| offset | uint64 | Number of valid logs before this event in uploads.log. Useful when need to distinguish whether a crash event has been encountered before. |
+
 ### Lid
 | Interface | Additional data | Description |
 | --------- | --------------- | ----------- |

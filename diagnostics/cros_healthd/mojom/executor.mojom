@@ -150,6 +150,7 @@ union FioJobArgument {
 // production, this is implemented by the Executor daemon.
 interface Executor {
   enum File {
+    kCrashLog,
     kUEFISecureBootVariable,
     kUEFIPlatformSize,
     kWirelessPowerScheme,
