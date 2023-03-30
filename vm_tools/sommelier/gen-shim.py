@@ -220,7 +220,7 @@ def GenerateShims(in_xml: str, out_directory: str) -> None:
     )
     shim_impl_template = jinja2.Template(cc_data)
 
-    mock_data = (template_dir / "protocol-shim.cc.jinja2").read_text(
+    mock_data = (template_dir / "mock-protocol-shim.h.jinja2").read_text(
         encoding="utf-8"
     )
     mock_template = jinja2.Template(mock_data)
