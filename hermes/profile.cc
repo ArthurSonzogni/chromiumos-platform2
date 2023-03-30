@@ -372,7 +372,7 @@ void Profile::RunOnSuccess(EuiccOp euicc_op,
         .Sethome_mccmnc(GetMCCMNCAsInt())
         .Record();
     response->ReplyWithError(
-        FROM_HERE, brillo::errors::dbus::kDomain, kErrorUnknown,
+        FROM_HERE, brillo::errors::dbus::kDomain, GetDBusError(err),
         "QMI/MBIM operation failed with code: " + std::to_string(err));
     context_->dbus_ongoing_ = false;
     return;

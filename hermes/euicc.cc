@@ -740,7 +740,7 @@ void Euicc::RunOnSuccess(EuiccOp euicc_op,
   if (err) {
     LOG(ERROR) << "Received modem error: " << err;
     auto decoded_error = brillo::Error::Create(
-        FROM_HERE, brillo::errors::dbus::kDomain, kErrorUnknown,
+        FROM_HERE, brillo::errors::dbus::kDomain, GetDBusError(err),
         "QMI/MBIM operation failed with code: " + std::to_string(err));
     EndEuiccOp(euicc_op, dbus_result, std::move(decoded_error), err);
     return;

@@ -30,6 +30,7 @@ constexpr int kModemManagerError = -3;
 std::string GetTrailingChars(const std::string& pii, int num_chars);
 // Used to redact PII in logs
 std::string GetObjectPathForLog(const dbus::ObjectPath& dbus_path);
+const char* GetDBusError(int err);
 
 void IgnoreErrorRunClosure(base::OnceCallback<void()> cb, int err);
 

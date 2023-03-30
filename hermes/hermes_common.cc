@@ -7,6 +7,7 @@
 #include "hermes/hermes_common.h"
 
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
 
 namespace hermes {
 
@@ -42,6 +43,17 @@ void RunNextStep(
     return;
   }
   std::move(next_step).Run(std::move(cb));
+}
+
+const char* GetDBusError(int err) {
+  switch (err) {
+    case kModemMessageProcessingError:
+      return kErrorModemMessageProcessing;
+    case kModemManagerError:
+      return kErrorUnexpectedModemManagerState;
+    default:
+      return kErrorUnknown;
+  }
 }
 
 }  // namespace hermes
