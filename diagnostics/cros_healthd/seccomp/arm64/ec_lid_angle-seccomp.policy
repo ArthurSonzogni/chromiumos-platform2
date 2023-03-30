@@ -40,3 +40,5 @@ eventfd2: 1
 epoll_pwait: 1
 sendto: 1
 close: 1
+socket: arg0 == AF_UNIX
+connect: 1
