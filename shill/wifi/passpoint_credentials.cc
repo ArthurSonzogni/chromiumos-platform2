@@ -124,6 +124,8 @@ bool PasspointCredentials::ToSupplicantProperties(
                                  eap_.cert_id());
     properties->Set<std::string>(WPASupplicant::kNetworkPropertyEapKeyId,
                                  eap_.key_id());
+    properties->Set<std::string>(WPASupplicant::kCredentialsPropertyUsername,
+                                 eap_.identity());
   } else if (eap_.method() == kEapMethodTTLS) {
     properties->Set<std::string>(WPASupplicant::kCredentialsPropertyUsername,
                                  eap_.identity());
