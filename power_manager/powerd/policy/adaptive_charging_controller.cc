@@ -1388,7 +1388,9 @@ void AdaptiveChargingController::UpdateAdaptiveCharging(
 
     val = -1;
     if (rit->has_start_time()) {
-      val = base::Microseconds(rit->start_time()).InMinutes();
+      val = (now.ToDeltaSinceWindowsEpoch() -
+             base::Microseconds(rit->start_time()))
+                .InMinutes();
     }
     features[std::string("ChargeEventHistoryStartTime") + suffix]
         .set_int32_value(val);
