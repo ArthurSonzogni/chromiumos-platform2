@@ -1348,6 +1348,19 @@
             }
           ]
         },
+        "detachable-base": {
+          "ec-image-name": "Fake_Detachable.fw",
+          "files": [
+            {
+              "destination": "/opt/google/detachable_base/firmware/Fake_Detachable.bin",
+              "source": "detachable_base/firmware/Fake_Detachable.bin",
+              "symlink": "/lib/firmware/Fake_Detachable.fw"
+            }
+          ],
+          "product-id": 1000,
+          "usb-path": "1-1.1",
+          "vendor-id": 6353
+        },
         "fingerprint": {
           "sensor-location": "none"
         },
@@ -1567,6 +1580,25 @@
             }
           ]
         },
+        "detachable-base": {
+          "ec-image-name": "Fake_Detachable.fw",
+          "files": [
+            {
+              "destination": "/opt/google/detachable_base/firmware/Fake_Detachable.bin",
+              "source": "detachable_base/firmware/Fake_Detachable.bin",
+              "symlink": "/lib/firmware/Fake_Detachable.fw"
+            },
+            {
+              "destination": "/opt/google/detachable_base/touch/Fake_Tp_Version.bin",
+              "source": "detachable_base/touch/Fake_Tp_Version.bin",
+              "symlink": "/lib/firmware/Fake_Detachable-touch.fw"
+            }
+          ],
+          "product-id": 1000,
+          "touch-image-name": "Fake_Detachable-touch.fw",
+          "usb-path": "1-1.1",
+          "vendor-id": 6353
+        },
         "fingerprint": {
           "sensor-location": "none"
         },
@@ -1586,7 +1618,7 @@
           "detachable-ui": true,
           "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
           "ec-rw-image": "bcs://Fake_EC.11111.2.4.tbz2",
-          "firmware-config": 66336,
+          "firmware-config": 1114912,
           "image-name": "project_b",
           "main-ro-image": "bcs://Fake.11111.0.0.tbz2",
           "main-rw-image": "bcs://Fake.11111.2.3.tbz2",

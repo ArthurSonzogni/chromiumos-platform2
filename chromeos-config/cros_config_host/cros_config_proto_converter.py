@@ -1583,6 +1583,49 @@ def _build_poe(hw_topology):
     return result
 
 
+def _build_detachable_base(form_factor, detachable_base):
+    if form_factor != topology_pb2.HardwareFeatures.FormFactor.DETACHABLE:
+        return None
+
+    result = {}
+    ec_image_name = detachable_base.ec_image_name
+    touch_image_name = detachable_base.touch_image_name
+    db_fw_root = pathlib.PurePath("/lib/firmware/")
+    db_fw_path = pathlib.PurePath("detachable_base/firmware/")
+    db_tp_path = pathlib.PurePath("detachable_base/touch/")
+    db_path_prefix = pathlib.PurePath("/opt/google")
+
+    db_files = []
+
+    if not ec_image_name:
+        return None
+
+    db_files.append(
+        _file(
+            db_fw_path.joinpath(f"{ec_image_name}.bin"),
+            db_path_prefix.joinpath(db_fw_path, f"{ec_image_name}.bin"),
+            db_fw_root.joinpath(f"{ec_image_name}.fw"),
+        )
+    )
+
+    if touch_image_name:
+        db_files.append(
+            _file(
+                db_tp_path.joinpath(f"{touch_image_name}.bin"),
+                db_path_prefix.joinpath(db_tp_path, f"{touch_image_name}.bin"),
+                db_fw_root.joinpath(f"{ec_image_name}-touch.fw"),
+            )
+        )
+        _upsert(f"{ec_image_name}-touch.fw", result, "touch-image-name")
+
+    _upsert(db_files, result, "files")
+    _upsert(f"{ec_image_name}.fw", result, "ec-image-name")
+    _upsert(detachable_base.usb_path, result, "usb-path")
+    _upsert(detachable_base.product_id, result, "product-id")
+    _upsert(detachable_base.vendor_id, result, "vendor-id")
+    return result
+
+
 def _build_hardware_properties(hw_topology):
     if not hw_topology.HasField("form_factor"):
         return None
@@ -1850,8 +1893,15 @@ def _build_usb(config: Config):
     return result
 
 
-def _file(source, destination):
-    return {"destination": str(destination), "source": str(source)}
+def _file(source, destination, symlink=None):
+    if not symlink:
+        return {"destination": str(destination), "source": str(source)}
+
+    return {
+        "destination": str(destination),
+        "source": str(source),
+        "symlink": str(symlink),
+    }
 
 
 def _file_v2(build_path, system_path):
@@ -2644,6 +2694,14 @@ def _transform_build_config(config, config_files, whitelabel):
     )
     _upsert(
         _build_uwb(config.hw_design_config.hardware_topology), result, "uwb"
+    )
+    _upsert(
+        _build_detachable_base(
+            config.hw_design_config.hardware_features.form_factor.form_factor,
+            config.hw_design_config.hardware_features.detachable_base,
+        ),
+        result,
+        "detachable-base",
     )
 
     return result
