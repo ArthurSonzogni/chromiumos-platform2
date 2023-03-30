@@ -103,6 +103,9 @@ void BaseTest::SetUp() {
       resume_in_progress_path_, &clock_,
       /*for_test=*/true);
   SystemState::Get()->set_update_engine_service_available(true);
+#if USE_LVM_STATEFUL_PARTITION
+  SystemState::Get()->SetIsLvmStackEnabled(true);
+#endif  // USE_LVM_STATEFUL_PARTITION
 }
 
 void BaseTest::SetUpFilesAndDirectories() {

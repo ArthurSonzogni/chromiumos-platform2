@@ -35,6 +35,8 @@ class DlcLvm : public DlcBase {
                       std::vector<uint8_t>* image_sha256) override;
   base::FilePath GetImagePath(BootSlot::Slot slot) const override;
 
+  virtual bool UseLogicalVolume() const;
+
  private:
   bool CreateDlcLogicalVolumes();
   bool DeleteInternalLogicalVolumes();

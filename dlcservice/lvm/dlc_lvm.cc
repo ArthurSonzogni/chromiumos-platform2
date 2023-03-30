@@ -22,7 +22,7 @@ namespace dlcservice {
 DlcLvm::DlcLvm(DlcId id) : DlcBase(std::move(id)) {}
 
 bool DlcLvm::CreateDlc(brillo::ErrorPtr* err) {
-  if (!manifest_->use_logical_volume()) {
+  if (!UseLogicalVolume()) {
     LOG(INFO) << "Skipping creation of logical volumes for DLC=" << id_;
     return DlcBase::CreateDlc(err);
   }
@@ -65,7 +65,7 @@ bool DlcLvm::CreateDlcLogicalVolumes() {
 }
 
 bool DlcLvm::DeleteInternal(brillo::ErrorPtr* err) {
-  if (!manifest_->use_logical_volume()) {
+  if (!UseLogicalVolume()) {
     LOG(INFO) << "Skipping deletion of logical volumes for DLC=" << id_;
     return DlcBase::DeleteInternal(err);
   }
@@ -90,7 +90,7 @@ bool DlcLvm::DeleteInternalLogicalVolumes() {
 }
 
 bool DlcLvm::MountInternal(std::string* mount_point, brillo::ErrorPtr* err) {
-  if (!manifest_->use_logical_volume()) {
+  if (!UseLogicalVolume()) {
     return DlcBase::MountInternal(mount_point, err);
   }
   imageloader::LoadDlcRequest request;
@@ -116,7 +116,7 @@ bool DlcLvm::MountInternal(std::string* mount_point, brillo::ErrorPtr* err) {
 }
 
 bool DlcLvm::MakeReadyForUpdateInternal() const {
-  if (!manifest_->use_logical_volume()) {
+  if (!UseLogicalVolume()) {
     LOG(INFO) << "Skipping update ready marking of logical volume for DLC="
               << id_;
     return DlcBase::MakeReadyForUpdateInternal();
@@ -134,7 +134,7 @@ bool DlcLvm::MakeReadyForUpdateInternal() const {
 
 bool DlcLvm::VerifyInternal(const base::FilePath& image_path,
                             std::vector<uint8_t>* image_sha256) {
-  if (!manifest_->use_logical_volume()) {
+  if (!UseLogicalVolume()) {
     LOG(INFO) << "Skipping verification of logical voluems for DLC=" << id_;
     return DlcBase::VerifyInternal(image_path, image_sha256);
   }
@@ -149,12 +149,17 @@ bool DlcLvm::VerifyInternal(const base::FilePath& image_path,
 }
 
 base::FilePath DlcLvm::GetImagePath(BootSlot::Slot slot) const {
-  if (!manifest_->use_logical_volume()) {
+  if (!UseLogicalVolume()) {
     return DlcBase::GetImagePath(slot);
   }
   auto lv_name = LogicalVolumeName(id_, slot);
   return base::FilePath(
       SystemState::Get()->lvmd_wrapper()->GetLogicalVolumePath(lv_name));
+}
+
+bool DlcLvm::UseLogicalVolume() const {
+  return manifest_->use_logical_volume() &&
+         SystemState::Get()->IsLvmStackEnabled();
 }
 
 }  // namespace dlcservice

@@ -102,6 +102,8 @@ TEST_F(DlcManagerTest, PreloadAllowedDlcLogicalVolumeTest) {
   // The fourth DLC has logical-volume flag on.
   SetUpDlcPreloadedImage(kFourthDlc);
   EXPECT_CALL(*mock_system_properties_, IsOfficialBuild())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_system_properties_, IsOfficialBuild())
       .Times(2)
       .WillRepeatedly(Return(false));
   dlc_manager_->Initialize();

@@ -34,6 +34,10 @@ class LvmdProxyWrapperInterface {
   // Returns the logical volume path as a string.
   // Returns empty string if the logical volume does not exist.
   virtual std::string GetLogicalVolumePath(const std::string& lv_name) = 0;
+
+  // Returns the physical volume information.
+  virtual bool GetPhysicalVolume(const std::string& device_path,
+                                 lvmd::PhysicalVolume* pv) = 0;
 };
 
 class LvmdProxyWrapper : public LvmdProxyWrapperInterface {
@@ -51,10 +55,10 @@ class LvmdProxyWrapper : public LvmdProxyWrapperInterface {
   bool RemoveLogicalVolumes(const std::vector<std::string>& lv_names) override;
   bool ActivateLogicalVolume(const std::string& lv_name) override;
   std::string GetLogicalVolumePath(const std::string& lv_name) override;
+  bool GetPhysicalVolume(const std::string& device_path,
+                         lvmd::PhysicalVolume* pv) override;
 
  private:
-  bool GetPhysicalVolume(const std::string& device_path,
-                         lvmd::PhysicalVolume* pv);
   bool GetVolumeGroup(const lvmd::PhysicalVolume& pv, lvmd::VolumeGroup* vg);
   bool GetThinpool(const lvmd::VolumeGroup& vg, lvmd::Thinpool* thinpool);
   bool GetLogicalVolume(const lvmd::VolumeGroup& vg,

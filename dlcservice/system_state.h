@@ -91,6 +91,11 @@ class SystemState {
   // Return true if the device is removable.
   bool IsDeviceRemovable() const;
 
+#if USE_LVM_STATEFUL_PARTITION
+  bool IsLvmStackEnabled();
+  void SetIsLvmStackEnabled(bool enabled);
+#endif  // USE_LVM_STATEFUL_PARTITION
+
   // Returns the clock object.
   base::Clock* clock() const;
 
@@ -137,6 +142,8 @@ class SystemState {
   bool update_engine_service_available_ = false;
   bool not_resuming_from_hibernate_ = false;
   StateChangeReporterInterface* state_change_reporter_;
+
+  std::optional<bool> is_lvm_stack_enabled_;
 
   std::unique_ptr<BootSlotInterface> boot_slot_;
   std::unique_ptr<Metrics> metrics_;

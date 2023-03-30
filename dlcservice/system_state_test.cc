@@ -8,6 +8,7 @@
 #include "dlcservice/system_state.h"
 #include "dlcservice/test_utils.h"
 
+using testing::_;
 using testing::Return;
 
 namespace dlcservice {
@@ -46,5 +47,19 @@ TEST_F(SystemStateTest, GettersTest) {
   EXPECT_EQ(system_state->update_engine_status().current_operation(),
             update_engine::Operation::DOWNLOADING);
 }
+
+#if USE_LVM_STATEFUL_PARTITION
+TEST_F(SystemStateTest, IsLvmStackEnabled) {
+  auto* ptr = SystemState::Get();
+
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, GetPhysicalVolume(_, _))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(ptr->IsLvmStackEnabled());
+
+  // Call to test caching.
+  EXPECT_TRUE(ptr->IsLvmStackEnabled());
+}
+#endif  // USE_LVM_STATEFUL_PARTITION
 
 }  // namespace dlcservice

@@ -12,6 +12,9 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#if USE_LVM_STATEFUL_PARTITION
+#include <brillo/blkdev_utils/lvm_device.h>
+#endif  // USE_LVM_STATEFUL_PARTITION
 
 #include "dlcservice/boot/boot_device.h"
 #include "dlcservice/state_change_reporter_interface.h"
@@ -223,5 +226,21 @@ bool SystemState::resuming_from_hibernate() {
   not_resuming_from_hibernate_ = true;
   return false;
 }
+
+#if USE_LVM_STATEFUL_PARTITION
+bool SystemState::IsLvmStackEnabled() {
+  if (!is_lvm_stack_enabled_.has_value()) {
+    lvmd::PhysicalVolume pv;
+    // Cache the value.
+    is_lvm_stack_enabled_ = lvmd_wrapper()->GetPhysicalVolume(
+        boot_slot()->GetStatefulPartitionPath().value(), &pv);
+  }
+  return is_lvm_stack_enabled_.value();
+}
+
+void SystemState::SetIsLvmStackEnabled(bool enabled) {
+  is_lvm_stack_enabled_ = enabled;
+}
+#endif  // USE_LVM_STATEFUL_PARTITION
 
 }  // namespace dlcservice
