@@ -7,52 +7,77 @@
 
 #include <sys/types.h>
 
-#include <memory>
+#include <bitset>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/strings/string_piece.h>
 
 #include <brillo/process/process.h>
 
 namespace secanomalyd {
 
+namespace testing {
+class ProcessesTestFixture;
+}
+
 class ProcEntry {
  public:
-  ProcEntry() : pid_{}, pidns_{}, comm_{}, args_{} {}
+  // A given process can be sandboxed using zero or more mechanisms.
+  using SandboxStatus = std::bitset<4>;
+  static constexpr size_t kLandlockBit = 0;  // Least Significant Bit
+  static constexpr size_t kSecCompBit = 1;
+  static constexpr size_t kSELinuxBit = 2;
+  static constexpr size_t kNoNewPrivsBit = 3;
 
-  explicit ProcEntry(base::StringPiece proc_str);
+  static std::optional<ProcEntry> CreateFromPath(
+      const base::FilePath& pid_path);
 
   // Copying the private fields is fine.
   ProcEntry(const ProcEntry& other) = default;
   ProcEntry& operator=(const ProcEntry& other) = default;
 
-  // TODO(jorgelo): Implement move constructor so that we can use emplace().
-
   pid_t pid() const { return pid_; }
-  const ino_t pidns() const { return pidns_; }
-  const std::string& comm() const { return comm_; }
-  const std::string& args() const { return args_; }
+  ino_t pidns() const { return pidns_; }
+  ino_t mntns() const { return mntns_; }
+  std::string comm() const { return comm_; }
+  std::string args() const { return args_; }
+  SandboxStatus sandbox_status() const { return sandbox_status_; }
 
  private:
+  friend class testing::ProcessesTestFixture;
+  FRIEND_TEST(ReporterTest, FullReport);
+
+  ProcEntry(pid_t pid,
+            ino_t pidns,
+            ino_t mntns,
+            std::string comm,
+            std::string args,
+            SandboxStatus sandbox_status)
+      : pid_(pid),
+        pidns_(pidns),
+        mntns_(mntns),
+        comm_(comm),
+        args_(args),
+        sandbox_status_(sandbox_status) {}
+
   pid_t pid_;
   ino_t pidns_;
+  ino_t mntns_;
   std::string comm_;
   std::string args_;
+  SandboxStatus sandbox_status_;
 };
 
+using MaybeProcEntry = std::optional<ProcEntry>;
 using ProcEntries = std::vector<ProcEntry>;
 using MaybeProcEntries = std::optional<ProcEntries>;
 
 enum class ProcessFilter { kAll = 0, kInitPidNamespaceOnly };
 
 MaybeProcEntries ReadProcesses(ProcessFilter filter);
-// Used mostly for testing.
-// |reader| is un-owned.
-MaybeProcEntries ReadProcesses(brillo::Process* reader, ProcessFilter filter);
-MaybeProcEntries ReadProcessesFromString(const std::string& procs,
-                                         ProcessFilter filter);
 
 }  // namespace secanomalyd
 

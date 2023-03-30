@@ -23,6 +23,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "secanomalyd/processes.h"
+
 using ::testing::MatchesRegex;
 using ::testing::Return;
 
@@ -60,18 +62,6 @@ constexpr char kMounts[] =
     //
     "/dev/sda1 /usr/local ext4 "
     "rw,seclabel,nodev,noatime,resgid=20119,commit=600,data=ordered 0 0";
-
-constexpr char kProcesses[] =
-    "  1 4026531836 init            /sbin/init\n"
-    "471 4026531836 agetty          agetty 115200 ttyS0 linux\n"
-    "506 4026531836 auditd          /sbin/auditd -n -c /etc/audit\n"
-    //
-    "739 4026532412 minijail-init   minijail0 -i -u iioservice -g iioservice "
-    "-N --uts -e -p -P /mnt/empty -b / -b /sys -k tmpfs /run tmpfs MS_NOSUID "
-    "MS_NODEV MS_NOEXEC -n -S /usr/share/policy/iioservice-seccomp.policy -b "
-    "/sys/bus -b /sys/devices  1 -b /dev  1 -b /sys/firmware -b /sys/class "
-    "-b /run/dbus -k tmpfs /var tmpfs MS_NOSUID MS_NODEV MS_NOEXEC -b "
-    "/var/lib/metrics  1 -R 13 40 40 -- /usr/sbin/iioservice\n";
 
 base::ScopedFD GetDevNullFd() {
   return base::ScopedFD(HANDLE_EINTR(open("/dev/null", O_WRONLY)));
@@ -205,8 +195,12 @@ TEST(ReporterTest, FullReport) {
 
   MaybeMountEntries maybe_mounts =
       ReadMountsFromString(kMounts, MountFilter::kUploadableOnly);
-  MaybeProcEntries maybe_procs =
-      ReadProcessesFromString(kProcesses, ProcessFilter::kInitPidNamespaceOnly);
+  MaybeProcEntries maybe_procs = MaybeProcEntries(
+      {ProcEntry(1, 4026531836, 4026531836, "init", "/sbin/init", 0b1000),
+       ProcEntry(471, 4026531836, 4026531836, "agetty",
+                 "agetty 115200 ttyS0 linux", 0b0000),
+       ProcEntry(506, 4026531836, 4026531836, "auditd",
+                 "/sbin/auditd -n -c /etc/audit", 0b0000)});
 
   MaybeReport report =
       GenerateAnomalousSystemReport(wx_mounts, maybe_mounts, maybe_procs);

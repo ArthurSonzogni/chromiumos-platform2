@@ -6,101 +6,151 @@
 
 #include <algorithm>
 #include <optional>
+#include <string>
 
+#include <base/files/file_path.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece_forward.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <re2/re2.h>
 
 #include <brillo/process/process.h>
 
 namespace secanomalyd {
 
 namespace {
-constexpr char kPsPath[] = "/bin/ps";
 constexpr char kInitExecutable[] = "/sbin/init";
+const base::FilePath kProcPathBase("/proc");
+constexpr char kProcSubdirPattern[] = "[0-9]*";
+constexpr char kProcStatusFile[] = "status";
+constexpr char kProcCmdlineFile[] = "cmdline";
+constexpr char kProcNsPidPath[] = "ns/pid";
+constexpr char kProcNsMntPath[] = "ns/mnt";
+static constexpr LazyRE2 kProcNsPattern = {R"([a-z]+:\[(\d+)\])"};
+constexpr char kSecCompModeDisabled[] = "0";
+// SECCOMP_MODE_STRICT is 1.
+// SECCOMP_MODE_FILTER is 2.
+
+// Kernel arg and env lists use '\0' to delimit elements.
+static std::string SafeTransFromArgvEnvp(const std::string cmdline) {
+  std::string res;
+  base::StringTokenizer t(cmdline, std::string("\0", 1));
+  while (t.GetNext()) {
+    res.append(base::StringPrintf("%s ", t.token().c_str()));
+  }
+  if (res.length() > 0) {
+    res.pop_back();
+  }
+  return res;
+}
+
+static ino_t GetNsFromPath(const base::FilePath& ns_symlink_path) {
+  // *_ns_symlink are not actually pathlike. E.g: "mnt:[4026531840]".
+  base::FilePath ns_symlink;
+  std::string ns_string;
+  ino_t ns;
+  if (!base::ReadSymbolicLink(ns_symlink_path, &ns_symlink) ||
+      !RE2::FullMatch(ns_symlink.value(), *kProcNsPattern, &ns_string) ||
+      !base::StringToUint64(ns_string, &ns)) {
+    return 0;
+  }
+  return ns;
+}
+
 }  // namespace
 
-ProcEntry::ProcEntry(base::StringPiece proc_str) {
-  // These entries are of the form:
-  //   3295 4026531836 ps              ps ax -o pid,pidns,comm,args
+MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
+  // ProcEntry attributes.
+  pid_t pid;
+  ino_t pidns = 0, mntns = 0;
+  std::string comm, args;
+  SandboxStatus sandbox_status;
+  sandbox_status.reset();
 
-  std::vector<base::StringPiece> fields =
-      base::SplitStringPiece(proc_str, base::kWhitespaceASCII,
-                             base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  bool cmdline_file_read;
+  std::string status_file_content, cmdline_file_content;
 
-  if (fields.size() < 4) {
-    pid_ = -1;
-    pidns_ = 0;
-    return;
+  const base::FilePath status_file_path = pid_path.Append(kProcStatusFile);
+  const base::FilePath cmdline_file_path = pid_path.Append(kProcCmdlineFile);
+  const base::FilePath pid_ns_path = pid_path.Append(kProcNsPidPath);
+  const base::FilePath mnt_ns_path = pid_path.Append(kProcNsMntPath);
+
+  // Fail if we cannot parse a PID from the supplied path.
+  if (!base::StringToInt(pid_path.BaseName().value(), &pid)) {
+    LOG(ERROR) << "Could not parse a PID from path " << pid_path;
+    return std::nullopt;
   }
 
-  // PIDs are signed.
-  if (!base::StringToInt(fields[0], &pid_)) {
-    pid_ = -1;
+  // Fail if we cannot read the status file, since just a PID is not useful.
+  if (!base::ReadFileToString(status_file_path, &status_file_content)) {
+    return std::nullopt;
   }
 
-  // Namespace ids are inode numbers, inode numbers are unsigned.
-  if (!base::StringToUint64(fields[1], &pidns_)) {
-    pidns_ = 0;
+  // Reads the rest of the process files before processing any content.
+  cmdline_file_read =
+      base::ReadFileToString(cmdline_file_path, &cmdline_file_content);
+  pidns = GetNsFromPath(pid_ns_path);
+  mntns = GetNsFromPath(mnt_ns_path);
+
+  // The /proc/pid/status file follows this format:
+  // Attribute:\tValue\nAttribute:\tValue\n...
+  // In cases where an attribute has several values, each value is separated
+  // with a tab: Attribute:\tValue1\tValue2\tValue3\n...
+  // See https://man7.org/linux/man-pages/man5/proc.5.html for the list of
+  // attributes in this file.
+  // In our case we parse the values of `Name`, `NoNewPrivs` and `Seccomp`.
+  base::StringTokenizer t(status_file_content, "\n");
+  while (t.GetNext()) {
+    base::StringPiece line = t.token_piece();
+    if (base::StartsWith(line, "Name:")) {
+      comm = std::string(line.substr(line.rfind("\t") + 1));
+    }
+    if (base::StartsWith(line, "NoNewPrivs:") &&
+        line.substr(line.rfind("\t") + 1) == "1")
+      // For more information on no new privs see
+      // https://www.kernel.org/doc/html/v4.19/userspace-api/no_new_privs.html
+      sandbox_status.set(kNoNewPrivsBit);
+    if (base::StartsWith(line, "Seccomp:") &&
+        line.substr(line.rfind("\t") + 1) != kSecCompModeDisabled)
+      sandbox_status.set(kSecCompBit);
   }
-  comm_ = std::string(fields[2]);
-  args_ =
-      base::JoinString(base::make_span(fields.begin() + 3, fields.end()), " ");
+
+  if (!cmdline_file_read || cmdline_file_content.empty()) {
+    // If there are no args, we set `args` to be be the command name, but
+    // enclosed in square brackets. This is to follow the `ps` convention, and
+    // to avoid having empty lines in the list of processes in crash reports.
+    args = base::StringPrintf("[%s]", comm.c_str());
+  } else {
+    args = SafeTransFromArgvEnvp(cmdline_file_content);
+  }
+
+  return ProcEntry(pid, pidns, mntns, comm, args, sandbox_status);
 }
 
 MaybeProcEntries ReadProcesses(ProcessFilter filter) {
-  std::unique_ptr<brillo::Process> reader(new brillo::ProcessImpl());
-  return ReadProcesses(reader.get(), filter);
-}
-
-MaybeProcEntries ReadProcesses(brillo::Process* reader, ProcessFilter filter) {
-  // Collect processes.
-  // Call |ps| with a user defined format listing pid namespaces.
-  reader->AddArg(kPsPath);
-  // List all processes.
-  reader->AddArg("ax");
-  // List pid, pid namespace, executable name, and full command line.
-  reader->AddStringOption("-o", "pid,pidns,comm,args");
-
-  reader->RedirectUsingMemory(STDOUT_FILENO);
-  if (reader->Run() != 0) {
-    PLOG(ERROR) << "Failed to execute 'ps'";
-    return std::nullopt;
-  }
-
-  std::string processes = reader->GetOutputString(STDOUT_FILENO);
-  if (processes.empty()) {
-    LOG(ERROR) << "Failed to read 'ps' output";
-    return std::nullopt;
-  }
-
-  return ReadProcessesFromString(processes, filter);
-}
-
-MaybeProcEntries ReadProcessesFromString(const std::string& processes,
-                                         ProcessFilter filter) {
-  std::vector<base::StringPiece> pieces = base::SplitStringPiece(
-      processes, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-
-  if (pieces.empty()) {
-    return std::nullopt;
-  }
-
-  ProcEntries res;
+  ProcEntries entries;
   std::optional<ino_t> init_pidns = std::nullopt;
-  for (const auto& piece : pieces) {
-    ProcEntry entry(piece);
-    // Only add the entry to the list if it managed to parse a PID and a pidns.
-    if (entry.pid() > 0 && entry.pidns() > 0) {
+
+  base::FileEnumerator proc_enumerator(kProcPathBase, /*Recursive=*/false,
+                                       base::FileEnumerator::DIRECTORIES,
+                                       kProcSubdirPattern);
+  for (base::FilePath pid_path = proc_enumerator.Next(); !pid_path.empty();
+       pid_path = proc_enumerator.Next()) {
+    MaybeProcEntry entry = ProcEntry::CreateFromPath(pid_path);
+    if (entry.has_value()) {
       if (filter == ProcessFilter::kInitPidNamespaceOnly &&
-          entry.args() == std::string(kInitExecutable)) {
-        init_pidns = entry.pidns();
-        // The init process has been found, add it to the list and continue the
-        // loop early.
-        res.push_back(entry);
+          entry->args() == std::string(kInitExecutable)) {
+        init_pidns = entry->pidns();
+        // The init process has been found, add it to the list and continue
+        // the loop early.
+        entries.push_back(*entry);
         continue;
       }
 
@@ -110,8 +160,8 @@ MaybeProcEntries ReadProcessesFromString(const std::string& processes,
       //    -The init process has been successfully identified, and the PID
       //     namespaces match.
       if (filter == ProcessFilter::kAll || !init_pidns ||
-          entry.pidns() == init_pidns.value()) {
-        res.push_back(entry);
+          entry->pidns() == init_pidns.value()) {
+        entries.push_back(*entry);
       }
     }
   }
@@ -119,11 +169,11 @@ MaybeProcEntries ReadProcessesFromString(const std::string& processes,
   if (filter == ProcessFilter::kInitPidNamespaceOnly) {
     if (init_pidns) {
       // Remove all processes whose |pidns| does not match init's.
-      res.erase(std::remove_if(res.begin(), res.end(),
-                               [init_pidns](const ProcEntry& pe) {
-                                 return pe.pidns() != init_pidns.value();
-                               }),
-                res.end());
+      entries.erase(std::remove_if(entries.begin(), entries.end(),
+                                   [init_pidns](const ProcEntry& pe) {
+                                     return pe.pidns() != init_pidns.value();
+                                   }),
+                    entries.end());
     } else {
       LOG(ERROR) << "Failed to find init process";
       return std::nullopt;
@@ -131,7 +181,7 @@ MaybeProcEntries ReadProcessesFromString(const std::string& processes,
   }
 
   // If we failed to parse any valid processes, return nullopt.
-  return res.size() > 0 ? MaybeProcEntries(res) : std::nullopt;
+  return entries.empty() ? std::nullopt : MaybeProcEntries(entries);
 }
 
 }  // namespace secanomalyd
