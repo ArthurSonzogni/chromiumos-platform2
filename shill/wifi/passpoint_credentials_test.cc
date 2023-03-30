@@ -404,6 +404,7 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
   const std::vector<uint64_t> home_ois{0x1234, 0x5678};
   const std::vector<uint64_t> required_home_ois{0xabcd, 0xcdef};
   const std::vector<uint64_t> roaming_consortia{0x11111111, 0x22222222};
+  const std::string username = "test-user";
 
   PasspointCredentialsRefPtr creds = new PasspointCredentials(
       "an_id", domains, realm, home_ois, required_home_ois, roaming_consortia,
@@ -413,7 +414,7 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
   // Add the minimal set of EAP properties
   KeyValueStore eap_store;
   eap_store.Set<std::string>(kEapMethodProperty, kEapMethodTTLS);
-  eap_store.Set<std::string>(kEapIdentityProperty, "test-user");
+  eap_store.Set<std::string>(kEapIdentityProperty, username);
   eap_store.Set<std::string>(kEapPasswordProperty, "test-password");
   creds->eap_.Load(eap_store);
 
@@ -437,6 +438,8 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
   EXPECT_EQ("0011111111,0022222222",
             properties.Get<std::string>(
                 WPASupplicant::kCredentialsPropertyRoamingConsortiums));
+  EXPECT_EQ(username, properties.Get<std::string>(
+                          WPASupplicant::kCredentialsPropertyUsername));
 
   creds = new PasspointCredentials(
       "an_id", domains, realm, home_ois, required_home_ois, roaming_consortia,
@@ -452,6 +455,7 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
   eap_store.Set<std::string>(kEapMethodProperty, kEapMethodTLS);
   eap_store.Set<std::string>(kEapCertIdProperty, "0:a_cert_id");
   eap_store.Set<std::string>(kEapKeyIdProperty, "0:a_key_id");
+  eap_store.Set<std::string>(kEapIdentityProperty, username);
   creds->eap_.Load(eap_store);
 
   properties.Clear();
@@ -466,6 +470,8 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
   EXPECT_EQ("0011111111,0022222222",
             properties.Get<std::string>(
                 WPASupplicant::kCredentialsPropertyRoamingConsortiums));
+  EXPECT_EQ(username, properties.Get<std::string>(
+                          WPASupplicant::kCredentialsPropertyUsername));
 }
 
 TEST_F(PasspointCredentialsTest, EncodeOI) {
