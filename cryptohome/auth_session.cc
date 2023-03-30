@@ -66,13 +66,13 @@ namespace cryptohome {
 namespace {
 
 using brillo::cryptohome::home::SanitizeUserName;
-using cryptohome::error::ContainsActionInStack;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
 using cryptohome::error::ErrorActionSet;
 using cryptohome::error::PossibleAction;
 using cryptohome::error::PrimaryAction;
+using cryptohome::error::PrimaryActionIs;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::kAesBlockSize;
@@ -684,7 +684,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     // it doesn't make it into the VaultKeyset::Decrypt(); so auth_lock should
     // be set here.
     if (!status.ok() &&
-        ContainsActionInStack(status, error::PrimaryAction::kLeLockedOut)) {
+        PrimaryActionIs(status, error::PrimaryAction::kLeLockedOut)) {
       // Get the corresponding encrypted vault keyset for the user and the label
       // to set the auth_locked.
       std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(

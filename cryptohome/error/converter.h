@@ -23,6 +23,13 @@ namespace error {
 // This file hosts utilities that converts the CryptohomeError class into the
 // error format on the dbus.
 
+// Retrieves the final ErrorActions from the stack of errors.
+template <typename ErrorType>
+void ActionsFromStack(
+    const hwsec_foundation::status::StatusChain<ErrorType>& stack,
+    std::optional<PrimaryAction>& primary,
+    PossibleActions& possible);
+
 // Retrieves the legacy CryptohomeErrorCode from the stack of errors.
 user_data_auth::CryptohomeErrorCode LegacyErrorCodeFromStack(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& stack);

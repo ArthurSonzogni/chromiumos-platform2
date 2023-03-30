@@ -75,7 +75,6 @@ namespace {
 
 using ::base::test::TestFuture;
 using ::brillo::cryptohome::home::SanitizeUserName;
-using ::cryptohome::error::ContainsActionInStack;
 using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::CryptohomeLECredError;
 using ::hwsec::TPMErrorBase;

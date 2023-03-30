@@ -44,7 +44,7 @@ namespace {
 bool IsOperationFailureTransient(
     const StatusChain<CryptohomeCryptoError>& status
     [[clang::param_typestate(unconsumed)]]) {
-  return ContainsActionInStack(status, PossibleAction::kRetry);
+  return PossibleActionsInclude(status, PossibleAction::kRetry);
 }
 
 // Returns whether the Chrome OS image is a test one.

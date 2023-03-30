@@ -369,16 +369,14 @@ TEST_F(LECredentialManagerImplUnitTest, LockedOutSecret) {
   EXPECT_THAT(status = le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret,
                                                 &reset_secret),
               NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_TOO_MANY_ATTEMPTS))));
-  EXPECT_TRUE(
-      ContainsActionInStack(status, error::PrimaryAction::kLeLockedOut));
+  EXPECT_TRUE(PrimaryActionIs(status, error::PrimaryAction::kLeLockedOut));
 
   // Check once more to ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the
   // right metadata is stored.
   EXPECT_THAT(status = le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret,
                                                 &reset_secret),
               NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_TOO_MANY_ATTEMPTS))));
-  EXPECT_TRUE(
-      ContainsActionInStack(status, error::PrimaryAction::kLeLockedOut));
+  EXPECT_TRUE(PrimaryActionIs(status, error::PrimaryAction::kLeLockedOut));
 }
 
 // Verify getting locked out due to too many attempts for biometrics
@@ -392,16 +390,16 @@ TEST_F(LECredentialManagerImplUnitTest, BiometricsLockedOutRateLimiter) {
   auto reply = le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce);
   EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
             reply.status()->local_lecred_error());
-  EXPECT_TRUE(ContainsActionInStack(reply.status(),
-                                    error::PrimaryAction::kLeLockedOut));
+  EXPECT_TRUE(
+      PrimaryActionIs(reply.status(), error::PrimaryAction::kLeLockedOut));
 
   // Check once more to ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the
   // right metadata is stored.
   reply = le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce);
   EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
             reply.status()->local_lecred_error());
-  EXPECT_TRUE(ContainsActionInStack(reply.status(),
-                                    error::PrimaryAction::kLeLockedOut));
+  EXPECT_TRUE(
+      PrimaryActionIs(reply.status(), error::PrimaryAction::kLeLockedOut));
 }
 
 // Insert a label. Then ensure that a CheckCredential on another non-existent

@@ -30,12 +30,13 @@ namespace cryptohome {
 namespace {
 
 using base::test::TestFuture;
-using cryptohome::error::ContainsActionInStack;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeLECredError;
 using cryptohome::error::ErrorActionSet;
 using cryptohome::error::PossibleAction;
+using cryptohome::error::PossibleActionsInclude;
 using cryptohome::error::PrimaryAction;
+using cryptohome::error::PrimaryActionIs;
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::OkStatus;
 using hwsec_foundation::error::testing::ReturnError;
@@ -254,7 +255,7 @@ TEST_F(FingerprintAuthBlockTest, CreateNoUsername) {
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   EXPECT_TRUE(
-      ContainsActionInStack(status, PossibleAction::kDevCheckUnexpectedState));
+      PossibleActionsInclude(status, PossibleAction::kDevCheckUnexpectedState));
   EXPECT_EQ(key_blobs, nullptr);
   EXPECT_EQ(auth_state, nullptr);
 }
@@ -271,7 +272,7 @@ TEST_F(FingerprintAuthBlockTest, CreateNoSession) {
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   EXPECT_TRUE(
-      ContainsActionInStack(status, PossibleAction::kDevCheckUnexpectedState));
+      PossibleActionsInclude(status, PossibleAction::kDevCheckUnexpectedState));
   EXPECT_EQ(key_blobs, nullptr);
   EXPECT_EQ(auth_state, nullptr);
 }
@@ -299,7 +300,7 @@ TEST_F(FingerprintAuthBlockTest, CreateStartBioAuthFailed) {
 
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
-  EXPECT_TRUE(ContainsActionInStack(status, PrimaryAction::kLeLockedOut));
+  EXPECT_TRUE(PrimaryActionIs(status, PrimaryAction::kLeLockedOut));
   EXPECT_EQ(key_blobs, nullptr);
   EXPECT_EQ(auth_state, nullptr);
 }
@@ -340,7 +341,7 @@ TEST_F(FingerprintAuthBlockTest, CreateCreateCredentialFailed) {
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   EXPECT_TRUE(
-      ContainsActionInStack(status, PossibleAction::kDevCheckUnexpectedState));
+      PossibleActionsInclude(status, PossibleAction::kDevCheckUnexpectedState));
   EXPECT_EQ(key_blobs, nullptr);
   EXPECT_EQ(auth_state, nullptr);
 }
@@ -397,7 +398,7 @@ TEST_F(FingerprintAuthBlockTest, CreateInsertCredentialFailed) {
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   EXPECT_TRUE(
-      ContainsActionInStack(status, PossibleAction::kDevCheckUnexpectedState));
+      PossibleActionsInclude(status, PossibleAction::kDevCheckUnexpectedState));
   EXPECT_EQ(key_blobs, nullptr);
   EXPECT_EQ(auth_state, nullptr);
 }
@@ -491,7 +492,7 @@ TEST_F(FingerprintAuthBlockTest, CreateLimiterFailed) {
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   EXPECT_TRUE(
-      ContainsActionInStack(status, PossibleAction::kDevCheckUnexpectedState));
+      PossibleActionsInclude(status, PossibleAction::kDevCheckUnexpectedState));
   EXPECT_EQ(key_blobs, nullptr);
   EXPECT_EQ(auth_state, nullptr);
 }
@@ -508,7 +509,7 @@ TEST_F(FingerprintAuthBlockTest, CreateNoResetSecretFailed) {
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   EXPECT_TRUE(
-      ContainsActionInStack(status, PossibleAction::kDevCheckUnexpectedState));
+      PossibleActionsInclude(status, PossibleAction::kDevCheckUnexpectedState));
   EXPECT_EQ(status->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   EXPECT_EQ(key_blobs, nullptr);
@@ -585,7 +586,7 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorNoLabel) {
   ASSERT_TRUE(result.IsReady());
   auto [status, auth_input, auth_factor] = result.Take();
   EXPECT_TRUE(
-      ContainsActionInStack(status, PossibleAction::kDevCheckUnexpectedState));
+      PossibleActionsInclude(status, PossibleAction::kDevCheckUnexpectedState));
   EXPECT_FALSE(auth_input.has_value());
   EXPECT_FALSE(auth_factor.has_value());
 }
@@ -607,7 +608,7 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorNoSession) {
   ASSERT_TRUE(result.IsReady());
   auto [status, auth_input, auth_factor] = result.Take();
   EXPECT_TRUE(
-      ContainsActionInStack(status, PossibleAction::kDevCheckUnexpectedState));
+      PossibleActionsInclude(status, PossibleAction::kDevCheckUnexpectedState));
   EXPECT_FALSE(auth_input.has_value());
   EXPECT_FALSE(auth_factor.has_value());
 }
@@ -640,7 +641,7 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorStartBioAuthFailed) {
 
   ASSERT_TRUE(result.IsReady());
   auto [status, auth_input, auth_factor] = result.Take();
-  EXPECT_TRUE(ContainsActionInStack(status, PrimaryAction::kLeLockedOut));
+  EXPECT_TRUE(PrimaryActionIs(status, PrimaryAction::kLeLockedOut));
   EXPECT_FALSE(auth_input.has_value());
   EXPECT_FALSE(auth_factor.has_value());
 }
@@ -684,8 +685,8 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorMatchFailed) {
 
   ASSERT_TRUE(result.IsReady());
   auto [status, auth_input, auth_factor] = result.Take();
-  EXPECT_TRUE(ContainsActionInStack(status, PrimaryAction::kIncorrectAuth));
-  EXPECT_FALSE(ContainsActionInStack(status, PrimaryAction::kLeLockedOut));
+  EXPECT_TRUE(PrimaryActionIs(status, PrimaryAction::kIncorrectAuth));
+  EXPECT_FALSE(PrimaryActionIs(status, PrimaryAction::kLeLockedOut));
   EXPECT_FALSE(auth_input.has_value());
   EXPECT_FALSE(auth_factor.has_value());
 }
@@ -730,8 +731,7 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorMatchFailedAndLocked) {
 
   ASSERT_TRUE(result.IsReady());
   auto [status, auth_input, auth_factor] = result.Take();
-  EXPECT_TRUE(ContainsActionInStack(status, PrimaryAction::kIncorrectAuth));
-  EXPECT_TRUE(ContainsActionInStack(status, PrimaryAction::kLeLockedOut));
+  EXPECT_TRUE(PrimaryActionIs(status, PrimaryAction::kLeLockedOut));
   EXPECT_FALSE(auth_input.has_value());
   EXPECT_FALSE(auth_factor.has_value());
 }
@@ -782,7 +782,7 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorAuthFactorNotInList) {
   ASSERT_TRUE(result.IsReady());
   auto [status, auth_input, auth_factor] = result.Take();
   EXPECT_TRUE(
-      ContainsActionInStack(status, PossibleAction::kDevCheckUnexpectedState));
+      PossibleActionsInclude(status, PossibleAction::kDevCheckUnexpectedState));
   EXPECT_FALSE(auth_input.has_value());
   EXPECT_FALSE(auth_factor.has_value());
 }
@@ -829,7 +829,7 @@ TEST_F(FingerprintAuthBlockTest, DeriveInvalidAuthInput) {
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
   EXPECT_TRUE(
-      ContainsActionInStack(status, PossibleAction::kDevCheckUnexpectedState));
+      PossibleActionsInclude(status, PossibleAction::kDevCheckUnexpectedState));
   EXPECT_EQ(key_blobs, nullptr);
   EXPECT_THAT(suggested_action, Eq(std::nullopt));
 }
@@ -860,8 +860,7 @@ TEST_F(FingerprintAuthBlockTest, DeriveCheckCredentialFailed) {
 
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
-  EXPECT_TRUE(
-      ContainsActionInStack(status, PossibleAction::kDevCheckUnexpectedState));
+  EXPECT_TRUE(PrimaryActionIs(status, PrimaryAction::kLeLockedOut));
   EXPECT_EQ(key_blobs, nullptr);
   EXPECT_THAT(suggested_action, Eq(std::nullopt));
 }
