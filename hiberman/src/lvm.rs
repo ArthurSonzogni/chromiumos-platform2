@@ -79,14 +79,15 @@ pub fn lv_exists(volume_group: &str, name: &str) -> Result<bool> {
     Ok(output.status.success())
 }
 
-/// Enumerate all activated logical volumes in the system.
-pub fn get_active_lvs() -> Result<Vec<String>> {
+/// Enumerate all logical volumes in a volume group.
+pub fn get_lvs(volume_group: &str) -> Result<Vec<String>> {
     let output = checked_command_output(Command::new("/sbin/lvdisplay").args([
         "-C",
         "--options=name",
         "--noheadings",
+        volume_group,
     ]))
-    .context("Failed to get active LVs")?;
+    .context("Failed to LVs in volume group '{volume_group}'")?;
     let output_string = String::from_utf8_lossy(&output.stdout);
     let mut elements: Vec<String> = vec![];
     output_string.split_whitespace().for_each(|e| {

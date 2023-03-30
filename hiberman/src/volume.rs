@@ -47,7 +47,7 @@ use crate::hiberutil::stateful_block_partition_one;
 use crate::hiberutil::HibernateError;
 use crate::lvm::activate_lv;
 use crate::lvm::create_thin_volume;
-use crate::lvm::get_active_lvs;
+use crate::lvm::get_lvs;
 use crate::lvm::get_vg_name;
 use crate::lvm::lv_exists;
 use crate::lvm::lv_path;
@@ -275,7 +275,7 @@ impl VolumeManager {
             create_dir(&snapshot_dir).context("Failed to create snapshot directory")?;
         }
 
-        let active_lvs = get_active_lvs()?;
+        let active_lvs = get_lvs(&self.vg_name)?;
         let zeroes = [0u8; SIZE_4K as usize];
         for lv_name in &active_lvs {
             // Skip certain LVs.
