@@ -611,14 +611,13 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
     uint32_t width,
     uint32_t height,
     const std::vector<uint32_t>& strides,
-    const std::vector<uint32_t>& offsets,
-    uint64_t modifier) {
+    const std::vector<uint32_t>& offsets) {
   TRACE_HAL_ADAPTER();
 
   base::AutoLock l(buffer_handles_lock_);
   return CameraDeviceAdapter::RegisterBufferLocked(
       buffer_id, std::move(fds), drm_format, hal_pixel_format, width, height,
-      strides, offsets, modifier);
+      strides, offsets);
 }
 
 int32_t CameraDeviceAdapter::Close() {
@@ -911,8 +910,7 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
     uint32_t width,
     uint32_t height,
     const std::vector<uint32_t>& strides,
-    const std::vector<uint32_t>& offsets,
-    uint64_t modifier) {
+    const std::vector<uint32_t>& offsets) {
   size_t num_planes = fds.size();
   std::unique_ptr<camera_buffer_handle_t> buffer_handle =
       std::make_unique<camera_buffer_handle_t>();
@@ -932,7 +930,6 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
     buffer_handle->strides[i] = strides[i];
     buffer_handle->offsets[i] = offsets[i];
   }
-  buffer_handle->modifier = modifier;
 
   if (!CameraBufferManager::GetInstance()->IsValidBuffer(buffer_handle->self)) {
     LOGF(ERROR) << "Invalid buffer handle";
@@ -944,17 +941,16 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
   VLOGF(1) << std::hex << "Buffer 0x" << buffer_id << " registered: "
            << "format: " << FormatToString(drm_format)
            << " dimension: " << std::dec << width << "x" << height
-           << " num_planes: " << num_planes << " modifier: " << modifier;
+           << " num_planes: " << num_planes;
   return 0;
 }
 
 int32_t CameraDeviceAdapter::RegisterBufferLocked(
     mojom::CameraBufferHandlePtr buffer) {
-  return RegisterBufferLocked(
-      buffer->buffer_id, std::move(buffer->fds), buffer->drm_format,
-      buffer->hal_pixel_format, buffer->width, buffer->height, buffer->strides,
-      buffer->offsets,
-      buffer->has_modifier ? buffer->modifier : DRM_FORMAT_MOD_INVALID);
+  return RegisterBufferLocked(buffer->buffer_id, std::move(buffer->fds),
+                              buffer->drm_format, buffer->hal_pixel_format,
+                              buffer->width, buffer->height, buffer->strides,
+                              buffer->offsets);
 }
 
 mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(

@@ -9,7 +9,6 @@ pkg_config("target_defaults") {
   ]
   pkg_deps = [
     "libcros_camera_android_deps",
-    "libdrm",
     "libsync",
   ]
 }

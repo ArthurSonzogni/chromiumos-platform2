@@ -302,15 +302,6 @@ class CROS_CAMERA_EXPORT CameraBufferManager {
   //    The height; 0 if |buffer| is invalid.
   static uint32_t GetHeight(buffer_handle_t buffer);
 
-  // Get the modifier of the buffer handle.
-  //
-  // Args:
-  //    |buffer|: The buffer handle to query.
-  //
-  // Returns:
-  //    The modifier; DRM_FORMAT_MOD_INVALID if |buffer| is invalid.
-  static uint64_t GetModifier(buffer_handle_t buffer);
-
   // Get the number of physical planes associated with |buffer|.
   //
   // Args:

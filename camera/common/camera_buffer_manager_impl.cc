@@ -503,16 +503,6 @@ off_t CameraBufferManager::GetPlaneOffset(buffer_handle_t buffer,
 }
 
 // static
-uint64_t CameraBufferManager::GetModifier(buffer_handle_t buffer) {
-  auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
-  if (!handle) {
-    return DRM_FORMAT_MOD_INVALID;
-  }
-
-  return handle->modifier;
-}
-
-// static
 int CameraBufferManager::GetPlaneFd(buffer_handle_t buffer, size_t plane) {
   auto handle = camera_buffer_handle_t::FromBufferHandle(buffer);
   if (!handle) {
@@ -591,7 +581,6 @@ int CameraBufferManagerImpl::Allocate(size_t width,
     handle->strides[i] = gbm_bo_get_stride_for_plane(buffer_context->bo, i);
     handle->offsets[i] = gbm_bo_get_offset(buffer_context->bo, i);
   }
-  handle->modifier = gbm_bo_get_modifier(buffer_context->bo);
 
   if (num_planes == 1) {
     *out_stride = handle->strides[0];
@@ -667,7 +656,6 @@ int CameraBufferManagerImpl::Register(buffer_handle_t buffer) {
   import_data.width = handle->width;
   import_data.height = handle->height;
   import_data.format = handle->drm_format;
-  import_data.modifier = handle->modifier;
   uint32_t num_planes = GetNumPlanes(buffer);
   if (num_planes <= 0) {
     return -EINVAL;

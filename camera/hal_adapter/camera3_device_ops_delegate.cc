@@ -125,7 +125,7 @@ void Camera3DeviceOpsDelegate::RegisterBuffer(
 
   std::move(callback).Run(camera_device_adapter_->RegisterBuffer(
       buffer_id, type, std::move(fds), drm_format, hal_pixel_format, width,
-      height, strides, offsets, DRM_FORMAT_MOD_INVALID));
+      height, strides, offsets));
 }
 
 void Camera3DeviceOpsDelegate::Close(CloseCallback callback) {
