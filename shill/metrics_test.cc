@@ -750,6 +750,26 @@ TEST_F(MetricsTest, NotifyCellularConnectionResult_Unknown) {
   metrics_.NotifyCellularConnectionResult(invalid_error);
 }
 
+TEST_F(MetricsTest, IntGid1) {
+  std::optional<uint64_t> val;
+  val = metrics_.IntGid1("123456");
+  EXPECT_TRUE(val.has_value());
+  EXPECT_EQ(val.value(), 0x123456);
+  val = metrics_.IntGid1("ABC123456");
+  EXPECT_TRUE(val.has_value());
+  EXPECT_EQ(val.value(), 0xABC123456);
+  val = metrics_.IntGid1("FFFFFFFFFFFFFFF");  // 15 digits
+  EXPECT_TRUE(val.has_value());
+  EXPECT_EQ(val.value(), 0xFFFFFFFFFFFFFFF);
+  val = metrics_.IntGid1("7FFFFFFFFFFFFFFF");  // 16 digits
+  EXPECT_TRUE(val.has_value());
+  EXPECT_EQ(val.value(), 0x7FFFFFFFFFFFFFF);   // last digit removed
+  val = metrics_.IntGid1("FFFFFFFFFFFFFFFF");  // 16 digits
+  EXPECT_TRUE(val.has_value());
+  EXPECT_EQ(val.value(), 0xFFFFFFFFFFFFFFF);  // last digit removed
+  EXPECT_TRUE(val.has_value());
+}
+
 TEST_F(MetricsTest, Logging) {
   NiceScopedMockLog log;
   const int kVerboseLevel5 = -5;

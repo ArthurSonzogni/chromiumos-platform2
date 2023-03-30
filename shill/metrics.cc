@@ -979,7 +979,8 @@ std::optional<int64_t> Metrics::IntGid1(const std::string& gid1) {
   //     64bit integer value.
   //   * The most usual cases are 0, 1 or 2 bytes,
   int64_t parsed;
-  if (!base::HexStringToInt64(gid1.substr(0, 2 * (sizeof(int64_t))), &parsed)) {
+  if (!base::HexStringToInt64(gid1.substr(0, 2 * (sizeof(int64_t)) - 1),
+                              &parsed)) {
     LOG(ERROR) << "Failed to parse GID1 as an integer: " << gid1;
     return std::nullopt;
   }
