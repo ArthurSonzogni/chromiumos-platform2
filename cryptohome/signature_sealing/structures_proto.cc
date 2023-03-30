@@ -5,6 +5,7 @@
 #include <utility>
 #include <variant>
 
+#include <base/notreached.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/structures/signature_sealed_data.h>
 

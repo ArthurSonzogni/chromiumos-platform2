@@ -4,6 +4,8 @@
 
 #include "trunks/scoped_key_handle.h"
 
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 
 #include "trunks/error_codes.h"
