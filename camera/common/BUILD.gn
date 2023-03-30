@@ -73,6 +73,7 @@ generate_mojom_bindings("libcros_camera_mojom") {
     "//camera/mojo/cros_camera_enum.mojom",
     "//camera/mojo/cros_camera_service.mojom",
     "//camera/mojo/effects/effects_pipeline.mojom",
+    "//camera/mojo/file_path.mojom",
     "//camera/mojo/gpu/dmabuf.mojom",
     "//camera/mojo/gpu/jpeg_encode_accelerator.mojom",
     "//camera/mojo/gpu/mjpeg_decode_accelerator.mojom",
@@ -82,6 +83,7 @@ generate_mojom_bindings("libcros_camera_mojom") {
   use_pic = true
   standalone = true
   install_package = "cros-camera/mojo"
+  enabled_features = [ "file_path_is_string" ]
 }
 
 pkg_config("pkg_config_base") {

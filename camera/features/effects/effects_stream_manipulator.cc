@@ -26,6 +26,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/callback_helpers.h>
 #include <base/no_destructor.h>
+#include <base/strings/string_util.h>
 #include <base/threading/thread_checker.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
@@ -144,7 +145,7 @@ EffectsConfig ConvertMojoConfig(cros::mojom::EffectsConfigPtr effects_config) {
   // Note: We don't copy over the GPU api fields here, since we have no
   //       need to control them from Chrome at this stage. It will use
   //       the default from effects_pipeline_types.h
-  return EffectsConfig{
+  auto config = EffectsConfig{
       .relight_enabled = effects_config->relight_enabled,
       .blur_enabled = effects_config->blur_enabled,
       .replace_enabled = effects_config->replace_enabled,
@@ -153,6 +154,14 @@ EffectsConfig ConvertMojoConfig(cros::mojom::EffectsConfigPtr effects_config) {
       .segmentation_model_type = static_cast<cros::SegmentationModelType>(
           effects_config->segmentation_model),
   };
+  if (effects_config->background_filepath) {
+    base::FilePath path =
+        base::FilePath("/run/camera/")
+            .Append(effects_config->background_filepath->path);
+    base::strlcpy(config.background_image_asset, path.value().c_str(),
+                  sizeof(config.background_image_asset));
+  }
+  return config;
 }
 
 }  // namespace
