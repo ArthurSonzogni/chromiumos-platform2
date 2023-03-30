@@ -1008,9 +1008,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockCheckCredLockedInDerive = 591,
   /* ./le_credential_manager_impl.cc */
-  kLocLECredManInvalidTreeInGetDelayInSeconds = 592,
+  kLocLECredManInvalidTreeInGetCredentialMetadata = 592,
   /* ./le_credential_manager_impl.cc */
-  kLocLECredManRetrieveLabelFailedInGetDelayInSeconds = 593,
+  kLocLECredManRetrieveLabelFailedInGetCredentialMetadata = 593,
   /* ./le_credential_manager_impl.cc */
   kLocLECredManPinWeaverFailedInGetDelayInSeconds = 594,
   /* ./auth_blocks/auth_block_utility_impl.cc */
@@ -1128,7 +1128,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_session.cc */
   kLocAuthSessionUnauthedInRemoveAuthFactor = 651,
   /* ./le_credential_manager_impl.cc */
-  kLocLECredManInvalidMetadataInGetDelayInSeconds = 652,
+  kLocLECredManInvalidMetadataInGetCredentialMetadata = 652,
   /* ./userdataauth.cc */
   kLocUserDataAuthOtherSessionActiveInPrepareEphemeralVault = 653,
   /* ./userdataauth.cc */
@@ -1183,11 +1183,11 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocScryptAuthBlockScryptFailedInDeriveFromResetSeedSalt = 678,
   /* ./vault_keyset.cc */
   kLocVaultKeysetAuthBlockStateFailedInWrapScrypt = 679,
-  /* ./le_credential_manager_impl.cc */
+  /* =Obsolete= */
   kLocLECredManInvalidTreeInGetExpirationInSeconds = 680,
-  /* ./le_credential_manager_impl.cc */
+  /* =Obsolete= */
   kLocLECredManRetrieveLabelFailedInGetExpirationInSeconds = 681,
-  /* ./le_credential_manager_impl.cc */
+  /* =Obsolete= */
   kLocLECredManInvalidMetadataInGetExpirationInSeconds = 682,
   /* ./le_credential_manager_impl.cc */
   kLocLECredManPinWeaverFailedInGetExpirationInSeconds = 683,
@@ -1349,6 +1349,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocScryptVerifierVerifySecretMismatch = 2103,
   /* ./auth_blocks/generic.h */
   kLocGenericAuthBlockIsSupportedNotFound = 2104,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManPinWeaverFailedInGetDelaySchedule = 2105,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.
@@ -1467,7 +1469,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorManagerEmptyReadInLoad = 2729,
   /* ./user_secret_stash.cc */
   kLocUSSEmptySerializedInGetContainerFromFB = 2730,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionDeleteOldBackupFailedInUpdateWithUSS = 2731,
   /* ./auth_session.cc */
   kLocAuthSessionRemoveFailedInCleanUpBackupKeyset = 2732,

@@ -61,11 +61,12 @@ class LECredentialManagerImpl : public LECredentialManager {
   // the tree is corrupted.
   int GetWrongAuthAttempts(uint64_t label) override;
 
-  // Returns the delay in seconds.
   LECredStatusOr<uint32_t> GetDelayInSeconds(uint64_t label) override;
 
   LECredStatusOr<std::optional<uint32_t>> GetExpirationInSeconds(
       uint64_t label) override;
+
+  LECredStatusOr<DelaySchedule> GetDelaySchedule(uint64_t label) override;
 
   LECredStatus InsertRateLimiter(
       uint8_t auth_channel,
@@ -81,6 +82,16 @@ class LECredentialManagerImpl : public LECredentialManager {
       const brillo::SecureBlob& client_nonce) override;
 
  private:
+  // Helper to turn a label into an original credential. Helper for a lot of the
+  // Get* functions which starts with a label and first need to turn it into a
+  // credential to call the actual Pinweaver function they need to call.
+  //
+  // The le_operation_type string specifies the type parameter that will be
+  // passed to ReportLEResult to report metrics on LE operation success and
+  // failure.
+  LECredStatusOr<brillo::Blob> GetCredentialMetadata(
+      uint64_t label, const char* le_operation_type);
+
   // Since the InsertCredential() and InsertRateLimiter() functions are very
   // similar, this function combines the common parts of both the calls
   // into a generic "insert leaf" function. |auth_channel| is only valid in

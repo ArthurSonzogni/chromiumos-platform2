@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
@@ -299,43 +300,10 @@ int LECredentialManagerImpl::GetWrongAuthAttempts(uint64_t label) {
 
 LECredStatusOr<uint32_t> LECredentialManagerImpl::GetDelayInSeconds(
     uint64_t label) {
-  if (!hash_tree_->IsValid()) {
-    return MakeStatus<CryptohomeLECredError>(
-        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInGetDelayInSeconds),
-        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
-        LECredError::LE_CRED_ERROR_HASH_TREE);
-  }
-  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+  ASSIGN_OR_RETURN(brillo::Blob metadata,
+                   GetCredentialMetadata(label, kLEOpGetDelayInSeconds));
 
-  brillo::Blob orig_cred, orig_mac;
-  std::vector<brillo::Blob> h_aux;
-  bool metadata_lost;
-
-  LECredStatus status = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
-                                          &h_aux, &metadata_lost);
-  if (!status.ok()) {
-    ReportLEResult(kLEOpGetDelayInSeconds, kLEActionLoadFromDisk,
-                   status->local_lecred_error());
-    return MakeStatus<CryptohomeLECredError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocLECredManRetrieveLabelFailedInGetDelayInSeconds))
-        .Wrap(std::move(status));
-  }
-
-  if (metadata_lost) {
-    LOG(ERROR) << "Invalid cred metadata for label: " << label;
-    ReportLEResult(kLEOpGetDelayInSeconds, kLEActionLoadFromDisk,
-                   LE_CRED_ERROR_INVALID_METADATA);
-    return MakeStatus<CryptohomeLECredError>(
-        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidMetadataInGetDelayInSeconds),
-        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
-        LECredError::LE_CRED_ERROR_INVALID_METADATA);
-  }
-
-  ReportLEResult(kLEOpGetDelayInSeconds, kLEActionLoadFromDisk,
-                 LE_CRED_SUCCESS);
-
-  hwsec::StatusOr<uint32_t> result = pinweaver_->GetDelayInSeconds(orig_cred);
+  hwsec::StatusOr<uint32_t> result = pinweaver_->GetDelayInSeconds(metadata);
   if (!result.ok()) {
     return MakeStatus<CryptohomeLECredError>(
                CRYPTOHOME_ERR_LOC(
@@ -350,49 +318,34 @@ LECredStatusOr<uint32_t> LECredentialManagerImpl::GetDelayInSeconds(
 
 LECredStatusOr<std::optional<uint32_t>>
 LECredentialManagerImpl::GetExpirationInSeconds(uint64_t label) {
-  if (!hash_tree_->IsValid()) {
-    return MakeStatus<CryptohomeLECredError>(
-        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInGetExpirationInSeconds),
-        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
-        LECredError::LE_CRED_ERROR_HASH_TREE);
-  }
-  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
-
-  brillo::Blob orig_cred, orig_mac;
-  std::vector<brillo::Blob> h_aux;
-  bool metadata_lost;
-
-  LECredStatus status = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
-                                          &h_aux, &metadata_lost);
-  if (!status.ok()) {
-    ReportLEResult(kLEOpGetExpirationInSeconds, kLEActionLoadFromDisk,
-                   status->local_lecred_error());
-    return MakeStatus<CryptohomeLECredError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocLECredManRetrieveLabelFailedInGetExpirationInSeconds))
-        .Wrap(std::move(status));
-  }
-
-  if (metadata_lost) {
-    LOG(ERROR) << "Invalid cred metadata for label: " << label;
-    ReportLEResult(kLEOpGetExpirationInSeconds, kLEActionLoadFromDisk,
-                   LE_CRED_ERROR_INVALID_METADATA);
-    return MakeStatus<CryptohomeLECredError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocLECredManInvalidMetadataInGetExpirationInSeconds),
-        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
-        LECredError::LE_CRED_ERROR_INVALID_METADATA);
-  }
-
-  ReportLEResult(kLEOpGetExpirationInSeconds, kLEActionLoadFromDisk,
-                 LE_CRED_SUCCESS);
+  ASSIGN_OR_RETURN(brillo::Blob metadata,
+                   GetCredentialMetadata(label, kLEOpGetExpirationInSeconds));
 
   hwsec::StatusOr<std::optional<uint32_t>> result =
-      pinweaver_->GetExpirationInSeconds(orig_cred);
+      pinweaver_->GetExpirationInSeconds(metadata);
   if (!result.ok()) {
     return MakeStatus<CryptohomeLECredError>(
                CRYPTOHOME_ERR_LOC(
                    kLocLECredManPinWeaverFailedInGetExpirationInSeconds),
+               ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
+               LECredError::LE_CRED_ERROR_HASH_TREE)
+        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).err_status()));
+  }
+
+  return result.value();
+}
+
+LECredStatusOr<DelaySchedule> LECredentialManagerImpl::GetDelaySchedule(
+    uint64_t label) {
+  ASSIGN_OR_RETURN(brillo::Blob metadata,
+                   GetCredentialMetadata(label, kLEOpGetDelaySchedule));
+
+  hwsec::StatusOr<DelaySchedule> result =
+      pinweaver_->GetDelaySchedule(metadata);
+  if (!result.ok()) {
+    return MakeStatus<CryptohomeLECredError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocLECredManPinWeaverFailedInGetDelaySchedule),
                ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
                LECredError::LE_CRED_ERROR_HASH_TREE)
         .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).err_status()));
@@ -519,6 +472,45 @@ LECredentialManagerImpl::StartBiometricsAuth(
   };
 
   return reply;
+}
+
+LECredStatusOr<brillo::Blob> LECredentialManagerImpl::GetCredentialMetadata(
+    uint64_t label, const char* le_operation_type) {
+  if (!hash_tree_->IsValid()) {
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInGetCredentialMetadata),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
+  }
+  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+
+  brillo::Blob orig_cred, orig_mac;
+  std::vector<brillo::Blob> h_aux;
+  bool metadata_lost;
+
+  LECredStatus status = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
+                                          &h_aux, &metadata_lost);
+  if (!status.ok()) {
+    ReportLEResult(le_operation_type, kLEActionLoadFromDisk,
+                   status->local_lecred_error());
+    return MakeStatus<CryptohomeLECredError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocLECredManRetrieveLabelFailedInGetCredentialMetadata))
+        .Wrap(std::move(status));
+  }
+
+  if (metadata_lost) {
+    LOG(ERROR) << "Invalid cred metadata for label: " << label;
+    ReportLEResult(le_operation_type, kLEActionLoadFromDisk,
+                   LE_CRED_ERROR_INVALID_METADATA);
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidMetadataInGetCredentialMetadata),
+        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}),
+        LECredError::LE_CRED_ERROR_INVALID_METADATA);
+  }
+
+  ReportLEResult(le_operation_type, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
+  return orig_cred;
 }
 
 LECredStatus LECredentialManagerImpl::InsertLeaf(

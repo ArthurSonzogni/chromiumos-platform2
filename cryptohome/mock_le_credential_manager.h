@@ -58,6 +58,11 @@ class MockLECredentialManager : public LECredentialManager {
               (uint64_t label),
               (override));
 
+  MOCK_METHOD(LECredStatusOr<DelaySchedule>,
+              GetDelaySchedule,
+              (uint64_t label),
+              (override));
+
   MOCK_METHOD(LECredStatus,
               InsertRateLimiter,
               (uint8_t,

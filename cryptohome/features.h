@@ -48,7 +48,7 @@ class Features {
     // USS.
     kUSSMigration,
     kModernPin,
-    KMigratePin
+    kMigratePin,
   };
 
   // Platform feature library can only initialized with a bus instance.

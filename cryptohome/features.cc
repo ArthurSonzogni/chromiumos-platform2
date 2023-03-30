@@ -23,7 +23,7 @@ const VariationsFeature& GetVariationFeatureFor(
       return kCrOSLateBootMigrateToUserSecretStash;
     case Features::kModernPin:
       return kCrOSLateBootEnableModernPin;
-    case Features::KMigratePin:
+    case Features::kMigratePin:
       return kCrOSLateBootMigrateToModernPin;
   }
 }

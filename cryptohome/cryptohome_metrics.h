@@ -253,6 +253,7 @@ inline constexpr char kLEOpStartBiometricsAuth[] = ".StartBiometricsAuth";
 inline constexpr char kLEOpSync[] = ".Sync";
 inline constexpr char kLEOpGetDelayInSeconds[] = ".GetDelayInSeconds";
 inline constexpr char kLEOpGetExpirationInSeconds[] = ".GetExpirationInSeconds";
+inline constexpr char kLEOpGetDelaySchedule[] = ".GetDelaySchedule";
 inline constexpr char kLEOpReplay[] = ".Replay";
 inline constexpr char kLEOpReplayResetTree[] = ".ReplayResetTree";
 inline constexpr char kLEOpReplayInsert[] = ".ReplayInsert";

@@ -111,6 +111,9 @@ class LECredentialManager {
   virtual LECredStatusOr<std::optional<uint32_t>> GetExpirationInSeconds(
       uint64_t label) = 0;
 
+  // Returns the delay schedule for a credential.
+  virtual LECredStatusOr<DelaySchedule> GetDelaySchedule(uint64_t label) = 0;
+
   // Inserts an biometrics rate-limiter into the system.
   //
   // The can be reset by the reset secret |reset_secret|.

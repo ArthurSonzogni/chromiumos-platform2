@@ -26,6 +26,7 @@
 #include "cryptohome/fake_features.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/le_credential_manager.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/vault_keyset.h"
@@ -62,11 +63,12 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
 
   // Set up the mock expectations.
   brillo::SecureBlob le_secret;
+  LECredentialManager::DelaySchedule delay_sched;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
   EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _, _))
-      .WillOnce(
-          DoAll(SaveArg<1>(&le_secret), ReturnError<CryptohomeLECredError>()));
+      .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<4>(&delay_sched),
+                      ReturnError<CryptohomeLECredError>()));
 
   // Call the Create() method.
   AuthInput user_input = {vault_key,
@@ -76,6 +78,7 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   KeyBlobs vkk_data;
 
   FakeFeaturesForTesting features;
+  features.object.SetDefaultForFeature(Features::kMigratePin, true);
   PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
   AuthBlockState auth_state;
   EXPECT_TRUE(auth_block.Create(user_input, &auth_state, &vkk_data).ok());
@@ -89,6 +92,46 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   brillo::SecureBlob le_secret_result(kDefaultAesKeySize);
   EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret_result}));
   EXPECT_EQ(le_secret, le_secret_result);
+  EXPECT_EQ(delay_sched, PinDelaySchedule());
+}
+
+TEST(PinWeaverAuthBlockTest, CreateTestWithoutMigratePin) {
+  // Set up inputs to the test.
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob reset_secret(32, 'S');
+
+  // Set up the mock expectations.
+  brillo::SecureBlob le_secret;
+  LECredentialManager::DelaySchedule delay_sched;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  NiceMock<MockLECredentialManager> le_cred_manager;
+  EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<4>(&delay_sched),
+                      ReturnError<CryptohomeLECredError>()));
+
+  // Call the Create() method.
+  AuthInput user_input = {vault_key,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
+                          reset_secret};
+  KeyBlobs vkk_data;
+
+  FakeFeaturesForTesting features;
+  features.object.SetDefaultForFeature(Features::kMigratePin, false);
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
+  AuthBlockState auth_state;
+  EXPECT_TRUE(auth_block.Create(user_input, &auth_state, &vkk_data).ok());
+  EXPECT_TRUE(
+      std::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
+
+  auto& pin_state = std::get<PinWeaverAuthBlockState>(auth_state.state);
+
+  EXPECT_TRUE(pin_state.salt.has_value());
+  const brillo::SecureBlob& salt = pin_state.salt.value();
+  brillo::SecureBlob le_secret_result(kDefaultAesKeySize);
+  EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret_result}));
+  EXPECT_EQ(le_secret, le_secret_result);
+  EXPECT_EQ(delay_sched, LockoutDelaySchedule());
 }
 
 TEST(PinWeaverAuthBlockTest, CreateFailureLeManager) {

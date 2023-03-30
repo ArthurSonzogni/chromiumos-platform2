@@ -34,6 +34,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
+#include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/vault_keyset.h"
@@ -76,6 +77,15 @@ constexpr char kHESecretHmacData[] = "vkk_seed";
 // Constants used to define delay schedules.
 constexpr uint32_t kLockoutAttemptLimit = 5;
 constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
+
+// Select the delay schedule to use.
+const LECredentialManager::DelaySchedule& SelectDelaySchedule(
+    AsyncInitFeatures& features) {
+  if (features.IsFeatureEnabled(Features::kMigratePin)) {
+    return PinDelaySchedule();
+  }
+  return LockoutDelaySchedule();
+}
 
 }  // namespace
 
@@ -251,8 +261,8 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   // store the Low Entropy and High Entropy credential in the
   // LECredentialManager.
 
-  // Use the default delay schedule for now.
-  const auto& delay_sched = LockoutDelaySchedule();
+  // Select the appropriate delay schedule to use for new factors.
+  const auto& delay_sched = SelectDelaySchedule(*features_);
 
   std::vector<hwsec::OperationPolicySetting> policies = {
       hwsec::OperationPolicySetting{
@@ -387,6 +397,24 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
                CRYPTOHOME_ERR_LOC(
                    kLocPinWeaverAuthBlockCheckCredFailedInDerive))
         .Wrap(std::move(ret));
+  }
+
+  // If PIN migration is enabled, check if the credential is currently
+  // configured to use the modern delay policy. If it is not, attempt to migrate
+  // it. If any of that fails we don't fail the already-successful derivation.
+  if (features_->IsFeatureEnabled(Features::kMigratePin)) {
+    auto delay_sched = le_manager_->GetDelaySchedule(*auth_state->le_label);
+    if (delay_sched.ok()) {
+      if (*delay_sched != PinDelaySchedule()) {
+        LOG(INFO) << "PIN factor is using obsolete delay schedule, attempting "
+                     "to migrate";
+        // TODO(b/272560921): Implement migration.
+        LOG(ERROR) << "Unable to migrate PIN delay schedule: not implemented";
+      }
+    } else {
+      LOG(WARNING) << "Unable to determine the PIN delay schedule: "
+                   << delay_sched.err_status();
+    }
   }
 
   brillo::SecureBlob vkk_seed =

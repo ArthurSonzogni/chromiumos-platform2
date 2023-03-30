@@ -1093,4 +1093,19 @@ TEST_F(LECredentialManagerImplUnitTest, CheckCredentialExpirations) {
   EXPECT_THAT(le_mgr_->GetExpirationInSeconds(label3), IsOkAnd(Ge(0)));
 }
 
+TEST_F(LECredentialManagerImplUnitTest, GetDelaySchedule) {
+  std::map<uint32_t, uint32_t> delay_sched = {
+      {kLEMaxIncorrectAttempt, UINT32_MAX},
+  };
+
+  // We should be able to read the delay schedule back out.
+  uint64_t label1;
+  EXPECT_THAT(le_mgr_->InsertCredential(
+                  std::vector<hwsec::OperationPolicySetting>(), kLeSecret1,
+                  kHeSecret1, kResetSecret1, delay_sched,
+                  /*expiration_delay=*/std::nullopt, &label1),
+              IsOk());
+  EXPECT_THAT(le_mgr_->GetDelaySchedule(label1), IsOkAndHolds(delay_sched));
+}
+
 }  // namespace cryptohome
