@@ -313,7 +313,8 @@ bool AutoFramingStreamManipulator::Initialize(
 }
 
 bool AutoFramingStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config) {
+    Camera3StreamConfiguration* stream_config,
+    const StreamEffectMap* stream_effects_map) {
   bool ret;
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,

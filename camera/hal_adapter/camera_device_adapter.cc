@@ -289,6 +289,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
   FreeAllocatedStreamBuffers();
 
   internal::ScopedStreams new_streams;
+  StreamEffectMap stream_effects_map;
   for (const auto& s : config->streams) {
     LOGF(INFO) << "id = " << s->id << ", type = " << s->stream_type
                << ", size = " << s->width << "x" << s->height
@@ -335,6 +336,26 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
           static_cast<camera3_stream_rotation_t>(
               s->crop_rotate_scale_info->crop_rotate_scale_degrees);
     }
+    if (s->effects) {
+      for (const auto& effect : *s->effects) {
+        switch (effect->which()) {
+          case mojom::Camera3StreamEffect::Tag::kUnknownConfig:
+            LOGF(WARNING) << "Unknown effect set in stream " << s->id
+                          << "; skipped";
+            break;
+          case mojom::Camera3StreamEffect::Tag::kPortraitModeConfig:
+            auto portrait_mode_effect =
+                std::make_unique<PortraitModeStreamEffect>();
+            portrait_mode_effect->type = StreamEffectType::kPortraitMode;
+            portrait_mode_effect->enable_rectiface =
+                effect->get_portrait_mode_config()->enable_rectiface;
+
+            stream_effects_map[stream.get()].push_back(
+                std::move(portrait_mode_effect));
+            break;
+        }
+      }
+    }
 
     // Currently we are not interest in the resolution of input stream and
     // bidirectional stream.
@@ -363,7 +384,8 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
   });
 
   // TODO(kamesan): Handle the failures.
-  stream_manipulator_manager_->ConfigureStreams(&stream_config);
+  stream_manipulator_manager_->ConfigureStreams(&stream_config,
+                                                &stream_effects_map);
 
   int32_t result = 0;
   {

@@ -279,7 +279,8 @@ bool HdrNetStreamManipulator::Initialize(
 }
 
 bool HdrNetStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config) {
+    Camera3StreamConfiguration* stream_config,
+    const StreamEffectMap* stream_effects_map) {
   DCHECK(hdrnet_gpu_resources_);
 
   bool ret;

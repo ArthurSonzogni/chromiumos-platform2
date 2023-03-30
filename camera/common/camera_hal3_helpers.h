@@ -8,6 +8,7 @@
 #define CAMERA_COMMON_CAMERA_HAL3_HELPERS_H_
 
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -34,6 +35,27 @@ class EventContext;
 }  // namespace perfetto
 
 namespace cros {
+
+// Types of effects that can be applied to the camera stream.
+enum StreamEffectType {
+  kDefault = 0,
+  kPortraitMode = 1,
+};
+
+// Generic base struct for stream effect. Used by StreamEffectMap.
+struct StreamEffect {
+  StreamEffectType type = StreamEffectType::kDefault;
+};
+
+struct PortraitModeStreamEffect : public StreamEffect {
+  bool enable_rectiface = false;
+};
+
+// A mapper from a camera3_stream_t pointer to a vector of StreamEffect objects.
+// This is used to pass the effects information that is applied to each stream.
+using StreamEffectMap =
+    std::map<const camera3_stream_t*,
+             std::vector<std::unique_ptr<const StreamEffect>>>;
 
 // Utility function to produce a debug string for the given camera3_stream_t
 // |stream|.

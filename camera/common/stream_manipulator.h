@@ -124,7 +124,8 @@ class CROS_CAMERA_EXPORT StreamManipulator {
   // A hook to the upper part of camera3_device_ops::configure_streams(). Will
   // be called by StreamManipulatorManager with the stream configuration
   // |stream_config| requested by the camera client.
-  virtual bool ConfigureStreams(Camera3StreamConfiguration* stream_config) = 0;
+  virtual bool ConfigureStreams(Camera3StreamConfiguration* stream_config,
+                                const StreamEffectMap* stream_effects_map) = 0;
 
   // A hook to the lower part of camera3_device_ops::configure_streams(). Will
   // be called by StreamManipulatorManager with the updated stream configuration

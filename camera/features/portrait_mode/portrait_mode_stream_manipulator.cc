@@ -98,7 +98,8 @@ bool PortraitModeStreamManipulator::Initialize(
 }
 
 bool PortraitModeStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config) {
+    Camera3StreamConfiguration* stream_config,
+    const StreamEffectMap* stream_effect_map) {
   return true;
 }
 

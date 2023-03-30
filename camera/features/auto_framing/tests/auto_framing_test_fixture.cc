@@ -283,12 +283,14 @@ bool AutoFramingTestFixture::SetUp(
       .streams = client_streams_.data(),
       .operation_mode = CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE,
   });
+  StreamEffectMap stream_effects_map;
   LOGF(INFO) << "Configued streams:";
   for (camera3_stream_t* s : stream_config.GetStreams()) {
     LOGF(INFO) << "  " << GetDebugString(s);
   }
 
-  if (!auto_framing_stream_manipulator_->ConfigureStreams(&stream_config)) {
+  if (!auto_framing_stream_manipulator_->ConfigureStreams(
+          &stream_config, &stream_effects_map)) {
     LOGF(ERROR) << "Failed to pre-configure streams";
     return false;
   }

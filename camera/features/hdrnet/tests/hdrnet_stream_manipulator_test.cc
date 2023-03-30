@@ -216,7 +216,8 @@ class HdrNetStreamManipulatorTest : public Test {
     SetImpl720pStreamInConfig();
     SetYuv1080pStreamInConfig();
     SetBlobStreamInConfig();
-    ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
+    ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_,
+                                                      &stream_effects_map_));
     std::vector<camera3_stream_t*> modified_streams;
     for (auto* stream : stream_config_.GetStreams()) {
       stream->max_buffers = max_buffers;
@@ -232,7 +233,8 @@ class HdrNetStreamManipulatorTest : public Test {
     SetImpl720pStreamInConfig();
     SetYuv480pStreamInConfig();
     SetBlobStreamInConfig();
-    ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
+    ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_,
+                                                      &stream_effects_map_));
     std::vector<camera3_stream_t*> modified_streams;
     for (auto* stream : stream_config_.GetStreams()) {
       stream->max_buffers = max_buffers;
@@ -296,6 +298,7 @@ class HdrNetStreamManipulatorTest : public Test {
   Camera3Stream yuv_1080p_stream_;
   Camera3Stream blob_stream_;
   Camera3StreamConfiguration stream_config_;
+  StreamEffectMap stream_effects_map_;
   std::set<uint32_t> callback_received_;
 };
 
@@ -305,7 +308,8 @@ TEST_F(HdrNetStreamManipulatorTest, ConfigureSingleYuvStreamTest) {
   // Prepare a configuration with single IMPL 720p stream.
   SetImpl720pStreamInConfig();
 
-  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
+  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_,
+                                                    &stream_effects_map_));
 
   // The stream operation mode should remain unchanged.
   EXPECT_EQ(stream_config_.operation_mode(),
@@ -329,7 +333,8 @@ TEST_F(HdrNetStreamManipulatorTest, ConfigureMultipleYuvStreamsTest) {
   SetYuv1080pStreamInConfig();
   SetBlobStreamInConfig();
 
-  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
+  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_,
+                                                    &stream_effects_map_));
 
   // The stream operation mode should remain unchanged.
   ASSERT_EQ(stream_config_.operation_mode(),
@@ -400,7 +405,8 @@ TEST_F(HdrNetStreamManipulatorTest,
   SetYuv480pStreamInConfig();
   SetBlobStreamInConfig();
 
-  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
+  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_,
+                                                    &stream_effects_map_));
 
   // The stream operation mode should remain unchanged.
   ASSERT_EQ(stream_config_.operation_mode(),
@@ -466,7 +472,8 @@ TEST_F(HdrNetStreamManipulatorTest,
 TEST_F(HdrNetStreamManipulatorTest, MultipleConfigureStreamsTest) {
   // First configure a single IMPL 720p stream.
   SetImpl720pStreamInConfig();
-  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
+  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_,
+                                                    &stream_effects_map_));
 
   // The stream operation mode should remain unchanged.
   ASSERT_EQ(stream_config_.operation_mode(),
@@ -484,7 +491,8 @@ TEST_F(HdrNetStreamManipulatorTest, MultipleConfigureStreamsTest) {
   SetImpl720pStreamInConfig();
   SetYuv1080pStreamInConfig();
   SetBlobStreamInConfig();
-  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_));
+  ASSERT_TRUE(stream_manipulator_->ConfigureStreams(&stream_config_,
+                                                    &stream_effects_map_));
 
   // The stream operation mode should remain unchanged.
   ASSERT_EQ(stream_config_.operation_mode(),

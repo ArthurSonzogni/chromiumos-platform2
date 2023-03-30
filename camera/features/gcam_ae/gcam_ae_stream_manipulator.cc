@@ -81,7 +81,8 @@ bool GcamAeStreamManipulator::Initialize(
 }
 
 bool GcamAeStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config) {
+    Camera3StreamConfiguration* stream_config,
+    const StreamEffectMap* stream_effects_map) {
   TRACE_GCAM_AE();
 
   yuv_stream_ = nullptr;

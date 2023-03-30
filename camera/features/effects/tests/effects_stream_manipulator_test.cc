@@ -6,6 +6,7 @@
 #include "camera/common/stream_manipulator.h"
 #include "camera/common/test_support/fake_still_capture_processor.h"
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_buffer_utils.h"
 #include "features/effects/effects_stream_manipulator.h"
 #include "ml_core/dlc/dlc_loader.h"
@@ -93,6 +94,7 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
   StreamManipulator::RuntimeOptions runtime_options_;
   std::unique_ptr<EffectsStreamManipulator> stream_manipulator_;
   Camera3StreamConfiguration stream_config_;
+  StreamEffectMap stream_effects_map_;
   base::FilePath config_path_;
 
   ScopedBufferHandle output_buffer_;
@@ -241,7 +243,7 @@ TEST_F(EffectsStreamManipulatorTest, ReplaceEffectAppliedUsingEnableFlag) {
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
-  stream_manipulator_->ConfigureStreams(&stream_config_);
+  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
 
   ConfigureStreams(&yuv_720_stream);
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
@@ -270,7 +272,7 @@ TEST_F(EffectsStreamManipulatorTest, BlurEffectWithExtraBlurLevel) {
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
-  stream_manipulator_->ConfigureStreams(&stream_config_);
+  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
 
   ConfigureStreams(&yuv_720_stream);
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
@@ -298,7 +300,7 @@ TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEnableFlag) {
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
-  stream_manipulator_->ConfigureStreams(&stream_config_);
+  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
 
   ConfigureStreams(&yuv_720_stream);
 
@@ -323,7 +325,7 @@ TEST_F(EffectsStreamManipulatorTest, NoneEffectApplied) {
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
-  stream_manipulator_->ConfigureStreams(&stream_config_);
+  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
 
   ConfigureStreams(&yuv_720_stream);
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
@@ -346,7 +348,7 @@ TEST_F(EffectsStreamManipulatorTest,
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
-  stream_manipulator_->ConfigureStreams(&stream_config_);
+  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
 
   ConfigureStreams(&yuv_720_stream);
   ScopedBufferHandle ref_buffer = CameraBufferManager::AllocateScopedBuffer(

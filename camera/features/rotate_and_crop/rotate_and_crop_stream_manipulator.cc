@@ -188,7 +188,8 @@ bool RotateAndCropStreamManipulator::Initialize(
 }
 
 bool RotateAndCropStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config) {
+    Camera3StreamConfiguration* stream_config,
+    const StreamEffectMap* stream_effects_map) {
   if (!IsArcTBoard()) {
     return true;
   }

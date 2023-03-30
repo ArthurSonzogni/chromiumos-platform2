@@ -56,7 +56,8 @@ class CROS_CAMERA_EXPORT StreamManipulatorManager {
 
   bool Initialize(const camera_metadata_t* static_info,
                   StreamManipulator::Callbacks callbacks);
-  bool ConfigureStreams(Camera3StreamConfiguration* stream_config);
+  bool ConfigureStreams(Camera3StreamConfiguration* stream_config,
+                        const StreamEffectMap* stream_effects_map);
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config);
   bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type);

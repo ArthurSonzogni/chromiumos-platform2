@@ -76,7 +76,8 @@ bool SWPrivacySwitchStreamManipulator::Initialize(
 }
 
 bool SWPrivacySwitchStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config) {
+    Camera3StreamConfiguration* stream_config,
+    const StreamEffectMap* stream_effects_map) {
   return true;
 }
 
