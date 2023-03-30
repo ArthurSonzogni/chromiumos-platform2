@@ -47,7 +47,6 @@
 #include "shill/dbus/dbus_control.h"
 #include "shill/default_profile.h"
 #include "shill/device.h"
-#include "shill/device_claimer.h"
 #include "shill/device_info.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
@@ -183,7 +182,6 @@ Manager::Manager(ControlInterface* control_interface,
       termination_actions_(dispatcher),
       is_wake_on_lan_enabled_(true),
       ignore_unknown_ethernet_(false),
-      device_claimer_(&device_info_),
       suppress_autoconnect_(false),
       is_connected_state_(false),
       has_user_session_(false),
@@ -779,10 +777,18 @@ void Manager::ClaimDevice(const std::string& device_name, Error* error) {
     return;
   }
 
-  // Error will be populated by the claimer if failed to claim the device.
-  if (!device_claimer_.Claim(device_name, error)) {
+  // Check if device is claimed already.
+  if (claimed_devices_.find(device_name) != claimed_devices_.end()) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInvalidArguments,
+        "Device " + device_name + " had already been claimed");
     return;
   }
+
+  // Block the device.
+  device_info_.BlockDevice(device_name);
+
+  claimed_devices_.insert(device_name);
 
   // Deregister the device from manager if it is registered.
   DeregisterDeviceByLinkName(device_name);
@@ -797,9 +803,16 @@ void Manager::ReleaseDevice(const std::string& device_name, Error* error) {
     return;
   }
 
-  // Release the device from the claimer. Error should be populated by the
-  // claimer if it failed to release the given device.
-  device_claimer_.Release(device_name, error);
+  if (claimed_devices_.find(device_name) == claimed_devices_.end()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Device " + device_name + " have not been claimed");
+    return;
+  }
+
+  // Unblock the device.
+  device_info_.AllowDevice(device_name);
+
+  claimed_devices_.erase(device_name);
 }
 
 void Manager::RemoveService(const ServiceRefPtr& service) {
@@ -1206,8 +1219,8 @@ void Manager::DeregisterDeviceByLinkName(const std::string& link_name) {
 }
 
 std::vector<std::string> Manager::ClaimedDevices(Error* error) {
-  const std::set<std::string>& devices = device_claimer_.claimed_device_names();
-  return {devices.begin(), devices.end()};
+  // set to vector conversion.
+  return {claimed_devices_.begin(), claimed_devices_.end()};
 }
 
 void Manager::LoadDeviceFromProfiles(const DeviceRefPtr& device) {

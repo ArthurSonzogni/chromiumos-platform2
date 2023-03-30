@@ -529,8 +529,8 @@ Properties	object ActiveProfile [readonly]
 
 		array{string} ClaimedDevices [readonly]
 
-			The list of the names of devices that have been claimed by the
-			current DeviceClaimer (if it exists).
+			The list of the names of devices that have been claimed
+			by an external service for management by ClaimInterface method.
 
 		array{string} ConnectedTechnologies [readonly]
 

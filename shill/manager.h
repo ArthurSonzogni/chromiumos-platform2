@@ -25,7 +25,6 @@
 
 #include "shill/default_service_observer.h"
 #include "shill/device.h"
-#include "shill/device_claimer.h"
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
@@ -862,10 +861,6 @@ class Manager {
   // Stores the most recent state of all watched services by serial number.
   std::map<unsigned int, Service::ConnectState> watched_service_states_;
 
-  // Device claimer is a remote application/service that claim/release devices
-  // from/to shill.
-  DeviceClaimer device_claimer_;
-
   // When true, suppresses autoconnects in Manager::AutoConnect.
   bool suppress_autoconnect_;
 
@@ -881,6 +876,9 @@ class Manager {
 
   // List of allowed devices specified from command line.
   std::vector<std::string> allowed_devices_;
+
+  // List of devices claimed by other processes via ClaimerInterface D-Bus API.
+  std::set<std::string> claimed_devices_;
 
   // List of supported vpn types;
   std::string supported_vpn_;

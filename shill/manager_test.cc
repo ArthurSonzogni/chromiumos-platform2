@@ -26,7 +26,6 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/default_service_observer.h"
-#include "shill/device_claimer.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
 #include "shill/ethernet/mock_ethernet_eap_provider.h"
@@ -36,7 +35,6 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager.h"
@@ -113,7 +111,6 @@ class ManagerTest : public PropertyStoreTest {
  public:
   ManagerTest()
       : power_manager_(new MockPowerManager(control_interface())),
-        device_info_(new NiceMock<MockDeviceInfo>(manager())),
         manager_adaptor_(new NiceMock<ManagerMockAdaptor>()),
         ethernet_provider_(new NiceMock<MockEthernetProvider>()),
         ethernet_eap_provider_(new NiceMock<MockEthernetEapProvider>()),
@@ -465,6 +462,11 @@ class ManagerTest : public PropertyStoreTest {
     return false;
   }
 
+  std::vector<std::string> ClaimedDevices() {
+    Error not_used;
+    return manager()->ClaimedDevices(&not_used);
+  }
+
   NiceMock<MockNetwork>* CreateMockNetwork(MockDevice* mock_device) {
     static const IPAddress ip_addr = *IPAddress::CreateFromString("1.2.3.4");
     const std::vector<std::string> kDNSServers;
@@ -504,7 +506,6 @@ class ManagerTest : public PropertyStoreTest {
 
   std::unique_ptr<MockPowerManager> power_manager_;
   std::vector<scoped_refptr<MockDevice>> mock_devices_;
-  std::unique_ptr<MockDeviceInfo> device_info_;
 
   // This service is held for the manager, and given ownership in a mock
   // function.  This ensures that when the Manager takes ownership, there
@@ -4103,11 +4104,18 @@ TEST_F(ManagerTest, DevicesIsManagedByDefault) {
 TEST_F(ManagerTest, ClaimDevice) {
   const char kDeviceName[] = "test_device";
 
-  // Claim device when device claimer doesn't exist yet.
   Error error;
   manager()->ClaimDevice(kDeviceName, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(manager()->device_info()->IsDeviceBlocked(kDeviceName));
+  EXPECT_EQ(ClaimedDevices(), std::vector<std::string>{kDeviceName});
+
+  const std::string expected_err =
+      base::StringPrintf("Device %s had already been claimed", kDeviceName);
+  manager()->ClaimDevice(kDeviceName, &error);
+  EXPECT_TRUE(error.IsFailure());
+  EXPECT_EQ(expected_err, error.message());
+  EXPECT_EQ(ClaimedDevices(), std::vector<std::string>{kDeviceName});
 }
 
 TEST_F(ManagerTest, ClaimRegisteredDevice) {
@@ -4136,13 +4144,23 @@ TEST_F(ManagerTest, ReleaseDevice) {
   EXPECT_TRUE(error.IsSuccess());
   manager()->ClaimDevice(kDevice2Name, &error);
   EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(ClaimedDevices(),
+            std::vector<std::string>({kDevice1Name, kDevice2Name}));
 
   manager()->ReleaseDevice(kDevice1Name, &error);
   EXPECT_TRUE(error.IsSuccess());
-
-  // Release last device with non-default claimer. Claimer should be resetted.
   manager()->ReleaseDevice(kDevice2Name, &error);
   EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(ClaimedDevices().size(), 0);
+
+  EXPECT_FALSE(manager()->device_info()->IsDeviceBlocked(kDevice1Name));
+  EXPECT_FALSE(manager()->device_info()->IsDeviceBlocked(kDevice2Name));
+
+  const std::string expected_err =
+      base::StringPrintf("Device %s have not been claimed", kDevice1Name);
+  manager()->ReleaseDevice(kDevice1Name, &error);
+  EXPECT_TRUE(error.IsFailure());
+  EXPECT_EQ(expected_err, error.message());
 }
 
 TEST_F(ManagerTest, GetEnabledDeviceWithTechnology) {
