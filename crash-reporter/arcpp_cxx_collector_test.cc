@@ -16,6 +16,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "base/strings/strcat.h"
 #include "crash-reporter/test_util.h"
 
 using brillo::ClearLog;
@@ -351,6 +352,88 @@ TEST_F(ArcppCxxCollectorTest, WritesMeta) {
   EXPECT_TRUE(collector_->HandleCrash(attrs, nullptr));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       crash_dir_, "arc_service.*.123.meta", "exec_name=arc_service"));
+}
+
+TEST_F(ArcppCxxCollectorTest, GetArcPropertiesTestFullListP) {
+  base::FilePath temp_file;
+  arc_util::BuildProperty prop;
+
+  ASSERT_TRUE(base::CreateTemporaryFile(&temp_file));
+  ASSERT_TRUE(base::WriteFile(temp_file, base::StrCat({
+                                             "  ",
+                                             kBoardProperty,
+                                             " =grunttest\n",
+                                             " ",
+                                             kCpuAbiProperty,
+                                             "=x86_64\n",
+                                             kDevicePropertyP,
+                                             "=grunt_cheets\n",
+                                             kFingerprintProperty,
+                                             " =testfingerprintfoo\n",
+                                         })));
+
+  EXPECT_TRUE(GetArcProperties(temp_file, &prop));
+
+  EXPECT_EQ("grunttest", prop.board);
+  EXPECT_EQ("x86_64", prop.cpu_abi);
+  EXPECT_EQ(prop.fingerprint, "testfingerprintfoo");
+  EXPECT_EQ(prop.device, "grunt_cheets");
+}
+
+TEST_F(ArcppCxxCollectorTest, GetArcPropertiesTestFullListR) {
+  base::FilePath temp_file;
+  arc_util::BuildProperty prop;
+
+  ASSERT_TRUE(base::CreateTemporaryFile(&temp_file));
+  ASSERT_TRUE(base::WriteFile(temp_file, base::StrCat({
+                                             " ",
+                                             kBoardProperty,
+                                             " =hanatest\n",
+                                             kCpuAbiProperty,
+                                             "  =arm64-v8a\n",
+                                             kFingerprintProperty,
+                                             "=testfingerprintbar\n",
+                                             " ",
+                                             kDevicePropertyR,
+                                             " =hana_cheets\n",
+                                         })));
+
+  EXPECT_TRUE(GetArcProperties(temp_file, &prop));
+
+  EXPECT_EQ("hanatest", prop.board);
+  EXPECT_EQ("arm64-v8a", prop.cpu_abi);
+  EXPECT_EQ(prop.fingerprint, "testfingerprintbar");
+  EXPECT_EQ(prop.device, "hana_cheets");
+}
+
+TEST_F(ArcppCxxCollectorTest, GetArcPropertiesTestMissingItems) {
+  base::FilePath temp_file;
+  arc_util::BuildProperty prop;
+
+  // Missing device property.
+  ASSERT_TRUE(base::CreateTemporaryFile(&temp_file));
+  ASSERT_TRUE(base::WriteFile(temp_file, base::StrCat({
+                                             kBoardProperty,
+                                             " = hanatest\n",
+                                             kCpuAbiProperty,
+                                             "  =arm64-v8a\n",
+                                             kFingerprintProperty,
+                                             "=testfingerprintbar\n",
+                                         })));
+
+  EXPECT_FALSE(GetArcProperties(temp_file, &prop));
+
+  // Missing board property.
+  ASSERT_TRUE(base::WriteFile(temp_file, base::StrCat({
+                                             kCpuAbiProperty,
+                                             "  =arm64-v8a\n",
+                                             kDevicePropertyR,
+                                             " =hana_cheets\n",
+                                             kFingerprintProperty,
+                                             "=testfingerprintbaz\n",
+                                         })));
+
+  EXPECT_FALSE(GetArcProperties(temp_file, &prop));
 }
 
 TEST_F(ArcContextTest, GetPidNamespace) {

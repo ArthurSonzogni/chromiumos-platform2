@@ -44,10 +44,6 @@ const char kCoreCollector32Path[] = "/usr/bin/core_collector32";
 const char kCoreCollector64Path[] = "/usr/bin/core_collector64";
 
 // Keys for build properties.
-const char kBoardProperty[] = "ro.product.board";
-const char kCpuAbiProperty[] = "ro.product.cpu.abi";
-const char kDeviceProperty[] = "ro.product.device";
-const char kFingerprintProperty[] = "ro.build.fingerprint";
 const char kAbiMigrationStateProperty[] = "arc.abi.migrationstatus";
 
 inline bool IsAppProcess(const std::string& name) {
@@ -55,7 +51,6 @@ inline bool IsAppProcess(const std::string& name) {
 }
 
 bool GetArcRoot(FilePath* root);
-bool GetArcProperties(arc_util::BuildProperty* build_property);
 // Get ARC primary ABI 32 bits to 64 bits migration status from ARC container.
 // This is for container only. ARCVM should have separate implementation.
 // See b/170238737 for detail.
@@ -285,7 +280,7 @@ void ArcppCxxCollector::AddArcMetaData(const std::string& process) {
     AddCrashMetaData(arc_util::kSilentKey, "true");
 
   arc_util::BuildProperty build_property;
-  if (GetArcProperties(&build_property)) {
+  if (GetArcProperties(FilePath(kArcBuildProp), &build_property)) {
     for (const auto& metadata :
          arc_util::ListMetadataForBuildProperty(build_property)) {
       AddCrashMetaUploadData(metadata.first, metadata.second);
@@ -350,6 +345,37 @@ UserCollectorBase::ErrorType ArcppCxxCollector::Is64BitProcess(
   return kErrorNone;
 }
 
+bool GetArcProperties(const base::FilePath& build_prop_path,
+                      arc_util::BuildProperty* build_property) {
+  FilePath root;
+  brillo::KeyValueStore store;
+  // The property name used in kArcBuildProp for the device name differs based
+  // on the Android version. This only applies to the host-generated file. In
+  // final set of system properties visible to the guest, both properties
+  // appear.
+
+  if (!store.Load(build_prop_path)) {
+    LOG(ERROR) << "Failed to load build prop file: " << kArcBuildProp;
+    return false;
+  }
+
+  // See
+  // http://cs/chromeos_internal/src/private-overlays/project-cheets-private/scripts/board_specific_setup.py?l=960-966
+  if (!store.GetString(kDevicePropertyP, &(build_property->device)) &&
+      !store.GetString(kDevicePropertyR, &(build_property->device))) {
+    LOG(ERROR) << "Failed to get device property";
+    return false;
+  }
+
+  if (store.GetString(kFingerprintProperty, &(build_property->fingerprint)) &&
+      store.GetString(kBoardProperty, &(build_property->board)) &&
+      store.GetString(kCpuAbiProperty, &(build_property->cpu_abi)))
+    return true;
+
+  LOG(ERROR) << "Failed to get ARC properties";
+  return false;
+}
+
 namespace {
 
 bool GetArcRoot(FilePath* root) {
@@ -365,20 +391,6 @@ bool GetArcRoot(FilePath* root) {
     }
   }
 
-  return false;
-}
-
-bool GetArcProperties(arc_util::BuildProperty* build_property) {
-  FilePath root;
-  brillo::KeyValueStore store;
-  if (store.Load(FilePath(kArcBuildProp)) &&
-      store.GetString(kFingerprintProperty, &(build_property->fingerprint)) &&
-      store.GetString(kDeviceProperty, &(build_property->device)) &&
-      store.GetString(kBoardProperty, &(build_property->board)) &&
-      store.GetString(kCpuAbiProperty, &(build_property->cpu_abi)))
-    return true;
-
-  LOG(ERROR) << "Failed to get ARC properties";
   return false;
 }
 

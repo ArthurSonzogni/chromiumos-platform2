@@ -20,6 +20,15 @@
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/user_collector_base.h"
 
+constexpr char kBoardProperty[] = "ro.product.board";
+constexpr char kCpuAbiProperty[] = "ro.product.cpu.abi";
+constexpr char kDevicePropertyP[] = "ro.product.device";
+constexpr char kDevicePropertyR[] = "ro.product.system.device";
+constexpr char kFingerprintProperty[] = "ro.build.fingerprint";
+
+bool GetArcProperties(const base::FilePath& build_prop_path,
+                      arc_util::BuildProperty* build_property);
+
 // Collector for system crashes in the ARC container.
 class ArcppCxxCollector : public UserCollectorBase {
  public:
