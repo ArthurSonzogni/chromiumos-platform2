@@ -47,15 +47,12 @@ error, however, it has reasons to believe that certain action could clear those
 conditions. For instance, if `Mount()` failed because the mount point is busy,
 then cryptohome could recommend the user to reboot.
 
-These 2 types of actions are not distinguished in cryptohomed as things are not
-always as clear cut in cryptohomed. When raising an error in cryptohomed, we
-just list the actions that we believe to be relevant, and only when the error
-propagate up the callstack to the DBus/UserDataAuth layer, will they be sorted
-into the `PossibleAction` or `PrimaryAction` pile and transmitted as part of the
+Therefore, when raising an error in cryptohomed, we can either list a several
+possible actions that we believe to be relevant, or list one primary action
+when we are sure about the root cause. When the errors propagate up the
+callstack to the DBus/UserDataAuth layer, a single `PrimaryAction` or a set
+of `PossibleAction`s will be determined and transmitted as part of the
 DBus reply.
-
-Note that all recommendations from the entire stack will be presented on the
-DBus.
 
 ### Cross Version, Unique Identifier
 
@@ -113,7 +110,12 @@ If an error occurred, we can create it with:
 ```
   return MakeStatus<CryptohomeError>(
       CRYPTOHOME_ERR_LOC(kLocClassNameAndShortDescriptionOfError),
-      ErrorActionSet({ErrorAction::kReboot}),
+      ErrorActionSet({PossibleAction::kReboot}),
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+
+  return MakeStatus<CryptohomeError>(
+      CRYPTOHOME_ERR_LOC(kLocClassNameAndShortDescriptionOfError),
+      ErrorActionSet(PrimaryAction::kIncorrectAuth),
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
 ```
 
@@ -178,6 +180,11 @@ chain/stack of error in this design.
 To deal with that, we've a `CryptohomeTPMError` that contains the exact set of
 information that the TPMError contains. Furthermore, the CryptohomeTPMError is a
 derived class of the `CryptohomeError`, and thus can be part of the error chain.
+Note that we should only use `CryptohomeTPMError` to wrap `TPMErrorBase` into
+a cryptohome error, and shouldn't construct a `CryptohomeTPMError` ourselves
+because it doesn't make sense to do so. In addition, you can't specify the
+location or error actions when constructing a `CryptohomeTPMError` because
+those info will be derived from the `TPMErrorBase`.
 
 In practice, to wrap a `TPMErrorBase` that we've received from libhwsec (or
 other classes that produces such error) as a `CryptohomeError` so that it can
@@ -187,31 +194,9 @@ bubble up the call stack, we can:
   StatusChain<TPMErrorBase> err = SomethingThatProduceTPMErrorBase();
   if (err) {
     auto converted = MakeStatus<CryptohomeTPMError>(err);
-    return MakeStatus<CryptohomeTPMError>(CRYPTOHOME_ERR_LOC(kLocXXX),
-        NoErrorAction(), std::nullopt, TPMRetryAction::kNoRetry)
+    return MakeStatus<CryptohomeError>(CRYPTOHOME_ERR_LOC(kLocXXX))
             .Wrap(std::move(converted));
   }
-```
-
-One feature of the `TPMErrorBase` series of errors is that it can hold a retry
-action so that at the top level of these TPM operations, we can retry the action
-if the error objects recommends so. In the case that we need to use such a
-feature and still be compatible with CryptohomeError, we can create
-`CryptohomeTPMError` with:
-
-```
-  return MakeStatus<CryptohomeTPMError>(CRYPTOHOME_ERR_LOC(kLocXXX),
-      ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), TPMRetryAction::kNoRetry);
-```
-
-Also, if bubbling up the result from the the a function that produces
-`CryptohomeTPMError`, i.e. we've already converted the `TPMErrorBase` into
-`CryptohomeTPMError` at a lower level, then `Wrap()` it as usual, for instance:
-
-```
-  return MakeStatus<CryptohomeTPMError>(CRYPTOHOME_ERR_LOC(kLocXXX),
-      NoErrorAction(), std::nullopt, TPMRetryAction::kNoRetry)
-          .Wrap(std::move(err));
 ```
 
 ### Unit testing
@@ -221,16 +206,20 @@ tool, and therefore it is generally not expected to test it in unit test.
 However, for scenarios that matter to the end users, we should test that the
 error actions returned are correct.
 
-This can be done through verifying the resulting reply's actions:
+This can be done through using the `PrimaryActionIs`
+and `PossibleActionsInclude` utility functions:
 
 ```
-  EXPECT_THAT(reply.error_info().possible_actions(),
-              ElementsAre(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
+  EXPECT_TRUE(PrimaryActionIs(PrimaryAction::kIncorrectAuth));
+  EXPECT_TRUE(PossibleActionsInclude(PossibleAction::kReboot));
 ```
 
 ### Disposing of Expected Errors or Retries
 
-Sometimes we'll have a StatusChain that will be disposed because there's a retry that followed or if the error is working as intended. In those situations, we should dispose of the said StatusChain with the Reap*() functions instead of simply letting it disappear.
+Sometimes we'll have a StatusChain that will be disposed because there's a retry that followed, if the error is working as intended, or if we have fallback actions for that error.
+In those situations, we should dispose of the said StatusChain with the Reap*() functions instead of simply letting it disappear.
+In the case that we have fallback actions, we'll likely still want to monitor those errors as they're not intended.
+Use `ReapAndReportError` for those errors.
 
 For instance:
 
@@ -249,6 +238,16 @@ For instance:
     ReapRetryError(std::move(status));
     status = ...;
   }
+```
+
+```
+  CryptohomeStatus migration_status = ...;
+  if (!migration_status.ok()) {
+    // We don't want to fail the operation, but the previous
+    // error should be reported.
+    ReapAndReportError(std::move(status), "PinMigrationError");
+  }
+  return pre_migration_status;
 ```
 
 ## Error Locations Tool
