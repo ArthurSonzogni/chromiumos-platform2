@@ -80,7 +80,7 @@ class PinWeaverFrontendImpl : public PinWeaverFrontend, public FrontendImpl {
       const uint64_t label,
       const std::vector<brillo::Blob>& h_aux,
       const brillo::Blob& orig_cred_metadata,
-      const brillo::SecureBlob& client_nonce) override;
+      const brillo::Blob& client_nonce) override;
   Status BlockGeneratePk() override;
 };
 

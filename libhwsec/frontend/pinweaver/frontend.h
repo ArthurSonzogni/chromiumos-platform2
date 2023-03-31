@@ -221,7 +221,7 @@ class PinWeaverFrontend : public Frontend {
       const uint64_t label,
       const std::vector<brillo::Blob>& h_aux,
       const brillo::Blob& orig_cred_metadata,
-      const brillo::SecureBlob& client_nonce) = 0;
+      const brillo::Blob& client_nonce) = 0;
 
   // Blocks future establishments of the pairing secrets until the server
   // restarts.

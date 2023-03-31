@@ -139,7 +139,7 @@ StatusOr<CredentialTreeResult> PinWeaverFrontendImpl::StartBiometricsAuth(
     const uint64_t label,
     const std::vector<brillo::Blob>& h_aux,
     const brillo::Blob& orig_cred_metadata,
-    const brillo::SecureBlob& client_nonce) {
+    const brillo::Blob& client_nonce) {
   return middleware_.CallSync<&Backend::PinWeaver::StartBiometricsAuth>(
       auth_channel, label, h_aux, orig_cred_metadata, client_nonce);
 }

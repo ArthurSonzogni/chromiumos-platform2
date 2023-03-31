@@ -145,7 +145,7 @@ class MockPinWeaver : public PinWeaver {
                const uint64_t label,
                const std::vector<brillo::Blob>& h_aux,
                const brillo::Blob& orig_cred_metadata,
-               const brillo::SecureBlob& client_nonce),
+               const brillo::Blob& client_nonce),
               (override));
   MOCK_METHOD(Status, BlockGeneratePk, (), (override));
 

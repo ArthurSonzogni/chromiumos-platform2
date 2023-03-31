@@ -68,11 +68,11 @@ class PinWeaver {
     // The below 3 fields are returned in a successful start_bio_auth operation.
     // |server_nonce| is the nonce used for session key exchange with the
     // client.
-    std::optional<brillo::SecureBlob> server_nonce;
+    std::optional<brillo::Blob> server_nonce;
     // |iv| is used for the AES-CTR encryption of the below
     // |encrypted_he_secret| field.
-    std::optional<brillo::SecureBlob> iv;
-    std::optional<brillo::SecureBlob> encrypted_he_secret;
+    std::optional<brillo::Blob> iv;
+    std::optional<brillo::Blob> encrypted_he_secret;
   };
 
   struct GetLogResult {
@@ -319,7 +319,7 @@ class PinWeaver {
       const uint64_t label,
       const std::vector<brillo::Blob>& h_aux,
       const brillo::Blob& orig_cred_metadata,
-      const brillo::SecureBlob& client_nonce) = 0;
+      const brillo::Blob& client_nonce) = 0;
 
   // Blocks future establishments of the pairing secrets until the server
   // restarts.

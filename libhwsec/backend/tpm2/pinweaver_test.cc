@@ -35,16 +35,6 @@ using ErrorCode = hwsec::Backend::PinWeaver::CredentialTreeResult::ErrorCode;
 
 namespace hwsec {
 
-namespace {
-
-// TODO(b/247704971): During transformation stage of the start_bio_auth
-// request/response fields, we need helper functions like this.
-brillo::Blob SecureBlobToBlob(const brillo::SecureBlob& blob) {
-  return brillo::Blob(blob.begin(), blob.end());
-}
-
-}  // namespace
-
 using BackendPinweaverTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendPinweaverTpm2Test, IsEnabled) {
@@ -1155,10 +1145,13 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuth) {
   const std::string kFakeCred = "fake_cred";
   const std::string kNewCred = "new_cred";
   const std::string kFakeMac = "fake_mac";
-  const brillo::SecureBlob kFakeClientNonce("fake_client_nonce");
-  const brillo::SecureBlob kFakeServerNonce("fake_server_nonce");
-  const brillo::SecureBlob kFakeEncryptedHeSecret("fake_encrypted_he_secret");
-  const brillo::SecureBlob kFakeIv("fake_iv");
+  const brillo::Blob kFakeClientNonce =
+      brillo::BlobFromString("fake_client_nonce");
+  const brillo::Blob kFakeServerNonce =
+      brillo::BlobFromString("fake_server_nonce");
+  const brillo::Blob kFakeEncryptedHeSecret =
+      brillo::BlobFromString("fake_encrypted_he_secret");
+  const brillo::Blob kFakeIv = brillo::BlobFromString("fake_iv");
   const std::vector<brillo::Blob>& kHAux = {
       brillo::Blob(32, 'X'),
       brillo::Blob(32, 'Y'),
@@ -1169,17 +1162,16 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuth) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMockTpmUtility(),
-              PinWeaverStartBiometricsAuth(kVersion, kAuthChannel,
-                                           SecureBlobToBlob(kFakeClientNonce),
-                                           _, kFakeCred, _, _, _, _, _, _, _))
-      .WillOnce(
-          DoAll(SetArgPointee<5>(0), SetArgPointee<6>(kFakeRoot),
-                SetArgPointee<7>(SecureBlobToBlob(kFakeServerNonce)),
-                SetArgPointee<8>(SecureBlobToBlob(kFakeEncryptedHeSecret)),
-                SetArgPointee<9>(SecureBlobToBlob(kFakeIv)),
-                SetArgPointee<10>(kNewCred), SetArgPointee<11>(kFakeMac),
-                Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(
+      proxy_->GetMockTpmUtility(),
+      PinWeaverStartBiometricsAuth(kVersion, kAuthChannel, kFakeClientNonce, _,
+                                   kFakeCred, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(0), SetArgPointee<6>(kFakeRoot),
+                      SetArgPointee<7>(kFakeServerNonce),
+                      SetArgPointee<8>(kFakeEncryptedHeSecret),
+                      SetArgPointee<9>(kFakeIv), SetArgPointee<10>(kNewCred),
+                      SetArgPointee<11>(kFakeMac),
+                      Return(trunks::TPM_RC_SUCCESS)));
 
   auto result = backend_->GetPinWeaverTpm2().StartBiometricsAuth(
       kAuthChannel, kLabel, kHAux, brillo::BlobFromString(kFakeCred),
@@ -1209,7 +1201,8 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthAuthFail) {
   const std::string kFakeCred = "fake_cred";
   const std::string kNewCred = "new_cred";
   const std::string kFakeMac = "fake_mac";
-  const brillo::SecureBlob kFakeClientNonce("fake_client_nonce");
+  const brillo::Blob kFakeClientNonce =
+      brillo::BlobFromString("fake_client_nonce");
   const std::vector<brillo::Blob>& kHAux = {
       brillo::Blob(32, 'X'),
       brillo::Blob(32, 'Y'),
@@ -1222,8 +1215,8 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthAuthFail) {
 
   EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverStartBiometricsAuth(kVersion, kWrongAuthChannel,
-                                           SecureBlobToBlob(kFakeClientNonce),
-                                           _, kFakeCred, _, _, _, _, _, _, _))
+                                           kFakeClientNonce, _, kFakeCred, _, _,
+                                           _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(PW_ERR_LOWENT_AUTH_FAILED),
                       SetArgPointee<6>(kFakeRoot), SetArgPointee<10>(kNewCred),
                       SetArgPointee<11>(kFakeMac),
@@ -1257,7 +1250,8 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthTpmFail) {
   const std::string kFakeCred = "fake_cred";
   const std::string kNewCred = "new_cred";
   const std::string kFakeMac = "fake_mac";
-  const brillo::SecureBlob kFakeClientNonce("fake_client_nonce");
+  const brillo::Blob kFakeClientNonce =
+      brillo::BlobFromString("fake_client_nonce");
   const std::vector<brillo::Blob>& kHAux = {
       brillo::Blob(32, 'X'),
       brillo::Blob(32, 'Y'),
@@ -1268,10 +1262,10 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthTpmFail) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMockTpmUtility(),
-              PinWeaverStartBiometricsAuth(kVersion, kAuthChannel,
-                                           SecureBlobToBlob(kFakeClientNonce),
-                                           _, kFakeCred, _, _, _, _, _, _, _))
+  EXPECT_CALL(
+      proxy_->GetMockTpmUtility(),
+      PinWeaverStartBiometricsAuth(kVersion, kAuthChannel, kFakeClientNonce, _,
+                                   kFakeCred, _, _, _, _, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
   EXPECT_THAT(backend_->GetPinWeaverTpm2().StartBiometricsAuth(
@@ -1288,7 +1282,8 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthV1NotSupported) {
   const std::string kFakeCred = "fake_cred";
   const std::string kNewCred = "new_cred";
   const std::string kFakeMac = "fake_mac";
-  const brillo::SecureBlob kFakeClientNonce("fake_client_nonce");
+  const brillo::Blob kFakeClientNonce =
+      brillo::BlobFromString("fake_client_nonce");
   const std::vector<brillo::Blob>& kHAux = {
       brillo::Blob(32, 'X'),
       brillo::Blob(32, 'Y'),
@@ -1313,7 +1308,8 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthInvalidAuthChannel) {
   const std::string kFakeCred = "fake_cred";
   const std::string kNewCred = "new_cred";
   const std::string kFakeMac = "fake_mac";
-  const brillo::SecureBlob kFakeClientNonce("fake_client_nonce");
+  const brillo::Blob kFakeClientNonce =
+      brillo::BlobFromString("fake_client_nonce");
   const std::vector<brillo::Blob>& kHAux = {
       brillo::Blob(32, 'X'),
       brillo::Blob(32, 'Y'),

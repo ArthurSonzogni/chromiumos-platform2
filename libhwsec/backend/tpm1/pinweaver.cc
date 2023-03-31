@@ -119,7 +119,7 @@ PinWeaverTpm1::StartBiometricsAuth(uint8_t auth_channel,
                                    const uint64_t label,
                                    const std::vector<brillo::Blob>& h_aux,
                                    const brillo::Blob& orig_cred_metadata,
-                                   const brillo::SecureBlob& client_nonce) {
+                                   const brillo::Blob& client_nonce) {
   return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
 }
 

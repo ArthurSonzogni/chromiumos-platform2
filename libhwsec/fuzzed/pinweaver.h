@@ -33,11 +33,10 @@ struct FuzzedObject<PinWeaver::CredentialTreeResult> {
             FuzzedObject<std::optional<brillo::SecureBlob>>()(provider),
         .reset_secret =
             FuzzedObject<std::optional<brillo::SecureBlob>>()(provider),
-        .server_nonce =
-            FuzzedObject<std::optional<brillo::SecureBlob>>()(provider),
-        .iv = FuzzedObject<std::optional<brillo::SecureBlob>>()(provider),
+        .server_nonce = FuzzedObject<std::optional<brillo::Blob>>()(provider),
+        .iv = FuzzedObject<std::optional<brillo::Blob>>()(provider),
         .encrypted_he_secret =
-            FuzzedObject<std::optional<brillo::SecureBlob>>()(provider),
+            FuzzedObject<std::optional<brillo::Blob>>()(provider),
     };
   }
 };
