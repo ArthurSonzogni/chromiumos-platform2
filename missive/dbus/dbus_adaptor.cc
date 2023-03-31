@@ -15,6 +15,7 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
+#include <featured/feature_library.h>
 
 #include "missive/missive/missive_service.h"
 #include "missive/proto/interface.pb.h"
@@ -45,8 +46,9 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
       failure_cb_(std::move(failure_cb)) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   missive_->StartUp(
-      bus, base::BindPostTaskToCurrentDefault(base::BindOnce(
-               &DBusAdaptor::StartupFinished, weak_ptr_factory_.GetWeakPtr())));
+      bus, feature::PlatformFeatures::New(bus),
+      base::BindPostTaskToCurrentDefault(base::BindOnce(
+          &DBusAdaptor::StartupFinished, weak_ptr_factory_.GetWeakPtr())));
 }
 
 void DBusAdaptor::StartupFinished(Status status) {

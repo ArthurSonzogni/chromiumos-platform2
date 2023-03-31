@@ -4,61 +4,226 @@
 
 #include "missive/missive/missive_args.h"
 
+#include <utility>
+
 #include <base/time/time.h>
 #include <base/time/time_delta_from_string.h>
+#include <base/test/task_environment.h>
+#include <featured/fake_platform_features.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "missive/dbus/dbus_test_environment.h"
+#include "missive/util/status.h"
+#include "missive/util/statusor.h"
+#include "missive/util/test_support_callbacks.h"
 
 using ::testing::Eq;
 
 namespace reporting {
 namespace {
-TEST(MissiveArgsTest, DefaultValuesTest) {
-  const MissiveArgs args("", "", "", "");
+
+class MissiveArgsTest : public ::testing::Test {
+ protected:
+  base::test::TaskEnvironment task_environment_;
+  test::DBusTestEnvironment dbus_test_environment_;
+  feature::FakePlatformFeatures* fake_platform_features_;
+};
+
+TEST_F(MissiveArgsTest, DefaultCollectionValues) {
+  auto fake_platform_features = std::make_unique<feature::FakePlatformFeatures>(
+      dbus_test_environment_.mock_bus().get());
+  fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name,
+                                     false);
+  fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
+  SequencedMissiveArgs args(
+      dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
+      std::move(fake_platform_features));
+
+  test::TestEvent<StatusOr<MissiveArgs::CollectionParameters>> get_collection;
+  args.AsyncCall(&MissiveArgs::GetCollectionParameters)
+      .WithArgs(get_collection.cb());
+  const auto& collection = get_collection.result();
+  ASSERT_OK(collection) << collection.status();
   ASSERT_THAT(
-      args.enqueuing_record_tallier(),
+      collection.ValueOrDie().enqueuing_record_tallier,
       Eq(base::TimeDeltaFromString(MissiveArgs::kEnqueuingRecordTallierDefault)
              .value()));
   ASSERT_THAT(
-      args.cpu_collector_interval(),
+      collection.ValueOrDie().cpu_collector_interval,
       Eq(base::TimeDeltaFromString(MissiveArgs::kCpuCollectorIntervalDefault)
              .value()));
-  ASSERT_THAT(args.storage_collector_interval(),
+  ASSERT_THAT(collection.ValueOrDie().storage_collector_interval,
               Eq(base::TimeDeltaFromString(
                      MissiveArgs::kStorageCollectorIntervalDefault)
                      .value()));
   ASSERT_THAT(
-      args.memory_collector_interval(),
+      collection.ValueOrDie().memory_collector_interval,
       Eq(base::TimeDeltaFromString(MissiveArgs::kMemoryCollectorIntervalDefault)
              .value()));
 }
 
-TEST(MissiveArgsTest, ExplicitValuesTest) {
-  const MissiveArgs args("10ms", "20s", "30m", "40h");
-  ASSERT_THAT(args.enqueuing_record_tallier(), Eq(base::Milliseconds(10)));
-  ASSERT_THAT(args.cpu_collector_interval(), Eq(base::Seconds(20)));
-  ASSERT_THAT(args.storage_collector_interval(), Eq(base::Minutes(30)));
-  ASSERT_THAT(args.memory_collector_interval(), Eq(base::Hours(40)));
+TEST_F(MissiveArgsTest, ExplicitCollectionValues) {
+  auto fake_platform_features = std::make_unique<feature::FakePlatformFeatures>(
+      dbus_test_environment_.mock_bus().get());
+  fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name, true);
+  fake_platform_features->SetParam(
+      MissiveArgs::kCollectorFeature.name,
+      MissiveArgs::kEnqueuingRecordTallierParameter, "10ms");
+  fake_platform_features->SetParam(MissiveArgs::kCollectorFeature.name,
+                                   MissiveArgs::kCpuCollectorIntervalParameter,
+                                   "20s");
+  fake_platform_features->SetParam(
+      MissiveArgs::kCollectorFeature.name,
+      MissiveArgs::kStorageCollectorIntervalParameter, "30m");
+  fake_platform_features->SetParam(
+      MissiveArgs::kCollectorFeature.name,
+      MissiveArgs::kMemoryCollectorIntervalParameter, "40h");
+  fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
+  SequencedMissiveArgs args(
+      dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
+      std::move(fake_platform_features));
+
+  test::TestEvent<StatusOr<MissiveArgs::CollectionParameters>> get_collection;
+  args.AsyncCall(&MissiveArgs::GetCollectionParameters)
+      .WithArgs(get_collection.cb());
+  const auto& collection = get_collection.result();
+  ASSERT_OK(collection) << collection.status();
+  ASSERT_THAT(collection.ValueOrDie().enqueuing_record_tallier,
+              Eq(base::Milliseconds(10)));
+  ASSERT_THAT(collection.ValueOrDie().cpu_collector_interval,
+              Eq(base::Seconds(20)));
+  ASSERT_THAT(collection.ValueOrDie().storage_collector_interval,
+              Eq(base::Minutes(30)));
+  ASSERT_THAT(collection.ValueOrDie().memory_collector_interval,
+              Eq(base::Hours(40)));
 }
 
-TEST(MissiveArgsTest, BadValuesTest) {
-  const MissiveArgs args("AAAA", "BAD", "WRONG", "123");
+TEST_F(MissiveArgsTest, BadCollectionValues) {
+  auto fake_platform_features = std::make_unique<feature::FakePlatformFeatures>(
+      dbus_test_environment_.mock_bus().get());
+  fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name, true);
+  fake_platform_features->SetParam(
+      MissiveArgs::kCollectorFeature.name,
+      MissiveArgs::kEnqueuingRecordTallierParameter, "AAAA");
+  fake_platform_features->SetParam(MissiveArgs::kCollectorFeature.name,
+                                   MissiveArgs::kCpuCollectorIntervalParameter,
+                                   "BAD");
+  fake_platform_features->SetParam(
+      MissiveArgs::kCollectorFeature.name,
+      MissiveArgs::kStorageCollectorIntervalParameter, "WRONG");
+  fake_platform_features->SetParam(
+      MissiveArgs::kCollectorFeature.name,
+      MissiveArgs::kMemoryCollectorIntervalParameter, "123");
+  fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
+  SequencedMissiveArgs args(
+      dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
+      std::move(fake_platform_features));
+
+  test::TestEvent<StatusOr<MissiveArgs::CollectionParameters>> get_collection;
+  args.AsyncCall(&MissiveArgs::GetCollectionParameters)
+      .WithArgs(get_collection.cb());
+  const auto& collection = get_collection.result();
+  ASSERT_OK(collection) << collection.status();
   ASSERT_THAT(
-      args.enqueuing_record_tallier(),
+      collection.ValueOrDie().enqueuing_record_tallier,
       Eq(base::TimeDeltaFromString(MissiveArgs::kEnqueuingRecordTallierDefault)
              .value()));
   ASSERT_THAT(
-      args.cpu_collector_interval(),
+      collection.ValueOrDie().cpu_collector_interval,
       Eq(base::TimeDeltaFromString(MissiveArgs::kCpuCollectorIntervalDefault)
              .value()));
-  ASSERT_THAT(args.storage_collector_interval(),
+  ASSERT_THAT(collection.ValueOrDie().storage_collector_interval,
               Eq(base::TimeDeltaFromString(
                      MissiveArgs::kStorageCollectorIntervalDefault)
                      .value()));
   ASSERT_THAT(
-      args.memory_collector_interval(),
+      collection.ValueOrDie().memory_collector_interval,
       Eq(base::TimeDeltaFromString(MissiveArgs::kMemoryCollectorIntervalDefault)
              .value()));
+}
+
+TEST_F(MissiveArgsTest, DefaultStorageValues) {
+  auto fake_platform_features = std::make_unique<feature::FakePlatformFeatures>(
+      dbus_test_environment_.mock_bus().get());
+  fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name,
+                                     false);
+  fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
+  SequencedMissiveArgs args(
+      dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
+      std::move(fake_platform_features));
+
+  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_collection;
+  args.AsyncCall(&MissiveArgs::GetStorageParameters)
+      .WithArgs(get_collection.cb());
+  const auto& collection = get_collection.result();
+  ASSERT_OK(collection) << collection.status();
+  ASSERT_THAT(collection.ValueOrDie().compression_enabled,
+              Eq(MissiveArgs::kCompressionEnabledDefault));
+  ASSERT_THAT(collection.ValueOrDie().encryption_enabled,
+              Eq(MissiveArgs::kEncryptionEnabledDefault));
+  ASSERT_THAT(collection.ValueOrDie().controlled_degradation,
+              Eq(MissiveArgs::kControlledDegradationDefault));
+}
+
+TEST_F(MissiveArgsTest, ExplicitStorageValues) {
+  auto fake_platform_features = std::make_unique<feature::FakePlatformFeatures>(
+      dbus_test_environment_.mock_bus().get());
+  fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name,
+                                     false);
+  fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, true);
+  fake_platform_features->SetParam(MissiveArgs::kStorageFeature.name,
+                                   MissiveArgs::kCompressionEnabledParameter,
+                                   "False");
+  fake_platform_features->SetParam(MissiveArgs::kStorageFeature.name,
+                                   MissiveArgs::kEncryptionEnabledParameter,
+                                   "False");
+  fake_platform_features->SetParam(MissiveArgs::kStorageFeature.name,
+                                   MissiveArgs::kControlledDegradationParameter,
+                                   "True");
+  SequencedMissiveArgs args(
+      dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
+      std::move(fake_platform_features));
+
+  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_collection;
+  args.AsyncCall(&MissiveArgs::GetStorageParameters)
+      .WithArgs(get_collection.cb());
+  const auto& collection = get_collection.result();
+  ASSERT_OK(collection) << collection.status();
+  ASSERT_FALSE(collection.ValueOrDie().compression_enabled);
+  ASSERT_FALSE(collection.ValueOrDie().encryption_enabled);
+  ASSERT_TRUE(collection.ValueOrDie().controlled_degradation);
+}
+
+TEST_F(MissiveArgsTest, BadStorageValues) {
+  auto fake_platform_features = std::make_unique<feature::FakePlatformFeatures>(
+      dbus_test_environment_.mock_bus().get());
+  fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name, true);
+  fake_platform_features->SetParam(MissiveArgs::kStorageFeature.name,
+                                   MissiveArgs::kCompressionEnabledParameter,
+                                   "Unknown");
+  fake_platform_features->SetParam(MissiveArgs::kStorageFeature.name,
+                                   MissiveArgs::kEncryptionEnabledParameter,
+                                   "Nothing");
+  fake_platform_features->SetParam(MissiveArgs::kStorageFeature.name,
+                                   MissiveArgs::kControlledDegradationParameter,
+                                   "BadValue");
+  fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
+  SequencedMissiveArgs args(
+      dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
+      std::move(fake_platform_features));
+
+  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_collection;
+  args.AsyncCall(&MissiveArgs::GetStorageParameters)
+      .WithArgs(get_collection.cb());
+  const auto& collection = get_collection.result();
+  ASSERT_OK(collection) << collection.status();
+  ASSERT_THAT(collection.ValueOrDie().compression_enabled,
+              Eq(MissiveArgs::kCompressionEnabledDefault));
+  ASSERT_THAT(collection.ValueOrDie().encryption_enabled,
+              Eq(MissiveArgs::kEncryptionEnabledDefault));
+  ASSERT_THAT(collection.ValueOrDie().controlled_degradation,
+              Eq(MissiveArgs::kControlledDegradationDefault));
 }
 }  // namespace
 }  // namespace reporting

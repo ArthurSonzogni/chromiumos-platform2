@@ -5,18 +5,35 @@
 #include "missive/missive/missive_args.h"
 
 #include <cstdlib>
+#include <map>
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <base/logging.h>
 #include <base/strings/string_piece.h>
+#include <base/strings/string_util.h>
+#include <base/task/bind_post_task.h>
 #include <base/time/time.h>
 #include <base/time/time_delta_from_string.h>
-#include <brillo/flag_helper.h>
+#include <base/threading/thread.h>
+#include <dbus/bus.h>
+#include <featured/feature_library.h>
 
 #include "missive/util/statusor.h"
 
 namespace reporting {
 namespace {
+
+// Searches string map by `key`, returns matching value or empty string.
+std::string FindValueOrEmpty(const std::string& key,
+                             const std::map<std::string, std::string> params) {
+  auto it = params.find(key);
+  if (it == params.end()) {
+    return "";
+  }
+  return it->second;
+}
 
 // Parses duration. If the parsed duration is invalid.
 StatusOr<base::TimeDelta> ParseDuration(base::StringPiece duration_string) {
@@ -32,43 +49,143 @@ StatusOr<base::TimeDelta> ParseDuration(base::StringPiece duration_string) {
 
 // Parses duration_string if valid. Otherwise, parses duration_default, which
 // should always be valid.
-base::TimeDelta DurationParameterValue(base::StringPiece arg_name,
+base::TimeDelta DurationParameterValue(base::StringPiece parameter_name,
                                        base::StringPiece duration_string,
                                        base::StringPiece duration_default) {
   DCHECK(ParseDuration(duration_default).ok());
 
+  if (duration_string.empty()) {
+    return ParseDuration(duration_default).ValueOrDie();
+  }
   const auto duration_result = ParseDuration(duration_string);
   if (!duration_result.ok()) {
-    LOG(ERROR) << "Unable to parse argument " << arg_name << "="
+    LOG(ERROR) << "Unable to parse parameter " << parameter_name << "="
                << duration_string << ", assumed default=" << duration_default
                << ", because: " << duration_result.status();
     return ParseDuration(duration_default).ValueOrDie();
   }
   return duration_result.ValueOrDie();
 }
+
+// Recognizes boolean setting if valid. Otherwise, substitutes default value.
+bool BoolParameterValue(base::StringPiece parameter_name,
+                        base::StringPiece value_string,
+                        bool value_default) {
+  if (value_string.empty()) {
+    return value_default;
+  }
+  if (base::EqualsCaseInsensitiveASCII(value_string, "true")) {
+    return true;
+  }
+  if (base::EqualsCaseInsensitiveASCII(value_string, "false")) {
+    return false;
+  }
+  LOG(ERROR) << "Invalid parameter " << parameter_name << "=" << value_string
+             << ", assumed default=" << (value_default ? "true" : "false");
+  return value_default;
+}
+
 }  // namespace
 
-MissiveArgs::MissiveArgs(base::StringPiece enqueuing_record_tallier,
-                         base::StringPiece cpu_collector_interval,
-                         base::StringPiece storage_collector_interval,
-                         base::StringPiece memory_collector_interval)
-    : enqueuing_record_tallier_(
-          DurationParameterValue("enqueuing_record_tallier",
-                                 enqueuing_record_tallier,
-                                 kEnqueuingRecordTallierDefault)),
-      cpu_collector_interval_(
-          DurationParameterValue("cpu_collector_interval",
-                                 cpu_collector_interval,
-                                 kCpuCollectorIntervalDefault)),
-      storage_collector_interval_(
-          DurationParameterValue("storage_collector_interval",
-                                 storage_collector_interval,
-                                 kStorageCollectorIntervalDefault)),
-      memory_collector_interval_(
-          DurationParameterValue("memory_collector_interval",
-                                 memory_collector_interval,
-                                 kMemoryCollectorIntervalDefault)) {}
+MissiveArgs::MissiveArgs(
+    std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib)
+    : feature_lib_(std::move(feature_lib)),
+      features_to_load_({&kCollectorFeature, &kStorageFeature}) {
+  DCHECK(feature_lib_);
+  feature_lib_->GetParamsAndEnabled(
+      features_to_load_,
+      base::BindPostTaskToCurrentDefault(base::BindOnce(
+          &MissiveArgs::OnParamResult, weak_ptr_factory_.GetWeakPtr())));
+}
 
-MissiveArgs::~MissiveArgs() = default;
+MissiveArgs::~MissiveArgs() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+}
 
+void MissiveArgs::OnParamResult(
+    feature::PlatformFeaturesInterface::ParamsResult result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK(!responded_) << "Can only be called once";
+  responded_ = true;
+  {
+    std::string enqueuing_record_tallier;
+    std::string cpu_collector_interval;
+    std::string storage_collector_interval;
+    std::string memory_collector_interval;
+    auto it = result.find(kCollectorFeature.name);
+    if (it != result.end() && it->second.enabled) {
+      enqueuing_record_tallier =
+          FindValueOrEmpty(kEnqueuingRecordTallierParameter, it->second.params);
+      cpu_collector_interval =
+          FindValueOrEmpty(kCpuCollectorIntervalParameter, it->second.params);
+      storage_collector_interval = FindValueOrEmpty(
+          kStorageCollectorIntervalParameter, it->second.params);
+      memory_collector_interval = FindValueOrEmpty(
+          kMemoryCollectorIntervalParameter, it->second.params);
+    }
+    collection_parameters_.enqueuing_record_tallier = DurationParameterValue(
+        kEnqueuingRecordTallierParameter, enqueuing_record_tallier,
+        kEnqueuingRecordTallierDefault);
+    collection_parameters_.cpu_collector_interval = DurationParameterValue(
+        kCpuCollectorIntervalParameter, cpu_collector_interval,
+        kCpuCollectorIntervalDefault);
+    collection_parameters_.storage_collector_interval = DurationParameterValue(
+        kStorageCollectorIntervalParameter, storage_collector_interval,
+        kStorageCollectorIntervalDefault);
+    collection_parameters_.memory_collector_interval = DurationParameterValue(
+        kMemoryCollectorIntervalParameter, memory_collector_interval,
+        kMemoryCollectorIntervalDefault);
+  }
+  {
+    std::string compression_enabled;
+    std::string encryption_enabled;
+    std::string controlled_degradation;
+    auto it = result.find(kStorageFeature.name);
+    if (it != result.end() && it->second.enabled) {
+      compression_enabled =
+          FindValueOrEmpty(kCompressionEnabledParameter, it->second.params);
+      encryption_enabled =
+          FindValueOrEmpty(kEncryptionEnabledParameter, it->second.params);
+      controlled_degradation =
+          FindValueOrEmpty(kControlledDegradationParameter, it->second.params);
+    }
+    storage_parameters_.compression_enabled = BoolParameterValue(
+        kCompressionEnabledParameter, compression_enabled, true);
+    storage_parameters_.encryption_enabled = BoolParameterValue(
+        kEncryptionEnabledParameter, encryption_enabled, true);
+    storage_parameters_.controlled_degradation = BoolParameterValue(
+        kControlledDegradationParameter, controlled_degradation, false);
+  }
+  for (auto& cb : delayed_response_cbs_) {
+    std::move(cb).Run();
+  }
+  delayed_response_cbs_.clear();
+}
+
+void MissiveArgs::GetCollectionParameters(
+    base::OnceCallback<void(StatusOr<CollectionParameters>)> result_cb) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!responded_) {
+    // No response yet, delay.
+    delayed_response_cbs_.emplace_back(
+        base::BindOnce(&MissiveArgs::GetCollectionParameters,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(result_cb)));
+    return;
+  }
+  std::move(result_cb).Run(collection_parameters_);  // Making a copy.
+}
+
+void MissiveArgs::GetStorageParameters(
+    base::OnceCallback<void(StatusOr<StorageParameters>)> result_cb) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!responded_) {
+    // No response yet, delay.
+    delayed_response_cbs_.emplace_back(
+        base::BindOnce(&MissiveArgs::GetStorageParameters,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(result_cb)));
+    return;
+  }
+  // Response is there, return a copy.
+  std::move(result_cb).Run(storage_parameters_);  // Making a copy
+}
 }  // namespace reporting

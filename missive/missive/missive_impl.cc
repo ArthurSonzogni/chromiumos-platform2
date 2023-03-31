@@ -15,6 +15,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/task/bind_post_task.h>
 #include <base/time/time.h>
+#include <featured/feature_library.h>
 
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/resource_collector_cpu.h"
@@ -56,7 +57,6 @@ void HandleFlushResponse(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
 }  // namespace
 
 MissiveImpl::MissiveImpl(
-    std::unique_ptr<MissiveArgs> args,
     base::OnceCallback<
         void(scoped_refptr<dbus::Bus> bus,
              base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
@@ -66,8 +66,7 @@ MissiveImpl::MissiveImpl(
              StorageOptions storage_options,
              base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
                  callback)> create_storage_factory)
-    : args_(std::move(args)),
-      upload_client_factory_(std::move(upload_client_factory)),
+    : upload_client_factory_(std::move(upload_client_factory)),
       create_storage_factory_(std::move(create_storage_factory)) {
   // Constructor may even be called not on any seq task runner.
   DETACH_FROM_SEQUENCE(sequence_checker_);
@@ -77,13 +76,18 @@ MissiveImpl::~MissiveImpl() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 }
 
-void MissiveImpl::StartUp(scoped_refptr<dbus::Bus> bus,
-                          base::OnceCallback<void(Status)> cb) {
+void MissiveImpl::StartUp(
+    scoped_refptr<dbus::Bus> bus,
+    std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib,
+    base::OnceCallback<void(Status)> cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   analytics::Metrics::Initialize();
 
   DCHECK(upload_client_factory_) << "May be called only once";
   DCHECK(create_storage_factory_) << "May be called only once";
+  DCHECK(!args_) << "Can only be called once";
+  args_ = std::make_unique<SequencedMissiveArgs>(bus->GetDBusTaskRunner(),
+                                                 std::move(feature_lib));
 
   // Migrate from /var/cache to /var/spool
   Status migration_status;
@@ -112,27 +116,65 @@ void MissiveImpl::OnUploadClientCreated(
     return;
   }
   upload_client_ = std::move(upload_client_result.ValueOrDie());
+
+  // `GetCollectionParameters` only responds once the features were updated.
+  args_->AsyncCall(&MissiveArgs::GetCollectionParameters)
+      .WithArgs(base::BindPostTaskToCurrentDefault(base::BindOnce(
+          &MissiveImpl::OnCollectionParameters, GetWeakPtr(), std::move(cb))));
+}
+
+void MissiveImpl::OnCollectionParameters(
+    base::OnceCallback<void(Status)> cb,
+    StatusOr<MissiveArgs::CollectionParameters> collection_parameters_result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!collection_parameters_result.ok()) {
+    std::move(cb).Run(collection_parameters_result.status());
+    return;
+  }
+
+  const auto& collection_parameters = collection_parameters_result.ValueOrDie();
   enqueuing_record_tallier_ = std::make_unique<EnqueuingRecordTallier>(
-      args_->enqueuing_record_tallier());
+      collection_parameters.enqueuing_record_tallier);
   DCHECK(!reporting_storage_dir_.empty())
       << "Reporting storage dir must have been set upon startup.";
-  analytics_registry_.Add(
-      "Storage",
-      std::make_unique<analytics::ResourceCollectorStorage>(
-          args_->storage_collector_interval(), reporting_storage_dir_));
+  analytics_registry_.Add("Storage",
+                          std::make_unique<analytics::ResourceCollectorStorage>(
+                              collection_parameters.storage_collector_interval,
+                              reporting_storage_dir_));
   analytics_registry_.Add("CPU",
                           std::make_unique<analytics::ResourceCollectorCpu>(
-                              args_->cpu_collector_interval()));
+                              collection_parameters.cpu_collector_interval));
+
   StorageOptions storage_options;
   storage_options.set_directory(reporting_storage_dir_)
       .set_signature_verification_public_key(
           SignatureVerifier::VerificationKey());
   auto memory_resource = storage_options.memory_resource();
   disk_space_resource_ = storage_options.disk_space_resource();
-  analytics_registry_.Add(
-      "Memory",
-      std::make_unique<analytics::ResourceCollectorMemory>(
-          args_->memory_collector_interval(), std::move(memory_resource)));
+  analytics_registry_.Add("Memory",
+                          std::make_unique<analytics::ResourceCollectorMemory>(
+                              collection_parameters.memory_collector_interval,
+                              std::move(memory_resource)));
+
+  // `GetStorageParameters` only responds once the features were updated.
+  args_->AsyncCall(&MissiveArgs::GetStorageParameters)
+      .WithArgs(base::BindPostTaskToCurrentDefault(
+          base::BindOnce(&MissiveImpl::OnStorageParameters, GetWeakPtr(),
+                         std::move(cb), std::move(storage_options))));
+}
+
+void MissiveImpl::OnStorageParameters(
+    base::OnceCallback<void(Status)> cb,
+    StorageOptions storage_options,
+    StatusOr<MissiveArgs::StorageParameters> storage_parameters_result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!storage_parameters_result.ok()) {
+    std::move(cb).Run(storage_parameters_result.status());
+    return;
+  }
+
+  // TODO(b/276503229): Deliver storage_parameters to `Storage::Create`.
+
   std::move(create_storage_factory_)
       .Run(this, std::move(storage_options),
            base::BindPostTaskToCurrentDefault(

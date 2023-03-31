@@ -77,6 +77,7 @@ source_set("unit_tests") {
   deps = [
     ":migration",
     ":missive_impl",
+    "//missive/dbus:test_environment",
     "//missive/proto:libmissiveprotorecord",
     "//missive/util:status",
     "//missive/util:status_macros",

@@ -19,6 +19,7 @@ static_library("missive_daemon") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
+    "//featured:libfeatures",
     "//missive/dbus:dbus_adaptor",
     "//missive/missive:missive_service",
     "//missive/proto:libmissiveprotointerface",
@@ -33,6 +34,7 @@ source_set("unit_tests") {
   sources = [ "missive_daemon_test.cc" ]
   deps = [
     ":missive_daemon",
+    "//featured:libfake_platform_features",
     "//missive/dbus:upload_client",
     "//missive/missive:missive_service",
     "//missive/proto:libmissiveprotointerface",

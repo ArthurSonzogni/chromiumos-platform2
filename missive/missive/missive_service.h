@@ -10,6 +10,7 @@
 
 #include <brillo/dbus/dbus_method_response.h>
 #include <dbus/bus.h>
+#include <featured/feature_library.h>
 
 #include "missive/dbus/upload_client.h"
 #include "missive/proto/interface.pb.h"
@@ -26,8 +27,10 @@ class MissiveService {
   MissiveService& operator=(const MissiveService&) = delete;
   virtual ~MissiveService() = default;
 
-  virtual void StartUp(scoped_refptr<dbus::Bus> bus,
-                       base::OnceCallback<void(Status)> cb) = 0;
+  virtual void StartUp(
+      scoped_refptr<dbus::Bus> bus,
+      std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib,
+      base::OnceCallback<void(Status)> cb) = 0;
   virtual Status ShutDown() = 0;
   virtual void OnReady() const {}
 

@@ -15,6 +15,7 @@
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
+#include <featured/feature_library.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -51,8 +52,10 @@ class MockMissive : public MissiveService {
   MOCK_METHOD(void,
               StartUp,
               (scoped_refptr<dbus::Bus> bus,
+               std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib,
                base::OnceCallback<void(Status)> cb),
               (override));
+
   MOCK_METHOD(Status, ShutDown, (), (override));
   MOCK_METHOD(void, OnReady, (), (const override));
 
@@ -124,8 +127,8 @@ class MissiveDaemonTest : public ::testing::Test {
 
     auto missive = std::make_unique<StrictMock<MockMissive>>();
     mock_missive_ = missive.get();
-    EXPECT_CALL(*mock_missive_, StartUp(NotNull(), _))
-        .WillOnce(WithArg<1>([&status](base::OnceCallback<void(Status)> cb) {
+    EXPECT_CALL(*mock_missive_, StartUp(NotNull(), _, _))
+        .WillOnce(WithArg<2>([&status](base::OnceCallback<void(Status)> cb) {
           std::move(cb).Run(status);
         }));
 

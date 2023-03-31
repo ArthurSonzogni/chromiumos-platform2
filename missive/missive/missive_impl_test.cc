@@ -15,6 +15,7 @@
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
+#include <featured/fake_platform_features.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -22,6 +23,7 @@
 #include "missive/analytics/resource_collector_cpu.h"
 #include "missive/analytics/resource_collector_memory.h"
 #include "missive/analytics/resource_collector_storage.h"
+#include "missive/dbus/dbus_test_environment.h"
 #include "missive/dbus/mock_upload_client.h"
 #include "missive/storage/storage_module.h"
 #include "missive/util/test_support_callbacks.h"
@@ -73,7 +75,6 @@ class MissiveImplTest : public ::testing::Test {
  protected:
   void SetUp() override {
     missive_ = std::make_unique<MissiveImpl>(
-        std::make_unique<MissiveArgs>("", "", "", ""),
         base::BindOnce(
             [](MissiveImplTest* self, scoped_refptr<dbus::Bus> bus,
                base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
@@ -93,10 +94,10 @@ class MissiveImplTest : public ::testing::Test {
             },
             base::Unretained(this)));
 
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
     test::TestEvent<Status> started;
-    missive_->StartUp(base::MakeRefCounted<NiceMock<dbus::MockBus>>(options),
+    missive_->StartUp(dbus_test_environment_.mock_bus(),
+                      std::make_unique<feature::FakePlatformFeatures>(
+                          dbus_test_environment_.mock_bus().get()),
                       started.cb());
     ASSERT_OK(started.result());
   }
@@ -110,10 +111,10 @@ class MissiveImplTest : public ::testing::Test {
   }
 
   base::test::TaskEnvironment task_environment_;
+  test::DBusTestEnvironment dbus_test_environment_;
   // Use the metrics test environment to prevent the real metrics from
   // initializing.
   analytics::Metrics::TestEnvironment metrics_test_environment_;
-
   scoped_refptr<UploadClient> upload_client_;
   scoped_refptr<MockStorageModule> storage_module_;
   std::unique_ptr<MissiveImpl> missive_;

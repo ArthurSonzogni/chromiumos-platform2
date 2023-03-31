@@ -13,6 +13,7 @@
 #include <base/task/bind_post_task.h>
 #include <base/threading/thread.h>
 #include <dbus/bus.h>
+#include <featured/feature_library.h>
 
 #include "missive/analytics/registry.h"
 #include "missive/dbus/upload_client.h"
@@ -35,7 +36,6 @@ class MissiveImpl : public MissiveService {
   // `create_storage_factory` parameters to allow tests to mock them.
   // Default values provided are intended for production.
   explicit MissiveImpl(
-      std::unique_ptr<MissiveArgs> args,
       base::OnceCallback<
           void(scoped_refptr<dbus::Bus> bus,
                base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
@@ -52,6 +52,7 @@ class MissiveImpl : public MissiveService {
   ~MissiveImpl() override;
 
   void StartUp(scoped_refptr<dbus::Bus> bus,
+               std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib,
                base::OnceCallback<void(Status)> cb) override;
 
   Status ShutDown() override;
@@ -93,6 +94,15 @@ class MissiveImpl : public MissiveService {
       base::OnceCallback<void(Status)> cb,
       StatusOr<scoped_refptr<UploadClient>> upload_client_result);
 
+  void OnCollectionParameters(
+      base::OnceCallback<void(Status)> cb,
+      StatusOr<MissiveArgs::CollectionParameters> collection_parameters_result);
+
+  void OnStorageParameters(
+      base::OnceCallback<void(Status)> cb,
+      StorageOptions storage_options,
+      StatusOr<MissiveArgs::StorageParameters> storage_parameters_result);
+
   void OnStorageModuleConfigured(
       base::OnceCallback<void(Status)> cb,
       StatusOr<scoped_refptr<StorageModule>> storage_module_result);
@@ -101,7 +111,6 @@ class MissiveImpl : public MissiveService {
       UploaderInterface::UploadReason reason,
       UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
 
-  const std::unique_ptr<MissiveArgs> args_;
   base::OnceCallback<void(
       scoped_refptr<dbus::Bus> bus,
       base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)> callback)>
@@ -113,10 +122,11 @@ class MissiveImpl : public MissiveService {
           callback)>
       create_storage_factory_;
 
-  base::FilePath reporting_storage_dir_ GUARDED_BY_CONTEXT(sequence_checker_);
-
   SEQUENCE_CHECKER(sequence_checker_);
 
+  base::FilePath reporting_storage_dir_ GUARDED_BY_CONTEXT(sequence_checker_);
+  std::unique_ptr<SequencedMissiveArgs> args_
+      GUARDED_BY_CONTEXT(sequence_checker_);
   scoped_refptr<UploadClient> upload_client_
       GUARDED_BY_CONTEXT(sequence_checker_);
   scoped_refptr<StorageModule> storage_module_
