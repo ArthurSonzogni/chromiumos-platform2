@@ -16,12 +16,14 @@
 #include <base/feature_list.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback_helpers.h>
+#include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
+#include <base/thread_annotations.h>
 #include <base/threading/sequence_bound.h>
 #include <base/time/time.h>
 #include <crypto/sha2.h>
@@ -278,6 +280,19 @@ class SingleDecryptionContext {
 
 class StorageTest
     : public ::testing::TestWithParam<::testing::tuple<bool, size_t>> {
+  // Mapping of <generation id, sequencing id> to matching record digest.
+  // Whenever a record is uploaded and includes last record digest, this map
+  // should have that digest already recorded. Only the first record in a
+  // generation is uploaded without last record digest.
+  using LastRecordDigestMap =
+      base::flat_map<std::tuple<Priority,
+                                int64_t /*generation id*/,
+                                int64_t /*sequencing id*/>,
+                     std::optional<std::string /*digest*/>>;
+
+  // Track the last uploaded generation id based on priority
+  using LastUploadedGenerationIdMap = base::flat_map<Priority, int64_t>;
+
  protected:
   void SetUp() override {
     ASSERT_TRUE(location_.CreateUniqueTempDir());
@@ -356,9 +371,14 @@ class StorageTest
   // the main test thread.
   class SequenceBoundUpload {
    public:
-    explicit SequenceBoundUpload(std::unique_ptr<const MockUpload> mock_upload,
-                                 ExpectRecordGroupCallback callback)
+    explicit SequenceBoundUpload(
+        std::unique_ptr<const MockUpload> mock_upload,
+        LastUploadedGenerationIdMap* const last_upload_generation_id,
+        LastRecordDigestMap* const last_record_digest_map,
+        ExpectRecordGroupCallback callback)
         : mock_upload_(std::move(mock_upload)),
+          last_upload_generation_id_(last_upload_generation_id),
+          last_record_digest_map_(last_record_digest_map),
           expect_record_group_callback_(std::move(callback)) {
       DETACH_FROM_SEQUENCE(scoped_checker_);
       upload_progress_.assign("\nStart\n");
@@ -366,6 +386,119 @@ class StorageTest
     SequenceBoundUpload(const SequenceBoundUpload& other) = delete;
     SequenceBoundUpload& operator=(const SequenceBoundUpload& other) = delete;
     ~SequenceBoundUpload() { DCHECK_CALLED_ON_VALID_SEQUENCE(scoped_checker_); }
+
+    void ProcessGap(uint64_t uploader_id_,
+                    SequenceInformation sequence_information,
+                    uint64_t count,
+                    base::OnceCallback<void(bool)> processed_cb) {
+      DCHECK_CALLED_ON_VALID_SEQUENCE(scoped_checker_);
+      // Verify generation match.
+      if (generation_id_.has_value() &&
+          generation_id_.value() != sequence_information.generation_id()) {
+        DoUploadRecordFailure(
+            uploader_id_, sequence_information.priority(),
+            sequence_information.sequencing_id(),
+            sequence_information.generation_id(),
+            Status(error::DATA_LOSS,
+                   base::StrCat({"Generation id mismatch, expected=",
+                                 base::NumberToString(generation_id_.value()),
+                                 " actual=",
+                                 base::NumberToString(
+                                     sequence_information.generation_id())})),
+            std::move(processed_cb));
+        return;
+      }
+      if (!generation_id_.has_value()) {
+        generation_id_ = sequence_information.generation_id();
+        last_upload_generation_id_->emplace(
+            sequence_information.priority(),
+            sequence_information.generation_id());
+      }
+
+      last_record_digest_map_->emplace(
+          std::make_tuple(sequence_information.priority(),
+                          sequence_information.sequencing_id(),
+                          sequence_information.generation_id()),
+          std::nullopt);
+
+      DoUploadGap(uploader_id_, sequence_information.priority(),
+                  sequence_information.sequencing_id(),
+                  sequence_information.generation_id(), count,
+                  std::move(processed_cb));
+    }
+
+    void VerifyRecord(int64_t uploader_id_,
+                      SequenceInformation sequence_information,
+                      WrappedRecord wrapped_record,
+                      base::OnceCallback<void(bool)> processed_cb) {
+      DCHECK_CALLED_ON_VALID_SEQUENCE(scoped_checker_);
+      // Verify generation match.
+      if (generation_id_.has_value() &&
+          generation_id_.value() != sequence_information.generation_id()) {
+        DoUploadRecordFailure(
+            uploader_id_, sequence_information.priority(),
+            sequence_information.sequencing_id(),
+            sequence_information.generation_id(),
+            Status(error::DATA_LOSS,
+                   base::StrCat({"Generation id mismatch, expected=",
+                                 base::NumberToString(generation_id_.value()),
+                                 " actual=",
+                                 base::NumberToString(
+                                     sequence_information.generation_id())})),
+            std::move(processed_cb));
+        return;
+      }
+      if (!generation_id_.has_value()) {
+        generation_id_ = sequence_information.generation_id();
+        last_upload_generation_id_->emplace(
+            sequence_information.priority(),
+            sequence_information.generation_id());
+      }
+
+      // Verify digest and its match.
+      {
+        std::string serialized_record;
+        wrapped_record.record().SerializeToString(&serialized_record);
+        const auto record_digest = crypto::SHA256HashString(serialized_record);
+        DCHECK_EQ(record_digest.size(), crypto::kSHA256Length);
+        if (record_digest != wrapped_record.record_digest()) {
+          DoUploadRecordFailure(
+              uploader_id_, sequence_information.priority(),
+              sequence_information.sequencing_id(),
+              sequence_information.generation_id(),
+              Status(error::DATA_LOSS, "Record digest mismatch"),
+              std::move(processed_cb));
+          return;
+        }
+        if (wrapped_record.has_last_record_digest()) {
+          auto it = last_record_digest_map_->find(
+              std::make_tuple(sequence_information.priority(),
+                              sequence_information.sequencing_id() - 1,
+                              sequence_information.generation_id()));
+          ASSERT_TRUE(it != last_record_digest_map_->end());
+          // Previous record has been seen, last record digest must match it.
+          if (it->second != wrapped_record.last_record_digest()) {
+            DoUploadRecordFailure(
+                uploader_id_, sequence_information.priority(),
+                sequence_information.sequencing_id(),
+                sequence_information.generation_id(),
+                Status(error::DATA_LOSS, "Last record digest mismatch"),
+                std::move(processed_cb));
+            return;
+          }
+        }
+        last_record_digest_map_->emplace(
+            std::make_tuple(sequence_information.priority(),
+                            sequence_information.sequencing_id(),
+                            sequence_information.generation_id()),
+            record_digest);
+      }
+
+      DoUploadRecord(uploader_id_, sequence_information.priority(),
+                     sequence_information.sequencing_id(),
+                     sequence_information.generation_id(),
+                     wrapped_record.record().data(), std::move(processed_cb));
+    }
 
     void DoEncounterSeqId(int64_t uploader_id,
                           Priority priority,
@@ -456,6 +589,9 @@ class StorageTest
 
    private:
     const std::unique_ptr<const MockUpload> mock_upload_;
+    std::optional<int64_t> generation_id_;
+    LastUploadedGenerationIdMap* const last_upload_generation_id_;
+    LastRecordDigestMap* const last_record_digest_map_;
     ExpectRecordGroupCallback expect_record_group_callback_;
     std::vector<TestRecord> records_;
     SEQUENCE_CHECKER(scoped_checker_);
@@ -469,16 +605,6 @@ class StorageTest
   // sequenced task runner (not the main test thread!).
   class TestUploader : public UploaderInterface {
    public:
-    // Mapping of <generation id, sequencing id> to matching record digest.
-    // Whenever a record is uploaded and includes last record digest, this map
-    // should have that digest already recorded. Only the first record in a
-    // generation is uploaded without last record digest.
-    using LastRecordDigestMap =
-        base::flat_map<std::tuple<Priority,
-                                  int64_t /*generation id*/,
-                                  int64_t /*sequencing id*/>,
-                       std::optional<std::string /*digest*/>>;
-
     // Helper class for setting up mock uploader expectations of a successful
     // completion.
     class SetUp {
@@ -623,16 +749,16 @@ class StorageTest
 
     explicit TestUploader(StorageTest* self)
         : uploader_id_(next_uploader_id.fetch_add(1)),
-          last_upload_generation_id_(&self->last_upload_generation_id_),
           // Allocate MockUpload as raw pointer and immediately wrap it in
           // unique_ptr and pass to SequenceBoundUpload to own.
           // MockUpload outlives TestUploader and is destructed together with
           // SequenceBoundUpload (on a sequenced task runner).
-          last_record_digest_map_(&self->last_record_digest_map_),
           mock_upload_(new ::testing::NiceMock<const MockUpload>()),
           sequence_bound_upload_(
               self->main_task_runner_,
               base::WrapUnique(mock_upload_),
+              &self->last_upload_generation_id_,
+              &self->last_record_digest_map_,
               base::BindRepeating(&RecordUploadStore::Store,
                                   base::Unretained(&self->upload_store_))),
 
@@ -689,41 +815,8 @@ class StorageTest
                     uint64_t count,
                     base::OnceCallback<void(bool)> processed_cb) override {
       DCHECK_CALLED_ON_VALID_SEQUENCE(test_uploader_checker_);
-      // Verify generation match.
-      if (generation_id_.has_value() &&
-          generation_id_.value() != sequence_information.generation_id()) {
-        sequence_bound_upload_
-            .AsyncCall(&SequenceBoundUpload::DoUploadRecordFailure)
-            .WithArgs(uploader_id_, sequence_information.priority(),
-                      sequence_information.sequencing_id(),
-                      sequence_information.generation_id(),
-                      Status(error::DATA_LOSS,
-                             base::StrCat(
-                                 {"Generation id mismatch, expected=",
-                                  base::NumberToString(generation_id_.value()),
-                                  " actual=",
-                                  base::NumberToString(
-                                      sequence_information.generation_id())})),
-                      std::move(processed_cb));
-        return;
-      }
-      if (!generation_id_.has_value()) {
-        generation_id_ = sequence_information.generation_id();
-        last_upload_generation_id_->emplace(
-            sequence_information.priority(),
-            sequence_information.generation_id());
-      }
-
-      last_record_digest_map_->emplace(
-          std::make_tuple(sequence_information.priority(),
-                          sequence_information.sequencing_id(),
-                          sequence_information.generation_id()),
-          std::nullopt);
-
-      sequence_bound_upload_.AsyncCall(&SequenceBoundUpload::DoUploadGap)
-          .WithArgs(uploader_id_, sequence_information.priority(),
-                    sequence_information.sequencing_id(),
-                    sequence_information.generation_id(), count,
+      sequence_bound_upload_.AsyncCall(&SequenceBoundUpload::ProcessGap)
+          .WithArgs(uploader_id_, std::move(sequence_information), count,
                     std::move(processed_cb));
     }
 
@@ -732,7 +825,6 @@ class StorageTest
       sequence_bound_upload_.AsyncCall(&SequenceBoundUpload::DoUploadComplete)
           .WithArgs(uploader_id_, status);
     }
-    std::vector<TestRecord> records_;
 
     // Helper method for setting up dummy mock uploader expectations.
     // To be used only for uploads that we want to just ignore and do not care
@@ -767,81 +859,9 @@ class StorageTest
                       WrappedRecord wrapped_record,
                       base::OnceCallback<void(bool)> processed_cb) {
       DCHECK_CALLED_ON_VALID_SEQUENCE(test_uploader_checker_);
-      // Verify generation match.
-      if (generation_id_.has_value() &&
-          generation_id_.value() != sequence_information.generation_id()) {
-        sequence_bound_upload_
-            .AsyncCall(&SequenceBoundUpload::DoUploadRecordFailure)
-            .WithArgs(uploader_id_, sequence_information.priority(),
-                      sequence_information.sequencing_id(),
-                      sequence_information.generation_id(),
-                      Status(error::DATA_LOSS,
-                             base::StrCat(
-                                 {"Generation id mismatch, expected=",
-                                  base::NumberToString(generation_id_.value()),
-                                  " actual=",
-                                  base::NumberToString(
-                                      sequence_information.generation_id())})),
-                      std::move(processed_cb));
-        return;
-      }
-      if (!generation_id_.has_value()) {
-        generation_id_ = sequence_information.generation_id();
-        last_upload_generation_id_->emplace(
-            sequence_information.priority(),
-            sequence_information.generation_id());
-      }
-
-      // Verify digest and its match.
-      {
-        std::string serialized_record;
-        wrapped_record.record().SerializeToString(&serialized_record);
-        const auto record_digest = crypto::SHA256HashString(serialized_record);
-        DCHECK_EQ(record_digest.size(), crypto::kSHA256Length);
-        if (record_digest != wrapped_record.record_digest()) {
-          sequence_bound_upload_
-              .AsyncCall(&SequenceBoundUpload::DoUploadRecordFailure)
-              .WithArgs(uploader_id_, sequence_information.priority(),
-                        sequence_information.sequencing_id(),
-                        sequence_information.generation_id(),
-                        Status(error::DATA_LOSS, "Record digest mismatch"),
-                        std::move(processed_cb));
-          return;
-        }
-        if (wrapped_record.has_last_record_digest()) {
-          auto it = last_record_digest_map_->find(
-              std::make_tuple(sequence_information.priority(),
-                              sequence_information.sequencing_id() - 1,
-                              sequence_information.generation_id()));
-          ASSERT_TRUE(it != last_record_digest_map_->end());
-          // Previous record has been seen, last record digest must match it.
-          if (it->second != wrapped_record.last_record_digest()) {
-            sequence_bound_upload_
-                .AsyncCall(&SequenceBoundUpload::DoUploadRecordFailure)
-                .WithArgs(
-                    uploader_id_, sequence_information.priority(),
-                    sequence_information.sequencing_id(),
-                    sequence_information.generation_id(),
-                    Status(error::DATA_LOSS, "Last record digest mismatch"),
+      sequence_bound_upload_.AsyncCall(&SequenceBoundUpload::VerifyRecord)
+          .WithArgs(uploader_id_, sequence_information, wrapped_record,
                     std::move(processed_cb));
-            return;
-          }
-        }
-        last_record_digest_map_->emplace(
-            std::make_tuple(sequence_information.priority(),
-                            sequence_information.sequencing_id(),
-                            sequence_information.generation_id()),
-            record_digest);
-      }
-
-      sequence_bound_upload_.AsyncCall(&SequenceBoundUpload::DoUploadRecord)
-          .WithArgs(uploader_id_, sequence_information.priority(),
-                    sequence_information.sequencing_id(),
-                    sequence_information.generation_id(),
-                    wrapped_record.record().data(), std::move(processed_cb));
-      records_.emplace_back(sequence_information.priority(),
-                            sequence_information.sequencing_id(),
-                            wrapped_record.record().data());
     }
 
     SEQUENCE_CHECKER(test_uploader_checker_);
@@ -851,11 +871,6 @@ class StorageTest
     // it will get a new id and thus will ensure the expectations
     // match the expected uploader.
     const int64_t uploader_id_;
-
-    std::optional<int64_t> generation_id_;
-    base::flat_map<Priority, int64_t>* const last_upload_generation_id_;
-    LastRecordDigestMap* const last_record_digest_map_;
-
     const MockUpload* const mock_upload_;
     const base::SequenceBound<SequenceBoundUpload> sequence_bound_upload_;
 
@@ -1130,11 +1145,13 @@ class StorageTest
   uint8_t signature_verification_public_key_[kKeySize];
   uint8_t signing_private_key_[kSignKeySize];
 
+  SEQUENCE_CHECKER(sequence_checker_);
   base::ScopedTempDir location_;
   TestStorageOptions options_;
   scoped_refptr<test::Decryptor> decryptor_;
   scoped_refptr<Storage> storage_;
-  base::flat_map<Priority, int64_t> last_upload_generation_id_;
+  LastUploadedGenerationIdMap last_upload_generation_id_
+      GUARDED_BY_CONTEXT(sequence_checker_);
   SignedEncryptionInfo signed_encryption_key_;
   bool expect_to_need_key_{false};
   std::atomic<bool> key_delivery_failure_{false};
@@ -1142,7 +1159,8 @@ class StorageTest
 
   // Test-wide global mapping of <generation id, sequencing id> to record
   // digest. Serves all TestUploaders created by test fixture.
-  TestUploader::LastRecordDigestMap last_record_digest_map_;
+  LastRecordDigestMap last_record_digest_map_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   size_t upload_count_ = 0uL;
 
