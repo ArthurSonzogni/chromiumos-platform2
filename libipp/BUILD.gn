@@ -75,6 +75,7 @@ if (use.test) {
       "attribute_test.cc",
       "binary_content.cc",
       "binary_content.h",
+      "builder_test.cc",
       "colls_view_test.cc",
       "errors_test.cc",
       "frame_test.cc",
