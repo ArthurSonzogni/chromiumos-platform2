@@ -139,7 +139,7 @@ class ProcessCache : public ProcessCacheInterface {
   // LRUCache::Get, best-effort tries to fetch missing keys from procfs. Then
   // inclusively Puts them in process_cache_ if successful and returns an
   // iterator.
-  InternalProcessCacheType::const_iterator InclusiveGetProcess(
+  InternalProcessCacheType::iterator InclusiveGetProcess(
       const InternalProcessKeyType& key);
   absl::StatusOr<InternalProcessValueType> MakeFromProcfs(
       const InternalProcessKeyType& key);
@@ -156,6 +156,7 @@ class ProcessCache : public ProcessCacheInterface {
   const base::FilePath root_path_;
   InternalFilterRuleSetType filter_rules_parent_;
   InternalFilterRuleSetType filter_rules_process_;
+  int64_t earliest_seen_exec_rel_s_;
 };
 
 }  // namespace secagentd

@@ -517,6 +517,18 @@ TEST_F(ProcessCacheTestFixture, ProcfsCacheHit) {
   auto before = process_cache_->GetProcessHierarchy(
       process_start.task_info.pid, process_start.task_info.start_time, 3);
   EXPECT_EQ(3, before.size());
+  // Verify and unset this metadata separately since it's expected to change
+  // between calls.
+  for (auto& proc : before) {
+    // Verify that start_times set in the mock procfs spawns are earlier than
+    // the first BPF exec here. This bypasses the heuristic which is covered in
+    // a separate test case.
+    ASSERT_LE(proc->rel_start_time_s(), process_start.task_info.start_time);
+    EXPECT_TRUE(proc->has_meta_first_appearance());
+    EXPECT_TRUE(proc->meta_first_appearance());
+    proc->clear_meta_first_appearance();
+  }
+
   ASSERT_TRUE(fake_root_.Delete());
   bpf::cros_process_start process_start_sibling = process_start;
   process_start_sibling.task_info.pid = process_start.task_info.pid + 1;
@@ -527,12 +539,50 @@ TEST_F(ProcessCacheTestFixture, ProcfsCacheHit) {
       process_start_sibling.task_info.pid,
       process_start_sibling.task_info.start_time, 3);
   EXPECT_EQ(3, after.size());
-
-  EXPECT_THAT(*before[1], EqualsProto(*after[1]));
-  EXPECT_THAT(*before[2], EqualsProto(*after[2]));
+  // We've only seen after[1] and after[2] earlier as before[1] and before[2]
+  // respectively.
+  for (int i = 0; i < 3; ++i) {
+    EXPECT_TRUE(after[i]->has_meta_first_appearance());
+    if (i == 0) {
+      EXPECT_TRUE(after[i]->meta_first_appearance());
+    } else {
+      // Verify and clear this volatile metadata as done earlier with before.
+      EXPECT_FALSE(after[i]->meta_first_appearance());
+      after[i]->clear_meta_first_appearance();
+      EXPECT_THAT(*before[i], EqualsProto(*after[i]));
+    }
+  }
 
   ExpectPartialMatch(mock_procfs_[kPidChildOfInit].expected_proto, *before[1]);
   ExpectPartialMatch(mock_procfs_[kPidInit].expected_proto, *before[2]);
+}
+
+TEST_F(ProcessCacheTestFixture, ProcfsScrapeButSeenBefore) {
+  // Heuristic uses earliest_seen_exec_rel_s_. Set that to a very low value
+  // first.
+  const bpf::cros_process_start earliest_seen_exec = {
+      .task_info = {
+          .pid = 9999,
+          .ppid = kPidInit,
+          .start_time =
+              mock_spawns_[kPidInit].process_start.task_info.start_time + 1,
+          .parent_start_time =
+              mock_spawns_[kPidInit].process_start.task_info.start_time}};
+  process_cache_->PutFromBpfExec(earliest_seen_exec);
+
+  // Spawn a second BPF process with parent that's younger than
+  // earliest_seen_exec.
+  const bpf::cros_process_start& exec_with_young_ancestors =
+      mock_spawns_[kPidChildOfChild].process_start;
+  process_cache_->PutFromBpfExec(exec_with_young_ancestors);
+  auto actual = process_cache_->GetProcessHierarchy(
+      exec_with_young_ancestors.task_info.pid,
+      exec_with_young_ancestors.task_info.start_time, 2);
+  EXPECT_EQ(2, actual.size());
+  ASSERT_GT(actual[1]->rel_start_time_s(),
+            earliest_seen_exec.task_info.start_time);
+  EXPECT_TRUE(actual[1]->has_meta_first_appearance());
+  EXPECT_FALSE(actual[1]->meta_first_appearance());
 }
 
 TEST_F(ProcessCacheTestFixture, ThermalLoggerChildrenExecEventsAreFiltered) {
@@ -638,17 +688,36 @@ TEST_F(ProcessCacheTestFixture, BpfCacheHit) {
           .parent_start_time = mock_spawns_[kPidChildOfChild]
                                    .process_start.task_info.start_time}};
   process_cache_->PutFromBpfExec(mock_spawns_[kPidChildOfChild].process_start);
+  auto before = process_cache_->GetProcessHierarchy(
+      kPidChildOfChild,
+      mock_spawns_[kPidChildOfChild].process_start.task_info.start_time, 2);
+  EXPECT_EQ(2, before.size());
+  for (auto& proc : before) {
+    EXPECT_TRUE(proc->has_meta_first_appearance());
+    EXPECT_TRUE(proc->meta_first_appearance());
+  }
+
   process_cache_->PutFromBpfExec(bpf_child);
-  auto actual = process_cache_->GetProcessHierarchy(
+  auto after = process_cache_->GetProcessHierarchy(
       bpf_child.task_info.pid, bpf_child.task_info.start_time, 4);
-  EXPECT_EQ(4, actual.size());
+  EXPECT_EQ(4, after.size());
+  // We've seen after[1] and after[2] earlier as before[0] and before[1]
+  // respectively.
+  for (int i = 0; i < 4; ++i) {
+    EXPECT_TRUE(after[i]->has_meta_first_appearance());
+    bool expected_first_appearance = (i == 0 || i == 3);
+    EXPECT_EQ(expected_first_appearance, after[i]->meta_first_appearance());
+    // Clearing this volatile metadata as it's not present in the
+    // expected_proto.
+    after[i]->clear_meta_first_appearance();
+  }
   // Cheat and copy the UUID because we don't have a real Partial matcher.
   mock_spawns_[kPidChildOfChild].expected_proto.set_process_uuid(
-      actual[1]->process_uuid());
+      after[1]->process_uuid());
   EXPECT_THAT(mock_spawns_[kPidChildOfChild].expected_proto,
-              EqualsProto(*actual[1]));
-  ExpectPartialMatch(mock_procfs_[kPidChildOfInit].expected_proto, *actual[2]);
-  ExpectPartialMatch(mock_procfs_[kPidInit].expected_proto, *actual[3]);
+              EqualsProto(*after[1]));
+  ExpectPartialMatch(mock_procfs_[kPidChildOfInit].expected_proto, *after[2]);
+  ExpectPartialMatch(mock_procfs_[kPidInit].expected_proto, *after[3]);
 }
 
 TEST_F(ProcessCacheTestFixture, TruncateAtInit) {

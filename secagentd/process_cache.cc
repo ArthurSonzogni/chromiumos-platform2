@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cinttypes>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -283,7 +284,8 @@ ProcessCache::ProcessCache(const base::FilePath& root_path)
           std::make_unique<InternalProcessCacheType>(kProcessCacheMaxSize)),
       image_cache_(
           std::make_unique<InternalImageCacheType>(kImageCacheMaxSize)),
-      root_path_(root_path) {}
+      root_path_(root_path),
+      earliest_seen_exec_rel_s_(INT64_MAX) {}
 
 ProcessCache::ProcessCache() : ProcessCache(base::FilePath("/")) {}
 
@@ -308,6 +310,14 @@ void ProcessCache::PutFromBpfExec(
       process_proto->mutable_image()->set_sha256(it->second.sha256);
     }
   }
+  // Execs from eBPF are always new processes.
+  process_proto->set_meta_first_appearance(true);
+  if (earliest_seen_exec_rel_s_ > process_proto->rel_start_time_s()) {
+    earliest_seen_exec_rel_s_ = process_proto->rel_start_time_s();
+    LOG(INFO) << "Set first seen process exec time to "
+              << earliest_seen_exec_rel_s_;
+  }
+
   base::AutoLock lock(process_cache_lock_);
   process_cache_->Put(
       key, InternalProcessValueType({std::move(process_proto), parent_key}));
@@ -322,7 +332,7 @@ void ProcessCache::EraseProcess(uint64_t pid, bpf::time_ns_t start_time_ns) {
   }
 }
 
-ProcessCache::InternalProcessCacheType::const_iterator
+ProcessCache::InternalProcessCacheType::iterator
 ProcessCache::InclusiveGetProcess(const InternalProcessKeyType& key) {
   process_cache_lock_.AssertAcquired();
   // PID 0 doesn't exist and is also used to signify the end of the process
@@ -391,6 +401,9 @@ std::vector<std::unique_ptr<pb::Process>> ProcessCache::GetProcessHierarchy(
       auto process_proto = std::make_unique<pb::Process>();
       process_proto->CopyFrom(*it->second.process_proto);
       processes.push_back(std::move(process_proto));
+      if (it->second.process_proto->meta_first_appearance()) {
+        it->second.process_proto->set_meta_first_appearance(false);
+      }
       lookup_key = it->second.parent_key;
     } else {
       // Process no longer exists or we've reached init. Break and best-effort
@@ -506,6 +519,12 @@ ProcessCache::MakeFromProcfs(const ProcessCache::InternalProcessKeyType& key) {
       parent_key.pid = 0;
     }
   }
+
+  // Heuristically determine if the scraped process would have been seen before.
+  // False positives are expected and acceptable.
+  process_proto->set_meta_first_appearance(process_proto->rel_start_time_s() <=
+                                           earliest_seen_exec_rel_s_);
+
   return InternalProcessValueType{std::move(process_proto), parent_key};
 }
 
