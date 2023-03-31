@@ -69,6 +69,7 @@
 #include <brillo/blkdev_utils/get_backing_block_device.h>
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/blkdev_utils/storage_utils.h>
 #include <brillo/file_utils.h>
 #include <brillo/files/file_util.h>
 #include <brillo/files/safe_fd.h>
@@ -922,15 +923,7 @@ base::FilePath Platform::GetStatefulDevice() {
     return base::FilePath();
   }
 
-  // For some storage devices (eg. eMMC), the path ends in a digit
-  // (eg. /dev/mmcblk0). Use 'p' as the partition separator while generating
-  // the partition's block device path. For other types of paths (/dev/sda), we
-  // directly append the partition number.
-  std::string root_dev(root_device);
-  if (base::IsAsciiDigit(root_dev[root_dev.size() - 1]))
-    root_dev += 'p';
-  root_dev += '1';
-  return base::FilePath(root_dev);
+  return brillo::AppendPartition(base::FilePath(root_device), 1);
 }
 
 bool Platform::DeleteFile(const FilePath& path) {
