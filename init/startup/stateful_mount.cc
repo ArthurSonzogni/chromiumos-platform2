@@ -26,6 +26,7 @@
 #include <base/strings/string_util.h>
 #include <base/values.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/blkdev_utils/storage_utils.h>
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <brillo/key_value_store.h>
@@ -69,15 +70,6 @@ bool RemovableRootdev(const base::FilePath& path, int* ret) {
   removable = removable.Append(path.BaseName());
   removable = removable.Append("removable");
   return utils::ReadFileToInt(removable, ret);
-}
-
-// TODO(asavery): A similar function is defined in other places in
-// the code base, define it in a common lib, b/209478518
-std::string AppendPartition(std::string device, std::string partition) {
-  if (base::IsAsciiDigit(device[device.size() - 1])) {
-    device += 'p';
-  }
-  return device + partition;
 }
 
 uint64_t GetDirtyExpireCentisecs(const base::FilePath& root) {
@@ -144,6 +136,18 @@ void AppendOption(const std::string& fs_features,
   if (!IsFeatureEnabled(fs_features, option_name)) {
     sb_options->push_back(option_name);
   }
+}
+
+// Get the partition number for the given key,
+// e.g. "PARTITION_NUM_STATE". Fails with a `CHECK()` if any error occurs.
+int GetPartitionNumFromImageVars(const base::Value& image_vars,
+                                 base::StringPiece key) {
+  const base::Value::Dict& dict = image_vars.GetDict();
+  const std::string* value = dict.FindString(key);
+  CHECK_NE(value, nullptr);
+  int num = 0;
+  CHECK(base::StringToInt(*value, &num));
+  return num;
 }
 
 }  // namespace
@@ -346,12 +350,11 @@ void StatefulMount::MountStateful() {
   if (rootdev_ret && root_dev_type_ != base::FilePath("/dev/ram")) {
     // Find our stateful partition mount point.
     stateful_mount_flags = kCommonMountFlags | MS_NOATIME;
-    std::string* part_num_state =
-        image_vars.FindStringKey("PARTITION_NUM_STATE");
+    const int part_num_state =
+        GetPartitionNumFromImageVars(image_vars, "PARTITION_NUM_STATE");
     const std::string* fs_form_state =
         image_vars.FindStringKey("FS_FORMAT_STATE");
-    state_dev_ = base::FilePath(
-        AppendPartition(root_dev_type_.value(), *part_num_state));
+    state_dev_ = brillo::AppendPartition(root_dev_type_, part_num_state);
     if (fs_form_state->compare("ext4") == 0) {
       int dirty_expire_centisecs = GetDirtyExpireCentisecs(root_);
       int commit_interval = dirty_expire_centisecs / 100;
@@ -430,13 +433,13 @@ void StatefulMount::MountStateful() {
     // mount_or_fail isn't used since this partition only has a filesystem
     // on some boards.
     int32_t oem_flags = MS_RDONLY | kCommonMountFlags;
-    std::string* part_num_oem = image_vars.FindStringKey("PARTITION_NUM_OEM");
+    const int part_num_oem =
+        GetPartitionNumFromImageVars(image_vars, "PARTITION_NUM_OEM");
     const std::string* fs_form_oem = image_vars.FindStringKey("FS_FORMAT_OEM");
-    std::string oem_dev =
-        AppendPartition(root_dev_type_.value(), *part_num_oem);
-    status = platform_->Mount(base::FilePath(oem_dev),
-                              base::FilePath("/usr/share/oem"), *fs_form_oem,
-                              oem_flags, "");
+    const base::FilePath oem_dev =
+        brillo::AppendPartition(root_dev_type_, part_num_oem);
+    status = platform_->Mount(oem_dev, base::FilePath("/usr/share/oem"),
+                              *fs_form_oem, oem_flags, "");
     if (!status) {
       PLOG(WARNING) << "mount of /usr/share/oem failed with code " << status;
     }
