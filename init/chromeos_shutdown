@@ -81,7 +81,7 @@ collect_shutdown_umount_failure_logs() {
     cat "/proc/self/mountinfo"
     # Log information about the dm-crypt device.
     echo "Device-mapper target state:"
-    dmsetup info
+    dmsetup info -c -o name,open,attr
     # Log information about loop devices.
     # Helpful in debugging "bad" loopback devices that shouldn't exist. (e.g.
     # legacy DLC image associated loopback devices)
