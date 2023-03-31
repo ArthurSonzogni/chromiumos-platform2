@@ -203,19 +203,17 @@ TEST_F(PlatformTest, GetExtFileAttributes) {
   const std::string content("blablabla");
   ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
 
-  // We need an extra sync() to ensure that the ioctl() will not fail.
-  // For some weird reasons, without the sync(), the FS_IOC_SETFLAGS could
-  // return -1 and EOPNOTSUPP.
-  platform_.Sync();
-
   int fd;
   ASSERT_GT(fd = HANDLE_EINTR(open(filename.value().c_str(), O_RDONLY)), 0);
-  int flags = FS_UNRM_FL | FS_NODUMP_FL;
+
+  int flags;
+  ASSERT_GE(ioctl(fd, FS_IOC_GETFLAGS, &flags), 0);
+  flags |= FS_UNRM_FL | FS_NODUMP_FL;
   ASSERT_GE(ioctl(fd, FS_IOC_SETFLAGS, &flags), 0);
 
   int got;
   EXPECT_TRUE(platform_.GetExtFileAttributes(filename, &got));
-  EXPECT_EQ(flags, got & flags);
+  EXPECT_EQ(flags, got);
   close(fd);
   platform_.DeleteFile(filename);
 }
@@ -224,9 +222,6 @@ TEST_F(PlatformTest, SetExtFileAttributes) {
   const FilePath filename(GetTempName());
   const std::string content("blablabla");
   ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
-
-  // See comment on sync above in Platform.GetExtFileAttributes.
-  platform_.Sync();
 
   int flags = FS_UNRM_FL | FS_NODUMP_FL;
   EXPECT_TRUE(platform_.SetExtFileAttributes(filename, flags));
@@ -250,11 +245,8 @@ TEST_F(PlatformTest, HasNoDumpFileAttribute) {
 
   int fd;
   ASSERT_GT(fd = open(filename.value().c_str(), O_RDONLY), 0);
-  int flags;
-  ASSERT_GE(ioctl(fd, FS_IOC_GETFLAGS, &flags), 0);
-  flags |= FS_UNRM_FL | FS_NODUMP_FL;
-  ASSERT_GE(ioctl(fd, FS_IOC_SETFLAGS, &flags), 0);
-
+  EXPECT_TRUE(
+      platform_.SetExtFileAttributes(filename, FS_UNRM_FL | FS_NODUMP_FL));
   EXPECT_TRUE(platform_.HasNoDumpFileAttribute(filename));
   close(fd);
   platform_.DeleteFile(filename);
