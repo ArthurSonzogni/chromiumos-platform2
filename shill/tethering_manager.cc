@@ -84,6 +84,7 @@ TetheringManager::TetheringManager(Manager* manager)
       allowed_(false),
       state_(TetheringState::kTetheringIdle),
       upstream_network_(nullptr),
+      downstream_network_started_(false),
       hotspot_dev_(nullptr),
       hotspot_service_up_(false),
       stop_reason_(StopReason::kInitial) {
@@ -397,7 +398,7 @@ void TetheringManager::PostSetEnabledResult(SetEnabledResult result) {
   }
 }
 
-void TetheringManager::CheckAndPostTetheringStartResult() {
+void TetheringManager::CheckAndStartDownstreamTetheredNetwork() {
   if (!hotspot_dev_ || !hotspot_dev_->IsServiceUp()) {
     // Downstream hotspot device or service is not ready.
     if (hotspot_service_up_) {
@@ -411,8 +412,45 @@ void TetheringManager::CheckAndPostTetheringStartResult() {
     return;
   }
 
-  if (upstream_technology_ == Technology::kCellular &&
-      (!upstream_network_ || !upstream_network_->HasInternetConnectivity())) {
+  if (!upstream_network_) {
+    return;
+  }
+
+  const auto& downstream_ifname = hotspot_dev_->link_name();
+  const auto& upstream_ifname = upstream_network_->interface_name();
+
+  if (downstream_network_started_) {
+    LOG(ERROR) << "Request to start downstream network " << downstream_ifname
+               << " tethered to " << upstream_ifname << " was already sent";
+    PostSetEnabledResult(SetEnabledResult::kFailure);
+    StopTetheringSession(StopReason::kError);
+    return;
+  }
+
+  downstream_network_started_ =
+      manager_->patchpanel_client()->CreateTetheredNetwork(
+          downstream_ifname, upstream_ifname,
+          base::BindOnce(&TetheringManager::OnDownstreamNetworkReady,
+                         base::Unretained(this)));
+  if (!downstream_network_started_) {
+    LOG(ERROR) << "Failed requesting "
+               << "downstream network " << downstream_ifname << " tethered to "
+               << upstream_ifname;
+    PostSetEnabledResult(SetEnabledResult::kFailure);
+    StopTetheringSession(StopReason::kError);
+    return;
+  }
+
+  LOG(INFO) << "Requested downstream network " << downstream_ifname
+            << " tethered to " << upstream_ifname;
+}
+
+void TetheringManager::CheckAndPostTetheringStartResult() {
+  if (!downstream_network_fd_.is_valid()) {
+    return;
+  }
+
+  if (!upstream_network_->HasInternetConnectivity()) {
     return;
   }
 
@@ -489,7 +527,8 @@ void TetheringManager::StartTetheringSession() {
     return;
   }
 
-  if (hotspot_dev_) {
+  if (hotspot_dev_ || downstream_network_started_ ||
+      downstream_network_fd_.is_valid()) {
     LOG(ERROR) << "Tethering resources are not null when starting tethering "
                   "session.";
     PostSetEnabledResult(SetEnabledResult::kFailure);
@@ -534,8 +573,6 @@ void TetheringManager::StartTetheringSession() {
         base::BindOnce(&TetheringManager::OnUpstreamNetworkAcquired,
                        base::Unretained(this)));
   }
-
-  // TODO(b/235762439): Routine to enable other tethering modules.
 }
 
 void TetheringManager::StopTetheringSession(StopReason reason) {
@@ -558,6 +595,12 @@ void TetheringManager::StopTetheringSession(StopReason reason) {
   start_timer_callback_.Cancel();
   StopInactiveTimer();
 
+  // Tear down the downstream network if any.
+  // TODO(b/275645124) Add a callback to ensure that the downstream network tear
+  // down has finished.
+  downstream_network_fd_.reset();
+  downstream_network_started_ = false;
+
   // Remove the downstream device if any.
   if (hotspot_dev_) {
     hotspot_dev_->DeconfigureService();
@@ -573,7 +616,6 @@ void TetheringManager::StopTetheringSession(StopReason reason) {
                        base::Unretained(this)));
   }
 
-  // TODO(b/235762439): Routine to disable other tethering modules.
   CheckAndPostTetheringStopResult();
 }
 
@@ -635,7 +677,7 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
     return;
   }
 
-  LOG(INFO) << "TetheringManager receive downstream device "
+  LOG(INFO) << "TetheringManager received downstream device "
             << device->link_name() << " event: " << event;
 
   if (event == LocalDevice::DeviceEvent::kInterfaceDisabled ||
@@ -646,12 +688,51 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
     StopTetheringSession(StopReason::kError);
   } else if (event == LocalDevice::DeviceEvent::kServiceUp) {
     hotspot_service_up_ = true;
-    CheckAndPostTetheringStartResult();
+    CheckAndStartDownstreamTetheredNetwork();
   } else if (event == LocalDevice::DeviceEvent::kPeerConnected) {
     OnPeerAssoc();
   } else if (event == LocalDevice::DeviceEvent::kPeerDisconnected) {
     OnPeerDisassoc();
   }
+}
+
+void TetheringManager::OnDownstreamNetworkReady(
+    base::ScopedFD downstream_network_fd) {
+  if (state_ != TetheringState::kTetheringStarting) {
+    LOG(WARNING) << __func__ << ": unexpected tethering state " << state_;
+    PostSetEnabledResult(SetEnabledResult::kFailure);
+    StopTetheringSession(StopReason::kError);
+    return;
+  }
+
+  if (!upstream_network_) {
+    LOG(WARNING) << __func__ << ": no upstream network defined";
+    PostSetEnabledResult(SetEnabledResult::kFailure);
+    StopTetheringSession(StopReason::kError);
+    return;
+  }
+
+  if (!hotspot_dev_) {
+    LOG(WARNING) << __func__ << ": no downstream device defined";
+    PostSetEnabledResult(SetEnabledResult::kFailure);
+    StopTetheringSession(StopReason::kError);
+    return;
+  }
+
+  const auto& downstream_ifname = hotspot_dev_->link_name();
+  const auto& upstream_ifname = upstream_network_->interface_name();
+  if (!downstream_network_fd.is_valid()) {
+    LOG(ERROR) << "Failed creating downstream network " << downstream_ifname
+               << " tethered to " << upstream_ifname;
+    PostSetEnabledResult(SetEnabledResult::kFailure);
+    StopTetheringSession(StopReason::kError);
+    return;
+  }
+
+  LOG(INFO) << "Established downstream network " << downstream_ifname
+            << " tethered to " << upstream_ifname;
+  downstream_network_fd_ = std::move(downstream_network_fd);
+  CheckAndPostTetheringStartResult();
 }
 
 void TetheringManager::OnUpstreamNetworkAcquired(SetEnabledResult result,
@@ -662,11 +743,14 @@ void TetheringManager::OnUpstreamNetworkAcquired(SetEnabledResult result,
     return;
   }
 
+  // TODO(b/273975270): Restart portal detection if the upstream network does
+  // not have Internet access and if portal detection is no currently running.
+
   DCHECK(network);
   DCHECK(!upstream_network_);
   upstream_network_ = network;
   upstream_network_->RegisterEventHandler(this);
-  CheckAndPostTetheringStartResult();
+  CheckAndStartDownstreamTetheredNetwork();
 }
 
 void TetheringManager::OnUpstreamNetworkReleased(bool is_success) {
@@ -958,7 +1042,7 @@ void TetheringManager::OnNetworkValidationResult(
   if (state_ == TetheringState::kTetheringStarting) {
     if (!upstream_network_->HasInternetConnectivity()) {
       // Upstream network validation failed, post result.
-      // TODO (b/273975270): Retry StartPortalDetection on failure.
+      // TODO(b/273975270): Retry StartPortalDetection on failure.
       PostSetEnabledResult(SetEnabledResult::kUpstreamNetworkNotAvailable);
       StopTetheringSession(StopReason::kUpstreamDisconnect);
     } else {

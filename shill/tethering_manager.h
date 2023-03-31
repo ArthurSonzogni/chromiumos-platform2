@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/cancelable_callback.h>
+#include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/patchpanel/dbus/client.h>
 
@@ -195,6 +196,8 @@ class TetheringManager : public Network::EventHandler {
   // Downstream device event handler.
   void OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
                                const LocalDevice* device);
+  // patchpanel DownstreamNetwork callback handler.
+  void OnDownstreamNetworkReady(base::ScopedFD downstream_network_fd);
   // Upstream network fetch callback handler.
   void OnUpstreamNetworkAcquired(SetEnabledResult result, Network* network);
   // Upstream network release callback handler.
@@ -202,6 +205,9 @@ class TetheringManager : public Network::EventHandler {
   // Trigger callback function asynchronously to post SetTetheringEnabled dbus
   // result.
   void PostSetEnabledResult(SetEnabledResult result);
+  // Check if the downstream and upstream network interfaces are ready and if
+  // the downstream network can be tethered to the upstream network.
+  void CheckAndStartDownstreamTetheredNetwork();
   // Check if all the tethering resources are ready. If so post the
   // SetTetheringEnabled(true) dbus result.
   void CheckAndPostTetheringStartResult();
@@ -269,6 +275,14 @@ class TetheringManager : public Network::EventHandler {
   // Pointer to upstream network. This pointer is valid when state_ is not
   // kTetheringIdle.
   Network* upstream_network_;
+  // File descriptor representing the downstream network setup managed by
+  // patchpanel. Closing this file descriptor tears down the downstream network.
+  // TODO(b/275645124) Handle DownstreamNetwork errors raised by patchpanel
+  // during a tethering session and stop the tethering session.
+  base::ScopedFD downstream_network_fd_;
+  // True if the request to start a downstream network has been sent to
+  // patchpanel for the current tethering session.
+  bool downstream_network_started_;
   // Member to hold the result callback function. This callback function gets
   // set when dbus method SetTetheringEnabled is called and runs when the async
   // method call is done.
