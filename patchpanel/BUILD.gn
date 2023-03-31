@@ -104,6 +104,7 @@ libpatchpanel_sources = [
   "multicast_proxy.cc",
   "ndproxy.cc",
   "network_monitor_service.cc",
+  "patchpanel_daemon.cc",
   "proto_utils.cc",
   "routing_service.cc",
   "scoped_ns.cc",

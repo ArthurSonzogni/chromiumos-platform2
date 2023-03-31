@@ -24,10 +24,10 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/mac_address_generator.h"
-#include "patchpanel/manager.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
+#include "patchpanel/patchpanel_daemon.h"
 #include "patchpanel/scoped_ns.h"
 
 namespace patchpanel {

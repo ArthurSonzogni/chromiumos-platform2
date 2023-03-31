@@ -15,9 +15,9 @@
 #include <brillo/syslog_logging.h>
 
 #include "patchpanel/adb_proxy.h"
-#include "patchpanel/manager.h"
 #include "patchpanel/multicast_proxy.h"
 #include "patchpanel/ndproxy.h"
+#include "patchpanel/patchpanel_daemon.h"
 #include "patchpanel/subprocess_controller.h"
 
 int main(int argc, char* argv[]) {
@@ -60,8 +60,8 @@ int main(int argc, char* argv[]) {
     return mcast_proxy.Run();
   }
 
-  LOG(INFO) << "Starting patchpanel manager";
+  LOG(INFO) << "Starting patchpanel D-Bus daemon";
   const auto cmd_path = base::FilePath(argv[0]);
-  patchpanel::Manager manager(cmd_path);
-  return manager.Run();
+  patchpanel::PatchpanelDaemon daemon(cmd_path);
+  return daemon.Run();
 }

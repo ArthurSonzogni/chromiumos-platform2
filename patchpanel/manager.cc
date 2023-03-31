@@ -4,225 +4,44 @@
 
 #include "patchpanel/manager.h"
 
-#include <arpa/inet.h>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <stdint.h>
-#include <sys/prctl.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-
 #include <algorithm>
 #include <utility>
 
 #include <base/check.h>
-#include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_split.h>
-#include <base/strings/string_util.h>
-#include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
-#include <brillo/key_value_store.h>
-#include <brillo/minijail/minijail.h>
-#include <metrics/metrics_library.h>
-#include <shill/net/process_manager.h>
 
 #include "patchpanel/address_manager.h"
-#include "patchpanel/guest_ipv6_service.h"
-#include "patchpanel/ipc.h"
-#include "patchpanel/mac_address_generator.h"
-#include "patchpanel/metrics.h"
-#include "patchpanel/net_util.h"
 #include "patchpanel/proto_utils.h"
-#include "patchpanel/routing_service.h"
 #include "patchpanel/scoped_ns.h"
-#include "patchpanel/system.h"
 
 namespace patchpanel {
 namespace {
 // Delay to restart IPv6 in a namespace to trigger SLAAC in the kernel.
 constexpr int kIPv6RestartDelayMs = 300;
-
-// Passes |method_call| to |handler| and passes the response to
-// |response_sender|. If |handler| returns nullptr, an empty response is
-// created and sent.
-void HandleSynchronousDBusMethodCall(
-    base::RepeatingCallback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>
-        handler,
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  std::unique_ptr<dbus::Response> response = handler.Run(method_call);
-  if (!response)
-    response = dbus::Response::FromMethodCall(method_call);
-  std::move(response_sender).Run(std::move(response));
-}
-
-void RecordDbusEvent(std::unique_ptr<MetricsLibraryInterface>& metrics,
-                     DbusUmaEvent event) {
-  metrics->SendEnumToUMA(kDbusUmaEventMetrics, event);
-}
-
 }  // namespace
 
-Manager::Manager(const base::FilePath& cmd_path)
-    : system_(std::make_unique<System>()),
-      process_manager_(shill::ProcessManager::GetInstance()),
-      datapath_(std::make_unique<Datapath>(system_.get())) {
+Manager::Manager(const base::FilePath& cmd_path,
+                 System* system,
+                 shill::ProcessManager* process_manager,
+                 MetricsLibraryInterface* metrics,
+                 ClientNotifier* client_notifier,
+                 std::unique_ptr<ShillClient> shill_client)
+    : client_notifier_(client_notifier),
+      shill_client_(std::move(shill_client)) {
+  datapath_ = std::make_unique<Datapath>(system);
   adb_proxy_ = std::make_unique<patchpanel::SubprocessController>(
-      system_.get(), process_manager_, cmd_path, "--adb_proxy_fd");
+      system, process_manager, cmd_path, "--adb_proxy_fd");
   mcast_proxy_ = std::make_unique<patchpanel::SubprocessController>(
-      system_.get(), process_manager_, cmd_path, "--mcast_proxy_fd");
+      system, process_manager, cmd_path, "--mcast_proxy_fd");
   nd_proxy_ = std::make_unique<patchpanel::SubprocessController>(
-      system_.get(), process_manager_, cmd_path, "--nd_proxy_fd");
-}
+      system, process_manager, cmd_path, "--nd_proxy_fd");
 
-std::map<const std::string, bool> Manager::cached_feature_enabled_ = {};
-
-bool Manager::ShouldEnableFeature(
-    int min_android_sdk_version,
-    int min_chrome_milestone,
-    const std::vector<std::string>& supported_boards,
-    const std::string& feature_name) {
-  static const char kLsbReleasePath[] = "/etc/lsb-release";
-
-  const auto& cached_result = cached_feature_enabled_.find(feature_name);
-  if (cached_result != cached_feature_enabled_.end())
-    return cached_result->second;
-
-  auto check = [min_android_sdk_version, min_chrome_milestone,
-                &supported_boards, &feature_name]() {
-    brillo::KeyValueStore store;
-    if (!store.Load(base::FilePath(kLsbReleasePath))) {
-      LOG(ERROR) << "Could not read lsb-release";
-      return false;
-    }
-
-    std::string value;
-    if (!store.GetString("CHROMEOS_ARC_ANDROID_SDK_VERSION", &value)) {
-      LOG(ERROR) << feature_name
-                 << " disabled - cannot determine Android SDK version";
-      return false;
-    }
-    int ver = 0;
-    if (!base::StringToInt(value.c_str(), &ver)) {
-      LOG(ERROR) << feature_name << " disabled - invalid Android SDK version";
-      return false;
-    }
-    if (ver < min_android_sdk_version) {
-      LOG(INFO) << feature_name << " disabled for Android SDK " << value;
-      return false;
-    }
-
-    if (!store.GetString("CHROMEOS_RELEASE_CHROME_MILESTONE", &value)) {
-      LOG(ERROR) << feature_name
-                 << " disabled - cannot determine ChromeOS milestone";
-      return false;
-    }
-    if (!base::StringToInt(value.c_str(), &ver)) {
-      LOG(ERROR) << feature_name << " disabled - invalid ChromeOS milestone";
-      return false;
-    }
-    if (ver < min_chrome_milestone) {
-      LOG(INFO) << feature_name << " disabled for ChromeOS milestone " << value;
-      return false;
-    }
-
-    if (!store.GetString("CHROMEOS_RELEASE_BOARD", &value)) {
-      LOG(ERROR) << feature_name << " disabled - cannot determine board";
-      return false;
-    }
-    if (!supported_boards.empty() &&
-        std::find(supported_boards.begin(), supported_boards.end(), value) ==
-            supported_boards.end()) {
-      LOG(INFO) << feature_name << " disabled for board " << value;
-      return false;
-    }
-    return true;
-  };
-
-  bool result = check();
-  cached_feature_enabled_.emplace(feature_name, result);
-  return result;
-}
-
-int Manager::OnInit() {
-  prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
-
-  // Initialize |process_manager_| before creating subprocesses.
-  process_manager_->Init();
-
-  // Start the subprocesses and handle their lifecycle.
   adb_proxy_->Start();
   mcast_proxy_->Start();
   nd_proxy_->Start();
-
-  // Run after Daemon::OnInit().
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Manager::InitialSetup, weak_factory_.GetWeakPtr()));
-
-  return DBusDaemon::OnInit();
-}
-
-void Manager::InitialSetup() {
-  LOG(INFO) << "Setting up DBus service interface";
-  dbus_svc_path_ = bus_->GetExportedObject(
-      dbus::ObjectPath(patchpanel::kPatchPanelServicePath));
-  if (!dbus_svc_path_) {
-    LOG(FATAL) << "Failed to export " << patchpanel::kPatchPanelServicePath
-               << " object";
-  }
-
-  metrics_ = std::make_unique<MetricsLibrary>();
-  shill_client_ = std::make_unique<ShillClient>(bus_, system_.get());
-
-  using ServiceMethod =
-      std::unique_ptr<dbus::Response> (Manager::*)(dbus::MethodCall*);
-  const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {patchpanel::kArcShutdownMethod, &Manager::OnArcShutdown},
-      {patchpanel::kArcStartupMethod, &Manager::OnArcStartup},
-      {patchpanel::kArcVmShutdownMethod, &Manager::OnArcVmShutdown},
-      {patchpanel::kArcVmStartupMethod, &Manager::OnArcVmStartup},
-      {patchpanel::kConnectNamespaceMethod, &Manager::OnConnectNamespace},
-      {patchpanel::kCreateLocalOnlyNetworkMethod,
-       &Manager::OnCreateLocalOnlyNetwork},
-      {patchpanel::kCreateTetheredNetworkMethod,
-       &Manager::OnCreateTetheredNetwork},
-      {patchpanel::kDownstreamNetworkInfoMethod,
-       &Manager::OnDownstreamNetworkInfo},
-      {patchpanel::kGetDevicesMethod, &Manager::OnGetDevices},
-      {patchpanel::kGetTrafficCountersMethod, &Manager::OnGetTrafficCounters},
-      {patchpanel::kModifyPortRuleMethod, &Manager::OnModifyPortRule},
-      {patchpanel::kPluginVmShutdownMethod, &Manager::OnPluginVmShutdown},
-      {patchpanel::kPluginVmStartupMethod, &Manager::OnPluginVmStartup},
-      {patchpanel::kSetDnsRedirectionRuleMethod,
-       &Manager::OnSetDnsRedirectionRule},
-      {patchpanel::kSetVpnIntentMethod, &Manager::OnSetVpnIntent},
-      {patchpanel::kSetVpnLockdown, &Manager::OnSetVpnLockdown},
-      {patchpanel::kTerminaVmShutdownMethod, &Manager::OnTerminaVmShutdown},
-      {patchpanel::kTerminaVmStartupMethod, &Manager::OnTerminaVmStartup},
-  };
-
-  for (const auto& kv : kServiceMethods) {
-    if (!dbus_svc_path_->ExportMethodAndBlock(
-            patchpanel::kPatchPanelInterface, kv.first,
-            base::BindRepeating(
-                &HandleSynchronousDBusMethodCall,
-                base::BindRepeating(kv.second, base::Unretained(this))))) {
-      LOG(FATAL) << "Failed to export method " << kv.first;
-    }
-  }
-
-  if (!bus_->RequestOwnershipAndBlock(patchpanel::kPatchPanelServiceName,
-                                      dbus::Bus::REQUIRE_PRIMARY)) {
-    LOG(FATAL) << "Failed to take ownership of "
-               << patchpanel::kPatchPanelServiceName;
-  }
-  LOG(INFO) << "DBus service interface ready";
 
   routing_svc_ = std::make_unique<RoutingService>();
   counters_svc_ = std::make_unique<CountersService>(datapath_.get());
@@ -239,19 +58,20 @@ void Manager::InitialSetup() {
   auto arc_type =
       USE_ARCVM ? ArcService::ArcType::kVM : ArcService::ArcType::kContainer;
   arc_svc_ = std::make_unique<ArcService>(
-      datapath_.get(), &addr_mgr_, arc_type, metrics_.get(),
+      datapath_.get(), &addr_mgr_, arc_type, metrics,
       base::BindRepeating(&Manager::OnGuestDeviceChanged,
                           weak_factory_.GetWeakPtr()));
   cros_svc_ = std::make_unique<CrostiniService>(
       &addr_mgr_, datapath_.get(),
       base::BindRepeating(&Manager::OnGuestDeviceChanged,
                           weak_factory_.GetWeakPtr()));
+
   network_monitor_svc_ = std::make_unique<NetworkMonitorService>(
       shill_client_.get(),
       base::BindRepeating(&Manager::OnNeighborReachabilityEvent,
                           weak_factory_.GetWeakPtr()));
   ipv6_svc_ = std::make_unique<GuestIPv6Service>(
-      nd_proxy_.get(), datapath_.get(), shill_client_.get(), system_.get());
+      nd_proxy_.get(), datapath_.get(), shill_client_.get(), system);
 
   network_monitor_svc_->Start();
   ipv6_svc_->Start();
@@ -266,11 +86,11 @@ void Manager::InitialSetup() {
                           weak_factory_.GetWeakPtr()));
 }
 
-void Manager::OnShutdown(int* exit_code) {
-  LOG(INFO) << "Shutting down and cleaning up";
+Manager::~Manager() {
   network_monitor_svc_.reset();
   cros_svc_.reset();
   arc_svc_.reset();
+
   // Tear down any remaining active lifeline file descriptors.
   std::vector<int> lifeline_fds;
   for (const auto& kv : connected_namespaces_) {
@@ -282,13 +102,8 @@ void Manager::OnShutdown(int* exit_code) {
   for (const int fdkey : lifeline_fds) {
     OnLifelineFdClosed(fdkey);
   }
-  datapath_->Stop();
-  if (bus_) {
-    bus_->ShutdownAndBlock();
-  }
 
-  process_manager_->Stop();
-  brillo::DBusDaemon::OnShutdown(exit_code);
+  datapath_->Stop();
 }
 
 void Manager::OnShillDefaultLogicalDeviceChanged(
@@ -498,16 +313,6 @@ void Manager::OnGuestDeviceChanged(const Device& virtual_device,
   if (virtual_device.type() == Device::Type::kARC0) {
     return;
   }
-  dbus::Signal signal(kPatchPanelInterface, kNetworkDeviceChangedSignal);
-  NetworkDeviceChangedSignal proto;
-  proto.set_event(event == Device::ChangeEvent::kAdded
-                      ? NetworkDeviceChangedSignal::DEVICE_ADDED
-                      : NetworkDeviceChangedSignal::DEVICE_REMOVED);
-  auto* dev = proto.mutable_device();
-  FillDeviceProto(virtual_device, dev);
-  if (const auto* subnet = virtual_device.config().ipv4_subnet()) {
-    FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
-  }
   const std::string& upstream_device =
       (virtual_device.type() == Device::Type::kARCContainer ||
        virtual_device.type() == Device::Type::kARCVM)
@@ -518,11 +323,11 @@ void Manager::OnGuestDeviceChanged(const Device& virtual_device,
   } else if (event == Device::ChangeEvent::kRemoved) {
     StopForwarding(upstream_device, virtual_device.host_ifname());
   }
-  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
-  dbus_svc_path_->SendSignal(&signal);
+
+  client_notifier_->OnNetworkDeviceChanged(virtual_device, event);
 }
 
-bool Manager::StartArc(pid_t pid) {
+bool Manager::ArcStartup(pid_t pid) {
   if (pid < 0) {
     LOG(ERROR) << "Invalid ARC pid: " << pid;
     return false;
@@ -540,7 +345,7 @@ bool Manager::StartArc(pid_t pid) {
   return true;
 }
 
-void Manager::StopArc() {
+void Manager::ArcShutdown() {
   GuestMessage msg;
   msg.set_event(GuestMessage::STOP);
   msg.set_type(GuestMessage::ARC);
@@ -551,9 +356,10 @@ void Manager::StopArc() {
   arc_svc_->Stop(0);
 }
 
-bool Manager::StartArcVm(uint32_t cid) {
+std::optional<std::vector<const Device::Config*>> Manager::ArcVmStartup(
+    uint32_t cid) {
   if (!arc_svc_->Start(cid))
-    return false;
+    return std::nullopt;
 
   GuestMessage msg;
   msg.set_event(GuestMessage::START);
@@ -561,10 +367,10 @@ bool Manager::StartArcVm(uint32_t cid) {
   msg.set_arcvm_vsock_cid(cid);
   SendGuestMessage(msg);
 
-  return true;
+  return arc_svc_->GetDeviceConfigs();
 }
 
-void Manager::StopArcVm(uint32_t cid) {
+void Manager::ArcVmShutdown(uint32_t cid) {
   GuestMessage msg;
   msg.set_event(GuestMessage::STOP);
   msg.set_type(GuestMessage::ARC_VM);
@@ -596,22 +402,8 @@ void Manager::StopCrosVm(uint64_t vm_id, GuestMessage::GuestType vm_type) {
   cros_svc_->Stop(vm_id);
 }
 
-std::unique_ptr<dbus::Response> Manager::OnGetDevices(
-    dbus::MethodCall* method_call) {
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::GetDevicesRequest request;
-  patchpanel::GetDevicesResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse request";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
+GetDevicesResponse Manager::GetDevices() {
+  GetDevicesResponse response;
 
   for (const auto* arc_device : arc_svc_->GetDevices()) {
     // The legacy "arc0" Device is never exposed in "GetDevices".
@@ -635,622 +427,94 @@ std::unique_ptr<dbus::Response> Manager::OnGetDevices(
     }
   }
 
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
-std::unique_ptr<dbus::Response> Manager::OnArcStartup(
-    dbus::MethodCall* method_call) {
-  LOG(INFO) << "ARC++ starting up";
-  RecordDbusEvent(metrics_, DbusUmaEvent::kArcStartup);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::ArcStartupRequest request;
-  patchpanel::ArcStartupResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse request";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!StartArc(request.pid()))
-    LOG(ERROR) << "Failed to start ARC++ network service";
-
-  RecordDbusEvent(metrics_, DbusUmaEvent::kArcStartupSuccess);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
-}
-
-std::unique_ptr<dbus::Response> Manager::OnArcShutdown(
-    dbus::MethodCall* method_call) {
-  LOG(INFO) << "ARC++ shutting down";
-  RecordDbusEvent(metrics_, DbusUmaEvent::kArcShutdown);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::ArcShutdownRequest request;
-  patchpanel::ArcShutdownResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse request";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  StopArc();
-
-  RecordDbusEvent(metrics_, DbusUmaEvent::kArcShutdownSuccess);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
-}
-
-std::unique_ptr<dbus::Response> Manager::OnArcVmStartup(
-    dbus::MethodCall* method_call) {
-  LOG(INFO) << "ARCVM starting up";
-  RecordDbusEvent(metrics_, DbusUmaEvent::kArcVmStartup);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::ArcVmStartupRequest request;
-  patchpanel::ArcVmStartupResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse request";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!StartArcVm(request.cid())) {
-    LOG(ERROR) << "Failed to start ARCVM network service";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  // Populate the response with the interface configurations of the known ARC
-  // Devices
-  for (const auto* config : arc_svc_->GetDeviceConfigs()) {
-    if (config->tap_ifname().empty())
-      continue;
-
-    // TODO(hugobenichi) Use FillDeviceProto.
-    auto* dev = response.add_devices();
-    dev->set_ifname(config->tap_ifname());
-    dev->set_ipv4_addr(config->guest_ipv4_addr());
-    dev->set_guest_type(NetworkDevice::ARCVM);
-  }
-
-  RecordDbusEvent(metrics_, DbusUmaEvent::kArcVmStartupSuccess);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
-}
-
-std::unique_ptr<dbus::Response> Manager::OnArcVmShutdown(
-    dbus::MethodCall* method_call) {
-  LOG(INFO) << "ARCVM shutting down";
-  RecordDbusEvent(metrics_, DbusUmaEvent::kArcVmShutdown);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::ArcVmShutdownRequest request;
-  patchpanel::ArcVmShutdownResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse request";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  StopArcVm(request.cid());
-
-  RecordDbusEvent(metrics_, DbusUmaEvent::kArcVmShutdownSuccess);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
-}
-
-std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
-    dbus::MethodCall* method_call) {
-  LOG(INFO) << "Termina VM starting up";
-  RecordDbusEvent(metrics_, DbusUmaEvent::kTerminaVmStartup);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::TerminaVmStartupRequest request;
-  patchpanel::TerminaVmStartupResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse request";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  const uint32_t cid = request.cid();
+const Device* const Manager::TerminaVmStartup(uint64_t cid) {
   const auto* guest_device =
       StartCrosVm(cid, CrostiniService::VMType::kTermina);
   if (!guest_device) {
     LOG(ERROR) << "Failed to start Termina VM network service";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return nullptr;
   }
-
-  const auto* termina_subnet = guest_device->config().ipv4_subnet();
-  if (!termina_subnet) {
-    LOG(DFATAL) << "Missing required Termina IPv4 subnet for {cid: " << cid
-                << "}";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-  const auto* lxd_subnet = guest_device->config().lxd_ipv4_subnet();
-  if (!lxd_subnet) {
-    LOG(DFATAL) << "Missing required lxd container IPv4 subnet for {cid: "
-                << cid << "}";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-  auto* dev = response.mutable_device();
-  FillDeviceProto(*guest_device, dev);
-  FillSubnetProto(*termina_subnet, dev->mutable_ipv4_subnet());
-  FillSubnetProto(*lxd_subnet, response.mutable_container_subnet());
-
-  RecordDbusEvent(metrics_, DbusUmaEvent::kTerminaVmStartupSuccess);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return guest_device;
 }
 
-std::unique_ptr<dbus::Response> Manager::OnTerminaVmShutdown(
-    dbus::MethodCall* method_call) {
-  LOG(INFO) << "Termina VM shutting down";
-  RecordDbusEvent(metrics_, DbusUmaEvent::kTerminaVmShutdown);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::TerminaVmShutdownRequest request;
-  patchpanel::TerminaVmShutdownResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse request";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  StopCrosVm(request.cid(), GuestMessage::TERMINA_VM);
-
-  RecordDbusEvent(metrics_, DbusUmaEvent::kTerminaVmShutdownSuccess);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+void Manager::TerminaVmShutdown(uint64_t vm_id) {
+  StopCrosVm(vm_id, GuestMessage::TERMINA_VM);
 }
 
-std::unique_ptr<dbus::Response> Manager::OnPluginVmStartup(
-    dbus::MethodCall* method_call) {
-  LOG(INFO) << "Plugin VM starting up";
-  RecordDbusEvent(metrics_, DbusUmaEvent::kPluginVmStartup);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::PluginVmStartupRequest request;
-  patchpanel::PluginVmStartupResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse request";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (request.subnet_index() < 0) {
-    LOG(ERROR) << "Invalid subnet index: " << request.subnet_index();
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-  const uint32_t subnet_index = static_cast<uint32_t>(request.subnet_index());
-  const uint64_t vm_id = request.id();
+const Device* const Manager::PluginVmStartup(uint64_t vm_id,
+                                             uint32_t subnet_index) {
   const auto* guest_device =
       StartCrosVm(vm_id, CrostiniService::VMType::kParallel, subnet_index);
   if (!guest_device) {
     LOG(ERROR) << "Failed to start Plugin VM network service";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return nullptr;
   }
-
-  const auto* subnet = guest_device->config().ipv4_subnet();
-  if (!subnet) {
-    LOG(DFATAL) << "Missing required subnet for {cid: " << vm_id << "}";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-  auto* dev = response.mutable_device();
-  FillDeviceProto(*guest_device, dev);
-  FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
-
-  RecordDbusEvent(metrics_, DbusUmaEvent::kPluginVmStartupSuccess);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return guest_device;
 }
 
-std::unique_ptr<dbus::Response> Manager::OnPluginVmShutdown(
-    dbus::MethodCall* method_call) {
-  LOG(INFO) << "Plugin VM shutting down";
-  RecordDbusEvent(metrics_, DbusUmaEvent::kPluginVmShutdown);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::PluginVmShutdownRequest request;
-  patchpanel::PluginVmShutdownResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse request";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  StopCrosVm(request.id(), GuestMessage::PLUGIN_VM);
-
-  RecordDbusEvent(metrics_, DbusUmaEvent::kPluginVmShutdownSuccess);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+void Manager::PluginVmShutdown(uint64_t vm_id) {
+  StopCrosVm(vm_id, GuestMessage::PLUGIN_VM);
 }
 
-std::unique_ptr<dbus::Response> Manager::OnSetVpnIntent(
-    dbus::MethodCall* method_call) {
-  RecordDbusEvent(metrics_, DbusUmaEvent::kSetVpnIntent);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::SetVpnIntentRequest request;
-  patchpanel::SetVpnIntentResponse response;
-
-  bool success = reader.PopArrayOfBytesAsProto(&request);
-  if (!success) {
-    LOG(ERROR) << "Unable to parse SetVpnIntentRequest";
-    // Do not return yet to make sure we close the received fd.
-  }
-
-  base::ScopedFD client_socket;
-  reader.PopFileDescriptor(&client_socket);
-
-  if (success)
-    success = routing_svc_->SetVpnFwmark(client_socket.get(), request.policy());
-
-  response.set_success(success);
-
-  RecordDbusEvent(metrics_, DbusUmaEvent::kSetVpnIntentSuccess);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+bool Manager::SetVpnIntent(SetVpnIntentRequest::VpnRoutingPolicy policy,
+                           base::ScopedFD sockfd) {
+  return routing_svc_->SetVpnFwmark(sockfd.get(), policy);
 }
 
-std::unique_ptr<dbus::Response> Manager::OnConnectNamespace(
-    dbus::MethodCall* method_call) {
-  RecordDbusEvent(metrics_, DbusUmaEvent::kConnectNamespace);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::ConnectNamespaceRequest request;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ConnectNamespaceRequest";
-    // Do not return yet to make sure we close the received fd and
-    // validate other arguments.
-    writer.AppendProtoAsArrayOfBytes(patchpanel::ConnectNamespaceResponse());
-    return dbus_response;
-  }
-
-  base::ScopedFD client_fd;
-  reader.PopFileDescriptor(&client_fd);
-  if (!client_fd.is_valid()) {
-    LOG(ERROR) << "Invalid file descriptor";
-    writer.AppendProtoAsArrayOfBytes(patchpanel::ConnectNamespaceResponse());
-    return dbus_response;
-  }
-
-  pid_t pid = request.pid();
-  if (pid == 1 || pid == getpid()) {
-    LOG(ERROR) << "Privileged namespace pid " << pid;
-    writer.AppendProtoAsArrayOfBytes(patchpanel::ConnectNamespaceResponse());
-    return dbus_response;
-  }
-  if (pid != ConnectedNamespace::kNewNetnsPid) {
-    auto ns = ScopedNS::EnterNetworkNS(pid);
-    if (!ns) {
-      LOG(ERROR) << "Invalid namespace pid " << pid;
-      writer.AppendProtoAsArrayOfBytes(patchpanel::ConnectNamespaceResponse());
-      return dbus_response;
-    }
-  }
-
-  const std::string& outbound_ifname = request.outbound_physical_device();
-  if (!outbound_ifname.empty() &&
-      !shill_client_->has_interface(outbound_ifname)) {
-    LOG(ERROR) << "Invalid outbound ifname " << outbound_ifname;
-    writer.AppendProtoAsArrayOfBytes(patchpanel::ConnectNamespaceResponse());
-    return dbus_response;
-  }
-
-  const auto response = ConnectNamespace(std::move(client_fd), request);
-  if (!response->netns_name().empty()) {
-    RecordDbusEvent(metrics_, DbusUmaEvent::kConnectNamespaceSuccess);
-  }
-
-  writer.AppendProtoAsArrayOfBytes(*response);
-  return dbus_response;
+std::map<CountersService::CounterKey, CountersService::Counter>
+Manager::GetTrafficCounters(const std::set<std::string>& shill_devices) {
+  return counters_svc_->GetCounters(shill_devices);
 }
 
-std::unique_ptr<dbus::Response> Manager::OnGetTrafficCounters(
-    dbus::MethodCall* method_call) {
-  RecordDbusEvent(metrics_, DbusUmaEvent::kGetTrafficCounters);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::TrafficCountersRequest request;
-  patchpanel::TrafficCountersResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse TrafficCountersRequest";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  const std::set<std::string> shill_devices{request.devices().begin(),
-                                            request.devices().end()};
-  const auto counters = counters_svc_->GetCounters(shill_devices);
-  for (const auto& kv : counters) {
-    auto* traffic_counter = response.add_counters();
-    const auto& key = kv.first;
-    const auto& counter = kv.second;
-    traffic_counter->set_source(key.source);
-    traffic_counter->set_device(key.ifname);
-    traffic_counter->set_ip_family(key.ip_family);
-    traffic_counter->set_rx_bytes(counter.rx_bytes);
-    traffic_counter->set_rx_packets(counter.rx_packets);
-    traffic_counter->set_tx_bytes(counter.tx_bytes);
-    traffic_counter->set_tx_packets(counter.tx_packets);
-  }
-
-  RecordDbusEvent(metrics_, DbusUmaEvent::kGetTrafficCountersSuccess);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+bool Manager::ModifyPortRule(const ModifyPortRuleRequest& request) {
+  return datapath_->ModifyPortRule(request);
 }
 
-std::unique_ptr<dbus::Response> Manager::OnModifyPortRule(
-    dbus::MethodCall* method_call) {
-  RecordDbusEvent(metrics_, DbusUmaEvent::kModifyPortRule);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::ModifyPortRuleRequest request;
-  patchpanel::ModifyPortRuleResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ModifyPortRequest";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  bool success = datapath_->ModifyPortRule(request);
-  response.set_success(success);
-  if (success) {
-    RecordDbusEvent(metrics_, DbusUmaEvent::kModifyPortRuleSuccess);
-  }
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+void Manager::SetVpnLockdown(bool enable_vpn_lockdown) {
+  datapath_->SetVpnLockdown(enable_vpn_lockdown);
 }
 
-std::unique_ptr<dbus::Response> Manager::OnSetVpnLockdown(
-    dbus::MethodCall* method_call) {
-  RecordDbusEvent(metrics_, DbusUmaEvent::kSetVpnLockdown);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::SetVpnLockdownRequest request;
-  patchpanel::SetVpnLockdownResponse response;
-
-  if (reader.PopArrayOfBytesAsProto(&request)) {
-    datapath_->SetVpnLockdown(request.enable_vpn_lockdown());
-  } else {
-    LOG(ERROR) << "Unable to parse SetVpnLockdownRequest";
-  }
-
-  RecordDbusEvent(metrics_, DbusUmaEvent::kSetVpnLockdownSuccess);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
-}
-
-std::unique_ptr<dbus::Response> Manager::OnSetDnsRedirectionRule(
-    dbus::MethodCall* method_call) {
-  RecordDbusEvent(metrics_, DbusUmaEvent::kSetDnsRedirectionRule);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::SetDnsRedirectionRuleRequest request;
-  patchpanel::SetDnsRedirectionRuleResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse SetDnsRedirectionRuleRequest";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  base::ScopedFD client_fd;
-  reader.PopFileDescriptor(&client_fd);
-  if (!client_fd.is_valid()) {
-    LOG(ERROR) << "Invalid file descriptor";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  bool success = RedirectDns(std::move(client_fd), request);
-  response.set_success(success);
-  if (success) {
-    RecordDbusEvent(metrics_, DbusUmaEvent::kSetDnsRedirectionRuleSuccess);
-  }
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
-}
-
-std::optional<DownstreamNetworkInfo> Manager::ParseTetheredNetworkRequest(
-    dbus::MessageReader* reader) {
+patchpanel::DownstreamNetworkResult Manager::CreateTetheredNetwork(
+    const TetheredNetworkRequest& request, base::ScopedFD client_fd) {
   using shill::IPAddress;
 
-  TetheredNetworkRequest request;
-  if (!reader->PopArrayOfBytesAsProto(&request)) {
-    return std::nullopt;
+  const auto info = DownstreamNetworkInfo::Create(request);
+  if (!info) {
+    LOG(ERROR) << __func__ << ": Unable to parse request";
+    return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
   }
 
-  return DownstreamNetworkInfo::Create(request);
+  return HandleDownstreamNetworkInfo(std::move(client_fd), *info);
 }
 
-std::optional<DownstreamNetworkInfo> Manager::ParseLocalOnlyNetworkRequest(
-    dbus::MessageReader* reader) {
-  LocalOnlyNetworkRequest request;
-  if (!reader->PopArrayOfBytesAsProto(&request)) {
-    return std::nullopt;
+patchpanel::DownstreamNetworkResult Manager::CreateLocalOnlyNetwork(
+    const LocalOnlyNetworkRequest& request, base::ScopedFD client_fd) {
+  std::optional<DownstreamNetworkInfo> info =
+      DownstreamNetworkInfo::Create(request);
+  if (!info) {
+    LOG(ERROR) << __func__ << ": Unable to parse request";
+    return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
   }
-  return DownstreamNetworkInfo::Create(request);
+
+  return HandleDownstreamNetworkInfo(std::move(client_fd), *info);
 }
 
-std::unique_ptr<dbus::Response> Manager::OnCreateTetheredNetwork(
-    dbus::MethodCall* method_call) {
-  RecordDbusEvent(metrics_, DbusUmaEvent::kCreateTetheredNetwork);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  auto response_code = OnDownstreamNetworkRequest(
-      &reader, base::BindOnce(&Manager::ParseTetheredNetworkRequest,
-                              base::Unretained(this)));
-  if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
-    RecordDbusEvent(metrics_, DbusUmaEvent::kCreateTetheredNetworkSuccess);
-  }
-
-  patchpanel::TetheredNetworkResponse response;
-  response.set_response_code(response_code);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
-}
-
-std::unique_ptr<dbus::Response> Manager::OnCreateLocalOnlyNetwork(
-    dbus::MethodCall* method_call) {
-  RecordDbusEvent(metrics_, DbusUmaEvent::kCreateLocalOnlyNetwork);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  auto response_code = OnDownstreamNetworkRequest(
-      &reader, base::BindOnce(&Manager::ParseLocalOnlyNetworkRequest,
-                              base::Unretained(this)));
-  if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
-    RecordDbusEvent(metrics_, DbusUmaEvent::kCreateLocalOnlyNetworkSuccess);
-  }
-
-  patchpanel::LocalOnlyNetworkResponse response;
-  response.set_response_code(response_code);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
-}
-
-std::unique_ptr<dbus::Response> Manager::OnDownstreamNetworkInfo(
-    dbus::MethodCall* method_call) {
-  RecordDbusEvent(metrics_, DbusUmaEvent::kDownstreamNetworkInfo);
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  patchpanel::DownstreamNetworkInfoRequest request;
-  patchpanel::DownstreamNetworkInfoResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << kDownstreamNetworkInfoMethod
-               << ": Unable to parse DownstreamNetworkInfoRequest";
-    response.set_success(false);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  const auto& downstream_ifname = request.downstream_ifname();
+std::optional<DownstreamNetworkInfo> Manager::GetDownstreamNetworkInfo(
+    const std::string& downstream_ifname) {
   auto match_by_downstream_ifname = [&downstream_ifname](const auto& kv) {
     return kv.second.downstream_ifname == downstream_ifname;
   };
-  auto it =
+
+  const auto it =
       std::find_if(downstream_networks_.begin(), downstream_networks_.end(),
                    match_by_downstream_ifname);
   if (it == downstream_networks_.end()) {
-    LOG(ERROR) << kDownstreamNetworkInfoMethod
-               << ": no DownstreamNetwork for interface " << downstream_ifname;
-    response.set_success(false);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return std::nullopt;
   }
-
-  // TODO(b/239559602) Get and copy clients' information into |output|.
-  FillDownstreamNetworkProto(it->second, response.mutable_downstream_network());
-  RecordDbusEvent(metrics_, DbusUmaEvent::kDownstreamNetworkInfoSuccess);
-  response.set_success(true);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return it->second;
 }
 
 void Manager::OnNeighborReachabilityEvent(
@@ -1258,39 +522,33 @@ void Manager::OnNeighborReachabilityEvent(
     const shill::IPAddress& ip_addr,
     NeighborLinkMonitor::NeighborRole role,
     NeighborReachabilityEventSignal::EventType event_type) {
-  using SignalProto = NeighborReachabilityEventSignal;
-  SignalProto proto;
-  proto.set_ifindex(ifindex);
-  proto.set_ip_addr(ip_addr.ToString());
-  proto.set_type(event_type);
-  switch (role) {
-    case NeighborLinkMonitor::NeighborRole::kGateway:
-      proto.set_role(SignalProto::GATEWAY);
-      break;
-    case NeighborLinkMonitor::NeighborRole::kDNSServer:
-      proto.set_role(SignalProto::DNS_SERVER);
-      break;
-    case NeighborLinkMonitor::NeighborRole::kGatewayAndDNSServer:
-      proto.set_role(SignalProto::GATEWAY_AND_DNS_SERVER);
-      break;
-    default:
-      NOTREACHED();
-  }
-
-  dbus::Signal signal(kPatchPanelInterface, kNeighborReachabilityEventSignal);
-  dbus::MessageWriter writer(&signal);
-  if (!writer.AppendProtoAsArrayOfBytes(proto)) {
-    LOG(ERROR) << "Failed to encode proto NeighborReachabilityEventSignal";
-    return;
-  }
-
-  dbus_svc_path_->SendSignal(&signal);
+  client_notifier_->OnNeighborReachabilityEvent(ifindex, ip_addr, role,
+                                                event_type);
 }
 
-std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
-    base::ScopedFD client_fd,
-    const patchpanel::ConnectNamespaceRequest& request) {
-  auto response = std::make_unique<patchpanel::ConnectNamespaceResponse>();
+ConnectNamespaceResponse Manager::ConnectNamespace(
+    const ConnectNamespaceRequest& request, base::ScopedFD client_fd) {
+  ConnectNamespaceResponse response;
+
+  const pid_t pid = request.pid();
+  if (pid == 1 || pid == getpid()) {
+    LOG(ERROR) << "Privileged namespace pid " << pid;
+    return response;
+  }
+  if (pid != ConnectedNamespace::kNewNetnsPid) {
+    auto ns = ScopedNS::EnterNetworkNS(pid);
+    if (!ns) {
+      LOG(ERROR) << "Invalid namespace pid " << pid;
+      return response;
+    }
+  }
+
+  const std::string& outbound_ifname = request.outbound_physical_device();
+  if (!outbound_ifname.empty() &&
+      !shill_client_->has_interface(outbound_ifname)) {
+    LOG(ERROR) << "Invalid outbound ifname " << outbound_ifname;
+    return response;
+  }
 
   std::unique_ptr<Subnet> subnet =
       addr_mgr_.AllocateIPv4Subnet(AddressManager::GuestType::kNetns);
@@ -1332,12 +590,12 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   }
 
   // Prepare the response before storing ConnectedNamespace.
-  response->set_peer_ifname(nsinfo.peer_ifname);
-  response->set_peer_ipv4_address(nsinfo.peer_subnet->AddressAtOffset(1));
-  response->set_host_ifname(nsinfo.host_ifname);
-  response->set_host_ipv4_address(nsinfo.peer_subnet->AddressAtOffset(0));
-  response->set_netns_name(nsinfo.netns_name);
-  auto* response_subnet = response->mutable_ipv4_subnet();
+  response.set_peer_ifname(nsinfo.peer_ifname);
+  response.set_peer_ipv4_address(nsinfo.peer_subnet->AddressAtOffset(1));
+  response.set_host_ifname(nsinfo.host_ifname);
+  response.set_host_ipv4_address(nsinfo.peer_subnet->AddressAtOffset(0));
+  response.set_netns_name(nsinfo.netns_name);
+  auto* response_subnet = response.mutable_ipv4_subnet();
   response_subnet->set_base_addr(nsinfo.peer_subnet->BaseAddress());
   response_subnet->set_prefix_len(
       static_cast<uint32_t>(nsinfo.peer_subnet->PrefixLength()));
@@ -1475,13 +733,12 @@ void Manager::OnLifelineFdClosed(int client_fd) {
         LOG(ERROR) << "Invalid proxy address " << rule.proxy_address;
         return;
     }
-    SendNetworkConfigurationChangedSignal();
+    client_notifier_->OnNetworkConfigurationChanged();
   }
 }
 
-bool Manager::RedirectDns(
-    base::ScopedFD client_fd,
-    const patchpanel::SetDnsRedirectionRuleRequest& request) {
+bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
+                                    base::ScopedFD client_fd) {
   base::ScopedFD local_client_fd = AddLifelineFd(std::move(client_fd));
   if (!local_client_fd.is_valid()) {
     LOG(ERROR) << "Failed to create lifeline fd";
@@ -1525,7 +782,7 @@ bool Manager::RedirectDns(
           LOG(ERROR) << "Failed to delete lifeline fd";
         return false;
     }
-    SendNetworkConfigurationChangedSignal();
+    client_notifier_->OnNetworkConfigurationChanged();
   }
 
   // Store DNS proxy's redirection request.
@@ -1550,64 +807,48 @@ bool Manager::ValidateDownstreamNetworkRequest(
   return true;
 }
 
-patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
-    dbus::MessageReader* reader,
-    base::OnceCallback<
-        std::optional<DownstreamNetworkInfo>(dbus::MessageReader*)> parser) {
-  std::optional<DownstreamNetworkInfo> info = std::move(parser).Run(reader);
-  if (!info) {
-    LOG(ERROR) << __func__ << ": Unable to parse request";
-    return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
-  }
-
-  base::ScopedFD client_fd;
-  reader->PopFileDescriptor(&client_fd);
-  if (!client_fd.is_valid()) {
-    LOG(ERROR) << __func__ << " " << *info
-               << ": Invalid client file descriptor";
-    return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
-  }
-
-  if (!ValidateDownstreamNetworkRequest(*info)) {
-    LOG(ERROR) << __func__ << " " << *info << ": Invalid request";
+patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
+    base::ScopedFD client_fd, const DownstreamNetworkInfo& info) {
+  if (!ValidateDownstreamNetworkRequest(info)) {
+    LOG(ERROR) << __func__ << " " << info << ": Invalid request";
     return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
   }
 
   base::ScopedFD local_client_fd = AddLifelineFd(std::move(client_fd));
   if (!local_client_fd.is_valid()) {
-    LOG(ERROR) << __func__ << " " << *info << ": Failed to create lifeline fd";
+    LOG(ERROR) << __func__ << " " << info << ": Failed to create lifeline fd";
     return patchpanel::DownstreamNetworkResult::ERROR;
   }
 
-  if (!datapath_->StartDownstreamNetwork(*info)) {
-    LOG(ERROR) << __func__ << " " << *info
+  if (!datapath_->StartDownstreamNetwork(info)) {
+    LOG(ERROR) << __func__ << " " << info
                << ": Failed to configure forwarding to downstream network";
     return patchpanel::DownstreamNetworkResult::ERROR;
   }
 
   // Start the DHCP server at downstream.
-  if (info->enable_ipv4_dhcp) {
-    if (dhcp_server_controllers_.find(info->downstream_ifname) !=
+  if (info.enable_ipv4_dhcp) {
+    if (dhcp_server_controllers_.find(info.downstream_ifname) !=
         dhcp_server_controllers_.end()) {
-      LOG(ERROR) << __func__ << " " << *info
+      LOG(ERROR) << __func__ << " " << info
                  << ": DHCP server is already running at "
-                 << info->downstream_ifname;
+                 << info.downstream_ifname;
       return patchpanel::DownstreamNetworkResult::INTERFACE_USED;
     }
-    const auto config = info->ToDHCPServerConfig();
+    const auto config = info.ToDHCPServerConfig();
     if (!config) {
-      LOG(ERROR) << __func__ << " " << *info
+      LOG(ERROR) << __func__ << " " << info
                  << ": Failed to get DHCP server config";
       return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
     }
     auto dhcp_server_controller =
-        std::make_unique<DHCPServerController>(info->downstream_ifname);
+        std::make_unique<DHCPServerController>(info.downstream_ifname);
     // TODO(b/274722417) Handle the DHCP server exits unexpectedly.
     if (!dhcp_server_controller->Start(*config, base::DoNothing())) {
-      LOG(ERROR) << __func__ << " " << *info << ": Failed to start DHCP server";
+      LOG(ERROR) << __func__ << " " << info << ": Failed to start DHCP server";
       return patchpanel::DownstreamNetworkResult::DHCP_SERVER_FAILURE;
     }
-    dhcp_server_controllers_[info->downstream_ifname] =
+    dhcp_server_controllers_[info.downstream_ifname] =
         std::move(dhcp_server_controller);
   }
 
@@ -1616,13 +857,13 @@ patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
   // network and other virtual guests and interfaces in the same upstream
   // group.
   // TODO(b/279371725) Add MTU support in GuestIPv6Service.
-  if (info->enable_ipv6) {
-    StartForwarding(info->upstream_ifname, info->downstream_ifname,
+  if (info.enable_ipv6) {
+    StartForwarding(info.upstream_ifname, info.downstream_ifname,
                     ForwardingSet{.ipv6 = true});
   }
 
   int fdkey = local_client_fd.release();
-  downstream_networks_[fdkey] = *info;
+  downstream_networks_[fdkey] = info;
   return patchpanel::DownstreamNetworkResult::SUCCESS;
 }
 
@@ -1631,11 +872,6 @@ void Manager::SendGuestMessage(const GuestMessage& msg) {
   *cm.mutable_guest_message() = msg;
   adb_proxy_->SendControlMessage(cm);
   mcast_proxy_->SendControlMessage(cm);
-}
-
-void Manager::SendNetworkConfigurationChangedSignal() {
-  dbus::Signal signal(kPatchPanelInterface, kNetworkConfigurationChangedSignal);
-  dbus_svc_path_->SendSignal(&signal);
 }
 
 void Manager::StartForwarding(const std::string& ifname_physical,
