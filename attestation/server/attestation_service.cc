@@ -1291,6 +1291,11 @@ bool AttestationService::CreateCertificateRequestInternal(
   request_pb.set_profile(profile);
 
   if (profile == ENTERPRISE_ENROLLMENT_CERTIFICATE) {
+    // Send the attested device ID, if we have one.
+    if (!attested_device_id_.empty()) {
+      request_pb.set_attested_device_id(attested_device_id_);
+    }
+
     const int identity = identity_certificate.identity();
     const AttestationDatabase::Identity& identity_data =
         database_->GetProtobuf().identities().Get(identity);

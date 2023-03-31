@@ -63,6 +63,7 @@ constexpr char kFakeRsaEkCertQuote[] = "rsa ek cert quote";
 constexpr char kFakeRsaEkCertQuotedData[] = "rsa ek cert quoted data";
 constexpr char kFakeRsuDeviceIdQuote[] = "rsu device id quote";
 constexpr char kFakeRsuDeviceIdQuotedData[] = "rsu device id quoted data";
+constexpr char kFakeAttestedDeviceId[] = "fake device id";
 
 struct NvramQuoteDataForTesting {
   NVRAMQuoteType type;
@@ -2610,9 +2611,11 @@ TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
               pca_request.nvram_quotes().at(RSU_DEVICE_ID).quote());
     EXPECT_EQ(kFakeRsuDeviceIdQuotedData,
               pca_request.nvram_quotes().at(RSU_DEVICE_ID).quoted_data());
+    EXPECT_EQ(kFakeAttestedDeviceId, pca_request.attested_device_id());
     EXPECT_EQ(cert_name, pca_request.identity_credential());
     std::move(quit_closure).Run();
   };
+  service_->set_attested_device_id(kFakeAttestedDeviceId);
   CreateCertificateRequestRequest request;
   request.set_aca_type(aca_type_);
   request.set_certificate_profile(ENTERPRISE_ENROLLMENT_CERTIFICATE);
@@ -2654,9 +2657,11 @@ TEST_P(AttestationServiceTest,
     EXPECT_EQ(kFakeSnBitsQuote, pca_request.nvram_quotes().at(SN_BITS).quote());
     EXPECT_EQ(kFakeSnBitsQuotedData,
               pca_request.nvram_quotes().at(SN_BITS).quoted_data());
+    EXPECT_EQ(kFakeAttestedDeviceId, pca_request.attested_device_id());
     EXPECT_EQ(cert_name, pca_request.identity_credential());
     std::move(quit_closure).Run();
   };
+  service_->set_attested_device_id(kFakeAttestedDeviceId);
   CreateCertificateRequestRequest request;
   request.set_aca_type(aca_type_);
   request.set_certificate_profile(ENTERPRISE_ENROLLMENT_CERTIFICATE);
@@ -2709,10 +2714,11 @@ TEST_P(AttestationServiceTest, CreateVtpmEkCertificateRequestSuccess) {
     EXPECT_EQ(kFakeSnBitsQuote, pca_request.nvram_quotes().at(SN_BITS).quote());
     EXPECT_EQ(kFakeSnBitsQuotedData,
               pca_request.nvram_quotes().at(SN_BITS).quoted_data());
+    EXPECT_EQ(kFakeAttestedDeviceId, pca_request.attested_device_id());
     EXPECT_EQ(cert_name, pca_request.identity_credential());
     std::move(quit_closure).Run();
   };
-  service_->set_attested_device_id("fake device id");
+  service_->set_attested_device_id(kFakeAttestedDeviceId);
   CreateCertificateRequestRequest request;
   request.set_aca_type(aca_type_);
   request.set_certificate_profile(ENTERPRISE_VTPM_EK_CERTIFICATE);
@@ -2747,10 +2753,11 @@ TEST_P(AttestationServiceTest,
     EXPECT_EQ(kFakeSnBitsQuote, pca_request.nvram_quotes().at(SN_BITS).quote());
     EXPECT_EQ(kFakeSnBitsQuotedData,
               pca_request.nvram_quotes().at(SN_BITS).quoted_data());
+    EXPECT_EQ(kFakeAttestedDeviceId, pca_request.attested_device_id());
     EXPECT_EQ(cert_name, pca_request.identity_credential());
     std::move(quit_closure).Run();
   };
-  service_->set_attested_device_id("fake device id");
+  service_->set_attested_device_id(kFakeAttestedDeviceId);
   CreateCertificateRequestRequest request;
   request.set_aca_type(aca_type_);
   request.set_certificate_profile(ENTERPRISE_VTPM_EK_CERTIFICATE);
@@ -2805,7 +2812,7 @@ TEST_P(AttestationServiceTest,
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     std::move(quit_closure).Run();
   };
-  service_->set_attested_device_id("fake device id");
+  service_->set_attested_device_id(kFakeAttestedDeviceId);
   CreateCertificateRequestRequest request;
   request.set_aca_type(aca_type_);
   request.set_certificate_profile(ENTERPRISE_VTPM_EK_CERTIFICATE);
@@ -2831,7 +2838,7 @@ TEST_P(AttestationServiceTest,
     EXPECT_NE(STATUS_SUCCESS, reply.status());
     std::move(quit_closure).Run();
   };
-  service_->set_attested_device_id("fake device id");
+  service_->set_attested_device_id(kFakeAttestedDeviceId);
   CreateCertificateRequestRequest request;
   request.set_aca_type(aca_type_);
   request.set_certificate_profile(ENTERPRISE_VTPM_EK_CERTIFICATE);
