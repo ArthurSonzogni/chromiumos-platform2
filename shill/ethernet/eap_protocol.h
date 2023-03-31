@@ -11,11 +11,11 @@ namespace shill {
 
 namespace eap_protocol {
 
-struct ALIGNAS(1) Ieee8021xHdr {
+struct Ieee8021xHdr {
   uint8_t version;
   uint8_t type;
   uint16_t length;
-};
+} __attribute__((packed));
 
 enum IeeeEapolVersion {
   kIeee8021xEapolVersion1 = 1,
@@ -30,11 +30,11 @@ enum IeeeEapolType {
   kIIeee8021xTypeEapolEncapsulatedAsfAlert = 4
 };
 
-struct ALIGNAS(1) EapHeader {
+struct EapHeader {
   uint8_t code;
   uint8_t identifier;
   uint16_t length;  // including code and identifier; network byte order
-};
+} __attribute__((packed));
 
 enum EapCode {
   kEapCodeRequest = 1,

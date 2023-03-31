@@ -91,10 +91,10 @@ bool EapListener::CreateSocket() {
 }
 
 void EapListener::ReceiveRequest(int fd) {
-  struct ALIGNAS(1) {
+  struct {
     eap_protocol::Ieee8021xHdr onex_header;
     eap_protocol::EapHeader eap_header;
-  } payload;
+  } __attribute__((packed)) payload;
   sockaddr_ll remote_address;
   memset(&remote_address, 0, sizeof(remote_address));
   socklen_t socklen = sizeof(remote_address);
