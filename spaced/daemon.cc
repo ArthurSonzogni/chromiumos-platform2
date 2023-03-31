@@ -16,6 +16,7 @@
 #include <base/task/task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
+#include <brillo/blkdev_utils/storage_utils.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/spaced/dbus-constants.h>
@@ -50,14 +51,7 @@ std::optional<brillo::Thinpool> GetThinpool() {
     return std::nullopt;
   }
 
-  // For some storage devices (eg. eMMC), the path ends in a digit
-  // (eg. /dev/mmcblk0). Use 'p' as the partition separator while generating
-  // the partition's block device path. For other types of paths (/dev/sda), we
-  // directly append the partition number.
-  std::string stateful_dev(root_device.value());
-  if (base::IsAsciiDigit(stateful_dev[stateful_dev.size() - 1]))
-    stateful_dev += 'p';
-  stateful_dev += '1';
+  const base::FilePath stateful_dev = brillo::AppendPartition(root_device, 1);
 
   // Attempt to check if the stateful partition is setup with a valid physical
   // volume.
