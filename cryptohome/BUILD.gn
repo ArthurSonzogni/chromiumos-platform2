@@ -371,7 +371,6 @@ if (use.test) {
       "user_session/user_session_map_unittest.cc",
       "userdataauth_auth_session_unittest.cc",
       "userdataauth_unittest.cc",
-      "uss_experiment_config_fetcher_unittest.cc",
       "uss_migrator_unittest.cc",
       "vault_keyset_unittest.cc",
     ]
@@ -407,8 +406,6 @@ if (use.test) {
       "libchrome-test",
       "libecryptfs",
       "libmetrics",
-      "libshill-client",
-      "libshill-client-test",
       "libtpm_manager-client",
       "libtpm_manager-client-test",
       "libuser_data_auth-client",

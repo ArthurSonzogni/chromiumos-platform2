@@ -65,7 +65,6 @@
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_pkcs11_init.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/mock_uss_experiment_config_fetcher.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
@@ -220,8 +219,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_chaps_client(&chaps_client_);
     userdataauth_->set_firmware_management_parameters(&fwmp_);
     userdataauth_->set_fingerprint_manager(&fingerprint_manager_);
-    userdataauth_->set_uss_experiment_config_fetcher(
-        &uss_experiment_config_fetcher_);
     userdataauth_->set_arc_disk_quota(&arc_disk_quota_);
     userdataauth_->set_pkcs11_init(&pkcs11_init_);
     userdataauth_->set_pkcs11_token_factory(&pkcs11_token_factory_);
@@ -369,10 +366,6 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock Fingerprint Manager object, will be passed to UserDataAuth for its
   // internal use.
   NiceMock<MockFingerprintManager> fingerprint_manager_;
-
-  // Mock USS experiment config fetcher object, will be passed to UserDataAuth
-  // for its internal use.
-  NiceMock<MockUssExperimentConfigFetcher> uss_experiment_config_fetcher_;
 
   // Mock challenge credential helper utility object, will be passed to
   // UserDataAuth for its internal use.
@@ -3505,7 +3498,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
   AuthFactorManager manager(&platform_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
-  SetUserSecretStashExperimentFlag(/*enabled=*/false);
+  SetUserSecretStashExperimentForTesting(false);
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
@@ -3567,7 +3560,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
 
   // ListAuthFactors() load the factors according to the USS experiment status.
-  SetUserSecretStashExperimentFlag(/*enabled=*/true);
+  SetUserSecretStashExperimentForTesting(true);
   TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_2;
   userdataauth_->ListAuthFactors(
       list_request,
@@ -3627,7 +3620,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
                   user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
                   user_data_auth::AUTH_FACTOR_TYPE_PIN,
                   user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY));
-  ResetUserSecretStashExperimentFlagForTesting();
+  ResetUserSecretStashExperimentForTesting();
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
@@ -3635,7 +3628,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
   AuthFactorManager manager(&platform_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
-  SetUserSecretStashExperimentFlag(/*enabled=*/false);
+  SetUserSecretStashExperimentForTesting(false);
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
@@ -3701,7 +3694,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
 
   // ListAuthFactors() load the factors according to the USS experiment status.
-  SetUserSecretStashExperimentFlag(/*enabled=*/true);
+  SetUserSecretStashExperimentForTesting(true);
   TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_2;
   userdataauth_->ListAuthFactors(
       list_request,
@@ -3734,7 +3727,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   EXPECT_THAT(list_reply_2.supported_auth_factors(),
               UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
                                    user_data_auth::AUTH_FACTOR_TYPE_PIN));
-  ResetUserSecretStashExperimentFlagForTesting();
+  ResetUserSecretStashExperimentForTesting();
 }
 
 TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintSuccess) {

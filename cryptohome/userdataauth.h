@@ -60,7 +60,6 @@
 #include "cryptohome/user_session/user_session_factory.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/username.h"
-#include "cryptohome/uss_experiment_config_fetcher.h"
 
 namespace cryptohome {
 
@@ -570,12 +569,6 @@ class UserDataAuth {
   // Override |fingerprint_manager_| for testing purpose
   void set_fingerprint_manager(FingerprintManager* fingerprint_manager) {
     fingerprint_manager_ = fingerprint_manager;
-  }
-
-  // Override |uss_experiment_config_fetcher_| for testing purpose
-  void set_uss_experiment_config_fetcher(
-      UssExperimentConfigFetcher* uss_experiment_config_fetcher) {
-    uss_experiment_config_fetcher_ = uss_experiment_config_fetcher;
   }
 
   // Override |mount_factory_| for testing purpose
@@ -1250,15 +1243,6 @@ class UserDataAuth {
   // A counter to count the number of parallel tasks on mount thread.
   // Recorded when a requests comes in. Counts of 1 will not reported.
   std::atomic<int> parallel_task_count_ = 0;
-
-  // The default USS experiment config fetcher object. This is used to fetch the
-  // USS experiment config when network is first connected.
-  std::unique_ptr<UssExperimentConfigFetcher>
-      default_uss_experiment_config_fetcher_;
-
-  // The actual USS experiment config fetcher object. Usually set to
-  // default_uss_experiment_config_fetcher_, but can be overridden for testing.
-  UssExperimentConfigFetcher* uss_experiment_config_fetcher_;
 
   // Flag to cache the status of whether Pk establishment is blocked
   // successfully, so we don't have to do this multiple times.

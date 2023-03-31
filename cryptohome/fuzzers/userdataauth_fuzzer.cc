@@ -44,7 +44,6 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/fuzzers/fuzzed_platform.h"
 #include "cryptohome/fuzzers/fuzzed_proto_generator.h"
-#include "cryptohome/mock_uss_experiment_config_fetcher.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/service_userdataauth.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
@@ -306,7 +305,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   std::unique_ptr<MountFactory> mount_factory = CreateMountFactory();
   hwsec::FuzzedFactory hwsec_factory(provider);
   NiceMock<tpm_manager::MockTpmManagerUtility> tpm_manager_utility;
-  NiceMock<MockUssExperimentConfigFetcher> uss_experiment_config_fetcher;
   auto bus =
       base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
   auto mount_thread_bus =
@@ -326,8 +324,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   userdataauth->set_mount_thread_dbus(mount_thread_bus);
   userdataauth->set_hwsec_factory(&hwsec_factory);
   userdataauth->set_tpm_manager_util_(&tpm_manager_utility);
-  userdataauth->set_uss_experiment_config_fetcher(
-      &uss_experiment_config_fetcher);
   if (!userdataauth->Initialize()) {
     // This should be a rare case (e.g., the mocked system salt writing failed).
     return 0;

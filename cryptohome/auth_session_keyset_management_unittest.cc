@@ -155,7 +155,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
 
   ~AuthSessionTestWithKeysetManagement() override {
     // Reset USS experiment test flag.
-    ResetUserSecretStashExperimentFlagForTesting();
+    ResetUserSecretStashExperimentForTesting();
   }
 
  protected:
@@ -750,7 +750,6 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledUpdateBackup) {
       AuthFactorStorageType::kUserSecretStash));
   EXPECT_FALSE(auth_session4->auth_factor_map().HasFactorWithStorage(
       AuthFactorStorageType::kVaultKeyset));
-  ResetUserSecretStashExperimentFlagForTesting();
 }
 
 // Test that VaultKeysets are migrated to UserSecretStash when migration is
@@ -835,7 +834,6 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
   EXPECT_NE(vk2, nullptr);
   EXPECT_TRUE(vk2->IsForBackup());
   EXPECT_TRUE(vk2->IsMigrated());
-  ResetUserSecretStashExperimentFlagForTesting();
 }
 
 // Test that after a VaultKeyset is migrated to UserSecretStash the next

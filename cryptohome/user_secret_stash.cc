@@ -49,27 +49,10 @@ namespace cryptohome {
 
 namespace {
 
-// The current experiment version of the USS implementation. When there is a
-// critical bug in USS such that we need to stop and rollback the experiment,
-// this version will be marked as invalid in the server side. After the bug is
-// fixed and USS can be enabled again, this version needs to be incremented.
-constexpr int kCurrentUssVersion = 2;
-
 constexpr char kEnableUssFeatureTestFlagPath[] =
     "/var/lib/cryptohome/uss_enabled";
 constexpr char kDisableUssFeatureTestFlagPath[] =
     "/var/lib/cryptohome/uss_disabled";
-constexpr char kEnableUssFlagPath[] =
-    "/var/lib/cryptohome/uss_enabled_until_next_update";
-constexpr char kDisableUssFlagPath[] =
-    "/var/lib/cryptohome/uss_disabled_until_next_update";
-
-std::optional<bool>& GetUserSecretStashExperimentFlag() {
-  // The static variable holding the overridden state. The default state is
-  // nullopt, which fallbacks to the default enabled/disabled state.
-  static std::optional<bool> uss_experiment_enabled;
-  return uss_experiment_enabled;
-}
 
 std::optional<bool>& GetUserSecretStashExperimentOverride() {
   // The static variable holding the overridden state. The default state is
@@ -84,30 +67,6 @@ bool EnableUssFeatureTestFlagFileExists(Platform* platform) {
 
 bool DisableUssFeatureTestFlagFileExists(Platform* platform) {
   return platform->FileExists(base::FilePath(kDisableUssFeatureTestFlagPath));
-}
-
-bool EnableUssFlagFileExists(Platform* platform) {
-  return platform->FileExists(base::FilePath(kEnableUssFlagPath));
-}
-
-bool DisableUssFlagFileExists(Platform* platform) {
-  return platform->FileExists(base::FilePath(kDisableUssFlagPath));
-}
-
-void UpdateUssStatusOnDisk(Platform* platform, UssExperimentFlag flag) {
-  switch (flag) {
-    case UssExperimentFlag::kDisabled:
-      platform->TouchFileDurable(base::FilePath(kDisableUssFlagPath));
-      platform->DeleteFileDurable(base::FilePath(kEnableUssFlagPath));
-      return;
-    case UssExperimentFlag::kEnabled:
-      platform->TouchFileDurable(base::FilePath(kEnableUssFlagPath));
-      platform->DeleteFileDurable(base::FilePath(kDisableUssFlagPath));
-      return;
-    case UssExperimentFlag::kNotFound:
-    case UssExperimentFlag::kMaxValue:
-      return;
-  }
 }
 
 // Loads the current OS version from the CHROMEOS_RELEASE_VERSION field in
@@ -137,31 +96,9 @@ UssExperimentFlag UserSecretStashExperimentResult(Platform* platform) {
   if (EnableUssFeatureTestFlagFileExists(platform)) {
     return UssExperimentFlag::kEnabled;
   }
-  // 3. Check the flag set by UssExperimentConfigFetcher and persist the state
-  // until next update.
-  UssExperimentFlag result = UssExperimentFlag::kNotFound;
-  std::optional<bool> flag = GetUserSecretStashExperimentFlag();
-  if (flag.has_value()) {
-    if (flag.value()) {
-      result = UssExperimentFlag::kEnabled;
-      UpdateUssStatusOnDisk(platform, UssExperimentFlag::kEnabled);
-    } else {
-      result = UssExperimentFlag::kDisabled;
-      UpdateUssStatusOnDisk(platform, UssExperimentFlag::kDisabled);
-    }
-  } else {
-    // When flag doesn't have any value, restore the previous value.
-    // If both flag files exists, USS is disabled. If no flag file is found the
-    // result will stay unchanged.
-    if (EnableUssFlagFileExists(platform)) {
-      result = UssExperimentFlag::kEnabled;
-    }
-    if (DisableUssFlagFileExists(platform)) {
-      result = UssExperimentFlag::kDisabled;
-    }
-  }
-
-  return result;
+  // 3. Without overrides, the behavior is to always enable UserSecretStash
+  // experiment.
+  return UssExperimentFlag::kEnabled;
 }
 
 // Extracts the file system keyset from the given USS payload. Returns nullopt
@@ -494,25 +431,13 @@ CryptohomeStatusOr<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
 
 }  // namespace
 
-int UserSecretStashExperimentVersion() {
-  return kCurrentUssVersion;
-}
-
 bool IsUserSecretStashExperimentEnabled(Platform* platform) {
   return UserSecretStashExperimentResult(platform) ==
          UssExperimentFlag::kEnabled;
 }
 
-void ReportUserSecretStashExperimentState(Platform* platform) {
-  ReportUssExperimentFlag(UserSecretStashExperimentResult(platform));
-}
-
-void SetUserSecretStashExperimentFlag(bool enabled) {
-  GetUserSecretStashExperimentFlag() = enabled;
-}
-
-void ResetUserSecretStashExperimentFlagForTesting() {
-  GetUserSecretStashExperimentFlag().reset();
+void ResetUserSecretStashExperimentForTesting() {
+  GetUserSecretStashExperimentOverride().reset();
 }
 
 std::optional<bool> SetUserSecretStashExperimentForTesting(

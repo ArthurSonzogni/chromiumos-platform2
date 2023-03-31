@@ -20,18 +20,6 @@
 
 namespace cryptohome {
 
-// Returns the UserSecretStash experiment version. This will compared with the
-// `last_invalid` field in the fetched experiment config to determine whether
-// this version should enable the experiment. Will be incremented whenever a
-// known issue that blocks the experiment is fixed so that it can be enabled
-// again.
-int UserSecretStashExperimentVersion();
-
-// This is used by the UssExperimentConfigFetcher to set the experiment flag to
-// enabled or disabled based on whether this USS version is valid and how much
-// of the population should have the experiment enabled.
-void SetUserSecretStashExperimentFlag(bool enabled);
-
 // Returns whether the UserSecretStash experiment (using the USS instead of
 // vault keysets) is enabled.
 // The experiment is controlled by fetching a config file from gstatic. It
@@ -44,7 +32,6 @@ void SetUserSecretStashExperimentFlag(bool enabled);
 // can furthermore override this behavior using
 // `SetUserSecretStashExperimentForTesting()`.
 bool IsUserSecretStashExperimentEnabled(Platform* platform);
-void ReportUserSecretStashExperimentState(Platform* platform);
 
 // Allows to toggle the experiment state in tests. Passing nullopt reverts to
 // the default behavior. Returns the original contents before setting to allow
@@ -54,7 +41,7 @@ std::optional<bool> SetUserSecretStashExperimentForTesting(
 
 // This resets the static |uss_experiment_enabled| flag to simulate
 // restarting cryptohomed process in the unittests.
-void ResetUserSecretStashExperimentFlagForTesting();
+void ResetUserSecretStashExperimentForTesting();
 
 // RAII-style object that allows you to set the USS experiment flag (enabling or
 // disabling it) in tests. The setting you apply will be cleared on destruction.

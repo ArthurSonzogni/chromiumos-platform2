@@ -1407,6 +1407,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretTest) {
 TEST_F(AuthSessionInterfaceMockAuthTest, AddFactorNewUserVk) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
+  SetUserSecretStashExperimentForTesting(false);
+
   // Arrange.
   AuthSession* const auth_session = CreateAndPrepareUserVault();
   ASSERT_TRUE(auth_session);
@@ -1441,12 +1443,16 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AddFactorNewUserVk) {
   AuthInput auth_input = {.user_input = brillo::SecureBlob(kPassword),
                           .obfuscated_username = obfuscated_username};
   EXPECT_TRUE(verifier->Verify(auth_input));
+
+  ResetUserSecretStashExperimentForTesting();
 }
 
 // Test that AddAuthFactor succeeds when adding a second factor for a freshly
 // created user, but the credential verifier remains using the first credential.
 TEST_F(AuthSessionInterfaceMockAuthTest, AddSecondFactorNewUserVk) {
   const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
+
+  SetUserSecretStashExperimentForTesting(false);
 
   // Arrange.
   AuthSession* const auth_session = CreateAndPrepareUserVault();
@@ -1498,6 +1504,8 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AddSecondFactorNewUserVk) {
   AuthInput auth_input = {.user_input = brillo::SecureBlob(kPassword),
                           .obfuscated_username = obfuscated_username};
   EXPECT_TRUE(verifier->Verify(auth_input));
+
+  ResetUserSecretStashExperimentForTesting();
 }
 
 // Test that AuthenticateAuthFactor succeeds for an existing user and a

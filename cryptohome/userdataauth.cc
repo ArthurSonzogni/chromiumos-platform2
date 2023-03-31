@@ -73,7 +73,6 @@
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
-#include "cryptohome/uss_experiment_config_fetcher.h"
 #include "cryptohome/util/proto_enum.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -496,7 +495,6 @@ void UserDataAuth::CreateMountThreadDBus() {
 
 void UserDataAuth::ShutdownTask() {
   default_auth_session_manager_.reset();
-  default_uss_experiment_config_fetcher_.reset();
   default_fingerprint_manager_.reset();
   default_challenge_credentials_helper_.reset();
   if (mount_thread_bus_) {
@@ -546,10 +544,6 @@ bool UserDataAuth::PostDBusInitialize() {
       base::BindOnce(&UserDataAuth::InitializeChallengeCredentialsHelper,
                      base::Unretained(this)));
 
-  PostTaskToMountThread(
-      FROM_HERE, base::BindOnce(&UserDataAuth::CreateUssExperimentConfigFetcher,
-                                base::Unretained(this)));
-
   PostTaskToMountThread(FROM_HERE,
                         base::BindOnce(&UserDataAuth::InitializeFeatureLibrary,
                                        base::Unretained(this)));
@@ -575,18 +569,6 @@ void UserDataAuth::InitializeChallengeCredentialsHelper() {
   CryptohomeStatus status = InitForChallengeResponseAuth();
   if (!status.ok()) {
     LOG(ERROR) << "Failed to initialize challenge_credentials_helper_.";
-  }
-}
-
-void UserDataAuth::CreateUssExperimentConfigFetcher() {
-  AssertOnMountThread();
-  if (!uss_experiment_config_fetcher_) {
-    if (!default_uss_experiment_config_fetcher_) {
-      default_uss_experiment_config_fetcher_ =
-          UssExperimentConfigFetcher::Create(mount_thread_bus_);
-    }
-    uss_experiment_config_fetcher_ =
-        default_uss_experiment_config_fetcher_.get();
   }
 }
 

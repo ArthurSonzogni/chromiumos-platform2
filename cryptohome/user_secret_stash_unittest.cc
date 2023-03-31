@@ -360,16 +360,16 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWithNoFingerprintRateLimiter) {
 
 // Test the USS experiment state is off by default, but can be toggled in tests.
 TEST_F(UserSecretStashTest, ExperimentState) {
-  // The experiment is off by default.
+  // The experiment is on by default.
   MockPlatform platform;
-  EXPECT_FALSE(IsUserSecretStashExperimentEnabled(&platform));
-
-  // Verify the test can toggle the experiment state.
-  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
   EXPECT_TRUE(IsUserSecretStashExperimentEnabled(&platform));
 
+  // Verify the test can toggle the experiment state.
+  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
+  EXPECT_FALSE(IsUserSecretStashExperimentEnabled(&platform));
+
   // Unset the experiment override to avoid affecting other test cases.
-  SetUserSecretStashExperimentForTesting(/*enabled=*/std::nullopt);
+  ResetUserSecretStashExperimentForTesting();
 }
 
 // Test that a newly created USS has the current OS version stored.

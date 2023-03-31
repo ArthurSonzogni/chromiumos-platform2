@@ -265,9 +265,6 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
   bool user_is_active = user_session && user_session->IsActive();
   bool user_exists = persistent_user_exists || user_is_active;
 
-  // Report UserSecretStashExperiment status.
-  ReportUserSecretStashExperimentState(backing_apis.platform);
-
   // Determine if migration is enabled.
   bool migrate_to_user_secret_stash = false;
   if (backing_apis.features) {
@@ -340,8 +337,6 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
   DCHECK(auth_block_utility_);
   DCHECK(auth_factor_manager_);
   DCHECK(user_secret_stash_storage_);
-  // Report session starting metrics.
-  ReportUserSecretStashExperimentState(platform_);
   auth_factor_map_.ReportAuthFactorBackingStoreMetrics();
   RecordAuthSessionStart();
 }

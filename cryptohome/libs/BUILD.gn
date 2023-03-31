@@ -17,7 +17,6 @@ pkg_config("target_default_deps") {
     "absl",
     "libbrillo",
     "libchrome",
-    "libshill-client",
     "openssl",
     "system_api",
   ]
@@ -514,7 +513,6 @@ static_library("libcryptohome") {
     "../user_session/user_session.cc",
     "../user_session/user_session_map.cc",
     "../userdataauth.cc",
-    "../uss_experiment_config_fetcher.cc",
     "../vault_keyset_factory.cc",
   ]
 
