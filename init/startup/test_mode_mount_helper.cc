@@ -83,6 +83,9 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
     base::FilePath backup = GetStateful().Append("corrupted_encryption");
     brillo::DeletePathRecursively(backup);
     base::CreateDirectory(backup);
+    if (!base::SetPosixFilePermissions(backup, 0755)) {
+      PLOG(WARNING) << "chmod failed for " << backup.value();
+    }
 
     base::FileEnumerator enumerator(GetStateful(), false /* recursive */,
                                     base::FileEnumerator::FILES);

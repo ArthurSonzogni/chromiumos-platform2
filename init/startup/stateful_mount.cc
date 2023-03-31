@@ -502,6 +502,10 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
         PLOG(WARNING) << "Failed to create " << path_target.value();
       }
 
+      if (!base::SetPosixFilePermissions(path_target, 0755)) {
+        PLOG(WARNING) << "chmod failed for " << path_target.value();
+      }
+
       base::FileEnumerator enumerator(path_new, false /* recursive */,
                                       base::FileEnumerator::FILES |
                                           base::FileEnumerator::DIRECTORIES |

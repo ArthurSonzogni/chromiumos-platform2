@@ -172,12 +172,17 @@ bool MountHelper::UmountVarAndHomeChronosEncrypted() {
 
 // Bind mount /var and /home/chronos. All function arguments are ignored.
 bool MountHelper::MountVarAndHomeChronosUnencrypted() {
-  if (!base::CreateDirectory(stateful_.Append(kVar))) {
+  base::FilePath var = stateful_.Append(kVar);
+  if (!base::CreateDirectory(var)) {
     return false;
   }
 
-  if (!platform_->Mount(stateful_.Append("var"), root_.Append(kVar), "",
-                        MS_BIND, "")) {
+  if (!base::SetPosixFilePermissions(var, 0755)) {
+    PLOG(WARNING) << "chmod failed for " << var.value();
+    return false;
+  }
+
+  if (!platform_->Mount(var, root_.Append(kVar), "", MS_BIND, "")) {
     return false;
   }
   if (!platform_->Mount(stateful_.Append(kHomeChronos),
