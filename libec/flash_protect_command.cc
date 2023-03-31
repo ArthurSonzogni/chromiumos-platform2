@@ -89,4 +89,32 @@ flash_protect::Flags FlashProtectCommand::GetWritableFlags() const {
   return static_cast<flash_protect::Flags>(Resp()->writable_flags);
 }
 
+flash_protect::Flags FlashProtectCommand_v2::GetFlags() const {
+  return static_cast<flash_protect::Flags>(Resp()->flags);
+}
+
+FlashProtectCommand_v2::FlashProtectCommand_v2(flash_protect::Flags flags,
+                                               flash_protect::Flags mask)
+    : EcCommandAsync(EC_CMD_FLASH_PROTECT,
+                     FLASH_PROTECT_GET_RESULT,
+                     {.poll_for_result_num_attempts = 20,
+                      .poll_interval = base::Milliseconds(100),
+                      // The EC temporarily stops responding to EC commands
+                      // when this command is run, so we will keep trying until
+                      // we get success (or time out).
+                      .validate_poll_result = false},
+                     2) {
+  Req()->action = FLASH_PROTECT_ASYNC;
+  Req()->flags = base::to_underlying(flags);
+  Req()->mask = base::to_underlying(mask);
+}
+
+flash_protect::Flags FlashProtectCommand_v2::GetValidFlags() const {
+  return static_cast<flash_protect::Flags>(Resp()->valid_flags);
+}
+
+flash_protect::Flags FlashProtectCommand_v2::GetWritableFlags() const {
+  return static_cast<flash_protect::Flags>(Resp()->writable_flags);
+}
+
 }  // namespace ec

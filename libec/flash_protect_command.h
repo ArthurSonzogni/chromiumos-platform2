@@ -11,6 +11,7 @@
 #include <brillo/brillo_export.h>
 #include <brillo/enum_flags.h>
 #include "libec/ec_command.h"
+#include "libec/ec_command_async.h"
 
 namespace ec {
 
@@ -43,6 +44,18 @@ class BRILLO_EXPORT FlashProtectCommand
   ~FlashProtectCommand() override = default;
 
   static std::string ParseFlags(flash_protect::Flags flags);
+
+  flash_protect::Flags GetFlags() const;
+  flash_protect::Flags GetValidFlags() const;
+  flash_protect::Flags GetWritableFlags() const;
+};
+
+class BRILLO_EXPORT FlashProtectCommand_v2
+    : public EcCommandAsync<struct ec_params_flash_protect_v2,
+                            struct ec_response_flash_protect> {
+ public:
+  FlashProtectCommand_v2(flash_protect::Flags flags, flash_protect::Flags mask);
+  ~FlashProtectCommand_v2() override = default;
 
   flash_protect::Flags GetFlags() const;
   flash_protect::Flags GetValidFlags() const;

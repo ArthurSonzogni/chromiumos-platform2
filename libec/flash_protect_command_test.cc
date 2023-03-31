@@ -109,5 +109,18 @@ TEST(FlashProtect, OverloadedStreamOperator) {
   EXPECT_EQ(stream.str(), "1");
 }
 
+TEST(FlashProtectCommand_v2, FlashProtectCommand_v2) {
+  flash_protect::Flags flags =
+      flash_protect::Flags::kRollbackAtBoot | flash_protect::Flags::kRoAtBoot;
+  flash_protect::Flags mask = flash_protect::Flags::kNone;
+  FlashProtectCommand_v2 cmd(flags, mask);
+  EXPECT_EQ(cmd.Version(), 2);
+  EXPECT_EQ(cmd.Command(), EC_CMD_FLASH_PROTECT);
+  EXPECT_EQ(cmd.Req()->action, FLASH_PROTECT_ASYNC);
+  EXPECT_EQ(cmd.options().poll_for_result_num_attempts, 20);
+  EXPECT_EQ(cmd.options().poll_interval, base::Milliseconds(100));
+  EXPECT_EQ(cmd.options().validate_poll_result, false);
+}
+
 }  // namespace
 }  // namespace ec
