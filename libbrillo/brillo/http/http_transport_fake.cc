@@ -248,10 +248,10 @@ void ServerResponse::ReplyText(int status_code,
   Reply(status_code, text.data(), text.size(), mime_type);
 }
 
-void ServerResponse::ReplyJson(int status_code, const base::Value* json) {
+void ServerResponse::ReplyJson(int status_code, const base::ValueView json) {
   std::string text;
   base::JSONWriter::WriteWithOptions(
-      *json, base::JSONWriter::OPTIONS_PRETTY_PRINT, &text);
+      json, base::JSONWriter::OPTIONS_PRETTY_PRINT, &text);
   std::string mime_type = brillo::mime::AppendParameter(
       brillo::mime::application::kJson, brillo::mime::parameters::kCharset,
       "utf-8");
@@ -260,11 +260,11 @@ void ServerResponse::ReplyJson(int status_code, const base::Value* json) {
 
 void ServerResponse::ReplyJson(int status_code,
                                const http::FormFieldList& fields) {
-  base::Value json(base::Value::Type::DICT);
+  base::Value::Dict json;
   for (const auto& pair : fields) {
-    json.SetStringPath(pair.first, pair.second);
+    json.SetByDottedPath(pair.first, pair.second);
   }
-  ReplyJson(status_code, &json);
+  ReplyJson(status_code, json);
 }
 
 std::string ServerResponse::GetStatusText() const {

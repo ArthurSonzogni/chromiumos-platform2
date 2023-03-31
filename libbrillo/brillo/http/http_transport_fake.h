@@ -227,7 +227,7 @@ class ServerResponse : public ServerRequestResponseBase {
                  const std::string& text,
                  const std::string& mime_type);
   // Reply with JSON object. The content type will be "application/json".
-  void ReplyJson(int status_code, const base::Value* json);
+  void ReplyJson(int status_code, const base::ValueView json);
   // Special form for JSON response for simple objects that have a flat
   // list of key-value pairs of string type.
   void ReplyJson(int status_code, const FormFieldList& fields);

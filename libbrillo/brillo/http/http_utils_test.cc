@@ -155,13 +155,13 @@ TEST(HttpUtils, SendRequest_Headers) {
   static const char json_echo_url[] = "http://localhost/echo/json";
   auto JsonEchoHandler = [](const fake::ServerRequest& request,
                             fake::ServerResponse* response) {
-    base::Value json(base::Value::Type::DICT);
-    json.SetStringKey("method", request.GetMethod());
-    json.SetStringKey("data", request.GetDataAsString());
+    base::Value::Dict json;
+    json.Set("method", request.GetMethod());
+    json.Set("data", request.GetDataAsString());
     for (const auto& pair : request.GetHeaders()) {
-      json.SetStringPath("header." + pair.first, pair.second);
+      json.SetByDottedPath("header." + pair.first, pair.second);
     }
-    response->ReplyJson(status_code::Ok, &json);
+    response->ReplyJson(status_code::Ok, json);
   };
   transport->AddHandler(json_echo_url, "*",
                         base::BindRepeating(JsonEchoHandler));
