@@ -150,4 +150,11 @@ TEST(OthersTest, GetStorageTypeTest) {
             storage_utils_mock.GetStorageType(root, root_disk));
 }
 
+TEST(StorageUtils, AppendPartition) {
+  EXPECT_EQ(AppendPartition(base::FilePath("/dev/sda"), 12),
+            base::FilePath("/dev/sda12"));
+  EXPECT_EQ(AppendPartition(base::FilePath("/dev/nvme0n1"), 12),
+            base::FilePath("/dev/nvme0n1p12"));
+}
+
 }  // namespace brillo

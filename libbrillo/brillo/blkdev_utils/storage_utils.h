@@ -48,6 +48,13 @@ BRILLO_EXPORT std::unique_ptr<StorageDevice> GetStorageDevice(
 // Maps the StorageType enum to a string.
 BRILLO_EXPORT std::string StorageTypeToString(StorageType type);
 
+// Get the path of a device's partition. This handles prefixing the
+// partition number with a 'p' when needed.
+//
+// The device path cannot be empty, and the partition must be >= 1.
+BRILLO_EXPORT base::FilePath AppendPartition(const base::FilePath& device,
+                                             int partition);
+
 }  // namespace brillo
 
 #endif  // LIBBRILLO_BRILLO_BLKDEV_UTILS_STORAGE_UTILS_H_

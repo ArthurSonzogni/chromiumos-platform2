@@ -111,4 +111,15 @@ std::unique_ptr<StorageDevice> GetStorageDevice(
   }
 }
 
+base::FilePath AppendPartition(const base::FilePath& device, int partition) {
+  CHECK(!device.empty());
+  CHECK_GE(partition, 1);
+
+  std::string value = device.value();
+  if (base::IsAsciiDigit(value.back())) {
+    value += 'p';
+  }
+  return base::FilePath(value + std::to_string(partition));
+}
+
 }  // namespace brillo
