@@ -13,7 +13,7 @@ pub enum HwsecError {
     GsctoolError(i32),
     GsctoolResponseBadFormatError,
     VbootScriptResponseBadFormatError,
-    MetricsClientFailureError(String),
+    MetricsClientFailureError,
     QrencodeError,
     CommandRunnerError,
     SyslogError,
@@ -37,9 +37,7 @@ impl Display for HwsecError {
             HwsecError::VbootScriptResponseBadFormatError => {
                 write!(f, "VbootScriptResponseBadFormatError")
             }
-            HwsecError::MetricsClientFailureError(err_msg) => {
-                write!(f, "MetricsClientFailureError: {}", err_msg)
-            }
+            HwsecError::MetricsClientFailureError => write!(f, "MetricsClientFailureError"),
             HwsecError::QrencodeError => write!(f, "QrencodeError"),
             HwsecError::CommandRunnerError => write!(f, "CommandRunnerError"),
             HwsecError::SyslogError => write!(f, "SyslogError"),
