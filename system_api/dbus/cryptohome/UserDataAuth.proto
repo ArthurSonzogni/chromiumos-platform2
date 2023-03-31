@@ -169,9 +169,7 @@ enum PossibleAction {
   // POSSIBLY_AUTH suggests the caller to try another authentication method.
   POSSIBLY_AUTH = 3;
 
-  // POSSIBLY_INCORRECT_AUTH suggests that incorrect auth material (password)
-  // have been supplied. The caller should notify the user as such.
-  POSSIBLY_INCORRECT_AUTH = 4;
+  reserved 4;  // POSSIBLY_INCORRECT_AUTH
 
   // POSSIBLY_DELETE_VAULT suggests the caller to delete the user's vault
   // because it's unrecoverable.
@@ -235,15 +233,7 @@ message CryptohomeErrorInfo {
   // occurred, but believes that some of the actions (as listed in this field)
   // are more likely to resolve the error than other actions.
   // The entries in this repeated field are not ordered.
-  // This field can be ignored if primary_action is not PRIMARY_NONE or
-  // PRIMARY_INCORRECT_AUTH.
-  // Note that primary_action = PRIMARY_INCORRECT_AUTH is a special case,
-  // because the Chromium side will handle it different depending the number
-  // of times it happened. Therefore, for the case when primary_action =
-  // PRIMARY_INCORRECT_AUTH, the probable_action field will be populated with
-  // any PossibleAction entry that might be relevant (if any).
-  // In the future we intend to weed out any false positives in reporting
-  // PRIMARY_INCORRECT_AUTH, and thus probable_action will eventually be empty.
+  // This field can be ignored if primary_action is not PRIMARY_NONE.
   repeated PossibleAction possible_actions = 4;
 }
 
