@@ -68,6 +68,7 @@ message Process {
   optional string commandline = 4;
   optional FileImage image = 5;
   optional int64 rel_start_time_s = 6;
+  optional bool meta_first_appearance = 7;
 }
 
 // Namespaces for a process.
