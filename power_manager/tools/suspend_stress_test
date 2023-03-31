@@ -36,6 +36,7 @@ DEFINE_boolean memory_check "${FLAGS_FALSE}" \
 DEFINE_boolean pm_print_times "${FLAGS_TRUE}" \
                "Print the time taken by devices to suspend and resume"
 DEFINE_string  ignore_wakeup_source "none" "Wakeup source to ignore" i
+DEFINE_string  ignore_wakeup_irq_name "none" "Wakeup IRQ name to ignore" I
 DEFINE_string  record_dmesg_dir "" "dir to record dmesgs for failed iterations"
 DEFINE_string  pre_suspend_command "" "Command to run before each suspend"
 DEFINE_string  post_resume_command "" "Command to run after each resume"
@@ -76,6 +77,12 @@ get_ec_resume_result() {
   result=0
   [ -e "${ec_result_path}" ] && result=$(cat "${ec_result_path}")
   printf "%s" "${result}"
+}
+
+# Return the latest wakeup IRQ name.
+get_last_wakeup_irq_name() {
+  awk '$1 != "Abort:" && $1 >= 0 {print $2}' \
+      /sys/kernel/wakeup_reasons/last_resume_reason
 }
 
 # Return the current event count for the wakeup source.
@@ -251,6 +258,7 @@ printf "  premature wake fatal: %s\n" \
 printf "  late wake fatal: %s\n" "$(boolean_value "${FLAGS_late_wake_fatal}")"
 printf "  suspend command: %s\n" "${suspend_cmd}"
 printf "  wakeup source to ignore: %s\n" "${FLAGS_ignore_wakeup_source}"
+printf "  wakeup IRQ name to ignore: %s\n" "${FLAGS_ignore_wakeup_irq_name}"
 printf "  record_dmesg_dir: %s\n" "${FLAGS_record_dmesg_dir}"
 printf "  pm_print_times: %s\n" "$(boolean_value "${FLAGS_pm_print_times}")"
 
@@ -331,10 +339,16 @@ while true; do
   diff_sus_time=$(( actual_sus_time - sus_time ))
   cur_ignore_count=$(get_wakeup_source_event_count \
                      "${FLAGS_ignore_wakeup_source}")
+  last_wakeup_irq_name="$(get_last_wakeup_irq_name)"
   sus_time_str="slept for ${actual_sus_time}s, expected ${sus_time}s"
   ignore_failure=0
   if [ "${cur_ignore_count}" -ne "${last_ignore_count}" ]; then
     echo "Ignore wakeup from source ${FLAGS_ignore_wakeup_source}"
+    ignore_failure=1
+  fi
+  if [ -n "${last_wakeup_irq_name}" ] && \
+     [ "${last_wakeup_irq_name}" = "${FLAGS_ignore_wakeup_irq_name}" ]; then
+    echo "Ignore wakeup from IRQ ${FLAGS_ignore_wakeup_irq_name}"
     ignore_failure=1
   fi
   if [ "${ignore_failure}" -eq 0 ]; then
