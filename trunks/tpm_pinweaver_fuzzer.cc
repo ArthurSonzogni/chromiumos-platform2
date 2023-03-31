@@ -107,7 +107,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     uint64_t res64;
     brillo::SecureBlob sec_blob1;
     brillo::SecureBlob sec_blob2;
-    brillo::SecureBlob sec_blob3;
+    brillo::Blob blob1;
+    brillo::Blob blob2;
+    brillo::Blob blob3;
     std::vector<trunks::PinWeaverLogEntry> logs;
     trunks::TPM_RC retval;
 
@@ -217,7 +219,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         retval = trunks::Serialize_pw_start_bio_auth_t(
             data_provider.ConsumeIntegral<uint8_t>(),
             data_provider.ConsumeIntegral<uint8_t>(),
-            brillo::SecureBlob(
+            brillo::BlobFromString(
                 data_provider.ConsumeRandomLengthString(kMaxPwSecretSize)),
             data_provider.ConsumeRandomLengthString(kMaxStringLength),
             data_provider.ConsumeRandomLengthString(kMaxStringLength), &buf1);
@@ -304,7 +306,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       case kParsePwStartBioAuth:
         retval = trunks::Parse_pw_start_bio_auth_t(
             data_provider.ConsumeRandomLengthString(kMaxStringLength), &res32_1,
-            &buf1, &sec_blob1, &sec_blob2, &sec_blob3, &buf2, &buf3);
+            &buf1, &blob1, &blob2, &blob3, &buf2, &buf3);
         if (retval == trunks::TPM_RC_SUCCESS)
           CHECK(!buf1.empty());
         break;

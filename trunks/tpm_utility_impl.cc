@@ -3185,14 +3185,14 @@ TPM_RC TpmUtilityImpl::PinWeaverCreateBiometricsAuthRateLimiter(
 TPM_RC TpmUtilityImpl::PinWeaverStartBiometricsAuth(
     uint8_t protocol_version,
     uint8_t auth_channel,
-    const brillo::SecureBlob& client_nonce,
+    const brillo::Blob& client_nonce,
     const std::string& h_aux,
     const std::string& cred_metadata,
     uint32_t* result_code,
     std::string* root_hash,
-    brillo::SecureBlob* server_nonce,
-    brillo::SecureBlob* encrypted_high_entropy_secret,
-    brillo::SecureBlob* iv,
+    brillo::Blob* server_nonce,
+    brillo::Blob* encrypted_high_entropy_secret,
+    brillo::Blob* iv,
     std::string* cred_metadata_out,
     std::string* mac_out) {
   return PinWeaverCommand(

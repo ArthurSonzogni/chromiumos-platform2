@@ -37,6 +37,12 @@ constexpr uint8_t kPinWeaverProtocolVersion = 2;
 constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
 constexpr uint8_t kMaxAuthChannel = 1;
 
+// TODO(b/247704971): During transformation stage of the start_bio_auth
+// request/response fields, we need helper functions like this.
+brillo::Blob SecureBlobToBlob(const brillo::SecureBlob& blob) {
+  return brillo::Blob(blob.begin(), blob.end());
+}
+
 StatusOr<std::string> EncodeAuxHashes(const std::vector<brillo::Blob>& h_aux) {
   std::string result;
   result.reserve(h_aux.size() * PW_HASH_SIZE);
@@ -649,19 +655,19 @@ PinWeaverTpm2::StartBiometricsAuth(uint8_t auth_channel,
 
   uint32_t pinweaver_status = 0;
   std::string root;
-  brillo::SecureBlob server_nonce;
-  brillo::SecureBlob encrypted_he_secret;
-  brillo::SecureBlob iv;
+  brillo::Blob server_nonce;
+  brillo::Blob encrypted_he_secret;
+  brillo::Blob iv;
   std::string cred_metadata_string;
   std::string mac_string;
 
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(
           context_.GetTpmUtility().PinWeaverStartBiometricsAuth(
-              version, auth_channel, client_nonce, encoded_aux,
-              brillo::BlobToString(orig_cred_metadata), &pinweaver_status,
-              &root, &server_nonce, &encrypted_he_secret, &iv,
-              &cred_metadata_string, &mac_string)))
+              version, auth_channel, SecureBlobToBlob(client_nonce),
+              encoded_aux, brillo::BlobToString(orig_cred_metadata),
+              &pinweaver_status, &root, &server_nonce, &encrypted_he_secret,
+              &iv, &cred_metadata_string, &mac_string)))
       .WithStatus<TPMError>("Failed to try auth in pinweaver");
 
   return CredentialTreeResult{
@@ -669,9 +675,9 @@ PinWeaverTpm2::StartBiometricsAuth(uint8_t auth_channel,
       .new_root = brillo::BlobFromString(root),
       .new_cred_metadata = BlobOrNullopt(cred_metadata_string),
       .new_mac = BlobOrNullopt(mac_string),
-      .server_nonce = std::move(server_nonce),
-      .iv = std::move(iv),
-      .encrypted_he_secret = std::move(encrypted_he_secret),
+      .server_nonce = brillo::SecureBlob(server_nonce),
+      .iv = brillo::SecureBlob(iv),
+      .encrypted_he_secret = brillo::SecureBlob(encrypted_he_secret),
   };
 }
 
