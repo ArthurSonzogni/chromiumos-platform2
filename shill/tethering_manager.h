@@ -196,6 +196,8 @@ class TetheringManager : public Network::EventHandler {
   // Check if all the tethering resources are freed. If so post the
   // SetTetheringEnabled(false) dbus result.
   void CheckAndPostTetheringStopResult();
+  // Handler function to be called when starting tethering session times out.
+  void OnStartingTetheringTimeout();
   // Prepare tethering resources to start a tethering session.
   void StartTetheringSession();
   // Stop and free tethering resources due to reason |reason|.
@@ -222,6 +224,9 @@ class TetheringManager : public Network::EventHandler {
   bool allowed_;
   // Tethering state as listed in enum TetheringState.
   TetheringState state_;
+  // Executes when the tethering start timer expires. Calls
+  // OnStartingTetheringTimeout.
+  base::CancelableOnceClosure start_timer_callback_;
   // Executes when the inactive timer expires. Calls StopTetheringSession.
   base::CancelableOnceClosure inactive_timer_callback_;
 

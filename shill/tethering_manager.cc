@@ -45,6 +45,9 @@ static constexpr size_t kSSIDSuffixLength = 4;
 static constexpr size_t kMaxWiFiHexSSIDLength = 32 * 2;
 static constexpr size_t kMinWiFiPassphraseLength = 8;
 static constexpr size_t kMaxWiFiPassphraseLength = 63;
+// Stop tethering and return error if tethering cannot be fully started within
+// |kStartTimeout| time.
+static constexpr base::TimeDelta kStartTimeout = base::Seconds(10);
 // Auto disable tethering if no clients for |kAutoDisableDelay|.
 static constexpr base::TimeDelta kAutoDisableDelay = base::Minutes(5);
 
@@ -411,6 +414,7 @@ void TetheringManager::CheckAndPostTetheringStartResult() {
   }
 
   SetState(TetheringState::kTetheringActive);
+  start_timer_callback_.Cancel();
   if (hotspot_dev_->GetStations().size() == 0) {
     // Kick off inactive timer when tethering session becomes active and no
     // clients are connected.
@@ -433,6 +437,13 @@ void TetheringManager::CheckAndPostTetheringStopResult() {
   }
 }
 
+void TetheringManager::OnStartingTetheringTimeout() {
+  LOG(ERROR) << __func__ << ": cannot start tethering session in "
+             << kStartTimeout;
+  PostSetEnabledResult(SetEnabledResult::kFailure);
+  StopTetheringSession(StopReason::kError);
+}
+
 void TetheringManager::StartTetheringSession() {
   if (state_ != TetheringState::kTetheringIdle) {
     LOG(ERROR) << __func__ << ": tethering session is not in idle state";
@@ -450,6 +461,11 @@ void TetheringManager::StartTetheringSession() {
   }
 
   LOG(INFO) << __func__;
+
+  start_timer_callback_.Reset(base::BindOnce(
+      &TetheringManager::OnStartingTetheringTimeout, base::Unretained(this)));
+  manager_->dispatcher()->PostDelayedTask(
+      FROM_HERE, start_timer_callback_.callback(), kStartTimeout);
 
   // Prepare the downlink hotspot device.
   // TODO(b/235760422) Generate random MAC address and pass it to
@@ -484,9 +500,6 @@ void TetheringManager::StartTetheringSession() {
   }
 
   // TODO(b/235762439): Routine to enable other tethering modules.
-
-  // TODO(b/235762439): Add timer to timeout the start process if resources are
-  // not ready for a long time.
 }
 
 void TetheringManager::StopTetheringSession(StopReason reason) {
@@ -502,6 +515,7 @@ void TetheringManager::StopTetheringSession(StopReason reason) {
   LOG(INFO) << __func__ << ": " << StopReasonToString(reason);
   SetState(TetheringState::kTetheringStopping);
   stop_reason_ = reason;
+  start_timer_callback_.Cancel();
   StopInactiveTimer();
 
   // Remove the downstream device if any.

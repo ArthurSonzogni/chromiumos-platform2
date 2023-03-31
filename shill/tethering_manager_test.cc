@@ -220,6 +220,7 @@ class TetheringManagerTest : public testing::Test {
     EXPECT_CALL(result_cb_, Run(expected_result));
     DispatchPendingEvents();
     Mock::VerifyAndClearExpectations(&result_cb_);
+    EXPECT_TRUE(GetStartTimer(tethering_manager_).IsCancelled());
   }
 
   void SetEnabledVerifyResult(
@@ -331,10 +332,20 @@ class TetheringManagerTest : public testing::Test {
     auto status = GetStatus(tethering_manager);
     EXPECT_EQ(status.Get<std::string>(kTetheringStatusIdleReasonProperty),
               reason);
+    EXPECT_TRUE(GetStartTimer(tethering_manager_).IsCancelled());
   }
 
   KeyValueStore GetStatus(TetheringManager* tethering_manager) {
     return tethering_manager->GetStatus();
+  }
+
+  void OnStartingTetheringTimeout(TetheringManager* tethering_manager) {
+    tethering_manager->OnStartingTetheringTimeout();
+  }
+
+  const base::CancelableOnceClosure& GetStartTimer(
+      TetheringManager* tethering_manager) {
+    return tethering_manager->start_timer_callback_;
   }
 
   const base::CancelableOnceClosure& GetInactiveTimer(
@@ -1033,6 +1044,20 @@ TEST_F(TetheringManagerTest, InactiveTimer) {
   // Inactive timer should be re-armed when tethering is active and the last
   // client is gone.
   EXPECT_FALSE(GetInactiveTimer(tethering_manager_).IsCancelled());
+}
+
+TEST_F(TetheringManagerTest, TetheringStartTimer) {
+  // Start tethering.
+  TetheringPrerequisite(tethering_manager_);
+  EXPECT_TRUE(GetStartTimer(tethering_manager_).IsCancelled());
+  SetEnabled(tethering_manager_, true);
+  EXPECT_FALSE(GetStartTimer(tethering_manager_).IsCancelled());
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringStarting);
+
+  // Tethering start timeout
+  OnStartingTetheringTimeout(tethering_manager_);
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
 }
 
 }  // namespace shill
