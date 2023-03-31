@@ -65,9 +65,17 @@ bool FanotifyWatcher::IsActive() const {
 }
 
 FanotifyWatcher::FanotifyReplyWatchdog::FanotifyReplyWatchdog()
-    : base::Watchdog(base::Milliseconds(1000), "DLP daemon", /*enabled=*/true) {
-}
+    : watchdog_(
+          base::Milliseconds(1000), "DLP daemon", /*enabled=*/true, this) {}
 FanotifyWatcher::FanotifyReplyWatchdog::~FanotifyReplyWatchdog() = default;
+
+void FanotifyWatcher::FanotifyReplyWatchdog::Arm() {
+  watchdog_.Arm();
+}
+
+void FanotifyWatcher::FanotifyReplyWatchdog::Disarm() {
+  watchdog_.Disarm();
+}
 
 void FanotifyWatcher::FanotifyReplyWatchdog::Alarm() {
   LOG(ERROR) << "DLP thread hang, watchdog triggered, exiting abnormally";

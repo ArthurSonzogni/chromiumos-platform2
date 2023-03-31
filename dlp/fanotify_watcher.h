@@ -52,15 +52,20 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
  private:
   // Watchdog waiting for timely (1sec) reply to fanotify file access.
   // Crashes the daemon if it hangs.
-  class FanotifyReplyWatchdog : public base::Watchdog {
+  class FanotifyReplyWatchdog : public base::Watchdog::Delegate {
    public:
     FanotifyReplyWatchdog();
     FanotifyReplyWatchdog(const FanotifyReplyWatchdog&) = delete;
     FanotifyReplyWatchdog& operator=(const FanotifyReplyWatchdog&) = delete;
     ~FanotifyReplyWatchdog() override;
 
+    void Arm();
+    void Disarm();
+
    private:
     void Alarm() override;
+
+    base::Watchdog watchdog_;
   };
 
   // FanotifyReaderThread::Delegate overrides:
