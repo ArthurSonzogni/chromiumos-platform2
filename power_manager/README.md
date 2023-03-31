@@ -19,6 +19,8 @@ is available:
 
 -   [Adaptive Charging](docs/adaptive_charging.md) describes how charging is
     delayed for maintaining battery health.
+-   [ALS Backlight](docs/als_backlight_prefs.md) describes ALS prefs for backlight
+    in powerd.
 -   [Battery Notifications](docs/battery_notifications.md) describes when
     low-battery notifications are shown by the UI.
 -   [Hibernation](docs/hibernation.md) describes how powerd handles the
