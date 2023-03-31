@@ -10,6 +10,7 @@
 
 #include <base/command_line.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/time/time.h>
 
 // gtest's internal typedef of None and Bool conflicts with the None and Bool
 // macros in X11/X.h (https://github.com/google/googletest/issues/371).
@@ -30,8 +31,11 @@ namespace {
 
 class FakeStreamManipulator : public StreamManipulator {
  public:
-  explicit FakeStreamManipulator(bool use_thread)
-      : use_thread_(use_thread), thread_("StreamManipulatorThread") {
+  explicit FakeStreamManipulator(bool use_thread,
+                                 uint64_t fake_processing_time_us = 0)
+      : use_thread_(use_thread),
+        fake_processing_time_us_(fake_processing_time_us),
+        thread_("StreamManipulatorThread") {
     CHECK(thread_.Start());
   }
 
@@ -63,6 +67,7 @@ class FakeStreamManipulator : public StreamManipulator {
   bool ProcessCaptureResult(Camera3CaptureDescriptor result) override {
     EXPECT_EQ(thread_.task_runner()->BelongsToCurrentThread(), use_thread_);
     ++process_capture_result_call_counts_;
+    base::PlatformThread::Sleep(base::Microseconds(fake_processing_time_us_));
     callbacks_.result_callback.Run(std::move(result));
     return true;
   }
@@ -87,6 +92,7 @@ class FakeStreamManipulator : public StreamManipulator {
 
  private:
   bool use_thread_;
+  uint64_t fake_processing_time_us_;
   base::Thread thread_;
   Callbacks callbacks_;
   int process_capture_result_call_counts_ = 0;
@@ -245,6 +251,61 @@ TEST(StreamManipulatorManagerTest, MultipleStreamManipulatorsTest) {
   manager.Notify(camera3_notify_msg_t{.type = CAMERA3_MSG_SHUTTER});
   ASSERT_TRUE(notify_returned.TimedWait(base::Milliseconds(100)));
   EXPECT_EQ(returned_msg.type, CAMERA3_MSG_SHUTTER);
+
+  manager.Flush();
+}
+
+TEST(StreamManipulatorManagerTest, SynchronizationTest) {
+  std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators;
+  stream_manipulators.emplace_back(std::make_unique<FakeStreamManipulator>(
+      /*use_thread=*/true, /*fake_processing_time_us_=*/1000));
+  stream_manipulators.emplace_back(std::make_unique<FakeStreamManipulator>(
+      /*use_thread=*/true, /*fake_processing_time_us_=*/1000));
+  stream_manipulators.emplace_back(std::make_unique<FakeStreamManipulator>(
+      /*use_thread=*/true, /*fake_processing_time_us_=*/1000));
+  stream_manipulators.emplace_back(std::make_unique<FakeStreamManipulator>(
+      /*use_thread=*/true, /*fake_processing_time_us_=*/1000));
+  auto stream_manipulator_1 =
+      static_cast<FakeStreamManipulator*>(stream_manipulators[0].get());
+  auto stream_manipulator_2 =
+      static_cast<FakeStreamManipulator*>(stream_manipulators[1].get());
+  auto stream_manipulator_3 =
+      static_cast<FakeStreamManipulator*>(stream_manipulators[2].get());
+  auto stream_manipulator_4 =
+      static_cast<FakeStreamManipulator*>(stream_manipulators[3].get());
+  StreamManipulatorManager manager(std::move(stream_manipulators));
+
+  Camera3CaptureDescriptor returned_result;
+  base::WaitableEvent capture_result_returned;
+  camera3_notify_msg_t returned_msg;
+  base::WaitableEvent notify_returned;
+  android::CameraMetadata metadata;
+  manager.Initialize(metadata.getAndLock(),
+                     CreateCallbacks(&returned_result, &capture_result_returned,
+                                     &returned_msg, &notify_returned));
+
+  Camera3StreamConfiguration stream_config;
+  manager.ConfigureStreams(&stream_config);
+  manager.OnConfiguredStreams(&stream_config);
+
+  manager.ConstructDefaultRequestSettings(&metadata, 0);
+
+  Camera3CaptureDescriptor request;
+  manager.ProcessCaptureRequest(&request);
+
+  manager.ProcessCaptureResult(CreateFakeCaptureResult(/*frame_number=*/1));
+  manager.Notify(camera3_notify_msg_t{.type = CAMERA3_MSG_ERROR});
+
+  // When Notify is returned, capture_result must already be returned
+  ASSERT_TRUE(notify_returned.TimedWait(base::Milliseconds(100)));
+  ASSERT_TRUE(capture_result_returned.IsSignaled());
+  EXPECT_EQ(returned_result.frame_number(), 1);
+  EXPECT_EQ(stream_manipulator_1->process_capture_result_call_counts(), 1);
+  EXPECT_EQ(stream_manipulator_2->process_capture_result_call_counts(), 1);
+  EXPECT_EQ(stream_manipulator_3->process_capture_result_call_counts(), 1);
+  EXPECT_EQ(stream_manipulator_4->process_capture_result_call_counts(), 1);
+
+  EXPECT_EQ(returned_msg.type, CAMERA3_MSG_ERROR);
 
   manager.Flush();
 }
