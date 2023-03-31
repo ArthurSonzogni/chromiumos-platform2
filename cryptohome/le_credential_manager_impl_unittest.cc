@@ -226,7 +226,7 @@ class LECredentialManagerImplUnitTest : public testing::Test {
   const brillo::SecureBlob kLeSecret2;
   const brillo::SecureBlob kHeSecret1;
   const brillo::SecureBlob kResetSecret1;
-  const brillo::SecureBlob kClientNonce;
+  const brillo::Blob kClientNonce;
 };
 
 // Basic check: Insert 2 labels, then verify we can retrieve them correctly.
@@ -384,8 +384,8 @@ TEST_F(LECredentialManagerImplUnitTest, LockedOutSecret) {
 // Verify getting locked out due to too many attempts for biometrics
 // rate-limiters.
 TEST_F(LECredentialManagerImplUnitTest, BiometricsLockedOutRateLimiter) {
-  const brillo::SecureBlob kClientNonce(std::begin(kClientNonceArray),
-                                        std::end(kClientNonceArray));
+  const brillo::Blob kClientNonce(std::begin(kClientNonceArray),
+                                  std::end(kClientNonceArray));
 
   GeneratePk(kAuthChannel);
   uint64_t label1 = CreateLockedOutRateLimiter(kAuthChannel);
@@ -497,8 +497,8 @@ TEST_F(LECredentialManagerImplUnitTest, ResetSecretNegative) {
 
 // Check that a reset unlocks a locked out rate-limiter.
 TEST_F(LECredentialManagerImplUnitTest, BiometricsResetSecret) {
-  const brillo::SecureBlob kClientNonce(std::begin(kClientNonceArray),
-                                        std::end(kClientNonceArray));
+  const brillo::Blob kClientNonce(std::begin(kClientNonceArray),
+                                  std::end(kClientNonceArray));
   GeneratePk(kAuthChannel);
   uint64_t label1 = CreateLockedOutRateLimiter(kAuthChannel);
 
@@ -518,8 +518,8 @@ TEST_F(LECredentialManagerImplUnitTest, BiometricsResetSecret) {
 
 // Check that an invalid reset doesn't unlock a locked rate-limiter.
 TEST_F(LECredentialManagerImplUnitTest, BiometricsResetSecretNegative) {
-  const brillo::SecureBlob kClientNonce(std::begin(kClientNonceArray),
-                                        std::end(kClientNonceArray));
+  const brillo::Blob kClientNonce(std::begin(kClientNonceArray),
+                                  std::end(kClientNonceArray));
   GeneratePk(kAuthChannel);
   uint64_t label1 = CreateLockedOutRateLimiter(kAuthChannel);
 

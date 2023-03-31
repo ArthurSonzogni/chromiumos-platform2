@@ -26,12 +26,6 @@ namespace {
 constexpr uint32_t kLengthLabels = 14;
 constexpr uint32_t kBitsPerLevel = 2;
 
-// TODO(b/247704971): During transformation stage of the start_bio_auth
-// request/response fields, we need helper functions like this.
-brillo::Blob SecureBlobToBlob(const brillo::SecureBlob& blob) {
-  return brillo::Blob(blob.begin(), blob.end());
-}
-
 }  // namespace
 
 using ::cryptohome::error::CryptohomeLECredError;
@@ -373,10 +367,9 @@ LECredStatus LECredentialManagerImpl::InsertRateLimiter(
 }
 
 LECredStatusOr<LECredentialManager::StartBiometricsAuthReply>
-LECredentialManagerImpl::StartBiometricsAuth(
-    uint8_t auth_channel,
-    uint64_t label,
-    const brillo::SecureBlob& client_nonce) {
+LECredentialManagerImpl::StartBiometricsAuth(uint8_t auth_channel,
+                                             uint64_t label,
+                                             const brillo::Blob& client_nonce) {
   if (!hash_tree_->IsValid() || !Sync()) {
     return MakeStatus<CryptohomeLECredError>(
         CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInStartBiometricsAuth),
@@ -412,7 +405,7 @@ LECredentialManagerImpl::StartBiometricsAuth(
 
   hwsec::StatusOr<CredentialTreeResult> result =
       pinweaver_->StartBiometricsAuth(auth_channel, label, h_aux, orig_cred,
-                                      SecureBlobToBlob(client_nonce));
+                                      client_nonce);
 
   if (!result.ok()) {
     LOG(ERROR) << "Failed to call pinweaver in start biometrics auth: "
@@ -472,10 +465,9 @@ LECredentialManagerImpl::StartBiometricsAuth(
   }
 
   LECredentialManager::StartBiometricsAuthReply reply{
-      .server_nonce = brillo::SecureBlob(result->server_nonce.value()),
-      .iv = brillo::SecureBlob(result->iv.value()),
-      .encrypted_he_secret =
-          brillo::SecureBlob(result->encrypted_he_secret.value()),
+      .server_nonce = std::move(result->server_nonce.value()),
+      .iv = std::move(result->iv.value()),
+      .encrypted_he_secret = std::move(result->encrypted_he_secret.value()),
   };
 
   return reply;

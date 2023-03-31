@@ -75,7 +75,7 @@ class MockLECredentialManager : public LECredentialManager {
 
   MOCK_METHOD(LECredStatusOr<LECredentialManager::StartBiometricsAuthReply>,
               StartBiometricsAuth,
-              (uint8_t, uint64_t, const brillo::SecureBlob&),
+              (uint8_t, uint64_t, const brillo::Blob&),
               (override));
 };
 

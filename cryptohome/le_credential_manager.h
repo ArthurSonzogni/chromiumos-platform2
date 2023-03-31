@@ -22,9 +22,9 @@ class LECredentialManager {
   typedef std::map<uint32_t, uint32_t> DelaySchedule;
 
   struct StartBiometricsAuthReply {
-    brillo::SecureBlob server_nonce;
-    brillo::SecureBlob iv;
-    brillo::SecureBlob encrypted_he_secret;
+    brillo::Blob server_nonce;
+    brillo::Blob iv;
+    brillo::Blob encrypted_he_secret;
   };
 
   virtual ~LECredentialManager() = default;
@@ -158,7 +158,7 @@ class LECredentialManager {
   virtual LECredStatusOr<StartBiometricsAuthReply> StartBiometricsAuth(
       uint8_t auth_channel,
       uint64_t label,
-      const brillo::SecureBlob& client_nonce) = 0;
+      const brillo::Blob& client_nonce) = 0;
 };
 
 };  // namespace cryptohome

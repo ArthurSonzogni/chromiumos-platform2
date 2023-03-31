@@ -81,13 +81,6 @@ constexpr char kFakeRecordId2[] = "fake_record_id_2";
 constexpr char kFakeAuthFactorLabel1[] = "fake_label_1";
 constexpr char kFakeAuthFactorLabel2[] = "fake_label_2";
 
-// TODO(b/247704971): Blob should be used for fields that doesn't contain secret
-// values. Before the LE manager interface changes accordingly, transform the
-// blob types explicitly.
-brillo::SecureBlob BlobToSecureBlob(const brillo::Blob& blob) {
-  return brillo::SecureBlob(blob.begin(), blob.end());
-}
-
 AuthBlockState GetFingerprintStateWithRecordId(std::string record_id) {
   AuthBlockState auth_state;
   FingerprintAuthBlockState fingerprint_auth_state;
@@ -203,14 +196,13 @@ TEST_F(FingerprintAuthBlockTest, CreateSuccess) {
   StartEnrollSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(
-      mock_le_manager_,
-      StartBiometricsAuth(kFingerprintAuthChannel, kFakeRateLimiterLabel,
-                          BlobToSecureBlob(kFakeAuthNonce)))
+  EXPECT_CALL(mock_le_manager_,
+              StartBiometricsAuth(kFingerprintAuthChannel,
+                                  kFakeRateLimiterLabel, kFakeAuthNonce))
       .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
-          .server_nonce = BlobToSecureBlob(kFakeGscNonce),
-          .iv = BlobToSecureBlob(kFakeGscIv),
-          .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+          .server_nonce = kFakeGscNonce,
+          .iv = kFakeGscIv,
+          .encrypted_he_secret = kFakeLabelSeed}));
   EXPECT_CALL(mock_le_manager_,
               ResetCredential(kFakeRateLimiterLabel, kFakeResetSecret, false))
       .WillOnce(ReturnOk<CryptohomeLECredError>());
@@ -324,14 +316,13 @@ TEST_F(FingerprintAuthBlockTest, CreateCreateCredentialFailed) {
   StartEnrollSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(
-      mock_le_manager_,
-      StartBiometricsAuth(kFingerprintAuthChannel, kFakeRateLimiterLabel,
-                          BlobToSecureBlob(kFakeAuthNonce)))
+  EXPECT_CALL(mock_le_manager_,
+              StartBiometricsAuth(kFingerprintAuthChannel,
+                                  kFakeRateLimiterLabel, kFakeAuthNonce))
       .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
-          .server_nonce = BlobToSecureBlob(kFakeGscNonce),
-          .iv = BlobToSecureBlob(kFakeGscIv),
-          .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+          .server_nonce = kFakeGscNonce,
+          .iv = kFakeGscIv,
+          .encrypted_he_secret = kFakeLabelSeed}));
   EXPECT_CALL(mock_le_manager_,
               ResetCredential(kFakeRateLimiterLabel, kFakeResetSecret, false))
       .WillOnce(ReturnOk<CryptohomeLECredError>());
@@ -367,14 +358,13 @@ TEST_F(FingerprintAuthBlockTest, CreateInsertCredentialFailed) {
   StartEnrollSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(
-      mock_le_manager_,
-      StartBiometricsAuth(kFingerprintAuthChannel, kFakeRateLimiterLabel,
-                          BlobToSecureBlob(kFakeAuthNonce)))
+  EXPECT_CALL(mock_le_manager_,
+              StartBiometricsAuth(kFingerprintAuthChannel,
+                                  kFakeRateLimiterLabel, kFakeAuthNonce))
       .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
-          .server_nonce = BlobToSecureBlob(kFakeGscNonce),
-          .iv = BlobToSecureBlob(kFakeGscIv),
-          .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+          .server_nonce = kFakeGscNonce,
+          .iv = kFakeGscIv,
+          .encrypted_he_secret = kFakeLabelSeed}));
   EXPECT_CALL(mock_le_manager_,
               ResetCredential(kFakeRateLimiterLabel, kFakeResetSecret, false))
       .WillOnce(ReturnOk<CryptohomeLECredError>());
@@ -428,14 +418,13 @@ TEST_F(FingerprintAuthBlockTest, CreateWithNoLimiterSuccess) {
       .WillOnce(DoAll(SaveArg<2>(&reset_secret),
                       SetArgPointee<5>(kFakeRateLimiterLabel),
                       ReturnOk<CryptohomeLECredError>()));
-  EXPECT_CALL(
-      mock_le_manager_,
-      StartBiometricsAuth(kFingerprintAuthChannel, kFakeRateLimiterLabel,
-                          BlobToSecureBlob(kFakeAuthNonce)))
+  EXPECT_CALL(mock_le_manager_,
+              StartBiometricsAuth(kFingerprintAuthChannel,
+                                  kFakeRateLimiterLabel, kFakeAuthNonce))
       .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
-          .server_nonce = BlobToSecureBlob(kFakeGscNonce),
-          .iv = BlobToSecureBlob(kFakeGscIv),
-          .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+          .server_nonce = kFakeGscNonce,
+          .iv = kFakeGscIv,
+          .encrypted_he_secret = kFakeLabelSeed}));
   EXPECT_CALL(mock_le_manager_,
               ResetCredential(kFakeRateLimiterLabel, _, false))
       .WillOnce(ReturnOk<CryptohomeLECredError>());
@@ -543,14 +532,13 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorSuccess) {
   StartAuthenticateSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(
-      mock_le_manager_,
-      StartBiometricsAuth(kFingerprintAuthChannel, kFakeRateLimiterLabel,
-                          BlobToSecureBlob(kFakeAuthNonce)))
+  EXPECT_CALL(mock_le_manager_,
+              StartBiometricsAuth(kFingerprintAuthChannel,
+                                  kFakeRateLimiterLabel, kFakeAuthNonce))
       .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
-          .server_nonce = BlobToSecureBlob(kFakeGscNonce),
-          .iv = BlobToSecureBlob(kFakeGscIv),
-          .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+          .server_nonce = kFakeGscNonce,
+          .iv = kFakeGscIv,
+          .encrypted_he_secret = kFakeLabelSeed}));
   EXPECT_CALL(
       *mock_processor_,
       MatchCredential(
@@ -673,14 +661,13 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorMatchFailed) {
   StartAuthenticateSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(
-      mock_le_manager_,
-      StartBiometricsAuth(kFingerprintAuthChannel, kFakeRateLimiterLabel,
-                          BlobToSecureBlob(kFakeAuthNonce)))
+  EXPECT_CALL(mock_le_manager_,
+              StartBiometricsAuth(kFingerprintAuthChannel,
+                                  kFakeRateLimiterLabel, kFakeAuthNonce))
       .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
-          .server_nonce = BlobToSecureBlob(kFakeGscNonce),
-          .iv = BlobToSecureBlob(kFakeGscIv),
-          .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+          .server_nonce = kFakeGscNonce,
+          .iv = kFakeGscIv,
+          .encrypted_he_secret = kFakeLabelSeed}));
   EXPECT_CALL(*mock_processor_, MatchCredential(_, _))
       .WillOnce([&](auto&&, auto&& callback) {
         std::move(callback).Run(MakeStatus<CryptohomeError>(
@@ -719,14 +706,13 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorMatchFailedAndLocked) {
   StartAuthenticateSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(
-      mock_le_manager_,
-      StartBiometricsAuth(kFingerprintAuthChannel, kFakeRateLimiterLabel,
-                          BlobToSecureBlob(kFakeAuthNonce)))
+  EXPECT_CALL(mock_le_manager_,
+              StartBiometricsAuth(kFingerprintAuthChannel,
+                                  kFakeRateLimiterLabel, kFakeAuthNonce))
       .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
-          .server_nonce = BlobToSecureBlob(kFakeGscNonce),
-          .iv = BlobToSecureBlob(kFakeGscIv),
-          .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+          .server_nonce = kFakeGscNonce,
+          .iv = kFakeGscIv,
+          .encrypted_he_secret = kFakeLabelSeed}));
   EXPECT_CALL(*mock_processor_, MatchCredential(_, _))
       .WillOnce([&](auto&&, auto&& callback) {
         std::move(callback).Run(MakeStatus<CryptohomeError>(
@@ -767,14 +753,13 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorAuthFactorNotInList) {
   StartAuthenticateSession(token);
   ASSERT_NE(token, nullptr);
 
-  EXPECT_CALL(
-      mock_le_manager_,
-      StartBiometricsAuth(kFingerprintAuthChannel, kFakeRateLimiterLabel,
-                          BlobToSecureBlob(kFakeAuthNonce)))
+  EXPECT_CALL(mock_le_manager_,
+              StartBiometricsAuth(kFingerprintAuthChannel,
+                                  kFakeRateLimiterLabel, kFakeAuthNonce))
       .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
-          .server_nonce = BlobToSecureBlob(kFakeGscNonce),
-          .iv = BlobToSecureBlob(kFakeGscIv),
-          .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+          .server_nonce = kFakeGscNonce,
+          .iv = kFakeGscIv,
+          .encrypted_he_secret = kFakeLabelSeed}));
   EXPECT_CALL(
       *mock_processor_,
       MatchCredential(

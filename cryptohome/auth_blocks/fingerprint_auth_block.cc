@@ -227,12 +227,9 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
         nullptr, nullptr);
     return;
   }
-  // TODO(b/247704971): Use Blob instead of SecureBlob for the StartBioAuth
-  // fields.
   LECredStatusOr<LECredentialManager::StartBiometricsAuthReply> reply =
       le_manager_->StartBiometricsAuth(kFingerprintAuthChannel,
-                                       *rate_limiter_label,
-                                       brillo::SecureBlob(*nonce));
+                                       *rate_limiter_label, *nonce);
   if (!reply.ok()) {
     LOG(ERROR) << "Failed to start biometrics auth with PinWeaver.";
     std::move(callback).Run(
@@ -252,11 +249,9 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
            "doesn't block the creation but shouldn't normally happen.";
   }
   BiometricsAuthBlockService::OperationInput input{
-      .nonce =
-          brillo::Blob(reply->server_nonce.begin(), reply->server_nonce.end()),
-      .encrypted_label_seed = brillo::Blob(reply->encrypted_he_secret.begin(),
-                                           reply->encrypted_he_secret.end()),
-      .iv = brillo::Blob(reply->iv.begin(), reply->iv.end()),
+      .nonce = std::move(reply->server_nonce),
+      .encrypted_label_seed = std::move(reply->encrypted_he_secret),
+      .iv = std::move(reply->iv),
   };
   service_->CreateCredential(
       input, base::BindOnce(&FingerprintAuthBlock::ContinueCreate,
@@ -372,12 +367,9 @@ void FingerprintAuthBlock::SelectFactor(const AuthInput& auth_input,
         std::nullopt, std::nullopt);
     return;
   }
-  // TODO(b/247704971): Use Blob instead of SecureBlob for the StartBioAuth
-  // fields.
   LECredStatusOr<LECredentialManager::StartBiometricsAuthReply> reply =
       le_manager_->StartBiometricsAuth(kFingerprintAuthChannel,
-                                       *auth_input.rate_limiter_label,
-                                       brillo::SecureBlob(*nonce));
+                                       *auth_input.rate_limiter_label, *nonce);
   if (!reply.ok()) {
     LOG(ERROR) << "Failed to start biometrics auth with PinWeaver.";
     std::move(callback).Run(
@@ -389,11 +381,9 @@ void FingerprintAuthBlock::SelectFactor(const AuthInput& auth_input,
     return;
   }
   BiometricsAuthBlockService::OperationInput input{
-      .nonce =
-          brillo::Blob(reply->server_nonce.begin(), reply->server_nonce.end()),
-      .encrypted_label_seed = brillo::Blob(reply->encrypted_he_secret.begin(),
-                                           reply->encrypted_he_secret.end()),
-      .iv = brillo::Blob(reply->iv.begin(), reply->iv.end()),
+      .nonce = std::move(reply->server_nonce),
+      .encrypted_label_seed = std::move(reply->encrypted_he_secret),
+      .iv = std::move(reply->iv),
   };
   service_->MatchCredential(
       input,

@@ -79,7 +79,7 @@ class LECredentialManagerImpl : public LECredentialManager {
   LECredStatusOr<StartBiometricsAuthReply> StartBiometricsAuth(
       uint8_t auth_channel,
       uint64_t label,
-      const brillo::SecureBlob& client_nonce) override;
+      const brillo::Blob& client_nonce) override;
 
  private:
   // Helper to turn a label into an original credential. Helper for a lot of the
