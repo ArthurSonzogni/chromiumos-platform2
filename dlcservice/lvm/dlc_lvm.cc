@@ -74,7 +74,10 @@ bool DlcLvm::DeleteInternal(brillo::ErrorPtr* err) {
 
   bool ret = true;
   if (!DeleteInternalLogicalVolumes()) {
-    LOG(ERROR) << "Failed to delete logical volumes for DLC=" << id_;
+    *err = Error::CreateInternal(
+        FROM_HERE, error::kFailedInternal,
+        base::StringPrintf("Failed to delete logical volumes for DLC=%s",
+                           id_.c_str()));
     ret = false;
   }
   // Still run base `DeleteInternal()`.
