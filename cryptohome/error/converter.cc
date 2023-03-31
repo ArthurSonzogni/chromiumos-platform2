@@ -166,7 +166,7 @@ void ActionsFromStack(
     }
   }
   if (should_warn) {
-    LOG(WARNING) << ss.str();
+    LOG(DFATAL) << ss.str();
   }
   return;
 }
