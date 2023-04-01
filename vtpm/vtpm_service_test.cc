@@ -8,9 +8,9 @@
 #include <utility>
 
 #include <base/functional/bind.h>
-#include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/threading/thread.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
@@ -107,42 +107,26 @@ namespace {
 
 TEST_F(VtpmServiceTest, GetResponseWorkerThread) {
   selector_.SetIsThreaded(true);
-  base::RunLoop run_loop;
+  base::test::TestFuture<const SendCommandResponse&> future;
   std::unique_ptr<MockDBusMethodResponse<SendCommandResponse>> response(
       new MockDBusMethodResponse<SendCommandResponse>());
-  std::string response_message;
-  response->set_return_callback(base::BindOnce(
-      [](base::RunLoop* run_loop, std::string* response_message,
-         const SendCommandResponse& response) {
-        *response_message = response.response();
-        run_loop->Quit();
-      },
-      &run_loop, &response_message));
+  response->set_return_callback(future.GetCallback());
   SendCommandRequest request;
   request.set_command(kTestMessage);
   service_.SendCommand(std::move(response), request);
-  run_loop.Run();
-  EXPECT_EQ(response_message, kTestMessage);
+  EXPECT_EQ(future.Get().response(), kTestMessage);
 }
 
 TEST_F(VtpmServiceTest, GetResponseNoWorkerThread) {
   selector_.SetIsThreaded(false);
-  base::RunLoop run_loop;
+  base::test::TestFuture<const SendCommandResponse&> future;
   std::unique_ptr<MockDBusMethodResponse<SendCommandResponse>> response(
       new MockDBusMethodResponse<SendCommandResponse>());
-  std::string response_message;
-  response->set_return_callback(base::BindOnce(
-      [](base::RunLoop* run_loop, std::string* response_message,
-         const SendCommandResponse& response) {
-        *response_message = response.response();
-        run_loop->Quit();
-      },
-      &run_loop, &response_message));
+  response->set_return_callback(future.GetCallback());
   SendCommandRequest request;
   request.set_command(kTestMessage);
   service_.SendCommand(std::move(response), request);
-  run_loop.Run();
-  EXPECT_EQ(response_message, kTestMessage);
+  EXPECT_EQ(future.Get().response(), kTestMessage);
 }
 
 }  // namespace
