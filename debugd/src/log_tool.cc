@@ -422,8 +422,6 @@ const std::array kExtraLogs {
   Log{kCommand, "user_folder_size_dump",
     "/usr/libexec/debugd/helpers/folder_size_dump --user",
     kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB*/, LogTool::Encoding::kUtf8, true},
-  Log{kCommand, "wifi_status_no_anonymize",
-    "/usr/bin/network_diag --wifi-internal --no-log"},
 };
 // clang-format on
 
@@ -487,8 +485,6 @@ const std::array kFeedbackLogs {
   Log{kCommand, "wifi_driver_errors_count",
     "croslog --since=-7200 --show-cursor=false --identifier=kernel"
     " --priority=err --grep='(iwlwifi|mwifiex|ath10k)' | wc -l"},
-  Log{kCommand, "wifi_status",
-      "/usr/bin/network_diag --wifi-internal --no-log --anonymize"},
 };
 // clang-format on
 
