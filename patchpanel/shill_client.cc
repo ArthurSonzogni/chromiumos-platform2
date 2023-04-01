@@ -154,15 +154,13 @@ ShillClient::GetDefaultDevices() {
       return {};
     }
 
-    auto it = service_properties.find(shill::kIsConnectedProperty);
-    if (it == service_properties.end()) {
+    // Check if there is any connected Service at the moment.
+    if (const auto it = service_properties.find(shill::kIsConnectedProperty);
+        it == service_properties.end()) {
       LOG(ERROR) << "Service " << service_path.value() << " missing property "
                  << shill::kIsConnectedProperty;
       return {};
-    }
-
-    if (!it->second.TryGet<bool>()) {
-      LOG(INFO) << "Ignoring non-connected Service " << service_path.value();
+    } else if (!it->second.TryGet<bool>()) {
       return {};
     }
 
