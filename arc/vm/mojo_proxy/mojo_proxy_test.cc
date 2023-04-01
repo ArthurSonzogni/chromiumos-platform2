@@ -25,6 +25,7 @@
 #include <base/task/thread_pool.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/threading/thread_restrictions.h>
 #include <gtest/gtest.h>
 
@@ -504,22 +505,11 @@ TEST_F(MojoProxyTest, Connect) {
   server()->AddExpectedSocketPathForTesting(socket_path);
 
   // Try to follow the actual initial connection procedure.
-  base::RunLoop run_loop;
-  std::optional<int> error_code;
-  std::optional<int64_t> handle;
-  client()->Connect(socket_path, base::BindOnce(
-                                     [](base::RunLoop* run_loop,
-                                        std::optional<int>* error_code_out,
-                                        std::optional<int64_t>* handle_out,
-                                        int error_code, int64_t handle) {
-                                       *error_code_out = error_code;
-                                       *handle_out = handle;
-                                       run_loop->Quit();
-                                     },
-                                     &run_loop, &error_code, &handle));
-  run_loop.Run();
+  base::test::TestFuture<int, int64_t> future;
+  client()->Connect(socket_path, future.GetCallback());
+  const int error_code = future.Get<0>();
+  const int64_t handle = future.Get<1>();
   ASSERT_EQ(0, error_code);
-  ASSERT_TRUE(handle.has_value());
   // TODO(hidehiko): Remove the cast on next libchrome uprev.
   ASSERT_TRUE(handle != static_cast<int64_t>(0));
 
@@ -528,7 +518,7 @@ TEST_F(MojoProxyTest, Connect) {
   ASSERT_TRUE(client_sock_pair.has_value());
   client()->RegisterFileDescriptor(std::move(client_sock_pair->first),
                                    arc_proxy::FileDescriptor::SOCKET_STREAM,
-                                   handle.value());
+                                   handle);
 
   auto client_fd = std::move(client_sock_pair->second);
   auto server_fd = AcceptSocket(server_sock.get());
@@ -552,31 +542,20 @@ TEST_F(MojoProxyTest, Pread) {
   const int64_t handle = client()->RegisterFileDescriptor(
       std::move(fd), arc_proxy::FileDescriptor::REGULAR_FILE, 0);
 
-  base::RunLoop run_loop;
-  server()->Pread(
-      handle, 10, 10,
-      base::BindOnce(
-          [](base::RunLoop* run_loop, int error_code, const std::string& blob) {
-            run_loop->Quit();
-            EXPECT_EQ(0, error_code);
-            EXPECT_EQ("klmnopqrst", blob);
-          },
-          &run_loop));
-  run_loop.Run();
+  base::test::TestFuture<int, const std::string&> future;
+  server()->Pread(handle, 10, 10, future.GetCallback());
+  const int error_code = future.Get<0>();
+  const std::string& blob = future.Get<1>();
+  EXPECT_EQ(0, error_code);
+  EXPECT_EQ("klmnopqrst", blob);
 }
 
 TEST_F(MojoProxyTest, Pread_UnknownHandle) {
   constexpr int64_t kUnknownHandle = 100;
-  base::RunLoop run_loop;
-  server()->Pread(
-      kUnknownHandle, 10, 10,
-      base::BindOnce(
-          [](base::RunLoop* run_loop, int error_code, const std::string& blob) {
-            run_loop->Quit();
-            EXPECT_EQ(EBADF, error_code);
-          },
-          &run_loop));
-  run_loop.Run();
+  base::test::TestFuture<int, const std::string&> future;
+  server()->Pread(kUnknownHandle, 10, 10, future.GetCallback());
+  const int error_code = future.Get<0>();
+  EXPECT_EQ(EBADF, error_code);
 }
 
 TEST_F(MojoProxyTest, Fstat) {
@@ -594,29 +573,20 @@ TEST_F(MojoProxyTest, Fstat) {
   const int64_t handle = client()->RegisterFileDescriptor(
       std::move(fd), arc_proxy::FileDescriptor::REGULAR_FILE, 0);
 
-  base::RunLoop run_loop;
-  server()->Fstat(
-      handle, base::BindOnce(
-                  [](base::RunLoop* run_loop, int error_code, int64_t size) {
-                    run_loop->Quit();
-                    EXPECT_EQ(0, error_code);
-                    EXPECT_EQ(26, size);
-                  },
-                  &run_loop));
-  run_loop.Run();
+  base::test::TestFuture<int, int64_t> future;
+  server()->Fstat(handle, future.GetCallback());
+  const int error_code = future.Get<0>();
+  const int64_t size = future.Get<1>();
+  EXPECT_EQ(0, error_code);
+  EXPECT_EQ(26, size);
 }
 
 TEST_F(MojoProxyTest, Fstat_UnknownHandle) {
   constexpr int64_t kUnknownHandle = 100;
-  base::RunLoop run_loop;
-  server()->Fstat(kUnknownHandle, base::BindOnce(
-                                      [](base::RunLoop* run_loop,
-                                         int error_code, int64_t size) {
-                                        run_loop->Quit();
-                                        EXPECT_EQ(EBADF, error_code);
-                                      },
-                                      &run_loop));
-  run_loop.Run();
+  base::test::TestFuture<int, int64_t> future;
+  server()->Fstat(kUnknownHandle, future.GetCallback());
+  const int error_code = future.Get<0>();
+  EXPECT_EQ(EBADF, error_code);
 }
 
 TEST_F(MojoProxyTest, Ftruncate) {
@@ -631,15 +601,10 @@ TEST_F(MojoProxyTest, Ftruncate) {
       std::move(fd), arc_proxy::FileDescriptor::REGULAR_FILE, 0);
 
   constexpr int64_t kLength = 5;
-  base::RunLoop run_loop;
-  server()->Ftruncate(handle, kLength,
-                      base::BindOnce(
-                          [](base::RunLoop* run_loop, int error_code) {
-                            run_loop->Quit();
-                            EXPECT_EQ(0, error_code);
-                          },
-                          &run_loop));
-  run_loop.Run();
+  base::test::TestFuture<int> future;
+  server()->Ftruncate(handle, kLength, future.GetCallback());
+  const int error_code = future.Get();
+  EXPECT_EQ(0, error_code);
 
   std::string contents;
   ASSERT_TRUE(ReadFileToString(file_path, &contents));
@@ -649,15 +614,10 @@ TEST_F(MojoProxyTest, Ftruncate) {
 TEST_F(MojoProxyTest, Ftruncate_UnknownHandle) {
   constexpr int64_t kUnknownHandle = 100;
   constexpr int64_t kLength = 5;
-  base::RunLoop run_loop;
-  server()->Ftruncate(kUnknownHandle, kLength,
-                      base::BindOnce(
-                          [](base::RunLoop* run_loop, int error_code) {
-                            run_loop->Quit();
-                            EXPECT_EQ(EBADF, error_code);
-                          },
-                          &run_loop));
-  run_loop.Run();
+  base::test::TestFuture<int> future;
+  server()->Ftruncate(kUnknownHandle, kLength, future.GetCallback());
+  const int error_code = future.Get();
+  EXPECT_EQ(EBADF, error_code);
 }
 
 }  // namespace
