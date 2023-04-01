@@ -580,6 +580,10 @@ bool WireGuardDriver::PopulateIPProperties() {
     ipv4_properties_.address = ipv4_address_list[0];
     ipv4_properties_.address_family = IPAddress::kFamilyIPv4;
     ipv4_properties_.subnet_prefix = 32;
+    // This is a point-to-point link, gateway does not make sense here. Set it
+    // default to skip RTA_GATEWAY when installing routes, and also make shill
+    // users happier (b/276506661).
+    ipv4_properties_.gateway = "0.0.0.0";
   }
   if (ipv6_address_list.size() > 1) {
     LOG(WARNING) << "Multiple IPv6 addresses are set. Only apply the first one";
@@ -588,6 +592,10 @@ bool WireGuardDriver::PopulateIPProperties() {
     ipv6_properties_.address = ipv6_address_list[0];
     ipv6_properties_.address_family = IPAddress::kFamilyIPv6;
     ipv6_properties_.subnet_prefix = 128;
+    // This is a point-to-point link, gateway does not make sense here. Set it
+    // default to skip RTA_GATEWAY when installing routes, and also make shill
+    // users happier (b/276506661).
+    ipv6_properties_.gateway = "::";
   }
   if ((ipv4_address_list.size() == 0) && (ipv6_address_list.size() == 0)) {
     LOG(INFO) << "IP address is not set in WireGuard properties. Might be set "
