@@ -18,7 +18,7 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
-#include <base/synchronization/lock.h>
+#include <base/sequence_checker.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
@@ -170,27 +170,35 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
                          const std::string& failure_reason,
                          const ScanFailureMode failure_mode);
 
-  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
-  base::RepeatingCallback<void(base::TimeDelta)> activity_callback_;
-  std::unique_ptr<MetricsLibraryInterface> metrics_library_;
+  SEQUENCE_CHECKER(sequence_checker_);
+
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  base::RepeatingCallback<void(base::TimeDelta)> activity_callback_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  std::unique_ptr<MetricsLibraryInterface> metrics_library_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Manages port access for receiving replies from network scanners.
-  std::unique_ptr<FirewallManager> firewall_manager_;
+  std::unique_ptr<FirewallManager> firewall_manager_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Manages connection to SANE for listing and connecting to scanners.
-  std::unique_ptr<SaneClient> sane_client_;
+  std::unique_ptr<SaneClient> sane_client_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // A callback to call when we attempt to send a D-Bus signal. This is used
   // for testing in order to track the signals sent from StartScan.
   StatusSignalSender status_signal_sender_;
   base::TimeDelta progress_signal_interval_;
 
-  base::Lock active_scans_lock_;
   // Mapping from scan UUIDs to the state for that scan job.
-  base::flat_map<std::string, ScanJobState> active_scans_;
+  base::flat_map<std::string, ScanJobState> active_scans_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Keep as the last member variable.
-  base::WeakPtrFactory<Manager> weak_factory_{this};
+  base::WeakPtrFactory<Manager> weak_factory_
+      GUARDED_BY_CONTEXT(sequence_checker_){this};
 };
 
 }  // namespace lorgnette

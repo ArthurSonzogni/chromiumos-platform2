@@ -196,7 +196,9 @@ Manager::Manager(
       weak_factory_.GetWeakPtr());
 }
 
-Manager::~Manager() {}
+Manager::~Manager() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+}
 
 void Manager::RegisterAsync(
     brillo::dbus_utils::ExportedObjectManager* object_manager,
@@ -216,6 +218,7 @@ void Manager::RegisterAsync(
 
 bool Manager::ListScanners(brillo::ErrorPtr* error,
                            ListScannersResponse* scanner_list_out) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   LOG(INFO) << "Starting ListScanners()";
   if (!sane_client_) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
@@ -353,6 +356,7 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
 bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
                                      const std::string& device_name,
                                      ScannerCapabilities* capabilities_out) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   LOG(INFO) << "Starting GetScannerCapabilities for device: " << device_name;
   if (!capabilities_out) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
@@ -418,6 +422,7 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
 }
 
 StartScanResponse Manager::StartScan(const StartScanRequest& request) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   LOG(INFO) << "Starting StartScan";
   StartScanResponse response;
   response.set_state(SCAN_STATE_FAILED);
@@ -455,11 +460,8 @@ StartScanResponse Manager::StartScan(const StartScanRequest& request) {
   }
 
   std::string uuid = GenerateUUID();
-  {
-    base::AutoLock auto_lock(active_scans_lock_);
-    active_scans_.emplace(uuid, std::move(scan_state));
-    LOG(INFO) << __func__ << ": Started tracking active scan " << uuid;
-  }
+  active_scans_.emplace(uuid, std::move(scan_state));
+  LOG(INFO) << __func__ << ": Started tracking active scan " << uuid;
 
   if (!activity_callback_.is_null())
     activity_callback_.Run(Daemon::kExtendedShutdownTimeout);
@@ -474,36 +476,32 @@ void Manager::GetNextImage(
     std::unique_ptr<DBusMethodResponse<GetNextImageResponse>> method_response,
     const GetNextImageRequest& request,
     const base::ScopedFD& out_fd) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   GetNextImageResponse response;
   response.set_success(false);
   response.set_scan_failure_mode(SCAN_FAILURE_MODE_UNKNOWN);
 
   std::string uuid = request.scan_uuid();
   LOG(INFO) << __func__ << ": Starting GetNextImage for " << uuid;
-  ScanJobState* scan_state;
-  {
-    base::AutoLock auto_lock(active_scans_lock_);
-    if (!base::Contains(active_scans_, uuid)) {
-      LOG(ERROR) << __func__ << ": No active scan found for " << uuid;
-      response.set_failure_reason("No scan job with UUID " + uuid + " found");
-      method_response->Return(response);
-      return;
-    }
-    scan_state = &active_scans_[uuid];
-
-    if (scan_state->in_use) {
-      LOG(ERROR) << __func__ << ": Active scan already in use for " << uuid;
-      response.set_failure_reason("Scan job with UUID " + uuid +
-                                  " is currently busy");
-      method_response->Return(response);
-      return;
-    }
-    scan_state->in_use = true;
+  if (!base::Contains(active_scans_, uuid)) {
+    LOG(ERROR) << __func__ << ": No active scan found for " << uuid;
+    response.set_failure_reason("No scan job with UUID " + uuid + " found");
+    method_response->Return(response);
+    return;
   }
+  ScanJobState* scan_state = &active_scans_[uuid];
+
+  if (scan_state->in_use) {
+    LOG(ERROR) << __func__ << ": Active scan already in use for " << uuid;
+    response.set_failure_reason("Scan job with UUID " + uuid +
+                                " is currently busy");
+    method_response->Return(response);
+    return;
+  }
+  scan_state->in_use = true;
   base::ScopedClosureRunner release_device(base::BindOnce(
       [](base::WeakPtr<Manager> manager, const std::string& uuid) {
         if (manager) {
-          base::AutoLock auto_lock(manager->active_scans_lock_);
           auto state_entry = manager->active_scans_.find(uuid);
           if (state_entry == manager->active_scans_.end())
             return;
@@ -540,49 +538,47 @@ void Manager::GetNextImage(
 }
 
 CancelScanResponse Manager::CancelScan(const CancelScanRequest& request) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CancelScanResponse response;
 
   std::string uuid = request.scan_uuid();
   LOG(INFO) << __func__ << ": cancel requested for " << uuid;
-  {
-    base::AutoLock auto_lock(active_scans_lock_);
-    if (!base::Contains(active_scans_, uuid)) {
-      LOG(WARNING) << __func__ << ": No active scan found for " << uuid;
+  if (!base::Contains(active_scans_, uuid)) {
+    LOG(WARNING) << __func__ << ": No active scan found for " << uuid;
+    response.set_success(false);
+    response.set_failure_reason("No scan job with UUID " + uuid + " found");
+    return response;
+  }
+
+  ScanJobState& scan_state = active_scans_[uuid];
+  if (scan_state.cancelled) {
+    LOG(INFO) << __func__ << ": Already cancelled scan " << uuid;
+    response.set_success(false);
+    response.set_failure_reason("Job has already been cancelled");
+    return response;
+  }
+
+  if (scan_state.in_use) {
+    // We can't just delete the scan job entirely since it's in use.
+    // sane_cancel() is required to be async safe, so we can call it even if
+    // the device is actively being used.
+    brillo::ErrorPtr error;
+    if (!scan_state.device->CancelScan(&error)) {
+      LOG(ERROR) << __func__ << ": Failed to cancel scan " << uuid;
       response.set_success(false);
-      response.set_failure_reason("No scan job with UUID " + uuid + " found");
+      response.set_failure_reason("Failed to cancel scan: " +
+                                  SerializeError(error));
       return response;
     }
-
-    ScanJobState& scan_state = active_scans_[uuid];
-    if (scan_state.cancelled) {
-      LOG(INFO) << __func__ << ": Already cancelled scan " << uuid;
-      response.set_success(false);
-      response.set_failure_reason("Job has already been cancelled");
-      return response;
-    }
-
-    if (scan_state.in_use) {
-      // We can't just delete the scan job entirely since it's in use.
-      // sane_cancel() is required to be async safe, so we can call it even if
-      // the device is actively being used.
-      brillo::ErrorPtr error;
-      if (!scan_state.device->CancelScan(&error)) {
-        LOG(ERROR) << __func__ << ": Failed to cancel scan " << uuid;
-        response.set_success(false);
-        response.set_failure_reason("Failed to cancel scan: " +
-                                    SerializeError(error));
-        return response;
-      }
-      // When the job that is actively using the device finishes, it will erase
-      // the job, freeing the device for use by other scans.
-      scan_state.cancelled = true;
-      LOG(INFO) << __func__ << ": Cancelled active scan " << uuid;
-    } else {
-      // If we're not actively using the device, just delete the scan job.
-      SendCancelledSignal(uuid);
-      active_scans_.erase(uuid);
-      LOG(INFO) << __func__ << ": Stopped tracking cancelled scan " << uuid;
-    }
+    // When the job that is actively using the device finishes, it will erase
+    // the job, freeing the device for use by other scans.
+    scan_state.cancelled = true;
+    LOG(INFO) << __func__ << ": Cancelled active scan " << uuid;
+  } else {
+    // If we're not actively using the device, just delete the scan job.
+    SendCancelledSignal(uuid);
+    active_scans_.erase(uuid);
+    LOG(INFO) << __func__ << ": Stopped tracking cancelled scan " << uuid;
   }
 
   if (!activity_callback_.is_null())
@@ -757,11 +753,8 @@ void Manager::GetNextImageInternal(const std::string& uuid,
       break;
     case SCAN_STATE_CANCELLED:
       SendCancelledSignal(uuid);
-      {
-        base::AutoLock auto_lock(active_scans_lock_);
-        active_scans_.erase(uuid);
-        LOG(INFO) << __func__ << ": Stopped tracking cancelled scan " << uuid;
-      }
+      active_scans_.erase(uuid);
+      LOG(INFO) << __func__ << ": Stopped tracking cancelled scan " << uuid;
       return;
     default:
       LOG(ERROR) << "Unexpected scan state: " << ScanState_Name(result);
@@ -769,11 +762,8 @@ void Manager::GetNextImageInternal(const std::string& uuid,
     case SCAN_STATE_FAILED:
       ReportScanFailed(scan_state->device_name, failure_mode);
       SendFailureSignal(uuid, SerializeError(error), failure_mode);
-      {
-        base::AutoLock auto_lock(active_scans_lock_);
-        active_scans_.erase(uuid);
-        LOG(INFO) << __func__ << ": Stopped tracking failed scan " << uuid;
-      }
+      active_scans_.erase(uuid);
+      LOG(INFO) << __func__ << ": Stopped tracking failed scan " << uuid;
       return;
   }
 
@@ -811,22 +801,16 @@ void Manager::GetNextImageInternal(const std::string& uuid,
                      false);
     LOG(INFO) << __func__ << ": Completed image scan and conversion.";
 
-    {
-      base::AutoLock auto_lock(active_scans_lock_);
-      active_scans_.erase(uuid);
-      LOG(INFO) << __func__ << ": Stopped tracking completed scan " << uuid;
-    }
+    active_scans_.erase(uuid);
+    LOG(INFO) << __func__ << ": Stopped tracking completed scan " << uuid;
 
     return;
   }
 
   if (status == SANE_STATUS_CANCELLED) {
     SendCancelledSignal(uuid);
-    {
-      base::AutoLock auto_lock(active_scans_lock_);
-      active_scans_.erase(uuid);
-      LOG(INFO) << __func__ << ": Stopped tracking cancelled scan " << uuid;
-    }
+    active_scans_.erase(uuid);
+    LOG(INFO) << __func__ << ": Stopped tracking cancelled scan " << uuid;
     return;
   } else if (status != SANE_STATUS_GOOD) {
     // The scan failed.
@@ -836,11 +820,8 @@ void Manager::GetNextImageInternal(const std::string& uuid,
     failure_mode = GetScanFailureMode(status);
     ReportScanFailed(scan_state->device_name, failure_mode);
     SendFailureSignal(uuid, SerializeError(error), failure_mode);
-    {
-      base::AutoLock auto_lock(active_scans_lock_);
-      active_scans_.erase(uuid);
-      LOG(INFO) << __func__ << ": Stopped tracking failed scan " << uuid;
-    }
+    active_scans_.erase(uuid);
+    LOG(INFO) << __func__ << ": Stopped tracking failed scan " << uuid;
     return;
   }
 
