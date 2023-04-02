@@ -47,7 +47,7 @@ generate_pkg_config("libmissiveclient_pc") {
     "libbrillo",
     "libchrome",
   ]
-  defines = [ "USE_RTTI_FOR_TYPE_TAGS" ]
+  defines = [ "USE_RTTI_FOR_TYPE_TAGS=1" ]
   libs = [
     "-lmissiveclientlib",
     "-lmissiveprotohealth",
