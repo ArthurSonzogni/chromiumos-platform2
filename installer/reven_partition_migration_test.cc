@@ -330,14 +330,16 @@ TEST_F(PartitionMigrationTest, RunSlotBNoMigrationNeeded) {
   EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
 }
 
-// Tests for propagating errors if either slot plan fails to initialize:
+// Tests for how errors are handled if either slot plan fails to
+// initialize. An error metric should be sent, but postinstall should be
+// allowed to proceed (RunRevenPartitionMigration returns true).
 
 TEST_F(PartitionMigrationTest, RunSlotAPlanError) {
   SetIsInstall(true);
   orig_partitions_.erase(PartitionNum::KERN_A);
 
   ExpectMetric(PartitionMigrationResult::kGptReadKernError);
-  EXPECT_FALSE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
 }
 
 TEST_F(PartitionMigrationTest, RunSlotBPlanError) {
@@ -345,7 +347,7 @@ TEST_F(PartitionMigrationTest, RunSlotBPlanError) {
   orig_partitions_.erase(PartitionNum::KERN_B);
 
   ExpectMetric(PartitionMigrationResult::kGptReadKernError);
-  EXPECT_FALSE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
 }
 
 // Tests for propagating errors if either slot migration fails:
@@ -353,7 +355,7 @@ TEST_F(PartitionMigrationTest, RunSlotBPlanError) {
 TEST_F(PartitionMigrationTest, RunSlotAMigrationError) {
   SetIsInstall(true);
 
-  // Arbitrary choice of failing in the slot A migration.
+  // Arbitrary choice of failure in the slot A migration.
   EXPECT_CALL(cgpt_manager_, SetSectorRange(PartitionNum::ROOT_A, _, _))
       .WillOnce(Return(CgptErrorCode::kUnknownError));
 
@@ -364,7 +366,7 @@ TEST_F(PartitionMigrationTest, RunSlotAMigrationError) {
 TEST_F(PartitionMigrationTest, RunSlotBMigrationError) {
   SetIsInstall(true);
 
-  // Arbitrary choice of failing in the slot B migration.
+  // Arbitrary choice of failure in the slot B migration.
   EXPECT_CALL(cgpt_manager_, SetSectorRange(PartitionNum::ROOT_B, _, _))
       .WillOnce(Return(CgptErrorCode::kUnknownError));
 
@@ -381,6 +383,18 @@ TEST_F(PartitionMigrationTest, RunSlotBMigrationError) {
 // install.
 TEST_F(PartitionMigrationTest, NotRunningFromInstaller) {
   SetIsInstall(false);
+  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+}
+
+// Test that migration planning does occur during updates, even though
+// the migration doesn't run currently.
+TEST_F(PartitionMigrationTest, UpdatePlanningOccurs) {
+  SetIsInstall(false);
+
+  orig_partitions_[PartitionNum::KERN_A].count = MibToSectors(64);
+  orig_partitions_[PartitionNum::KERN_B].count = MibToSectors(64);
+
+  ExpectMetric(PartitionMigrationResult::kNoMigrationNeeded);
   EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
 }
 

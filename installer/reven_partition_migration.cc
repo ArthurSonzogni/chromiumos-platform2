@@ -33,49 +33,6 @@ void SendResultMetric(PartitionMigrationResult result,
 
 const uint64_t kSectorSizeInBytes = 512;
 
-PartitionMigrationResult CreatePlanAndRun(CgptManagerInterface& cgpt_manager) {
-  LOG(INFO) << "Creating partition migration plan for "
-            << cgpt_manager.DeviceName();
-
-  SlotPlan slot_a = SlotPlan::ForSlotA(cgpt_manager);
-  PartitionMigrationResult slot_a_result = slot_a.Initialize();
-  if (IsErrorResult(slot_a_result)) {
-    LOG(ERROR) << "Failed to create migration plan slot A";
-    return slot_a_result;
-  }
-
-  SlotPlan slot_b = SlotPlan::ForSlotB(cgpt_manager);
-  PartitionMigrationResult slot_b_result = slot_b.Initialize();
-  if (IsErrorResult(slot_b_result)) {
-    LOG(ERROR) << "Failed to create migration plan slot B";
-    return slot_b_result;
-  }
-
-  if (slot_a_result == PartitionMigrationResult::kNoMigrationNeeded &&
-      slot_b_result == PartitionMigrationResult::kNoMigrationNeeded) {
-    LOG(INFO) << "No partition migration needed";
-    return PartitionMigrationResult::kNoMigrationNeeded;
-  }
-
-  if (slot_a_result == PartitionMigrationResult::kSuccess) {
-    slot_a_result = slot_a.Run();
-    if (IsErrorResult(slot_a_result)) {
-      LOG(ERROR) << "Slot A migration failed";
-      return slot_a_result;
-    }
-  }
-
-  if (slot_b_result == PartitionMigrationResult::kSuccess) {
-    slot_b_result = slot_b.Run();
-    if (IsErrorResult(slot_b_result)) {
-      LOG(ERROR) << "Slot B migration failed";
-      return slot_b_result;
-    }
-  }
-
-  LOG(INFO) << "Partition migration succeeded";
-  return PartitionMigrationResult::kSuccess;
-}
 }  // namespace
 
 SlotPlan SlotPlan::ForSlotA(CgptManagerInterface& cgpt_manager) {
@@ -233,18 +190,80 @@ SlotPlan::SlotPlan(CgptManagerInterface& cgpt_manager,
                    PartitionNum root_num)
     : cgpt_manager_(cgpt_manager), kern_num_(kern_num), root_num_(root_num) {}
 
+FullPlan::FullPlan(CgptManagerInterface& cgpt_manager)
+    : cgpt_manager_(cgpt_manager),
+      slot_a_plan_(SlotPlan::ForSlotA(cgpt_manager)),
+      slot_b_plan_(SlotPlan::ForSlotB(cgpt_manager)) {}
+
+PartitionMigrationResult FullPlan::Initialize() {
+  LOG(INFO) << "Creating partition migration plan for "
+            << cgpt_manager_.DeviceName();
+
+  slot_a_result_ = slot_a_plan_.Initialize();
+  if (IsErrorResult(slot_a_result_)) {
+    LOG(ERROR) << "Failed to create migration plan slot A";
+    return slot_a_result_;
+  }
+
+  slot_b_result_ = slot_b_plan_.Initialize();
+  if (IsErrorResult(slot_b_result_)) {
+    LOG(ERROR) << "Failed to create migration plan slot B";
+    return slot_b_result_;
+  }
+
+  if (slot_a_result_ == PartitionMigrationResult::kNoMigrationNeeded &&
+      slot_b_result_ == PartitionMigrationResult::kNoMigrationNeeded) {
+    LOG(INFO) << "No partition migration needed";
+    return PartitionMigrationResult::kNoMigrationNeeded;
+  }
+
+  return PartitionMigrationResult::kSuccess;
+}
+
+PartitionMigrationResult FullPlan::Run() {
+  if (slot_a_result_ == PartitionMigrationResult::kSuccess) {
+    const PartitionMigrationResult result = slot_a_plan_.Run();
+    if (IsErrorResult(result)) {
+      LOG(ERROR) << "Slot A migration failed";
+      return result;
+    }
+  }
+
+  if (slot_b_result_ == PartitionMigrationResult::kSuccess) {
+    const PartitionMigrationResult result = slot_b_plan_.Run();
+    if (IsErrorResult(result)) {
+      LOG(ERROR) << "Slot B migration failed";
+      return result;
+    }
+  }
+
+  LOG(INFO) << "Partition migration succeeded";
+  return PartitionMigrationResult::kSuccess;
+}
+
 bool RunRevenPartitionMigration(CgptManagerInterface& cgpt_manager,
                                 MetricsInterface& metrics,
                                 base::Environment& env) {
+  const bool is_install = env.HasVar(kEnvIsInstall);
+
+  FullPlan full_plan = FullPlan(cgpt_manager);
+  PartitionMigrationResult result = full_plan.Initialize();
+  if (result != PartitionMigrationResult::kSuccess) {
+    // Either an error occurred, or no migration is needed. Either way,
+    // return true to indicate that postinstall should continue.
+    SendResultMetric(result, metrics);
+    return true;
+  }
+
   // TODO(nicholasbishop): for now, don't run the partition migration on
   // updates. This will be changed in the future. See
   // docs/reven_partition_migration.md.
-  if (!env.HasVar(kEnvIsInstall)) {
+  if (!is_install) {
     LOG(INFO) << "Not running from installer, skipping migration";
     return true;
   }
 
-  const PartitionMigrationResult result = CreatePlanAndRun(cgpt_manager);
+  result = full_plan.Run();
   SendResultMetric(result, metrics);
   return !IsErrorResult(result);
 }

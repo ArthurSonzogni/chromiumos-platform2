@@ -34,7 +34,7 @@ enum class [[nodiscard]] PartitionMigrationResult {
 // Plan for migrating one kernel partition (either slot A or slot B).
 //
 // This separates gathering the info needed to perform the migration
-// from the migration itself. This allows the full migration to be
+// from the migration itself. This allows the slot migration to be
 // planned before running it; if anything fails when initializing a slot
 // plan then the whole migration (for both slots) is canceled. This
 // allows us to minimize the number of errors that can occur in the
@@ -107,6 +107,45 @@ class SlotPlan {
 
   // New location and size of the kernel partition.
   SectorRange kern_new_sectors_;
+};
+
+// Plan for migrating both slots.
+//
+// This separates gathering the info needed to perform the migration
+// from the migration itself. This allows the full migration to be
+// planned before running it; if anything fails when initializing a slot
+// plan then the whole migration (for both slots) is canceled. This
+// allows us to minimize the number of errors that can occur in the
+// migration itself.
+class FullPlan {
+ public:
+  explicit FullPlan(CgptManagerInterface& cgpt_manager);
+
+  // Initialize the plan.
+  //
+  // * Returns `kSuccess` if the initialization is successful and at
+  // * least one slot needs to be migrated.
+  // * Returns `kNoMigrationNeeded` if both slots have already been migrated.
+  // * Returns an error if either slot plan failed to initialize.
+  PartitionMigrationResult Initialize();
+
+  // Perform the slot migrations.
+  //
+  // If a slot has already been migrated, it will be skipped.
+  //
+  // * Returns `kSuccess` if all operations succeed.
+  // * Returns an error if any operation fails.
+  PartitionMigrationResult Run();
+
+ private:
+  CgptManagerInterface& cgpt_manager_;
+
+  // Result of initializing the slot plans.
+  PartitionMigrationResult slot_a_result_;
+  PartitionMigrationResult slot_b_result_;
+
+  SlotPlan slot_a_plan_;
+  SlotPlan slot_b_plan_;
 };
 
 // Convert from MiB to 512-byte disk sectors.
