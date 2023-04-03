@@ -656,16 +656,10 @@ Client::IPConfig Client::ParseIPConfigsProperty(
       continue;
     }
 
-    // TODO(garrick): Accommodate missing name servers.
+    // Note that empty name server list may indicates the network does not have
+    // Internet connectivity.
     auto ns = brillo::GetVariantValueOrDefault<std::vector<std::string>>(
         properties, kNameServersProperty);
-    if (ns.empty()) {
-      LOG(WARNING) << "Empty property [" << kNameServersProperty
-                   << "] in IPConfig [" << path.value() << "] on device ["
-                   << device_path << "]";
-      continue;
-    }
-
     auto search_domains =
         brillo::GetVariantValueOrDefault<std::vector<std::string>>(
             properties, kSearchDomainsProperty);
