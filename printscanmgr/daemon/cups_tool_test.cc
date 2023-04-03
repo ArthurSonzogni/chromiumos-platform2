@@ -15,6 +15,7 @@
 #include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/printscanmgr/dbus-constants.h>
+#include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 #include "printscanmgr/daemon/cups_tool.h"
 
@@ -47,6 +48,47 @@ constexpr base::StringPiece kMinimalPPDContent(R"PPD(*PPD-Adobe: "4.3"
 *DefaultPaperDimension: A4
 *PaperDimension A4/A4: "595.20 841.68"
 )PPD");
+
+// Constructs a CupsAddAutoConfiguredPrinterRequest from `name` and `uri`.
+CupsAddAutoConfiguredPrinterRequest
+ConstructCupsAddAutoConfiguredPrinterRequest(const std::string& name,
+                                             const std::string& uri) {
+  CupsAddAutoConfiguredPrinterRequest request;
+  request.set_name(name);
+  request.set_uri(uri);
+  return request;
+}
+
+// Constructs a CupsAddManuallyConfiguredPrinterRequest from `name`, `uri` and
+// `ppd_contents`.
+CupsAddManuallyConfiguredPrinterRequest
+ConstructCupsAddManuallyConfiguredPrinterRequest(
+    const std::string& name,
+    const std::string& uri,
+    const std::vector<uint8_t>& ppd_contents) {
+  CupsAddManuallyConfiguredPrinterRequest request;
+  request.set_name(name);
+  request.set_uri(uri);
+  request.set_ppd_contents(
+      std::string(ppd_contents.begin(), ppd_contents.end()));
+  return request;
+}
+
+// Constructs a CupsRemovePrinterRequest from `name`.
+CupsRemovePrinterRequest ConstructCupsRemovePrinterRequest(
+    const std::string& name) {
+  CupsRemovePrinterRequest request;
+  request.set_name(name);
+  return request;
+}
+
+// Constructs a CupsRetrievePpdRequest from `name`.
+CupsRetrievePpdRequest ConstructCupsRetrievePpdRequest(
+    const std::string& name) {
+  CupsRetrievePpdRequest request;
+  request.set_name(name);
+  return request;
+}
 
 }  // namespace
 
@@ -166,9 +208,11 @@ TEST(CupsToolTest, RetrievePpd) {
   CupsTool cupsTool;
   cupsTool.SetLpToolsForTesting(std::move(lptools));
 
-  std::vector<uint8_t> retrievedData = cupsTool.RetrievePpd(printerName);
+  CupsRetrievePpdResponse response =
+      cupsTool.RetrievePpd(ConstructCupsRetrievePpdRequest(printerName));
 
-  EXPECT_THAT(ppdContents, testing::ContainerEq(retrievedData));
+  EXPECT_EQ(std::string(ppdContents.begin(), ppdContents.end()),
+            response.ppd());
 }
 
 TEST(CupsToolTest, EmptyFile) {
@@ -187,9 +231,10 @@ TEST(CupsToolTest, EmptyFile) {
 
   CupsTool cupsTool;
   cupsTool.SetLpToolsForTesting(std::move(lptools));
-  const std::vector<uint8_t> retrievedData = cupsTool.RetrievePpd(printerName);
+  CupsRetrievePpdResponse response =
+      cupsTool.RetrievePpd(ConstructCupsRetrievePpdRequest(printerName));
 
-  EXPECT_TRUE(retrievedData.empty());
+  EXPECT_TRUE(response.ppd().empty());
 }
 
 TEST(CupsToolTest, PpdFileDoesNotExist) {
@@ -204,9 +249,10 @@ TEST(CupsToolTest, PpdFileDoesNotExist) {
   CupsTool cupsTool;
   cupsTool.SetLpToolsForTesting(std::move(lptools));
 
-  const std::vector<uint8_t> retrievedPpd = cupsTool.RetrievePpd(printerName);
+  CupsRetrievePpdResponse response =
+      cupsTool.RetrievePpd(ConstructCupsRetrievePpdRequest(printerName));
 
-  EXPECT_TRUE(retrievedPpd.empty());
+  EXPECT_TRUE(response.ppd().empty());
 }
 
 TEST(CupsToolTest, LpstatError) {
@@ -220,9 +266,10 @@ TEST(CupsToolTest, LpstatError) {
   CupsTool cupsTool;
   cupsTool.SetLpToolsForTesting(std::move(lptools));
 
-  const std::vector<uint8_t> retrievedPpd = cupsTool.RetrievePpd("printer");
+  CupsRetrievePpdResponse response =
+      cupsTool.RetrievePpd(ConstructCupsRetrievePpdRequest("printer"));
 
-  EXPECT_TRUE(retrievedPpd.empty());
+  EXPECT_TRUE(response.ppd().empty());
 }
 
 TEST(CupsToolTest, LpstatNoPrinter) {
@@ -237,17 +284,21 @@ TEST(CupsToolTest, LpstatNoPrinter) {
   CupsTool cupsTool;
   cupsTool.SetLpToolsForTesting(std::move(lptools));
 
-  const std::vector<uint8_t> retrievedPpd = cupsTool.RetrievePpd(printerName);
+  CupsRetrievePpdResponse response =
+      cupsTool.RetrievePpd(ConstructCupsRetrievePpdRequest(printerName));
 
-  EXPECT_TRUE(retrievedPpd.empty());
+  EXPECT_TRUE(response.ppd().empty());
 }
 
 TEST(CupsToolTest, InvalidPPDTooSmall) {
   std::vector<uint8_t> empty_ppd;
 
   CupsTool cups;
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", empty_ppd),
-            CupsResult::CUPS_INVALID_PPD);
+  CupsAddManuallyConfiguredPrinterResponse response =
+      cups.AddManuallyConfiguredPrinter(
+          ConstructCupsAddManuallyConfiguredPrinterRequest("test", "ipp://",
+                                                           empty_ppd));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_INVALID_PPD);
 }
 
 TEST(CupsToolTest, InvalidPPDBadGzip) {
@@ -258,8 +309,11 @@ TEST(CupsToolTest, InvalidPPDBadGzip) {
   bad_ppd[1] = 0x8b;
 
   CupsTool cups;
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", bad_ppd),
-            CupsResult::CUPS_INVALID_PPD);
+  CupsAddManuallyConfiguredPrinterResponse response =
+      cups.AddManuallyConfiguredPrinter(
+          ConstructCupsAddManuallyConfiguredPrinterRequest("test", "ipp://",
+                                                           bad_ppd));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_INVALID_PPD);
 }
 
 TEST(CupsToolTest, InvalidPPDBadContents) {
@@ -276,8 +330,11 @@ TEST(CupsToolTest, InvalidPPDBadContents) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", bad_ppd),
-            CupsResult::CUPS_INVALID_PPD);
+  CupsAddManuallyConfiguredPrinterResponse response =
+      cups.AddManuallyConfiguredPrinter(
+          ConstructCupsAddManuallyConfiguredPrinterRequest("test", "ipp://",
+                                                           bad_ppd));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_INVALID_PPD);
 }
 
 TEST(CupsToolTest, ManualMissingURI) {
@@ -290,8 +347,11 @@ TEST(CupsToolTest, ManualMissingURI) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "", good_ppd),
-            CupsResult::CUPS_BAD_URI);
+  CupsAddManuallyConfiguredPrinterResponse response =
+      cups.AddManuallyConfiguredPrinter(
+          ConstructCupsAddManuallyConfiguredPrinterRequest("test", /*uri=*/"",
+                                                           good_ppd));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_BAD_URI);
 }
 
 TEST(CupsToolTest, ManualMissingName) {
@@ -299,15 +359,17 @@ TEST(CupsToolTest, ManualMissingName) {
                                 kMinimalPPDContent.end());
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsTestPPDResult(0);    // Successful validation.
+  lptools->SetCupsTestPPDResult(0);       // Successful validation.
   lptools->SetCupsUriHelperResult(true);  // URI validated.
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
-                "", "ipp://127.0.0.1:631/ipp/print", good_ppd),
-            CupsResult::CUPS_FATAL);
+  CupsAddManuallyConfiguredPrinterResponse response =
+      cups.AddManuallyConfiguredPrinter(
+          ConstructCupsAddManuallyConfiguredPrinterRequest(
+              /*name=*/"", "ipp://127.0.0.1:631/ipp/print", good_ppd));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
 }
 
 TEST(CupsToolTest, ManualUnknownError) {
@@ -315,16 +377,18 @@ TEST(CupsToolTest, ManualUnknownError) {
                                 kMinimalPPDContent.end());
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsTestPPDResult(0);    // Successful validation.
+  lptools->SetCupsTestPPDResult(0);       // Successful validation.
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(1);
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
-                "test", "ipp://127.0.0.1:631/ipp/print", good_ppd),
-            CupsResult::CUPS_LPADMIN_FAILURE);
+  CupsAddManuallyConfiguredPrinterResponse response =
+      cups.AddManuallyConfiguredPrinter(
+          ConstructCupsAddManuallyConfiguredPrinterRequest(
+              "test", "ipp://127.0.0.1:631/ipp/print", good_ppd));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_LPADMIN_FAILURE);
 }
 
 TEST(CupsToolTest, ManualInvalidPpdDuringLpadmin) {
@@ -332,16 +396,18 @@ TEST(CupsToolTest, ManualInvalidPpdDuringLpadmin) {
                                 kMinimalPPDContent.end());
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsTestPPDResult(0);    // Successful validation.
+  lptools->SetCupsTestPPDResult(0);       // Successful validation.
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(5);
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
-                "test", "ipp://127.0.0.1:631/ipp/print", good_ppd),
-            CupsResult::CUPS_INVALID_PPD);
+  CupsAddManuallyConfiguredPrinterResponse response =
+      cups.AddManuallyConfiguredPrinter(
+          ConstructCupsAddManuallyConfiguredPrinterRequest(
+              "test", "ipp://127.0.0.1:631/ipp/print", good_ppd));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_INVALID_PPD);
 }
 
 TEST(CupsToolTest, ManualNotAutoConf) {
@@ -349,16 +415,18 @@ TEST(CupsToolTest, ManualNotAutoConf) {
                                 kMinimalPPDContent.end());
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsTestPPDResult(0);    // Successful validation.
+  lptools->SetCupsTestPPDResult(0);       // Successful validation.
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(9);
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
-                "test", "ipp://127.0.0.1:631/ipp/print", good_ppd),
-            CupsResult::CUPS_FATAL);
+  CupsAddManuallyConfiguredPrinterResponse response =
+      cups.AddManuallyConfiguredPrinter(
+          ConstructCupsAddManuallyConfiguredPrinterRequest(
+              "test", "ipp://127.0.0.1:631/ipp/print", good_ppd));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
 }
 
 TEST(CupsToolTest, ManualUnhandledError) {
@@ -366,21 +434,25 @@ TEST(CupsToolTest, ManualUnhandledError) {
                                 kMinimalPPDContent.end());
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsTestPPDResult(0);    // Successful validation.
+  lptools->SetCupsTestPPDResult(0);       // Successful validation.
   lptools->SetCupsUriHelperResult(true);  // URI validated.
-  lptools->SetLpadminResult(100);      // Error code without CUPS equivalent.
+  lptools->SetLpadminResult(100);         // Error code without CUPS equivalent.
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
-                "test", "ipp://127.0.0.1:631/ipp/print", good_ppd),
-            CupsResult::CUPS_FATAL);
+  CupsAddManuallyConfiguredPrinterResponse response =
+      cups.AddManuallyConfiguredPrinter(
+          ConstructCupsAddManuallyConfiguredPrinterRequest(
+              "test", "ipp://127.0.0.1:631/ipp/print", good_ppd));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
 }
 
 TEST(CupsToolTest, AutoMissingURI) {
   CupsTool cups;
-  EXPECT_EQ(cups.AddAutoConfiguredPrinter("test", ""), CupsResult::CUPS_FATAL);
+  CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
+      ConstructCupsAddAutoConfiguredPrinterRequest("test", /*uri=*/""));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
 }
 
 TEST(CupsToolTest, AutoMissingName) {
@@ -390,8 +462,10 @@ TEST(CupsToolTest, AutoMissingName) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(cups.AddAutoConfiguredPrinter("", "ipp://127.0.0.1:631/ipp/print"),
-            CupsResult::CUPS_FATAL);
+  CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
+      ConstructCupsAddAutoConfiguredPrinterRequest(
+          /*name=*/"", "ipp://127.0.0.1:631/ipp/print"));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
 }
 
 TEST(CupsToolTest, AutoUnreasonableUri) {
@@ -401,8 +475,10 @@ TEST(CupsToolTest, AutoUnreasonableUri) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(cups.AddAutoConfiguredPrinter("", "ipp://127.0.0.1:631/ipp/print"),
-            CupsResult::CUPS_BAD_URI);
+  CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
+      ConstructCupsAddAutoConfiguredPrinterRequest(
+          /*name=*/"", "ipp://127.0.0.1:631/ipp/print"));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_BAD_URI);
 }
 
 TEST(CupsToolTest, AddAutoConfiguredPrinter) {
@@ -412,12 +488,13 @@ TEST(CupsToolTest, AddAutoConfiguredPrinter) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_SUCCESS);
+  CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
+      ConstructCupsAddAutoConfiguredPrinterRequest(
+          "test", "ipp://127.0.0.1:631/ipp/print"));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_SUCCESS);
 }
 
-TEST(CupsToolTest, AutoUnknwonError) {
+TEST(CupsToolTest, AutoUnknownError) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(1);
@@ -425,9 +502,10 @@ TEST(CupsToolTest, AutoUnknwonError) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_AUTOCONF_FAILURE);
+  CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
+      ConstructCupsAddAutoConfiguredPrinterRequest(
+          "test", "ipp://127.0.0.1:631/ipp/print"));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_AUTOCONF_FAILURE);
 }
 
 TEST(CupsToolTest, AutoFatalError) {
@@ -438,9 +516,10 @@ TEST(CupsToolTest, AutoFatalError) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_FATAL);
+  CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
+      ConstructCupsAddAutoConfiguredPrinterRequest(
+          "test", "ipp://127.0.0.1:631/ipp/print"));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
 }
 
 TEST(CupsToolTest, AutoIoError) {
@@ -451,9 +530,10 @@ TEST(CupsToolTest, AutoIoError) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_IO_ERROR);
+  CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
+      ConstructCupsAddAutoConfiguredPrinterRequest(
+          "test", "ipp://127.0.0.1:631/ipp/print"));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_IO_ERROR);
 }
 
 TEST(CupsToolTest, AutoMemoryAllocError) {
@@ -464,9 +544,10 @@ TEST(CupsToolTest, AutoMemoryAllocError) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_MEMORY_ALLOC_ERROR);
+  CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
+      ConstructCupsAddAutoConfiguredPrinterRequest(
+          "test", "ipp://127.0.0.1:631/ipp/print"));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_MEMORY_ALLOC_ERROR);
 }
 
 TEST(CupsToolTest, AutoInvalidPpd) {
@@ -477,9 +558,10 @@ TEST(CupsToolTest, AutoInvalidPpd) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_FATAL);
+  CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
+      ConstructCupsAddAutoConfiguredPrinterRequest(
+          "test", "ipp://127.0.0.1:631/ipp/print"));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
 }
 
 TEST(CupsToolTest, AutoServerUnreachable) {
@@ -490,9 +572,10 @@ TEST(CupsToolTest, AutoServerUnreachable) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_FATAL);
+  CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
+      ConstructCupsAddAutoConfiguredPrinterRequest(
+          "test", "ipp://127.0.0.1:631/ipp/print"));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_FATAL);
 }
 
 TEST(CupsToolTest, AutoPrinterUnreachable) {
@@ -503,9 +586,10 @@ TEST(CupsToolTest, AutoPrinterUnreachable) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_PRINTER_UNREACHABLE);
+  CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
+      ConstructCupsAddAutoConfiguredPrinterRequest(
+          "test", "ipp://127.0.0.1:631/ipp/print"));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_PRINTER_UNREACHABLE);
 }
 
 TEST(CupsToolTest, AutoPrinterWrongResponse) {
@@ -516,9 +600,10 @@ TEST(CupsToolTest, AutoPrinterWrongResponse) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_PRINTER_WRONG_RESPONSE);
+  CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
+      ConstructCupsAddAutoConfiguredPrinterRequest(
+          "test", "ipp://127.0.0.1:631/ipp/print"));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_PRINTER_WRONG_RESPONSE);
 }
 
 TEST(CupsToolTest, AutoPrinterNotAutoConf) {
@@ -529,9 +614,10 @@ TEST(CupsToolTest, AutoPrinterNotAutoConf) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_PRINTER_NOT_AUTOCONF);
+  CupsAddAutoConfiguredPrinterResponse response = cups.AddAutoConfiguredPrinter(
+      ConstructCupsAddAutoConfiguredPrinterRequest(
+          "test", "ipp://127.0.0.1:631/ipp/print"));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_PRINTER_NOT_AUTOCONF);
 }
 
 TEST(CupsToolTest, FoomaticPPD) {
@@ -548,8 +634,12 @@ TEST(CupsToolTest, FoomaticPPD) {
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", foomatic_ppd),
-            CupsResult::CUPS_SUCCESS);
+
+  CupsAddManuallyConfiguredPrinterResponse response =
+      cups.AddManuallyConfiguredPrinter(
+          ConstructCupsAddManuallyConfiguredPrinterRequest("test", "ipp://",
+                                                           foomatic_ppd));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_SUCCESS);
 }
 
 TEST(CupsToolTest, FoomaticError) {
@@ -566,8 +656,11 @@ TEST(CupsToolTest, FoomaticError) {
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", foomatic_ppd),
-            CupsResult::CUPS_INVALID_PPD);
+  CupsAddManuallyConfiguredPrinterResponse response =
+      cups.AddManuallyConfiguredPrinter(
+          ConstructCupsAddManuallyConfiguredPrinterRequest("test", "ipp://",
+                                                           foomatic_ppd));
+  EXPECT_EQ(response.result(), CupsResult::CUPS_RESULT_INVALID_PPD);
 }
 
 TEST(CupsToolTest, RemovePrinter) {
@@ -578,7 +671,9 @@ TEST(CupsToolTest, RemovePrinter) {
 
   // Our FakeLpTools always returns 0 for lpadmin calls, so we expect this to
   // pass.
-  EXPECT_EQ(cups.RemovePrinter("printer-name"), true);
+  CupsRemovePrinterResponse response =
+      cups.RemovePrinter(ConstructCupsRemovePrinterRequest("printer-name"));
+  EXPECT_EQ(response.result(), true);
 }
 
 }  // namespace printscanmgr

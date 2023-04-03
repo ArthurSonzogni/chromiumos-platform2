@@ -5,16 +5,12 @@
 #ifndef PRINTSCANMGR_DAEMON_DBUS_ADAPTOR_H_
 #define PRINTSCANMGR_DAEMON_DBUS_ADAPTOR_H_
 
-#include <stdint.h>
-
-#include <string>
-#include <vector>
-
 #include <base/memory/scoped_refptr.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>
 #include <dbus/bus.h>
+#include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 #include "printscanmgr/daemon/cups_tool.h"
 #include "printscanmgr/dbus_adaptors/org.chromium.printscanmgr.h"
@@ -35,16 +31,16 @@ class DbusAdaptor final : public org::chromium::printscanmgrAdaptor,
                          completion_action);
 
   // org::chromium::printscanmgrInterface overrides:
-  int32_t CupsAddAutoConfiguredPrinter(const std::string& name,
-                                       const std::string& uri) override;
-  int32_t CupsAddManuallyConfiguredPrinter(
-      const std::string& name,
-      const std::string& uri,
-      const std::vector<uint8_t>& ppd_contents) override;
-  bool CupsRemovePrinter(const std::string& name) override;
-  std::vector<uint8_t> CupsRetrievePpd(const std::string& name) override;
-  bool PrintscanDebugSetCategories(brillo::ErrorPtr* error,
-                                   uint32_t categories) override;
+  CupsAddAutoConfiguredPrinterResponse CupsAddAutoConfiguredPrinter(
+      const CupsAddAutoConfiguredPrinterRequest& request) override;
+  CupsAddManuallyConfiguredPrinterResponse CupsAddManuallyConfiguredPrinter(
+      const CupsAddManuallyConfiguredPrinterRequest& request) override;
+  CupsRemovePrinterResponse CupsRemovePrinter(
+      const CupsRemovePrinterRequest& request) override;
+  CupsRetrievePpdResponse CupsRetrievePpd(
+      const CupsRetrievePpdRequest& request) override;
+  PrintscanDebugSetCategoriesResponse PrintscanDebugSetCategories(
+      const PrintscanDebugSetCategoriesRequest& request) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;

@@ -7,11 +7,10 @@
 
 #include "printscanmgr/daemon/lp_tools.h"
 
-#include <stdint.h>
-
 #include <string>
-#include <vector>
 #include <memory>
+
+#include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 namespace printscanmgr {
 
@@ -24,20 +23,19 @@ class CupsTool {
   ~CupsTool() = default;
 
   // Add a printer that can be configured automatically.
-  int32_t AddAutoConfiguredPrinter(const std::string& name,
-                                   const std::string& uri);
+  CupsAddAutoConfiguredPrinterResponse AddAutoConfiguredPrinter(
+      const CupsAddAutoConfiguredPrinterRequest& request);
 
   // Add a printer configured with the ppd found in |ppd_contents|.
-  int32_t AddManuallyConfiguredPrinter(
-      const std::string& name,
-      const std::string& uri,
-      const std::vector<uint8_t>& ppd_contents);
+  CupsAddManuallyConfiguredPrinterResponse AddManuallyConfiguredPrinter(
+      const CupsAddManuallyConfiguredPrinterRequest& request);
 
   // Remove a printer from CUPS using lpadmin.
-  bool RemovePrinter(const std::string& name);
+  CupsRemovePrinterResponse RemovePrinter(
+      const CupsRemovePrinterRequest& request);
 
   // Retrieve the PPD from CUPS for a given printer.
-  std::vector<uint8_t> RetrievePpd(const std::string& name);
+  CupsRetrievePpdResponse RetrievePpd(const CupsRetrievePpdRequest& request);
 
   // Run lpstat -l -r -v -a -p -o and pass the stdout to output.
   bool RunLpstat(std::string* output);

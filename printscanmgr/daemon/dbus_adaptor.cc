@@ -30,31 +30,34 @@ void DbusAdaptor::RegisterAsync(
   dbus_object_.RegisterAsync(std::move(completion_action));
 }
 
-int32_t DbusAdaptor::CupsAddAutoConfiguredPrinter(const std::string& name,
-                                                  const std::string& uri) {
-  return cups_tool_.AddAutoConfiguredPrinter(name, uri);
+CupsAddAutoConfiguredPrinterResponse DbusAdaptor::CupsAddAutoConfiguredPrinter(
+    const CupsAddAutoConfiguredPrinterRequest& request) {
+  return cups_tool_.AddAutoConfiguredPrinter(request);
 }
 
-int32_t DbusAdaptor::CupsAddManuallyConfiguredPrinter(
-    const std::string& name,
-    const std::string& uri,
-    const std::vector<uint8_t>& ppd_contents) {
-  return cups_tool_.AddManuallyConfiguredPrinter(name, uri, ppd_contents);
+CupsAddManuallyConfiguredPrinterResponse
+DbusAdaptor::CupsAddManuallyConfiguredPrinter(
+    const CupsAddManuallyConfiguredPrinterRequest& request) {
+  return cups_tool_.AddManuallyConfiguredPrinter(request);
 }
 
-bool DbusAdaptor::CupsRemovePrinter(const std::string& name) {
-  return cups_tool_.RemovePrinter(name);
+CupsRemovePrinterResponse DbusAdaptor::CupsRemovePrinter(
+    const CupsRemovePrinterRequest& request) {
+  return cups_tool_.RemovePrinter(request);
 }
 
-std::vector<uint8_t> DbusAdaptor::CupsRetrievePpd(const std::string& name) {
-  return cups_tool_.RetrievePpd(name);
+CupsRetrievePpdResponse DbusAdaptor::CupsRetrievePpd(
+    const CupsRetrievePpdRequest& request) {
+  return cups_tool_.RetrievePpd(request);
 }
 
-bool DbusAdaptor::PrintscanDebugSetCategories(brillo::ErrorPtr* error,
-                                              uint32_t categories) {
+PrintscanDebugSetCategoriesResponse DbusAdaptor::PrintscanDebugSetCategories(
+    const PrintscanDebugSetCategoriesRequest& request) {
   NOTIMPLEMENTED() << " PrintscanDebugSetCategories not implemented.";
 
-  return false;
+  PrintscanDebugSetCategoriesResponse response;
+
+  return response;
 }
 
 }  // namespace printscanmgr

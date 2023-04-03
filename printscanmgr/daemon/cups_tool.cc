@@ -1,8 +1,7 @@
 // Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-//
-// Tool to manipulate CUPS.
+
 #include "printscanmgr/daemon/cups_tool.h"
 
 #include <pwd.h>
@@ -23,7 +22,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/files/safe_fd.h>
-#include <chromeos/dbus/printscanmgr/dbus-constants.h>
+#include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 namespace printscanmgr {
 
@@ -108,30 +107,31 @@ CupsResult LpadminReturnCodeToCupsResult(int return_code, bool autoconf) {
 
   switch (return_code) {
     case 0:  // OK
-      return CupsResult::CUPS_SUCCESS;
+      return CupsResult::CUPS_RESULT_SUCCESS;
     case 1:  // UNKNOWN_ERROR
-      return (autoconf ? CupsResult::CUPS_AUTOCONF_FAILURE
-                       : CupsResult::CUPS_LPADMIN_FAILURE);
+      return (autoconf ? CupsResult::CUPS_RESULT_AUTOCONF_FAILURE
+                       : CupsResult::CUPS_RESULT_LPADMIN_FAILURE);
     case 2:  // WRONG_PARAMETERS
-      return CupsResult::CUPS_FATAL;
+      return CupsResult::CUPS_RESULT_FATAL;
     case 3:  // IO_ERROR
-      return CupsResult::CUPS_IO_ERROR;
+      return CupsResult::CUPS_RESULT_IO_ERROR;
     case 4:  // MEMORY_ALLOC_ERROR
-      return CupsResult::CUPS_MEMORY_ALLOC_ERROR;
+      return CupsResult::CUPS_RESULT_MEMORY_ALLOC_ERROR;
     case 5:  // INVALID_PPD_FILE
-      return (autoconf ? CupsResult::CUPS_FATAL : CupsResult::CUPS_INVALID_PPD);
+      return (autoconf ? CupsResult::CUPS_RESULT_FATAL
+                       : CupsResult::CUPS_RESULT_INVALID_PPD);
     case 6:  // SERVER_UNREACHABLE
-      return CupsResult::CUPS_FATAL;
+      return CupsResult::CUPS_RESULT_FATAL;
     case 7:  // PRINTER_UNREACHABLE
-      return CupsResult::CUPS_PRINTER_UNREACHABLE;
+      return CupsResult::CUPS_RESULT_PRINTER_UNREACHABLE;
     case 8:  // PRINTER_WRONG_RESPONSE
-      return CupsResult::CUPS_PRINTER_WRONG_RESPONSE;
+      return CupsResult::CUPS_RESULT_PRINTER_WRONG_RESPONSE;
     case 9:  // PRINTER_NOT_AUTOCONFIGURABLE
-      return (autoconf ? CupsResult::CUPS_PRINTER_NOT_AUTOCONF
-                       : CupsResult::CUPS_FATAL);
+      return (autoconf ? CupsResult::CUPS_RESULT_PRINTER_NOT_AUTOCONF
+                       : CupsResult::CUPS_RESULT_FATAL);
     default:
       // unexpected return code
-      return CupsResult::CUPS_FATAL;
+      return CupsResult::CUPS_RESULT_FATAL;
   }
 }
 
@@ -155,68 +155,93 @@ void CupsTool::SetLpToolsForTesting(std::unique_ptr<LpTools> lptools) {
 
 // Invokes lpadmin with arguments to configure a new printer using '-m
 // everywhere'.
-int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
-                                           const std::string& uri) {
+CupsAddAutoConfiguredPrinterResponse CupsTool::AddAutoConfiguredPrinter(
+    const CupsAddAutoConfiguredPrinterRequest& request) {
+  CupsAddAutoConfiguredPrinterResponse response;
+
+  const std::string uri = request.uri();
   if (!IppEverywhereURI(uri)) {
     LOG(WARNING) << "IPP, IPPS or IPPUSB required for IPP Everywhere: " << uri;
-    return CupsResult::CUPS_FATAL;
+    response.set_result(CupsResult::CUPS_RESULT_FATAL);
+    return response;
   }
 
   if (!CupsTool::UriSeemsReasonable(uri)) {
     LOG(WARNING) << "Invalid URI: " << uri;
-    return CupsResult::CUPS_BAD_URI;
+    response.set_result(CupsResult::CUPS_RESULT_BAD_URI);
+    return response;
   }
 
+  const std::string name = request.name();
   if (name.empty()) {
     LOG(WARNING) << "Missing printer name";
-    return CupsResult::CUPS_FATAL;
+    response.set_result(CupsResult::CUPS_RESULT_FATAL);
+    return response;
   }
 
   LOG(INFO) << "Adding auto-configured printer " << name << " at " << uri;
-  const int result =
+  const int ret =
       lp_tools_->Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"});
-  return LpadminReturnCodeToCupsResult(result, /*autoconf=*/true);
+  response.set_result(LpadminReturnCodeToCupsResult(ret, /*autoconf=*/true));
+  return response;
 }
 
-int32_t CupsTool::AddManuallyConfiguredPrinter(
-    const std::string& name,
-    const std::string& uri,
-    const std::vector<uint8_t>& ppd_contents) {
+CupsAddManuallyConfiguredPrinterResponse CupsTool::AddManuallyConfiguredPrinter(
+    const CupsAddManuallyConfiguredPrinterRequest& request) {
+  CupsAddManuallyConfiguredPrinterResponse response;
+
+  const std::vector<uint8_t> ppd_contents = std::vector<uint8_t>(
+      request.ppd_contents().begin(), request.ppd_contents().end());
   if (TestPPD(*lp_tools_.get(), ppd_contents) != EXIT_SUCCESS) {
     LOG(ERROR) << "PPD failed validation";
-    return CupsResult::CUPS_INVALID_PPD;
+    response.set_result(CupsResult::CUPS_RESULT_INVALID_PPD);
+    return response;
   }
 
+  const std::string uri = request.uri();
   if (!CupsTool::UriSeemsReasonable(uri)) {
     LOG(WARNING) << "Invalid URI: " << uri;
-    return CupsResult::CUPS_BAD_URI;
+    response.set_result(CupsResult::CUPS_RESULT_BAD_URI);
+    return response;
   }
 
+  const std::string name = request.name();
   if (name.empty()) {
     LOG(WARNING) << "Missing printer name";
-    return CupsResult::CUPS_FATAL;
+    response.set_result(CupsResult::CUPS_RESULT_FATAL);
+    return response;
   }
 
   LOG(INFO) << "Adding manual printer " << name << " at " << uri;
   const int result = lp_tools_->Lpadmin(
       {"-v", uri, "-p", name, "-P", "-", "-E"}, &ppd_contents);
-  return LpadminReturnCodeToCupsResult(result, /*autoconf=*/false);
+  response.set_result(
+      LpadminReturnCodeToCupsResult(result, /*autoconf=*/false));
+  return response;
 }
 
 // Invokes lpadmin with -x to delete a printer.
-bool CupsTool::RemovePrinter(const std::string& name) {
+CupsRemovePrinterResponse CupsTool::RemovePrinter(
+    const CupsRemovePrinterRequest& request) {
+  const std::string name = request.name();
   LOG(INFO) << "Removing printer " << name;
-  return lp_tools_->Lpadmin({"-x", name}) == EXIT_SUCCESS;
+  CupsRemovePrinterResponse response;
+  response.set_result(lp_tools_->Lpadmin({"-x", name}) == EXIT_SUCCESS);
+  return response;
 }
 
-std::vector<uint8_t> CupsTool::RetrievePpd(const std::string& name) {
+CupsRetrievePpdResponse CupsTool::RetrievePpd(
+    const CupsRetrievePpdRequest& request) {
+  CupsRetrievePpdResponse response;
+
+  const std::string name = request.name();
   LOG(INFO) << "Retrieve PPD for printer " << name;
   std::string lpstatOutput;
   if ((lp_tools_->Lpstat({"-l", "-p", name.c_str()}, &lpstatOutput) !=
        EXIT_SUCCESS) ||
       lpstatOutput.empty()) {
     LOG(ERROR) << "Unable to perform lpstat for " << name;
-    return {};
+    return response;
   }
 
   // Parse output from lpstat and look for the Interface line, which contains
@@ -242,26 +267,27 @@ std::vector<uint8_t> CupsTool::RetrievePpd(const std::string& name) {
       if (brillo::SafeFD::IsError(err1)) {
         LOG(ERROR) << "Unable to open " << ppdPath << ": "
                    << static_cast<int>(err1);
-        return {};
+        return response;
       }
 
       auto [contents, err2] = ppdFd.ReadContents();
       if (brillo::SafeFD::IsError(err2)) {
         LOG(ERROR) << "Unable to read contents of " << ppdPath << ": "
                    << static_cast<int>(err2);
-        return {};
+        return response;
       }
 
       if (contents.size() == 0) {
         LOG(ERROR) << "Empty PPD: " << ppdPath;
-        return {};
+        return response;
       }
 
-      return {contents.begin(), contents.end()};
+      response.set_ppd(std::string(contents.begin(), contents.end()));
+      return response;
     }
   }
 
-  return {};
+  return response;
 }
 
 // Runs lpstat -l -r -v -a -p -o.
