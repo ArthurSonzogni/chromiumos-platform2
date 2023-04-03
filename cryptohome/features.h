@@ -20,7 +20,7 @@ namespace cryptohome {
 inline constexpr struct VariationsFeature
     kCrOSLateBootMigrateToUserSecretStash = {
         .name = "CrOSLateBootMigrateToUserSecretStash",
-        .default_state = FEATURE_DISABLED_BY_DEFAULT,
+        .default_state = FEATURE_ENABLED_BY_DEFAULT,
 };
 
 // Control switch value for creating new PIN with the timebase backoff for
