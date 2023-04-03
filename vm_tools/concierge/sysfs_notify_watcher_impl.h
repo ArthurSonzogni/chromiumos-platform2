@@ -40,12 +40,6 @@ class SysfsNotifyWatcherImpl final : public SysfsNotifyWatcher {
   // Runs on poll_thread_.
   void PollOnThread(int fd);
 
-  // The specific fd to watch.
-  int fd_;
-
-  // The callback that is run after a POLLPRI event on fd.
-  SysfsNotifyCallback callback_;
-
   // Used to run a poll() in the background.
   base::Thread poll_thread_{"Sysfs Notify Poll Thread"};
 
