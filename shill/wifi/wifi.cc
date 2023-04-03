@@ -790,8 +790,7 @@ void WiFi::DisconnectFrom(WiFiService* service) {
     // |expecting_disconnect()| implies that it wasn't a failure to connect.
     // For example we're cancelling pending_service_ before we actually
     // attempted to connect.
-    bool is_attempt_failure =
-        pending_service_ && !pending_service_->expecting_disconnect();
+    bool is_attempt_failure = !pending_service_->expecting_disconnect();
     ServiceDisconnected(pending_service_, is_attempt_failure);
   } else if (service) {
     disconnect_signal_dbm_ = service->SignalLevel();
@@ -1386,14 +1385,17 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service,
       // Map IEEE error codes to shill error codes.
       switch (supplicant_disconnect_reason_) {
         case IEEE_80211::kReasonCodeInactivity:
-        case IEEE_80211::kReasonCodeSenderHasLeft:
-          SLOG(this, 2) << "Disconnect signal: " << disconnect_signal_dbm_;
+        case IEEE_80211::kReasonCodeSenderHasLeft: {
+          std::string signal_msg = "Disconnect signal: ";
+          signal_msg += std::to_string(disconnect_signal_dbm_);
           if (SignalOutOfRange(disconnect_signal_dbm_)) {
+            LOG(INFO) << signal_msg;
             failure = Service::kFailureOutOfRange;
           } else {
+            SLOG(2) << signal_msg;
             failure = Service::kFailureDisconnect;
           }
-          break;
+        } break;
         case IEEE_80211::kReasonCodeNonAuthenticated:
         case IEEE_80211::kReasonCodeReassociationNotAuthenticated:
         case IEEE_80211::kReasonCodePreviousAuthenticationInvalid:
@@ -1455,6 +1457,8 @@ bool WiFi::SignalOutOfRange(const int16_t& disconnect_signal) {
 }
 
 Service::ConnectFailure WiFi::ExamineStatusCodes() const {
+  SLOG(4) << "Supplicant authentication status: " << supplicant_auth_status_;
+  SLOG(4) << "Supplicant association status: " << supplicant_assoc_status_;
   bool is_auth_error =
       supplicant_auth_status_ != IEEE_80211::kStatusCodeSuccessful;
   bool is_assoc_error =
@@ -3180,19 +3184,14 @@ void WiFi::PendingTimeoutHandler() {
   CHECK(pending_service_);
   SetPhyState(WiFiState::PhyState::kFoundNothing, wifi_state_->GetScanMethod(),
               __func__);
-  WiFiServiceRefPtr pending_service = pending_service_;
 
-  SLOG(this, 4) << "Supplicant authentication status: "
-                << supplicant_auth_status_;
-  SLOG(this, 4) << "Supplicant association status: "
-                << supplicant_assoc_status_;
+  // These variables are just to check if the failure has been determined and
+  // reported via SetFailure() - see below.
+  auto service = pending_service_;
+  auto service_prev_err = service->previous_error_number();
 
-  Service::ConnectFailure failure = ExamineStatusCodes();
-  if (failure == Service::kFailureUnknown && pending_service_ &&
-      SignalOutOfRange(pending_service_->SignalLevel())) {
-    failure = Service::kFailureOutOfRange;
-  }
-  pending_service_->DisconnectWithFailure(failure, &unused_error, __func__);
+  // Failure cause is determined later in ServiceDisconnected().
+  pending_service_->Disconnect(&unused_error, __func__);
 
   // A hidden service may have no endpoints, since wpa_supplicant
   // failed to attain a CurrentBSS.  If so, the service has no
@@ -3205,9 +3204,17 @@ void WiFi::PendingTimeoutHandler() {
     DisconnectFrom(pending_service_.get());
   }
 
-  // DisconnectWithFailure will leave the pending service's state in failure
-  // state. Reset its state back to idle, to allow it to be connectable again.
-  pending_service->SetState(Service::kStateIdle);
+  // Check if the SetFailure() has been called.
+  if (service_prev_err == service->previous_error_number()) {
+    LOG(WARNING) << "Expected SetFailure() to be called, but it wasn't.";
+    Service::ConnectFailure failure = ExamineStatusCodes();
+    if (failure == Service::kFailureUnknown &&
+        SignalOutOfRange(service->SignalLevel())) {
+      failure = Service::kFailureOutOfRange;
+    }
+    service->SetFailure(failure);
+    service->SetState(Service::kStateIdle);
+  }
 }
 
 void WiFi::StartReconnectTimer() {

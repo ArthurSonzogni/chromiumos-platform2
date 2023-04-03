@@ -663,6 +663,13 @@ class Service : public base::RefCounted<Service> {
   void increment_portal_detection_count() { portal_detection_count_++; }
   int portal_detection_count() const { return portal_detection_count_; }
 
+  // Read only access to previous error number.  This can f.e. be used to check
+  // if SetFailure*() has been called for a service without any additional flags
+  // - just check if it has been changed.
+  int32_t previous_error_number() const {
+    return previous_error_serial_number_;
+  }
+
   // The components of this array are rx_bytes, tx_bytes, rx_packets, tx_packets
   // in that order.
   static const size_t kTrafficCounterArraySize;

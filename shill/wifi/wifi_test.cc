@@ -106,6 +106,7 @@ using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;
+using ::testing::WithArg;
 
 namespace shill {
 
@@ -1202,7 +1203,21 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     return wifi_->SetBgscanSignalThreshold(threshold, error);
   }
 
-  void TimeoutPendingConnection() { wifi_->PendingTimeoutHandler(); }
+  void TimeoutPendingConnection(MockWiFiServiceRefPtr service) {
+    auto& pending_timeout = GetPendingTimeout();
+
+    EXPECT_FALSE(pending_timeout.IsCancelled());
+    EXPECT_EQ(service, GetPendingService());
+    // The timeout handler is calling Disconnect() on service, which eventually
+    // leads to WiFi::DisconnectFrom() call - which should be tested as part of
+    // handling of the pending timeout.  Instead of mocking this up let's invoke
+    // the actual code to make the call.
+    EXPECT_CALL(*service, Disconnect(_, HasSubstr("PendingTimeoutHandler")))
+        .WillOnce(Invoke([service](auto err, auto reason) {
+          service->Service::Disconnect(err, reason);
+        }));
+    pending_timeout.callback().Run();
+  }
 
   void OnNewWiphy(const Nl80211Message& new_wiphy_message) {
     wifi_->OnNewWiphy(new_wiphy_message);
@@ -1754,7 +1769,7 @@ TEST_F(WiFiMainTest, NoScansWhileConnecting) {
 
   // Terminate the scan.
   ExpectFoundNothing();
-  TimeoutPendingConnection();
+  TimeoutPendingConnection(service);
   VerifyScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone);
 
   // Start a fresh scan.
@@ -2598,17 +2613,6 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
   MockWiFiServiceRefPtr service =
       AttemptConnection(WiFiState::ScanMethod::kFull, nullptr, nullptr);
 
-  // Timeout the connection attempt.
-  EXPECT_FALSE(pending_timeout.IsCancelled());
-  EXPECT_EQ(service, GetPendingService());
-  // Simulate a service with a wifi_ reference calling DisconnectFrom().
-  EXPECT_CALL(*service,
-              DisconnectWithFailure(Service::kFailureOutOfRange, _,
-                                    HasSubstr("PendingTimeoutHandler")))
-      .WillOnce(InvokeWithoutArgs(this, &WiFiObjectTest::ResetPendingService));
-  // DisconnectFrom() should not be called directly from WiFi.
-  EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(1);
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect()).Times(0);
   EXPECT_CALL(*service, SignalLevel()).WillRepeatedly(Return(-80));
 
   // Innocuous redundant call to NotifyDeviceScanFinished.
@@ -2619,10 +2623,23 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
   ScopeLogger::GetInstance()->set_verbose_level(10);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("-> FULL_NOCONNECTION")));
-  pending_timeout.callback().Run();
-  VerifyScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone);
+
+  // In PendingTimeoutHandler we depend on Service internal behaviour for
+  // SetFailure() so let's "unmock" SetFailure() and SetState() and call the
+  // implementation.
+  EXPECT_CALL(*service, SetFailure(_))
+      .WillRepeatedly(WithArg<0>([&service](auto failure) {
+        service->WiFiService::SetFailure(failure);
+      }));
+  EXPECT_CALL(*service, SetState(_))
+      .WillRepeatedly(WithArg<0>(
+          [&service](auto state) { service->WiFiService::SetState(state); }));
+  // Timeout the connection attempt.
+  TimeoutPendingConnection(service);
   // Service state should be idle, so it is connectable again.
-  EXPECT_EQ(Service::kStateIdle, service->state());
+  EXPECT_EQ(service->state(), Service::kStateIdle);
+
+  VerifyScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone);
   EXPECT_EQ(nullptr, GetPendingService());
   Mock::VerifyAndClearExpectations(service.get());
 
@@ -2640,17 +2657,25 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithoutEndpoints) {
   EXPECT_EQ(service, GetPendingService());
   // We expect the service to get a disconnect call, but in this scenario
   // the service does nothing.
-  EXPECT_CALL(*service,
-              DisconnectWithFailure(Service::kFailureOutOfRange, _,
-                                    HasSubstr("PendingTimeoutHandler")));
+  EXPECT_CALL(*service, Disconnect(_, HasSubstr("PendingTimeoutHandler")));
   // current_endpoint_ == nullptr so, without endpoint,
   // the service should return min possible value of int16_t
   EXPECT_CALL(*service, SignalLevel())
       .WillRepeatedly(Return(WiFiService::SignalLevelMin));
   // DisconnectFrom() should be called directly from WiFi.
-  EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  // In PendingTimeoutHandler we depend on Service internal behaviour for
+  // SetFailure() so let's "unmock" SetFailure() and SetState() and call the
+  // implementation.
+  EXPECT_CALL(*service, SetFailure(_))
+      .WillRepeatedly(WithArg<0>([&service](auto failure) {
+        service->WiFiService::SetFailure(failure);
+      }));
+  EXPECT_CALL(*service, SetState(_))
+      .WillRepeatedly(WithArg<0>(
+          [&service](auto state) { service->WiFiService::SetState(state); }));
   pending_timeout.callback().Run();
+  EXPECT_EQ(service->state(), Service::kStateIdle);
   EXPECT_EQ(nullptr, GetPendingService());
 }
 
@@ -3539,15 +3564,16 @@ TEST_F(WiFiMainTest, ConnectedToUnintendedPreemptsPending) {
 
   // Verify the pending service.
   EXPECT_EQ(intended_service, GetPendingService());
+  // Expect the pending service to go back to idle, so it is connectable again.
+  EXPECT_CALL(*intended_service, SetState(Service::kStateIdle))
+      .Times(AtLeast(1));
 
   // Connected to the unintended service (service0).
   ReportCurrentBSSChanged(bss_path);
 
-  // Verify the pending service is disconnected, and the service state is back
-  // to idle, so it is connectable again.
+  // Verify the pending service is disconnected
   EXPECT_EQ(nullptr, GetPendingService());
   EXPECT_EQ(nullptr, GetCurrentService());
-  EXPECT_EQ(Service::kStateIdle, intended_service->state());
 }
 
 TEST_F(WiFiMainTest, IsIdle) {
