@@ -693,6 +693,10 @@ void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
     maybe_add_to_ipv6_nameservers(addr);
   }
 
+  if (ipv4_nameservers.empty() && ipv6_nameservers.empty()) {
+    LOG(WARNING) << *this << " has empty name servers";
+  }
+
   doh_config_.set_nameservers(ipv4_nameservers, ipv6_nameservers);
   metrics_.RecordNameservers(doh_config_.ipv4_nameservers().size(),
                              doh_config_.ipv6_nameservers().size());
