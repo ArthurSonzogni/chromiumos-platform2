@@ -278,4 +278,73 @@ TEST_F(AuthSessionManagerTest, IntentPassing) {
   EXPECT_EQ(verification_auth_session->auth_intent(), AuthIntent::kVerifyOnly);
 }
 
+TEST_F(AuthSessionManagerTest, AddFindUnMount) {
+  base::UnguessableToken token;
+
+  // Start scope for first InUseAuthSession
+  {
+    auto created_auth_session = std::make_unique<AuthSession>(
+        AuthSession::Params{
+            .username = kUsername,
+            .is_ephemeral_user = false,
+            .intent = AuthIntent::kDecrypt,
+            .timeout_timer = std::make_unique<base::WallClockTimer>(),
+            .user_exists = false,
+            .auth_factor_map = AuthFactorMap(),
+            .migrate_to_user_secret_stash = false},
+        backing_apis_);
+    auto* created_auth_session_ptr = created_auth_session.get();
+
+    InUseAuthSession auth_session =
+        auth_session_manager_.AddAuthSession(std::move(created_auth_session));
+    ASSERT_THAT(auth_session.Get(), Eq(created_auth_session_ptr));
+    token = auth_session->token();
+
+    // FindAuthSession on the same token doesn't work, the actual session is
+    // owned by |auth_session|.
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(token);
+    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+    // Scope ends here to free the InUseAuthSession and return it to
+    // AuthSessionManager.
+  }
+
+  // After InUseAuthSession is freed, then AuthSessionManager can operate on the
+  // token and remove it.
+  EXPECT_TRUE(auth_session_manager_.RemoveAuthSession(token));
+  InUseAuthSession in_use_auth_session =
+      auth_session_manager_.FindAuthSession(token);
+  ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+
+  // Repeat with serialized_token overload.
+  std::string serialized_token;
+  {
+    auto created_auth_session = std::make_unique<AuthSession>(
+        AuthSession::Params{
+            .username = kUsername,
+            .is_ephemeral_user = false,
+            .intent = AuthIntent::kDecrypt,
+            .timeout_timer = std::make_unique<base::WallClockTimer>(),
+            .user_exists = false,
+            .auth_factor_map = AuthFactorMap(),
+            .migrate_to_user_secret_stash = false},
+        backing_apis_);
+    auto* created_auth_session_ptr = created_auth_session.get();
+
+    InUseAuthSession auth_session =
+        auth_session_manager_.AddAuthSession(std::move(created_auth_session));
+    ASSERT_THAT(auth_session.Get(), Eq(created_auth_session_ptr));
+
+    serialized_token = auth_session->serialized_token();
+    in_use_auth_session =
+        auth_session_manager_.FindAuthSession(serialized_token);
+    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+  }
+
+  // Should succeed now that AuthSessionManager owns the AuthSession.
+  auth_session_manager_.RemoveAllAuthSessions();
+  in_use_auth_session = auth_session_manager_.FindAuthSession(serialized_token);
+  ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+}
+
 }  // namespace cryptohome

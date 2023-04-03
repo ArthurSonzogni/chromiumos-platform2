@@ -99,6 +99,10 @@ InUseAuthSession AuthSessionManager::AddAuthSession(
   return in_use;
 }
 
+void AuthSessionManager::RemoveAllAuthSessions() {
+  auth_sessions_.clear();
+}
+
 bool AuthSessionManager::RemoveAuthSession(
     const base::UnguessableToken& token) {
   const auto iter = auth_sessions_.find(token);

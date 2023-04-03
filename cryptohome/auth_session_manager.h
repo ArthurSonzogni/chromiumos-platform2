@@ -63,6 +63,10 @@ class AuthSessionManager {
   // there's no auth session with the given token.
   bool RemoveAuthSession(const std::string& serialized_token);
 
+  // Removes all the authsession and calls their destructor. This is supposed to
+  // be used when UnMountall() API is called.
+  void RemoveAllAuthSessions();
+
   // Finds existing auth session with token.
   InUseAuthSession FindAuthSession(const base::UnguessableToken& token);
 
@@ -96,8 +100,8 @@ class AuthSessionManager {
   // RemoveAuthSession overload for the callback.
   void ExpireAuthSession(const base::UnguessableToken& token);
 
-  // Run as the destructor for InUseAuthSession, signaling that any active dbus
-  // calls that referenced the AuthSession have now finished.
+  // Run as the destructor for InUseAuthSession, signaling that any active
+  // dbus calls that referenced the AuthSession have now finished.
   void MarkNotInUse(std::unique_ptr<AuthSession> session);
 
   // Defines a type for tracking Auth Sessions by token.

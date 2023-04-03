@@ -1076,6 +1076,10 @@ user_data_auth::UnmountReply UserDataAuth::Unmount() {
   // user (if set) and non ephemeral users, regardless of free disk space.
   homedirs_->RemoveCryptohomesBasedOnPolicy();
 
+  // Since all the user mounts are now gone, there should not be any active
+  // authsessions left.
+  auth_session_manager_->RemoveAllAuthSessions();
+
   CryptohomeStatus result;
   if (!unmount_ok) {
     result = MakeStatus<CryptohomeError>(
