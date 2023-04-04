@@ -244,9 +244,11 @@ CryptoStatus TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoStatus TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
-                                            const AuthBlockState& state,
-                                            KeyBlobs* key_out_data) {
+CryptoStatus TpmBoundToPcrAuthBlock::Derive(
+    const AuthInput& auth_input,
+    const AuthBlockState& state,
+    KeyBlobs* key_out_data,
+    std::optional<AuthBlock::SuggestedAction>* suggested_action) {
   if (!auth_input.user_input.has_value()) {
     LOG(ERROR) << "Missing user_input";
 

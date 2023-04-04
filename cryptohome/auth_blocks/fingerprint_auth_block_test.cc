@@ -49,6 +49,7 @@ using testing::_;
 using testing::AllOf;
 using testing::AnyNumber;
 using testing::DoAll;
+using testing::Eq;
 using testing::Field;
 using testing::SaveArg;
 using testing::SetArgPointee;
@@ -65,8 +66,9 @@ using SelectFactorTestFuture = TestFuture<CryptohomeStatus,
                                           std::optional<AuthInput>,
                                           std::optional<AuthFactor>>;
 
-using DeriveTestFuture =
-    TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>>;
+using DeriveTestFuture = TestFuture<CryptohomeStatus,
+                                    std::unique_ptr<KeyBlobs>,
+                                    std::optional<AuthBlock::SuggestedAction>>;
 
 constexpr uint8_t kFingerprintAuthChannel = 0;
 
@@ -822,11 +824,12 @@ TEST_F(FingerprintAuthBlockTest, DeriveSuccess) {
                       result.GetCallback());
 
   ASSERT_TRUE(result.IsReady());
-  auto [status, key_blobs] = result.Take();
+  auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, IsOk());
   ASSERT_NE(key_blobs, nullptr);
   ASSERT_TRUE(key_blobs->vkk_key.has_value());
   EXPECT_THAT(key_blobs->vkk_key.value(), SizeIs(32));
+  EXPECT_THAT(suggested_action, Eq(std::nullopt));
 }
 
 TEST_F(FingerprintAuthBlockTest, DeriveInvalidAuthInput) {
@@ -839,10 +842,11 @@ TEST_F(FingerprintAuthBlockTest, DeriveInvalidAuthInput) {
                       result.GetCallback());
 
   ASSERT_TRUE(result.IsReady());
-  auto [status, key_blobs] = result.Take();
+  auto [status, key_blobs, suggested_action] = result.Take();
   EXPECT_TRUE(
       ContainsActionInStack(status, PossibleAction::kDevCheckUnexpectedState));
   EXPECT_EQ(key_blobs, nullptr);
+  EXPECT_THAT(suggested_action, Eq(std::nullopt));
 }
 
 TEST_F(FingerprintAuthBlockTest, DeriveCheckCredentialFailed) {
@@ -870,10 +874,11 @@ TEST_F(FingerprintAuthBlockTest, DeriveCheckCredentialFailed) {
                       result.GetCallback());
 
   ASSERT_TRUE(result.IsReady());
-  auto [status, key_blobs] = result.Take();
+  auto [status, key_blobs, suggested_action] = result.Take();
   EXPECT_TRUE(
       ContainsActionInStack(status, PossibleAction::kDevCheckUnexpectedState));
   EXPECT_EQ(key_blobs, nullptr);
+  EXPECT_THAT(suggested_action, Eq(std::nullopt));
 }
 
 }  // namespace

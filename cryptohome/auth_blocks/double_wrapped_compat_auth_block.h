@@ -47,9 +47,11 @@ class DoubleWrappedCompatAuthBlock : public SyncAuthBlock {
                       KeyBlobs* key_blobs) override;
 
   // First tries to derive the keys with scrypt, and falls back to the TPM.
-  CryptoStatus Derive(const AuthInput& auth_input,
-                      const AuthBlockState& state,
-                      KeyBlobs* key_blobs) override;
+  CryptoStatus Derive(
+      const AuthInput& auth_input,
+      const AuthBlockState& state,
+      KeyBlobs* key_blobs,
+      std::optional<AuthBlock::SuggestedAction>* suggested_action) override;
 
  private:
   TpmNotBoundToPcrAuthBlock tpm_auth_block_;

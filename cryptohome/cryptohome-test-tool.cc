@@ -514,15 +514,17 @@ void PersistVaultKeyset(KeysetManagement* keyset_management,
 // |key_blobs| parameter. This parameter used to load VaultKeysets
 // from disk, and then starts a new callback to save a new
 // Vaultkeyset to disk
-void DeriveExistingVaultKeyset(KeysetManagement* keyset_management,
-                               AuthBlockUtility* auth_block_utility,
-                               const KeyData& key_data,
-                               AuthInput& auth_input,
-                               std::unique_ptr<VaultKeyset> old_vault_keyset,
-                               const ObfuscatedUsername& obfuscated_username,
-                               bool enable_key_data,
-                               CryptohomeStatus callback_error,
-                               std::unique_ptr<KeyBlobs> key_blobs) {
+void DeriveExistingVaultKeyset(
+    KeysetManagement* keyset_management,
+    AuthBlockUtility* auth_block_utility,
+    const KeyData& key_data,
+    AuthInput& auth_input,
+    std::unique_ptr<VaultKeyset> old_vault_keyset,
+    const ObfuscatedUsername& obfuscated_username,
+    bool enable_key_data,
+    CryptohomeStatus callback_error,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::optional<AuthBlock::SuggestedAction> suggested_action) {
   if (!callback_error.ok() || key_blobs == nullptr) {
     LOG(ERROR) << "KeyBlobs derivation failed before adding keyset.";
     return;

@@ -674,7 +674,8 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptohomeStatus status,
-    std::unique_ptr<KeyBlobs> key_blobs) {
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::optional<AuthBlock::SuggestedAction> suggested_action) {
   if (!status.ok() || !key_blobs) {
     // For LE credentials, if deriving the key blobs failed due to too many
     // attempts, set auth_locked=true in the corresponding keyset. Then save it
@@ -2776,7 +2777,8 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptohomeStatus callback_error,
-    std::unique_ptr<KeyBlobs> key_blobs) {
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::optional<AuthBlock::SuggestedAction> suggested_action) {
   // Check the status of the callback error, to see if the key blob derivation
   // was actually successful.
   if (!callback_error.ok() || !key_blobs) {

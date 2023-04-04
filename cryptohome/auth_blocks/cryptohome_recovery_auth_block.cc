@@ -238,9 +238,11 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
-                                                 const AuthBlockState& state,
-                                                 KeyBlobs* key_blobs) {
+CryptoStatus CryptohomeRecoveryAuthBlock::Derive(
+    const AuthInput& auth_input,
+    const AuthBlockState& state,
+    KeyBlobs* key_blobs,
+    std::optional<AuthBlock::SuggestedAction>* suggested_action) {
   DCHECK(key_blobs);
   const CryptohomeRecoveryAuthBlockState* auth_state;
   if (!(auth_state =

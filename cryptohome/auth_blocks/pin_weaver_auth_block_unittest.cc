@@ -26,6 +26,7 @@
 #include "cryptohome/fake_features.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/le_credential_error.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_le_credential_manager.h"
@@ -239,10 +240,12 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureMissingLeLabel) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {.user_input = user_input};
-  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
-            auth_block.Derive(auth_input, auth_state, &key_blobs)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_OTHER_CRYPTO,
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          ->local_crypto_error());
 }
 
 // Check required field |salt| in PinWeaverAuthBlockState.
@@ -264,10 +267,12 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureMissingSalt) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {.user_input = user_input};
-  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
-            auth_block.Derive(auth_input, auth_state, &key_blobs)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_OTHER_CRYPTO,
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          ->local_crypto_error());
 }
 
 // Check PinWeaverAuthBlock derive fails if user_input is missing.
@@ -287,10 +292,12 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureNoUserInput) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {};
-  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
-            auth_block.Derive(auth_input, auth_state, &key_blobs)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_OTHER_CRYPTO,
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          ->local_crypto_error());
 }
 
 TEST(PinWeaverAuthBlockTest, DeriveTest) {
@@ -307,7 +314,10 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
       .WillByDefault(ReturnError<CryptohomeLECredError>());
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
+  EXPECT_CALL(le_cred_manager, GetDelaySchedule(_))
+      .WillOnce(Return(PinDelaySchedule()));
   FakeFeaturesForTesting features;
+  features.object.SetDefaultForFeature(Features::kMigratePin, true);
   PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
 
   // Construct the vault keyset.
@@ -324,8 +334,11 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {vault_key};
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_blobs).ok());
+  EXPECT_TRUE(
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          .ok());
 
   // Set expectations of the key blobs.
   EXPECT_NE(key_blobs.reset_secret, std::nullopt);
@@ -334,6 +347,111 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
 
   // PinWeaver should always use unique IVs.
   EXPECT_NE(key_blobs.chaps_iv.value(), key_blobs.vkk_iv.value());
+
+  // No suggested_action with the credential.
+  EXPECT_EQ(suggested_action, std::nullopt);
+}
+
+TEST(PinWeaverAuthBlockTest, DeriveTestWithLockoutPin) {
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
+  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+
+  brillo::SecureBlob le_secret(kDefaultAesKeySize);
+  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
+
+  NiceMock<MockLECredentialManager> le_cred_manager;
+  ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
+      .WillByDefault(ReturnError<CryptohomeLECredError>());
+  EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
+      .Times(Exactly(1));
+  EXPECT_CALL(le_cred_manager, GetDelaySchedule(_))
+      .WillOnce(Return(LockoutDelaySchedule()));
+  FakeFeaturesForTesting features;
+  features.object.SetDefaultForFeature(Features::kMigratePin, true);
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
+
+  // Construct the vault keyset.
+  SerializedVaultKeyset serialized;
+  serialized.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
+  serialized.set_salt(salt.data(), salt.size());
+  serialized.set_le_chaps_iv(chaps_iv.data(), chaps_iv.size());
+  serialized.set_le_label(0);
+  serialized.set_le_fek_iv(fek_iv.data(), fek_iv.size());
+
+  VaultKeyset vk;
+  vk.InitializeFromSerialized(serialized);
+  AuthBlockState auth_state;
+  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
+
+  KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
+  AuthInput auth_input = {vault_key};
+  EXPECT_TRUE(
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          .ok());
+
+  // Set expectations of the key blobs.
+  EXPECT_NE(key_blobs.reset_secret, std::nullopt);
+  EXPECT_NE(key_blobs.chaps_iv, std::nullopt);
+  EXPECT_NE(key_blobs.vkk_iv, std::nullopt);
+
+  // PinWeaver should always use unique IVs.
+  EXPECT_NE(key_blobs.chaps_iv.value(), key_blobs.vkk_iv.value());
+
+  // No suggested_action with the credential.
+  EXPECT_EQ(suggested_action, AuthBlock::SuggestedAction::kRecreate);
+}
+
+TEST(PinWeaverAuthBlockTest, DeriveTestWithoutMigratePin) {
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+  brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
+  brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
+
+  brillo::SecureBlob le_secret(kDefaultAesKeySize);
+  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
+
+  NiceMock<MockLECredentialManager> le_cred_manager;
+  ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
+      .WillByDefault(ReturnError<CryptohomeLECredError>());
+  EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
+      .Times(Exactly(1));
+  FakeFeaturesForTesting features;
+  features.object.SetDefaultForFeature(Features::kMigratePin, false);
+  PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
+
+  // Construct the vault keyset.
+  SerializedVaultKeyset serialized;
+  serialized.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
+  serialized.set_salt(salt.data(), salt.size());
+  serialized.set_le_chaps_iv(chaps_iv.data(), chaps_iv.size());
+  serialized.set_le_label(0);
+  serialized.set_le_fek_iv(fek_iv.data(), fek_iv.size());
+
+  VaultKeyset vk;
+  vk.InitializeFromSerialized(serialized);
+  AuthBlockState auth_state;
+  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
+
+  KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
+  AuthInput auth_input = {vault_key};
+  EXPECT_TRUE(
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          .ok());
+
+  // Set expectations of the key blobs.
+  EXPECT_NE(key_blobs.reset_secret, std::nullopt);
+  EXPECT_NE(key_blobs.chaps_iv, std::nullopt);
+  EXPECT_NE(key_blobs.vkk_iv, std::nullopt);
+
+  // PinWeaver should always use unique IVs.
+  EXPECT_NE(key_blobs.chaps_iv.value(), key_blobs.vkk_iv.value());
+
+  // No suggested_action with the credential.
+  EXPECT_EQ(suggested_action, std::nullopt);
 }
 
 // Test that derive function works as intended when fek_iv and le_chaps_iv is
@@ -366,14 +484,20 @@ TEST(PinWeaverAuthBlockTest, DeriveOptionalValuesTest) {
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {vault_key};
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_blobs).ok());
+  EXPECT_TRUE(
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          .ok());
 
   // Set expectations of the key blobs.
   EXPECT_NE(key_blobs.reset_secret, std::nullopt);
   // We expect this to be null because it was not set earlier.
   EXPECT_EQ(key_blobs.chaps_iv, std::nullopt);
   EXPECT_EQ(key_blobs.vkk_iv, std::nullopt);
+
+  // No suggested_action with the credential.
+  EXPECT_EQ(suggested_action, std::nullopt);
 }
 
 TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
@@ -415,10 +539,12 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {vault_key};
-  EXPECT_EQ(CryptoError::CE_LE_INVALID_SECRET,
-            auth_block.Derive(auth_input, auth_state, &key_blobs)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_LE_INVALID_SECRET,
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          ->local_crypto_error());
 }
 
 TEST(PinWeaverAuthBlockTest, CheckCredentialFailureLeFiniteTimeout) {
@@ -456,10 +582,12 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureLeFiniteTimeout) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {vault_key};
-  EXPECT_EQ(CryptoError::CE_TPM_DEFEND_LOCK,
-            auth_block.Derive(auth_input, auth_state, &key_blobs)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_TPM_DEFEND_LOCK,
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          ->local_crypto_error());
 }
 
 TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
@@ -531,9 +659,11 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {vault_key};
   for (int i = 0; i < 10; i++) {
-    CryptoStatus error = auth_block.Derive(auth_input, auth_state, &key_blobs);
+    CryptoStatus error = auth_block.Derive(auth_input, auth_state, &key_blobs,
+                                           &suggested_action);
     EXPECT_NE(CryptoError::CE_TPM_FATAL, error->local_crypto_error());
     EXPECT_NE(CryptoError::CE_OTHER_FATAL, error->local_crypto_error());
   }

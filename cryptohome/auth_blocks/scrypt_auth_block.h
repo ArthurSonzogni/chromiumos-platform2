@@ -36,9 +36,11 @@ class ScryptAuthBlock : public SyncAuthBlock {
                       KeyBlobs* key_blobs) override;
 
   // This uses Scrypt to derive high entropy keys from the user's password.
-  CryptoStatus Derive(const AuthInput& auth_input,
-                      const AuthBlockState& state,
-                      KeyBlobs* key_blobs) override;
+  CryptoStatus Derive(
+      const AuthInput& auth_input,
+      const AuthBlockState& state,
+      KeyBlobs* key_blobs,
+      std::optional<AuthBlock::SuggestedAction>* suggested_action) override;
 
  protected:
   explicit ScryptAuthBlock(DerivationType);

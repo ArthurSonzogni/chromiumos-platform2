@@ -317,7 +317,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                 const AuthBlockState& auth_state,
                                 AuthBlock::DeriveCallback derive_callback) {
           std::move(derive_callback)
-              .Run(OkStatus<CryptohomeError>(), std::move(key_blobs2));
+              .Run(OkStatus<CryptohomeError>(), std::move(key_blobs2),
+                   std::nullopt);
           return true;
         });
     auto key_blobs = std::make_unique<KeyBlobs>(kKeyBlobs);

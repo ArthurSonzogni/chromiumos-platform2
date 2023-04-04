@@ -699,7 +699,9 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
   // Test
   // No need to check for the KeyBlobs value, it is already being tested in
   // AuthBlock unittest.
-  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>> derive_result;
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::optional<AuthBlock::SuggestedAction>>
+      derive_result;
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kPinWeaver, auth_input, auth_state,
       derive_result.GetCallback());
@@ -800,7 +802,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedPcrBoundAuthBlock) {
   MakeAuthBlockUtilityImpl();
 
   // Verify.
-  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>> derive_result;
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::optional<AuthBlock::SuggestedAction>>
+      derive_result;
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmBoundToPcr, auth_input, auth_state,
       derive_result.GetCallback());
@@ -901,7 +905,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedNonPcrBoundAuthBlock) {
   MakeAuthBlockUtilityImpl();
 
   // Verify
-  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>> derive_result;
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::optional<AuthBlock::SuggestedAction>>
+      derive_result;
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmNotBoundToPcr, auth_input, auth_state,
       derive_result.GetCallback());
@@ -1007,7 +1013,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedEccAuthBlock) {
   MakeAuthBlockUtilityImpl();
 
   // Verify
-  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>> derive_result;
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::optional<AuthBlock::SuggestedAction>>
+      derive_result;
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmEcc, auth_input, auth_state,
       derive_result.GetCallback());
@@ -1128,7 +1136,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
 
   // Test
   // Verify
-  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>> derive_result;
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::optional<AuthBlock::SuggestedAction>>
+      derive_result;
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kScrypt, auth_input, auth_state,
       derive_result.GetCallback());
@@ -1229,7 +1239,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
   MakeAuthBlockUtilityImpl();
 
   // Verify
-  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>> derive_result;
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::optional<AuthBlock::SuggestedAction>>
+      derive_result;
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kDoubleWrappedCompat, auth_input, auth_state,
       derive_result.GetCallback());
@@ -1310,12 +1322,14 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterDerive) {
 
   // Test.
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
+          std::optional<AuthBlock::SuggestedAction> suggested_action) {
         // Evaluate results of KeyBlobs returned by callback.
         EXPECT_TRUE(error.ok());
         EXPECT_NE(blobs->vkk_key, std::nullopt);
         EXPECT_NE(blobs->vkk_iv, std::nullopt);
         EXPECT_NE(blobs->chaps_iv, std::nullopt);
+        EXPECT_EQ(suggested_action, std::nullopt);
       });
 
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
@@ -1483,11 +1497,13 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
       &challenge_credentials_helper_, &key_challenge_service_factory_);
   // Test.
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
+          std::optional<AuthBlock::SuggestedAction> suggested_action) {
         ASSERT_TRUE(error.ok());
         EXPECT_EQ(derived_key, blobs->vkk_key);
         EXPECT_EQ(derived_chaps_key, blobs->scrypt_chaps_key);
         EXPECT_EQ(derived_reset_seed_key, blobs->scrypt_reset_seed_key);
+        EXPECT_EQ(suggested_action, std::nullopt);
       });
 
   AuthInput auth_input = {

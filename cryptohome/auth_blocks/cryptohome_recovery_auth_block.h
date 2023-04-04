@@ -59,9 +59,11 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
   // `cryptohome_recovery_auth_input.epoch_pub_key`,
   // `cryptohome_recovery_auth_input.ephemeral_pub_key` and
   // `cryptohome_recovery_auth_input.recovery_response` fields set.
-  CryptoStatus Derive(const AuthInput& auth_input,
-                      const AuthBlockState& state,
-                      KeyBlobs* key_blobs) override;
+  CryptoStatus Derive(
+      const AuthInput& auth_input,
+      const AuthBlockState& state,
+      KeyBlobs* key_blobs,
+      std::optional<AuthBlock::SuggestedAction>* suggested_action) override;
 
   CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) override;
 

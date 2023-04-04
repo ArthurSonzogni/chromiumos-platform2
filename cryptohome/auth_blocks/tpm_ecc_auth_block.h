@@ -45,9 +45,11 @@ class TpmEccAuthBlock : public SyncAuthBlock {
                       AuthBlockState* auth_block_state,
                       KeyBlobs* key_blobs) override;
 
-  CryptoStatus Derive(const AuthInput& auth_input,
-                      const AuthBlockState& state,
-                      KeyBlobs* key_blobs) override;
+  CryptoStatus Derive(
+      const AuthInput& auth_input,
+      const AuthBlockState& state,
+      KeyBlobs* key_blobs,
+      std::optional<AuthBlock::SuggestedAction>* suggested_action) override;
 
  private:
   // The create process may fail due to the scalar of EC_POINT_mul out of range.

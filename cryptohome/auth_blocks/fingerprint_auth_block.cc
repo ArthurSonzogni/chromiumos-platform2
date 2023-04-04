@@ -276,7 +276,7 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
             CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoAuthSecretInDerive),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
-        nullptr);
+        nullptr, std::nullopt);
     return;
   }
   if (!auth_input.user_input.has_value()) {
@@ -286,7 +286,7 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
             CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoAuthPinInDerive),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
-        nullptr);
+        nullptr, std::nullopt);
     return;
   }
 
@@ -299,7 +299,7 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
                 kLocFingerprintAuthBlockWrongAuthBlockStateInDerive),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
-        nullptr);
+        nullptr, std::nullopt);
     return;
   }
   if (!auth_state->gsc_secret_label.has_value()) {
@@ -311,7 +311,7 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
                 kLocFingerprintAuthBlockNoGscSecretLabelInDerive),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
-        nullptr);
+        nullptr, std::nullopt);
     return;
   }
 
@@ -329,7 +329,7 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
                 kLocFingerprintAuthBlockCheckCredentialFailedInCreate),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
             .Wrap(std::move(status).err_status()),
-        nullptr);
+        nullptr, std::nullopt);
     return;
   }
 
@@ -338,7 +338,8 @@ void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
       gsc_secret, *auth_input.fingerprint_auth_input->auth_secret);
   key_blobs->vkk_key =
       HmacSha256(hmac_key, brillo::BlobFromString(kFekKeyHmacData));
-  std::move(callback).Run(OkStatus<CryptohomeError>(), std::move(key_blobs));
+  std::move(callback).Run(OkStatus<CryptohomeError>(), std::move(key_blobs),
+                          std::nullopt);
 }
 
 // SelectFactor for FingerprintAuthBlock is actually doing the heavy-lifting

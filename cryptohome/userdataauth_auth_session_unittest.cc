@@ -203,7 +203,7 @@ void MockKeysetDerivation(const ObfuscatedUsername& obfuscated_username,
                      : MakeStatus<CryptohomeCryptoError>(
                            fake_error_location, error::ErrorActionSet(),
                            derivation_error),
-                 std::make_unique<KeyBlobs>());
+                 std::make_unique<KeyBlobs>(), std::nullopt);
       });
 }
 

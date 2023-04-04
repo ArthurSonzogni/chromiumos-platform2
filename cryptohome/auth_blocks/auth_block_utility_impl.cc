@@ -420,7 +420,7 @@ void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
                  CRYPTOHOME_ERR_LOC(
                      kLocAuthBlockUtilNoAuthBlockInDeriveKeyBlobsAsync))
                  .Wrap(std::move(auth_block).err_status()),
-             nullptr);
+             nullptr, std::nullopt);
     return;
   }
   ReportDeriveAuthBlock(auth_block_type);
@@ -431,8 +431,10 @@ void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
   auto managed_callback = base::BindOnce(
       [](std::unique_ptr<AuthBlock> owned_auth_block,
          AuthBlock::DeriveCallback callback, CryptohomeStatus error,
-         std::unique_ptr<KeyBlobs> key_blobs) {
-        std::move(callback).Run(std::move(error), std::move(key_blobs));
+         std::unique_ptr<KeyBlobs> key_blobs,
+         std::optional<AuthBlock::SuggestedAction> suggested_action) {
+        std::move(callback).Run(std::move(error), std::move(key_blobs),
+                                suggested_action);
       },
       std::move(auth_block.value()), std::move(derive_callback));
 

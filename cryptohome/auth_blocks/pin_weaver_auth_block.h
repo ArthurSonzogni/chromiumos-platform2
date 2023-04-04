@@ -45,9 +45,11 @@ class PinWeaverAuthBlock : public SyncAuthBlock {
                       AuthBlockState* auth_block_state,
                       KeyBlobs* key_blobs) override;
 
-  CryptoStatus Derive(const AuthInput& auth_input,
-                      const AuthBlockState& state,
-                      KeyBlobs* key_blobs) override;
+  CryptoStatus Derive(
+      const AuthInput& auth_input,
+      const AuthBlockState& state,
+      KeyBlobs* key_blobs,
+      std::optional<AuthBlock::SuggestedAction>* suggested_action) override;
 
   // Removing the underlying Pinweaver leaf node before the AuthFactor is
   // removed.

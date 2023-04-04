@@ -69,9 +69,11 @@ CryptoStatus DoubleWrappedCompatAuthBlock::Create(
       CryptoError::CE_OTHER_CRYPTO);
 }
 
-CryptoStatus DoubleWrappedCompatAuthBlock::Derive(const AuthInput& auth_input,
-                                                  const AuthBlockState& state,
-                                                  KeyBlobs* key_blobs) {
+CryptoStatus DoubleWrappedCompatAuthBlock::Derive(
+    const AuthInput& auth_input,
+    const AuthBlockState& state,
+    KeyBlobs* key_blobs,
+    std::optional<AuthBlock::SuggestedAction>* suggested_action) {
   const DoubleWrappedCompatAuthBlockState* auth_state;
   if (!(auth_state =
             std::get_if<DoubleWrappedCompatAuthBlockState>(&state.state))) {
@@ -84,14 +86,15 @@ CryptoStatus DoubleWrappedCompatAuthBlock::Derive(const AuthInput& auth_input,
   }
 
   AuthBlockState scrypt_state = {.state = auth_state->scrypt_state};
-  CryptoStatus error =
-      scrypt_auth_block_.Derive(auth_input, scrypt_state, key_blobs);
+  CryptoStatus error = scrypt_auth_block_.Derive(auth_input, scrypt_state,
+                                                 key_blobs, suggested_action);
   if (error.ok()) {
     return OkStatus<CryptohomeCryptoError>();
   }
 
   AuthBlockState tpm_state = {.state = auth_state->tpm_state};
-  error = tpm_auth_block_.Derive(auth_input, tpm_state, key_blobs);
+  error = tpm_auth_block_.Derive(auth_input, tpm_state, key_blobs,
+                                 suggested_action);
   if (error.ok())
     return OkStatus<CryptohomeCryptoError>();
   return MakeStatus<CryptohomeCryptoError>(

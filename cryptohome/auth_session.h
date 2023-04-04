@@ -477,14 +477,16 @@ class AuthSession final {
   // given KeyBlobs. Designed to be used in conjunction with an async
   // DeriveKeyBlobs call by binding all of the initial parameters to make an
   // AuthBlock::DeriveCallback.
-  void LoadUSSMainKeyAndFsKeyset(AuthFactorType auth_factor_type,
-                                 const std::string& auth_factor_label,
-                                 const AuthInput& auth_input,
-                                 std::unique_ptr<AuthSessionPerformanceTimer>
-                                     auth_session_performance_timer,
-                                 StatusCallback on_done,
-                                 CryptohomeStatus callback_error,
-                                 std::unique_ptr<KeyBlobs> key_blobs);
+  void LoadUSSMainKeyAndFsKeyset(
+      AuthFactorType auth_factor_type,
+      const std::string& auth_factor_label,
+      const AuthInput& auth_input,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
+      StatusCallback on_done,
+      CryptohomeStatus callback_error,
+      std::unique_ptr<KeyBlobs> key_blobs,
+      std::optional<AuthBlock::SuggestedAction> suggested_action);
 
   // This function is used to reset the attempt count for a low entropy
   // credential. Currently, this resets all low entropy credentials both stored
@@ -546,15 +548,17 @@ class AuthSession final {
   // KeysetManagement::GetValidKeyset(). This function is needed for
   // processing callback results in an asynchronous manner through the |on_done|
   // callback.
-  void LoadVaultKeysetAndFsKeys(AuthFactorType request_auth_factor_type,
-                                const AuthInput& auth_input,
-                                AuthBlockType auth_block_type,
-                                const AuthFactorMetadata& metadata,
-                                std::unique_ptr<AuthSessionPerformanceTimer>
-                                    auth_session_performance_timer,
-                                StatusCallback on_done,
-                                CryptohomeStatus error,
-                                std::unique_ptr<KeyBlobs> key_blobs);
+  void LoadVaultKeysetAndFsKeys(
+      AuthFactorType request_auth_factor_type,
+      const AuthInput& auth_input,
+      AuthBlockType auth_block_type,
+      const AuthFactorMetadata& metadata,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
+      StatusCallback on_done,
+      CryptohomeStatus error,
+      std::unique_ptr<KeyBlobs> key_blobs,
+      std::optional<AuthBlock::SuggestedAction> suggested_action);
 
   // Updates, wraps and resaves |vault_keyset_| and restores on failure.
   // |user_input| is needed to generate the AuthInput used for key blob creation

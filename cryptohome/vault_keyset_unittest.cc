@@ -1228,9 +1228,11 @@ TEST_F(LeCredentialsManagerTest, DecryptWithKeyBlobs) {
 
   AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)), false};
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthBlockState auth_state;
   EXPECT_TRUE(vk.GetPinWeaverState(&auth_state));
-  CryptoStatus status = auth_block->Derive(auth_input, auth_state, &key_blobs);
+  CryptoStatus status =
+      auth_block->Derive(auth_input, auth_state, &key_blobs, &suggested_action);
   ASSERT_TRUE(status.ok());
 
   EXPECT_TRUE(vk.DecryptVaultKeysetEx(key_blobs).ok());

@@ -255,8 +255,11 @@ TEST(TpmNotBoundToPcrTest, Success) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {.user_input = vault_key};
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_blobs).ok());
+  EXPECT_TRUE(
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          .ok());
 }
 
 TEST(TpmNotBoundToPcrTest, CreateFailTpm) {
@@ -312,10 +315,12 @@ TEST(TpmNotBoundToPcrTest, DeriveFailureMissingSalt) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {};
-  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
-            auth_block.Derive(auth_input, auth_state, &key_blobs)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_OTHER_CRYPTO,
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          ->local_crypto_error());
 }
 
 // Check required field |tpm_key| in TpmNotBoundToPcrAuthBlockState.
@@ -332,10 +337,12 @@ TEST(TpmNotBoundToPcrTest, DeriveFailureMissingTpmKey) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {};
-  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
-            auth_block.Derive(auth_input, auth_state, &key_blobs)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_OTHER_CRYPTO,
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          ->local_crypto_error());
 }
 
 // Test TpmNotBoundToPcrAuthBlock derive fails when there's no user_input
@@ -357,9 +364,11 @@ TEST(TpmNotBoundToPcrTest, DeriveFailureNoUserInput) {
 
   AuthInput auth_input;
   KeyBlobs key_blobs;
-  EXPECT_EQ(auth_block.Derive(auth_input, auth_state, &key_blobs)
-                ->local_crypto_error(),
-            CryptoError::CE_OTHER_CRYPTO);
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
+  EXPECT_EQ(
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          ->local_crypto_error(),
+      CryptoError::CE_OTHER_CRYPTO);
 }
 
 TEST(TpmNotBoundToPcrTest, DeriveSuccess) {
@@ -388,8 +397,11 @@ TEST(TpmNotBoundToPcrTest, DeriveSuccess) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {.user_input = vault_key};
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_blobs).ok());
+  EXPECT_TRUE(
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          .ok());
 }
 
 TEST(TPMAuthBlockTest, DecryptBoundToPcrTest) {
@@ -543,6 +555,7 @@ TEST(TpmAuthBlockTest, DeriveTest) {
   TpmBoundToPcrAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
 
   KeyBlobs key_out_data;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input;
   auth_input.user_input = key;
   auth_input.locked_to_single_user = false;
@@ -552,12 +565,16 @@ TEST(TpmAuthBlockTest, DeriveTest) {
   AuthBlockState auth_state;
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data).ok());
+  EXPECT_TRUE(
+      auth_block
+          .Derive(auth_input, auth_state, &key_out_data, &suggested_action)
+          .ok());
 
   // Assert that the returned key blobs isn't uninitialized.
   EXPECT_NE(key_out_data.vkk_iv, std::nullopt);
   EXPECT_NE(key_out_data.vkk_key, std::nullopt);
   EXPECT_EQ(key_out_data.vkk_iv.value(), key_out_data.chaps_iv.value());
+  EXPECT_EQ(suggested_action, std::nullopt);
 }
 
 // Test TpmBoundToPcrAuthBlock derive fails when there's no user_input provided.
@@ -578,9 +595,11 @@ TEST(TpmAuthBlockTest, DeriveFailureNoUserInput) {
 
   AuthInput auth_input = {};
   KeyBlobs key_blobs;
-  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
-            auth_block.Derive(auth_input, auth_state, &key_blobs)
-                ->local_crypto_error());
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
+  EXPECT_EQ(
+      CryptoError::CE_OTHER_CRYPTO,
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          ->local_crypto_error());
 }
 
 // Check required field |salt| in TpmBoundToPcrAuthBlockState.
@@ -599,10 +618,12 @@ TEST(TpmAuthBlockTest, DeriveFailureMissingSalt) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {.user_input = user_input};
-  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
-            auth_block.Derive(auth_input, auth_state, &key_blobs)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_OTHER_CRYPTO,
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          ->local_crypto_error());
 }
 
 // Check required field |tpm_key| in TpmBoundToPcrAuthBlockState.
@@ -622,10 +643,12 @@ TEST(TpmAuthBlockTest, DeriveFailureMissingTpmKey) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {.user_input = user_input};
-  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
-            auth_block.Derive(auth_input, auth_state, &key_blobs)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_OTHER_CRYPTO,
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          ->local_crypto_error());
 }
 
 // Check required field |extended_tpm_key| in TpmBoundToPcrAuthBlockState.
@@ -645,10 +668,12 @@ TEST(TpmAuthBlockTest, DeriveFailureMissingExtendedTpmKey) {
   auth_state.state = std::move(state);
 
   KeyBlobs key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input = {.user_input = user_input};
-  EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
-            auth_block.Derive(auth_input, auth_state, &key_blobs)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_OTHER_CRYPTO,
+      auth_block.Derive(auth_input, auth_state, &key_blobs, &suggested_action)
+          ->local_crypto_error());
 }
 
 TEST(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
@@ -729,6 +754,7 @@ TEST(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
                             0x31, 0x32, 0x62, 0x37, 0x39, 0x36, 0x30, 0x65};
 
   KeyBlobs key_out_data;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input;
   auth_input.user_input = key;
   auth_input.locked_to_single_user = false;
@@ -742,7 +768,10 @@ TEST(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   DoubleWrappedCompatAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
 
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data).ok());
+  EXPECT_TRUE(
+      auth_block
+          .Derive(auth_input, auth_state, &key_out_data, &suggested_action)
+          .ok());
 }
 
 TEST(ScyptAuthBlockTest, CreateTest) {
@@ -846,6 +875,7 @@ TEST(ScyptAuthBlockTest, DeriveTest) {
                             0x31, 0x32, 0x62, 0x37, 0x39, 0x36, 0x30, 0x65};
 
   KeyBlobs key_out_data;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input;
   auth_input.user_input = key;
 
@@ -855,7 +885,10 @@ TEST(ScyptAuthBlockTest, DeriveTest) {
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   ScryptAuthBlock auth_block;
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data).ok());
+  EXPECT_TRUE(
+      auth_block
+          .Derive(auth_input, auth_state, &key_out_data, &suggested_action)
+          .ok());
 
   brillo::SecureBlob derived_key = {
       0x58, 0x2A, 0x41, 0x1F, 0xC0, 0x27, 0x2D, 0xC7, 0xF8, 0xEC, 0xA3,
@@ -884,6 +917,7 @@ TEST(ScyptAuthBlockTest, DeriveTest) {
   EXPECT_EQ(derived_key, key_out_data.vkk_key);
   EXPECT_EQ(derived_chaps_key, key_out_data.scrypt_chaps_key);
   EXPECT_EQ(derived_reset_seed_key, key_out_data.scrypt_reset_seed_key);
+  EXPECT_EQ(suggested_action, std::nullopt);
 }
 
 class CryptohomeRecoveryAuthBlockTest : public testing::Test {
@@ -1023,8 +1057,11 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
       derive_cryptohome_recovery_auth_input;
 
   KeyBlobs derived_key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   EXPECT_TRUE(
-      auth_block.Derive(auth_input, auth_state, &derived_key_blobs).ok());
+      auth_block
+          .Derive(auth_input, auth_state, &derived_key_blobs, &suggested_action)
+          .ok());
   ASSERT_TRUE(derived_key_blobs.vkk_key.has_value());
 
   // KeyBlobs generated by `Create` should be the same as KeyBlobs generated by
@@ -1032,6 +1069,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   EXPECT_EQ(created_key_blobs.vkk_key, derived_key_blobs.vkk_key);
   EXPECT_EQ(created_key_blobs.vkk_iv, derived_key_blobs.vkk_iv);
   EXPECT_EQ(created_key_blobs.chaps_iv, derived_key_blobs.chaps_iv);
+  EXPECT_EQ(suggested_action, std::nullopt);
 }
 
 TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
@@ -1100,8 +1138,11 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
       .WillOnce(DoAll(SaveArg<1>(&le_secret_1), SetArgPointee<2>(he_secret),
                       ReturnError<CryptohomeLECredError>()));
   KeyBlobs derived_key_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   EXPECT_TRUE(
-      auth_block.Derive(auth_input, auth_state, &derived_key_blobs).ok());
+      auth_block
+          .Derive(auth_input, auth_state, &derived_key_blobs, &suggested_action)
+          .ok());
   ASSERT_TRUE(derived_key_blobs.vkk_key.has_value());
 
   // LE secret should be the same in InsertCredential and CheckCredential.
@@ -1112,6 +1153,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
   EXPECT_EQ(created_key_blobs.vkk_key, derived_key_blobs.vkk_key);
   EXPECT_EQ(created_key_blobs.vkk_iv, derived_key_blobs.vkk_iv);
   EXPECT_EQ(created_key_blobs.chaps_iv, derived_key_blobs.chaps_iv);
+  EXPECT_EQ(suggested_action, std::nullopt);
 }
 
 TEST_F(CryptohomeRecoveryAuthBlockTest, CreateGeneratesRecoveryId) {
@@ -1452,13 +1494,17 @@ TEST(TpmEccAuthBlockTest, DeriveTest) {
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
 
   KeyBlobs key_out_data;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = false;
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &key_out_data).ok());
+  EXPECT_TRUE(
+      auth_block
+          .Derive(auth_input, auth_state, &key_out_data, &suggested_action)
+          .ok());
 
   // Assert that the returned key blobs isn't uninitialized.
   EXPECT_NE(key_out_data.vkk_iv, std::nullopt);
@@ -1476,10 +1522,13 @@ TEST(TpmEccAuthBlockTest, DeriveFailNoAuthInput) {
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
 
   KeyBlobs key_out_data;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input;
-  EXPECT_EQ(auth_block.Derive(auth_input, auth_state, &key_out_data)
-                ->local_crypto_error(),
-            CryptoError::CE_OTHER_CRYPTO);
+  EXPECT_EQ(
+      auth_block
+          .Derive(auth_input, auth_state, &key_out_data, &suggested_action)
+          ->local_crypto_error(),
+      CryptoError::CE_OTHER_CRYPTO);
 }
 
 // Test GetEccAuthValue in TpmEccAuthBlock::Derive failed as expected.
@@ -1498,15 +1547,18 @@ TEST(TpmEccAuthBlockTest, DeriveGetEccAuthFailTest) {
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
 
   KeyBlobs key_out_data;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = false;
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
-            auth_block.Derive(auth_input, auth_state, &key_out_data)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_TPM_CRYPTO,
+      auth_block
+          .Derive(auth_input, auth_state, &key_out_data, &suggested_action)
+          ->local_crypto_error());
 }
 
 // Test PreloadSealedData in TpmEccAuthBlock::Derive failed as expected.
@@ -1524,15 +1576,18 @@ TEST(TpmEccAuthBlockTest, DerivePreloadSealedDataFailTest) {
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
 
   KeyBlobs key_out_data;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = false;
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
-            auth_block.Derive(auth_input, auth_state, &key_out_data)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_TPM_CRYPTO,
+      auth_block
+          .Derive(auth_input, auth_state, &key_out_data, &suggested_action)
+          ->local_crypto_error());
 }
 
 // Test GetPublicKeyHash in TpmEccAuthBlock::Derive failed as expected.
@@ -1551,15 +1606,18 @@ TEST(TpmEccAuthBlockTest, DeriveGetPublicKeyHashFailTest) {
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
 
   KeyBlobs key_out_data;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = false;
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
-            auth_block.Derive(auth_input, auth_state, &key_out_data)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_TPM_CRYPTO,
+      auth_block
+          .Derive(auth_input, auth_state, &key_out_data, &suggested_action)
+          ->local_crypto_error());
 }
 
 // Test PublicKeyHashMismatch in TpmEccAuthBlock::Derive failed as expected.
@@ -1578,15 +1636,18 @@ TEST(TpmEccAuthBlockTest, DerivePublicKeyHashMismatchTest) {
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
 
   KeyBlobs key_out_data;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = false;
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  EXPECT_EQ(CryptoError::CE_TPM_FATAL,
-            auth_block.Derive(auth_input, auth_state, &key_out_data)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_TPM_FATAL,
+      auth_block
+          .Derive(auth_input, auth_state, &key_out_data, &suggested_action)
+          ->local_crypto_error());
 }
 
 // Test the retry function in TpmEccAuthBlock::Derive failed as expected.
@@ -1607,15 +1668,18 @@ TEST(TpmEccAuthBlockTest, DeriveRetryFailTest) {
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
 
   KeyBlobs key_out_data;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = true;
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  EXPECT_EQ(CryptoError::CE_TPM_REBOOT,
-            auth_block.Derive(auth_input, auth_state, &key_out_data)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_TPM_REBOOT,
+      auth_block
+          .Derive(auth_input, auth_state, &key_out_data, &suggested_action)
+          ->local_crypto_error());
 }
 
 // Test Unseal in TpmEccAuthBlock::Derive failed as expected.
@@ -1640,15 +1704,18 @@ TEST(TpmEccAuthBlockTest, DeriveUnsealFailTest) {
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
 
   KeyBlobs key_out_data;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = false;
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  EXPECT_EQ(CryptoError::CE_TPM_CRYPTO,
-            auth_block.Derive(auth_input, auth_state, &key_out_data)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_TPM_CRYPTO,
+      auth_block
+          .Derive(auth_input, auth_state, &key_out_data, &suggested_action)
+          ->local_crypto_error());
 }
 
 // Test CryptohomeKey in TpmEccAuthBlock::Derive failed as expected.
@@ -1667,15 +1734,18 @@ TEST(TpmEccAuthBlockTest, DeriveCryptohomeKeyFailTest) {
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
 
   KeyBlobs key_out_data;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = true;
 
   AuthBlockState auth_state{.state = std::move(auth_block_state)};
 
-  EXPECT_EQ(CryptoError::CE_TPM_REBOOT,
-            auth_block.Derive(auth_input, auth_state, &key_out_data)
-                ->local_crypto_error());
+  EXPECT_EQ(
+      CryptoError::CE_TPM_REBOOT,
+      auth_block
+          .Derive(auth_input, auth_state, &key_out_data, &suggested_action)
+          ->local_crypto_error());
 }
 
 }  // namespace cryptohome

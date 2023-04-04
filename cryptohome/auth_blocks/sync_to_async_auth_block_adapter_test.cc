@@ -198,11 +198,13 @@ TEST_F(AsyncScryptAuthBlockTest, DeriveTest) {
 
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_out_data) {
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_out_data,
+          std::optional<AuthBlock::SuggestedAction> suggested_action) {
         EXPECT_TRUE(error.ok());
         EXPECT_EQ(derived_key, key_out_data->vkk_key);
         EXPECT_EQ(derived_chaps_key, key_out_data->scrypt_chaps_key);
         EXPECT_EQ(derived_reset_seed_key, key_out_data->scrypt_reset_seed_key);
+        EXPECT_EQ(suggested_action, std::nullopt);
         run_loop.Quit();
       });
 

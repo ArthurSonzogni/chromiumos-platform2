@@ -5,6 +5,7 @@
 #include "cryptohome/auth_blocks/async_challenge_credential_auth_block.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <variant>
 
@@ -238,7 +239,7 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
                             PossibleAction::kAuth}),
             CryptoError::CE_OTHER_CRYPTO),
-        nullptr);
+        nullptr, std::nullopt);
     return;
   }
 
@@ -249,7 +250,7 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
             CRYPTOHOME_ERR_LOC(kLocAsyncChalCredAuthBlockNoKeyServiceInDerive),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
-        nullptr);
+        nullptr, std::nullopt);
     return;
   }
 
@@ -264,7 +265,7 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
                 kLocAsyncChalCredAuthBlockInvalidBlockStateInDerive),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_FATAL),
-        nullptr);
+        nullptr, std::nullopt);
     return;
   }
 
@@ -278,7 +279,7 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
                 kLocAsyncChalCredAuthBlockNoChallengeInfoInDerive),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
-        nullptr);
+        nullptr, std::nullopt);
     return;
   }
 
@@ -294,7 +295,7 @@ void AsyncChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
                 kLocAsyncChalCredAuthBlockNoAlgorithmInfoInDerive),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             CryptoError::CE_OTHER_CRYPTO),
-        nullptr);
+        nullptr, std::nullopt);
     return;
   }
 
@@ -328,7 +329,7 @@ void AsyncChallengeCredentialAuthBlock::DeriveContinue(
             CRYPTOHOME_ERR_LOC(
                 kLocAsyncChalCredAuthBlockServiceDeriveFailedInDerive))
             .Wrap(std::move(result).err_status()),
-        nullptr);
+        nullptr, std::nullopt);
     return;
   }
 
@@ -342,8 +343,9 @@ void AsyncChallengeCredentialAuthBlock::DeriveContinue(
 
   ScryptAuthBlock scrypt_auth_block;
   auto key_blobs = std::make_unique<KeyBlobs>();
-  CryptoStatus error =
-      scrypt_auth_block.Derive(auth_input, scrypt_state, key_blobs.get());
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
+  CryptoStatus error = scrypt_auth_block.Derive(
+      auth_input, scrypt_state, key_blobs.get(), &suggested_action);
 
   if (!error.ok()) {
     LOG(ERROR) << __func__
@@ -353,12 +355,12 @@ void AsyncChallengeCredentialAuthBlock::DeriveContinue(
             CRYPTOHOME_ERR_LOC(
                 kLocAsyncChalCredAuthBlockScryptDeriveFailedInDerive))
             .Wrap(std::move(error)),
-        nullptr);
+        nullptr, std::nullopt);
     return;
   }
 
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
-                          std::move(key_blobs));
+                          std::move(key_blobs), suggested_action);
   return;
 }
 

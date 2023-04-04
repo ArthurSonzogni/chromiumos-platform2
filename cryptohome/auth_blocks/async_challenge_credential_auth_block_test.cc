@@ -413,11 +413,13 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, Derive) {
 
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
+          std::optional<AuthBlock::SuggestedAction> suggested_action) {
         ASSERT_TRUE(error.ok());
         EXPECT_EQ(derived_key, blobs->vkk_key);
         EXPECT_EQ(derived_chaps_key, blobs->scrypt_chaps_key);
         EXPECT_EQ(derived_reset_seed_key, blobs->scrypt_reset_seed_key);
+        EXPECT_EQ(suggested_action, std::nullopt);
         run_loop.Quit();
       });
 
@@ -462,7 +464,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveFailed) {
 
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
+          std::optional<AuthBlock::SuggestedAction> suggested_action) {
         EXPECT_TRUE(ContainsActionInStack(error.err_status(),
                                           PrimaryAction::kIncorrectAuth));
         run_loop.Quit();
@@ -478,7 +481,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveFailed) {
 TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveMissingAlgorithms) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
+          std::optional<AuthBlock::SuggestedAction> suggested_action) {
         EXPECT_TRUE(ContainsActionInStack(
             error.err_status(), PossibleAction::kDevCheckUnexpectedState));
         run_loop.Quit();
@@ -496,7 +500,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveMissingAlgorithms) {
 TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoState) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
+          std::optional<AuthBlock::SuggestedAction> suggested_action) {
         EXPECT_TRUE(ContainsActionInStack(
             error.err_status(), PossibleAction::kDevCheckUnexpectedState));
         run_loop.Quit();
@@ -521,7 +526,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoState) {
 TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoKeysetInfo) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
+          std::optional<AuthBlock::SuggestedAction> suggested_action) {
         EXPECT_TRUE(ContainsActionInStack(
             error.err_status(), PossibleAction::kDevCheckUnexpectedState));
         run_loop.Quit();
@@ -549,7 +555,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoKeysetInfo) {
 TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoScryptState) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
+          std::optional<AuthBlock::SuggestedAction> suggested_action) {
         EXPECT_TRUE(
             ContainsActionInStack(error.err_status(), PossibleAction::kAuth));
         run_loop.Quit();
@@ -690,7 +697,8 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
     auth_block_->Derive(
         auth_input, auth_block_state,
         base::BindLambdaForTesting(
-            [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs) {
+            [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
+                std::optional<AuthBlock::SuggestedAction> suggested_action) {
               got_error = std::move(error);
               out_key_blobs = std::move(key_blobs);
               run_loop.Quit();

@@ -358,9 +358,11 @@ CryptoStatus TpmEccAuthBlock::Create(const AuthInput& auth_input,
                    kTryCreateMaxRetryCount);
 }
 
-CryptoStatus TpmEccAuthBlock::Derive(const AuthInput& auth_input,
-                                     const AuthBlockState& state,
-                                     KeyBlobs* key_out_data) {
+CryptoStatus TpmEccAuthBlock::Derive(
+    const AuthInput& auth_input,
+    const AuthBlockState& state,
+    KeyBlobs* key_out_data,
+    std::optional<AuthBlock::SuggestedAction>* suggested_action) {
   if (!auth_input.user_input.has_value()) {
     LOG(ERROR) << "Missing user_input";
     return MakeStatus<CryptohomeCryptoError>(

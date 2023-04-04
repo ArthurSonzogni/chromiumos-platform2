@@ -88,10 +88,11 @@ bool TestPasswordBasedAuthBlock(SyncAuthBlock& auth_block) {
 
   // Check derivation using the correct password.
   KeyBlobs derived_key_blobs;
-  CryptohomeStatus derivation_status =
-      auth_block.Derive(AuthInput{.user_input = SecureBlob(kPassword),
-                                  .obfuscated_username = kObfuscatedUsername},
-                        auth_block_state, &derived_key_blobs);
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
+  CryptohomeStatus derivation_status = auth_block.Derive(
+      AuthInput{.user_input = SecureBlob(kPassword),
+                .obfuscated_username = kObfuscatedUsername},
+      auth_block_state, &derived_key_blobs, &suggested_action);
   if (!derivation_status.ok()) {
     LOG(ERROR) << "Derivation failed: " << derivation_status;
     return false;
@@ -109,10 +110,10 @@ bool TestPasswordBasedAuthBlock(SyncAuthBlock& auth_block) {
   }
 
   // Check derivation using a wrong password.
-  derivation_status =
-      auth_block.Derive(AuthInput{.user_input = SecureBlob(kWrongPassword),
-                                  .obfuscated_username = kObfuscatedUsername},
-                        auth_block_state, &derived_key_blobs);
+  derivation_status = auth_block.Derive(
+      AuthInput{.user_input = SecureBlob(kWrongPassword),
+                .obfuscated_username = kObfuscatedUsername},
+      auth_block_state, &derived_key_blobs, &suggested_action);
   if (derivation_status.ok()) {
     LOG(ERROR) << "Derivation succeeded despite wrong password";
     return false;

@@ -30,6 +30,17 @@ enum DerivationType : int;
 // they take some arbitrary user input and give out a key.
 class AuthBlock {
  public:
+  // Enumeration used during derive operations to indicate suggested actions for
+  // auth blocks which are valid but sub-optimal in some way (e.g. the block is
+  // using an old or obsolete format, or a weaker policy).
+  enum class SuggestedAction {
+    // Indicates that it would be best to re-create the block. This is usually
+    // used when the block is obsolete in some manner that can be fixed by
+    // replacing the existing block with a freshly created one. Note that as a
+    // side effect this may even change the block type of the factor.
+    kRecreate,
+  };
+
   virtual ~AuthBlock() = default;
 
   // If the operation succeeds, |key_blobs| will contain the constructed
@@ -50,11 +61,15 @@ class AuthBlock {
   // value of KeyBlobs and AuthBlockState are not valid to use.
   virtual void Create(const AuthInput& user_input, CreateCallback callback) = 0;
 
-  // If the operation succeeds, |key_blobs| will contain the constructed
-  // KeyBlobs and |error| will be an ok status. On failure, error will be
-  // populated, and should not rely on the value of key_blobs.
-  using DeriveCallback = base::OnceCallback<void(
-      CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs)>;
+  // On success, |error| will be OK and |key_blobs| will be populated with the
+  // derived key. The value of |suggested_action| may also be set if there are
+  // any suggested actions with the block, but even if this is set the result of
+  // the derivation is still considered valid. On failure, |error| will be
+  // populated and both |key_blobs| and |suggested_action| are undefined.
+  using DeriveCallback =
+      base::OnceCallback<void(CryptohomeStatus error,
+                              std::unique_ptr<KeyBlobs> key_blobs,
+                              std::optional<SuggestedAction> suggested_action)>;
 
   // This is implemented by concrete auth methods to map the user secret
   // input/credentials into a key.
@@ -126,9 +141,11 @@ class SyncAuthBlock {
 
   // This is implemented by concrete auth methods to map the user secret
   // input into a key. This method should successfully authenticate the user.
-  virtual CryptoStatus Derive(const AuthInput& auth_input,
-                              const AuthBlockState& state,
-                              KeyBlobs* key_blobs) = 0;
+  virtual CryptoStatus Derive(
+      const AuthInput& auth_input,
+      const AuthBlockState& state,
+      KeyBlobs* key_blobs,
+      std::optional<AuthBlock::SuggestedAction>* suggested_action) = 0;
 
   // This is implemented by concrete auth factor methods which need to execute
   // additional steps before removal of the AuthFactor from disk.

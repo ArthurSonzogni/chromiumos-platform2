@@ -117,9 +117,11 @@ CryptoStatus ScryptAuthBlock::Create(const AuthInput& auth_input,
   return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoStatus ScryptAuthBlock::Derive(const AuthInput& auth_input,
-                                     const AuthBlockState& auth_state,
-                                     KeyBlobs* key_blobs) {
+CryptoStatus ScryptAuthBlock::Derive(
+    const AuthInput& auth_input,
+    const AuthBlockState& auth_state,
+    KeyBlobs* key_blobs,
+    std::optional<AuthBlock::SuggestedAction>* suggested_action) {
   const ScryptAuthBlockState* state;
   if (!(state = std::get_if<ScryptAuthBlockState>(&auth_state.state))) {
     LOG(ERROR) << "Invalid AuthBlockState";

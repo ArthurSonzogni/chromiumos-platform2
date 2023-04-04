@@ -37,13 +37,15 @@ void SyncToAsyncAuthBlockAdapter::Derive(const AuthInput& user_input,
                                          const AuthBlockState& state,
                                          DeriveCallback callback) {
   auto key_blobs = std::make_unique<KeyBlobs>();
-  CryptoStatus error = delegate_->Derive(user_input, state, key_blobs.get());
+  std::optional<SuggestedAction> suggested_action;
+  CryptoStatus error =
+      delegate_->Derive(user_input, state, key_blobs.get(), &suggested_action);
   if (!error.ok()) {
-    std::move(callback).Run(std::move(error), nullptr);
+    std::move(callback).Run(std::move(error), nullptr, suggested_action);
     return;
   }
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
-                          std::move(key_blobs));
+                          std::move(key_blobs), suggested_action);
 }
 
 CryptohomeStatus SyncToAsyncAuthBlockAdapter::PrepareForRemoval(

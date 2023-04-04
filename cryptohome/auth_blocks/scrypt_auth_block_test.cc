@@ -22,9 +22,14 @@ TEST(ScryptAuthBlockTest, CreateAndDeriveTest) {
   EXPECT_FALSE(create_blobs.vkk_key.value().empty());
 
   KeyBlobs derive_blobs;
-  EXPECT_TRUE(auth_block.Derive(auth_input, auth_state, &derive_blobs).ok());
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
+  EXPECT_TRUE(
+      auth_block
+          .Derive(auth_input, auth_state, &derive_blobs, &suggested_action)
+          .ok());
 
   EXPECT_EQ(create_blobs.vkk_key, derive_blobs.vkk_key);
+  EXPECT_EQ(suggested_action, std::nullopt);
 }
 
 TEST(ScryptAuthBlockTest, DeriveMissState) {
@@ -33,9 +38,13 @@ TEST(ScryptAuthBlockTest, DeriveMissState) {
 
   ScryptAuthBlock auth_block;
   KeyBlobs derive_blobs;
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
 
   AuthBlockState auth_state;
-  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &derive_blobs).ok());
+  EXPECT_FALSE(
+      auth_block
+          .Derive(auth_input, auth_state, &derive_blobs, &suggested_action)
+          .ok());
 
   auth_state = AuthBlockState{
       .state =
@@ -45,7 +54,10 @@ TEST(ScryptAuthBlockTest, DeriveMissState) {
               .parallel_factor = 1,
           },
   };
-  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &derive_blobs).ok());
+  EXPECT_FALSE(
+      auth_block
+          .Derive(auth_input, auth_state, &derive_blobs, &suggested_action)
+          .ok());
 
   auth_state = AuthBlockState{
       .state =
@@ -53,7 +65,10 @@ TEST(ScryptAuthBlockTest, DeriveMissState) {
               .salt = brillo::SecureBlob("salt"),
           },
   };
-  EXPECT_FALSE(auth_block.Derive(auth_input, auth_state, &derive_blobs).ok());
+  EXPECT_FALSE(
+      auth_block
+          .Derive(auth_input, auth_state, &derive_blobs, &suggested_action)
+          .ok());
 }
 
 }  // namespace cryptohome

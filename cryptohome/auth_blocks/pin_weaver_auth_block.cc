@@ -303,9 +303,11 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
-                                        const AuthBlockState& state,
-                                        KeyBlobs* key_blobs) {
+CryptoStatus PinWeaverAuthBlock::Derive(
+    const AuthInput& auth_input,
+    const AuthBlockState& state,
+    KeyBlobs* key_blobs,
+    std::optional<AuthBlock::SuggestedAction>* suggested_action) {
   if (!auth_input.user_input.has_value()) {
     LOG(ERROR) << "Missing user_input";
     return MakeStatus<CryptohomeCryptoError>(
@@ -406,10 +408,8 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
     auto delay_sched = le_manager_->GetDelaySchedule(*auth_state->le_label);
     if (delay_sched.ok()) {
       if (*delay_sched != PinDelaySchedule()) {
-        LOG(INFO) << "PIN factor is using obsolete delay schedule, attempting "
-                     "to migrate";
-        // TODO(b/272560921): Implement migration.
-        LOG(ERROR) << "Unable to migrate PIN delay schedule: not implemented";
+        LOG(INFO) << "PIN factor is using obsolete delay schedule";
+        *suggested_action = AuthBlock::SuggestedAction::kRecreate;
       }
     } else {
       LOG(WARNING) << "Unable to determine the PIN delay schedule: "
