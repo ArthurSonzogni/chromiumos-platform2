@@ -10,6 +10,7 @@
 #include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/logging.h>
+#include <base/system/sys_info.h>
 
 #include "installer/chromeos_install_config.h"
 #include "installer/reven_partition_migration_private.h"
@@ -32,6 +33,39 @@ void SendResultMetric(PartitionMigrationResult result,
 }
 
 const uint64_t kSectorSizeInBytes = 512;
+
+std::string GetChannel() {
+  std::string channel;
+  if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK", &channel)) {
+    LOG(ERROR) << "Failed to get channel";
+    channel.clear();
+  }
+  return channel;
+}
+
+// Check whether the full migration is allowed to run. Note that the
+// planning phase of the migration is always allowed; this function
+// returns whether the steps that actually modify the partition table
+// can run.
+bool IsMigrationAllowed(base::Environment& env) {
+  const bool is_install = env.HasVar(kEnvIsInstall);
+  const std::string channel = GetChannel();
+
+  LOG(INFO) << "Checking if migration is allowed: is_install=" << is_install
+            << ", channel='" << channel << "'";
+
+  // Always allow migration on fresh install.
+  if (is_install) {
+    return true;
+  }
+
+  // For updates, only allow migration on certain channels.
+  if (channel == "testimage-channel" || channel == "canary-channel") {
+    return true;
+  }
+
+  return false;
+}
 
 }  // namespace
 
@@ -244,7 +278,10 @@ PartitionMigrationResult FullPlan::Run() {
 bool RunRevenPartitionMigration(CgptManagerInterface& cgpt_manager,
                                 MetricsInterface& metrics,
                                 base::Environment& env) {
-  const bool is_install = env.HasVar(kEnvIsInstall);
+  // TODO(nicholasbishop): for now we don't run the partition migration
+  // in all cases. This will change in the future. See
+  // docs/reven_partition_migration.md.
+  const bool is_migration_allowed = IsMigrationAllowed(env);
 
   FullPlan full_plan = FullPlan(cgpt_manager);
   PartitionMigrationResult result = full_plan.Initialize();
@@ -255,11 +292,8 @@ bool RunRevenPartitionMigration(CgptManagerInterface& cgpt_manager,
     return true;
   }
 
-  // TODO(nicholasbishop): for now, don't run the partition migration on
-  // updates. This will be changed in the future. See
-  // docs/reven_partition_migration.md.
-  if (!is_install) {
-    LOG(INFO) << "Not running from installer, skipping migration";
+  if (!is_migration_allowed) {
+    LOG(INFO) << "Migration not allowed";
     return true;
   }
 

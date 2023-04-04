@@ -9,6 +9,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/process/launch.h>
+#include <base/test/scoped_chromeos_version_info.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
@@ -378,16 +379,16 @@ TEST_F(PartitionMigrationTest, RunSlotBMigrationError) {
   EXPECT_FALSE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
 }
 
-// Test that no migration occurs during updates. This behavior will
-// change in the future, but for now we only run the migration on
-// install.
+// Test that no migration occurs during updates (except on particular
+// channels). This behavior will change in the future, but for now we
+// only run the migration on install.
 TEST_F(PartitionMigrationTest, NotRunningFromInstaller) {
   SetIsInstall(false);
   EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
 }
 
-// Test that migration planning does occur during updates, even though
-// the migration doesn't run currently.
+// Test that migration planning does occur during updates, even if the
+// migration doesn't run.
 TEST_F(PartitionMigrationTest, UpdatePlanningOccurs) {
   SetIsInstall(false);
 
@@ -396,6 +397,40 @@ TEST_F(PartitionMigrationTest, UpdatePlanningOccurs) {
 
   ExpectMetric(PartitionMigrationResult::kNoMigrationNeeded);
   EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+}
+
+// Test that migration runs during updates when the payload is a test image.
+TEST_F(PartitionMigrationTest, UpdateMigrationOnTest) {
+  base::test::ScopedChromeOSVersionInfo scoped_info(
+      "CHROMEOS_RELEASE_TRACK=testimage-channel\n", base::Time::Now());
+
+  SetIsInstall(false);
+
+  ExpectSlotAMigration();
+  ExpectSlotBMigration();
+  ExpectMetric(PartitionMigrationResult::kSuccess);
+
+  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+
+  CheckNewKernelData(PartitionNum::KERN_A);
+  CheckNewKernelData(PartitionNum::KERN_B);
+}
+
+// Test that migration runs during updates when the payload is on canary.
+TEST_F(PartitionMigrationTest, UpdateMigrationOnCanary) {
+  base::test::ScopedChromeOSVersionInfo scoped_info(
+      "CHROMEOS_RELEASE_TRACK=canary-channel\n", base::Time::Now());
+
+  SetIsInstall(false);
+
+  ExpectSlotAMigration();
+  ExpectSlotBMigration();
+  ExpectMetric(PartitionMigrationResult::kSuccess);
+
+  EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
+
+  CheckNewKernelData(PartitionNum::KERN_A);
+  CheckNewKernelData(PartitionNum::KERN_B);
 }
 
 TEST(PartitionMigration, MibToSectors) {

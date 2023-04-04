@@ -33,18 +33,20 @@ The migration in more detail:
 4. The GPT headers are updated to shrink the root partitions, and update
    the location and size of the kernel partitions.
 
-To limit the initial scope of testing, the migration will only be
-applied during OS installation from USB installer to the device's
-disk. That means fresh installations will have 64MiB kernel partitions,
-but upgraded installations will still have 16MiB kernel partitions for
+To limit the initial scope of testing, the migration will be run for all
+fresh installs, but not for all updates. In particular, only test images
+and images on the canary channel will run the migration on update. That
+means fresh installations will always have 64MiB kernel partitions, but
+upgraded installations may still have 16MiB kernel partitions for
 now. Once we're confident that this is working well, we'll expand the
-scope of the migration to updates, potentially with a [trial][featured]
-in place to roll out the change slowly. Once we're confident in that
-rollout, we'll mark a release as a "stepping-stone" update so that no
-devices can update to a release after that one without first passing
-through the stepping-stone update. After that we know that all devices
-have 64MiB kernel partitions, so we'll be able to update the disk layout
-to 64MiB. At that point we can also drop this migration code.
+scope of the migration to more updates, potentially with a
+[trial][featured] in place to roll out the change slowly. Once we're
+confident in that rollout, we'll mark a release as a "stepping-stone"
+update so that no devices can update to a release after that one without
+first passing through the stepping-stone update. After that we know that
+all devices have 64MiB kernel partitions, so we'll be able to update the
+disk layout to 64MiB. At that point we can also drop this migration
+code.
 
 The implementation for the migration is in
 [`reven_partition_migration.cc`]. Note that the migration code is only
