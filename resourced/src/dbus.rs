@@ -31,7 +31,6 @@ use crate::common;
 use crate::config;
 use crate::memory;
 use crate::power;
-use crate::psi;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
 const PATH_NAME: &str = "/org/chromium/ResourceManager";
@@ -469,61 +468,27 @@ pub async fn service_main() -> Result<()> {
 
     // The memory checker loop.
     loop {
-        let pressure_result = memory::get_memory_pressure_status();
+        const MEMORY_USAGE_POLL_INTERVAL: u64 = 1000;
+        tokio::time::sleep(Duration::from_millis(MEMORY_USAGE_POLL_INTERVAL)).await;
 
-        // Send memory pressure notification.
-        if let Ok(pressure_status) = pressure_result {
-            send_pressure_signal(
-                &conn,
-                "MemoryPressureChrome",
-                pressure_status.chrome_level as u8,
-                pressure_status.chrome_reclaim_target_kb,
-            );
-            if pressure_status.arcvm_level != memory::PressureLevelArcvm::None {
+        match memory::get_memory_pressure_status() {
+            Ok(pressure_status) => {
                 send_pressure_signal(
                     &conn,
-                    "MemoryPressureArcvm",
-                    pressure_status.arcvm_level as u8,
-                    pressure_status.arcvm_reclaim_target_kb,
+                    "MemoryPressureChrome",
+                    pressure_status.chrome_level as u8,
+                    pressure_status.chrome_reclaim_target_kb,
                 );
+                if pressure_status.arcvm_level != memory::PressureLevelArcvm::None {
+                    send_pressure_signal(
+                        &conn,
+                        "MemoryPressureArcvm",
+                        pressure_status.arcvm_level as u8,
+                        pressure_status.arcvm_reclaim_target_kb,
+                    );
+                }
             }
-        }
-
-        // Stop waiting if there is 150 ms stall time in 1000 ms window.
-        const STALL_MS: u64 = 150;
-        const WINDOW_MS: u64 = 1000;
-
-        // Wait longer when the current memory pressure is low.
-        const MIN_WAITING_MS: u64 = 500;
-        const MAX_WAITING_MS_NO_PRESSURE: u64 = 10000;
-        const MAX_WAITING_MS_MODERATE_PRESSURE: u64 = 5000;
-        const MAX_WAITING_MS_CRITICAL_PRESSURE: u64 = 1000;
-
-        let max_waiting_ms = match pressure_result {
-            Ok(pressure_status) => match pressure_status.chrome_level {
-                memory::PressureLevelChrome::None => MAX_WAITING_MS_NO_PRESSURE,
-                memory::PressureLevelChrome::Moderate => MAX_WAITING_MS_MODERATE_PRESSURE,
-                memory::PressureLevelChrome::Critical => MAX_WAITING_MS_CRITICAL_PRESSURE,
-            },
-            Err(e) => {
-                error!("get_memory_pressure_status() failed: {}", e);
-                MAX_WAITING_MS_NO_PRESSURE
-            }
-        };
-
-        // Waiting for certain range of duration. Interrupt if PSI memory stall exceeds the
-        // threshold.
-        let wait_result =
-            psi::wait_psi_monitor_memory_event(STALL_MS, WINDOW_MS, MIN_WAITING_MS, max_waiting_ms)
-                .await;
-        if wait_result.is_err() {
-            error!(
-                "wait_psi_monitor_memory_event returns error: {:?}",
-                wait_result
-            );
-            // Fallback to 1 second waiting.
-            const MEMORY_USAGE_POLL_INTERVAL: u64 = 1000;
-            tokio::time::sleep(Duration::from_millis(MEMORY_USAGE_POLL_INTERVAL)).await;
+            Err(e) => error!("get_memory_pressure_status() failed: {}", e),
         }
     }
 }

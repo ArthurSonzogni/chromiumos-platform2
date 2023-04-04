@@ -7,7 +7,6 @@ mod config;
 mod dbus;
 mod memory;
 mod power;
-mod psi;
 
 #[cfg(test)]
 mod test_utils;
