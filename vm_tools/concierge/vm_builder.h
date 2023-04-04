@@ -84,6 +84,7 @@ class VmBuilder {
   VmBuilder& AddExtraWaylandSocket(const std::string& socket);
 
   VmBuilder& EnableGpu(bool enable);
+  VmBuilder& EnableDGpuPassthrough(bool enable);
   VmBuilder& EnableVulkan(bool enable);
   VmBuilder& EnableVirtgpuNativeContext(bool enable);
   VmBuilder& EnableCrossDomainContext(bool enable);
@@ -160,6 +161,7 @@ class VmBuilder {
   std::string vm_socket_path_;
 
   bool enable_gpu_ = false;
+  bool enable_dgpu_passthrough_ = false;
   bool enable_vulkan_ = false;
   bool enable_virtgpu_native_context_ = false;
   bool enable_cross_domain_context_ = false;

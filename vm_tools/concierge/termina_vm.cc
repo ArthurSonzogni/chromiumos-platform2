@@ -327,6 +327,16 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
     }
   }
 
+  // Enable dGPU passthrough argument is only supported on Borealis VM.
+  if (features_.dgpu_passthrough) {
+    if (classification_ == VmInfo::BOREALIS) {
+      vm_builder.EnableDGpuPassthrough(true);
+    } else {
+      LOG(ERROR) << "--enable-dgpu-passthrough is only supported on Borealis.";
+      return false;
+    }
+  }
+
   if (features_.software_tpm)
     vm_builder.EnableSoftwareTpm(true /* enable */);
 

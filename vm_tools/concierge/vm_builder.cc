@@ -15,6 +15,7 @@
 #include <re2/re2.h>
 
 #include "base/files/file_path.h"
+#include "vm_tools/concierge/pci_utils.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools {
@@ -225,6 +226,11 @@ VmBuilder& VmBuilder::AppendCustomParam(const std::string& key,
 
 VmBuilder& VmBuilder::EnableGpu(bool enable) {
   enable_gpu_ = enable;
+  return *this;
+}
+
+VmBuilder& VmBuilder::EnableDGpuPassthrough(bool enable) {
+  enable_dgpu_passthrough_ = enable;
   return *this;
 }
 
@@ -502,6 +508,17 @@ base::StringPairs VmBuilder::BuildRunParams() const {
         render_server_arg += ",foz-db-list-path=" + foz_db_list_path_.value();
       }
       args.emplace_back("--gpu-render-server", render_server_arg);
+    }
+  }
+
+  if (enable_dgpu_passthrough_) {
+    std::vector<base::FilePath> dgpu_devices = GetPciDevicesList(
+        pci_utils::PciDeviceType::PCI_DEVICE_TYPE_DGPU_PASSTHROUGH);
+
+    for (const auto& dgpu_device : dgpu_devices) {
+      std::string dgpu_pt_arg =
+          base::StringPrintf("%s,iommu=viommu", dgpu_device.value().c_str());
+      args.emplace_back("--vfio", std::move(dgpu_pt_arg));
     }
   }
 

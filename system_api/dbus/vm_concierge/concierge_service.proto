@@ -176,7 +176,7 @@ message StartVmRequest {
   // The owner of the vm.
   string owner_id = 7;
 
-  // Enable GPU in the started Vm.
+  // Enable Virtio GPU in the started Vm. It uses integrated GPU on the host.
   bool enable_gpu = 8;
 
   // Provide a software-based virtual Trusted Platform Module to the VM. The TPM
@@ -262,6 +262,16 @@ message StartVmRequest {
   // Optional suggested username of the owner of the VM. Only used by
   // VM types that support dynamic usernames.
   string vm_username = 26;
+
+  // Enable discrete GPU passthrough in the VM.
+  // Note:
+  // - VFIO device (--enable-dgpu) is fully independent of virtio-gpu
+  // (--enable-gpu) device.
+  // - When --enable-dgpu is used with --enable-gpu, it helps with
+  // graphics acceleration via render offload.
+  // - When --enable-dgpu is used without --enable-gpu, it helps with
+  // compute acceleration (example: OpenCL).
+  bool enable_dgpu_passthrough = 27;
 }
 
 // Information that must be included with every StartPluginVm request.

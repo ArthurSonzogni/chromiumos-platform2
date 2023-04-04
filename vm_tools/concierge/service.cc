@@ -2132,6 +2132,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   // Start the VM and build the response.
   VmFeatures features{
       .gpu = request.enable_gpu(),
+      .dgpu_passthrough = request.enable_dgpu_passthrough(),
       .vulkan = request.enable_vulkan(),
       .big_gl = request.enable_big_gl(),
       .virtgpu_native_context = request.enable_virtgpu_native_context(),

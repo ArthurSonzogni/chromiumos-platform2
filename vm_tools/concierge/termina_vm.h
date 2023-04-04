@@ -52,6 +52,8 @@ constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/termina";
 struct VmFeatures {
   // Enable GPU in the started VM.
   bool gpu;
+  // Enable DGPU passthrough in the started VM.
+  bool dgpu_passthrough;
   bool vulkan;
   bool big_gl;
   bool virtgpu_native_context;
