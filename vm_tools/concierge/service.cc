@@ -828,28 +828,23 @@ string RemoveCloseOnExec(int raw_fd) {
 // Reclaims memory of the crosvm process with |pid| by writing "shmem" to
 // /proc/<pid>/reclaim. Since this function may block 10 seconds or more, do
 // not call on the main thread.
-std::unique_ptr<dbus::Response> ReclaimVmMemoryInternal(
-    pid_t pid,
-    int32_t page_limit,
-    std::unique_ptr<dbus::Response> dbus_response) {
-  dbus::MessageWriter writer(dbus_response.get());
+ReclaimVmMemoryResponse ReclaimVmMemoryInternal(pid_t pid, int32_t page_limit) {
   ReclaimVmMemoryResponse response;
   response.set_success(false);
 
   if (page_limit < 0) {
     LOG(ERROR) << "Invalid negative page_limit " << page_limit;
     response.set_failure_reason("Negative page_limit");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
+
   const std::string path = base::StringPrintf("/proc/%d/reclaim", pid);
   base::ScopedFD fd(
       HANDLE_EINTR(open(path.c_str(), O_WRONLY | O_CLOEXEC | O_NOFOLLOW)));
   if (!fd.is_valid()) {
     LOG(ERROR) << "Failed to open " << path;
     response.set_failure_reason("Failed to open /proc filesystem");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   const std::string reclaim = "shmem";
@@ -879,14 +874,12 @@ std::unique_ptr<dbus::Response> ReclaimVmMemoryInternal(
                 << " bytes_written: " << bytes_written
                 << " attempts: " << attempts;
     response.set_failure_reason("Failed to write to /proc filesystem");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
-  LOG(INFO) << "Successfully reclaimed VM memory. PID=" << pid;
 
+  LOG(INFO) << "Successfully reclaimed VM memory. PID=" << pid;
   response.set_success(true);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 // Determines what classification type this VM has. Classifications are
@@ -4527,9 +4520,6 @@ void Service::ReclaimVmMemory(
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
   dbus::MessageReader reader(method_call);
   ReclaimVmMemoryRequest request;
   ReclaimVmMemoryResponse response;
@@ -4539,16 +4529,12 @@ void Service::ReclaimVmMemory(
     LOG(ERROR) << "Unable to parse ReclaimVmMemoryRequest from message";
     response.set_failure_reason(
         "Unable to parse ReclaimVmMemoryRequest from message");
-    dbus::MessageWriter writer(dbus_response.get());
-    writer.AppendProtoAsArrayOfBytes(response);
-    std::move(response_sender).Run(std::move(dbus_response));
+    SendDbusResponse(std::move(response_sender), method_call, response);
     return;
   }
 
   if (!ValidateVmNameAndOwner(request, response)) {
-    dbus::MessageWriter writer(dbus_response.get());
-    writer.AppendProtoAsArrayOfBytes(response);
-    std::move(response_sender).Run(std::move(dbus_response));
+    SendDbusResponse(std::move(response_sender), method_call, response);
     return;
   }
 
@@ -4556,34 +4542,21 @@ void Service::ReclaimVmMemory(
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
     response.set_failure_reason("Requested VM does not exist");
-    dbus::MessageWriter writer(dbus_response.get());
-    writer.AppendProtoAsArrayOfBytes(response);
-    std::move(response_sender).Run(std::move(dbus_response));
+    SendDbusResponse(std::move(response_sender), method_call, response);
     return;
   }
 
   const pid_t pid = iter->second->GetInfo().pid;
   const auto page_limit = request.page_limit();
   reclaim_thread_.task_runner()->PostTaskAndReplyWithResult(
-      FROM_HERE,
-      base::BindOnce(&ReclaimVmMemoryInternal, pid, page_limit,
-                     std::move(dbus_response)),
-      base::BindOnce(&Service::OnReclaimVmMemory,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     std::move(response_sender)));
-}
-
-void Service::OnReclaimVmMemory(
-    dbus::ExportedObject::ResponseSender response_sender,
-    std::unique_ptr<dbus::Response> dbus_response) {
-  DCHECK(dbus_response);
-  std::move(response_sender).Run(std::move(dbus_response));
+      FROM_HERE, base::BindOnce(&ReclaimVmMemoryInternal, pid, page_limit),
+      base::BindOnce(&SendDbusResponse, std::move(response_sender),
+                     method_call));
 }
 
 void Service::OnResolvConfigChanged(std::vector<string> nameservers,
                                     std::vector<string> search_domains) {
   if (nameservers_ == nameservers && search_domains_ == search_domains) {
-    // Only update guests if the nameservers and search domains changed.
     return;
   }
 

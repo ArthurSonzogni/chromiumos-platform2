@@ -119,7 +119,7 @@ bool IsValidVmName(const std::string& vm_name) {
 
 void SendDbusResponse(dbus::ExportedObject::ResponseSender response_sender,
                       dbus::MethodCall* method_call,
-                      const vm_tools::concierge::StartVmResponse& response) {
+                      const google::protobuf::MessageLite& response) {
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
   dbus::MessageWriter writer(dbus_response.get());

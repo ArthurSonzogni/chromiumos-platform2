@@ -250,8 +250,6 @@ class Service final {
   // Asynchronously handles a request to reclaim memory of a given VM.
   void ReclaimVmMemory(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender);
-  void OnReclaimVmMemory(dbus::ExportedObject::ResponseSender response_sender,
-                         std::unique_ptr<dbus::Response> dbus_response);
 
   // Writes DnsConfigResponse protobuf into DBus message.
   void ComposeDnsResponse(dbus::MessageWriter* writer);

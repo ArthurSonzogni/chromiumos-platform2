@@ -76,7 +76,7 @@ bool IsValidVmName(const std::string& vm_name);
 
 void SendDbusResponse(dbus::ExportedObject::ResponseSender response_sender,
                       dbus::MethodCall* method_call,
-                      const vm_tools::concierge::StartVmResponse& response);
+                      const google::protobuf::MessageLite& response);
 
 // Returns information about the Pflash file associated with a VM. If there is a
 // failure in querying the information then it returns std::nullopt.
