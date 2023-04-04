@@ -86,12 +86,14 @@ const HIBER_VOLUME_FUDGE_BYTES: u64 = SIZE_1G;
 const DM_SNAPSHOT_CHUNK_SIZE: usize = 8;
 
 /// Define the list of logical volumes known to not need a snapshot.
-const NO_SNAPSHOT_LVS: [&str; 5] = [
-    THINPOOL_NAME,
-    HIBERMETA_VOLUME_NAME,
+const NO_SNAPSHOT_LVS: [&str; 6] = [
     "cryptohome-",
+    // DLC LVs are read-only, therefore they don't need snapshots.
+    "dlc_",
     HIBERIMAGE_VOLUME_NAME,
     HIBERINTEGRITY_VOLUME_NAME,
+    HIBERMETA_VOLUME_NAME,
+    THINPOOL_NAME,
 ];
 
 /// Define the size of a volume snapshot.
