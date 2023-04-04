@@ -94,7 +94,7 @@ void MissiveImpl::StartUp(scoped_refptr<dbus::Bus> bus,
     LOG(ERROR) << migration_status.error_message();
   }
   // A safeguard: reporting_storage_dir_ must not be empty upon finishing
-  // construction.
+  // starting up.
   DCHECK(!reporting_storage_dir_.empty());
 
   std::move(upload_client_factory_)
@@ -114,6 +114,8 @@ void MissiveImpl::OnUploadClientCreated(
   upload_client_ = std::move(upload_client_result.ValueOrDie());
   enqueuing_record_tallier_ = std::make_unique<EnqueuingRecordTallier>(
       args_->enqueuing_record_tallier());
+  DCHECK(!reporting_storage_dir_.empty())
+      << "Reporting storage dir must have been set upon startup.";
   analytics_registry_.Add(
       "Storage",
       std::make_unique<analytics::ResourceCollectorStorage>(
