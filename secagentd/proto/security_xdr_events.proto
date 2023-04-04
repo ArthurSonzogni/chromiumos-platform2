@@ -154,13 +154,19 @@ message XdrProcessEvent {
   repeated ProcessEventAtomicVariant batched_events = 4;
 }
 
-// Network Event wrapper.
-message XdrNetworkEvent {
-  optional CommonEventDataFields common = 1;
-  oneof message_type {
+// Singular network event.
+message NetworkEventAtomicVariant {
+  optional CommonEventVariantDataFields common = 1;
+  oneof variant_type {
     NetworkFlowEvent network_flow = 2;
     NetworkSocketListenEvent socket_listen = 3;
   }
+}
+
+// Network Event wrapper.
+message XdrNetworkEvent {
+  optional CommonEventDataFields common = 1;
+  repeated NetworkEventAtomicVariant batched_events = 2;
 }
 
 // Used for Network Events.
