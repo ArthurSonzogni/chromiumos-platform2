@@ -542,10 +542,9 @@ int main(int argc, char** argv) {
     // NOTE: Commas are escaped by "\\" to avoid being processed by lifuse's
     // option parsing code.
     std::string security_context;
-    if (USE_ARCPP) {
+    if (USE_ARC_CONTAINER_P) {
       // In Android P, the security context of directories under /data/media/0
       // is "u:object_r:media_rw_data_file:s0:c512,c768".
-      // TODO(b/259000117): Ensure that Container R is handled correctly.
       security_context = std::string(kMediaRwDataFileContext) + ":c512\\,c768";
     } else {
       // In Android R, the security context of directories under /data/media/0

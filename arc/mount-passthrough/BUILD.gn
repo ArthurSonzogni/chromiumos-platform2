@@ -32,7 +32,7 @@ pkg_config("mount-passthrough_jailed_config") {
 
 executable("mount-passthrough") {
   sources = [ "mount-passthrough.cc" ]
-  defines = [ "USE_ARCPP=${use.arcpp}" ]
+  defines = [ "USE_ARC_CONTAINER_P=${use.android_container_pi}" ]
   configs += [ ":mount-passthrough_config" ]
   install_path = "bin"
 }
@@ -42,7 +42,6 @@ executable("mount-passthrough-jailed") {
     "mount-passthrough-jailed.cc",
     "mount-passthrough-util.cc",
   ]
-  defines = [ "USE_ARCPP=${use.arcpp}" ]
   configs += [ ":mount-passthrough_jailed_config" ]
   install_path = "bin"
 }
