@@ -270,7 +270,7 @@ impl VolumeManager {
     }
 
     /// Create snapshot storage files for all active LVs.
-    pub fn create_lv_snapshot_files(&self) -> Result<()> {
+    fn create_dm_snapshot_cow_files(&self) -> Result<()> {
         let snapshot_dir = snapshot_dir();
         if !snapshot_dir.exists() {
             debug!("Creating snapshot directory");
@@ -330,6 +330,8 @@ impl VolumeManager {
 
     /// Set up dm-snapshots for the stateful LVs.
     pub fn setup_stateful_snapshots(&mut self) -> Result<()> {
+        self.create_dm_snapshot_cow_files()?;
+
         for lv_name in Self::get_snapshot_file_names()? {
             self.setup_snapshot(&lv_name)?;
         }
@@ -1034,7 +1036,7 @@ fn snapshot_file_path(name: &str) -> PathBuf {
 
 /// Return the snapshot directory.
 fn snapshot_dir() -> PathBuf {
-    Path::new(HIBERMETA_DIR).join("snapshots")
+    Path::new("/run/hibernate/snapshots").to_path_buf()
 }
 
 /// Separate a string by whitespace, and return the n-th element, or an error

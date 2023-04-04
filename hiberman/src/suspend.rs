@@ -85,7 +85,6 @@ impl SuspendConductor {
             warn!("Failed to log hibernate attempt: \n {}", e);
         }
 
-        self.volume_manager.create_lv_snapshot_files()?;
         let is_lvm = is_lvm_system()?;
         let files_exist = does_hiberfile_exist();
         let should_zero = is_lvm && !files_exist;
