@@ -86,10 +86,6 @@ class DevicePolicyService : public PolicyService {
   // key can be loaded (policy may not be present yet, which is OK).
   virtual bool Initialize();
 
-  // Given info about whether we were able to load the Owner key and the
-  // device policy, report the state of these files via |metrics_|.
-  virtual void ReportPolicyFileMetrics(bool key_success, bool policy_success);
-
   // Gets feature flags specified in device settings to pass to Chrome on
   // startup.
   virtual std::vector<std::string> GetFeatureFlags();

@@ -63,7 +63,6 @@ class MockDevicePolicyService : public DevicePolicyService {
   MOCK_METHOD(bool, KeyMissing, (), (override));
   MOCK_METHOD(bool, Mitigating, (), (override));
   MOCK_METHOD(bool, Initialize, (), (override));
-  MOCK_METHOD(void, ReportPolicyFileMetrics, (bool, bool), (override));
   MOCK_METHOD(void, ClearBlockDevmode, (Completion), (override));
   MOCK_METHOD(
       bool,

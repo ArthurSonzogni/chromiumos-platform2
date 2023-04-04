@@ -14,12 +14,6 @@
 
 namespace login_manager {
 
-namespace {
-
-const char kPrefsFileName[] = "preferences";
-
-}  // namespace
-
 PolicyStore::PolicyStore(const base::FilePath& policy_path)
     : PolicyStore(policy_path, /*is_resilient=*/false) {}
 
@@ -27,10 +21,6 @@ PolicyStore::PolicyStore(const base::FilePath& policy_path, bool is_resilient)
     : policy_path_(policy_path), is_resilient_store_(is_resilient) {}
 
 PolicyStore::~PolicyStore() {}
-
-bool PolicyStore::DefunctPrefsFilePresent() {
-  return base::PathExists(policy_path_.DirName().Append(kPrefsFileName));
-}
 
 bool PolicyStore::EnsureLoadedOrCreated() {
   if (load_result_ == NOT_LOADED)

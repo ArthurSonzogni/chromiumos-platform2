@@ -38,13 +38,11 @@ const char kArcContinueBootImpulseTime3Metric[] =
 const char kArcContinueBootImpulseStatus[] =
     "Login.ArcContinueBootImpulseStatus";
 
-const char kLoginPolicyFilesMetric[] = "Login.PolicyFilesStatePerBoot";
 const char kLoginUserTypeMetric[] = "Login.UserType";
 const char kLoginStateKeyGenerationStatus[] = "Login.StateKeyGenerationStatus";
 const char kSessionExitTypeMetric[] = "Login.SessionExitType";
 const char kInvalidDevicePolicyFilesStatus[] =
     "Enterprise.InvalidDevicePolicyFilesStatus";
-const int kMaxPolicyFilesValue = 64;
 const char kLoginMetricsFlagFile[] = "per_boot_flag";
 const char kMetricsDir[] = "/var/lib/metrics";
 
@@ -60,13 +58,6 @@ const char kLivenessPingResponseTimeMetric[] =
 const char kLivenessPingResultMetric[] = "ChromeOS.Liveness.PingResult";
 
 }  // namespace
-
-// static
-int LoginMetrics::PolicyFilesStatusCode(const PolicyFilesStatus& status) {
-  return (status.owner_key_file_state * 16 /*    4^2 */ +
-          status.policy_file_state * 4 /*        4^1 */ +
-          status.defunct_prefs_file_state * 1 /* 4^0 */);
-}
 
 LoginMetrics::LoginMetrics(const base::FilePath& per_boot_flag_dir)
     : per_boot_flag_file_(per_boot_flag_dir.Append(kLoginMetricsFlagFile)) {
@@ -92,18 +83,6 @@ void LoginMetrics::SendLoginUserType(bool dev_mode,
                                      bool owner) {
   int uma_code = LoginUserTypeCode(dev_mode, incognito, owner);
   metrics_lib_.SendEnumToUMA(kLoginUserTypeMetric, uma_code, NUM_TYPES);
-}
-
-bool LoginMetrics::SendPolicyFilesStatus(const PolicyFilesStatus& status) {
-  if (!base::PathExists(per_boot_flag_file_)) {
-    metrics_lib_.SendEnumToUMA(kLoginPolicyFilesMetric,
-                               LoginMetrics::PolicyFilesStatusCode(status),
-                               kMaxPolicyFilesValue);
-    bool created = base::WriteFile(per_boot_flag_file_, "", 0) == 0;
-    PLOG_IF(WARNING, !created) << "Can't touch " << per_boot_flag_file_.value();
-    return true;
-  }
-  return false;
 }
 
 void LoginMetrics::SendStateKeyGenerationStatus(

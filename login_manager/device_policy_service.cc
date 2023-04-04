@@ -216,7 +216,6 @@ bool DevicePolicyService::Initialize() {
       PersistKey();
   }
 
-  ReportPolicyFileMetrics(key_success, policy_success);
   return key_success;
 }
 
@@ -242,40 +241,6 @@ bool DevicePolicyService::Store(const PolicyNamespace& ns,
   }
   return PolicyService::Store(ns, policy_blob, key_flags, signature_check,
                               std::move(completion));
-}
-
-void DevicePolicyService::ReportPolicyFileMetrics(bool key_success,
-                                                  bool policy_success) {
-  LoginMetrics::PolicyFilesStatus status;
-  if (!key_success) {  // Key load failed.
-    status.owner_key_file_state = LoginMetrics::MALFORMED;
-  } else {
-    if (key()->IsPopulated()) {
-      if (nss_->CheckPublicKeyBlob(key()->public_key_der()))
-        status.owner_key_file_state = LoginMetrics::GOOD;
-      else
-        status.owner_key_file_state = LoginMetrics::MALFORMED;
-    } else {
-      status.owner_key_file_state = LoginMetrics::NOT_PRESENT;
-    }
-  }
-
-  if (!policy_success) {
-    status.policy_file_state = LoginMetrics::MALFORMED;
-  } else {
-    std::string serialized;
-    if (!GetChromeStore()->Get().SerializeToString(&serialized))
-      status.policy_file_state = LoginMetrics::MALFORMED;
-    else if (serialized == "")
-      status.policy_file_state = LoginMetrics::NOT_PRESENT;
-    else
-      status.policy_file_state = LoginMetrics::GOOD;
-  }
-
-  if (GetChromeStore()->DefunctPrefsFilePresent())
-    status.defunct_prefs_file_state = LoginMetrics::GOOD;
-
-  metrics_->SendPolicyFilesStatus(status);
 }
 
 std::vector<std::string> DevicePolicyService::GetFeatureFlags() {

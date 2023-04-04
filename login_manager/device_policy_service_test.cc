@@ -291,46 +291,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
   bool IsResilient() { return service_->IsChromeStoreResilientForTesting(); }
 
-  LoginMetrics::PolicyFileState SimulateNullPolicy() {
-    EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(new_policy_proto_));
-    return LoginMetrics::NOT_PRESENT;
-  }
-
-  LoginMetrics::PolicyFileState SimulateGoodPolicy() {
-    InitEmptyPolicy(owner_, fake_sig_, "");
-    EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
-    return LoginMetrics::GOOD;
-  }
-
-  LoginMetrics::PolicyFileState SimulateNullPrefs() {
-    EXPECT_CALL(*store_, DefunctPrefsFilePresent()).WillOnce(Return(false));
-    return LoginMetrics::NOT_PRESENT;
-  }
-
-  LoginMetrics::PolicyFileState SimulateExtantPrefs() {
-    EXPECT_CALL(*store_, DefunctPrefsFilePresent()).WillOnce(Return(true));
-    return LoginMetrics::GOOD;
-  }
-
-  LoginMetrics::PolicyFileState SimulateNullOwnerKey() {
-    EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
-    return LoginMetrics::NOT_PRESENT;
-  }
-
-  LoginMetrics::PolicyFileState SimulateBadOwnerKey(MockNssUtil* nss) {
-    EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
-    EXPECT_CALL(*nss, CheckPublicKeyBlob(fake_key_))
-        .WillRepeatedly(Return(false));
-    return LoginMetrics::MALFORMED;
-  }
-
-  LoginMetrics::PolicyFileState SimulateGoodOwnerKey(MockNssUtil* nss) {
-    EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
-    EXPECT_CALL(*nss, CheckPublicKeyBlob(fake_key_))
-        .WillRepeatedly(Return(true));
-    return LoginMetrics::GOOD;
-  }
-
   bool PolicyAllowsNewUsers(const em::ChromeDeviceSettingsProto settings) {
     InitPolicy(settings, owner_, fake_sig_, "");
     return DevicePolicyService::PolicyAllowsNewUsers(policy_proto_);
@@ -963,105 +923,6 @@ TEST_F(DevicePolicyServiceTest, KeyMissing_CheckedAndMissing) {
   EXPECT_TRUE(service_->KeyMissing());
 }
 
-TEST_F(DevicePolicyServiceTest, Metrics_NoKeyNoPolicyNoPrefs) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  LoginMetrics::PolicyFilesStatus status;
-  status.owner_key_file_state = SimulateNullOwnerKey();
-  status.policy_file_state = SimulateNullPolicy();
-  status.defunct_prefs_file_state = SimulateNullPrefs();
-
-  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(StatusEq(status)))
-      .Times(1);
-  service_->ReportPolicyFileMetrics(true, true);
-}
-
-TEST_F(DevicePolicyServiceTest, Metrics_UnloadableKeyNoPolicyNoPrefs) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  LoginMetrics::PolicyFilesStatus status;
-  status.owner_key_file_state = LoginMetrics::MALFORMED;
-  status.policy_file_state = SimulateNullPolicy();
-  status.defunct_prefs_file_state = SimulateNullPrefs();
-
-  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(StatusEq(status)))
-      .Times(1);
-  service_->ReportPolicyFileMetrics(false, true);
-}
-
-TEST_F(DevicePolicyServiceTest, Metrics_BadKeyNoPolicyNoPrefs) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  LoginMetrics::PolicyFilesStatus status;
-  status.owner_key_file_state = SimulateBadOwnerKey(&nss);
-  status.policy_file_state = SimulateNullPolicy();
-  status.defunct_prefs_file_state = SimulateNullPrefs();
-
-  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(StatusEq(status)))
-      .Times(1);
-  service_->ReportPolicyFileMetrics(true, true);
-}
-
-TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyNoPolicyNoPrefs) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  LoginMetrics::PolicyFilesStatus status;
-  status.owner_key_file_state = SimulateGoodOwnerKey(&nss);
-  status.policy_file_state = SimulateNullPolicy();
-  status.defunct_prefs_file_state = SimulateNullPrefs();
-
-  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(StatusEq(status)))
-      .Times(1);
-  service_->ReportPolicyFileMetrics(true, true);
-}
-
-TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyUnloadablePolicyNoPrefs) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  LoginMetrics::PolicyFilesStatus status;
-  status.owner_key_file_state = SimulateGoodOwnerKey(&nss);
-  status.policy_file_state = LoginMetrics::MALFORMED;
-  status.defunct_prefs_file_state = SimulateNullPrefs();
-
-  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(StatusEq(status)))
-      .Times(1);
-  service_->ReportPolicyFileMetrics(true, false);
-}
-
-TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyGoodPolicyNoPrefs) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  LoginMetrics::PolicyFilesStatus status;
-  status.owner_key_file_state = SimulateGoodOwnerKey(&nss);
-  status.policy_file_state = SimulateGoodPolicy();
-  status.defunct_prefs_file_state = SimulateNullPrefs();
-
-  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(StatusEq(status)))
-      .Times(1);
-  service_->ReportPolicyFileMetrics(true, true);
-}
-
-TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyNoPolicyExtantPrefs) {
-  // This is http://crosbug.com/24361
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  LoginMetrics::PolicyFilesStatus status;
-  status.owner_key_file_state = SimulateGoodOwnerKey(&nss);
-  status.policy_file_state = SimulateNullPolicy();
-  status.defunct_prefs_file_state = SimulateExtantPrefs();
-
-  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(StatusEq(status)))
-      .Times(1);
-  service_->ReportPolicyFileMetrics(true, true);
-}
-
 TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
   MockNssUtil nss;
   InitService(&nss, true);
@@ -1074,8 +935,6 @@ TEST_F(DevicePolicyServiceTest, RecoverOwnerKeyFromPolicy) {
   EXPECT_CALL(key_, Persist()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, EnsureLoadedOrCreated()).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
-  EXPECT_CALL(*store_, DefunctPrefsFilePresent()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(_)).Times(AnyNumber());
 
   em::ChromeDeviceSettingsProto settings;
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));

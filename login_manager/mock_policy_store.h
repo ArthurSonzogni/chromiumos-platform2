@@ -12,7 +12,6 @@ class MockPolicyStore : public PolicyStore {
  public:
   MockPolicyStore();
   ~MockPolicyStore() override;
-  MOCK_METHOD(bool, DefunctPrefsFilePresent, (), (override));
   MOCK_METHOD(bool, EnsureLoadedOrCreated, (), (override));
   MOCK_METHOD(const enterprise_management::PolicyFetchResponse&,
               Get,

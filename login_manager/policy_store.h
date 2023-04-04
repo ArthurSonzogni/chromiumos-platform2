@@ -33,8 +33,6 @@ class PolicyStore {
 
   virtual ~PolicyStore();
 
-  virtual bool DefunctPrefsFilePresent();
-
   // Call LoadOrCreate() if it hasn't been called already. Returns the
   // (possibly cached) result from the LoadOrCreate() call.
   virtual bool EnsureLoadedOrCreated();
