@@ -175,7 +175,7 @@ impl VolumeManager {
     }
 
     /// Change the RO thinpool to be RW.
-    fn make_thinpool_rw(&mut self) -> Result<()> {
+    pub fn make_thinpool_rw(&mut self) -> Result<()> {
         self.set_thinpool_mode(ThinpoolMode::ReadWrite)
             .context("Failed to make thin-pool RW")
     }

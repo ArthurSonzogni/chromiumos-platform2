@@ -106,9 +106,14 @@ impl ResumeConductor {
         if let Err(e) = self.decide_to_resume(pending_merge) {
             // No resume from hibernate
 
+            let mut volume_manager = VolumeManager::new()?;
+
+            // Make sure the thinpool is writable before removing the LVs.
+            volume_manager.make_thinpool_rw()?;
+
             // Remove hiberimage volumes if they exist to release allocated
             // storage to the thinpool.
-            VolumeManager::new()?.teardown_hiberimage()?;
+            volume_manager.teardown_hiberimage()?;
 
             // Set up the snapshot device for future hibernates
             self.setup_snapshot_device(true)?;

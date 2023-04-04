@@ -21,7 +21,6 @@ use std::time::Duration;
 
 use anyhow::Context;
 use anyhow::Result;
-use libc;
 use libc::c_ulong;
 use libc::c_void;
 use libchromeos::sys::syscall;
