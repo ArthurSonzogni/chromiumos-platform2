@@ -13,7 +13,6 @@ use dbus::{
     blocking::Connection,
 };
 use libchromeos::sys::error;
-use std::net::Ipv4Addr;
 use system_api::client::OrgChromiumFlimflamManager;
 use system_api::client::OrgChromiumFlimflamService;
 
@@ -256,7 +255,6 @@ const PROPERTY_PEER_ALLOWED_IPS: &str = "AllowedIPs";
 const PROPERTY_PEER_PERSISTENT_KEEPALIVE: &str = "PersistentKeepalive";
 
 // Property names in "StaticIPConfig"
-const PROPERTY_ADDRESS: &str = "Address";
 const PROPERTY_NAME_SERVERS: &str = "NameServers";
 const PROPERTY_MTU: &str = "Mtu";
 
@@ -301,12 +299,8 @@ impl WireGuardService {
         // The value of the "Provider" property is a map. Translates it into a HashMap at first.
         let provider_properties = service_properties.get_inner_prop_map("Provider")?;
 
-        // Read local ip from both Provider.WireGuardIPAddress, and also StaticIPConfig if the
-        // previous one is empty, for backward compatibility.
-        let mut local_ips = provider_properties.get_strings(PROPERTY_WIREGUARD_IP_ADDRESS)?;
-
-        // Reads address, dns servers, and mtu from StaticIPConfig. This property and all the
-        // sub-properties could be empty.
+        // Reads dns servers, and mtu from StaticIPConfig. This property and all the sub-properties
+        // could be empty.
         let mut mtu = None;
         let mut name_servers = None;
         if let Ok(props) = service_properties.get_inner_prop_map(PROPERTY_STATIC_IP_CONFIG) {
@@ -314,11 +308,6 @@ impl WireGuardService {
             // should not happen if shill is working correctly so we use ok() here for simplicity.
             name_servers = props.get_strings(PROPERTY_NAME_SERVERS).ok();
             mtu = props.get_i32(PROPERTY_MTU).ok();
-            if local_ips.is_empty() {
-                if let Ok(v) = props.get_string(PROPERTY_ADDRESS) {
-                    local_ips = vec![v]
-                }
-            }
         }
 
         if provider_properties.get_str(PROPERTY_TYPE)? != TYPE_WIREGUARD {
@@ -328,7 +317,7 @@ impl WireGuardService {
         let ret = WireGuardService {
             path: None,
             name: service_name.to_string(),
-            local_ips,
+            local_ips: provider_properties.get_strings(PROPERTY_WIREGUARD_IP_ADDRESS)?,
             private_key: None,
             public_key: provider_properties.get_string(PROPERTY_WIREGUARD_PUBLIC_KEY)?,
             mtu,
@@ -373,13 +362,6 @@ impl WireGuardService {
         let mut insert_ip_field = |k: &str, v: Box<dyn RefArg>| {
             static_ip_properties.insert(k.to_string(), Variant(v));
         };
-        // TODO(b/262662603): Still write the IPv4 address back to StaticIPConfig, so that Chrome
-        // can handle that properly. Note that this will not affect the correctness in shill, as
-        // long as the address written is the same as the IPv4 one in WireGuard.IPAddress. Can be
-        // removed once the work in Chrome is done.
-        if let Some(v) = self.get_local_ipv4() {
-            insert_ip_field(PROPERTY_ADDRESS, Box::new(v));
-        }
         if let Some(name_servers) = &self.name_servers {
             insert_ip_field(PROPERTY_NAME_SERVERS, Box::new(name_servers.clone()));
         } else {
@@ -428,14 +410,6 @@ impl WireGuardService {
         );
 
         properties
-    }
-
-    // Returns the local IPv4 address, if it exists.
-    fn get_local_ipv4(&self) -> Option<String> {
-        self.local_ips
-            .iter()
-            .find(|x| x.parse::<Ipv4Addr>().is_ok())
-            .cloned()
     }
 
     // Updates the service by |args| from `wireguard set` command. If `private-key` or
@@ -1059,7 +1033,6 @@ mod tests {
             let args = ["local-ip", c.0];
             actual.update_from_args(&args, "".as_bytes()).unwrap();
             assert_eq!(expected, actual);
-            assert_eq!(c.1, actual.get_local_ipv4())
         }
     }
 
