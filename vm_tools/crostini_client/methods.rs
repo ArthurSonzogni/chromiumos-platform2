@@ -250,6 +250,7 @@ fn dbus_message_to_proto<T: ProtoMessage>(message: &Message) -> Result<T, Box<dy
 #[derive(Default)]
 pub struct VmFeatures {
     pub gpu: bool,
+    pub dgpu_passthrough: bool,
     pub vulkan: bool,
     pub big_gl: bool,
     pub virtgpu_native_context: bool,
@@ -1290,6 +1291,7 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
         request.vm_username = username.to_owned();
         request.enable_gpu = features.gpu;
+        request.enable_dgpu_passthrough = features.dgpu_passthrough;
         request.enable_vulkan = features.vulkan;
         request.enable_big_gl = features.big_gl;
         request.enable_virtgpu_native_context = features.virtgpu_native_context;

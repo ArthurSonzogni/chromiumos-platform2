@@ -204,6 +204,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         opts.optflag("", "enable-gpu", "when starting the vm, enable gpu support");
         opts.optflag(
             "",
+            "enable-dgpu-passthrough",
+            "when starting the VM, enable discrete GPU passthrough support",
+        );
+        opts.optflag(
+            "",
             "enable-vulkan",
             "when starting the vm, enable vulkan support (implies --enable-gpu)",
         );
@@ -322,6 +327,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let big_gl = matches.opt_present("enable-big-gl");
         let virtgpu_native_context = matches.opt_present("enable-virtgpu-native-context");
         let gpu = virtgpu_native_context || big_gl || vulkan || matches.opt_present("enable-gpu");
+        let dgpu_passthrough = matches.opt_present("enable-dgpu-passthrough");
         let timeout = matches
             .opt_str("timeout")
             .map(|x| x.parse())
@@ -330,6 +336,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 
         let features = VmFeatures {
             gpu,
+            dgpu_passthrough,
             vulkan,
             big_gl,
             virtgpu_native_context,
@@ -997,7 +1004,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 }
 
 const USAGE: &str = r#"
-   [ start [--enable-gpu] [--enable-vulkan] [--enable-big-gl] [--enable-virtgpu-native-context] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] [--timeout PARAM] [--oem-string STRING] <name> |
+   [ start [--enable-gpu] [--enable-dgpu-passthrough] [--enable-vulkan] [--enable-big-gl] [--enable-virtgpu-native-context] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] [--timeout PARAM] [--oem-string STRING] <name> |
      stop <name> |
      launch <name> |
      create [-p] [--size SIZE] <name> [<source media> [<removable storage name>]] [-- additional parameters] |
