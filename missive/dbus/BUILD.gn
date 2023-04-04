@@ -80,10 +80,23 @@ static_library("upload_client_impl") {
   ]
 }
 
+static_library("test_environment") {
+  sources = [
+    "dbus_test_environment.cc",
+    "dbus_test_environment.h",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/util:status",
+  ]
+}
+
 static_library("test_support") {
   sources = [ "mock_upload_client.h" ]
   configs += [ ":target_defaults" ]
   deps = [
+    ":test_environment",
     ":upload_client",
     "//missive/proto:libmissiveprotorecord",
     "//missive/util:status",

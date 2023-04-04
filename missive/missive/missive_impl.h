@@ -115,7 +115,6 @@ class MissiveImpl : public MissiveService {
 
   base::FilePath reporting_storage_dir_ GUARDED_BY_CONTEXT(sequence_checker_);
 
-  scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
 
   scoped_refptr<UploadClient> upload_client_

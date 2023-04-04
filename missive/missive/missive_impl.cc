@@ -10,9 +10,10 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/bind_post_task.h>
 #include <base/time/time.h>
 
 #include "missive/analytics/metrics.h"
@@ -78,8 +79,6 @@ MissiveImpl::~MissiveImpl() {
 
 void MissiveImpl::StartUp(scoped_refptr<dbus::Bus> bus,
                           base::OnceCallback<void(Status)> cb) {
-  DCHECK(!sequenced_task_runner_) << "Can be set only once";
-  sequenced_task_runner_ = base::SequencedTaskRunnerHandle::Get();
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   analytics::Metrics::Initialize();
 
@@ -99,8 +98,7 @@ void MissiveImpl::StartUp(scoped_refptr<dbus::Bus> bus,
   DCHECK(!reporting_storage_dir_.empty());
 
   std::move(upload_client_factory_)
-      .Run(bus, base::BindPostTask(
-                    sequenced_task_runner_,
+      .Run(bus, base::BindPostTaskToCurrentDefault(
                     base::BindOnce(&MissiveImpl::OnUploadClientCreated,
                                    GetWeakPtr(), std::move(cb))));
 }
@@ -135,8 +133,7 @@ void MissiveImpl::OnUploadClientCreated(
           args_->memory_collector_interval(), std::move(memory_resource)));
   std::move(create_storage_factory_)
       .Run(this, std::move(storage_options),
-           base::BindPostTask(
-               sequenced_task_runner_,
+           base::BindPostTaskToCurrentDefault(
                base::BindOnce(&MissiveImpl::OnStorageModuleConfigured,
                               GetWeakPtr(), std::move(cb))));
 }
@@ -149,10 +146,10 @@ Status MissiveImpl::ShutDown() {
 void MissiveImpl::CreateStorage(
     StorageOptions storage_options,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   StorageModule::Create(
       std::move(storage_options),
-      base::BindPostTask(
-          sequenced_task_runner_,
+      base::BindPostTaskToCurrentDefault(
           base::BindRepeating(&MissiveImpl::AsyncStartUpload, GetWeakPtr())),
       EncryptionModule::Create(),
       CompressionModule::Create(kCompressionThreshold, kCompressionType),
@@ -256,11 +253,9 @@ void MissiveImpl::FlushPriority(
         brillo::dbus_utils::DBusMethodResponse<FlushPriorityResponse>>
         out_response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  storage_module_->Flush(
-      in_request.priority(),
-      base::BindPostTask(
-          base::SequencedTaskRunnerHandle::Get(),
-          base::BindOnce(&HandleFlushResponse, std::move(out_response))));
+  storage_module_->Flush(in_request.priority(),
+                         base::BindPostTaskToCurrentDefault(base::BindOnce(
+                             &HandleFlushResponse, std::move(out_response))));
 }
 
 void MissiveImpl::ConfirmRecordUpload(

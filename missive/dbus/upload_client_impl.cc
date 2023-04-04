@@ -64,25 +64,25 @@ void UploadClient::Create(
       FROM_HERE,
       base::BindOnce(
           [](scoped_refptr<dbus::Bus> bus,
-             base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
+             base::OnceCallback<void(StatusOr<scoped_refptr<UploadClientImpl>>)>
                  cb) {
             bus->AssertOnOriginThread();
             dbus::ObjectProxy* chrome_proxy = bus->GetObjectProxy(
                 chromeos::kChromeReportingServiceName,
                 dbus::ObjectPath(chromeos::kChromeReportingServicePath));
             CHECK(chrome_proxy);
-            // Callback needs conversion of the result from UploadClientImpl to
-            // UplocalClient.
-            auto impl_cb = base::BindOnce(
-                [](base::OnceCallback<void(
-                       StatusOr<scoped_refptr<UploadClient>>)> cb,
-                   StatusOr<scoped_refptr<UploadClientImpl>> result) {
-                  std::move(cb).Run(std::move(result));
-                },
-                std::move(cb));
-            UploadClientImpl::Create(bus, chrome_proxy, std::move(impl_cb));
+            UploadClientImpl::Create(bus, chrome_proxy, std::move(cb));
           },
-          bus, std::move(cb)));
+          bus,
+          // Callback needs conversion of the result from UploadClientImpl to
+          // UplocalClient.
+          base::BindOnce(
+              [](base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
+                     cb,
+                 StatusOr<scoped_refptr<UploadClientImpl>> result) {
+                std::move(cb).Run(std::move(result));
+              },
+              std::move(cb))));
 }
 
 // static

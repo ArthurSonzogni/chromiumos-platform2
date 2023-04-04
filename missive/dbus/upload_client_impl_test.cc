@@ -23,6 +23,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/dbus/dbus_test_environment.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/test_support_callbacks.h"
@@ -43,47 +44,17 @@ namespace {
 class UploadClientTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    dbus_task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
-        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
-
-    test::TestEvent<scoped_refptr<NiceMock<dbus::MockBus>>> dbus_waiter;
-    dbus_task_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce(&UploadClientTest::CreateMockDBus, dbus_waiter.cb()));
-    mock_bus_ = dbus_waiter.result();
-
-    EXPECT_CALL(*mock_bus_, GetDBusTaskRunner())
-        .WillRepeatedly(Return(dbus_task_runner_.get()));
-
-    EXPECT_CALL(*mock_bus_, GetOriginTaskRunner())
-        .WillRepeatedly(Return(dbus_task_runner_.get()));
-
-    EXPECT_CALL(*mock_bus_, Connect())
+    EXPECT_CALL(*dbus_test_environment_.mock_bus(), Connect())
         .Times(AtLeast(1))
         .WillRepeatedly(Return(true));
 
-    EXPECT_CALL(*mock_bus_, SetUpAsyncOperations())
+    EXPECT_CALL(*dbus_test_environment_.mock_bus(), SetUpAsyncOperations())
         .Times(AtLeast(1))
         .WillRepeatedly(Return(true));
-
-    // We actually want AssertOnOriginThread and AssertOnDBusThread to work
-    // properly (actually assert they are on dbus_thread_). If the unit tests
-    // end up creating calls on the wrong thread, the unit test will just hang
-    // anyways, and it's easier to debug if we make the program crash at that
-    // point. Since these are ON_CALLs, VerifyAndClearMockExpectations doesn't
-    // clear them.
-    ON_CALL(*mock_bus_, AssertOnOriginThread())
-        .WillByDefault(Invoke(this, &UploadClientTest::AssertOnDBusThread));
-    ON_CALL(*mock_bus_, AssertOnDBusThread())
-        .WillByDefault(Invoke(this, &UploadClientTest::AssertOnDBusThread));
-
-    mock_chrome_proxy_ =
-        base::WrapRefCounted(new NiceMock<dbus::MockObjectProxy>(
-            mock_bus_.get(), chromeos::kChromeReportingServiceName,
-            dbus::ObjectPath(chromeos::kChromeReportingServicePath)));
 
     test::TestEvent<StatusOr<scoped_refptr<UploadClientImpl>>> client_waiter;
-    UploadClientImpl::Create(mock_bus_, mock_chrome_proxy_.get(),
+    UploadClientImpl::Create(dbus_test_environment_.mock_bus(),
+                             dbus_test_environment_.mock_chrome_proxy().get(),
                              client_waiter.cb());
     auto client_result = client_waiter.result();
     ASSERT_OK(client_result) << client_result.status();
@@ -99,24 +70,8 @@ class UploadClientTest : public ::testing::Test {
     task_environment_.RunUntilIdle();
   }
 
-  static void CreateMockDBus(
-      base::OnceCallback<void(scoped_refptr<NiceMock<dbus::MockBus>>)>
-          ready_cb) {
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    std::move(ready_cb).Run(base::WrapRefCounted<NiceMock<dbus::MockBus>>(
-        new NiceMock<dbus::MockBus>(options)));
-  }
-
-  void AssertOnDBusThread() {
-    ASSERT_TRUE(dbus_task_runner_->RunsTasksInCurrentSequence());
-  }
-
   base::test::TaskEnvironment task_environment_;
-
-  scoped_refptr<base::SequencedTaskRunner> dbus_task_runner_;
-  scoped_refptr<NiceMock<dbus::MockBus>> mock_bus_;
-  scoped_refptr<NiceMock<dbus::MockObjectProxy>> mock_chrome_proxy_;
+  test::DBusTestEnvironment dbus_test_environment_;
   scoped_refptr<UploadClientImpl> upload_client_;
 };
 
@@ -151,7 +106,8 @@ TEST_F(UploadClientTest, SuccessfulCall) {
   // the test.
   std::unique_ptr<dbus::Response> dbus_response = dbus::Response::CreateEmpty();
 
-  EXPECT_CALL(*mock_chrome_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*dbus_test_environment_.mock_chrome_proxy(),
+              DoCallMethod(_, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke([&encrypted_record, &dbus_response](
                                           dbus::MethodCall* call,
                                           dbus::ObjectProxy::ResponseCallback*
@@ -224,7 +180,9 @@ TEST_F(UploadClientTest, CallUnavailable) {
   // the test.
   std::unique_ptr<dbus::Response> dbus_response = dbus::Response::CreateEmpty();
 
-  EXPECT_CALL(*mock_chrome_proxy_, DoCallMethod(_, _, _)).Times(0);
+  EXPECT_CALL(*dbus_test_environment_.mock_chrome_proxy(),
+              DoCallMethod(_, _, _))
+      .Times(0);
 
   upload_client_->SendEncryptedRecords(
       std::vector<EncryptedRecord>(1, encrypted_record),
@@ -261,7 +219,8 @@ TEST_F(UploadClientTest, CallBecameUnavailable) {
   sequence_information->set_priority(kPriority);
 
   dbus::ObjectProxy::ResponseCallback delayed_response_cb;
-  EXPECT_CALL(*mock_chrome_proxy_, DoCallMethod(_, _, _))
+  EXPECT_CALL(*dbus_test_environment_.mock_chrome_proxy(),
+              DoCallMethod(_, _, _))
       .WillOnce(WithArg<2>(
           Invoke([&delayed_response_cb](
                      dbus::ObjectProxy::ResponseCallback* response_cb) {

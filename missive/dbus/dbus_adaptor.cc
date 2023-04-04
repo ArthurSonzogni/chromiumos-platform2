@@ -45,9 +45,8 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
       failure_cb_(std::move(failure_cb)) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   missive_->StartUp(
-      bus, base::BindPostTask(base::SequencedTaskRunnerHandle::Get(),
-                              base::BindOnce(&DBusAdaptor::StartupFinished,
-                                             weak_ptr_factory_.GetWeakPtr())));
+      bus, base::BindPostTaskToCurrentDefault(base::BindOnce(
+               &DBusAdaptor::StartupFinished, weak_ptr_factory_.GetWeakPtr())));
 }
 
 void DBusAdaptor::StartupFinished(Status status) {
