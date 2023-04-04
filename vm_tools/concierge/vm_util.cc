@@ -56,7 +56,7 @@ constexpr char kUringAsyncExecutorString[] = "uring";
 constexpr char kEpollAsyncExecutorString[] = "epoll";
 
 constexpr char kSchedulerTunePath[] = "/scheduler-tune";
-constexpr char kBoostUrgentProperty[] = "boost-urgent";
+constexpr char kBoostTopAppProperty[] = "boost-top-app";
 
 std::string BooleanParameter(const char* parameter, bool value) {
   std::string result = base::StrCat({parameter, value ? "true" : "false"});
@@ -637,14 +637,16 @@ void ArcVmCPUTopology::CreateAffinity(void) {
     top_app_uclamp_min_ = std::min(min_cap * 100 / kMaxCapacity + 5, 100);
   }
   // Allow boards to override the top_app_uclamp_min by scheduler-tune/
-  // boost-urgent.
+  // boost-top-app.
   brillo::CrosConfig cros_config;
-  std::string boost_urgent;
-  if (cros_config.GetString(kSchedulerTunePath, kBoostUrgentProperty,
-                            &boost_urgent)) {
+  std::string boost;
+  if (cros_config.GetString(kSchedulerTunePath, kBoostTopAppProperty, &boost)) {
     int uclamp_min;
-    if (base::StringToInt(boost_urgent, &uclamp_min))
+    if (base::StringToInt(boost, &uclamp_min))
       top_app_uclamp_min_ = uclamp_min;
+    else
+      LOG(WARNING) << "Failed to convert value of " << kSchedulerTunePath << "/"
+                   << kBoostTopAppProperty << " to number";
   }
 
   for (const auto& pkg : package_) {
