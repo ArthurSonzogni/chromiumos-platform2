@@ -474,13 +474,6 @@ fn reboot_system() -> Result<()> {
     checked_command(&mut Command::new("/sbin/reboot")).context("Failed to reboot system")
 }
 
-/// Invoke initctl to fire off an upstart event.
-pub fn emit_upstart_event(name: &str) -> Result<()> {
-    debug!("Emitting upstart event: {}", name);
-    checked_command(Command::new("/sbin/initctl").args(["emit", "--no-wait", name]))
-        .context("Failed to create initctl command")
-}
-
 pub fn mount_filesystem<P: AsRef<OsStr>>(
     block_device: P,
     mountpoint: P,
