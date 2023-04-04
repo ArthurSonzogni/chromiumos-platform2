@@ -7376,6 +7376,7 @@ mno {
     mccmnc : "44069"
     mccmnc : "44087"
     mccmnc : "44099"
+    tethering_allowed: true
     mobile_apn {
       apn : "spmode.ne.jp"
       localized_name {
@@ -7458,6 +7459,7 @@ mno {
       name : "SoftBank"
     }
     mccmnc : "44020"
+    tethering_allowed: true
     mobile_apn {
       apn_filter {
         type: IMSI
@@ -7550,6 +7552,7 @@ mno {
     mccmnc : "44088"
     mccmnc : "44089"
     mccmnc : "44170"
+    tethering_allowed: true
     mobile_apn {
       apn : "au.au-net.ne.jp"
       localized_name {
@@ -7602,6 +7605,7 @@ mno {
       name : "楽天(rakuten.jp)"
     }
     mccmnc : "44011"
+    tethering_allowed: true
     mobile_apn {
       apn : "rakuten.jp"
       localized_name {
@@ -14466,6 +14470,7 @@ mvno {
     localized_name {
       name : "楽天(rakuten.jp)"
     }
+    tethering_allowed: true
     mobile_apn {
       apn : "rakuten.jp"
       localized_name {
