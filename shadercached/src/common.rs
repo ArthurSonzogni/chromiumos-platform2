@@ -19,6 +19,8 @@ pub const UNMOUNTER_INTERVAL: Duration = Duration::from_millis(1000);
 lazy_static! {
     pub static ref GPU_DEVICE_ID: u16 = get_gpu_device_id().unwrap_or(0);
     pub static ref GPU_DEVICE_DLC_VARIANT: &'static str = {
+        // These suffixes are non-technical names to create buckets for each
+        // device id variants per board.
         const DLC_VARIANT_AXE: &str = "-axe";
         const DLC_VARIANT_BATRIDER: &str = "-batrider";
         const DLC_VARIANT_CLINKZ: &str = "-clinkz";
@@ -37,9 +39,8 @@ lazy_static! {
         ]);
 
         // If no device id is detected or not found in |variant_mapping|,
-        // shadercached should attempt to install variant-less DLC (ie. no
-        // DLC suffix)
-        variant_mapping.get(&*GPU_DEVICE_ID).unwrap_or(&"")
+        // shadercached should attempt to install axe variant.
+        variant_mapping.get(&*GPU_DEVICE_ID).unwrap_or(&DLC_VARIANT_AXE)
     };
 
     pub static ref BOOT_ID: String = {
@@ -120,23 +121,27 @@ mod tests {
     fn test_steam_app_id_to_dlc() {
         assert_eq!(
             super::steam_app_id_to_dlc(32),
-            "borealis-shader-cache-32-dlc"
+            "borealis-shader-cache-32-dlc-axe"
         );
         assert_eq!(
             super::steam_app_id_to_dlc(123),
-            "borealis-shader-cache-123-dlc"
+            "borealis-shader-cache-123-dlc-axe"
         );
         assert_eq!(
             super::steam_app_id_to_dlc(0000),
-            "borealis-shader-cache-0-dlc"
+            "borealis-shader-cache-0-dlc-axe"
         );
     }
 
     #[test]
     fn test_dlc_to_steam_app_id() {
         assert_eq!(
-            super::dlc_to_steam_app_id("borealis-shader-cache-32-dlc").unwrap(),
+            super::dlc_to_steam_app_id("borealis-shader-cache-32-dlc-axe").unwrap(),
             32
+        );
+        assert_eq!(
+            super::dlc_to_steam_app_id("borealis-shader-cache-000-dlc-axe").unwrap(),
+            0
         );
         assert_eq!(
             super::dlc_to_steam_app_id("borealis-shader-cache-000-dlc").unwrap(),
