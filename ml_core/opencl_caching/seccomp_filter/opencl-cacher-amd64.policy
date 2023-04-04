@@ -58,12 +58,14 @@ sched_getaffinity: 1
 sched_getparam: 1
 sched_getscheduler: 1
 sched_setaffinity: 1
+sched_setscheduler: 1
 sched_yield: 1
 sendfile: 1
 sendmsg: 1
 sendto: 1
 set_robust_list: 1
 set_tid_address: 1
+setpriority: 1
 shutdown: 1
 sigaltstack: 1
 signalfd4: 1
