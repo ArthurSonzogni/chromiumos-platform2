@@ -794,6 +794,13 @@ def _build_resource(config: Config) -> dict:
     )
 
 
+def _overlay_presence(*values):
+    for value in values:
+        if value != topology_pb2.HardwareFeatures.UNKNOWN:
+            return value
+    return topology_pb2.HardwareFeatures.UNKNOWN
+
+
 def _build_ash_flags(config: Config) -> dict:
     """Returns a dict of ash flags and features.
 
@@ -962,6 +969,17 @@ def _build_ash_flags(config: Config) -> dict:
         topology_pb2.HardwareFeatures.FormFactor.CHROMESLATE,
     ):
         _add_flag("enable-touchview")
+
+    hevc_support = _overlay_presence(
+        hw_features.soc.hevc_support, config.program.platform.hevc_support
+    )
+    hevc_action = lambda _: None
+    if hevc_support == topology_pb2.HardwareFeatures.PRESENT:
+        hevc_action = _enable_feature
+    elif hevc_support == topology_pb2.HardwareFeatures.NOT_PRESENT:
+        hevc_action = _disable_feature
+
+    hevc_action("PlatformHEVCDecoderSupport")
 
     result = {
         "extra-ash-flags": sorted(

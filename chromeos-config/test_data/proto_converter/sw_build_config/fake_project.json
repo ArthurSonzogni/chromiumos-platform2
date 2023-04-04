@@ -265,7 +265,8 @@
         },
         "ui": {
           "ash-enabled-features": [
-            "CloudGamingDevice"
+            "CloudGamingDevice",
+            "PlatformHEVCDecoderSupport"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -487,7 +488,8 @@
         },
         "ui": {
           "ash-enabled-features": [
-            "CloudGamingDevice"
+            "CloudGamingDevice",
+            "PlatformHEVCDecoderSupport"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -723,7 +725,8 @@
         },
         "ui": {
           "ash-enabled-features": [
-            "CloudGamingDevice"
+            "CloudGamingDevice",
+            "PlatformHEVCDecoderSupport"
           ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
@@ -1065,6 +1068,9 @@
           "input-boost": 15
         },
         "ui": {
+          "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport"
+          ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
             "--ash-power-button-position={\"edge\": \"left\", \"position\": 0.9}",
@@ -1267,6 +1273,9 @@
           "input-boost": 15
         },
         "ui": {
+          "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport"
+          ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
             "--ash-power-button-position={\"edge\": \"left\", \"position\": 0.9}",
@@ -1483,6 +1492,9 @@
           "input-boost": 15
         },
         "ui": {
+          "ash-disabled-features": [
+            "PlatformHEVCDecoderSupport"
+          ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
             "--ash-power-button-position={\"edge\": \"left\", \"position\": 0.9}",
@@ -1729,6 +1741,9 @@
           "input-boost": 15
         },
         "ui": {
+          "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport"
+          ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
             "--ash-power-button-position={\"edge\": \"left\", \"position\": 0.9}",
@@ -1941,6 +1956,7 @@
         },
         "ui": {
           "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport",
             "SeamlessRefreshRateSwitching"
           ],
           "extra-ash-flags": [
@@ -2155,6 +2171,7 @@
         },
         "ui": {
           "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport",
             "SeamlessRefreshRateSwitching"
           ],
           "extra-ash-flags": [
@@ -2387,6 +2404,7 @@
         },
         "ui": {
           "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport",
             "SeamlessRefreshRateSwitching"
           ],
           "extra-ash-flags": [
@@ -2598,6 +2616,7 @@
         },
         "ui": {
           "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport",
             "SeamlessRefreshRateSwitching"
           ],
           "extra-ash-flags": [
@@ -2809,6 +2828,7 @@
         },
         "ui": {
           "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport",
             "SeamlessRefreshRateSwitching"
           ],
           "extra-ash-flags": [
@@ -3020,6 +3040,7 @@
         },
         "ui": {
           "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport",
             "SeamlessRefreshRateSwitching"
           ],
           "extra-ash-flags": [
@@ -3222,6 +3243,7 @@
         "ui": {
           "ash-enabled-features": [
             "CloudGamingDevice",
+            "PlatformHEVCDecoderSupport",
             "SeamlessRefreshRateSwitching"
           ],
           "extra-ash-flags": [
@@ -3403,6 +3425,7 @@
         },
         "ui": {
           "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport",
             "SeamlessRefreshRateSwitching"
           ],
           "extra-ash-flags": [
@@ -3580,6 +3603,7 @@
         },
         "ui": {
           "ash-enabled-features": [
+            "PlatformHEVCDecoderSupport",
             "SeamlessRefreshRateSwitching"
           ],
           "extra-ash-flags": [
@@ -3758,6 +3782,7 @@
         "ui": {
           "ash-enabled-features": [
             "CloudGamingDevice",
+            "PlatformHEVCDecoderSupport",
             "SeamlessRefreshRateSwitching"
           ],
           "extra-ash-flags": [
