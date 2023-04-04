@@ -6,6 +6,22 @@ include "auth_block_state.fbs";
 
 namespace cryptohome;
 
+// The lockout mechanism user per AuthFactor.
+enum SerializedLockoutPolicy : int {
+  // Default.
+  UNKNOWN = 0,
+  // No lockout policy, and is the ideal for most factors,
+  // but needs to be explicitly set.
+  NO_LOCKOUT = 1,
+  // Attempt limited policy is enforces an absolute number
+  // of consecutive wrong attempts a factor can have before
+  // it is locked out.
+  ATTEMPT_LIMITED = 2,
+  // Time limited auth factors will unlock themselves
+  // automatically after a certain timeout.
+  TIME_LIMITED = 3,
+}
+
 // Metadata common to all auth factors.
 table SerializedCommonMetadata {
   // ChromeOS version.
@@ -17,6 +33,9 @@ table SerializedCommonMetadata {
   // The format is defined by and the value supplied by the client.
   // Captured whenever the serialized factor is created or updated.
   chrome_version_last_updated:string (id:1);
+  // Each factor needs to define its lockout policy.
+  // For most factors, it is currenlty NO_LOCKOUT.
+  lockout_policy:SerializedLockoutPolicy(id:2);
 }
 
 // Metadata for a `PASSWORD` auth factor.

@@ -90,6 +90,32 @@ CryptohomeStatusOr<base::FilePath> GetAuthFactorPath(
                                          auth_factor_label);
 }
 
+std::optional<cryptohome::LockoutPolicy> GetLockoutPolicy(
+    cryptohome::SerializedLockoutPolicy lockout_policy) {
+  switch (lockout_policy) {
+    case cryptohome::SerializedLockoutPolicy::NO_LOCKOUT:
+      return cryptohome::LockoutPolicy::kNoLockout;
+    case cryptohome::SerializedLockoutPolicy::ATTEMPT_LIMITED:
+      return cryptohome::LockoutPolicy::kAttemptLimited;
+    case cryptohome::SerializedLockoutPolicy::TIME_LIMITED:
+      return cryptohome::LockoutPolicy::kTimeLimited;
+    case cryptohome::SerializedLockoutPolicy::UNKNOWN:
+      return std::nullopt;
+  }
+}
+
+cryptohome::SerializedLockoutPolicy GetSerializedLockoutPolicy(
+    cryptohome::LockoutPolicy lockout_policy) {
+  switch (lockout_policy) {
+    case cryptohome::LockoutPolicy::kNoLockout:
+      return cryptohome::SerializedLockoutPolicy::NO_LOCKOUT;
+    case cryptohome::LockoutPolicy::kAttemptLimited:
+      return cryptohome::SerializedLockoutPolicy::ATTEMPT_LIMITED;
+    case cryptohome::LockoutPolicy::kTimeLimited:
+      return cryptohome::SerializedLockoutPolicy::TIME_LIMITED;
+  }
+}
+
 // Serializes the factor-specific metadata into the given flatbuffer builder.
 // Returns the flatbuffer offset, to be used for building the outer table.
 flatbuffers::Offset<SerializedCommonMetadata> SerializeCommonMetadataToOffset(
@@ -103,6 +129,10 @@ flatbuffers::Offset<SerializedCommonMetadata> SerializeCommonMetadataToOffset(
   SerializedCommonMetadataBuilder cm_builder(builder);
   cm_builder.add_chromeos_version_last_updated(chromeos_offset);
   cm_builder.add_chrome_version_last_updated(chrome_offset);
+  if (common_metadata.lockout_policy.has_value()) {
+    cm_builder.add_lockout_policy(
+        GetSerializedLockoutPolicy(common_metadata.lockout_policy.value()));
+  }
   return cm_builder.Finish();
 }
 
@@ -243,7 +273,7 @@ void ConvertCommonMetadataFromFlatbuffer(
       .chrome_version_last_updated =
           hwsec_foundation::FromFlatBuffer<std::string>()(
               flatbuffer_table.chrome_version_last_updated()),
-  };
+      .lockout_policy = GetLockoutPolicy(flatbuffer_table.lockout_policy())};
 }
 
 bool ConvertPasswordMetadataFromFlatbuffer(
@@ -341,6 +371,13 @@ bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
       LOG(ERROR) << "Failed to convert SerializedAuthFactor pin metadata";
       return false;
     }
+
+    // Since CommonMetadata in AuthFactor is not stored from the beginning it
+    // will load the default value in CommonMetadata. To correct for the default
+    // value load, we need to have this if condition for legacy PINS.
+    if (!metadata->common.lockout_policy.has_value()) {
+      metadata->common.lockout_policy = LockoutPolicy::kAttemptLimited;
+    }
   } else if (const SerializedCryptohomeRecoveryMetadata* recovery_metadata =
                  auth_factor_table
                      ->metadata_as_SerializedCryptohomeRecoveryMetadata()) {
@@ -377,6 +414,9 @@ bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
     return false;
   }
 
+  if (!metadata->common.lockout_policy.has_value()) {
+    metadata->common.lockout_policy = LockoutPolicy::kNoLockout;
+  }
   return true;
 }
 

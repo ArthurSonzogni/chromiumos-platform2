@@ -3276,6 +3276,14 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
   EXPECT_TRUE(list_reply.configured_auth_factors_with_status(0)
                   .auth_factor()
                   .has_password_metadata());
+  EXPECT_TRUE(list_reply.configured_auth_factors_with_status(0)
+                  .auth_factor()
+                  .has_common_metadata());
+  EXPECT_EQ(list_reply.configured_auth_factors_with_status(0)
+                .auth_factor()
+                .common_metadata()
+                .lockout_policy(),
+            user_data_auth::LOCKOUT_POLICY_NONE);
   EXPECT_THAT(list_reply.supported_auth_factors(),
               UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD));
 }
@@ -3476,12 +3484,28 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
   EXPECT_TRUE(list_reply.configured_auth_factors_with_status(0)
                   .auth_factor()
                   .has_password_metadata());
+  EXPECT_TRUE(list_reply.configured_auth_factors_with_status(0)
+                  .auth_factor()
+                  .has_common_metadata());
+  EXPECT_EQ(list_reply.configured_auth_factors_with_status(0)
+                .auth_factor()
+                .common_metadata()
+                .lockout_policy(),
+            user_data_auth::LOCKOUT_POLICY_NONE);
   EXPECT_EQ(
       list_reply.configured_auth_factors_with_status(1).auth_factor().label(),
       "password-scrypt-label");
   EXPECT_TRUE(list_reply.configured_auth_factors_with_status(1)
                   .auth_factor()
                   .has_password_metadata());
+  EXPECT_TRUE(list_reply.configured_auth_factors_with_status(1)
+                  .auth_factor()
+                  .has_common_metadata());
+  EXPECT_EQ(list_reply.configured_auth_factors_with_status(1)
+                .auth_factor()
+                .common_metadata()
+                .lockout_policy(),
+            user_data_auth::LOCKOUT_POLICY_NONE);
   EXPECT_THAT(list_reply.supported_auth_factors(),
               UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD));
 }
@@ -3577,12 +3601,28 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   EXPECT_TRUE(list_reply_2.configured_auth_factors_with_status(0)
                   .auth_factor()
                   .has_password_metadata());
+  EXPECT_TRUE(list_reply_2.configured_auth_factors_with_status(0)
+                  .auth_factor()
+                  .has_common_metadata());
+  EXPECT_EQ(list_reply_2.configured_auth_factors_with_status(0)
+                .auth_factor()
+                .common_metadata()
+                .lockout_policy(),
+            user_data_auth::LOCKOUT_POLICY_NONE);
   EXPECT_EQ(
       list_reply_2.configured_auth_factors_with_status(1).auth_factor().label(),
       "pin-label");
   EXPECT_TRUE(list_reply_2.configured_auth_factors_with_status(1)
                   .auth_factor()
                   .has_pin_metadata());
+  EXPECT_TRUE(list_reply_2.configured_auth_factors_with_status(1)
+                  .auth_factor()
+                  .has_common_metadata());
+  EXPECT_EQ(list_reply_2.configured_auth_factors_with_status(1)
+                .auth_factor()
+                .common_metadata()
+                .lockout_policy(),
+            user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED);
   EXPECT_THAT(list_reply_2.supported_auth_factors(),
               UnorderedElementsAre(
                   user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
@@ -3608,6 +3648,14 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   EXPECT_TRUE(list_reply_3.configured_auth_factors_with_status(0)
                   .auth_factor()
                   .has_password_metadata());
+  EXPECT_TRUE(list_reply_3.configured_auth_factors_with_status(0)
+                  .auth_factor()
+                  .has_common_metadata());
+  EXPECT_EQ(list_reply_3.configured_auth_factors_with_status(0)
+                .auth_factor()
+                .common_metadata()
+                .lockout_policy(),
+            user_data_auth::LOCKOUT_POLICY_NONE);
   EXPECT_THAT(list_reply_3.supported_auth_factors(),
               UnorderedElementsAre(
                   user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
@@ -3711,12 +3759,28 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   EXPECT_TRUE(list_reply_2.configured_auth_factors_with_status(0)
                   .auth_factor()
                   .has_password_metadata());
+  EXPECT_TRUE(list_reply_2.configured_auth_factors_with_status(0)
+                  .auth_factor()
+                  .has_common_metadata());
+  EXPECT_EQ(list_reply_2.configured_auth_factors_with_status(0)
+                .auth_factor()
+                .common_metadata()
+                .lockout_policy(),
+            user_data_auth::LOCKOUT_POLICY_NONE);
   EXPECT_EQ(
       list_reply_2.configured_auth_factors_with_status(1).auth_factor().label(),
       "pin-label");
   EXPECT_TRUE(list_reply_2.configured_auth_factors_with_status(1)
                   .auth_factor()
                   .has_pin_metadata());
+  EXPECT_TRUE(list_reply_2.configured_auth_factors_with_status(1)
+                  .auth_factor()
+                  .has_common_metadata());
+  EXPECT_EQ(list_reply_2.configured_auth_factors_with_status(1)
+                .auth_factor()
+                .common_metadata()
+                .lockout_policy(),
+            user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED);
   EXPECT_THAT(list_reply_2.supported_auth_factors(),
               UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
                                    user_data_auth::AUTH_FACTOR_TYPE_PIN));

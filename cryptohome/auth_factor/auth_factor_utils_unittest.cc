@@ -23,6 +23,7 @@
 #include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
+#include "cryptohome/auth_factor_generated.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/user_secret_stash.h"
@@ -282,9 +283,43 @@ TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheck) {
             kChromeosVersion);
   EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
             kChromeVersion);
+  EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
+            LockoutPolicy::kNoLockout);
   EXPECT_TRUE(absl::holds_alternative<PasswordAuthFactorMetadata>(
       auth_factor_metadata.metadata));
   EXPECT_EQ(auth_factor_type, AuthFactorType::kPassword);
+  EXPECT_EQ(auth_factor_label, kLabel);
+}
+
+TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheckPIN) {
+  // Setup
+  user_data_auth::AuthFactor auth_factor_proto;
+  auto& common_metadata_proto = *auth_factor_proto.mutable_common_metadata();
+  common_metadata_proto.set_chromeos_version_last_updated(kChromeosVersion);
+  common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
+  common_metadata_proto.set_lockout_policy(
+      user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED);
+  auth_factor_proto.mutable_pin_metadata();
+  auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  auth_factor_proto.set_label(kLabel);
+
+  // Test
+  AuthFactorMetadata auth_factor_metadata;
+  AuthFactorType auth_factor_type;
+  std::string auth_factor_label;
+  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, auth_factor_metadata,
+                                    auth_factor_type, auth_factor_label));
+
+  // Verify
+  EXPECT_EQ(auth_factor_metadata.common.chromeos_version_last_updated,
+            kChromeosVersion);
+  EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
+            kChromeVersion);
+  EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
+            LockoutPolicy::kAttemptLimited);
+  EXPECT_TRUE(absl::holds_alternative<PinAuthFactorMetadata>(
+      auth_factor_metadata.metadata));
+  EXPECT_EQ(auth_factor_type, AuthFactorType::kPin);
   EXPECT_EQ(auth_factor_label, kLabel);
 }
 
@@ -304,6 +339,8 @@ TEST(AuthFactorUtilsTest, GetProtoPassword) {
             kChromeosVersion);
   EXPECT_EQ(proto->common_metadata().chrome_version_last_updated(),
             kChromeVersion);
+  EXPECT_EQ(proto->common_metadata().lockout_policy(),
+            user_data_auth::LOCKOUT_POLICY_NONE);
   EXPECT_EQ(proto.value().type(), user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
   EXPECT_EQ(proto.value().label(), kLabel);
   ASSERT_TRUE(proto.value().has_password_metadata());
@@ -326,6 +363,7 @@ TEST(AuthFactorUtilsTest, GetProtoPasswordErrorNoMetadata) {
 TEST(AuthFactorUtilsTest, GetProtoPin) {
   // Setup
   AuthFactorMetadata metadata = CreateMetadataWithType<PinAuthFactorMetadata>();
+  metadata.common.lockout_policy = LockoutPolicy::kAttemptLimited;
 
   // Test
   std::optional<user_data_auth::AuthFactor> proto =
@@ -339,6 +377,8 @@ TEST(AuthFactorUtilsTest, GetProtoPin) {
             kChromeosVersion);
   EXPECT_EQ(proto->common_metadata().chrome_version_last_updated(),
             kChromeVersion);
+  EXPECT_EQ(proto->common_metadata().lockout_policy(),
+            user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED);
   ASSERT_TRUE(proto.value().has_pin_metadata());
 }
 
@@ -360,6 +400,8 @@ TEST(AuthFactorUtilsTest, GetProtoKiosk) {
             kChromeosVersion);
   EXPECT_EQ(proto->common_metadata().chrome_version_last_updated(),
             kChromeVersion);
+  EXPECT_EQ(proto->common_metadata().lockout_policy(),
+            user_data_auth::LOCKOUT_POLICY_NONE);
   ASSERT_TRUE(proto.value().has_kiosk_metadata());
 }
 
@@ -382,6 +424,8 @@ TEST(AuthFactorUtilsTest, GetProtoRecovery) {
             kChromeosVersion);
   EXPECT_EQ(proto->common_metadata().chrome_version_last_updated(),
             kChromeVersion);
+  EXPECT_EQ(proto->common_metadata().lockout_policy(),
+            user_data_auth::LOCKOUT_POLICY_NONE);
   ASSERT_TRUE(proto.value().has_cryptohome_recovery_metadata());
 }
 

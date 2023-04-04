@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_METADATA_H_
 #define CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_METADATA_H_
 
+#include <optional>
 #include <string>
 #include <variant>
 
@@ -13,9 +14,16 @@
 
 namespace cryptohome {
 
+enum class LockoutPolicy {
+  kNoLockout = 0,
+  kAttemptLimited = 1,
+  kTimeLimited = 2
+};
+
 struct CommonAuthFactorMetadata {
   std::string chromeos_version_last_updated;
   std::string chrome_version_last_updated;
+  std::optional<LockoutPolicy> lockout_policy;
 };
 
 struct PasswordAuthFactorMetadata {};

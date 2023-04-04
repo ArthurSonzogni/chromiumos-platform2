@@ -44,6 +44,7 @@ bool GetAuthFactorMetadataWithType(const AuthFactorType& type,
       break;
     case AuthFactorType::kPin:
       metadata.metadata = PinAuthFactorMetadata();
+      metadata.common.lockout_policy = LockoutPolicy::kAttemptLimited;
       break;
     case AuthFactorType::kKiosk:
       metadata.metadata = KioskAuthFactorMetadata();

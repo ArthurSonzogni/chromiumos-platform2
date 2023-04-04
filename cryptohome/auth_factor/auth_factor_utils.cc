@@ -127,6 +127,38 @@ std::optional<user_data_auth::AuthFactor> ToFingerprintProto() {
   return proto;
 }
 
+user_data_auth::LockoutPolicy LockoutPolicyToAuthFactor(
+    const std::optional<LockoutPolicy>& policy) {
+  if (!policy.has_value()) {
+    return user_data_auth::LOCKOUT_POLICY_UNKNOWN;
+  }
+  switch (policy.value()) {
+    case cryptohome::LockoutPolicy::kNoLockout:
+      return user_data_auth::LOCKOUT_POLICY_NONE;
+    case cryptohome::LockoutPolicy::kAttemptLimited:
+      return user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED;
+    case cryptohome::LockoutPolicy::kTimeLimited:
+      return user_data_auth::LOCKOUT_POLICY_TIME_LIMITED;
+  }
+}
+
+LockoutPolicy LockoutPolicyFromAuthFactorProto(
+    const user_data_auth::LockoutPolicy& policy) {
+  switch (policy) {
+    case user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED:
+      return cryptohome::LockoutPolicy::kAttemptLimited;
+    case user_data_auth::LOCKOUT_POLICY_TIME_LIMITED:
+      return cryptohome::LockoutPolicy::kTimeLimited;
+    case user_data_auth::LOCKOUT_POLICY_NONE:
+    // Usually, LOCKOUT_POLICY_UNKNOWN will will be an error for invalid
+    // argument, but until chrome implements the change, we will continue to
+    // keep it default to kNoLockout.
+    case user_data_auth::LOCKOUT_POLICY_UNKNOWN:
+    // Default covers for proto min and max.
+    default:
+      return cryptohome::LockoutPolicy::kNoLockout;
+  }
+}
 }  // namespace
 
 user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type) {
@@ -194,6 +226,9 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
       auth_factor.common_metadata().chromeos_version_last_updated();
   out_auth_factor_metadata.common.chrome_version_last_updated =
       auth_factor.common_metadata().chrome_version_last_updated();
+  out_auth_factor_metadata.common.lockout_policy =
+      LockoutPolicyFromAuthFactorProto(
+          auth_factor.common_metadata().lockout_policy());
 
   // Extract the factor type and use it to try and extract the factor-specific
   // metadata. Returns false if this fails.
@@ -267,6 +302,11 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
       auto* pin_metadata =
           std::get_if<PinAuthFactorMetadata>(&auth_factor_metadata.metadata);
       proto = pin_metadata ? ToPinProto(*pin_metadata) : std::nullopt;
+      if (proto.has_value()) {
+        proto->mutable_common_metadata()->set_lockout_policy(
+            LockoutPolicyToAuthFactor(
+                auth_factor_metadata.common.lockout_policy));
+      }
       break;
     }
     case AuthFactorType::kCryptohomeRecovery: {
@@ -311,6 +351,10 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
   // If we get here we were able to populate a proto with all the
   // factor-specific data. Now fill in the common metadata and the label.
   // This step cannot fail.
+  if (!proto->has_common_metadata()) {
+    proto->mutable_common_metadata()->set_lockout_policy(
+        user_data_auth::LOCKOUT_POLICY_NONE);
+  }
   proto->set_label(auth_factor_label);
   proto->mutable_common_metadata()->set_chromeos_version_last_updated(
       auth_factor_metadata.common.chromeos_version_last_updated);
