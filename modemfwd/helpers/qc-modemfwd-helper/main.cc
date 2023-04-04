@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
   DEFINE_string(shill_fw_revision, "", "Current fw version reported by Shill");
   DEFINE_bool(reboot, false, "Reboot the modem");
   DEFINE_bool(flash_mode_check, false, "Check if the modem is in flash mode");
-  DEFINE_int32(power_enable_gpio, -1, "Modem power enable GPIO number");
+  DEFINE_string(power_enable_gpio, "", "Modem power enable GPIO number");
   DEFINE_string(fw_version, "", "Version number of the firmware to flash");
   DEFINE_string(clear_attach_apn, "",
                 "Clear attach APN according to carrier uuid");
