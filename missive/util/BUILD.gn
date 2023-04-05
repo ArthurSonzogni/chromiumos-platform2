@@ -99,3 +99,11 @@ source_set("refcounted_closure_list") {
 
   configs += [ ":target_defaults" ]
 }
+
+static_library("dynamic_flag") {
+  sources = [
+    "dynamic_flag.cc",
+    "dynamic_flag.h",
+  ]
+  configs += [ ":target_defaults" ]
+}

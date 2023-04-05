@@ -23,8 +23,10 @@
 #include "missive/analytics/resource_collector_cpu.h"
 #include "missive/analytics/resource_collector_memory.h"
 #include "missive/analytics/resource_collector_storage.h"
+#include "missive/compression/test_compression_module.h"
 #include "missive/dbus/dbus_test_environment.h"
 #include "missive/dbus/mock_upload_client.h"
+#include "missive/encryption/test_encryption_module.h"
 #include "missive/storage/storage_module.h"
 #include "missive/util/test_support_callbacks.h"
 #include "missive/util/test_util.h"
@@ -85,8 +87,26 @@ class MissiveImplTest : public ::testing::Test {
             },
             base::Unretained(this)),
         base::BindOnce(
+            [](MissiveImplTest* self,
+               const MissiveArgs::StorageParameters& parameters) {
+              self->compression_module_ =
+                  base::MakeRefCounted<test::TestCompressionModule>();
+              return self->compression_module_;
+            },
+            base::Unretained(this)),
+        base::BindOnce(
+            [](MissiveImplTest* self,
+               const MissiveArgs::StorageParameters& parameters) {
+              self->encryption_module_ =
+                  base::MakeRefCounted<test::TestEncryptionModule>(
+                      parameters.encryption_enabled);
+              return self->encryption_module_;
+            },
+            base::Unretained(this)),
+        base::BindOnce(
             [](MissiveImplTest* self, MissiveImpl* missive,
                StorageOptions storage_options,
+               MissiveArgs::StorageParameters parameters,
                base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
                    callback) {
               self->storage_module_ = base::MakeRefCounted<MockStorageModule>();
@@ -94,12 +114,20 @@ class MissiveImplTest : public ::testing::Test {
             },
             base::Unretained(this)));
 
+    auto fake_platform_features =
+        std::make_unique<feature::FakePlatformFeatures>(
+            dbus_test_environment_.mock_bus().get());
+    fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name,
+                                       false);
+    fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, true);
+    fake_platform_features_ptr_ = fake_platform_features.get();
+
     test::TestEvent<Status> started;
     missive_->StartUp(dbus_test_environment_.mock_bus(),
-                      std::make_unique<feature::FakePlatformFeatures>(
-                          dbus_test_environment_.mock_bus().get()),
-                      started.cb());
+                      std::move(fake_platform_features), started.cb());
     ASSERT_OK(started.result());
+    EXPECT_TRUE(compression_module_->is_enabled());
+    EXPECT_TRUE(encryption_module_->is_enabled());
   }
 
   void TearDown() override {
@@ -112,10 +140,14 @@ class MissiveImplTest : public ::testing::Test {
 
   base::test::TaskEnvironment task_environment_;
   test::DBusTestEnvironment dbus_test_environment_;
+  feature::FakePlatformFeatures* fake_platform_features_ptr_;
+
   // Use the metrics test environment to prevent the real metrics from
   // initializing.
   analytics::Metrics::TestEnvironment metrics_test_environment_;
   scoped_refptr<UploadClient> upload_client_;
+  scoped_refptr<CompressionModule> compression_module_;
+  scoped_refptr<EncryptionModuleInterface> encryption_module_;
   scoped_refptr<MockStorageModule> storage_module_;
   std::unique_ptr<MissiveImpl> missive_;
 };
@@ -246,6 +278,23 @@ TEST_F(MissiveImplTest, ResponseWithErrorTest) {
   EXPECT_THAT(response_result.status().code(), Eq(error.error_code()));
   EXPECT_THAT(response_result.status().error_message(),
               StrEq(std::string(error.error_message())));
+}
+
+TEST_F(MissiveImplTest, DynamicParametersUpdateTest) {
+  // Change parameters and refresh.
+  fake_platform_features_ptr_->SetParam(
+      MissiveArgs::kStorageFeature.name,
+      MissiveArgs::kCompressionEnabledParameter, "False");
+  fake_platform_features_ptr_->SetParam(
+      MissiveArgs::kStorageFeature.name,
+      MissiveArgs::kEncryptionEnabledParameter, "False");
+  fake_platform_features_ptr_->TriggerRefetchSignal();
+
+  // Let asynchronous update finish.
+  task_environment_.RunUntilIdle();
+
+  EXPECT_FALSE(compression_module_->is_enabled());
+  EXPECT_FALSE(encryption_module_->is_enabled());
 }
 }  // namespace
 }  // namespace reporting

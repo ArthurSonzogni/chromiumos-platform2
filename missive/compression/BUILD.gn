@@ -24,6 +24,7 @@ static_library("compression_module") {
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
     "//missive/resources:resource_manager",
+    "//missive/util:dynamic_flag",
     "//missive/util:status",
   ]
 }

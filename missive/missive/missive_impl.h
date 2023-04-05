@@ -15,8 +15,11 @@
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
 
+#include "base/memory/scoped_refptr.h"
 #include "missive/analytics/registry.h"
+#include "missive/compression/compression_module.h"
 #include "missive/dbus/upload_client.h"
+#include "missive/encryption/encryption_module_interface.h"
 #include "missive/missive/missive_args.h"
 #include "missive/missive/missive_service.h"
 #include "missive/proto/interface.pb.h"
@@ -41,9 +44,18 @@ class MissiveImpl : public MissiveService {
                base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
                    callback)> upload_client_factory =
           base::BindOnce(&UploadClient::Create),
+      base::OnceCallback<scoped_refptr<CompressionModule>(
+          const MissiveArgs::StorageParameters& parameters)>
+          compression_module_factory =
+              base::BindOnce(&MissiveImpl::CreateCompressionModule),
+      base::OnceCallback<scoped_refptr<EncryptionModuleInterface>(
+          const MissiveArgs::StorageParameters& parameters)>
+          encryption_module_factory =
+              base::BindOnce(&MissiveImpl::CreateEncryptionModule),
       base::OnceCallback<
           void(MissiveImpl* self,
                StorageOptions storage_options,
+               MissiveArgs::StorageParameters parameters,
                base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
                    callback)> create_storage_factory =
           base::BindOnce(&MissiveImpl::CreateStorage));
@@ -87,8 +99,15 @@ class MissiveImpl : public MissiveService {
  private:
   void CreateStorage(
       StorageOptions storage_options,
+      MissiveArgs::StorageParameters parameters,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback);
+
+  static scoped_refptr<CompressionModule> CreateCompressionModule(
+      const MissiveArgs::StorageParameters& parameters);
+
+  static scoped_refptr<EncryptionModuleInterface> CreateEncryptionModule(
+      const MissiveArgs::StorageParameters& parameters);
 
   void OnUploadClientCreated(
       base::OnceCallback<void(Status)> cb,
@@ -111,13 +130,24 @@ class MissiveImpl : public MissiveService {
       UploaderInterface::UploadReason reason,
       UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
 
+  void OnStorageParametersUpdate(
+      MissiveArgs::StorageParameters storage_parameters);
+
+  // Component factories called no more than once during `MissiveImpl::StartUp`
   base::OnceCallback<void(
       scoped_refptr<dbus::Bus> bus,
       base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)> callback)>
       upload_client_factory_;
+  base::OnceCallback<scoped_refptr<CompressionModule>(
+      const MissiveArgs::StorageParameters& parameters)>
+      compression_module_factory_;
+  base::OnceCallback<scoped_refptr<EncryptionModuleInterface>(
+      const MissiveArgs::StorageParameters& parameters)>
+      encryption_module_factory_;
   base::OnceCallback<void(
       MissiveImpl* self,
       StorageOptions storage_options,
+      MissiveArgs::StorageParameters parameters,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback)>
       create_storage_factory_;
@@ -139,6 +169,13 @@ class MissiveImpl : public MissiveService {
   Scheduler scheduler_;
   analytics::Registry analytics_registry_
       GUARDED_BY_CONTEXT(sequence_checker_){};
+
+  // References to `Storage` components for dynamic parameters update.
+  // Set up once by `StorageCreate` method.
+  scoped_refptr<CompressionModule> compression_module_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  scoped_refptr<EncryptionModuleInterface> encryption_module_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   base::WeakPtrFactory<MissiveImpl> weak_ptr_factory_{this};
 };

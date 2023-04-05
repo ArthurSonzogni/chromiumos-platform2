@@ -4,9 +4,9 @@
 
 #include "missive/encryption/encryption_module_interface.h"
 
+#include <atomic>
 #include <utility>
 
-#include <base/feature_list.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
@@ -14,32 +14,16 @@
 #include <base/time/time.h>
 
 #include "missive/proto/record.pb.h"
+#include "missive/util/dynamic_flag.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
 
-namespace {
-
-// Temporary: enable/disable encryption.
-const base::Feature kEncryptedReportingFeature{
-    EncryptionModuleInterface::kEncryptedReporting,
-    base::FEATURE_ENABLED_BY_DEFAULT};
-
-}  // namespace
-
-// static
-const char EncryptionModuleInterface::kEncryptedReporting[] =
-    "EncryptedReporting";
-
-// static
-bool EncryptionModuleInterface::is_enabled() {
-  return base::FeatureList::IsEnabled(kEncryptedReportingFeature);
-}
-
 EncryptionModuleInterface::EncryptionModuleInterface(
-    base::TimeDelta renew_encryption_key_period)
-    : renew_encryption_key_period_(renew_encryption_key_period) {}
+    bool is_enabled, base::TimeDelta renew_encryption_key_period)
+    : DynamicFlag("encryption", is_enabled),
+      renew_encryption_key_period_(renew_encryption_key_period) {}
 
 EncryptionModuleInterface::~EncryptionModuleInterface() = default;
 

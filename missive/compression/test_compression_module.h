@@ -19,8 +19,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-namespace reporting {
-namespace test {
+namespace reporting::test {
 
 // An |CompressionModuleInterface| that does no compression.
 class TestCompressionModuleStrict : public CompressionModule {
@@ -42,7 +41,6 @@ class TestCompressionModuleStrict : public CompressionModule {
 // Most of the time no need to log uninterested calls to |EncryptRecord|.
 typedef ::testing::NiceMock<TestCompressionModuleStrict> TestCompressionModule;
 
-}  // namespace test
-}  // namespace reporting
+}  // namespace reporting::test
 
 #endif  // MISSIVE_COMPRESSION_TEST_COMPRESSION_MODULE_H_

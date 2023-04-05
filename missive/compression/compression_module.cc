@@ -3,11 +3,11 @@
 // found in the LICENSE file.
 #include "missive/compression/compression_module.h"
 
+#include <atomic>
 #include <optional>
 #include <string>
 #include <utility>
 
-#include <base/feature_list.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
@@ -15,25 +15,19 @@
 #include <base/task/thread_pool.h>
 #include <snappy.h>
 
+#include "base/check.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
 
 namespace reporting {
 
-const base::Feature kCompressReportingPipeline{
-    CompressionModule::kCompressReportingFeature,
-    base::FEATURE_ENABLED_BY_DEFAULT};
-
-// static
-const char CompressionModule::kCompressReportingFeature[] =
-    "CompressReportingPipeline";
-
 // static
 scoped_refptr<CompressionModule> CompressionModule::Create(
+    bool is_enabled,
     uint64_t compression_threshold,
     CompressionInformation::CompressionAlgorithm compression_type) {
-  return base::WrapRefCounted(
-      new CompressionModule(compression_threshold, compression_type));
+  return base::WrapRefCounted(new CompressionModule(
+      is_enabled, compression_threshold, compression_type));
 }
 
 void CompressionModule::CompressRecord(
@@ -48,7 +42,7 @@ void CompressionModule::CompressRecord(
     return;
   }
   // Compress if record is larger than the compression threshold and compression
-  // enabled
+  // enabled.
   switch (compression_type_) {
     case CompressionInformation::COMPRESSION_NONE: {
       // Don't compress, simply return serialized record
@@ -80,22 +74,20 @@ void CompressionModule::CompressRecord(
         return;
       }
       // Perform compression.
-      CompressionModule::CompressRecordSnappy(std::move(record), std::move(cb));
+      CompressRecordSnappy(std::move(record), std::move(cb));
       break;
     }
   }
 }
 
-// static
-bool CompressionModule::is_enabled() {
-  return base::FeatureList::IsEnabled(kCompressReportingPipeline);
-}
-
 CompressionModule::CompressionModule(
+    bool is_enabled,
     uint64_t compression_threshold,
     CompressionInformation::CompressionAlgorithm compression_type)
-    : compression_type_(compression_type),
+    : DynamicFlag("compression", is_enabled),
+      compression_type_(compression_type),
       compression_threshold_(compression_threshold) {}
+
 CompressionModule::~CompressionModule() = default;
 
 void CompressionModule::CompressRecordSnappy(

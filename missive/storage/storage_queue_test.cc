@@ -412,21 +412,15 @@ class StorageQueueTest
       auto sequence_information = encrypted_record.sequence_information();
       // Decompress encrypted_wrapped_record if is was compressed.
       WrappedRecord wrapped_record;
-      if (encrypted_record.has_compression_information()) {
-        std::string decompressed_record = Decompression::DecompressRecord(
-            encrypted_record.encrypted_wrapped_record(),
-            encrypted_record.compression_information());
-        encrypted_record.set_encrypted_wrapped_record(decompressed_record);
-      }
+      ASSERT_TRUE(encrypted_record.has_compression_information());
+      std::string decompressed_record = Decompression::DecompressRecord(
+          encrypted_record.encrypted_wrapped_record(),
+          encrypted_record.compression_information());
+      encrypted_record.set_encrypted_wrapped_record(decompressed_record);
       ASSERT_TRUE(wrapped_record.ParseFromString(
           encrypted_record.encrypted_wrapped_record()));
 
-      // Verify compression information is enabled or disabled.
-      if (CompressionModule::is_enabled()) {
-        EXPECT_TRUE(encrypted_record.has_compression_information());
-      } else {
-        EXPECT_FALSE(encrypted_record.has_compression_information());
-      }
+      // Verify compression information is present.
 
       std::optional<Record> possible_record_copy;
       if (encrypted_record.has_record_copy()) {
@@ -618,7 +612,7 @@ class StorageQueueTest
 
   void CreateTestEncryptionModuleOrDie() {
     test_encryption_module_ =
-        base::MakeRefCounted<test::TestEncryptionModule>();
+        base::MakeRefCounted<test::TestEncryptionModule>(/*is_enabled=*/true);
     test::TestEvent<Status> key_update_event;
     test_encryption_module_->UpdateAsymmetricKey("DUMMY KEY", 0,
                                                  key_update_event.cb());
@@ -638,7 +632,8 @@ class StorageQueueTest
         base::BindRepeating(&StorageQueueTest::AsyncStartMockUploader,
                             base::Unretained(this)),
         test_encryption_module_,
-        CompressionModule::Create(kCompressionThreshold, kCompressionType),
+        CompressionModule::Create(/*is_enabled=*/true, kCompressionThreshold,
+                                  kCompressionType),
         storage_queue_create_event.cb());
 
     return storage_queue_create_event.result();

@@ -5,6 +5,7 @@
 #ifndef MISSIVE_COMPRESSION_COMPRESSION_MODULE_H_
 #define MISSIVE_COMPRESSION_COMPRESSION_MODULE_H_
 
+#include <atomic>
 #include <optional>
 #include <string>
 
@@ -14,23 +15,22 @@
 
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
+#include "missive/util/dynamic_flag.h"
 
 namespace reporting {
 
-class CompressionModule : public base::RefCountedThreadSafe<CompressionModule> {
+class CompressionModule : public DynamicFlag,
+                          public base::RefCountedThreadSafe<CompressionModule> {
  public:
-  // Feature to enable/disable compression.
-  // By default compression is disabled, until server can support compression.
-  static const char kCompressReportingFeature[];
-
   // Not copyable or movable
   CompressionModule(const CompressionModule& other) = delete;
   CompressionModule& operator=(const CompressionModule& other) = delete;
 
   // Factory method creates |CompressionModule| object.
   static scoped_refptr<CompressionModule> Create(
-      uint64_t compression_threshold_,
-      CompressionInformation::CompressionAlgorithm compression_type_);
+      bool is_enabled,
+      uint64_t compression_threshold,
+      CompressionInformation::CompressionAlgorithm compression_type);
 
   // CompressRecord will attempt to compress the provided |record| and respond
   // with the callback. On success the returned std::string sink will
@@ -44,17 +44,12 @@ class CompressionModule : public base::RefCountedThreadSafe<CompressionModule> {
       base::OnceCallback<void(std::string,
                               std::optional<CompressionInformation>)> cb) const;
 
-  // Returns 'true' if |kCompressReportingPipeline| feature is enabled.
-  static bool is_enabled();
-
-  // Variable which defines which compression type to use
-  const CompressionInformation::CompressionAlgorithm compression_type_;
-
  protected:
   // Constructor can only be called by |Create| factory method.
   CompressionModule(
-      uint64_t compression_threshold_,
-      CompressionInformation::CompressionAlgorithm compression_type_);
+      bool is_enabled,
+      uint64_t compression_threshold,
+      CompressionInformation::CompressionAlgorithm compression_type);
 
   // Refcounted object must have destructor declared protected or private.
   virtual ~CompressionModule();
@@ -67,6 +62,9 @@ class CompressionModule : public base::RefCountedThreadSafe<CompressionModule> {
       std::string record,
       base::OnceCallback<void(std::string,
                               std::optional<CompressionInformation>)> cb) const;
+
+  // Compression type to use.
+  const CompressionInformation::CompressionAlgorithm compression_type_;
 
   // Minimum compression threshold (in bytes) for when a record will be
   // compressed

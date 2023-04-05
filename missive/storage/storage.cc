@@ -70,7 +70,7 @@ class Storage::QueueUploaderInterface : public UploaderInterface {
       UploaderInterface::UploadReason reason,
       UploaderInterfaceResultCb start_uploader_cb) {
     async_start_upload_cb.Run(
-        (/*need_encryption_key=*/EncryptionModuleInterface::is_enabled() &&
+        (/*need_encryption_key=*/encryption_module->is_enabled() &&
          encryption_module->need_encryption_key())
             ? UploaderInterface::UploadReason::KEY_DELIVERY
             : reason,
@@ -553,7 +553,7 @@ void Storage::Create(
       CheckOnValidSequence();
 
       // If encryption is not enabled, proceed with the queues.
-      if (!EncryptionModuleInterface::is_enabled()) {
+      if (!storage_->encryption_module_->is_enabled()) {
         InitAllQueues();
         return;
       }
@@ -703,7 +703,7 @@ void Storage::Write(Priority priority,
           [](scoped_refptr<Storage> self, Priority priority, Record record,
              scoped_refptr<StorageQueue> queue,
              base::OnceCallback<void(Status)> completion_cb) {
-            if (EncryptionModuleInterface::is_enabled() &&
+            if (self->encryption_module_->is_enabled() &&
                 !self->encryption_module_->has_encryption_key()) {
               // Key was not found at startup time. Note that if the key is
               // outdated, we still can't use it, and won't load it now. So

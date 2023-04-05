@@ -18,15 +18,15 @@
 
 using ::testing::Invoke;
 
-namespace reporting {
-namespace test {
+namespace reporting::test {
 
 constexpr size_t kCompressionThreshold = 2;
 const CompressionInformation::CompressionAlgorithm kCompressionType =
     CompressionInformation::COMPRESSION_NONE;
 
 TestCompressionModuleStrict::TestCompressionModuleStrict()
-    : CompressionModule(kCompressionThreshold, kCompressionType) {
+    : CompressionModule(
+          /*is_enabled=*/true, kCompressionThreshold, kCompressionType) {
   ON_CALL(*this, CompressRecord)
       .WillByDefault(Invoke(
           [](std::string record,
@@ -40,5 +40,4 @@ TestCompressionModuleStrict::TestCompressionModuleStrict()
 
 TestCompressionModuleStrict::~TestCompressionModuleStrict() = default;
 
-}  // namespace test
-}  // namespace reporting
+}  // namespace reporting::test

@@ -154,6 +154,7 @@ static_library("missiveclienttestlib") {
     "//missive/proto:libmissiveprotorecordconstants",
     "//missive/proto:test_proto",
     "//missive/storage:storage_test_support",
+    "//missive/util:dynamic_flag",
     "//missive/util:status",
     "//missive/util:status_macros",
   ]
@@ -190,6 +191,7 @@ if (use.test) {
       "storage/storage_queue_test.cc",
       "storage/storage_test.cc",
       "util/disconnectable_client_test.cc",
+      "util/dynamic_flag_test.cc",
       "util/file_test.cc",
       "util/refcounted_closure_list_test.cc",
       "util/status_macros_test.cc",
@@ -223,6 +225,7 @@ if (use.test) {
       "//missive/scheduler:upload_job",
       "//missive/storage:storage_test_support",
       "//missive/storage:storage_uploader_interface",
+      "//missive/util:dynamic_flag",
       "//missive/util:file",
       "//missive/util:refcounted_closure_list",
       "//missive/util:status",

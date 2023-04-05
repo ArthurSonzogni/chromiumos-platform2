@@ -16,10 +16,8 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/synchronization/waitable_event.h>
-#include <base/feature_list.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
-#include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
 #include <base/thread_annotations.h>
 #include <crypto/sha2.h>
@@ -135,10 +133,6 @@ class TestUploadClient : public UploaderInterface {
 class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
  public:
   void SetUp() override {
-    // Enable compression.
-    scoped_feature_list_.InitFromCommandLine(
-        {CompressionModule::kCompressReportingFeature}, {});
-
     ASSERT_TRUE(location_.CreateUniqueTempDir());
     options_.set_directory(base::FilePath(location_.GetPath()));
   }
@@ -148,7 +142,7 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
   void CreateTestStorageQueueOrDie(const QueueOptions& options) {
     ASSERT_FALSE(storage_queue_) << "StorageQueue already assigned";
     test_encryption_module_ =
-        base::MakeRefCounted<test::TestEncryptionModule>();
+        base::MakeRefCounted<test::TestEncryptionModule>(/*is_enabled=*/true);
     test_compression_module_ =
         base::MakeRefCounted<test::TestCompressionModule>();
     test::TestEvent<Status> key_update_event;
@@ -226,7 +220,6 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
-  base::test::ScopedFeatureList scoped_feature_list_;
   base::ScopedTempDir location_;
   StorageOptions options_;
   scoped_refptr<test::TestEncryptionModule> test_encryption_module_;

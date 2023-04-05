@@ -16,7 +16,6 @@
 #include <base/strings/strcat.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/task/thread_pool.h>
-#include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
@@ -45,7 +44,7 @@ class EncryptionModuleTest : public ::testing::Test {
   EncryptionModuleTest() = default;
 
   void SetUp() override {
-    encryption_module_ = EncryptionModule::Create();
+    encryption_module_ = EncryptionModule::Create(/*is_enabled=*/true);
 
     auto decryptor_result = test::Decryptor::Create();
     ASSERT_OK(decryptor_result.status()) << decryptor_result.status();
@@ -160,9 +159,7 @@ TEST_F(EncryptionModuleTest, EncryptionDisabled) {
   constexpr char kTestString[] = "ABCDEF";
 
   // Disable encryption for this test.
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitFromCommandLine(
-      {}, {EncryptionModuleInterface::kEncryptedReporting});
+  encryption_module_->OnEnableUpdate(/*is_enabled=*/false);
 
   // Encrypt the test string.
   const auto encrypted_result = EncryptSync(kTestString);
@@ -554,6 +551,14 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
     EXPECT_THAT(decryption_result.ValueOrDie(),
                 ::testing::StrEq(kTestStrings[i]));
   }
+}
+
+TEST_F(EncryptionModuleTest, DynamicEnableDisable) {
+  EXPECT_TRUE(encryption_module_->is_enabled());
+  encryption_module_->OnEnableUpdate(/*is_enabled=*/false);
+  EXPECT_FALSE(encryption_module_->is_enabled());
+  encryption_module_->OnEnableUpdate(/*is_enabled=*/true);
+  EXPECT_TRUE(encryption_module_->is_enabled());
 }
 }  // namespace
 }  // namespace reporting

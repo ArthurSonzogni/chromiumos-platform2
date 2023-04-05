@@ -46,8 +46,9 @@ void AddToRecord(base::StringPiece record,
 
 }  // namespace
 
-EncryptionModule::EncryptionModule(base::TimeDelta renew_encryption_key_period)
-    : EncryptionModuleInterface(renew_encryption_key_period) {
+EncryptionModule::EncryptionModule(bool is_enabled,
+                                   base::TimeDelta renew_encryption_key_period)
+    : EncryptionModuleInterface(is_enabled, renew_encryption_key_period) {
   static_assert(std::is_same<PublicKeyId, Encryptor::PublicKeyId>::value,
                 "Public key id types must match");
   auto encryptor_result = Encryptor::Create();
@@ -88,9 +89,9 @@ void EncryptionModule::UpdateAsymmetricKeyImpl(
 
 // static
 scoped_refptr<EncryptionModuleInterface> EncryptionModule::Create(
-    base::TimeDelta renew_encryption_key_period) {
+    bool is_enabled, base::TimeDelta renew_encryption_key_period) {
   return base::WrapRefCounted(
-      new EncryptionModule(renew_encryption_key_period));
+      new EncryptionModule(is_enabled, renew_encryption_key_period));
 }
 
 }  // namespace reporting

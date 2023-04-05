@@ -18,7 +18,6 @@
 #include <base/strings/strcat.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/task/thread_pool.h>
-#include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
@@ -52,29 +51,15 @@ class CompressionModuleTest : public ::testing::Test {
     return output;
   }
 
-  void EnableCompression() {
-    // Enable compression.
-    scoped_feature_list_.InitFromCommandLine(
-        {CompressionModule::kCompressReportingFeature}, {});
-  }
-  void DisableCompression() {
-    // Disable compression.
-    scoped_feature_list_.InitFromCommandLine(
-        {}, {CompressionModule::kCompressReportingFeature});
-  }
-
   base::test::TaskEnvironment task_environment_;
   scoped_refptr<ResourceManager> memory_resource_;
   scoped_refptr<CompressionModule> compression_module_;
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 TEST_F(CompressionModuleTest, CompressRecordSnappy) {
-  EnableCompression();
   scoped_refptr<CompressionModule> test_compression_module =
-      CompressionModule::Create(0, CompressionInformation::COMPRESSION_SNAPPY);
+      CompressionModule::Create(/*is_enabled=*/true, 0,
+                                CompressionInformation::COMPRESSION_SNAPPY);
 
   // Compress string directly with snappy as benchmark
   const std::string expected_output =
@@ -106,9 +91,9 @@ TEST_F(CompressionModuleTest, CompressRecordSnappy) {
 }
 
 TEST_F(CompressionModuleTest, CompressPoorlyCompressibleRecordSnappy) {
-  EnableCompression();
   scoped_refptr<CompressionModule> test_compression_module =
-      CompressionModule::Create(0, CompressionInformation::COMPRESSION_SNAPPY);
+      CompressionModule::Create(/*is_enabled=*/true, 0,
+                                CompressionInformation::COMPRESSION_SNAPPY);
 
   // Compress string directly with snappy as benchmark
   const std::string expected_output =
@@ -141,9 +126,8 @@ TEST_F(CompressionModuleTest, CompressPoorlyCompressibleRecordSnappy) {
 }
 
 TEST_F(CompressionModuleTest, CompressRecordBelowThreshold) {
-  EnableCompression();
   scoped_refptr<CompressionModule> test_compression_module =
-      CompressionModule::Create(512,
+      CompressionModule::Create(/*is_enabled=*/true, 512,
                                 CompressionInformation::COMPRESSION_SNAPPY);
 
   test::TestMultiEvent<std::string, std::optional<CompressionInformation>>
@@ -173,10 +157,9 @@ TEST_F(CompressionModuleTest, CompressRecordBelowThreshold) {
 }
 
 TEST_F(CompressionModuleTest, CompressRecordCompressionDisabled) {
-  // Disable compression feature
-  DisableCompression();
   scoped_refptr<CompressionModule> test_compression_module =
-      CompressionModule::Create(0, CompressionInformation::COMPRESSION_SNAPPY);
+      CompressionModule::Create(/*is_enabled=*/false, 0,
+                                CompressionInformation::COMPRESSION_SNAPPY);
 
   test::TestMultiEvent<std::string, std::optional<CompressionInformation>>
       compressed_record_event;
@@ -202,9 +185,9 @@ TEST_F(CompressionModuleTest, CompressRecordCompressionDisabled) {
 }
 
 TEST_F(CompressionModuleTest, CompressRecordCompressionNone) {
-  EnableCompression();
   scoped_refptr<CompressionModule> test_compression_module =
-      CompressionModule::Create(0, CompressionInformation::COMPRESSION_NONE);
+      CompressionModule::Create(/*is_enabled=*/true, 0,
+                                CompressionInformation::COMPRESSION_NONE);
 
   test::TestMultiEvent<std::string, std::optional<CompressionInformation>>
       compressed_record_event;
@@ -230,6 +213,17 @@ TEST_F(CompressionModuleTest, CompressRecordCompressionNone) {
   // Expect that compression information contains COMPRESSION_NONE
   EXPECT_THAT(compression_info.value().compression_algorithm(),
               Eq(CompressionInformation::COMPRESSION_NONE));
+}
+
+TEST_F(CompressionModuleTest, DynamicEnableDisable) {
+  scoped_refptr<CompressionModule> test_compression_module =
+      CompressionModule::Create(/*is_enabled=*/true, 0,
+                                CompressionInformation::COMPRESSION_NONE);
+  EXPECT_TRUE(test_compression_module->is_enabled());
+  test_compression_module->OnEnableUpdate(/*is_enabled=*/false);
+  EXPECT_FALSE(test_compression_module->is_enabled());
+  test_compression_module->OnEnableUpdate(/*is_enabled=*/true);
+  EXPECT_TRUE(test_compression_module->is_enabled());
 }
 }  // namespace
 }  // namespace reporting

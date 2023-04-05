@@ -24,6 +24,7 @@ static_library("encryption_module_interface") {
   configs += [ ":target_defaults" ]
   deps = [
     "//missive/proto:libmissiveprotorecord",
+    "//missive/util:dynamic_flag",
     "//missive/util:status",
   ]
 }

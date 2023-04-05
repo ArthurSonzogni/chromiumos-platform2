@@ -14,13 +14,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-namespace reporting {
-namespace test {
+namespace reporting::test {
 
 // An |EncryptionModuleInterface| that does no encryption.
 class TestEncryptionModuleStrict : public EncryptionModuleInterface {
  public:
-  TestEncryptionModuleStrict();
+  explicit TestEncryptionModuleStrict(bool is_enabled);
 
   MOCK_METHOD(void,
               EncryptRecordImpl,
@@ -40,7 +39,6 @@ class TestEncryptionModuleStrict : public EncryptionModuleInterface {
 // Most of the time no need to log uninterested calls to |EncryptRecord|.
 typedef ::testing::NiceMock<TestEncryptionModuleStrict> TestEncryptionModule;
 
-}  // namespace test
-}  // namespace reporting
+}  // namespace reporting::test
 
 #endif  // MISSIVE_ENCRYPTION_TEST_ENCRYPTION_MODULE_H_

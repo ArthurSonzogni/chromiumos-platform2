@@ -61,12 +61,21 @@ MissiveImpl::MissiveImpl(
         void(scoped_refptr<dbus::Bus> bus,
              base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
                  callback)> upload_client_factory,
+    base::OnceCallback<scoped_refptr<CompressionModule>(
+        const MissiveArgs::StorageParameters& parameters)>
+        compression_module_factory,
+    base::OnceCallback<scoped_refptr<EncryptionModuleInterface>(
+        const MissiveArgs::StorageParameters& parameters)>
+        encryption_module_factory,
     base::OnceCallback<
         void(MissiveImpl* self,
              StorageOptions storage_options,
+             MissiveArgs::StorageParameters parameters,
              base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
                  callback)> create_storage_factory)
     : upload_client_factory_(std::move(upload_client_factory)),
+      compression_module_factory_(std::move(compression_module_factory)),
+      encryption_module_factory_(std::move(encryption_module_factory)),
       create_storage_factory_(std::move(create_storage_factory)) {
   // Constructor may even be called not on any seq task runner.
   DETACH_FROM_SEQUENCE(sequence_checker_);
@@ -172,11 +181,17 @@ void MissiveImpl::OnStorageParameters(
     std::move(cb).Run(storage_parameters_result.status());
     return;
   }
+  auto& parameters = storage_parameters_result.ValueOrDie();
 
-  // TODO(b/276503229): Deliver storage_parameters to `Storage::Create`.
+  // Create `Storage` service modules and register for dynamic update.
+  compression_module_ = std::move(compression_module_factory_).Run(parameters);
+  encryption_module_ = std::move(encryption_module_factory_).Run(parameters);
+  args_->AsyncCall(&MissiveArgs::OnStorageParametersUpdate)
+      .WithArgs(base::BindPostTaskToCurrentDefault(base::BindRepeating(
+          &MissiveImpl::OnStorageParametersUpdate, GetWeakPtr())));
 
   std::move(create_storage_factory_)
-      .Run(this, std::move(storage_options),
+      .Run(this, std::move(storage_options), std::move(parameters),
            base::BindPostTaskToCurrentDefault(
                base::BindOnce(&MissiveImpl::OnStorageModuleConfigured,
                               GetWeakPtr(), std::move(cb))));
@@ -189,15 +204,28 @@ Status MissiveImpl::ShutDown() {
 
 void MissiveImpl::CreateStorage(
     StorageOptions storage_options,
+    MissiveArgs::StorageParameters parameters,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  StorageModule::Create(
-      std::move(storage_options),
-      base::BindPostTaskToCurrentDefault(
-          base::BindRepeating(&MissiveImpl::AsyncStartUpload, GetWeakPtr())),
-      EncryptionModule::Create(),
-      CompressionModule::Create(kCompressionThreshold, kCompressionType),
-      std::move(callback));
+  // Create `Storage`.
+  StorageModule::Create(std::move(storage_options),
+                        base::BindPostTaskToCurrentDefault(base::BindRepeating(
+                            &MissiveImpl::AsyncStartUpload, GetWeakPtr())),
+                        encryption_module_, compression_module_,
+                        std::move(callback));
+}
+
+// static
+scoped_refptr<CompressionModule> MissiveImpl::CreateCompressionModule(
+    const MissiveArgs::StorageParameters& parameters) {
+  return CompressionModule::Create(parameters.compression_enabled,
+                                   kCompressionThreshold, kCompressionType);
+}
+
+// static
+scoped_refptr<EncryptionModuleInterface> MissiveImpl::CreateEncryptionModule(
+    const MissiveArgs::StorageParameters& parameters) {
+  return EncryptionModule::Create(parameters.encryption_enabled);
 }
 
 void MissiveImpl::OnStorageModuleConfigured(
@@ -241,7 +269,7 @@ void MissiveImpl::AsyncStartUploadInternal(
   auto upload_job_result = UploadJob::Create(
       upload_client_,
       /*need_encryption_key=*/
-      (EncryptionModuleInterface::is_enabled() &&
+      (encryption_module_->is_enabled() &&
        reason == UploaderInterface::UploadReason::KEY_DELIVERY),
       /*remaining_storage_capacity=*/disk_space_resource_->GetTotal() -
           disk_space_resource_->GetUsed(),
@@ -339,6 +367,12 @@ void MissiveImpl::UpdateEncryptionKey(
 
   storage_module_->UpdateEncryptionKey(in_request.signed_encryption_info());
   out_response->Return(response_body);
+}
+
+void MissiveImpl::OnStorageParametersUpdate(
+    MissiveArgs::StorageParameters storage_parameters) {
+  compression_module_->OnEnableUpdate(storage_parameters.compression_enabled);
+  encryption_module_->OnEnableUpdate(storage_parameters.encryption_enabled);
 }
 
 base::WeakPtr<MissiveImpl> MissiveImpl::GetWeakPtr() {

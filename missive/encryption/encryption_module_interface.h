@@ -13,23 +13,21 @@
 #include <base/time/time.h>
 
 #include "missive/proto/record.pb.h"
+#include "missive/util/dynamic_flag.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
 
 class EncryptionModuleInterface
-    : public base::RefCountedThreadSafe<EncryptionModuleInterface> {
+    : public DynamicFlag,
+      public base::RefCountedThreadSafe<EncryptionModuleInterface> {
  public:
   // Public key id, as defined by Keystore.
   using PublicKeyId = int32_t;
 
-  // Feature to enable/disable encryption.
-  // By default encryption is enabled and supported by server.
-  // Disabled only for testing/stress purposes.
-  static const char kEncryptedReporting[];
-
   explicit EncryptionModuleInterface(
+      bool is_enabled,
       base::TimeDelta renew_encryption_key_period = base::Days(1));
   EncryptionModuleInterface(const EncryptionModuleInterface& other) = delete;
   EncryptionModuleInterface& operator=(const EncryptionModuleInterface& other) =
@@ -57,9 +55,6 @@ class EncryptionModuleInterface
   // Returns `true` if encryption key has not been set yet or it is too old
   // (received more than |renew_encryption_key_period| ago).
   bool need_encryption_key() const;
-
-  // Returns 'true' if |kEncryptedReporting| feature is enabled.
-  static bool is_enabled();
 
  protected:
   virtual ~EncryptionModuleInterface();

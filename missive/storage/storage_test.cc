@@ -13,7 +13,6 @@
 #include <vector>
 
 #include <base/containers/flat_map.h>
-#include <base/feature_list.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback_helpers.h>
 #include <base/sequence_checker.h>
@@ -21,7 +20,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
-#include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
 #include <base/thread_annotations.h>
 #include <base/threading/sequence_bound.h>
@@ -305,8 +303,7 @@ class StorageTest
           return TestUploader::SetUpDummy(this);
         }));
     ResetExpectedUploadsCount();
-    // Encryption is enabled by default.
-    ASSERT_TRUE(EncryptionModuleInterface::is_enabled());
+    // Prepare encryption, if requested to be enabled.
     if (is_encryption_enabled()) {
       // Generate signing key pair.
       test::GenerateSigningKeyPair(signing_private_key_,
@@ -322,10 +319,6 @@ class StorageTest
       signed_encryption_key_ = GenerateAndSignKey();
       // First record enqueue to Storage would need key delivered.
       expect_to_need_key_ = true;
-    } else {
-      // Disable encryption.
-      scoped_feature_list_.InitFromCommandLine(
-          {}, {EncryptionModuleInterface::kEncryptedReporting});
     }
     test_compression_module_ =
         base::MakeRefCounted<test::TestCompressionModule>();
@@ -900,7 +893,9 @@ class StorageTest
       const StorageOptions& options,
       scoped_refptr<EncryptionModuleInterface> encryption_module =
           EncryptionModule::Create(
+              /*is_enabled=*/true,
               /*renew_encryption_key_period=*/base::Minutes(30))) {
+    encryption_module->OnEnableUpdate(is_encryption_enabled());
     if (expect_to_need_key_) {
       // Set uploader expectations for any queue; expect no records and need
       // key. Make sure no uploads happen, and key is requested.
@@ -951,6 +946,7 @@ class StorageTest
       const StorageOptions& options,
       scoped_refptr<EncryptionModuleInterface> encryption_module =
           EncryptionModule::Create(
+              /*is_enabled=*/true,
               /*renew_encryption_key_period=*/base::Minutes(30))) {
     // Initialize Storage with no key.
     test::TestEvent<StatusOr<scoped_refptr<Storage>>> e;
@@ -1141,8 +1137,6 @@ class StorageTest
   const scoped_refptr<base::SequencedTaskRunner> main_task_runner_{
       base::SequencedTaskRunner::GetCurrentDefault()};
 
-  base::test::ScopedFeatureList scoped_feature_list_;
-
   uint8_t signature_verification_public_key_[kKeySize];
   uint8_t signing_private_key_[kSignKeySize];
 
@@ -1274,8 +1268,9 @@ TEST_P(StorageTest, WriteIntoNewStorageAndUploadWithKeyUpdate) {
   }
 
   static constexpr auto kKeyRenewalTime = base::Milliseconds(500);
-  CreateTestStorageOrDie(BuildTestStorageOptions(),
-                         EncryptionModule::Create(kKeyRenewalTime));
+  CreateTestStorageOrDie(
+      BuildTestStorageOptions(),
+      EncryptionModule::Create(is_encryption_enabled(), kKeyRenewalTime));
   WriteStringOrDie(MANUAL_BATCH, kData[0]);
   WriteStringOrDie(MANUAL_BATCH, kData[1]);
   WriteStringOrDie(MANUAL_BATCH, kData[2]);
@@ -2011,7 +2006,7 @@ TEST_P(StorageTest, WriteEncryptFailure) {
     return;  // No need to test when encryption is disabled.
   }
   auto test_encryption_module =
-      base::MakeRefCounted<test::TestEncryptionModule>();
+      base::MakeRefCounted<test::TestEncryptionModule>(/*is_enabled=*/true);
   test::TestEvent<Status> key_update_event;
   test_encryption_module->UpdateAsymmetricKey("DUMMY KEY", 0,
                                               key_update_event.cb());
@@ -2144,6 +2139,7 @@ TEST_P(StorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
           // encryption module if it needs a new key, the encryption module says
           // "yes"
           EncryptionModule::Create(
+              /*is_enabled=*/true,
               base::Seconds(options_.key_check_period().InSeconds() - 1)));
   ASSERT_OK(storage_result)
       << "Failed to create StorageTest, error=" << storage_result.status();

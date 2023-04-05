@@ -10,15 +10,16 @@
 #include <base/functional/callback.h>
 #include <base/strings/string_piece.h>
 
+#include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/statusor.h"
 
 using ::testing::Invoke;
 
-namespace reporting {
-namespace test {
+namespace reporting::test {
 
-TestEncryptionModuleStrict::TestEncryptionModuleStrict() {
+TestEncryptionModuleStrict::TestEncryptionModuleStrict(bool is_enabled)
+    : EncryptionModuleInterface(is_enabled) {
   ON_CALL(*this, EncryptRecordImpl)
       .WillByDefault(
           Invoke([](base::StringPiece record,
@@ -40,5 +41,4 @@ void TestEncryptionModuleStrict::UpdateAsymmetricKeyImpl(
 
 TestEncryptionModuleStrict::~TestEncryptionModuleStrict() = default;
 
-}  // namespace test
-}  // namespace reporting
+}  // namespace reporting::test
