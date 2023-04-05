@@ -21,26 +21,12 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/threading/thread.h>
+#include "vm_tools/concierge/pci_utils.h"
 
 namespace vm_tools {
 namespace concierge {
 
 namespace {
-
-// Path where all PCI devices reside.
-constexpr char kPciDevicesPath[] = "/sys/devices/";
-
-// PCI devices have paths like these /sys/devices/pci0000:02/0000:02:01.0.
-// This pattern is to search for the "pci0000:02" directory within
-// /sys/devices/.
-constexpr char kTopLevelPciDevicePattern[] = "pci0000:*";
-// This pattern is to search for "0000:02:01.0" directory within
-// /sys/devices/pci0000:02/.
-constexpr char kSecondaryLevelPciDevicePattern[] = "0000:*";
-
-// The Vendor and Device Ids that identify Virtio Vhost User devices.
-constexpr int16_t kVvuVendorId = 0x1af4;
-constexpr int16_t kVvuDeviceId = 0x107d;
 
 // The byte which represents the Socket index of a VVU device in its
 // |VvuProxyDeviceConfig|'s |uuid|.
@@ -48,14 +34,6 @@ constexpr int32_t kVvuSocketIndexByte = 15;
 
 // Size of a PCI device's configuration.
 constexpr int64_t kPciDeviceConfigurationSize = 256;
-
-// Name of the file within the PCI device directory which contains a device's
-// vendor ID.
-constexpr char kPciVendorIdFileName[] = "vendor";
-
-// Name of the file within the PCI device directory which contains a device's
-// dwvicw ID.
-constexpr char kPciDeviceIdFileName[] = "device";
 
 // Offset in the configuration header at which the location of the first PCI
 // capability is present.
@@ -81,52 +59,6 @@ struct __attribute__((packed)) VvuProxyDeviceConfig {
   uint32_t max_vhost_queues;
   uint8_t uuid[kConfigUuidSize];
 };
-
-// Returns the vendor ID for the PCI device at |pci_device|. Returns
-// std::nullopt in case of any parsing errors.
-std::optional<int64_t> GetPciDeviceVendorId(const base::FilePath& pci_device) {
-  base::FilePath vendor_id_path = pci_device.Append(kPciVendorIdFileName);
-
-  std::string vendor_id;
-  if (!base::ReadFileToString(vendor_id_path, &vendor_id)) {
-    LOG(ERROR) << "Failed to read vendor id for: " << pci_device;
-    return std::nullopt;
-  }
-
-  // sysfs adds a newline to this value. Remove it.
-  base::TrimString(vendor_id, "\n", &vendor_id);
-
-  int64_t parsed_vendor_id;
-  if (!base::HexStringToInt64(vendor_id, &parsed_vendor_id)) {
-    LOG(ERROR) << "Failed to parse vendor id for: " << pci_device;
-    return std::nullopt;
-  }
-
-  return parsed_vendor_id;
-}
-
-// Returns the device ID for the PCI device at |pci_device|. Returns
-// std::nullopt in case of any parsing errors.
-std::optional<int64_t> GetPciDeviceDeviceId(const base::FilePath& pci_device) {
-  base::FilePath device_id_path = pci_device.Append(kPciDeviceIdFileName);
-
-  std::string device_id;
-  if (!base::ReadFileToString(device_id_path, &device_id)) {
-    LOG(ERROR) << "Failed to read device id for: " << pci_device;
-    return std::nullopt;
-  }
-
-  // sysfs adds a newline to this value. Remove it.
-  base::TrimString(device_id, "\n", &device_id);
-
-  int64_t parsed_device_id;
-  if (!base::HexStringToInt64(device_id, &parsed_device_id)) {
-    LOG(ERROR) << "Failed to parse device id for: " << pci_device;
-    return std::nullopt;
-  }
-
-  return parsed_device_id;
-}
 
 // Opens the VFIO group file associated with |pci_device|.
 base::File OpenVfioGroup(const base::FilePath& pci_device) {
@@ -323,73 +255,25 @@ std::optional<int32_t> GetVvuDeviceSocketIndex(
   return vvu_proxy_device_config->uuid[kVvuSocketIndexByte];
 }
 
-// Returns true iff |pci_device| is a VVU device by comparing it's vendor id and
-// device id.
-bool IsVvuPciDevice(const base::FilePath& pci_device) {
-  std::optional<int64_t> vendor_id = GetPciDeviceVendorId(pci_device);
-  if (!vendor_id) {
-    return false;
-  }
-
-  int64_t parsed_vendor_id = vendor_id.value();
-  if (parsed_vendor_id != kVvuVendorId) {
-    return false;
-  }
-
-  std::optional<int64_t> device_id = GetPciDeviceDeviceId(pci_device);
-  if (!device_id) {
-    return false;
-  }
-
-  int64_t parsed_device_id = device_id.value();
-  if (parsed_device_id != kVvuDeviceId) {
-    return false;
-  }
-
-  return true;
-}
-
 }  // namespace
 
 std::vector<VvuDeviceInfo> GetVvuDevicesInfo() {
-  // PCI devices have paths like these /sys/devices/pci0000:02/0000:02:01.0.
-  // The first enumerator is to look for "pci0000:02" under /sys/devices/.
-  base::FileEnumerator pci_device_roots = base::FileEnumerator(
-      base::FilePath(kPciDevicesPath), false /* recursive */,
-      base::FileEnumerator::FileType::DIRECTORIES, kTopLevelPciDevicePattern);
   std::vector<VvuDeviceInfo> vvu_devices_info;
+  std::vector<base::FilePath> vvu_devices_list =
+      GetPciDevicesList(pci_utils::PciDeviceType::PCI_DEVICE_TYPE_VVU);
 
-  for (auto pci_device_root = pci_device_roots.Next(); !pci_device_root.empty();
-       pci_device_root = pci_device_roots.Next()) {
-    // The second enumerator is to look for "0000:02:01.0" under
-    // /sys/devices/pci0000:02/.
-    base::FileEnumerator pci_devices =
-        base::FileEnumerator(pci_device_root, false /* recursive */,
-                             base::FileEnumerator::FileType::DIRECTORIES,
-                             kSecondaryLevelPciDevicePattern);
-
-    // Iterate over each PCI device, check if it's a VVU device, if it is then
-    // find its socket index.
-    for (auto pci_device = pci_devices.Next(); !pci_device.empty();
-         pci_device = pci_devices.Next()) {
-      // Nothing to do if this isn't a VVU device.
-      if (!IsVvuPciDevice(pci_device)) {
-        continue;
-      }
-
-      LOG(INFO) << "Found VVU device: " << pci_device;
-      auto socket_index = GetVvuDeviceSocketIndex(pci_device);
-      if (socket_index) {
-        LOG(INFO) << "Found VVU socket index: " << socket_index.value()
-                  << " for PCI device: " << pci_device;
-        VvuDeviceInfo device_info;
-        device_info.proxy_device = pci_device;
-        device_info.proxy_socket_index = socket_index.value();
-        vvu_devices_info.push_back(std::move(device_info));
-      } else {
-        LOG(ERROR) << "Failed to get socket index for PCI device: "
-                   << pci_device;
-      }
+  // Iterate over each VVU PCI device and find its socket index.
+  for (const auto& pci_device : vvu_devices_list) {
+    auto socket_index = GetVvuDeviceSocketIndex(pci_device);
+    if (socket_index) {
+      LOG(INFO) << "Found VVU socket index: " << socket_index.value()
+                << " for PCI device: " << pci_device;
+      VvuDeviceInfo device_info;
+      device_info.proxy_device = pci_device;
+      device_info.proxy_socket_index = socket_index.value();
+      vvu_devices_info.push_back(std::move(device_info));
+    } else {
+      LOG(ERROR) << "Failed to get socket index for PCI device: " << pci_device;
     }
   }
 
