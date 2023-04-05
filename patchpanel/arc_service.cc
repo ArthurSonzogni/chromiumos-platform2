@@ -21,6 +21,7 @@
 #include <chromeos/constants/vm_tools.h>
 
 #include "patchpanel/adb_proxy.h"
+#include "patchpanel/datapath.h"
 #include "patchpanel/guest_type.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/manager.h"
@@ -504,7 +505,7 @@ void ArcService::AddDevice(const std::string& ifname,
                                 device->config().guest_ipv4_addr(),
                                 TrafficSource::ARC, false /*route_on_vpn*/);
   datapath_->AddInboundIPv4DNAT(
-      device->phys_ifname(),
+      AutoDnatTarget::kArc, device->phys_ifname(),
       IPv4AddressToString(device->config().guest_ipv4_addr()));
 
   std::string virtual_device_ifname;
@@ -574,7 +575,7 @@ void ArcService::RemoveDevice(const std::string& ifname) {
                                device->config().guest_ipv4_addr(),
                                TrafficSource::ARC, false /*route_on_vpn*/);
   datapath_->RemoveInboundIPv4DNAT(
-      device->phys_ifname(),
+      AutoDnatTarget::kArc, device->phys_ifname(),
       IPv4AddressToString(device->config().guest_ipv4_addr()));
   datapath_->RemoveBridge(device->host_ifname());
 

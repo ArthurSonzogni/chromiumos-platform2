@@ -81,8 +81,8 @@ constexpr char kVpnEgressFiltersChain[] = "vpn_egress_filters";
 constexpr char kVpnAcceptChain[] = "vpn_accept";
 constexpr char kVpnLockdownChain[] = "vpn_lockdown";
 
-// IPv4 nat PREROUTING chains for forwarding ingress traffic into a hosted
-// guest. Only kApplyAutoDnatToArcChain is used currently.
+// IPv4 nat PREROUTING chains for forwarding ingress traffic to different types
+// of hosted guests with the corresponding hierarchy.
 constexpr char kApplyAutoDnatToArcChain[] = "apply_auto_dnat_to_arc";
 constexpr char kApplyAutoDnatToCrostiniChain[] = "apply_auto_dnat_to_crostini";
 constexpr char kApplyAutoDnatToPluginvmChain[] = "apply_auto_dnat_to_pluginvm";
@@ -129,6 +129,17 @@ TrafficSource DownstreamNetworkInfoTrafficSource(
     const DownstreamNetworkInfo& info) {
   // TODO(b/257880335): define source for LocalOnlyNetwork.
   return TETHER_DOWNSTREAM;
+}
+
+std::string AutoDnatTargetChainName(AutoDnatTarget auto_dnat_target) {
+  switch (auto_dnat_target) {
+    case AutoDnatTarget::kArc:
+      return kApplyAutoDnatToArcChain;
+    case AutoDnatTarget::kCrostini:
+      return kApplyAutoDnatToCrostiniChain;
+    case AutoDnatTarget::kPluginVm:
+      return kApplyAutoDnatToPluginvmChain;
+  }
 }
 
 }  // namespace
@@ -1277,46 +1288,49 @@ void Datapath::StopRoutingDevice(const std::string& ext_ifname,
   RemoveChain(IpFamily::Dual, "mangle", subchain);
 }
 
-void Datapath::AddInboundIPv4DNAT(const std::string& ifname,
+void Datapath::AddInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
+                                  const std::string& ifname,
                                   const std::string& ipv4_addr) {
+  const std::string chain = AutoDnatTargetChainName(auto_dnat_target);
   // Direct ingress IP traffic to existing sockets.
   bool success = true;
   if (process_runner_->iptables(
-          "nat", {"-A", kApplyAutoDnatToArcChain, "-i", ifname, "-m", "socket",
-                  "--nowildcard", "-j", "ACCEPT", "-w"}) != 0) {
+          "nat", {"-A", chain, "-i", ifname, "-m", "socket", "--nowildcard",
+                  "-j", "ACCEPT", "-w"}) != 0) {
     success = false;
   }
 
   // Direct ingress TCP & UDP traffic to ARC interface for new connections.
   if (process_runner_->iptables(
-          "nat", {"-A", kApplyAutoDnatToArcChain, "-i", ifname, "-p", "tcp",
-                  "-j", "DNAT", "--to-destination", ipv4_addr, "-w"}) != 0) {
+          "nat", {"-A", chain, "-i", ifname, "-p", "tcp", "-j", "DNAT",
+                  "--to-destination", ipv4_addr, "-w"}) != 0) {
     success = false;
   }
   if (process_runner_->iptables(
-          "nat", {"-A", kApplyAutoDnatToArcChain, "-i", ifname, "-p", "udp",
-                  "-j", "DNAT", "--to-destination", ipv4_addr, "-w"}) != 0) {
+          "nat", {"-A", chain, "-i", ifname, "-p", "udp", "-j", "DNAT",
+                  "--to-destination", ipv4_addr, "-w"}) != 0) {
     success = false;
   }
 
   if (!success) {
     LOG(ERROR) << "Failed to configure ingress DNAT rules on " << ifname
                << " to " << ipv4_addr;
-    RemoveInboundIPv4DNAT(ifname, ipv4_addr);
+    RemoveInboundIPv4DNAT(auto_dnat_target, ifname, ipv4_addr);
   }
 }
 
-void Datapath::RemoveInboundIPv4DNAT(const std::string& ifname,
+void Datapath::RemoveInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
+                                     const std::string& ifname,
                                      const std::string& ipv4_addr) {
+  const std::string chain = AutoDnatTargetChainName(auto_dnat_target);
   process_runner_->iptables(
-      "nat", {"-D", kApplyAutoDnatToArcChain, "-i", ifname, "-p", "udp", "-j",
-              "DNAT", "--to-destination", ipv4_addr, "-w"});
+      "nat", {"-D", chain, "-i", ifname, "-p", "udp", "-j", "DNAT",
+              "--to-destination", ipv4_addr, "-w"});
   process_runner_->iptables(
-      "nat", {"-D", kApplyAutoDnatToArcChain, "-i", ifname, "-p", "tcp", "-j",
-              "DNAT", "--to-destination", ipv4_addr, "-w"});
-  process_runner_->iptables(
-      "nat", {"-D", kApplyAutoDnatToArcChain, "-i", ifname, "-m", "socket",
-              "--nowildcard", "-j", "ACCEPT", "-w"});
+      "nat", {"-D", chain, "-i", ifname, "-p", "tcp", "-j", "DNAT",
+              "--to-destination", ipv4_addr, "-w"});
+  process_runner_->iptables("nat", {"-D", chain, "-i", ifname, "-m", "socket",
+                                    "--nowildcard", "-j", "ACCEPT", "-w"});
 }
 
 bool Datapath::AddRedirectDnsRule(const std::string& ifname,

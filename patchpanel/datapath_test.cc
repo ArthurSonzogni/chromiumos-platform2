@@ -1339,7 +1339,7 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
   datapath.StopVpnRouting("tun0");
 }
 
-TEST(DatapathTest, AddInboundIPv4DNAT) {
+TEST(DatapathTest, AddInboundIPv4DNATArc) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
@@ -1354,10 +1354,10 @@ TEST(DatapathTest, AddInboundIPv4DNAT) {
                   "--to-destination 1.2.3.4 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.AddInboundIPv4DNAT("eth0", "1.2.3.4");
+  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kArc, "eth0", "1.2.3.4");
 }
 
-TEST(DatapathTest, RemoveInboundIPv4DNAT) {
+TEST(DatapathTest, RemoveInboundIPv4DNATArc) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
@@ -1372,7 +1372,79 @@ TEST(DatapathTest, RemoveInboundIPv4DNAT) {
                   "--to-destination 1.2.3.4 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.RemoveInboundIPv4DNAT("eth0", "1.2.3.4");
+  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, "eth0", "1.2.3.4");
+}
+
+TEST(DatapathTest, AddInboundIPv4DNATCrostini) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+  Verify_iptables(*runner, IPv4,
+                  "nat -A apply_auto_dnat_to_crostini -i eth0 -m socket "
+                  "--nowildcard -j ACCEPT -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -A apply_auto_dnat_to_crostini -i eth0 -p tcp -j DNAT "
+                  "--to-destination 1.2.3.4 -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -A apply_auto_dnat_to_crostini -i eth0 -p udp -j DNAT "
+                  "--to-destination 1.2.3.4 -w");
+
+  Datapath datapath(runner, firewall, &system);
+  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kCrostini, "eth0", "1.2.3.4");
+}
+
+TEST(DatapathTest, RemoveInboundIPv4DNATCrostini) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+  Verify_iptables(*runner, IPv4,
+                  "nat -D apply_auto_dnat_to_crostini -i eth0 -m socket "
+                  "--nowildcard -j ACCEPT -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -D apply_auto_dnat_to_crostini -i eth0 -p tcp -j DNAT "
+                  "--to-destination 1.2.3.4 -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -D apply_auto_dnat_to_crostini -i eth0 -p udp -j DNAT "
+                  "--to-destination 1.2.3.4 -w");
+
+  Datapath datapath(runner, firewall, &system);
+  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kCrostini, "eth0", "1.2.3.4");
+}
+
+TEST(DatapathTest, AddInboundIPv4DNATPluginVm) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+  Verify_iptables(*runner, IPv4,
+                  "nat -A apply_auto_dnat_to_pluginvm -i eth0 -m socket "
+                  "--nowildcard -j ACCEPT -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -A apply_auto_dnat_to_pluginvm -i eth0 -p tcp -j DNAT "
+                  "--to-destination 1.2.3.4 -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -A apply_auto_dnat_to_pluginvm -i eth0 -p udp -j DNAT "
+                  "--to-destination 1.2.3.4 -w");
+
+  Datapath datapath(runner, firewall, &system);
+  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kPluginVm, "eth0", "1.2.3.4");
+}
+
+TEST(DatapathTest, RemoveInboundIPv4DNATPluginVm) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+  Verify_iptables(*runner, IPv4,
+                  "nat -D apply_auto_dnat_to_pluginvm -i eth0 -m socket "
+                  "--nowildcard -j ACCEPT -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -D apply_auto_dnat_to_pluginvm -i eth0 -p tcp -j DNAT "
+                  "--to-destination 1.2.3.4 -w");
+  Verify_iptables(*runner, IPv4,
+                  "nat -D apply_auto_dnat_to_pluginvm -i eth0 -p udp -j DNAT "
+                  "--to-destination 1.2.3.4 -w");
+
+  Datapath datapath(runner, firewall, &system);
+  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kPluginVm, "eth0", "1.2.3.4");
 }
 
 TEST(DatapathTest, MaskInterfaceFlags) {

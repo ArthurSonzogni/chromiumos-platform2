@@ -74,10 +74,14 @@ class MockDatapath : public Datapath {
   MOCK_METHOD2(DumpIptables,
                std::string(IpFamily family, const std::string& table));
   MOCK_METHOD1(ModprobeAll, bool(const std::vector<std::string>& modules));
-  MOCK_METHOD2(AddInboundIPv4DNAT,
-               void(const std::string& ifname, const std::string& ipv4_addr));
-  MOCK_METHOD2(RemoveInboundIPv4DNAT,
-               void(const std::string& ifname, const std::string& ipv4_addr));
+  MOCK_METHOD3(AddInboundIPv4DNAT,
+               void(AutoDnatTarget auto_dnat_target,
+                    const std::string& ifname,
+                    const std::string& ipv4_addr));
+  MOCK_METHOD3(RemoveInboundIPv4DNAT,
+               void(AutoDnatTarget auto_dnat_target,
+                    const std::string& ifname,
+                    const std::string& ipv4_addr));
   MOCK_METHOD1(AddAdbPortAccessRule, bool(const std::string& ifname));
   MOCK_METHOD1(DeleteAdbPortAccessRule, void(const std::string& ifname));
   MOCK_METHOD5(ModifyChain,

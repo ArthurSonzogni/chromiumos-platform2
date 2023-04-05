@@ -169,6 +169,14 @@ enum IpFamily {
   Dual = IPv4 | IPv6,  // (1 << 0) | (1 << 1);
 };
 
+// List of possible guest targets for automatic forwarding rules applied to
+// unsolicited ingress traffic not accepted on the host.
+enum class AutoDnatTarget {
+  kArc,
+  kCrostini,
+  kPluginVm,
+};
+
 // Returns for given interface name the host name of a ARC veth pair.
 std::string ArcVethHostName(const std::string& ifname);
 
@@ -393,15 +401,16 @@ class Datapath {
   // Adds all |modules| into the kernel using modprobe.
   virtual bool ModprobeAll(const std::vector<std::string>& modules);
 
-  // Create (or delete) DNAT rules for sending unsollicited traffic inbound on
-  // interface |ifname| to |ipv4_addr|. This is used for implementing
-  // transparent ARC inbound connections to Android Apps listening on the
-  // network.
-  // TODO(b/197930417): Add an enum parameter to choose which ingress forwarding
-  // rule is used.
-  virtual void AddInboundIPv4DNAT(const std::string& ifname,
+  // Create (or delete) DNAT rules for sending unsolicited traffic inbound on
+  // interface |ifname| to |ipv4_addr| using the nat PREROUTING subchain
+  // associated with |auto_dnat_target|. These rules allow inbound connections
+  // to transparently reach Android Apps listening on a network port inside ARC
+  // or Linux binaries listening on a network port inside Crostini.
+  virtual void AddInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
+                                  const std::string& ifname,
                                   const std::string& ipv4_addr);
-  virtual void RemoveInboundIPv4DNAT(const std::string& ifname,
+  virtual void RemoveInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
+                                     const std::string& ifname,
                                      const std::string& ipv4_addr);
 
   // Create (or delete) DNAT rules for redirecting DNS queries from system
