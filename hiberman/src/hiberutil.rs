@@ -142,7 +142,7 @@ pub fn get_device_id<P: AsRef<std::path::Path>>(path: P) -> Result<u32> {
     let mut stats: MaybeUninit<libc::stat> = MaybeUninit::zeroed();
 
     // This is safe because only stats is modified.
-    if let Err(_) = syscall!(unsafe { libc::stat(path_str_c.as_ptr(), stats.as_mut_ptr()) }) {
+    if syscall!(unsafe { libc::stat(path_str_c.as_ptr(), stats.as_mut_ptr()) }).is_err() {
         return Err(HibernateError::SnapshotStatDeviceError(
             libchromeos::sys::Error::last(),
         ))
