@@ -370,15 +370,26 @@ TEST(DatapathTest, Start) {
       {Dual, "filter -L vpn_lockdown -w"},
       {Dual, "filter -F vpn_lockdown -w"},
       {Dual, "filter -X vpn_lockdown -w"},
+      {Dual, "filter -L accept_downstream_network -w"},
+      {Dual, "filter -F accept_downstream_network -w"},
+      {Dual, "filter -X accept_downstream_network -w"},
       {IPv4, "nat -D PREROUTING -j ingress_port_forwarding -w"},
-      {IPv4, "nat -D PREROUTING -j ingress_default_forwarding -w"},
+      {IPv4, "nat -D PREROUTING -j apply_auto_dnat_to_arc -w"},
+      {IPv4, "nat -D PREROUTING -j apply_auto_dnat_to_crostini -w"},
+      {IPv4, "nat -D PREROUTING -j apply_auto_dnat_to_pluginvm -w"},
       {Dual, "nat -D PREROUTING -j redirect_default_dns -w"},
       {IPv4, "nat -L redirect_dns -w"},
       {IPv4, "nat -F redirect_dns -w"},
       {IPv4, "nat -X redirect_dns -w"},
-      {IPv4, "nat -L ingress_default_forwarding -w"},
-      {IPv4, "nat -F ingress_default_forwarding -w"},
-      {IPv4, "nat -X ingress_default_forwarding -w"},
+      {IPv4, "nat -L apply_auto_dnat_to_arc -w"},
+      {IPv4, "nat -F apply_auto_dnat_to_arc -w"},
+      {IPv4, "nat -X apply_auto_dnat_to_arc -w"},
+      {IPv4, "nat -L apply_auto_dnat_to_crostini -w"},
+      {IPv4, "nat -F apply_auto_dnat_to_crostini -w"},
+      {IPv4, "nat -X apply_auto_dnat_to_crostini -w"},
+      {IPv4, "nat -L apply_auto_dnat_to_pluginvm -w"},
+      {IPv4, "nat -F apply_auto_dnat_to_pluginvm -w"},
+      {IPv4, "nat -X apply_auto_dnat_to_pluginvm -w"},
       {Dual, "nat -L redirect_default_dns -w"},
       {Dual, "nat -F redirect_default_dns -w"},
       {Dual, "nat -X redirect_default_dns -w"},
@@ -532,9 +543,13 @@ TEST(DatapathTest, Start) {
       {Dual,
        "mangle -A OUTPUT -m owner ! --uid-owner chronos -j skip_apply_vpn_mark "
        "-w"},
-      {IPv4, "nat -N ingress_default_forwarding -w"},
+      {IPv4, "nat -N apply_auto_dnat_to_arc -w"},
+      {IPv4, "nat -N apply_auto_dnat_to_crostini -w"},
+      {IPv4, "nat -N apply_auto_dnat_to_pluginvm -w"},
       {IPv4, "nat -N ingress_port_forwarding -w"},
-      {IPv4, "nat -A PREROUTING -j ingress_default_forwarding -w"},
+      {IPv4, "nat -A PREROUTING -j apply_auto_dnat_to_arc -w"},
+      {IPv4, "nat -A PREROUTING -j apply_auto_dnat_to_crostini -w"},
+      {IPv4, "nat -A PREROUTING -j apply_auto_dnat_to_pluginvm -w"},
       {IPv4, "nat -A PREROUTING -j ingress_port_forwarding -w"},
       {Dual, "nat -N redirect_default_dns -w"},
       {Dual, "nat -N redirect_chrome_dns -w"},
@@ -557,6 +572,7 @@ TEST(DatapathTest, Start) {
       {Dual, "filter -A INPUT -j ingress_port_firewall -w"},
       {Dual, "filter -N egress_port_firewall -w"},
       {Dual, "filter -A OUTPUT -j egress_port_firewall -w"},
+      {Dual, "filter -N accept_downstream_network -w"},
   };
   for (const auto& c : iptables_commands) {
     Verify_iptables(*runner, c.family, c.command);
@@ -612,17 +628,28 @@ TEST(DatapathTest, Stop) {
       {Dual, "filter -L vpn_lockdown -w"},
       {Dual, "filter -F vpn_lockdown -w"},
       {Dual, "filter -X vpn_lockdown -w"},
+      {Dual, "filter -L accept_downstream_network -w"},
+      {Dual, "filter -F accept_downstream_network -w"},
+      {Dual, "filter -X accept_downstream_network -w"},
       {Dual, "filter -D INPUT -j ingress_port_firewall -w"},
       {Dual, "filter -D OUTPUT -j egress_port_firewall -w"},
       {IPv4, "nat -D PREROUTING -j ingress_port_forwarding -w"},
-      {IPv4, "nat -D PREROUTING -j ingress_default_forwarding -w"},
+      {IPv4, "nat -D PREROUTING -j apply_auto_dnat_to_arc -w"},
+      {IPv4, "nat -D PREROUTING -j apply_auto_dnat_to_crostini -w"},
+      {IPv4, "nat -D PREROUTING -j apply_auto_dnat_to_pluginvm -w"},
       {Dual, "nat -D PREROUTING -j redirect_default_dns -w"},
       {IPv4, "nat -L redirect_dns -w"},
       {IPv4, "nat -F redirect_dns -w"},
       {IPv4, "nat -X redirect_dns -w"},
-      {IPv4, "nat -L ingress_default_forwarding -w"},
-      {IPv4, "nat -F ingress_default_forwarding -w"},
-      {IPv4, "nat -X ingress_default_forwarding -w"},
+      {IPv4, "nat -L apply_auto_dnat_to_arc -w"},
+      {IPv4, "nat -F apply_auto_dnat_to_arc -w"},
+      {IPv4, "nat -X apply_auto_dnat_to_arc -w"},
+      {IPv4, "nat -L apply_auto_dnat_to_crostini -w"},
+      {IPv4, "nat -F apply_auto_dnat_to_crostini -w"},
+      {IPv4, "nat -X apply_auto_dnat_to_crostini -w"},
+      {IPv4, "nat -L apply_auto_dnat_to_pluginvm -w"},
+      {IPv4, "nat -F apply_auto_dnat_to_pluginvm -w"},
+      {IPv4, "nat -X apply_auto_dnat_to_pluginvm -w"},
       {Dual, "nat -L redirect_default_dns -w"},
       {Dual, "nat -F redirect_default_dns -w"},
       {Dual, "nat -X redirect_default_dns -w"},
@@ -1210,13 +1237,13 @@ TEST(DatapathTest, AddInboundIPv4DNAT) {
   auto firewall = new MockFirewall();
   FakeSystem system;
   Verify_iptables(*runner, IPv4,
-                  "nat -A ingress_default_forwarding -i eth0 -m socket "
+                  "nat -A apply_auto_dnat_to_arc -i eth0 -m socket "
                   "--nowildcard -j ACCEPT -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -A ingress_default_forwarding -i eth0 -p tcp -j DNAT "
+                  "nat -A apply_auto_dnat_to_arc -i eth0 -p tcp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -A ingress_default_forwarding -i eth0 -p udp -j DNAT "
+                  "nat -A apply_auto_dnat_to_arc -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
   Datapath datapath(runner, firewall, &system);
@@ -1228,13 +1255,13 @@ TEST(DatapathTest, RemoveInboundIPv4DNAT) {
   auto firewall = new MockFirewall();
   FakeSystem system;
   Verify_iptables(*runner, IPv4,
-                  "nat -D ingress_default_forwarding -i eth0 -m socket "
+                  "nat -D apply_auto_dnat_to_arc -i eth0 -m socket "
                   "--nowildcard -j ACCEPT -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -D ingress_default_forwarding -i eth0 -p tcp -j DNAT "
+                  "nat -D apply_auto_dnat_to_arc -i eth0 -p tcp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
   Verify_iptables(*runner, IPv4,
-                  "nat -D ingress_default_forwarding -i eth0 -p udp -j DNAT "
+                  "nat -D apply_auto_dnat_to_arc -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
   Datapath datapath(runner, firewall, &system);

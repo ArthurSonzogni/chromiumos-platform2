@@ -60,6 +60,10 @@ constexpr char kApplyLocalSourceMarkChain[] = "apply_local_source_mark";
 constexpr char kSkipApplyVpnMarkChain[] = "skip_apply_vpn_mark";
 constexpr char kApplyVpnMarkChain[] = "apply_vpn_mark";
 
+// Chains for allowing host services to receive ingress traffic on a downstream
+// interface configured with StartDownstreamNetwork.
+constexpr char kAcceptDownstreamNetworkChain[] = "accept_downstream_network";
+
 // Egress filter chain for dropping in the OUTPUT chain any local traffic
 // incorrectly bound to a static IPv4 address used for ARC or Crostini.
 constexpr char kDropGuestIpv4PrefixChain[] = "drop_guest_ipv4_prefix";
@@ -76,9 +80,12 @@ constexpr char kVpnEgressFiltersChain[] = "vpn_egress_filters";
 constexpr char kVpnAcceptChain[] = "vpn_accept";
 constexpr char kVpnLockdownChain[] = "vpn_lockdown";
 
-// nat PREROUTING chains for forwarding ingress traffic.
-constexpr char kIngressDefaultForwardingChain[] = "ingress_default_forwarding";
-// nat PREROUTING chains for egress traffic from downstream guests.
+// IPv4 nat PREROUTING chains for forwarding ingress traffic into a hosted
+// guest. Only kApplyAutoDnatToArcChain is used currently.
+constexpr char kApplyAutoDnatToArcChain[] = "apply_auto_dnat_to_arc";
+constexpr char kApplyAutoDnatToCrostiniChain[] = "apply_auto_dnat_to_crostini";
+constexpr char kApplyAutoDnatToPluginvmChain[] = "apply_auto_dnat_to_pluginvm";
+// nat PREROUTING chain for egress traffic from downstream guests.
 constexpr char kRedirectDefaultDnsChain[] = "redirect_default_dns";
 // nat OUTPUT chains for egress traffic from processes running on the host.
 constexpr char kRedirectChromeDnsChain[] = "redirect_chrome_dns";
@@ -206,7 +213,9 @@ void Datapath::Start() {
       // These chains are only created for IPv4 since downstream guests obtain
       // their own addresses for IPv6.
       {IpFamily::IPv4, "nat", kIngressPortForwardingChain},
-      {IpFamily::IPv4, "nat", kIngressDefaultForwardingChain},
+      {IpFamily::IPv4, "nat", kApplyAutoDnatToArcChain},
+      {IpFamily::IPv4, "nat", kApplyAutoDnatToCrostiniChain},
+      {IpFamily::IPv4, "nat", kApplyAutoDnatToPluginvmChain},
       // Create filter subchains for managing the egress firewall VPN rules.
       {IpFamily::Dual, "filter", kVpnEgressFiltersChain},
       {IpFamily::Dual, "filter", kVpnAcceptChain},
@@ -216,6 +225,9 @@ void Datapath::Start() {
       // Create filter subchains for hosting permission_broker firewall rules
       {IpFamily::Dual, "filter", kIngressPortFirewallChain},
       {IpFamily::Dual, "filter", kEgressPortFirewallChain},
+      // Create filter subchain for ingress firewall rules on downstream
+      // networks (Tethering, LocalOnlyNetwork).
+      {IpFamily::Dual, "filter", kAcceptDownstreamNetworkChain},
   };
   for (const auto& c : makeCommands) {
     if (!AddChain(c.family, c.table, c.chain /*log_failures*/)) {
@@ -236,9 +248,13 @@ void Datapath::Start() {
       {IpFamily::Dual, "mangle", "OUTPUT", kApplyLocalSourceMarkChain},
       {IpFamily::Dual, "nat", "PREROUTING", kRedirectDefaultDnsChain},
       // "ingress_port_forwarding" must be traversed before
-      // "ingress_default_forwarding".
+      // the default "ingress_default_*" autoforwarding chains.
       {IpFamily::IPv4, "nat", "PREROUTING", kIngressPortForwardingChain},
-      {IpFamily::IPv4, "nat", "PREROUTING", kIngressDefaultForwardingChain},
+      // ARC default ingress forwarding is always first, Crostini second, and
+      // PluginVM last.
+      {IpFamily::IPv4, "nat", "PREROUTING", kApplyAutoDnatToArcChain},
+      {IpFamily::IPv4, "nat", "PREROUTING", kApplyAutoDnatToCrostiniChain},
+      {IpFamily::IPv4, "nat", "PREROUTING", kApplyAutoDnatToPluginvmChain},
       // When VPN lockdown is enabled, a REJECT rule must stop
       // any egress traffic tagged with the |kFwmarkRouteOnVpn| intent mark.
       // This REJECT rule is added to |kVpnLockdownChain|. In addition, when VPN
@@ -457,7 +473,13 @@ void Datapath::ResetIptables() {
                  kIngressPortForwardingChain, "" /*iif*/, "" /*oif*/,
                  false /*log_failures*/);
   ModifyJumpRule(IpFamily::IPv4, "nat", "-D", "PREROUTING",
-                 kIngressDefaultForwardingChain, "" /*iif*/, "" /*oif*/,
+                 kApplyAutoDnatToArcChain, "" /*iif*/, "" /*oif*/,
+                 false /*log_failures*/);
+  ModifyJumpRule(IpFamily::IPv4, "nat", "-D", "PREROUTING",
+                 kApplyAutoDnatToCrostiniChain, "" /*iif*/, "" /*oif*/,
+                 false /*log_failures*/);
+  ModifyJumpRule(IpFamily::IPv4, "nat", "-D", "PREROUTING",
+                 kApplyAutoDnatToPluginvmChain, "" /*iif*/, "" /*oif*/,
                  false /*log_failures*/);
   ModifyJumpRule(IpFamily::Dual, "nat", "-D", "PREROUTING",
                  kRedirectDefaultDnsChain, "" /*iif*/, "" /*oif*/,
@@ -496,6 +518,7 @@ void Datapath::ResetIptables() {
       {IpFamily::Dual, "filter", kVpnEgressFiltersChain, true},
       {IpFamily::Dual, "filter", kVpnAcceptChain, true},
       {IpFamily::Dual, "filter", kVpnLockdownChain, true},
+      {IpFamily::Dual, "filter", kAcceptDownstreamNetworkChain, true},
       {IpFamily::Dual, "nat", "OUTPUT", false},
       {IpFamily::IPv4, "nat", "POSTROUTING", false},
       {IpFamily::Dual, "nat", kRedirectDefaultDnsChain, true},
@@ -504,7 +527,9 @@ void Datapath::ResetIptables() {
       {IpFamily::Dual, "nat", kSnatChromeDnsChain, true},
       {IpFamily::IPv6, "nat", kSnatUserDnsChain, true},
       {IpFamily::IPv4, "nat", kRedirectDnsChain, true},
-      {IpFamily::IPv4, "nat", kIngressDefaultForwardingChain, true},
+      {IpFamily::IPv4, "nat", kApplyAutoDnatToArcChain, true},
+      {IpFamily::IPv4, "nat", kApplyAutoDnatToCrostiniChain, true},
+      {IpFamily::IPv4, "nat", kApplyAutoDnatToPluginvmChain, true},
   };
   for (const auto& op : resetOps) {
     // Chains to delete are custom chains and will not exist the first time
@@ -1250,22 +1275,20 @@ void Datapath::AddInboundIPv4DNAT(const std::string& ifname,
   // Direct ingress IP traffic to existing sockets.
   bool success = true;
   if (process_runner_->iptables(
-          "nat", {"-A", kIngressDefaultForwardingChain, "-i", ifname, "-m",
-                  "socket", "--nowildcard", "-j", "ACCEPT", "-w"}) != 0) {
+          "nat", {"-A", kApplyAutoDnatToArcChain, "-i", ifname, "-m", "socket",
+                  "--nowildcard", "-j", "ACCEPT", "-w"}) != 0) {
     success = false;
   }
 
   // Direct ingress TCP & UDP traffic to ARC interface for new connections.
   if (process_runner_->iptables(
-          "nat", {"-A", kIngressDefaultForwardingChain, "-i", ifname, "-p",
-                  "tcp", "-j", "DNAT", "--to-destination", ipv4_addr, "-w"}) !=
-      0) {
+          "nat", {"-A", kApplyAutoDnatToArcChain, "-i", ifname, "-p", "tcp",
+                  "-j", "DNAT", "--to-destination", ipv4_addr, "-w"}) != 0) {
     success = false;
   }
   if (process_runner_->iptables(
-          "nat", {"-A", kIngressDefaultForwardingChain, "-i", ifname, "-p",
-                  "udp", "-j", "DNAT", "--to-destination", ipv4_addr, "-w"}) !=
-      0) {
+          "nat", {"-A", kApplyAutoDnatToArcChain, "-i", ifname, "-p", "udp",
+                  "-j", "DNAT", "--to-destination", ipv4_addr, "-w"}) != 0) {
     success = false;
   }
 
@@ -1279,14 +1302,14 @@ void Datapath::AddInboundIPv4DNAT(const std::string& ifname,
 void Datapath::RemoveInboundIPv4DNAT(const std::string& ifname,
                                      const std::string& ipv4_addr) {
   process_runner_->iptables(
-      "nat", {"-D", kIngressDefaultForwardingChain, "-i", ifname, "-p", "udp",
-              "-j", "DNAT", "--to-destination", ipv4_addr, "-w"});
+      "nat", {"-D", kApplyAutoDnatToArcChain, "-i", ifname, "-p", "udp", "-j",
+              "DNAT", "--to-destination", ipv4_addr, "-w"});
   process_runner_->iptables(
-      "nat", {"-D", kIngressDefaultForwardingChain, "-i", ifname, "-p", "tcp",
-              "-j", "DNAT", "--to-destination", ipv4_addr, "-w"});
+      "nat", {"-D", kApplyAutoDnatToArcChain, "-i", ifname, "-p", "tcp", "-j",
+              "DNAT", "--to-destination", ipv4_addr, "-w"});
   process_runner_->iptables(
-      "nat", {"-D", kIngressDefaultForwardingChain, "-i", ifname, "-m",
-              "socket", "--nowildcard", "-j", "ACCEPT", "-w"});
+      "nat", {"-D", kApplyAutoDnatToArcChain, "-i", ifname, "-m", "socket",
+              "--nowildcard", "-j", "ACCEPT", "-w"});
 }
 
 bool Datapath::AddRedirectDnsRule(const std::string& ifname,
@@ -1831,7 +1854,8 @@ bool Datapath::ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
 bool Datapath::AddChain(IpFamily family,
                         const std::string& table,
                         const std::string& name) {
-  DCHECK(name.size() <= kIptablesMaxChainLength);
+  DCHECK(name.size() <= kIptablesMaxChainLength)
+      << "chain name " << name << " is longer than " << kIptablesMaxChainLength;
   return ModifyChain(family, table, "-N", name);
 }
 

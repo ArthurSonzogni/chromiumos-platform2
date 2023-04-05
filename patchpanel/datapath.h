@@ -397,6 +397,8 @@ class Datapath {
   // interface |ifname| to |ipv4_addr|. This is used for implementing
   // transparent ARC inbound connections to Android Apps listening on the
   // network.
+  // TODO(b/197930417): Add an enum parameter to choose which ingress forwarding
+  // rule is used.
   virtual void AddInboundIPv4DNAT(const std::string& ifname,
                                   const std::string& ipv4_addr);
   virtual void RemoveInboundIPv4DNAT(const std::string& ifname,
