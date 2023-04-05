@@ -69,13 +69,29 @@ static inline __attribute__((always_inline)) void fill_image_info(
   image_info->mnt_ns = BPF_CORE_READ(t, real_parent, nsproxy, mnt_ns, ns.inum);
 }
 
+static inline __attribute__((always_inline)) struct task_struct*
+normalize_to_last_exec(const struct task_struct* t) {
+  struct task_struct* ret = t;
+  // Arbitrarily selected limit to convince the verifier that the BPF will
+  // always halt.
+  for (int i = 0; i < 64; ++i) {
+    struct task_struct* parent = BPF_CORE_READ(ret, real_parent, group_leader);
+    if ((!parent) || (BPF_CORE_READ(ret, self_exec_id) !=
+                      BPF_CORE_READ(parent, self_exec_id))) {
+      break;
+    }
+    ret = parent;
+  }
+  return ret;
+}
+
 static inline __attribute__((always_inline)) void fill_task_info(
     struct cros_process_task_info* task_info, const struct task_struct* t) {
-  task_info->ppid = BPF_CORE_READ(t, real_parent, group_leader, tgid);
+  struct task_struct* parent =
+      normalize_to_last_exec(BPF_CORE_READ(t, real_parent, group_leader));
+  task_info->ppid = BPF_CORE_READ(parent, tgid);
+  task_info->parent_start_time = BPF_CORE_READ(parent, start_boottime);
   task_info->start_time = BPF_CORE_READ(t, group_leader, start_boottime);
-  task_info->parent_start_time =
-      BPF_CORE_READ(t, real_parent, group_leader, start_boottime);
-
   task_info->pid = BPF_CORE_READ(t, tgid);
 
   task_info->uid = BPF_CORE_READ(t, real_cred, uid.val);
@@ -145,8 +161,7 @@ int BPF_PROG(handle_sched_process_exit, struct task_struct* current) {
     return 0;
   }
   if ((BPF_CORE_READ(current, pid) != BPF_CORE_READ(current, tgid)) ||
-      (BPF_CORE_READ(current, self_exec_id) ==
-       BPF_CORE_READ(current, parent, self_exec_id))) {
+      (current != normalize_to_last_exec(current))) {
     // We didn't report an exec event for this task since it's either not a
     // thread group leader or it's a !CLONE_THREAD clone that hasn't exec'd
     // anything. So avoid reporting a terminate event for it.
