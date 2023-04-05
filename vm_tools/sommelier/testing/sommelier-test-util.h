@@ -29,6 +29,8 @@ const xdg_surface_listener* HostEventHandler(struct xdg_surface* xdg_surface);
 const xdg_toplevel_listener* HostEventHandler(
     struct xdg_toplevel* xdg_toplevel);
 
+const wl_callback_listener* HostEventHandler(struct wl_callback* callback);
+
 const wl_output_listener* HostEventHandler(struct wl_output* output);
 
 const zaura_output_listener* HostEventHandler(struct zaura_output* output);

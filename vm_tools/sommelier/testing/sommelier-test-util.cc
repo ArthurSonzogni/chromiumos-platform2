@@ -32,6 +32,13 @@ const xdg_toplevel_listener* HostEventHandler(
   return static_cast<const xdg_toplevel_listener*>(listener);
 }
 
+const wl_callback_listener* HostEventHandler(struct wl_callback* callback) {
+  const void* listener =
+      wl_proxy_get_listener(reinterpret_cast<wl_proxy*>(callback));
+  EXPECT_NE(listener, nullptr);
+  return static_cast<const wl_callback_listener*>(listener);
+}
+
 const wl_output_listener* HostEventHandler(struct wl_output* output) {
   const void* listener =
       wl_proxy_get_listener(reinterpret_cast<wl_proxy*>(output));

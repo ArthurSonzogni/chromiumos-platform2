@@ -62,8 +62,15 @@ enum {
 
 struct sl_context {
   char** runprog;
+
+  // wl_display object used with the Wayland client API,
+  // to communicate with the host compositor.
   struct wl_display* display;
+
+  // wl_display object used with the Wayland server API,
+  // to communicate with clients of Sommelier.
   struct wl_display* host_display;
+
   struct wl_client* client;
   struct sl_compositor* compositor;
   struct sl_subcompositor* subcompositor;

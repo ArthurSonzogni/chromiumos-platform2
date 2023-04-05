@@ -6,6 +6,7 @@
 #define VM_TOOLS_SOMMELIER_SOMMELIER_WINDOW_H_
 
 #include <pixman.h>
+#include <wayland-client-protocol.h>
 #include <wayland-server-core.h>
 #include <string>
 #include <xcb/xcb.h>
@@ -85,8 +86,25 @@ struct sl_window {
   int min_height = 0;
   int max_width = 0;
   int max_height = 0;
+
+  // Window rect and state from the most recent xdg_toplevel/aura_toplevel
+  // configure event, to be applied when xdg_surface.configure is next received.
   struct sl_config next_config;
+
+  // Window rect and state applied by xdg_surface.configure. Sommelier now waits
+  // for the client to commit surface contents consistent with this config.
   struct sl_config pending_config;
+
+  // When null, xdg_surface.configure events are processed immediately.
+  // When set, all xdg_surface.configure events are coalesced together,
+  // and Sommelier won't apply them until this callback's done event fires.
+  // When the done event fires, the last received xdg_surface.configure event
+  // is processed.
+  struct wl_callback* configure_event_barrier = nullptr;
+
+  // Most recent config received while the |configure_event_barrier| was active.
+  struct sl_config coalesced_next_config;
+
   struct xdg_surface* xdg_surface = nullptr;
   struct xdg_toplevel* xdg_toplevel = nullptr;
   struct xdg_popup* xdg_popup = nullptr;

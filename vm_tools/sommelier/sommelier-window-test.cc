@@ -11,6 +11,7 @@
 #include <wayland-server-core.h>
 #include <wayland-server-protocol.h>
 #include <wayland-util.h>
+#include <xcb/xcb.h>
 #include <xcb/xproto.h>
 
 namespace vm_tools {
@@ -691,6 +692,111 @@ TEST_F(X11Test, X11ConfigureRequestPositionIsForwardedToAuraHost) {
       .value_mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
                     XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT};
   sl_handle_configure_request(&ctx, &configure);
+  Pump();
+}
+
+TEST_F(X11Test,
+       X11ConfigureRequestPositionForwardingIgnoresStaleAuraToplevelConfigure) {
+  // Arrange
+  ctx.enable_x11_move_windows = true;
+  AdvertiseOutputs(xwayland.get(), {OutputConfig()});
+  sl_window* window = CreateToplevelWindow();
+  window->managed = 1;  // pretend window is mapped
+  const int width = 300;
+  const int height = 400;
+
+  // Position requested by the client.
+  const int client_requested_x = 10;
+  const int client_requested_y = 0;
+
+  // Stale position received from the host compositor.
+  const int stale_x = 50;
+  const int stale_y = 60;
+
+  // Host compositor's adjusted response to the client's request.
+  // (In this scenario, it moved the window down so its server-side
+  // decorations wouldn't be offscreen.)
+  const int granted_x = client_requested_x;
+  const int granted_y = 32;
+
+  //
+  // Assert
+  //
+
+  // Barrier should prevent forwarding the host's stale coords to the X server.
+  EXPECT_CALL(
+      xcb, configure_window(testing::_, window->frame_id, testing::_,
+                            ValueListMatches(std::vector({stale_x, stale_y}))))
+      .Times(0);
+
+  // Do forward the correct coordinates to the X server.
+  EXPECT_CALL(xcb, configure_window(
+                       testing::_, window->frame_id,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
+                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                       ValueListMatches(std::vector(
+                           {granted_x, granted_y, width, height, 0}))))
+      .Times(1);
+
+  // The reparented child window may also get configured.
+  // The details are not important for this test case.
+  EXPECT_CALL(xcb,
+              configure_window(testing::_, window->id, testing::_, testing::_))
+      .Times(testing::AtLeast(0));
+
+  //
+  // Act
+  //
+
+  // An incoming ConfigureRequest sends set_window_bounds(), and sets up the
+  // event barrier.
+  xcb_configure_request_event_t configure = {
+      .response_type = XCB_CONFIGURE_REQUEST,
+      .sequence = 123,
+      .parent = window->frame_id,
+      .window = window->id,
+      .x = client_requested_x,
+      .y = client_requested_y,
+      .width = width,
+      .height = height,
+      .value_mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                    XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT};
+  sl_handle_configure_request(&ctx, &configure);
+  EXPECT_NE(window->configure_event_barrier, nullptr);
+
+  // Meanwhile, host compositor is sending stale position data, both via the
+  // regular configure sequence and via origin_change events.
+  wl_array states;
+  wl_array_init(&states);
+  uint32_t* state =
+      static_cast<uint32_t*>(wl_array_add(&states, sizeof(uint32_t)));
+  *state = XDG_TOPLEVEL_STATE_ACTIVATED;
+
+  uint32_t serial = 120;
+
+  HostEventHandler(window->aura_toplevel)
+      ->configure(nullptr, window->aura_toplevel, stale_x, stale_y, width,
+                  height, &states);
+  HostEventHandler(window->xdg_surface)
+      ->configure(nullptr, window->xdg_surface, serial++);
+
+  HostEventHandler(window->aura_toplevel)
+      ->origin_change(nullptr, window->aura_toplevel, stale_x, stale_y);
+  Pump();
+
+  // Exo catches up to the set_window_bounds() request. It modifies the
+  // requested coords slightly and returns them in a fresh configure sequence.
+  HostEventHandler(window->aura_toplevel)
+      ->configure(nullptr, window->aura_toplevel, granted_x, granted_y, width,
+                  height, &states);
+  HostEventHandler(window->xdg_surface)
+      ->configure(nullptr, window->xdg_surface, serial++);
+
+  // Exo catches up to the event barrier.
+  HostEventHandler(window->configure_event_barrier)
+      ->done(nullptr, window->configure_event_barrier, serial++);
+
   Pump();
 }
 

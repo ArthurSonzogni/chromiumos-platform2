@@ -5,6 +5,7 @@
 #include "sommelier-window.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
+#include <wayland-client-protocol.h>
 #include <cstdint>
 
 #include "sommelier.h"            // NOLINT(build/include_directory)
@@ -112,14 +113,19 @@ void sl_configure_window(struct sl_window* window) {
 }
 
 void sl_send_configure_notify(struct sl_window* window) {
+  // Send a "synthetic" ConfigureNotify event.
   xcb_configure_notify_event_t event = {};
   event.response_type = XCB_CONFIGURE_NOTIFY;
   event.pad0 = 0;
   event.event = window->id;
   event.window = window->id;
   event.above_sibling = XCB_WINDOW_NONE;
+
+  // Per ICCCM, synthetic ConfigureNotify events use root coordinates
+  // even if the window has been reparented.
   event.x = static_cast<int16_t>(window->x);
   event.y = static_cast<int16_t>(window->y);
+
   event.width = static_cast<uint16_t>(window->width);
   event.height = static_cast<uint16_t>(window->height);
   event.border_width = static_cast<uint16_t>(window->border_width);
@@ -196,7 +202,11 @@ static void sl_internal_xdg_surface_configure(void* data,
       static_cast<sl_window*>(xdg_surface_get_user_data(xdg_surface));
 
   window->next_config.serial = serial;
-  if (!window->pending_config.serial) {
+
+  if (window->configure_event_barrier) {
+    window->coalesced_next_config = window->next_config;
+    window->next_config.serial = 0;
+  } else if (!window->pending_config.serial) {
     struct wl_resource* host_resource;
     struct sl_host_surface* host_surface = NULL;
 
@@ -213,6 +223,21 @@ static void sl_internal_xdg_surface_configure(void* data,
 
 static const struct xdg_surface_listener sl_internal_xdg_surface_listener = {
     sl_internal_xdg_surface_configure};
+
+static void sl_internal_xdg_surface_configure_barrier_done(
+    void* data, struct wl_callback* callback, uint32_t serial) {
+  struct sl_window* window =
+      static_cast<sl_window*>(wl_callback_get_user_data(callback));
+
+  window->configure_event_barrier = nullptr;
+
+  if (window->coalesced_next_config.serial) {
+    window->next_config = window->coalesced_next_config;
+    window->coalesced_next_config.serial = 0;
+    sl_internal_xdg_surface_configure(data, window->xdg_surface,
+                                      window->next_config.serial);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // common toplevel code
@@ -414,6 +439,12 @@ static void sl_internal_zaura_toplevel_origin_change(
   // this change immediately.
   sl_window* window =
       static_cast<sl_window*>(zaura_toplevel_get_user_data(zaura_toplevel));
+
+  if (window->configure_event_barrier) {
+    // TODO(cpelling): Coalesce origin_change events instead of dropping them.
+    return;
+  }
+
   int32_t guest_x = x;
   int32_t guest_y = y;
   sl_transform_host_to_guest(window->ctx, window->paired_surface, &guest_x,
@@ -430,6 +461,9 @@ static const struct zaura_toplevel_listener
     sl_internal_zaura_toplevel_listener = {
         sl_internal_zaura_toplevel_configure,
         sl_internal_zaura_toplevel_origin_change};
+
+static const struct wl_callback_listener configure_event_barrier_listener = {
+    sl_internal_xdg_surface_configure_barrier_done};
 
 void sl_toplevel_send_window_bounds_to_host(struct sl_window* window) {
   // Don't send window bounds if fullscreen/maximized/resizing,
@@ -469,6 +503,12 @@ void sl_toplevel_send_window_bounds_to_host(struct sl_window* window) {
                                      output->proxy);
     break;
   }
+  if (window->configure_event_barrier) {
+    wl_callback_destroy(window->configure_event_barrier);
+  }
+  window->configure_event_barrier = wl_display_sync(window->ctx->display);
+  wl_callback_add_listener(window->configure_event_barrier,
+                           &configure_event_barrier_listener, window);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
