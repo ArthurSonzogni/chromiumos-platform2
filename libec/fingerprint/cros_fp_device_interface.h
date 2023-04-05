@@ -10,12 +10,14 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "libec/fingerprint/fp_sensor_errors.h"
 
+#include <base/functional/callback.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/ec/ec_commands.h>
-#include <libec/ec_command.h>
-#include <libec/fingerprint/fp_mode.h>
+
+#include "libec/ec_command.h"
+#include "libec/fingerprint/fp_mode.h"
+#include "libec/fingerprint/fp_sensor_errors.h"
 
 /**
  * Though it's nice to have the template as a SecureVector, for some templates
