@@ -713,7 +713,8 @@ bool ClobberState::WipeMTDDevice(
 // static
 bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
                                    ClobberUi* ui,
-                                   bool fast) {
+                                   bool fast,
+                                   bool discard) {
   const int write_block_size = 4 * 1024 * 1024;
   int64_t to_write = 0;
 
@@ -777,7 +778,7 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
   while (total_written < to_write) {
     uint64_t write_size = std::min(zero_block_size, to_write - total_written);
     if (!storage_device->WipeBlkDev(device_path, total_written, write_size,
-                                    false)) {
+                                    false, discard)) {
       break;
     }
     total_written += write_size;
@@ -1632,11 +1633,11 @@ uint64_t ClobberState::GetBlkSize(const base::FilePath& device) {
   return size;
 }
 
-bool ClobberState::WipeDevice(const base::FilePath& device_path) {
+bool ClobberState::WipeDevice(const base::FilePath& device_path, bool discard) {
   if (wipe_info_.is_mtd_flash) {
     return WipeMTDDevice(device_path, partitions_);
   } else {
-    return WipeBlockDevice(device_path, ui_.get(), args_.fast_wipe);
+    return WipeBlockDevice(device_path, ui_.get(), args_.fast_wipe, discard);
   }
 }
 

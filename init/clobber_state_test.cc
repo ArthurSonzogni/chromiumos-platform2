@@ -1511,8 +1511,10 @@ TEST(WipeBlockDevice, Nonexistent) {
   base::FilePath file_system_path = temp_dir.GetPath().Append("fs");
   ClobberUi ui(DevNull());
 
-  EXPECT_FALSE(ClobberState::WipeBlockDevice(file_system_path, &ui, false));
-  EXPECT_FALSE(ClobberState::WipeBlockDevice(file_system_path, &ui, true));
+  EXPECT_FALSE(
+      ClobberState::WipeBlockDevice(file_system_path, &ui, false, false));
+  EXPECT_FALSE(
+      ClobberState::WipeBlockDevice(file_system_path, &ui, true, false));
 }
 
 TEST(WipeBlockDevice, Fast) {
@@ -1538,7 +1540,7 @@ TEST(WipeBlockDevice, Fast) {
   device.Close();
 
   ClobberUi ui(DevNull());
-  EXPECT_TRUE(ClobberState::WipeBlockDevice(device_path, &ui, true));
+  EXPECT_TRUE(ClobberState::WipeBlockDevice(device_path, &ui, true, false));
 
   device =
       base::File(device_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
@@ -1590,7 +1592,8 @@ TEST(WipeBlockDevice, Slow) {
   EXPECT_EQ(mkfs.Run(), 0);
 
   ClobberUi ui(DevNull());
-  EXPECT_TRUE(ClobberState::WipeBlockDevice(file_system_path, &ui, false));
+  EXPECT_TRUE(
+      ClobberState::WipeBlockDevice(file_system_path, &ui, false, false));
 
   file_system = base::File(file_system_path,
                            base::File::FLAG_OPEN | base::File::FLAG_READ);

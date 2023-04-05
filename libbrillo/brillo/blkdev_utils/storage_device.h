@@ -43,10 +43,12 @@ class BRILLO_EXPORT StorageDevice {
   //   device_offset - The starting byte offset to wipe.
   //   device_length - The number of bytes to wipe.
   //   run_physical_erasure - If set to true, PhysicalErasure will be invoked.
+  //   discard - Set to true to discard the blocks after a wipe.
   bool WipeBlkDev(const base::FilePath& device_path,
                   const uint64_t device_offset,
                   const uint64_t device_length,
-                  bool run_physical_erasure) const;
+                  bool run_physical_erasure,
+                  bool discard) const;
 
   // Whether the device supports physical erasure or not.
   virtual bool SupportPhysicalErasure() const;

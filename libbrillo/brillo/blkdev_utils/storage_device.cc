@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <vector>
+
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -19,10 +21,20 @@ namespace brillo {
 bool StorageDevice::WipeBlkDev(const base::FilePath& device_path,
                                const uint64_t device_offset,
                                const uint64_t device_length,
-                               bool run_physical_erasure) const {
-  if (!LogicalErasure(device_path, device_offset, device_length,
-                      GetLogicalErasureIoctlType())) {
-    return false;
+                               bool run_physical_erasure,
+                               bool discard) const {
+  auto logical_erasure_ioctl_type = GetLogicalErasureIoctlType();
+  std::vector<LogicalErasureIoctl> ioctl_types = {logical_erasure_ioctl_type};
+  const auto discard_type = LogicalErasureIoctl::blkdiscard;
+  if (discard && logical_erasure_ioctl_type != discard_type) {
+    ioctl_types.push_back(discard_type);
+  }
+
+  for (const auto& ioctl_type : ioctl_types) {
+    if (!LogicalErasure(device_path, device_offset, device_length,
+                        ioctl_type)) {
+      return false;
+    }
   }
 
   if (run_physical_erasure) {

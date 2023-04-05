@@ -117,7 +117,8 @@ class ClobberState {
   // A progress indicator will not be displayed if |fast| mode is enabled.
   static bool WipeBlockDevice(const base::FilePath& device_path,
                               ClobberUi* ui,
-                              bool fast);
+                              bool fast,
+                              bool discard);
 
   // Reads successful and priority metadata from partition numbered
   // |partition_number| on |disk|, storing the results in |successful_out| and
@@ -230,8 +231,9 @@ class ClobberState {
 
   // Perform media-dependent wipe of the device based on if the device is
   // an MTD device or not.
-  // |device_path| should be the path under /dev/, e.g. /dev/sda3, /dev/ubi5_0.
-  bool WipeDevice(const base::FilePath& device_name);
+  // `device_path` should be the path under /dev/, e.g. /dev/sda3, /dev/ubi5_0.
+  // `discard` to discard the blocks after wiping.
+  bool WipeDevice(const base::FilePath& device_name, bool discard = false);
 
   // Makes a new filesystem on |wipe_info_.stateful_device|.
   int CreateStatefulFileSystem();
