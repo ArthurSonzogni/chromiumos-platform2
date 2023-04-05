@@ -700,7 +700,7 @@ fn zero_init_blockdev(path: &Path, num_bytes: u64) -> Result<()> {
 
         if bytes_left % SIZE_4K != 0 {
             let remaining_bytes = &zeroes_4k[0..(bytes_left % SIZE_4K) as usize];
-            data.push(IoSlice::new(&remaining_bytes));
+            data.push(IoSlice::new(remaining_bytes));
         }
 
         let bytes_written = f.write_vectored(&data)?;
