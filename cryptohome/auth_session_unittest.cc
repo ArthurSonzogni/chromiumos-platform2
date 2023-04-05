@@ -2787,6 +2787,216 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 }
 
+// Test that an existing user with an existing pin auth factor can be
+// authenticated and then re-created if the derive suggests it.
+TEST_F(AuthSessionWithUssExperimentTest,
+       AuthenticatePinAuthFactorViaUssWithRecreate) {
+  // Setup.
+  const ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(kFakeUsername);
+  const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
+  // Setting the expectation that the user exists.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Generating the USS.
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
+      UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
+  ASSERT_TRUE(uss_status.ok());
+  std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
+  std::optional<brillo::SecureBlob> uss_main_key =
+      UserSecretStash::CreateRandomMainKey();
+  ASSERT_TRUE(uss_main_key.has_value());
+  // Creating the auth factor. An arbitrary auth block state is used in this
+  // test.
+  auto auth_factor = std::make_unique<AuthFactor>(
+      AuthFactorType::kPin, kFakePinLabel,
+      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthBlockState{.state = PinWeaverAuthBlockState()});
+  EXPECT_TRUE(
+      auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
+          .ok());
+  AuthFactorMap auth_factor_map;
+  auth_factor_map.Add(std::move(auth_factor),
+                      AuthFactorStorageType::kUserSecretStash);
+  // Adding the auth factor into the USS and persisting the latter.
+  const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
+  std::optional<brillo::SecureBlob> wrapping_key =
+      key_blobs.DeriveUssCredentialSecret();
+  ASSERT_TRUE(wrapping_key.has_value());
+  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakePinLabel,
+                                     wrapping_key.value())
+                  .ok());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
+      uss->GetEncryptedContainer(uss_main_key.value());
+  ASSERT_TRUE(encrypted_uss.ok());
+  EXPECT_TRUE(user_secret_stash_storage_
+                  .Persist(encrypted_uss.value(), obfuscated_username)
+                  .ok());
+  // Creating the auth session.
+  AuthSession auth_session(
+      {.username = kFakeUsername,
+       .is_ephemeral_user = false,
+       .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .user_exists = true,
+       .auth_factor_map = std::move(auth_factor_map),
+       .migrate_to_user_secret_stash = false},
+      backing_apis_);
+  EXPECT_TRUE(auth_session.user_exists());
+
+  // Test.
+  // Setting the expectation that the auth block utility will derive key blobs,
+  // and then that there will be additional calls to re-create them.
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeFromState(
+                  AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
+      .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
+  EXPECT_CALL(auth_block_utility_,
+              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _, _))
+      .WillOnce([&kFakePerCredentialSecret](
+                    AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthBlockState& auth_state,
+                    AuthBlock::DeriveCallback derive_callback) {
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key = kFakePerCredentialSecret;
+        std::move(derive_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 AuthBlock::SuggestedAction::kRecreate);
+      });
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeForCreation(AuthFactorType::kPin))
+      .WillRepeatedly(ReturnValue(AuthBlockType::kPinWeaver));
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _))
+      .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                   AuthBlock::CreateCallback create_callback) {
+        // Make an arbitrary auth block state type can be used in this test.
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key = brillo::SecureBlob("fake vkk key");
+        auto auth_block_state = std::make_unique<AuthBlockState>();
+        auth_block_state->state = PinWeaverAuthBlockState();
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::move(auth_block_state));
+      });
+  // Calling AuthenticateAuthFactor.
+  std::string auth_factor_labels[] = {kFakePinLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
+  TestFuture<CryptohomeStatus> authenticate_future;
+  auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
+                                      authenticate_future.GetCallback());
+
+  // Verify.
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+}
+
+// Test that an existing user with an existing pin auth factor can be
+// authenticated and then re-created if the derive suggests it. This test
+// verifies that the authenticate still works even if the re-create fails.
+TEST_F(AuthSessionWithUssExperimentTest,
+       AuthenticatePinAuthFactorViaUssWithRecreateThatFails) {
+  // Setup.
+  const ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(kFakeUsername);
+  const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
+  // Setting the expectation that the user exists.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Generating the USS.
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
+      UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
+  ASSERT_TRUE(uss_status.ok());
+  std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
+  std::optional<brillo::SecureBlob> uss_main_key =
+      UserSecretStash::CreateRandomMainKey();
+  ASSERT_TRUE(uss_main_key.has_value());
+  // Creating the auth factor. An arbitrary auth block state is used in this
+  // test.
+  auto auth_factor = std::make_unique<AuthFactor>(
+      AuthFactorType::kPin, kFakePinLabel,
+      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthBlockState{.state = PinWeaverAuthBlockState()});
+  EXPECT_TRUE(
+      auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
+          .ok());
+  AuthFactorMap auth_factor_map;
+  auth_factor_map.Add(std::move(auth_factor),
+                      AuthFactorStorageType::kUserSecretStash);
+  // Adding the auth factor into the USS and persisting the latter.
+  const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
+  std::optional<brillo::SecureBlob> wrapping_key =
+      key_blobs.DeriveUssCredentialSecret();
+  ASSERT_TRUE(wrapping_key.has_value());
+  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakePinLabel,
+                                     wrapping_key.value())
+                  .ok());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
+      uss->GetEncryptedContainer(uss_main_key.value());
+  ASSERT_TRUE(encrypted_uss.ok());
+  EXPECT_TRUE(user_secret_stash_storage_
+                  .Persist(encrypted_uss.value(), obfuscated_username)
+                  .ok());
+  // Creating the auth session.
+  AuthSession auth_session(
+      {.username = kFakeUsername,
+       .is_ephemeral_user = false,
+       .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .user_exists = true,
+       .auth_factor_map = std::move(auth_factor_map),
+       .migrate_to_user_secret_stash = false},
+      backing_apis_);
+  EXPECT_TRUE(auth_session.user_exists());
+
+  // Test.
+  // Setting the expectation that the auth block utility will derive key blobs,
+  // and then that there will be additional calls to re-create them.
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeFromState(
+                  AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
+      .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
+  EXPECT_CALL(auth_block_utility_,
+              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _, _))
+      .WillOnce([&kFakePerCredentialSecret](
+                    AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthBlockState& auth_state,
+                    AuthBlock::DeriveCallback derive_callback) {
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key = kFakePerCredentialSecret;
+        std::move(derive_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 AuthBlock::SuggestedAction::kRecreate);
+      });
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeForCreation(AuthFactorType::kPin))
+      .WillRepeatedly([](auto...) -> CryptoStatusOr<AuthBlockType> {
+        return MakeStatus<CryptohomeCryptoError>(
+            kErrorLocationForTestingAuthSession,
+            error::ErrorActionSet(
+                {error::PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO);
+      });
+  // Calling AuthenticateAuthFactor.
+  std::string auth_factor_labels[] = {kFakePinLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
+  TestFuture<CryptohomeStatus> authenticate_future;
+  auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
+                                      authenticate_future.GetCallback());
+
+  // Verify.
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session.authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+}
+
 TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
   // Setup.
   AuthSession auth_session(
