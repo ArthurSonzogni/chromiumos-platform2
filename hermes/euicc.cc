@@ -132,16 +132,6 @@ void Euicc::InstallPendingProfile(dbus::ObjectPath profile_path,
                                   std::string confirmation_code,
                                   DbusResult<dbus::ObjectPath> dbus_result) {
   LOG(INFO) << __func__ << " " << GetObjectPathForLog(profile_path);
-  if (context_->dbus_ongoing_) {
-    context_->executor()->PostDelayedTask(
-        FROM_HERE,
-        base::BindOnce(&Euicc::InstallPendingProfile,
-                       weak_factory_.GetWeakPtr(), std::move(profile_path),
-                       std::move(confirmation_code), std::move(dbus_result)),
-        kLpaRetryDelay);
-    return;
-  }
-  context_->dbus_ongoing_ = true;
   auto iter =
       find_if(profiles_.begin(), profiles_.end(),
               [&profile_path](
