@@ -391,7 +391,6 @@ Valid subcommands are:
     resume -- Resume the system now.
     abort-resume -- Send an abort request to an in-progress resume.
     cat -- Write a disk file contents to stdout.
-    set-device -- Set a block device to use for hibernation.
     cookie -- Read or write the hibernate cookie.
 "#;
     print_usage(usage_msg, error);
