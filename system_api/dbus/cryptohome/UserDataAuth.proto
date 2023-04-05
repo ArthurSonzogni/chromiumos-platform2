@@ -1328,6 +1328,38 @@ message UpdateAuthFactorReply {
   CryptohomeErrorInfo error_info = 2;
 }
 
+message UpdateAuthFactorMetadataRequest {
+  // The id of a running AuthSession.
+  bytes auth_session_id = 1;
+  // Label to identify the existing AuthFactor. Updated auth factor will be
+  // associated with the same label.
+  string auth_factor_label = 2;
+  // The AuthFactor that we will replace the existing AuthFactor with. The full
+  // structure should be populated with factor specific data and metadata. The
+  // type of the AuthFactor should match the existing one, otherwise an error
+  // will be returned.
+  // New auth factor will not be created with this since the request
+  // does not contain AuthInput.
+  // Metadata fields populated by service cryptohome will be ignored in the
+  // request, e.g. `chromeos_version_last_updated` in CommonMetadata. See each
+  // metadata field for details.
+  AuthFactor auth_factor = 3;
+}
+
+message UpdateAuthFactorMetadataReply {
+  // Return the status of the request.
+  CryptohomeErrorCode error = 1;
+  // Indicate an error if this field exists.
+  // This field is replacing the |error| field above, for more information on
+  // which field to use and the process on the migration, see comment in
+  // CryptohomeErrorInfo.
+  CryptohomeErrorInfo error_info = 2;
+  // AuthFactorWithStatus returns newly updated authfactors along with their
+  // status information. This will be unset should the request not be
+  // successful.
+  AuthFactorWithStatus updated_auth_factor = 3;
+}
+
 // RemoveAuthFactorRequest is built when a user is trying to
 // remove an AuthFactor for a user. auth_factor_label would identify
 // the AuthFactor that the request is trying to remove. When the call is made,
