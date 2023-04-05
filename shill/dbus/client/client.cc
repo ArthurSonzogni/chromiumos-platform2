@@ -630,18 +630,17 @@ Client::IPConfig Client::ParseIPConfigsProperty(
 
     int len =
         brillo::GetVariantValueOrDefault<int>(properties, kPrefixlenProperty);
-    if (len <= 0) {
-      LOG(WARNING) << "Empty property [" << kPrefixlenProperty
-                   << "] in IPConfig [" << path.value() << "] on device ["
-                   << device_path << "]";
-      continue;
-    }
-    if ((ip_addr->family() == IPAddress::kFamilyIPv4 && len > 32) ||
+    if (len < 0 || (ip_addr->family() == IPAddress::kFamilyIPv4 && len > 32) ||
         len > 128) {
       LOG(WARNING) << "Invalid property [" << kPrefixlenProperty
                    << "] in IPConfig [" << path.value() << "] on device ["
-                   << device_path << "]";
+                   << device_path << "] with value " << len;
       continue;
+    }
+    if (len == 0) {
+      LOG(WARNING) << "Property [" << kPrefixlenProperty << "] in IPConfig ["
+                   << path.value() << "] on device [" << device_path
+                   << "] has a value of 0. May indicate an invalid setup.";
     }
 
     // While multiple IPv6 addresses are valid, we expect shill to provide at

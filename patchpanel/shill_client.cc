@@ -382,12 +382,17 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
       continue;
     }
     int prefix_length = it->second.TryGet<int>();
-    if (prefix_length < 1 || (is_ipv4 && prefix_length > 32) ||
+    if (prefix_length < 0 || (is_ipv4 && prefix_length > 32) ||
         prefix_length > 128) {
       LOG(WARNING) << "[" << device << "]: " << method
                    << " IPConfig Prefixlen property was invalid: "
                    << prefix_length;
       continue;
+    }
+    if (prefix_length == 0) {
+      LOG(WARNING)
+          << "[" << device << "]: " << method
+          << " IPConfig Prefixlen property is 0, may be an invalid setup";
     }
 
     it = ipconfig_props.find(shill::kGatewayProperty);
