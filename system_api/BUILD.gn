@@ -51,6 +51,7 @@ group("all") {
     ":system_api-plugin_vm_service-protos",
     ":system_api-power_manager-goprotos",
     ":system_api-power_manager-protos",
+    ":system_api-printscanmgr-goprotos",
     ":system_api-printscanmgr-protos",
     ":system_api-privacy_screen-protos",
     ":system_api-private_computing-protos",
@@ -720,4 +721,10 @@ proto_library("system_api-printscanmgr-protos") {
   proto_out_dir = "include/printscanmgr/proto_bindings"
   sources = [ "${proto_in_dir}/printscanmgr_service.proto" ]
   standalone = true
+}
+
+goproto_library("system_api-printscanmgr-goprotos") {
+  proto_in_dir = "dbus/printscanmgr"
+  proto_out_dir = "go/src/"
+  sources = [ "${proto_in_dir}/printscanmgr_service.proto" ]
 }
