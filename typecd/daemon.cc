@@ -105,8 +105,6 @@ void Daemon::RegisterDBusObjectsAsync(
 
 void Daemon::DebugdListener(const std::string& owner) {
   LOG(INFO) << "Update received from debugd (" << owner << ").";
-  if (port_manager_->GetModeEntrySupported())
-    return;
 
   bool mode_entry_supported = cros_ec_util_->ModeEntrySupported();
   if (!mode_entry_supported)
