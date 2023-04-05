@@ -21,7 +21,7 @@ namespace {
 
 // Versions supported by sommelier.
 constexpr uint32_t kTextInputManagerVersion = 1;
-constexpr uint32_t kTextInputExtensionVersion = 4;
+constexpr uint32_t kTextInputExtensionVersion = 9;
 constexpr uint32_t kTextInputX11Version = 1;
 
 }  // namespace
@@ -308,15 +308,14 @@ static struct zwp_text_input_manager_v1_interface
 
 static void sl_bind_host_text_input_manager(struct wl_client* client,
                                             void* data,
-                                            uint32_t version,
+                                            uint32_t app_version,
                                             uint32_t id) {
   struct sl_context* ctx = (struct sl_context*)data;
   struct sl_text_input_manager* text_input_manager = ctx->text_input_manager;
   struct sl_host_text_input_manager* host = new sl_host_text_input_manager();
   host->ctx = ctx;
-  host->resource =
-      wl_resource_create(client, &zwp_text_input_manager_v1_interface,
-                         std::min(version, kTextInputManagerVersion), id);
+  host->resource = wl_resource_create(
+      client, &zwp_text_input_manager_v1_interface, app_version, id);
   wl_resource_set_implementation(host->resource,
                                  &sl_text_input_manager_implementation, host,
                                  sl_destroy_host_text_input_manager);
@@ -327,9 +326,10 @@ static void sl_bind_host_text_input_manager(struct wl_client* client,
   zwp_text_input_manager_v1_set_user_data(host->proxy, host);
 }
 
-struct sl_global* sl_text_input_manager_global_create(struct sl_context* ctx) {
+struct sl_global* sl_text_input_manager_global_create(struct sl_context* ctx,
+                                                      uint32_t exo_version) {
   return sl_global_create(ctx, &zwp_text_input_manager_v1_interface,
-                          kTextInputManagerVersion, ctx,
+                          std::min(exo_version, kTextInputManagerVersion), ctx,
                           sl_bind_host_text_input_manager);
 }
 
@@ -341,10 +341,15 @@ static void sl_extended_text_input_destroy(struct wl_client* client,
 static const struct zcr_extended_text_input_v1_interface
     sl_extended_text_input_implementation = {
         sl_extended_text_input_destroy,
-        ForwardRequest<zcr_extended_text_input_v1_set_input_type>,
+        ForwardRequest<zcr_extended_text_input_v1_deprecated_set_input_type>,
         ForwardRequest<
             zcr_extended_text_input_v1_set_grammar_fragment_at_cursor>,
         ForwardRequest<zcr_extended_text_input_v1_set_autocorrect_info>,
+        ForwardRequest<
+            zcr_extended_text_input_v1_finalize_virtual_keyboard_changes>,
+        ForwardRequest<zcr_extended_text_input_v1_set_focus_reason>,
+        ForwardRequest<zcr_extended_text_input_v1_set_input_type>,
+        ForwardRequest<zcr_extended_text_input_v1_set_surrounding_text_support>,
 };
 
 static void sl_extended_text_input_set_preedit_region(
@@ -464,7 +469,7 @@ static struct zcr_text_input_extension_v1_interface
 
 static void sl_bind_host_text_input_extension(struct wl_client* client,
                                               void* data,
-                                              uint32_t version,
+                                              uint32_t app_version,
                                               uint32_t id) {
   struct sl_context* ctx = (struct sl_context*)data;
   struct sl_text_input_extension* text_input_extension =
@@ -472,9 +477,8 @@ static void sl_bind_host_text_input_extension(struct wl_client* client,
   struct sl_host_text_input_extension* host =
       new sl_host_text_input_extension();
   host->ctx = ctx;
-  host->resource =
-      wl_resource_create(client, &zcr_text_input_extension_v1_interface,
-                         std::min(version, kTextInputExtensionVersion), id);
+  host->resource = wl_resource_create(
+      client, &zcr_text_input_extension_v1_interface, app_version, id);
   wl_resource_set_implementation(host->resource,
                                  &sl_text_input_extension_implementation, host,
                                  sl_destroy_host_text_input_extension);
@@ -485,11 +489,11 @@ static void sl_bind_host_text_input_extension(struct wl_client* client,
   zcr_text_input_extension_v1_set_user_data(host->proxy, host);
 }
 
-struct sl_global* sl_text_input_extension_global_create(
-    struct sl_context* ctx) {
+struct sl_global* sl_text_input_extension_global_create(struct sl_context* ctx,
+                                                        uint32_t exo_version) {
   return sl_global_create(ctx, &zcr_text_input_extension_v1_interface,
-                          kTextInputExtensionVersion, ctx,
-                          sl_bind_host_text_input_extension);
+                          std::min(exo_version, kTextInputExtensionVersion),
+                          ctx, sl_bind_host_text_input_extension);
 }
 
 static void sl_text_input_x11_activate(wl_client* client,
@@ -532,14 +536,13 @@ static const struct zcr_text_input_x11_v1_interface
 
 static void sl_bind_host_text_input_x11(struct wl_client* client,
                                         void* data,
-                                        uint32_t version,
+                                        uint32_t app_version,
                                         uint32_t id) {
   // This exists only between sommelier and its clients and there is no proxy
   // to the host. For simplicity we don't use a sl_host_text_input_x11
   // type as it is not needed.
-  wl_resource* resource =
-      wl_resource_create(client, &zcr_text_input_x11_v1_interface,
-                         std::min(version, kTextInputX11Version), id);
+  wl_resource* resource = wl_resource_create(
+      client, &zcr_text_input_x11_v1_interface, app_version, id);
   wl_resource_set_implementation(resource, &sl_text_input_x11_implementation,
                                  nullptr, nullptr);
 }

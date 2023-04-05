@@ -24,7 +24,7 @@
     DEALINGS IN THE SOFTWARE.
   </copyright>
 
-  <interface name="zcr_text_input_extension_v1" version="4">
+  <interface name="zcr_text_input_extension_v1" version="9">
     <description summary="extends text_input to support richer operations">
       Allows a text_input to sends more variation of operations to support
       richer features, such as set_preedit_region.
@@ -57,7 +57,7 @@
 
   </interface>
 
-  <interface name="zcr_extended_text_input_v1" version="4">
+  <interface name="zcr_extended_text_input_v1" version="9">
     <description summary="extension of text_input protocol">
       The zcr_extended_text_input_v1 interface extends the text_input interface
       to support more rich operations on text_input.
@@ -147,6 +147,7 @@
       <entry name="autocapitalize_words" value="1 &lt;&lt; 8" />
       <entry name="autocapitalize_sentences" value="1 &lt;&lt; 9" />
       <entry name="has_been_password" value="1 &lt;&lt; 10" />
+      <entry name="vertical" value="1 &lt;&lt; 11" />
     </enum>
 
     <enum name="learning_mode" since="2">
@@ -155,13 +156,9 @@
       <entry name="enabled" value="1" />
     </enum>
 
-    <request name="set_input_type" since="2">
+    <request name="deprecated_set_input_type" since="2">
       <description summary="Sets input type, mode and flags together">
-        In wayland, there's a concept that can be mapped to Chrome's
-        TextInputType, Mode and Flags. It can be set via
-        zwp_text_input::set_content_type. However, the variation is not rich
-        enough to represent Chrome's detailed behavior change. This API can be
-        used as a replacement of set_content_type.
+        Deprecated. Use the new set_input_type.
       </description>
       <arg name="input_type" type="uint" enum="input_type" />
       <arg name="input_mode" type="uint" enum="input_mode" />
@@ -257,6 +254,123 @@
       <arg name="y" type="uint" />
       <arg name="width" type="uint" />
       <arg name="height" type="uint" />
+    </request>
+
+    <!-- Version 5 -->
+
+    <event name="set_virtual_keyboard_occluded_bounds" since="5">
+      <description summary="Sets the virtual keyboard's occluded bounds.">
+        This event tells the client about the part of the virtual keyboard's
+        bounds that occludes the text input's window, in screen DIP coordinates.
+        In order for the text input to make proper use of this information, it
+        needs to know its window's screen DIP bounds via another interface such
+        as the aura-shell.
+
+        The occluded bounds may be smaller than the keyboard's visual bounds.
+
+        When the virtual keyboard is hidden or floating, empty bounds are sent,
+        i.e. with zero width and height.
+      </description>
+      <arg name="x" type="int"/>
+      <arg name="y" type="int"/>
+      <arg name="width" type="int"/>
+      <arg name="height" type="int"/>
+    </event>
+
+    <!-- Version 6 -->
+
+    <request name="finalize_virtual_keyboard_changes" since="6">
+      <description summary="Finalizes the requested virtual keyboard changes.">
+        This request notifies the server that the client has finished making
+        requested changes to the virtual keyboard, and the server should update
+        the client with the latest virtual keyboard state. This avoids spurious
+        intermediate requests from causing the virtual keyboard to change state
+        unnecessarily.
+
+        Clients that connect to the server at this or higher versions must send
+        this request after it finishes sending the applicable requests. The
+        server is free to decide how it handles or honors this request.
+
+        As of version 6, the applicable requests are:
+          - zwp_text_input_v1.show_input_panel
+          - zwp_text_input_v1.hide_input_panel
+      </description>
+    </request>
+
+    <!-- Version 7 -->
+
+    <enum name="focus_reason_type" since="7">
+      <description summary="Chrome's TextInputClient::FocusReason">
+        This represents the reasons why the text input gets focused.
+      </description>
+      <entry name="none" value="0" />
+      <entry name="mouse" value="1" />
+      <entry name="touch" value="2" />
+      <entry name="pen" value="3" />
+      <entry name="other" value="4" />
+    </enum>
+
+    <request name="set_focus_reason" since="7">
+      <description summary="Specifies the reason of the following focus event">
+        Updates the reason why the following focus event is triggered.
+        This should be called just before text_input::activate,
+        and is in effect when it is called together (i.e. it is not in effect
+        until text_input::activate is called).
+
+        `reason` is an extended parameter providing the mode for the next
+        `text_input::active request`.
+      </description>
+      <arg name="reason" type="uint" enum="focus_reason_type" />
+    </request>
+
+    <!-- Version 8 -->
+
+    <enum name="inline_composition_support" since="8">
+      <description summary="Whether inline composition is supported">
+        Inline composition is an IME feature for certain languages (e.g. CJK)
+        which displays the uncommitted composition inside the input field as it
+        is being typed.
+      </description>
+      <entry name="unsupported" value="0" />
+      <entry name="supported" value="1" />
+    </enum>
+
+    <request name="set_input_type" since="8">
+      <description summary="Sets input type, mode and flags together">
+        Used in place of zwp_text_input::set_content_type.
+
+        Instead of hint and purpose, this API uses concepts that more closely
+        align with those used by Chrome.
+      </description>
+      <arg name="input_type" type="uint" enum="input_type" />
+      <arg name="input_mode" type="uint" enum="input_mode" />
+      <arg name="input_flags" type="uint" />
+      <arg name="learning_mode" type="uint" enum="learning_mode" />
+      <arg name="inline_composition_support" type="uint" enum="inline_composition_support" />
+    </request>
+
+    <!-- Version 9 -->
+
+    <enum name="surrounding_text_support" since="9">
+      <description summary="Whether surrounding text is supported" />
+      <entry name="unsupported" value="0" />
+      <entry name="supported" value="1" />
+    </enum>
+
+    <request name="set_surrounding_text_support" since="9">
+      <description summary="Sets whether surrounding text is supported">
+        Some clients are not able to provide surrounding text or selection.
+        When the server receives this request with the unsupproted enum, it
+        will disable functionality relying on surrounding text and avoid
+        sending events that depend on it like delete_surrounding_text,
+        set_preedit_region and cursor_position.
+
+        This request will take effect on the next 'set_content_type' or
+        'set_input_type' request.
+
+        By default, the server will assume surrounding text is supported.
+      </description>
+      <arg name="support" type="uint" enum="surrounding_text_support" />
     </request>
 
   </interface>

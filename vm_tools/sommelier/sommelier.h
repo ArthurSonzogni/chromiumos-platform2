@@ -1,4 +1,4 @@
-// Copyright 2018 The ChromiumOS Authors.
+// Copyright 2018 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -450,9 +450,11 @@ struct sl_global* sl_gtk_shell_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_drm_global_create(struct sl_context* ctx);
 
-struct sl_global* sl_text_input_extension_global_create(struct sl_context* ctx);
+struct sl_global* sl_text_input_extension_global_create(struct sl_context* ctx,
+                                                        uint32_t exo_version);
 
-struct sl_global* sl_text_input_manager_global_create(struct sl_context* ctx);
+struct sl_global* sl_text_input_manager_global_create(struct sl_context* ctx,
+                                                      uint32_t exo_version);
 
 struct sl_global* sl_text_input_x11_global_create(struct sl_context* ctx);
 

@@ -708,7 +708,8 @@ void sl_registry_handler(void* data,
     assert(text_input_manager);
     text_input_manager->ctx = ctx;
     text_input_manager->id = id;
-    text_input_manager->host_global = sl_text_input_manager_global_create(ctx);
+    text_input_manager->host_global =
+        sl_text_input_manager_global_create(ctx, version);
     text_input_manager->host_x11_global = sl_text_input_x11_global_create(ctx);
     assert(!ctx->text_input_manager);
     ctx->text_input_manager = text_input_manager;
@@ -720,7 +721,7 @@ void sl_registry_handler(void* data,
     text_input_extension->ctx = ctx;
     text_input_extension->id = id;
     text_input_extension->host_global =
-        sl_text_input_extension_global_create(ctx);
+        sl_text_input_extension_global_create(ctx, version);
     assert(!ctx->text_input_extension);
     ctx->text_input_extension = text_input_extension;
 #ifdef GAMEPAD_SUPPORT
