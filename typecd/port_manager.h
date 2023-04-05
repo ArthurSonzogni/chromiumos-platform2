@@ -52,7 +52,7 @@ class PortManager : public UdevMonitor::TypecObserver,
     features_client_ = client;
   }
 
-  void SetSupportsUSB4(bool enable);
+  void SetSupportsUSB4(bool enable) { supports_usb4_ = enable; }
 
  protected:
   bool GetPeripheralDataAccess() { return peripheral_data_access_; }

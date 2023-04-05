@@ -63,13 +63,6 @@ void PortManager::SetModeEntrySupported(bool supported) {
   }
 }
 
-void PortManager::SetSupportsUSB4(bool enable) {
-  supports_usb4_ = enable;
-
-  for (int i = 0; i < ports_.size(); i++)
-    ports_[i]->SetSupportsUSB4(enable);
-}
-
 void PortManager::OnPortAddedOrRemoved(const base::FilePath& path,
                                        int port_num,
                                        bool added) {

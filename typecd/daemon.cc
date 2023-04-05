@@ -112,12 +112,8 @@ void Daemon::DebugdListener(const std::string& owner) {
   if (!mode_entry_supported)
     return;
 
-  LOG(INFO) << "Mode entry now supported on this device.";
-  auto config = std::make_unique<CrosConfigUtil>();
-  if (config->APModeEntryDPOnly())
-    port_manager_->SetSupportsUSB4(false);
-
   port_manager_->SetModeEntrySupported(mode_entry_supported);
+  LOG(INFO) << "Mode entry now supported on this device.";
 }
 
 }  // namespace typecd
