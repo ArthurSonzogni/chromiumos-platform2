@@ -16,6 +16,7 @@
 #include <sys/socket.h>
 
 #include <algorithm>
+#include <optional>
 
 #include <base/check.h>
 #include <base/files/scoped_file.h>
@@ -122,6 +123,12 @@ bool Ioctl(System* system, ioctl_req_t req, const char* arg) {
     return false;
   }
   return true;
+}
+
+TrafficSource DownstreamNetworkInfoTrafficSource(
+    const DownstreamNetworkInfo& info) {
+  // TODO(b/257880335): define source for LocalOnlyNetwork.
+  return TETHER_DOWNSTREAM;
 }
 
 }  // namespace
@@ -1661,25 +1668,71 @@ void Datapath::SetVpnLockdown(bool enable_vpn_lockdown) {
 }
 
 bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
-  // TODO(b/239559602) Implement forwarding setup:
-  //   - Apply IPv4 configuration on downstream interface.
-  //   - Set up iptables rules for:
-  //      - traffic marking (IPv4, IPv6)
-  //      - connection pinning and routing (IPv4, IPv6)
-  //      - forwarding (IPv4, IPv6)
-  //      - SNAT (IPv4 Tethering)
+  if (info.topology == DownstreamNetworkTopology::kLocalOnly) {
+    LOG(ERROR) << __func__ << " " << info << ": LocalOnly is not supported";
+    return false;
+  }
+
   // TODO(b/239559602) Clarify which service, shill or networking, is in charge
   // of IFF_UP and MAC address configuration.
+  if (!ConfigureInterface(info.downstream_ifname, /*mac_addr=*/std::nullopt,
+                          info.ipv4_addr, info.ipv4_prefix_length,
+                          /*up=*/true, /*enable_multicast=*/true)) {
+    LOG(ERROR) << __func__ << " " << info
+               << ": Cannot configure downstream interface "
+               << info.downstream_ifname;
+    return false;
+  }
+
+  // Accept DHCP traffic if DHCP is used.
+  if (info.enable_ipv4_dhcp &&
+      !ModifyIptables(
+          IpFamily::IPv4, "filter",
+          {"-I", kAcceptDownstreamNetworkChain, "-p", "udp", "--dport", "67",
+           "--sport", "68", "-j", "ACCEPT", "-w"})) {
+    LOG(ERROR) << "Failed to create ACCEPT rule for DHCP traffic on "
+               << kAcceptDownstreamNetworkChain;
+    return false;
+  }
+
+  if (!ModifyJumpRule(IpFamily::Dual, "filter", "-I", "INPUT",
+                      kAcceptDownstreamNetworkChain,
+                      /*iif=*/info.downstream_ifname, /*oif=*/"")) {
+    LOG(ERROR) << __func__ << " " << info
+               << ": Failed to create jump rule from INPUT to "
+               << kAcceptDownstreamNetworkChain << " for ingress traffic on "
+               << info.downstream_ifname;
+    if (!FlushChain(IpFamily::Dual, "filter", kAcceptDownstreamNetworkChain)) {
+      LOG(ERROR) << __func__ << " " << info << ": Failed to flush "
+                 << kAcceptDownstreamNetworkChain;
+    }
+    return false;
+  }
+
+  // int_ipv4_addr is not necessary if route_on_vpn == false
+  const auto source = DownstreamNetworkInfoTrafficSource(info);
+  StartRoutingDevice(info.upstream_ifname, info.downstream_ifname,
+                     /*int_ipv4_addr=*/0, source,
+                     /*route_on_vpn=*/false);
   return true;
 }
 
 void Datapath::StopDownstreamNetwork(const DownstreamNetworkInfo& info) {
-  // TODO(b/239559602) Implement forwarding setup teardown:
-  //   - Remove IPv4 configuration on downstream interface.
-  //   - Remove associated iptables rules.
-  //   - Remove SNAT (IPv4 Tethering)
-  // TODO(b/239559602) Clarify which service, shill or networking, is in charge
-  // of IFF_DOWN.
+  if (info.topology == DownstreamNetworkTopology::kLocalOnly) {
+    LOG(ERROR) << __func__ << " " << info << ": LocalOnly is not supported";
+    return;
+  }
+
+  // Skip unconfiguring the downstream interface: shill will either destroy it
+  // or flip it back to client mode and restart a Network on top.
+  const auto source = DownstreamNetworkInfoTrafficSource(info);
+  StopRoutingDevice(info.upstream_ifname, info.downstream_ifname,
+                    /*int_ipv4_addr=*/0, source,
+                    /*route_on_vpn=*/false);
+  FlushChain(IpFamily::Dual, "filter", kAcceptDownstreamNetworkChain);
+  ModifyJumpRule(IpFamily::Dual, "filter", "-D", "INPUT",
+                 kAcceptDownstreamNetworkChain,
+                 /*iif=*/info.downstream_ifname, /*oif=*/"");
 }
 
 bool Datapath::ModifyConnmarkSet(IpFamily family,

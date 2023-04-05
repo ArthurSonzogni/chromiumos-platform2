@@ -952,6 +952,113 @@ TEST(DatapathTest, StopRoutingNamespace) {
   datapath.StopRoutingNamespace(nsinfo);
 }
 
+TEST(DatapathTest, StartDownstreamTetheredNetwork) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  EXPECT_CALL(system, IfNametoindex("wwan0")).WillRepeatedly(Return(4));
+  Verify_iptables(*runner, Dual,
+                  "filter -I INPUT -i ap0 -j accept_downstream_network -w");
+  Verify_iptables(*runner, IPv4,
+                  "filter -I accept_downstream_network -p udp --dport 67 "
+                  "--sport 68 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -A FORWARD -o ap0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -A FORWARD -i ap0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "mangle -N PREROUTING_ap0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F PREROUTING_ap0 -w");
+  Verify_iptables(*runner, Dual,
+                  "mangle -A PREROUTING -i ap0 -j PREROUTING_ap0 -w");
+  Verify_iptables(*runner, IPv4,
+                  "mangle -A PREROUTING_ap0 -j MARK --set-mark "
+                  "0x00000001/0x00000001 -w");
+  Verify_iptables(*runner, Dual,
+                  "mangle -A PREROUTING_ap0 -j MARK --set-mark "
+                  "0x00002300/0x00003f00 -w");
+  Verify_iptables(*runner, Dual,
+                  "mangle -A PREROUTING_ap0 -j MARK --set-mark "
+                  "0x03ec0000/0xffff0000 -w");
+  Verify_ip(*runner, "addr add 172.17.49.1/24 brd 172.17.49.255 dev ap0");
+  Verify_ip(*runner, "link set dev ap0 up multicast on");
+
+  DownstreamNetworkInfo info;
+  info.topology = DownstreamNetworkTopology::kTethering;
+  info.upstream_ifname = "wwan0";
+  info.downstream_ifname = "ap0";
+  info.ipv4_addr = Ipv4Addr(172, 17, 49, 1);
+  info.ipv4_prefix_length = 24;
+  info.enable_ipv4_dhcp = true;
+  Datapath datapath(runner, firewall, &system);
+  datapath.StartDownstreamNetwork(info);
+}
+
+TEST(DatapathTest, StartDownstreamLocalOnlyNetwork) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  EXPECT_CALL(*runner, iptables(_, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip(_, _, _, _)).Times(0);
+
+  DownstreamNetworkInfo info;
+  info.topology = DownstreamNetworkTopology::kLocalOnly;
+  info.upstream_ifname = "wwan0";
+  info.downstream_ifname = "ap0";
+  info.ipv4_addr = Ipv4Addr(172, 17, 49, 1);
+  info.ipv4_prefix_length = 24;
+  info.enable_ipv4_dhcp = true;
+  Datapath datapath(runner, firewall, &system);
+  datapath.StartDownstreamNetwork(info);
+}
+
+TEST(DatapathTest, StopDownstreamTetheredNetwork) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Verify_iptables(*runner, Dual, "filter -F accept_downstream_network -w");
+  Verify_iptables(*runner, Dual,
+                  "filter -D INPUT -i ap0 -j accept_downstream_network -w");
+  Verify_iptables(*runner, Dual, "filter -D FORWARD -o ap0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -D FORWARD -i ap0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual,
+                  "mangle -D PREROUTING -i ap0 -j PREROUTING_ap0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F PREROUTING_ap0 -w");
+  Verify_iptables(*runner, Dual, "mangle -X PREROUTING_ap0 -w");
+  EXPECT_CALL(*runner, ip(_, _, _, _)).Times(0);
+
+  DownstreamNetworkInfo info;
+  info.topology = DownstreamNetworkTopology::kTethering;
+  info.upstream_ifname = "wwan0";
+  info.downstream_ifname = "ap0";
+  info.ipv4_addr = Ipv4Addr(172, 17, 49, 1);
+  info.ipv4_prefix_length = 24;
+  info.enable_ipv4_dhcp = true;
+  Datapath datapath(runner, firewall, &system);
+  datapath.StopDownstreamNetwork(info);
+}
+
+TEST(DatapathTest, StopDownstreamLocalOnlyNetwork) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  EXPECT_CALL(*runner, iptables(_, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip(_, _, _, _)).Times(0);
+
+  DownstreamNetworkInfo info;
+  info.topology = DownstreamNetworkTopology::kLocalOnly;
+  info.upstream_ifname = "wwan0";
+  info.downstream_ifname = "ap0";
+  info.ipv4_addr = Ipv4Addr(172, 17, 49, 1);
+  info.ipv4_prefix_length = 24;
+  info.enable_ipv4_dhcp = true;
+  Datapath datapath(runner, firewall, &system);
+  datapath.StopDownstreamNetwork(info);
+}
+
 TEST(DatapathTest, StartRoutingNewNamespace) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
