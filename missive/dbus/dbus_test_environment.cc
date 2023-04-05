@@ -23,19 +23,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "missive/proto/interface.pb.h"
-#include "missive/proto/record.pb.h"
 #include "missive/util/test_support_callbacks.h"
 
-using ::testing::_;
-using ::testing::AtLeast;
-using ::testing::Eq;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
-using ::testing::StrEq;
-using ::testing::WithArg;
-using ::testing::WithArgs;
 
 namespace reporting::test {
 

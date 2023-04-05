@@ -89,6 +89,7 @@ static_library("test_environment") {
   deps = [
     "//missive/proto:libmissiveprotorecord",
     "//missive/util:status",
+    "//missive/util:test_callbacks_support",
   ]
 }
 
