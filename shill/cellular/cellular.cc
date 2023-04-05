@@ -115,6 +115,25 @@ BearerIPConfigMethodToMetrics(CellularBearer::IPConfigMethod method) {
   }
 }
 
+std::string GetFriendlyModelId(const std::string& model_id) {
+  if (model_id.find("L850") != std::string::npos) {
+    return "L850";
+  }
+  if (model_id.find("FM101") != std::string::npos) {
+    return "FM101";
+  }
+  if (model_id.find("7c Compute") != std::string::npos) {
+    return "SC7180";
+  }
+  if (model_id.find("4D75") != std::string::npos) {
+    return "FM350";
+  }
+  if (model_id.find("NL668") != std::string::npos) {
+    return "NL668";
+  }
+  return model_id;
+}
+
 }  // namespace
 
 // static
@@ -1096,6 +1115,12 @@ void Cellular::NotifyCellularConnectionResult(const Error& error,
             << error.message();
     return;
   }
+  // used by anomaly detector for cellular subsystem crashes
+  LOG(ERROR) << LoggingTag() << ": " << GetFriendlyModelId(model_id_)
+             << " could not connect (trigger="
+             << (is_user_triggered ? "dbus" : "auto")
+             << ") to mccmnc=" << mobile_operator_info_->mccmnc() << ": "
+             << error.message();
   metrics()->NotifyCellularConnectionResult(error.type());
   last_cellular_connection_results_[iccid] = error.type();
 }
