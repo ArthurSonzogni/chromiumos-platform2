@@ -34,7 +34,6 @@ pub use hiberutil::HibernateOptions;
 pub use hiberutil::ResumeInitOptions;
 pub use hiberutil::ResumeOptions;
 
-use anyhow::Context;
 use anyhow::Result;
 use resume::ResumeConductor;
 use resume_init::ResumeInitConductor;
