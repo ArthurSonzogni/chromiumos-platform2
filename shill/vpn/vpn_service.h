@@ -69,6 +69,10 @@ class VPNService : public Service,
                        const std::string& error_details) override;
   void OnDriverReconnecting(base::TimeDelta timeout) override;
 
+  const NetworkConfig& static_network_config_for_testing() {
+    return mutable_static_ip_parameters()->config();
+  }
+
  protected:
   // Inherited from Service.
   void OnConnect(Error* error) override;

@@ -43,6 +43,7 @@ class StaticIPParameters {
   void Reset();
 
   const NetworkConfig& config() const { return config_; }
+  NetworkConfig* mutable_config() { return &config_; }
 
  private:
   KeyValueStore GetStaticIPConfig(Error* error);

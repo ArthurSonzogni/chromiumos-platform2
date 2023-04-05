@@ -786,8 +786,8 @@ class Service : public base::RefCounted<Service> {
   static bool DecideBetween(int a, int b, bool* decision);
 
   // Used by VPNService.
-  const NetworkConfig& static_network_config() const {
-    return static_ip_parameters_.config();
+  StaticIPParameters* mutable_static_ip_parameters() {
+    return &static_ip_parameters_;
   }
 
   // Service's user friendly name, mapped to the Service Object kNameProperty.

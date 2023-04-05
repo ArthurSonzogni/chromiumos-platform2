@@ -20,6 +20,7 @@
 #include "shill/manager.h"
 #include "shill/network/network_config.h"
 #include "shill/profile.h"
+#include "shill/static_ip_parameters.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
@@ -38,38 +39,45 @@ static std::string ObjectID(const VPNService* s) {
 
 namespace {
 
-// Apply the IPv4 address in |static_config| to the WireGuard.IPAddress property
-// in |driver|, if |static_config| has an IPv4 address and the
-// WireGuard.IPAddress property is empty. WireGuardDriver used to use
-// StaticIPConfig to store the local IP address but is using a specific property
-// now. This function is for migrating the profile data.
-void UpdateWireGuardDriverIPv4Address(const NetworkConfig& static_config,
+// WireGuardDriver used to use StaticIPConfig to store the local IP address but
+// is using a specific property now. This function is for migrating the profile
+// data, by the following two actions:
+// - Apply the IPv4 address in |static_config| to the WireGuard.IPAddress
+//   property in |driver|, if |static_config| has an IPv4 address and the
+//   WireGuard.IPAddress property is empty.
+// - Reset IPv4 address (with prefix length) in |static_config|.
+//
+// Returns whether |static_config| is updated.
+bool UpdateWireGuardDriverIPv4Address(NetworkConfig* static_config,
                                       VPNDriver* driver) {
   if (driver->vpn_type() != VPNType::kWireGuard) {
-    return;
+    return false;
   }
-  if (!static_config.ipv4_address_cidr) {
-    return;
+  if (!static_config->ipv4_address_cidr) {
+    return false;
   }
 
   const auto addr = IPAddress::CreateFromPrefixString(
-      *static_config.ipv4_address_cidr, IPAddress::kFamilyIPv4);
+      *static_config->ipv4_address_cidr, IPAddress::kFamilyIPv4);
+  // No matter whether the parsing result is valid or not, reset the property.
+  static_config->ipv4_address_cidr = std::nullopt;
   if (!addr.has_value()) {
-    LOG(WARNING) << __func__ << ": " << *static_config.ipv4_address_cidr
+    LOG(WARNING) << __func__ << ": " << *static_config->ipv4_address_cidr
                  << " is not a valid IPv4 CIDR string";
-    return;
+    return true;
   }
 
   const auto& current_addrs =
       driver->const_args()->Lookup<std::vector<std::string>>(
           kWireGuardIPAddress, {});
   if (!current_addrs.empty()) {
-    return;
+    return true;
   }
 
   const std::vector<std::string> addrs_to_set{addr->ToString()};
   driver->args()->Set<std::vector<std::string>>(kWireGuardIPAddress,
                                                 addrs_to_set);
+  return true;
 }
 
 }  // namespace
@@ -268,19 +276,16 @@ void VPNService::MigrateDeprecatedStorage(StoreInterface* storage) {
   CHECK(storage->ContainsGroup(id));
   driver_->MigrateDeprecatedStorage(storage, id);
 
-  // Can be removed after the next stepping stone version after M112.
-  UpdateWireGuardDriverIPv4Address(static_network_config(), driver_.get());
+  // Can be removed after the next stepping stone version after M114. Note that
+  // a VPN service will not be saved automatically if there is no change on
+  // values, so we need to trigger a Save() on StaticIPParameters here manually.
+  if (UpdateWireGuardDriverIPv4Address(
+          mutable_static_ip_parameters()->mutable_config(), driver_.get())) {
+    mutable_static_ip_parameters()->Save(storage, id);
+  }
 }
 
 bool VPNService::Save(StoreInterface* storage) {
-  // Note that MigrateDeprecatedStorage() is only called after Load() in
-  // profile.cc, and the first-time configuration for a service from Chrome does
-  // not go through Load(). This code can be removed after Chrome uses the new
-  // address property to store the IPv4 address.
-  // TODO(b/262662603): Check that if IPAddress property can be automatically
-  // cleared on Save() after Chrome side is done. Otherwise we need to do this
-  // manually in MigrateDeprecatedStorage().
-  UpdateWireGuardDriverIPv4Address(static_network_config(), driver_.get());
   return Service::Save(storage) &&
          driver_->Save(storage, GetStorageIdentifier(), save_credentials());
 }
