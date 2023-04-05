@@ -464,13 +464,23 @@ void CellularCapability3gpp::EnableModemCompleted(ResultCallback callback,
                                  weak_ptr_factory_.GetWeakPtr()));
   }
 
-  ResultCallback setup_signal_thresholds_callback =
-      base::BindOnce(&CellularCapability3gpp::OnSetupSignalThresholdsReply,
-                     weak_ptr_factory_.GetWeakPtr());
-  KeyValueStore settings;
-  settings.Set<uint32_t>(kRssiThresholdProperty, kRssiThreshold);
-  settings.Set<bool>(kErrorThresholdProperty, kErrorThreshold);
-  SetupSignalThresholds(settings, std::move(setup_signal_thresholds_callback));
+  // TODO(b/274882743): Revert after the proper fix lands in FM101 modem.
+  if (IsModemFM101()) {
+    ResultCallback setup_signal_callback =
+        base::BindOnce(&CellularCapability3gpp::OnSetupSignalReply,
+                       weak_ptr_factory_.GetWeakPtr());
+    SetupSignal(kSignalQualityUpdateRateSeconds,
+                std::move(setup_signal_callback));
+  } else {
+    ResultCallback setup_signal_thresholds_callback =
+        base::BindOnce(&CellularCapability3gpp::OnSetupSignalThresholdsReply,
+                       weak_ptr_factory_.GetWeakPtr());
+    KeyValueStore settings;
+    settings.Set<uint32_t>(kRssiThresholdProperty, kRssiThreshold);
+    settings.Set<bool>(kErrorThresholdProperty, kErrorThreshold);
+    SetupSignalThresholds(settings,
+                          std::move(setup_signal_thresholds_callback));
+  }
 
   // Try to get profiles list from the modem, and then call the callback
   // to complete the enabling process.
