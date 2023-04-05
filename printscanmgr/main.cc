@@ -34,6 +34,8 @@ int main(int arg, char** argv) {
     return printscanmgr::Executor().Run();
   }
 
+  LOG(INFO) << "Starting printscanmgr daemon.";
+
   printscanmgr::EnterDaemonMinijail();
 
   return printscanmgr::Daemon().Run();

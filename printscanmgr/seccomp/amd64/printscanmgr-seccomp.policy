@@ -30,7 +30,7 @@ getrandom: 1
 getdents64: 1
 getuid: 1
 futex: 1
-socket: arg0 == AF_UNIX
+socket: arg0 == AF_UNIX || arg0 == AF_INET
 connect: 1
 prlimit64: 1
 rt_sigprocmask: 1
@@ -68,3 +68,4 @@ restart_syscall: 1
 exit: 1
 rt_sigreturn: 1
 getcwd: 1
+getpeername: 1

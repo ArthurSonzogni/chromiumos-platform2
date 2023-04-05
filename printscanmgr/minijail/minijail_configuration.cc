@@ -27,7 +27,6 @@ void EnterDaemonMinijail() {
   minijail_no_new_privs(jail.get());   // The no_new_privs bit.
   minijail_namespace_uts(jail.get());  // New UTS namespace.
   minijail_namespace_ipc(jail.get());  // New IPC namespace.
-  minijail_namespace_net(jail.get());  // New network namespace.
   minijail_namespace_vfs(jail.get());  // New VFS namespace.
   minijail_mount_tmp(jail.get());
   CHECK_EQ(
