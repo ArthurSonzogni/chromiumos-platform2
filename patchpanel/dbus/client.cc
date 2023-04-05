@@ -458,12 +458,15 @@ void OnTetheredNetworkResponse(Client::CreateTetheredNetworkCallback callback,
   dbus::MessageReader reader(dbus_response);
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << kCreateTetheredNetworkMethod
-               << ": Failed to parse TetheredNetworkRequest proto";
+               << ": Failed to parse TetheredNetworkResponse proto";
     std::move(callback).Run({});
     return;
   }
 
   if (response.response_code() != DownstreamNetworkResult::SUCCESS) {
+    LOG(ERROR) << kCreateTetheredNetworkMethod << " failed: "
+               << patchpanel::DownstreamNetworkResult_Name(
+                      response.response_code());
     std::move(callback).Run({});
     return;
   }
@@ -487,12 +490,15 @@ void OnLocalOnlyNetworkResponse(Client::CreateLocalOnlyNetworkCallback callback,
   dbus::MessageReader reader(dbus_response);
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << kCreateLocalOnlyNetworkMethod
-               << ": Failed to parse LocalOnlyNetworkRequest proto";
+               << ": Failed to parse LocalOnlyNetworkResponse proto";
     std::move(callback).Run({});
     return;
   }
 
   if (response.response_code() != DownstreamNetworkResult::SUCCESS) {
+    LOG(ERROR) << kCreateLocalOnlyNetworkMethod << " failed: "
+               << patchpanel::DownstreamNetworkResult_Name(
+                      response.response_code());
     std::move(callback).Run({});
     return;
   }
@@ -1298,16 +1304,17 @@ bool ClientImpl::CreateTetheredNetwork(const std::string& downstream_ifname,
   // TODO(b/239559602) Enable IPv6 requests.
   request.set_disable_ipv6(true);
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
-    LOG(ERROR) << kCreateTetheredNetworkMethod
-               << ": Failed to encode TetheredNetworkRequest proto";
+    LOG(ERROR) << kCreateTetheredNetworkMethod << "(" << downstream_ifname
+               << "," << upstream_ifname
+               << "): Failed to encode TetheredNetworkRequest proto";
     return false;
   }
 
   // Prepare an fd pair and append one fd directly after the serialized request.
   auto [fd_local, fd_remote] = CommitLifelineFd(&writer);
   if (!fd_local.is_valid()) {
-    LOG(ERROR) << kCreateTetheredNetworkMethod
-               << ": Cannot create lifeline fds";
+    LOG(ERROR) << kCreateTetheredNetworkMethod << "(" << downstream_ifname
+               << "," << upstream_ifname << "): Cannot create lifeline fds";
     return false;
   }
 

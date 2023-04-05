@@ -1654,23 +1654,25 @@ patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
   base::ScopedFD client_fd;
   reader->PopFileDescriptor(&client_fd);
   if (!client_fd.is_valid()) {
-    LOG(ERROR) << __func__ << ": Invalid client file descriptor";
+    LOG(ERROR) << __func__ << " " << *info
+               << ": Invalid client file descriptor";
     return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
   }
 
   if (!ValidateDownstreamNetworkRequest(*info)) {
+    LOG(ERROR) << __func__ << " " << *info << ": Invalid request";
     return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
   }
 
-  // TODO(b/239559602) Select IPv4 config if none.
-
   base::ScopedFD local_client_fd = AddLifelineFd(std::move(client_fd));
   if (!local_client_fd.is_valid()) {
-    LOG(ERROR) << __func__ << ": " << *info << ": Failed to create lifeline fd";
+    LOG(ERROR) << __func__ << " " << *info << ": Failed to create lifeline fd";
     return patchpanel::DownstreamNetworkResult::ERROR;
   }
 
   if (!datapath_->StartDownstreamNetwork(*info)) {
+    LOG(ERROR) << __func__ << " " << *info
+               << ": Failed to configure forwarding to downstream network";
     return patchpanel::DownstreamNetworkResult::ERROR;
   }
 
@@ -1678,20 +1680,22 @@ patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
   if (info->enable_ipv4_dhcp) {
     if (dhcp_server_controllers_.find(info->downstream_ifname) !=
         dhcp_server_controllers_.end()) {
-      LOG(ERROR) << __func__ << ": " << *info
+      LOG(ERROR) << __func__ << " " << *info
                  << ": DHCP server is already running at "
                  << info->downstream_ifname;
       return patchpanel::DownstreamNetworkResult::INTERFACE_USED;
     }
     const auto config = info->ToDHCPServerConfig();
     if (!config) {
-      LOG(ERROR) << "Failed to get DHCP server config:" << *info;
+      LOG(ERROR) << __func__ << " " << *info
+                 << ": Failed to get DHCP server config";
       return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
     }
     auto dhcp_server_controller =
         std::make_unique<DHCPServerController>(info->downstream_ifname);
     // TODO(b/274722417) Handle the DHCP server exits unexpectedly.
     if (!dhcp_server_controller->Start(*config, base::DoNothing())) {
+      LOG(ERROR) << __func__ << " " << *info << ": Failed to start DHCP server";
       return patchpanel::DownstreamNetworkResult::DHCP_SERVER_FAILURE;
     }
     dhcp_server_controllers_[info->downstream_ifname] =
