@@ -830,7 +830,6 @@ string RemoveCloseOnExec(int raw_fd) {
 // not call on the main thread.
 ReclaimVmMemoryResponse ReclaimVmMemoryInternal(pid_t pid, int32_t page_limit) {
   ReclaimVmMemoryResponse response;
-  response.set_success(false);
 
   if (page_limit < 0) {
     LOG(ERROR) << "Invalid negative page_limit " << page_limit;
@@ -1264,7 +1263,6 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
       break;
 
     default:
-      response->set_success(false);
       response->set_failure_reason("Unsupported storage location for images");
       return false;
   }
@@ -2744,8 +2742,6 @@ std::unique_ptr<dbus::Response> Service::GetVmEnterpriseReportingInfo(
   GetVmEnterpriseReportingInfoRequest request;
   GetVmEnterpriseReportingInfoResponse response;
 
-  response.set_success(false);
-
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     const std::string error_message =
         "Unable to parse GetVmEnterpriseReportingInfo from message";
@@ -2884,8 +2880,6 @@ std::unique_ptr<dbus::Response> Service::AdjustVm(
 
   AdjustVmRequest request;
   AdjustVmResponse response;
-
-  response.set_success(false);
 
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     const std::string error_message =
@@ -4037,9 +4031,8 @@ std::unique_ptr<dbus::Response> Service::CancelDiskImageOperation(
   dbus::MessageWriter writer(dbus_response.get());
 
   CancelDiskImageResponse response;
-  response.set_success(false);
-
   CancelDiskImageRequest request;
+
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse CancelDiskImageRequest from message";
     response.set_failure_reason("Unable to parse CancelDiskImageRequest");
@@ -4092,7 +4085,6 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
   ListVmDisksResponse response;
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse ListVmDisksRequest from message";
-    response.set_success(false);
     response.set_failure_reason("Unable to parse ListVmDisksRequest");
 
     writer.AppendProtoAsArrayOfBytes(response);
@@ -4101,7 +4093,6 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
 
   if (!ValidateVmNameAndOwner(request, response,
                               true /* Empty VmName allowed*/)) {
-    response.set_success(false);
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -4184,8 +4175,6 @@ std::unique_ptr<dbus::Response> Service::AttachUsbDevice(
   AttachUsbDeviceRequest request;
   AttachUsbDeviceResponse response;
   base::ScopedFD fd;
-
-  response.set_success(false);
 
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse AttachUsbDeviceRequest from message";
@@ -4271,8 +4260,6 @@ std::unique_ptr<dbus::Response> Service::DetachUsbDevice(
   DetachUsbDeviceRequest request;
   DetachUsbDeviceResponse response;
 
-  response.set_success(false);
-
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse DetachUsbDeviceRequest from message";
     response.set_reason("Unable to parse protobuf");
@@ -4324,8 +4311,6 @@ std::unique_ptr<dbus::Response> Service::ListUsbDevices(
 
   ListUsbDeviceRequest request;
   ListUsbDeviceResponse response;
-
-  response.set_success(false);
 
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse ListUsbDeviceRequest from message";
@@ -4405,7 +4390,6 @@ std::unique_ptr<dbus::Response> Service::SetVmCpuRestriction(
 
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse SetVmCpuRestrictionRequest from message";
-    response.set_success(false);
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -4445,8 +4429,6 @@ std::unique_ptr<dbus::Response> Service::ListVms(
 
   ListVmsRequest request;
   ListVmsResponse response;
-
-  response.set_success(false);
 
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse ListVmsRequest request from message";
@@ -4512,7 +4494,6 @@ void Service::ReclaimVmMemory(
   dbus::MessageReader reader(method_call);
   ReclaimVmMemoryRequest request;
   ReclaimVmMemoryResponse response;
-  response.set_success(false);
 
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse ReclaimVmMemoryRequest from message";
@@ -5267,7 +5248,6 @@ std::unique_ptr<dbus::Response> Service::SwapVm(dbus::MethodCall* method_call) {
   }
 
   if (!ValidateVmNameAndOwner(request, response)) {
-    response.set_success(false);
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -5275,7 +5255,6 @@ std::unique_ptr<dbus::Response> Service::SwapVm(dbus::MethodCall* method_call) {
   auto iter = FindVm(request.owner_id(), request.name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
-    response.set_success(false);
     response.set_failure_reason("Requested VM does not exist");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
@@ -5289,7 +5268,6 @@ std::unique_ptr<dbus::Response> Service::SwapVm(dbus::MethodCall* method_call) {
   } else if (request.operation() == SwapOperation::DISABLE) {
     response.set_success(vm->VmmSwap(VmInterface::SwapState::DISABLED));
   } else {
-    response.set_success(false);
     response.set_failure_reason("Unknown operation");
   }
 
@@ -5321,7 +5299,6 @@ std::unique_ptr<dbus::Response> Service::InstallPflash(
   InstallPflashResponse response;
 
   if (!reader.PopArrayOfBytesAsProto(&request)) {
-    response.set_success(false);
     response.set_failure_reason(
         "Unable to parse InstallPflashRequest from message");
     writer.AppendProtoAsArrayOfBytes(response);
@@ -5329,14 +5306,12 @@ std::unique_ptr<dbus::Response> Service::InstallPflash(
   }
 
   if (!IsValidOwnerId(request.owner_id())) {
-    response.set_success(false);
     response.set_failure_reason("Empty or malformed owner ID");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
   if (!IsValidVmName(request.vm_name())) {
-    response.set_success(false);
     response.set_failure_reason("Empty or malformed VM name");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
@@ -5344,7 +5319,6 @@ std::unique_ptr<dbus::Response> Service::InstallPflash(
 
   base::ScopedFD pflash_src_fd;
   if (!reader.PopFileDescriptor(&pflash_src_fd)) {
-    response.set_success(false);
     response.set_failure_reason("Failed to pop Pflash image fd");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
@@ -5353,7 +5327,6 @@ std::unique_ptr<dbus::Response> Service::InstallPflash(
   std::optional<PflashMetadata> pflash_metadata =
       GetPflashMetadata(request.owner_id(), request.vm_name());
   if (!pflash_metadata) {
-    response.set_success(false);
     response.set_failure_reason("Failed to get pflash install path");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
@@ -5361,7 +5334,6 @@ std::unique_ptr<dbus::Response> Service::InstallPflash(
 
   // We only allow one Pflash file to be allowed during the lifetime of a VM.
   if (pflash_metadata->is_installed) {
-    response.set_success(false);
     response.set_failure_reason("Pflash already installed");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
@@ -5376,7 +5348,6 @@ std::unique_ptr<dbus::Response> Service::InstallPflash(
   LOG(INFO) << "Installing Pflash file for VM: " << request.vm_name()
             << " to: " << pflash_metadata->path;
   if (!base::CopyFile(pflash_src_path, pflash_metadata->path)) {
-    response.set_success(false);
     response.set_failure_reason("Failed to copy pflash image");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
