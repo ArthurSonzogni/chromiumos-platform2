@@ -126,7 +126,7 @@ const int kSignalQualityUpdateRateSeconds = 60;
 const char kTelitMMPlugin[] = "Telit";
 const char kQcomSocMMDevice[] = "qcom-soc";
 
-// This identifier is specified in the serviceproviders.prototxt file.
+// This identifier is specified in the serviceproviders.textproto file.
 const char kVzwIdentifier[] = "c83d6597-dc91-4d48-a3a7-d86b80123751";
 const size_t kVzwMdnLength = 10;
 

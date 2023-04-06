@@ -49,7 +49,7 @@ class MobileOperatorInfoTestHelper : public MobileOperatorInfo {
 class MobileOperatorInfoTest : public Test {
  public:
   MobileOperatorInfoTest()
-      : kModbName("placeholder_modb.prototxt"),
+      : kModbName("placeholder_modb.textproto"),
         kModbPath(base::FilePath(kModbName)),
         home_(new testing::StrictMock<MockMobileOperatorMapper>(&dispatcher_,
                                                                 "home")),

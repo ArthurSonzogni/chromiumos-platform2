@@ -1139,7 +1139,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   }
 
   // Use this function to pre-populate all the data members of this object with
-  // values matching the MNO for the database in |data_test.prototxt|.
+  // values matching the MNO for the database in |data_test.textproto|.
   void PopulateMNOData() {
     country_ = "us";
     requires_roaming_ = true;
@@ -1164,7 +1164,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   }
 
   // Use this function to pre-populate all the data members of this object with
-  // values matching the MVNO for the database in |data_test.prototxt|.
+  // values matching the MVNO for the database in |data_test.textproto|.
   void PopulateMVNOData() {
     country_ = "ca";
     requires_roaming_ = false;

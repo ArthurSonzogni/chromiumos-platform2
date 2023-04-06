@@ -32,7 +32,7 @@ using testing::Test;
 
 // The tests in this file are meant to ensure there are no regressions on the
 // most popular carriers. These test will be validated using
-// service_providers.prototxt and will use the real MobileOperatorMappers.
+// service_providers.textproto and will use the real MobileOperatorMappers.
 
 namespace shill {
 
