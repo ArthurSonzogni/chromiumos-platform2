@@ -12,6 +12,20 @@
 <node name="/org/chromium/VmConcierge"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.VmConcierge">
+    <method name="GetVmInfo">
+      <tp:docstring>
+        Gets VM info.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::GetVmInfoRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::GetVmInfoResponse"/>
+      </arg>
+    </method>
     <method name="ResumeVm">
       <tp:docstring>
         Resumes a VM.

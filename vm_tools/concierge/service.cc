@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kGetVmInfoMethod, &Service::GetVmInfo},
       {kGetVmEnterpriseReportingInfoMethod,
        &Service::GetVmEnterpriseReportingInfo},
       {kArcVmCompleteBootMethod, &Service::ArcVmCompleteBoot},
@@ -2670,38 +2669,21 @@ ResumeVmResponse Service::ResumeVm(const ResumeVmRequest& request) {
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::GetVmInfo(
-    dbus::MethodCall* method_call) {
+GetVmInfoResponse Service::GetVmInfo(const GetVmInfoRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  GetVmInfoRequest request;
   GetVmInfoResponse response;
 
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse GetVmInfoRequest from message";
-
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   if (!ValidateVmNameAndOwner(request, response)) {
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   auto iter = FindVm(request.owner_id(), request.name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
 
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   VmBaseImpl::Info vm = iter->second->GetInfo();
@@ -2716,9 +2698,7 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
   vm_info->set_storage_ballooning(vm.storage_ballooning);
 
   response.set_success(true);
-  writer.AppendProtoAsArrayOfBytes(response);
-
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::GetVmEnterpriseReportingInfo(

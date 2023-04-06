@@ -144,7 +144,7 @@ class Service final : public org::chromium::VmConciergeInterface {
   void StopAllVms() override;
 
   // Handles a request to get VM info.
-  std::unique_ptr<dbus::Response> GetVmInfo(dbus::MethodCall* method_call);
+  GetVmInfoResponse GetVmInfo(const GetVmInfoRequest& request) override;
 
   // Handles a request to get VM info specific to enterprise reporting.
   std::unique_ptr<dbus::Response> GetVmEnterpriseReportingInfo(
