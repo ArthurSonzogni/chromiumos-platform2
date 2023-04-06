@@ -101,6 +101,10 @@ class MockCryptohomeFrontend : public MockFrontend, public CryptohomeFrontend {
               (ChallengeID challenge, const brillo::Blob& challenge_response),
               (override));
   MOCK_METHOD(StatusOr<uint32_t>, GetFamily, (), (override));
+  MOCK_METHOD(void,
+              RegisterOnReadyCallback,
+              (base::OnceCallback<void(Status)> callback),
+              (override));
 };
 
 }  // namespace hwsec

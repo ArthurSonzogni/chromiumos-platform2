@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <absl/container/flat_hash_set.h>
+#include <base/functional/callback.h>
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/backend/key_management.h"
@@ -30,6 +31,10 @@ class CryptohomeFrontend : public Frontend {
   using SignatureSealingAlgorithm = SignatureSealing::Algorithm;
 
   ~CryptohomeFrontend() override = default;
+
+  // Add a callback to wait until ready.
+  virtual void RegisterOnReadyCallback(
+      base::OnceCallback<void(Status)> callback) = 0;
 
   // Is the security module enabled or not.
   virtual StatusOr<bool> IsEnabled() = 0;

@@ -22,6 +22,8 @@ class CryptohomeFrontendImpl : public CryptohomeFrontend, public FrontendImpl {
   using FrontendImpl::FrontendImpl;
   ~CryptohomeFrontendImpl() override = default;
 
+  void RegisterOnReadyCallback(
+      base::OnceCallback<void(Status)> callback) override;
   StatusOr<bool> IsEnabled() override;
   StatusOr<bool> IsReady() override;
   StatusOr<bool> IsSrkRocaVulnerable() override;

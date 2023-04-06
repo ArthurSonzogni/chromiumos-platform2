@@ -5,6 +5,7 @@
 #include "libhwsec/frontend/cryptohome/frontend_impl.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <brillo/secure_blob.h>
@@ -22,6 +23,11 @@ namespace {
 // The PinWeaver protocol version where the biometrics support was first added.
 constexpr uint8_t kBiometricsPinWeaverProtocolVersion = 2;
 }  // namespace
+
+void CryptohomeFrontendImpl::RegisterOnReadyCallback(
+    base::OnceCallback<void(Status)> callback) {
+  middleware_.CallAsync<&Backend::State::WaitUntilReady>(std::move(callback));
+}
 
 StatusOr<bool> CryptohomeFrontendImpl::IsEnabled() {
   return middleware_.CallSync<&Backend::State::IsEnabled>();
