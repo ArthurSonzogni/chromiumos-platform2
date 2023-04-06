@@ -14,6 +14,9 @@ build = "src/vm_grpc/proto/build.rs"
 chromeos = ["featured"]
 vm_grpc = ["grpcio", "protobuf", "futures", "futures-channel", "futures-executor", "futures-util"]
 
+[target.'cfg(feature = "vm_grpc")'.build-dependencies]
+system_api = { path = "../system_api" } # provided by ebuild
+
 [dependencies]
 anyhow = "1.0"
 dbus = "0.9"
@@ -54,3 +57,5 @@ required-features = ["vm_grpc"]
 
 [build-dependencies]
 protoc-grpcio = "2.0.0"
+protoc-rust = "2.27.1"
+anyhow = "1.0"
