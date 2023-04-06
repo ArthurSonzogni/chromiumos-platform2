@@ -2109,8 +2109,29 @@ void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
     CellularServiceRefPtr service =
         manager()->cellular_service_provider()->FindService(
             connect_pending_iccid_);
-    if (service)
+    bool is_user_triggered = false;
+    if (service) {
       service->SetFailure(failure);
+      is_user_triggered = service->is_in_user_connect();
+    }
+    // populate the error for the sake of metrics
+    Error error;
+    switch (failure) {
+      case Service::kFailureNotRegistered:
+        error.Populate(Error::kNotRegistered);
+        break;
+      case Service::kFailureDisconnect:
+        error.Populate(Error::kOperationAborted);
+        break;
+      case Service::kFailureSimLocked:
+        error.Populate(Error::kPinRequired);
+        break;
+      default:
+        error.Populate(Error::kOperationFailed);
+        break;
+    }
+    NotifyCellularConnectionResult(std::move(error), connect_pending_iccid_,
+                                   is_user_triggered);
   }
   connect_cancel_callback_.Cancel();
   connect_pending_callback_.Cancel();
