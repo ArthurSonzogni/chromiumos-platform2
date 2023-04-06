@@ -1515,8 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kGetVmEnterpriseReportingInfoMethod,
-       &Service::GetVmEnterpriseReportingInfo},
       {kArcVmCompleteBootMethod, &Service::ArcVmCompleteBoot},
       {kSetBalloonTimerMethod, &Service::SetBalloonTimer},
       {kAdjustVmMethod, &Service::AdjustVm},
@@ -2701,32 +2699,15 @@ GetVmInfoResponse Service::GetVmInfo(const GetVmInfoRequest& request) {
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::GetVmEnterpriseReportingInfo(
-    dbus::MethodCall* method_call) {
+GetVmEnterpriseReportingInfoResponse Service::GetVmEnterpriseReportingInfo(
+    const GetVmEnterpriseReportingInfoRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  GetVmEnterpriseReportingInfoRequest request;
   GetVmEnterpriseReportingInfoResponse response;
 
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    const std::string error_message =
-        "Unable to parse GetVmEnterpriseReportingInfo from message";
-    LOG(ERROR) << error_message;
-    response.set_failure_reason(error_message);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   if (!ValidateVmNameAndOwner(request, response)) {
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   auto iter = FindVm(request.owner_id(), request.vm_name());
@@ -2734,16 +2715,14 @@ std::unique_ptr<dbus::Response> Service::GetVmEnterpriseReportingInfo(
     const std::string error_message = "Requested VM does not exist";
     LOG(ERROR) << error_message;
     response.set_failure_reason(error_message);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // failure_reason and success will be set by GetVmEnterpriseReportingInfo.
   if (!iter->second->GetVmEnterpriseReportingInfo(&response)) {
     LOG(ERROR) << "Failed to get VM enterprise reporting info";
   }
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 // Performs necessary steps to complete the boot of the VM.

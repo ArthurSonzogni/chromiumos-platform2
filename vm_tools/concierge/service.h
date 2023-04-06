@@ -147,8 +147,8 @@ class Service final : public org::chromium::VmConciergeInterface {
   GetVmInfoResponse GetVmInfo(const GetVmInfoRequest& request) override;
 
   // Handles a request to get VM info specific to enterprise reporting.
-  std::unique_ptr<dbus::Response> GetVmEnterpriseReportingInfo(
-      dbus::MethodCall* method_call);
+  GetVmEnterpriseReportingInfoResponse GetVmEnterpriseReportingInfo(
+      const GetVmEnterpriseReportingInfoRequest& request) override;
 
   // Handles a request to complete the boot of an ARC VM.
   // |method_call| must have a ArcVmCompleteBootRequest
