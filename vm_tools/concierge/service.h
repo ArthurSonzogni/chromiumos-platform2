@@ -135,9 +135,8 @@ class Service final : public org::chromium::VmConciergeInterface {
   // ignore the return value here.
   void StopVmInternalAsTask(VmId vm_id, VmStopReason reason);
 
-  // Handles a request to suspend a VM.  |method_call| must have a
-  // SuspendVmRequest protobuf serialized as an array of bytes.
-  std::unique_ptr<dbus::Response> SuspendVm(dbus::MethodCall* method_call);
+  // Handles a request to suspend a VM.
+  SuspendVmResponse SuspendVm(const SuspendVmRequest& request) override;
 
   // Handles a request to resume a VM.  |method_call| must have a
   // ResumeVmRequest protobuf serialized as an array of bytes.

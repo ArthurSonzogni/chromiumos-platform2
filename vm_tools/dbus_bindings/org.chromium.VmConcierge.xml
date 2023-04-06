@@ -32,5 +32,19 @@
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
     </method>
+    <method name="SuspendVm">
+      <tp:docstring>
+        Suspends a VM.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::SuspendVmRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::SuspendVmResponse"/>
+      </arg>
+    </method>
   </interface>
 </node>
