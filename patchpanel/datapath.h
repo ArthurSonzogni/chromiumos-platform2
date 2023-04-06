@@ -11,6 +11,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -451,9 +452,13 @@ class Datapath {
   bool AddVirtualInterfacePair(const std::string& netns_name,
                                const std::string& veth_ifname,
                                const std::string& peer_ifname);
-  // Sets the configuration of an interface.
+  // Sets the configuration of an interface. |mac_addr| is an optional argument
+  // that allows controlling the MAC address when configuring a virtual
+  // interface used for ARC, crosvm, or with a network namespace. |mac_addr|
+  // should be left undefined when configuring a physical interface used for a
+  // downstream network.
   bool ConfigureInterface(const std::string& ifname,
-                          const MacAddress& mac_addr,
+                          std::optional<MacAddress> mac_addr,
                           uint32_t ipv4_addr,
                           int ipv4_prefix_len,
                           bool up,

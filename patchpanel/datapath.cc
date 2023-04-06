@@ -764,29 +764,30 @@ bool Datapath::ToggleInterface(const std::string& ifname, bool up) {
 }
 
 bool Datapath::ConfigureInterface(const std::string& ifname,
-                                  const MacAddress& mac_addr,
+                                  std::optional<MacAddress> mac_addr,
                                   uint32_t ipv4_addr,
                                   int ipv4_prefix_len,
                                   bool up,
                                   bool enable_multicast) {
-  const std::string link = up ? "up" : "down";
-  const std::string multicast = enable_multicast ? "on" : "off";
-  return (process_runner_->ip(
-              "addr", "add",
-              {IPv4AddressToCidrString(ipv4_addr, ipv4_prefix_len), "brd",
-               IPv4AddressToString(
-                   Ipv4BroadcastAddr(ipv4_addr, ipv4_prefix_len)),
-               "dev", ifname}) == 0) &&
-         (process_runner_->ip("link", "set",
-                              {
-                                  "dev",
-                                  ifname,
-                                  link,
-                                  "addr",
-                                  MacAddressToString(mac_addr),
-                                  "multicast",
-                                  multicast,
-                              }) == 0);
+  if (process_runner_->ip(
+          "addr", "add",
+          {IPv4AddressToCidrString(ipv4_addr, ipv4_prefix_len), "brd",
+           IPv4AddressToString(Ipv4BroadcastAddr(ipv4_addr, ipv4_prefix_len)),
+           "dev", ifname}) != 0) {
+    return false;
+  }
+  std::vector<std::string> iplink_args{
+      "dev",
+      ifname,
+      up ? "up" : "down",
+  };
+  if (mac_addr) {
+    iplink_args.push_back("addr");
+    iplink_args.push_back(MacAddressToString(*mac_addr));
+  }
+  iplink_args.push_back("multicast");
+  iplink_args.push_back(enable_multicast ? "on" : "off");
+  return process_runner_->ip("link", "set", iplink_args) == 0;
 }
 
 void Datapath::RemoveInterface(const std::string& ifname) {
