@@ -11,6 +11,7 @@ bind: 1
 brk: 1
 clock_getres: 1
 clock_gettime: 1
+clock_nanosleep: 1
 clone: 1
 close: 1
 connect: 1
@@ -111,6 +112,7 @@ shutdown: 1
 sigaltstack: 1
 socket: arg0 == AF_UNIX
 stat: 1
+sysinfo: 1
 tgkill: 1
 uname: 1
 unlink: 1
