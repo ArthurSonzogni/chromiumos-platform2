@@ -980,12 +980,18 @@ const char kTetheringStateStarting[] = "starting";
 const char kTetheringStateStopping[] = "stopping";
 
 // SetTetheringEnabled result values
+const char kTetheringEnableResultDownstreamWiFiFailure[] =
+    "downstream_wifi_failure";
 const char kTetheringEnableResultFailure[] = "failure";
 const char kTetheringEnableResultInvalidProperties[] = "invalid_properties";
+const char kTetheringEnableResultNetworkSetupFailure[] =
+    "network_setup_failure";
 const char kTetheringEnableResultNotAllowed[] = "not_allowed";
 const char kTetheringEnableResultSuccess[] = "success";
+const char kTetheringEnableResultUpstreamFailure[] = "upstream_failure";
 const char kTetheringEnableResultUpstreamNotAvailable[] =
     "upstream_not_available";
+const char kTetheringEnableResultWrongState[] = "wrong_state";
 
 // kCheckTetheringReadinessFunction return status
 const char kTetheringReadinessNotAllowed[] = "not_allowed";

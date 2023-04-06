@@ -402,7 +402,7 @@ void TetheringManager::CheckAndPostTetheringStartResult() {
       // correct, something went wrong. Terminate tethering session.
       LOG(ERROR) << "Has received kServiceUp event from hotspot device but the "
                     "device state is not correct. Terminate tethering session";
-      PostSetEnabledResult(SetEnabledResult::kFailure);
+      PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
       StopTetheringSession(StopReason::kError);
     }
     return;
@@ -438,16 +438,25 @@ void TetheringManager::CheckAndPostTetheringStopResult() {
 }
 
 void TetheringManager::OnStartingTetheringTimeout() {
+  SetEnabledResult result = SetEnabledResult::kFailure;
   LOG(ERROR) << __func__ << ": cannot start tethering session in "
              << kStartTimeout;
-  PostSetEnabledResult(SetEnabledResult::kFailure);
+
+  if (!hotspot_dev_ || !hotspot_dev_->IsServiceUp()) {
+    result = SetEnabledResult::kDownstreamWiFiFailure;
+  } else if (upstream_technology_ == Technology::kCellular &&
+             (!upstream_network_ ||
+              !upstream_network_->HasInternetConnectivity())) {
+    result = SetEnabledResult::kUpstreamNetworkNotAvailable;
+  }
+  PostSetEnabledResult(result);
   StopTetheringSession(StopReason::kError);
 }
 
 void TetheringManager::StartTetheringSession() {
   if (state_ != TetheringState::kTetheringIdle) {
     LOG(ERROR) << __func__ << ": tethering session is not in idle state";
-    PostSetEnabledResult(SetEnabledResult::kFailure);
+    PostSetEnabledResult(SetEnabledResult::kWrongState);
     return;
   }
 
@@ -477,7 +486,7 @@ void TetheringManager::StartTetheringSession() {
                           base::Unretained(this)));
   if (!hotspot_dev_) {
     LOG(ERROR) << __func__ << ": failed to create a WiFi AP interface";
-    PostSetEnabledResult(SetEnabledResult::kFailure);
+    PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
     StopTetheringSession(StopReason::kError);
     return;
   }
@@ -486,8 +495,8 @@ void TetheringManager::StartTetheringSession() {
   std::unique_ptr<HotspotService> service = std::make_unique<HotspotService>(
       hotspot_dev_, hex_ssid_, passphrase_, security_);
   if (!hotspot_dev_->ConfigureService(std::move(service))) {
-    LOG(ERROR) << __func__ << ": failed to configure the service";
-    PostSetEnabledResult(SetEnabledResult::kFailure);
+    LOG(ERROR) << __func__ << ": failed to configure the hotspot service";
+    PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
     StopTetheringSession(StopReason::kError);
     return;
   }
@@ -507,7 +516,7 @@ void TetheringManager::StopTetheringSession(StopReason reason) {
       state_ == TetheringState::kTetheringStopping) {
     if (reason == StopReason::kClientStop) {
       LOG(ERROR) << __func__ << ": no active or starting tethering session";
-      PostSetEnabledResult(SetEnabledResult::kFailure);
+      PostSetEnabledResult(SetEnabledResult::kWrongState);
     }
     return;
   }
@@ -601,7 +610,7 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
   if (event == LocalDevice::DeviceEvent::kInterfaceDisabled ||
       event == LocalDevice::DeviceEvent::kServiceDown) {
     if (state_ == TetheringState::kTetheringStarting) {
-      PostSetEnabledResult(SetEnabledResult::kFailure);
+      PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
     }
     StopTetheringSession(StopReason::kError);
   } else if (event == LocalDevice::DeviceEvent::kServiceUp) {
@@ -690,8 +699,16 @@ const std::string TetheringManager::SetEnabledResultName(
       return kTetheringEnableResultNotAllowed;
     case SetEnabledResult::kInvalidProperties:
       return kTetheringEnableResultInvalidProperties;
+    case SetEnabledResult::kWrongState:
+      return kTetheringEnableResultWrongState;
     case SetEnabledResult::kUpstreamNetworkNotAvailable:
       return kTetheringEnableResultUpstreamNotAvailable;
+    case SetEnabledResult::kUpstreamFailure:
+      return kTetheringEnableResultUpstreamFailure;
+    case SetEnabledResult::kDownstreamWiFiFailure:
+      return kTetheringEnableResultDownstreamWiFiFailure;
+    case SetEnabledResult::kNetworkSetupFailure:
+      return kTetheringEnableResultNetworkSetupFailure;
     default:
       return "unknown";
   }

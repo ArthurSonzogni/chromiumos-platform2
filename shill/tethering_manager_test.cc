@@ -797,8 +797,9 @@ TEST_F(TetheringManagerTest, FailToCreateLocalInterface) {
   EXPECT_CALL(*wifi_provider_, CreateHotspotDevice(_, _, _, _))
       .WillOnce(Return(nullptr));
   EXPECT_CALL(*hotspot_device_.get(), ConfigureService(_)).Times(0);
-  SetEnabledVerifyResult(tethering_manager_, true,
-                         TetheringManager::SetEnabledResult::kFailure);
+  SetEnabledVerifyResult(
+      tethering_manager_, true,
+      TetheringManager::SetEnabledResult::kDownstreamWiFiFailure);
   CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
 }
 
@@ -811,8 +812,9 @@ TEST_F(TetheringManagerTest, FailToConfigureService) {
   EXPECT_CALL(*hotspot_device_.get(), DeconfigureService())
       .WillOnce(Return(true));
 
-  SetEnabledVerifyResult(tethering_manager_, true,
-                         TetheringManager::SetEnabledResult::kFailure);
+  SetEnabledVerifyResult(
+      tethering_manager_, true,
+      TetheringManager::SetEnabledResult::kDownstreamWiFiFailure);
   CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
 }
 
@@ -908,7 +910,7 @@ TEST_F(TetheringManagerTest, InterfaceDisabledWhenTetheringIsStarting) {
   DownStreamDeviceEvent(tethering_manager_,
                         LocalDevice::DeviceEvent::kInterfaceDisabled,
                         hotspot_device_.get());
-  VerifyResult(TetheringManager::SetEnabledResult::kFailure);
+  VerifyResult(TetheringManager::SetEnabledResult::kDownstreamWiFiFailure);
   CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
 }
 

@@ -50,11 +50,24 @@ class TetheringManager : public Network::EventHandler {
   static const char* EntitlementStatusName(EntitlementStatus status);
 
   enum class SetEnabledResult {
+    // Successfully start/stop tethering session
     kSuccess,
-    kFailure,
+    // Tethering is not allowed
     kNotAllowed,
+    // Tethering config has invalid property
     kInvalidProperties,
+    // Start/stop tethering when it is in a wrong state
+    kWrongState,
+    // Upstream is not connected or does not have Internet access
     kUpstreamNetworkNotAvailable,
+    // Upstream network operation failure
+    kUpstreamFailure,
+    // Downstream WiFi operation failure
+    kDownstreamWiFiFailure,
+    // Failed to setup/tear down network layer for tethering
+    kNetworkSetupFailure,
+    // Other unknown failures
+    kFailure,
   };
 
   static const std::string SetEnabledResultName(SetEnabledResult result);
