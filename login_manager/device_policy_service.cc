@@ -11,6 +11,8 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/flat_map.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -49,6 +51,19 @@ using crypto::RSAPrivateKey;
 using google::protobuf::RepeatedPtrField;
 
 namespace {
+
+// Note: The keys in the map must be in the sorted order for the code to
+// compile!
+constexpr auto attrs_to_ownership =
+    base::MakeFixedFlatMapSorted<base::StringPiece,
+                                 LoginMetrics::OwnershipState>(
+        {{"", LoginMetrics::OwnershipState::kConsumer},
+         {InstallAttributesReader::kDeviceModeConsumerKiosk,
+          LoginMetrics::OwnershipState::kConsumerKiosk},
+         {InstallAttributesReader::kDeviceModeEnterprise,
+          LoginMetrics::OwnershipState::kEnterprise},
+         {InstallAttributesReader::kDeviceModeLegacyRetail,
+          LoginMetrics::OwnershipState::kLegacyRetail}});
 
 // Returns true if |policy| was not pushed by an enterprise.
 bool IsConsumerPolicy(const em::PolicyFetchResponse& policy) {
@@ -216,6 +231,11 @@ bool DevicePolicyService::Initialize() {
       PersistKey();
   }
 
+  if (install_attributes_reader_->IsLocked()) {
+    ReportDevicePolicyFileMetrics(key_success, key()->IsPopulated(),
+                                  policy_success,
+                                  GetChromeStore()->Get().has_policy_data());
+  }
   return key_success;
 }
 
@@ -682,6 +702,42 @@ std::string DevicePolicyService::GetDeviceId() {
 const std::string& DevicePolicyService::GetEnterpriseMode() {
   return install_attributes_reader_->GetAttribute(
       InstallAttributesReader::kAttrMode);
+}
+
+void DevicePolicyService::ReportDevicePolicyFileMetrics(bool key_success,
+                                                        bool key_populated,
+                                                        bool policy_success,
+                                                        bool policy_populated) {
+  LoginMetrics::DevicePolicyFilesStatus status;
+  if (!key_success) {  // Key load failed.
+    status.owner_key_file_state = LoginMetrics::PolicyFileState::kMalformed;
+  } else {
+    if (key_populated) {
+      status.owner_key_file_state = LoginMetrics::PolicyFileState::kGood;
+    } else {
+      status.owner_key_file_state = LoginMetrics::PolicyFileState::kNotPresent;
+    }
+  }
+
+  if (!policy_success) {
+    status.policy_file_state = LoginMetrics::PolicyFileState::kMalformed;
+  } else {
+    if (policy_populated) {
+      status.policy_file_state = LoginMetrics::PolicyFileState::kGood;
+    } else {
+      status.policy_file_state = LoginMetrics::PolicyFileState::kNotPresent;
+    }
+  }
+
+  std::string install_attributes_mode = GetEnterpriseMode();
+  auto it = attrs_to_ownership.find(install_attributes_mode);
+  if (it != attrs_to_ownership.end()) {
+    status.ownership_state = it->second;
+  } else {
+    status.ownership_state = LoginMetrics::OwnershipState::kOther;
+  }
+
+  metrics_->SendDevicePolicyFilesMetrics(status);
 }
 
 bool DevicePolicyService::IsChromeStoreResilientForTesting() {

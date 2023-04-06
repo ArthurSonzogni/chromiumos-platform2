@@ -29,11 +29,19 @@ class LoginMetrics {
     NUM_VALUES  // Keep last
   };
   enum AllowedUsersState { ANY_USER_ALLOWED = 0, ONLY_ALLOWLISTED = 1 };
-  enum PolicyFileState {
-    GOOD = 0,
-    MALFORMED = 1,
-    NOT_PRESENT = 2,
-    NUM_STATES = 3
+  // The result of loading and parsing a policy file. The data is used to
+  // be sent to metrics server. The metrics doesn't support adding new values
+  // so this enum must not be extended.
+  enum PolicyFileState { kGood = 0, kMalformed = 1, kNotPresent = 2 };
+  // The state of the device ownership according to install attributes. The
+  // data is used to be sent to metrics server. The metrics doesn't support
+  // adding new values so this enum must not be extended.
+  enum OwnershipState {
+    kConsumer = 0,
+    kEnterprise = 1,
+    kLegacyRetail = 2,
+    kConsumerKiosk = 3,
+    kOther = 4,
   };
   enum UserType {
     GUEST = 0,
@@ -90,6 +98,20 @@ class LoginMetrics {
     kArcContinueBootImpulseStatusFailed = 1,
     kArcContinueBootImpulseStatusTimedOut = 2,
     kMaxValue = kArcContinueBootImpulseStatusTimedOut
+  };
+
+  // Holds the state of several policy files on disk.
+  struct DevicePolicyFilesStatus {
+   public:
+    // Refers to the state of the file containing the owner key, used to check
+    // the policy data signature.
+    PolicyFileState owner_key_file_state;
+    // Refers to the state of the files containing the device policy. If at
+    // least one device policy file managed to be read and validated, it's
+    // good.
+    PolicyFileState policy_file_state;
+    // Refers to the device ownership as stated by install attributes.
+    OwnershipState ownership_state;
   };
 
   explicit LoginMetrics(const base::FilePath& per_boot_flag_dir);
@@ -161,9 +183,16 @@ class LoginMetrics {
   // in metrics/metrics_library.cc:kCrosEventNames.
   virtual void ReportCrosEvent(const std::string& event);
 
+  // Submits to UMA the state of the device policy, key and device ownership.
+  virtual void SendDevicePolicyFilesMetrics(DevicePolicyFilesStatus status);
+
  private:
   friend class LoginMetricsTest;
   friend class UserTypeTest;
+
+  // Returns code to send to the metrics library based on the state of
+  // several policy-related files on disk and device ownership.
+  static int DevicePolicyStatusCode(const DevicePolicyFilesStatus& status);
 
   // Returns code to send to the metrics library based on the type of user
   // (owner, guest or other) and the mode (normal or developer).

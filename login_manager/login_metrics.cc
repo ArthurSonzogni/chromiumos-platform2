@@ -41,6 +41,9 @@ const char kArcContinueBootImpulseStatus[] =
 const char kLoginUserTypeMetric[] = "Login.UserType";
 const char kLoginStateKeyGenerationStatus[] = "Login.StateKeyGenerationStatus";
 const char kSessionExitTypeMetric[] = "Login.SessionExitType";
+const char kLoginDevicePolicyStateMetric[] = "Login.DevicePolicyState";
+// |OwnershipState| * |PolicyFileState| ^ 2
+const int kMaxDevicePolicyStateValue = 45;
 const char kInvalidDevicePolicyFilesStatus[] =
     "Enterprise.InvalidDevicePolicyFilesStatus";
 const char kLoginMetricsFlagFile[] = "per_boot_flag";
@@ -185,6 +188,13 @@ void LoginMetrics::ReportCrosEvent(const std::string& event) {
   metrics_lib_.SendCrosEventToUMA(event);
 }
 
+void LoginMetrics::SendDevicePolicyFilesMetrics(
+    DevicePolicyFilesStatus status) {
+  metrics_lib_.SendEnumToUMA(kLoginDevicePolicyStateMetric,
+                             DevicePolicyStatusCode(status),
+                             kMaxDevicePolicyStateValue);
+}
+
 // static
 // Code for incognito, owner and any other user are 0, 1 and 2
 // respectively in normal mode. In developer mode they are 3, 4 and 5.
@@ -202,6 +212,13 @@ int LoginMetrics::LoginUserTypeCode(bool dev_mode, bool guest, bool owner) {
   if (owner)
     return DEV_OWNER;
   return DEV_OTHER;
+}
+
+// static
+int LoginMetrics::DevicePolicyStatusCode(
+    const DevicePolicyFilesStatus& status) {
+  return status.owner_key_file_state * 1 + status.policy_file_state * 3 +
+         status.ownership_state * 9;
 }
 
 }  // namespace login_manager

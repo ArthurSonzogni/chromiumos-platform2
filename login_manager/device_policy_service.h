@@ -192,6 +192,17 @@ class DevicePolicyService : public PolicyService {
   // Returns enterprise mode from |install_attributes_reader_|.
   const std::string& GetEnterpriseMode();
 
+  // Process the input and send the metrics to UMA. |key_success| specifies
+  // whether the key loading was successful (true also in case when there's yet
+  // no key on disk), |key_populated| - if there's a key file on disk and it has
+  // been successfully loaded. Similarly |policy_success| specifies whether the
+  // policy loading was successful and |policy_populated| - if there's at least
+  // one device policy file on disk that was successfully loaded.
+  void ReportDevicePolicyFileMetrics(bool key_success,
+                                     bool key_populated,
+                                     bool policy_success,
+                                     bool policy_populated);
+
   // Returns whether the store is resilient. To be used for testing only.
   bool IsChromeStoreResilientForTesting();
 
