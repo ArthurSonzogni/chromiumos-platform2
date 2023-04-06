@@ -151,10 +151,8 @@ class Service final : public org::chromium::VmConciergeInterface {
       const GetVmEnterpriseReportingInfoRequest& request) override;
 
   // Handles a request to complete the boot of an ARC VM.
-  // |method_call| must have a ArcVmCompleteBootRequest
-  // protobuf serialized as an array of bytes.
-  std::unique_ptr<dbus::Response> ArcVmCompleteBoot(
-      dbus::MethodCall* method_call);
+  ArcVmCompleteBootResponse ArcVmCompleteBoot(
+      const ArcVmCompleteBootRequest& request) override;
 
   // Handles a request to update balloon timer.
   std::unique_ptr<dbus::Response> SetBalloonTimer(

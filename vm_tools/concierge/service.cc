@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kArcVmCompleteBootMethod, &Service::ArcVmCompleteBoot},
       {kSetBalloonTimerMethod, &Service::SetBalloonTimer},
       {kAdjustVmMethod, &Service::AdjustVm},
       {kCreateDiskImageMethod, &Service::CreateDiskImage},
@@ -2741,44 +2740,26 @@ bool Service::OnVmBootComplete(const std::string& owner_id,
   return true;
 }
 
-std::unique_ptr<dbus::Response> Service::ArcVmCompleteBoot(
-    dbus::MethodCall* method_call) {
+ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
+    const ArcVmCompleteBootRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  ArcVmCompleteBootRequest request;
   ArcVmCompleteBootResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ArcVmCompleteBootRequest from message";
-    response.set_result(ArcVmCompleteBootResult::BAD_REQUEST);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
 
   if (!ValidateVmNameAndOwner(request, response)) {
     response.set_result(ArcVmCompleteBootResult::BAD_REQUEST);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (!OnVmBootComplete(request.owner_id(), kArcVmName)) {
     LOG(ERROR) << "Unable to locate ArcVm instance";
     response.set_result(ArcVmCompleteBootResult::ARCVM_NOT_FOUND);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   response.set_result(ArcVmCompleteBootResult::SUCCESS);
-  writer.AppendProtoAsArrayOfBytes(response);
-
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::SetBalloonTimer(
