@@ -23,7 +23,7 @@ namespace {
 // "0x0A" is the event ID for crashes in the GSC flash log.
 // event::Entry::Crash defined in src/platform/ti50/common/libs/event/src/lib.rs
 const char kGSCToolFlogCrashEventMarker[] = ": 0a";
-constexpr char kGscCrashName[] = "gsc_crash";
+constexpr char kGscExecName[] = "google_security_chip";
 const char kSignatureKey[] = "sig";
 
 // Reserve 0xFFFFFFFF as an invalid crash ID.
@@ -199,20 +199,12 @@ bool GscCollectorBase::Collect(bool use_saved_lsb) {
     return false;
   }
 
-  std::string dump_basename =
-      FormatDumpBasename(kGscCrashName, time(nullptr), 0);
-  FilePath gsc_crash_path =
-      GetCrashPath(root_crash_directory, dump_basename, "gscdump");
-
-  // TODO(b/265310865): Create unique GSC crash signatures based on the crash
-  // data.
-  AddCrashMetaData(kSignatureKey, kGscCrashName);
-
-  // Create meta file with bert dump info and finish up.
-  FinishCrash(GetCrashPath(root_crash_directory, dump_basename, "meta"),
-              kGscCrashName, gsc_crash_path.BaseName().value());
-
   // Persist the latest crash ID, so we only report it once.
+  // We do this before calling GetLogContents(), since crash_reporter_logs.conf
+  // needs the crash log ID to pass to `gsctool --clog`, and reading the ID from
+  // the persistent file saves us from the complexity of parsing the ID from the
+  // `gsctool --flog` output (essentially re-implementing
+  // GetPreviousGscCrashId() with shell commands).
   // NOTE: This should be the final check we make that can return |false|. Once
   // this value is recorded, the GSC crash will never have a crash report
   // generated for it every again.
@@ -224,6 +216,27 @@ bool GscCollectorBase::Collect(bool use_saved_lsb) {
     LOG(INFO) << "Failed to persist latest GSC crash ID.";
     return false;
   }
+
+  std::string dump_basename =
+      FormatDumpBasename(kGscExecName, time(nullptr), 0);
+  FilePath gsc_crash_path =
+      GetCrashPath(root_crash_directory, dump_basename, "log.gz");
+
+  // TODO(b/265310865): Create unique GSC crash signatures based on the crash
+  // data.
+  AddCrashMetaData(kSignatureKey, kGscExecName);
+
+  // Get the log contents, compress, and attach to crash report.
+  if (!GetLogContents(log_config_path_, kGscExecName, gsc_crash_path)) {
+    // Don't return if we fail here. We still want upload whatever we were able
+    // output to syslog, as well as give some indication to developers that the
+    // GSC is crashing at all.
+    LOG(ERROR) << "Failed to collect GSC logs.";
+  }
+
+  // Create meta file with GSC dump info and finish up.
+  FinishCrash(GetCrashPath(root_crash_directory, dump_basename, "meta"),
+              kGscExecName, gsc_crash_path.BaseName().value());
 
   LOG(INFO) << "Stored GSC crash to " << gsc_crash_path.value();
 

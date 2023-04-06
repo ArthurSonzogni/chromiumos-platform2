@@ -270,9 +270,9 @@ TEST_F(GscCollectorTest, MultipleCrashes) {
 
   EXPECT_GT(collector_.get_bytes_written(), 0);
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
-      test_dir(), "gsc_crash.*.meta", "upload_var_collector=gsc"));
+      test_dir(), "google_security_chip.*.meta", "upload_var_collector=gsc"));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
-      test_dir(), "gsc_crash.*.meta", "sig=gsc_crash\n"));
+      test_dir(), "google_security_chip.*.meta", "sig=google_security_chip\n"));
 }
 
 TEST_F(GscCollectorTest, MultipleCrashesPrevId0) {
@@ -309,9 +309,9 @@ TEST_F(GscCollectorTest, MultipleCrashesPrevId0) {
 
   EXPECT_GT(collector_.get_bytes_written(), 0);
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
-      test_dir(), "gsc_crash.*.meta", "upload_var_collector=gsc"));
+      test_dir(), "google_security_chip.*.meta", "upload_var_collector=gsc"));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
-      test_dir(), "gsc_crash.*.meta", "sig=gsc_crash\n"));
+      test_dir(), "google_security_chip.*.meta", "sig=google_security_chip\n"));
 }
 
 TEST_F(GscCollectorTest, MultipleCrashesPrevId12) {
