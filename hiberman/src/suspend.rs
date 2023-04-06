@@ -27,7 +27,6 @@ use crate::hiberlog::redirect_log;
 use crate::hiberlog::replay_logs;
 use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogOut;
-use crate::hiberutil::lock_process_memory;
 use crate::hiberutil::log_duration;
 use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::prealloc_mem;
@@ -42,7 +41,6 @@ use crate::metrics::MetricsLogger;
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
-use crate::sysfs::Swappiness;
 use crate::update_engine::is_update_engine_idle;
 use crate::volume::VolumeManager;
 
