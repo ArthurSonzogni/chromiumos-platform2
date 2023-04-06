@@ -284,6 +284,10 @@ TEST_F(AuthFactorManagerTest, RemoveSuccess) {
       auth_factor_manager_.LoadAuthFactor(
           kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
   EXPECT_THAT(loaded_auth_factor_1, Not(IsOk()));
+  EXPECT_FALSE(platform_.FileExists(
+      AuthFactorPath(kObfuscatedUsername,
+                     /*auth_factor_type_string=*/"password", kSomeIdpLabel)
+          .AddExtension(cryptohome::kChecksumExtension)));
 }
 
 TEST_F(AuthFactorManagerTest, RemoveFailure) {
@@ -319,6 +323,10 @@ TEST_F(AuthFactorManagerTest, RemoveFailure) {
   EXPECT_THAT(auth_factor_manager_.RemoveAuthFactor(
                   kObfuscatedUsername, *auth_factor, &auth_block_utility),
               Not(IsOk()));
+  EXPECT_TRUE(platform_.FileExists(
+      AuthFactorPath(kObfuscatedUsername,
+                     /*auth_factor_type_string=*/"password", kSomeIdpLabel)
+          .AddExtension(cryptohome::kChecksumExtension)));
 }
 
 TEST_F(AuthFactorManagerTest, Update) {

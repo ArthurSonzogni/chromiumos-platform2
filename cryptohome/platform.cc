@@ -1638,7 +1638,7 @@ void Platform::WriteChecksum(const FilePath& path,
                              mode_t mode) {
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
-  FilePath name = path.AddExtension("sum");
+  FilePath name = path.AddExtension(kChecksumExtension);
   WriteStringToFileAtomic(name, GetChecksum(content, content_size), mode);
 }
 
@@ -1655,7 +1655,7 @@ void Platform::VerifyChecksum(const FilePath& path,
       base::StartsWith(path_value, "/proc", base::CompareCase::SENSITIVE)) {
     return;
   }
-  FilePath name = path.AddExtension("sum");
+  FilePath name = path.AddExtension(kChecksumExtension);
   if (!FileExists(name)) {
     return;
   }

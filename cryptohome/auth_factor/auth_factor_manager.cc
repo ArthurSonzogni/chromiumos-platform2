@@ -605,6 +605,24 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
     }
   }
   LOG(INFO) << "Deleted from disk auth factor label: " << auth_factor.label();
+
+  // Remove the checksum file.
+  base::FilePath auth_factor_checksum_path =
+      file_path.value().AddExtension(kChecksumExtension);
+  if (!platform_->DeleteFileSecurely(auth_factor_checksum_path)) {
+    LOG(WARNING)
+        << "Failed to securely delete checksum file from disk for auth factor "
+        << auth_factor.label() << " of type "
+        << AuthFactorTypeToString(auth_factor.type()) << " for "
+        << obfuscated_username << ". Attempting to delete without zeroization.";
+    if (!platform_->DeleteFile(auth_factor_checksum_path)) {
+      LOG(WARNING)
+          << "Failed to delete checksum file from disk for auth factor "
+          << auth_factor.label() << " of type "
+          << AuthFactorTypeToString(auth_factor.type()) << " for "
+          << obfuscated_username;
+    }
+  }
   return OkStatus<CryptohomeError>();
 }
 

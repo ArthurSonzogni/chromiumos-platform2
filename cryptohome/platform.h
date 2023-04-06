@@ -57,6 +57,9 @@ class Time;
 
 namespace cryptohome {
 
+// The extension for the checksum files.
+constexpr char kChecksumExtension[] = "sum";
+
 // Default umask
 inline constexpr const int kDefaultUmask =
     S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH;
