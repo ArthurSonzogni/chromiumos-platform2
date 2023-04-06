@@ -16,26 +16,26 @@ class FilePath;
 
 namespace login_manager {
 
-// Checks if the big_little flag exists in file.
-bool HasHybridFlag(const base::FilePath& flags_file);
-
-// Implementation func to get small core cpu id list based on the attribute
-// (either cpu_capacity or cpuinfo_max_freq). Small cores have the smallest
-// capacity or freq in hybrid arch.
-// Returns non-empty list on success. Returns an empty list on any error or
-// non-hybrid cpu arch.
+// Implementation func to calculate hybrid and get small core cpu id list based
+// on the attribute (either cpu_capacity or cpuinfo_max_freq). If there are more
+// than two capacities or two freqs, we consider the cpus with two smallest
+// capacities / freqs as small cores.
+// Returns non-empty cpu id list on success. Returns an empty list on any error
+// or non-hybrid cpu arch.
 std::vector<std::string> GetSmallCoreCpuIdsFromAttr(
     const base::FilePath& cpu_bus_dir, base::StringPiece attribute);
 
-// Gets small core cpu id list based on cpu_capacity or cpu_freq via sysfs. It
-// calls the impl func GetSmallCoreCpuIdsFromAttr to do calculations.
-// Returns non-empty list on success. Returns an empty list on any error or
-// non-hybrid cpu arch.
-std::vector<std::string> CalculateSmallCoreCpus(
+// Calculates the number of cpu_capacity or cpu_freq and gets small core cpu id
+// list if the cpu arch is hybrid. It calls the impl func
+// GetSmallCoreCpuIdsFromAttr to do calculations.
+// Returns non-empty cpu id list on success. Returns an empty list on any error
+// or non-hybrid cpu arch.
+std::vector<std::string> CalculateSmallCoreCpusIfHybrid(
     const base::FilePath& cpu_bus_dir);
 
-// Writes the mask of small cores to non-urgent cpuset and restrict non-urgent
-// threads to small cores. Returns true on success.
+// If the cpu arch is hybrid, writes the mask of small cores to non-urgent
+// cpuset and restricts non-urgent threads to small cores.
+// Returns true on success.
 bool ConfigureNonUrgentCpuset(brillo::CrosConfigInterface* cros_config);
 
 }  // namespace login_manager

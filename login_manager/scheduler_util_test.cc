@@ -19,13 +19,17 @@ namespace {
 constexpr char kCpuBusDir[] = "sys/bus/cpu/devices";
 constexpr char kCpuCapFile[] = "cpu_capacity";
 constexpr char kCpuMaxFreqFile[] = "cpufreq/cpuinfo_max_freq";
-constexpr char kUseFlagsFile[] = "etc/ui_use_flags.txt";
 
-constexpr const char* kMaxFreqs[] = {
-    "4400000", "4400000", "4400000", "4400000",
-    "3300000", "3300000", "3300000", "3300000",
+constexpr const char* kHybridMaxFreqs[] = {
+    "4400000", "4400000", "4400000", "4400000", "3300000", "3300000", "3300000",
+    "3300000", "3300000", "3300000", "3300000", "3300000", "2100000", "2100000",
 };
-constexpr char kSmallCpuIdsFromFreq[] = "4,5,6,7";
+constexpr char kSmallCpuIdsFromHybridFreq[] = "10,11,12,13,4,5,6,7,8,9";
+
+constexpr const char* kNonHybridMaxFreqs[] = {
+    "4400000", "4400000", "4400000", "4400000",
+    "4400000", "4400000", "4400000", "4400000",
+};
 
 constexpr const char* kCapacities[] = {
     "598",
@@ -37,48 +41,18 @@ constexpr char kSmallCpuIdsFromCap[] = "0,1";
 
 }  // namespace
 
-class SchedulerUtilTest : public ::testing::Test {
- public:
-  SchedulerUtilTest() = default;
-  SchedulerUtilTest(const SchedulerUtilTest&) = delete;
-  SchedulerUtilTest& operator=(const SchedulerUtilTest&) = delete;
-  ~SchedulerUtilTest() override = default;
-
-  void SetUp() override {
-    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    test_dir_ = tmpdir_.GetPath();
-  }
-
- protected:
-  base::ScopedTempDir tmpdir_;
-  base::FilePath test_dir_;
-};
-
-TEST_F(SchedulerUtilTest, VerifyHybridFlag) {
-  base::FilePath use_flags_path = test_dir_.Append(kUseFlagsFile);
-  base::File::Error error;
-  ASSERT_TRUE(
-      base::CreateDirectoryAndGetError(use_flags_path.DirName(), &error))
-      << "Error creating directory: " << error;
-  constexpr char kContent[] =
-      "# This file is just for libchrome's ChromiumCommandBuilder class.\n"
-      "# Don't use it for anything else. Your code will break.\n"
-      "big_little\n"
-      "biod\n"
-      "compupdates\n"
-      "diagnostics\n"
-      "drm_atomic\n";
-  ASSERT_TRUE(base::WriteFile(use_flags_path, kContent));
-
-  EXPECT_TRUE(login_manager::HasHybridFlag(use_flags_path));
-}
+using SchedulerUtilTest = ::testing::Test;
 
 TEST_F(SchedulerUtilTest, TestSmallCoreCpuIdsFromCapacity) {
+  base::ScopedTempDir tmpdir;
+  ASSERT_TRUE(tmpdir.CreateUniqueTempDir());
+  base::FilePath test_dir = tmpdir.GetPath();
+
   int i = 0;
   for (const auto* capacity : kCapacities) {
     base::FilePath relative_path(
         base::StringPrintf("%s/cpu%d/%s", kCpuBusDir, i, kCpuCapFile));
-    base::FilePath cap_path = test_dir_.Append(relative_path);
+    base::FilePath cap_path = test_dir.Append(relative_path);
     base::File::Error error;
     ASSERT_TRUE(base::CreateDirectoryAndGetError(cap_path.DirName(), &error))
         << "Error creating directory: " << error;
@@ -87,18 +61,22 @@ TEST_F(SchedulerUtilTest, TestSmallCoreCpuIdsFromCapacity) {
   }
 
   std::vector<std::string> ecpu_ids = login_manager::GetSmallCoreCpuIdsFromAttr(
-      test_dir_.Append(kCpuBusDir), kCpuCapFile);
+      test_dir.Append(kCpuBusDir), kCpuCapFile);
   EXPECT_TRUE(!ecpu_ids.empty());
   std::string ecpu_mask = base::JoinString(ecpu_ids, ",");
   EXPECT_EQ(ecpu_mask, kSmallCpuIdsFromCap);
 }
 
-TEST_F(SchedulerUtilTest, TestSmallCoreCpuIdsFromFreq) {
+TEST_F(SchedulerUtilTest, TestSmallCoreCpuIdsFromFreqForHybrid) {
+  base::ScopedTempDir tmpdir;
+  ASSERT_TRUE(tmpdir.CreateUniqueTempDir());
+  base::FilePath test_dir = tmpdir.GetPath();
+
   int i = 0;
-  for (const auto* max_freq : kMaxFreqs) {
+  for (const auto* max_freq : kHybridMaxFreqs) {
     base::FilePath relative_path(
         base::StringPrintf("%s/cpu%d/%s", kCpuBusDir, i, kCpuMaxFreqFile));
-    base::FilePath freq_path = test_dir_.Append(relative_path);
+    base::FilePath freq_path = test_dir.Append(relative_path);
     base::File::Error error;
     ASSERT_TRUE(base::CreateDirectoryAndGetError(freq_path.DirName(), &error))
         << "Error creating directory: " << error;
@@ -107,10 +85,32 @@ TEST_F(SchedulerUtilTest, TestSmallCoreCpuIdsFromFreq) {
   }
 
   std::vector<std::string> ecpu_ids = login_manager::GetSmallCoreCpuIdsFromAttr(
-      test_dir_.Append(kCpuBusDir), kCpuMaxFreqFile);
+      test_dir.Append(kCpuBusDir), kCpuMaxFreqFile);
   EXPECT_TRUE(!ecpu_ids.empty());
   std::string ecpu_mask = base::JoinString(ecpu_ids, ",");
-  EXPECT_EQ(ecpu_mask, kSmallCpuIdsFromFreq);
+  EXPECT_EQ(ecpu_mask, kSmallCpuIdsFromHybridFreq);
+}
+
+TEST_F(SchedulerUtilTest, TestSmallCoreCpuIdsFromFreqForNonHybrid) {
+  base::ScopedTempDir tmpdir;
+  ASSERT_TRUE(tmpdir.CreateUniqueTempDir());
+  base::FilePath test_dir = tmpdir.GetPath();
+
+  int i = 0;
+  for (const auto* max_freq : kNonHybridMaxFreqs) {
+    base::FilePath relative_path(
+        base::StringPrintf("%s/cpu%d/%s", kCpuBusDir, i, kCpuMaxFreqFile));
+    base::FilePath freq_path = test_dir.Append(relative_path);
+    base::File::Error error;
+    ASSERT_TRUE(base::CreateDirectoryAndGetError(freq_path.DirName(), &error))
+        << "Error creating directory: " << error;
+    ASSERT_TRUE(base::WriteFile(freq_path, max_freq));
+    i++;
+  }
+
+  std::vector<std::string> ecpu_ids = login_manager::GetSmallCoreCpuIdsFromAttr(
+      test_dir.Append(kCpuBusDir), kCpuMaxFreqFile);
+  EXPECT_TRUE(ecpu_ids.empty());
 }
 
 }  // namespace login_manager

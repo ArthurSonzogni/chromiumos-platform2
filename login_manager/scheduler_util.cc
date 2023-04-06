@@ -5,18 +5,13 @@
 #include "login_manager/scheduler_util.h"
 
 #include <algorithm>
-#include <numeric>
-#include <set>
-#include <stdlib.h>
-#include <utility>
+#include <map>
 
-#include <base/containers/contains.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_piece.h>
-#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
 namespace {
@@ -29,49 +24,22 @@ constexpr char kCpuCapFile[] = "cpu_capacity";
 constexpr char kCpuMaxFreqFile[] = "cpufreq/cpuinfo_max_freq";
 constexpr char kCpusetNonUrgentDir[] =
     "/sys/fs/cgroup/cpuset/chrome/non-urgent";
-constexpr char kUseFlagsFile[] = "/etc/ui_use_flags.txt";
 
 }  // namespace
 
 namespace login_manager {
 
-bool HasHybridFlag(const base::FilePath& flags_file) {
-  std::string content;
-  if (!base::ReadFileToString(flags_file, &content)) {
-    LOG(ERROR) << "Error reading the file: " << flags_file << " !";
-    return false;
-  }
-
-  std::vector<base::StringPiece> lines = base::SplitStringPiece(
-      content, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-
-  return base::Contains(lines, "big_little");
-}
-
 std::vector<std::string> GetSmallCoreCpuIdsFromAttr(
     const base::FilePath& cpu_bus_dir, base::StringPiece attribute) {
   base::FilePath cpu0_attr_file = cpu_bus_dir.Append("cpu0").Append(attribute);
-  if (!base::PathExists(cpu0_attr_file)) {
+  if (!base::PathExists(cpu0_attr_file))
     return {};
-  }
 
-  std::string min_item_str;
-  if (!base::ReadFileToString(cpu0_attr_file, &min_item_str)) {
-    LOG(ERROR) << "Error reading cpu0 attribute file!";
-    return {};
-  }
-  int min_item = atoi(min_item_str.c_str());
-  if (min_item <= 0) {
-    LOG(ERROR) << "Invalid value read from cpu0 attribute file!";
-    return {};
-  }
-
-  // Gets small cpu ids through traversing the attribute (cpu_capacity or
-  // max_freq) of each cpu.
+  // Gets attribute (cpu_capacity or max_freq) values through traversing the
+  // attribute of each cpu, and stores them into a map.
   base::FileEnumerator enumerator(cpu_bus_dir, false /*recursive*/,
                                   base::FileEnumerator::DIRECTORIES);
-  std::vector<std::string> small_cpu_ids;
-  int num_cpus = 0;
+  std::map<int, std::vector<std::string>> attr_to_cpu_ids_map;
 
   for (base::FilePath subdir = enumerator.Next(); !subdir.empty();
        subdir = enumerator.Next()) {
@@ -88,37 +56,41 @@ std::vector<std::string> GetSmallCoreCpuIdsFromAttr(
       }
       std::string cpu_id = subdir_name.substr(kCpuPrefixSize);
 
-      if (item <= min_item) {
-        if (item < min_item) {
-          small_cpu_ids.clear();
-          min_item = item;
-        }
-        small_cpu_ids.emplace_back(std::move(cpu_id));
-      }
+      attr_to_cpu_ids_map[item].emplace_back(cpu_id);
     }
-    num_cpus++;
   }
 
-  // If the number of small cpus is not less than num_cpus, the cpu arch is not
-  // hybrid, clear the small cpu id list and return;
-  if (small_cpu_ids.size() >= num_cpus) {
-    small_cpu_ids.clear();
-    return small_cpu_ids;
+  // If the number of attribute value is 1, the cpu arch is not hybrid, the
+  // small core cpu id list is empty.
+  if (attr_to_cpu_ids_map.size() <= 1)
+    return {};
+
+  auto it = attr_to_cpu_ids_map.begin();
+  std::vector<std::string> small_cpu_ids = it->second;
+  // If the map has more than 2 attribute values, we consider the cpus with two
+  // smallest capacities / freqs as small cores.
+  if (attr_to_cpu_ids_map.size() > 2) {
+    ++it;
+    small_cpu_ids.insert(small_cpu_ids.end(), it->second.begin(),
+                         it->second.end());
   }
 
   std::sort(small_cpu_ids.begin(), small_cpu_ids.end());
+
   return small_cpu_ids;
 }
 
-std::vector<std::string> CalculateSmallCoreCpus(
+std::vector<std::string> CalculateSmallCoreCpusIfHybrid(
     const base::FilePath& cpu_bus_dir) {
-  // Gets small cpu ids through traversing cpu_capacity of each cpu.
+  // Gets small cpu ids if cpu arch is hybrid through traversing cpu_capacity of
+  // each cpu.
   if (auto small_cpu_ids = GetSmallCoreCpuIdsFromAttr(cpu_bus_dir, kCpuCapFile);
       !small_cpu_ids.empty()) {
     return small_cpu_ids;
   }
 
-  // Gets small cpu ids through traversing cpuinfo_max_freq of each cpu.
+  // Gets small cpu ids if cpu arch is hybrid through traversing
+  // cpuinfo_max_freq of each cpu.
   if (auto small_cpu_ids =
           GetSmallCoreCpuIdsFromAttr(cpu_bus_dir, kCpuMaxFreqFile);
       !small_cpu_ids.empty()) {
@@ -151,29 +123,15 @@ bool ConfigureNonUrgentCpuset(brillo::CrosConfigInterface* cros_config) {
     return true;
   }
 
-  base::FilePath use_flags_file(kUseFlagsFile);
-  if (!base::PathExists(use_flags_file)) {
-    LOG(INFO) << "The file " << kUseFlagsFile << " doesn't exist, no "
-              << "big_little flag, so non-urgent cpuset is all cpus.";
-    return false;
-  }
-
-  if (!HasHybridFlag(use_flags_file)) {
-    LOG(INFO) << "No big_little use flag, non-urgent cpuset is all cpus.";
-    return false;
-  }
-
   // Use all small cores as non-urgent cpuset, if cpuset-nonurgent isn't
   // specified in cros_config.
   std::vector<std::string> ecpu_ids =
-      CalculateSmallCoreCpus(base::FilePath(kCpuBusDir));
-  if (ecpu_ids.empty()) {
+      CalculateSmallCoreCpusIfHybrid(base::FilePath(kCpuBusDir));
+  if (ecpu_ids.empty())
     return false;
-  }
 
   std::string ecpu_mask = base::JoinString(ecpu_ids, ",");
-
-  LOG(INFO) << "The board has big_little use flag, non-urgent cpuset is "
+  LOG(INFO) << "The board has hybrid arch cpu, the non-urgent cpuset is "
             << ecpu_mask << ".";
 
   if (!base::WriteFile(nonurgent_path.Append("cpus"), ecpu_mask)) {
