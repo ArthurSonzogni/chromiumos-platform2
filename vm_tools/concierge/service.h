@@ -223,7 +223,7 @@ class Service final : public org::chromium::VmConciergeInterface {
       dbus::MethodCall* method_call);
 
   // Handles a request to adjust parameters of a given VM.
-  std::unique_ptr<dbus::Response> AdjustVm(dbus::MethodCall* method_call);
+  AdjustVmResponse AdjustVm(const AdjustVmRequest& request) override;
 
   // Handles a request to list all the VMs.
   std::unique_ptr<dbus::Response> ListVms(dbus::MethodCall* method_call);

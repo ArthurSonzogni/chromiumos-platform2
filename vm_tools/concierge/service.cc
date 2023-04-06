@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kAdjustVmMethod, &Service::AdjustVm},
       {kCreateDiskImageMethod, &Service::CreateDiskImage},
       {kDestroyDiskImageMethod, &Service::DestroyDiskImage},
       {kResizeDiskImageMethod, &Service::ResizeDiskImage},
@@ -2783,44 +2782,22 @@ SetBalloonTimerResponse Service::SetBalloonTimer(
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::AdjustVm(
-    dbus::MethodCall* method_call) {
+AdjustVmResponse Service::AdjustVm(const AdjustVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  AdjustVmRequest request;
   AdjustVmResponse response;
 
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    const std::string error_message =
-        "Unable to parse AdjustVmRequest from message";
-    LOG(ERROR) << error_message;
-    response.set_failure_reason(error_message);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   if (!ValidateVmNameAndOwner(request, response)) {
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   StorageLocation location;
   if (!CheckVmExists(request.name(), request.owner_id(), nullptr, &location)) {
     response.set_failure_reason("Requested VM does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
-  std::vector<string> params(
-      std::make_move_iterator(request.mutable_params()->begin()),
-      std::make_move_iterator(request.mutable_params()->end()));
+  std::vector<string> params(request.params().begin(), request.params().end());
 
   string failure_reason;
   bool success = false;
@@ -2863,8 +2840,7 @@ std::unique_ptr<dbus::Response> Service::AdjustVm(
 
   response.set_success(success);
   response.set_failure_reason(failure_reason);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::SyncVmTimes(
