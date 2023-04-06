@@ -18,7 +18,10 @@ group("all") {
 
 # Binary
 executable("arc-keymintd") {
-  sources = [ "main.cc" ]
+  sources = [
+    "main.cc",
+    "keymint_server.cc"
+  ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
