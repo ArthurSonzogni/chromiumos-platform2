@@ -163,7 +163,6 @@ int main(int argc, char** argv) {
   // 2. UserDataAuthDaemon::OnInit() (called by Daemon::Run())
   // 3. UserDataAuthDaemon::RegisterDBusObjectsAsync() (called by 2.)
   // 4. UserDataAuth::Initialize() (called by 3.)
-  // 5. UserDataAuth::PostDBusInitialize() (called by 3.)
   // Daemon::OnInit() needs to be called before Initialize(), because
   // Initialize() create threads, and thus mess with Daemon's
   // AsynchronousSignalHandler.

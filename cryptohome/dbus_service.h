@@ -36,9 +36,7 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
     // Initialize the UserDataAuth service.
     // Note that the initialization should be done after setting the options.
-    CHECK(service_->Initialize());
-
-    service_->set_dbus(bus_);
+    CHECK(service_->Initialize(nullptr));
 
     DCHECK(!dbus_object_);
     dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
@@ -64,8 +62,6 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
     misc_adaptor_.reset(
         new CryptohomeMiscAdaptor(bus_, dbus_object_.get(), service_.get()));
     misc_adaptor_->RegisterAsync();
-
-    service_->PostDBusInitialize();
 
     dbus_object_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() for UserDataAuth failed", true));

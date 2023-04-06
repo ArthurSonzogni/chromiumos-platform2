@@ -86,12 +86,12 @@ class UserDataAuth {
 
   // Note that this function must be called from the thread that created this
   // object, so that |origin_task_runner_| is initialized correctly.
-  bool Initialize();
-
-  // This is the initialization function that is called after DBus is connected
-  // and set_dbus() has been called. Usually Initialize() is called before this
-  // method.
-  bool PostDBusInitialize();
+  //
+  // Initialization can optionally specify the mount thread but but this
+  // normally only done in testing. If |mount_thread_bus| is null then the
+  // initialization will create one itself which is how it is usually done in
+  // non-test usage.
+  bool Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus);
 
   // =============== Mount Related Public DBus API ===============
   // Methods below are used directly by the DBus interface
@@ -392,20 +392,6 @@ class UserDataAuth {
   // status of the TPM.
   // Note: This can only be called on mount thread.
   void OwnershipCallback(bool status, bool took_ownership);
-
-  // Set the current dbus connection, this is usually used by the dbus daemon
-  // object that owns the instance of this object. During testing, the test
-  // fixture might call this for dependency injection.
-  void set_dbus(scoped_refptr<::dbus::Bus> bus) { bus_ = bus; }
-
-  // Set the current dbus connection for mount thread, this is usually used by
-  // the dbus daemon object that owns the instance of this object. During
-  // testing, the test fixture might call this for dependency injection.
-  // Note that it is the responsibility of the caller to cleanup/destroy the Bus
-  // object during destruction.
-  void set_mount_thread_dbus(scoped_refptr<::dbus::Bus> bus) {
-    mount_thread_bus_ = bus;
-  }
 
   // ================= Threading Utilities ==================
 
@@ -1015,10 +1001,6 @@ class UserDataAuth {
   // The actual token manager client used by this class, usually set to
   // default_chaps_client_, but can be overridden for testing.
   chaps::TokenManagerClient* chaps_client_;
-
-  // A dbus connection, this is used by any code in this class that needs access
-  // to the system DBus and accesses it on the origin thread.
-  scoped_refptr<::dbus::Bus> bus_;
 
   // A dbus connection, this is used by any code in this class that needs access
   // to the system DBus and accesses it on the mount thread. Such as when

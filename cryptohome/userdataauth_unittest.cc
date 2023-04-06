@@ -190,7 +190,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     attrs_ = std::make_unique<NiceMock<MockInstallAttributes>>();
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
-    bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     mount_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
@@ -382,9 +381,6 @@ class UserDataAuthTestBase : public ::testing::Test {
   // internal use.
   NiceMock<MockLowDiskSpaceHandler> low_disk_space_handler_;
 
-  // Mock DBus object, will be passed to UserDataAuth for its internal use.
-  scoped_refptr<NiceMock<dbus::MockBus>> bus_;
-
   // Mock DBus object on mount thread, will be passed to UserDataAuth for its
   // internal use.
   scoped_refptr<NiceMock<dbus::MockBus>> mount_bus_;
@@ -461,10 +457,7 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
 
   // Initialize |userdataauth_| in |origin_task_runner_|
   void InitializeUserDataAuth() {
-    ASSERT_TRUE(userdataauth_->Initialize());
-    userdataauth_->set_dbus(bus_);
-    userdataauth_->set_mount_thread_dbus(mount_bus_);
-    ASSERT_TRUE(userdataauth_->PostDBusInitialize());
+    ASSERT_TRUE(userdataauth_->Initialize(mount_bus_));
     // Let all initialization tasks complete.
     RunUntilIdle();
   }
@@ -1363,7 +1356,7 @@ TEST_F(UserDataAuthTestNotInitialized, InstallAttributesStatusToProtoEnum) {
 
 TEST_F(UserDataAuthTestNotInitialized, InitializeArcDiskQuota) {
   EXPECT_CALL(arc_disk_quota_, Initialize()).Times(1);
-  EXPECT_TRUE(userdataauth_->Initialize());
+  EXPECT_TRUE(userdataauth_->Initialize(mount_bus_));
 }
 
 TEST_F(UserDataAuthTestNotInitialized, IsArcQuotaSupported) {
@@ -1636,7 +1629,7 @@ TEST_F(UserDataAuthTestNotInitializedDeathTest, GetSystemSaltUninitialized) {
 TEST_F(UserDataAuthTest, OwnershipCallbackRegisterValidity) {
   base::RepeatingCallback<void()> callback;
 
-  // Called by PostDBusInitialize().
+  // Called by Initialize().
   EXPECT_CALL(tpm_manager_utility_, AddOwnershipCallback)
       .WillOnce(SaveArg<0>(&callback));
 
@@ -1658,7 +1651,7 @@ TEST_F(UserDataAuthTest, OwnershipCallbackRegisterValidity) {
 TEST_F(UserDataAuthTest, OwnershipCallbackRegisterRepeated) {
   base::RepeatingCallback<void()> callback;
 
-  // Called by PostDBusInitialize().
+  // Called by Initialize().
   EXPECT_CALL(tpm_manager_utility_, AddOwnershipCallback)
       .WillOnce(SaveArg<0>(&callback));
 
@@ -4101,18 +4094,9 @@ class UserDataAuthTestThreaded : public UserDataAuthTestBase {
 
   // Initialize |userdataauth_| in |origin_thread_|
   void InitializeUserDataAuth() {
-    PostToOriginAndBlock(base::BindOnce(
-        [](UserDataAuth* userdataauth) {
-          ASSERT_TRUE(userdataauth->Initialize());
-        },
-        base::Unretained(userdataauth_.get())));
-    userdataauth_->set_dbus(bus_);
-    userdataauth_->set_mount_thread_dbus(mount_bus_);
-    PostToOriginAndBlock(base::BindOnce(
-        [](UserDataAuth* userdataauth) {
-          ASSERT_TRUE(userdataauth->PostDBusInitialize());
-        },
-        base::Unretained(userdataauth_.get())));
+    PostToOriginAndBlock(
+        base::BindOnce(base::IgnoreResult(&UserDataAuth::Initialize),
+                       base::Unretained(userdataauth_.get()), mount_bus_));
   }
 
  protected:

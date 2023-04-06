@@ -320,15 +320,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   userdataauth->set_platform(&platform);
   userdataauth->set_vault_factory_for_testing(vault_factory.get());
   userdataauth->set_mount_factory_for_testing(mount_factory.get());
-  userdataauth->set_dbus(bus);
-  userdataauth->set_mount_thread_dbus(mount_thread_bus);
   userdataauth->set_hwsec_factory(&hwsec_factory);
   userdataauth->set_tpm_manager_util_(&tpm_manager_utility);
-  if (!userdataauth->Initialize()) {
+  if (!userdataauth->Initialize(mount_thread_bus)) {
     // This should be a rare case (e.g., the mocked system salt writing failed).
     return 0;
   }
-  CHECK(userdataauth->PostDBusInitialize());
 
   // Prepare `UserDataAuthAdaptor`. D-Bus handlers of the code-under-test become
   // registered on the given stub D-Bus object.

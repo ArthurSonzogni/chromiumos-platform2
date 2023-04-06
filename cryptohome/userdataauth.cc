@@ -248,8 +248,12 @@ UserDataAuth::~UserDataAuth() {
   }
 }
 
-bool UserDataAuth::Initialize() {
+bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   AssertOnOriginThread();
+
+  // Save the bus object. Note that this doesn't mean that mount_thread_bus_ is
+  // not null because the passed in Bus can be (and usually is) null.
+  mount_thread_bus_ = std::move(mount_thread_bus);
 
   // Note that we check to see if |origin_task_runner_| and |mount_task_runner_|
   // are available here because they may have been set to an overridden value
@@ -480,35 +484,6 @@ bool UserDataAuth::Initialize() {
           &UserDataAuth::PostTaskToMountThread, base::Unretained(this))))
     return false;
 
-  return true;
-}
-
-void UserDataAuth::CreateMountThreadDBus() {
-  AssertOnMountThread();
-  if (!mount_thread_bus_) {
-    // Setup the D-Bus.
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    mount_thread_bus_ = base::MakeRefCounted<dbus::Bus>(options);
-    CHECK(mount_thread_bus_->Connect())
-        << "Failed to connect to system D-Bus on mount thread";
-  }
-}
-
-void UserDataAuth::ShutdownTask() {
-  default_auth_session_manager_.reset();
-  default_fingerprint_manager_.reset();
-  default_challenge_credentials_helper_.reset();
-  if (mount_thread_bus_) {
-    mount_thread_bus_->ShutdownAndBlock();
-    mount_thread_bus_.reset();
-  }
-}
-
-bool UserDataAuth::PostDBusInitialize() {
-  AssertOnOriginThread();
-  CHECK(bus_);
-
   if (!tpm_manager_util_) {
     tpm_manager_util_ = tpm_manager::TpmManagerUtility::GetSingleton();
   }
@@ -551,6 +526,28 @@ bool UserDataAuth::PostDBusInitialize() {
                                        base::Unretained(this)));
 
   return true;
+}
+
+void UserDataAuth::CreateMountThreadDBus() {
+  AssertOnMountThread();
+  if (!mount_thread_bus_) {
+    // Setup the D-Bus.
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    mount_thread_bus_ = base::MakeRefCounted<dbus::Bus>(options);
+    CHECK(mount_thread_bus_->Connect())
+        << "Failed to connect to system D-Bus on mount thread";
+  }
+}
+
+void UserDataAuth::ShutdownTask() {
+  default_auth_session_manager_.reset();
+  default_fingerprint_manager_.reset();
+  default_challenge_credentials_helper_.reset();
+  if (mount_thread_bus_) {
+    mount_thread_bus_->ShutdownAndBlock();
+    mount_thread_bus_.reset();
+  }
 }
 
 void UserDataAuth::InitializeFeatureLibrary() {
