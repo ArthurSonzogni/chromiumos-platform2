@@ -113,8 +113,11 @@ bool ShutdownFromSuspend::ShouldHibernate() {
 
 bool ShutdownFromSuspend::ShouldShutdown() {
   if (timer_fired_) {
-    LOG(INFO) << "Timer expired. Device should shut down";
-    return true;
+    const system::PowerStatus status = power_supply_->GetPowerStatus();
+    if (!status.line_power_on) {
+      LOG(INFO) << "Timer expired. Device should shut down";
+      return true;
+    }
   }
 
   if (ShutdownFromSuspend::IsBatteryLow()) {

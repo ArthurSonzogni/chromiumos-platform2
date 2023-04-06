@@ -146,6 +146,21 @@ TEST_F(ShutdownFromSuspendTest, TestOnLinePower) {
   shutdown_from_suspend_.PrepareForSuspendAttempt();
   base::TimeDelta run_loop_for = kShutdownAfter + kRunLoopDelay;
   runner_.StartLoop(run_loop_for);
+  // Fake a dark resume with line power. PrepareForSuspendAttempt|
+  // should return Action::SUSPEND.
+  SetLinePower(true);
+  shutdown_from_suspend_.HandleDarkResume();
+  EXPECT_EQ(shutdown_from_suspend_.PrepareForSuspendAttempt(),
+            ShutdownFromSuspend::Action::SUSPEND);
+}
+
+// Test that ShutdownFromSuspend asks the system to shutdown if the device is
+// not on line power and hibernate is disabled.
+TEST_F(ShutdownFromSuspendTest, TestNotOnLinePower) {
+  Init(true, false, kShutdownAfterSecs);
+  shutdown_from_suspend_.PrepareForSuspendAttempt();
+  base::TimeDelta run_loop_for = kShutdownAfter + kRunLoopDelay;
+  runner_.StartLoop(run_loop_for);
   // Fake a dark resume without line power. PrepareForSuspendAttempt|
   // should return Action::SHUT_DOWN.
   SetLinePower(false);
