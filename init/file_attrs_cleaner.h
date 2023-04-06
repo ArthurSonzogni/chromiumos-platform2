@@ -19,21 +19,21 @@ enum class AttributeCheckStatus {
   CLEARED,
 };
 
-// Whether we allow |path| to be marked with immutable file attribute.
-// If |path| is supposed to be a directory, set |isdir| to true.
+// Whether we allow `path` to be marked with immutable file attribute.
+// If `path` is supposed to be a directory, set `isdir` to true.
 bool ImmutableAllowed(const base::FilePath& path, bool isdir);
 
-// Check the file attributes of the specified path.  |path| is used for logging
-// and policy checking, so |fd| needs to be an open handle to it.  This helps
-// with TOCTTOU issues.  If |path| is supposed to be a directory, set |isdir|
+// Check the file attributes of the specified path.  `path` is used for logging
+// and policy checking, so `fd` needs to be an open handle to it.  This helps
+// with TOCTTOU issues.  If `path` is supposed to be a directory, set `isdir`
 // to true.
 AttributeCheckStatus CheckFileAttributes(const base::FilePath& path,
                                          bool isdir,
                                          int fd);
 
-// Recursively scan the file attributes of paths under |dir|.
+// Recursively scan the file attributes of paths under `dir`.
 // Don't recurse into any subdirectories that exactly match any string in
-// |skip_recurse|.
+// `skip_recurse`.
 bool ScanDir(const base::FilePath& dir,
              const std::vector<std::string>& skip_recurse);
 

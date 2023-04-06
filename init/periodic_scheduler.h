@@ -11,8 +11,8 @@
 #include <base/files/file_path.h>
 #include <base/time/time.h>
 
-// PeriodicScheduler is responsible for executing task |task_name| by running
-// |task_exec| every |period| seconds.
+// PeriodicScheduler is responsible for executing task `task_name` by running
+// `task_exec` every `period` seconds.
 class PeriodicScheduler {
  public:
   PeriodicScheduler(const base::TimeDelta& period,

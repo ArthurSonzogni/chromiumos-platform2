@@ -25,17 +25,17 @@ class CrosSystem {
   // Name of property that indicates if the current build is a debug build.
   static constexpr char kDebugBuild[] = "debug_build";
 
-  // Reads a system property integer into |value_out|.
+  // Reads a system property integer into `value_out`.
   //
   // Returns true on sucess
   virtual bool GetInt(const std::string& name, int* value_out) = 0;
 
-  // Sets the system property integer |name| to |value|.
+  // Sets the system property integer `name` to `value`.
   //
   // Returns true on success.
   virtual bool SetInt(const std::string& name, int value) = 0;
 
-  // Reads a system property string and stores it in |value_out|.
+  // Reads a system property string and stores it in `value_out`.
   //
   // Returns true on success.
   virtual bool GetString(const std::string& name, std::string* value_out) = 0;
