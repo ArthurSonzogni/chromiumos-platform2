@@ -114,6 +114,8 @@ bool RecorderImpl::Record(const EventBase& event) {
       break;
   }
 
+  event_proto->set_project_name_hash(event.project_name_hash());
+
   // Set the event type. Do this with a switch statement to catch when the event
   // type is UNKNOWN or uninitialized.
   switch (event.event_type()) {

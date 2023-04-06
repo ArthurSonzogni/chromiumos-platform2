@@ -71,6 +71,10 @@ message StructuredEventProto {
     RAW_STRING = 2;
   }
   optional EventType event_type = 4;
+
+  // The project name hash is the first 8 bytes of the MD5 hash of the project
+  // name that is defined in src/tools/metrics/structured/structured.xml.
+  optional fixed64 project_name_hash = 5;
 }
 
 // The top-level proto for structured metrics. One StructuredDataProto is
