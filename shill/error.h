@@ -89,6 +89,7 @@ class Error {
 
   Type type() const { return type_; }
   const std::string& message() const { return message_; }
+  const base::Location& location() const { return location_; }
 
   bool IsSuccess() const { return type_ == kSuccess; }
   bool IsFailure() const { return !IsSuccess(); }
@@ -106,6 +107,8 @@ class Error {
                              Error* error,
                              Type type,
                              const std::string& message);
+
+  static std::string GetLocationAsString(const base::Location& location);
 
   // Note: This error message is used in tast tests.
   static constexpr char kServiceNotFoundMsg[] =

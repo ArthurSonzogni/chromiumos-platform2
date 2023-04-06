@@ -28,8 +28,10 @@ constexpr base::TimeDelta kTimeout = base::TimeDelta();
 class ResultAggregatorTest : public ::testing::Test {
  public:
   ResultAggregatorTest()
-      : aggregator_(new ResultAggregator(base::BindOnce(
-            &ResultAggregatorTest::ReportResult, base::Unretained(this)))) {}
+      : aggregator_(new ResultAggregator(
+            base::BindOnce(&ResultAggregatorTest::ReportResult,
+                           base::Unretained(this)),
+            FROM_HERE)) {}
   ~ResultAggregatorTest() override = default;
 
   void TearDown() override {
@@ -51,7 +53,7 @@ class ResultAggregatorTestWithDispatcher : public ResultAggregatorTest {
     aggregator_ =
         new ResultAggregator(base::BindOnce(&ResultAggregatorTest::ReportResult,
                                             base::Unretained(this)),
-                             &dispatcher_, kTimeout);
+                             FROM_HERE, &dispatcher_, kTimeout);
   }
 
  protected:
@@ -126,7 +128,7 @@ TEST_F(ResultAggregatorTestWithMockDispatcher,
   auto result_aggregator = base::MakeRefCounted<ResultAggregator>(
       base::BindOnce(&ResultAggregatorTest::ReportResult,
                      base::Unretained(this)),
-      &dispatcher_, kTimeout);
+      FROM_HERE, &dispatcher_, kTimeout);
 }
 
 TEST_F(ResultAggregatorTestWithDispatcher,
@@ -154,7 +156,7 @@ TEST_F(ResultAggregatorTestWithDispatcher,
     auto result_aggregator = base::MakeRefCounted<ResultAggregator>(
         base::BindOnce(&ResultAggregatorTest::ReportResult,
                        base::Unretained(this)),
-        &dispatcher_, kTimeout);
+        FROM_HERE, &dispatcher_, kTimeout);
     // The result aggregator receives the one callback it expects, and goes
     // out of scope. At this point, it should invoke the ReportResult callback
     // with the error type kPermissionDenied that it copied.

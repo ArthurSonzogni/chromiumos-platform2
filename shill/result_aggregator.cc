@@ -15,10 +15,15 @@
 
 namespace shill {
 
-ResultAggregator::ResultAggregator(ResultCallback callback)
-    : ResultAggregator(std::move(callback), nullptr, base::TimeDelta()) {}
+ResultAggregator::ResultAggregator(ResultCallback callback,
+                                   base::Location location)
+    : ResultAggregator(std::move(callback),
+                       std::move(location),
+                       nullptr,
+                       base::TimeDelta()) {}
 
 ResultAggregator::ResultAggregator(ResultCallback callback,
+                                   base::Location location,
                                    EventDispatcher* dispatcher,
                                    base::TimeDelta timeout)
     : weak_ptr_factory_(this),
@@ -26,7 +31,8 @@ ResultAggregator::ResultAggregator(ResultCallback callback,
       timeout_callback_(base::BindOnce(&ResultAggregator::Timeout,
                                        weak_ptr_factory_.GetWeakPtr())),
       got_result_(false),
-      timed_out_(false) {
+      timed_out_(false),
+      location_(std::move(location)) {
   CHECK(!callback_.is_null());
   if (dispatcher) {
     dispatcher->PostDelayedTask(FROM_HERE, timeout_callback_.callback(),
@@ -43,10 +49,10 @@ ResultAggregator::~ResultAggregator() {
 }
 
 void ResultAggregator::ReportResult(const Error& error) {
-  LOG(INFO) << "Error type " << error << " reported";
+  LOG(INFO) << Error::GetLocationAsString(error.location()) << error;
   got_result_ = true;
   if (error_.IsSuccess()) {  // Only copy first |error|.
-    error_.CopyFrom(error);
+    error_.Populate(error.type(), error.message(), location_);
   } else {
     LOG(WARNING) << "Dropping error type " << error;
   }
@@ -55,7 +61,8 @@ void ResultAggregator::ReportResult(const Error& error) {
 void ResultAggregator::Timeout() {
   LOG(WARNING) << "Results aggregator timed out";
   timed_out_ = true;
-  error_.Populate(Error::kOperationTimeout);
+  error_.Populate(Error::kOperationTimeout, "Results aggregator timed out",
+                  location_);
   std::move(callback_).Run(error_);
 }
 

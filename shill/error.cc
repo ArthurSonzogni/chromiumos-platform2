@@ -182,22 +182,14 @@ std::string Error::GetDefaultMessage(Type type) {
 void Error::LogMessage(const base::Location& from_here,
                        Type type,
                        const std::string& message) {
-  std::stringstream err_msg;
-  if (from_here.has_source_info()) {
-    const std::string file_name =
-        base::FilePath(from_here.file_name()).BaseName().value();
-    err_msg << "[" << file_name << "(" << from_here.line_number() << ")]: ";
-  }
-  err_msg << message;
-
   // Since Chrome OS devices do not support certain features, errors returning
   // kNotSupported when those features are requested are expected and should be
   // logged as a WARNING. Prefer using the more specific kNotImplemented error
   // for missing functionality that should be implemented.
   if (type == Error::kNotSupported) {
-    LOG(WARNING) << err_msg.str();
+    LOG(WARNING) << GetLocationAsString(from_here) << message;
   } else {
-    LOG(ERROR) << err_msg.str();
+    LOG(ERROR) << GetLocationAsString(from_here) << message;
   }
 }
 
@@ -210,6 +202,16 @@ void Error::PopulateAndLog(const base::Location& from_here,
   if (error) {
     error->Populate(type, message, from_here);
   }
+}
+
+// static
+std::string Error::GetLocationAsString(const base::Location& location) {
+  if (!location.has_source_info())
+    return "";
+  const std::string file_name =
+      base::FilePath(location.file_name()).BaseName().value();
+  return "[" + file_name + "(" + std::to_string(location.line_number()) +
+         ")]: ";
 }
 
 std::ostream& operator<<(std::ostream& stream, const Error& error) {

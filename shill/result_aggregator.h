@@ -81,8 +81,9 @@ class EventDispatcher;
 
 class ResultAggregator : public base::RefCounted<ResultAggregator> {
  public:
-  explicit ResultAggregator(ResultCallback callback);
+  ResultAggregator(ResultCallback callback, base::Location location);
   ResultAggregator(ResultCallback callback,
+                   base::Location location,
                    EventDispatcher* dispatcher,
                    base::TimeDelta timeout);
   ResultAggregator(const ResultAggregator&) = delete;
@@ -102,6 +103,7 @@ class ResultAggregator : public base::RefCounted<ResultAggregator> {
   bool got_result_;
   bool timed_out_;
   Error error_;
+  base::Location location_;
 };
 
 }  // namespace shill

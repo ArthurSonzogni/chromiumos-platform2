@@ -1122,7 +1122,7 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
   }
 
   auto result_aggregator(
-      base::MakeRefCounted<ResultAggregator>(std::move(callback)));
+      base::MakeRefCounted<ResultAggregator>(std::move(callback), FROM_HERE));
   for (auto& device : devices_) {
     if (device->technology() != id)
       continue;
@@ -1567,7 +1567,7 @@ void Manager::OnSuspendImminent() {
   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
       base::BindOnce(&Manager::OnSuspendActionsComplete,
                      weak_factory_.GetWeakPtr()),
-      dispatcher_, kTerminationActionsTimeout));
+      FROM_HERE, dispatcher_, kTerminationActionsTimeout));
   for (const auto& service : services_) {
     service->OnBeforeSuspend(
         base::BindOnce(&ResultAggregator::ReportResult, result_aggregator));
@@ -1602,7 +1602,7 @@ void Manager::OnDarkSuspendImminent() {
   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
       base::BindOnce(&Manager::OnDarkResumeActionsComplete,
                      weak_factory_.GetWeakPtr()),
-      dispatcher_, kTerminationActionsTimeout));
+      FROM_HERE, dispatcher_, kTerminationActionsTimeout));
   for (const auto& device : devices_) {
     device->OnDarkResume(
         base::BindOnce(&ResultAggregator::ReportResult, result_aggregator));
