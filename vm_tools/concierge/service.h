@@ -155,8 +155,8 @@ class Service final : public org::chromium::VmConciergeInterface {
       const ArcVmCompleteBootRequest& request) override;
 
   // Handles a request to update balloon timer.
-  std::unique_ptr<dbus::Response> SetBalloonTimer(
-      dbus::MethodCall* method_call);
+  SetBalloonTimerResponse SetBalloonTimer(
+      const SetBalloonTimerRequest& request) override;
 
   // Handles a request to update all VMs' times to the current host time.
   std::unique_ptr<dbus::Response> SyncVmTimes(dbus::MethodCall* method_call);
