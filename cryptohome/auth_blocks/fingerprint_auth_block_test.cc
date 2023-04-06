@@ -18,6 +18,7 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
+#include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_le_cred_error.h"
@@ -38,6 +39,7 @@ using cryptohome::error::PossibleActionsInclude;
 using cryptohome::error::PrimaryAction;
 using cryptohome::error::PrimaryActionIs;
 using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::OkStatus;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnOk;
@@ -863,6 +865,35 @@ TEST_F(FingerprintAuthBlockTest, DeriveCheckCredentialFailed) {
   EXPECT_TRUE(PrimaryActionIs(status, PrimaryAction::kLeLockedOut));
   EXPECT_EQ(key_blobs, nullptr);
   EXPECT_THAT(suggested_action, Eq(std::nullopt));
+}
+
+TEST_F(FingerprintAuthBlockTest, PrepareForRemovalSuccess) {
+  AuthBlockState auth_state;
+  FingerprintAuthBlockState fingerprint_auth_state;
+  fingerprint_auth_state.template_id = kFakeRecordId;
+  fingerprint_auth_state.gsc_secret_label = kFakeCredLabel;
+  auth_state.state = fingerprint_auth_state;
+  EXPECT_CALL(mock_le_manager_, RemoveCredential(kFakeCredLabel))
+      .WillOnce(ReturnOk<CryptohomeLECredError>());
+
+  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
+}
+
+TEST_F(FingerprintAuthBlockTest, PrepareForRemovalEmptyTemplateIdFailure) {
+  AuthBlockState auth_state;
+  FingerprintAuthBlockState fingerprint_auth_state;
+  fingerprint_auth_state.gsc_secret_label = kFakeCredLabel;
+  auth_state.state = fingerprint_auth_state;
+
+  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), NotOk());
+}
+TEST_F(FingerprintAuthBlockTest, PrepareForRemovalNullGscLabelFailure) {
+  AuthBlockState auth_state;
+  FingerprintAuthBlockState fingerprint_auth_state;
+  fingerprint_auth_state.template_id = kFakeRecordId;
+  auth_state.state = fingerprint_auth_state;
+
+  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), NotOk());
 }
 
 }  // namespace

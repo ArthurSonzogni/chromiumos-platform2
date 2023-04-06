@@ -390,11 +390,42 @@ void FingerprintAuthBlock::SelectFactor(const AuthInput& auth_input,
 
 CryptohomeStatus FingerprintAuthBlock::PrepareForRemoval(
     const AuthBlockState& state) {
-  return MakeStatus<CryptohomeCryptoError>(
-      CRYPTOHOME_ERR_LOC(
-          kLocFingerprintAuthBlockPrepareForRemovalUnimplemented),
-      ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-      CryptoError::CE_OTHER_FATAL);
+  auto* fp_state = std::get_if<FingerprintAuthBlockState>(&state.state);
+  if (!fp_state) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocFingerprintAuthBlockFailedToGetStateFailedInPrepareForRemoval),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_FATAL);
+  }
+
+  // Ensure that the auth block state has template_id.
+  if (fp_state->template_id.empty()) {
+    LOG(ERROR) << "FingerprintAuthBlockState does not have template_id";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocFingerprintAuthBlockNoTemplateIdInPrepareForRemoval),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_FATAL);
+  }
+
+  // Ensure that the auth block state has gsc_secret_label.
+  if (!fp_state->gsc_secret_label.has_value()) {
+    LOG(ERROR) << "FingerprintAuthBlockState does not have gsc_secret_label";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoLabelInPrepareForRemoval),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_FATAL);
+  }
+
+  // TODO(b/277274350): Remove the encrypted fingerprint template.
+
+  // Rate limiter leaf is not removed since it is shared among all fingerprint
+  // auth factors. Also, even if all fingerprint auth factors are removed,
+  // we still keep the rate limiter leaf so in the future new fingerprint
+  // auth factors can be added more efficiently.
+
+  return le_manager_->RemoveCredential(fp_state->gsc_secret_label.value());
 }
 
 CryptoStatusOr<uint64_t> FingerprintAuthBlock::CreateRateLimiter(

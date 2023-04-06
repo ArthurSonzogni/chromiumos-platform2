@@ -1569,7 +1569,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocBiometricsProcessorMatchCredentialDeriveSecretsFailed = 3336,
   /* =Obsolete= */
   kLocFingerprintAuthBlockUnimplemented = 3337,
-  /* ./auth_blocks/fingerprint_auth_block.cc */
+  /* =Obsolete= */
   kLocFingerprintAuthBlockPrepareForRemovalUnimplemented = 3338,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockNoServiceInIsSupported = 3339,
@@ -1735,6 +1735,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUSSGetUserMetadataFailedInFromEncContainer = 3526,
   /* ./user_secret_stash.cc */
   kLocUSSGetUserMetadataFailedInFromEncContainerWrappingKey = 3527,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockFailedToGetStateFailedInPrepareForRemoval = 3528,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockNoTemplateIdInPrepareForRemoval = 3529,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockNoLabelInPrepareForRemoval = 3530,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
