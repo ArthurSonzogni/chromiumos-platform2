@@ -268,6 +268,11 @@ void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
                                 int status,
                                 unsigned char* msg,
                                 size_t len) {
+  // Query is already handled.
+  if (!sock_fd) {
+    return;
+  }
+
   // Query failed, restart probing.
   // Errors that may be caused by its query's data are not considered as
   // failures:
@@ -289,10 +294,6 @@ void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
                << validated_name_servers_.size() << "/" << name_servers_.size()
                << " validated name servers";
   }
-
-  // Query is already handled.
-  if (!sock_fd)
-    return;
 
   sock_fd->num_active_queries--;
   // Don't process failing result that is not the last result.
@@ -330,6 +331,11 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
                                 const DoHCurlClient::CurlResult& res,
                                 unsigned char* msg,
                                 size_t len) {
+  // Query is already handled.
+  if (!sock_fd) {
+    return;
+  }
+
   // Query failed, restart probing.
   if (probe_state && probe_state->validated && res.http_code != kHTTPOk) {
     auto target = probe_state->target;
@@ -341,10 +347,6 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
                  << ". " << validated_doh_providers_.size() << "/"
                  << doh_providers_.size() << " validated DoH providers";
   }
-
-  // Query is already handled.
-  if (!sock_fd)
-    return;
 
   sock_fd->num_active_queries--;
   // Don't process failing result that is not the last result.
