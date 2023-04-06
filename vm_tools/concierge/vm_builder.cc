@@ -399,7 +399,7 @@ base::StringPairs VmBuilder::BuildRunParams() const {
     args.emplace_back("--balloon-bias-mib", balloon_bias_mib_);
 
   for (const auto& tap_fd : tap_fds_)
-    args.emplace_back("--tap-fd", std::to_string(tap_fd.get()));
+    args.emplace_back("--net", "tap-fd=" + std::to_string(tap_fd.get()));
 
   if (vsock_cid_.has_value())
     args.emplace_back("--cid", std::to_string(vsock_cid_.value()));
