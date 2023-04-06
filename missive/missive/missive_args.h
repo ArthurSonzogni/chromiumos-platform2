@@ -12,6 +12,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_piece.h>
 #include <base/thread_annotations.h>
+#include "base/functional/callback_forward.h"
 #include "base/threading/sequence_bound.h"
 #include <base/time/time.h>
 #include <featured/feature_library.h>
@@ -68,13 +69,29 @@ class MissiveArgs {
   MissiveArgs& operator=(const MissiveArgs&) = delete;
   ~MissiveArgs();
 
+  // Retrieves initial parameters settings after they are retrieved for the
+  // first time.
   void GetCollectionParameters(
       base::OnceCallback<void(StatusOr<CollectionParameters>)> result_cb);
   void GetStorageParameters(
       base::OnceCallback<void(StatusOr<StorageParameters>)> result_cb);
 
+  // Registers a repeatable callback to be invoked every time the listener
+  // notifies about possible update.
+  void OnCollectionParametersUpdate(
+      base::RepeatingCallback<void(CollectionParameters)> update_cb);
+  void OnStorageParametersUpdate(
+      base::RepeatingCallback<void(StorageParameters)> update_cb);
+
  private:
+  void OnParamResultInitially(
+      feature::PlatformFeaturesInterface::ParamsResult result);
   void OnParamResult(feature::PlatformFeaturesInterface::ParamsResult result);
+
+  void UpdateParameters(
+      feature::PlatformFeaturesInterface::ParamsResult result);
+
+  void EnableListeningForUpdates();
 
   const std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib_;
 
@@ -89,6 +106,10 @@ class MissiveArgs {
   // `Get...Parameters` calls made before `OnParamResult` will be delayed and
   // responded after it.
   std::vector<base::OnceClosure> delayed_response_cbs_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Registered callbacks for updates.
+  std::vector<base::RepeatingClosure> update_cbs_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   base::WeakPtrFactory<MissiveArgs> weak_ptr_factory_{this};

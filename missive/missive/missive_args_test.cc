@@ -143,6 +143,61 @@ TEST_F(MissiveArgsTest, BadCollectionValues) {
              .value()));
 }
 
+TEST_F(MissiveArgsTest, ListeningForCollectionValuesUpdate) {
+  auto fake_platform_features = std::make_unique<feature::FakePlatformFeatures>(
+      dbus_test_environment_.mock_bus().get());
+  fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name, true);
+  fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
+  auto* const fake_platform_features_ptr = fake_platform_features.get();
+  SequencedMissiveArgs args(
+      dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
+      std::move(fake_platform_features));
+
+  // Get initial results
+  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_collection;
+  args.AsyncCall(&MissiveArgs::GetStorageParameters)
+      .WithArgs(get_collection.cb());
+  {
+    const auto& collection = get_collection.result();
+    ASSERT_OK(collection) << collection.status();
+    ASSERT_THAT(collection.ValueOrDie().compression_enabled,
+                Eq(MissiveArgs::kCompressionEnabledDefault));
+    ASSERT_THAT(collection.ValueOrDie().encryption_enabled,
+                Eq(MissiveArgs::kEncryptionEnabledDefault));
+    ASSERT_THAT(collection.ValueOrDie().controlled_degradation,
+                Eq(MissiveArgs::kControlledDegradationDefault));
+  }
+
+  // Register update callback.
+  test::TestEvent<MissiveArgs::CollectionParameters> update_collection;
+  args.AsyncCall(&MissiveArgs::OnCollectionParametersUpdate)
+      .WithArgs(update_collection.repeating_cb());
+
+  // Change parameters and refresh.
+  fake_platform_features_ptr->SetParam(
+      MissiveArgs::kCollectorFeature.name,
+      MissiveArgs::kEnqueuingRecordTallierParameter, "10ms");
+  fake_platform_features_ptr->SetParam(
+      MissiveArgs::kCollectorFeature.name,
+      MissiveArgs::kCpuCollectorIntervalParameter, "20s");
+  fake_platform_features_ptr->SetParam(
+      MissiveArgs::kCollectorFeature.name,
+      MissiveArgs::kStorageCollectorIntervalParameter, "30m");
+  fake_platform_features_ptr->SetParam(
+      MissiveArgs::kCollectorFeature.name,
+      MissiveArgs::kMemoryCollectorIntervalParameter, "40h");
+  fake_platform_features_ptr->TriggerRefetchSignal();
+
+  {
+    const auto& collection = update_collection.result();
+    ASSERT_THAT(collection.enqueuing_record_tallier,
+                Eq(base::Milliseconds(10)));
+    ASSERT_THAT(collection.cpu_collector_interval, Eq(base::Seconds(20)));
+    ASSERT_THAT(collection.storage_collector_interval, Eq(base::Minutes(30)));
+    ASSERT_THAT(collection.memory_collector_interval, Eq(base::Hours(40)));
+  }
+}
+
 TEST_F(MissiveArgsTest, DefaultStorageValues) {
   auto fake_platform_features = std::make_unique<feature::FakePlatformFeatures>(
       dbus_test_environment_.mock_bus().get());
@@ -153,16 +208,15 @@ TEST_F(MissiveArgsTest, DefaultStorageValues) {
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
       std::move(fake_platform_features));
 
-  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_collection;
-  args.AsyncCall(&MissiveArgs::GetStorageParameters)
-      .WithArgs(get_collection.cb());
-  const auto& collection = get_collection.result();
-  ASSERT_OK(collection) << collection.status();
-  ASSERT_THAT(collection.ValueOrDie().compression_enabled,
+  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
+  args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
+  const auto& storage = get_storage.result();
+  ASSERT_OK(storage) << storage.status();
+  ASSERT_THAT(storage.ValueOrDie().compression_enabled,
               Eq(MissiveArgs::kCompressionEnabledDefault));
-  ASSERT_THAT(collection.ValueOrDie().encryption_enabled,
+  ASSERT_THAT(storage.ValueOrDie().encryption_enabled,
               Eq(MissiveArgs::kEncryptionEnabledDefault));
-  ASSERT_THAT(collection.ValueOrDie().controlled_degradation,
+  ASSERT_THAT(storage.ValueOrDie().controlled_degradation,
               Eq(MissiveArgs::kControlledDegradationDefault));
 }
 
@@ -185,14 +239,13 @@ TEST_F(MissiveArgsTest, ExplicitStorageValues) {
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
       std::move(fake_platform_features));
 
-  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_collection;
-  args.AsyncCall(&MissiveArgs::GetStorageParameters)
-      .WithArgs(get_collection.cb());
-  const auto& collection = get_collection.result();
-  ASSERT_OK(collection) << collection.status();
-  ASSERT_FALSE(collection.ValueOrDie().compression_enabled);
-  ASSERT_FALSE(collection.ValueOrDie().encryption_enabled);
-  ASSERT_TRUE(collection.ValueOrDie().controlled_degradation);
+  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
+  args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
+  const auto& storage = get_storage.result();
+  ASSERT_OK(storage) << storage.status();
+  ASSERT_FALSE(storage.ValueOrDie().compression_enabled);
+  ASSERT_FALSE(storage.ValueOrDie().encryption_enabled);
+  ASSERT_TRUE(storage.ValueOrDie().controlled_degradation);
 }
 
 TEST_F(MissiveArgsTest, BadStorageValues) {
@@ -213,17 +266,66 @@ TEST_F(MissiveArgsTest, BadStorageValues) {
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
       std::move(fake_platform_features));
 
-  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_collection;
-  args.AsyncCall(&MissiveArgs::GetStorageParameters)
-      .WithArgs(get_collection.cb());
-  const auto& collection = get_collection.result();
-  ASSERT_OK(collection) << collection.status();
-  ASSERT_THAT(collection.ValueOrDie().compression_enabled,
+  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
+  args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
+  const auto& storage = get_storage.result();
+  ASSERT_OK(storage) << storage.status();
+  ASSERT_THAT(storage.ValueOrDie().compression_enabled,
               Eq(MissiveArgs::kCompressionEnabledDefault));
-  ASSERT_THAT(collection.ValueOrDie().encryption_enabled,
+  ASSERT_THAT(storage.ValueOrDie().encryption_enabled,
               Eq(MissiveArgs::kEncryptionEnabledDefault));
-  ASSERT_THAT(collection.ValueOrDie().controlled_degradation,
+  ASSERT_THAT(storage.ValueOrDie().controlled_degradation,
               Eq(MissiveArgs::kControlledDegradationDefault));
+}
+
+TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
+  auto fake_platform_features = std::make_unique<feature::FakePlatformFeatures>(
+      dbus_test_environment_.mock_bus().get());
+  fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name,
+                                     false);
+  fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, true);
+  auto* const fake_platform_features_ptr = fake_platform_features.get();
+  SequencedMissiveArgs args(
+      dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
+      std::move(fake_platform_features));
+
+  // Get initial results
+  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
+  args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
+  {
+    const auto& storage = get_storage.result();
+    ASSERT_OK(storage) << storage.status();
+    ASSERT_THAT(storage.ValueOrDie().compression_enabled,
+                Eq(MissiveArgs::kCompressionEnabledDefault));
+    ASSERT_THAT(storage.ValueOrDie().encryption_enabled,
+                Eq(MissiveArgs::kEncryptionEnabledDefault));
+    ASSERT_THAT(storage.ValueOrDie().controlled_degradation,
+                Eq(MissiveArgs::kControlledDegradationDefault));
+  }
+
+  // Register update callback.
+  test::TestEvent<MissiveArgs::StorageParameters> update_storage;
+  args.AsyncCall(&MissiveArgs::OnStorageParametersUpdate)
+      .WithArgs(update_storage.repeating_cb());
+
+  // Change parameters and refresh.
+  fake_platform_features_ptr->SetParam(
+      MissiveArgs::kStorageFeature.name,
+      MissiveArgs::kCompressionEnabledParameter, "False");
+  fake_platform_features_ptr->SetParam(MissiveArgs::kStorageFeature.name,
+                                       MissiveArgs::kEncryptionEnabledParameter,
+                                       "False");
+  fake_platform_features_ptr->SetParam(
+      MissiveArgs::kStorageFeature.name,
+      MissiveArgs::kControlledDegradationParameter, "True");
+  fake_platform_features_ptr->TriggerRefetchSignal();
+
+  {
+    const auto& storage = update_storage.result();
+    ASSERT_FALSE(storage.compression_enabled);
+    ASSERT_FALSE(storage.encryption_enabled);
+    ASSERT_TRUE(storage.controlled_degradation);
+  }
 }
 }  // namespace
 }  // namespace reporting

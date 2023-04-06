@@ -10,7 +10,10 @@
 #include <string>
 #include <utility>
 
+#include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <base/logging.h>
+#include <base/memory/weak_ptr.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/task/bind_post_task.h>
@@ -93,20 +96,75 @@ MissiveArgs::MissiveArgs(
       features_to_load_({&kCollectorFeature, &kStorageFeature}) {
   DCHECK(feature_lib_);
   feature_lib_->GetParamsAndEnabled(
-      features_to_load_,
-      base::BindPostTaskToCurrentDefault(base::BindOnce(
-          &MissiveArgs::OnParamResult, weak_ptr_factory_.GetWeakPtr())));
+      features_to_load_, base::BindPostTaskToCurrentDefault(base::BindOnce(
+                             &MissiveArgs::OnParamResultInitially,
+                             weak_ptr_factory_.GetWeakPtr())));
 }
 
 MissiveArgs::~MissiveArgs() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 }
 
-void MissiveArgs::OnParamResult(
+void MissiveArgs::OnParamResultInitially(
     feature::PlatformFeaturesInterface::ParamsResult result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(!responded_) << "Can only be called once";
   responded_ = true;
+
+  OnParamResult(result);
+
+  // Now enable listening for the future updates.
+  EnableListeningForUpdates();
+}
+
+void MissiveArgs::OnParamResult(
+    feature::PlatformFeaturesInterface::ParamsResult result) {
+  // Update the parameters.
+  UpdateParameters(result);
+  for (auto& cb : delayed_response_cbs_) {
+    std::move(cb).Run();
+  }
+  delayed_response_cbs_.clear();
+
+  // Also call recorded updates.
+  for (auto& update_cb : update_cbs_) {
+    update_cb.Run();
+  }
+}
+
+void MissiveArgs::EnableListeningForUpdates() {
+  feature_lib_->ListenForRefetchNeeded(
+      base::BindRepeating(
+          [](base::WeakPtr<MissiveArgs> self) {
+            if (!self) {
+              return;
+            }
+            DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+            // Update the parameters.
+            self->feature_lib_->GetParamsAndEnabled(
+                self->features_to_load_,
+                base::BindPostTaskToCurrentDefault(
+                    base::BindOnce(&MissiveArgs::OnParamResult, self)));
+          },
+          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(
+          [](base::WeakPtr<MissiveArgs> self, bool success) {
+            if (!self) {
+              return;
+            }
+            DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+            if (!success) {
+              // Retry if failed to listen.
+              self->EnableListeningForUpdates();
+            }
+          },
+          weak_ptr_factory_.GetWeakPtr()));
+}
+
+void MissiveArgs::UpdateParameters(
+    feature::PlatformFeaturesInterface::ParamsResult result) {
+  LOG(WARNING) << "Parameters updated";
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   {
     std::string enqueuing_record_tallier;
     std::string cpu_collector_interval;
@@ -156,10 +214,6 @@ void MissiveArgs::OnParamResult(
     storage_parameters_.controlled_degradation = BoolParameterValue(
         kControlledDegradationParameter, controlled_degradation, false);
   }
-  for (auto& cb : delayed_response_cbs_) {
-    std::move(cb).Run();
-  }
-  delayed_response_cbs_.clear();
 }
 
 void MissiveArgs::GetCollectionParameters(
@@ -187,5 +241,31 @@ void MissiveArgs::GetStorageParameters(
   }
   // Response is there, return a copy.
   std::move(result_cb).Run(storage_parameters_);  // Making a copy
+}
+
+void MissiveArgs::OnCollectionParametersUpdate(
+    base::RepeatingCallback<void(CollectionParameters)> update_cb) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  auto cb = base::BindRepeating(
+      [](base::WeakPtr<MissiveArgs> self,
+         base::RepeatingCallback<void(CollectionParameters)> update_cb) {
+        DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+        update_cb.Run(self->collection_parameters_);  // Making a copy.
+      },
+      weak_ptr_factory_.GetWeakPtr(), update_cb);
+  update_cbs_.push_back(cb);
+}
+
+void MissiveArgs::OnStorageParametersUpdate(
+    base::RepeatingCallback<void(StorageParameters)> update_cb) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  auto cb = base::BindRepeating(
+      [](base::WeakPtr<MissiveArgs> self,
+         base::RepeatingCallback<void(StorageParameters)> update_cb) {
+        DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+        update_cb.Run(self->storage_parameters_);  // Making a copy.
+      },
+      weak_ptr_factory_.GetWeakPtr(), update_cb);
+  update_cbs_.push_back(cb);
 }
 }  // namespace reporting
