@@ -136,9 +136,8 @@ class Service final : public org::chromium::VmConciergeInterface {
   // Handles a request to suspend a VM.
   SuspendVmResponse SuspendVm(const SuspendVmRequest& request) override;
 
-  // Handles a request to resume a VM.  |method_call| must have a
-  // ResumeVmRequest protobuf serialized as an array of bytes.
-  std::unique_ptr<dbus::Response> ResumeVm(dbus::MethodCall* method_call);
+  // Handles a request to resume a VM.
+  ResumeVmResponse ResumeVm(const ResumeVmRequest& request) override;
 
   // Handles a request to stop all running VMs.
   void StopAllVmsImpl(VmStopReason reason);

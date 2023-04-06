@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kResumeVmMethod, &Service::ResumeVm},
       {kGetVmInfoMethod, &Service::GetVmInfo},
       {kGetVmEnterpriseReportingInfoMethod,
        &Service::GetVmEnterpriseReportingInfo},
@@ -2627,31 +2626,14 @@ SuspendVmResponse Service::SuspendVm(const SuspendVmRequest& request) {
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::ResumeVm(
-    dbus::MethodCall* method_call) {
+ResumeVmResponse Service::ResumeVm(const ResumeVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  ResumeVmRequest request;
   ResumeVmResponse response;
 
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ResumeVmRequest from message";
-
-    response.set_failure_reason("Unable to parse protobuf");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   if (!ValidateVmNameAndOwner(request, response)) {
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   auto iter = FindVm(request.owner_id(), request.name());
@@ -2659,8 +2641,7 @@ std::unique_ptr<dbus::Response> Service::ResumeVm(
     LOG(ERROR) << "Requested VM does not exist";
     // This is not an error to Chrome
     response.set_success(true);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   auto& vm = iter->second;
@@ -2670,8 +2651,7 @@ std::unique_ptr<dbus::Response> Service::ResumeVm(
 
     response.set_failure_reason(
         "VM does not support external suspend signals.");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   vm->Resume();
@@ -2687,9 +2667,7 @@ std::unique_ptr<dbus::Response> Service::ResumeVm(
   vm->SetResolvConfig(nameservers_, search_domains_);
 
   response.set_success(true);
-  writer.AppendProtoAsArrayOfBytes(response);
-
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::GetVmInfo(
