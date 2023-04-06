@@ -20,6 +20,7 @@
 #include <base/test/test_future.h>
 #include <base/test/test_mock_time_task_runner.h>
 #include <brillo/cryptohome.h>
+#include <brillo/errors/error_codes.h>
 #include <chaps/token_manager_client_mock.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -38,8 +39,6 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <metrics/metrics_library_mock.h>
-#include <tpm_manager/client/mock_tpm_manager_utility.h>
-#include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
@@ -80,6 +79,8 @@
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/username.h"
+#include "libhwsec/error/tpm_error.h"
+#include "libhwsec/status.h"
 
 using base::FilePath;
 using base::test::TestFuture;
@@ -213,7 +214,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_homedirs(&homedirs_);
     userdataauth_->set_pinweaver(&pinweaver_);
     userdataauth_->set_recovery_crypto(&recovery_crypto_);
-    userdataauth_->set_tpm_manager_util_(&tpm_manager_utility_);
     userdataauth_->set_platform(&platform_);
     userdataauth_->set_chaps_client(&chaps_client_);
     userdataauth_->set_firmware_management_parameters(&fwmp_);
@@ -337,10 +337,6 @@ class UserDataAuthTestBase : public ::testing::Test {
 
   // Fake Crypto object, will be passed to UserDataAuth for its internal use.
   Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr};
-
-  // Mock TPM Manager utility object, will be passed to UserDataAuth for its
-  // internal use.
-  NiceMock<tpm_manager::MockTpmManagerUtility> tpm_manager_utility_;
 
   // Mock ARC Disk Quota object, will be passed to UserDataAuth for its internal
   // use.
@@ -1626,12 +1622,14 @@ TEST_F(UserDataAuthTestNotInitializedDeathTest, GetSystemSaltUninitialized) {
                      "Cannot call GetSystemSalt before initialization");
 }
 
-TEST_F(UserDataAuthTest, OwnershipCallbackRegisterValidity) {
-  base::RepeatingCallback<void()> callback;
+TEST_F(UserDataAuthTest, HwsecReadyCallbackSuccess) {
+  base::OnceCallback<void(hwsec::Status)> callback;
 
   // Called by Initialize().
-  EXPECT_CALL(tpm_manager_utility_, AddOwnershipCallback)
-      .WillOnce(SaveArg<0>(&callback));
+  EXPECT_CALL(hwsec_, RegisterOnReadyCallback)
+      .WillOnce([&](base::OnceCallback<void(hwsec::Status)> cb) {
+        callback = std::move(cb);
+      });
 
   InitializeUserDataAuth();
 
@@ -1645,15 +1643,17 @@ TEST_F(UserDataAuthTest, OwnershipCallbackRegisterValidity) {
   // Called by InitializeInstallAttributes()
   EXPECT_CALL(*attrs_, Init()).WillOnce(Return(true));
 
-  callback.Run();
+  std::move(callback).Run(hwsec::OkStatus());
 }
 
-TEST_F(UserDataAuthTest, OwnershipCallbackRegisterRepeated) {
-  base::RepeatingCallback<void()> callback;
+TEST_F(UserDataAuthTest, HwsecReadyCallbackFail) {
+  base::OnceCallback<void(hwsec::Status)> callback;
 
   // Called by Initialize().
-  EXPECT_CALL(tpm_manager_utility_, AddOwnershipCallback)
-      .WillOnce(SaveArg<0>(&callback));
+  EXPECT_CALL(hwsec_, RegisterOnReadyCallback)
+      .WillOnce([&](base::OnceCallback<void(hwsec::Status)> cb) {
+        callback = std::move(cb);
+      });
 
   InitializeUserDataAuth();
 
@@ -1661,17 +1661,12 @@ TEST_F(UserDataAuthTest, OwnershipCallbackRegisterRepeated) {
 
   SetupMount("foo@gmail.com");
 
-  // Called by EnsureCryptohomeKeys().
-  EXPECT_CALL(cryptohome_keys_manager_, HasAnyCryptohomeKey())
-      .WillOnce(Return(false));
-  EXPECT_CALL(cryptohome_keys_manager_, Init()).Times(1);
-  // Called by InitializeInstallAttributes()
-  EXPECT_CALL(*attrs_, Init()).WillOnce(Return(true));
+  // This function will not be called.
+  EXPECT_CALL(cryptohome_keys_manager_, HasAnyCryptohomeKey()).Times(0);
+  EXPECT_CALL(*attrs_, Init()).Times(0);
 
-  // Call OwnershipCallback twice and see if any of the above gets called more
-  // than once.
-  callback.Run();
-  callback.Run();
+  std::move(callback).Run(
+      MakeStatus<hwsec::TPMError>("fake", TPMRetryAction::kNoRetry));
 }
 
 TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {

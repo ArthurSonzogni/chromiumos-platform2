@@ -38,7 +38,6 @@
 #include <gmock/gmock.h>
 #include <google/protobuf/stubs/logging.h>
 #include <libhwsec/factory/fuzzed_factory.h>
-#include <tpm_manager/client/mock_tpm_manager_utility.h>
 
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/fuzzers/fuzzed_platform.h"
@@ -303,7 +302,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       CreateVaultFactory(platform, provider);
   std::unique_ptr<MountFactory> mount_factory = CreateMountFactory();
   hwsec::FuzzedFactory hwsec_factory(provider);
-  NiceMock<tpm_manager::MockTpmManagerUtility> tpm_manager_utility;
   auto bus =
       base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
   auto mount_thread_bus =
@@ -321,7 +319,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   userdataauth->set_vault_factory_for_testing(vault_factory.get());
   userdataauth->set_mount_factory_for_testing(mount_factory.get());
   userdataauth->set_hwsec_factory(&hwsec_factory);
-  userdataauth->set_tpm_manager_util_(&tpm_manager_utility);
   if (!userdataauth->Initialize(mount_thread_bus)) {
     // This should be a rare case (e.g., the mocked system salt writing failed).
     return 0;

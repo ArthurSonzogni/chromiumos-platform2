@@ -107,6 +107,7 @@ executable("cryptohome") {
     "keyutils",
     "policy",
     "pthread",
+    "tpm_manager",
   ]
   deps = [
     ":print_proto_library",
@@ -407,8 +408,6 @@ if (use.test) {
       "libchrome-test",
       "libecryptfs",
       "libmetrics",
-      "libtpm_manager-client",
-      "libtpm_manager-client-test",
       "libuser_data_auth-client",
       "libuser_data_auth-client-test",
       "vboot_host",

@@ -16,7 +16,9 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <base/json/json_writer.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/notreached.h>
@@ -191,7 +193,6 @@ UserDataAuth::UserDataAuth()
       recovery_crypto_(nullptr),
       default_cryptohome_keys_manager_(nullptr),
       cryptohome_keys_manager_(nullptr),
-      tpm_manager_util_(nullptr),
       default_platform_(new Platform()),
       platform_(default_platform_.get()),
       default_crypto_(nullptr),
@@ -205,7 +206,6 @@ UserDataAuth::UserDataAuth()
       firmware_management_parameters_(nullptr),
       fingerprint_manager_(nullptr),
       biometrics_service_(nullptr),
-      ownership_callback_has_run_(false),
       default_install_attrs_(nullptr),
       install_attrs_(nullptr),
       enterprise_owned_(false),
@@ -484,16 +484,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
           &UserDataAuth::PostTaskToMountThread, base::Unretained(this))))
     return false;
 
-  if (!tpm_manager_util_) {
-    tpm_manager_util_ = tpm_manager::TpmManagerUtility::GetSingleton();
-  }
-
-  if (tpm_manager_util_) {
-    tpm_manager_util_->AddOwnershipCallback(base::BindRepeating(
-        &UserDataAuth::OnOwnershipTakenSignal, base::Unretained(this)));
-  } else {
-    LOG(ERROR) << __func__ << ": Failed to get TpmManagerUtility singleton!";
-  }
+  hwsec_->RegisterOnReadyCallback(base::BindOnce(
+      &UserDataAuth::HwsecReadyCallback, base::Unretained(this)));
 
   // Create a dbus connection on mount thread.
   PostTaskToMountThread(FROM_HERE,
@@ -661,12 +653,6 @@ void UserDataAuth::OnFingerprintAuthProgress(
   progress.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
   *progress.mutable_auth_progress() = auth_progress;
   prepare_auth_factor_progress_callback_.Run(progress);
-}
-
-void UserDataAuth::OnOwnershipTakenSignal() {
-  PostTaskToMountThread(FROM_HERE,
-                        base::BindOnce(&UserDataAuth::OwnershipCallback,
-                                       base::Unretained(this), true, true));
 }
 
 bool UserDataAuth::PostTaskToOriginThread(const base::Location& from_here,
@@ -1174,25 +1160,28 @@ void UserDataAuth::SetPrepareAuthFactorProgressCallback(
   prepare_auth_factor_progress_callback_ = callback;
 }
 
-void UserDataAuth::OwnershipCallback(bool status, bool took_ownership) {
-  AssertOnMountThread();
-
-  // Note that this function should only be called once during the lifetime of
-  // this process, extra calls will be dropped.
-  if (ownership_callback_has_run_) {
-    LOG(WARNING) << "Duplicated call to OwnershipCallback.";
+void UserDataAuth::HwsecReadyCallback(hwsec::Status status) {
+  if (!IsOnMountThread()) {
+    // We are not on mount thread, so let's post ourself there.
+    PostTaskToMountThread(
+        FROM_HERE, base::BindOnce(&UserDataAuth::HwsecReadyCallback,
+                                  base::Unretained(this), std::move(status)));
     return;
   }
-  ownership_callback_has_run_ = true;
 
-  if (took_ownership) {
-    // Make sure cryptohome keys are loaded and ready for every mount.
-    EnsureCryptohomeKeys();
+  AssertOnMountThread();
 
-    // Initialize the install-time locked attributes since we can't do it prior
-    // to ownership.
-    InitializeInstallAttributes();
+  if (!status.ok()) {
+    LOG(ERROR) << "HwsecReadyCallback failed: " << status;
+    return;
   }
+
+  // Make sure cryptohome keys are loaded and ready for every mount.
+  EnsureCryptohomeKeys();
+
+  // Initialize the install-time locked attributes since we can't do it prior
+  // to ownership.
+  InitializeInstallAttributes();
 }
 
 void UserDataAuth::SetEnterpriseOwned(bool enterprise_owned) {

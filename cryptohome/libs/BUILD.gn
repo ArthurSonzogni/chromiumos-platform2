@@ -427,7 +427,6 @@ static_library("libcrostpm") {
     "hwsec",
     "hwsec-foundation",
     "installattributes",
-    "tpm_manager",
     "system_api",
   ]
 
@@ -529,7 +528,6 @@ static_library("libcryptohome") {
     "fake_platform_features",
     "hwsec",
     "policy",
-    "tpm_manager",
   ]
   deps = [
     ":cryptohome-key-delegate-proxies",

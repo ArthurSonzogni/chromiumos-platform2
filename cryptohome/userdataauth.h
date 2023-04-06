@@ -28,9 +28,6 @@
 #include <libhwsec/frontend/pinweaver/frontend.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
-#include <tpm_manager/client/tpm_manager_utility.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
-#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
@@ -388,10 +385,9 @@ class UserDataAuth {
 
   // =============== Miscellaneous ===============
 
-  // This is called by OwnershipCallback when there's any update on ownership
-  // status of the TPM.
+  // This will be called after hwsec is ready.
   // Note: This can only be called on mount thread.
-  void OwnershipCallback(bool status, bool took_ownership);
+  void HwsecReadyCallback(hwsec::Status status);
 
   // ================= Threading Utilities ==================
 
@@ -514,11 +510,6 @@ class UserDataAuth {
   void set_cryptohome_keys_manager(
       CryptohomeKeysManager* cryptohome_keys_manager) {
     cryptohome_keys_manager_ = cryptohome_keys_manager;
-  }
-
-  // Override |tpm_manager_util_| for testing purpose
-  void set_tpm_manager_util_(tpm_manager::TpmManagerUtility* tpm_manager_util) {
-    tpm_manager_util_ = tpm_manager_util;
   }
 
   // Override |platform_| for testing purpose
@@ -831,20 +822,6 @@ class UserDataAuth {
   // can only be called on origin thread.
   void InitializeInstallAttributes();
 
-  // =============== Signal Related Utilities/Callback ===============
-
-  // This is called whenever the signal handlers for signals on tpm_manager's
-  // interface is registered/connected. This is only used by the signal handler
-  // registration function in tpm_manager's generated D-Bus proxy.
-  void OnTpmManagerSignalConnected(const std::string& interface,
-                                   const std::string& signal,
-                                   bool success);
-
-  // This is called whenever the OwnershipTaken signal is emitted by
-  // tpm_manager.
-  // Note: The caller of it may neither origin thread nor mount thread.
-  void OnOwnershipTakenSignal();
-
   // =============== Stateful Recovery related Helpers ===============
 
   // Ensures BootLockbox is finalized;
@@ -979,8 +956,6 @@ class UserDataAuth {
   // The cryptohome key loader object
   CryptohomeKeysManager* cryptohome_keys_manager_;
 
-  tpm_manager::TpmManagerUtility* tpm_manager_util_;
-
   // The default platform object for accessing platform related functionalities
   std::unique_ptr<Platform> default_platform_;
 
@@ -1043,9 +1018,6 @@ class UserDataAuth {
   // The actual Biometrics Service object that is used by this class, but
   // can be overridden for testing.
   BiometricsAuthBlockService* biometrics_service_;
-
-  // This is set to true iff OwnershipCallback has run.
-  bool ownership_callback_has_run_;
 
   // =============== Install Attributes Related Variables ===============
 
