@@ -40,6 +40,25 @@
                     value="vm_tools::concierge::ArcVmCompleteBootResponse"/>
       </arg>
     </method>
+    <method name="CreateDiskImage">
+      <tp:docstring>
+        Creates a disk image.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="raw" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::CreateDiskImageRequest"/>
+      </arg>
+      <arg type="h" name="in_fd" direction="in" optional="true">
+        <tp:docstring>
+          fd for storage for STORAGE_CRYPTOHOME_PLUGINVM case.
+        </tp:docstring>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::CreateDiskImageResponse"/>
+      </arg>
+    </method>
     <method name="GetVmEnterpriseReportingInfo">
       <tp:docstring>
         Gets VM info specific to enterprise reporting.

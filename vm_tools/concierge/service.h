@@ -162,8 +162,8 @@ class Service final : public org::chromium::VmConciergeInterface {
   std::unique_ptr<dbus::Response> SyncVmTimes(dbus::MethodCall* method_call);
 
   // Handles a request to create a disk image.
-  std::unique_ptr<dbus::Response> CreateDiskImage(
-      dbus::MethodCall* method_call);
+  void CreateDiskImage(dbus::MethodCall* method_call,
+                       dbus::ExportedObject::ResponseSender sender) override;
   CreateDiskImageResponse CreateDiskImageInternal(
       CreateDiskImageRequest request, base::ScopedFD in_fd);
 

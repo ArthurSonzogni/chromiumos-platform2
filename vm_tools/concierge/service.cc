@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kCreateDiskImageMethod, &Service::CreateDiskImage},
       {kDestroyDiskImageMethod, &Service::DestroyDiskImage},
       {kResizeDiskImageMethod, &Service::ResizeDiskImage},
       {kExportDiskImageMethod, &Service::ExportDiskImage},
@@ -3018,16 +3017,12 @@ bool CreateFilesystem(const base::FilePath& disk_location,
   return true;
 }
 
-std::unique_ptr<dbus::Response> Service::CreateDiskImage(
-    dbus::MethodCall* method_call) {
+void Service::CreateDiskImage(dbus::MethodCall* method_call,
+                              dbus::ExportedObject::ResponseSender sender) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
   dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
 
   CreateDiskImageRequest request;
   CreateDiskImageResponse response;
@@ -3037,8 +3032,8 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Unable to parse CreateImageDiskRequest");
 
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    SendDbusResponse(std::move(sender), method_call, response);
+    return;
   }
 
   base::ScopedFD in_fd{};
@@ -3046,14 +3041,16 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     if (!reader.PopFileDescriptor(&in_fd)) {
       LOG(ERROR) << "CreateDiskImage: no fd found";
       response.set_failure_reason("no source fd found");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+
+      SendDbusResponse(std::move(sender), method_call, response);
+      return;
     }
   }
 
-  writer.AppendProtoAsArrayOfBytes(
+  SendDbusResponse(
+      std::move(sender), method_call,
       CreateDiskImageInternal(std::move(request), std::move(in_fd)));
-  return dbus_response;
+  return;
 }
 
 CreateDiskImageResponse Service::CreateDiskImageInternal(
