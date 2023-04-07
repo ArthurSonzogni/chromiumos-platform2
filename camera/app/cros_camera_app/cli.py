@@ -269,6 +269,25 @@ def cmd_record_video(facing: app.Facing, duration: float, output: pathlib.Path):
         logging.info("Saved video at %s", path)
 
 
+@cli.command(
+    "screenshot",
+    help="Take a screenshot",
+    description="Take a screenshot of CCA window.",
+)
+@cli.option(
+    "--output",
+    help="output path to save the image data",
+    default="screenshot.png",
+    type=pathlib.Path,
+)
+def cmd_screenshot(output: pathlib.Path):
+    cca = app.CameraApp()
+    image_data = cca.screenshot()
+    with open(output, "wb") as f:
+        f.write(image_data)
+        logging.info("Saved screenshot at %s", output)
+
+
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
     return cli.run(argv)
 

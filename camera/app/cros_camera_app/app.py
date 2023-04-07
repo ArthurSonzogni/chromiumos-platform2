@@ -8,6 +8,7 @@ Use this module to write automation script in Python if the command-line tool
 is not powerful enough in your use cases.
 """
 
+import base64
 import contextlib
 import enum
 import json
@@ -88,19 +89,35 @@ class CameraApp:
     def __init__(self):
         """Initializes the instance."""
         self._cr = chrome.Chrome()
-        self._ext = None
+        self._ext: Optional[chrome.Page] = None
+        self._page: Optional[chrome.Page] = None
 
     @property
     def ext(self) -> chrome.Page:
         """The lazily-created connection to test extension page."""
-        if self._ext is not None:
+        if self._ext is not None and self._ext.is_alive:
             return self._ext
 
         page = self._cr.attach(_TEST_EXTENSION_URL)
+
+        # The JavaScript code is encapsulated as a module here, so it's safe to
+        # be evaluated multiple times in case the previous connection is
+        # broken. The global `window.ext` would be overridden by the latest run.
         extension_js_path = pathlib.Path(__file__).parent / "extension.js"
         with open(extension_js_path, encoding="utf-8") as f:
             code = _EXTENSION_JS_TEMPLATE % json.dumps(f.read())
             page.eval(code)
+
+        return page
+
+    @property
+    def page(self) -> Optional[chrome.Page]:
+        """The connection to CCA page. None if CCA is not running."""
+        if self._page is not None and self._page.is_alive:
+            return self._page
+
+        page = self._cr.try_attach(_CCA_URL)
+        self._page = page
         return page
 
     def open(
@@ -138,16 +155,30 @@ class CameraApp:
         Args:
             facing: The facing of the camera to be opened.
             mode: The target capture mode in app.
+
+        Yields:
+            The page that is connected to the session.
         """
-        # TODO(shik): Support reusing an existing CCA instance by switching to
-        # the correct mode and facing. For now, close any existing CCA window
-        # and restart from a clean state.
-        self.close()
-        self.open(facing=facing, mode=mode)
-        try:
-            yield
-        finally:
+        # TODO(shik): Reuse an existing CCA instance by switching to the
+        # correct mode and facing. For now, close any existing CCA window
+        # and restart from a clean state if facing or mode is specified.
+        fresh = (
+            (self.page is None) or (facing is not None) or (mode is not None)
+        )
+        if fresh:
             self.close()
+            self.open(facing=facing, mode=mode)
+
+        page = self.page
+        if page is None:
+            raise Exception("Page not found")
+
+        try:
+            yield page
+        finally:
+            if fresh:
+                # Close CCA if it's a fresh instance opened for this session.
+                self.close()
 
     def take_photo(self, *, facing: Optional[Facing] = None) -> pathlib.Path:
         """Takes a photo.
@@ -185,3 +216,13 @@ class CameraApp:
             time.sleep(duration)
             self.ext.call("ext.cca.stopRecording")
             return watcher.poll_new_file()
+
+    def screenshot(self) -> bytes:
+        """Takes a screenshot of the CCA window.
+
+        Returns:
+            The binary bytes of the captured screenshot PNG image.
+        """
+        with self.session() as page:
+            res = page.rpc("Page.captureScreenshot", {"format": "png"})
+            return base64.b64decode(res["data"])

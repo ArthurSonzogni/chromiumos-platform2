@@ -8,10 +8,11 @@ It exposes two classes, Chrome and Page, which allow clients to control the
 browser and webpage respectively.
 """
 
+import collections
 import json
 import logging
 import queue
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional, Set
 import urllib.request
 
 # pylint: disable=import-error
@@ -21,6 +22,9 @@ import ws4py.messaging
 
 class RPCError(Exception):
     """Chrome DevTools rejected the JSON-RPC call."""
+
+
+EventHandler = Callable[[Dict[str, Any]], None]
 
 
 class _JSONWebSocketClient(ws4py.client.threadedclient.WebSocketClient):
@@ -34,6 +38,18 @@ class _JSONWebSocketClient(ws4py.client.threadedclient.WebSocketClient):
         """Initializes the instance."""
         super().__init__(*args, **kwargs)
         self._pending_results: Dict[int, queue.Queue] = {}
+        self._event_handlers: Dict[
+            str, List[EventHandler]
+        ] = collections.defaultdict(list)
+
+    def on(self, event: str, handler: EventHandler):
+        """Registers an event handler.
+
+        Args:
+            event: The name of target event.
+            handler: The handler function to run when the event occurs.
+        """
+        self._event_handlers[event].append(handler)
 
     def received_message(self, msg: ws4py.messaging.Message):
         """Processes a received message from DevTools.
@@ -44,12 +60,16 @@ class _JSONWebSocketClient(ws4py.client.threadedclient.WebSocketClient):
                 side.
         """
         res = json.loads(msg.data)
+
+        # TODO(shik): Shorten the log message if the data is very long, such as
+        # a base64 encoded blob for screenshot.
         logging.debug(res)
 
         if "id" not in res:
             # If there is no id field, it should be an event from Chrome side
-            # with method field.
-            assert "method" in res
+            # with "method" and "params" field.
+            for handler in self._event_handlers.get(res["method"], []):
+                handler(res["params"])
 
             # TODO(shik): Listen to consoleAPICalled events so we can see the
             # logging messages from the JS side.
@@ -128,9 +148,39 @@ class Chrome:
         port = self._get_debugging_port()
         version = self._get_json(f"http://127.0.0.1:{port}/json/version")
         url = version["webSocketDebuggerUrl"]
+        self._alive_sessions: Set[str] = set()
         self._ws = _JSONWebSocketClient(url, exclude_headers=["origin"])
+        self._ws.on("Target.attachedToTarget", self.on_attached_to_target)
+        self._ws.on("Target.detachedFromTarget", self.on_detached_from_target)
         self._ws.connect()
         self._next_cmd_id = 0
+
+    def on_attached_to_target(self, params: Dict):
+        """Handler for Target.attachToTarget event.
+
+        Args:
+            params: A dictionary with sessionId and targetInfo.
+        """
+        self._alive_sessions.add(params["sessionId"])
+
+    def on_detached_from_target(self, params: Dict):
+        """Handler for Target.detachedFromTarget event.
+
+        Args:
+            params: A dictionary with sessionId.
+        """
+        self._alive_sessions.remove(params["sessionId"])
+
+    def is_session_alive(self, session_id: str) -> bool:
+        """Checks whether a session is still alive.
+
+        Args:
+            session_id: The id of the session.
+
+        Returns:
+            Whether the session is alive.
+        """
+        return session_id in self._alive_sessions
 
     def rpc(
         self,
@@ -194,6 +244,44 @@ class Chrome:
             self.rpc("Target.closeTarget", {"targetId": target_id})
         return len(to_close_ids)
 
+    def _attach_to_target(self, target_id: str) -> "Page":
+        """Attaches to the page with the given target id.
+
+        Args:
+            target_id: The id of target to be attached.
+
+        Returns:
+            A Page instance that can be used to control the page remotely.
+        """
+        res = self.rpc(
+            "Target.attachToTarget",
+            {
+                "targetId": target_id,
+                "flatten": True,
+            },
+        )
+        return Page(chrome=self, session_id=res["sessionId"])
+
+    def try_attach(self, url: str) -> Optional["Page"]:
+        """Tries to attach to the page with the given URL if it exists.
+
+        Attaches to any page that matches the given url by prefix. If there are
+        multiple matches, attach to one of them. If there is no match, returns
+        None.
+
+        Args:
+            url: A string representing the target page url.
+
+        Returns:
+            A Page instance that can be used to control the page remotely, or
+            None if there is no page matches the given url.
+        """
+        target_id = self.find_target(url)
+        if target_id is None:
+            return None
+
+        return self._attach_to_target(target_id)
+
     def attach(self, url: str) -> "Page":
         """Attaches to the page with the given URL.
 
@@ -212,14 +300,7 @@ class Chrome:
             res = self.rpc("Target.createTarget", {"url": url})
             target_id = res["targetId"]
 
-        res = self.rpc(
-            "Target.attachToTarget",
-            {
-                "targetId": target_id,
-                "flatten": True,
-            },
-        )
-        return Page(chrome=self, session_id=res["sessionId"])
+        return self._attach_to_target(target_id)
 
 
 class JSError(Exception):
@@ -281,6 +362,11 @@ class Page:
         # Make the page less restrictive to run arbitrary JS code.
         self.rpc("Page.setBypassCSP", {"enabled": True})
         self.rpc("Runtime.enable", {})
+
+    @property
+    def is_alive(self) -> bool:
+        """Whether the attached page session is alive."""
+        return self.chrome.is_session_alive(self.session_id)
 
     def rpc(self, method: str, params: Dict[str, Any]) -> Any:
         """Invokes a RPC to Chrome on this page.
