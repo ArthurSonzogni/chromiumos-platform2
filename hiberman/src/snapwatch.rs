@@ -19,8 +19,8 @@ use std::thread::JoinHandle;
 use std::thread::{self};
 use std::time::Duration;
 
-use crate::dbus::send_abort;
 use crate::hiberutil::emergency_reboot;
+use crate::resume_dbus::send_abort;
 use crate::volume::get_snapshot_size;
 
 /// Define how full the snapshot has to get (as a percentage of its overall

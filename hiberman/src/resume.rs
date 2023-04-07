@@ -11,6 +11,7 @@ use std::io::Read;
 
 use anyhow::Context;
 use anyhow::Result;
+use libchromeos::secure_blob::SecureBlob;
 use log::debug;
 use log::error;
 use log::info;
@@ -20,7 +21,6 @@ use crate::cookie::cookie_description;
 use crate::cookie::get_hibernate_cookie;
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
-use crate::dbus::HibernateKey;
 use crate::device_mapper::DeviceMapper;
 use crate::files::remove_resume_in_progress_file;
 use crate::hiberlog;
@@ -37,6 +37,7 @@ use crate::metrics::read_and_send_metrics;
 use crate::metrics::MetricsFile;
 use crate::metrics::MetricsLogger;
 use crate::powerd::PowerdPendingResume;
+use crate::resume_dbus::{get_user_key, wait_for_resume_dbus_event, ResumeRequest};
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
@@ -114,6 +115,11 @@ impl ResumeConductor {
     fn resume_inner(&mut self, pending_merge: &mut PendingStatefulMerge) -> Result<()> {
         let mut volume_manager = VolumeManager::new()?;
 
+        // If resume succeeds, resume_inner doesn't return. Leaving resume_inner indicates resume
+        // failure or resume abortion. The D-Bus method waits on completion_receiver until
+        // resume_inner returns and _completion_sender is dropped.
+        let (_completion_sender, completion_receiver) = crossbeam_channel::bounded::<()>(0);
+
         if let Err(e) = self.decide_to_resume(pending_merge) {
             // No resume from hibernate
 
@@ -125,7 +131,7 @@ impl ResumeConductor {
             volume_manager.teardown_hiberimage()?;
 
             // Set up the snapshot device for future hibernates
-            self.setup_snapshot_device(true)?;
+            self.setup_snapshot_device(true, completion_receiver)?;
 
             volume_manager.lockdown_hiberimage()?;
 
@@ -139,7 +145,7 @@ impl ResumeConductor {
         self.metrics_logger.file = Some(metrics_file);
 
         // Set up the snapshot device for resuming
-        self.setup_snapshot_device(false)?;
+        self.setup_snapshot_device(false, completion_receiver)?;
 
         debug!("Opening hiberimage");
         let hiber_image_file = OpenOptions::new()
@@ -254,18 +260,38 @@ impl ResumeConductor {
     ///
     /// * `new_hiberimage` - Indicates whether to create a new hiberimage or
     ///                      use an existing one (for resuming).
-    fn setup_snapshot_device(&self, new_hiberimage: bool) -> Result<()> {
+    /// * `completion_receiver` - Used to wait for resume completion.
+    fn setup_snapshot_device(
+        &self,
+        new_hiberimage: bool,
+        completion_receiver: crossbeam_channel::Receiver<()>,
+    ) -> Result<()> {
         // Load the TPM derived key.
-        let tpm_key = self.get_tpm_derived_integrity_key()?;
+        let tpm_key: SecureBlob = self.get_tpm_derived_integrity_key()?;
 
-        // TODO: pass actual USER DERIVED KEY!
-        VolumeManager::new()?.setup_hiberimage(&tpm_key, &tpm_key, new_hiberimage)?;
+        let user_key = match wait_for_resume_dbus_event(completion_receiver)? {
+            ResumeRequest::ResumeAccountId { account_id } => get_user_key(&account_id, &[])?,
+            ResumeRequest::ResumeAuthSessionId { auth_session_id } => {
+                get_user_key("", &auth_session_id)?
+            }
+            ResumeRequest::Abort { reason } => {
+                // Abort resume.
+                info!("Aborting resume: {:?}", reason);
+                return Ok(());
+            }
+        };
+
+        VolumeManager::new()?.setup_hiberimage(
+            tpm_key.as_ref(),
+            user_key.as_ref(),
+            new_hiberimage,
+        )?;
 
         SnapshotDevice::new(SnapshotMode::Read)?
             .set_block_device(&DeviceMapper::device_path(VolumeManager::HIBERIMAGE).unwrap())
     }
 
-    fn get_tpm_derived_integrity_key(&self) -> Result<HibernateKey> {
+    fn get_tpm_derived_integrity_key(&self) -> Result<SecureBlob> {
         let mut f = File::open(TPM_SEED_FILE)?;
 
         // Now that we have the file open, immediately unlink it.
@@ -277,7 +303,7 @@ impl ResumeConductor {
             return Err(HibernateError::KeyRetrievalError()).context("Incorrect size for tpm_seed");
         }
 
-        Ok(HibernateKey::new(buf))
+        Ok(SecureBlob::from(buf))
     }
 
     /// Jump into the already-loaded resume image. The PendingResumeCall isn't

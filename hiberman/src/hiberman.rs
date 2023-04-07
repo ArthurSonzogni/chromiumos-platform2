@@ -8,7 +8,6 @@ pub mod cookie;
 pub mod hiberlog;
 pub mod metrics;
 
-mod dbus;
 mod device_mapper;
 mod files;
 mod hiberutil;
@@ -16,6 +15,7 @@ mod lvm;
 mod mmapbuf;
 mod powerd;
 mod resume;
+mod resume_dbus;
 mod resume_init;
 mod snapdev;
 mod snapwatch;
@@ -24,7 +24,7 @@ mod sysfs;
 mod update_engine;
 mod volume;
 
-use crate::dbus::send_abort;
+use crate::resume_dbus::send_abort;
 
 pub use hiberutil::AbortResumeOptions;
 pub use hiberutil::HibernateOptions;
