@@ -44,8 +44,11 @@ Features::Features(scoped_refptr<dbus::Bus> bus, bool test_instance)
 }
 
 bool Features::IsFeatureEnabled(ActiveFeature active_feature) {
-  return feature_lib_->IsEnabledBlocking(
-      GetVariationFeatureFor(active_feature));
+  const auto& variations_feature = GetVariationFeatureFor(active_feature);
+  if (feature_lib_) {
+    return feature_lib_->IsEnabledBlocking(variations_feature);
+  }
+  return variations_feature.default_state == FEATURE_ENABLED_BY_DEFAULT;
 }
 
 void Features::SetDefaultForFeature(ActiveFeature active_feature,
