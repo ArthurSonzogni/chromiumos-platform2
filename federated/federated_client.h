@@ -98,6 +98,9 @@ class FederatedClient {
     // New meta record that will be updated to Metatable if contribution
     // succeeds.
     MetaRecord new_meta_record_;
+    // The time the context instance is created, used in
+    // `TrainingConditionsSatisfied` to early stop if the task takes too long.
+    const base::Time start_time_;
     // Not owned:
     const DeviceStatusMonitor* const device_status_monitor_;
     const StorageManager* const storage_manager_;

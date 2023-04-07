@@ -34,6 +34,9 @@ constexpr base::TimeDelta kDefaultRetryWindow = base::Seconds(60 * 30);
 constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(60);
 #endif
 
+// Limits each round to 10 minutes.
+constexpr base::TimeDelta kMaximalExecutionTime = base::Minutes(10);
+
 // TODO(b/251378482): Just dummpy impl for now, might need to log to UMA.
 void LogCrosEvent(const fcp::client::CrosEvent& cros_event) {
   LOG(INFO) << "In LogCrosEvent, model_id is " << cros_event.model_id()
@@ -66,6 +69,7 @@ FederatedClient::Context::Context(
     const StorageManager* const storage_manager)
     : client_name_(client_name),
       population_name_(population_name),
+      start_time_(base::Time::Now()),
       device_status_monitor_(device_status_monitor),
       storage_manager_(storage_manager) {}
 
@@ -176,6 +180,14 @@ bool FederatedClient::Context::TrainingConditionsSatisfied(
     return false;
 
   auto* typed_context = static_cast<FederatedClient::Context*>(context);
+
+  // If time cost exceeds the limit, return false to quit this round.
+  // TODO(b/276979886): Add an UMA event for this.
+  base::TimeDelta time_cost = base::Time::Now() - typed_context->start_time_;
+  if (time_cost > kMaximalExecutionTime) {
+    return false;
+  }
+
   const bool condition_satisfied =
       typed_context->device_status_monitor_->TrainingConditionsSatisfied();
 
