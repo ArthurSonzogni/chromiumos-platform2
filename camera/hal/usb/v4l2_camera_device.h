@@ -311,8 +311,8 @@ class V4L2CameraDevice {
 
   RoiControl roi_control_;
 
-  // Monitor for the status change of camera privacy switch.
-  CameraPrivacySwitchMonitor* privacy_switch_monitor_;
+  // Monitor for the status change of HW camera privacy switch.
+  CameraPrivacySwitchMonitor* hw_privacy_switch_monitor_;
 
   // Since V4L2CameraDevice may be called on different threads, this is used to
   // guard all variables.

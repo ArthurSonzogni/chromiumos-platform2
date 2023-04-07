@@ -84,6 +84,9 @@ struct DeviceInfo {
 
   // Whether the device is detachable.
   bool is_detachable = false;
+
+  // Whether the device has privacy switch.
+  bool has_privacy_switch = false;
 };
 
 typedef std::vector<DeviceInfo> DeviceInfos;

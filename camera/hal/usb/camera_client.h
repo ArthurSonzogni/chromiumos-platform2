@@ -65,7 +65,7 @@ class CameraClient {
                const camera_metadata_t& request_template,
                const hw_module_t* module,
                hw_device_t** hw_device,
-               CameraPrivacySwitchMonitor* privacy_switch_monitor,
+               CameraPrivacySwitchMonitor* hw_privacy_switch_monitor,
                ClientType client_type,
                bool sw_privacy_switch_on);
   CameraClient(const CameraClient&) = delete;

@@ -64,6 +64,7 @@ struct CrosConfigCameraInfo {
   LensFacing facing;
   int orientation;
   bool detachable;
+  bool has_privacy_switch;
 };
 
 struct PlatformCameraInfo {

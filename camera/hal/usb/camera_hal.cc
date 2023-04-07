@@ -320,10 +320,14 @@ int CameraHal::OpenDevice(int id,
     static_metadata = static_metadata_[id].get();
     request_template = request_template_[id].get();
   }
+  const auto& device_info = device_infos_[id];
+  // Force disable HW privacy switch if the config doesn't declare it.  This is
+  // to block privacy switch signal that is not HW based (b/273675069).
+  auto* hw_privacy_switch_monitor_for_client =
+      device_info.has_privacy_switch ? &hw_privacy_switch_monitor_ : nullptr;
   cameras_[id] = std::make_unique<CameraClient>(
-      id, device_infos_[id], *static_metadata, *request_template, module,
-      hw_device, &hw_privacy_switch_monitor_, client_type,
-      sw_privacy_switch_on_);
+      id, device_info, *static_metadata, *request_template, module, hw_device,
+      hw_privacy_switch_monitor_for_client, client_type, sw_privacy_switch_on_);
   if (cameras_[id]->OpenDevice()) {
     cameras_.erase(id);
     return -ENODEV;
@@ -624,6 +628,7 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     if (cros_config_info) {
       info.sensor_orientation = cros_config_info->orientation;
       info.is_detachable = cros_config_info->detachable;
+      info.has_privacy_switch = cros_config_info->has_privacy_switch;
     }
     if (info.constant_framerate_unsupported) {
       LOGF(WARNING) << "Camera module " << vid << ":" << pid
@@ -741,7 +746,9 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
   request_template_[info.camera_id] =
       ScopedCameraMetadata(request_template.release());
 
-  hw_privacy_switch_monitor_.TrySubscribe(info.camera_id, info.device_path);
+  if (info.has_privacy_switch) {
+    hw_privacy_switch_monitor_.TrySubscribe(info.camera_id, info.device_path);
+  }
 
   if (info.lens_facing == LensFacing::kExternal) {
     callbacks_->camera_device_status_change(callbacks_, info.camera_id,

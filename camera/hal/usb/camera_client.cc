@@ -88,20 +88,21 @@ int ResolvedFrameRateFromMetadata(const android::CameraMetadata& metadata,
 
 }  // namespace
 
-CameraClient::CameraClient(int id,
-                           const DeviceInfo& device_info,
-                           const camera_metadata_t& static_metadata,
-                           const camera_metadata_t& request_template,
-                           const hw_module_t* module,
-                           hw_device_t** hw_device,
-                           CameraPrivacySwitchMonitor* privacy_switch_monitor,
-                           ClientType client_type,
-                           bool sw_privacy_switch_on)
+CameraClient::CameraClient(
+    int id,
+    const DeviceInfo& device_info,
+    const camera_metadata_t& static_metadata,
+    const camera_metadata_t& request_template,
+    const hw_module_t* module,
+    hw_device_t** hw_device,
+    CameraPrivacySwitchMonitor* hw_privacy_switch_monitor,
+    ClientType client_type,
+    bool sw_privacy_switch_on)
     : id_(id),
       device_info_(device_info),
       static_metadata_(clone_camera_metadata(&static_metadata)),
       device_(new V4L2CameraDevice(
-          device_info, privacy_switch_monitor, sw_privacy_switch_on)),
+          device_info, hw_privacy_switch_monitor, sw_privacy_switch_on)),
       callback_ops_(nullptr),
       sw_privacy_switch_on_(sw_privacy_switch_on),
       request_thread_("Capture request thread"),

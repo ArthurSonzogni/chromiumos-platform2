@@ -380,24 +380,25 @@ bool DeviceConfig::PopulateCrosConfigCameraInfo(DeviceConfig* dev_conf) {
   }
 
   for (int i = 0;; ++i) {
+    const std::string device_path = base::StringPrintf("/camera/devices/%i", i);
     std::string interface;
-    if (!cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
-                               "interface", &interface)) {
+    if (!cros_config.GetString(device_path, "interface", &interface)) {
       break;
     }
-    std::string facing, orientation, detachable;
-    CHECK(cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
-                                "facing", &facing));
-    CHECK(cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
-                                "orientation", &orientation));
-    // Non-detachable if the key doesn't exist.
-    cros_config.GetString(base::StringPrintf("/camera/devices/%i", i),
-                          "detachable", &detachable);
+    std::string facing, orientation, detachable, has_privacy_switch;
+    CHECK(cros_config.GetString(device_path, "facing", &facing));
+    CHECK(cros_config.GetString(device_path, "orientation", &orientation));
+    // Assume non-detachable if the key doesn't exist.
+    cros_config.GetString(device_path, "detachable", &detachable);
+    // Assume no privacy switch if the key doesn't exist.
+    cros_config.GetString(device_path, "has-privacy-switch",
+                          &has_privacy_switch);
     dev_conf->cros_config_cameras_.push_back(CrosConfigCameraInfo{
         .interface = interface == "usb" ? Interface::kUsb : Interface::kMipi,
         .facing = facing == "front" ? LensFacing::kFront : LensFacing::kBack,
         .orientation = std::stoi(orientation),
         .detachable = detachable == "true",
+        .has_privacy_switch = has_privacy_switch == "true",
     });
   }
   if (!dev_conf->cros_config_cameras_.empty()) {

@@ -240,7 +240,7 @@ V4L2CameraDevice::V4L2CameraDevice(
     : stream_on_(false),
       sw_privacy_switch_on_(sw_privacy_switch_on),
       device_info_(device_info),
-      privacy_switch_monitor_(privacy_switch_monitor) {}
+      hw_privacy_switch_monitor_(privacy_switch_monitor) {}
 
 V4L2CameraDevice::~V4L2CameraDevice() {
   device_fd_.reset();
@@ -560,8 +560,10 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     fds->push_back(std::move(temp_fds[i]));
   }
 
-  privacy_switch_monitor_->TrySubscribe(device_info_.camera_id,
-                                        device_info_.device_path);
+  if (hw_privacy_switch_monitor_) {
+    hw_privacy_switch_monitor_->TrySubscribe(device_info_.camera_id,
+                                             device_info_.device_path);
+  }
   stream_on_ = true;
   return 0;
 }
