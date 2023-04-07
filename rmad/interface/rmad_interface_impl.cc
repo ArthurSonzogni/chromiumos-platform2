@@ -284,7 +284,7 @@ GetStateReply RmadInterfaceImpl::GetCurrentStateInternal() {
   } else {
     DLOG(INFO) << "Get current state succeeded: " << current_state_case_;
     reply.set_error(RMAD_ERROR_OK);
-    reply.set_allocated_state(new RmadState(state_handler->GetState()));
+    reply.set_allocated_state(new RmadState(state_handler->GetState(true)));
     reply.set_can_go_back(CanGoBack());
     reply.set_can_abort(CanAbort());
   }
@@ -381,7 +381,7 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
   can_abort_ &= next_state_handler->IsRepeatable();
 
   reply.set_error(RMAD_ERROR_OK);
-  reply.set_allocated_state(new RmadState(next_state_handler->GetState()));
+  reply.set_allocated_state(new RmadState(next_state_handler->GetState(true)));
   reply.set_can_go_back(CanGoBack());
   reply.set_can_abort(CanAbort());
   return reply;
@@ -462,7 +462,7 @@ GetStateReply RmadInterfaceImpl::TransitionPreviousStateInternal() {
   prev_state_handler->RunState();
 
   reply.set_error(RMAD_ERROR_OK);
-  reply.set_allocated_state(new RmadState(prev_state_handler->GetState()));
+  reply.set_allocated_state(new RmadState(prev_state_handler->GetState(true)));
   reply.set_can_go_back(CanGoBack());
   reply.set_can_abort(CanAbort());
   return reply;

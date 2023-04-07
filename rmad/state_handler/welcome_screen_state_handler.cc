@@ -47,10 +47,11 @@ RmadErrorCode WelcomeScreenStateHandler::InitializeState() {
   if (!state_.has_welcome()) {
     state_.set_allocated_welcome(new WelcomeState);
   }
+
   return RMAD_ERROR_OK;
 }
 
-void WelcomeScreenStateHandler::RunState() {
+void WelcomeScreenStateHandler::OnGetStateTask() const {
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, base::BindOnce(&WelcomeScreenStateHandler::RunHardwareVerifier,
                                 base::Unretained(this)));

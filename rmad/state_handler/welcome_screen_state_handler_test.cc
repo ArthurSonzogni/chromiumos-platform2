@@ -83,12 +83,8 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
   base::test::TaskEnvironment task_environment_;
 };
 
-TEST_F(WelcomeScreenStateHandlerTest, InitializeState_Success) {
-  auto handler = CreateStateHandler(true, true);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-}
-
-TEST_F(WelcomeScreenStateHandlerTest, VerificationPass) {
+TEST_F(WelcomeScreenStateHandlerTest,
+       InitializeState_Success_VerificationPass_DoGetStateTask) {
   auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -97,7 +93,7 @@ TEST_F(WelcomeScreenStateHandlerTest, VerificationPass) {
         EXPECT_EQ(result.is_compliant(), true);
         EXPECT_EQ(result.error_str(), "");
       }));
-  handler->RunState();
+  RmadState state = handler->GetState(true);
   task_environment_.RunUntilIdle();
 
   // Verify the hardware verification result is recorded to logs.
@@ -114,7 +110,16 @@ TEST_F(WelcomeScreenStateHandlerTest, VerificationPass) {
   EXPECT_EQ("", *verification_result->FindString(kLogUnqualifiedComponents));
 }
 
-TEST_F(WelcomeScreenStateHandlerTest, VerificationFail) {
+TEST_F(WelcomeScreenStateHandlerTest,
+       InitializeState_Success_VerificationPass_NoGetStateTask) {
+  auto handler = CreateStateHandler(true, true);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  RmadState state = handler->GetState();
+}
+
+TEST_F(WelcomeScreenStateHandlerTest,
+       InitializeState_Success_VerificationFail) {
   auto handler = CreateStateHandler(true, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -123,7 +128,7 @@ TEST_F(WelcomeScreenStateHandlerTest, VerificationFail) {
         EXPECT_EQ(result.is_compliant(), false);
         EXPECT_EQ(result.error_str(), kVerificationFailedErrorStr);
       }));
-  handler->RunState();
+  RmadState state = handler->GetState(true);
   task_environment_.RunUntilIdle();
 
   // Verify the hardware verification result is recorded to logs.
@@ -141,11 +146,11 @@ TEST_F(WelcomeScreenStateHandlerTest, VerificationFail) {
             *verification_result->FindString(kLogUnqualifiedComponents));
 }
 
-TEST_F(WelcomeScreenStateHandlerTest, VerificationCallFail) {
+TEST_F(WelcomeScreenStateHandlerTest,
+       InitializeState_Success_VerificationCallFail) {
   auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  handler->RunState();
   task_environment_.RunUntilIdle();
 }
 
@@ -161,6 +166,8 @@ TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_Success) {
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kComponentsRepair);
+
+  task_environment_.RunUntilIdle();
 }
 
 TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingState) {
@@ -173,6 +180,8 @@ TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingState) {
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_INVALID);
   EXPECT_EQ(state_case, RmadState::StateCase::kWelcome);
+
+  task_environment_.RunUntilIdle();
 }
 
 TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingArgs) {
@@ -187,6 +196,8 @@ TEST_F(WelcomeScreenStateHandlerTest, GetNextStateCase_MissingArgs) {
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_MISSING);
   EXPECT_EQ(state_case, RmadState::StateCase::kWelcome);
+
+  task_environment_.RunUntilIdle();
 }
 
 }  // namespace rmad
