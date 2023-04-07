@@ -258,11 +258,17 @@ provide a complete folder contents listing.
 
 ## framebuffer
 
+## fwupd_log
+
+Logs printed from [fwupd] daemon execution.
+
 ## fwupd_state
+
+Current state of the system as reported by [fwupd] daemon.
 
 ## fwupd_version
 
-The fwupd client and daemon versions.
+The [fwupd] client and daemon versions.
 
 ## hammerd
 
@@ -511,6 +517,7 @@ Useful to know how much memory is being stored compressed in zram.
 
 [auditd(8)]: https://man7.org/linux/man-pages/man8/auditd.8.html
 [FPMCU]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/docs/fingerprint/fingerprint.md
+[fwupd]: https://github.com/fwupd/fwupd
 [Panic Data]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/README.md#Panicinfo
 [proc(5)]: https://man7.org/linux/man-pages/man5/proc.5.html
 [slabinfo(5)]: https://man7.org/linux/man-pages/man5/slabinfo.5.html

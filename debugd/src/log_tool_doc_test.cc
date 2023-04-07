@@ -74,7 +74,6 @@ const std::set<base::StringPiece> kEmptyEntries{
     "eventlog",
     "font_info",
     "framebuffer",
-    "fwupd_state",
     "hammerd",
     "hardware_class",
     "hardware_verification_report",

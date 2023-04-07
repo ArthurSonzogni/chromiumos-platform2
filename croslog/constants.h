@@ -35,6 +35,7 @@ static constexpr std::array kLogsToRotate{
     std::string_view("/var/log/secure"),
     std::string_view("/var/log/net.log"),
     std::string_view("/var/log/faillog"),
+    std::string_view("/var/log/fwupd.log"),
     std::string_view("/var/log/session_manager"),
     std::string_view("/var/log/atrus.log"),
     std::string_view("/var/log/tlsdate.log"),

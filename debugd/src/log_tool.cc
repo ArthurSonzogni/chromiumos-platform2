@@ -549,6 +549,7 @@ const std::array kVarLogFileLogs {
     4 * 1024 * 1024, LogTool::Encoding::kUtf8},
   Log{kFile, "ec_info", "/var/log/ec_info.txt"},
   Log{kFile, "eventlog", "/var/log/eventlog.txt"},
+  Log{kFile, "fwupd_log", "/var/log/fwupd.log"},
   Log{kFile, "hammerd", "/var/log/hammerd.log"},
   Log{kFile, "hypervisor.log", "/var/log/hypervisor.log"},
   Log{kGlob, "memd clips", "/var/log/memd/memd.clip*"},
