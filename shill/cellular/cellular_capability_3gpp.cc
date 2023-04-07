@@ -954,6 +954,16 @@ bool CellularCapability3gpp::IsDualStackSupported() {
   return true;
 }
 
+bool CellularCapability3gpp::IsModemFM350() {
+  SLOG(this, 2) << __func__;
+  if (!cellular()->device_id())
+    return false;
+
+  SLOG(this, 2) << "device_id: " << cellular()->device_id()->AsString();
+  DeviceId fm350_device_id = {DeviceId::BusType::kPci, 0x14c3, 0x4d75};
+  return cellular()->device_id()->Match(fm350_device_id);
+}
+
 bool CellularCapability3gpp::IsModemFM101() {
   SLOG(this, 2) << __func__;
   if (!cellular()->device_id())

@@ -411,6 +411,7 @@ class CellularCapability3gpp {
   // b/228042798 lands.
   bool IsDualStackSupported();
   bool IsModemFM101();
+  bool IsModemFM350();
   void SetNextAttachApn();
   void ScheduleNextAttach(const Error& error);
   void FillInitialEpsBearerPropertyMap(KeyValueStore* properties);
