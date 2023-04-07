@@ -165,10 +165,6 @@ int GetServiceFailureWeight();
 // 1.0/GetSuspendFailureWeight() of the failures.
 int GetSuspendFailureWeight();
 
-// Return the weight for shill failures. We'll only collect
-// 1.0/GetShillFailureWeight() of the failures.
-int GetShillFailureWeight();
-
 // Return the weight for oom events. We'll only collect
 // 1.0/GetOomEventWeight() of the failures.
 int GetOomEventWeight();

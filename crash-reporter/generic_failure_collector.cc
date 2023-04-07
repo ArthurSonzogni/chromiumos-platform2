@@ -102,7 +102,8 @@ CollectorInfo GenericFailureCollector::GetHandlerInfo(
     bool recovery_failure,
     const std::string& arc_service_failure,
     const std::string& service_failure,
-    bool guest_oom_event) {
+    bool guest_oom_event,
+    int32_t weight) {
   auto generic_failure_collector = std::make_shared<GenericFailureCollector>();
   return {.collector = generic_failure_collector,
           .handlers = {
@@ -123,8 +124,7 @@ CollectorInfo GenericFailureCollector::GetHandlerInfo(
                   .should_handle = modem_failure,
                   .cb = base::BindRepeating(
                       &GenericFailureCollector::CollectWithWeight,
-                      generic_failure_collector, kModemFailure,
-                      util::GetShillFailureWeight()),
+                      generic_failure_collector, kModemFailure, weight),
               },
               {
                   .should_handle = !arc_service_failure.empty(),

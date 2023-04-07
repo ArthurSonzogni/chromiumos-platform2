@@ -701,14 +701,31 @@ TEST(AnomalyDetectorTest, TcsdAuthFailureBlocklist) {
                          {tcsd_auth_failure});
 }
 
-TEST(AnomalyDetectorTest, CellularFailure) {
+TEST(AnomalyDetectorTest, CellularFailureMM) {
   ParserRun modem_failure = {
       .expected_text = "Core.Failed",
       .expected_flags = {
-          {"--modem_failure",
-           base::StringPrintf("--weight=%d", util::GetShillFailureWeight())}}};
+          {"--modem_failure", base::StringPrintf("--weight=%d", 50)}}};
   ShillParser parser(/*testonly_send_all=*/true);
-  ParserTest("TEST_CELLULAR_FAILURE", {modem_failure}, &parser);
+  ParserTest("TEST_CELLULAR_FAILURE_MM", {modem_failure}, &parser);
+}
+
+TEST(AnomalyDetectorTest, CellularFailureEnable) {
+  ParserRun enable_failure = {
+      .expected_text = "InProgress",
+      .expected_flags = {
+          {"--modem_failure", base::StringPrintf("--weight=%d", 200)}}};
+  ShillParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_CELLULAR_FAILURE_ENABLE", {enable_failure}, &parser);
+}
+
+TEST(AnomalyDetectorTest, CellularFailureConnect) {
+  ParserRun connect_failure = {
+      .expected_text = "auto-connect",
+      .expected_flags = {
+          {"--modem_failure", base::StringPrintf("--weight=%d", 5)}}};
+  ShillParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_CELLULAR_FAILURE_CONNECT", {connect_failure}, &parser);
 }
 
 TEST(AnomalyDetectorTest, CellularFailureBlocked) {

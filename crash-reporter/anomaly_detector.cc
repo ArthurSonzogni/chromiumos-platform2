@@ -641,40 +641,62 @@ ShillParser::ShillParser(bool testonly_send_all)
 
 constexpr LazyRE2 mm_failure = {
     R"(dbus.*org.freedesktop.ModemManager1.Error.(\S+), (.*))"};
+// logged by shill/manager.cc if cellular fails to enable
+constexpr LazyRE2 enable_failure = {
+    R"(dbus.*flimflam.Error.(\S+), Message=Enable cellular failed: (.*))"};
+// logged by shill/cellular.cc after a connection attempt fails
+constexpr LazyRE2 connect_failure = {
+    R"((\S+) could not connect \(trigger=(\S+)\) to mccmnc=(\S+): (.*))"};
 constexpr LazyRE2 sim_not_inserted_failure = {
     R"(dbus.*org.freedesktop.ModemManager1.Error.Core.WrongState.*)"};
 
 MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
   std::string error_code;
   std::string error_message;
-  if (!RE2::PartialMatch(line, *mm_failure, &error_code, &error_message)) {
+  std::string carrier;
+  std::string modem;
+  std::string trigger_mode;
+  int weight = 1;
+  if (RE2::PartialMatch(line, *connect_failure, &modem, &trigger_mode, &carrier,
+                        &error_message)) {
+    error_code = modem + "-" + carrier + "-" + trigger_mode + "-connect";
+    weight = 5;
+  } else if (RE2::PartialMatch(line, *enable_failure, &error_code,
+                               &error_message)) {
+    weight = 200;
+  } else if (RE2::PartialMatch(line, *mm_failure, &error_code,
+                               &error_message)) {
+    weight = 50;
+  }
+  if (error_code.empty()) {
     return std::nullopt;
   }
   if (RE2::PartialMatch(line, *sim_not_inserted_failure)) {
     return std::nullopt;
   }
 
-  // TODO(pholla): b/243522072 Figure out a way to write an integration test
-  // that excites an org.freedesktop.ModemManager1.Error DBus error via Shill.
-  // Most of these errors require injection of a cellular network error, so
-  // writing an integration test is not trivial.
+  // Writing an integration test for cellular anomalies would require hacks in
+  // production code to deterministically trigger an error path, and currently,
+  // most anomalies in the field occur due to network, modem, or ChromeOS quirks
+  // that need fixing. Such tests would also need to run in a separate cellular
+  // pool. Given the complexity of writing and maintaining a cellular
+  // integration test for anomaly detector, we prefer to rely on unit tests for
+  // current cellular anomalies. ref: b/243522072
 
-  if (!testonly_send_all_ &&
-      base::RandGenerator(util::GetShillFailureWeight()) != 0) {
+  if (!testonly_send_all_ && base::RandGenerator(weight) != 0) {
     return std::nullopt;
   }
 
-  uint32_t hash = StringHash(error_message.c_str());
+  uint32_t hash = StringHash((error_code + error_message).c_str());
   if (WasAlreadySeen(hash)) {
     return std::nullopt;
   }
 
   std::string text = base::StringPrintf("%08x-%s\n", hash, error_code.c_str());
   const std::string kFlag = "--modem_failure";
-  return CrashReport(
-      std::move(text),
-      {std::move("--modem_failure"),
-       base::StringPrintf("--weight=%d", util::GetShillFailureWeight())});
+  return CrashReport(std::move(text),
+                     {std::move("--modem_failure"),
+                      base::StringPrintf("--weight=%d", weight)});
 }
 
 }  // namespace anomaly

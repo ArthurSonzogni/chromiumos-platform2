@@ -594,10 +594,6 @@ int GetSuspendFailureWeight() {
   return 50;
 }
 
-int GetShillFailureWeight() {
-  return 10;
-}
-
 int GetOomEventWeight() {
   return 10;
 }

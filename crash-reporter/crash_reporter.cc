@@ -645,7 +645,7 @@ int main(int argc, char* argv[]) {
   collectors.push_back(GenericFailureCollector::GetHandlerInfo(
       FLAGS_suspend_failure, FLAGS_auth_failure, FLAGS_modem_failure,
       FLAGS_cryptohome_recovery_failure, FLAGS_arc_service_failure,
-      FLAGS_service_failure, FLAGS_guest_oom_event));
+      FLAGS_service_failure, FLAGS_guest_oom_event, FLAGS_weight));
 
   collectors.push_back(SELinuxViolationCollector::GetHandlerInfo(
       FLAGS_selinux_violation, FLAGS_weight));

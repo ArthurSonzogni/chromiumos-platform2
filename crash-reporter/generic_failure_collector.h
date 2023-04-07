@@ -57,7 +57,8 @@ class GenericFailureCollector : public CrashCollector {
                                       bool recovery_failure,
                                       const std::string& arc_service_failure,
                                       const std::string& service_failure,
-                                      bool guest_oom_event);
+                                      bool guest_oom_event,
+                                      int32_t weight);
 
  protected:
   std::string failure_report_path_;
