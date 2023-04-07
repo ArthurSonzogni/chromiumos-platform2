@@ -6,10 +6,7 @@ import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 group("all") {
-  deps = [
-    ":install_tmpfiles_config",
-    ":u2fd",
-  ]
+  deps = [ ":u2fd" ]
   if (use.test) {
     deps += [ ":u2fd_test_runner" ]
   }
@@ -199,9 +196,4 @@ if (use.fuzzer) {
     configs = [ ":local_proto_include" ]
     sources = [ "${proto_in_dir}/webauthn_fuzzer_data.proto" ]
   }
-}
-
-install_config("install_tmpfiles_config") {
-  sources = [ "tmpfiles.d/u2fd.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
 }
