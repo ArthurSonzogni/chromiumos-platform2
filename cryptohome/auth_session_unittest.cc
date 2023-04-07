@@ -1998,6 +1998,25 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     return update_future.Get()->local_legacy_error().value();
   }
 
+  user_data_auth::CryptohomeErrorCode UpdateAuthFactorMetadata(
+      user_data_auth::AuthFactor& auth_factor_proto,
+      AuthSession& auth_session) {
+    user_data_auth::UpdateAuthFactorMetadataRequest request;
+    request.set_auth_session_id(auth_session.serialized_token());
+    request.set_auth_factor_label(auth_factor_proto.label());
+    *request.mutable_auth_factor() = std::move(auth_factor_proto);
+
+    TestFuture<CryptohomeStatusOr<std::unique_ptr<AuthFactor>>> update_future;
+    auth_session.UpdateAuthFactorMetadata(request, update_future.GetCallback());
+
+    if (update_future.Get().ok() ||
+        !update_future.Get().status()->local_legacy_error().has_value()) {
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    }
+
+    return update_future.Get().status()->local_legacy_error().value();
+  }
+
   user_data_auth::CryptohomeErrorCode AddPinAuthFactor(
       const std::string& pin, AuthSession& auth_session) {
     EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
@@ -4532,6 +4551,172 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
 
   // Verify.
   EXPECT_THAT(update_future.Get(), NotOk());
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorMetadataSuccess) {
+  // Setup.
+  AuthSession auth_session(
+      {.username = kFakeUsername,
+       .is_ephemeral_user = false,
+       .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
+       .user_exists = false,
+       .auth_factor_map = AuthFactorMap(),
+       .migrate_to_user_secret_stash = false},
+      backing_apis_);
+
+  // Creating the user.
+  EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  // Calling AddAuthFactor.
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
+                                auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test.
+  user_data_auth::AuthFactor new_auth_factor;
+  std::string kFakeChromeVersion = "fake chrome version";
+
+  new_auth_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  new_auth_factor.set_label(kFakeLabel);
+  new_auth_factor.mutable_password_metadata();
+  new_auth_factor.mutable_common_metadata()->set_chrome_version_last_updated(
+      kFakeChromeVersion);
+
+  error = UpdateAuthFactorMetadata(new_auth_factor, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  auto loaded_auth_factor = auth_factor_manager_.LoadAuthFactor(
+      SanitizeUserName(kFakeUsername), AuthFactorType::kPassword, kFakeLabel);
+  EXPECT_THAT(loaded_auth_factor, IsOk());
+  EXPECT_EQ(loaded_auth_factor.value()->type(), AuthFactorType::kPassword);
+  EXPECT_EQ(loaded_auth_factor.value()->label(), kFakeLabel);
+  EXPECT_EQ(
+      loaded_auth_factor.value()->metadata().common.chrome_version_last_updated,
+      kFakeChromeVersion);
+
+  // Calling AuthenticateAuthFactor with the password succeeds.
+  error = AuthenticatePasswordAuthFactor(kFakePass, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+}
+
+TEST_F(AuthSessionWithUssExperimentTest,
+       UpdateAuthFactorMetadataEmptyLabelFailure) {
+  // Setup.
+  AuthSession auth_session(
+      {.username = kFakeUsername,
+       .is_ephemeral_user = false,
+       .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
+       .user_exists = false,
+       .auth_factor_map = AuthFactorMap(),
+       .migrate_to_user_secret_stash = false},
+      backing_apis_);
+
+  // Creating the user.
+  EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  // Calling AddAuthFactor.
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
+                                auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test.
+  user_data_auth::AuthFactor new_auth_factor;
+
+  new_auth_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  new_auth_factor.set_label("");
+  new_auth_factor.mutable_password_metadata();
+
+  error = UpdateAuthFactorMetadata(new_auth_factor, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(AuthSessionWithUssExperimentTest,
+       UpdateAuthFactorMetadataWrongLabelFailure) {
+  // Setup.
+  AuthSession auth_session(
+      {.username = kFakeUsername,
+       .is_ephemeral_user = false,
+       .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
+       .user_exists = false,
+       .auth_factor_map = AuthFactorMap(),
+       .migrate_to_user_secret_stash = false},
+      backing_apis_);
+
+  // Creating the user.
+  EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  // Calling AddAuthFactor.
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
+                                auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test.
+  user_data_auth::AuthFactor new_auth_factor;
+
+  new_auth_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  new_auth_factor.set_label(kFakeOtherLabel);
+  new_auth_factor.mutable_password_metadata();
+
+  error = UpdateAuthFactorMetadata(new_auth_factor, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(AuthSessionWithUssExperimentTest,
+       UpdateAuthFactorMetadataWrongTypeFailure) {
+  // Setup.
+  AuthSession auth_session(
+      {.username = kFakeUsername,
+       .is_ephemeral_user = false,
+       .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
+       .user_exists = false,
+       .auth_factor_map = AuthFactorMap(),
+       .migrate_to_user_secret_stash = false},
+      backing_apis_);
+
+  // Creating the user.
+  EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+
+  // Calling AddAuthFactor.
+  error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
+                                auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test.
+  user_data_auth::AuthFactor new_auth_factor;
+
+  new_auth_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  new_auth_factor.set_label(kFakeLabel);
+  new_auth_factor.mutable_pin_metadata();
+
+  error = UpdateAuthFactorMetadata(new_auth_factor, auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
 // Test that AuthenticateAuthFactor succeeds for the `AuthIntent::kWebAuthn`

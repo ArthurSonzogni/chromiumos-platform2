@@ -1769,6 +1769,26 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockNoTemplateIdInPrepareForRemoval = 3529,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockNoLabelInPrepareForRemoval = 3530,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoAuthSessionInUpdateAuthFactorMetadata = 3531,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoAuthFactorInUpdateAuthFactorMetadata = 3532,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthProtoFailureInUpdateAuthFactorMetadata = 3533,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoLabelInUpdateAuthFactorMetadata = 3534,
+  /* ./auth_session.cc */
+  kLocAuthSessionFactorNotFoundInUpdateAuthFactorMetadata = 3535,
+  /* ./auth_session.cc */
+  kLocAuthSessionUnknownFactorInUpdateAuthFactorMetadata = 3536,
+  /* ./auth_session.cc */
+  kLocAuthSessionDifferentLabelInUpdateAuthFactorMetadata = 3537,
+  /* ./auth_session.cc */
+  kLocAuthSessionDifferentTypeInUpdateAuthFactorMetadata = 3538,
+  /* ./auth_session.cc */
+  kLocAuthSessionBadMetadataUpdateAuthFactorMetadata = 3539,
+  /* ./auth_session.cc */
+  kLocAuthSessionFailedSaveInUpdateAuthFactorMetadata = 3540,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

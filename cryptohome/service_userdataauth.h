@@ -246,6 +246,17 @@ class UserDataAuthAdaptor
           user_data_auth::UpdateAuthFactorReply>> response,
       const user_data_auth::UpdateAuthFactorRequest& in_request);
 
+  void UpdateAuthFactorMetadata(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::UpdateAuthFactorMetadataReply>> response,
+      const user_data_auth::UpdateAuthFactorMetadataRequest& in_request)
+      override;
+
+  void DoUpdateAuthFactorMetadata(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::UpdateAuthFactorMetadataReply>> response,
+      const user_data_auth::UpdateAuthFactorMetadataRequest& in_request);
+
   void RemoveAuthFactor(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::RemoveAuthFactorReply>> response,

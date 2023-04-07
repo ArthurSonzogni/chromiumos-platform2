@@ -84,6 +84,8 @@ constexpr AuthIntent kAuthorizedIntentsForFullAuth[] = {
 class AuthSession final {
  public:
   using StatusCallback = base::OnceCallback<void(CryptohomeStatus)>;
+  using AuthFactorStatusCallback =
+      base::OnceCallback<void(CryptohomeStatusOr<std::unique_ptr<AuthFactor>>)>;
 
   // Parameter struct used to specify all the base parameters of AuthSession.
   // These parameters do not include the underlying interfaces that AuthSession
@@ -219,6 +221,11 @@ class AuthSession final {
   // provided in the `request`.
   void UpdateAuthFactor(const user_data_auth::UpdateAuthFactorRequest& request,
                         StatusCallback on_done);
+
+  // UpdateAuthFactorMetadata updates the auth factor without new credentials.
+  void UpdateAuthFactorMetadata(
+      const user_data_auth::UpdateAuthFactorMetadataRequest request,
+      AuthFactorStatusCallback on_done);
 
   // PrepareAuthFactor prepares an auth factor, e.g. fingerprint auth factor
   // which is not directly associated with a knowledge factor.

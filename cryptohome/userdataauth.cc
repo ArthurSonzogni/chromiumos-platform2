@@ -32,6 +32,7 @@
 #include <chaps/token_manager_client.h>
 #include <chromeos/constants/cryptohome.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <featured/feature_library.h>
 #include <libhwsec/factory/factory_impl.h>
@@ -48,6 +49,7 @@
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
+#include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/auth_session_proto_utils.h"
@@ -111,6 +113,54 @@ void ReplyWithStatus(base::OnceCallback<void(const ReplyType&)> on_done,
                      CryptohomeStatus status) {
   ReplyType reply;
   ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
+}
+
+// Wrapper function for converting |auth_factor_status| into
+// user_data_auth::AuthFactorWithStatus and subsequently calling |on_done| with
+// ReplyWithError.
+template <typename ReplyType>
+void ReplyWithAuthFactorStatus(
+    AuthFactorDriverManager* auth_factor_driver_manager,
+    AuthBlockUtility* auth_block_utility,
+    base::OnceCallback<void(const ReplyType&)> on_done,
+    CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor_status) {
+  ReplyType reply;
+  if (!auth_factor_status.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthNoAuthFactorInUpdateAuthFactorMetadata))
+            .Wrap(std::move(auth_factor_status).err_status()));
+    return;
+  }
+
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager->GetDriver(auth_factor_status.value()->type());
+  auto auth_factor_proto =
+      factor_driver.ConvertToProto(auth_factor_status.value()->label(),
+                                   auth_factor_status.value()->metadata());
+  if (!auth_factor_proto) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthProtoFailureInUpdateAuthFactorMetadata),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  user_data_auth::AuthFactorWithStatus auth_factor_with_status;
+  *auth_factor_with_status.mutable_auth_factor() =
+      std::move(*auth_factor_proto);
+  auto supported_intents = auth_block_utility->GetSupportedIntentsFromState(
+      auth_factor_status.value()->auth_block_state());
+  for (const auto& auth_intent : supported_intents) {
+    auth_factor_with_status.add_available_for_intents(
+        AuthIntentToProto(auth_intent));
+  }
+  *reply.mutable_updated_auth_factor() = std::move(auth_factor_with_status);
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
 // Get the Account ID for an AccountIdentifier proto.
@@ -2835,6 +2885,35 @@ void UserDataAuth::UpdateAuthFactor(
   auth_session_status.value()->UpdateAuthFactor(
       request,
       base::BindOnce(&ReplyWithStatus<user_data_auth::UpdateAuthFactorReply>,
+                     std::move(on_done)));
+}
+
+void UserDataAuth::UpdateAuthFactorMetadata(
+    user_data_auth::UpdateAuthFactorMetadataRequest request,
+    base::OnceCallback<
+        void(const user_data_auth::UpdateAuthFactorMetadataReply&)> on_done) {
+  AssertOnMountThread();
+  user_data_auth::UpdateAuthFactorMetadataReply reply;
+  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+      GetAuthenticatedAuthSession(request.auth_session_id());
+  if (!auth_session_status.ok()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthNoAuthSessionInUpdateAuthFactorMetadata))
+            .Wrap(std::move(auth_session_status).err_status()));
+    return;
+  }
+
+  // Populate the request auth factor with accurate sysinfo.
+  PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
+
+  auth_session_status.value()->UpdateAuthFactorMetadata(
+      request,
+      base::BindOnce(&ReplyWithAuthFactorStatus<
+                         user_data_auth::UpdateAuthFactorMetadataReply>,
+                     auth_factor_driver_manager_, auth_block_utility_,
                      std::move(on_done)));
 }
 

@@ -1905,6 +1905,89 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
+void AuthSession::UpdateAuthFactorMetadata(
+    const user_data_auth::UpdateAuthFactorMetadataRequest request,
+    AuthFactorStatusCallback on_done) {
+  if (request.auth_factor_label().empty()) {
+    LOG(ERROR) << "AuthSession: UpdateAuthFactorMetadata request contains "
+                  "empty auth factor label.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoLabelInUpdateAuthFactorMetadata),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  std::optional<AuthFactorMap::ValueView> stored_auth_factor =
+      auth_factor_map_.Find(request.auth_factor_label());
+  if (!stored_auth_factor) {
+    LOG(ERROR) << "AuthSession: UpdateAuthFactorMetadata's to-be-updated auth "
+                  "factor not found, label: "
+               << request.auth_factor_label();
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionFactorNotFoundInUpdateAuthFactorMetadata),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  AuthFactorMetadata auth_factor_metadata;
+  AuthFactorType auth_factor_type;
+  std::string auth_factor_label;
+  if (!GetAuthFactorMetadata(request.auth_factor(), *features_,
+                             auth_factor_metadata, auth_factor_type,
+                             auth_factor_label)) {
+    LOG(ERROR)
+        << "AuthSession: Failed to parse updated auth factor parameters.";
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionUnknownFactorInUpdateAuthFactorMetadata),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  // Auth factor label has to be the same as before.
+  if (request.auth_factor_label() != auth_factor_label) {
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionDifferentLabelInUpdateAuthFactorMetadata),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  // Auth factor type has to be the same as before.
+  if (stored_auth_factor->auth_factor().type() != auth_factor_type) {
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionDifferentTypeInUpdateAuthFactorMetadata),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  // Build the new auth factor with existing auth block state.
+  auto auth_factor = std::make_unique<AuthFactor>(
+      auth_factor_type, auth_factor_label, auth_factor_metadata,
+      stored_auth_factor.value().auth_factor().auth_block_state());
+  // Update/persist the factor.
+  auto status =
+      auth_factor_manager_->SaveAuthFactor(obfuscated_username_, *auth_factor);
+  if (!status.ok()) {
+    LOG(ERROR) << "AuthSession: Failed to save updated auth factor: " << status;
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionFailedSaveInUpdateAuthFactorMetadata))
+            .Wrap(std::move(status)));
+    return;
+  }
+  std::move(on_done).Run(std::move(auth_factor));
+}
+
 void AuthSession::PrepareAuthFactor(
     const user_data_auth::PrepareAuthFactorRequest& request,
     StatusCallback on_done) {

@@ -381,6 +381,35 @@ void UserDataAuthAdaptor::DoUpdateAuthFactor(
           std::move(response)));
 }
 
+void UserDataAuthAdaptor::UpdateAuthFactorMetadata(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::UpdateAuthFactorMetadataReply>> response,
+    const user_data_auth::UpdateAuthFactorMetadataRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoUpdateAuthFactorMetadata,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::UpdateAuthFactorMetadataReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoUpdateAuthFactorMetadata(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::UpdateAuthFactorMetadataReply>> response,
+    const user_data_auth::UpdateAuthFactorMetadataRequest& in_request) {
+  service_->UpdateAuthFactorMetadata(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::UpdateAuthFactorMetadataReply>> local_response,
+             const user_data_auth::UpdateAuthFactorMetadataReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
 void UserDataAuthAdaptor::RemoveAuthFactor(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::RemoveAuthFactorReply>> response,
