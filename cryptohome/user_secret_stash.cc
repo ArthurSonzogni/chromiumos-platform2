@@ -735,7 +735,8 @@ CryptohomeStatusOr<brillo::SecureBlob> UserSecretStash::UnwrapMainKey(
 CryptohomeStatus UserSecretStash::AddWrappedMainKey(
     const brillo::SecureBlob& main_key,
     const std::string& wrapping_id,
-    const brillo::SecureBlob& wrapping_key) {
+    const brillo::SecureBlob& wrapping_key,
+    OverwriteExistingKeyBlock clobber) {
   // Verify preconditions.
   if (main_key.empty()) {
     NOTREACHED() << "Empty UserSecretStash main key is passed for wrapping.";
@@ -763,8 +764,9 @@ CryptohomeStatus UserSecretStash::AddWrappedMainKey(
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
-  // Protect from duplicate wrapping IDs.
-  if (wrapped_key_blocks_.count(wrapping_id)) {
+  // Protect from duplicate wrapping IDs if clobbering is not enabled.
+  if (wrapped_key_blocks_.count(wrapping_id) &&
+      !(clobber == OverwriteExistingKeyBlock::kEnabled)) {
     LOG(ERROR) << "A UserSecretStash main key with the given wrapping_id "
                   "already exists.";
     return MakeStatus<CryptohomeError>(

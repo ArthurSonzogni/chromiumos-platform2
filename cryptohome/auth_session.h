@@ -416,6 +416,7 @@ class AuthSession final {
       const KeyData& key_data,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
+      OverwriteExistingKeyBlock clobber_uss_key_block,
       CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
@@ -428,8 +429,10 @@ class AuthSession final {
                                         CryptohomeStatus error);
 
   // Add the new factor into the USS in-memory.
-  CryptohomeStatus AddAuthFactorToUssInMemory(AuthFactor& auth_factor,
-                                              const KeyBlobs& key_blobs);
+  CryptohomeStatus AddAuthFactorToUssInMemory(
+      AuthFactor& auth_factor,
+      const KeyBlobs& key_blobs,
+      OverwriteExistingKeyBlock override);
 
   // Implements the AddauthFactor by adding the credential backing store either
   // with AuthFactor & UsersecretStash or VaultKeyset.

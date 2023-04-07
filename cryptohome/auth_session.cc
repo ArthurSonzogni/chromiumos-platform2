@@ -1530,7 +1530,8 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
     return;
   }
 
-  status = AddAuthFactorToUssInMemory(*auth_factor, *key_blobs);
+  status = AddAuthFactorToUssInMemory(*auth_factor, *key_blobs,
+                                      OverwriteExistingKeyBlock::kDisabled);
   if (!status.ok()) {
     LOG(ERROR)
         << "AuthSession: Failed to add updated auth factor secret to USS.";
@@ -2150,8 +2151,8 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
   CryptohomeStatus status = PersistAuthFactorToUserSecretStashImpl(
       auth_factor_type, auth_factor_label, auth_factor_metadata, auth_input,
       key_data, std::move(auth_session_performance_timer),
-      std::move(callback_error), std::move(key_blobs),
-      std::move(auth_block_state));
+      OverwriteExistingKeyBlock::kDisabled, std::move(callback_error),
+      std::move(key_blobs), std::move(auth_block_state));
 
   std::move(on_done).Run(std::move(status));
 }
@@ -2173,8 +2174,8 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
   CryptohomeStatus status = PersistAuthFactorToUserSecretStashImpl(
       auth_factor_type, auth_factor_label, auth_factor_metadata, auth_input,
       key_data, std::move(auth_session_performance_timer),
-      std::move(callback_error), std::move(key_blobs),
-      std::move(auth_block_state));
+      OverwriteExistingKeyBlock::kEnabled, std::move(callback_error),
+      std::move(key_blobs), std::move(auth_block_state));
   if (!status.ok()) {
     LOG(ERROR) << "USS migration of VaultKeyset with label "
                << auth_factor_label << " is failed: " << status;
@@ -2228,6 +2229,7 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
     const AuthInput& auth_input,
     const KeyData& key_data,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
+    OverwriteExistingKeyBlock clobber_uss_key_block,
     CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_block_state) {
@@ -2256,8 +2258,8 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
       std::make_unique<AuthFactor>(auth_factor_type, auth_factor_label,
                                    auth_factor_metadata, *auth_block_state);
 
-  CryptohomeStatus status =
-      AddAuthFactorToUssInMemory(*auth_factor, *key_blobs);
+  CryptohomeStatus status = AddAuthFactorToUssInMemory(*auth_factor, *key_blobs,
+                                                       clobber_uss_key_block);
   if (!status.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocAuthSessionAddToUssFailedInPersistToUSS),
@@ -2386,7 +2388,9 @@ void AuthSession::CompleteVerifyOnlyAuthentication(StatusCallback on_done,
 }
 
 CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
-    AuthFactor& auth_factor, const KeyBlobs& key_blobs) {
+    AuthFactor& auth_factor,
+    const KeyBlobs& key_blobs,
+    OverwriteExistingKeyBlock clobber) {
   // Derive the credential secret for the USS from the key blobs.
   std::optional<brillo::SecureBlob> uss_credential_secret =
       key_blobs.DeriveUssCredentialSecret();
@@ -2403,10 +2407,15 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
   }
 
   // This wraps the USS Main Key with the credential secret. The wrapping_id
-  // field is defined equal to the factor's label.
+  // field is defined equal to the factor's label. If this is called during the
+  // migration of a VaultKeyset to UserSecretStash clobbering should be enabled.
+  // This is because there may be some edge cases where migration fails after
+  // persisting to UserSecretStash; next time migration fail again since label
+  // already exists.
   CryptohomeStatus status = user_secret_stash_->AddWrappedMainKey(
       user_secret_stash_main_key_.value(),
-      /*wrapping_id=*/auth_factor.label(), uss_credential_secret.value());
+      /*wrapping_id=*/auth_factor.label(), uss_credential_secret.value(),
+      clobber);
   if (!status.ok()) {
     LOG(ERROR) << "AuthSession: Failed to add created auth factor into user "
                   "secret stash.";

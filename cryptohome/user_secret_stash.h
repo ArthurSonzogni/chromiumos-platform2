@@ -20,6 +20,13 @@
 
 namespace cryptohome {
 
+// Structure defining the override state for key block with existing wrapping
+// ID.
+enum class OverwriteExistingKeyBlock {
+  kEnabled,
+  kDisabled,
+};
+
 // Returns whether the UserSecretStash experiment (using the USS instead of
 // vault keysets) is enabled.
 // The experiment is controlled by fetching a config file from gstatic. It
@@ -182,10 +189,11 @@ class UserSecretStash {
   // data is added into the USS as a wrapped key block with the given wrapping
   // ID. |main_key| must be non-empty, and |wrapping_key| - of
   // |kAesGcm256KeySize| length. Returns a status if the wrapping ID is already
-  // used or the wrapping fails.
+  // used and |clobber| is disabled, or the wrapping fails.
   CryptohomeStatus AddWrappedMainKey(const brillo::SecureBlob& main_key,
                                      const std::string& wrapping_id,
-                                     const brillo::SecureBlob& wrapping_key);
+                                     const brillo::SecureBlob& wrapping_key,
+                                     OverwriteExistingKeyBlock clobber);
   // Removes the wrapped key with the given ID. If it doesn't exist, returns
   // false.
   bool RemoveWrappedMainKey(const std::string& wrapping_id);

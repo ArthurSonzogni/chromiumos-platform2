@@ -116,7 +116,8 @@ bool UssMigrator::AddMigrationSecretToUss(
   // migration_secret key block to USS in memory.
   CryptohomeStatus status = user_secret_stash.AddWrappedMainKey(
       uss_main_key,
-      /*wrapping_id=*/kMigrationSecretLabel, *migration_secret_);
+      /*wrapping_id=*/kMigrationSecretLabel, *migration_secret_,
+      OverwriteExistingKeyBlock::kDisabled);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to add the migration secret to the UserSecretStash.";
     return false;

@@ -113,16 +113,26 @@ TEST_F(UserSecretStashTest, MainKeyWrapping) {
   EXPECT_FALSE(stash_->HasWrappedMainKey(kWrappingId2));
 
   // And the main key wrapped with two wrapping keys.
-  EXPECT_TRUE(
-      stash_->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1).ok());
+  EXPECT_TRUE(stash_
+                  ->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1,
+                                      OverwriteExistingKeyBlock::kDisabled)
+                  .ok());
   EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId1));
-  EXPECT_TRUE(
-      stash_->AddWrappedMainKey(kMainKey, kWrappingId2, kWrappingKey2).ok());
+  EXPECT_TRUE(stash_
+                  ->AddWrappedMainKey(kMainKey, kWrappingId2, kWrappingKey2,
+                                      OverwriteExistingKeyBlock::kDisabled)
+                  .ok());
   EXPECT_TRUE(stash_->HasWrappedMainKey(kWrappingId2));
-  // Duplicate wrapping IDs aren't allowed.
-  EXPECT_FALSE(
-      stash_->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1).ok());
-
+  // Duplicate wrapping IDs aren't allowed if override is not enabled.
+  EXPECT_FALSE(stash_
+                   ->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1,
+                                       OverwriteExistingKeyBlock::kDisabled)
+                   .ok());
+  // Same wrapping ID overrides the duplicate if override is enabled.
+  EXPECT_TRUE(stash_
+                  ->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1,
+                                      OverwriteExistingKeyBlock::kEnabled)
+                  .ok());
   // The main key can be unwrapped using any of the wrapping keys.
   CryptohomeStatusOr<brillo::SecureBlob> got_main_key1 =
       stash_->UnwrapMainKey(kWrappingId1, kWrappingKey1);
@@ -256,6 +266,47 @@ TEST_F(UserSecretStashTest, DecryptErrorWrongKey) {
 }
 
 // Test that wrapped key blocks are [de]serialized correctly.
+TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWithOverridenWrappedKey) {
+  const char kWrappingId1[] = "id1";
+  const brillo::SecureBlob kWrappingKey1(kAesGcm256KeySize, 0xB);
+  const brillo::SecureBlob kWrappingKey2(kAesGcm256KeySize, 0xC);
+
+  // Add wrapped key block. First write a key block and then override it with
+  // a different key block to test that clobbering works.
+  EXPECT_TRUE(stash_
+                  ->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1,
+                                      OverwriteExistingKeyBlock::kDisabled)
+                  .ok());
+  // Overwrite with the second key.
+  EXPECT_TRUE(stash_
+                  ->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey2,
+                                      OverwriteExistingKeyBlock::kEnabled)
+                  .ok());
+
+  // Do the serialization-deserialization roundtrip with the USS.
+  CryptohomeStatusOr<brillo::Blob> uss_container =
+      stash_->GetEncryptedContainer(kMainKey);
+  ASSERT_TRUE(uss_container.ok());
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash2 =
+      UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
+  ASSERT_TRUE(stash2.ok());
+
+  // The wrapped key block with second key is present in the loaded stash and
+  // can be decrypted.
+
+  EXPECT_TRUE(stash2.value()->HasWrappedMainKey(kWrappingId1));
+
+  CryptohomeStatusOr<brillo::SecureBlob> got_main_key1 =
+      stash2.value()->UnwrapMainKey(kWrappingId1, kWrappingKey1);
+  ASSERT_FALSE(got_main_key1.ok());
+
+  got_main_key1 = stash2.value()->UnwrapMainKey(kWrappingId1, kWrappingKey2);
+  ASSERT_TRUE(got_main_key1.ok());
+
+  EXPECT_EQ(got_main_key1.value(), kMainKey);
+}
+
+// Test that wrapped key blocks are [de]serialized correctly.
 TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWithWrappedKeys) {
   const char kWrappingId1[] = "id1";
   const char kWrappingId2[] = "id2";
@@ -263,11 +314,14 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWithWrappedKeys) {
   const brillo::SecureBlob kWrappingKey2(kAesGcm256KeySize, 0xC);
 
   // Add wrapped key blocks.
-  EXPECT_TRUE(
-      stash_->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1).ok());
-  EXPECT_TRUE(
-      stash_->AddWrappedMainKey(kMainKey, kWrappingId2, kWrappingKey2).ok());
-
+  EXPECT_TRUE(stash_
+                  ->AddWrappedMainKey(kMainKey, kWrappingId1, kWrappingKey1,
+                                      OverwriteExistingKeyBlock::kDisabled)
+                  .ok());
+  EXPECT_TRUE(stash_
+                  ->AddWrappedMainKey(kMainKey, kWrappingId2, kWrappingKey2,
+                                      OverwriteExistingKeyBlock::kDisabled)
+                  .ok());
   // Do the serialization-deserialization roundtrip with the USS.
   CryptohomeStatusOr<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
@@ -292,8 +346,10 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSViaWrappedKey) {
   // Add a wrapped key block.
   const char kWrappingId[] = "id";
   const brillo::SecureBlob kWrappingKey(kAesGcm256KeySize, 0xB);
-  EXPECT_TRUE(
-      stash_->AddWrappedMainKey(kMainKey, kWrappingId, kWrappingKey).ok());
+  EXPECT_TRUE(stash_
+                  ->AddWrappedMainKey(kMainKey, kWrappingId, kWrappingKey,
+                                      OverwriteExistingKeyBlock::kDisabled)
+                  .ok());
 
   // Encrypt the USS.
   CryptohomeStatusOr<brillo::Blob> uss_container =
@@ -846,8 +902,10 @@ class UserSecretStashInternalsWrappingTest
 
   void SetUp() override {
     ASSERT_NO_FATAL_FAILURE(UserSecretStashInternalsTest::SetUp());
-    EXPECT_TRUE(
-        stash_->AddWrappedMainKey(kMainKey, kWrappingId, kWrappingKey).ok());
+    EXPECT_TRUE(stash_
+                    ->AddWrappedMainKey(kMainKey, kWrappingId, kWrappingKey,
+                                        OverwriteExistingKeyBlock::kDisabled)
+                    .ok());
     ASSERT_NO_FATAL_FAILURE(UpdateBindingStrusts());
   }
 };

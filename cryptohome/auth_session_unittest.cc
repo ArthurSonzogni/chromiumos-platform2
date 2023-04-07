@@ -2439,7 +2439,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
   EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
-                                     wrapping_key.value())
+                                     wrapping_key.value(),
+                                     OverwriteExistingKeyBlock::kDisabled)
                   .ok());
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
@@ -2535,7 +2536,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
   EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
-                                     wrapping_key.value())
+                                     wrapping_key.value(),
+                                     OverwriteExistingKeyBlock::kDisabled)
                   .ok());
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
@@ -2632,7 +2634,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
   EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
-                                     wrapping_key.value())
+                                     wrapping_key.value(),
+                                     OverwriteExistingKeyBlock::kDisabled)
                   .ok());
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
@@ -2728,7 +2731,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
   EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakePinLabel,
-                                     wrapping_key.value())
+                                     wrapping_key.value(),
+                                     OverwriteExistingKeyBlock::kDisabled)
                   .ok());
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
@@ -2875,7 +2879,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
   EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
-                                     wrapping_key.value())
+                                     wrapping_key.value(),
+                                     OverwriteExistingKeyBlock::kDisabled)
                   .ok());
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
@@ -3010,7 +3015,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
       key_blobs.DeriveUssCredentialSecret();
   ASSERT_TRUE(wrapping_key.has_value());
   EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
-                                     wrapping_key.value())
+                                     wrapping_key.value(),
+                                     OverwriteExistingKeyBlock::kDisabled)
                   .ok());
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       uss->GetEncryptedContainer(uss_main_key.value());
