@@ -210,6 +210,8 @@ class TetheringManager : public Network::EventHandler {
   void CheckAndPostTetheringStopResult();
   // Handler function to be called when starting tethering session times out.
   void OnStartingTetheringTimeout();
+  // Handler function to be called when stopping tethering session times out.
+  void OnStoppingTetheringTimeout();
   // Prepare tethering resources to start a tethering session.
   void StartTetheringSession();
   // Stop and free tethering resources due to reason |reason|.
@@ -223,6 +225,8 @@ class TetheringManager : public Network::EventHandler {
   void StopInactiveTimer();
   // Get the number of active clients.
   size_t GetClientCount();
+  // Deregister upstream network listener and free the network.
+  void FreeUpstreamNetwork();
   // Convert stop reason enum to string.
   static const char* StopReasonToString(StopReason reason);
 
@@ -239,6 +243,9 @@ class TetheringManager : public Network::EventHandler {
   // Executes when the tethering start timer expires. Calls
   // OnStartingTetheringTimeout.
   base::CancelableOnceClosure start_timer_callback_;
+  // Executes when the tethering stop timer expires. Calls
+  // OnStopTetheringTimeout.
+  base::CancelableOnceClosure stop_timer_callback_;
   // Executes when the inactive timer expires. Calls StopTetheringSession.
   base::CancelableOnceClosure inactive_timer_callback_;
 

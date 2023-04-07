@@ -333,6 +333,7 @@ class TetheringManagerTest : public testing::Test {
     EXPECT_EQ(status.Get<std::string>(kTetheringStatusIdleReasonProperty),
               reason);
     EXPECT_TRUE(GetStartTimer(tethering_manager_).IsCancelled());
+    EXPECT_TRUE(GetStopTimer(tethering_manager_).IsCancelled());
   }
 
   KeyValueStore GetStatus(TetheringManager* tethering_manager) {
@@ -343,9 +344,18 @@ class TetheringManagerTest : public testing::Test {
     tethering_manager->OnStartingTetheringTimeout();
   }
 
+  void OnStoppingTetheringTimeout(TetheringManager* tethering_manager) {
+    tethering_manager->OnStoppingTetheringTimeout();
+  }
+
   const base::CancelableOnceClosure& GetStartTimer(
       TetheringManager* tethering_manager) {
     return tethering_manager->start_timer_callback_;
+  }
+
+  const base::CancelableOnceClosure& GetStopTimer(
+      TetheringManager* tethering_manager) {
+    return tethering_manager->stop_timer_callback_;
   }
 
   const base::CancelableOnceClosure& GetInactiveTimer(
@@ -928,8 +938,7 @@ TEST_F(TetheringManagerTest, UpstreamNetworkValidationFailed) {
                         LocalDevice::DeviceEvent::kServiceUp,
                         hotspot_device_.get());
 
-  // Upstream network fetched. Network not ready upon fetch and will be ready
-  // later.
+  // Upstream network fetched. Network not ready.
   EXPECT_CALL(*network_, HasInternetConnectivity())
       .WillRepeatedly(Return(false));
   OnUpstreamNetworkAcquired(tethering_manager_,
@@ -1060,6 +1069,20 @@ TEST_F(TetheringManagerTest, TetheringStartTimer) {
   // Tethering start timeout
   OnStartingTetheringTimeout(tethering_manager_);
   CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
+}
+
+TEST_F(TetheringManagerTest, TetheringStopTimer) {
+  TetheringPrerequisite(tethering_manager_);
+  SetEnabledVerifyResult(tethering_manager_, true,
+                         TetheringManager::SetEnabledResult::kSuccess);
+  // Stop tethering.
+  EXPECT_TRUE(GetStopTimer(tethering_manager_).IsCancelled());
+  SetEnabled(tethering_manager_, false);
+  EXPECT_FALSE(GetStopTimer(tethering_manager_).IsCancelled());
+  // Tethering stop timeout
+  OnStoppingTetheringTimeout(tethering_manager_);
+  VerifyResult(TetheringManager::SetEnabledResult::kUpstreamFailure);
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonClientStop);
 }
 
 }  // namespace shill

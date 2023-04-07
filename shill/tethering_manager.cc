@@ -48,6 +48,9 @@ static constexpr size_t kMaxWiFiPassphraseLength = 63;
 // Stop tethering and return error if tethering cannot be fully started within
 // |kStartTimeout| time.
 static constexpr base::TimeDelta kStartTimeout = base::Seconds(10);
+// Return error if tethering cannot be fully stopped within |kStopTimeout| time.
+static constexpr base::TimeDelta kStopTimeout = base::Seconds(5);
+
 // Auto disable tethering if no clients for |kAutoDisableDelay|.
 static constexpr base::TimeDelta kAutoDisableDelay = base::Minutes(5);
 
@@ -432,6 +435,7 @@ void TetheringManager::CheckAndPostTetheringStopResult() {
   // TODO(b/235762439): Routine to check other tethering modules.
 
   SetState(TetheringState::kTetheringIdle);
+  stop_timer_callback_.Cancel();
   if (stop_reason_ == StopReason::kClientStop) {
     PostSetEnabledResult(SetEnabledResult::kSuccess);
   }
@@ -451,6 +455,31 @@ void TetheringManager::OnStartingTetheringTimeout() {
   }
   PostSetEnabledResult(result);
   StopTetheringSession(StopReason::kError);
+}
+
+void TetheringManager::FreeUpstreamNetwork() {
+  DCHECK(upstream_network_);
+  upstream_network_->UnregisterEventHandler(this);
+  upstream_network_ = nullptr;
+}
+
+void TetheringManager::OnStoppingTetheringTimeout() {
+  LOG(ERROR) << __func__ << ": cannot stop tethering session in "
+             << kStopTimeout;
+
+  SetEnabledResult result = SetEnabledResult::kFailure;
+  if (upstream_technology_ == Technology::kCellular &&
+      upstream_network_ != nullptr) {
+    FreeUpstreamNetwork();
+    result = SetEnabledResult::kUpstreamFailure;
+  }
+
+  SetState(TetheringState::kTetheringIdle);
+  stop_timer_callback_.Cancel();
+
+  if (stop_reason_ == StopReason::kClientStop) {
+    PostSetEnabledResult(result);
+  }
 }
 
 void TetheringManager::StartTetheringSession() {
@@ -524,6 +553,10 @@ void TetheringManager::StopTetheringSession(StopReason reason) {
   LOG(INFO) << __func__ << ": " << StopReasonToString(reason);
   SetState(TetheringState::kTetheringStopping);
   stop_reason_ = reason;
+  stop_timer_callback_.Reset(base::BindOnce(
+      &TetheringManager::OnStoppingTetheringTimeout, base::Unretained(this)));
+  manager_->dispatcher()->PostDelayedTask(
+      FROM_HERE, stop_timer_callback_.callback(), kStopTimeout);
   start_timer_callback_.Cancel();
   StopInactiveTimer();
 
@@ -651,8 +684,7 @@ void TetheringManager::OnUpstreamNetworkReleased(bool is_success) {
     LOG(ERROR) << __func__ << ": failed to release upstream network.";
   }
 
-  upstream_network_->UnregisterEventHandler(this);
-  upstream_network_ = nullptr;
+  FreeUpstreamNetwork();
   CheckAndPostTetheringStopResult();
 }
 
