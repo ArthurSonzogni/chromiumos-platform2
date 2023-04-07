@@ -1789,12 +1789,6 @@ bool Camera3PortraitModeTest::GetPortraitModeVendorTags(
           segmentation_result_vendor_tag)) {
     return false;
   }
-  auto available_request_keys =
-      cam_device_.GetStaticInfo()->GetAvailableRequestKeys();
-  if (available_request_keys.find(*portrait_mode_vendor_tag) ==
-      available_request_keys.end()) {
-    return false;
-  }
   return true;
 }
 
@@ -1912,10 +1906,8 @@ static bool FillImageWithBlackColor(buffer_handle_t buffer) {
 void Camera3PortraitModeTest::TakePortraitModePictureTest(bool has_face) {
   uint32_t portrait_mode_vendor_tag;
   uint32_t segmentation_result_vendor_tag;
-  if (!GetPortraitModeVendorTags(&portrait_mode_vendor_tag,
-                                 &segmentation_result_vendor_tag)) {
-    GTEST_SKIP();
-  }
+  ASSERT_TRUE(GetPortraitModeVendorTags(&portrait_mode_vendor_tag,
+                                        &segmentation_result_vendor_tag));
   auto out_resolutions =
       cam_device_.GetStaticInfo()->GetSortedOutputResolutions(
           HAL_PIXEL_FORMAT_BLOB);
@@ -2014,7 +2006,7 @@ void Camera3PortraitModeTest::TakePortraitModePictureTest(bool has_face) {
   if (has_face) {
     ASSERT_EQ(0, entry.data.u8[0]) << "Portrait mode failed";
   } else {
-    ASSERT_EQ(1, entry.data.u8[0])
+    ASSERT_EQ(3, entry.data.u8[0])
         << "Portrait mode should have failed with no face in the picture";
   }
 }
