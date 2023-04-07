@@ -16,6 +16,7 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "lorgnette/dbus_service_adaptor.h"
 #include "lorgnette/sane_client_impl.h"
 
 using std::string;
@@ -45,15 +46,17 @@ int Daemon::OnInit() {
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
-  manager_.reset(new Manager(base::BindRepeating(&Daemon::PostponeShutdown,
-                                                 weak_factory_.GetWeakPtr()),
-                             SaneClientImpl::Create()));
-  manager_->RegisterAsync(object_manager_.get(), sequencer);
+  auto manager =
+      std::make_unique<Manager>(base::BindRepeating(&Daemon::PostponeShutdown,
+                                                    weak_factory_.GetWeakPtr()),
+                                SaneClientImpl::Create());
+  dbus_service_.reset(new DBusServiceAdaptor(std::move(manager)));
+  dbus_service_->RegisterAsync(object_manager_.get(), sequencer);
 }
 
 void Daemon::OnShutdown(int* return_code) {
   LOG(INFO) << "Shutting down";
-  manager_.reset();
+  dbus_service_.reset();
   brillo::DBusServiceDaemon::OnShutdown(return_code);
 }
 

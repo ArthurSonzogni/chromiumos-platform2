@@ -180,37 +180,16 @@ const char Manager::kMetricScanFailedFailureReason[] =
 Manager::Manager(
     base::RepeatingCallback<void(base::TimeDelta)> activity_callback,
     std::unique_ptr<SaneClient> sane_client)
-    : org::chromium::lorgnette::ManagerAdaptor(this),
-      activity_callback_(activity_callback),
-      metrics_library_(new MetricsLibrary),
+    : activity_callback_(activity_callback),
+      metrics_library_(new MetricsLibrary()),
       sane_client_(std::move(sane_client)),
-      progress_signal_interval_(kDefaultProgressSignalInterval) {
-  // Set signal sender to be the real D-Bus call by default.
-  status_signal_sender_ = base::BindRepeating(
-      [](base::WeakPtr<Manager> manager,
-         const ScanStatusChangedSignal& signal) {
-        if (manager) {
-          manager->SendScanStatusChangedSignal(signal);
-        }
-      },
-      weak_factory_.GetWeakPtr());
-}
+      progress_signal_interval_(kDefaultProgressSignalInterval) {}
 
 Manager::~Manager() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 }
 
-void Manager::RegisterAsync(
-    brillo::dbus_utils::ExportedObjectManager* object_manager,
-    brillo::dbus_utils::AsyncEventSequencer* sequencer) {
-  CHECK(!dbus_object_) << "Already registered";
-  scoped_refptr<dbus::Bus> bus =
-      object_manager ? object_manager->GetBus() : nullptr;
-  dbus_object_.reset(new brillo::dbus_utils::DBusObject(
-      object_manager, bus, dbus::ObjectPath(kManagerServicePath)));
-  RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(
-      sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+void Manager::ConnectDBusObjects(const scoped_refptr<dbus::Bus>& bus) {
   firewall_manager_.reset(new FirewallManager(""));
   firewall_manager_->Init(
       std::make_unique<org::chromium::PermissionBrokerProxy>(bus));
@@ -592,8 +571,7 @@ void Manager::SetProgressSignalInterval(base::TimeDelta interval) {
   progress_signal_interval_ = interval;
 }
 
-void Manager::SetScanStatusChangedSignalSenderForTest(
-    StatusSignalSender sender) {
+void Manager::SetScanStatusChangedSignalSender(StatusSignalSender sender) {
   status_signal_sender_ = sender;
 }
 

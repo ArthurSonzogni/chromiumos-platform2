@@ -101,7 +101,7 @@ class ManagerTest : public testing::Test {
     ASSERT_TRUE(scan.IsValid());
     scan_fd_ = base::ScopedFD(scan.TakePlatformFile());
 
-    manager_.SetScanStatusChangedSignalSenderForTest(base::BindRepeating(
+    manager_.SetScanStatusChangedSignalSender(base::BindRepeating(
         [](std::vector<ScanStatusChangedSignal>* signals,
            const ScanStatusChangedSignal& signal) {
           signals->push_back(signal);

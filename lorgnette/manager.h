@@ -78,8 +78,7 @@ using StatusSignalSender =
 
 class FirewallManager;
 
-class Manager : public org::chromium::lorgnette::ManagerAdaptor,
-                public org::chromium::lorgnette::ManagerInterface {
+class Manager {
  public:
   Manager(base::RepeatingCallback<void(base::TimeDelta)> activity_callback,
           std::unique_ptr<SaneClient> sane_client);
@@ -87,28 +86,27 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
   Manager& operator=(const Manager&) = delete;
   virtual ~Manager();
 
-  void RegisterAsync(brillo::dbus_utils::ExportedObjectManager* object_manager,
-                     brillo::dbus_utils::AsyncEventSequencer* sequencer);
+  void ConnectDBusObjects(const scoped_refptr<dbus::Bus>& bus);
 
   // Implementation of MethodInterface.
-  bool ListScanners(brillo::ErrorPtr* error,
-                    ListScannersResponse* scanner_list_out) override;
-  bool GetScannerCapabilities(brillo::ErrorPtr* error,
-                              const std::string& device_name,
-                              ScannerCapabilities* capabilities) override;
-  StartScanResponse StartScan(const StartScanRequest& request) override;
-  void GetNextImage(
+  virtual bool ListScanners(brillo::ErrorPtr* error,
+                            ListScannersResponse* scanner_list_out);
+  virtual bool GetScannerCapabilities(brillo::ErrorPtr* error,
+                                      const std::string& device_name,
+                                      ScannerCapabilities* capabilities);
+  virtual StartScanResponse StartScan(const StartScanRequest& request);
+  virtual void GetNextImage(
       std::unique_ptr<DBusMethodResponse<GetNextImageResponse>> response,
       const GetNextImageRequest& get_next_image_request,
-      const base::ScopedFD& out_fd) override;
-  CancelScanResponse CancelScan(
-      const CancelScanRequest& cancel_scan_request) override;
+      const base::ScopedFD& out_fd);
+  virtual CancelScanResponse CancelScan(
+      const CancelScanRequest& cancel_scan_request);
 
   void SetProgressSignalInterval(base::TimeDelta interval);
 
   // Register the callback to call when we send a ScanStatusChanged signal for
   // tests.
-  void SetScanStatusChangedSignalSenderForTest(StatusSignalSender sender);
+  void SetScanStatusChangedSignalSender(StatusSignalSender sender);
 
   void RemoveDuplicateScanners(std::vector<ScannerInfo>* scanners,
                                base::flat_set<std::string> seen_vidpid,
@@ -172,8 +170,6 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
 
   SEQUENCE_CHECKER(sequence_checker_);
 
-  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_
-      GUARDED_BY_CONTEXT(sequence_checker_);
   base::RepeatingCallback<void(base::TimeDelta)> activity_callback_
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<MetricsLibraryInterface> metrics_library_

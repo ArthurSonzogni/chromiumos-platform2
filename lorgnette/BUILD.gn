@@ -62,6 +62,7 @@ pkg_config("liblorgnette_config") {
 static_library("liblorgnette") {
   sources = [
     "daemon.cc",
+    "dbus_service_adaptor.cc",
     "debug_log.cc",
     "enums.cc",
     "epson_probe.cc",
@@ -119,6 +120,7 @@ if (use.test) {
 
   executable("lorgnette_unittest") {
     sources = [
+      "dbus_service_adaptor_test.cc",
       "debug_log_test.cc",
       "firewall_manager_test.cc",
       "image_readers/jpeg_reader_test.cc",

@@ -12,6 +12,7 @@
 #include <base/time/time.h>
 #include <brillo/daemons/dbus_daemon.h>
 
+#include "lorgnette/dbus_service_adaptor.h"
 #include "lorgnette/manager.h"
 
 namespace lorgnette {
@@ -46,7 +47,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   void PostponeShutdown(base::TimeDelta delay);
   void OnTimeout();
 
-  std::unique_ptr<Manager> manager_;
+  std::unique_ptr<DBusServiceAdaptor> dbus_service_;
   base::OnceClosure startup_callback_;
   base::CancelableOnceClosure shutdown_callback_;
 
