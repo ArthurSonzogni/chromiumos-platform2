@@ -5,6 +5,7 @@
 #include "shill/wifi/passpoint_credentials.h"
 
 #include <limits>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -315,9 +316,17 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
     return nullptr;
   }
 
-  // The only valid inner EAP method for TTLS is MSCHAPv2
+  // Passpoint supported Non-EAP inner methods. Refer to
+  // Credential/UsernamePassword/EAPMethod/InnerEAPType in Hotspot 2.0 Release 2
+  // Technical Specification Section 9.1 for more info.
+  static const std::set<std::string> supported_ttls_inner_methods = {
+      kEapPhase2AuthTTLSMSCHAPV2, kEapPhase2AuthTTLSMSCHAP,
+      kEapPhase2AuthTTLSPAP};
+
   std::string inner_method = creds->eap().inner_method();
-  if (method == kEapMethodTTLS && inner_method != kEapPhase2AuthTTLSMSCHAPV2) {
+  if (method == kEapMethodTTLS &&
+      supported_ttls_inner_methods.find(inner_method) ==
+          supported_ttls_inner_methods.end()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "TTLS inner EAP method '" + inner_method +
                               "' is not supported by Passpoint");
