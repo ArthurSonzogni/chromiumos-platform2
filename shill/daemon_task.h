@@ -37,7 +37,6 @@ class DaemonTask {
  public:
   // Run-time settings retrieved from command line.
   struct Settings {
-    std::string default_technology_order;
     std::vector<std::string> devices_blocked;
     std::vector<std::string> devices_allowed;
     bool ignore_unknown_ethernet = false;

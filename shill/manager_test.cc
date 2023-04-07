@@ -2068,6 +2068,12 @@ TEST_F(ManagerTest, FindMatchingService) {
   }
 }
 
+TEST_F(ManagerTest, DefaultTechnologyOrder) {
+  EXPECT_THAT(GetTechnologyOrder(),
+              ElementsAre(Technology::kVPN, Technology::kEthernet,
+                          Technology::kWiFi, Technology::kCellular));
+}
+
 TEST_F(ManagerTest, TechnologyOrder) {
   // If the Manager is not running, setting the technology order should not
   // lauch a service sorting task.

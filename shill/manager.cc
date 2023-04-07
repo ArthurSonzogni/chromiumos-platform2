@@ -10,6 +10,7 @@
 #include <time.h>
 
 #include <algorithm>
+#include <initializer_list>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -142,6 +143,10 @@ constexpr const struct in_addr kDNSProxyBaseAddr = {
 constexpr const struct in_addr kDNSProxyNetmask = {
     .s_addr = IPv4Addr(255, 255, 254, 0)};
 
+constexpr std::initializer_list<Technology> kDefaultTechnologyOrder = {
+    Technology::kVPN, Technology::kEthernet, Technology::kWiFi,
+    Technology::kCellular};
+
 }  // namespace
 
 Manager::Manager(ControlInterface* control_interface,
@@ -178,6 +183,7 @@ Manager::Manager(ControlInterface* control_interface,
 #if !defined(DISABLE_FLOSS)
       bluetooth_manager_(new BluetoothManager(control_interface)),
 #endif  // DISABLE_FLOSS
+      technology_order_(kDefaultTechnologyOrder),
       pending_traffic_counter_request_(false),
       termination_actions_(dispatcher),
       is_wake_on_lan_enabled_(true),

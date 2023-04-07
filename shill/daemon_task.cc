@@ -49,9 +49,6 @@ DaemonTask::~DaemonTask() = default;
 void DaemonTask::ApplySettings() {
   manager_->SetBlockedDevices(settings_.devices_blocked);
   manager_->SetAllowedDevices(settings_.devices_allowed);
-  Error error;
-  manager_->SetTechnologyOrder(settings_.default_technology_order, &error);
-  CHECK(error.IsSuccess());  // Command line should have been validated.
   manager_->SetIgnoreUnknownEthernet(settings_.ignore_unknown_ethernet);
 }
 

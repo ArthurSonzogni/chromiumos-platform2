@@ -38,8 +38,6 @@ const char kDevicesBlocked[] = "devices-blocked";
 const char kDevicesAllowed[] = "devices-allowed";
 // Ignore Ethernet-like devices that don't have any driver information.
 const char kIgnoreUnknownEthernet[] = "ignore-unknown-ethernet";
-// Default priority order of the technologies.
-const char kTechnologyOrder[] = "default-technology-order";
 // Flag that causes shill to show the help message and exit.
 const char kHelp[] = "help";
 
@@ -69,7 +67,6 @@ const char kHelpMessage[] =
 
 const char kLoggerCommand[] = "/usr/bin/logger";
 const char kLoggerUser[] = "syslog";
-const char kDefaultTechnologyOrder[] = "vpn,ethernet,wifi,cellular";
 
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
@@ -124,22 +121,6 @@ int main(int argc, char** argv) {
   }
 
   shill::DaemonTask::Settings settings;
-  if (cl->HasSwitch(switches::kTechnologyOrder)) {
-    shill::Error error;
-    std::string order_flag =
-        cl->GetSwitchValueASCII(switches::kTechnologyOrder);
-    std::vector<shill::Technology> test_order_vector;
-    if (shill::GetTechnologyVectorFromString(order_flag, &test_order_vector,
-                                             &error)) {
-      settings.default_technology_order = order_flag;
-    } else {
-      LOG(ERROR) << "Invalid default technology order: [" << order_flag
-                 << "] Error: " << error.message();
-    }
-  }
-  if (settings.default_technology_order.empty()) {
-    settings.default_technology_order = kDefaultTechnologyOrder;
-  }
 
   if (cl->HasSwitch(switches::kDevicesBlocked)) {
     settings.devices_blocked =

@@ -216,17 +216,14 @@ TEST_F(DaemonTaskTest, ApplySettings) {
   DaemonTask::Settings settings;
   std::vector<std::string> kEmptyStringList;
   EXPECT_CALL(*manager_, SetBlockedDevices(kEmptyStringList));
-  EXPECT_CALL(*manager_, SetTechnologyOrder("", _));
   EXPECT_CALL(*manager_, SetIgnoreUnknownEthernet(false));
   ApplySettings(settings);
   Mock::VerifyAndClearExpectations(manager_);
 
   std::vector<std::string> kBlockedDevices = {"eth0", "eth1"};
   settings.devices_blocked = kBlockedDevices;
-  settings.default_technology_order = "wifi,ethernet";
   settings.ignore_unknown_ethernet = false;
   EXPECT_CALL(*manager_, SetBlockedDevices(kBlockedDevices));
-  EXPECT_CALL(*manager_, SetTechnologyOrder("wifi,ethernet", _));
   EXPECT_CALL(*manager_, SetIgnoreUnknownEthernet(false));
   ApplySettings(settings);
   Mock::VerifyAndClearExpectations(manager_);
