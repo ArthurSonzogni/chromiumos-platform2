@@ -4649,6 +4649,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
       });
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
       .WillOnce([&](auto...) { return make_vk(); });
+  EXPECT_CALL(keyset_management_, RemoveKeysetFile(_))
+      .WillOnce(Return(OkStatus<CryptohomeError>()));
   // These calls will happen during the migration.
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,

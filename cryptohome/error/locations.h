@@ -1123,7 +1123,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionPersistUSSFailedInUpdateViaUSS = 648,
   /* ./auth_session.cc */
   kLocAuthSessionAddToUssFailedInPersistToUSS = 649,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionAddBackupVKFailedInPersistToUSS = 650,
   /* ./auth_session.cc */
   kLocAuthSessionUnauthedInRemoveAuthFactor = 651,
@@ -1357,7 +1357,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocLECredManPinWeaverFailedInGetDelaySchedule = 2105,
   /* ./auth_session.cc */
   kLocAuthSessionGetStoredFactorFailedInRecreate = 2106,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionGetKeyDataFailedInRecreate = 2107,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
@@ -1699,7 +1699,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCryptohomeRecoveryAuthBlockNoRecoveryIdInCreate = 3506,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocCryptohomeRecoveryAuthBlockFailedRecoveryIdReadInCreate = 3507,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionUpdateKeysetFailedInUpdateWithUSS = 3508,
   /* ./userdataauth.cc */
   kLocUserDataAuthPrepareAuthFactorAuthSessionNotFound = 3509,

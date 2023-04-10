@@ -624,10 +624,6 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
   // Check the old password isn't accepted, but the new one is.
   EXPECT_THAT(try_authenticate(kPassword), NotOk());
   EXPECT_THAT(try_authenticate(kNewPassword), IsOk());
-  // Check the same holds after switching back to the initial storage type.
-  SetToInitialStorageType();
-  EXPECT_THAT(try_authenticate(kPassword), NotOk());
-  EXPECT_THAT(try_authenticate(kNewPassword), IsOk());
 
   // Expect Pin can be authenticated still.
   std::unique_ptr<AuthSession> auth_session = create_auth_session();

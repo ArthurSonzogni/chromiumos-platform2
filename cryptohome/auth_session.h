@@ -412,7 +412,6 @@ class AuthSession final {
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const AuthInput& auth_input,
-      const KeyData& key_data,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       StatusCallback on_done,
@@ -428,7 +427,6 @@ class AuthSession final {
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const AuthInput& auth_input,
-      const KeyData& key_data,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       StatusCallback on_done,
@@ -444,13 +442,21 @@ class AuthSession final {
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const AuthInput& auth_input,
-      const KeyData& key_data,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       OverwriteExistingKeyBlock clobber_uss_key_block,
       CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
+
+  // Migrates the reset secret for a PIN factor from VaultKeysets to
+  // UserSecretStash by calculating it from |reset_seed| of the authenticated
+  // VaultKeyset and the |reset_salt| of the Pinweaver VaultKeysets and adding
+  // to USS in memory.
+  bool MigrateResetSecretToUss();
+
+  // Adds reset secret to USS for not-migrated keysets and persist to disk.
+  bool PersistResetSecretToUss();
 
   // Process the completion of a verify-only authentication attempt. The
   // |on_done| callback will be called after the results of the verification are
@@ -617,7 +623,6 @@ class AuthSession final {
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
-      const KeyData& key_data,
       const AuthInput& auth_input,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,

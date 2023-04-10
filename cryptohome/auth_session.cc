@@ -22,6 +22,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
+#include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
@@ -232,7 +233,33 @@ CryptohomeStatus CleanUpBackupKeyset(
                user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
         .Wrap(std::move(status));
   }
+  LOG(INFO) << "Removed backup keyset with label: " << label;
   return OkStatus<CryptohomeError>();
+}
+
+// Calculates and returns the reset secret for the PIN VaultKeyset with |label|
+// if it exists and has |reset_salt|, returns nullopt otherwise.
+std::optional<brillo::SecureBlob> GetResetSecretFromVaultKeyset(
+    const brillo::SecureBlob& reset_seed,
+    const ObfuscatedUsername& obfuscated_username,
+    const std::string& label,
+    const KeysetManagement& keyset_management) {
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management.GetVaultKeyset(obfuscated_username, label);
+  if (vk == nullptr) {
+    LOG(WARNING) << "Pin VK for the reset could not be retrieved for " << label
+                 << ".";
+    return std::nullopt;
+  }
+  brillo::SecureBlob reset_salt = vk->GetResetSalt();
+  if (reset_salt.empty()) {
+    LOG(WARNING) << "Reset salt is empty in VK  with label: " << label;
+    return std::nullopt;
+  }
+  std::optional<brillo::SecureBlob> reset_secret =
+      HmacSha256(reset_salt, reset_seed);
+  LOG(INFO) << "Reset secret for " << label << " is captured from VaultKeyset";
+  return reset_secret;
 }
 
 // Removes the backup VaultKeysets.
@@ -914,6 +941,18 @@ void AuthSession::OnMigrationUssCreated(
   auto migration_performance_timer =
       std::make_unique<AuthSessionPerformanceTimer>(kUSSMigrationTimer);
 
+  // During the USS migration of a password credential reset_secret is driven
+  // and put into the newly created USS file. This reset_secret is used for
+  // unmigrated PIN credential if needed.
+  //
+  // During the USS migration of a PIN credential reset_secret is added together
+  // with the created KeyBlobs, which already includes the reset secret of the
+  // migrated PIN. Hence don't abort the password migration if the
+  // |reset_secret| can't be added during the password migration.
+  if (MigrateResetSecretToUss()) {
+    // TODO(b:279508471) : Add metrics to see this code path is run.
+  }
+
   CryptohomeStatusOr<AuthInput> migration_auth_input_status =
       CreateAuthInputForMigration(auth_input, auth_factor_type);
   if (!migration_auth_input_status.ok()) {
@@ -927,13 +966,11 @@ void AuthSession::OnMigrationUssCreated(
   }
 
   // If |vault_keyset_| has an empty label legacy label from GetLabel() is
-  // passed for the USS wrapped block, wheres the backup VaultKeyset is created
-  // with the same labelless |key_data_|. Since the old VaultKeyset is
-  // clobbered, the file index and the label will be the same.
+  // passed for the USS wrapped block.
   auto create_callback = base::BindOnce(
       &AuthSession::PersistAuthFactorToUserSecretStashOnMigration,
       weak_factory_.GetWeakPtr(), auth_factor_type, vault_keyset_->GetLabel(),
-      auth_factor_metadata, migration_auth_input_status.value(), key_data_,
+      auth_factor_metadata, migration_auth_input_status.value(),
       std::move(migration_performance_timer), std::move(on_done),
       std::move(pre_migration_status));
 
@@ -945,6 +982,78 @@ void AuthSession::OnMigrationUssCreated(
 const FileSystemKeyset& AuthSession::file_system_keyset() const {
   DCHECK(file_system_keyset_.has_value());
   return file_system_keyset_.value();
+}
+
+bool AuthSession::PersistResetSecretToUss() {
+  DCHECK(user_secret_stash_main_key_.has_value());
+
+  // Update UserSecretStash in memory with reset_secret from not-migrated
+  // keyset. If reset_secret isn't updated, no need to persist.
+  if (!MigrateResetSecretToUss()) {
+    return false;
+  }
+
+  // Encrypt the updated USS.
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss_container =
+      user_secret_stash_->GetEncryptedContainer(
+          user_secret_stash_main_key_.value());
+  if (!encrypted_uss_container.ok()) {
+    LOG(ERROR) << "Failed to encrypt user secret stash after updating "
+                  "reset_secret.";
+    return false;
+  }
+
+  // Persist the USS.
+  if (!user_secret_stash_storage_
+           ->Persist(encrypted_uss_container.value(), obfuscated_username_)
+           .ok()) {
+    LOG(ERROR) << "Failed to persist user secret stash after "
+                  "updating reset_secret.";
+    return false;
+  }
+
+  return true;
+}
+
+bool AuthSession::MigrateResetSecretToUss() {
+  DCHECK(user_secret_stash_);
+  if (!vault_keyset_->HasWrappedResetSeed()) {
+    // Authenticated VaultKeyset doesn't include a reset seed if it is not a
+    // password VaultKeyset";
+    return false;
+  }
+
+  bool updated = false;
+  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
+    // Look for only pinweaver and VaultKeyset backed AuthFactors.
+    if (stored_auth_factor.storage_type() !=
+        AuthFactorStorageType::kVaultKeyset) {
+      continue;
+    }
+    const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
+    if (auth_factor.type() != AuthFactorType::kPin) {
+      continue;
+    }
+
+    std::optional<brillo::SecureBlob> reset_secret =
+        GetResetSecretFromVaultKeyset(vault_keyset_->GetResetSeed(),
+                                      obfuscated_username_, auth_factor.label(),
+                                      *keyset_management_);
+    if (!reset_secret.has_value()) {
+      LOG(WARNING)
+          << "Failed to obtain reset secret to migrate to USS for the factor: "
+          << auth_factor.label();
+      continue;
+    }
+
+    if (!(user_secret_stash_->GetResetSecretForLabel(auth_factor.label())
+              .has_value()) &&
+        user_secret_stash_->SetResetSecretForLabel(auth_factor.label(),
+                                                   reset_secret.value())) {
+      updated = true;
+    }
+  }
+  return updated;
 }
 
 void AuthSession::AuthenticateAuthFactor(
@@ -1575,11 +1684,11 @@ AuthBlock::CreateCallback AuthSession::GetUpdateAuthFactorCallback(
     StatusCallback on_done) {
   switch (auth_factor_storage_type) {
     case AuthFactorStorageType::kUserSecretStash:
-      return base::BindOnce(
-          &AuthSession::UpdateAuthFactorViaUserSecretStash,
-          weak_factory_.GetWeakPtr(), auth_factor_type, auth_factor_label,
-          auth_factor_metadata, key_data, auth_input,
-          std::move(auth_session_performance_timer), std::move(on_done));
+      return base::BindOnce(&AuthSession::UpdateAuthFactorViaUserSecretStash,
+                            weak_factory_.GetWeakPtr(), auth_factor_type,
+                            auth_factor_label, auth_factor_metadata, auth_input,
+                            std::move(auth_session_performance_timer),
+                            std::move(on_done));
 
     case AuthFactorStorageType::kVaultKeyset:
       return base::BindOnce(
@@ -1593,7 +1702,6 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
     AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
     const AuthFactorMetadata& auth_factor_metadata,
-    const KeyData& key_data,
     const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
@@ -1667,24 +1775,6 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
             user_data_auth::CRYPTOHOME_UPDATE_CREDENTIALS_FAILED)
             .Wrap(std::move(encrypted_uss_container).err_status()));
     return;
-  }
-
-  // Update and persist the backup VaultKeyset if any factor uses vault keyset
-  // as its primary backing store.
-  if (auth_factor_map_.HasFactorWithStorage(
-          AuthFactorStorageType::kVaultKeyset)) {
-    DCHECK(IsFactorTypeSupportedByVk(auth_factor_type));
-    CryptohomeStatus status = keyset_management_->UpdateKeysetWithKeyBlobs(
-        VaultKeysetIntent{.backup = true}, obfuscated_username_, key_data,
-        *vault_keyset_.get(), std::move(*key_blobs.get()),
-        std::move(auth_block_state));
-    if (!status.ok()) {
-      std::move(on_done).Run(
-          MakeStatus<CryptohomeError>(
-              CRYPTOHOME_ERR_LOC(
-                  kLocAuthSessionUpdateKeysetFailedInUpdateWithUSS))
-              .Wrap(std::move(status)));
-    }
   }
 
   // Update/persist the factor.
@@ -2275,7 +2365,6 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
     const std::string& auth_factor_label,
     const AuthFactorMetadata& auth_factor_metadata,
     const AuthInput& auth_input,
-    const KeyData& key_data,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptohomeStatus callback_error,
@@ -2283,7 +2372,7 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
     std::unique_ptr<AuthBlockState> auth_block_state) {
   CryptohomeStatus status = PersistAuthFactorToUserSecretStashImpl(
       auth_factor_type, auth_factor_label, auth_factor_metadata, auth_input,
-      key_data, std::move(auth_session_performance_timer),
+      std::move(auth_session_performance_timer),
       OverwriteExistingKeyBlock::kDisabled, std::move(callback_error),
       std::move(key_blobs), std::move(auth_block_state));
 
@@ -2295,7 +2384,6 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
     const std::string& auth_factor_label,
     const AuthFactorMetadata& auth_factor_metadata,
     const AuthInput& auth_input,
-    const KeyData& key_data,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptohomeStatus pre_migration_status,
@@ -2306,7 +2394,7 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
   // backup VaultKeyset logic.
   CryptohomeStatus status = PersistAuthFactorToUserSecretStashImpl(
       auth_factor_type, auth_factor_label, auth_factor_metadata, auth_input,
-      key_data, std::move(auth_session_performance_timer),
+      std::move(auth_session_performance_timer),
       OverwriteExistingKeyBlock::kEnabled, std::move(callback_error),
       std::move(key_blobs), std::move(auth_block_state));
   if (!status.ok()) {
@@ -2319,32 +2407,12 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
     return;
   }
 
-  // Migration completed with success. Now mark the VaultKeyset migrated.
-
-  // Mark the AuthSession's authenticated VautlKeyset `migrated`. Since
-  // |vault_keyset_| has decrypted fields persisting it directly may
-  // cause corruption in the fields.
-  if (vault_keyset_) {
-    vault_keyset_->MarkMigrated(/*migrated=*/true);
-  }
-
-  // Persist the migrated state in disk. This has to be through a
-  // non-authenticated (encrypted) VaultKeyset object since it is costly to
-  // create a new KeyBlob and encrypt the VaultKeyset again.
-  bool migration_persisted = false;
-
-  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
+  std::unique_ptr<VaultKeyset> remove_vk = keyset_management_->GetVaultKeyset(
       obfuscated_username_, auth_factor_label);
-  if (vk) {
-    vk->MarkMigrated(/*migrated=*/true);
-    migration_persisted = vk->Save(vk->GetSourceFile());
-  }
-
-  if (!migration_persisted) {
+  if (!remove_vk || !keyset_management_->RemoveKeysetFile(*remove_vk).ok()) {
     LOG(ERROR)
         << "USS migration of VaultKeyset with label " << auth_factor_label
-        << " is completed, but failed persisting the migrated state in the "
-           "backup VaultKeyset.";
+        << " is completed, but failed removing the migrated VaultKeyset.";
     ReportVkToUssMigrationStatus(
         VkToUssMigrationStatus::kFailedRecordingMigrated);
     std::move(on_done).Run(std::move(pre_migration_status));
@@ -2362,7 +2430,6 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
     const std::string& auth_factor_label,
     const AuthFactorMetadata& auth_factor_metadata,
     const AuthInput& auth_input,
-    const KeyData& key_data,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     OverwriteExistingKeyBlock clobber_uss_key_block,
     CryptohomeStatus callback_error,
@@ -2461,35 +2528,6 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
                       kLocAuthSessionCleanupBackupFailedInAddauthFactor),
                   user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
                   .Wrap(std::move(cleanup_status).err_status()));
-    }
-  } else if (auth_factor_map_.HasFactorWithStorage(
-                 AuthFactorStorageType::kVaultKeyset)) {
-    // Generate and persist the migrated VaultKeyset if any keyset has vault
-    // keyset as its primary authfactor. Clobbering is on by default, so if
-    // USS&AuthFactor is added for migration this will convert a regular
-    // VaultKeyset to a backup VaultKeyset.
-    status = AddVaultKeyset(auth_factor_label, key_data, /*is_initial_keyset=*/
-                            auth_factor_map_.empty(),
-                            VaultKeysetIntent{.backup = true},
-                            std::move(key_blobs), std::move(auth_block_state));
-    if (!status.ok()) {
-      // If AddAuthFactor for UserSecretStash fails at this step, user will be
-      // informed that the adding operation is failed. However the factor is
-      // added and can be used starting from the next AuthSession.
-      // If MigrateVkToUss fails at this step, user still can login with
-      // that factor, and the migration of the factor is completed. But
-      // migrator will attempt to migrate that factor every time, not knowing
-      // that it has already migrated. Considering this is a very rare edge
-      // case and doesn't cause a big user facing issue we don't try to do any
-      // cleanup, because any cleanup attempts share similar risks, or worse.
-      LOG(ERROR) << "Failed to create VaultKeyset for a backup to new added "
-                    "AuthFactor with label: "
-                 << auth_factor_label;
-      return MakeStatus<CryptohomeError>(
-                 CRYPTOHOME_ERR_LOC(
-                     kLocAuthSessionAddBackupVKFailedInPersistToUSS),
-                 user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-          .Wrap(std::move(status));
     }
   }
 
@@ -2752,7 +2790,7 @@ AuthBlock::CreateCallback AuthSession::GetAddAuthFactorCallback(
       return base::BindOnce(&AuthSession::PersistAuthFactorToUserSecretStash,
                             weak_factory_.GetWeakPtr(), auth_factor_type,
                             auth_factor_label, auth_factor_metadata, auth_input,
-                            key_data, std::move(auth_session_performance_timer),
+                            std::move(auth_session_performance_timer),
                             std::move(on_done));
 
     case AuthFactorStorageType::kVaultKeyset:
@@ -3028,29 +3066,47 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
 
   // Set the credential verifier for this credential.
   AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
-  if (auth_factor_map_.HasFactorWithStorage(
-          AuthFactorStorageType::kVaultKeyset) &&
-      auth_factor_type == AuthFactorType::kPassword) {
-    // Authentication with UserSecretStash just finished. Now load the decrypted
-    // backup VaultKeyset from disk so that migrating a PIN backup VaultKeyset
-    // will be possible when/if needed.
-    MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        keyset_management_->GetValidKeyset(obfuscated_username_,
-                                           std::move(*key_blobs.get()),
-                                           auth_factor_label);
-    if (vk_status.ok()) {
-      vault_keyset_ = std::move(vk_status).value();
-    } else {
-      // Don't abort the authentication if obtaining backup VaultKeyset fails.
-      LOG(WARNING) << "Failed to load the backup VaultKeyset for the "
-                      "authenticated user: "
-                   << vk_status.status();
-    }
-  }
 
   // Reset all of the rate limiters and and credential lockouts.
   ResetLECredentials();
   ResetRateLimiterCredentials();
+
+  // Backup VaultKeyset of the authenticated factor can still be in disk if
+  // the migration is not completed. Break the dependency of the migrated and
+  // not-migrated keysets and remove the backup keyset
+  if (auth_factor_map_.HasFactorWithStorage(
+          AuthFactorStorageType::kVaultKeyset) &&
+      keyset_management_->GetVaultKeyset(obfuscated_username_,
+                                         auth_factor_label) != nullptr) {
+    // TODO(b:279508471) : Add metrics to see this code path is in use.
+    bool should_cleanup_backup_keyset = false;
+    if (auth_factor_type != AuthFactorType::kPassword) {
+      should_cleanup_backup_keyset = true;
+    } else {
+      // If there is a unmigrated PIN VaultKeyset we need to calculate the
+      // reset_secret from password backup VaultKeyset and not-migrated PIN
+      // keyset. In this case reset secret needs to be added to UserSecretStash
+      // before removing the backup keysets.
+      MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+          keyset_management_->GetValidKeyset(obfuscated_username_,
+                                             std::move(*key_blobs.get()),
+                                             auth_factor_label);
+      if (vk_status.ok()) {
+        vault_keyset_ = std::move(vk_status).value();
+        if (PersistResetSecretToUss()) {
+          should_cleanup_backup_keyset = true;
+        }
+      }
+    }
+
+    // Cleanup backup VaultKeyset of the authenticated factor.
+    if (should_cleanup_backup_keyset &&
+        CleanUpBackupKeyset(*keyset_management_, obfuscated_username_,
+                            auth_factor_label)
+            .ok()) {
+      // TODO(b:279508471) : Add metrics to see this code path is in use.
+    }
+  }
 
   // If the derive suggests recreating the factor, attempt to do that. If this
   // fails we ignore the failure and report whatever status we were going to
@@ -3100,23 +3156,6 @@ void AuthSession::RecreateUssAuthFactor(
   }
   const AuthFactor& auth_factor = stored_auth_factor->auth_factor();
 
-  KeyData key_data;
-  user_data_auth::CryptohomeErrorCode error =
-      converter_.AuthFactorToKeyData(auth_factor.label(), auth_factor.type(),
-                                     auth_factor.metadata(), key_data);
-  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
-    auto status = MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionGetKeyDataFailedInRecreate),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-    LOG(WARNING) << "Unable to update obsolete auth factor, cannot "
-                    "construct new KeyData: "
-                 << status;
-    ReportRecreateAuthFactorError(std::move(status), auth_factor_type);
-    std::move(on_done).Run(std::move(original_status));
-    return;
-  }
-
   CryptohomeStatusOr<AuthInput> auth_input_for_add = CreateAuthInputForAdding(
       std::move(auth_input), auth_factor.type(), auth_factor.metadata());
   if (!auth_input_for_add.ok()) {
@@ -3153,7 +3192,7 @@ void AuthSession::RecreateUssAuthFactor(
   auto create_callback = base::BindOnce(
       &AuthSession::UpdateAuthFactorViaUserSecretStash,
       weak_factory_.GetWeakPtr(), auth_factor.type(), auth_factor.label(),
-      auth_factor.metadata(), key_data, *auth_input_for_add,
+      auth_factor.metadata(), *auth_input_for_add,
       std::move(auth_session_performance_timer), std::move(status_callback));
   auth_block_utility_->CreateKeyBlobsWithAuthBlock(
       *auth_block_type, *auth_input_for_add, std::move(create_callback));
@@ -3190,40 +3229,46 @@ void AuthSession::ResetLECredentials() {
     if (crypto_->GetWrongAuthAttempts(state->le_label.value()) == 0) {
       continue;
     }
+
     brillo::SecureBlob reset_secret;
     std::optional<brillo::SecureBlob> reset_secret_uss;
     // Get the reset secret from the USS for this auth factor label.
-
     if (user_secret_stash_) {
       reset_secret_uss =
           user_secret_stash_->GetResetSecretForLabel(auth_factor.label());
     }
-    if (!reset_secret_uss.has_value()) {
+
+    if (reset_secret_uss.has_value()) {
+      reset_secret = reset_secret_uss.value();
+    } else if (!local_reset_seed.empty()) {
       // If USS does not have the reset secret for the auth factor, the reset
       // secret might still be available through VK.
-
       LOG(INFO) << "Reset secret could not be retrieved through USS for the LE "
                    "Credential with label "
                 << auth_factor.label()
                 << ". Will try to obtain it with the Vault Keyset reset seed.";
-      std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
-          obfuscated_username_, auth_factor.label());
-      if (!vk) {
-        LOG(WARNING) << "Pin VK for the reset could not be retrieved for "
-                     << auth_factor.label() << ".";
-        continue;
-      }
-      const brillo::SecureBlob& reset_salt = vk->GetResetSalt();
-      if (local_reset_seed.empty() || reset_salt.empty()) {
-        LOG(ERROR)
-            << "Reset seed/salt is empty in VK , can't reset LE credential for "
+      std::optional<brillo::SecureBlob> reset_secret_vk =
+          GetResetSecretFromVaultKeyset(local_reset_seed, obfuscated_username_,
+                                        auth_factor.label(),
+                                        *keyset_management_);
+      if (!reset_secret_vk.has_value()) {
+        LOG(WARNING)
+            << "Reset secret could not be retrieved through VaultKeyset for "
+               "the LE Credential with label "
             << auth_factor.label();
         continue;
       }
-      reset_secret = HmacSha256(reset_salt, local_reset_seed);
+      reset_secret = reset_secret_vk.value();
     } else {
-      reset_secret = reset_secret_uss.value();
+      LOG(WARNING)
+          << "Reset secret could not be retrieved through USS or "
+             "VaultKeyset since UserSecretStash doesn't include a reset "
+             "secret and VaultKeyset doesn't include a reset_salt for "
+             "the AuthFactor with label "
+          << auth_factor.label();
+      continue;
     }
+
     CryptoError error;
     if (!crypto_->ResetLeCredentialEx(state->le_label.value(), reset_secret,
                                       error)) {

@@ -98,7 +98,7 @@ class KeysetManagement {
 
   // Removes only the VaultKeyset file for the given VaultKeyset object, but not
   // the metadata.
-  CryptohomeStatus RemoveKeysetFile(const VaultKeyset& remove_vk);
+  virtual CryptohomeStatus RemoveKeysetFile(const VaultKeyset& remove_vk);
 
   // Removes all LE credentials for a user with |obfuscated_username|.
   virtual void RemoveLECredentials(

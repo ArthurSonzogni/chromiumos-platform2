@@ -49,6 +49,10 @@ class MockKeysetManagement : public KeysetManagement {
               ForceRemoveKeyset,
               (const ObfuscatedUsername&, int),
               (override));
+  MOCK_METHOD(CryptohomeStatus,
+              RemoveKeysetFile,
+              (const VaultKeyset&),
+              (override));
   MOCK_METHOD(void,
               RemoveLECredentials,
               (const ObfuscatedUsername&),
