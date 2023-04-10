@@ -42,8 +42,6 @@ _EXTENSION_JS_TEMPLATE = """
 })()
 """
 
-_CAMERA_DIR = pathlib.Path("/home/chronos/user/MyFiles/Camera")
-
 
 class Facing(enum.Enum):
     """Camera facing.
@@ -81,6 +79,11 @@ class Mode(enum.Enum):
 
     def to_js_value(self) -> str:
         return self.name.lower()
+
+
+def get_camera_file_watcher(pattern: str) -> device.FileWatcher:
+    camera_dir = device.get_my_files_dir() / "Camera"
+    return device.FileWatcher(camera_dir, pattern)
 
 
 class CameraApp:
@@ -190,7 +193,7 @@ class CameraApp:
             The path of the captured photo.
         """
         with self.session(facing=facing, mode=Mode.PHOTO):
-            watcher = device.FileWatcher(_CAMERA_DIR, "*.jpg")
+            watcher = get_camera_file_watcher("*.jpg")
             self.ext.call("ext.cca.takePhoto")
             return watcher.poll_new_file()
 
@@ -210,7 +213,7 @@ class CameraApp:
             The path of the recorded video.
         """
         with self.session(facing=facing, mode=Mode.VIDEO):
-            watcher = device.FileWatcher(_CAMERA_DIR, "*.mp4")
+            watcher = get_camera_file_watcher("*.mp4")
             self.ext.call("ext.cca.startRecording")
             logging.info("Recording video for %g seconds", duration)
             time.sleep(duration)
