@@ -57,6 +57,8 @@ class UncleanShutdownCollector : public CrashCollector {
   // Check for unclean shutdown due to battery running out by analyzing powerd
   // trace files.
   bool DeadBatteryCausedUncleanShutdown();
+  // Check for unclean shutdown
+  void LogEcUptime();
 
   const char* unclean_shutdown_file_;
   base::FilePath powerd_trace_path_;

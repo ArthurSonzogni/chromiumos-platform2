@@ -4,9 +4,14 @@
 
 #include "crash-reporter/unclean_shutdown_collector.h"
 
+#include <string>
+#include <vector>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/files/safe_fd.h>
+#include <brillo/process/process.h>
+#include <brillo/strings/string_utils.h>
 
 using base::FilePath;
 using brillo::SafeFD;
@@ -138,6 +143,9 @@ bool UncleanShutdownCollector::Collect() {
     DeleteUncleanShutdownFiles();
     return false;
   }
+  // EC reboots also cause AP reboots, so log the EC uptime to help correlate
+  // them.
+  LogEcUptime();
   DeleteUncleanShutdownFiles();
 
   return true;
@@ -178,4 +186,37 @@ bool UncleanShutdownCollector::DeadBatteryCausedUncleanShutdown() {
     return true;
   }
   return false;
+}
+
+void UncleanShutdownCollector::LogEcUptime() {
+  const char kEcToolPath[] = "/usr/sbin/ectool";
+
+  if (!base::PathExists(base::FilePath(kEcToolPath))) {
+    LOG(INFO) << "ectool unavailable: '" << kEcToolPath << "'";
+    return;
+  }
+
+  brillo::ProcessImpl ectool;
+  ectool.AddArg(kEcToolPath);
+  // Get info about how long the EC has been running and the most recent AP
+  // resets.
+  ectool.AddArg("uptimeinfo");
+  // Combine stdout and stderr.
+  ectool.RedirectOutputToMemory(/*combine_stdout_and_stderr=*/true);
+
+  const int result = ectool.Run();
+  std::string uptimeinfo_output = ectool.GetOutputString(STDOUT_FILENO);
+  if (result != 0) {
+    LOG(ERROR) << "Failed to run ectool. Error: '" << result << "'";
+    return;
+  }
+
+  // LOG() converts newlines to "#012", logging all the output to a single line.
+  // This is difficult to read, so instead log each line of the ectool output
+  // separately to keep things human-readable.
+  std::vector<std::string> uptimeinfo_strings =
+      brillo::string_utils::Split(uptimeinfo_output, "\n", true, true);
+  for (const std::string& uptimeinfo_line : uptimeinfo_strings) {
+    LOG(INFO) << "[ectool uptimeinfo] " << uptimeinfo_line;
+  }
 }
