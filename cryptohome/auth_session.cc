@@ -707,16 +707,17 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
   return OkStatus<CryptohomeError>();
 }
 
-void AuthSession::UpdateVaultKeyset(
+void AuthSession::MigrateToUssDuringUpdateVaultKeyset(
     AuthFactorType auth_factor_type,
+    const AuthFactorMetadata& auth_factor_metadata,
     const KeyData& key_data,
     const AuthInput& auth_input,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
-    std::unique_ptr<AuthBlockState> auth_state) {
-  if (!callback_error.ok() || key_blobs == nullptr || auth_state == nullptr) {
+    std::unique_ptr<AuthBlockState> auth_block_state) {
+  if (!callback_error.ok() || key_blobs == nullptr ||
+      auth_block_state == nullptr) {
     if (callback_error.ok()) {
       callback_error = MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInCallbackInUpdateKeyset),
@@ -732,16 +733,6 @@ void AuthSession::UpdateVaultKeyset(
             .Wrap(std::move(callback_error)));
     return;
   }
-  CryptohomeStatus status = keyset_management_->UpdateKeysetWithKeyBlobs(
-      VaultKeysetIntent{.backup = false}, obfuscated_username_, key_data,
-      *vault_keyset_.get(), std::move(*key_blobs.get()), std::move(auth_state));
-  if (!status.ok()) {
-    std::move(on_done).Run(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionUpdateWithBlobFailedInUpdateKeyset))
-            .Wrap(std::move(status)));
-  }
 
   // Add the new secret to the AuthSession's credential verifier. On successful
   // completion of the UpdateAuthFactor this will be passed to UserSession's
@@ -750,7 +741,36 @@ void AuthSession::UpdateVaultKeyset(
   AddCredentialVerifier(auth_factor_type, vault_keyset_->GetLabel(),
                         auth_input);
 
-  ReportTimerDuration(auth_session_performance_timer.get());
+  if (migrate_to_user_secret_stash_ &&
+      IsUserSecretStashExperimentEnabled(platform_)) {
+    UssMigrator migrator(username_);
+    // |vault_keyset_| stores the decrypted VaultKeyset object which includes
+    // FilesystemKeyset. FilesystemKeyset is the same for all VaultKeysets
+    // and migrator only needs FilesystemKeyset from the decrypted VaultKeyset.
+    // Hence migration works fine even if the |vault_keyset_| and the updated
+    // VaultKeyset are different from each other.
+    migrator.MigrateVaultKeysetToUss(
+        *user_secret_stash_storage_, *vault_keyset_,
+        base::BindOnce(&AuthSession::OnMigrationUssCreatedForUpdate,
+                       weak_factory_.GetWeakPtr(), auth_factor_type,
+                       key_data.label(), auth_factor_metadata, auth_input,
+                       std::move(on_done), std::move(callback_error),
+                       std::move(key_blobs), std::move(auth_block_state)));
+    // Since migration removes the keyset file, we don't update the keyset file.
+    return;
+  }
+
+  CryptohomeStatus status = keyset_management_->UpdateKeysetWithKeyBlobs(
+      VaultKeysetIntent{.backup = false}, obfuscated_username_, key_data,
+      *vault_keyset_.get(), std::move(*key_blobs.get()),
+      std::move(auth_block_state));
+  if (!status.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionUpdateWithBlobFailedInUpdateKeyset))
+            .Wrap(std::move(status)));
+  }
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
@@ -914,6 +934,43 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   }
 
   std::move(on_done).Run(std::move(prepare_status));
+}
+
+void AuthSession::OnMigrationUssCreatedForUpdate(
+    AuthFactorType auth_factor_type,
+    const std::string& label,
+    const AuthFactorMetadata& auth_factor_metadata,
+    const AuthInput& auth_input,
+    StatusCallback on_done,
+    CryptohomeStatus callback_error,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::unique_ptr<AuthBlockState> auth_block_state,
+    std::unique_ptr<UserSecretStash> user_secret_stash,
+    brillo::SecureBlob uss_main_key) {
+  if (!user_secret_stash || uss_main_key.empty()) {
+    LOG(ERROR) << "Uss migration during UpdateVaultKeyset failed for "
+                  "VaultKeyset with label: "
+               << label;
+    // We don't report VK to USS migration status here because it is expected
+    // that the actual migration will have already reported a more precise error
+    // directly.
+    std::move(on_done).Run(OkStatus<CryptohomeError>());
+    return;
+  }
+
+  user_secret_stash_ = std::move(user_secret_stash);
+  user_secret_stash_main_key_ = std::move(uss_main_key);
+
+  auto migration_performance_timer =
+      std::make_unique<AuthSessionPerformanceTimer>(kUSSMigrationTimer);
+
+  // Migrating a VaultKeyset to UserSecretStash during UpdateAuthFactor is
+  // adding a new KeyBlock to UserSecretStash.
+  PersistAuthFactorToUserSecretStashOnMigration(
+      auth_factor_type, label, auth_factor_metadata, auth_input,
+      std::move(migration_performance_timer), std::move(on_done),
+      OkStatus<CryptohomeError>(), std::move(callback_error),
+      std::move(key_blobs), std::move(auth_block_state));
 }
 
 void AuthSession::OnMigrationUssCreated(
@@ -1691,10 +1748,10 @@ AuthBlock::CreateCallback AuthSession::GetUpdateAuthFactorCallback(
                             std::move(on_done));
 
     case AuthFactorStorageType::kVaultKeyset:
-      return base::BindOnce(
-          &AuthSession::UpdateVaultKeyset, weak_factory_.GetWeakPtr(),
-          auth_factor_type, key_data, auth_input,
-          std::move(auth_session_performance_timer), std::move(on_done));
+      return base::BindOnce(&AuthSession::MigrateToUssDuringUpdateVaultKeyset,
+                            weak_factory_.GetWeakPtr(), auth_factor_type,
+                            auth_factor_metadata, key_data, auth_input,
+                            std::move(on_done));
   }
 }
 

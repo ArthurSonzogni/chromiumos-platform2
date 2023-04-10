@@ -80,6 +80,7 @@ constexpr char kNewPassword[] = "fake-new-password";
 
 constexpr char kPinLabel[] = "fake-pin-label";
 constexpr char kPin[] = "1234";
+constexpr char kNewPin[] = "1111";
 
 constexpr char kRecoveryLabel[] = "fake-recovery-label";
 constexpr char kUserGaiaId[] = "fake-gaia-id";
@@ -160,6 +161,20 @@ CryptohomeStatus UpdatePasswordFactor(const std::string& label,
   factor.mutable_password_metadata();
   request.mutable_auth_input()->mutable_password_input()->set_secret(
       new_password);
+  return RunUpdateAuthFactor(request, auth_session);
+}
+
+CryptohomeStatus UpdatePinFactor(const std::string& label,
+                                 const std::string& new_pin,
+                                 AuthSession& auth_session) {
+  user_data_auth::UpdateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(label);
+  user_data_auth::AuthFactor& factor = *request.mutable_auth_factor();
+  factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  factor.set_label(label);
+  factor.mutable_pin_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(new_pin);
   return RunUpdateAuthFactor(request, auth_session);
 }
 
@@ -629,6 +644,85 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
   std::unique_ptr<AuthSession> auth_session = create_auth_session();
   ASSERT_TRUE(auth_session);
   EXPECT_THAT(AuthenticatePinFactor(kPinLabel, kPin, *auth_session), IsOk());
+}
+
+// Test that updating via a previously added PIN works correctly: you can
+// authenticate via the new PIN but not via the old one. Update migrates the
+// PIN.
+TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
+       UpdatePinPartialMigration) {
+  constexpr int kResetCounter = 6;
+  auto create_auth_session = [this]() {
+    return AuthSession::Create(kUsername,
+                               user_data_auth::AUTH_SESSION_FLAGS_NONE,
+                               AuthIntent::kDecrypt, backing_apis_);
+  };
+
+  // Arrange.
+  // Configure the creation via USS or VK, depending on the first test
+  // parameter.
+  SetToInitialStorageType();
+  {
+    // Create a user with a password and PIN factor.
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
+    EXPECT_THAT(AddPasswordFactor(kPasswordLabel, kPassword, *auth_session),
+                IsOk());
+    EXPECT_THAT(AddPinFactor(kPinLabel, kPin, *auth_session), IsOk());
+  }
+  // Switch to the new backend (USS or VK) depending on the second test
+  // parameter).
+  SetToFinalStorageType();
+
+  // Act.
+  // Update the PIN factor after authenticating via the password.
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(
+        AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
+        IsOk());
+    EXPECT_THAT(UpdatePinFactor(kPinLabel, kNewPin, *auth_session), IsOk());
+  }
+
+  // Assert.
+  auto try_authenticate = [&](const std::string& pin) {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    if (!auth_session) {
+      ADD_FAILURE() << "Failed to create AuthSession";
+      return MakeFakeCryptohomeError();
+    }
+    return AuthenticatePinFactor(kPinLabel, pin, *auth_session);
+  };
+  // Check the old PIN isn't accepted, but the new one is.
+  EXPECT_THAT(try_authenticate(kPin), NotOk());
+  EXPECT_THAT(try_authenticate(kNewPin), IsOk());
+
+  // Lockout PIN by attempting authenticate with wrong PINs.
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    for (int i = 0; i < kResetCounter; i++) {
+      EXPECT_THAT(AuthenticatePinFactor(kPinLabel, kPin, *auth_session),
+                  NotOk());
+    }
+    EXPECT_THAT(AuthenticatePinFactor(kPinLabel, kNewPin, *auth_session),
+                NotOk());
+  }
+
+  // Test that password resets the counter.
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(
+        AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
+        IsOk());
+    // Verify that authenticate with correct PIN succeed after the counter is
+    // reset.
+    EXPECT_THAT(AuthenticatePinFactor(kPinLabel, kNewPin, *auth_session),
+                IsOk());
+  }
 }
 
 }  // namespace

@@ -984,6 +984,23 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledUpdateBackup) {
   ASSERT_EQ(
       auth_session2.auth_factor_map().Find(kPasswordLabel2)->storage_type(),
       AuthFactorStorageType::kVaultKeyset);
+
+  // Test
+  UpdateFactor(auth_session2, kPasswordLabel2, kPassword2);
+
+  // Verify AuthFactors listing. All factors are migrated.
+  AuthSession auth_session3 =
+      StartAuthSessionWithMockAuthBlockUtility(/*enable_uss_migration=*/true);
+  EXPECT_TRUE(auth_session3.auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  EXPECT_FALSE(auth_session3.auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
+  ASSERT_EQ(
+      auth_session3.auth_factor_map().Find(kPasswordLabel)->storage_type(),
+      AuthFactorStorageType::kUserSecretStash);
+  ASSERT_EQ(
+      auth_session3.auth_factor_map().Find(kPasswordLabel2)->storage_type(),
+      AuthFactorStorageType::kUserSecretStash);
 }
 
 // Test that VaultKeysets are migrated to UserSecretStash when migration is
@@ -1037,10 +1054,6 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
       user_secret_stash_status.value()->HasWrappedMainKey(kPasswordLabel2));
   //  Verify that the AuthFactors are created for the AuthFactor labels and
   //  storage type is updated in the AuthFactor map for each of them.
-  std::map<std::string, std::unique_ptr<AuthFactor>> factor_map =
-      auth_factor_manager_.LoadAllAuthFactors(users_[0].obfuscated);
-  ASSERT_NE(factor_map.find(kPasswordLabel), factor_map.end());
-  ASSERT_NE(factor_map.find(kPasswordLabel2), factor_map.end());
   ASSERT_EQ(
       auth_session3.auth_factor_map().Find(kPasswordLabel)->storage_type(),
       AuthFactorStorageType::kUserSecretStash);

@@ -241,6 +241,9 @@ class AuthSession final {
       base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
           on_done);
 
+  // OnMigrationUssCreated is the callback function to be called after
+  // migration secret is generated and added to UserSecretStash during the
+  // AuthenticateViaVaultKeysetAndMigrateToUss() operation.
   void OnMigrationUssCreated(AuthBlockType auth_block_type,
                              AuthFactorType auth_factor_type,
                              const AuthFactorMetadata& auth_factor_metadata,
@@ -249,6 +252,21 @@ class AuthSession final {
                              StatusCallback on_done,
                              std::unique_ptr<UserSecretStash> user_secret_stash,
                              brillo::SecureBlob uss_main_key);
+
+  // OnMigrationUssCreatedForUpdate is the callback function to be called after
+  // migration secret is generated and added to UserSecretStash during the
+  // MigrateToUssDuringUpdateVaultKeyset() operation.
+  void OnMigrationUssCreatedForUpdate(
+      AuthFactorType auth_factor_type,
+      const std::string& label,
+      const AuthFactorMetadata& auth_factor_metadata,
+      const AuthInput& auth_input,
+      StatusCallback on_done,
+      CryptohomeStatus callback_error,
+      std::unique_ptr<KeyBlobs> key_blobs,
+      std::unique_ptr<AuthBlockState> auth_state,
+      std::unique_ptr<UserSecretStash> user_secret_stash,
+      brillo::SecureBlob uss_main_key);
 
   // Sets |vault_keyset_| for testing purpose.
   void set_vault_keyset_for_testing(std::unique_ptr<VaultKeyset> value) {
@@ -392,16 +410,18 @@ class AuthSession final {
   // KeysetManagement::UpdateKeysetWithKeyBlobs(). The VaultKeyset and it's
   // corresponding label are updated through the information provided by
   // |key_data|. This function is needed for processing callback results in an
-  // asynchronous manner through |on_done| callback.
-  void UpdateVaultKeyset(AuthFactorType auth_factor_type,
-                         const KeyData& key_data,
-                         const AuthInput& auth_input,
-                         std::unique_ptr<AuthSessionPerformanceTimer>
-                             auth_session_performance_timer,
-                         StatusCallback on_done,
-                         CryptohomeStatus callback_error,
-                         std::unique_ptr<KeyBlobs> key_blobs,
-                         std::unique_ptr<AuthBlockState> auth_state);
+  // asynchronous manner through |on_done| callback. If the update completes
+  // successfully VaultKeyset is migrated to UserSecretStash. Failures during
+  // this migration is silent, i.e doesn't fail the update operation.
+  void MigrateToUssDuringUpdateVaultKeyset(
+      AuthFactorType auth_factor_type,
+      const AuthFactorMetadata& auth_factor_metadata,
+      const KeyData& key_data,
+      const AuthInput& auth_input,
+      StatusCallback on_done,
+      CryptohomeStatus callback_error,
+      std::unique_ptr<KeyBlobs> key_blobs,
+      std::unique_ptr<AuthBlockState> auth_state);
 
   // Persists key blocks for a new secret to the USS and onto disk. Upon
   // completion the |on_done| callback will be called. Designed to be used in
