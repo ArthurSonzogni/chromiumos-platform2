@@ -5,6 +5,7 @@
 //! Implements an API for managing device mapper (DM) devices
 
 use std::ffi::OsStr;
+use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -89,12 +90,14 @@ impl DeviceMapper {
 
     /// Check whether a DM device exists.
     pub fn device_exists(name: &str) -> bool {
-        Self::device_path(name).exists()
+        Self::run_dmsetup(["status", name]).is_ok()
     }
 
     /// Get the path of a DM device.
-    pub fn device_path(name: &str) -> PathBuf {
-        Path::new("/dev/mapper").join(name)
+    pub fn device_path(name: &str) -> Result<PathBuf> {
+        let symlink_path = Path::new("/dev/mapper").join(name);
+
+        fs::canonicalize(symlink_path).map_err(anyhow::Error::from)
     }
 
     fn run_dmsetup<I, S>(args: I) -> Result<()>

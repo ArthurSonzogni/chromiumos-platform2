@@ -143,7 +143,7 @@ impl ResumeConductor {
         let hiber_image_file = OpenOptions::new()
             .read(true)
             .create(false)
-            .open(DeviceMapper::device_path(VolumeManager::HIBERIMAGE))
+            .open(DeviceMapper::device_path(VolumeManager::HIBERIMAGE).unwrap())
             .unwrap();
         let _locked_memory = lock_process_memory()?;
         self.resume_system(hiber_image_file)
@@ -257,7 +257,7 @@ impl ResumeConductor {
         VolumeManager::new()?.setup_hiberimage(&tpm_key, &tpm_key, new_hiberimage)?;
 
         SnapshotDevice::new(SnapshotMode::Read)?
-            .set_block_device(&DeviceMapper::device_path(VolumeManager::HIBERIMAGE))
+            .set_block_device(&DeviceMapper::device_path(VolumeManager::HIBERIMAGE).unwrap())
     }
 
     fn get_tpm_derived_integrity_key(&self) -> Result<HibernateKey> {

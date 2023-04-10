@@ -636,7 +636,7 @@ impl VolumeManager {
     fn create_hiberimage_integrity_dm_dev(&self, format_device: bool) -> Result<()> {
         let backing_dev = lv_path(&self.vg_name, Self::HIBERIMAGE);
         let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
-        let meta_data_dev = DeviceMapper::device_path(Self::HIBERINTEGRITY);
+        let meta_data_dev = DeviceMapper::device_path(Self::HIBERINTEGRITY).unwrap();
 
         if format_device {
             // Inititialize the first blocks of the integrity device with
@@ -663,7 +663,7 @@ impl VolumeManager {
     /// Create the dm-crypt device 'hiberimage' for the hibernation image (on top of the
     /// dm-integrity device 'hiberimage_integrity'.
     fn create_hiberimage_dm_dev(&self, key: &[u8]) -> Result<()> {
-        let backing_dev = DeviceMapper::device_path(Self::HIBERIMAGE_INTEGRITY);
+        let backing_dev = DeviceMapper::device_path(Self::HIBERIMAGE_INTEGRITY).unwrap();
         let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
         let key_hex_str = hex::encode(key);
         let table = format!(
