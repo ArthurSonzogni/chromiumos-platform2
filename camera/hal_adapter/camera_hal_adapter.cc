@@ -270,6 +270,13 @@ int32_t CameraHalAdapter::OpenDevice(
         base::Unretained(cros_camera_hal), internal_camera_id);
   }
 
+  bool do_notify_invalid_capture_request = false;
+#if USE_ARCVM
+  // b/272432362 ARCVM client will be doing async process_capture_request.
+  do_notify_invalid_capture_request =
+      camera_client_type == mojom::CameraClientType::ANDROID;
+#endif
+
   device_adapters_[camera_id] = std::make_unique<CameraDeviceAdapter>(
       camera_device, info.device_version, metadata,
       std::move(get_internal_camera_id_callback),
@@ -282,7 +289,8 @@ int32_t CameraHalAdapter::OpenDevice(
               .sw_privacy_switch_stream_manipulator_enabled =
                   cros_camera_hal->set_privacy_switch_state == nullptr},
           &stream_manipulator_runtime_options_, gpu_resources_,
-          mojo_manager_token_));
+          mojo_manager_token_),
+      do_notify_invalid_capture_request);
 
   if (!device_adapters_[camera_id]->Start()) {
     device_adapters_.erase(camera_id);

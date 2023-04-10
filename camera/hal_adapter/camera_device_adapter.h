@@ -110,7 +110,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       base::RepeatingCallback<int(int)> get_internal_camera_id_callback,
       base::RepeatingCallback<int(int)> get_public_camera_id_callback,
       base::OnceCallback<void()> close_callback,
-      std::unique_ptr<StreamManipulatorManager> stream_manipulator_manager);
+      std::unique_ptr<StreamManipulatorManager> stream_manipulator_manager,
+      const bool async_capture_request_call = false);
 
   CameraDeviceAdapter(const CameraDeviceAdapter&) = delete;
   CameraDeviceAdapter& operator=(const CameraDeviceAdapter&) = delete;
@@ -209,6 +210,20 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // Caller must hold |buffer_handles_lock_|.
   void RemoveBufferLocked(const camera3_stream_buffer_t& buffer);
 
+  // Deregisters buffer before returned to the client and marks the buffer as
+  // returned. The given |buffer| must be already registered.
+  // Caller must hold |buffer_handles_lock_|.
+  void RemoveReturnBufferLocked(uint64_t buffer_id,
+                                const camera3_stream_buffer_t& buffer);
+
+  // Deregisters all buffers from a capture request if registered.
+  // Should be called when cancelling process_capture_request,
+  // before reading/writing the buffer.
+  // Caller must hold |buffer_handles_lock_|.
+  void CancelBuffersRegistrationLocked(
+      const std::vector<std::pair<uint64_t, const camera3_stream_buffer_t&>>&
+          registered_buffers);
+
   // Waits until |release_fence| is signaled and then deletes |buffer|.
   void RemoveBufferOnFenceSyncThread(
       base::ScopedFD release_fence,
@@ -216,6 +231,11 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   void ResetDeviceOpsDelegateOnThread();
   void ResetCallbackOpsDelegateOnThread();
+
+  // Calls notify() with type ERROR_REQUEST and also calls
+  // process_capture_result() to return output buffers to the client.
+  void NotifyInvalidCaptureRequest(
+      const mojom::Camera3CaptureRequestPtr& request_ptr);
 
   // The thread that all the camera3 device ops operate on.
   base::Thread camera_device_ops_thread_;
@@ -303,6 +323,14 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   CameraMonitor capture_monitor_;
 
   std::unique_ptr<StreamManipulatorManager> stream_manipulator_manager_;
+
+  // If true, client can ignore the return value of process_capture_request.
+  // Validation error during the process_capture_request will be treated like
+  // any other error by the HAL:
+  // - notify() will be called, but in this case the error type will be
+  //   CAMERA3_MSG_ERROR_REQUEST.
+  // - process_capture_result() will be called to return all the buffers.
+  const bool async_capture_request_call_ = false;
 };
 
 }  // namespace cros

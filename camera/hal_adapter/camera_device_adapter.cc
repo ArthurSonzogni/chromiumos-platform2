@@ -181,7 +181,8 @@ CameraDeviceAdapter::CameraDeviceAdapter(
     base::RepeatingCallback<int(int)> get_internal_camera_id_callback,
     base::RepeatingCallback<int(int)> get_public_camera_id_callback,
     base::OnceCallback<void()> close_callback,
-    std::unique_ptr<StreamManipulatorManager> stream_manipulator_manager)
+    std::unique_ptr<StreamManipulatorManager> stream_manipulator_manager,
+    const bool async_capture_request_call)
     : camera_device_ops_thread_("CameraDeviceOpsThread"),
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
       fence_sync_thread_("FenceSyncThread"),
@@ -193,7 +194,8 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       device_api_version_(device_api_version),
       static_info_(static_info),
       camera_metrics_(CameraMetrics::New()),
-      stream_manipulator_manager_(std::move(stream_manipulator_manager)) {
+      stream_manipulator_manager_(std::move(stream_manipulator_manager)),
+      async_capture_request_call_(async_capture_request_call) {
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
   camera3_callback_ops_t::notify = Notify;
 }
@@ -475,53 +477,26 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
 
   capture_monitor_.Kick(CameraMonitor::MonitorType::kRequestsMonitor);
 
-  // Deserialize input buffer.
-  buffer_handle_t input_buffer_handle;
-  camera3_stream_buffer_t input_buffer;
-  if (!request->input_buffer.is_null()) {
-    base::AutoLock streams_lock(streams_lock_);
-    base::AutoLock buffer_handles_lock(buffer_handles_lock_);
-    if (request->input_buffer->buffer_handle) {
-      if (RegisterBufferLocked(
-              std::move(request->input_buffer->buffer_handle))) {
-        LOGF(ERROR) << "Failed to register input buffer";
-        return -EINVAL;
-      }
-    }
-    input_buffer.buffer =
-        const_cast<const native_handle_t**>(&input_buffer_handle);
-    internal::DeserializeStreamBuffer(request->input_buffer, streams_,
-                                      buffer_handles_, &input_buffer);
-    req.input_buffer = &input_buffer;
-  } else {
-    req.input_buffer = nullptr;
-  }
-
-  // Deserialize output buffers.
-  size_t num_output_buffers = request->output_buffers.size();
-  DCHECK_GT(num_output_buffers, 0);
-
-  std::vector<camera3_stream_buffer_t> output_buffers(num_output_buffers);
-  {
-    base::AutoLock streams_lock(streams_lock_);
-    base::AutoLock buffer_handles_lock(buffer_handles_lock_);
-    for (size_t i = 0; i < num_output_buffers; ++i) {
-      mojom::Camera3StreamBufferPtr& out_buf_ptr = request->output_buffers[i];
-      if (out_buf_ptr->buffer_handle) {
-        if (RegisterBufferLocked(std::move(out_buf_ptr->buffer_handle))) {
-          LOGF(ERROR) << "Failed to register output buffer";
-          return -EINVAL;
+  // Need to keep track any registered buffers in case we need to cancel
+  // the process_capture_request, so we can deregister them.
+  std::vector<std::pair<uint64_t, const camera3_stream_buffer_t&>>
+      registered_buffers;
+  // Must hold the buffer_handles_lock_ before running this task.
+  base::OnceClosure error_task_locked = base::BindOnce(
+      [](CameraDeviceAdapter* self,
+         const mojom::Camera3CaptureRequestPtr& request_ptr,
+         const std::vector<std::pair<uint64_t, const camera3_stream_buffer_t&>>&
+             registered_buffers) {
+        if (registered_buffers.size() > 0) {
+          self->buffer_handles_lock_.AssertAcquired();
+          self->CancelBuffersRegistrationLocked(registered_buffers);
         }
-      }
-      internal::DeserializeStreamBuffer(out_buf_ptr, streams_, buffer_handles_,
-                                        &output_buffers.at(i));
-    }
-    req.num_output_buffers = output_buffers.size();
-    req.output_buffers =
-        const_cast<const camera3_stream_buffer_t*>(output_buffers.data());
-  }
-
-  req.settings = capture_settings_.get();
+        if (self->async_capture_request_call_) {
+          self->NotifyInvalidCaptureRequest(request_ptr);
+        }
+      },
+      base::Unretained(this), std::cref(request),
+      std::cref(registered_buffers));
 
   std::vector<const char*> phys_ids;
   std::vector<std::string> phys_ids_string;
@@ -538,6 +513,8 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
         if (internal_camera_id == -1) {
           LOGF(ERROR) << "Failed to find internal camera ID for camera "
                       << public_camera_id;
+          base::AutoLock buffer_handles_lock(buffer_handles_lock_);
+          std::move(error_task_locked).Run();
           return -EINVAL;
         }
         phys_ids_string.push_back(base::NumberToString(internal_camera_id));
@@ -558,6 +535,64 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     }
   }
 
+  // Deserialize input buffer.
+  buffer_handle_t input_buffer_handle;
+  camera3_stream_buffer_t input_buffer;
+  if (!request->input_buffer.is_null()) {
+    base::AutoLock buffer_handles_lock(buffer_handles_lock_);
+    if (request->input_buffer->buffer_handle) {
+      if (RegisterBufferLocked(
+              std::move(request->input_buffer->buffer_handle))) {
+        LOGF(ERROR) << "Failed to register input buffer";
+        std::move(error_task_locked).Run();
+        return -EINVAL;
+      }
+    }
+    input_buffer.buffer =
+        const_cast<const native_handle_t**>(&input_buffer_handle);
+    {
+      base::AutoLock streams_lock(streams_lock_);
+      internal::DeserializeStreamBuffer(request->input_buffer, streams_,
+                                        buffer_handles_, &input_buffer);
+    }
+    req.input_buffer = &input_buffer;
+    registered_buffers.emplace_back(request->input_buffer->buffer_id,
+                                    *req.input_buffer);
+  } else {
+    req.input_buffer = nullptr;
+  }
+
+  // Deserialize output buffers.
+  size_t num_output_buffers = request->output_buffers.size();
+  DCHECK_GT(num_output_buffers, 0);
+
+  std::vector<camera3_stream_buffer_t> output_buffers(num_output_buffers);
+  {
+    base::AutoLock buffer_handles_lock(buffer_handles_lock_);
+    for (size_t i = 0; i < num_output_buffers; ++i) {
+      mojom::Camera3StreamBufferPtr& out_buf_ptr = request->output_buffers[i];
+      if (out_buf_ptr->buffer_handle) {
+        if (RegisterBufferLocked(std::move(out_buf_ptr->buffer_handle))) {
+          LOGF(ERROR) << "Failed to register output buffer";
+          std::move(error_task_locked).Run();
+          return -EINVAL;
+        }
+      }
+      {
+        base::AutoLock streams_lock(streams_lock_);
+        internal::DeserializeStreamBuffer(
+            out_buf_ptr, streams_, buffer_handles_, &output_buffers.at(i));
+      }
+      registered_buffers.emplace_back(request->output_buffers[i]->buffer_id,
+                                      output_buffers.at(i));
+    }
+    req.num_output_buffers = output_buffers.size();
+    req.output_buffers =
+        const_cast<const camera3_stream_buffer_t*>(output_buffers.data());
+  }
+
+  req.settings = capture_settings_.get();
+
   // TODO(jcliang): We may need to cache the last request settings here. In case
   // where the client sets a null settings we can pass the cached settings to
   // the stream manipulators so that they can still do incremental changes on
@@ -577,14 +612,18 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   }
 
   stream_manipulator_manager_->ProcessCaptureRequest(&request_descriptor);
-
   {
     TRACE_HAL_ADAPTER_EVENT("HAL::ProcessCaptureRequest",
                             [&](perfetto::EventContext ctx) {
                               request_descriptor.PopulateEventAnnotation(ctx);
                             });
-    return camera_device_->ops->process_capture_request(
+    int ret = camera_device_->ops->process_capture_request(
         camera_device_, request_descriptor.LockForRequest());
+    if (ret != 0) {
+      base::AutoLock buffer_handles_lock(buffer_handles_lock_);
+      std::move(error_task_locked).Run();
+    }
+    return ret;
   }
 }
 
@@ -798,6 +837,61 @@ void CameraDeviceAdapter::NotifyClient(const camera3_callback_ops_t* ops,
   }
 }
 
+void CameraDeviceAdapter::NotifyInvalidCaptureRequest(
+    const mojom::Camera3CaptureRequestPtr& request_ptr) {
+  DCHECK(async_capture_request_call_);
+  TRACE_HAL_ADAPTER();
+
+  mojom::Camera3CaptureResultPtr result_ptr =
+      mojom::Camera3CaptureResult::New();
+  result_ptr->frame_number = request_ptr->frame_number;
+  result_ptr->result = mojom::CameraMetadata::New();
+  result_ptr->result->size = 0;
+  result_ptr->result->entry_count = 0;
+  result_ptr->result->entry_capacity = 0;
+  result_ptr->result->data_count = 0;
+  result_ptr->result->data_capacity = 0;
+  result_ptr->partial_result = 0;
+  result_ptr->output_buffers = std::move(request_ptr->output_buffers);
+  for (const auto& out_buf : *result_ptr->output_buffers) {
+    out_buf->release_fence = std::move(out_buf->acquire_fence);
+    out_buf->buffer_handle = nullptr;
+    out_buf->status = mojom::Camera3BufferStatus::CAMERA3_BUFFER_STATUS_ERROR;
+  }
+  if (!request_ptr->input_buffer.is_null()) {
+    result_ptr->input_buffer = std::move(request_ptr->input_buffer);
+    result_ptr->input_buffer->release_fence =
+        std::move(result_ptr->input_buffer->acquire_fence);
+    result_ptr->input_buffer->buffer_handle = nullptr;
+  }
+
+  if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
+    result_ptr->physcam_metadata =
+        std::vector<mojom::Camera3PhyscamMetadataPtr>();
+  }
+
+  camera3_notify_msg_t invalid_request_msg = {
+      .type = CAMERA3_MSG_ERROR,
+      .message =
+          {
+              .error =
+                  {
+                      .frame_number = request_ptr->frame_number,
+                      .error_code = CAMERA3_MSG_ERROR_REQUEST,
+                  },
+          },
+  };
+
+  base::AutoLock l(callback_ops_delegate_lock_);
+  mojom::Camera3NotifyMsgPtr msg_ptr = PrepareNotifyMsg(&invalid_request_msg);
+  if (callback_ops_delegate_) {
+    callback_ops_delegate_->Notify(std::move(msg_ptr));
+  }
+  if (callback_ops_delegate_) {
+    callback_ops_delegate_->ProcessCaptureResult(std::move(result_ptr));
+  }
+}
+
 bool CameraDeviceAdapter::AllocateBuffersForStreams(
     const std::vector<mojom::Camera3StreamPtr>& streams,
     AllocatedBuffers* allocated_buffers) {
@@ -963,8 +1057,8 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
 
   // Serialize output buffers.  This may be none as num_output_buffers may be 0.
   if (result->output_buffers) {
-    base::AutoLock streams_lock(streams_lock_);
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
+    base::AutoLock streams_lock(streams_lock_);
     std::vector<mojom::Camera3StreamBufferPtr> output_buffers;
     for (size_t i = 0; i < result->num_output_buffers; i++) {
       mojom::Camera3StreamBufferPtr out_buf = internal::SerializeStreamBuffer(
@@ -973,8 +1067,8 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
         LOGF(ERROR) << "Failed to serialize output stream buffer";
         // TODO(jcliang): Handle error?
       }
-      buffer_handles_[out_buf->buffer_id]->state = kReturned;
-      RemoveBufferLocked(*(result->output_buffers + i));
+      RemoveReturnBufferLocked(out_buf->buffer_id,
+                               *(result->output_buffers + i));
       output_buffers.push_back(std::move(out_buf));
     }
     if (output_buffers.size() > 0) {
@@ -984,16 +1078,15 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
 
   // Serialize input buffer.
   if (result->input_buffer) {
-    base::AutoLock streams_lock(streams_lock_);
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
+    base::AutoLock streams_lock(streams_lock_);
     mojom::Camera3StreamBufferPtr input_buffer =
         internal::SerializeStreamBuffer(result->input_buffer, streams_,
                                         buffer_handles_);
     if (input_buffer.is_null()) {
       LOGF(ERROR) << "Failed to serialize input stream buffer";
     }
-    buffer_handles_[input_buffer->buffer_id]->state = kReturned;
-    RemoveBufferLocked(*result->input_buffer);
+    RemoveReturnBufferLocked(input_buffer->buffer_id, *result->input_buffer);
     r->input_buffer = std::move(input_buffer);
   }
 
@@ -1102,6 +1195,23 @@ void CameraDeviceAdapter::RemoveBufferLocked(
         base::BindOnce(&CameraDeviceAdapter::RemoveBufferOnFenceSyncThread,
                        base::Unretained(this), std::move(scoped_release_fence),
                        std::move(buffer_handle)));
+  }
+}
+
+void CameraDeviceAdapter::RemoveReturnBufferLocked(
+    uint64_t buffer_id, const camera3_stream_buffer_t& buffer) {
+  buffer_handles_lock_.AssertAcquired();
+  DCHECK(buffer_handles_.find(buffer_id) != buffer_handles_.end());
+  buffer_handles_[buffer_id]->state = kReturned;
+  RemoveBufferLocked(buffer);
+}
+
+void CameraDeviceAdapter::CancelBuffersRegistrationLocked(
+    const std::vector<std::pair<uint64_t, const camera3_stream_buffer_t&>>&
+        registered_buffers) {
+  buffer_handles_lock_.AssertAcquired();
+  for (const auto& registered_buffer : registered_buffers) {
+    RemoveReturnBufferLocked(registered_buffer.first, registered_buffer.second);
   }
 }
 
