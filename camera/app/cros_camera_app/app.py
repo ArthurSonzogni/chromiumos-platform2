@@ -15,7 +15,7 @@ import json
 import logging
 import pathlib
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from cros_camera_app import chrome
 from cros_camera_app import device
@@ -226,3 +226,16 @@ class CameraApp:
         with self.session() as page:
             res = page.rpc("Page.captureScreenshot", {"format": "png"})
             return base64.b64decode(res["data"])
+
+    def eval(self, expr: str) -> Any:
+        """Evaluates the JavaScript expression on CCA page.
+
+        Args:
+            expr: A JavaScript expression.
+
+        Returns:
+            The evaluated result. If it's a promise, the result would be
+            automatically awaited.
+        """
+        with self.session() as page:
+            return page.eval(expr)

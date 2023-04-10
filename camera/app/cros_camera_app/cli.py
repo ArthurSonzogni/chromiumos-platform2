@@ -14,6 +14,7 @@ import collections
 import enum
 import functools
 import inspect
+import json
 import logging
 import pathlib
 import shutil
@@ -286,6 +287,22 @@ def cmd_screenshot(output: pathlib.Path):
     with open(output, "wb") as f:
         f.write(image_data)
         logging.info("Saved screenshot at %s", output)
+
+
+@cli.command(
+    "eval",
+    help="Evaluate an expression",
+    description="Evaluate a JavaScript expression in CCA context.",
+)
+@cli.option(
+    "expr",
+    help="JavaScript experssion to be evaluated",
+)
+def cmd_eval(expr: str):
+    cca = app.CameraApp()
+    val = cca.eval(expr)
+    output = json.dumps(val, sort_keys=True, indent=2)
+    print(output)
 
 
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
