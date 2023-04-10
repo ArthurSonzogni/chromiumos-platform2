@@ -11,7 +11,9 @@ html coverage reports from the raw profiles.
 
 import argparse
 from enum import Enum
+import json
 from pathlib import Path
+from shutil import rmtree
 import subprocess
 import sys
 from typing import List, Optional
@@ -19,6 +21,17 @@ from typing import List, Optional
 
 # Absolute path of gencov.py.
 SRC_DIR = Path(__file__).resolve().parent
+
+# Default excluded files.
+# TODO(b/264759042): libhwsec will be included after this.
+EXCLUDED_FILES = [
+    ".*/metrics_library.h",
+    ".*/usr/include/*",
+    ".*/var/cache/*",
+    ".*/libhwsec-foundation/*",
+    ".*/libhwsec/*",
+]
+
 
 BIN_PATH = {
     "attestation": "/sbin/attestationd",
@@ -47,6 +60,24 @@ class bcolors(Enum):
     UNDERLINE = "\033[4m"
 
 
+class DUT:
+    """Definition of DUT object"""
+
+    def __init__(self, ip, board, port=22):
+        self.ip = ip
+        self.board = board
+        self.port = port
+
+    def __repr__(self):
+        return f"DUT(ip={self.ip}, board={self.board}, port={self.port})"
+
+
+def dut_object(arg):
+    """Convert the argument string to DUT object"""
+    obj_dict = json.loads(arg)
+    return DUT(**obj_dict)
+
+
 def remove_file(path):
     """Remove a file at path if exists.
 
@@ -58,13 +89,25 @@ def remove_file(path):
         pass
 
 
+def cleanup_contents(content_type):
+    print(f"Cleaning up contents inside {content_type} dir...")
+    for path in (SRC_DIR / content_type).glob("**/*"):
+        if path.is_file():
+            path.unlink()
+        elif path.is_dir():
+            rmtree(path)
+    print(f"Done cleaning {content_type} dir.")
+
+
+def cleanup_old_reports():
+    """Cleanup old generated cov reports."""
+    cleanup_contents("coverage-reports")
+
+
 def cleanup():
     """Clean up generated files (profraws, profdata)."""
-    for p in SRC_DIR.glob("*.profdata"):
-        p.unlink()
-
-    for p in (SRC_DIR / "profraws").glob("*.profraw"):
-        p.unlink()
+    cleanup_contents("profraws")
+    cleanup_contents("profdata")
 
 
 def run_command(command, stdout=subprocess.DEVNULL):
@@ -76,122 +119,6 @@ def run_command(command, stdout=subprocess.DEVNULL):
     """
     print(f"{bcolors.OKGREEN.value}Running: {command}")
     subprocess.run(command, check=True, stdout=stdout)
-
-
-def fetch_profraws(dut_ip, packages, port=22):
-    """Fetch profraws of target `package` from `dut_ip`
-
-    Args:
-        dut_ip: IP address of DUT.
-        packages: List of target packages.
-        port: Port, if any. Default is 22.
-    """
-    (SRC_DIR / "profraws").mkdir(exist_ok=True)
-
-    # Default user is root.
-    for package in packages:
-        command = [
-            "rsync",
-            f"--rsh=ssh -p{port}",
-            (
-                f"root@{dut_ip}:"
-                f"/mnt/stateful_partition/unencrypted/profraws/{package}*"
-            ),
-            SRC_DIR / "profraws",
-        ]
-        run_command(command)
-
-
-def create_indexed_profdata(packages):
-    """Index raw profiles for packages and generate profdata
-
-    Args:
-        packages: List of target packages
-    """
-
-    # This profdata will be used for merged coverage report.
-    merged_profdata_path = SRC_DIR / "merged.profdata"
-    merged_profdata_path.write_text("")
-
-    # Generate profdata for each individual package.
-    for package in packages:
-        profdata_path = SRC_DIR / f"{package}.profdata"
-        profdata_path.write_text("")
-
-        for file in (SRC_DIR / "profraws").glob(f"{package}*.profraw"):
-            cmd = [
-                "llvm-profdata",
-                "merge",
-                file,
-                profdata_path,
-                "-o",
-                profdata_path,
-            ]
-            run_command(cmd)
-            cmd = [
-                "llvm-profdata",
-                "merge",
-                file,
-                merged_profdata_path,
-                "-o",
-                merged_profdata_path,
-            ]
-            run_command(cmd)
-
-
-def generate_html_report(opts, packages):
-    """Generate a line by line html coverage report from indexed profdata.
-
-    Args:
-        opts: Input args
-        packages: List of target packages
-    """
-    cmd_for_merged_profdata = [
-        "llvm-cov",
-        "show",
-        "-format=html",
-        "-use-color",
-        f"--show-instantiations={str(opts.show_instantiations).lower()}",
-        f"-output-dir={SRC_DIR}/coverage-reports/merged/",
-        f"-instr-profile={SRC_DIR}/merged.profdata",
-    ]
-
-    for idx, package in enumerate(packages):
-        if package not in BIN_PATH:
-            print(f"Invalid package name {package}!")
-            cleanup()
-            sys.exit(2)
-
-        base = f"/build/{opts.board}/usr"
-        bin_location = base + BIN_PATH[package]
-
-        # As per https://llvm.org/docs/CommandGuide/llvm-cov.html#id3,
-        # if we have more than one instrumented binaries to pass, we
-        # need to pass them by -object arg (starting from the latter).
-
-        cmd_for_merged_profdata.append(
-            bin_location if idx == 0 else f"-object={bin_location}"
-        )
-        command = [
-            "llvm-cov",
-            "show",
-            bin_location,
-            "-format=html",
-            "-use-color",
-            f"--show-instantiations={str(opts.show_instantiations).lower()}",
-            f"-output-dir={SRC_DIR}/coverage-reports/{package}/",
-            f"-instr-profile={SRC_DIR}/{package}.profdata",
-        ]
-
-        for ext in opts.ignore_filename_regex or []:
-            command.append(f"-ignore-filename-regex={ext}")
-        print(f"Generating report for {package}...")
-        run_command(command)
-
-    for ext in opts.ignore_filename_regex or []:
-        cmd_for_merged_profdata.append(f"-ignore-filename-regex={ext}")
-    print("Generating merged report...")
-    run_command(cmd_for_merged_profdata)
 
 
 def modify_binary_name(package):
@@ -206,17 +133,18 @@ def modify_binary_name(package):
     return package
 
 
-def restart_daemons(host, packages):
-    """Restart target daemons to dump the latest profraws"""
+def restart_daemons(opts):
+    """Restart target daemons to get the latest profraws"""
 
-    def restart_target_daemon(package):
+    def restart_target_daemon(dut, package):
         """Restart daemon"""
 
         bin_name = modify_binary_name(package)
         with subprocess.Popen(
             [
                 "ssh",
-                f"root@{host}",
+                f"root@{dut.ip}",
+                f"-p {dut.port}" if int(dut.port) != 22 else "",
                 f"restart {bin_name}",
             ],
             shell=False,
@@ -229,30 +157,180 @@ def restart_daemons(host, packages):
             else:
                 print(result[0].decode("utf-8"))
 
+    for dut in opts.duts:
+        for package in opts.packages:
+            restart_target_daemon(dut, package)
+
+
+def fetch_profraws(opts):
+    """Fetch profraws from opts.duts"""
+
+    (SRC_DIR / "profraws").mkdir(exist_ok=True)
+
+    def fetch(dut, package):
+        (SRC_DIR / "profraws" / package).mkdir(exist_ok=True)
+        cmd = [
+            "rsync",
+            f"--rsh=ssh -p{dut.port}",
+            (
+                f"root@{dut.ip}:"
+                f"/mnt/stateful_partition/unencrypted/profraws/{package}*"
+            ),
+            SRC_DIR / "profraws" / package,
+        ]
+        run_command(cmd)
+
+    # Default user is root.
+    for dut in opts.duts:
+        for package in opts.packages:
+            fetch(dut, package)
+
+
+def create_indexed_profdata(packages):
+    """Index raw profiles for packages and generate profdata
+
+    Args:
+        packages: List of target packages
+    """
+
+    # This profdata will be used for merged coverage report.
+    merged_profdata_path = SRC_DIR / "profdata" / "merged.profdata"
+    merged_profdata_path.parent.mkdir(parents=True, exist_ok=True)
+    merged_profdata_path.touch()
+
+    # Generate profdata for each individual package.
     for package in packages:
-        restart_target_daemon(package)
+        profdata_path = SRC_DIR / "profdata" / f"{package}.profdata"
+        profdata_path.parent.mkdir(parents=True, exist_ok=True)
+        profdata_path.touch()
+
+        for file in (SRC_DIR / "profraws" / package).glob("*.profraw"):
+            cmd = [
+                "llvm-profdata",
+                "merge",
+                file,
+                profdata_path,
+                "-o",
+                profdata_path,
+            ]
+            run_command(cmd)
+            cmd = [
+                "llvm-profdata",
+                "merge",
+                file,
+                merged_profdata_path,
+                "-o",
+                merged_profdata_path,
+            ]
+            run_command(cmd)
+
+
+def generate_html_report(opts):
+    """Generate a line by line html coverage report from indexed profdata.
+
+    Args:
+        opts: Input args
+    """
+
+    def gen_merged_report_single_pkg(package):
+        """Generate a line-level cov report for a single package for DUTs.
+
+        Args:
+            package: target package
+        """
+        if package not in BIN_PATH:
+            print(f"Invalid package {package}!")
+            return
+
+        cmd = [
+            "llvm-cov",
+            "show",
+            "-format=html",
+            "-use-color",
+            f"--show-instantiations={str(opts.show_instantiations).lower()}",
+            f"-output-dir={SRC_DIR}/coverage-reports/{package}/",
+            f"-instr-profile={SRC_DIR}/profdata/{package}.profdata",
+        ]
+        for idx, dut in enumerate(opts.duts):
+            bin_location = Path(f"/build/{dut.board}/usr/{BIN_PATH[package]}")
+            # As per https://llvm.org/docs/CommandGuide/llvm-cov.html#id3,
+            # if we have more than one instrumented binaries to pass, we
+            # need to pass them by -object arg (starting from the latter).
+            cmd.append(bin_location if idx == 0 else f"-object={bin_location}")
+
+        # Exclude default files.
+        for filename in EXCLUDED_FILES:
+            cmd.append(f"-ignore-filename-regex={filename}")
+
+        # Exclude files from args.
+        for filename in opts.ignore_filename_regex or []:
+            cmd.append(f"-ignore-filename-regex={filename}")
+
+        print(f"Generating report for {package}...")
+        run_command(cmd)
+
+    def gen_merged_report_multi_pkg(packages):
+        # All of the package name should be valid.
+        for package in packages:
+            if package not in BIN_PATH:
+                print(f"Invalid package {package}")
+                return
+
+        cmd = [
+            "llvm-cov",
+            "show",
+            "-format=html",
+            "-use-color",
+            f"--show-instantiations={str(opts.show_instantiations).lower()}",
+            f"-output-dir={SRC_DIR}/coverage-reports/merged/",
+            f"-instr-profile={SRC_DIR}/profdata/merged.profdata",
+        ]
+
+        for idx, package in enumerate(packages):
+            for jdx, dut in enumerate(opts.duts):
+                bin_location = Path(
+                    f"/build/{dut.board}/usr/{BIN_PATH[package]}"
+                )
+                # As per https://llvm.org/docs/CommandGuide/llvm-cov.html#id3,
+                # if we have more than one instrumented binaries to pass, we
+                # need to pass them by -object arg (starting from the latter).
+                cmd.append(
+                    bin_location
+                    if idx | jdx == 0
+                    else f"-object={bin_location}"
+                )
+
+        # Exclude default files.
+        for filename in EXCLUDED_FILES:
+            cmd.append(f"-ignore-filename-regex={filename}")
+
+        # Exclude files from args.
+        for filename in opts.ignore_filename_regex or []:
+            cmd.append(f"-ignore-filename-regex={filename}")
+
+        print(f"Generating report for {packages}...")
+        run_command(cmd)
+
+    for package in opts.packages:
+        gen_merged_report_single_pkg(package)
+    gen_merged_report_multi_pkg(opts.packages)
 
 
 def parse_command_arguments(argv):
     parser = argparse.ArgumentParser(description=__doc__)
 
     parser.add_argument(
-        "--dut", type=str, required=True, help="Address of the target DUT."
-    )
-    parser.add_argument(
-        "--board", type=str, required=True, help="Board of the target DUT."
+        "--duts",
+        nargs="+",
+        type=dut_object,
+        required=True,
+        help='JSON string representing DUT instances with "ip", "board", "port" attributes.',
     )
     parser.add_argument(
         "--packages",
         nargs="+",
         required=True,
         help="List of the target packages separated by spaces.",
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=22,
-        help="Port that the target DUT is currently using (if any).",
     )
     parser.add_argument(
         "--show-instantiations",
@@ -272,22 +350,27 @@ def parse_command_arguments(argv):
         "regular expression. i.e, use '-i usr/* third_party/*' "
         "to exclude files in third_party/ and usr/ folders from the report.",
     )
+    parser.add_argument(
+        "-c",
+        action="store_true",
+        help="Cleanup previously generated cov reports from local storage.",
+    )
 
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
-    # Clean up if there exists any previously generated files.
-    cleanup()
-
-    opts = parse_command_arguments(argv)
-
-    if opts.restart_daemons:
-        restart_daemons(opts.dut, opts.packages)
-    fetch_profraws(opts.dut, opts.packages, opts.port)
-    create_indexed_profdata(opts.packages)
-    generate_html_report(opts, opts.packages)
-    cleanup()
+    try:
+        opts = parse_command_arguments(argv)
+        if opts.c:
+            cleanup_old_reports()
+        if opts.restart_daemons:
+            restart_daemons(opts)
+        fetch_profraws(opts)
+        create_indexed_profdata(opts.packages)
+        generate_html_report(opts)
+    finally:
+        cleanup()
 
 
 if __name__ == "__main__":
