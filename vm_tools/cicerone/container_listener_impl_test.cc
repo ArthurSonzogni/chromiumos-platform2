@@ -815,7 +815,7 @@ TEST(ContainerListenerImplTest,
   EXPECT_EQ(dbus_result.failure_details(), kFailureDetails);
 }
 
-TEST(CointainerListenerImplTest,
+TEST(ContainerListenerImplTest,
      InProgressApplyAnsiblePlaybookProgressCallShouldProduceDBusMessage) {
   ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
   test_framework.SetUpDefaultVmAndContainer();
