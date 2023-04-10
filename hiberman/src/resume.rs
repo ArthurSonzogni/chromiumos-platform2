@@ -8,7 +8,6 @@ use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Read;
-use std::io::Write;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -141,13 +140,13 @@ impl ResumeConductor {
         self.setup_snapshot_device(false)?;
 
         debug!("Opening hiberimage");
-        let mut hiber_file = OpenOptions::new()
+        let hiber_image_file = OpenOptions::new()
             .read(true)
             .create(false)
             .open(DeviceMapper::device_path(VolumeManager::HIBERIMAGE))
             .unwrap();
         let _locked_memory = lock_process_memory()?;
-        self.resume_system(&mut hiber_file)
+        self.resume_system(hiber_image_file)
     }
 
     /// Helper function to evaluate the hibernate cookie and decide whether or
@@ -197,7 +196,7 @@ impl ResumeConductor {
     }
 
     /// Inner helper function to read the resume image and launch it.
-    fn resume_system(&mut self, hiber_file: &mut File) -> Result<()> {
+    fn resume_system(&mut self, hiber_image_file: File) -> Result<()> {
         let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Resume);
         let log_file = hiberlog::LogFile::create(log_file_path)?;
         // Start logging to the resume logger.
@@ -205,18 +204,8 @@ impl ResumeConductor {
 
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Write)?;
 
-        let mut buf = [0; 4096];
-        let mut bytes_written;
-        let mut counter = 0;
-        loop {
-            hiber_file.read(&mut buf);
-            bytes_written = snap_dev.file.write(&mut buf)?;
-            counter += 1;
-            buf = [0u8; 4096];
-            if bytes_written != 4096 {
-                break;
-            }
-        }
+        snap_dev.write_image(hiber_image_file)?;
+
         // Let other daemons know it's the end of the world.
         let _powerd_resume = PowerdPendingResume::new(&mut self.metrics_logger)
             .context("Failed to call powerd for imminent resume")?;

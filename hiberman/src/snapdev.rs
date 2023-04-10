@@ -7,10 +7,14 @@
 use std::fs::metadata;
 use std::fs::File;
 use std::fs::OpenOptions;
+use std::io::Read;
+use std::io::Write;
 use std::os::unix::fs::FileTypeExt;
 use std::path::Path;
 
+use anyhow::anyhow;
 use anyhow::Context;
+use anyhow::Error;
 use anyhow::Result;
 use libc::c_int;
 use libc::c_ulong;
@@ -30,6 +34,7 @@ use crate::hiberutil::get_device_id;
 use crate::hiberutil::HibernateError;
 
 const SNAPSHOT_PATH: &str = "/dev/snapshot";
+const HIBERIMAGE_BLOCK_SIZE: usize = 4096;
 
 #[repr(C)]
 #[repr(packed)]
@@ -163,6 +168,43 @@ impl SnapshotDevice {
             .context("Failed to open snapshot device")?;
 
         Ok(SnapshotDevice { file })
+    }
+
+    // Read the image from a file and write it to the snapshot device.
+    pub fn write_image(&mut self, mut image_file: File) -> Result<()> {
+        loop {
+            let mut buf = [0; HIBERIMAGE_BLOCK_SIZE];
+
+            let res = image_file.read(&mut buf);
+
+            let bytes_written = self.file.write(&buf)?;
+
+            if res.is_err() {
+                if bytes_written == 0 {
+                    // When the end of the hiberimage is reached the read above returns
+                    // an I/O error due to invalid dm-integrity metadata. The underlying
+                    // snapshot device also detects when a complete hibernate image has
+                    // been written, successive writes return 0 to indicate an EOF
+                    // condition. So a read error followed by an EOF when writing tells
+                    // us that the transfer of the hiberimage has completed successfully.
+                    break;
+                }
+
+                return Err(Error::from(res.err().unwrap()));
+            }
+
+            if bytes_written != HIBERIMAGE_BLOCK_SIZE {
+                let bytes_read = res.ok().unwrap();
+
+                return Err(anyhow!(
+                    "unexpectedly short write transfer to snapshot \
+                                    device ({bytes_written} bytes). Got {bytes_read} \
+                                    bytes from previous read."
+                ));
+            }
+        }
+
+        Ok(())
     }
 
     /// Freeze userspace, stopping all userspace processes except this one.
