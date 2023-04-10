@@ -131,6 +131,7 @@ message ProcessTerminateEvent {
 // batch.
 message CommonEventVariantDataFields {
   optional int64 create_timestamp_us = 1;
+  // ${COPYBARA_DATAPOL_USERNAME}
   optional string device_user = 2;
 }
 
