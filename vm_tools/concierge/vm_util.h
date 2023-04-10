@@ -7,11 +7,14 @@
 
 #include <sys/types.h>
 
+#include <cstdint>
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
 #include <vector>
+#include "base/files/scoped_file.h"
 
 #include <base/files/file_path.h>
 #include <base/strings/string_split.h>
@@ -277,6 +280,53 @@ class ArcVmCPUTopology {
   std::vector<std::string> package_mask_;
   // Default uclamp.min for performance tasks based on capacity
   int top_app_uclamp_min_;
+};
+
+class VmStartChecker {
+ public:
+  // The return type when we call |Wait|.
+  enum Status {
+    // VM is ready.
+    READY = 0,
+
+    // Invalid event received while epoll-ing.
+    EPOLL_INVALID_EVENT,
+
+    // Invalid fd received while epoll-ing.
+    EPOLL_INVALID_FD,
+
+    // Timed out waiting for the VM to start i.e. no event or signal received.
+    TIMEOUT,
+
+    // Invalid signal info.
+    INVALID_SIGNAL_INFO,
+
+    // Signal received while waiting.
+    SIGNAL_RECEIVED
+  };
+
+  // Create an instance of |VmStartChecker|. |signal_fd| is owned by the client.
+  static std::unique_ptr<VmStartChecker> Create(int32_t signal_fd);
+  ~VmStartChecker() = default;
+
+  // Wait for the VM to start with |timeout|.
+  Status Wait(base::TimeDelta timeout);
+
+  int32_t GetEventFd() const;
+
+ private:
+  VmStartChecker(int32_t signal_fd,
+                 base::ScopedFD event_fd,
+                 base::ScopedFD epoll_fd);
+
+  // Signal fd associated with the client that constructs this object.
+  int32_t signal_fd_;
+
+  // Event fd created to monitor VM start up.
+  base::ScopedFD event_fd_;
+
+  // Epoll fd that will wait on both |event_fd_| and |signal_fd_|.
+  base::ScopedFD epoll_fd_;
 };
 
 }  // namespace concierge

@@ -6,8 +6,10 @@
 
 #include <inttypes.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 
 namespace vm_tools {
 namespace concierge {
@@ -29,17 +31,21 @@ grpc::Status StartupListenerImpl::VmReady(grpc::ServerContext* ctx,
     return grpc::Status(grpc::FAILED_PRECONDITION, "VM is not known");
   }
 
-  iter->second->Signal();
+  // Signal to the main concierge thread that this VM is ready. Note we have to
+  // write 8 bytes to an event fd for successful signaling.
+  int64_t dummy = 1;
+  if (HANDLE_EINTR(write(iter->second, &dummy, sizeof(dummy))) <
+      sizeof(dummy)) {
+    LOG(ERROR) << "Failed to signal event fd for context id: " << cid;
+    return grpc::Status(grpc::FAILED_PRECONDITION, "Failed to signal event fd");
+  }
   pending_vms_.erase(iter);
-
   return grpc::Status::OK;
 }
 
-void StartupListenerImpl::AddPendingVm(uint32_t cid,
-                                       base::WaitableEvent* event) {
+void StartupListenerImpl::AddPendingVm(uint32_t cid, int32_t event_fd) {
   base::AutoLock lock(vm_lock_);
-
-  pending_vms_[cid] = event;
+  pending_vms_[cid] = event_fd;
 }
 
 void StartupListenerImpl::RemovePendingVm(uint32_t cid) {

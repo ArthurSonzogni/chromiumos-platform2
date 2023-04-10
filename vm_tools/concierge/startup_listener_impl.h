@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <cstdint>
 #include <map>
 
 #include <base/synchronization/lock.h>
@@ -33,15 +34,17 @@ class StartupListenerImpl final : public vm_tools::StartupListener::Service {
                        vm_tools::EmptyMessage* response) override;
 
   // Add the VM with the vsock context id |cid| to the set of VMs that have
-  // been started but have not checked in as ready yet.
-  void AddPendingVm(uint32_t cid, base::WaitableEvent* event);
+  // been started but have not checked in as ready yet. |event_fd| will be
+  // signaled when the VM is ready. It's lifetime should be owned by the client.
+  void AddPendingVm(uint32_t cid, int32_t event_fd);
 
   // Remove the WaitableEvent associated with |cid|.
   void RemovePendingVm(uint32_t cid);
 
  private:
-  // VMs that have been started but have not checked in as being ready yet.
-  std::map<uint32_t, base::WaitableEvent*> pending_vms_;
+  // VMs that have been started but have not checked in as being ready yet. This
+  // is a map of their cids to event fds registered in |AddPendingVm|.
+  std::map<uint32_t, int32_t> pending_vms_;
 
   // Lock to protect |pending_vms_|.
   base::Lock vm_lock_;

@@ -7,12 +7,16 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/epoll.h>
+#include <sys/eventfd.h>
+#include <sys/signalfd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include <algorithm>
+#include <csignal>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -37,6 +41,7 @@
 
 #include <chromeos-config/libcros_config/cros_config.h>
 
+#include "base/memory/ptr_util.h"
 #include "vm_tools/concierge/crosvm_control.h"
 
 namespace vm_tools::concierge {
@@ -819,5 +824,124 @@ ArcVmCPUTopology::ArcVmCPUTopology(uint32_t num_cpus, uint32_t num_rt_cpus) {
   num_cpus_ = num_cpus;
   num_rt_cpus_ = num_rt_cpus;
 }
+
+std::ostream& operator<<(std::ostream& os, const VmStartChecker::Status& e) {
+  switch (e) {
+    case VmStartChecker::Status::READY:
+      os << "VM is ready";
+      break;
+    case VmStartChecker::Status::EPOLL_INVALID_EVENT:
+      os << "Received invalid event while waiting for VM to start";
+      break;
+    case VmStartChecker::Status::EPOLL_INVALID_FD:
+      os << "Received invalid fd while waiting for VM to start";
+      break;
+    case VmStartChecker::Status::TIMEOUT:
+      os << "Timed out while waiting for VM to start";
+      break;
+    case VmStartChecker::Status::INVALID_SIGNAL_INFO:
+      os << "Received invalid signal info while waiting for VM to start";
+      break;
+    case VmStartChecker::Status::SIGNAL_RECEIVED:
+      os << "Received signal while waiting for VM to start";
+      break;
+    default:
+      os << "Invalid enum value";
+      break;
+  }
+  return os;
+}
+
+std::unique_ptr<VmStartChecker> VmStartChecker::Create(int32_t signal_fd) {
+  // Create an event fd that will  be signalled when a VM is ready.
+  base::ScopedFD vm_start_event_fd(eventfd(0, EFD_CLOEXEC));
+  if (!vm_start_event_fd.is_valid()) {
+    PLOG(ERROR) << "Failed to create eventfd for VM start notification";
+    return nullptr;
+  }
+
+  // We need to add it to the epoll set so that |Wait| can use it successfully.
+  // This fd shouldn't be used across child processes but still pass
+  // EPOLL_CLOEXEC as good hygiene.
+  base::ScopedFD vm_start_epoll_fd(epoll_create1(EPOLL_CLOEXEC));
+  if (!vm_start_epoll_fd.is_valid()) {
+    PLOG(ERROR) << "Failed to create epoll fd for the VM start event";
+    return nullptr;
+  }
+
+  struct epoll_event ep_event {
+    .events = EPOLLIN,
+    .data.u32 = static_cast<uint32_t>(vm_start_event_fd.get()),
+  };
+  if (HANDLE_EINTR(epoll_ctl(vm_start_epoll_fd.get(), EPOLL_CTL_ADD,
+                             vm_start_event_fd.get(), &ep_event)) < 0) {
+    PLOG(ERROR) << "Failed to epoll add VM start event fd";
+    return nullptr;
+  }
+
+  // Add the signal fd to the epoll set to see if a signal is received while
+  // waiting for the VM.
+  ep_event = {
+      .events = EPOLLIN,
+      .data.u32 = static_cast<uint32_t>(signal_fd),
+  };
+  if (HANDLE_EINTR(epoll_ctl(vm_start_epoll_fd.get(), EPOLL_CTL_ADD, signal_fd,
+                             &ep_event)) < 0) {
+    PLOG(ERROR) << "Failed to epoll add signal fd";
+    return nullptr;
+  }
+
+  return base::WrapUnique(new VmStartChecker(
+      signal_fd, std::move(vm_start_event_fd), std::move(vm_start_epoll_fd)));
+}
+
+VmStartChecker::Status VmStartChecker::Wait(base::TimeDelta timeout) {
+  struct epoll_event ep_event;
+  if (HANDLE_EINTR(epoll_wait(epoll_fd_.get(), &ep_event, 1,
+                              timeout.InMilliseconds())) <= 0) {
+    PLOG(ERROR) << "Timed out waiting for VM to start";
+    return Status::TIMEOUT;
+  }
+
+  // We've only registered for input events.
+  if ((ep_event.events & EPOLLIN) == 0) {
+    LOG(ERROR) << "Got invalid event while waiting for VM to start: "
+               << ep_event.events;
+    return Status::EPOLL_INVALID_EVENT;
+  }
+
+  if ((ep_event.data.u32 != static_cast<uint32_t>(event_fd_.get())) &&
+      (ep_event.data.u32 != static_cast<uint32_t>(signal_fd_))) {
+    LOG(ERROR) << "Got invalid fd while waiting for VM to start: "
+               << ep_event.data.u32;
+    return Status::EPOLL_INVALID_FD;
+  }
+
+  if (ep_event.data.u32 == static_cast<uint32_t>(signal_fd_)) {
+    struct signalfd_siginfo siginfo;
+    if (read(signal_fd_, &siginfo, sizeof(siginfo)) != sizeof(siginfo)) {
+      PLOG(ERROR) << "Failed to read signal info";
+      return Status::INVALID_SIGNAL_INFO;
+    }
+
+    LOG(ERROR) << "Received signal: " << siginfo.ssi_signo
+               << " while waiting to start the VM";
+    return Status::SIGNAL_RECEIVED;
+  }
+
+  // At this point |event_fd_| has been successfully signalled.
+  return Status::READY;
+}
+
+int32_t VmStartChecker::GetEventFd() const {
+  return event_fd_.get();
+}
+
+VmStartChecker::VmStartChecker(int32_t signal_fd,
+                               base::ScopedFD event_fd,
+                               base::ScopedFD epoll_fd)
+    : signal_fd_(signal_fd),
+      event_fd_(std::move(event_fd)),
+      epoll_fd_(std::move(epoll_fd)) {}
 
 }  // namespace vm_tools::concierge

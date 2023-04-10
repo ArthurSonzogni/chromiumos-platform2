@@ -59,6 +59,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/notreached.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -2120,12 +2121,17 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   uint32_t seneschal_server_handle = server_proxy->handle();
   vm_info->set_seneschal_server_handle(seneschal_server_handle);
 
-  // Associate a WaitableEvent with this VM.  This needs to happen before
-  // starting the VM to avoid a race where the VM reports that it's ready
-  // before it gets added as a pending VM.
-  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
-                            base::WaitableEvent::InitialState::NOT_SIGNALED);
-  startup_listener_.AddPendingVm(vsock_cid, &event);
+  // Set up a "checker" that will wait until the VM is ready or a signal is
+  // received while waiting for the VM to start or we timeout.
+  std::unique_ptr<VmStartChecker> vm_start_checker =
+      VmStartChecker::Create(signal_fd_.get());
+  if (!vm_start_checker) {
+    LOG(ERROR) << "Failed to create VM start checker";
+    response.set_failure_reason("Failed to create VM start checker");
+    return response;
+  }
+  // This will signal the event fd passed in when the VM is ready.
+  startup_listener_.AddPendingVm(vsock_cid, vm_start_checker->GetEventFd());
 
   // Start the VM and build the response.
   VmFeatures features{
@@ -2246,11 +2252,12 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   if (request.timeout() != 0) {
     timeout = base::Seconds(request.timeout());
   }
-  if (!event.TimedWait(timeout)) {
-    LOG(ERROR) << "VM failed to start in " << timeout.InSeconds() << " seconds";
 
-    startup_listener_.RemovePendingVm(vsock_cid);
-    response.set_failure_reason("VM failed to start in time");
+  VmStartChecker::Status vm_start_checker_status =
+      vm_start_checker->Wait(timeout);
+  if (vm_start_checker_status != VmStartChecker::Status::READY) {
+    LOG(ERROR) << vm_start_checker_status;
+    response.set_failure_reason(std::to_string(vm_start_checker_status));
     return response;
   }
 
