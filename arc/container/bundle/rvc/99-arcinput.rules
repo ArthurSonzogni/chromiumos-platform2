@@ -1,0 +1,28 @@
+# Copyright (c) 2023 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+KERNEL!="event*", GOTO="input_end"
+
+# Create /dev/arc_input directory and mirror the contents of /dev/input with the
+# correct group ownership. More important than group, the file must exist with
+# 660 permissions upon creation, as init will try to open the device
+# immediately.
+#
+# Needed for R Container, and not ARCVM.
+ACTION=="add", \
+	RUN+="/bin/mkdir -p /dev/arc_input" \
+	RUN+="/bin/chown root:656364 /dev/arc_input"
+
+# 02000 bit is for setgid. It makes new files inherit the gid of the directory.
+# setuid has no effect for mknod, but it is OK if it is owned by root rather
+# than android-root.
+# If android-root must be the owner, this can be resolved by creating the file
+# outside of the final directory first, but in the same devtmpfs filesystem,
+# then chown'ing it and finally moving it into place.
+ACTION=="add", RUN+="/bin/chmod 2755 /dev/arc_input", \
+	RUN+="/bin/mknod -m 660 /dev/arc_input/%k c %M %m"
+
+ACTION=="remove", RUN+="/bin/rm /dev/arc_input/%k"
+
+LABEL="input_end"
