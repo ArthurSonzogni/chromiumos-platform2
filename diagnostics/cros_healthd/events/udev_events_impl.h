@@ -69,9 +69,6 @@ class UdevEventsImpl final : public UdevEvents {
 
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
       udev_monitor_watcher_;
-  // Stores a reference to LibDrmUtil in order to obtain information related to
-  // HDMI and DP.
-  std::unique_ptr<LibdrmUtil> libdrm_util_;
   // Stores the last known connection status for HDMI connectors.
   std::map<uint32_t, bool> hdmi_connector_status_;
   // Each observer in |thunderbolt_observers_| will be notified of any
