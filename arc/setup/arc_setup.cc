@@ -2271,6 +2271,15 @@ void ArcSetup::OnSetup() {
   if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
     // For container R.
     SetUpTestharness(is_dev_mode);
+
+    if (!USE_ARCVM) {
+      // In case the udev rules for creating and populating this directory fail,
+      // create the directory so that the bind mount succeeds and allows ARC to
+      // boot, as this is a non-essential feature.
+      // This is intended for CTS compliance on R container: b/277541769
+      EXIT_IF(!brillo::MkdirRecursively(base::FilePath("/dev/arc_input"), 0755)
+                   .is_valid());
+    }
   }
   SetUpPowerSysfsContext();
   MakeMountPointsReadOnly();
