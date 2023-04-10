@@ -64,6 +64,10 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
   required_syscalls = BASE_REQUIRED_SYSCALLS + [
                         # This syscall is required by all executor delegates.
                         "getrandom",
+
+                        # Required for syslog.
+                        "connect",
+                        "socket: arg0 == AF_UNIX",
                       ]
   denied_syscalls = BASE_DENIED_SYSCALLS
 }

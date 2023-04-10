@@ -10,3 +10,5 @@ gettimeofday: 1
 clock_getres_time64: 1
 clock_gettime64: 1
 getrandom: 1
+connect: 1
+socket: arg0 == AF_UNIX
