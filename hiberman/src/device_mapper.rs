@@ -51,6 +51,13 @@ impl DeviceMapper {
         Ok(())
     }
 
+    /// Set the UUID of a DM device.
+    pub fn set_device_uuid(name: &str, uuid: &str) -> Result<()> {
+        Self::run_dmsetup(["rename", name, "--setuuid", uuid])
+            .context(format!("Failed to set UUID of DM device '{name}'"))?;
+        Ok(())
+    }
+
     /// Suspend a DM device.
     pub fn suspend_device(name: &str) -> Result<()> {
         Self::run_dmsetup(["suspend", name])

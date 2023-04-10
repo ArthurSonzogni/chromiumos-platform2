@@ -256,6 +256,33 @@ impl VolumeManager {
         Ok(())
     }
 
+    // Lock down the DM devices that comprise the hiberimage. This involves
+    // setting the UUID of the DM devices to 'dm_locked-<name>', which
+    // indicates the kernel that certain operations are not permitted on
+    // this DM device. As an additional layer of protection the device
+    // nodes of the DM devices are removed.
+    pub fn lockdown_hiberimage(&self) -> Result<()> {
+        for name in [
+            Self::HIBERIMAGE,
+            Self::HIBERINTEGRITY,
+            Self::HIBERIMAGE_INTEGRITY,
+        ] {
+            let uuid = format!("dm_locked-{name}");
+
+            DeviceMapper::set_device_uuid(name, &uuid)?;
+
+            // Delete the device node and the symlink in /dev/mapper
+            for path in [
+                DeviceMapper::device_path(name)?,
+                PathBuf::from(format!("/dev/mapper/{name}")),
+            ] {
+                remove_file(&path).context(format!("Failed to unlink {}", path.display()))?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Mount the hibermeta LV if it isn't already mounted
     pub fn mount_hibermeta(&mut self) -> Result<()> {
         if get_device_mounted_at_dir(HIBERMETA_DIR).is_ok() {

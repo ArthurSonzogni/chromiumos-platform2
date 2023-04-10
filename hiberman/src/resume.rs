@@ -112,10 +112,10 @@ impl ResumeConductor {
     /// Helper function to perform the meat of the resume action now that the
     /// logging is routed.
     fn resume_inner(&mut self, pending_merge: &mut PendingStatefulMerge) -> Result<()> {
+        let mut volume_manager = VolumeManager::new()?;
+
         if let Err(e) = self.decide_to_resume(pending_merge) {
             // No resume from hibernate
-
-            let mut volume_manager = VolumeManager::new()?;
 
             // Make sure the thinpool is writable before removing the LVs.
             volume_manager.make_thinpool_rw()?;
@@ -127,10 +127,12 @@ impl ResumeConductor {
             // Set up the snapshot device for future hibernates
             self.setup_snapshot_device(true)?;
 
+            volume_manager.lockdown_hiberimage()?;
+
             return Err(e);
         }
 
-        VolumeManager::new()?.setup_hibermeta_lv(false)?;
+        volume_manager.setup_hibermeta_lv(false)?;
 
         let metrics_file_path = MetricsFile::get_path(HibernateStage::Resume);
         let metrics_file = MetricsFile::create(metrics_file_path)?;
@@ -145,6 +147,9 @@ impl ResumeConductor {
             .create(false)
             .open(DeviceMapper::device_path(VolumeManager::HIBERIMAGE).unwrap())
             .unwrap();
+
+        volume_manager.lockdown_hiberimage()?;
+
         let _locked_memory = lock_process_memory()?;
         self.resume_system(hiber_image_file)
     }
