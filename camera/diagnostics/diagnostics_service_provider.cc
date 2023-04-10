@@ -6,13 +6,14 @@
 
 #include <utility>
 
-namespace cros {
+#include <chromeos/mojo/service_constants.h>
 
-constexpr char kDiagnosticsService[] = "CameraDiagnostics";
+namespace cros {
 
 void DiagnosticsServiceProvider::Register(
     chromeos::mojo_service_manager::mojom::ServiceManager* service_manager) {
-  service_manager->Register(/*service_name=*/kDiagnosticsService,
+  service_manager->Register(/*service_name=*/
+                            chromeos::mojo_services::kCrosCameraDiagnostics,
                             receiver_.BindNewPipeAndPassRemote());
 }
 
