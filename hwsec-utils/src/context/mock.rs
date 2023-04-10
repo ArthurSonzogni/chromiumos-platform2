@@ -76,6 +76,10 @@ impl Context for MockContext {
             HwsecError::FileError
         })
     }
+
+    fn sleep(&mut self, _sec: u64) {
+        // Don't sleep when performing unit tests
+    }
 }
 
 #[cfg(test)]

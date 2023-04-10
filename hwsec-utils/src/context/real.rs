@@ -57,4 +57,10 @@ impl Context for RealContext {
             }
         }
     }
+
+    fn sleep(&mut self, sec: u64) {
+        use core::time;
+        use std::thread;
+        thread::sleep(time::Duration::from_secs(sec));
+    }
 }

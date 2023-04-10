@@ -18,4 +18,5 @@ pub trait Context {
     fn read_file_to_string(&mut self, path_str: &str) -> Result<String, HwsecError>;
     fn write_contents_to_file(&mut self, path_str: &str, contents: &[u8])
         -> Result<(), HwsecError>;
+    fn sleep(&mut self, sec: u64);
 }

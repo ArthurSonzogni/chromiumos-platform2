@@ -7,13 +7,18 @@ use hwsec_utils::cr50::cr50_update;
 use hwsec_utils::error::HwsecError;
 use libchromeos::syslog;
 
+// This script is run at postinstall phase of Chrome OS installation process.
+// It checks if the currently running cr50 image is ready to accept a
+// background update and if the resident trunks_send utility is capable of
+// updating the H1. If any of the checks fails, the script exits, otherwise it
+// tries updating the H1 with the new cr50 image.
 fn main() {
     let ident = match syslog::get_ident_from_process() {
         Some(ident) => ident,
         None => std::process::exit(1),
     };
 
-    if let Err(e) = syslog::init(ident, false /* Don't log to stderr */) {
+    if let Err(e) = syslog::init(ident, true /* Don't log to stderr */) {
         eprintln!("failed to initialize syslog: {}", e);
         std::process::exit(1)
     }
