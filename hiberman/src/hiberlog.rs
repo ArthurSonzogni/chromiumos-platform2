@@ -312,11 +312,7 @@ pub fn redirect_log(out: HiberlogOut) {
     let mut state = lock!();
     state.to_kmsg = false;
 
-    let prev_out_was_memory = if matches!(state.out, HiberlogOut::BufferInMemory) {
-        true
-    } else {
-        false
-    };
+    let prev_out_was_memory = matches!(state.out, HiberlogOut::BufferInMemory);
 
     state.out = out;
 
