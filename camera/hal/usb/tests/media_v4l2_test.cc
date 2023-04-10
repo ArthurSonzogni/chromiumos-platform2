@@ -113,6 +113,17 @@ bool IsUsbCamera(const base::FilePath& path) {
   return IsCaptureDevice(path) && !GetUsbInfo(path).vid_pid.empty();
 }
 
+bool IsBuiltinUsbCamera(const base::FilePath& path) {
+  if (!IsUsbCamera(path)) {
+    return false;
+  }
+  std::string vid_pid = GetUsbInfo(path).vid_pid;
+  CameraCharacteristics characteristics;
+  const DeviceInfo* device_info =
+      characteristics.Find(vid_pid.substr(0, 4), vid_pid.substr(5, 9));
+  return device_info != nullptr;
+}
+
 std::vector<base::FilePath> GetDevices(
     base::RepeatingCallback<bool(const base::FilePath&)> selector) {
   std::vector<base::FilePath> devices;
@@ -1146,6 +1157,7 @@ int main(int argc, char** argv) {
 
   DEFINE_bool(list_usbcam, false, "List available USB cameras");
   DEFINE_bool(list_capture_devices, false, "List V4L2 capture devices");
+  DEFINE_bool(list_builtin_usbcam, false, "List built-in USB cameras");
   DEFINE_string(test_list, "default", "Select different test list");
   DEFINE_string(device_path, "/dev/video0", "Path to the video device");
 
@@ -1159,10 +1171,15 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  if (FLAGS_list_usbcam || FLAGS_list_capture_devices) {
-    base::RepeatingCallback<bool(const base::FilePath&)> selector =
-        FLAGS_list_usbcam ? base::BindRepeating(cros::tests::IsUsbCamera)
-                          : base::BindRepeating(cros::tests::IsCaptureDevice);
+  base::RepeatingCallback<bool(const base::FilePath&)> selector;
+  if (FLAGS_list_builtin_usbcam) {
+    selector = base::BindRepeating(cros::tests::IsBuiltinUsbCamera);
+  } else if (FLAGS_list_usbcam) {
+    selector = base::BindRepeating(cros::tests::IsUsbCamera);
+  } else if (FLAGS_list_capture_devices) {
+    selector = base::BindRepeating(cros::tests::IsCaptureDevice);
+  }
+  if (!selector.is_null()) {
     std::vector<base::FilePath> devices = cros::tests::GetDevices(selector);
     for (const auto& path : devices) {
       std::cout << path.value() << std::endl;
