@@ -21,6 +21,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "patchpanel/datapath.h"
+#include "patchpanel/iptables.h"
 #include "patchpanel/net_util.h"
 
 namespace {
@@ -31,11 +32,6 @@ namespace {
 // See
 // https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/if.h?h=v4.14#n33
 constexpr size_t kInterfaceNameSize = 16;
-
-// The name of the filter table for iptables and ip6tables commands.
-constexpr char kFilterTable[] = "filter";
-// The name of the nat table for iptables and ip6tables commands.
-constexpr char kNatTable[] = "nat";
 
 // Interface names are passed directly to the 'iptables' command. Rather than
 // auditing 'iptables' source code to see how it handles malformed names,
@@ -129,13 +125,14 @@ bool Firewall::AddIpv4ForwardRule(Protocol protocol,
                                   const std::string& dst_ip,
                                   uint16_t dst_port) {
   if (!ModifyIpv4DNATRule(protocol, input_ip, port, interface, dst_ip, dst_port,
-                          "-I")) {
+                          Iptables::Command::kI)) {
     return false;
   }
 
-  if (!ModifyIpv4ForwardChain(protocol, interface, dst_ip, dst_port, "-A")) {
+  if (!ModifyIpv4ForwardChain(protocol, interface, dst_ip, dst_port,
+                              Iptables::Command::kA)) {
     ModifyIpv4DNATRule(protocol, input_ip, port, interface, dst_ip, dst_port,
-                       "-D");
+                       Iptables::Command::kD);
     return false;
   }
 
@@ -150,10 +147,11 @@ bool Firewall::DeleteIpv4ForwardRule(Protocol protocol,
                                      uint16_t dst_port) {
   bool success = true;
   if (!ModifyIpv4DNATRule(protocol, input_ip, port, interface, dst_ip, dst_port,
-                          "-D")) {
+                          Iptables::Command::kD)) {
     success = false;
   }
-  if (!ModifyIpv4ForwardChain(protocol, interface, dst_ip, dst_port, "-D")) {
+  if (!ModifyIpv4ForwardChain(protocol, interface, dst_ip, dst_port,
+                              Iptables::Command::kD)) {
     success = false;
   }
   return success;
@@ -165,7 +163,7 @@ bool Firewall::ModifyIpv4DNATRule(Protocol protocol,
                                   const std::string& interface,
                                   const std::string& dst_ip,
                                   uint16_t dst_port,
-                                  const std::string& operation) {
+                                  Iptables::Command command) {
   if (!input_ip.empty() && GetIpFamily(input_ip) != AF_INET) {
     LOG(ERROR) << "Invalid input IPv4 address '" << input_ip << "'";
     return false;
@@ -193,13 +191,12 @@ bool Firewall::ModifyIpv4DNATRule(Protocol protocol,
 
   // Only support deleting existing forwarding rules or inserting rules in the
   // first position: ARC++ generic inbound DNAT rule always need to go last.
-  if (operation != "-I" && operation != "-D") {
-    LOG(ERROR) << "Invalid chain operation '" << operation << "'";
+  if (command != Iptables::Command::kI && command != Iptables::Command::kD) {
+    LOG(ERROR) << "Invalid iptables command '" << command << "'";
     return false;
   }
 
   std::vector<std::string> argv{
-      operation,
       kIngressPortForwardingChain,
       "-i",
       interface,
@@ -217,14 +214,14 @@ bool Firewall::ModifyIpv4DNATRule(Protocol protocol,
   argv.push_back("--to-destination");  // new output destination ip:port
   argv.push_back(dst_ip + ":" + std::to_string(dst_port));
   argv.push_back("-w");  // Wait for xtables lock.
-  return RunIptables(IPv4, kNatTable, argv);
+  return RunIptables(IPv4, Iptables::Table::kNat, command, argv);
 }
 
 bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
                                       const std::string& interface,
                                       const std::string& dst_ip,
                                       uint16_t dst_port,
-                                      const std::string& operation) {
+                                      Iptables::Command command) {
   if (!IsValidInterfaceName(interface) || interface.empty()) {
     LOG(ERROR) << "Invalid interface name '" << interface << "'";
     return false;
@@ -241,13 +238,13 @@ bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
   }
 
   // Order does not matter for the FORWARD chain: both -A or -I are possible.
-  if (operation != "-A" && operation != "-I" && operation != "-D") {
-    LOG(ERROR) << "Invalid chain operation '" << operation << "'";
+  if (command != Iptables::Command::kA && command != Iptables::Command::kI &&
+      command != Iptables::Command::kD) {
+    LOG(ERROR) << "Invalid iptables command '" << command << "'";
     return false;
   }
 
   std::vector<std::string> argv{
-      operation,
       "FORWARD",
       "-i",
       interface,
@@ -261,7 +258,7 @@ bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
       "ACCEPT",
       "-w",
   };  // Wait for xtables lock.
-  return RunIptables(IPv4, kFilterTable, argv);
+  return RunIptables(IPv4, Iptables::Table::kFilter, command, argv);
 }
 
 bool Firewall::AddLoopbackLockdownRules(Protocol protocol, uint16_t port) {
@@ -300,7 +297,6 @@ bool Firewall::AddAcceptRule(IpFamily ip_family,
                              uint16_t port,
                              const std::string& interface) {
   std::vector<std::string> argv{
-      "-I",  // insert
       kIngressPortFirewallChain,
       "-p",  // protocol
       ProtocolName(protocol),
@@ -315,7 +311,8 @@ bool Firewall::AddAcceptRule(IpFamily ip_family,
   argv.push_back("ACCEPT");
   argv.push_back("-w");  // Wait for xtables lock.
 
-  return RunIptables(ip_family, kFilterTable, argv);
+  return RunIptables(ip_family, Iptables::Table::kFilter, Iptables::Command::kI,
+                     argv);
 }
 
 bool Firewall::DeleteAcceptRule(IpFamily ip_family,
@@ -323,7 +320,6 @@ bool Firewall::DeleteAcceptRule(IpFamily ip_family,
                                 uint16_t port,
                                 const std::string& interface) {
   std::vector<std::string> argv{
-      "-D",  // delete
       kIngressPortFirewallChain,
       "-p",  // protocol
       ProtocolName(protocol),
@@ -338,14 +334,14 @@ bool Firewall::DeleteAcceptRule(IpFamily ip_family,
   argv.push_back("ACCEPT");
   argv.push_back("-w");  // Wait for xtables lock.
 
-  return RunIptables(ip_family, kFilterTable, argv);
+  return RunIptables(ip_family, Iptables::Table::kFilter, Iptables::Command::kD,
+                     argv);
 }
 
 bool Firewall::AddLoopbackLockdownRule(IpFamily ip_family,
                                        Protocol protocol,
                                        uint16_t port) {
   std::vector<std::string> argv{
-      "-I",  // insert
       kEgressPortFirewallChain,
       "-p",  // protocol
       ProtocolName(protocol),
@@ -363,14 +359,14 @@ bool Firewall::AddLoopbackLockdownRule(IpFamily ip_family,
       "-w",  // Wait for xtables lock.
   };
 
-  return RunIptables(ip_family, kFilterTable, argv);
+  return RunIptables(ip_family, Iptables::Table::kFilter, Iptables::Command::kI,
+                     argv);
 }
 
 bool Firewall::DeleteLoopbackLockdownRule(IpFamily ip_family,
                                           Protocol protocol,
                                           uint16_t port) {
   std::vector<std::string> argv{
-      "-D",  // delete
       kEgressPortFirewallChain,
       "-p",  // protocol
       ProtocolName(protocol),
@@ -388,18 +384,20 @@ bool Firewall::DeleteLoopbackLockdownRule(IpFamily ip_family,
       "-w",  // Wait for xtables lock.
   };
 
-  // TODO:  add IPv4 or IPv6
-  return RunIptables(ip_family, kFilterTable, argv);
+  // TODO(b/278486416):  add IPv4 or IPv6
+  return RunIptables(ip_family, Iptables::Table::kFilter, Iptables::Command::kD,
+                     argv);
 }
 
 bool Firewall::RunIptables(IpFamily ip_family,
-                           const std::string& table,
+                           Iptables::Table table,
+                           Iptables::Command command,
                            const std::vector<std::string>& argv) {
   if (ip_family == IPv4)
-    return process_runner_->iptables(table, argv, false) == 0;
+    return process_runner_->iptables(table, command, argv, false) == 0;
 
   if (ip_family == IPv6)
-    return process_runner_->ip6tables(table, argv, false) == 0;
+    return process_runner_->ip6tables(table, command, argv, false) == 0;
 
   return false;
 }

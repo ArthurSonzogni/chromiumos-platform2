@@ -97,6 +97,7 @@ libpatchpanel_sources = [
   "dhcp_server_controller.cc",
   "firewall.cc",
   "guest_ipv6_service.cc",
+  "iptables.cc",
   "manager.cc",
   "minijailed_process_runner.cc",
   "multicast_forwarder.cc",

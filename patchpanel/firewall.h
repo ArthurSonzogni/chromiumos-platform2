@@ -17,6 +17,7 @@
 #include <gtest/gtest_prod.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
+#include "patchpanel/iptables.h"
 #include "patchpanel/minijailed_process_runner.h"
 
 namespace patchpanel {
@@ -32,7 +33,7 @@ class Firewall {
   typedef std::pair<uint16_t, std::string> Hole;
 
   Firewall();
-  Firewall(MinijailedProcessRunner* process_runner);
+  explicit Firewall(MinijailedProcessRunner* process_runner);
   Firewall(const Firewall&) = delete;
   Firewall& operator=(const Firewall&) = delete;
 
@@ -82,13 +83,13 @@ class Firewall {
                           const std::string& interface,
                           const std::string& dst_ip,
                           uint16_t dst_port,
-                          const std::string& operation);
+                          Iptables::Command command);
   // Adds or removes ACCEPT chain rules to/from the filter FORWARD chain.
   bool ModifyIpv4ForwardChain(Protocol protocol,
                               const std::string& interface,
                               const std::string& dst_ip,
                               uint16_t dst_port,
-                              const std::string& operation);
+                              Iptables::Command command);
   bool AddLoopbackLockdownRule(IpFamily ip_family,
                                Protocol protocol,
                                uint16_t port);
@@ -96,7 +97,8 @@ class Firewall {
                                   Protocol protocol,
                                   uint16_t port);
   bool RunIptables(IpFamily ip_family,
-                   const std::string& table,
+                   Iptables::Table table,
+                   Iptables::Command command,
                    const std::vector<std::string>& argv);
 
   std::unique_ptr<MinijailedProcessRunner> process_runner_;

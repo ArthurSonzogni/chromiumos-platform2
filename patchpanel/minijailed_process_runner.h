@@ -13,6 +13,7 @@
 
 #include <brillo/minijail/minijail.h>
 
+#include "patchpanel/iptables.h"
 #include "patchpanel/system.h"
 
 namespace patchpanel {
@@ -47,12 +48,14 @@ class MinijailedProcessRunner {
 
   // Runs iptables. If |output| is not nullptr, it will be filled with the
   // result from stdout of iptables command.
-  virtual int iptables(const std::string& table,
+  virtual int iptables(Iptables::Table table,
+                       Iptables::Command command,
                        const std::vector<std::string>& argv,
                        bool log_failures = true,
                        std::string* output = nullptr);
 
-  virtual int ip6tables(const std::string& table,
+  virtual int ip6tables(Iptables::Table table,
+                        Iptables::Command command,
                         const std::vector<std::string>& argv,
                         bool log_failures = true,
                         std::string* output = nullptr);

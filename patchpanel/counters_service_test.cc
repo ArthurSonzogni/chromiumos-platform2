@@ -15,6 +15,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "patchpanel/iptables.h"
 #include "patchpanel/mock_datapath.h"
 
 namespace patchpanel {
@@ -267,9 +268,11 @@ class CountersServiceTest : public testing::Test {
   // |ipv6_output|, respectively. Expects an empty map from GetCounters().
   void TestBadIptablesOutput(const std::string& ipv4_output,
                              const std::string& ipv6_output) {
-    EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv4, "mangle"))
+    EXPECT_CALL(*datapath_,
+                DumpIptables(IpFamily::IPv4, Iptables::Table::kMangle))
         .WillRepeatedly(Return(ipv4_output));
-    EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv6, "mangle"))
+    EXPECT_CALL(*datapath_,
+                DumpIptables(IpFamily::IPv6, Iptables::Table::kMangle))
         .WillRepeatedly(Return(ipv6_output));
 
     auto actual = counters_svc_->GetCounters({});
@@ -283,78 +286,108 @@ class CountersServiceTest : public testing::Test {
 
 TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
   // The following commands are expected when eth0 comes up.
-  EXPECT_CALL(*datapath_,
-              ModifyChain(IpFamily::Dual, "mangle", "-N", "rx_eth0", _))
+  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::Dual, Iptables::Table::kMangle,
+                                      Iptables::Command::kN, "rx_eth0", _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_,
-              ModifyChain(IpFamily::Dual, "mangle", "-N", "tx_eth0", _))
+  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::Dual, Iptables::Table::kMangle,
+                                      Iptables::Command::kN, "tx_eth0", _))
       .WillOnce(Return(true));
-  const std::vector<std::vector<std::string>> expected_calls{
-      {"-A", "INPUT", "-i", "eth0", "-j", "rx_eth0", "-w"},
-      {"-A", "FORWARD", "-i", "eth0", "-j", "rx_eth0", "-w"},
-      {"-A", "POSTROUTING", "-o", "eth0", "-j", "tx_eth0", "-w"},
-      {"-A", "tx_eth0", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_eth0", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_eth0", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_eth0", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_eth0", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_eth0", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_eth0", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_eth0", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_eth0", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_eth0", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_eth0", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_eth0", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_eth0", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_eth0", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_eth0", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_eth0", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_eth0", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_eth0", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_eth0", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_eth0", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_eth0", "-w"},
-      {"-A", "rx_eth0", "-w"},
+  static const struct {
+    Iptables::Command command;
+    std::vector<std::string> argv;
+  } expected_calls[] = {
+      {Iptables::Command::kA, {"INPUT", "-i", "eth0", "-j", "rx_eth0", "-w"}},
+      {Iptables::Command::kA, {"FORWARD", "-i", "eth0", "-j", "rx_eth0", "-w"}},
+      {Iptables::Command::kA,
+       {"POSTROUTING", "-o", "eth0", "-j", "tx_eth0", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_eth0", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_eth0", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_eth0", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_eth0", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_eth0", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_eth0", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_eth0", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_eth0", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_eth0", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_eth0", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_eth0", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_eth0", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_eth0", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_eth0", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_eth0", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_eth0", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_eth0", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_eth0", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_eth0", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_eth0", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA, {"tx_eth0", "-w"}},
+      {Iptables::Command::kA, {"rx_eth0", "-w"}},
   };
 
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(*datapath_, ModifyIptables(IpFamily::Dual, "mangle",
-                                           ElementsAreArray(rule), _));
+    EXPECT_CALL(*datapath_,
+                ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+                               rule.command, ElementsAreArray(rule.argv), _));
   }
 
   counters_svc_->OnPhysicalDeviceAdded("eth0");
 }
 
 TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
-  const std::vector<std::vector<std::string>> expected_calls{
-      {"-D", "INPUT", "-i", "eth0", "-j", "rx_eth0", "-w"},
-      {"-D", "FORWARD", "-i", "eth0", "-j", "rx_eth0", "-w"},
-      {"-D", "POSTROUTING", "-o", "eth0", "-j", "tx_eth0", "-w"},
+  const struct {
+    Iptables::Command command;
+    std::vector<std::string> argv;
+  } expected_calls[] = {
+      {Iptables::Command::kD, {"INPUT", "-i", "eth0", "-j", "rx_eth0", "-w"}},
+      {Iptables::Command::kD, {"FORWARD", "-i", "eth0", "-j", "rx_eth0", "-w"}},
+      {Iptables::Command::kD,
+       {"POSTROUTING", "-o", "eth0", "-j", "tx_eth0", "-w"}},
   };
 
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(*datapath_, ModifyIptables(IpFamily::Dual, "mangle",
-                                           ElementsAreArray(rule), _));
+    EXPECT_CALL(*datapath_,
+                ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+                               rule.command, ElementsAreArray(rule.argv), _));
   }
 
   counters_svc_->OnPhysicalDeviceRemoved("eth0");
@@ -362,78 +395,108 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
 
 TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
   // The following commands are expected when tun0 comes up.
-  EXPECT_CALL(*datapath_,
-              ModifyChain(IpFamily::Dual, "mangle", "-N", "rx_vpn", _))
+  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::Dual, Iptables::Table::kMangle,
+                                      Iptables::Command::kN, "rx_vpn", _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_,
-              ModifyChain(IpFamily::Dual, "mangle", "-N", "tx_vpn", _))
+  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::Dual, Iptables::Table::kMangle,
+                                      Iptables::Command::kN, "tx_vpn", _))
       .WillOnce(Return(true));
-  const std::vector<std::vector<std::string>> expected_calls{
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "rx_vpn", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
-       "RETURN", "-w"},
-      {"-A", "tx_vpn", "-w"},
-      {"-A", "rx_vpn", "-w"},
-      {"-A", "FORWARD", "-i", "tun0", "-j", "rx_vpn", "-w"},
-      {"-A", "INPUT", "-i", "tun0", "-j", "rx_vpn", "-w"},
-      {"-A", "POSTROUTING", "-o", "tun0", "-j", "tx_vpn", "-w"},
+  const struct {
+    Iptables::Command command;
+    std::vector<std::string> argv;
+  } expected_calls[] = {
+      {Iptables::Command::kA,
+       {"tx_vpn", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_vpn", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_vpn", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_vpn", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_vpn", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_vpn", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_vpn", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_vpn", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_vpn", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"tx_vpn", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_vpn", "-m", "mark", "--mark", "0x00000100/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_vpn", "-m", "mark", "--mark", "0x00000200/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_vpn", "-m", "mark", "--mark", "0x00000300/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_vpn", "-m", "mark", "--mark", "0x00000400/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_vpn", "-m", "mark", "--mark", "0x00000500/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_vpn", "-m", "mark", "--mark", "0x00002000/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_vpn", "-m", "mark", "--mark", "0x00002100/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_vpn", "-m", "mark", "--mark", "0x00002200/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_vpn", "-m", "mark", "--mark", "0x00002300/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA,
+       {"rx_vpn", "-m", "mark", "--mark", "0x00002400/0x00003f00", "-j",
+        "RETURN", "-w"}},
+      {Iptables::Command::kA, {"tx_vpn", "-w"}},
+      {Iptables::Command::kA, {"rx_vpn", "-w"}},
+      {Iptables::Command::kA, {"FORWARD", "-i", "tun0", "-j", "rx_vpn", "-w"}},
+      {Iptables::Command::kA, {"INPUT", "-i", "tun0", "-j", "rx_vpn", "-w"}},
+      {Iptables::Command::kA,
+       {"POSTROUTING", "-o", "tun0", "-j", "tx_vpn", "-w"}},
   };
 
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(*datapath_, ModifyIptables(IpFamily::Dual, "mangle",
-                                           ElementsAreArray(rule), _));
+    EXPECT_CALL(*datapath_,
+                ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+                               rule.command, ElementsAreArray(rule.argv), _));
   }
 
   counters_svc_->OnVpnDeviceAdded("tun0");
 }
 
 TEST_F(CountersServiceTest, OnVpnDeviceRemoved) {
-  const std::vector<std::vector<std::string>> expected_calls{
-      {"-D", "FORWARD", "-i", "ppp0", "-j", "rx_vpn", "-w"},
-      {"-D", "INPUT", "-i", "ppp0", "-j", "rx_vpn", "-w"},
-      {"-D", "POSTROUTING", "-o", "ppp0", "-j", "tx_vpn", "-w"},
+  const struct {
+    Iptables::Command command;
+    std::vector<std::string> argv;
+  } expected_calls[] = {
+      {Iptables::Command::kD, {"FORWARD", "-i", "ppp0", "-j", "rx_vpn", "-w"}},
+      {Iptables::Command::kD, {"INPUT", "-i", "ppp0", "-j", "rx_vpn", "-w"}},
+      {Iptables::Command::kD,
+       {"POSTROUTING", "-o", "ppp0", "-j", "tx_vpn", "-w"}},
   };
 
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(*datapath_, ModifyIptables(IpFamily::Dual, "mangle",
-                                           ElementsAreArray(rule), _));
+    EXPECT_CALL(*datapath_,
+                ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+                               rule.command, ElementsAreArray(rule.argv), _));
   }
 
   counters_svc_->OnVpnDeviceRemoved("ppp0");
@@ -442,22 +505,29 @@ TEST_F(CountersServiceTest, OnVpnDeviceRemoved) {
 TEST_F(CountersServiceTest, OnSameDeviceAppearAgain) {
   // Makes the chain creation commands return false (we already have these
   // rules).
-  EXPECT_CALL(*datapath_, ModifyChain(_, "mangle", "-N", _, _))
+  EXPECT_CALL(*datapath_, ModifyChain(_, Iptables::Table::kMangle,
+                                      Iptables::Command::kN, _, _))
       .WillRepeatedly(Return(false));
 
   // Only the jump rules should be recreated.
-  const std::vector<std::vector<std::string>> expected_calls{
-      {"-A", "FORWARD", "-i", "eth0", "-j", "rx_eth0", "-w"},
-      {"-A", "INPUT", "-i", "eth0", "-j", "rx_eth0", "-w"},
-      {"-A", "POSTROUTING", "-o", "eth0", "-j", "tx_eth0", "-w"},
+  const struct {
+    Iptables::Command command;
+    std::vector<std::string> argv;
+  } expected_calls[] = {
+      {Iptables::Command::kA, {"FORWARD", "-i", "eth0", "-j", "rx_eth0", "-w"}},
+      {Iptables::Command::kA, {"INPUT", "-i", "eth0", "-j", "rx_eth0", "-w"}},
+      {Iptables::Command::kA,
+       {"POSTROUTING", "-o", "eth0", "-j", "tx_eth0", "-w"}},
   };
   for (const auto& rule : expected_calls) {
-    EXPECT_CALL(*datapath_, ModifyIptables(IpFamily::Dual, "mangle",
-                                           ElementsAreArray(rule), _));
+    EXPECT_CALL(*datapath_,
+                ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+                               rule.command, ElementsAreArray(rule.argv), _));
   }
 
   // No fwmark matching rule should be created.
-  EXPECT_CALL(*datapath_, ModifyIptables(_, "mangle", Contains("mark"), _))
+  EXPECT_CALL(*datapath_, ModifyIptables(_, Iptables::Table::kMangle, _,
+                                         Contains("mark"), _))
       .Times(0);
 
   counters_svc_->OnPhysicalDeviceAdded("eth0");
@@ -468,8 +538,8 @@ TEST_F(CountersServiceTest, ChainNameLength) {
   // iptables will reject the request. Uses Each() here for simplicity since no
   // other params could be longer than 29 for now.
   static constexpr int kMaxChainNameLength = 29;
-  EXPECT_CALL(*datapath_,
-              ModifyChain(_, "mangle", _, SizeIs(Lt(kMaxChainNameLength)), _))
+  EXPECT_CALL(*datapath_, ModifyChain(_, Iptables::Table::kMangle, _,
+                                      SizeIs(Lt(kMaxChainNameLength)), _))
       .Times(AnyNumber());
 
   static const std::string kLongInterfaceName(IFNAMSIZ, 'a');
@@ -477,9 +547,11 @@ TEST_F(CountersServiceTest, ChainNameLength) {
 }
 
 TEST_F(CountersServiceTest, QueryTrafficCounters) {
-  EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv4, "mangle"))
+  EXPECT_CALL(*datapath_,
+              DumpIptables(IpFamily::IPv4, Iptables::Table::kMangle))
       .WillOnce(Return(kIptablesOutput));
-  EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv6, "mangle"))
+  EXPECT_CALL(*datapath_,
+              DumpIptables(IpFamily::IPv6, Iptables::Table::kMangle))
       .WillOnce(Return(kIp6tablesOutput));
 
   auto actual = counters_svc_->GetCounters({});
@@ -542,9 +614,11 @@ TEST_F(CountersServiceTest, QueryTrafficCounters) {
 }
 
 TEST_F(CountersServiceTest, QueryTrafficCountersWithFilter) {
-  EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv4, "mangle"))
+  EXPECT_CALL(*datapath_,
+              DumpIptables(IpFamily::IPv4, Iptables::Table::kMangle))
       .WillOnce(Return(kIptablesOutput));
-  EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv6, "mangle"))
+  EXPECT_CALL(*datapath_,
+              DumpIptables(IpFamily::IPv6, Iptables::Table::kMangle))
       .WillOnce(Return(kIp6tablesOutput));
 
   // Only counters for eth0 should be returned. eth1 should be ignored.
@@ -608,9 +682,11 @@ Chain tx_eth0 (1 references)
     211 13456            all  --  any    any     ::/0             ::/0
 )";
 
-  EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv4, "mangle"))
+  EXPECT_CALL(*datapath_,
+              DumpIptables(IpFamily::IPv4, Iptables::Table::kMangle))
       .WillOnce(Return(unknown_ipv4_traffic_only));
-  EXPECT_CALL(*datapath_, DumpIptables(IpFamily::IPv6, "mangle"))
+  EXPECT_CALL(*datapath_,
+              DumpIptables(IpFamily::IPv6, Iptables::Table::kMangle))
       .WillOnce(Return(unknown_ipv6_traffic_only));
 
   auto actual = counters_svc_->GetCounters({});

@@ -21,12 +21,13 @@
 #include <base/strings/string_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/fake_system.h"
 #include "patchpanel/firewall.h"
+#include "patchpanel/iptables.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 using testing::_;
 using testing::DoAll;
@@ -34,6 +35,7 @@ using testing::ElementsAre;
 using testing::ElementsAreArray;
 using testing::Mock;
 using testing::Return;
+using testing::SaveArg;
 using testing::Sequence;
 using testing::SetArgPointee;
 using testing::StrEq;
@@ -44,9 +46,8 @@ namespace {
 // TODO(hugobenichi) Centralize this constant definition
 constexpr pid_t kTestPID = -2;
 
-std::vector<std::string> SplitCommand(const std::string& command) {
-  return base::SplitString(command, " ",
-                           base::WhitespaceHandling::TRIM_WHITESPACE,
+std::vector<std::string> SplitArgs(const std::string& args) {
+  return base::SplitString(args, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
                            base::SplitResult::SPLIT_WANT_NONEMPTY);
 }
 
@@ -69,13 +70,15 @@ class MockProcessRunner : public MinijailedProcessRunner {
                    const std::string& cmd,
                    const std::vector<std::string>& args,
                    bool log_failures));
-  MOCK_METHOD4(iptables,
-               int(const std::string& table,
+  MOCK_METHOD5(iptables,
+               int(Iptables::Table table,
+                   Iptables::Command command,
                    const std::vector<std::string>& argv,
                    bool log_failures,
                    std::string* output));
-  MOCK_METHOD4(ip6tables,
-               int(const std::string& table,
+  MOCK_METHOD5(ip6tables,
+               int(Iptables::Table table,
+                   Iptables::Command command,
                    const std::vector<std::string>& argv,
                    bool log_failures,
                    std::string* output));
@@ -124,65 +127,75 @@ class MockFirewall : public Firewall {
                     uint16_t dst_port));
 };
 
-void Verify_ip(MockProcessRunner& runner, const std::string& command) {
-  auto args = SplitCommand(command);
-  const auto object = args[0];
-  const auto action = args[1];
-  args.erase(args.begin());
-  args.erase(args.begin());
+void Verify_ip(MockProcessRunner& runner, const std::string& args) {
+  auto argv = SplitArgs(args);
+  const auto object = argv[0];
+  const auto action = argv[1];
+  argv.erase(argv.begin());
+  argv.erase(argv.begin());
   EXPECT_CALL(runner,
-              ip(StrEq(object), StrEq(action), ElementsAreArray(args), _));
+              ip(StrEq(object), StrEq(action), ElementsAreArray(argv), _));
 }
 
-void Verify_ip6(MockProcessRunner& runner, const std::string& command) {
-  auto args = SplitCommand(command);
-  const auto object = args[0];
-  const auto action = args[1];
-  args.erase(args.begin());
-  args.erase(args.begin());
+void Verify_ip6(MockProcessRunner& runner, const std::string& args) {
+  auto argv = SplitArgs(args);
+  const auto object = argv[0];
+  const auto action = argv[1];
+  argv.erase(argv.begin());
+  argv.erase(argv.begin());
   EXPECT_CALL(runner,
-              ip6(StrEq(object), StrEq(action), ElementsAreArray(args), _));
+              ip6(StrEq(object), StrEq(action), ElementsAreArray(argv), _));
 }
 
 void Verify_iptables(MockProcessRunner& runner,
                      IpFamily family,
-                     const std::string& command,
-                     int call_count = 1) {
-  auto args =
-      base::SplitString(command, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
-                        base::SplitResult::SPLIT_WANT_NONEMPTY);
-  const auto table = args[0];
-  args.erase(args.begin());
-  if (family & IPv4)
+                     const std::string& args) {
+  auto argv = SplitArgs(args);
+  const auto table = Iptables::TableFromName(argv[0]);
+  const auto command = Iptables::CommandFromName(argv[1]);
+  argv.erase(argv.begin());
+  argv.erase(argv.begin());
+  ASSERT_TRUE(table.has_value())
+      << "incorrect table name in expected args: " << args;
+  ASSERT_TRUE(command.has_value())
+      << "incorrect command name in expected args: " << args;
+  if (family & IPv4) {
     EXPECT_CALL(runner,
-                iptables(StrEq(table), ElementsAreArray(args), _, nullptr))
-        .Times(call_count);
-  if (family & IPv6)
+                iptables(*table, *command, ElementsAreArray(argv), _, nullptr))
+        .WillOnce(Return(0));
+  }
+  if (family & IPv6) {
     EXPECT_CALL(runner,
-                ip6tables(StrEq(table), ElementsAreArray(args), _, nullptr))
-        .Times(call_count);
+                ip6tables(*table, *command, ElementsAreArray(argv), _, nullptr))
+        .WillOnce(Return(0));
+  }
 }
 
 void Verify_iptables_in_sequence(MockProcessRunner& runner,
                                  IpFamily family,
-                                 const std::string& command,
-                                 const Sequence& sequence,
-                                 int call_count = 1) {
-  auto args =
-      base::SplitString(command, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
-                        base::SplitResult::SPLIT_WANT_NONEMPTY);
-  const auto table = args[0];
-  args.erase(args.begin());
-  if (family & IPv4)
+                                 const std::string& args,
+                                 const Sequence& sequence) {
+  auto argv = SplitArgs(args);
+  const auto table = Iptables::TableFromName(argv[0]);
+  const auto command = Iptables::CommandFromName(argv[1]);
+  argv.erase(argv.begin());
+  argv.erase(argv.begin());
+  ASSERT_TRUE(table.has_value())
+      << "incorrect table name in expected args: " << args;
+  ASSERT_TRUE(command.has_value())
+      << "incorrect command name in expected args: " << args;
+  if (family & IPv4) {
     EXPECT_CALL(runner,
-                iptables(StrEq(table), ElementsAreArray(args), _, nullptr))
-        .Times(call_count)
-        .InSequence(sequence);
-  if (family & IPv6)
+                iptables(*table, *command, ElementsAreArray(argv), _, nullptr))
+        .InSequence(sequence)
+        .WillOnce(Return(0));
+  }
+  if (family & IPv6) {
     EXPECT_CALL(runner,
-                ip6tables(StrEq(table), ElementsAreArray(args), _, nullptr))
-        .Times(call_count)
-        .InSequence(sequence);
+                ip6tables(*table, *command, ElementsAreArray(argv), _, nullptr))
+        .InSequence(sequence)
+        .WillOnce(Return(0));
+  }
 }
 
 void Verify_ip_netns_add(MockProcessRunner& runner,
@@ -329,7 +342,7 @@ TEST(DatapathTest, Start) {
 
   static struct {
     IpFamily family;
-    std::string command;
+    std::string args;
     int call_count;
   } iptables_commands[] = {
       // Asserts for iptables chain reset.
@@ -575,7 +588,7 @@ TEST(DatapathTest, Start) {
       {Dual, "filter -N accept_downstream_network -w"},
   };
   for (const auto& c : iptables_commands) {
-    Verify_iptables(*runner, c.family, c.command);
+    Verify_iptables(*runner, c.family, c.args);
   }
 
   Datapath datapath(runner, firewall, &system);
@@ -997,8 +1010,8 @@ TEST(DatapathTest, StartDownstreamLocalOnlyNetwork) {
   auto firewall = new MockFirewall();
   FakeSystem system;
 
-  EXPECT_CALL(*runner, iptables(_, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
   EXPECT_CALL(*runner, ip(_, _, _, _)).Times(0);
 
   DownstreamNetworkInfo info;
@@ -1044,8 +1057,8 @@ TEST(DatapathTest, StopDownstreamLocalOnlyNetwork) {
   auto firewall = new MockFirewall();
   FakeSystem system;
 
-  EXPECT_CALL(*runner, iptables(_, _, _, _)).Times(0);
-  EXPECT_CALL(*runner, ip6tables(_, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, iptables(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*runner, ip6tables(_, _, _, _, _)).Times(0);
   EXPECT_CALL(*runner, ip(_, _, _, _)).Times(0);
 
   DownstreamNetworkInfo info;
@@ -1176,12 +1189,12 @@ TEST(DatapathTest, StartStopConnectionPinning) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
+  Datapath datapath(runner, firewall, &system);
 
   // Setup
   EXPECT_CALL(system, IfNametoindex("eth0")).WillRepeatedly(Return(3));
   Verify_iptables(*runner, Dual, "mangle -N POSTROUTING_eth0 -w");
-  Verify_iptables(*runner, Dual, "mangle -F POSTROUTING_eth0 -w",
-                  2 /* Start and Stop */);
+  Verify_iptables(*runner, Dual, "mangle -F POSTROUTING_eth0 -w");
   Verify_iptables(*runner, Dual,
                   "mangle -A POSTROUTING -o eth0 -j POSTROUTING_eth0 -w");
   Verify_iptables(*runner, Dual,
@@ -1193,17 +1206,17 @@ TEST(DatapathTest, StartStopConnectionPinning) {
   Verify_iptables(*runner, Dual,
                   "mangle -A PREROUTING -i eth0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
+  datapath.StartConnectionPinning("eth0");
+  Mock::VerifyAndClearExpectations(runner);
 
   // Teardown
+  Verify_iptables(*runner, Dual, "mangle -F POSTROUTING_eth0 -w");
   Verify_iptables(*runner, Dual,
                   "mangle -D POSTROUTING -o eth0 -j POSTROUTING_eth0 -w");
   Verify_iptables(*runner, Dual, "mangle -X POSTROUTING_eth0 -w");
   Verify_iptables(*runner, Dual,
                   "mangle -D PREROUTING -i eth0 -j CONNMARK "
                   "--restore-mark --mask 0x00003f00 -w");
-
-  Datapath datapath(runner, firewall, &system);
-  datapath.StartConnectionPinning("eth0");
   datapath.StopConnectionPinning("eth0");
 }
 
@@ -1211,12 +1224,12 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
+  Datapath datapath(runner, firewall, &system);
 
   // Setup
   EXPECT_CALL(system, IfNametoindex("arcbr0")).WillRepeatedly(Return(5));
   Verify_iptables(*runner, Dual, "mangle -N POSTROUTING_arcbr0 -w");
-  Verify_iptables(*runner, Dual, "mangle -F POSTROUTING_arcbr0 -w",
-                  2 /* Start and Stop */);
+  Verify_iptables(*runner, Dual, "mangle -F POSTROUTING_arcbr0 -w");
   Verify_iptables(*runner, Dual,
                   "mangle -A POSTROUTING -o arcbr0 -j POSTROUTING_arcbr0 -w");
   Verify_iptables(*runner, Dual,
@@ -1242,8 +1255,11 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
   Verify_iptables(*runner, Dual,
                   "filter -A vpn_accept -m mark "
                   "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
+  datapath.StartVpnRouting("arcbr0");
+  Mock::VerifyAndClearExpectations(runner);
 
   // Teardown
+  Verify_iptables(*runner, Dual, "mangle -F POSTROUTING_arcbr0 -w");
   Verify_iptables(*runner, Dual,
                   "mangle -D POSTROUTING -o arcbr0 -j POSTROUTING_arcbr0 -w");
   Verify_iptables(*runner, Dual, "mangle -X POSTROUTING_arcbr0 -w");
@@ -1257,9 +1273,6 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
                   "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
   Verify_iptables(*runner, Dual, "filter -F vpn_accept -w");
-
-  Datapath datapath(runner, firewall, &system);
-  datapath.StartVpnRouting("arcbr0");
   datapath.StopVpnRouting("arcbr0");
 }
 
@@ -1267,12 +1280,12 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
+  Datapath datapath(runner, firewall, &system);
 
   // Setup
   EXPECT_CALL(system, IfNametoindex("tun0")).WillRepeatedly(Return(5));
   Verify_iptables(*runner, Dual, "mangle -N POSTROUTING_tun0 -w");
-  Verify_iptables(*runner, Dual, "mangle -F POSTROUTING_tun0 -w",
-                  2 /* Start and Stop */);
+  Verify_iptables(*runner, Dual, "mangle -F POSTROUTING_tun0 -w");
   Verify_iptables(*runner, Dual,
                   "mangle -A POSTROUTING -o tun0 -j POSTROUTING_tun0 -w");
   Verify_iptables(*runner, Dual,
@@ -1297,7 +1310,27 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
   Verify_iptables(*runner, Dual,
                   "filter -A vpn_accept -m mark "
                   "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
+  // Start arcbr0 routing
+  Verify_iptables(*runner, Dual, "filter -A FORWARD -o arcbr0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "filter -A FORWARD -i arcbr0 -j ACCEPT -w");
+  Verify_iptables(*runner, Dual, "mangle -N PREROUTING_arcbr0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F PREROUTING_arcbr0 -w");
+  Verify_iptables(*runner, Dual,
+                  "mangle -A PREROUTING -i arcbr0 -j PREROUTING_arcbr0 -w");
+  Verify_iptables(*runner, IPv4,
+                  "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
+                  "0x00000001/0x00000001 -w");
+  Verify_iptables(*runner, Dual,
+                  "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
+                  "0x00002000/0x00003f00 -w");
+  Verify_iptables(*runner, Dual,
+                  "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
+                  "0x03ed0000/0xffff0000 -w");
+  datapath.StartVpnRouting("tun0");
+  Mock::VerifyAndClearExpectations(runner);
+
   // Teardown
+  Verify_iptables(*runner, Dual, "mangle -F POSTROUTING_tun0 -w");
   Verify_iptables(*runner, Dual,
                   "mangle -D POSTROUTING -o tun0 -j POSTROUTING_tun0 -w");
   Verify_iptables(*runner, Dual, "mangle -X POSTROUTING_tun0 -w");
@@ -1310,32 +1343,13 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
                   "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
   Verify_iptables(*runner, Dual, "filter -F vpn_accept -w");
-  // Start arcbr0 routing
-  Verify_iptables(*runner, Dual, "filter -A FORWARD -o arcbr0 -j ACCEPT -w");
-  Verify_iptables(*runner, Dual, "filter -A FORWARD -i arcbr0 -j ACCEPT -w");
-  Verify_iptables(*runner, Dual, "mangle -N PREROUTING_arcbr0 -w");
-  Verify_iptables(*runner, Dual, "mangle -F PREROUTING_arcbr0 -w",
-                  2 /* Start and Stop */);
-  Verify_iptables(*runner, Dual,
-                  "mangle -A PREROUTING -i arcbr0 -j PREROUTING_arcbr0 -w");
-  Verify_iptables(*runner, IPv4,
-                  "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
-                  "0x00000001/0x00000001 -w");
-  Verify_iptables(*runner, Dual,
-                  "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
-                  "0x00002000/0x00003f00 -w");
-  Verify_iptables(*runner, Dual,
-                  "mangle -A PREROUTING_arcbr0 -j MARK --set-mark "
-                  "0x03ed0000/0xffff0000 -w");
   // Stop arcbr0 routing
   Verify_iptables(*runner, Dual, "filter -D FORWARD -o arcbr0 -j ACCEPT -w");
   Verify_iptables(*runner, Dual, "filter -D FORWARD -i arcbr0 -j ACCEPT -w");
   Verify_iptables(*runner, Dual,
                   "mangle -D PREROUTING -i arcbr0 -j PREROUTING_arcbr0 -w");
+  Verify_iptables(*runner, Dual, "mangle -F PREROUTING_arcbr0 -w");
   Verify_iptables(*runner, Dual, "mangle -X PREROUTING_arcbr0 -w");
-
-  Datapath datapath(runner, firewall, &system);
-  datapath.StartVpnRouting("tun0");
   datapath.StopVpnRouting("tun0");
 }
 
@@ -1567,21 +1581,21 @@ TEST(DatapathTest, DumpIptables) {
   auto firewall = new MockFirewall();
   FakeSystem system;
 
+  EXPECT_CALL(*runner, iptables(Iptables::Table::kMangle, Iptables::Command::kL,
+                                ElementsAre("-x", "-v", "-n", "-w"), _, _))
+      .WillOnce(DoAll(SetArgPointee<4>("<iptables output>"), Return(0)));
   EXPECT_CALL(*runner,
-              iptables(StrEq("mangle"),
-                       ElementsAre("-L", "-x", "-v", "-n", "-w"), _, _))
-      .WillOnce(DoAll(SetArgPointee<3>("<iptables output>"), Return(0)));
-  EXPECT_CALL(*runner,
-              ip6tables(StrEq("mangle"),
-                        ElementsAre("-L", "-x", "-v", "-n", "-w"), _, _))
-      .WillOnce(DoAll(SetArgPointee<3>("<ip6tables output>"), Return(0)));
+              ip6tables(Iptables::Table::kMangle, Iptables::Command::kL,
+                        ElementsAre("-x", "-v", "-n", "-w"), _, _))
+      .WillOnce(DoAll(SetArgPointee<4>("<ip6tables output>"), Return(0)));
 
   Datapath datapath(runner, firewall, &system);
   EXPECT_EQ("<iptables output>",
-            datapath.DumpIptables(IpFamily::IPv4, "mangle"));
+            datapath.DumpIptables(IpFamily::IPv4, Iptables::Table::kMangle));
   EXPECT_EQ("<ip6tables output>",
-            datapath.DumpIptables(IpFamily::IPv6, "mangle"));
-  EXPECT_EQ("", datapath.DumpIptables(IpFamily::Dual, "mangle"));
+            datapath.DumpIptables(IpFamily::IPv6, Iptables::Table::kMangle));
+  EXPECT_EQ("",
+            datapath.DumpIptables(IpFamily::Dual, Iptables::Table::kMangle));
 }
 
 TEST(DatapathTest, SetVpnLockdown) {

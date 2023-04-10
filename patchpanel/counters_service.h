@@ -14,6 +14,7 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/datapath.h"
+#include "patchpanel/iptables.h"
 #include "patchpanel/routing_service.h"
 
 namespace patchpanel {
@@ -64,7 +65,7 @@ class CountersService {
     uint64_t tx_packets = 0;
   };
 
-  CountersService(Datapath* datapath);
+  explicit CountersService(Datapath* datapath);
   ~CountersService() = default;
 
   // Adds accounting rules and jump rules for a new physical device if this is
@@ -94,7 +95,7 @@ class CountersService {
   void SetupAccountingRules(const std::string& chain_tag);
   // Installs jump rules in POSTROUTING to count traffic ingressing and
   // egressing |ifname| with the accounting target |chain_tag|.
-  void SetupJumpRules(const std::string& op,
+  void SetupJumpRules(Iptables::Command command,
                       const std::string& ifname,
                       const std::string& chain_tag);
 

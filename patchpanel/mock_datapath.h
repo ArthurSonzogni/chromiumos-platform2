@@ -11,6 +11,7 @@
 #include <gmock/gmock.h>
 
 #include "patchpanel/datapath.h"
+#include "patchpanel/iptables.h"
 
 namespace patchpanel {
 
@@ -72,7 +73,7 @@ class MockDatapath : public Datapath {
   MOCK_METHOD2(SetRouteLocalnet,
                bool(const std::string& ifname, const bool enable));
   MOCK_METHOD2(DumpIptables,
-               std::string(IpFamily family, const std::string& table));
+               std::string(IpFamily family, Iptables::Table table));
   MOCK_METHOD1(ModprobeAll, bool(const std::vector<std::string>& modules));
   MOCK_METHOD3(AddInboundIPv4DNAT,
                void(AutoDnatTarget auto_dnat_target,
@@ -86,13 +87,14 @@ class MockDatapath : public Datapath {
   MOCK_METHOD1(DeleteAdbPortAccessRule, void(const std::string& ifname));
   MOCK_METHOD5(ModifyChain,
                bool(IpFamily family,
-                    const std::string& table,
-                    const std::string& op,
+                    Iptables::Table table,
+                    Iptables::Command command,
                     const std::string& chain,
                     bool log_failures));
-  MOCK_METHOD4(ModifyIptables,
+  MOCK_METHOD5(ModifyIptables,
                bool(IpFamily family,
-                    const std::string& table,
+                    Iptables::Table table,
+                    Iptables::Command command,
                     const std::vector<std::string>& argv,
                     bool log_failures));
   MOCK_METHOD2(AddIPv6NeighborProxy,

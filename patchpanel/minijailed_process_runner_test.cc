@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "patchpanel/iptables.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/system.h"
 
@@ -115,14 +116,15 @@ TEST(MinijailProcessRunnerTest, iptables) {
   EXPECT_CALL(
       mj, RunPipesAndDestroy(
               _,
-              ElementsAre(StrEq("/sbin/iptables"), StrEq("-t"), StrEq("table"),
-                          StrEq("arg1"), StrEq("arg2"), nullptr),
+              ElementsAre(StrEq("/sbin/iptables"), StrEq("-t"), StrEq("filter"),
+                          StrEq("-A"), StrEq("arg1"), StrEq("arg2"), nullptr),
               _, nullptr, nullptr, nullptr))
       .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
   EXPECT_CALL(*system, WaitPid(pid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
 
-  EXPECT_TRUE(runner.iptables("table", {"arg1", "arg2"}));
+  EXPECT_TRUE(runner.iptables(Iptables::Table::kFilter, Iptables::Command::kA,
+                              {"arg1", "arg2"}));
 }
 
 TEST(MinijailProcessRunnerTest, ip6tables) {
@@ -135,16 +137,17 @@ TEST(MinijailProcessRunnerTest, ip6tables) {
   EXPECT_CALL(mj, DropRoot(_, _, _)).Times(0);
   EXPECT_CALL(mj, UseCapabilities(_, _)).Times(0);
   EXPECT_CALL(
-      mj, RunPipesAndDestroy(
-              _,
-              ElementsAre(StrEq("/sbin/ip6tables"), StrEq("-t"), StrEq("table"),
-                          StrEq("arg1"), StrEq("arg2"), nullptr),
-              _, nullptr, nullptr, nullptr))
+      mj, RunPipesAndDestroy(_,
+                             ElementsAre(StrEq("/sbin/ip6tables"), StrEq("-t"),
+                                         StrEq("mangle"), StrEq("-I"),
+                                         StrEq("arg1"), StrEq("arg2"), nullptr),
+                             _, nullptr, nullptr, nullptr))
       .WillOnce(DoAll(SetArgPointee<2>(pid), Return(true)));
   EXPECT_CALL(*system, WaitPid(pid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(pid)));
 
-  EXPECT_TRUE(runner.ip6tables("table", {"arg1", "arg2"}));
+  EXPECT_TRUE(runner.ip6tables(Iptables::Table::kMangle, Iptables::Command::kI,
+                               {"arg1", "arg2"}));
 }
 
 }  // namespace

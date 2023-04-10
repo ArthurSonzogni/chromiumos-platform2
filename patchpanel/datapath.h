@@ -22,6 +22,7 @@
 
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/firewall.h"
+#include "patchpanel/iptables.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
@@ -425,28 +426,29 @@ class Datapath {
 
   // Add, remove, or flush chain |chain| in table |table|.
   bool AddChain(IpFamily family,
-                const std::string& table,
+                Iptables::Table table,
                 const std::string& name);
   bool RemoveChain(IpFamily family,
-                   const std::string& table,
+                   Iptables::Table table,
                    const std::string& name);
   bool FlushChain(IpFamily family,
-                  const std::string& table,
+                  Iptables::Table table,
                   const std::string& name);
   // Manipulates a chain |chain| in table |table|.
   virtual bool ModifyChain(IpFamily family,
-                           const std::string& table,
-                           const std::string& op,
+                           Iptables::Table table,
+                           Iptables::Command command,
                            const std::string& chain,
                            bool log_failures = true);
   // Sends an iptables command for table |table|.
   virtual bool ModifyIptables(IpFamily family,
-                              const std::string& table,
+                              Iptables::Table table,
+                              Iptables::Command command,
                               const std::vector<std::string>& argv,
                               bool log_failures = true);
   // Dumps the iptables chains rules for the table |table|. |family| must be
   // either IPv4 or IPv6.
-  virtual std::string DumpIptables(IpFamily family, const std::string& table);
+  virtual std::string DumpIptables(IpFamily family, Iptables::Table table);
 
   // Changes firewall rules based on |request|, allowing ingress traffic to a
   // port, forwarding ingress traffic to a port into ARC or Crostini, or
@@ -478,65 +480,66 @@ class Datapath {
   bool ToggleInterface(const std::string& ifname, bool up);
   bool ModifyChromeDnsRedirect(IpFamily family,
                                const DnsRedirectionRule& rule,
-                               const std::string& op);
-  bool ModifyRedirectDnsDNATRule(const std::string& op,
+                               Iptables::Command command);
+  bool ModifyRedirectDnsDNATRule(Iptables::Command command,
                                  const std::string& protocol,
                                  const std::string& ifname,
                                  const std::string& dns_ipv4_addr);
   bool ModifyDnsProxyMasquerade(IpFamily family,
-                                const std::string& op,
+                                Iptables::Command command,
                                 const std::string& chain);
   bool ModifyRedirectDnsJumpRule(IpFamily family,
-                                 const std::string& op,
+                                 Iptables::Command command,
                                  const std::string& chain,
                                  const std::string& ifname,
                                  const std::string& target_chain,
                                  Fwmark mark = {},
                                  Fwmark mask = {},
                                  bool redirect_on_mark = false);
-  bool ModifyDnsRedirectionSkipVpnRule(IpFamily family, const std::string& op);
+  bool ModifyDnsRedirectionSkipVpnRule(IpFamily family,
+                                       Iptables::Command command);
 
   // Create (or delete) rules to exclude DNS traffic with destination not equal
   // to the proxy's IP in |rule|.
   bool ModifyDnsExcludeDestinationRule(IpFamily family,
                                        const DnsRedirectionRule& rule,
-                                       const std::string& op,
+                                       Iptables::Command command,
                                        const std::string& chain);
 
   // Create (or delete) DNAT rules for redirecting DNS queries to a DNS proxy.
   bool ModifyDnsProxyDNAT(IpFamily family,
                           const DnsRedirectionRule& rule,
-                          const std::string& op,
+                          Iptables::Command command,
                           const std::string& ifname,
                           const std::string& chain);
 
   bool ModifyConnmarkSet(IpFamily family,
                          const std::string& chain,
-                         const std::string& op,
+                         Iptables::Command command,
                          Fwmark mark,
                          Fwmark mask);
   bool ModifyConnmarkRestore(IpFamily family,
                              const std::string& chain,
-                             const std::string& op,
+                             Iptables::Command command,
                              const std::string& iif,
                              Fwmark mask);
   bool ModifyConnmarkSave(IpFamily family,
                           const std::string& chain,
-                          const std::string& op,
+                          Iptables::Command command,
                           Fwmark mask);
   bool ModifyFwmarkRoutingTag(const std::string& chain,
-                              const std::string& op,
+                              Iptables::Command command,
                               Fwmark routing_mark);
   bool ModifyFwmarkSourceTag(const std::string& chain,
-                             const std::string& op,
+                             Iptables::Command command,
                              TrafficSource source);
-  bool ModifyFwmarkDefaultLocalSourceTag(const std::string& op,
+  bool ModifyFwmarkDefaultLocalSourceTag(Iptables::Command command,
                                          TrafficSource source);
-  bool ModifyFwmarkLocalSourceTag(const std::string& op,
+  bool ModifyFwmarkLocalSourceTag(Iptables::Command command,
                                   const LocalSourceSpecs& source);
   bool ModifyFwmark(IpFamily family,
                     const std::string& chain,
-                    const std::string& op,
+                    Iptables::Command command,
                     const std::string& iif,
                     const std::string& uid_name,
                     uint32_t classid,
@@ -544,19 +547,19 @@ class Datapath {
                     Fwmark mask,
                     bool log_failures = true);
   bool ModifyJumpRule(IpFamily family,
-                      const std::string& table,
-                      const std::string& op,
+                      Iptables::Table table,
+                      Iptables::Command command,
                       const std::string& chain,
                       const std::string& target,
                       const std::string& iif,
                       const std::string& oif,
                       bool log_failures = true);
   bool ModifyFwmarkVpnJumpRule(const std::string& chain,
-                               const std::string& op,
+                               Iptables::Command command,
                                Fwmark mark,
                                Fwmark mask);
   bool ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
-                                   const std::string& op,
+                                   Iptables::Command command,
                                    const std::string& uid,
                                    bool log_failures = true);
   bool ModifyRtentry(ioctl_req_t op, struct rtentry* route);

@@ -20,6 +20,7 @@ executable("ndproxyd") {
   sources = [
     "../message_dispatcher.cc",
     "../minijailed_process_runner.cc",
+    "../iptables.cc",
     "../ndproxy.cc",
     "../net_util.cc",
     "../system.cc",

@@ -15,6 +15,9 @@
 #include <base/strings/string_split.h>
 #include <re2/re2.h>
 
+#include "patchpanel/datapath.h"
+#include "patchpanel/iptables.h"
+
 namespace patchpanel {
 
 namespace {
@@ -22,7 +25,6 @@ namespace {
 using Counter = CountersService::Counter;
 using CounterKey = CountersService::CounterKey;
 
-constexpr char kMangleTable[] = "mangle";
 constexpr char kVpnChainTag[] = "vpn";
 constexpr char kRxTag[] = "rx_";
 constexpr char kTxTag[] = "tx_";
@@ -163,7 +165,7 @@ std::map<CounterKey, Counter> CountersService::GetCounters(
   // Handles counters for IPv4 and IPv6 separately and returns failure if either
   // of the procession fails, since counters for only IPv4 or IPv6 are biased.
   std::string iptables_result =
-      datapath_->DumpIptables(IpFamily::IPv4, kMangleTable);
+      datapath_->DumpIptables(IpFamily::IPv4, Iptables::Table::kMangle);
   if (iptables_result.empty()) {
     LOG(ERROR) << "Failed to query IPv4 counters";
     return {};
@@ -174,7 +176,7 @@ std::map<CounterKey, Counter> CountersService::GetCounters(
   }
 
   std::string ip6tables_result =
-      datapath_->DumpIptables(IpFamily::IPv6, kMangleTable);
+      datapath_->DumpIptables(IpFamily::IPv6, Iptables::Table::kMangle);
   if (ip6tables_result.empty()) {
     LOG(ERROR) << "Failed to query IPv6 counters";
     return {};
@@ -190,31 +192,31 @@ std::map<CounterKey, Counter> CountersService::GetCounters(
 
 void CountersService::OnPhysicalDeviceAdded(const std::string& ifname) {
   SetupAccountingRules(ifname);
-  SetupJumpRules("-A", ifname, ifname);
+  SetupJumpRules(Iptables::Command::kA, ifname, ifname);
 }
 
 void CountersService::OnPhysicalDeviceRemoved(const std::string& ifname) {
-  SetupJumpRules("-D", ifname, ifname);
+  SetupJumpRules(Iptables::Command::kD, ifname, ifname);
 }
 
 void CountersService::OnVpnDeviceAdded(const std::string& ifname) {
   SetupAccountingRules(kVpnChainTag);
-  SetupJumpRules("-A", ifname, kVpnChainTag);
+  SetupJumpRules(Iptables::Command::kA, ifname, kVpnChainTag);
 }
 
 void CountersService::OnVpnDeviceRemoved(const std::string& ifname) {
-  SetupJumpRules("-D", ifname, kVpnChainTag);
+  SetupJumpRules(Iptables::Command::kD, ifname, kVpnChainTag);
 }
 
 bool CountersService::MakeAccountingChain(const std::string& chain_name) {
-  return datapath_->ModifyChain(IpFamily::Dual, kMangleTable, "-N", chain_name,
+  return datapath_->ModifyChain(IpFamily::Dual, Iptables::Table::kMangle,
+                                Iptables::Command::kN, chain_name,
                                 false /*log_failures*/);
 }
 
 bool CountersService::AddAccountingRule(const std::string& chain_name,
                                         TrafficSource source) {
-  std::vector<std::string> args = {"-A",
-                                   chain_name,
+  std::vector<std::string> args = {chain_name,
                                    "-m",
                                    "mark",
                                    "--mark",
@@ -223,7 +225,8 @@ bool CountersService::AddAccountingRule(const std::string& chain_name,
                                    "-j",
                                    "RETURN",
                                    "-w"};
-  return datapath_->ModifyIptables(IpFamily::Dual, kMangleTable, args);
+  return datapath_->ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+                                   Iptables::Command::kA, args);
 }
 
 void CountersService::SetupAccountingRules(const std::string& chain_tag) {
@@ -248,27 +251,27 @@ void CountersService::SetupAccountingRules(const std::string& chain_tag) {
     AddAccountingRule(egress_chain, source);
   }
   // Add catch-all accounting rule for any remaining and untagged traffic.
-  datapath_->ModifyIptables(IpFamily::Dual, kMangleTable,
-                            {"-A", ingress_chain, "-w"});
-  datapath_->ModifyIptables(IpFamily::Dual, kMangleTable,
-                            {"-A", egress_chain, "-w"});
+  datapath_->ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+                            Iptables::Command::kA, {ingress_chain, "-w"});
+  datapath_->ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+                            Iptables::Command::kA, {egress_chain, "-w"});
 }
 
-void CountersService::SetupJumpRules(const std::string& op,
+void CountersService::SetupJumpRules(Iptables::Command command,
                                      const std::string& ifname,
                                      const std::string& chain_tag) {
   // For each device create a jumping rule in mangle POSTROUTING for egress
   // traffic, and two jumping rules in mangle INPUT and FORWARD for ingress
   // traffic.
   datapath_->ModifyIptables(
-      IpFamily::Dual, kMangleTable,
-      {op, "FORWARD", "-i", ifname, "-j", kRxTag + chain_tag, "-w"});
+      IpFamily::Dual, Iptables::Table::kMangle, command,
+      {"FORWARD", "-i", ifname, "-j", kRxTag + chain_tag, "-w"});
   datapath_->ModifyIptables(
-      IpFamily::Dual, kMangleTable,
-      {op, "INPUT", "-i", ifname, "-j", kRxTag + chain_tag, "-w"});
+      IpFamily::Dual, Iptables::Table::kMangle, command,
+      {"INPUT", "-i", ifname, "-j", kRxTag + chain_tag, "-w"});
   datapath_->ModifyIptables(
-      IpFamily::Dual, kMangleTable,
-      {op, "POSTROUTING", "-o", ifname, "-j", kTxTag + chain_tag, "-w"});
+      IpFamily::Dual, Iptables::Table::kMangle, command,
+      {"POSTROUTING", "-o", ifname, "-j", kTxTag + chain_tag, "-w"});
 }
 
 TrafficCounter::Source TrafficSourceToProto(TrafficSource source) {
