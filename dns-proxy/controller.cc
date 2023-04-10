@@ -71,8 +71,10 @@ int Controller::OnInit() {
 
 void Controller::OnShutdown(int* code) {
   LOG(INFO) << "Stopping DNS Proxy service (" << *code << ")";
-  for (const auto& p : proxies_)
+  for (const auto& p : proxies_) {
     Kill(p);
+  }
+  is_shutdown_ = true;
 }
 
 void Controller::Setup() {
@@ -111,6 +113,10 @@ void Controller::Setup() {
 }
 
 void Controller::OnFeatureEnabled(std::optional<bool> enabled) {
+  // Avoid starting child processes when the controller is shut down.
+  if (is_shutdown_) {
+    return;
+  }
   if (!enabled.has_value()) {
     LOG(ERROR) << "Failed to read feature flag - "
                << "service will be enabled by default";

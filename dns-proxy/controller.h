@@ -150,6 +150,8 @@ class Controller : public brillo::DBusDaemon {
   std::unique_ptr<shill::Client> shill_;
   std::unique_ptr<patchpanel::Client> patchpanel_;
 
+  bool is_shutdown_{false};
+
   std::optional<bool> feature_enabled_;
   std::unique_ptr<ChromeFeaturesServiceClient> features_;
 
