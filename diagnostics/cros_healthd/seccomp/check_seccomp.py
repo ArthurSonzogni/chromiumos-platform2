@@ -15,12 +15,16 @@ from chromite.lib import commandline
 SeccompLine = namedtuple("SeccompLine", ["line_number", "line", "value"])
 
 
+def ParseSeccompValue(seccomp_line):
+    return set([seccomp.strip() for seccomp in seccomp_line.split("||")])
+
+
 def ParseSeccompAndReturnParseError(
     filename, required_syscalls, denied_syscalls
 ):
     seccomp = {}
     parse_error = ""
-    with open(filename, "r") as f:
+    with open(filename, "r", encoding="utf-8") as f:
         line_buffer = ""
         for idx, current_line in enumerate(f.readlines()):
             line_buffer += current_line
@@ -53,14 +57,25 @@ def ParseSeccompAndReturnParseError(
             parse_error += f'{filename}: unexpected termination "\\"\n'
 
     missing_syscalls = ""
-    for syscall in required_syscalls:
+    for syscall, value in required_syscalls:
         if syscall not in seccomp:
-            missing_syscalls += f"{syscall}: 1\n"
+            missing_syscalls += f"{syscall}: {value}\n"
             continue
-        if seccomp[syscall].value != "1":
+        if seccomp[syscall].value == "1":
+            continue
+        if value == "1":
             parse_error += (
-                f"{filename}:{seccomp[syscall].line_number}: "
-                f'the value of required syscall should "1"\n'
+                f"{filename}:{seccomp[syscall].line_number}: the value of "
+                f'required syscall should be "1"\n{seccomp[syscall].line}'
+            )
+            continue
+        required_values = ParseSeccompValue(value)
+        if not required_values.issubset(
+            ParseSeccompValue(seccomp[syscall].value)
+        ):
+            parse_error += (
+                f"{filename}:{seccomp[syscall].line_number}: the value of "
+                f"required syscall should include {required_values}\n"
                 f"{seccomp[syscall].line}"
             )
             continue
@@ -82,6 +97,13 @@ def ParseSeccompAndReturnParseError(
     return parse_error
 
 
+def seccomp_pair(arg):
+    tokens = arg.split(":", 1)
+    if len(tokens) == 1:
+        return [tokens[0].strip(), "1"]
+    return [tokens[0].strip(), tokens[1].strip()]
+
+
 def GetParser():
     """Returns an argument parser."""
     parser = commandline.ArgumentParser(description=__doc__)
@@ -95,7 +117,12 @@ def GetParser():
         "--required-syscalls",
         default=[],
         action="append",
-        help="Syscalls which are required.",
+        type=seccomp_pair,
+        help=(
+            'Syscalls which are required. The value of syscall should be "1" if'
+            "no required values are specified. To specify the required values "
+            'of syscall, the format is "SYSCALL: VALUE_1 || ... || VALUE_N".'
+        ),
     )
     parser.add_argument(
         "--denied-syscalls",
