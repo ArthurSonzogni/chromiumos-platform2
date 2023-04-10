@@ -5,6 +5,8 @@
 #ifndef SHILL_RESULT_AGGREGATOR_H_
 #define SHILL_RESULT_AGGREGATOR_H_
 
+#include <string>
+
 #include <base/cancelable_callback.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
@@ -81,9 +83,12 @@ class EventDispatcher;
 
 class ResultAggregator : public base::RefCounted<ResultAggregator> {
  public:
-  ResultAggregator(ResultCallback callback, base::Location location);
   ResultAggregator(ResultCallback callback,
                    base::Location location,
+                   std::string error_prefix);
+  ResultAggregator(ResultCallback callback,
+                   base::Location location,
+                   std::string error_prefix,
                    EventDispatcher* dispatcher,
                    base::TimeDelta timeout);
   ResultAggregator(const ResultAggregator&) = delete;
@@ -102,8 +107,9 @@ class ResultAggregator : public base::RefCounted<ResultAggregator> {
   base::CancelableOnceClosure timeout_callback_;
   bool got_result_;
   bool timed_out_;
-  Error error_;
   base::Location location_;
+  std::string error_prefix_;
+  Error error_;
 };
 
 }  // namespace shill

@@ -1121,8 +1121,11 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
     return;
   }
 
-  auto result_aggregator(
-      base::MakeRefCounted<ResultAggregator>(std::move(callback), FROM_HERE));
+  // "Enable cellular failed" is detected by anomaly_detector. Please change
+  // anomaly_detector.cc if the error_prefix to result_aggregator changes.
+  auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
+      std::move(callback), FROM_HERE,
+      "Enable " + technology_name + " failed: "));
   for (auto& device : devices_) {
     if (device->technology() != id)
       continue;
@@ -1567,7 +1570,7 @@ void Manager::OnSuspendImminent() {
   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
       base::BindOnce(&Manager::OnSuspendActionsComplete,
                      weak_factory_.GetWeakPtr()),
-      FROM_HERE, dispatcher_, kTerminationActionsTimeout));
+      FROM_HERE, "", dispatcher_, kTerminationActionsTimeout));
   for (const auto& service : services_) {
     service->OnBeforeSuspend(
         base::BindOnce(&ResultAggregator::ReportResult, result_aggregator));
@@ -1602,7 +1605,7 @@ void Manager::OnDarkSuspendImminent() {
   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
       base::BindOnce(&Manager::OnDarkResumeActionsComplete,
                      weak_factory_.GetWeakPtr()),
-      FROM_HERE, dispatcher_, kTerminationActionsTimeout));
+      FROM_HERE, "", dispatcher_, kTerminationActionsTimeout));
   for (const auto& device : devices_) {
     device->OnDarkResume(
         base::BindOnce(&ResultAggregator::ReportResult, result_aggregator));
