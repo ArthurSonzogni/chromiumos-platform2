@@ -10,10 +10,10 @@ import (
 )
 
 // Output from `identify` run on a black and white image.
-const identifyOutputLineart = `lorgnette/test_images/bw.png PNG 1700x2200 1700x2200+0+0 8-bit Gray 2c 147B 0.000u 0:00.000`
+const identifyOutputLineart = `lorgnette/test_images/bw.png PNG 1700x2200 1700x2200+0+0 8-bit Grayscale Gray 2c 147B 0.000u 0:00.000`
 
 // Output from `identify` run on a grayscale image.
-const identifyOutputGrayscale = `/tmp/scan-airscan_escl_Canon_MF741C_743C__9e_31_7f___4___9e_31_7f___17___9e_31_7f___8__http___200_100_90_40_30_eSCL__page1.png PNG 850x1100 850x1100+0+0 8-bit Gray 256c 899008B 0.000u 0:00.000`
+const identifyOutputGrayscale = `/tmp/scan-airscan_escl_Canon_MF741C_743C__9e_31_7f___4___9e_31_7f___17___9e_31_7f___8__http___200_100_90_40_30_eSCL__page1.png PNG 850x1100 850x1100+0+0 8-bit Grayscale Gray 256c 899008B 0.000u 0:00.000`
 
 // Output from `identify` run on a color image.
 const identifyOutputColor = `/tmp/scan-airscan_escl_Canon_MF741C_743C__9e_31_7f___4___9e_31_7f___17___9e_31_7f___8__http___200_100_90_40_30_eSCL__page1.png PNG 2550x3300 2550x3300+0+0 8-bit sRGB 1.74592MiB 0.000u 0:00.000`
@@ -71,11 +71,11 @@ func TestToIdentifyColorspace(t *testing.T) {
 	}{
 		{
 			lorgnetteColorMode: "MODE_LINEART",
-			identifyColorspace: "Gray 2c",
+			identifyColorspace: "Grayscale Gray 2c",
 		},
 		{
 			lorgnetteColorMode: "MODE_GRAYSCALE",
-			identifyColorspace: "Gray 256c",
+			identifyColorspace: "Grayscale Gray 256c",
 		},
 		{
 			lorgnetteColorMode: "MODE_COLOR",
@@ -140,7 +140,7 @@ func TestVerifyScannedImage(t *testing.T) {
 			resolution:     100,
 			colorMode:      "MODE_LINEART",
 			passed:         false,
-			failureMessage: "Colorspace: got Gray 256c, expected Gray 2c",
+			failureMessage: "Colorspace: got Grayscale Gray 256c, expected Grayscale Gray 2c",
 		},
 		{
 			identifyOutput: identifyOutputColor,

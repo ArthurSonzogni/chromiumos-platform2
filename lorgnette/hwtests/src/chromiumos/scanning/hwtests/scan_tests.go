@@ -15,7 +15,7 @@ import (
 
 // identifyOutputRegex parses out the width, height and colorspace from the
 // output of `identify someImage`.
-var identifyOutputRegex = regexp.MustCompile(`^.+ PNG (?P<width>[0-9]+)x(?P<height>[0-9]+).+ 8-bit (?P<colorspace>sRGB|Gray 256c|Gray 2c)`)
+var identifyOutputRegex = regexp.MustCompile(`^.+ PNG (?P<width>[0-9]+)x(?P<height>[0-9]+).+ 8-bit (?P<colorspace>sRGB|Grayscale Gray 256c|Grayscale Gray 2c)`)
 
 // toInputColorMode converts from the color mode output by `lorgnette_cli
 // get_json_caps --scanner=someScanner` to the color mode accepted by
@@ -39,9 +39,9 @@ func toInputColorMode(lorgnetteColorMode string) (string, error) {
 func toIdentifyColorspace(lorgnetteColorMode string) (string, error) {
 	switch lorgnetteColorMode {
 	case "MODE_LINEART":
-		return "Gray 2c", nil
+		return "Grayscale Gray 2c", nil
 	case "MODE_GRAYSCALE":
-		return "Gray 256c", nil
+		return "Grayscale Gray 256c", nil
 	case "MODE_COLOR":
 		return "sRGB", nil
 	default:
