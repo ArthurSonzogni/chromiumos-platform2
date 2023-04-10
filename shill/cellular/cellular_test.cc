@@ -13,6 +13,7 @@
 #include <set>
 #include <string>
 #include <utility>
+#include "dbus/shill/dbus-constants.h"
 #include "shill/dbus-constants.h"
 
 #include <base/check.h>
@@ -20,6 +21,7 @@
 #include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
@@ -37,6 +39,7 @@ extern "C" {
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_capability_3gpp.h"
 #include "shill/cellular/cellular_consts.h"
+#include "shill/cellular/cellular_helpers.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mock_cellular_service.h"
@@ -156,6 +159,9 @@ class CellularTest : public testing::Test {
   ~CellularTest() = default;
 
   void SetUp() override {
+    shill::ScopeLogger::GetInstance()->set_verbose_level(0);
+    shill::ScopeLogger::GetInstance()->EnableScopesByName("cellular");
+
     EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
     EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
     device_ =
@@ -498,6 +504,13 @@ class CellularTest : public testing::Test {
     device_->service_ = new CellularService(
         &manager_, device_->imsi(), device_->iccid(), device_->GetSimCardId());
     device_->service_->SetDevice(device_.get());
+    storage_id_ = device_->service_->GetStorageIdentifier();
+    profile_storage_.SetString(storage_id_, CellularService::kStorageType,
+                               kTypeCellular);
+    profile_storage_.SetString(storage_id_, CellularService::kStorageIccid,
+                               device_->iccid());
+    profile_storage_.SetString(storage_id_, CellularService::kStorageImsi,
+                               device_->imsi());
     return device_->service_.get();
   }
   MockCellularService* SetMockService() {
@@ -563,6 +576,7 @@ class CellularTest : public testing::Test {
   CellularRefPtr device_;
   MockNetwork* network_ = nullptr;  // owned by |device_|
   CellularServiceProvider cellular_service_provider_{&manager_};
+  std::string storage_id_;
   FakeStore profile_storage_;
   scoped_refptr<NiceMock<MockProfile>> profile_;
 };
@@ -2491,6 +2505,67 @@ TEST_F(CellularTest, CompareApns) {
   apn2[kApnProperty] = "apn.test";
   EXPECT_TRUE(device_->CompareApns(apn1, apn2));
   EXPECT_TRUE(device_->CompareApns(apn2, apn1));
+}
+
+TEST_F(CellularTest, CompareApnsFromStorage) {
+  // Store the last good APN and retrieve it again. Verify that CompareApns
+  // matches the loaded value.
+  Stringmap last_good_apn;
+  last_good_apn[kApnProperty] = "apn.com";
+  last_good_apn[kApnNameProperty] = "Last Good APN";
+  last_good_apn[kApnSourceProperty] = kApnSourceUi;
+  last_good_apn[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA, kApnTypeDun});
+  last_good_apn[kApnUsernameProperty] = "username";
+  last_good_apn[kApnPasswordProperty] = "password";
+  last_good_apn[kApnAuthenticationProperty] = "auth";
+  last_good_apn[kApnIpTypeProperty] = "iptype";
+  last_good_apn[kApnIsRequiredByCarrierSpecProperty] = "true";
+  last_good_apn[cellular::kApnVersionProperty] =
+      base::NumberToString(cellular::kCurrentApnCacheVersion);
+  last_good_apn[kApnAttachProperty] = "attach";
+  last_good_apn[kApnLocalizedNameProperty] = "localized";
+
+  device_->set_iccid_for_testing(kIccid);
+  CellularService* service = SetService();
+  service->SetLastGoodApn(last_good_apn);
+  ASSERT_TRUE(service->Save(&profile_storage_));
+  service->ClearLastGoodApn();
+  ASSERT_TRUE(service->Load(&profile_storage_));
+  ASSERT_NE(service->GetLastGoodApn(), nullptr);
+  EXPECT_TRUE(device_->CompareApns(last_good_apn, *service->GetLastGoodApn()));
+}
+
+TEST_F(CellularTest, CompareApnsFromApnList) {
+  std::vector<MobileOperatorMapper::MobileAPN> apn_list;
+  MobileOperatorMapper::MobileAPN mobile_apn;
+  mobile_apn.apn = "apn";
+  mobile_apn.username = "username";
+  mobile_apn.password = "password";
+  mobile_apn.operator_name_list.push_back({"name", ""});
+  mobile_apn.authentication = kApnAuthenticationChap;
+  mobile_apn.apn_types = {"DEFAULT", "IA", "DUN"};
+  mobile_apn.ip_type = kApnIpTypeV4V6;
+  mobile_apn.is_required_by_carrier_spec = true;
+  apn_list.emplace_back(std::move(mobile_apn));
+  FakeMobileOperatorInfo* info =
+      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list));
+  // Pass ownership of |info|
+  device_->set_mobile_operator_info_for_testing(info);
+  device_->UpdateHomeProvider();
+  auto apn_list_prop = device_->apn_list();
+  ASSERT_EQ(apn_list_prop.size(), 1);
+
+  // Save value to storage and check for equality.
+  device_->set_iccid_for_testing(kIccid);
+  CellularService* service = SetService();
+  service->SetLastGoodApn(apn_list_prop[0]);
+  ASSERT_TRUE(service->Save(&profile_storage_));
+  service->ClearLastGoodApn();
+  ASSERT_TRUE(service->Load(&profile_storage_));
+  ASSERT_NE(service->GetLastGoodApn(), nullptr);
+  EXPECT_TRUE(
+      device_->CompareApns(apn_list_prop[0], *service->GetLastGoodApn()));
 }
 
 }  // namespace shill

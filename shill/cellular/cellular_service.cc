@@ -26,6 +26,7 @@
 #include "shill/cellular/cellular_consts.h"
 #include "shill/data_types.h"
 #include "shill/dbus/dbus_control.h"
+#include "shill/dbus-constants.h"
 #include "shill/manager.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
@@ -119,12 +120,15 @@ void LoadApn(const StoreInterface* storage,
         !base::StringToInt((*apn_info)[cellular::kApnVersionProperty],
                            &version) ||
         version < cellular::kCurrentApnCacheVersion) {
+      LOG(INFO) << __func__ << ": APN version mismatch: " << keytag;
       return;
     }
   }
 
-  if (!LoadApnField(storage, storage_group, keytag, kApnProperty, apn_info))
+  if (!LoadApnField(storage, storage_group, keytag, kApnProperty, apn_info)) {
+    LOG(ERROR) << __func__ << ": Failed to load APN field: " << keytag;
     return;
+  }
   if (keytag == CellularService::kStorageAPN)
     FetchDetailsFromApnList(apn_list, apn_info);
   LoadApnField(storage, storage_group, keytag, kApnUsernameProperty, apn_info);

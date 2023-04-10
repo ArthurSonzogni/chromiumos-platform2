@@ -2274,9 +2274,19 @@ bool Cellular::CompareApns(const Stringmap& apn1, const Stringmap& apn2) const {
   std::set<std::string> ignore_keys{std::begin(always_ignore_keys),
                                     std::end(always_ignore_keys)};
 
+  // Enforce the APN keys so that developers explicitly define the behavior
+  // for each key in this function.
+  static const std::string only_allowed_keys[] = {
+      kApnProperty,         kApnTypesProperty,          kApnUsernameProperty,
+      kApnPasswordProperty, kApnAuthenticationProperty, kApnIpTypeProperty,
+      kApnAttachProperty};
+  std::set<std::string> allowed_keys{std::begin(only_allowed_keys),
+                                     std::end(only_allowed_keys)};
   for (auto const& pair : apn1) {
     if (ignore_keys.count(pair.first))
       continue;
+
+    DCHECK(allowed_keys.count(pair.first)) << " key: " << pair.first;
     if (!base::Contains(apn2, pair.first) || pair.second != apn2.at(pair.first))
       return false;
     // Keys match, ignore them below.
@@ -2284,6 +2294,8 @@ bool Cellular::CompareApns(const Stringmap& apn1, const Stringmap& apn2) const {
   }
   // Find keys in apn2 which are not in apn1.
   for (auto const& pair : apn2) {
+    DCHECK(allowed_keys.count(pair.first) || ignore_keys.count(pair.first))
+        << " key: " << pair.first;
     if (ignore_keys.count(pair.first) == 0)
       return false;
   }

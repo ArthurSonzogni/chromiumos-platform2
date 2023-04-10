@@ -401,6 +401,9 @@ class Cellular : public Device,
   friend class ModemTest;
   FRIEND_TEST(CellularTest, ChangeServiceState);
   FRIEND_TEST(CellularTest, ChangeServiceStatePPP);
+  FRIEND_TEST(CellularTest, CompareApns);
+  FRIEND_TEST(CellularTest, CompareApnsFromStorage);
+  FRIEND_TEST(CellularTest, CompareApnsFromApnList);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, ConnectFailure);
   FRIEND_TEST(CellularTest, Disconnect);
@@ -422,7 +425,6 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, OnAfterResumeDisabledWantEnabled);
   FRIEND_TEST(CellularTest, OnAfterResumePowerDownInProgressWantEnabled);
   FRIEND_TEST(CellularTest, OnPPPDied);
-  FRIEND_TEST(CellularTest, CompareApns);
   FRIEND_TEST(CellularTest, PPPConnectionFailedAfterAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedBeforeAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedDuringAuth);
