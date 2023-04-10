@@ -25,7 +25,7 @@ bool IsErrorResult(PartitionMigrationResult result) {
 void SendResultMetric(PartitionMigrationResult result,
                       MetricsInterface& metrics) {
   if (!metrics.SendEnumMetric(
-          "Installer.Postinstall.RevenPartitionMigrationEvent",
+          "Installer.Postinstall.RevenPartitionMigration",
           static_cast<int>(result),
           static_cast<int>(PartitionMigrationResult::kMax))) {
     LOG(ERROR) << "Failed to send partition migration metric";
