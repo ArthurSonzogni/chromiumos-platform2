@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Chrosh commands that are only loaded when we're booting from removable
+# Crosh commands that are only loaded when we're booting from removable
 # media.
 
 do_install() {
