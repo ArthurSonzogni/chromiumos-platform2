@@ -254,6 +254,7 @@ bool DumpUserFolders(bool aggregate_only) {
 
 const DirAdder kSystemDirs[]{
     {"/home/chronos/", FilterUserDirs, false},
+    {"/home/chronos/Default/", FilterNone, false},
     {"/home/.shadow/", FilterUserDirs, false},
     {"/mnt/stateful_partition/", FilterStateful, false},
     {"/mnt/stateful_partition/encrypted/", FilterEncrypted, false},
