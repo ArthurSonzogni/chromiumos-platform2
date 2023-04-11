@@ -237,7 +237,8 @@
           "suspend-to-idle": "1",
           "turn-off-screen-timeout-ms": "3000",
           "usb-min-ac-watts": "20",
-          "wake-on-dp": "1"
+          "wake-on-dp": "1",
+          "wifi-transmit-power-mode-for-static-device": "non-tablet"
         },
         "pvs": {
           "program": "fake_program",
@@ -410,10 +411,6 @@
           "non-tablet-mode-power-table-ath10k": {
             "limit-2g": 1,
             "limit-5g": 2
-          },
-          "tablet-mode-power-table-ath10k": {
-            "limit-2g": 3,
-            "limit-5g": 4
           }
         }
       },
@@ -597,7 +594,8 @@
           "suspend-to-idle": "0",
           "turn-off-screen-timeout-ms": "3000",
           "usb-min-ac-watts": "20",
-          "wake-on-dp": "1"
+          "wake-on-dp": "1",
+          "wifi-transmit-power-mode-for-static-device": "non-tablet"
         },
         "pvs": {
           "program": "fake_program",
@@ -753,12 +751,6 @@
             "limit-5g-1": 2,
             "limit-5g-3": 3,
             "limit-5g-4": 4
-          },
-          "tablet-mode-power-table-rtw": {
-            "limit-2g": 5,
-            "limit-5g-1": 6,
-            "limit-5g-3": 7,
-            "limit-5g-4": 8
           }
         }
       },
@@ -939,7 +931,8 @@
           "suspend-to-idle": "0",
           "turn-off-screen-timeout-ms": "3000",
           "usb-min-ac-watts": "20",
-          "wake-on-dp": "1"
+          "wake-on-dp": "1",
+          "wifi-transmit-power-mode-for-static-device": "non-tablet"
         },
         "pvs": {
           "program": "fake_program",
@@ -1095,12 +1088,6 @@
             "limit-5g-1": 2,
             "limit-5g-3": 3,
             "limit-5g-4": 4
-          },
-          "tablet-mode-power-table-rtw": {
-            "limit-2g": 5,
-            "limit-5g-1": 6,
-            "limit-5g-3": 7,
-            "limit-5g-4": 8
           }
         }
       },
@@ -1297,6 +1284,7 @@
           "set-default-proximity-state-high": "1",
           "set-wifi-transmit-power-for-activity-proximity": "1",
           "set-wifi-transmit-power-for-proximity": "1",
+          "set-wifi-transmit-power-for-tablet-mode": "1",
           "suspend-to-idle": "1",
           "turn-off-screen-timeout-ms": "3000",
           "usb-min-ac-watts": "20",
@@ -2729,11 +2717,11 @@
           "internal-backlight-no-als-ac-brightness": "80.1",
           "internal-backlight-no-als-battery-brightness": "63.2",
           "min-visible-backlight-level": "1000",
-          "set-wifi-transmit-power-for-tablet-mode": "1",
           "suspend-to-idle": "1",
           "turn-off-screen-timeout-ms": "0",
           "usb-min-ac-watts": "20",
-          "wake-on-dp": "1"
+          "wake-on-dp": "1",
+          "wifi-transmit-power-mode-for-static-device": "tablet"
         },
         "pvs": {
           "program": "fake_program",
@@ -2879,12 +2867,6 @@
           "geo-offsets-rest-of-world": {
             "offset-2g": 13,
             "offset-5g": 14
-          },
-          "non-tablet-mode-power-table-rtw": {
-            "limit-2g": 1,
-            "limit-5g-1": 2,
-            "limit-5g-3": 3,
-            "limit-5g-4": 4
           },
           "tablet-mode-power-table-rtw": {
             "limit-2g": 5,
@@ -3049,11 +3031,11 @@
           "internal-backlight-no-als-ac-brightness": "80.1",
           "internal-backlight-no-als-battery-brightness": "63.2",
           "min-visible-backlight-level": "1000",
-          "set-wifi-transmit-power-for-tablet-mode": "1",
           "suspend-to-idle": "1",
           "turn-off-screen-timeout-ms": "0",
           "usb-min-ac-watts": "20",
-          "wake-on-dp": "1"
+          "wake-on-dp": "1",
+          "wifi-transmit-power-mode-for-static-device": "tablet"
         },
         "pvs": {
           "program": "fake_program",
@@ -3199,12 +3181,6 @@
           "geo-offsets-rest-of-world": {
             "offset-2g": 13,
             "offset-5g": 14
-          },
-          "non-tablet-mode-power-table-rtw": {
-            "limit-2g": 1,
-            "limit-5g-1": 2,
-            "limit-5g-3": 3,
-            "limit-5g-4": 4
           },
           "tablet-mode-power-table-rtw": {
             "limit-2g": 5,

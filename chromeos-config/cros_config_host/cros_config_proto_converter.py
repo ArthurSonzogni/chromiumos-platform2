@@ -733,6 +733,27 @@ def _build_derived_power_prefs(config: Config) -> dict:
 
     result["usb-min-ac-watts"] = hw_features.power_supply.usb_min_ac_watts
 
+    wifi_config = None
+    if config.hw_design_config.hardware_features.wifi.HasField("wifi_config"):
+        wifi_config = config.hw_design_config.hardware_features.wifi.wifi_config
+    elif config.sw_config.wifi_config.HasField("wifi_config"):
+        wifi_config = config.sw_config.wifi_config
+
+    intel_config_types = ["intel_config", "legacy_intel_config"]
+
+    if wifi_config:
+        if wifi_config.WhichOneof(
+            "wifi_config"
+        ) in intel_config_types or _is_convertible(form_factor):
+            result["set-wifi-transmit-power-for-tablet-mode"] = True
+            result.pop("wifi-transmit-power-mode-for-static-device", None)
+        elif _is_tablet(form_factor):
+            result.pop("set-wifi-transmit-power-for-tablet-mode", None)
+            result["wifi-transmit-power-mode-for-static-device"] = "tablet"
+        elif _is_non_tablet(form_factor):
+            result.pop("set-wifi-transmit-power-for-tablet-mode", None)
+            result["wifi-transmit-power-mode-for-static-device"] = "non-tablet"
+
     return dict(
         (k, _format_power_pref_value(v)) for k, v in result.items() if v
     )
@@ -1185,11 +1206,47 @@ def _build_bluetooth(config):
     return result
 
 
-def _build_ath10k_config(ath10k_config):
+def _is_tablet(form_factor):
+    return form_factor in [topology_pb2.HardwareFeatures.FormFactor.CHROMESLATE]
+
+
+def _is_non_tablet(form_factor):
+    return form_factor in [
+        topology_pb2.HardwareFeatures.FormFactor.CLAMSHELL,
+        topology_pb2.HardwareFeatures.FormFactor.CHROMEBASE,
+        topology_pb2.HardwareFeatures.FormFactor.CHROMEBOX,
+        topology_pb2.HardwareFeatures.FormFactor.CHROMEBIT,
+    ]
+
+
+def _is_convertible(form_factor):
+    return not _is_tablet(form_factor) and not _is_non_tablet(form_factor)
+
+
+def _supports_tablet_mode(form_factor):
+    return _is_convertible(form_factor) or _is_tablet(form_factor)
+
+
+def _supports_clamshell_mode(form_factor):
+    return _is_convertible(form_factor) or _is_non_tablet(form_factor)
+
+
+def _ensure_tablet_power_table_exists(wifi_config):
+    if not wifi_config.HasField("tablet_mode_power_table"):
+        raise Exception("Missing tablet power table.")
+
+
+def _ensure_non_tablet_power_table_exists(wifi_config):
+    if not wifi_config.HasField("non_tablet_mode_power_table"):
+        raise Exception("Missing non-tablet power table.")
+
+
+def _build_ath10k_config(ath10k_config, form_factor):
     """Builds the wifi configuration for the ath10k driver.
 
     Args:
         ath10k_config: Ath10kConfig config.
+        form_factor: device form factor.
 
     Returns:
         wifi configuration for the ath10k driver.
@@ -1202,20 +1259,26 @@ def _build_ath10k_config(ath10k_config):
             "limit-5g": power.limit_5g,
         }
 
-    result["tablet-mode-power-table-ath10k"] = power_chain(
-        ath10k_config.tablet_mode_power_table
-    )
-    result["non-tablet-mode-power-table-ath10k"] = power_chain(
-        ath10k_config.non_tablet_mode_power_table
-    )
+    if _supports_tablet_mode(form_factor):
+        _ensure_tablet_power_table_exists(ath10k_config)
+        result["tablet-mode-power-table-ath10k"] = power_chain(
+            ath10k_config.tablet_mode_power_table
+        )
+
+    if _supports_clamshell_mode(form_factor):
+        _ensure_non_tablet_power_table_exists(ath10k_config)
+        result["non-tablet-mode-power-table-ath10k"] = power_chain(
+            ath10k_config.non_tablet_mode_power_table
+        )
     return result
 
 
-def _build_rtw88_config(rtw88_config):
+def _build_rtw88_config(rtw88_config, form_factor):
     """Builds the wifi configuration for the rtw88 driver.
 
     Args:
         rtw88_config: Rtw88Config config.
+        form_factor: device form factor.
 
     Returns:
         wifi configuration for the rtw88 driver.
@@ -1230,12 +1293,17 @@ def _build_rtw88_config(rtw88_config):
             "limit-5g-4": power.limit_5g_4,
         }
 
-    result["tablet-mode-power-table-rtw"] = power_chain(
-        rtw88_config.tablet_mode_power_table
-    )
-    result["non-tablet-mode-power-table-rtw"] = power_chain(
-        rtw88_config.non_tablet_mode_power_table
-    )
+    if _supports_tablet_mode(form_factor):
+        _ensure_tablet_power_table_exists(rtw88_config)
+        result["tablet-mode-power-table-rtw"] = power_chain(
+            rtw88_config.tablet_mode_power_table
+        )
+
+    if _supports_clamshell_mode(form_factor):
+        _ensure_non_tablet_power_table_exists(rtw88_config)
+        result["non-tablet-mode-power-table-rtw"] = power_chain(
+            rtw88_config.non_tablet_mode_power_table
+        )
 
     def offsets(offset):
         return {
@@ -1249,11 +1317,12 @@ def _build_rtw88_config(rtw88_config):
     return result
 
 
-def _build_rtw89_config(rtw89_config):
+def _build_rtw89_config(rtw89_config, form_factor):
     """Builds the wifi configuration for the rtw89 driver.
 
     Args:
         rtw89_config: Rtw89Config config.
+        form_factor: device form factor.
 
     Returns:
         wifi configuration for the rtw89 driver.
@@ -1274,11 +1343,14 @@ def _build_rtw89_config(rtw89_config):
             "limit-6g-6": power.limit_6g_6,
         }
 
-    if rtw89_config.HasField("tablet_mode_power_table"):
+    if _supports_tablet_mode(form_factor):
+        _ensure_tablet_power_table_exists(rtw89_config)
         result["tablet-mode-power-table-rtw"] = power_chain(
             rtw89_config.tablet_mode_power_table
         )
-    if rtw89_config.HasField("non_tablet_mode_power_table"):
+
+    if _supports_clamshell_mode(form_factor):
+        _ensure_non_tablet_power_table_exists(rtw89_config)
         result["non-tablet-mode-power-table-rtw"] = power_chain(
             rtw89_config.non_tablet_mode_power_table
         )
@@ -1313,19 +1385,22 @@ def _build_intel_config(config, config_files):
         config.sw_config.firmware_build_config.build_targets.coreboot
         + _calculate_image_name_suffix(config.hw_design_config)
     )
+
     wifi_sar_id = _extract_fw_config_value(
         config.hw_design_config, config.hw_design_config.hardware_topology.wifi
     )
+
     return config_files.wifi_sar_map.get((coreboot_target, wifi_sar_id))
 
 
-def _build_mtk_config(mtk_config, coreboot_target, config_files):
+def _build_mtk_config(mtk_config, coreboot_target, config_files, form_factor):
     """Builds the wifi configuration for the mtk driver.
 
     Args:
         mtk_config: MtkConfig config.
         coreboot_target: Coreboot target device to associate binary file with.
         config_files: ConfigFiles config files.
+        form_factor: Form factor of the device.
 
     Returns:
         wifi configuration for the mtk driver.
@@ -1380,11 +1455,14 @@ def _build_mtk_config(mtk_config, coreboot_target, config_files):
                 )
         return chain
 
-    if mtk_config.HasField("tablet_mode_power_table"):
+    if _supports_tablet_mode(form_factor):
+        _ensure_tablet_power_table_exists(mtk_config)
         result["tablet-mode-power-table-mtk"] = power_chain(
             mtk_config.tablet_mode_power_table
         )
-    if mtk_config.HasField("non_tablet_mode_power_table"):
+
+    if _supports_clamshell_mode(form_factor):
+        _ensure_non_tablet_power_table_exists(mtk_config)
         result["non-tablet-mode-power-table-mtk"] = power_chain(
             mtk_config.non_tablet_mode_power_table
         )
@@ -1431,16 +1509,20 @@ def _build_wifi(config, config_files):
     Returns:
         wifi configuration.
     """
-    if config.hw_design_config.hardware_features.wifi.HasField("wifi_config"):
-        wifi_config = config.hw_design_config.hardware_features.wifi.wifi_config
+    hw_features = config.hw_design_config.hardware_features
+
+    if hw_features.wifi.HasField("wifi_config"):
+        wifi_config = hw_features.wifi.wifi_config
     else:
         wifi_config = config.sw_config.wifi_config
 
+    form_factor = hw_features.form_factor.form_factor
+
     config_field = wifi_config.WhichOneof("wifi_config")
     if config_field == "ath10k_config":
-        return _build_ath10k_config(wifi_config.ath10k_config)
+        return _build_ath10k_config(wifi_config.ath10k_config, form_factor)
     if config_field == "rtw88_config":
-        return _build_rtw88_config(wifi_config.rtw88_config)
+        return _build_rtw88_config(wifi_config.rtw88_config, form_factor)
     if config_field == "intel_config":
         return _build_intel_config(config, config_files)
     if config_field == "mtk_config":
@@ -1449,10 +1531,10 @@ def _build_wifi(config, config_files):
             + _calculate_image_name_suffix(config.hw_design_config)
         )
         return _build_mtk_config(
-            wifi_config.mtk_config, coreboot_target, config_files
+            wifi_config.mtk_config, coreboot_target, config_files, form_factor
         )
     if config_field == "rtw89_config":
-        return _build_rtw89_config(wifi_config.rtw89_config)
+        return _build_rtw89_config(wifi_config.rtw89_config, form_factor)
     return {}
 
 
@@ -3748,10 +3830,10 @@ def _wifi_sar_map(configs, output_dir, build_root_dir):
     sw_configs = list(configs.software_configs)
     for hw_design in configs.design_list:
         for hw_design_config in hw_design.configs:
-            wifi = hw_design_config.hardware_features.wifi
+            hw_wifi = hw_design_config.hardware_features.wifi
             sw_config = _sw_config(sw_configs, hw_design_config.id.value)
-            if hw_design_config.hardware_features.wifi.HasField("wifi_config"):
-                wifi_config = wifi.wifi_config
+            if hw_wifi.HasField("wifi_config"):
+                wifi_config = hw_wifi.wifi_config
             else:
                 wifi_config = sw_config.wifi_config
 
@@ -3759,6 +3841,7 @@ def _wifi_sar_map(configs, output_dir, build_root_dir):
                 sar_file_content = _create_intel_sar_file_content(
                     wifi_config.intel_config
                 )
+
                 coreboot_target = (
                     sw_config.firmware_build_config.build_targets.coreboot
                     + _calculate_image_name_suffix(hw_design_config)
@@ -3838,7 +3921,7 @@ def _wifi_mtcl_map(configs, output_dir, build_root_dir):
 
 
 def _extract_fw_config_value(hw_design_config, topology):
-    """Extracts the firwmare config value for the given topology.
+    """Extracts the firmware config value for the given topology.
 
     Args:
         hw_design_config: Design extracting value from.
@@ -3949,6 +4032,147 @@ def wrds_ewrd_encode(sar_table_config):
                 return False
         return True
 
+    def regen_power_table(
+        tablet_table_name,
+        tablet_table,
+        non_tablet_table_name,
+        non_tablet_table,
+        allow_missing_both_tables,
+    ):
+        """Regenerate a pair of tablet and non-tablet power tables.
+
+        More specifically, generate a pair of intel tablet and non-tablet
+        power tables where the missing table is copied from the other
+        table if exists.
+
+        If none of the tables exist and `allow_missing_both_tables` is
+        True, the uninitialised (zero filled) tables are returned instead.
+
+        However, if `allow_missing_both_tables` is False and both tables
+        are missing, then an exception will be raised.
+
+        Args:
+            tablet_table_name: field name of the tablet table.
+            tablet_table: the tablet table from the intel wifi config.
+            non_tablet_table_name: field name of the non-tablet table.
+            non_tablet_table: the non-tablet table from the intel wifi config.
+            allow_missing_both_tables: True if both tables are optional.
+
+        Returns:
+            A (tablet power table, non-tablet power table) pair.
+
+        Raises:
+            An exception indicating both tables are missing.
+        """
+        tab_exists = sar_table_config.HasField(tablet_table_name)
+        non_tab_exists = sar_table_config.HasField(non_tablet_table_name)
+
+        if tab_exists and non_tab_exists:
+            return tablet_table, non_tablet_table
+        elif tab_exists:
+            return tablet_table, tablet_table
+        elif non_tab_exists:
+            return non_tablet_table, non_tablet_table
+
+        if allow_missing_both_tables:
+            return tablet_table, non_tablet_table
+        else:
+            raise Exception(
+                "Intel wifi config missing both ",
+                f"{tablet_table_name} and {non_tablet_table_name}. ",
+                "At least one table is expected.",
+            )
+
+    def power_table_a():
+        """Regenerate a pair of tablet and non-tablet power table a.
+
+        At least one of the power table a must exists.
+
+        Returns:
+            A (tablet_table, non_tablet_table) pair.
+
+        Raises:
+            An exception indicating both tables are missing.
+        """
+        return regen_power_table(
+            "tablet_mode_power_table_a",
+            sar_table_config.tablet_mode_power_table_a,
+            "non_tablet_mode_power_table_a",
+            sar_table_config.non_tablet_mode_power_table_a,
+            False,
+        )
+
+    def power_table_b():
+        """Regenerate a pair of tablet and non-tablet power table b.
+
+        At least one of the power table b must exists.
+
+        Returns:
+            A (tablet_table, non_tablet_table) pair.
+
+        Raises:
+            An exception indicating both tables are missing.
+        """
+        return regen_power_table(
+            "tablet_mode_power_table_b",
+            sar_table_config.tablet_mode_power_table_b,
+            "non_tablet_mode_power_table_b",
+            sar_table_config.non_tablet_mode_power_table_b,
+            False,
+        )
+
+    def cdb_power_table_a():
+        """Regenerate a pair of tablet and non-tablet cdb power table a.
+
+        The cdb power table a is optional.
+
+        Returns:
+            A (tablet_table, non_tablet_table) pair.
+        """
+        return regen_power_table(
+            "cdb_tablet_mode_power_table_a",
+            sar_table_config.cdb_tablet_mode_power_table_a,
+            "cdb_non_tablet_mode_power_table_a",
+            sar_table_config.cdb_non_tablet_mode_power_table_a,
+            True,
+        )
+
+    def cdb_power_table_b():
+        """Regenerate a pair of tablet and non-tablet cdb power table b.
+
+        The cdb power table b is optional.
+
+        Returns:
+            A (tablet_table, non_tablet_table) pair.
+        """
+        return regen_power_table(
+            "cdb_tablet_mode_power_table_b",
+            sar_table_config.cdb_tablet_mode_power_table_b,
+            "cdb_non_tablet_mode_power_table_b",
+            sar_table_config.cdb_non_tablet_mode_power_table_b,
+            True,
+        )
+
+    def make_sar_tables(table_pairs, revision):
+        """Generate a pair of sar and dsar tables given pairs of power tables.
+
+        Args:
+            table_pairs: a list of power table pairs.
+            revision: the revision of the sar table.
+
+        Returns:
+            a pair of (sar_table, dsar_table)
+        """
+        sar_table = bytearray(0)
+        dsar_table = bytearray(0)
+        for pair in table_pairs:
+            if pair is None:
+                continue
+            tablet_table, non_tablet_table = pair
+            sar_table += power_table(tablet_table, revision)
+            dsar_table += power_table(non_tablet_table, revision)
+        return sar_table, dsar_table
+
     sar_table = bytearray(0)
     dsar_table = bytearray(0)
     chain_count = 2
@@ -3957,39 +4181,26 @@ def wrds_ewrd_encode(sar_table_config):
 
     if sar_table_config.sar_table_version == 0:
         subbands_count = 5
-        sar_table = power_table(
-            sar_table_config.tablet_mode_power_table_a, 0
-        ) + power_table(sar_table_config.tablet_mode_power_table_b, 0)
-        dsar_table = power_table(
-            sar_table_config.non_tablet_mode_power_table_a, 0
-        ) + power_table(sar_table_config.non_tablet_mode_power_table_b, 0)
+        power_tables = [power_table_a(), power_table_b()]
+        sar_table, dsar_table = make_sar_tables(power_tables, 0)
     elif sar_table_config.sar_table_version == 1:
         subbands_count = 11
-        sar_table = power_table(
-            sar_table_config.tablet_mode_power_table_a, 1
-        ) + power_table(sar_table_config.tablet_mode_power_table_b, 1)
-        dsar_table = power_table(
-            sar_table_config.non_tablet_mode_power_table_a, 1
-        ) + power_table(sar_table_config.non_tablet_mode_power_table_b, 1)
+        power_tables = [power_table_a(), power_table_b()]
+        sar_table, dsar_table = make_sar_tables(power_tables, 1)
     elif sar_table_config.sar_table_version == 2:
         subbands_count = 22
-        sar_table = (
-            power_table(sar_table_config.tablet_mode_power_table_a, 2)
-            + power_table(sar_table_config.tablet_mode_power_table_b, 2)
-            + power_table(sar_table_config.cdb_tablet_mode_power_table_a, 2)
-            + power_table(sar_table_config.cdb_tablet_mode_power_table_b, 2)
-        )
-        dsar_table = (
-            power_table(sar_table_config.non_tablet_mode_power_table_a, 2)
-            + power_table(sar_table_config.non_tablet_mode_power_table_b, 2)
-            + power_table(sar_table_config.cdb_non_tablet_mode_power_table_a, 2)
-            + power_table(sar_table_config.cdb_non_tablet_mode_power_table_b, 2)
-        )
+        power_tables = [
+            power_table_a(),
+            power_table_b(),
+            cdb_power_table_a(),
+            cdb_power_table_b(),
+        ]
+        sar_table, dsar_table = make_sar_tables(power_tables, 2)
     elif sar_table_config.sar_table_version == 0xFF:
         return bytearray(0)
     else:
         raise Exception(
-            f"ERROR: Invalid power table revision "
+            "ERROR: Invalid power table revision "
             f"{sar_table_config.sar_table_version}"
         )
 
@@ -4054,7 +4265,7 @@ def wgds_encode(wgds_config):
         return bytearray(0)
     else:
         raise Exception(
-            f"ERROR: Invalid geo offset table revision "
+            "ERROR: Invalid geo offset table revision "
             f"{wgds_config.wgds_version}"
         )
 
@@ -4370,6 +4581,7 @@ def Main(
         [_read_config(program_config)]
         + [_read_config(config) for config in project_configs]
     )
+
     touch_fw = {}
     camera_map = {}
     dptf_map = {}
