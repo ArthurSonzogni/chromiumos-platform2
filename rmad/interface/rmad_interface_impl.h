@@ -108,8 +108,7 @@ class RmadInterfaceImpl final : public RmadInterface {
     // to restart the daemon.
     bool quit_daemon = false;
     if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED ||
-        std::find(kQuitDaemonStates.begin(), kQuitDaemonStates.end(),
-                  current_state_case_) != kQuitDaemonStates.end()) {
+        kQuitDaemonStates.contains(current_state_case_)) {
       quit_daemon = true;
     }
     std::move(callback).Run(reply, quit_daemon);

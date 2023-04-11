@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/containers/fixed_flat_map.h>
+#include <base/containers/fixed_flat_set.h>
 #include <base/strings/string_piece.h>
 
 #include "rmad/proto_bindings/rmad.pb.h"
@@ -55,19 +56,22 @@ inline constexpr char kPowerwashCount[] = "powerwash_count";
 inline constexpr char kRoFirmwareVerified[] = "ro_firmware_verified";
 
 // States that requires daemon to quit and restart when entering.
-inline constexpr std::array<RmadState::StateCase, 1> kQuitDaemonStates = {
-    RmadState::StateCase::kWpDisableComplete};
+inline constexpr auto kQuitDaemonStates =
+    base::MakeFixedFlatSet<RmadState::StateCase>(
+        {RmadState::StateCase::kWpDisableComplete});
 
 // Component traits.
-inline constexpr std::array<RmadComponent, 4> kComponentsNeedManualCalibration =
-    {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-     RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE};
-inline constexpr std::array<RmadComponent, 2> kComponentsNeedUpdateCbi = {
-    RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE};
+inline constexpr auto kComponentsNeedManualCalibration =
+    base::MakeFixedFlatSet<RmadComponent>(
+        {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
+         RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+inline constexpr auto kComponentsNeedUpdateCbi =
+    base::MakeFixedFlatSet<RmadComponent>(
+        {RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
 
 // We map RmadState::StateCase (enum) to std::string to represent state in a
 // more readable way.
-constexpr auto kStateNames =
+inline constexpr auto kStateNames =
     base::MakeFixedFlatMap<RmadState::StateCase, base::StringPiece>({
         {RmadState::kWelcome, "Welcome"},
         {RmadState::kComponentsRepair, "ComponentsRepair"},

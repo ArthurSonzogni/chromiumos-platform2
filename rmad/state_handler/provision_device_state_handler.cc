@@ -249,9 +249,7 @@ void ProvisionDeviceStateHandler::InitializeCalibrationTask() {
       for (const std::string& component_name : replaced_component_names) {
         RmadComponent component;
         CHECK(RmadComponent_Parse(component_name, &component));
-        if (std::find(kComponentsNeedManualCalibration.begin(),
-                      kComponentsNeedManualCalibration.end(),
-                      component) != kComponentsNeedManualCalibration.end()) {
+        if (kComponentsNeedManualCalibration.contains(component)) {
           replaced_components_need_calibration.insert(component);
         }
       }
@@ -269,9 +267,7 @@ void ProvisionDeviceStateHandler::InitializeCalibrationTask() {
   // Update probeable components using probe results.
   for (RmadComponent component : probed_components) {
     // Ignore the components that cannot be calibrated.
-    if (std::find(kComponentsNeedManualCalibration.begin(),
-                  kComponentsNeedManualCalibration.end(),
-                  component) == kComponentsNeedManualCalibration.end()) {
+    if (!kComponentsNeedManualCalibration.contains(component)) {
       continue;
     }
 

@@ -143,20 +143,11 @@ bool DeviceDestinationStateHandler::ReplacedComponentNeedHwwpDisabled() const {
                              &replaced_component_names)) {
     return false;
   }
-  // Using set union/intersection is faster, but since the number of components
-  // is small, we keep it simple by using linear searches for each replaced
-  // component. It shouldn't affect performance a lot.
   for (const std::string& component_name : replaced_component_names) {
     RmadComponent component;
     CHECK(RmadComponent_Parse(component_name, &component));
-    if (std::find(kComponentsNeedManualCalibration.begin(),
-                  kComponentsNeedManualCalibration.end(),
-                  component) != kComponentsNeedManualCalibration.end()) {
-      return true;
-    }
-    if (std::find(kComponentsNeedUpdateCbi.begin(),
-                  kComponentsNeedUpdateCbi.end(),
-                  component) != kComponentsNeedUpdateCbi.end()) {
+    if (kComponentsNeedManualCalibration.contains(component) ||
+        kComponentsNeedUpdateCbi.contains(component)) {
       return true;
     }
   }

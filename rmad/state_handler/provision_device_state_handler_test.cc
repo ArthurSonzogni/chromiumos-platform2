@@ -266,18 +266,12 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 
 TEST_F(ProvisionDeviceStateHandlerTest, VerifyTestConstant) {
   // Make sure the constants are correct.
-  EXPECT_NE(std::find(kComponentsNeedManualCalibration.begin(),
-                      kComponentsNeedManualCalibration.end(),
-                      kComponentNeedCalibration),
-            kComponentsNeedManualCalibration.end());
-  EXPECT_NE(std::find(kComponentsNeedManualCalibration.begin(),
-                      kComponentsNeedManualCalibration.end(),
-                      kComponentNeedCalibration2),
-            kComponentsNeedManualCalibration.end());
-  EXPECT_EQ(std::find(kComponentsNeedManualCalibration.begin(),
-                      kComponentsNeedManualCalibration.end(),
-                      kComponentNoNeedCalibration),
-            kComponentsNeedManualCalibration.end());
+  EXPECT_TRUE(
+      kComponentsNeedManualCalibration.contains(kComponentNeedCalibration));
+  EXPECT_TRUE(
+      kComponentsNeedManualCalibration.contains(kComponentNeedCalibration2));
+  EXPECT_FALSE(
+      kComponentsNeedManualCalibration.contains(kComponentNoNeedCalibration));
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, InitializeState_Succeeded) {
