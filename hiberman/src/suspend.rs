@@ -4,6 +4,7 @@
 
 //! Implements hibernate suspend functionality.
 
+use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 use std::time::UNIX_EPOCH;
@@ -133,6 +134,12 @@ impl SuspendConductor {
 
         redirect_log(HiberlogOut::BufferInMemory);
         self.volume_manager.unmount_hibermeta()?;
+
+        self.volume_manager.thicken_hiberimage()?;
+
+        // Make sure the thinpool has time to commit pending metadata changes
+        // to disk. The thinpool workqueue does this every second.
+        thread::sleep(Duration::from_millis(1100));
 
         self.snapshot_and_save(frozen_userspace)
     }

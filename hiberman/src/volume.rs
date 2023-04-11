@@ -265,6 +265,16 @@ impl VolumeManager {
         Ok(())
     }
 
+    // Thicken the hiberimage LV. Needs to be called before the hibernate
+    // image is written.
+    pub fn thicken_hiberimage(&self) -> Result<()> {
+        let size = Self::get_volume_size(HibernateVolume::Image);
+        let path = lv_path(&self.vg_name, Self::HIBERIMAGE);
+
+        thicken_thin_volume(path, size)
+            .context(format!("Failed to thicken '{}' volume", Self::HIBERIMAGE))
+    }
+
     // Lock down the DM devices that comprise the hiberimage. This involves
     // setting the UUID of the DM devices to 'dm_locked-<name>', which
     // indicates the kernel that certain operations are not permitted on
@@ -686,13 +696,14 @@ impl VolumeManager {
             HibernateVolume::Image => VolumeProperties {
                 name: HIBERIMAGE_VOLUME_NAME.to_string(),
                 size,
+                // Postpone thickening of the large volume until hibernation is imminent.
                 thicken_at_creation: false,
             },
 
             HibernateVolume::Integrity => VolumeProperties {
                 name: HIBERINTEGRITY_VOLUME_NAME.to_string(),
                 size,
-                thicken_at_creation: false,
+                thicken_at_creation: true,
             },
 
             HibernateVolume::Meta => VolumeProperties {
