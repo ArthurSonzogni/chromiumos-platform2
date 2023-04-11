@@ -407,12 +407,14 @@ loop_offset_cleanup() {
 }
 
 # Mount the existing loop device at the mountpoint in $TMPMNT.
-# Args: optional 'readwrite'. If present, mount read-write, otherwise read-only.
+# Args: optional 'rw'. If present, mount read-write, otherwise read-only.
 mount_on_loop_dev() {
-  local rw_flag=${1-readonly}
-  set --
-  if [ "${rw_flag}" != "readwrite" ]; then
-    set -- "$@" -o ro
+  local rw_flag=${1-ro}
+  set -- -o nosuid,nodev
+  if [ "${rw_flag}" != "rw" ]; then
+    set -- "$@",ro,exec
+  else
+    set -- "$@",rw,noexec
   fi
   tracked_mount "$@" "${LOOP_DEV}" "${TMPMNT}"
 }
@@ -665,7 +667,7 @@ install_stateful() {
     fi
     ;;
   esac
-  mount_on_loop_dev readwrite
+  mount_on_loop_dev rw
 
   # Move log files listed in FLAGS_lab_preserve_logs from stateful_partition to
   # a dedicated location. This flag is used to enable Autotest to collect log
