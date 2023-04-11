@@ -415,6 +415,7 @@ class CellularCapability3gpp {
   void SetNextAttachApn();
   void ScheduleNextAttach(const Error& error);
   void FillInitialEpsBearerPropertyMap(KeyValueStore* properties);
+  void UpdateLastConnectedAttachApnOnRegistered();
 
   // Returns true if a connect error should be retried.  This function
   // abstracts modem specific behavior for modems which do a lousy job

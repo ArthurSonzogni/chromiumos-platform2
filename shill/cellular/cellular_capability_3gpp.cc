@@ -2232,6 +2232,13 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   // An empty list will result on clearing the Attach APN by |SetNextAttachApn|
   attach_apn_try_list_ = cellular()->BuildAttachApnTryList();
 
+  // The modem could be already registered at this point, but shill needs to
+  // set the attach APN at least once to ensure the following:
+  // - The LastAttachAPN/LastConnectedAttachApn store the correct values
+  // - The UI APN is enforced, even when it's incorrect.
+  // When the attach APN sent by shill matches the the one in the modem,
+  // ModemManager will not unregister, so the operation will have no effect.
+
   if (attach_apn_try_list_.size() > 0) {
     if (base::Contains(attach_apn_try_list_.front(), kApnSourceProperty) &&
         attach_apn_try_list_.front().at(kApnSourceProperty) == kApnSourceUi) {
@@ -2296,6 +2303,15 @@ void CellularCapability3gpp::ScheduleNextAttach(const Error& error) {
 
   if (attach_apn_try_list_.size() > 0)
     attach_apn_try_list_.pop_front();
+
+  // Check if the modem was already registered before shill called
+  // |SetInitialEpsBearerSettings|.
+  if (IsRegistered()) {
+    SLOG(this, 2)
+        << "Modem is already registered. Skipping next attach APN try.";
+    UpdateLastConnectedAttachApnOnRegistered();
+    return;
+  }
 
   if (attach_apn_try_list_.size() > 0) {
     SLOG(this, 2) << "Posted deferred Attach APN retry";
@@ -2372,15 +2388,7 @@ void CellularCapability3gpp::Handle3gppRegistrationChange(
   cellular()->mobile_operator_info()->UpdateServingOperatorName(
       updated_operator_name);
 
-  CellularServiceRefPtr service = cellular()->service();
-  if (service && IsRegistered()) {
-    if (last_attach_apn_.empty()) {
-      // The NULL APN was used to attach.
-      service->ClearLastConnectedAttachApn();
-    } else {
-      service->SetLastConnectedAttachApn(last_attach_apn_);
-    }
-  }
+  UpdateLastConnectedAttachApnOnRegistered();
 
   cellular()->HandleNewRegistrationState();
 
@@ -2395,6 +2403,18 @@ void CellularCapability3gpp::Handle3gppRegistrationChange(
   // If the modem registered with the network and the current ICCID is pending
   // activation, then reset the modem.
   UpdatePendingActivationState();
+}
+
+void CellularCapability3gpp::UpdateLastConnectedAttachApnOnRegistered() {
+  CellularServiceRefPtr service = cellular()->service();
+  if (service && IsRegistered()) {
+    if (last_attach_apn_.empty()) {
+      // The NULL APN was used to attach.
+      service->ClearLastConnectedAttachApn();
+    } else {
+      service->SetLastConnectedAttachApn(last_attach_apn_);
+    }
+  }
 }
 
 void CellularCapability3gpp::OnSubscriptionStateChanged(
