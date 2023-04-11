@@ -120,7 +120,7 @@ bool Config::ParseJsonFile(const base::FilePath& config_json) {
     return false;
   }
 
-  for (const auto& item : result->DictItems()) {
+  for (const auto& item : result->GetDict()) {
     if (!json_
              .emplace(item.first,
                       base::Value::ToUniquePtrValue(std::move(item.second)))
