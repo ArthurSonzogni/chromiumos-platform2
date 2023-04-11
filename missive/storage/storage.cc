@@ -209,12 +209,8 @@ class Storage::KeyDelivery {
   void EuqueueRequestAndPossiblyStart(RequestCallback callback) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     DCHECK(callback);
-    const bool first_call = callbacks_.empty();
     callbacks_.push_back(std::move(callback));
-    if (!first_call) {
-      // Already started.
-      return;
-    }
+
     // The first request, starting the roundtrip.
     // Initiate upload with need_encryption_key flag and no records.
     UploaderInterface::UploaderInterfaceResultCb start_uploader_cb =
