@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <base/files/dir_reader_posix.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
 #include <base/strings/string_split.h>
@@ -17,7 +16,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
-#include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
 
 namespace swap_management {
@@ -39,21 +37,6 @@ constexpr size_t kDmIntegrityBytesPerBlock = 24;
 
 constexpr base::TimeDelta kMaxIdleAge = base::Days(30);
 constexpr uint64_t kMinFilelistDefaultValueKB = 1000000;
-
-bool WriteValueToFile(const base::FilePath& file,
-                      const std::string& val,
-                      std::string& msg) {
-  if (!base::WriteFile(file, val)) {
-    msg = base::StringPrintf("ERROR: Failed to write %s to %s. Error %d (%s)",
-                             val.c_str(), file.MaybeAsASCII().c_str(), errno,
-                             base::safe_strerror(errno).c_str());
-    return false;
-  }
-
-  msg = "SUCCESS";
-
-  return true;
-}
 
 // Round up multiple will round the first argument |number| up to the next
 // multiple of the second argument |alignment|.
@@ -652,41 +635,32 @@ absl::Status SwapTool::SwapZramEnableWriteback(uint32_t size) {
   return absl::OkStatus();
 }
 
-std::string SwapTool::SwapZramSetWritebackLimit(uint32_t num_pages) const {
-  base::FilePath enable_file =
-      base::FilePath(kZramSysfsDir).Append("writeback_limit_enable");
-  std::string msg;
-  if (!WriteValueToFile(enable_file, "1", msg))
-    return msg;
-
+absl::Status SwapTool::SwapZramSetWritebackLimit(uint32_t num_pages) {
   base::FilePath filepath =
-      base::FilePath(kZramSysfsDir).Append("writeback_limit");
-  std::string pages_str = std::to_string(num_pages);
+      base::FilePath(kZramSysfsDir).Append("writeback_limit_enable");
 
-  // We ignore the return value of WriteValueToFile because |msg|
-  // contains the free form text response.
-  WriteValueToFile(filepath, pages_str, msg);
-  return msg;
+  absl::Status status = SwapToolUtil::Get()->WriteFile(filepath, "1");
+  if (!status.ok())
+    return status;
+
+  filepath = base::FilePath(kZramSysfsDir).Append("writeback_limit");
+
+  return SwapToolUtil::Get()->WriteFile(filepath, std::to_string(num_pages));
 }
 
-std::string SwapTool::SwapZramMarkIdle(uint32_t age_seconds) const {
+absl::Status SwapTool::SwapZramMarkIdle(uint32_t age_seconds) {
   const auto age = base::Seconds(age_seconds);
-  if (age > kMaxIdleAge) {
-    // Only allow marking pages as idle between 0sec and 30 days.
-    return base::StringPrintf("ERROR: Invalid age: %d", age_seconds);
-  }
+
+  // Only allow marking pages as idle between 0 sec and 30 days.
+  if (age > kMaxIdleAge)
+    return absl::OutOfRangeError("Invalid age" + std::to_string(age_seconds));
 
   base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("idle");
-  std::string age_str = std::to_string(age.InSeconds());
-  std::string msg;
-
-  // We ignore the return value of WriteValueToFile because |msg|
-  // contains the free form text response.
-  WriteValueToFile(filepath, age_str, msg);
-  return msg;
+  return SwapToolUtil::Get()->WriteFile(filepath,
+                                        std::to_string(age.InSeconds()));
 }
 
-std::string SwapTool::InitiateSwapZramWriteback(uint32_t mode) const {
+absl::Status SwapTool::InitiateSwapZramWriteback(uint32_t mode) {
   base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("writeback");
   std::string mode_str;
   if (mode == WRITEBACK_IDLE) {
@@ -696,31 +670,24 @@ std::string SwapTool::InitiateSwapZramWriteback(uint32_t mode) const {
   } else if (mode == WRITEBACK_HUGE_IDLE) {
     mode_str = "huge_idle";
   } else {
-    return "ERROR: Invalid mode";
+    return absl::InvalidArgumentError("Invalid mode");
   }
 
-  std::string msg;
-
-  // We ignore the return value of WriteValueToFile because |msg|
-  // contains the free form text response.
-  WriteValueToFile(filepath, mode_str, msg);
-  return msg;
+  return SwapToolUtil::Get()->WriteFile(filepath, mode_str);
 }
 
-bool SwapTool::MGLRUSetEnable(brillo::ErrorPtr* error, bool enable) const {
-  std::string buf = std::to_string(enable ? 1 : 0);
+absl::Status SwapTool::MGLRUSetEnable(bool enable) {
+  base::FilePath filepath = base::FilePath("/sys/kernel/mm/lru_gen/enabled");
+  if (enable) {
+    absl::Status status = SwapToolUtil::Get()->WriteFile(filepath, "y");
+    if (status.ok() || !absl::IsInvalidArgument(status))
+      return status;
 
-  errno = 0;
-  size_t res = base::WriteFile(base::FilePath("/sys/kernel/mm/lru_gen/enabled"),
-                               buf.c_str(), buf.size());
-  if (res != buf.size()) {
-    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                         "org.chromium.SwapManagement.error.Swap",
-                         strerror(errno));
-    return false;
+    // If writing "y" fails with invalid argument error, fallback to write 1.
+    return SwapToolUtil::Get()->WriteFile(filepath, "1");
   }
 
-  return true;
+  return SwapToolUtil::Get()->WriteFile(filepath, "0");
 }
 
 }  // namespace swap_management

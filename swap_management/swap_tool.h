@@ -73,12 +73,12 @@ class SwapTool {
 
   // Zram writeback configuration.
   absl::Status SwapZramEnableWriteback(uint32_t size_mb);
-  std::string SwapZramSetWritebackLimit(uint32_t num_pages) const;
-  std::string SwapZramMarkIdle(uint32_t age_seconds) const;
-  std::string InitiateSwapZramWriteback(uint32_t mode) const;
+  absl::Status SwapZramSetWritebackLimit(uint32_t num_pages);
+  absl::Status SwapZramMarkIdle(uint32_t age_seconds);
+  absl::Status InitiateSwapZramWriteback(uint32_t mode);
 
   // MGLRU configuration.
-  bool MGLRUSetEnable(brillo::ErrorPtr* error, bool enable) const;
+  absl::Status MGLRUSetEnable(bool enable);
 
  private:
   absl::StatusOr<bool> IsZramSwapOn();

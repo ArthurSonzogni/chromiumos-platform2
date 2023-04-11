@@ -45,7 +45,6 @@
       <tp:docstring>
         Enable/Disable the MGLRU feature.
       </tp:docstring>
-      <arg name="result" type="b" direction="out" />
       <arg name="enable" type="b" direction="in">
         <tp:docstring>
           Whether to enable or disable.
@@ -69,39 +68,36 @@
       <tp:docstring>
         Mark pages as idle which have been in zram for |age| in seconds.
       </tp:docstring>
-      <arg name="result" type="s" direction="out" />
       <arg name="age" type="u" direction="in">
         <tp:docstring>
           The |age| in seconds of pages to mark as idle. Valid values
           are [0s, 259200s (30 days)].
         </tp:docstring>
       </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="SwapZramSetWritebackLimit">
       <tp:docstring>
         Set the zram writeback page limit to |limit| pages.
       </tp:docstring>
-      <arg name="result" type="s" direction="out" />
       <arg name="limit" type="u" direction="in">
         <tp:docstring>
           The number of pages which zram can writeback in a single writeback.
         </tp:docstring>
       </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="InitiateSwapZramWriteback">
       <tp:docstring>
         Initiate a zram writeback using the provided |mode|.
       </tp:docstring>
-      <arg name="result" type="s" direction="out" />
       <arg name="mode" type="u" direction="in">
         <tp:docstring>
           The type of writeback to issue the legal values are provided by the
           enumeration ZramWritebackMode.
         </tp:docstring>
       </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <tp:enum name="ZramWritebackMode" type="u">
       <tp:docstring>

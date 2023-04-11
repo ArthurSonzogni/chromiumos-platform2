@@ -35,15 +35,15 @@ class SwapManagementDBusAdaptor
   bool SwapStop(brillo::ErrorPtr* error) override;
   bool SwapRestart(brillo::ErrorPtr* error) override;
   bool SwapSetSize(brillo::ErrorPtr* error, uint32_t size) override;
-  bool MGLRUSetEnable(brillo::ErrorPtr* error,
-                      bool enable,
-                      bool* out_result) override;
+  bool MGLRUSetEnable(brillo::ErrorPtr* error, bool enable) override;
   std::string SwapStatus() override;
   bool SwapZramEnableWriteback(brillo::ErrorPtr* error,
                                uint32_t size_mb) override;
-  std::string SwapZramMarkIdle(uint32_t age) override;
-  std::string SwapZramSetWritebackLimit(uint32_t limit) override;
-  std::string InitiateSwapZramWriteback(uint32_t mode) override;
+  bool SwapZramMarkIdle(brillo::ErrorPtr* error, uint32_t age) override;
+  bool SwapZramSetWritebackLimit(brillo::ErrorPtr* error,
+                                 uint32_t limit) override;
+  bool InitiateSwapZramWriteback(brillo::ErrorPtr* error,
+                                 uint32_t mode) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;

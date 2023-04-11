@@ -69,11 +69,16 @@ bool SwapManagementDBusAdaptor::SwapRestart(brillo::ErrorPtr* error) {
 }
 
 bool SwapManagementDBusAdaptor::MGLRUSetEnable(brillo::ErrorPtr* error,
-                                               bool enable,
-                                               bool* out_result) {
+                                               bool enable) {
   ResetShutdownTimer();
-  *out_result = swap_tool_->MGLRUSetEnable(error, enable);
-  return *out_result;
+  absl::Status status = swap_tool_->MGLRUSetEnable(enable);
+  if (!status.ok()) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         "org.chromium.SwapManagement.error.MGLRUSetEnable",
+                         status.ToString());
+    return false;
+  }
+  return true;
 }
 
 bool SwapManagementDBusAdaptor::SwapSetSize(brillo::ErrorPtr* error,
@@ -109,21 +114,45 @@ bool SwapManagementDBusAdaptor::SwapZramEnableWriteback(brillo::ErrorPtr* error,
   return true;
 }
 
-std::string SwapManagementDBusAdaptor::SwapZramMarkIdle(uint32_t age) {
+bool SwapManagementDBusAdaptor::SwapZramMarkIdle(brillo::ErrorPtr* error,
+                                                 uint32_t age) {
   ResetShutdownTimer();
-  return swap_tool_->SwapZramMarkIdle(age);
+  absl::Status status = swap_tool_->SwapZramMarkIdle(age);
+  if (!status.ok()) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         "org.chromium.SwapManagement.error.SwapZramMarkIdle",
+                         status.ToString());
+    return false;
+  }
+  return true;
 }
 
-std::string SwapManagementDBusAdaptor::SwapZramSetWritebackLimit(
-    uint32_t limit) {
+bool SwapManagementDBusAdaptor::SwapZramSetWritebackLimit(
+    brillo::ErrorPtr* error, uint32_t limit) {
   ResetShutdownTimer();
-  return swap_tool_->SwapZramSetWritebackLimit(limit);
+  absl::Status status = swap_tool_->SwapZramSetWritebackLimit(limit);
+  if (!status.ok()) {
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain,
+        "org.chromium.SwapManagement.error.SwapZramSetWritebackLimit",
+        status.ToString());
+    return false;
+  }
+  return true;
 }
 
-std::string SwapManagementDBusAdaptor::InitiateSwapZramWriteback(
-    uint32_t mode) {
+bool SwapManagementDBusAdaptor::InitiateSwapZramWriteback(
+    brillo::ErrorPtr* error, uint32_t mode) {
   ResetShutdownTimer();
-  return swap_tool_->InitiateSwapZramWriteback(mode);
+  absl::Status status = swap_tool_->InitiateSwapZramWriteback(mode);
+  if (!status.ok()) {
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain,
+        "org.chromium.SwapManagement.error.InitiateSwapZramWriteback",
+        status.ToString());
+    return false;
+  }
+  return true;
 }
 
 }  // namespace swap_management
