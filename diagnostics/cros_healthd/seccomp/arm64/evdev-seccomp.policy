@@ -99,7 +99,7 @@ sendmsg: 1
 set_tid_address: 1
 rseq: 1
 prlimit64: 1
-getrandom: 1
+getrandom: arg2 in 0xfffffffd
 capset: 1
 uname: 1
 getdents64: 1

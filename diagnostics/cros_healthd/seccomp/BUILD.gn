@@ -62,8 +62,9 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
   install_path = "/usr/share/policy"
 
   required_syscalls = BASE_REQUIRED_SYSCALLS + [
-                        # This syscall is required by all executor delegates.
-                        "getrandom",
+                        # These syscalls are required by all executor delegates.
+                        # Filter arg2 to disallow GRND_RANDOM (2).
+                        "getrandom: arg2 in 0xfffffffd",
 
                         # Required for syslog.
                         "connect",
