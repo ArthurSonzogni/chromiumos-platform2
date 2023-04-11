@@ -61,6 +61,15 @@ enum CertificateProfile {
   //   CN=<An opaque device identifier string>
   //   O=Chrome Device Setup
   DEVICE_SETUP_CERTIFICATE = 11;
+
+  // The ARC TPM certifying key is a restricted key that is used to quote
+  // various TPM data, such as PCR quotation or NVRAM quotation.
+  // It is primarily used for Version Attestation in ARC Attestation.
+  ARC_TPM_CERTIFYING_KEY_CERTIFICATE = 12;
+
+  // The ARC Device Key is the Device Key used in Android Attestation for ARC.
+  // It is an unrestricted key.
+  ARC_ATTESTATION_DEVICE_KEY_CERTIFICATE = 13;
 }
 
 enum TpmVersion {
