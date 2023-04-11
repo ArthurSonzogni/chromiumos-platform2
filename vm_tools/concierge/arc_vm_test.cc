@@ -207,28 +207,6 @@ TEST(ArcVmTest, EnableTtsCachingParamFalse) {
   EXPECT_FALSE(base::Contains(params, "androidboot.arc.tts.caching=1"));
 }
 
-TEST(ArcVmTest, EnableGmscoreLmkProtectionParamTrue) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  request.set_enable_gmscore_lmk_protection(true);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
-      params, "androidboot.arc_enable_gmscore_lmk_protection=1"));
-}
-
-TEST(ArcVmTest, EnableGmscoreLmkProtectionParamFalse) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  request.set_enable_gmscore_lmk_protection(false);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_FALSE(base::Contains(
-      params, "androidboot.arc_enable_gmscore_lmk_protection=1"));
-}
-
 TEST(ArcVmTest, EnableVirtioBlockDataParamTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());

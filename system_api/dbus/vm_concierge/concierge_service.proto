@@ -410,7 +410,7 @@ message StartArcVmRequest {
   bool enable_tts_caching = 23 [deprecated = true];
 
   // Whether gmscore lmk protection is enabled.
-  bool enable_gmscore_lmk_protection = 24;
+  bool enable_gmscore_lmk_protection = 24 [deprecated = true];
 
   // Whether broadcast anr prenotify is enabled.
   bool enable_broadcast_anr_prenotify = 25;

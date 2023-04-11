@@ -1051,8 +1051,6 @@ std::vector<std::string> ArcVm::GetKernelParams(
   // (go/arcvm-android-sh-restricted)
   if (channel == "testimage")
     params.push_back("androidboot.vshd_service_override=vshd_for_test");
-  if (request.enable_gmscore_lmk_protection())
-    params.push_back("androidboot.arc_enable_gmscore_lmk_protection=1");
   if (request.enable_broadcast_anr_prenotify())
     params.push_back("androidboot.arc.broadcast_anr_prenotify=1");
   if (request.vm_memory_psi_period() >= 0) {
