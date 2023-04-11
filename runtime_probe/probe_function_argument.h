@@ -118,7 +118,7 @@ bool ParseArgument<std::vector<std::unique_ptr<ProbeFunction>>>(
 #define PARSE_END()                                                    \
   if (!result)                                                         \
     return std::unique_ptr<T>{nullptr};                                \
-  for (const auto kv : dict_value.DictItems()) {                       \
+  for (const auto kv : dict_value.GetDict()) {                         \
     if (keys.find(kv.first) == keys.end()) {                           \
       LOG(ERROR) << T::function_name << " doesn't have \"" << kv.first \
                  << "\" argument.";                                    \

@@ -19,7 +19,7 @@ void PrependToDVKey(base::Value* dict_value, const std::string& prefix) {
   if (prefix.empty())
     return;
   std::vector<std::string> original_keys;
-  for (const auto& entry : dict_value->DictItems()) {
+  for (const auto& entry : dict_value->GetDict()) {
     original_keys.push_back(entry.first);
   }
   for (const auto& key : original_keys) {

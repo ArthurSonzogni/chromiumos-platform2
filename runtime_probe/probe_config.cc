@@ -61,7 +61,7 @@ std::optional<ProbeConfig> ProbeConfig::FromValue(const base::Value& dv) {
 
   ProbeConfig instance;
 
-  for (const auto& entry : dv.DictItems()) {
+  for (const auto& entry : dv.GetDict()) {
     const auto& category_name = entry.first;
     const auto& value = entry.second;
     auto category = ComponentCategory::FromValue(category_name, value);

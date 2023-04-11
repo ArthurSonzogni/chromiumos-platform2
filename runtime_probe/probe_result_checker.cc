@@ -35,7 +35,7 @@ std::unique_ptr<ProbeResultChecker> ProbeResultChecker::FromValue(
 std::unique_ptr<ProbeResultCheckerDict> ProbeResultCheckerDict::FromValue(
     const base::Value& dict_value) {
   auto instance = std::make_unique<ProbeResultCheckerDict>();
-  for (const auto& entry : dict_value.DictItems()) {
+  for (const auto& entry : dict_value.GetDict()) {
     const auto& key = entry.first;
     const auto& val = entry.second;
     auto print_error_and_return = [&val]() {

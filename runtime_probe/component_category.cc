@@ -26,7 +26,7 @@ std::unique_ptr<ComponentCategory> ComponentCategory::FromValue(
   std::unique_ptr<ComponentCategory> instance{new ComponentCategory()};
   instance->category_name_ = category_name;
 
-  for (const auto& entry : dv.DictItems()) {
+  for (const auto& entry : dv.GetDict()) {
     const auto& component_name = entry.first;
     const auto& value = entry.second;
     auto probe_statement = ProbeStatement::FromValue(component_name, value);

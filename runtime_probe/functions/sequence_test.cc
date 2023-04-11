@@ -107,7 +107,7 @@ TEST(SequenceFunctionTest, TestEvalSuccess) {
   std::set<std::string> result_keys;
   LOG(ERROR) << results[0];
 
-  for (const auto& entry : results[0].DictItems()) {
+  for (const auto& entry : results[0].GetDict()) {
     ASSERT_TRUE(entry.second.is_bool()) << "unexpected result: " << results[0];
     ASSERT_TRUE(entry.second.GetBool()) << "unexpected result: " << results[0];
     result_keys.insert(entry.first);

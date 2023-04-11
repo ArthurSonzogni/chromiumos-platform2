@@ -15,7 +15,7 @@ namespace {
 
 void FilterValueByKey(base::Value* dv, const std::set<std::string>& keys) {
   std::vector<std::string> keys_to_delete;
-  for (const auto& entry : dv->DictItems()) {
+  for (const auto& entry : dv->GetDict()) {
     if (keys.find(entry.first) == keys.end()) {
       keys_to_delete.push_back(entry.first);
     }
