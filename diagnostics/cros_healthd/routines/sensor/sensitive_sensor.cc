@@ -263,6 +263,8 @@ void SensitiveSensorRoutine::HandleFrequencyResponse(int32_t sensor_id,
                                                      double frequency) {
   if (frequency <= 0.0) {
     LOG(ERROR) << "Failed to set frequency on sensor with id: " << sensor_id;
+    failed_sensors_.Append(
+        pending_sensors_[sensor_id].GetDetailValue(sensor_id));
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineFailedUnexpectedlyMessage);
     return;
@@ -283,6 +285,8 @@ void SensitiveSensorRoutine::HandleChannelIdsResponse(
     if (it == channels.end()) {
       LOG(ERROR) << "Failed to get required channels on sensor with id: "
                  << sensor_id;
+      failed_sensors_.Append(
+          pending_sensors_[sensor_id].GetDetailValue(sensor_id));
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                        kSensitiveSensorRoutineFailedUnexpectedlyMessage);
       return;
@@ -305,6 +309,8 @@ void SensitiveSensorRoutine::HandleSetChannelsEnabledResponse(
   if (!failed_indices.empty()) {
     LOG(ERROR) << "Failed to set channels enabled on sensor with id: "
                << sensor_id;
+    failed_sensors_.Append(
+        pending_sensors_[sensor_id].GetDetailValue(sensor_id));
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineFailedUnexpectedlyMessage);
     return;
@@ -343,6 +349,7 @@ void SensitiveSensorRoutine::OnErrorOccurred(
   const auto& sensor_id = observer_receiver_set_.current_context();
   LOG(ERROR) << "Observer error occurred while reading sample: " << type
              << ", sensor id: " << sensor_id;
+  failed_sensors_.Append(pending_sensors_[sensor_id].GetDetailValue(sensor_id));
   SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                    kSensitiveSensorRoutineFailedUnexpectedlyMessage);
 }

@@ -268,9 +268,15 @@ TEST_F(SensitiveSensorRoutineTest, RoutineSetFrequencyError) {
 
   // Wait for the error to occur.
   task_environment()->RunUntilIdle();
-  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
-                     kSensitiveSensorRoutineFailedUnexpectedlyMessage,
-                     ConstructRoutineOutput());
+
+  base::Value::List failed_sensors;
+  failed_sensors.Append(ConstructSensorOutput(
+      0, {kSensitiveSensorRoutineTypeAccel}, /*channels=*/{}));
+  CheckRoutineUpdate(
+      100, mojom::DiagnosticRoutineStatusEnum::kError,
+      kSensitiveSensorRoutineFailedUnexpectedlyMessage,
+      ConstructRoutineOutput(
+          /*passed_sensors=*/base::Value::List(), std::move(failed_sensors)));
 }
 
 // Test that the SensitiveSensorRoutine returns a kError status when sensor
@@ -284,16 +290,25 @@ TEST_F(SensitiveSensorRoutineTest, RoutineGetRequiredChannelsError) {
 
   // Wait for the error to occur.
   task_environment()->RunUntilIdle();
-  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
-                     kSensitiveSensorRoutineFailedUnexpectedlyMessage,
-                     ConstructRoutineOutput());
+
+  base::Value::List failed_sensors;
+  failed_sensors.Append(ConstructSensorOutput(
+      0, {kSensitiveSensorRoutineTypeAccel},
+      std::vector<std::string>{cros::mojom::kTimestampChannel, "accel_x",
+                               "accel_z"}));
+  CheckRoutineUpdate(
+      100, mojom::DiagnosticRoutineStatusEnum::kError,
+      kSensitiveSensorRoutineFailedUnexpectedlyMessage,
+      ConstructRoutineOutput(
+          /*passed_sensors=*/base::Value::List(), std::move(failed_sensors)));
 }
 
 // Test that the SensitiveSensorRoutine returns a kError status when sensor
 // device failed to set all channels enabled.
 TEST_F(SensitiveSensorRoutineTest, RoutineSetChannelsEnabledError) {
   fake_sensor_service().SetIdsTypes({{0, {cros::mojom::DeviceType::ACCEL}}});
-  auto device = MakeSensorDevice();
+  auto device = MakeSensorDevice(
+      {cros::mojom::kTimestampChannel, "accel_x", "accel_y", "accel_z"});
   device->set_failed_channel_indices({0});
   SetupSensorDeviceAndGetObserverRemote(/*device_id=*/0, std::move(device));
   StartRoutine();
@@ -302,7 +317,9 @@ TEST_F(SensitiveSensorRoutineTest, RoutineSetChannelsEnabledError) {
   task_environment()->RunUntilIdle();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineFailedUnexpectedlyMessage,
-                     ConstructRoutineOutput());
+                     ConstructRoutineOutput(
+                         /*passed_sensors=*/base::Value::List(),
+                         /*failed_sensors=*/MakeListWithOneAccelerometer()));
 }
 
 // Test that the SensitiveSensorRoutine returns a kError status when sensor
@@ -324,7 +341,9 @@ TEST_F(SensitiveSensorRoutineTest, RoutineReadSampleError) {
   remote.FlushForTesting();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineFailedUnexpectedlyMessage,
-                     ConstructRoutineOutput());
+                     ConstructRoutineOutput(
+                         /*passed_sensors=*/base::Value::List(),
+                         /*failed_sensors=*/MakeListWithOneAccelerometer()));
 }
 
 // Test that the SensitiveSensorRoutine returns a kFailed status when timeout
