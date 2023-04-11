@@ -53,9 +53,9 @@ PrintscanTool::PrintscanTool(const scoped_refptr<dbus::Bus>& bus,
 bool PrintscanTool::DebugSetCategories(brillo::ErrorPtr* error,
                                        PrintscanCategories categories) {
   if (static_cast<uint32_t>(categories) & ~kAllCategories) {
-    DEBUGD_ADD_ERROR_FMT(error, kPrintscanToolErrorString,
-                         "Unknown category flags: 0x%x",
-                         static_cast<uint32_t>(categories) & ~kAllCategories);
+    PRINTSCANMGR_ADD_ERROR_FMT(
+        error, kPrintscanToolErrorString, "Unknown category flags: 0x%x",
+        static_cast<uint32_t>(categories) & ~kAllCategories);
     return false;
   }
 
@@ -139,14 +139,14 @@ bool PrintscanTool::DeleteFile(PrintscanFilePaths path) {
 bool PrintscanTool::ToggleCups(brillo::ErrorPtr* error, bool enable) {
   if (enable) {
     if (!CreateEmptyFile(PRINTSCAN_CUPS_FILEPATH)) {
-      DEBUGD_ADD_ERROR(error, kPrintscanToolErrorString,
-                       "Failed to create cups debug-flag.");
+      PRINTSCANMGR_ADD_ERROR(error, kPrintscanToolErrorString,
+                             "Failed to create cups debug-flag.");
       return false;
     }
   } else {
     if (!DeleteFile(PRINTSCAN_CUPS_FILEPATH)) {
-      DEBUGD_ADD_ERROR(error, kPrintscanToolErrorString,
-                       "Failed to delete cups debug-flag.");
+      PRINTSCANMGR_ADD_ERROR(error, kPrintscanToolErrorString,
+                             "Failed to delete cups debug-flag.");
       return false;
     }
   }
@@ -158,14 +158,14 @@ bool PrintscanTool::ToggleCups(brillo::ErrorPtr* error, bool enable) {
 bool PrintscanTool::ToggleIppusb(brillo::ErrorPtr* error, bool enable) {
   if (enable) {
     if (!CreateEmptyFile(PRINTSCAN_IPPUSB_FILEPATH)) {
-      DEBUGD_ADD_ERROR(error, kPrintscanToolErrorString,
-                       "Failed to create ippusb debug-flag.");
+      PRINTSCANMGR_ADD_ERROR(error, kPrintscanToolErrorString,
+                             "Failed to create ippusb debug-flag.");
       return false;
     }
   } else {
     if (!DeleteFile(PRINTSCAN_IPPUSB_FILEPATH)) {
-      DEBUGD_ADD_ERROR(error, kPrintscanToolErrorString,
-                       "Failed to delete ippusb delete-flag.");
+      PRINTSCANMGR_ADD_ERROR(error, kPrintscanToolErrorString,
+                             "Failed to delete ippusb delete-flag.");
       return false;
     }
   }
@@ -177,14 +177,14 @@ bool PrintscanTool::ToggleIppusb(brillo::ErrorPtr* error, bool enable) {
 bool PrintscanTool::ToggleLorgnette(brillo::ErrorPtr* error, bool enable) {
   if (enable) {
     if (!CreateEmptyFile(PRINTSCAN_LORGNETTE_FILEPATH)) {
-      DEBUGD_ADD_ERROR(error, kPrintscanToolErrorString,
-                       "Failed to create lorgnette debug-flag.");
+      PRINTSCANMGR_ADD_ERROR(error, kPrintscanToolErrorString,
+                             "Failed to create lorgnette debug-flag.");
       return false;
     }
   } else {
     if (!DeleteFile(PRINTSCAN_LORGNETTE_FILEPATH)) {
-      DEBUGD_ADD_ERROR(error, kPrintscanToolErrorString,
-                       "Failed to delete lorgnette debug-flag.");
+      PRINTSCANMGR_ADD_ERROR(error, kPrintscanToolErrorString,
+                             "Failed to delete lorgnette debug-flag.");
       return false;
     }
   }

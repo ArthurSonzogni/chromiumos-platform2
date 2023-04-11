@@ -71,8 +71,9 @@ bool UpstartToolsImpl::CallJobMethod(
   dbus::ObjectProxy* job_proxy = bus_->GetObjectProxy(
       kUpstartServiceName, dbus::ObjectPath(kUpstartJobPath + job_name));
   if (job_proxy == nullptr) {
-    DEBUGD_ADD_ERROR_FMT(error, kUpstartToolsErrorString,
-                         "Failed to get job proxy for %s", job_name.c_str());
+    PRINTSCANMGR_ADD_ERROR_FMT(error, kUpstartToolsErrorString,
+                               "Failed to get job proxy for %s",
+                               job_name.c_str());
     return false;
   }
   dbus::MethodCall method_call(kUpstartJobInterface, method);
@@ -83,17 +84,17 @@ bool UpstartToolsImpl::CallJobMethod(
       job_proxy->CallMethodAndBlock(&method_call,
                                     dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!method_response) {
-    DEBUGD_ADD_ERROR_FMT(error, kUpstartToolsErrorString,
-                         "%s job (%s) request had no response.", method.c_str(),
-                         job_name.c_str());
+    PRINTSCANMGR_ADD_ERROR_FMT(error, kUpstartToolsErrorString,
+                               "%s job (%s) request had no response.",
+                               method.c_str(), job_name.c_str());
     return false;
   }
   dbus::MessageReader reader(method_response.get());
   dbus::ObjectPath job_path;
   if (!reader.PopObjectPath(&job_path)) {
-    DEBUGD_ADD_ERROR_FMT(error, kUpstartToolsErrorString,
-                         "Failed to parse %s job (%s) response", method.c_str(),
-                         job_name.c_str());
+    PRINTSCANMGR_ADD_ERROR_FMT(error, kUpstartToolsErrorString,
+                               "Failed to parse %s job (%s) response",
+                               method.c_str(), job_name.c_str());
     return false;
   }
   return true;

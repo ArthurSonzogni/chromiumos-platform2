@@ -14,16 +14,16 @@
 // would cause FROM_HERE to expand to the same value everywhere, which
 // impedes debugging.
 
-#define DEBUGD_ADD_ERROR(error, code, message)                            \
+#define PRINTSCANMGR_ADD_ERROR(error, code, message)                      \
   brillo::Error::AddTo((error), FROM_HERE, brillo::errors::dbus::kDomain, \
                        (code), (message))
 
-#define DEBUGD_ADD_ERROR_FMT(error, code, format, ...)                      \
+#define PRINTSCANMGR_ADD_ERROR_FMT(error, code, format, ...)                \
   brillo::Error::AddToPrintf((error), FROM_HERE,                            \
                              brillo::errors::dbus::kDomain, (code), format, \
                              ##__VA_ARGS__)
 
-#define DEBUGD_ADD_PERROR(error, code, message)                               \
+#define PRINTSCANMGR_ADD_PERROR(error, code, message)                         \
   brillo::Error::AddToPrintf((error), FROM_HERE,                              \
                              brillo::errors::dbus::kDomain, (code), "%s: %s", \
                              (message), base::safe_strerror(errno).c_str())
