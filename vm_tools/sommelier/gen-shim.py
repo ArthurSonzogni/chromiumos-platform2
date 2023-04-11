@@ -58,9 +58,9 @@ def CppTypeForWaylandType(xml_type_string: str, interface: str) -> str:
     elif xml_type_string == "string":
         return "const char *"
     elif xml_type_string == "object":
-        return f"struct {interface} *"
+        return f"struct {interface}*"
     elif xml_type_string == "array":
-        return "struct wl_array *"
+        return "struct wl_array*"
     else:
         raise ValueError(f"Invalid Type conversion: {xml_type_string}")
 
@@ -78,7 +78,7 @@ def GetRequestReturnType(arguments: List[object]) -> str:
     for arg in arguments:
         if arg.attrib["type"] == "new_id":
             if "interface" in arg.attrib:
-                return f"struct {arg.attrib['interface']} *"
+                return f"struct {arg.attrib['interface']}*"
             else:
                 return "void *"
     return "void"

@@ -23,9 +23,9 @@ class {{ interface.name }} {
 
     {# Logic comes from wayland scanner -#}
     {# Stub logic -> https://chromium.googlesource.com/external/wayland/wayland/+/refs/heads/master/src/scanner.c#1007 -#}
-    virtual void set_user_data(struct {{ interface.name_underscore }} *{{ interface.name_underscore}}, void *user_data);
+    virtual void set_user_data(struct {{ interface.name_underscore }}* {{ interface.name_underscore}}, void* user_data);
 
-    virtual void* get_user_data(struct {{ interface.name_underscore }} *{{ interface.name_underscore }});
+    virtual void* get_user_data(struct {{ interface.name_underscore }}* {{ interface.name_underscore }});
 
     {%- for method in interface.methods %}
     virtual {{ method.ret }} {{ method.name }}(
@@ -36,7 +36,7 @@ class {{ interface.name }} {
     {# Event logic -> https://chromium.googlesource.com/external/wayland/wayland/+/refs/heads/master/src/scanner.c#1074 -#}
     {%- for event in interface.events %}
     virtual void send_{{ event.name }}(
-        struct wl_resource * resource{% for arg in event.args %},
+        struct wl_resource* resource{% for arg in event.args %},
         {{ arg.type }} {{arg.name}}{% endfor %});
     {% endfor -%}
 };

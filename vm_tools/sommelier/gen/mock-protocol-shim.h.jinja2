@@ -9,13 +9,16 @@
 #include "{{ protocol.name_hyphen }}-shim.h"
 
 {%- for interface in protocol.interfaces %}
-class Mock{{interface.name}} {
+class Mock{{ interface.name }} : public {{ interface.name }} {
   public:
+    MOCK_METHOD(void, set_user_data, (struct {{ interface.name_underscore }}* {{ interface.name_underscore }}, void* user_data), (override));
+    MOCK_METHOD(void*, get_user_data, (struct {{ interface.name_underscore }}* {{ interface.name_underscore }}), (override));
+
   {%- for method in interface.methods %}
-    MOCK_METHOD({{ method.ret }}, {{ method.name }}, ({% for arg in method.args %}{{ arg.type }} {{ arg.name }}{% if not loop.last %},{% endif %}{% endfor %}), (override));
+    MOCK_METHOD({{ method.ret }}, {{ method.name }}, (struct {{ interface.name_underscore }}* {{ interface.name_underscore }}{% for arg in method.args %}, {{ arg.type }} {{ arg.name }}{% endfor %}), (override));
   {% endfor -%}
   {%- for event in interface.events %}
-    MOCK_METHOD(void, {{ event.name }}, ({% for arg in event.args %}{{ arg.type }} {{ arg.name }}{% if not loop.last %},{% endif %}{% endfor %}), (override));
+    MOCK_METHOD(void, send_{{ event.name }}, (struct wl_resource* resource{% for arg in event.args %}, {{ arg.type }} {{ arg.name }}{% endfor %}), (override));
   {% endfor -%}
 };
 {% endfor -%}
