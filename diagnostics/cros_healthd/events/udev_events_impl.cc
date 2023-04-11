@@ -23,7 +23,6 @@
 #include "diagnostics/cros_healthd/utils/usb_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
 
@@ -146,7 +145,6 @@ void UdevEventsImpl::OnUdevEvent() {
     }
   } else if (subsystem == "drm" && device_type == "drm_minor") {
     if (action == "change") {
-      auto device_type = GetString(device->GetDeviceType());
       OnHdmiChange();
     }
   }
