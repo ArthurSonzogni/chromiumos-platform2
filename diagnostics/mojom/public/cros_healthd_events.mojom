@@ -11,6 +11,7 @@
 module ash.cros_healthd.mojom;
 
 import "diagnostics/mojom/external/input.mojom";
+import "diagnostics/mojom/external/time.mojom";
 import "diagnostics/mojom/public/nullable_primitives.mojom";
 import "diagnostics/mojom/public/cros_healthd_probe.mojom";
 
@@ -498,6 +499,48 @@ union StylusEventInfo {
   [Default] uint8 default_type@0;
   StylusTouchEvent touch_event@1;
   StylusConnectedEvent connected_event@2;
+};
+
+// Emitted within CrashEventInfo. Contains information available for uploaded
+// crash events only.
+//
+// NextMinVersion: 1, NextIndex: 3
+[Stable]
+struct CrashUploadInfo {
+  // Corresponding to "upload_id" in uploads.log.
+  string crash_report_id@0;
+  // The creation time of the uploads.log file.
+  // Used to distinguish uploads.log file in case it has been deleted and
+  // recreated.
+  ash.cros_healthd.external.mojo_base.mojom.Time creation_time@1;
+  // Number of valid logs before this event in uploads.log. Useful to inform
+  // subscribers that need to distinguish whether a crash event has been
+  // encountered before.
+  uint64 offset@2;
+};
+
+// Emitted once the observer gets new crash events.
+//
+// NextMinVersion: 1, NextIndex: 4
+[Stable]
+struct CrashEventInfo {
+  [Stable, Extensible]
+  enum CrashType {
+      [Default] kUnknown = 0,
+      kKernel,
+      kEmbeddedController,
+  };
+  // Type of the crash. Corresponding to "fatal_crash_type" in uploads.log.
+  CrashType crash_type@0;
+  // ID that represents crash locally. Corresponding to "path_hash" in
+  // uploads.log.
+  string local_id@1;
+  // The time at which the crash event is captured by the system. Corresponding
+  // to "capture_time" in uploads.log.
+  ash.cros_healthd.external.mojo_base.mojom.Time capture_time@2;
+  // Information available for uploaded crash events only. Missing if the crash
+  // hasn't been uploaded by crash_sender yet.
+  CrashUploadInfo? upload_info@3;
 };
 
 // Implemented by clients who desire events.
