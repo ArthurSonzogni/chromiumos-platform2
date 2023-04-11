@@ -35,6 +35,7 @@
 #include "diagnostics/cros_healthd/routine_adapter.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
+#include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -58,29 +59,6 @@ constexpr int kBitFlipPercentage = 57;
 #elif ULONG_MAX == 18446744073709551615ULL
 constexpr int kBitFlipPercentage = 42;
 #endif
-
-class RoutineObserverImpl : public mojom::RoutineObserver {
- public:
-  explicit RoutineObserverImpl(base::OnceClosure on_finished)
-      : receiver_{this /* impl */}, on_finished_(std::move(on_finished)) {}
-  RoutineObserverImpl(const RoutineObserverImpl&) = delete;
-  RoutineObserverImpl& operator=(const RoutineObserverImpl&) = delete;
-  ~RoutineObserverImpl() override = default;
-
-  void OnRoutineStateChange(mojom::RoutineStatePtr state) override {
-    state_ = std::move(state);
-    if (state_->state_union->is_finished()) {
-      CHECK(on_finished_);
-      std::move(on_finished_).Run();
-    }
-  }
-
-  mojom::RoutineStatePtr state_;
-  mojo::Receiver<mojom::RoutineObserver> receiver_;
-
- private:
-  base::OnceClosure on_finished_;
-};
 
 class MemoryRoutineV2TestBase : public BaseFileTest {
  protected:
@@ -286,7 +264,7 @@ class MemoryRoutineV2Test : public MemoryRoutineV2TestBase {
         base::BindOnce([](uint32_t error, const std::string& reason) {
           CHECK(false) << "An exception has occurred when it shouldn't have.";
         }));
-    auto observer = std::make_unique<RoutineObserverImpl>(
+    auto observer = std::make_unique<RoutineObserverForTesting>(
         base::BindOnce(run_loop.QuitClosure()));
     routine_->AddObserver(observer->receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
@@ -607,7 +585,8 @@ TEST_F(MemoryRoutineV2Test, IncrementalProgress) {
       base::BindOnce([](uint32_t error, const std::string& reason) {
         CHECK(false) << "An exception has occurred when it shouldn't have.";
       }));
-  auto observer = std::make_unique<RoutineObserverImpl>(base::DoNothing());
+  auto observer =
+      std::make_unique<RoutineObserverForTesting>(base::DoNothing());
   routine_->AddObserver(observer->receiver_.BindNewPipeAndPassRemote());
   routine_->Start();
 

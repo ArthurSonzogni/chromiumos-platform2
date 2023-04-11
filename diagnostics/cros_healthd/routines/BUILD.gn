@@ -126,7 +126,10 @@ if (use.test) {
       "//diagnostics/base",
       "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
     ]
-    sources = [ "routine_test_utils.cc" ]
+    sources = [
+      "routine_observer_for_testing.cc",
+      "routine_test_utils.cc",
+    ]
   }
 
   source_set("routine_test") {
