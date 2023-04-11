@@ -66,6 +66,13 @@ int GetChannel(std::string chan_str, iio_chan_type chan_type) {
   DCHECK(chan_type_str);
 
   std::string substr = chan_str.substr(strlen(chan_type_str));
+
+  // If there's only one channel, the `0` is omitted.
+  // See |index| field in |struct iio_chan_spec| in include/linux/iio/iio.h
+  // kernel include file.
+  if (substr.empty())
+    return 0;
+
   int channel;
   if (!base::StringToInt(substr, &channel)) {
     LOG(ERROR) << "Cannot convert string to int: " << substr;

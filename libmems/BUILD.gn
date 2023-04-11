@@ -83,6 +83,7 @@ if (use.test) {
   executable("libmems_testrunner") {
     sources = [
       "iio_device_test.cc",
+      "iio_event_impl_test.cc",
       "iio_event_test.cc",
     ]
     configs += [
