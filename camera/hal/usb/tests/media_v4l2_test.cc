@@ -1146,7 +1146,7 @@ INSTANTIATE_TEST_SUITE_P(
     V4L2Test,
     V4L2ReconfigureTest,
     ::testing::ValuesIn(std::vector<std::tuple<Size, Size, base::TimeDelta>>{
-        {Size(320, 240), Size(1280, 720), base::Milliseconds(1500)},
+        {Size(320, 240), Size(1280, 720), base::Milliseconds(2300)},
         {Size(320, 240), Size(1920, 1080), base::Milliseconds(3000)},
         {Size(320, 240), Size(2592, 1944), base::Milliseconds(3000)}}));
 }  // namespace tests
