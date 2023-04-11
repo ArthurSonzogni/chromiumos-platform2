@@ -8,25 +8,21 @@
 
 namespace diagnostics {
 
-FakeSensorDevice::FakeSensorDevice(
-    const std::optional<std::string>& name,
-    const std::optional<std::string>& location,
-    const std::vector<std::string>& channels,
-    const std::vector<int32_t>& failed_channel_indices,
-    base::OnceClosure on_start_reading)
+FakeSensorDevice::FakeSensorDevice(const std::optional<std::string>& name,
+                                   const std::optional<std::string>& location,
+                                   const std::vector<std::string>& channels,
+                                   base::OnceClosure on_start_reading)
     : sensor_name_(name),
       sensor_location_(location),
       sensor_channels_(channels),
-      failed_channel_indices_(failed_channel_indices),
       on_start_reading_(std::move(on_start_reading)) {}
 
 void FakeSensorDevice::SetTimeout(uint32_t timeout) {
   NOTIMPLEMENTED();
 }
 
-void FakeSensorDevice::FakeSensorDevice::GetAttributes(
-    const std::vector<std::string>& attr_names,
-    GetAttributesCallback callback) {
+void FakeSensorDevice::GetAttributes(const std::vector<std::string>& attr_names,
+                                     GetAttributesCallback callback) {
   CHECK(!attr_names.empty());
 
   std::vector<std::optional<std::string>> values(attr_names.size());
@@ -44,7 +40,7 @@ void FakeSensorDevice::FakeSensorDevice::GetAttributes(
 
 void FakeSensorDevice::SetFrequency(double frequency,
                                     SetFrequencyCallback callback) {
-  std::move(callback).Run(frequency);
+  std::move(callback).Run(return_frequency_.value_or(frequency));
 }
 
 void FakeSensorDevice::StartReadingSamples(

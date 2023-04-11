@@ -22,7 +22,6 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
       const std::optional<std::string>& name,
       const std::optional<std::string>& location,
       const std::vector<std::string>& channels = {},
-      const std::vector<int32_t>& failed_channel_indices = {},
       base::OnceClosure on_start_reading = base::DoNothing());
   FakeSensorDevice(const FakeSensorDevice&) = delete;
   FakeSensorDevice& operator=(const FakeSensorDevice&) = delete;
@@ -34,6 +33,14 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
   // and used for sending fake samples and observer errors.
   mojo::Remote<cros::mojom::SensorDeviceSamplesObserver>& observer() {
     return observer_;
+  }
+
+  // Fake property setters.
+  inline void set_return_frequency(std::optional<double> frequency) {
+    return_frequency_ = frequency;
+  }
+  inline void set_failed_channel_indices(std::vector<int32_t> indices) {
+    failed_channel_indices_ = indices;
   }
 
  private:
@@ -69,10 +76,13 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
   // Sensor attributes.
   std::optional<std::string> sensor_name_;
   std::optional<std::string> sensor_location_;
+  // If |return_frequency_| is not null, return it instead of set frequency when
+  // calling |SetFrequency|.
+  std::optional<double> return_frequency_ = std::nullopt;
   // Sensor channel names.
   std::vector<std::string> sensor_channels_;
   // Channels indices that can not be enabled.
-  std::vector<int32_t> failed_channel_indices_;
+  std::vector<int32_t> failed_channel_indices_ = {};
   // Observer remote.
   mojo::Remote<cros::mojom::SensorDeviceSamplesObserver> observer_;
   // Start reading callback, triggered when |observer_| is bound.
