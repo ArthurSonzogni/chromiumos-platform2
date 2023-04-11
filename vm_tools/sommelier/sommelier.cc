@@ -50,6 +50,7 @@
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-output-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"  // NOLINT(build/include_directory)
+#include "xdg-shell-shim.h"             // NOLINT(build/include_directory)
 
 // Check that required macro definitions exist.
 #ifndef XWAYLAND_PATH
@@ -3704,9 +3705,20 @@ void sl_spawn_xwayland(sl_context* ctx,
   ctx->xwayland_pid = pid;
 }
 
+void create_shims() {
+  // xdg-shell shims.
+  set_xdg_positioner_shim(new XdgPositionerShim());
+  set_xdg_popup_shim(new XdgPopupShim());
+  set_xdg_toplevel_shim(new XdgToplevelShim());
+  set_xdg_surface_shim(new XdgSurfaceShim());
+  set_xdg_wm_base_shim(new XdgWmBaseShim());
+}
+
 int real_main(int argc, char** argv) {
   struct sl_context ctx;
   sl_context_init_default(&ctx);
+
+  create_shims();
 
   const char* display = getenv("SOMMELIER_DISPLAY");
   const char* scale = getenv("SOMMELIER_SCALE");
