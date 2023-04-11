@@ -169,14 +169,15 @@ impl SuspendConductor {
         // This is where the suspend path and resume path fork. On success,
         // both halves of these conditions execute, just at different times.
         if snap_dev.atomic_snapshot()? {
+            // Suspend path. Everything after this point is invisible to the
+            // hibernated kernel.
+
             // Briefly remount 'hibermeta' to write logs and metrics.
             self.volume_manager.mount_hibermeta()?;
             let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Suspend);
             let log_file = hiberlog::LogFile::open(log_file_path)?;
             redirect_log(HiberlogOut::File(Box::new(log_file)));
 
-            // Suspend path. Everything after this point is invisible to the
-            // hibernated kernel.
             if let Err(e) = snap_dev.transfer_block_device() {
                 snap_dev.unfreeze_userspace()?;
                 return Err(e);
