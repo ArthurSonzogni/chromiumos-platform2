@@ -50,6 +50,8 @@ class SensitiveSensorRoutine final
   struct SensorDetail {
     // Sensor types.
     std::vector<cros::mojom::DeviceType> types;
+    // Sensor channels.
+    std::optional<std::vector<std::string>> channels;
     // First is channel indice, second is the last reading sample. If the
     // channel finishes checking, remove it from this map.
     std::map<int32_t, std::optional<int64_t>> checking_channel_sample;
