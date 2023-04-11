@@ -419,6 +419,7 @@ constexpr char kDeviceSetupCertContentBinding[] =
 constexpr char kFingerprintSwitch[] = "fingerprint";
 constexpr char kPreparePurposeAddSwitch[] = "add";
 constexpr char kPreparePurposeAuthSwitch[] = "auth";
+constexpr char kUseTimeLockout[] = "timed_lockout";
 }  // namespace
 }  // namespace switches
 
@@ -665,7 +666,6 @@ bool BuildAuthFactor(Printer& printer,
     return false;
   }
   auth_factor->set_label(label);
-  // TODO(b/208357699): Support other auth factor types.
   if (cl->HasSwitch(switches::kPasswordSwitch)) {
     auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
     // Password metadata has no fields currently.
@@ -675,6 +675,10 @@ bool BuildAuthFactor(Printer& printer,
     auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
     // Pin metadata has no fields currently.
     auth_factor->mutable_pin_metadata();
+    auth_factor->mutable_common_metadata()->set_lockout_policy(
+        cl->HasSwitch(switches::kUseTimeLockout)
+            ? user_data_auth::LOCKOUT_POLICY_TIME_LIMITED
+            : user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED);
     return true;
   } else if (cl->HasSwitch(switches::kRecoveryMediatorPubKeySwitch)) {
     auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
