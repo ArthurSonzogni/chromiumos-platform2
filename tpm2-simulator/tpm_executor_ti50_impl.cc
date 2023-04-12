@@ -43,7 +43,7 @@ constexpr uint32_t TPM_RC_RETRY = 0x922;
 constexpr char kGpioSocketPath[] = "/run/tpm2-simulator/sockets";
 constexpr char kGpioPltRstFile[] = "/run/tpm2-simulator/sockets/gpioPltRst";
 constexpr char kTpmFifoFile[] = "direct_tpm_fifo";
-constexpr char kOne[] = "1";
+constexpr char kOne[] = {'1'};
 
 constexpr char kMinijail[] = "/sbin/minijail0";
 constexpr char kTi50EmulatorKernel[] = "/usr/bin/ti50-emulator-kernel";
