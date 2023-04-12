@@ -57,7 +57,7 @@ generate_pkg_config("libsegmentation-test_pc") {
 
   requires = []
   requires_private = [ "libsegmentation" ] + default_pkg_deps
-  libs = [ "-lfeature_management-test" ]
+  libs = [ "-lsegmentation-test" ]
   install = true
 }
 
@@ -76,7 +76,7 @@ generate_pkg_config("libsegmentation_pc") {
 
   requires = []
   requires_private = default_pkg_deps
-  libs = [ "-lfeature_management" ]
+  libs = [ "-lsegmentation" ]
   install = true
 }
 
