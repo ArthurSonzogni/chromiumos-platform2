@@ -15,7 +15,7 @@ import logging
 import pathlib
 import shutil
 import sys
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from cros_camera_app import app
 from cros_camera_app import device
@@ -219,6 +219,80 @@ def cmd_fake_hal():
 )
 def cmd_fake_hal_persist():
     fake_hal.persist()
+
+
+@cli.command(
+    "add",
+    parent=cmd_fake_hal,
+    help="Add a camera",
+    description=(
+        "Add and connect a camera to Fake HAL."
+        " The supported formats are populated from a predefined list,"
+        " and can be filtered by --max-* options."
+    ),
+)
+@cli.option(
+    "--max-width",
+    help="the maximum width to filter supported formats",
+    type=int,
+)
+@cli.option(
+    "--max-height",
+    help="the maximum height to filter supported formats",
+    type=int,
+)
+@cli.option(
+    "--max-fps",
+    help="the maximum fps to filter supported formats",
+    type=int,
+)
+@cli.option(
+    "--frame",
+    help=(
+        "the source of camera frame in jpg, mjpg, or y4m format."
+        " If not specified, a test pattern would be used."
+    ),
+    type=pathlib.Path,
+)
+def cmd_fake_hal_add(
+    max_width: Optional[int] = None,
+    max_height: Optional[int] = None,
+    max_fps: Optional[int] = None,
+    frame: Optional[pathlib.Path] = None,
+):
+    def should_keep(
+        width: int, height: int, fps_range: Tuple[int, int]
+    ) -> bool:
+        return (
+            (max_width is None or width <= max_width)
+            and (max_height is None or height <= max_height)
+            and (max_fps is None or fps_range[1] <= max_fps)
+        )
+
+    fake_hal.add_camera(
+        should_keep=should_keep,
+        frame_path=frame,
+    )
+
+
+@cli.command(
+    "remove",
+    parent=cmd_fake_hal,
+    help="Remove camera(s)",
+    description=(
+        "Remove and disconnect camera(s) from Fake HAL."
+        " If --id is not specified, all cameras would be removed."
+    ),
+)
+@cli.option(
+    "--id",
+    dest="camera_id",
+    help="camera id to remove. This option can be specified multiple times.",
+    type=int,
+    action="append",
+)
+def cmd_fake_hal_remove(camera_id: Optional[List[int]]):
+    fake_hal.remove_cameras(lambda x: camera_id is None or x in camera_id)
 
 
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
