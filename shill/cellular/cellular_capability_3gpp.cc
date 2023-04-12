@@ -2221,11 +2221,10 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   // The cellular object may need to update the APN list now.
   cellular()->OnProfilesChanged();
 
-  // Bail-out early if we don't want to setup the attach APN
-  // or the APN parameters are not ready yet.
-  if (!cellular()->use_attach_apn() || !cellular()->service())
-    return;
+  ConfigureAttachApn();
+}
 
+void CellularCapability3gpp::ConfigureAttachApn() {
   // Set the new parameters for the initial EPS bearer (e.g. LTE Attach APN)
   // An empty list will result on clearing the Attach APN by |SetNextAttachApn|
   attach_apn_try_list_ = cellular()->BuildAttachApnTryList();

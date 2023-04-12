@@ -155,6 +155,9 @@ class CellularCapability3gpp {
   void Scan(base::OnceClosure started_callback,
             ResultStringmapsCallback finished_callback);
 
+  // Builds the Attach APN try list and configures the APN on the modem.
+  void ConfigureAttachApn();
+
   // Sets the parameters specified by |properties| for the LTE initial EPS
   // bearer used at registration, particularly the 'Attach' APN settings.
   // specified by |properties|.

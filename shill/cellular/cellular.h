@@ -175,6 +175,8 @@ class Cellular : public Device,
   // once an online payment has been done.
   void CompleteActivation(Error* error);
 
+  // Configures the attach APN in the modem.
+  virtual void ConfigureAttachApn();
   // Asynchronously detach then re-attach the network.
   virtual void ReAttach();
 
@@ -383,7 +385,6 @@ class Cellular : public Device,
   CellularCapability3gpp* capability_for_testing() { return capability_.get(); }
   const KeyValueStores& sim_slot_info_for_testing() { return sim_slot_info_; }
   void set_modem_state_for_testing(ModemState state) { modem_state_ = state; }
-  void set_use_attach_apn_for_testing(bool on) { use_attach_apn_ = on; }
   void set_eid_for_testing(const std::string& eid) { eid_ = eid; }
   void set_iccid_for_testing(const std::string& iccid) { iccid_ = iccid; }
   void set_state_for_testing(const State& state) { state_ = state; }
@@ -407,6 +408,12 @@ class Cellular : public Device,
   friend class ModemTest;
   FRIEND_TEST(CellularTest, ChangeServiceState);
   FRIEND_TEST(CellularTest, ChangeServiceStatePPP);
+  FRIEND_TEST(CellularTest, CompareApns);
+  FRIEND_TEST(CellularTest, CompareApnsFromStorage);
+  FRIEND_TEST(CellularTest, CompareApnsFromApnList);
+  FRIEND_TEST(CellularTest, CompareApns);
+  FRIEND_TEST(CellularTest, CompareApnsFromStorage);
+  FRIEND_TEST(CellularTest, CompareApnsFromApnList);
   FRIEND_TEST(CellularTest, CompareApns);
   FRIEND_TEST(CellularTest, CompareApnsFromStorage);
   FRIEND_TEST(CellularTest, CompareApnsFromApnList);
@@ -444,7 +451,6 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, StartPPPAfterEthernetUp);
   FRIEND_TEST(CellularTest, StartPPPAlreadyStarted);
   FRIEND_TEST(CellularTest, UpdateGeolocationObjects);
-
   // Names of properties in storage
   static const char kAllowRoaming[];
   static const char kPolicyAllowRoaming[];
@@ -570,8 +576,9 @@ class Cellular : public Device,
   KeyValueStore GetSimLockStatus(Error* error);
   void SetSimPresent(bool sim_present);
 
+  // TODO(b/277792069): Remove when Chrome removes the attach APN code.
   // DBUS accessors to read/modify the use of an Attach APN
-  bool GetUseAttachApn(Error* /*error*/) { return use_attach_apn_; }
+  bool GetUseAttachApn(Error* /*error*/) { return true; }
   bool SetUseAttachApn(const bool& value, Error* error);
 
   // When shill terminates or ChromeOS suspends, this function is called to

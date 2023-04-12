@@ -983,11 +983,9 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
 
   if (ApnList::IsAttachApn(apn_info_) ||
       ApnList::IsAttachApn(last_attach_apn_info_)) {
-    // If the new APN is an 'attach APN',we need to detach and re-attach
-    // to the LTE network in order to use it.
     // If we were using an attach APN, and we are no longer using it, we should
-    // also re-attach to clear the attach APN in the modem.
-    cellular_->ReAttach();
+    // re-configure the attach APN to clear the attach APN in the modem.
+    cellular_->ConfigureAttachApn();
     return true;
   }
   if (!IsConnected()) {
@@ -1048,13 +1046,10 @@ bool CellularService::SetCustomApnList(const Stringmaps& value, Error* error) {
   adaptor()->EmitStringmapsChanged(kCellularCustomApnListProperty,
                                    custom_apn_list_.value());
 
-  // TODO(b/217767378): Replace reattach with a call to SetNextAttachApn.
   if (exist_attach || ApnList::IsAttachApn(last_attach_apn_info_)) {
-    // If the new APN is an 'attach APN',we need to detach and re-attach
-    // to the LTE network in order to use it.
     // If we were using an attach APN, and we are no longer using it, we should
-    // also re-attach to clear the attach APN in the modem.
-    cellular_->ReAttach();
+    // re-configure the attach APN to clear the attach APN in the modem.
+    cellular_->ConfigureAttachApn();
     return true;
   }
   if (!IsConnected()) {
@@ -1083,7 +1078,7 @@ void CellularService::ClearCustomApnList(Error* error) {
     return;
   }
 
-  cellular_->ReAttach();
+  cellular_->ConfigureAttachApn();
 }
 
 KeyValueStore CellularService::GetStorageProperties() const {

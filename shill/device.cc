@@ -181,7 +181,6 @@ Device::Device(Manager* manager,
   // kSIMLockStatusProperty: Registered in Cellular
   // kFoundNetworksProperty: Registered in Cellular
   // kDBusObjectProperty: Register in Cellular
-  // kUseAttachAPNProperty: Registered in Cellular
   // kPrimaryMultiplexedInterfaceProperty: Registered in Cellular
 
   store_.RegisterConstString(kInterfaceProperty, &link_name_);

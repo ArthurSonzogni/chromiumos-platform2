@@ -1507,8 +1507,6 @@ TEST_F(CellularCapability3gppTest, SetInitialEpsBearer) {
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   properties.Set<std::string>(CellularBearer::kMMApnProperty, kTestApn);
 
-  cellular_->set_use_attach_apn_for_testing(true);
-
   InitProxies();
   capability_->SetInitialEpsBearer(properties, std::move(callback));
   std::move(set_callback).Run(Error(Error::kSuccess));

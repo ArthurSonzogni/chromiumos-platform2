@@ -352,11 +352,9 @@ bool Cellular::Load(const StoreInterface* storage) {
   }
   storage->GetBool(id, kAllowRoaming, &allow_roaming_);
   storage->GetBool(id, kPolicyAllowRoaming, &policy_allow_roaming_);
-  storage->GetBool(id, kUseAttachApn, &use_attach_apn_);
   LOG(INFO) << LoggingTag() << ": " << __func__ << ": " << kAllowRoaming << ":"
             << allow_roaming_ << " " << kPolicyAllowRoaming << ":"
-            << policy_allow_roaming_ << " " << kUseAttachApn << ":"
-            << use_attach_apn_ << " ";
+            << policy_allow_roaming_;
   return Device::Load(storage);
 }
 
@@ -364,7 +362,6 @@ bool Cellular::Save(StoreInterface* storage) {
   const std::string id = GetStorageIdentifier();
   storage->SetBool(id, kAllowRoaming, allow_roaming_);
   storage->SetBool(id, kPolicyAllowRoaming, policy_allow_roaming_);
-  storage->SetBool(id, kUseAttachApn, use_attach_apn_);
   bool result = Device::Save(storage);
   SLOG(2) << LoggingTag() << ": " << __func__ << ": Device ID: " << id;
   LOG(INFO) << LoggingTag() << ": " << __func__ << ": " << result;
@@ -820,6 +817,19 @@ void Cellular::UpdateGeolocationObjects(
   geolocation_infos->push_back(geolocation_info);
 }
 
+void Cellular::ConfigureAttachApn() {
+  SLOG(1) << LoggingTag() << ": " << __func__;
+  if (!enabled() && !enabled_pending()) {
+    LOG(WARNING) << LoggingTag() << ": " << __func__
+                 << ": Modem not enabled, skip attach APN configuration.";
+    return;
+  }
+
+  capability_->ConfigureAttachApn();
+}
+
+// TODO(b/267804414): Reattach is only used by |TetheringAllowedUpdated|,
+// which is a temporary function for tethering fishfooding.
 void Cellular::ReAttach() {
   SLOG(1) << LoggingTag() << ": " << __func__;
   if (!enabled() && !enabled_pending()) {
@@ -1760,20 +1770,11 @@ bool Cellular::SetPolicyAllowRoaming(const bool& value, Error* error) {
 }
 
 bool Cellular::SetUseAttachApn(const bool& value, Error* error) {
-  if (use_attach_apn_ == value)
+  LOG(INFO) << __func__;
+  // |use_attach_apn_ | is deprecated. its default value should be true.
+  if (!value)
     return false;
-  LOG(INFO) << LoggingTag() << ": " << __func__ << ": " << use_attach_apn_
-            << "->" << value;
 
-  use_attach_apn_ = value;
-
-  if (capability_) {
-    // We need to detach and re-attach to the LTE network in order to use the
-    // attach APN.
-    ReAttach();
-  }
-
-  adaptor()->EmitBoolChanged(kUseAttachAPNProperty, value);
   return true;
 }
 
@@ -2298,6 +2299,7 @@ void Cellular::RegisterProperties() {
   HelpRegisterDerivedBool(kCellularPolicyAllowRoamingProperty,
                           &Cellular::GetPolicyAllowRoaming,
                           &Cellular::SetPolicyAllowRoaming);
+  // TODO(b/277792069): Remove when Chrome removes the attach APN code.
   HelpRegisterDerivedBool(kUseAttachAPNProperty, &Cellular::GetUseAttachApn,
                           &Cellular::SetUseAttachApn);
   HelpRegisterDerivedBool(kInhibitedProperty, &Cellular::GetInhibited,

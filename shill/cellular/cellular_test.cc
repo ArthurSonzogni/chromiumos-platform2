@@ -1089,44 +1089,6 @@ TEST_F(CellularTest, SetPolicyAllowRoaming) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
-TEST_F(CellularTest, SetUseAttachApn) {
-  mm1::MockModemProxy* mm1_modem_proxy = mm1_modem_proxy_.get();
-  mm1::MockModemModem3gppProfileManagerProxy*
-      mm1_modem_3gpp_profile_manager_proxy =
-          SetModem3gppProfileManagerProxyExpectations();
-  InitCapability3gppProxies();
-  // initial state: modem enabled, attach APN disabled
-  EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _))
-      .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
-  EXPECT_CALL(*mm1_modem_3gpp_profile_manager_proxy, List(_, _))
-      .WillOnce(Invoke(this, &CellularTest::InvokeList));
-  device_->SetEnabled(true);
-  EXPECT_FALSE(device_->use_attach_apn_);
-
-  // The modem is going to be disabled then enabled
-  // in order to use the new attach APN.
-  EXPECT_CALL(*mm1_modem_proxy, Enable(false, _, _))
-      .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
-  EXPECT_CALL(*mm1_modem_proxy, SetPowerState(_, _, _)).Times(0);
-  // It will call again Enable(true,...) but with another proxy as the previous
-  // one was released at the end of the Disabling process. So, we have to
-  // register expectations via callback because that proxy does not exist yet.
-  auto expect_enable = base::BindRepeating(
-      [](CellularTest* test, mm1::MockModemProxy* proxy) {
-        EXPECT_CALL(*proxy, Enable(true, _, _))
-            .WillOnce(Invoke(test, &CellularTest::InvokeEnable));
-      },
-      this);
-  control_interface_.SetOnModemProxyCreatedCallback(expect_enable);
-
-  Error error;
-  device_->SetUseAttachApn(true, &error);
-  dispatcher_.DispatchPendingEvents();  // StopModem yields a deferred task
-  EXPECT_TRUE(error.IsSuccess());
-  EXPECT_NE(device_->state(), Cellular::State::kModemStarted);
-  EXPECT_TRUE(device_->use_attach_apn_);
-}
-
 TEST_F(CellularTest, SetInhibited) {
   PopulateProxies();
 

@@ -203,7 +203,6 @@ TEST_F(CellularServiceTest, SetAttachApn) {
   testapn[kApnUsernameProperty] = kUsername;
   testapn[kApnAttachProperty] = kApnAttachProperty;
   EXPECT_CALL(*adaptor_, EmitStringmapChanged(kCellularApnProperty, _));
-  EXPECT_CALL(*device_, ReAttach());
   service_->SetApn(testapn, &error);
   EXPECT_TRUE(error.IsSuccess());
   Stringmap resultapn = service_->GetApn(&error);
