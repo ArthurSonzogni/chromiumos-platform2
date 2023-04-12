@@ -370,6 +370,9 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
     params.emplace_back("androidboot.audio.aaudio_mmap_enabled=1");
   }
 
+  // Workaround for slow vm-host IPC when recording video.
+  params.emplace_back("androidboot.camera.async_process_capture_request=true");
+
   const auto pstore_path = GetPstoreDest(request.owner_id());
 
   base::FilePath data_dir = base::FilePath(kAndroidDataDir);
