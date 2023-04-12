@@ -629,7 +629,7 @@ impl VolumeManager {
     /// (if needed).
     fn create_or_activate_lv(&self, name: &str, volume_type: HibernateVolume) -> Result<()> {
         if lv_exists(&self.vg_name, name)? {
-            info!("Activating '{}' volume", Self::HIBERIMAGE);
+            debug!("Activating '{}' volume", name);
 
             activate_lv(&self.vg_name, name)?;
         } else {
