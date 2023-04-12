@@ -337,27 +337,27 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocTpmEccAuthBlockPersistentGetAuthFailedInDeriveHVKKM = 255,
   /* ./auth_blocks/tpm_ecc_auth_block.cc */
   kLocTpmEccAuthBlockUnsealFailedInDeriveHVKKM = 256,
-  /* =Obsolete= */
+  /* ./auth_blocks/libscrypt_compat_auth_block.cc */
   kLocScryptCompatAuthBlockScryptFailedInCreateHelper = 257,
-  /* =Obsolete= */
+  /* ./auth_blocks/libscrypt_compat_auth_block.cc */
   kLocScryptCompatAuthBlockParseFailedInParseHeader = 258,
-  /* =Obsolete= */
+  /* ./auth_blocks/libscrypt_compat_auth_block.cc */
   kLocScryptCompatAuthBlockScryptFailedInParseHeader = 259,
-  /* =Obsolete= */
+  /* ./auth_blocks/libscrypt_compat_auth_block.cc */
   kLocScryptCompatAuthBlockInputKeyFailedInCreate = 260,
-  /* =Obsolete= */
+  /* ./auth_blocks/libscrypt_compat_auth_block.cc */
   kLocScryptCompatAuthBlockChapsKeyFailedInCreate = 261,
-  /* =Obsolete= */
+  /* ./auth_blocks/libscrypt_compat_auth_block.cc */
   kLocScryptCompatAuthBlockResetKeyFailedInCreate = 262,
-  /* =Obsolete= */
+  /* ./auth_blocks/libscrypt_compat_auth_block.cc */
   kLocScryptCompatAuthBlockInvalidBlockStateInDerive = 263,
-  /* =Obsolete= */
+  /* ./auth_blocks/libscrypt_compat_auth_block.cc */
   kLocScryptCompatAuthBlockNoWrappedKeysetInDerive = 264,
-  /* =Obsolete= */
+  /* ./auth_blocks/libscrypt_compat_auth_block.cc */
   kLocScryptCompatAuthBlockInputKeyInDerive = 265,
-  /* =Obsolete= */
+  /* ./auth_blocks/libscrypt_compat_auth_block.cc */
   kLocScryptCompatAuthBlockChapsKeyInDerive = 266,
-  /* =Obsolete= */
+  /* ./auth_blocks/libscrypt_compat_auth_block.cc */
   kLocScryptCompatAuthBlockResetKeyInDerive = 267,
   /* ./le_credential_manager_impl.cc */
   kLocLECredManInvalidTreeInInsertCred = 268,
@@ -1351,10 +1351,6 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocGenericAuthBlockIsSupportedNotFound = 2104,
   /* ./le_credential_manager_impl.cc */
   kLocLECredManPinWeaverFailedInGetDelaySchedule = 2105,
-  /* ./auth_session.cc */
-  kLocAuthSessionGetStoredFactorFailedInRecreate = 2106,
-  /* ./auth_session.cc */
-  kLocAuthSessionGetKeyDataFailedInRecreate = 2107,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.

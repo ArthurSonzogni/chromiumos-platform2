@@ -1950,7 +1950,6 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
     const user_data_auth::AuthInput& auth_input_proto,
     AuthFactorType auth_factor_type,
     const AuthFactorMetadata& auth_factor_metadata) {
-  // Convert the proto to a basic AuthInput.
   std::optional<AuthInput> auth_input = CreateAuthInput(
       platform_, auth_input_proto, username_, obfuscated_username_,
       auth_block_utility_->GetLockedToSingleUser(),
@@ -1961,15 +1960,7 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
-  // Delegate the rest of the construction to the other overload.
-  return CreateAuthInputForAdding(*std::move(auth_input), auth_factor_type,
-                                  auth_factor_metadata);
-}
 
-CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
-    AuthInput auth_input,
-    AuthFactorType auth_factor_type,
-    const AuthFactorMetadata& auth_factor_metadata) {
   // Types which need rate-limiters are exclusive with those which need
   // per-label reset secrets.
   if (NeedsRateLimiter(auth_factor_type) && user_secret_stash_) {
@@ -1980,7 +1971,7 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
         user_secret_stash_->GetFingerprintRateLimiterId();
     // No existing rate-limiter, AuthBlock::Create will have to create one.
     if (!rate_limiter_label.has_value()) {
-      return std::move(auth_input);
+      return std::move(auth_input.value());
     }
     std::optional<brillo::SecureBlob> reset_secret =
         user_secret_stash_->GetRateLimiterResetSecret(auth_factor_type);
@@ -1991,9 +1982,9 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
-    auth_input.rate_limiter_label = rate_limiter_label;
-    auth_input.reset_secret = reset_secret;
-    return std::move(auth_input);
+    auth_input->rate_limiter_label = rate_limiter_label;
+    auth_input->reset_secret = reset_secret;
+    return std::move(auth_input.value());
   }
 
   if (NeedsResetSecret(auth_factor_type)) {
@@ -2002,9 +1993,9 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
       // When USS is not backed up by VaultKeysets this secret needs to be
       // generated independently.
       LOG(INFO) << "Adding random reset secret for UserSecretStash.";
-      auth_input.reset_secret =
+      auth_input->reset_secret =
           CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
-      return std::move(auth_input);
+      return std::move(auth_input.value());
     }
 
     // When using VaultKeyset, reset is implemented via a seed that's shared
@@ -2016,11 +2007,11 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
 
-    return UpdateAuthInputWithResetParamsFromPasswordVk(auth_input,
+    return UpdateAuthInputWithResetParamsFromPasswordVk(auth_input.value(),
                                                         *vault_keyset_);
   }
 
-  return std::move(auth_input);
+  return std::move(auth_input.value());
 }
 
 CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForSelectFactor(
@@ -2904,108 +2895,11 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     }
   }
 
-  // Reset all of the rate limiters and and credential lockouts.
   ResetLECredentials();
   ResetRateLimiterCredentials();
 
-  // If the derive suggests recreating the factor, attempt to do that. If this
-  // fails we ignore the failure and report whatever status we were going to
-  // report anyway.
-  if (suggested_action == AuthBlock::SuggestedAction::kRecreate) {
-    RecreateUssAuthFactor(auth_factor_type, auth_factor_label, auth_input,
-                          std::move(auth_session_performance_timer),
-                          std::move(prepare_status), std::move(on_done));
-  } else {
-    ReportTimerDuration(auth_session_performance_timer.get());
-    std::move(on_done).Run(std::move(prepare_status));
-  }
-}
-
-void AuthSession::RecreateUssAuthFactor(
-    AuthFactorType auth_factor_type,
-    const std::string& auth_factor_label,
-    AuthInput auth_input,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
-    CryptohomeStatus original_status,
-    StatusCallback on_done) {
-  CryptoStatusOr<AuthBlockType> auth_block_type =
-      auth_block_utility_->GetAuthBlockTypeForCreation(auth_factor_type);
-  if (!auth_block_type.ok()) {
-    LOG(WARNING) << "Unable to update obsolete auth factor, cannot determine "
-                    "new block type: "
-                 << auth_block_type.err_status();
-    // TODO(b/272560921): log the status to a UMA metric.
-    std::move(on_done).Run(std::move(original_status));
-    return;
-  }
-
-  std::optional<AuthFactorMap::ValueView> stored_auth_factor =
-      auth_factor_map_.Find(auth_factor_label);
-  if (!stored_auth_factor) {
-    auto status = MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionGetStoredFactorFailedInRecreate),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-    LOG(WARNING) << "Unable to update obsolete auth factor, it does not "
-                    "seem to exist: "
-                 << status;
-    // TODO(b/272560921): log the status to a UMA metric.
-    std::move(on_done).Run(std::move(original_status));
-    return;
-  }
-  const AuthFactor& auth_factor = stored_auth_factor->auth_factor();
-
-  KeyData key_data;
-  user_data_auth::CryptohomeErrorCode error =
-      converter_.AuthFactorToKeyData(auth_factor.label(), auth_factor.type(),
-                                     auth_factor.metadata(), key_data);
-  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
-    auto status = MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionGetKeyDataFailedInRecreate),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-    LOG(WARNING) << "Unable to update obsolete auth factor, cannot "
-                    "construct new KeyData: "
-                 << status;
-    // TODO(b/272560921): log the status to a UMA metric.
-    std::move(on_done).Run(std::move(original_status));
-    return;
-  }
-
-  CryptohomeStatusOr<AuthInput> auth_input_for_add = CreateAuthInputForAdding(
-      std::move(auth_input), auth_factor.type(), auth_factor.metadata());
-  if (!auth_input_for_add.ok()) {
-    LOG(WARNING) << "Unable to construct an auth input to recreate the factor: "
-                 << auth_input_for_add.err_status();
-    // TODO(b/272560921): log the status to a UMA metric.
-    std::move(on_done).Run(std::move(original_status));
-    return;
-  }
-
-  // Make an on_done callback for passing in to GetUpdateAuthFactorCallback
-  // that ignores the result of the update and instead just sends in the
-  // existing prepare_status result that we would've sent if we hadn't tried
-  // the Update at all.
-  StatusCallback status_callback = base::BindOnce(
-      [](CryptohomeStatus original_status, StatusCallback on_done,
-         CryptohomeStatus update_status) {
-        if (!update_status.ok()) {
-          LOG(WARNING) << "Recreating factor with update failed: "
-                       << update_status;
-          // TODO(b/272560921): log |update_status| to a UMA metric.
-        }
-        std::move(on_done).Run(std::move(original_status));
-      },
-      std::move(original_status), std::move(on_done));
-
-  // Attempt to re-create the factor via a Create+Update.
-  auto create_callback = base::BindOnce(
-      &AuthSession::UpdateAuthFactorViaUserSecretStash,
-      weak_factory_.GetWeakPtr(), auth_factor.type(), auth_factor.label(),
-      auth_factor.metadata(), key_data, *auth_input_for_add,
-      std::move(auth_session_performance_timer), std::move(status_callback));
-  auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      *auth_block_type, *auth_input_for_add, std::move(create_callback));
+  ReportTimerDuration(auth_session_performance_timer.get());
+  std::move(on_done).Run(std::move(prepare_status));
 }
 
 void AuthSession::ResetLECredentials() {

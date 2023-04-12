@@ -287,15 +287,8 @@ class AuthSession final {
       const user_data_auth::AuthInput& auth_input_proto,
       const AuthFactorMetadata& auth_factor_metadata);
   // Same as above, but additionally sets extra fields for resettable factors.
-  // Can also be supplied with an already constructed AuthInput instead of the
-  // raw proto, for cases where you need to construct both and don't want to
-  // redo the same work.
   CryptohomeStatusOr<AuthInput> CreateAuthInputForAdding(
       const user_data_auth::AuthInput& auth_input_proto,
-      AuthFactorType auth_factor_type,
-      const AuthFactorMetadata& auth_factor_metadata);
-  CryptohomeStatusOr<AuthInput> CreateAuthInputForAdding(
-      AuthInput auth_input,
       AuthFactorType auth_factor_type,
       const AuthFactorMetadata& auth_factor_metadata);
 
@@ -497,17 +490,6 @@ class AuthSession final {
       CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::optional<AuthBlock::SuggestedAction> suggested_action);
-
-  // This function is used after a load to re-create an auth factor. It is
-  // generally used after a post-authenticate load, when the key derivation
-  // suggests that the factor needs to be recreated.
-  void RecreateUssAuthFactor(AuthFactorType auth_factor_type,
-                             const std::string& auth_factor_label,
-                             AuthInput auth_input,
-                             std::unique_ptr<AuthSessionPerformanceTimer>
-                                 auth_session_performance_timer,
-                             CryptohomeStatus original_status,
-                             StatusCallback on_done);
 
   // This function is used to reset the attempt count for a low entropy
   // credential. Currently, this resets all low entropy credentials both stored
