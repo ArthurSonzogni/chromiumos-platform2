@@ -7,6 +7,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":install_minijail_conf",
     ":runtime_probe",
     "//runtime_probe/dbus",
     "//runtime_probe/init",
@@ -32,6 +33,11 @@ pkg_config("target_defaults") {
     "protobuf",
     "system_api",
   ]
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/runtime_probe.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 # TODO(chungsheng): We should consider moving these into a subdirectory.
