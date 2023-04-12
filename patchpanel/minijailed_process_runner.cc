@@ -77,8 +77,8 @@ int MinijailedProcessRunner::RunSyncDestroy(
   pid_t pid;
   int fd_stdout = -1;
   int* stdout_p = output ? &fd_stdout : nullptr;
-  bool ran = mj->RunPipesAndDestroy(jail, args, &pid, nullptr /*stdin*/,
-                                    stdout_p, nullptr /*stderr*/);
+  bool ran = mj->RunPipesAndDestroy(jail, args, &pid, /*stdin=*/nullptr,
+                                    stdout_p, /*stderr=*/nullptr);
   if (output) {
     *output = ReadBlockingFDToStringAndClose(base::ScopedFD(fd_stdout));
   }

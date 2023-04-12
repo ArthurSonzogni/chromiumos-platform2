@@ -399,7 +399,7 @@ void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
       StopForwarding(nsinfo.outbound_ifname, nsinfo.host_ifname,
                      ForwardingSet{.ipv6 = true});
     }
-    StopForwarding(ifname, "" /* ifname_virtual */);
+    StopForwarding(ifname, /*ifname_virtual=*/"");
     datapath_->StopConnectionPinning(ifname);
     datapath_->RemoveRedirectDnsRule(ifname);
     arc_svc_->RemoveDevice(ifname);
@@ -796,7 +796,7 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
     return dbus_response;
   }
 
-  const auto* const tap = cros_svc_->TAP(cid, true /*is_termina*/);
+  const auto* const tap = cros_svc_->TAP(cid, /*is_termina=*/true);
   if (!tap) {
     LOG(DFATAL) << "Termina TAP Device missing";
     writer.AppendProtoAsArrayOfBytes(response);
@@ -888,7 +888,7 @@ std::unique_ptr<dbus::Response> Manager::OnPluginVmStartup(
     return dbus_response;
   }
 
-  const auto* const tap = cros_svc_->TAP(vm_id, false /*is_termina*/);
+  const auto* const tap = cros_svc_->TAP(vm_id, /*is_termina=*/false);
   if (!tap) {
     LOG(DFATAL) << "Plugin VM TAP Device missing";
     writer.AppendProtoAsArrayOfBytes(response);

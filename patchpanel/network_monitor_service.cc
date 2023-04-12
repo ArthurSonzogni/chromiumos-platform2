@@ -266,12 +266,12 @@ void NeighborLinkMonitor::SendNeighborDumpRTNLMessage() {
   // optimization could reduce the amount of data received for each request.
   auto msg = std::make_unique<shill::RTNLMessage>(
       shill::RTNLMessage::kTypeNeighbor, shill::RTNLMessage::kModeGet,
-      NLM_F_REQUEST | NLM_F_DUMP, 0 /* seq */, 0 /* pid */, ifindex_,
+      NLM_F_REQUEST | NLM_F_DUMP, /*seq=*/0, /*pid=*/0, ifindex_,
       shill::IPAddress::kFamilyUnknown);
 
   // TODO(jiejiang): We may get an error of errno=16 (Device or resource busy)
   // from kernel here. We may need to serialize the DUMP requests.
-  if (!rtnl_handler_->SendMessage(std::move(msg), nullptr /* msg_seq */))
+  if (!rtnl_handler_->SendMessage(std::move(msg), /*msg_seq=*/nullptr))
     LOG(WARNING) << "Failed to send neighbor dump message for on " << ifname_;
 }
 
@@ -280,15 +280,15 @@ void NeighborLinkMonitor::SendNeighborProbeRTNLMessage(
   // |seq| will be set by RTNLHandler.
   auto msg = std::make_unique<shill::RTNLMessage>(
       shill::RTNLMessage::kTypeNeighbor, shill::RTNLMessage::kModeAdd,
-      NLM_F_REQUEST | NLM_F_REPLACE, 0 /* seq */, 0 /* pid */, ifindex_,
+      NLM_F_REQUEST | NLM_F_REPLACE, /*seq=*/0, /*pid=*/0, ifindex_,
       entry.addr.family());
 
   // We don't need to set |ndm_flags| and |ndm_type| for this message.
   msg->set_neighbor_status(shill::RTNLMessage::NeighborStatus(
-      NUD_PROBE, 0 /* ndm_flags */, 0 /* ndm_type */));
+      NUD_PROBE, /*ndm_flags=*/0, /*ndm_type=*/0));
   msg->SetAttribute(NDA_DST, entry.addr.address());
 
-  if (!rtnl_handler_->SendMessage(std::move(msg), nullptr /* msg_seq */))
+  if (!rtnl_handler_->SendMessage(std::move(msg), /*msg_seq=*/nullptr))
     LOG(WARNING) << "Failed to send neighbor probe message for "
                  << entry.ToString() << " on " << ifname_;
 }
@@ -384,7 +384,7 @@ void NetworkMonitorService::Start() {
   // registering DevicesChangedHandler to make sure we see each shill Device
   // exactly once.
   shill_client_->ScanDevices();
-  OnShillDevicesChanged(shill_client_->get_interfaces(), {} /* removed */);
+  OnShillDevicesChanged(shill_client_->get_interfaces(), /*removed=*/{});
   shill_client_->RegisterDevicesChangedHandler(
       base::BindRepeating(&NetworkMonitorService::OnShillDevicesChanged,
                           weak_factory_.GetWeakPtr()));

@@ -87,7 +87,7 @@ void AdbProxy::InitialSetup() {
   if (dev_mode_enabled_) {
     return;
   }
-  CheckAdbSideloadingStatus(0 /*num_try*/);
+  CheckAdbSideloadingStatus(/*num_try=*/0);
 }
 
 void AdbProxy::Reset() {

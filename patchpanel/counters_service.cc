@@ -211,7 +211,7 @@ void CountersService::OnVpnDeviceRemoved(const std::string& ifname) {
 bool CountersService::MakeAccountingChain(const std::string& chain_name) {
   return datapath_->ModifyChain(IpFamily::Dual, Iptables::Table::kMangle,
                                 Iptables::Command::kN, chain_name,
-                                false /*log_failures*/);
+                                /*log_failures=*/false);
 }
 
 bool CountersService::AddAccountingRule(const std::string& chain_name,

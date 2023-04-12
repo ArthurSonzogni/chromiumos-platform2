@@ -1400,7 +1400,7 @@ std::unique_ptr<Client> Client::New() {
     return nullptr;
 
   return std::make_unique<ClientImpl>(std::move(bus), proxy,
-                                      true /* owns_bus */);
+                                      /*owns_bus=*/true);
 }
 
 std::unique_ptr<Client> Client::New(const scoped_refptr<dbus::Bus>& bus) {
@@ -1409,13 +1409,13 @@ std::unique_ptr<Client> Client::New(const scoped_refptr<dbus::Bus>& bus) {
     return nullptr;
 
   return std::make_unique<ClientImpl>(std::move(bus), proxy,
-                                      false /* owns_bus */);
+                                      /*owns_bus=*/false);
 }
 
 std::unique_ptr<Client> Client::New(const scoped_refptr<dbus::Bus>& bus,
                                     dbus::ObjectProxy* proxy) {
   return std::make_unique<ClientImpl>(std::move(bus), proxy,
-                                      false /* owns_bus */);
+                                      /*owns_bus=*/false);
 }
 
 // static
