@@ -39,6 +39,7 @@ sendto: 1
 #   0x80ff4508 == EVIOCGUNIQ(255)
 #   0x80184540 == EVIOCGABS(ABS_X)
 #   0x80184541 == EVIOCGABS(ABS_Y)
+#   0x80184542 == EVIOCGABS(ABS_Z)
 #   0x8018457a == EVIOCGABS(ABS_MT_PRESSURE)
 #   0x80184576 == EVIOCGABS(ABS_MT_POSITION_Y)
 #   0x80184575 == EVIOCGABS(ABS_MT_POSITION_X)
@@ -73,7 +74,7 @@ ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80184579 || arg1 == 0x80084503 || arg1 == 0x80184577 || \
        arg1 == 0x80184568 || arg1 == 0x8018455a || arg1 == 0x8018455b || \
        arg1 == 0x80184574 || arg1 == 0x8018457b || arg1 == 0x8018457c || \
-       arg1 == 0x8018457d
+       arg1 == 0x8018457d || arg1 == 0x80184542
 recvmsg: 1
 rt_sigprocmask: 1
 brk: 1

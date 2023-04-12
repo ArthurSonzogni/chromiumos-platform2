@@ -33,6 +33,7 @@ gettid: 1
 #   0x80084503 == EVIOCGREP
 #   0x80184540 == EVIOCGABS(ABS_X)
 #   0x80184541 == EVIOCGABS(ABS_Y)
+#   0x80184542 == EVIOCGABS(ABS_Z)
 #   0x80184558 == EVIOCGABS(ABS_PRESSURE)
 #   0x80184559 == EVIOCGABS(ABS_DISTANCE)
 #   0x8018455a == EVIOCGABS(ABS_TILT_X)
@@ -66,7 +67,7 @@ ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80184574 || arg1 == 0x80184575 || arg1 == 0x80184576 || \
        arg1 == 0x80184577 || arg1 == 0x80184579 || arg1 == 0x8018457a || \
        arg1 == 0x8404450a || arg1 == 0x8018457b || arg1 == 0x8018457c || \
-       arg1 == 0x8018457d
+       arg1 == 0x8018457d || arg1 == 0x80184542
 write: 1
 geteuid: 1
 getuid: 1

@@ -39,6 +39,7 @@ send: 1
 #   0x80084503 == EVIOCGREP
 #   0x80184540 == EVIOCGABS(ABS_X)
 #   0x80184541 == EVIOCGABS(ABS_Y)
+#   0x80184542 == EVIOCGABS(ABS_Z)
 #   0x80184558 == EVIOCGABS(ABS_PRESSURE)
 #   0x80184559 == EVIOCGABS(ABS_DISTANCE)
 #   0x8018455c == EVIOCGABS(ABS_TOOL_WIDTH)
@@ -72,7 +73,7 @@ ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x8018457a || arg1 == 0x8404450a || arg1 == 0x8018455b || \
        arg1 == 0x80184577 || arg1 == 0x8018457b || arg1 == 0x8018455a || \
        arg1 == 0x80184574 || arg1 == 0x80184568 || arg1 == 0x8018457c || \
-       arg1 == 0x8018457d
+       arg1 == 0x8018457d || arg1 == 0x80184542
 recvmsg: 1
 rt_sigprocmask: 1
 epoll_ctl: 1
