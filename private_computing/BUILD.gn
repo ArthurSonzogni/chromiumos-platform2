@@ -9,6 +9,7 @@ group("all") {
   deps = [
     ":dbus_adaptors_generator",
     ":install_init",
+    ":install_minijail_conf",
     ":install_service",
     ":install_systemd",
     ":private_computingd",
@@ -56,6 +57,11 @@ executable("private_computingd") {
 install_config("install_init") {
   sources = [ "init/private_computing.conf" ]
   install_path = "/etc/init"
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/private_computing.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 install_config("install_systemd") {
