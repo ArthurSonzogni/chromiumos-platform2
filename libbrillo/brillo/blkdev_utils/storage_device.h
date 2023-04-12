@@ -50,6 +50,21 @@ class BRILLO_EXPORT StorageDevice {
                   bool run_physical_erasure,
                   bool discard) const;
 
+  // Zeros a range of bytes on the block device.
+  bool ZeroBlockDevice(const base::FilePath& device_path,
+                       const uint64_t device_offset,
+                       const uint64_t device_length) const;
+
+  // Discards a range of bytes on the block device.
+  bool DiscardBlockDevice(const base::FilePath& device_path,
+                          const uint64_t device_offset,
+                          const uint64_t device_length) const;
+
+  // Secure discards a range of bytes on the block device.
+  bool SecureDiscardBlockDevice(const base::FilePath& device_path,
+                                const uint64_t device_offset,
+                                const uint64_t device_length) const;
+
   // Whether the device supports physical erasure or not.
   virtual bool SupportPhysicalErasure() const;
 

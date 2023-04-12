@@ -43,6 +43,28 @@ bool StorageDevice::WipeBlkDev(const base::FilePath& device_path,
   return true;
 }
 
+bool StorageDevice::ZeroBlockDevice(const base::FilePath& device_path,
+                                    const uint64_t device_offset,
+                                    const uint64_t device_length) const {
+  return LogicalErasure(device_path, device_offset, device_length,
+                        LogicalErasureIoctl::blkzeroout);
+}
+
+bool StorageDevice::DiscardBlockDevice(const base::FilePath& device_path,
+                                       const uint64_t device_offset,
+                                       const uint64_t device_length) const {
+  return LogicalErasure(device_path, device_offset, device_length,
+                        LogicalErasureIoctl::blkdiscard);
+}
+
+bool StorageDevice::SecureDiscardBlockDevice(
+    const base::FilePath& device_path,
+    const uint64_t device_offset,
+    const uint64_t device_length) const {
+  return LogicalErasure(device_path, device_offset, device_length,
+                        LogicalErasureIoctl::blksecdiscard);
+}
+
 LogicalErasureIoctl StorageDevice::GetLogicalErasureIoctlType() const {
   return LogicalErasureIoctl::blkzeroout;
 }
