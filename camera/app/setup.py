@@ -4,6 +4,7 @@
 
 """The setuptools setup file."""
 
+from setuptools import find_packages
 from setuptools import setup
 
 
@@ -14,14 +15,14 @@ setup(
     author="Shik Chen",
     author_email="shik@chromium.org",
     license="BSD-Google",
-    packages=["cros_camera_app"],
+    packages=find_packages(),
     package_data={"cros_camera_app": ["extension.js"]},
     include_package_data=True,
     install_requires=["ws4py"],
     entry_points={
         "console_scripts": [
-            "cros_camera_app = cros_camera_app.cli:main",
-            "cca = cros_camera_app.cli:main",
+            "cros_camera_app = cros_camera_app.cli.main:main",
+            "cca = cros_camera_app.cli.main:main",
         ]
     },
 )
