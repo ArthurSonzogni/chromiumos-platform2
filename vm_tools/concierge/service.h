@@ -167,6 +167,8 @@ class Service final {
   // Handles a request to create a disk image.
   std::unique_ptr<dbus::Response> CreateDiskImage(
       dbus::MethodCall* method_call);
+  CreateDiskImageResponse CreateDiskImageInternal(
+      CreateDiskImageRequest request, base::ScopedFD in_fd);
 
   // Handles a request to destroy a disk image.
   std::unique_ptr<dbus::Response> DestroyDiskImage(

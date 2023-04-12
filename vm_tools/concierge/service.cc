@@ -3183,10 +3183,28 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     return dbus_response;
   }
 
+  base::ScopedFD in_fd{};
+  if (request.storage_location() == STORAGE_CRYPTOHOME_PLUGINVM) {
+    if (!reader.PopFileDescriptor(&in_fd)) {
+      LOG(ERROR) << "CreateDiskImage: no fd found";
+      response.set_failure_reason("no source fd found");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+  }
+
+  writer.AppendProtoAsArrayOfBytes(
+      CreateDiskImageInternal(std::move(request), std::move(in_fd)));
+  return dbus_response;
+}
+
+CreateDiskImageResponse Service::CreateDiskImageInternal(
+    CreateDiskImageRequest request, base::ScopedFD in_fd) {
+  CreateDiskImageResponse response;
+
   if (!ValidateVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Set up the disk image as a sparse file when
@@ -3208,15 +3226,13 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
   if (!is_sparse && request.disk_size() == 0) {
     response.set_failure_reason(
         "Request is invalid, disk size must be non-zero for non-sparse disks");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
   if (!is_sparse && request.storage_ballooning()) {
     response.set_failure_reason(
         "Request is invalid, storage ballooning is only available for sparse "
         "disks");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   base::FilePath disk_path;
@@ -3227,16 +3243,14 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason(
           "VM/disk with same name already exists in another storage location");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
 
     if (disk_location == STORAGE_CRYPTOHOME_PLUGINVM) {
       // We do not support extending Plugin VM images.
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("Plugin VM with such name already exists");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
 
     struct stat st;
@@ -3246,8 +3260,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason(
           "internal error: image exists but stat() failed");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
 
     uint64_t current_size = st.st_size;
@@ -3292,8 +3305,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
 
     response.set_status(DISK_STATUS_EXISTS);
     response.set_disk_path(disk_path.value());
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (!GetDiskPathFromName(request.vm_name(), request.cryptohome_id(),
@@ -3302,19 +3314,15 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
                            &disk_path, request.image_type())) {
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Failed to create vm image");
-    writer.AppendProtoAsArrayOfBytes(response);
 
-    return dbus_response;
+    return response;
   }
 
   if (request.storage_location() == STORAGE_CRYPTOHOME_PLUGINVM) {
-    // Get the FD to fill with disk image data.
-    base::ScopedFD in_fd;
-    if (!reader.PopFileDescriptor(&in_fd)) {
-      LOG(ERROR) << "CreateDiskImage: no fd found";
-      response.set_failure_reason("no source fd found");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+    // Make sure we have the FD to fill with disk image data.
+    if (!in_fd.is_valid()) {
+      LOG(ERROR) << "CreateDiskImage: fd is not valid";
+      response.set_failure_reason("fd is not valid");
     }
 
     // Get the name of directory for ISO images. Do not create it - it will be
@@ -3325,8 +3333,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
       LOG(ERROR) << "Unable to determine directory for ISOs";
 
       response.set_failure_reason("Unable to determine ISO directory");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
 
     std::vector<string> params(
@@ -3351,8 +3358,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
                          weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
     }
 
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   uint64_t disk_size = request.disk_size()
@@ -3370,9 +3376,8 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
       PLOG(ERROR) << "Failed to create raw disk";
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("Failed to create raw disk file");
-      writer.AppendProtoAsArrayOfBytes(response);
 
-      return dbus_response;
+      return response;
     }
 
     if (!is_sparse) {
@@ -3382,9 +3387,8 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
         unlink(disk_path.value().c_str());
         response.set_status(DISK_STATUS_FAILED);
         response.set_failure_reason("Failed to set user_chosen_size xattr");
-        writer.AppendProtoAsArrayOfBytes(response);
 
-        return dbus_response;
+        return response;
       }
 
       LOG(INFO) << "Preallocating user-chosen-size raw disk image";
@@ -3393,15 +3397,13 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
         unlink(disk_path.value().c_str());
         response.set_status(DISK_STATUS_FAILED);
         response.set_failure_reason("Failed to allocate raw disk file");
-        writer.AppendProtoAsArrayOfBytes(response);
 
-        return dbus_response;
+        return response;
       }
 
       LOG(INFO) << "Disk image preallocated";
       response.set_status(DISK_STATUS_CREATED);
       response.set_disk_path(disk_path.value());
-      writer.AppendProtoAsArrayOfBytes(response);
 
     } else {
       LOG(INFO) << "Creating sparse raw disk image";
@@ -3411,20 +3413,18 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
         unlink(disk_path.value().c_str());
         response.set_status(DISK_STATUS_FAILED);
         response.set_failure_reason("Failed to truncate raw disk file");
-        writer.AppendProtoAsArrayOfBytes(response);
 
-        return dbus_response;
+        return response;
       }
 
       LOG(INFO) << "Sparse raw disk image created";
       response.set_status(DISK_STATUS_CREATED);
       response.set_disk_path(disk_path.value());
-      writer.AppendProtoAsArrayOfBytes(response);
     }
 
     if (request.filesystem_type() == FilesystemType::UNSPECIFIED) {
       // Skip creating a filesystem when no filesystem type is specified.
-      return dbus_response;
+      return response;
     }
 
     // Create a filesystem on the disk to make it usable for the VM.
@@ -3448,10 +3448,9 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
       unlink(disk_path.value().c_str());
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("Failed to create filesystem");
-      writer.AppendProtoAsArrayOfBytes(response);
     }
 
-    return dbus_response;
+    return response;
   }
 
   LOG(INFO) << "Creating qcow2 disk at: " << disk_path.value() << " size "
@@ -3461,16 +3460,14 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     LOG(ERROR) << "Failed to create qcow2 disk image: " << strerror(ret);
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Failed to create qcow2 disk image");
-    writer.AppendProtoAsArrayOfBytes(response);
 
-    return dbus_response;
+    return response;
   }
 
   response.set_disk_path(disk_path.value());
   response.set_status(DISK_STATUS_CREATED);
-  writer.AppendProtoAsArrayOfBytes(response);
 
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
