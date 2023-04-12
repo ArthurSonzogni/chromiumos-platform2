@@ -95,7 +95,7 @@ TEST_F(MountPassthroughUtilTest, VmMyFiles) {
 
   // Specify the maximum number of file descriptors the process can open.
   EXPECT_EQ("-R", PopFront(args));
-  EXPECT_EQ("RLIMIT_NOFILE,1024,262144", PopFront(args));
+  EXPECT_EQ("RLIMIT_NOFILE,262144,262144", PopFront(args));
 
   // Finally, specify mount-passthrough command line arguments.
   EXPECT_EQ("--", PopFront(args));
@@ -154,7 +154,7 @@ TEST_F(MountPassthroughUtilTest, ContainerMyFiles) {
   EXPECT_EQ("-G", PopFront(args));
   EXPECT_EQ("-K", PopFront(args));
   EXPECT_EQ("-R", PopFront(args));
-  EXPECT_EQ("RLIMIT_NOFILE,1024,8192", PopFront(args));
+  EXPECT_EQ("RLIMIT_NOFILE,8192,8192", PopFront(args));
 
   // Mount tmpfs on /mnt.
   EXPECT_EQ("-k", PopFront(args));
@@ -245,7 +245,7 @@ TEST_F(MountPassthroughUtilTest, ContainerMyFilesRead) {
   EXPECT_EQ("-G", PopFront(args));
   EXPECT_EQ("-K", PopFront(args));
   EXPECT_EQ("-R", PopFront(args));
-  EXPECT_EQ("RLIMIT_NOFILE,1024,8192", PopFront(args));
+  EXPECT_EQ("RLIMIT_NOFILE,8192,8192", PopFront(args));
   EXPECT_EQ("-k", PopFront(args));
   EXPECT_EQ("tmpfs,/mnt,tmpfs,MS_NOSUID|MS_NODEV|MS_NOEXEC", PopFront(args));
   EXPECT_EQ("-b", PopFront(args));
@@ -326,7 +326,7 @@ TEST_F(MountPassthroughUtilTest, ContainerRemovableRead) {
   EXPECT_EQ("-G", PopFront(args));
   EXPECT_EQ("-K", PopFront(args));
   EXPECT_EQ("-R", PopFront(args));
-  EXPECT_EQ("RLIMIT_NOFILE,1024,8192", PopFront(args));
+  EXPECT_EQ("RLIMIT_NOFILE,8192,8192", PopFront(args));
   EXPECT_EQ("-k", PopFront(args));
   EXPECT_EQ("tmpfs,/mnt,tmpfs,MS_NOSUID|MS_NODEV|MS_NOEXEC", PopFront(args));
   EXPECT_EQ("-b", PopFront(args));

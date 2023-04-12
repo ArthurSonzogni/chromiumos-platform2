@@ -91,8 +91,9 @@ std::vector<std::string> CreateMinijailCommandLineArgs(
 
   // Specify the maximum number of file descriptors the process can open.
   args.push_back("-R");
-  args.push_back("RLIMIT_NOFILE,1024," +
-                 base::NumberToString(flags.max_number_of_open_fds));
+  args.push_back(base::StringPrintf("RLIMIT_NOFILE,%d,%d",
+                                    flags.max_number_of_open_fds,
+                                    flags.max_number_of_open_fds));
 
   std::string source_in_minijail = flags.source;
   std::string dest_in_minijail = flags.dest;
