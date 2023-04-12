@@ -187,12 +187,11 @@ void HotspotDevice::StateChanged(const std::string& new_state) {
   // Convert state change to corresponding device event.
   if (new_state == WPASupplicant::kInterfaceStateInterfaceDisabled) {
     PostDeviceEvent(DeviceEvent::kInterfaceDisabled);
-  } else if (new_state == WPASupplicant::kInterfaceStateCompleted) {
-    if (service_) {
-      service_->SetState(LocalService::LocalServiceState::kStateUp);
-    }
-  } else if (new_state == WPASupplicant::kInterfaceStateDisconnected ||
-             new_state == WPASupplicant::kInterfaceStateInactive) {
+  } else if (service_ && new_state == WPASupplicant::kInterfaceStateCompleted) {
+    service_->SetState(LocalService::LocalServiceState::kStateUp);
+  } else if (IsServiceUp() &&
+             (new_state == WPASupplicant::kInterfaceStateDisconnected ||
+              new_state == WPASupplicant::kInterfaceStateInactive)) {
     DeconfigureService();
   }
 
