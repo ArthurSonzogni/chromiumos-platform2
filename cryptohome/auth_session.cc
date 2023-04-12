@@ -2844,6 +2844,15 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
             .Wrap(std::move(user_secret_stash_status).err_status()));
     return;
   }
+
+  // By this point we know that the GSC works correctly and we were able to
+  // successfully decrypt the USS. So, for GSC with updatable firmware, we
+  // assume that it is stable (and the GSC can invalidate the old version).
+  if (hwsec::Status status = crypto_->GetHwsec()->DeclareTpmFirmwareStable();
+      !status.ok()) {
+    LOG(WARNING) << "Failed to declare TPM firmware stable: " << status;
+  }
+
   user_secret_stash_ = std::move(user_secret_stash_status).value();
   user_secret_stash_main_key_ = decrypted_main_key;
 
