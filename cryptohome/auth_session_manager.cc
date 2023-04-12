@@ -41,6 +41,7 @@ AuthSessionManager::AuthSessionManager(
     UserSessionMap* user_session_map,
     KeysetManagement* keyset_management,
     AuthBlockUtility* auth_block_utility,
+    AuthFactorDriverManager* auth_factor_driver_manager,
     AuthFactorManager* auth_factor_manager,
     UserSecretStashStorage* user_secret_stash_storage)
     : crypto_(crypto),
@@ -48,6 +49,7 @@ AuthSessionManager::AuthSessionManager(
       user_session_map_(user_session_map),
       keyset_management_(keyset_management),
       auth_block_utility_(auth_block_utility),
+      auth_factor_driver_manager_(auth_factor_driver_manager),
       auth_factor_manager_(auth_factor_manager),
       user_secret_stash_storage_(user_secret_stash_storage),
       features_(nullptr) {
@@ -57,6 +59,7 @@ AuthSessionManager::AuthSessionManager(
   DCHECK(user_session_map_);
   DCHECK(keyset_management_);
   DCHECK(auth_block_utility_);
+  DCHECK(auth_factor_driver_manager_);
   DCHECK(auth_factor_manager_);
   DCHECK(user_secret_stash_storage_);
 }
@@ -67,8 +70,8 @@ CryptohomeStatusOr<InUseAuthSession> AuthSessionManager::CreateAuthSession(
   std::unique_ptr<AuthSession> auth_session = AuthSession::Create(
       account_id, flags, auth_intent,
       {crypto_, platform_, user_session_map_, keyset_management_,
-       auth_block_utility_, auth_factor_manager_, user_secret_stash_storage_,
-       features_});
+       auth_block_utility_, auth_factor_driver_manager_, auth_factor_manager_,
+       user_secret_stash_storage_, features_});
   return AddAuthSession(std::move(auth_session));
 }
 

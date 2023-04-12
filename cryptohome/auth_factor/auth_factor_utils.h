@@ -62,13 +62,6 @@ bool LoadUserAuthFactorByLabel(AuthFactorManager* manager,
                                const std::string& factor_label,
                                user_data_auth::AuthFactor* out_auth_factor);
 
-// This returns if a given |auth_factor_type| is PinWeaver backed, and thus
-// needs a reset secret.
-bool NeedsResetSecret(AuthFactorType auth_factor_type);
-
-// This returns if a given |auth_factor_type| is PinWeaver rate-limiter backed.
-bool NeedsRateLimiter(AuthFactorType auth_factor_type);
-
 // Converts to AuthFactorPreparePurpose from the proto enum.
 std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
     user_data_auth::AuthFactorPreparePurpose purpose);
@@ -80,10 +73,6 @@ AuthFactorMap LoadAuthFactorMap(bool is_uss_migration_enabled,
                                 Platform& platform,
                                 AuthFactorVaultKeysetConverter& converter,
                                 AuthFactorManager& manager);
-
-// Given an AuthFactorType, return a enum indicating if the type supports
-// a list of auth factor labels at AuthenticateAuthFactor.
-AuthFactorLabelArity GetAuthFactorLabelArity(AuthFactorType auth_factor_type);
 
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_UTILS_H_

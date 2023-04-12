@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/userdataauth.h"
 
 #include <memory>
@@ -312,7 +313,8 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   void CreateAuthSessionManager(AuthBlockUtility* auth_block_utility) {
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
         &crypto_, &platform_, &user_session_map_, &keyset_management_,
-        auth_block_utility, &auth_factor_manager_, &user_secret_stash_storage_);
+        auth_block_utility, &auth_factor_driver_manager_, &auth_factor_manager_,
+        &user_secret_stash_storage_);
     userdataauth_.set_auth_session_manager(auth_session_manager_.get());
   }
 
@@ -332,6 +334,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   Crypto crypto_;
   NiceMock<MockUserSessionFactory> user_session_factory_;
+  AuthFactorDriverManager auth_factor_driver_manager_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   NiceMock<MockKeysetManagement> keyset_management_;

@@ -360,7 +360,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   if (!auth_session_manager_) {
     default_auth_session_manager_ = std::make_unique<AuthSessionManager>(
         crypto_, platform_, sessions_, keyset_management_, auth_block_utility_,
-        auth_factor_manager_, user_secret_stash_storage_);
+        &auth_factor_driver_manager_, auth_factor_manager_,
+        user_secret_stash_storage_);
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 

@@ -32,6 +32,7 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/credential_verifier.h"
@@ -102,6 +103,7 @@ class AuthSession final {
     UserSessionMap* user_session_map = nullptr;
     KeysetManagement* keyset_management = nullptr;
     AuthBlockUtility* auth_block_utility = nullptr;
+    AuthFactorDriverManager* auth_factor_driver_manager = nullptr;
     AuthFactorManager* auth_factor_manager = nullptr;
     UserSecretStashStorage* user_secret_stash_storage = nullptr;
     Features* features = nullptr;
@@ -643,25 +645,16 @@ class AuthSession final {
   std::unique_ptr<UserSecretStash> user_secret_stash_;
   // The UserSecretStash main key. Only populated iff |user_secret_stash_| is.
   std::optional<brillo::SecureBlob> user_secret_stash_main_key_;
-  // The creator of the AuthSession object is responsible for the life of
-  // Crypto object.
   Crypto* const crypto_;
-  // The creator of the AuthSession object is responsible for the life of
-  // Platform object.
   Platform* const platform_;
   // The user session map and a verifier forwarder associated with it.
-  // Unowned pointer.
   UserSessionMap* const user_session_map_;
   UserSessionMap::VerifierForwarder verifier_forwarder_;
-  // The creator of the AuthSession object is responsible for the life of
-  // KeysetManagement object.
   // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.
   KeysetManagement* const keyset_management_;
-  // Unowned pointer.
   AuthBlockUtility* const auth_block_utility_;
-  // Unowned pointer.
+  AuthFactorDriverManager* const auth_factor_driver_manager_;
   AuthFactorManager* const auth_factor_manager_;
-  // Unowned pointer.
   UserSecretStashStorage* const user_secret_stash_storage_;
   // A stateless object to convert AuthFactor API to VaultKeyset KeyData and
   // VaultKeysets to AuthFactor API.

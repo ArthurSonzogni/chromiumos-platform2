@@ -15,6 +15,7 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_error.h"
@@ -38,6 +39,7 @@ class AuthSessionManager {
       UserSessionMap* user_session_map,
       KeysetManagement* keyset_management,
       AuthBlockUtility* auth_block_utility,
+      AuthFactorDriverManager* auth_factor_driver_manager,
       AuthFactorManager* auth_factor_manager,
       UserSecretStashStorage* user_secret_stash_storage);
 
@@ -78,21 +80,14 @@ class AuthSessionManager {
  private:
   friend class InUseAuthSession;
 
-  // Unowned; must outlive `this`.
   Crypto* const crypto_;
-  // Unowned; must outlive `this`.
   Platform* const platform_;
-  // Unowned; must outlive `this`.
   UserSessionMap* const user_session_map_;
-  // Unowned; must outlive `this`.
   KeysetManagement* const keyset_management_;
-  // Unowned; must outlive `this`.
   AuthBlockUtility* const auth_block_utility_;
-  // Unowned; must outlive `this`.
+  AuthFactorDriverManager* const auth_factor_driver_manager_;
   AuthFactorManager* const auth_factor_manager_;
-  // Unowned; must outlive `this`.
   UserSecretStashStorage* const user_secret_stash_storage_;
-  // // Unowned; must outlive `this`.
   // This holds the object that checks for feature enabled.
   Features* features_;
 

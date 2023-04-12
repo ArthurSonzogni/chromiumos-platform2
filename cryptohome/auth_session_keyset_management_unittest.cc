@@ -31,6 +31,7 @@
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
+#include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
@@ -135,8 +136,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         &challenge_credentials_helper_, &key_challenge_service_factory_);
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
         &crypto_, &platform_, &user_session_map_, &keyset_management_,
-        &auth_block_utility_, &auth_factor_manager_,
-        &user_secret_stash_storage_);
+        &auth_block_utility_, &auth_factor_driver_manager_,
+        &auth_factor_manager_, &user_secret_stash_storage_);
     // Initializing UserData class.
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
@@ -467,6 +468,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       FingerprintAuthBlockService::MakeNullService(),
       BiometricsAuthBlockService::NullGetter()};
   NiceMock<MockAuthBlockUtility> mock_auth_block_utility_;
+  AuthFactorDriverManager auth_factor_driver_manager_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   AuthSession::BackingApis backing_apis_{&crypto_,
@@ -474,6 +476,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                          &user_session_map_,
                                          &keyset_management_,
                                          &auth_block_utility_,
+                                         &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
                                          &user_secret_stash_storage_};
 
@@ -1012,8 +1015,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
   // AuthSession.
   auto auth_session_manager_impl_ = std::make_unique<AuthSessionManager>(
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      &mock_auth_block_utility_, &auth_factor_manager_,
-      &user_secret_stash_storage_);
+      &mock_auth_block_utility_, &auth_factor_driver_manager_,
+      &auth_factor_manager_, &user_secret_stash_storage_);
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       auth_session_manager_impl_->CreateAuthSession(Username(kUsername), flags,
                                                     AuthIntent::kDecrypt);

@@ -33,6 +33,7 @@
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
+#include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/crypto.h"
@@ -325,6 +326,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
       &features_.async,
       FingerprintAuthBlockService::MakeNullService(),
       BiometricsAuthBlockService::NullGetter()};
+  AuthFactorDriverManager auth_factor_driver_manager_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
 
@@ -333,6 +335,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
                                          &user_session_map_,
                                          &keyset_management_,
                                          &auth_block_utility_,
+                                         &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
                                          &user_secret_stash_storage_,
                                          &features_.object};

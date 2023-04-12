@@ -39,6 +39,7 @@
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
+#include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_input_utils.h"
 #include "cryptohome/credential_verifier.h"
@@ -328,6 +329,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       verifier_forwarder_(username_, user_session_map_),
       keyset_management_(backing_apis.keyset_management),
       auth_block_utility_(backing_apis.auth_block_utility),
+      auth_factor_driver_manager_(backing_apis.auth_factor_driver_manager),
       auth_factor_manager_(backing_apis.auth_factor_manager),
       user_secret_stash_storage_(backing_apis.user_secret_stash_storage),
       converter_(keyset_management_),
@@ -872,8 +874,9 @@ void AuthSession::AuthenticateAuthFactor(
     return;
   }
 
-  AuthFactorLabelArity label_arity =
-      GetAuthFactorLabelArity(*request_auth_factor_type);
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(*request_auth_factor_type);
+  AuthFactorLabelArity label_arity = factor_driver.GetAuthFactorLabelArity();
   switch (label_arity) {
     case AuthFactorLabelArity::kNone: {
       if (auth_factor_labels.size() > 0) {
@@ -1931,7 +1934,9 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForMigration(
     const AuthInput& auth_input, AuthFactorType auth_factor_type) {
   AuthInput migration_auth_input = auth_input;
 
-  if (!NeedsResetSecret(auth_factor_type)) {
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor_type);
+  if (!factor_driver.NeedsResetSecret()) {
     // The factor is not resettable, so no extra data needed to be filled.
     return std::move(migration_auth_input);
   }
@@ -1984,9 +1989,12 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
     AuthInput auth_input,
     AuthFactorType auth_factor_type,
     const AuthFactorMetadata& auth_factor_metadata) {
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor_type);
+
   // Types which need rate-limiters are exclusive with those which need
   // per-label reset secrets.
-  if (NeedsRateLimiter(auth_factor_type) && user_secret_stash_) {
+  if (factor_driver.NeedsRateLimiter() && user_secret_stash_) {
     // Currently fingerprint is the only auth factor type using rate limiter, so
     // the interface isn't designed to be generic. We'll make it generic to any
     // auth factor types in the future.
@@ -2010,7 +2018,7 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
     return std::move(auth_input);
   }
 
-  if (NeedsResetSecret(auth_factor_type)) {
+  if (factor_driver.NeedsResetSecret()) {
     if (user_secret_stash_) {
       // When using USS, every resettable factor gets a unique reset secret.
       // When USS is not backed up by VaultKeysets this secret needs to be
@@ -2041,7 +2049,9 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForSelectFactor(
     AuthFactorType auth_factor_type) {
   AuthInput auth_input{};
 
-  if (NeedsRateLimiter(auth_factor_type)) {
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor_type);
+  if (factor_driver.NeedsRateLimiter()) {
     // Load the USS container with the encrypted payload.
     CryptohomeStatusOr<brillo::Blob> encrypted_uss =
         user_secret_stash_storage_->LoadPersisted(obfuscated_username_);
@@ -2453,7 +2463,10 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
 
   // Types which need rate-limiters are exclusive with those which need
   // per-label reset secrets.
-  if (NeedsRateLimiter(auth_factor.type()) &&
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor.type());
+
+  if (factor_driver.NeedsRateLimiter() &&
       key_blobs.rate_limiter_label.has_value()) {
     // A reset secret must come with the rate-limiter.
     if (!key_blobs.reset_secret.has_value()) {
@@ -2483,7 +2496,7 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     }
-  } else if (NeedsResetSecret(auth_factor.type()) &&
+  } else if (factor_driver.NeedsResetSecret() &&
              key_blobs.reset_secret.has_value() &&
              !user_secret_stash_->SetResetSecretForLabel(
                  auth_factor.label(), key_blobs.reset_secret.value())) {

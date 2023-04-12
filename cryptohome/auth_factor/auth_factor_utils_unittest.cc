@@ -501,53 +501,6 @@ TEST(AuthFactorUtilsTest, GetProtoRecoveryNullOpt) {
   ASSERT_FALSE(proto.has_value());
 }
 
-// Test `NeedsResetSecret()` to return correct value.
-TEST(AuthFactorUtilsTest, NeedsResetSecret) {
-  EXPECT_TRUE(NeedsResetSecret(AuthFactorType::kPin));
-  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kPassword));
-  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kKiosk));
-  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kCryptohomeRecovery));
-  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kSmartCard));
-  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kLegacyFingerprint));
-  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kFingerprint));
-  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kUnspecified));
-  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
-                "All types of AuthFactorType are not all included here");
-}
-
-// Test `NeedsRateLimiter()` to return correct value.
-TEST(AuthFactorUtilsTest, NeedsRateLimiter) {
-  EXPECT_TRUE(NeedsRateLimiter(AuthFactorType::kFingerprint));
-  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kPassword));
-  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kPin));
-  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kKiosk));
-  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kCryptohomeRecovery));
-  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kSmartCard));
-  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kLegacyFingerprint));
-  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kUnspecified));
-  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
-                "All types of AuthFactorType are not all included here");
-}
-
-TEST(AuthFactorUtilsTest, GetAuthFactorLabelArity) {
-  EXPECT_EQ(AuthFactorLabelArity::kSingle,
-            GetAuthFactorLabelArity(AuthFactorType::kPassword));
-  EXPECT_EQ(AuthFactorLabelArity::kSingle,
-            GetAuthFactorLabelArity(AuthFactorType::kPin));
-  EXPECT_EQ(AuthFactorLabelArity::kSingle,
-            GetAuthFactorLabelArity(AuthFactorType::kCryptohomeRecovery));
-  EXPECT_EQ(AuthFactorLabelArity::kSingle,
-            GetAuthFactorLabelArity(AuthFactorType::kKiosk));
-  EXPECT_EQ(AuthFactorLabelArity::kSingle,
-            GetAuthFactorLabelArity(AuthFactorType::kSmartCard));
-  EXPECT_EQ(AuthFactorLabelArity::kNone,
-            GetAuthFactorLabelArity(AuthFactorType::kLegacyFingerprint));
-  EXPECT_EQ(AuthFactorLabelArity::kNone,
-            GetAuthFactorLabelArity(AuthFactorType::kUnspecified));
-  EXPECT_EQ(AuthFactorLabelArity::kMultiple,
-            GetAuthFactorLabelArity(AuthFactorType::kFingerprint));
-}
-
 TEST(AuthSessionProtoUtils, AuthFactorPreparePurposeFromProto) {
   EXPECT_EQ(AuthFactorPreparePurposeFromProto(
                 user_data_auth::PURPOSE_ADD_AUTH_FACTOR),

@@ -56,6 +56,7 @@ class AuthSessionManagerTest : public ::testing::Test {
   UserSessionMap user_session_map_;
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
+  AuthFactorDriverManager auth_factor_driver_manager_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   AuthSession::BackingApis backing_apis_{&crypto_,
@@ -63,6 +64,7 @@ class AuthSessionManagerTest : public ::testing::Test {
                                          &user_session_map_,
                                          &keyset_management_,
                                          &auth_block_utility_,
+                                         &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
                                          &user_secret_stash_storage_};
 
@@ -71,6 +73,7 @@ class AuthSessionManagerTest : public ::testing::Test {
                                            &user_session_map_,
                                            &keyset_management_,
                                            &auth_block_utility_,
+                                           &auth_factor_driver_manager_,
                                            &auth_factor_manager_,
                                            &user_secret_stash_storage_};
 };

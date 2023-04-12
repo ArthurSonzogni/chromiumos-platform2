@@ -32,6 +32,7 @@
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
@@ -1096,6 +1097,9 @@ class UserDataAuth {
   // can be overridden for testing. This is to be accessed from the mount thread
   // only because there's no guarantee on thread safety of the HomeDirs object.
   AuthBlockUtility* auth_block_utility_;
+
+  // Manager of the auth factor drivers.
+  AuthFactorDriverManager auth_factor_driver_manager_;
 
   // Manager of auth factor files.
   std::unique_ptr<AuthFactorManager> default_auth_factor_manager_;
