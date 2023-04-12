@@ -10,6 +10,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":hermes",
+    ":install_minijail_conf",
     ":libhermes",
   ]
   if (use.test) {
@@ -48,6 +49,11 @@ pkg_config("target_defaults") {
   if (use.internal) {
     pkg_deps += [ "gemalto-firmware" ]
   }
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/hermes.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 generate_dbus_proxies("modemmanager_proxies") {
