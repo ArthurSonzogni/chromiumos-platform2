@@ -152,8 +152,11 @@ bool MountHelper::UmountVarAndHomeChronosEncrypted() {
   if (lstat(mount_enc.value().c_str(), &encrypted)) {
     return false;
   }
-  if (parent.st_dev != encrypted.st_dev) {
-    return false;
+
+  // If both directories are on the same device, the encrypted stateful
+  // partition is not mounted.
+  if (parent.st_dev == encrypted.st_dev) {
+    return true;
   }
 
   brillo::ProcessImpl umount;
