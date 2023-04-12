@@ -206,6 +206,12 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesAvailable) {
   tpm_information.set_vendor_specific("xCG fTPM");
   tpm_information.set_tpm_model(3);
   tpm_information.set_firmware_version(4);
+  EXPECT_CALL(*tpm_manager_proxy_, GetTpmStatus)
+      .WillOnce(
+          WithArg<1>(Invoke([](tpm_manager::GetTpmStatusReply* out_reply) {
+            out_reply->set_enabled(true);
+            return true;
+          })));
   EXPECT_CALL(*tpm_manager_proxy_, GetVersionInfo)
       .WillOnce(WithArg<1>(Invoke(
           [&tpm_information](tpm_manager::GetVersionInfoReply* out_reply) {
@@ -320,7 +326,7 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesFailedToRetrieve) {
   SetupObjectProxies(true);
 
   EXPECT_CALL(*attestation_proxy_, GetStatus).WillOnce(Return(false));
-  EXPECT_CALL(*tpm_manager_proxy_, GetVersionInfo).WillOnce(Return(false));
+  EXPECT_CALL(*tpm_manager_proxy_, GetTpmStatus).WillOnce(Return(false));
 
   auto agent_message = std::make_unique<pb::XdrAgentEvent>();
   EXPECT_CALL(*message_sender_,
@@ -423,6 +429,12 @@ TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileDoesNotExist) {
 
 TEST_F(AgentPluginTestFixture, TestNoTpm) {
   SetupObjectProxies(false);
+  EXPECT_CALL(*tpm_manager_proxy_, GetTpmStatus)
+      .WillOnce(
+          WithArg<1>(Invoke([](tpm_manager::GetTpmStatusReply* out_reply) {
+            out_reply->set_enabled(true);
+            return true;
+          })));
   EXPECT_CALL(*tpm_manager_proxy_, GetVersionInfo)
       .WillOnce(WithArg<1>(Invoke(
           [](tpm_manager::GetVersionInfoReply* out_reply) { return true; })));
@@ -433,6 +445,20 @@ TEST_F(AgentPluginTestFixture, TestNoTpm) {
             GetTcbAttributes().security_chip().kind());
 }
 
+TEST_F(AgentPluginTestFixture, TestTpmDisabled) {
+  SetupObjectProxies(false);
+  EXPECT_CALL(*tpm_manager_proxy_, GetTpmStatus)
+      .WillOnce(
+          WithArg<1>(Invoke([](tpm_manager::GetTpmStatusReply* out_reply) {
+            out_reply->set_enabled(false);
+            return true;
+          })));
+
+  CreateAgentPlugin(nullptr);
+  CallGetTpmInformation();
+  EXPECT_FALSE(GetTcbAttributes().has_security_chip());
+}
+
 TEST_P(AgentPluginTestFixture, TestBootAndTpmModes) {
   SetupObjectProxies(false);
   const BootmodeAndTpm param = GetParam();
@@ -441,6 +467,12 @@ TEST_P(AgentPluginTestFixture, TestBootAndTpmModes) {
       .WillOnce(
           WithArg<1>(Invoke([&param](attestation::GetStatusReply* out_reply) {
             out_reply->set_verified_boot(param.boot_mode);
+            return true;
+          })));
+  EXPECT_CALL(*tpm_manager_proxy_, GetTpmStatus)
+      .WillOnce(
+          WithArg<1>(Invoke([](tpm_manager::GetTpmStatusReply* out_reply) {
+            out_reply->set_enabled(true);
             return true;
           })));
   EXPECT_CALL(*tpm_manager_proxy_, GetVersionInfo)

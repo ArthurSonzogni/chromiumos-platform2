@@ -208,13 +208,30 @@ void AgentPlugin::GetTpmInformation(bool available) {
     return;
   }
 
-  // Get TPM information.
-  tpm_manager::GetVersionInfoRequest request;
-  tpm_manager::GetVersionInfoReply out_reply;
+  // Check if TPM is enabled.
+  tpm_manager::GetTpmStatusRequest status_request;
+  tpm_manager::GetTpmStatusReply status_reply;
   brillo::ErrorPtr error;
 
-  if (!tpm_manager_proxy_->GetVersionInfo(request, &out_reply, &error,
-                                          kWaitForServicesTimeoutMs) ||
+  if (!tpm_manager_proxy_->GetTpmStatus(status_request, &status_reply, &error,
+                                        kWaitForServicesTimeoutMs) ||
+      error.get()) {
+    LOG(ERROR) << "Failed to get TPM status "
+               << BrilloErrorToString(error.get());
+    tpm_metric_ = metrics::Tpm::kFailedRetrieval;
+    return;
+  }
+  if (status_reply.has_enabled() && !status_reply.enabled()) {
+    LOG(INFO) << "TPM is disabled on device";
+    return;
+  }
+
+  // Get TPM information.
+  tpm_manager::GetVersionInfoRequest version_request;
+  tpm_manager::GetVersionInfoReply version_reply;
+
+  if (!tpm_manager_proxy_->GetVersionInfo(version_request, &version_reply,
+                                          &error, kWaitForServicesTimeoutMs) ||
       error.get()) {
     LOG(ERROR) << "Failed to get TPM information "
                << BrilloErrorToString(error.get());
@@ -225,8 +242,8 @@ void AgentPlugin::GetTpmInformation(bool available) {
 
   base::AutoLock lock(tcb_attributes_lock_);
   auto security_chip = tcb_attributes_.mutable_security_chip();
-  if (out_reply.has_gsc_version()) {
-    switch (out_reply.gsc_version()) {
+  if (version_reply.has_gsc_version()) {
+    switch (version_reply.gsc_version()) {
       case tpm_manager::GSC_VERSION_NOT_GSC: {
         security_chip->set_kind(pb::TcbAttributes_SecurityChip::Kind::
                                     TcbAttributes_SecurityChip_Kind_TPM);
@@ -238,18 +255,20 @@ void AgentPlugin::GetTpmInformation(bool available) {
             pb::TcbAttributes_SecurityChip::Kind::
                 TcbAttributes_SecurityChip_Kind_GOOGLE_SECURITY_CHIP);
     }
-    auto family = TpmPropertyToStr(out_reply.family());
-    auto level = std::to_string((out_reply.spec_level() >> 32) & 0xffffffff);
+    auto family = TpmPropertyToStr(version_reply.family());
+    auto level =
+        std::to_string((version_reply.spec_level() >> 32) & 0xffffffff);
     security_chip->set_chip_version(base::StringPrintf(
         "%s.%s.%s", family.c_str(), level.c_str(),
-        std::to_string(out_reply.spec_level() & 0xffffffff).c_str()));
+        std::to_string(version_reply.spec_level() & 0xffffffff).c_str()));
     security_chip->set_spec_family(family);
     security_chip->set_spec_level(level);
-    security_chip->set_manufacturer(TpmPropertyToStr(out_reply.manufacturer()));
-    security_chip->set_vendor_id(out_reply.vendor_specific());
-    security_chip->set_tpm_model(std::to_string(out_reply.tpm_model()));
+    security_chip->set_manufacturer(
+        TpmPropertyToStr(version_reply.manufacturer()));
+    security_chip->set_vendor_id(version_reply.vendor_specific());
+    security_chip->set_tpm_model(std::to_string(version_reply.tpm_model()));
     security_chip->set_firmware_version(
-        std::to_string(out_reply.firmware_version()));
+        std::to_string(version_reply.firmware_version()));
   } else {
     security_chip->set_kind(pb::TcbAttributes_SecurityChip::Kind::
                                 TcbAttributes_SecurityChip_Kind_NONE);
