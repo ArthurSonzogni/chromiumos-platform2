@@ -11,6 +11,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":check_tpm_preinit_condition",
+    ":install_minijail_conf",
     ":install_tmpfiles_config",
     ":local_data_migration",
     ":tpm_managerd",
@@ -284,6 +285,11 @@ if (use.fuzzer) {
     configs = [ ":local_proto_include" ]
     sources = [ "${proto_in_dir}/tpm_manager_service_fuzzer_data.proto" ]
   }
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "server/minijail/tpm_managerd.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 install_config("install_tmpfiles_config") {
