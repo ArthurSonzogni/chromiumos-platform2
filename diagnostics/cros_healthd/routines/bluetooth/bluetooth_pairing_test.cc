@@ -135,6 +135,8 @@ class BluetoothPairingRoutineTest : public testing::Test {
     // Function call in device added callback.
     EXPECT_CALL(mock_target_device_, address())
         .WillOnce(ReturnRef(target_address_));
+    EXPECT_CALL(mock_target_device_, address_type())
+        .WillOnce(ReturnRef(target_address_type_));
     // Bluetooth class of device (CoD).
     if (target_bluetooth_class_.has_value()) {
       EXPECT_CALL(mock_target_device_, is_bluetooth_class_valid())
@@ -210,6 +212,9 @@ class BluetoothPairingRoutineTest : public testing::Test {
       const brillo::Error* connect_error = nullptr,
       const brillo::Error* pair_error = nullptr) {
     base::Value::Dict output_dict;
+    output_dict.Set("address_type", target_address_type_);
+    output_dict.Set("is_address_valid", true);
+
     if (target_bluetooth_class_.has_value()) {
       output_dict.Set("bluetooth_class",
                       base::NumberToString(target_bluetooth_class_.value()));
@@ -254,6 +259,7 @@ class BluetoothPairingRoutineTest : public testing::Test {
 
  private:
   MockContext mock_context_;
+  const std::string target_address_type_ = "random";
   const std::optional<uint32_t> target_bluetooth_class_ = 2360344;
   const std::vector<std::string> target_uuids_ = {
       "0000110b-0000-1000-8000-00805f9b34fb",
@@ -310,7 +316,7 @@ TEST_F(BluetoothPairingRoutineTest, RoutineSuccessOnlyConnect) {
   // Ensure adapter is powered on.
   SetEnsurePoweredOnCall(/*current_powered=*/false);
 
-  // Check existed devices when the target peripheral is cached.
+  // Check existing devices when the target peripheral is cached.
   EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{}));
 

@@ -19,6 +19,7 @@
 #include <base/task/single_thread_task_runner.h>
 
 #include "diagnostics/base/mojo_utils.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/address_utils.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
 #include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
@@ -264,9 +265,15 @@ void BluetoothPairingRoutine::RemoveCachedDeviceIfNeeded() {
 
 void BluetoothPairingRoutine::OnDeviceAdded(
     org::bluez::Device1ProxyInterface* device) {
+  const auto& address = device->address();
   if (!device || target_device_ || step_ != TestStep::kScanTargetDevice ||
-      peripheral_id_ != base::NumberToString(base::FastHash(device->address())))
+      peripheral_id_ != base::NumberToString(base::FastHash(address)))
     return;
+
+  const auto& address_type = device->address_type();
+  output_dict_.Set("address_type", address_type);
+  output_dict_.Set("is_address_valid",
+                   ValidatePeripheralAddress(address, address_type));
 
   if (device->is_bluetooth_class_valid()) {
     output_dict_.Set("bluetooth_class",
