@@ -184,6 +184,11 @@ impl VolumeManager {
 
     /// Set up the hibermeta logical volume.
     pub fn setup_hibermeta_lv(&mut self, create: bool) -> Result<()> {
+        if get_device_mounted_at_dir(HIBERMETA_DIR).is_ok() {
+            debug!("{HIBERMETA_DIR} is already mounted");
+            return Ok(());
+        }
+
         if lv_exists(&self.vg_name, HIBERMETA_VOLUME_NAME)? {
             info!("Activating hibermeta");
             activate_lv(&self.vg_name, HIBERMETA_VOLUME_NAME)?;
