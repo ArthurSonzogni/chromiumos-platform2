@@ -196,7 +196,7 @@ TEST_F(UdevCollectorTest, TestCollectedDevCoredump) {
   EXPECT_THAT(meta_contents, testing::HasSubstr(expected_sig));
 }
 
-TEST_F(UdevCollectorTest, DISABLED_RunAsRoot_TestValidBluetoothDevCoredump) {
+TEST_F(UdevCollectorTest, RunAsRoot_TestValidBluetoothDevCoredump) {
   std::string device_name = "devcd0";
   GenerateDevCoredump(device_name, kNoCollectDriverName);
 

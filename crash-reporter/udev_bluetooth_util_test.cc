@@ -217,7 +217,7 @@ TEST_F(UdevBluetoothUtilTest, TestValidParsedData) {
 
 // Verify ProcessBluetoothCoredump() invokes bluetooth_devcd_parser binary
 // and input devcoredump is parsed successfully.
-TEST_F(UdevBluetoothUtilTest, DISABLED_RunAsRoot_TestProcessDump) {
+TEST_F(UdevBluetoothUtilTest, RunAsRoot_TestProcessDump) {
   std::vector<std::string> data = {
       "Bluetooth devcoredump",
       "State: 2",
