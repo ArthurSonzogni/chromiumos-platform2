@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -85,8 +86,10 @@ class SensorExistenceCheckerTest : public testing::Test {
     return ids_types;
   }
 
-  bool VerifySensorInfoSync(std::vector<SensorType> present_sensors) {
-    base::test::TestFuture<bool> future;
+  std::map<SensorType, SensorExistenceChecker::Result> VerifySensorInfoSync(
+      std::vector<SensorType> present_sensors) {
+    base::test::TestFuture<std::map<SensorType, SensorExistenceChecker::Result>>
+        future;
     const auto& ids_types = SetupSensorDevice(present_sensors);
     sensor_checker_.VerifySensorInfo(ids_types, future.GetCallback());
     return future.Get();
@@ -108,76 +111,90 @@ TEST_F(SensorExistenceCheckerTest, PassWithAllSensorsPresent) {
     fake_system_config()->SetSensor(sensor, true);
   }
 
-  EXPECT_TRUE(VerifySensorInfoSync(present_sensors));
+  auto sensor_check_result = VerifySensorInfoSync(present_sensors);
+  for (const auto& sensor : present_sensors) {
+    EXPECT_EQ(sensor_check_result[sensor].state,
+              SensorExistenceChecker::Result::kPassed);
+    EXPECT_EQ(sensor_check_result[sensor].sensor_ids,
+              std::vector<int32_t>{static_cast<int32_t>(sensor)});
+  }
 }
 
-TEST_F(SensorExistenceCheckerTest, PassWithNoSensor) {
+TEST_F(SensorExistenceCheckerTest, NoSensor) {
+  const auto& sensors = {kBaseAccelerometer, kLidAccelerometer,
+                         kBaseGyroscope,     kLidGyroscope,
+                         kBaseMagnetometer,  kLidMagnetometer};
   // Setup fake configurations.
-  for (const auto& sensor :
-       {kBaseAccelerometer, kLidAccelerometer, kBaseGyroscope, kLidGyroscope,
-        kBaseMagnetometer, kLidMagnetometer}) {
+  for (const auto& sensor : sensors) {
     fake_system_config()->SetSensor(sensor, false);
   }
 
-  EXPECT_TRUE(VerifySensorInfoSync(/*present_sensors=*/{}));
+  auto sensor_check_result = VerifySensorInfoSync(/*present_sensors=*/{});
+  for (const auto& sensor : sensors) {
+    EXPECT_EQ(sensor_check_result[sensor].state,
+              SensorExistenceChecker::Result::kPassed);
+    EXPECT_EQ(sensor_check_result[sensor].sensor_ids, std::vector<int32_t>{});
+  }
 }
 
-TEST_F(SensorExistenceCheckerTest, PassWithNullConfig) {
+TEST_F(SensorExistenceCheckerTest, NullConfig) {
+  const auto& sensors = {kBaseAccelerometer, kLidAccelerometer,
+                         kBaseGyroscope,     kLidGyroscope,
+                         kBaseMagnetometer,  kLidMagnetometer};
   const auto& present_sensors = {kBaseAccelerometer, kBaseGyroscope,
                                  kLidGyroscope, kLidMagnetometer};
   // Setup fake configurations.
-  for (const auto& sensor :
-       {kBaseAccelerometer, kLidAccelerometer, kBaseGyroscope, kLidGyroscope,
-        kBaseMagnetometer, kLidMagnetometer}) {
+  for (const auto& sensor : sensors) {
     fake_system_config()->SetSensor(sensor, std::nullopt);
   }
 
-  EXPECT_TRUE(VerifySensorInfoSync(present_sensors));
+  auto sensor_check_result = VerifySensorInfoSync(present_sensors);
+  for (const auto& sensor : sensors) {
+    EXPECT_EQ(sensor_check_result[sensor].state,
+              SensorExistenceChecker::Result::kSkipped);
+    if (std::find(present_sensors.begin(), present_sensors.end(), sensor) !=
+        present_sensors.end()) {
+      EXPECT_EQ(sensor_check_result[sensor].sensor_ids,
+                std::vector<int32_t>{static_cast<int32_t>(sensor)});
+    } else {
+      EXPECT_EQ(sensor_check_result[sensor].sensor_ids, std::vector<int32_t>{});
+    }
+  }
 }
 
-TEST_F(SensorExistenceCheckerTest, FailWithUnexpectedBaseAccelerometer) {
-  const auto& present_sensors = {kBaseAccelerometer};
+TEST_F(SensorExistenceCheckerTest, MissingSensors) {
+  const auto& missing_sensors = {kBaseAccelerometer, kLidAccelerometer,
+                                 kBaseGyroscope,     kLidGyroscope,
+                                 kBaseMagnetometer,  kLidMagnetometer};
   // Setup fake configurations.
-  fake_system_config()->SetSensor(kBaseAccelerometer, false);
+  for (const auto& sensor : missing_sensors) {
+    fake_system_config()->SetSensor(sensor, true);
+  }
 
-  EXPECT_FALSE(VerifySensorInfoSync(present_sensors));
+  auto sensor_check_result = VerifySensorInfoSync(/*present_sensors=*/{});
+  for (const auto& sensor : missing_sensors) {
+    EXPECT_EQ(sensor_check_result[sensor].state,
+              SensorExistenceChecker::Result::kMissing);
+    EXPECT_EQ(sensor_check_result[sensor].sensor_ids, std::vector<int32_t>{});
+  }
 }
 
-TEST_F(SensorExistenceCheckerTest, FailWithUnexpectedBaseGyroscope) {
-  const auto& present_sensors = {kBaseGyroscope};
+TEST_F(SensorExistenceCheckerTest, UnexpectedSensors) {
+  const auto& unexpected_sensors = {kBaseAccelerometer, kLidAccelerometer,
+                                    kBaseGyroscope,     kLidGyroscope,
+                                    kBaseMagnetometer,  kLidMagnetometer};
   // Setup fake configurations.
-  fake_system_config()->SetSensor(kBaseGyroscope, false);
-
-  EXPECT_FALSE(VerifySensorInfoSync(present_sensors));
-}
-
-TEST_F(SensorExistenceCheckerTest, FailWithUnexpectedBaseMagnetometer) {
-  const auto& present_sensors = {kBaseMagnetometer};
-  // Setup fake configurations.
-  fake_system_config()->SetSensor(kBaseMagnetometer, false);
-
-  EXPECT_FALSE(VerifySensorInfoSync(present_sensors));
-}
-
-TEST_F(SensorExistenceCheckerTest, FailWithMissingLidAccelerometer) {
-  // Setup fake configurations.
-  fake_system_config()->SetSensor(kLidAccelerometer, true);
-
-  EXPECT_FALSE(VerifySensorInfoSync(/*present_sensors=*/{}));
-}
-
-TEST_F(SensorExistenceCheckerTest, FailWithMissingLidGyroscope) {
-  // Setup fake configurations.
-  fake_system_config()->SetSensor(kLidGyroscope, true);
-
-  EXPECT_FALSE(VerifySensorInfoSync(/*present_sensors=*/{}));
-}
-
-TEST_F(SensorExistenceCheckerTest, FailWithMissingLidMagnetometer) {
-  // Setup fake configurations.
-  fake_system_config()->SetSensor(kLidMagnetometer, true);
-
-  EXPECT_FALSE(VerifySensorInfoSync(/*present_sensors=*/{}));
+  for (const auto& sensor : unexpected_sensors) {
+    fake_system_config()->SetSensor(sensor, false);
+  }
+  auto sensor_check_result =
+      VerifySensorInfoSync(/*present_sensors=*/unexpected_sensors);
+  for (const auto& sensor : unexpected_sensors) {
+    EXPECT_EQ(sensor_check_result[sensor].state,
+              SensorExistenceChecker::Result::kUnexpected);
+    EXPECT_EQ(sensor_check_result[sensor].sensor_ids,
+              std::vector<int32_t>{static_cast<int32_t>(sensor)});
+  }
 }
 
 }  // namespace

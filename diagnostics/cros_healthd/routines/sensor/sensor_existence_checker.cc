@@ -30,26 +30,18 @@ bool IsTargetType(const std::vector<cros::mojom::DeviceType>& types) {
 }
 
 // Check if the |has_sensor| value in static config is consistent with the
-// actual |is_present|. Return true if config is missing.
-bool IsConfigConsistent(std::optional<bool> has_sensor, bool is_present) {
-  return !has_sensor.has_value() || (has_sensor.value() == is_present);
-}
-
-// Convert the enum to readable string.
-std::string Convert(diagnostics::SensorType sensor) {
-  switch (sensor) {
-    case diagnostics::SensorType::kBaseAccelerometer:
-      return "base accelerometer";
-    case diagnostics::SensorType::kBaseGyroscope:
-      return "base gyroscope";
-    case diagnostics::SensorType::kBaseMagnetometer:
-      return "base magnetometer";
-    case diagnostics::SensorType::kLidAccelerometer:
-      return "lid accelerometer";
-    case diagnostics::SensorType::kLidGyroscope:
-      return "lid gyroscope";
-    case diagnostics::SensorType::kLidMagnetometer:
-      return "lid magnetometer";
+// actual |is_present| and retrun the result.
+diagnostics::SensorExistenceChecker::Result::State GetExistenceCheckState(
+    std::optional<bool> has_sensor, bool is_present) {
+  if (!has_sensor.has_value()) {
+    return diagnostics::SensorExistenceChecker::Result::kSkipped;
+  } else if (has_sensor.value() != is_present) {
+    if (!is_present)
+      return diagnostics::SensorExistenceChecker::Result::kMissing;
+    else
+      return diagnostics::SensorExistenceChecker::Result::kUnexpected;
+  } else {
+    return diagnostics::SensorExistenceChecker::Result::kPassed;
   }
 }
 
@@ -69,7 +61,7 @@ SensorExistenceChecker::~SensorExistenceChecker() = default;
 void SensorExistenceChecker::VerifySensorInfo(
     const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
         ids_types,
-    base::OnceCallback<void(bool)> on_finish) {
+    base::OnceCallback<void(std::map<SensorType, Result>)> on_finish) {
   CallbackBarrier barrier{
       base::BindOnce(&SensorExistenceChecker::CheckSystemConfig,
                      weak_ptr_factory_.GetWeakPtr(), std::move(on_finish))};
@@ -82,11 +74,12 @@ void SensorExistenceChecker::VerifySensorInfo(
         {cros::mojom::kLocation},
         barrier.Depend(base::BindOnce(
             &SensorExistenceChecker::HandleSensorLocationResponse,
-            weak_ptr_factory_.GetWeakPtr(), sensor_types)));
+            weak_ptr_factory_.GetWeakPtr(), sensor_id, sensor_types)));
   }
 }
 
 void SensorExistenceChecker::HandleSensorLocationResponse(
+    int32_t sensor_id,
     const std::vector<cros::mojom::DeviceType>& sensor_types,
     const std::vector<std::optional<std::string>>& attributes) {
   if (attributes.size() != 1 || !attributes[0].has_value()) {
@@ -98,43 +91,44 @@ void SensorExistenceChecker::HandleSensorLocationResponse(
   for (const auto& type : sensor_types) {
     if (type == cros::mojom::DeviceType::ACCEL) {
       if (location == cros::mojom::kLocationBase)
-        iio_sensors_.insert(kBaseAccelerometer);
+        iio_sensor_ids_[kBaseAccelerometer].push_back(sensor_id);
       else if (location == cros::mojom::kLocationLid)
-        iio_sensors_.insert(kLidAccelerometer);
+        iio_sensor_ids_[kLidAccelerometer].push_back(sensor_id);
     } else if (type == cros::mojom::DeviceType::ANGLVEL) {
       if (location == cros::mojom::kLocationBase)
-        iio_sensors_.insert(kBaseGyroscope);
+        iio_sensor_ids_[kBaseGyroscope].push_back(sensor_id);
       else if (location == cros::mojom::kLocationLid)
-        iio_sensors_.insert(kLidGyroscope);
+        iio_sensor_ids_[kLidGyroscope].push_back(sensor_id);
     } else if (type == cros::mojom::DeviceType::MAGN) {
       if (location == cros::mojom::kLocationBase)
-        iio_sensors_.insert(kBaseMagnetometer);
+        iio_sensor_ids_[kBaseMagnetometer].push_back(sensor_id);
       else if (location == cros::mojom::kLocationLid)
-        iio_sensors_.insert(kLidMagnetometer);
+        iio_sensor_ids_[kLidMagnetometer].push_back(sensor_id);
     }
   }
 }
 
 void SensorExistenceChecker::CheckSystemConfig(
-    base::OnceCallback<void(bool)> on_finish, bool all_callbacks_called) {
+    base::OnceCallback<void(std::map<SensorType, Result>)> on_finish,
+    bool all_callbacks_called) {
   if (!all_callbacks_called) {
     LOG(ERROR) << "Some callbacks are not called successfully";
-    std::move(on_finish).Run(false);
+    std::move(on_finish).Run({});
     return;
   }
 
+  std::map<SensorType, Result> existence_check_result;
   for (const auto& sensor :
        {kBaseAccelerometer, kLidAccelerometer, kBaseGyroscope, kLidGyroscope,
         kBaseMagnetometer, kLidMagnetometer}) {
-    if (!IsConfigConsistent(system_config_->HasSensor(sensor),
-                            iio_sensors_.count(sensor))) {
-      LOG(ERROR) << "Failed to verify " << Convert(sensor);
-      std::move(on_finish).Run(false);
-      return;
-    }
+    existence_check_result[sensor] = {
+        .state = GetExistenceCheckState(
+            /*has_sensor=*/system_config_->HasSensor(sensor),
+            /*is_present=*/!iio_sensor_ids_[sensor].empty()),
+        .sensor_ids = iio_sensor_ids_[sensor]};
   }
 
-  std::move(on_finish).Run(true);
+  std::move(on_finish).Run(std::move(existence_check_result));
 }
 
 }  // namespace diagnostics

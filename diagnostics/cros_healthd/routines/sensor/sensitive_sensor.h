@@ -72,7 +72,8 @@ class SensitiveSensorRoutine final
   void HandleVerificationResponse(
       const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
           ids_types,
-      bool is_verfied);
+      std::map<SensorType, SensorExistenceChecker::Result>
+          existence_check_result);
 
   // Initialize sensor device to read samples.
   void InitSensorDevice(int32_t sensor_id);
@@ -110,6 +111,8 @@ class SensitiveSensorRoutine final
   // Used to check if any sensor is missing by iioservice by checking static
   // configuration.
   SensorExistenceChecker sensor_checker_;
+  // Details of the result from |sensor_checker_|.
+  std::map<SensorType, SensorExistenceChecker::Result> existence_check_result_;
   // Details of the passed sensors and failed sensors, stored in |output| of
   // |response| and reported in status updates if requested. Also used to
   // calculate the progress percentage.

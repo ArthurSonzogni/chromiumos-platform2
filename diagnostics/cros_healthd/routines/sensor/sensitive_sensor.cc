@@ -233,10 +233,12 @@ void SensitiveSensorRoutine::HandleGetAllDeviceIdsResponse(
 void SensitiveSensorRoutine::HandleVerificationResponse(
     const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
         ids_types,
-    bool is_verfied) {
-  if (!is_verfied) {
+    std::map<SensorType, SensorExistenceChecker::Result>
+        existence_check_result) {
+  existence_check_result_ = std::move(existence_check_result);
+  if (existence_check_result_.empty()) {
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
-                     kSensitiveSensorRoutineFailedCheckConfigMessage);
+                     kSensitiveSensorRoutineFailedUnexpectedlyMessage);
     return;
   }
 
@@ -376,6 +378,14 @@ void SensitiveSensorRoutine::OnTimeoutOccurred() {
 }
 
 void SensitiveSensorRoutine::OnRoutineFinished() {
+  for (const auto& [_, result] : existence_check_result_) {
+    if (result.state == SensorExistenceChecker::Result::kMissing ||
+        result.state == SensorExistenceChecker::Result::kUnexpected) {
+      SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
+                       kSensitiveSensorRoutineFailedCheckConfigMessage);
+      return;
+    }
+  }
   if (failed_sensors_.empty()) {
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kPassed,
                      kSensitiveSensorRoutinePassedMessage);
