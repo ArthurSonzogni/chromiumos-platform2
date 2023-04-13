@@ -35,6 +35,25 @@ namespace hwsec_foundation {
 
 namespace {
 
+class ConstBytePtr {
+ public:
+  explicit constexpr ConstBytePtr(const uint8_t* v) : value_(v) {}
+  ConstBytePtr() = delete;
+
+  // Allow implicit conversion to const unsigned char* and const char* and const
+  // void*.
+  constexpr operator const unsigned char*() const { return value_; }
+  constexpr operator const char*() const {
+    return static_cast<const char*>(static_cast<const void*>(value_));
+  }
+  constexpr operator void*() const {
+    return const_cast<void*>(static_cast<const void*>(value_));
+  }
+
+ private:
+  const uint8_t* value_;
+};
+
 // Global override-able for testing.
 ScryptParameters gScryptParams = kDefaultScryptParams;
 
@@ -82,7 +101,11 @@ bool Scrypt(const brillo::SecureBlob& input,
   crypto::ScopedEVP_PKEY_CTX pctx(EVP_PKEY_CTX_new_id(EVP_PKEY_SCRYPT, NULL));
   if (EVP_PKEY_derive_init(pctx.get()) <= 0)
     return false;
-  if (EVP_PKEY_CTX_set1_pbe_pass(pctx.get(), input.data(), input.size()) <= 0)
+
+  // OpenSSL 3.0 changed the input arg to const char*, other versions use const
+  // unsigned char* or void*, so use ConstBytePtr to satisfy both.
+  if (EVP_PKEY_CTX_set1_pbe_pass(pctx.get(), ConstBytePtr(input.data()),
+                                 input.size()) <= 0)
     return false;
   if (EVP_PKEY_CTX_set1_scrypt_salt(pctx.get(), salt.data(), salt.size()) <= 0)
     return false;
