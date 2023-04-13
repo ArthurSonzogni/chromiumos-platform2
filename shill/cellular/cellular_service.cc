@@ -215,9 +215,9 @@ CellularService::CellularService(Manager* manager,
   store->RegisterConstString(kActivationStateProperty, &activation_state_);
   HelpRegisterDerivedStringmap(kCellularApnProperty, &CellularService::GetApn,
                                &CellularService::SetApn);
-  HelpRegisterDerivedStringmaps(kCellularCustomApnListProperty,
-                                &CellularService::GetCustomApnList,
-                                &CellularService::SetCustomApnList);
+  HelpRegisterDerivedStringmaps(
+      kCellularCustomApnListProperty, &CellularService::GetCustomApnList,
+      &CellularService::SetCustomApnList, &CellularService::ClearCustomApnList);
   store->RegisterConstString(kIccidProperty, &iccid_);
   store->RegisterConstString(kImsiProperty, &imsi_);
   store->RegisterConstString(kEidProperty, &eid_);
@@ -413,6 +413,9 @@ bool CellularService::Save(StoreInterface* storage) {
 
   if (custom_apn_list_.has_value())
     storage->SetStringmaps(id, kStorageCustomApnList, custom_apn_list_.value());
+  else
+    storage->DeleteKey(id, kStorageCustomApnList);
+
   SaveStringOrClear(storage, id, kStoragePPPUsername, ppp_username_);
   SaveStringOrClear(storage, id, kStoragePPPPassword, ppp_password_);
 
@@ -778,10 +781,11 @@ void CellularService::HelpRegisterDerivedStringmap(
 void CellularService::HelpRegisterDerivedStringmaps(
     const std::string& name,
     Stringmaps (CellularService::*get)(Error* error),
-    bool (CellularService::*set)(const Stringmaps& value, Error* error)) {
+    bool (CellularService::*set)(const Stringmaps& value, Error* error),
+    void (CellularService::*clear)(Error*)) {
   mutable_store()->RegisterDerivedStringmaps(
       name, StringmapsAccessor(new CustomAccessor<CellularService, Stringmaps>(
-                this, get, set)));
+                this, get, set, clear)));
 }
 
 void CellularService::HelpRegisterDerivedBool(
@@ -965,6 +969,24 @@ bool CellularService::SetCustomApnList(const Stringmaps& value, Error* error) {
   }
   Connect(error, __func__);
   return error->IsSuccess();
+}
+
+void CellularService::ClearCustomApnList(Error* error) {
+  SLOG(this, 2) << __func__;
+  custom_apn_list_.reset();
+  adaptor()->EmitStringmapsChanged(kCellularCustomApnListProperty,
+                                   Stringmaps());
+
+  if (!cellular_) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed,
+        base::StringPrintf(
+            "Failed clearing user APN list: %s Service %s has no device.",
+            kTypeCellular, log_name().c_str()));
+    return;
+  }
+
+  cellular_->ReAttach();
 }
 
 KeyValueStore CellularService::GetStorageProperties() const {

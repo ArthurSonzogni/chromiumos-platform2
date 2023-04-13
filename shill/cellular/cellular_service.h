@@ -202,7 +202,8 @@ class CellularService : public Service {
   void HelpRegisterDerivedStringmaps(
       const std::string& name,
       Stringmaps (CellularService::*get)(Error* error),
-      bool (CellularService::*set)(const Stringmaps& value, Error* error));
+      bool (CellularService::*set)(const Stringmaps& value, Error* error),
+      void (CellularService::*clear)(Error*));
   void HelpRegisterDerivedBool(const std::string& name,
                                bool (CellularService::*get)(Error* error),
                                bool (CellularService::*set)(const bool&,
@@ -224,6 +225,9 @@ class CellularService : public Service {
   Stringmap ValidateCustomApn(const Stringmap& value, bool using_apn_revamp_ui);
   Stringmaps GetCustomApnList(Error* error);
   bool SetCustomApnList(const Stringmaps& value, Error* error);
+  // This function is used to completely remove the property. The existence of
+  // the property indicates if the new APN UI revamp is used or not.
+  void ClearCustomApnList(Error*);
 
   // The IMSI for the SIM. This is saved in the Profile and emitted as a
   // property so that it is available for non primary SIM Profiles.
