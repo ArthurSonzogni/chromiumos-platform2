@@ -79,7 +79,7 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   KeyBlobs vkk_data;
 
   FakeFeaturesForTesting features;
-  features.object.SetDefaultForFeature(Features::kMigratePin, true);
+  features.object.SetDefaultForFeature(Features::kModernPin, true);
   PinWeaverAuthBlock auth_block(features.async, &le_cred_manager);
   AuthBlockState auth_state;
   EXPECT_TRUE(auth_block.Create(user_input, &auth_state, &vkk_data).ok());

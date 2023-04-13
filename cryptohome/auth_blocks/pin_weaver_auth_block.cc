@@ -81,7 +81,7 @@ constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
 // Select the delay schedule to use.
 const LECredentialManager::DelaySchedule& SelectDelaySchedule(
     AsyncInitFeatures& features) {
-  if (features.IsFeatureEnabled(Features::kMigratePin)) {
+  if (features.IsFeatureEnabled(Features::kModernPin)) {
     return PinDelaySchedule();
   }
   return LockoutDelaySchedule();
