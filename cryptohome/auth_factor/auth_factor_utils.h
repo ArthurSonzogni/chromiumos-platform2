@@ -22,6 +22,7 @@
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/features.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -45,6 +46,7 @@ void PopulateAuthFactorProtoWithSysinfo(
 // GetAuthFactorMetadata sets the metadata inferred from the proto. This
 // includes the metadata struct, type and label.
 bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
+                           const AsyncInitFeatures& feature_lib,
                            AuthFactorMetadata& out_auth_factor_metadata,
                            AuthFactorType& out_auth_factor_type,
                            std::string& out_auth_factor_label);

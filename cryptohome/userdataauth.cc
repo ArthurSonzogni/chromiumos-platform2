@@ -561,7 +561,7 @@ void UserDataAuth::InitializeFeatureLibrary() {
       return;
     }
   }
-  auth_session_manager_->set_features(features_);
+  auth_session_manager_->set_features(&async_init_features_);
 }
 
 Features* UserDataAuth::GetFeatures() {

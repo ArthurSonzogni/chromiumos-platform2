@@ -109,7 +109,7 @@ class AuthSession final {
     AuthFactorDriverManager* auth_factor_driver_manager = nullptr;
     AuthFactorManager* auth_factor_manager = nullptr;
     UserSecretStashStorage* user_secret_stash_storage = nullptr;
-    Features* features = nullptr;
+    AsyncInitFeatures* features = nullptr;
   };
 
   // Creates new auth session for account_id. This method returns a unique_ptr
@@ -659,6 +659,8 @@ class AuthSession final {
   AuthFactorDriverManager* const auth_factor_driver_manager_;
   AuthFactorManager* const auth_factor_manager_;
   UserSecretStashStorage* const user_secret_stash_storage_;
+  // Unowned pointer.
+  AsyncInitFeatures* const features_;
   // A stateless object to convert AuthFactor API to VaultKeyset KeyData and
   // VaultKeysets to AuthFactor API.
   AuthFactorVaultKeysetConverter converter_;

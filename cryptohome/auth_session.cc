@@ -341,6 +341,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       auth_factor_driver_manager_(backing_apis.auth_factor_driver_manager),
       auth_factor_manager_(backing_apis.auth_factor_manager),
       user_secret_stash_storage_(backing_apis.user_secret_stash_storage),
+      features_(backing_apis.features),
       converter_(keyset_management_),
       token_(platform_->CreateUnguessableToken()),
       serialized_token_(GetSerializedStringFromToken(token_).value_or("")),
@@ -360,6 +361,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
   DCHECK(auth_block_utility_);
   DCHECK(auth_factor_manager_);
   DCHECK(user_secret_stash_storage_);
+  DCHECK(features_);
   auth_factor_map_.ReportAuthFactorBackingStoreMetrics();
   RecordAuthSessionStart();
 }
@@ -1390,8 +1392,9 @@ void AuthSession::UpdateAuthFactor(
   AuthFactorMetadata auth_factor_metadata;
   AuthFactorType auth_factor_type;
   std::string auth_factor_label;
-  if (!GetAuthFactorMetadata(request.auth_factor(), auth_factor_metadata,
-                             auth_factor_type, auth_factor_label)) {
+  if (!GetAuthFactorMetadata(request.auth_factor(), *features_,
+                             auth_factor_metadata, auth_factor_type,
+                             auth_factor_label)) {
     LOG(ERROR)
         << "AuthSession: Failed to parse updated auth factor parameters.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -2572,8 +2575,9 @@ void AuthSession::AddAuthFactor(
   AuthFactorMetadata auth_factor_metadata;
   AuthFactorType auth_factor_type;
   std::string auth_factor_label;
-  if (!GetAuthFactorMetadata(request.auth_factor(), auth_factor_metadata,
-                             auth_factor_type, auth_factor_label)) {
+  if (!GetAuthFactorMetadata(request.auth_factor(), *features_,
+                             auth_factor_metadata, auth_factor_type,
+                             auth_factor_label)) {
     LOG(ERROR) << "Failed to parse new auth factor parameters";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUnknownFactorInAddAuthFactor),

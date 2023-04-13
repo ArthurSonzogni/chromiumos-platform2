@@ -342,6 +342,7 @@ class AuthSessionTest : public ::testing::Test {
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
   AuthFactorDriverManager auth_factor_driver_manager_;
   AuthFactorManager auth_factor_manager_{&platform_};
+  FakeFeaturesForTesting fake_features_;
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
@@ -350,7 +351,8 @@ class AuthSessionTest : public ::testing::Test {
                                          &auth_block_utility_,
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
-                                         &user_secret_stash_storage_};
+                                         &user_secret_stash_storage_,
+                                         &fake_features_.async};
 
   // Mocks needed for challenge credential tests.
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;

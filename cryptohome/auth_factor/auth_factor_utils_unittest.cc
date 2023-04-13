@@ -24,6 +24,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_factor_generated.h"
+#include "cryptohome/fake_features.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/user_secret_stash.h"
@@ -179,7 +180,7 @@ TEST(AuthFactorUtilsTest, AuthFactorTypeConversionIsInvertable) {
 
 TEST(AuthFactorUtilsTest, AuthFactorTypeConversionFromProtoCoversAllValues) {
   // With proto enums we can't use a "complete" switch to cover every value so
-  // we enfore that every value is given an explicit mapping (even if just to
+  // we enforce that every value is given an explicit mapping (even if just to
   // Unspecified) via this test.
   for (int raw_type = user_data_auth::AuthFactorType_MIN;
        raw_type <= user_data_auth::AuthFactorType_MAX; ++raw_type) {
@@ -264,8 +265,10 @@ TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheck) {
   AuthFactorMetadata auth_factor_metadata;
   AuthFactorType auth_factor_type;
   std::string auth_factor_label;
-  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, auth_factor_metadata,
-                                    auth_factor_type, auth_factor_label));
+  FakeFeaturesForTesting features;
+  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, features.async,
+                                    auth_factor_metadata, auth_factor_type,
+                                    auth_factor_label));
 
   // Verify
   EXPECT_EQ(auth_factor_metadata.common.chromeos_version_last_updated,
@@ -296,8 +299,10 @@ TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheckPIN) {
   AuthFactorMetadata auth_factor_metadata;
   AuthFactorType auth_factor_type;
   std::string auth_factor_label;
-  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, auth_factor_metadata,
-                                    auth_factor_type, auth_factor_label));
+  FakeFeaturesForTesting features;
+  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, features.async,
+                                    auth_factor_metadata, auth_factor_type,
+                                    auth_factor_label));
 
   // Verify
   EXPECT_EQ(auth_factor_metadata.common.chromeos_version_last_updated,
@@ -328,8 +333,10 @@ TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheckPINTimeLimit) {
   AuthFactorMetadata auth_factor_metadata;
   AuthFactorType auth_factor_type;
   std::string auth_factor_label;
-  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, auth_factor_metadata,
-                                    auth_factor_type, auth_factor_label));
+  FakeFeaturesForTesting features;
+  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, features.async,
+                                    auth_factor_metadata, auth_factor_type,
+                                    auth_factor_label));
 
   // Verify
   EXPECT_EQ(auth_factor_metadata.common.chromeos_version_last_updated,
@@ -342,6 +349,100 @@ TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheckPINTimeLimit) {
       auth_factor_metadata.metadata));
   EXPECT_EQ(auth_factor_type, AuthFactorType::kPin);
   EXPECT_EQ(auth_factor_label, kLabel);
+}
+
+TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheckPINAttemptLimitFeaturesNull) {
+  // Setup
+  user_data_auth::AuthFactor auth_factor_proto;
+  auto& common_metadata_proto = *auth_factor_proto.mutable_common_metadata();
+  common_metadata_proto.set_chromeos_version_last_updated(kChromeosVersion);
+  common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
+  common_metadata_proto.set_lockout_policy(
+      user_data_auth::LOCKOUT_POLICY_TIME_LIMITED);
+  auth_factor_proto.mutable_pin_metadata();
+  auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  auth_factor_proto.set_label(kLabel);
+
+  // Test
+  AuthFactorMetadata auth_factor_metadata;
+  AuthFactorType auth_factor_type;
+  std::string auth_factor_label;
+  FakeFeaturesForTesting features;
+  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, features.async,
+                                    auth_factor_metadata, auth_factor_type,
+                                    auth_factor_label));
+
+  // Verify
+  EXPECT_EQ(auth_factor_metadata.common.chromeos_version_last_updated,
+            kChromeosVersion);
+  EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
+            kChromeVersion);
+  EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
+            LockoutPolicy::kTimeLimited);
+  EXPECT_TRUE(absl::holds_alternative<PinAuthFactorMetadata>(
+      auth_factor_metadata.metadata));
+  EXPECT_EQ(auth_factor_type, AuthFactorType::kPin);
+  EXPECT_EQ(auth_factor_label, kLabel);
+}
+
+TEST(AuthFactorUtilsTest,
+     AuthFactorMetaDataCheckPINAttemptLimitFeatureEnabled) {
+  // Setup
+  user_data_auth::AuthFactor auth_factor_proto;
+  auto& common_metadata_proto = *auth_factor_proto.mutable_common_metadata();
+  common_metadata_proto.set_chromeos_version_last_updated(kChromeosVersion);
+  common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
+  common_metadata_proto.set_lockout_policy(
+      user_data_auth::LOCKOUT_POLICY_TIME_LIMITED);
+  auth_factor_proto.mutable_pin_metadata();
+  auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  auth_factor_proto.set_label(kLabel);
+
+  // Test
+  AuthFactorMetadata auth_factor_metadata;
+  AuthFactorType auth_factor_type;
+  std::string auth_factor_label;
+  FakeFeaturesForTesting features;
+  features.object.SetDefaultForFeature(Features::kModernPin, /*enabled=*/true);
+  EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, features.async,
+                                    auth_factor_metadata, auth_factor_type,
+                                    auth_factor_label));
+
+  // Verify
+  EXPECT_EQ(auth_factor_metadata.common.chromeos_version_last_updated,
+            kChromeosVersion);
+  EXPECT_EQ(auth_factor_metadata.common.chrome_version_last_updated,
+            kChromeVersion);
+  EXPECT_EQ(auth_factor_metadata.common.lockout_policy,
+            LockoutPolicy::kTimeLimited);
+  EXPECT_TRUE(absl::holds_alternative<PinAuthFactorMetadata>(
+      auth_factor_metadata.metadata));
+  EXPECT_EQ(auth_factor_type, AuthFactorType::kPin);
+  EXPECT_EQ(auth_factor_label, kLabel);
+}
+
+TEST(AuthFactorUtilsTest,
+     AuthFactorMetaDataCheckPINAttemptLimitFeatureEnabledWrongInput) {
+  // Setup
+  user_data_auth::AuthFactor auth_factor_proto;
+  auto& common_metadata_proto = *auth_factor_proto.mutable_common_metadata();
+  common_metadata_proto.set_chromeos_version_last_updated(kChromeosVersion);
+  common_metadata_proto.set_chrome_version_last_updated(kChromeVersion);
+  common_metadata_proto.set_lockout_policy(
+      user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED);
+  auth_factor_proto.mutable_pin_metadata();
+  auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  auth_factor_proto.set_label(kLabel);
+
+  // Test
+  AuthFactorMetadata auth_factor_metadata;
+  AuthFactorType auth_factor_type;
+  std::string auth_factor_label;
+  FakeFeaturesForTesting features;
+  features.object.SetDefaultForFeature(Features::kModernPin, /*enabled=*/true);
+  EXPECT_FALSE(GetAuthFactorMetadata(auth_factor_proto, features.async,
+                                     auth_factor_metadata, auth_factor_type,
+                                     auth_factor_label));
 }
 
 TEST(AuthSessionProtoUtils, AuthFactorPreparePurposeFromProto) {

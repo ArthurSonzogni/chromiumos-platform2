@@ -104,8 +104,6 @@ constexpr char kPassword[] = "password";
 constexpr char kPassword2[] = "password2";
 constexpr char kPassword3[] = "password3";
 constexpr char kPasswordLabel[] = "fake-password-label";
-constexpr char kPin[] = "1234";
-constexpr char kPinLabel[] = "fake-pin-label";
 // 300 seconds should be left right as we authenticate.
 constexpr int time_left_after_authenticate = 300;
 constexpr char kPasswordLabel2[] = "fake-password-label2";
@@ -123,21 +121,6 @@ SerializedVaultKeyset CreateFakePasswordVk(const std::string& label) {
   serialized_vk.set_wrapped_reset_seed("wrapped-reset-seed");
   serialized_vk.mutable_key_data()->set_type(KeyData::KEY_TYPE_PASSWORD);
   serialized_vk.mutable_key_data()->set_label(label);
-  return serialized_vk;
-}
-
-SerializedVaultKeyset CreateFakePinVk(const std::string& label) {
-  SerializedVaultKeyset serialized_vk;
-  serialized_vk.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
-  serialized_vk.mutable_key_data()->set_type(KeyData::KEY_TYPE_PASSWORD);
-  serialized_vk.mutable_key_data()->set_label(label);
-  serialized_vk.mutable_key_data()
-      ->mutable_policy()
-      ->set_low_entropy_credential(true);
-  serialized_vk.set_salt("salt");
-  serialized_vk.set_le_chaps_iv("le-chaps-iv");
-  serialized_vk.set_le_label(0);
-  serialized_vk.set_le_fek_iv("le-fek-iv");
   return serialized_vk;
 }
 
@@ -208,42 +191,6 @@ void MockKeysetDerivation(const ObfuscatedUsername& obfuscated_username,
       });
 }
 
-void MockKeysetCreation(MockAuthBlockUtility& auth_block_utility) {
-  // Return an arbitrary auth block type from the mock.
-  EXPECT_CALL(auth_block_utility, GetAuthBlockTypeForCreation(_))
-      .WillOnce(ReturnValue(AuthBlockType::kTpmEcc))
-      .RetiresOnSaturation();
-
-  EXPECT_CALL(auth_block_utility, CreateKeyBlobsWithAuthBlock(_, _, _))
-      .WillOnce([](AuthBlockType, const AuthInput&,
-                   AuthBlock::CreateCallback create_callback) {
-        std::move(create_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(),
-                 std::make_unique<KeyBlobs>(),
-                 std::make_unique<AuthBlockState>());
-      })
-      .RetiresOnSaturation();
-}
-
-void MockInitialKeysetAdding(const ObfuscatedUsername& obfuscated_username,
-                             const SerializedVaultKeyset& serialized_vk,
-                             MockKeysetManagement& keyset_management) {
-  EXPECT_CALL(keyset_management,
-              AddInitialKeyset(_, obfuscated_username, _, _, _, _, _))
-      .WillOnce([=](VaultKeysetIntent, const ObfuscatedUsername&,
-                    const KeyData&,
-                    const std::optional<
-                        SerializedVaultKeyset_SignatureChallengeInfo>&,
-                    const FileSystemKeyset& file_system_keyset, KeyBlobs,
-                    std::unique_ptr<AuthBlockState>) {
-        // Populate the VK with both public and secret data (like reset seed).
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->InitializeFromSerialized(serialized_vk);
-        vk->CreateFromFileSystemKeyset(file_system_keyset);
-        return vk;
-      });
-}
-
 void MockKeysetLoadingViaBlobs(const ObfuscatedUsername& obfuscated_username,
                                const SerializedVaultKeyset& serialized_vk,
                                MockKeysetManagement& keyset_management) {
@@ -289,6 +236,8 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     userdataauth_.set_mount_task_runner(
         task_environment.GetMainThreadTaskRunner());
     userdataauth_.set_pinweaver(&pinweaver_);
+    // TODO(hardikgoyal): Rewrite tests to work with USS.
+    features_.object.SetDefaultForFeature(Features::kUSSMigration, false);
   }
 
   void SetUpHWSecExpectations() {
@@ -315,6 +264,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
         &crypto_, &platform_, &user_session_map_, &keyset_management_,
         auth_block_utility, &auth_factor_driver_manager_, &auth_factor_manager_,
         &user_secret_stash_storage_);
+    auth_session_manager_->set_features(&features_.async);
     userdataauth_.set_auth_session_manager(auth_session_manager_.get());
   }
 
@@ -387,6 +337,8 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
       user_data_auth::GetAuthSessionStatusReply& reply) {
     userdataauth_.GetAuthSessionStatusImpl(auth_session, reply);
   }
+
+  FakeFeaturesForTesting features_;
 };
 
 class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
@@ -448,26 +400,7 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
         });
   }
 
-  FakeFeaturesForTesting features_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
-};
-
-// Parameterized version of `AuthSessionInterfaceTest`. The parameter specifies
-// whether the UserSecretStash experiment should be enabled during the test.
-class AuthSessionInterfaceUssExperimentParamTest
-    : public AuthSessionInterfaceTest,
-      public ::testing::WithParamInterface<bool> {
- public:
-  AuthSessionInterfaceUssExperimentParamTest() {
-    SetUserSecretStashExperimentForTesting(is_uss_experiment_enabled());
-  }
-
-  ~AuthSessionInterfaceUssExperimentParamTest() override {
-    // Reset this global variable to avoid affecting unrelated test cases.
-    SetUserSecretStashExperimentForTesting(/*enabled=*/std::nullopt);
-  }
-
-  static bool is_uss_experiment_enabled() { return GetParam(); }
 };
 
 namespace {
@@ -703,41 +636,6 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserWithBroadcastId) {
       Eq(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
 }
 
-TEST_P(AuthSessionInterfaceUssExperimentParamTest,
-       CreatePersistentUserRepeatCall) {
-  EXPECT_CALL(keyset_management_, UserExists(SanitizeUserName(kUsername)))
-      .WillOnce(ReturnValue(false));
-
-  std::string serialized_token;
-  {
-    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-        auth_session_manager_->CreateAuthSession(kUsername, 0,
-                                                 AuthIntent::kDecrypt);
-    EXPECT_THAT(auth_session_status, IsOk());
-    AuthSession* auth_session = auth_session_status.value().Get();
-    serialized_token = auth_session->serialized_token();
-  }
-
-  EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
-      .WillOnce(ReturnValue(false));
-  EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
-      .WillOnce(Return(false));
-  EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(true));
-  EXPECT_THAT(CreatePersistentUserImpl(serialized_token), IsOk());
-  {
-    InUseAuthSession auth_session =
-        auth_session_manager_->FindAuthSession(serialized_token);
-    EXPECT_THAT(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
-    EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
-              time_left_after_authenticate);
-  }
-
-  // Called again. User exists, vault should not be created again.
-  EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
-      .WillOnce(ReturnValue(false));
-  EXPECT_THAT(CreatePersistentUserImpl(serialized_token), NotOk());
-}
-
 TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
   user_data_auth::GetAuthSessionStatusReply reply;
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
@@ -942,6 +840,7 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
     return auth_session.Get();
   }
 
+  FakeFeaturesForTesting features_;
   MockAuthBlockUtility mock_auth_block_utility_;
 };
 
@@ -1539,163 +1438,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretWithBroadcastId) {
   // Assert.
   EXPECT_EQ(hs_reply.error(),
             user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-}
-
-// Test that AddAuthFactor succeeds for a freshly created user.
-TEST_F(AuthSessionInterfaceMockAuthTest, AddFactorNewUserVk) {
-  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
-
-  SetUserSecretStashExperimentForTesting(false);
-
-  // Arrange.
-  AuthSession* const auth_session = CreateAndPrepareUserVault();
-  ASSERT_TRUE(auth_session);
-  const SerializedVaultKeyset serialized_vk =
-      CreateFakePasswordVk(kPasswordLabel);
-  MockKeysetCreation(mock_auth_block_utility_);
-  MockInitialKeysetAdding(obfuscated_username, serialized_vk,
-                          keyset_management_);
-  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
-                           keyset_management_);
-
-  // Act.
-  user_data_auth::AddAuthFactorRequest request;
-  request.set_auth_session_id(auth_session->serialized_token());
-  user_data_auth::AuthFactor& request_factor = *request.mutable_auth_factor();
-  request_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  request_factor.set_label(kPasswordLabel);
-  request_factor.mutable_password_metadata();
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
-  user_data_auth::AddAuthFactorReply reply = AddAuthFactor(request);
-
-  // Assert.
-  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  UserSession* found_user_session =
-      userdataauth_.FindUserSessionForTest(kUsername);
-  ASSERT_TRUE(found_user_session);
-  EXPECT_TRUE(found_user_session->IsActive());
-  // Check the user session has a verifier for the given password.
-  const CredentialVerifier* verifier =
-      found_user_session->FindCredentialVerifier(kPasswordLabel);
-  ASSERT_THAT(verifier, NotNull());
-  AuthInput auth_input = {.user_input = brillo::SecureBlob(kPassword),
-                          .obfuscated_username = obfuscated_username};
-  EXPECT_TRUE(verifier->Verify(auth_input));
-
-  ResetUserSecretStashExperimentForTesting();
-}
-
-// Test that AddAuthFactor succeeds when adding a second factor for a freshly
-// created user, but the credential verifier remains using the first credential.
-TEST_F(AuthSessionInterfaceMockAuthTest, AddSecondFactorNewUserVk) {
-  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
-
-  SetUserSecretStashExperimentForTesting(false);
-
-  // Arrange.
-  AuthSession* const auth_session = CreateAndPrepareUserVault();
-  ASSERT_TRUE(auth_session);
-  const SerializedVaultKeyset serialized_vk =
-      CreateFakePasswordVk(kPasswordLabel);
-  MockKeysetCreation(mock_auth_block_utility_);
-  MockInitialKeysetAdding(obfuscated_username, serialized_vk,
-                          keyset_management_);
-  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
-                           keyset_management_);
-  // Add the initial keyset.
-  user_data_auth::AddAuthFactorRequest password_request;
-  password_request.set_auth_session_id(auth_session->serialized_token());
-  user_data_auth::AuthFactor& password_factor =
-      *password_request.mutable_auth_factor();
-  password_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  password_factor.set_label(kPasswordLabel);
-  password_factor.mutable_password_metadata();
-  password_request.mutable_auth_input()->mutable_password_input()->set_secret(
-      kPassword);
-  EXPECT_EQ(AddAuthFactor(password_request).error(),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  // Set up mocks for adding the second keyset.
-  MockKeysetCreation(mock_auth_block_utility_);
-  MockKeysetLoadingByLabel(obfuscated_username, CreateFakePinVk(kPinLabel),
-                           keyset_management_);
-
-  // Act.
-  user_data_auth::AddAuthFactorRequest pin_request;
-  pin_request.set_auth_session_id(auth_session->serialized_token());
-  user_data_auth::AuthFactor& pin_factor = *pin_request.mutable_auth_factor();
-  pin_factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
-  pin_factor.set_label(kPinLabel);
-  pin_factor.mutable_pin_metadata();
-  pin_request.mutable_auth_input()->mutable_pin_input()->set_secret(kPin);
-  user_data_auth::AddAuthFactorReply reply = AddAuthFactor(pin_request);
-
-  // Assert.
-  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  UserSession* found_user_session =
-      userdataauth_.FindUserSessionForTest(kUsername);
-  ASSERT_TRUE(found_user_session);
-  EXPECT_TRUE(found_user_session->IsActive());
-  // Check the user session has a verifier for the first keyset's password.
-  const CredentialVerifier* verifier =
-      found_user_session->FindCredentialVerifier(kPasswordLabel);
-  ASSERT_THAT(verifier, NotNull());
-  AuthInput auth_input = {.user_input = brillo::SecureBlob(kPassword),
-                          .obfuscated_username = obfuscated_username};
-  EXPECT_TRUE(verifier->Verify(auth_input));
-
-  ResetUserSecretStashExperimentForTesting();
-}
-
-// Test that AuthenticateAuthFactor succeeds for an existing user and a
-// VautKeyset-based factor when using the correct credential.
-TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorVkSuccess) {
-  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
-
-  // Arrange.
-  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
-      .WillRepeatedly(ReturnValue(true));
-  const SerializedVaultKeyset serialized_vk =
-      CreateFakePasswordVk(kPasswordLabel);
-  MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
-                               keyset_management_);
-
-  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
-                           keyset_management_);
-  MockKeysetDerivation(obfuscated_username, serialized_vk, CryptoError::CE_NONE,
-                       mock_auth_block_utility_);
-  MockKeysetLoadingViaBlobs(obfuscated_username, serialized_vk,
-                            keyset_management_);
-  std::string serialized_token;
-  {
-    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-        auth_session_manager_->CreateAuthSession(kUsername, /*flags=*/0,
-                                                 AuthIntent::kDecrypt);
-    EXPECT_THAT(auth_session_status, IsOk());
-    AuthSession* auth_session = auth_session_status.value().Get();
-
-    ASSERT_TRUE(auth_session);
-    serialized_token = auth_session->serialized_token();
-  }
-
-  // Act.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(serialized_token);
-  request.set_auth_factor_label(kPasswordLabel);
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
-  const user_data_auth::AuthenticateAuthFactorReply reply =
-      AuthenticateAuthFactor(request);
-
-  // Assert.
-  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_TRUE(reply.authenticated());
-  InUseAuthSession auth_session =
-      auth_session_manager_->FindAuthSession(serialized_token);
-  EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
-            time_left_after_authenticate);
-  EXPECT_THAT(
-      reply.authorized_for(),
-      UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY));
-  EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
 
 // Test that AuthenticateAuthFactor fails in case the VaultKeyset decryption
@@ -2913,13 +2655,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
               UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY,
                                    AUTH_INTENT_WEBAUTHN));
 }
-
-INSTANTIATE_TEST_SUITE_P(All,
-                         AuthSessionInterfaceUssExperimentParamTest,
-                         testing::Bool(),
-                         [](const ::testing::TestParamInfo<bool>& info) {
-                           return info.param ? "UssOn" : "UssOff";
-                         });
 
 }  // namespace
 

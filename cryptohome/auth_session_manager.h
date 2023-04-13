@@ -75,7 +75,7 @@ class AuthSessionManager {
   // Overload for find to avoid deserialization client side.
   InUseAuthSession FindAuthSession(const std::string& serialized_token);
 
-  void set_features(Features* features) { features_ = features; }
+  void set_features(AsyncInitFeatures* features) { features_ = features; }
 
   // Used to set the auth factor status update callback inside class so it could
   // be passed to each auth session.
@@ -94,7 +94,7 @@ class AuthSessionManager {
   AuthFactorManager* const auth_factor_manager_;
   UserSecretStashStorage* const user_secret_stash_storage_;
   // This holds the object that checks for feature enabled.
-  Features* features_;
+  AsyncInitFeatures* features_;
 
   // Callback for session timeout. Currently just disambiguates
   // RemoveAuthSession overload for the callback.

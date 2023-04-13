@@ -338,7 +338,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
                                          &user_secret_stash_storage_,
-                                         &features_.object};
+                                         &features_.async};
 };
 
 class AuthSessionWithTpmSimulatorUssMigrationTest

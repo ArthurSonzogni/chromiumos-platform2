@@ -17,6 +17,7 @@
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/fake_features.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
@@ -41,6 +42,9 @@ class AuthSessionManagerTest : public ::testing::Test {
   ~AuthSessionManagerTest() override = default;
   AuthSessionManagerTest(const AuthSessionManagerTest&) = delete;
   AuthSessionManagerTest& operator=(AuthSessionManagerTest&) = delete;
+  void SetUp() override {
+    auth_session_manager_.set_features(&features_.async);
+  }
 
  protected:
   const Username kUsername{"foo@example.com"};
@@ -59,6 +63,7 @@ class AuthSessionManagerTest : public ::testing::Test {
   AuthFactorDriverManager auth_factor_driver_manager_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
+  FakeFeaturesForTesting features_;
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
                                          &user_session_map_,
@@ -66,7 +71,8 @@ class AuthSessionManagerTest : public ::testing::Test {
                                          &auth_block_utility_,
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
-                                         &user_secret_stash_storage_};
+                                         &user_secret_stash_storage_,
+                                         &features_.async};
 
   AuthSessionManager auth_session_manager_{&crypto_,
                                            &platform_,

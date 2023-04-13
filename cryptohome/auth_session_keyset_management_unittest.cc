@@ -138,6 +138,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         &crypto_, &platform_, &user_session_map_, &keyset_management_,
         &auth_block_utility_, &auth_factor_driver_manager_,
         &auth_factor_manager_, &user_secret_stash_storage_);
+    auth_session_manager_->set_features(&features_.async);
     // Initializing UserData class.
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
@@ -478,7 +479,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                          &auth_block_utility_,
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
-                                         &user_secret_stash_storage_};
+                                         &user_secret_stash_storage_,
+                                         &features_.async};
 
   // An AuthSession manager for testing managed creation.
   std::unique_ptr<AuthSessionManager> auth_session_manager_;
@@ -1013,13 +1015,14 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Attach the mock_auth_block_utility to our AuthSessionManager and created
   // AuthSession.
-  auto auth_session_manager_impl_ = std::make_unique<AuthSessionManager>(
+  auto auth_session_manager_mock = std::make_unique<AuthSessionManager>(
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
       &mock_auth_block_utility_, &auth_factor_driver_manager_,
       &auth_factor_manager_, &user_secret_stash_storage_);
+  auth_session_manager_mock->set_features(&features_.async);
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      auth_session_manager_impl_->CreateAuthSession(Username(kUsername), flags,
-                                                    AuthIntent::kDecrypt);
+      auth_session_manager_mock->CreateAuthSession(Username(kUsername), flags,
+                                                   AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value().Get();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,

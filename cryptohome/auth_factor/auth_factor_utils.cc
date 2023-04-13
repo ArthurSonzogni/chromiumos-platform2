@@ -21,6 +21,7 @@
 #include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_session_proto_utils.h"
+#include "cryptohome/features.h"
 
 namespace cryptohome {
 namespace {
@@ -140,6 +141,7 @@ void PopulateAuthFactorProtoWithSysinfo(
 }
 
 bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
+                           const AsyncInitFeatures& features_lib,
                            AuthFactorMetadata& out_auth_factor_metadata,
                            AuthFactorType& out_auth_factor_type,
                            std::string& out_auth_factor_label) {
@@ -164,6 +166,13 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
       DCHECK(auth_factor.has_pin_metadata());
       GetPinMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kPin;
+      if (features_lib.IsFeatureEnabled(Features::kModernPin) &&
+          out_auth_factor_metadata.common.lockout_policy !=
+              LockoutPolicy::kTimeLimited) {
+        LOG(ERROR) << "Lockout policy not set when modern pin is enabled "
+                   << auth_factor.type();
+        return false;
+      }
       break;
     case user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY:
       DCHECK(auth_factor.has_cryptohome_recovery_metadata());
