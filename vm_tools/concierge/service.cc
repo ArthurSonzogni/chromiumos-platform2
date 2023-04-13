@@ -1365,6 +1365,14 @@ Service::~Service() {
   if (grpc_server_vm_) {
     grpc_server_vm_->Shutdown();
   }
+  AsyncNoReject(
+      dbus_thread_.task_runner(),
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object) {
+            dbus_object.reset();
+          },
+          std::move(dbus_object_)))
+      .Get();
 }
 
 void Service::OnSignalReadable() {
@@ -1493,16 +1501,20 @@ bool Service::Init() {
     LOG(ERROR) << "Failed to export " << kVmConciergeServicePath << " object";
     return false;
   }
+  dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
+      nullptr, bus_, dbus::ObjectPath(kVmConciergeServicePath));
+  concierge_adaptor_.RegisterWithDBusObject(dbus_object_.get());
+  dbus_object_->RegisterAsync(base::DoNothing());
 
   untrusted_vm_utils_ = std::make_unique<UntrustedVMUtils>(
       base::FilePath(kL1TFFilePath), base::FilePath(kMDSFilePath));
 
   dlcservice_client_ = std::make_unique<DlcHelper>(bus_);
 
+  // Synchronously returns dbus::Response.
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kStopVmMethod, &Service::StopVm},
       {kStopAllVmsMethod, &Service::StopAllVms},
       {kSuspendVmMethod, &Service::SuspendVm},
       {kResumeVmMethod, &Service::ResumeVm},
@@ -1536,6 +1548,7 @@ bool Service::Init() {
       {kInstallPflashMethod, &Service::InstallPflash},
   };
 
+  // Asynchronously calls the callback ResponseSender.
   using AsyncServiceMethod = void (Service::*)(
       dbus::MethodCall*, dbus::ExportedObject::ResponseSender);
   static const std::map<const char*, AsyncServiceMethod> kAsyncServiceMethods =
@@ -1555,6 +1568,9 @@ bool Service::Init() {
                                    &Service::StartArcVm>},
       };
 
+  // TODO(b/269214379): Wait for completion for RegisterAsync on
+  // chromeos-dbus-bindings after we complete migration and remove
+  // ExportMethodAndBlock.
   if (!AsyncNoReject(
            dbus_thread_.task_runner(),
            base::BindOnce(
@@ -2445,30 +2461,14 @@ bool ValidateVmNameAndOwner(const _RequestProto& request,
   return true;
 }
 
-std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
+StopVmResponse Service::StopVm(const StopVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  StopVmRequest request;
   StopVmResponse response;
 
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse StopVmRequest from message";
-
-    response.set_failure_reason("Unable to parse protobuf");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   if (!ValidateVmNameAndOwner(request, response)) {
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   VmId vm_id(request.owner_id(), request.name());
@@ -2479,9 +2479,7 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
   } else {
     response.set_success(true);
   }
-
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
