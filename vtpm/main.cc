@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
 
   // Set TPM metrics client ID.
   hwsec_foundation::SetTpmMetricsClientID(
-      hwsec_foundation::TpmMetricsClientID::kChaps);
+      hwsec_foundation::TpmMetricsClientID::kVtpm);
 
   std::unique_ptr<vtpm::Command> vtpm =
       vtpm::Virtualizer::Create(vtpm::Virtualizer::Profile::kGLinux);
