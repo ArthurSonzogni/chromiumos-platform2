@@ -76,7 +76,12 @@ config("compiler_defaults") {
     "-Wimplicit-fallthrough",
   ]
   cflags_c = [ "-std=gnu17" ] + external_cppflags + external_cxxflags
-  cflags_cc = [ "-std=gnu++17" ] + external_cppflags + external_cxxflags
+  if (use.cpp20) {
+    cc_version = "-std=gnu++20"
+  } else {
+    cc_version = "-std=gnu++17"
+  }
+  cflags_cc = [ cc_version ] + external_cppflags + external_cxxflags
   ldflags = external_ldflags + [
               "-Wl,-z,relro",
               "-Wl,-z,noexecstack",
