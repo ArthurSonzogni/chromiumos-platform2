@@ -41,6 +41,8 @@ union RoutineArgument {
 
   // Arguments to create a memory routine.
   MemoryRoutineArgument memory@1;
+  // Arguments to create an audio driver malfunction test routine.
+  [MinVersion=2] AudioDriverRoutineArgument audio_driver@2;
 };
 
 // This routine checks whether there is any memory problem by
@@ -51,6 +53,16 @@ struct MemoryRoutineArgument {
   uint32? max_testing_mem_kib;
 };
 
+// |AudioDriverRoutineArgument| is the argument struct to create the audio
+// driver malfunction test routine by calling |CreateRoutine|. There is no input
+// parameters so the struct remains empty.
+//
+// The routine checks the health of audio driver. It contains the following
+// examinations:
+// - CRAS can detect at least one internal audio card.
+// - No audio devices failed to open.
+struct AudioDriverRoutineArgument {
+};
 
 // Interface exposed to clients for controlling a routine.
 //
@@ -137,6 +149,7 @@ struct RoutineStateFinished {
 
 union RoutineDetail {
   MemoryRoutineDetail memory;
+  AudioDriverRoutineDetail audio_driver;
 };
 
 // Details regarding memory routine.
@@ -147,6 +160,16 @@ struct MemoryRoutineDetail {
   uint64 bytes_tested@0;
   // Contains the memtester test results.
   MemtesterResult result@1;
+};
+
+// Details regarding audio driver routine.
+//
+// NextMinVersion: 1, NextIndex: 2
+struct AudioDriverRoutineDetail {
+  // Whether or not the routine can detect an internal audio card.
+  bool internal_card_detected@0;
+  // Whether or not all audio devices succeed to open.
+  bool audio_devices_succeed_to_open@1;
 };
 
 // Enumeration of each possible memtester test item.

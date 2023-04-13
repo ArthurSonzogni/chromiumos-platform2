@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
 
 namespace diagnostics {
@@ -23,6 +24,11 @@ void RoutineService::CreateRoutine(
     case mojom::RoutineArgument::Tag::kMemory:
       AddRoutine(std::make_unique<MemoryRoutineV2>(context_,
                                                    routine_arg->get_memory()),
+                 std::move(routine_receiver));
+      break;
+    case mojom::RoutineArgument::Tag::kAudioDriver:
+      AddRoutine(std::make_unique<AudioDriverRoutine>(
+                     context_, routine_arg->get_audio_driver()),
                  std::move(routine_receiver));
       break;
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:

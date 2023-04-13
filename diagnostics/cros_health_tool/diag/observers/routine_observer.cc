@@ -40,6 +40,17 @@ void PrintMemoryDetail(const mojom::MemoryRoutineDetailPtr& memory_detail) {
   OutputJson(output);
 }
 
+void PrintAudioDriverDetail(
+    const mojom::AudioDriverRoutineDetailPtr& audio_driver_detail) {
+  base::Value::Dict output;
+
+  SET_DICT(internal_card_detected, audio_driver_detail, &output);
+  SET_DICT(audio_devices_succeed_to_open, audio_driver_detail, &output);
+
+  std::cout << "Output: " << std::endl;
+  OutputJson(output);
+}
+
 }  // namespace
 
 RoutineObserver::RoutineObserver(base::OnceClosure quit_closure)
@@ -60,6 +71,9 @@ void RoutineObserver::OnRoutineStateChange(
       switch (finished_state->detail->which()) {
         case mojom::RoutineDetail::Tag::kMemory:
           PrintMemoryDetail(finished_state->detail->get_memory());
+          break;
+        case mojom::RoutineDetail::Tag::kAudioDriver:
+          PrintAudioDriverDetail(finished_state->detail->get_audio_driver());
           break;
       }
       std::move(quit_closure_).Run();
