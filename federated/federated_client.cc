@@ -182,9 +182,10 @@ bool FederatedClient::Context::TrainingConditionsSatisfied(
   auto* typed_context = static_cast<FederatedClient::Context*>(context);
 
   // If time cost exceeds the limit, return false to quit this round.
-  // TODO(b/276979886): Add an UMA event for this.
   base::TimeDelta time_cost = base::Time::Now() - typed_context->start_time_;
   if (time_cost > kMaximalExecutionTime) {
+    Metrics::GetInstance()->LogClientEvent(typed_context->client_name_,
+                                           ClientEvent::kTaskTimeoutAbort);
     return false;
   }
 
