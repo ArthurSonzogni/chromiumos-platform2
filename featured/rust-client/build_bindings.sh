@@ -15,6 +15,9 @@ export BINDGEN_HEADER="// Copyright 2022 The ChromiumOS Authors
 "
 
 bindgen_generate() {
+    # Path to platform2 required for header resolution.
+    search_root="$(dirname "$0")/../.."
+
     echo "${BINDGEN_HEADER}"
     bindgen \
         --disable-header-comment \
@@ -23,7 +26,9 @@ bindgen_generate() {
         --allowlist-type='.*Feature.*' \
         --allowlist-function='.*Feature.*' \
         --allowlist-var='.*Feature.*' \
-        "../c_fake_feature_library.h"
+        "../c_fake_feature_library.h" \
+        -- \
+        -I "${search_root}"
 }
 
 bindgen_generate | rustfmt > src/bindings.rs
