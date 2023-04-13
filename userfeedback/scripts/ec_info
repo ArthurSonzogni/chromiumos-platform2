@@ -21,6 +21,6 @@ EC_INFO_FILE="/var/log/ec_info.txt"
   # we don't have devices with more than 4 TCPC ports at the moment.  If that
   # changes, below will need updated.
   for i in 0 1 2 3; do
-    ectool infopddev "${i}" || true
+    ectool pdchipinfo "${i}" || true
   done
 ) > "${EC_INFO_FILE}" 2>&1
