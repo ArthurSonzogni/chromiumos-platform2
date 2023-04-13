@@ -723,7 +723,8 @@ install_stateful() {
        local f_path=$(dirname "${f}")
        local dlc_package=$(basename "${f_path}")
        local dlc_id=$(basename $(dirname "${f_path}"))
-       if grep '\"preload-allowed\":\s*true' "${f}"; then
+       if grep -q '\"preload-allowed\":\s*true' "${f}"; then
+         echo "Preloading DLC=${dlc_id}"
          dirlist="
            ${dirlist}
            var_overlay/cache/dlc-images/${dlc_id}/${dlc_package}
