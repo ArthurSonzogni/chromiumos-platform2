@@ -25,6 +25,7 @@ namespace error {
 namespace {
 
 using testing::_;
+using testing::EndsWith;
 using testing::Return;
 using testing::StrictMock;
 
@@ -35,6 +36,8 @@ using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::StatusChain;
+
+constexpr char kErrorBucketName[] = "Error";
 
 class ErrorReportingTpm2Test : public ::testing::Test {
  public:
@@ -58,11 +61,11 @@ constexpr trunks::TPM_RC kTestingTpmError1 = trunks::TPM_RC_LOCKOUT;
 TEST_F(ErrorReportingTpm2Test, SimpleTPM2Error) {
   // Setup the expected result.
   EXPECT_CALL(metrics_,
-              SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
+              SendSparseToUMA(EndsWith(kCryptohomeErrorAllLocationsSuffix),
                               kErrorLocationForTesting1.location()))
       .WillOnce(Return(true));
   EXPECT_CALL(metrics_,
-              SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
+              SendSparseToUMA(EndsWith(kCryptohomeErrorAllLocationsSuffix),
                               static_cast<CryptohomeError::ErrorLocation>(
                                   kTestingTpmError1) |
                                   kUnifiedErrorBit))
@@ -70,15 +73,15 @@ TEST_F(ErrorReportingTpm2Test, SimpleTPM2Error) {
   // HashedStack value is precomputed.
   EXPECT_CALL(
       metrics_,
-      SendSparseToUMA(std::string(kCryptohomeErrorHashedStack), -1721192113))
+      SendSparseToUMA(EndsWith(kCryptohomeErrorHashedStackSuffix), -1721192113))
       .WillOnce(Return(true));
 
   // Generate the mixed TPM error.
   CryptohomeError::ErrorLocation mixed =
       static_cast<CryptohomeError::ErrorLocation>(kTestingTpmError1) |
       (kErrorLocationForTesting1.location() << 16);
-  EXPECT_CALL(metrics_,
-              SendSparseToUMA(std::string(kCryptohomeErrorLeafWithTPM), mixed))
+  EXPECT_CALL(metrics_, SendSparseToUMA(
+                            EndsWith(kCryptohomeErrorLeafWithTPMSuffix), mixed))
       .WillOnce(Return(true));
 
   // Setup the errors.
@@ -97,7 +100,7 @@ TEST_F(ErrorReportingTpm2Test, SimpleTPM2Error) {
       CryptohomeErrorToUserDataAuthError(err4, &legacy_ec);
 
   // Make the call.
-  ReportCryptohomeError(err4, info);
+  ReportCryptohomeError(err4, info, kErrorBucketName);
 }
 
 }  // namespace

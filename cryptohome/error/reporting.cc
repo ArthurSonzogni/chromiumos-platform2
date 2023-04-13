@@ -21,10 +21,12 @@ namespace {
 using hwsec_foundation::status::StatusChain;
 
 // Report every node in the error.
-void ReportAllLocations(const StatusChain<CryptohomeError>& stack) {
+void ReportAllLocations(const StatusChain<CryptohomeError>& stack,
+                        const std::string& error_bucket_name) {
   for (const auto& err : stack.const_range()) {
     auto loc = err->local_location();
-    ReportCryptohomeErrorAllLocations(static_cast<uint32_t>(loc));
+    ReportCryptohomeErrorAllLocations(error_bucket_name,
+                                      static_cast<uint32_t>(loc));
   }
 }
 
@@ -32,18 +34,20 @@ void ReportAllLocations(const StatusChain<CryptohomeError>& stack) {
 constexpr uint32_t kHashedStackSeed = 10114;
 
 // Report the entire error id's hash.
-void ReportHashedStack(const user_data_auth::CryptohomeErrorInfo& info) {
+void ReportHashedStack(const user_data_auth::CryptohomeErrorInfo& info,
+                       const std::string& error_bucket_name) {
   std::string error_id = info.error_id();
   uint32_t result;
   brillo::MurmurHash3_x86_32(error_id.c_str(), error_id.size(),
                              kHashedStackSeed, &result);
   LOG(INFO) << "Reporting cryptohome error hashed stack " << result << " from "
             << error_id;
-  ReportCryptohomeErrorHashedStack(result);
+  ReportCryptohomeErrorHashedStack(error_bucket_name, result);
 }
 
 // Report all node that contains kDevCheckUnexpectedState.
-void ReportDevCheckUnexpectedState(const StatusChain<CryptohomeError>& stack) {
+void ReportDevCheckUnexpectedState(const StatusChain<CryptohomeError>& stack,
+                                   const std::string& error_bucket_name) {
   for (const auto& err : stack.const_range()) {
     if (!std::holds_alternative<PossibleActions>(err->local_actions())) {
       continue;
@@ -52,12 +56,14 @@ void ReportDevCheckUnexpectedState(const StatusChain<CryptohomeError>& stack) {
         std::get<PossibleActions>(err->local_actions());
     if (possible_actions[PossibleAction::kDevCheckUnexpectedState]) {
       auto loc = err->local_location();
-      ReportCryptohomeErrorDevCheckUnexpectedState(static_cast<uint32_t>(loc));
+      ReportCryptohomeErrorDevCheckUnexpectedState(error_bucket_name,
+                                                   static_cast<uint32_t>(loc));
     }
   }
 }
 
-void ReportLeafNode(const StatusChain<CryptohomeError>& stack) {
+void ReportLeafNode(const StatusChain<CryptohomeError>& stack,
+                    const std::string& error_bucket_name) {
   bool have_tpm_error = false;
   CryptohomeError::ErrorLocation last_non_tpm_loc, last_tpm_loc;
   // last_non_tpm_loc is a location that is not of the type CryptohomeTPMError,
@@ -78,7 +84,8 @@ void ReportLeafNode(const StatusChain<CryptohomeError>& stack) {
 
   if (!have_tpm_error) {
     // No TPM error, just report the leaf node.
-    ReportCryptohomeErrorLeaf(static_cast<uint32_t>(last_non_tpm_loc));
+    ReportCryptohomeErrorLeaf(error_bucket_name,
+                              static_cast<uint32_t>(last_non_tpm_loc));
   } else {
     // There's a TPM error, report the leaf node and the TPM error.
     // For the TPM error, we always report only the last node.
@@ -97,26 +104,29 @@ void ReportLeafNode(const StatusChain<CryptohomeError>& stack) {
          << 16) |
         (tpm_error_to_report & hwsec::unified_tpm_error::kUnifiedErrorMask);
 
-    ReportCryptohomeErrorLeafWithTPM(static_cast<uint32_t>(mixed));
+    ReportCryptohomeErrorLeafWithTPM(error_bucket_name,
+                                     static_cast<uint32_t>(mixed));
   }
 }
 
 }  // namespace
 
 void ReportCryptohomeError(const StatusChain<CryptohomeError>& err,
-                           const user_data_auth::CryptohomeErrorInfo& info) {
+                           const user_data_auth::CryptohomeErrorInfo& info,
+                           const std::string& error_bucket_name) {
   if (err.ok()) {
     // No error? No need to report.
     return;
   }
 
-  LOG(WARNING) << "Cryptohome Error reported on DBus API: " << err;
+  LOG(WARNING) << "Cryptohome " << error_bucket_name
+               << " reported on DBus API: " << err;
 
   // The actual reportings.
-  ReportAllLocations(err);
-  ReportHashedStack(info);
-  ReportDevCheckUnexpectedState(err);
-  ReportLeafNode(err);
+  ReportAllLocations(err, error_bucket_name);
+  ReportHashedStack(info, error_bucket_name);
+  ReportDevCheckUnexpectedState(err, error_bucket_name);
+  ReportLeafNode(err, error_bucket_name);
 }
 
 }  // namespace error

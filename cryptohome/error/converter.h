@@ -52,11 +52,15 @@ template <typename ReplyType>
 void PopulateReplyWithError(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err,
     ReplyType* reply) {
+  constexpr char kErrorBucketName[] = "Error";
   bool success = err.ok();
   if (!success) {
     user_data_auth::CryptohomeErrorCode legacy_ec;
     auto info = CryptohomeErrorToUserDataAuthError(err, &legacy_ec);
-    ReportCryptohomeError(err, info);
+    // Cryptohome errors populated in dbus replies are reported to the default
+    // bucket name, such that it will appear as Cryptohome.Error.AllLocations
+    // etc.
+    ReportCryptohomeError(err, info, kErrorBucketName);
 
     *reply->mutable_error_info() = std::move(info);
     reply->set_error(legacy_ec);

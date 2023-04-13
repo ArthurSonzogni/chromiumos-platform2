@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_ERROR_REPORTING_H_
 #define CRYPTOHOME_ERROR_REPORTING_H_
 
+#include <string>
+
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/error/cryptohome_error.h"
@@ -20,7 +22,8 @@ namespace error {
 // result from it. If |info| doesn't match |err|, the behaviour is undefined.
 void ReportCryptohomeError(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err,
-    const user_data_auth::CryptohomeErrorInfo& info);
+    const user_data_auth::CryptohomeErrorInfo& info,
+    const std::string& error_bucket_name);
 
 }  // namespace error
 

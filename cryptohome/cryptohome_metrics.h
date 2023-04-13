@@ -311,16 +311,14 @@ enum class LegacyCodePathLocation {
   kMaxValue = kGenerateResetSeedDuringAddKey
 };
 
-inline constexpr char kCryptohomeErrorHashedStack[] =
-    "Cryptohome.Error.HashedStack";
-inline constexpr char kCryptohomeErrorLeafWithoutTPM[] =
-    "Cryptohome.Error.LeafErrorWithoutTPM";
-inline constexpr char kCryptohomeErrorLeafWithTPM[] =
-    "Cryptohome.Error.LeafErrorWithTPM";
-inline constexpr char kCryptohomeErrorDevCheckUnexpectedState[] =
-    "Cryptohome.Error.DevUnexpectedState";
-inline constexpr char kCryptohomeErrorAllLocations[] =
-    "Cryptohome.Error.AllLocations";
+inline constexpr char kCryptohomeErrorPrefix[] = "Cryptohome";
+inline constexpr char kCryptohomeErrorHashedStackSuffix[] = "HashedStack";
+inline constexpr char kCryptohomeErrorLeafWithoutTPMSuffix[] =
+    "LeafErrorWithoutTPM";
+inline constexpr char kCryptohomeErrorLeafWithTPMSuffix[] = "LeafErrorWithTPM";
+inline constexpr char kCryptohomeErrorDevCheckUnexpectedStateSuffix[] =
+    "DevUnexpectedState";
+inline constexpr char kCryptohomeErrorAllLocationsSuffix[] = "AllLocations";
 
 // List of possible results of fetching the USS experiment config. If fetching
 // failed, the status is kFetchError. If parsing failed, the status is
@@ -603,20 +601,25 @@ void ReportDownloadsBindMountMigrationStatus(
 // Cryptohome Error Reporting related UMAs
 
 // Reports the full error id's hash when an error occurred.
-void ReportCryptohomeErrorHashedStack(const uint32_t hashed);
+void ReportCryptohomeErrorHashedStack(std::string error_bucket_name,
+                                      const uint32_t hashed);
 
 // Reports the leaf node of an error id when an error occurred.
-void ReportCryptohomeErrorLeaf(const uint32_t node);
+void ReportCryptohomeErrorLeaf(std::string error_bucket_name,
+                               const uint32_t node);
 
 // Reports the leaf node and TPM error when an error occurred.
-void ReportCryptohomeErrorLeafWithTPM(const uint32_t mixed);
+void ReportCryptohomeErrorLeafWithTPM(std::string error_bucket_name,
+                                      const uint32_t mixed);
 
 // Reports the error location when kDevCheckUnexpectedState happened.
-void ReportCryptohomeErrorDevCheckUnexpectedState(const uint32_t loc);
+void ReportCryptohomeErrorDevCheckUnexpectedState(std::string error_bucket_name,
+                                                  const uint32_t loc);
 
 // Reports a node in the error ID. This will be called multiple times for
 // an error ID with multiple nodes.
-void ReportCryptohomeErrorAllLocations(const uint32_t loc);
+void ReportCryptohomeErrorAllLocations(std::string error_bucket_name,
+                                       const uint32_t loc);
 
 // Call this to disable all CryptohomeError related metrics reporting. This is
 // for situations in which we generate too many possible values in

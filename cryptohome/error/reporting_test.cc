@@ -24,6 +24,7 @@ namespace error {
 namespace {
 
 using testing::_;
+using testing::EndsWith;
 using testing::Return;
 using testing::StrictMock;
 
@@ -34,6 +35,8 @@ using hwsec_foundation::error::WrapError;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
+
+constexpr char kErrorBucketName[] = "Error";
 
 class ErrorReportingTest : public ::testing::Test {
  public:
@@ -61,27 +64,27 @@ TEST_F(ErrorReportingTest, SuccessNoReporting) {
 
   auto err1 = OkStatus<CryptohomeError>();
   user_data_auth::CryptohomeErrorInfo info;
-  ReportCryptohomeError(err1, info);
+  ReportCryptohomeError(err1, info, kErrorBucketName);
 }
 
 TEST_F(ErrorReportingTest, NoTPMError) {
   // Setup the expected result.
   EXPECT_CALL(metrics_,
-              SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
+              SendSparseToUMA(EndsWith(kCryptohomeErrorAllLocationsSuffix),
                               kErrorLocationForTesting1.location()))
       .WillOnce(Return(true));
   EXPECT_CALL(metrics_,
-              SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
+              SendSparseToUMA(EndsWith(kCryptohomeErrorAllLocationsSuffix),
                               kErrorLocationForTesting2.location()))
       .WillOnce(Return(true));
   EXPECT_CALL(metrics_,
-              SendSparseToUMA(std::string(kCryptohomeErrorLeafWithoutTPM),
+              SendSparseToUMA(EndsWith(kCryptohomeErrorLeafWithoutTPMSuffix),
                               kErrorLocationForTesting1.location()))
       .WillOnce(Return(true));
   // HashedStack value is precomputed.
   EXPECT_CALL(
       metrics_,
-      SendSparseToUMA(std::string(kCryptohomeErrorHashedStack), -960165467))
+      SendSparseToUMA(EndsWith(kCryptohomeErrorHashedStackSuffix), -960165467))
       .WillOnce(Return(true));
 
   // Setup the errors.
@@ -100,25 +103,25 @@ TEST_F(ErrorReportingTest, NoTPMError) {
       CryptohomeErrorToUserDataAuthError(err2, &legacy_ec);
 
   // Make the call.
-  ReportCryptohomeError(err2, info);
+  ReportCryptohomeError(err2, info, kErrorBucketName);
 }
 
 TEST_F(ErrorReportingTest, DevCheckUnexpectedState) {
   // Setup the uninteresting stuffs first.
   EXPECT_CALL(metrics_,
-              SendSparseToUMA(std::string(kCryptohomeErrorAllLocations), _))
+              SendSparseToUMA(EndsWith(kCryptohomeErrorAllLocationsSuffix), _))
       .Times(2);
-  EXPECT_CALL(metrics_,
-              SendSparseToUMA(std::string(kCryptohomeErrorLeafWithoutTPM), _))
+  EXPECT_CALL(metrics_, SendSparseToUMA(
+                            EndsWith(kCryptohomeErrorLeafWithoutTPMSuffix), _))
       .Times(1);
   EXPECT_CALL(metrics_,
-              SendSparseToUMA(std::string(kCryptohomeErrorHashedStack), _))
+              SendSparseToUMA(EndsWith(kCryptohomeErrorHashedStackSuffix), _))
       .Times(1);
 
   // Make sure kDevCheckUnexpectedState is notified.
-  EXPECT_CALL(
-      metrics_,
-      SendSparseToUMA(std::string(kCryptohomeErrorDevCheckUnexpectedState), 1))
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(
+                  EndsWith(kCryptohomeErrorDevCheckUnexpectedStateSuffix), 1))
       .Times(1);
 
   // Setup the errors.
@@ -138,32 +141,32 @@ TEST_F(ErrorReportingTest, DevCheckUnexpectedState) {
       CryptohomeErrorToUserDataAuthError(err2, &legacy_ec);
 
   // Make the call.
-  ReportCryptohomeError(err2, info);
+  ReportCryptohomeError(err2, info, kErrorBucketName);
 }
 
 TEST_F(ErrorReportingTest, GenericTPMError) {
   // Setup the expected result.
   EXPECT_CALL(metrics_,
-              SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
+              SendSparseToUMA(EndsWith(kCryptohomeErrorAllLocationsSuffix),
                               kErrorLocationForTesting1.location()))
       .WillOnce(Return(true));
   // 32527 is precomputed value for "Testing1"
   CryptohomeError::ErrorLocation kHashedTesting1 = 32527;
   EXPECT_CALL(metrics_,
-              SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
+              SendSparseToUMA(EndsWith(kCryptohomeErrorAllLocationsSuffix),
                               kHashedTesting1 | kUnifiedErrorBit))
       .WillOnce(Return(true));
   // HashedStack value is precomputed.
   EXPECT_CALL(
       metrics_,
-      SendSparseToUMA(std::string(kCryptohomeErrorHashedStack), -1732565939))
+      SendSparseToUMA(EndsWith(kCryptohomeErrorHashedStackSuffix), -1732565939))
       .WillOnce(Return(true));
 
   // Generate the mixed TPM error.
   CryptohomeError::ErrorLocation mixed =
       kHashedTesting1 | (kErrorLocationForTesting1.location() << 16);
-  EXPECT_CALL(metrics_,
-              SendSparseToUMA(std::string(kCryptohomeErrorLeafWithTPM), mixed))
+  EXPECT_CALL(metrics_, SendSparseToUMA(
+                            EndsWith(kCryptohomeErrorLeafWithTPMSuffix), mixed))
       .WillOnce(Return(true));
 
   // Setup the errors.
@@ -183,7 +186,7 @@ TEST_F(ErrorReportingTest, GenericTPMError) {
       CryptohomeErrorToUserDataAuthError(err4, &legacy_ec);
 
   // Make the call.
-  ReportCryptohomeError(err4, info);
+  ReportCryptohomeError(err4, info, kErrorBucketName);
 }
 
 }  // namespace

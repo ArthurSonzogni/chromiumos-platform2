@@ -6,10 +6,12 @@
 
 #include <iterator>
 #include <string>
+#include <utility>
 
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
@@ -831,50 +833,69 @@ void ReportDownloadsBindMountMigrationStatus(
       static_cast<int>(DownloadsBindMountMigrationStatus::kMaxValue));
 }
 
-void ReportCryptohomeErrorHashedStack(const uint32_t hashed) {
+void ReportCryptohomeErrorHashedStack(std::string error_bucket_name,
+                                      const uint32_t hashed) {
   if (!g_metrics || g_disable_error_metrics) {
     return;
   }
 
-  g_metrics->SendSparseToUMA(std::string(kCryptohomeErrorHashedStack),
-                             static_cast<int>(hashed));
+  std::string name =
+      base::JoinString({kCryptohomeErrorPrefix, std::move(error_bucket_name),
+                        kCryptohomeErrorHashedStackSuffix},
+                       ".");
+  g_metrics->SendSparseToUMA(name, static_cast<int>(hashed));
 }
 
-void ReportCryptohomeErrorLeaf(const uint32_t node) {
+void ReportCryptohomeErrorLeaf(std::string error_bucket_name,
+                               const uint32_t node) {
   if (!g_metrics || g_disable_error_metrics) {
     return;
   }
 
-  g_metrics->SendSparseToUMA(std::string(kCryptohomeErrorLeafWithoutTPM),
-                             static_cast<int>(node));
+  std::string name =
+      base::JoinString({kCryptohomeErrorPrefix, std::move(error_bucket_name),
+                        kCryptohomeErrorLeafWithoutTPMSuffix},
+                       ".");
+  g_metrics->SendSparseToUMA(name, static_cast<int>(node));
 }
 
-void ReportCryptohomeErrorLeafWithTPM(const uint32_t mixed) {
+void ReportCryptohomeErrorLeafWithTPM(std::string error_bucket_name,
+                                      const uint32_t mixed) {
   if (!g_metrics || g_disable_error_metrics) {
     return;
   }
 
-  g_metrics->SendSparseToUMA(std::string(kCryptohomeErrorLeafWithTPM),
-                             static_cast<int>(mixed));
+  std::string name =
+      base::JoinString({kCryptohomeErrorPrefix, std::move(error_bucket_name),
+                        kCryptohomeErrorLeafWithTPMSuffix},
+                       ".");
+  g_metrics->SendSparseToUMA(name, static_cast<int>(mixed));
 }
 
-void ReportCryptohomeErrorDevCheckUnexpectedState(const uint32_t loc) {
+void ReportCryptohomeErrorDevCheckUnexpectedState(std::string error_bucket_name,
+                                                  const uint32_t loc) {
   if (!g_metrics || g_disable_error_metrics) {
     return;
   }
 
-  g_metrics->SendSparseToUMA(
-      std::string(kCryptohomeErrorDevCheckUnexpectedState),
-      static_cast<int>(loc));
+  std::string name =
+      base::JoinString({kCryptohomeErrorPrefix, std::move(error_bucket_name),
+                        kCryptohomeErrorDevCheckUnexpectedStateSuffix},
+                       ".");
+  g_metrics->SendSparseToUMA(name, static_cast<int>(loc));
 }
 
-void ReportCryptohomeErrorAllLocations(const uint32_t loc) {
+void ReportCryptohomeErrorAllLocations(std::string error_bucket_name,
+                                       const uint32_t loc) {
   if (!g_metrics || g_disable_error_metrics) {
     return;
   }
 
-  g_metrics->SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
-                             static_cast<int>(loc));
+  std::string name =
+      base::JoinString({kCryptohomeErrorPrefix, std::move(error_bucket_name),
+                        kCryptohomeErrorAllLocationsSuffix},
+                       ".");
+  g_metrics->SendSparseToUMA(name, static_cast<int>(loc));
 }
 
 void ReportFetchUssExperimentConfigStatus(
