@@ -74,6 +74,7 @@ const char kAudioEffectProperty[] = "AudioEffect";
 const char kNodeVolumeProperty[] = "NodeVolume";
 const char kInputNodeGainProperty[] = "InputNodeGain";
 const char kNumberOfVolumeStepsProperty[] = "NumberOfVolumeSteps";
+const char kDeviceLastOpenResultProperty[] = "DeviceLastOpenResult";
 // The following two properties are optional.
 const char kNumberOfUnderrunsProperty[] = "NumberOfUnderruns";
 const char kNumberOfSevereUnderrunsProperty[] = "NumberOfSevereUnderruns";
