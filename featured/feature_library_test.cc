@@ -47,12 +47,13 @@ class FeatureLibraryTest : public testing::Test {
                                       kFeatureLibInterface,
                                       dbus::ObjectPath(kFeatureLibPath))) {}
 
-  ~FeatureLibraryTest() { mock_bus_->ShutdownAndBlock(); }
-
   void SetUp() override {
-    features_ = std::unique_ptr<PlatformFeatures>(new PlatformFeatures(
-        mock_bus_, mock_chrome_proxy_.get(), mock_feature_proxy_.get()));
+    PlatformFeatures::InitializeForTesting(mock_bus_, mock_chrome_proxy_.get(),
+                                           mock_feature_proxy_.get());
+    features_ = PlatformFeatures::Get();
   }
+
+  void TearDown() override { PlatformFeatures::ShutdownForTesting(); }
 
   std::unique_ptr<dbus::Response> CreateIsEnabledResponse(
       dbus::MethodCall* call, bool enabled) {
@@ -144,7 +145,7 @@ class FeatureLibraryTest : public testing::Test {
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_chrome_proxy_;
   scoped_refptr<dbus::MockObjectProxy> mock_feature_proxy_;
-  std::unique_ptr<PlatformFeatures> features_;
+  PlatformFeatures* features_;
   std::unique_ptr<base::RunLoop> run_loop_;
 };
 

@@ -80,15 +80,16 @@ int main(int argc, char* argv[]) {
       base::BarrierClosure(4, loop.QuitClosure());
 
   LOG(INFO) << "Creating lib";
-  std::unique_ptr<feature::PlatformFeatures> feature_lib =
-      feature::PlatformFeatures::New(bus);
+  CHECK(feature::PlatformFeatures::Initialize(bus))
+      << "Failed to initialize lib";
+  feature::PlatformFeatures* feature_lib = feature::PlatformFeatures::Get();
   LOG(INFO) << "ListenForRefetch";
   feature_lib->ListenForRefetchNeeded(
-      base::BindRepeating(&Refetch, feature_lib.get(), barrier_closure),
+      base::BindRepeating(&Refetch, feature_lib, barrier_closure),
       base::BindOnce(&Ready));
 
   LOG(INFO) << "FetchState";
-  FetchState(feature_lib.get(), barrier_closure);
+  FetchState(feature_lib, barrier_closure);
 
   loop.Run();
   base::ThreadPoolInstance::Get()->Shutdown();

@@ -8,6 +8,8 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/no_destructor.h>
+#include <base/synchronization/lock.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_proxy_util.h>
@@ -16,6 +18,13 @@
 
 namespace feature {
 
+namespace {
+
+// GetInstanceLock() must be held while using this variable.
+PlatformFeatures* g_instance = nullptr;
+
+}  // namespace
+
 constexpr char kFeatureLibInterface[] = "org.chromium.feature_lib";
 constexpr char kFeatureLibPath[] = "/org/chromium/feature_lib";
 constexpr char kRefetchSignal[] = "RefetchFeatureState";
@@ -23,28 +32,59 @@ constexpr char kRefetchSignal[] = "RefetchFeatureState";
 PlatformFeatures::PlatformFeatures(scoped_refptr<dbus::Bus> bus,
                                    dbus::ObjectProxy* chrome_proxy,
                                    dbus::ObjectProxy* feature_proxy)
-    : bus_(bus), chrome_proxy_(chrome_proxy), feature_proxy_(feature_proxy) {}
+    : bus_(bus), chrome_proxy_(chrome_proxy), feature_proxy_(feature_proxy) {
+  base::AutoLock auto_lock(GetInstanceLock());
+  CHECK(!g_instance);
+  g_instance = this;
+}
 
-std::unique_ptr<PlatformFeatures> PlatformFeatures::New(
-    scoped_refptr<dbus::Bus> bus) {
+// static
+bool PlatformFeatures::Initialize(scoped_refptr<dbus::Bus> bus) {
   auto* chrome_proxy = bus->GetObjectProxy(
       chromeos::kChromeFeaturesServiceName,
       dbus::ObjectPath(chromeos::kChromeFeaturesServicePath));
   if (!chrome_proxy) {
     LOG(ERROR) << "Failed to create object proxy for "
                << chromeos::kChromeFeaturesServiceName;
-    return nullptr;
+    return false;
   }
 
   auto* feature_proxy = bus->GetObjectProxy(kFeatureLibInterface,
                                             dbus::ObjectPath(kFeatureLibPath));
   if (!feature_proxy) {
     LOG(ERROR) << "Failed to create object proxy for " << kFeatureLibInterface;
-    return nullptr;
+    return false;
   }
 
-  return std::unique_ptr<PlatformFeatures>(
-      new PlatformFeatures(bus, chrome_proxy, feature_proxy));
+  new PlatformFeatures(bus, chrome_proxy, feature_proxy);
+  return true;
+}
+
+// static
+void PlatformFeatures::InitializeForTesting(scoped_refptr<dbus::Bus> bus,
+                                            dbus::ObjectProxy* chrome_proxy,
+                                            dbus::ObjectProxy* feature_proxy) {
+  new PlatformFeatures(bus, chrome_proxy, feature_proxy);
+}
+
+// static
+void PlatformFeatures::ShutdownForTesting() {
+  base::AutoLock auto_lock(GetInstanceLock());
+  if (g_instance) {
+    delete g_instance;
+  }
+}
+
+// static
+PlatformFeatures* PlatformFeatures::Get() {
+  base::AutoLock auto_lock(GetInstanceLock());
+  return g_instance;
+}
+
+PlatformFeatures::~PlatformFeatures() {
+  GetInstanceLock().AssertAcquired();
+  CHECK_EQ(this, g_instance);
+  g_instance = nullptr;
 }
 
 void PlatformFeatures::IsEnabled(const VariationsFeature& feature,
@@ -308,10 +348,6 @@ bool PlatformFeatures::CheckFeatureIdentity(const VariationsFeature& feature) {
   return it->second == &feature;
 }
 
-void PlatformFeatures::ShutdownBus() {
-  bus_->ShutdownAndBlock();
-}
-
 void PlatformFeatures::ListenForRefetchNeeded(
     base::RepeatingCallback<void(void)> signal_callback,
     base::OnceCallback<void(bool)> attached_callback) {
@@ -332,6 +368,12 @@ void PlatformFeatures::OnConnectedCallback(
     LOG(ERROR) << "Failed to connect to " << interface << "." << signal;
   }
   std::move(attached_callback).Run(success);
+}
+
+// static
+base::Lock& PlatformFeatures::GetInstanceLock() {
+  static base::NoDestructor<base::Lock> lock;
+  return *lock;
 }
 
 }  // namespace feature

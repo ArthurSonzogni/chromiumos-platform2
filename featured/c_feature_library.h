@@ -4,6 +4,7 @@
 #ifndef FEATURED_C_FEATURE_LIBRARY_H_
 #define FEATURED_C_FEATURE_LIBRARY_H_
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #include "featured/feature_export.h"
@@ -54,11 +55,11 @@ struct FEATURE_EXPORT VariationsFeatureGetParamsResponseEntry {
 
 typedef struct CFeatureLibraryOpaque* CFeatureLibrary;
 
-// C wrapper for PlatformFeatures::New()
-CFeatureLibrary FEATURE_EXPORT CFeatureLibraryNew();
+// C wrapper for PlatformFeatures::Initialize()
+bool FEATURE_EXPORT CFeatureLibraryInitialize();
 
-// C wrapper for PlatformFeatures::~PlatformFeatures()
-void FEATURE_EXPORT CFeatureLibraryDelete(CFeatureLibrary handle);
+// C wrapper for PlatformFeatures::Get()
+CFeatureLibrary FEATURE_EXPORT CFeatureLibraryGet();
 
 // C wrapper for PlatformFeatures::IsEnabled is NOT defined, since different
 // language thread runtimes will likely be incompatible with C++'s

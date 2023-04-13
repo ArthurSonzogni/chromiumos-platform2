@@ -49,7 +49,7 @@ class FEATURE_EXPORT FakePlatformFeatures : public PlatformFeaturesInterface {
                 const std::string& value);
   void ClearParams(const std::string& feature);
 
-  void ShutdownBus() override;
+  void ShutdownBus();
 
   void ListenForRefetchNeeded(
       base::RepeatingCallback<void(void)> signal_callback,

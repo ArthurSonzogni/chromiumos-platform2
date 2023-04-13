@@ -17,6 +17,13 @@ extern "C" CFeatureLibrary FakeCFeatureLibraryNew() {
       new feature::FakePlatformFeatures(bus));
 }
 
+extern "C" void FakeCFeatureLibraryDelete(CFeatureLibrary handle) {
+  auto* library = dynamic_cast<feature::FakePlatformFeatures*>(
+      reinterpret_cast<feature::PlatformFeaturesInterface*>(handle));
+  library->ShutdownBus();
+  delete library;
+}
+
 extern "C" void FakeCFeatureLibrarySetEnabled(CFeatureLibrary handle,
                                               const char* const feature,
                                               int enabled) {

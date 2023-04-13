@@ -29,8 +29,6 @@ namespace feature {
 
 class FEATURE_EXPORT PlatformFeaturesInterface {
  public:
-  virtual ~PlatformFeaturesInterface() = default;
-
   using IsEnabledCallback = base::OnceCallback<void(bool)>;
   // Asynchronously determine whether the given feature is enabled, using the
   // specified default value if Chrome doesn't define a value for the feature
@@ -147,10 +145,6 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   virtual ParamsResult GetParamsAndEnabledBlocking(
       const std::vector<const VariationsFeature*>& features) = 0;
 
-  // Shutdown the bus object, if any. Used for C API, or when destroying it and
-  // the bus is no longer owned.
-  virtual void ShutdownBus() = 0;
-
   // ListenForRefetchNeeded registers |signal_callback| to run whenever it is
   // required to refetch feature state (that is, whenever chrome restarts).
   // In particular, in order to respect chrome://flags state, you must either
@@ -167,6 +161,9 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   virtual void ListenForRefetchNeeded(
       base::RepeatingCallback<void(void)> signal_callback,
       base::OnceCallback<void(bool)> attached_callback) = 0;
+
+ protected:
+  virtual ~PlatformFeaturesInterface() = default;
 };
 
 class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
@@ -174,9 +171,15 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   PlatformFeatures(const PlatformFeatures&) = delete;
   PlatformFeatures& operator=(const PlatformFeatures&) = delete;
 
-  // Construct a new PlatformFeatures object based on the provided |bus|.
-  // Returns |nullptr| on failure to create an ObjectProxy
-  static std::unique_ptr<PlatformFeatures> New(scoped_refptr<dbus::Bus> bus);
+  // Creates and initializes the global instance based on the provided |bus|.
+  // The global instance will be initialized to |nullptr| on failure to create
+  // an ObjectProxy.
+  //
+  // Note: The initialized global instance will live until process exit.
+  [[nodiscard]] static bool Initialize(scoped_refptr<dbus::Bus> bus);
+
+  // Returns the global instance which may be null if not initialized.
+  static PlatformFeatures* Get();
 
   void IsEnabled(const VariationsFeature& feature,
                  IsEnabledCallback callback) override;
@@ -191,20 +194,26 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   ParamsResult GetParamsAndEnabledBlocking(
       const std::vector<const VariationsFeature*>& features) override;
 
-  void ShutdownBus() override;
-
   void ListenForRefetchNeeded(
       base::RepeatingCallback<void(void)> signal_callback,
       base::OnceCallback<void(bool)> attached_callback) override;
 
- protected:
+  static void ShutdownForTesting();
+
+ private:
+  friend class FeatureLibraryTest;
+
+  FRIEND_TEST(FeatureLibraryTest, CheckFeatureIdentity);
+
   explicit PlatformFeatures(scoped_refptr<dbus::Bus> bus,
                             dbus::ObjectProxy* chrome_proxy,
                             dbus::ObjectProxy* feature_proxy);
 
- private:
-  friend class FeatureLibraryTest;
-  FRIEND_TEST(FeatureLibraryTest, CheckFeatureIdentity);
+  ~PlatformFeatures() override;
+
+  static void InitializeForTesting(scoped_refptr<dbus::Bus> bus,
+                                   dbus::ObjectProxy* chrome_proxy,
+                                   dbus::ObjectProxy* feature_proxy);
 
   // Callback that is invoked for IsEnabled() when WaitForServiceToBeAvailable()
   // finishes.
@@ -256,6 +265,9 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
       const std::string& interface,
       const std::string& signal,
       bool success);
+
+  // This lock protects the global instance variable.
+  static base::Lock& GetInstanceLock();
 
   scoped_refptr<dbus::Bus> bus_;
   // An object proxy used for communicating with ash-chrome.

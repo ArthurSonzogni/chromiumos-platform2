@@ -6,10 +6,10 @@ use featured::{CheckFeature, Feature, PlatformFeatures};
 use log::info;
 
 fn main() {
+    let features = PlatformFeatures::get().expect("Unable to get client");
+
     let feature =
         Feature::new("CrOSLateBootMyAwesomeFeature", false).expect("Unable to create feature");
-    let features = PlatformFeatures::new().expect("Unable to create client");
-
     let is_enabled = features.is_feature_enabled_blocking(&feature);
     info!("Feature is enabled: {}", is_enabled);
 

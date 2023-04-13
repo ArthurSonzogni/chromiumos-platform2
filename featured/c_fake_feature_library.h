@@ -14,6 +14,9 @@ extern "C" {
 // C wrapper for `new FakePlatformFeatures()`
 CFeatureLibrary FEATURE_EXPORT FakeCFeatureLibraryNew();
 
+// Used only for freeing dynamically allocated resources in the fake.
+void FEATURE_EXPORT FakeCFeatureLibraryDelete(CFeatureLibrary handle);
+
 // C wrapper for FakePlatformFeatures::SetEnabled()
 void FEATURE_EXPORT FakeCFeatureLibrarySetEnabled(CFeatureLibrary handle,
                                                   const char* const feature,

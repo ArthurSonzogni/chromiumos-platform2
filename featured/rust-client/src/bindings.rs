@@ -37,10 +37,10 @@ pub struct CFeatureLibraryOpaque {
 }
 pub type CFeatureLibrary = *mut CFeatureLibraryOpaque;
 extern "C" {
-    pub fn CFeatureLibraryNew() -> CFeatureLibrary;
+    pub fn CFeatureLibraryInitialize() -> bool;
 }
 extern "C" {
-    pub fn CFeatureLibraryDelete(handle: CFeatureLibrary);
+    pub fn CFeatureLibraryGet() -> CFeatureLibrary;
 }
 extern "C" {
     pub fn CFeatureLibraryIsEnabledBlocking(
@@ -64,6 +64,9 @@ extern "C" {
 }
 extern "C" {
     pub fn FakeCFeatureLibraryNew() -> CFeatureLibrary;
+}
+extern "C" {
+    pub fn FakeCFeatureLibraryDelete(handle: CFeatureLibrary);
 }
 extern "C" {
     pub fn FakeCFeatureLibrarySetEnabled(

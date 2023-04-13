@@ -109,6 +109,11 @@ class DbusFeaturedServiceTestBase : public testing::Test {
         .WillByDefault(Return(true));
   }
 
+  void TearDown() override {
+    mock_bus_->ShutdownAndBlock();
+    feature::PlatformFeatures::ShutdownForTesting();
+  }
+
  protected:
   void HandleSeedFetched(dbus::MethodCall* method_call,
                          dbus::ExportedObject::ResponseSender sender) {

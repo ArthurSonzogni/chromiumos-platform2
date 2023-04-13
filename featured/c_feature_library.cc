@@ -12,19 +12,16 @@
 
 #include "featured/feature_library.h"
 
-extern "C" CFeatureLibrary CFeatureLibraryNew() {
+extern "C" bool CFeatureLibraryInitialize() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
   scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
 
-  return reinterpret_cast<CFeatureLibrary>(
-      feature::PlatformFeatures::New(bus).release());
+  return feature::PlatformFeatures::Initialize(bus);
 }
 
-extern "C" void CFeatureLibraryDelete(CFeatureLibrary handle) {
-  auto* library = reinterpret_cast<feature::PlatformFeaturesInterface*>(handle);
-  library->ShutdownBus();
-  delete library;
+extern "C" CFeatureLibrary CFeatureLibraryGet() {
+  return reinterpret_cast<CFeatureLibrary>(feature::PlatformFeatures::Get());
 }
 
 extern "C" int CFeatureLibraryIsEnabledBlocking(

@@ -186,7 +186,6 @@ class DbusFeaturedService {
                          dbus::ExportedObject::ResponseSender sender);
 
   std::unique_ptr<FeatureParserBase> parser_;
-  std::unique_ptr<feature::PlatformFeatures> library_;
   std::unique_ptr<StoreInterface> store_;
   std::unique_ptr<TmpStorageInterface> tmp_storage_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>

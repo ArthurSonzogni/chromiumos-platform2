@@ -14,8 +14,10 @@
 mod bindings;
 use crate::bindings::*;
 
+use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
+use std::sync::Arc;
 use thiserror::Error;
 
 /// Errors which can occur during `Feature` creation and use.
@@ -201,25 +203,18 @@ impl GetParamsAndEnabledResponse {
 /// us with a way to safely call FFI functions.
 struct SafeHandle {
     handle: CFeatureLibrary,
+    fake: bool,
 }
 
-impl SafeHandle {
-    /// Creates a new client handle for requests to featured.
-    ///
-    /// # Errors
-    ///
-    /// If the underlying C calls do not return a proper handle to
-    /// the featured client, an error will be returned.
-    fn new() -> Result<Self, PlatformError> {
-        // SAFETY: The C library can return either a valid object pointer or a null pointer.
-        // A subsequent check is made to ensure that the pointer is valid.
-        let handle = unsafe { CFeatureLibraryNew() };
-        if handle.is_null() {
-            return Err(PlatformError::NullHandle);
-        };
-        Ok(SafeHandle { handle })
-    }
+// SAFETY: `PlatformFeatures` stores `SafeHandle` in an Arc pointer, which is thread-safe so we can
+// annotate with `Send`. `CFeatureLibrary` is also safe to use in multiple threads simultaneously
+// so we can annotate with `Sync`. `SafeHandle` will only get dropped after the program terminates
+// and all references to the global `PlatformFeatures` instance go out of scope. This is necessary
+// since `PlatformFeatures` is trying to wrap unsafe C code in a safe Rust struct.
+unsafe impl Send for SafeHandle {}
+unsafe impl Sync for SafeHandle {}
 
+impl SafeHandle {
     /// Creates a new client handle for faking requests to featured.
     ///
     /// # Errors
@@ -233,7 +228,7 @@ impl SafeHandle {
         if handle.is_null() {
             return Err(PlatformError::NullHandle);
         };
-        Ok(SafeHandle { handle })
+        Ok(SafeHandle { handle, fake: true })
     }
 
     fn is_feature_enabled_blocking(&self, feature: &Feature) -> bool {
@@ -324,7 +319,9 @@ impl Drop for SafeHandle {
     fn drop(&mut self) {
         // SAFETY: The C call frees the memory associated with handle, which is okay since the
         // pointer is dropped immediately afterwards.
-        unsafe { CFeatureLibraryDelete(self.handle) }
+        if self.fake {
+            unsafe { FakeCFeatureLibraryDelete(self.handle) }
+        }
     }
 }
 
@@ -333,18 +330,42 @@ impl Drop for SafeHandle {
 pub struct PlatformFeatures {
     handle: SafeHandle,
 }
+static FEATURE_LIBRARY: OnceCell<Arc<PlatformFeatures>> = OnceCell::new();
 
 impl PlatformFeatures {
-    /// Creates a new client for handling requests to featured.
+    /// Returns a client handle for requests to featured. Will also initialize the client handle on
+    /// the first call.
     ///
     /// # Errors
     ///
     /// If the underlying C calls do not return a proper handle to
-    /// the featured client, an error string will be returned.
-    pub fn new() -> Result<Self, PlatformError> {
-        Ok(PlatformFeatures {
-            handle: SafeHandle::new()?,
-        })
+    /// the featured client, an error will be returned.
+    pub fn get() -> Result<Arc<PlatformFeatures>, PlatformError> {
+        FEATURE_LIBRARY
+            .get_or_try_init(|| {
+                // SAFETY: The C library will initialize the handle to either a valid object pointer
+                // or a null pointer. A subsequent check is made to ensure the client is initialized
+                // properly.
+                let initialize = unsafe { CFeatureLibraryInitialize() };
+                if !initialize {
+                    return Err(PlatformError::NullHandle);
+                }
+
+                let cpp_handle = unsafe { CFeatureLibraryGet() };
+                if cpp_handle.is_null() {
+                    return Err(PlatformError::NullHandle);
+                }
+
+                let lib = Arc::new(PlatformFeatures {
+                    handle: SafeHandle {
+                        handle: cpp_handle,
+                        fake: false,
+                    },
+                });
+
+                Ok(lib)
+            })
+            .map(Arc::clone)
     }
 }
 
@@ -475,7 +496,7 @@ fn parse_params(entry: &VariationsFeatureGetParamsResponseEntry) -> FeatureStatu
     // Read the underlying C array as a Rust slice.
     // SAFETY: The C library ensures that it will always return valid pointers in its responses,
     // which means we can safely read those values as a slice.
-    let params = unsafe { std::slice::from_raw_parts(entry.params, entry.num_params as usize) };
+    let params = unsafe { std::slice::from_raw_parts(entry.params, entry.num_params) };
     let hash_map = params
         .iter()
         .filter_map(|param| {
@@ -516,6 +537,14 @@ mod tests {
     fn it_rejects_an_invalid_feature() {
         let subject = Feature::new("some-bad-feature\0", true);
         assert!(subject.is_err());
+    }
+
+    #[test]
+    fn it_initializes_and_returns_a_valid_library() {
+        let first_init = PlatformFeatures::get();
+        assert!(first_init.is_ok());
+        let second_init = PlatformFeatures::get();
+        assert!(second_init.is_ok())
     }
 
     #[test]

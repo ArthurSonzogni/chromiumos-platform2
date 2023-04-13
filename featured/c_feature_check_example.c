@@ -11,7 +11,11 @@ const struct VariationsFeature kCrOSLateBootMyAwesomeFeature = {
 };
 
 int main(int argc, char* argv[]) {
-  CFeatureLibrary lib = CFeatureLibraryNew();
+  if (!CFeatureLibraryInitialize()) {
+    printf("Error initializing library. Exiting program\n");
+    return 1;
+  }
+  CFeatureLibrary lib = CFeatureLibraryGet();
   printf("%d\n",
          CFeatureLibraryIsEnabledBlocking(lib, &kCrOSLateBootMyAwesomeFeature));
 
@@ -29,5 +33,4 @@ int main(int argc, char* argv[]) {
   } else {
     printf("Error getting feature\n");
   }
-  CFeatureLibraryDelete(lib);
 }

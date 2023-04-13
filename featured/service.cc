@@ -312,7 +312,8 @@ bool DbusFeaturedService::EnableFeatures() {
   }
   for (const auto& it : *(parser_->GetFeatureMap())) {
     if (it.second.IsSupported() &&
-        library_->IsEnabledBlocking(*it.second.feature())) {
+        feature::PlatformFeatures::Get()->IsEnabledBlocking(
+            *it.second.feature())) {
       it.second.Execute();
     }
   }
@@ -426,7 +427,10 @@ bool DbusFeaturedService::Start(dbus::Bus* bus,
     return false;
   }
 
-  library_ = feature::PlatformFeatures::New(bus);
+  if (!feature::PlatformFeatures::Initialize(bus)) {
+    LOG(ERROR) << "Failed to initialize PlatformFeatures";
+    return false;
+  }
 
   if (store_ && !store_->IncrementBootAttemptsSinceLastUpdate()) {
     LOG(ERROR) << "Failed to increment boot attempts";

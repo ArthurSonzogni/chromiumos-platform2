@@ -57,5 +57,5 @@ int main(int argc, char* argv[]) {
   printf("%d\n",
          CFeatureLibraryIsEnabledBlocking(lib, &kCrOSLateBootMyAwesomeFeature));
 
-  CFeatureLibraryDelete(lib);
+  FakeCFeatureLibraryDelete(lib);
 }
