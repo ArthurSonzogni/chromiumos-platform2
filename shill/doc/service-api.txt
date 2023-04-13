@@ -677,27 +677,25 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 
 		array{string} EAP.RemoteCertification [readonly]
 
-			(WiFi only) The list of certificate subject names
-			reported by the remote RADIUS server.  This
-			property is set during 802.1x negotiation and
-			persists after disconnection for later inspection,
-			but is not persisted between connection manager
-			restarts.  It is also cleared at the beginning of
-			the next connection.
+			The list of certificate subject names reported by the
+			remote RADIUS server.  This property is set during
+			802.1x negotiation and persists after disconnection for
+			later inspection, but is not persisted between
+			connection manager restarts.  It is also cleared at the
+			beginning of the next connection.
 
 		string EAP.SubjectMatch [readwrite]
 
-			(WiFi only) A substring which the remote
-			RADIUS server certificate subject name must
-			contain.  If the subject does not contain this
-			substring, abort 802.1x negotiation.
+			A substring which the remote RADIUS server certificate
+			subject name must contain.  If the subject does not
+			contain this substring, abort 802.1x negotiation.
 
 		array{string} EAP.SubjectAlternativeNameMatch [readonly]
 
-			(WiFi only) A list of serialized subject alternative
-			names (SANs). Each SAN is defined by a type and a
-			value. SAN type can be "EMAIL", "DNS" or "URI"
-			according to the types supported by wpa_supplicant.
+			A list of serialized subject alternative names (SANs).
+			Each SAN is defined by a type and a value. SAN type can
+			be "EMAIL", "DNS" or "URI" according to the types
+			supported by wpa_supplicant.
 			For more information about specifying SANs please
 			refer to:
 			https://w1.fi/cgit/hostap/plain/wpa_supplicant/wpa_supplicant.conf
@@ -709,14 +707,15 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 
 		array{string} EAP.DomainSuffixMatch [readonly]
 
-			(WiFi only) A list of constraints for the server domain name. If
-			set, the entries will be used as suffix match requirements against
-			the dNSName element(s) of the alternative subject name of an
-			authentication server certificate. When multiple match strings are
-			specified, a match with any one of the values is considered a
+			A list of constraints for the server domain name. If
+			set, the entries will be used as suffix match
+			requirements against the dNSName element(s) of the
+			alternative subject name of an authentication server
+			certificate. When multiple match strings are specified,
+			a match with any one of the values is considered a
 			sufficient match for the certificate.
-			For more information about specifying DomainSuffixMatch please
-			refer to:
+			For more information about specifying DomainSuffixMatch
+			please refer to:
 			https://w1.fi/cgit/hostap/plain/wpa_supplicant/wpa_supplicant.conf
 
 		string Passpoint.FQDN [readonly]
