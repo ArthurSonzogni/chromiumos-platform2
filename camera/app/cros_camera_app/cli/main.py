@@ -295,6 +295,23 @@ def cmd_fake_hal_remove(camera_id: Optional[List[int]]):
     fake_hal.remove_cameras(lambda x: camera_id is None or x in camera_id)
 
 
+@cli.command(
+    "edit",
+    parent=cmd_fake_hal,
+    help="Edit config in editor",
+    description=(
+        "Edit Fake HAL config interactively. If --editor is not specified,"
+        " vim with a minimal sensible config would be used."
+    ),
+)
+@cli.option(
+    "--editor",
+    help="the editor to edit the config",
+)
+def cmd_fake_hal_edit(editor: Optional[str]):
+    fake_hal.edit_config_with_editor(editor)
+
+
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
     return cli.run(argv)
 
