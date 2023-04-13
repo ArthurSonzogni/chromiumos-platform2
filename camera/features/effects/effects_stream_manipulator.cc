@@ -735,9 +735,6 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     SetEffect(new_config);
   }
 
-  if (!last_set_effect_config_.HasEnabledEffects())
-    return true;
-
   auto timestamp = TryGetSensorTimestamp(&result);
   if (!timestamp.has_value()) {
     timestamp = last_timestamp_;
@@ -777,14 +774,16 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
       return false;
     }
 
-    RenderResult render_result = RenderEffect(result_buffer, *timestamp);
-    num_processed_streams++;
-    if (render_result.result != CameraEffectError::kNoError) {
-      metrics_.RecordError(render_result.result);
-      continue;
+    base::OnceClosure yuv_cleanup_closure;
+    if (last_set_effect_config_.HasEnabledEffects()) {
+      RenderResult render_result = RenderEffect(result_buffer, *timestamp);
+      num_processed_streams++;
+      if (render_result.result != CameraEffectError::kNoError) {
+        metrics_.RecordError(render_result.result);
+        continue;
+      }
+      yuv_cleanup_closure = std::move(render_result.cleanup_closure);
     }
-    base::ScopedClosureRunner cleanup_runner(
-        std::move(render_result.cleanup_closure));
 
     // If this buffer is the YUV input for a blob stream, feed it into the still
     // capture processor.
@@ -802,7 +801,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
           still_capture_processor_->QueuePendingYuvImage(
               result.frame_number(), *result_buffer.buffer(), base::ScopedFD());
           capture_context->blob_intermediate_yuv_pending = false;
-          capture_context->yuv_cleanup_closure = cleanup_runner.Release();
+          capture_context->yuv_cleanup_closure = std::move(yuv_cleanup_closure);
         }
         // Don't append the same YUV buffer stream twice.
         if (capture_context->yuv_stream_appended) {
