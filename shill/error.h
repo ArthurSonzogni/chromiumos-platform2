@@ -59,8 +59,8 @@ class Error {
         const std::string& message,
         const std::string& detailed_error_type);
   Error(Type type, const std::string& message, const base::Location& location);
-  Error(const Error&) = delete;
-  Error& operator=(const Error&) = delete;
+  Error(const Error&);
+  Error& operator=(const Error&);
 
   ~Error();
 

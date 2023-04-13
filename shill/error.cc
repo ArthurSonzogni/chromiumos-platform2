@@ -82,6 +82,10 @@ Error::Error(Type type,
   Populate(type, message, location);
 }
 
+Error::Error(const Error&) = default;
+
+Error& Error::operator=(const Error&) = default;
+
 Error::~Error() = default;
 
 void Error::Populate(Type type) {
