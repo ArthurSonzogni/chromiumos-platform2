@@ -32,8 +32,10 @@ class AudioJackEventsImpl final
                        observer) override;
 
   // ash::cros_healthd::mojom::AudioJackObserver overrides:
-  void OnAdd() override;
-  void OnRemove() override;
+  void OnAdd(ash::cros_healthd::mojom::AudioJackEventInfo::DeviceType
+                 device_type) override;
+  void OnRemove(ash::cros_healthd::mojom::AudioJackEventInfo::DeviceType
+                    device_type) override;
 
  private:
   void StartMonitor();

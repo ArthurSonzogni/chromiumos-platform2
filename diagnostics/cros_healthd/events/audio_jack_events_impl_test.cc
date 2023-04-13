@@ -58,9 +58,25 @@ class AudioJackEventsImplTest : public testing::Test {
         }));
   }
 
-  void EmitAudioJackAddEvent() { audio_jack_observer_->OnAdd(); }
+  void EmitAudioJackAddEventMicrophone() {
+    audio_jack_observer_->OnAdd(
+        mojom::AudioJackEventInfo::DeviceType::kMicrophone);
+  }
 
-  void EmitAudioJackRemoveEvent() { audio_jack_observer_->OnRemove(); }
+  void EmitAudioJackAddEventHeadphone() {
+    audio_jack_observer_->OnAdd(
+        mojom::AudioJackEventInfo::DeviceType::kHeadphone);
+  }
+
+  void EmitAudioJackRemoveEventMicrophone() {
+    audio_jack_observer_->OnRemove(
+        mojom::AudioJackEventInfo::DeviceType::kMicrophone);
+  }
+
+  void EmitAudioJackRemoveEventHeadphone() {
+    audio_jack_observer_->OnRemove(
+        mojom::AudioJackEventInfo::DeviceType::kHeadphone);
+  }
 
  private:
   base::test::TaskEnvironment task_environment_;
@@ -70,8 +86,8 @@ class AudioJackEventsImplTest : public testing::Test {
   mojo::Remote<mojom::AudioJackObserver> audio_jack_observer_;
 };
 
-// Test that we can receive audio jack add events.
-TEST_F(AudioJackEventsImplTest, AudioJackAddEvent) {
+// Test that we can receive audio jack add events for headphones.
+TEST_F(AudioJackEventsImplTest, AudioJackAddEventHeadphone) {
   base::RunLoop run_loop;
   EXPECT_CALL(*mock_event_observer(), OnEvent(_))
       .WillOnce(Invoke([&](mojom::EventInfoPtr info) {
@@ -79,16 +95,37 @@ TEST_F(AudioJackEventsImplTest, AudioJackAddEvent) {
         const auto& audio_jack_event_info = info->get_audio_jack_event_info();
         EXPECT_EQ(audio_jack_event_info->state,
                   mojom::AudioJackEventInfo::State::kAdd);
+        EXPECT_EQ(audio_jack_event_info->device_type,
+                  mojom::AudioJackEventInfo::DeviceType::kHeadphone);
         run_loop.Quit();
       }));
 
-  EmitAudioJackAddEvent();
+  EmitAudioJackAddEventHeadphone();
 
   run_loop.Run();
 }
 
-// Test that we can receive audio jack remove events.
-TEST_F(AudioJackEventsImplTest, AudioJackRemoveEvent) {
+// Test that we can receive audio jack add events for microphones.
+TEST_F(AudioJackEventsImplTest, AudioJackAddEventMicrophone) {
+  base::RunLoop run_loop;
+  EXPECT_CALL(*mock_event_observer(), OnEvent(_))
+      .WillOnce(Invoke([&](mojom::EventInfoPtr info) {
+        EXPECT_TRUE(info->is_audio_jack_event_info());
+        const auto& audio_jack_event_info = info->get_audio_jack_event_info();
+        EXPECT_EQ(audio_jack_event_info->state,
+                  mojom::AudioJackEventInfo::State::kAdd);
+        EXPECT_EQ(audio_jack_event_info->device_type,
+                  mojom::AudioJackEventInfo::DeviceType::kMicrophone);
+        run_loop.Quit();
+      }));
+
+  EmitAudioJackAddEventMicrophone();
+
+  run_loop.Run();
+}
+
+// Test that we can receive audio jack remove events for headphones.
+TEST_F(AudioJackEventsImplTest, AudioJackRemoveEventHeadphone) {
   base::RunLoop run_loop;
   EXPECT_CALL(*mock_event_observer(), OnEvent(_))
       .WillOnce(Invoke([&](mojom::EventInfoPtr info) {
@@ -96,10 +133,31 @@ TEST_F(AudioJackEventsImplTest, AudioJackRemoveEvent) {
         const auto& audio_jack_event_info = info->get_audio_jack_event_info();
         EXPECT_EQ(audio_jack_event_info->state,
                   mojom::AudioJackEventInfo::State::kRemove);
+        EXPECT_EQ(audio_jack_event_info->device_type,
+                  mojom::AudioJackEventInfo::DeviceType::kHeadphone);
         run_loop.Quit();
       }));
 
-  EmitAudioJackRemoveEvent();
+  EmitAudioJackRemoveEventHeadphone();
+
+  run_loop.Run();
+}
+
+// Test that we can receive audio jack remove events for microphones.
+TEST_F(AudioJackEventsImplTest, AudioJackRemoveEventMicrophone) {
+  base::RunLoop run_loop;
+  EXPECT_CALL(*mock_event_observer(), OnEvent(_))
+      .WillOnce(Invoke([&](mojom::EventInfoPtr info) {
+        EXPECT_TRUE(info->is_audio_jack_event_info());
+        const auto& audio_jack_event_info = info->get_audio_jack_event_info();
+        EXPECT_EQ(audio_jack_event_info->state,
+                  mojom::AudioJackEventInfo::State::kRemove);
+        EXPECT_EQ(audio_jack_event_info->device_type,
+                  mojom::AudioJackEventInfo::DeviceType::kMicrophone);
+        run_loop.Quit();
+      }));
+
+  EmitAudioJackRemoveEventMicrophone();
 
   run_loop.Run();
 }

@@ -32,17 +32,21 @@ void AudioJackEventsImpl::AddObserver(
   StartMonitor();
 }
 
-void AudioJackEventsImpl::OnAdd() {
+void AudioJackEventsImpl::OnAdd(
+    mojom::AudioJackEventInfo::DeviceType device_type) {
   mojom::AudioJackEventInfo info;
   info.state = mojom::AudioJackEventInfo::State::kAdd;
+  info.device_type = device_type;
 
   for (auto& observer : observers_)
     observer->OnEvent(mojom::EventInfo::NewAudioJackEventInfo(info.Clone()));
 }
 
-void AudioJackEventsImpl::OnRemove() {
+void AudioJackEventsImpl::OnRemove(
+    mojom::AudioJackEventInfo::DeviceType device_type) {
   mojom::AudioJackEventInfo info;
   info.state = mojom::AudioJackEventInfo::State::kRemove;
+  info.device_type = device_type;
 
   for (auto& observer : observers_)
     observer->OnEvent(mojom::EventInfo::NewAudioJackEventInfo(info.Clone()));

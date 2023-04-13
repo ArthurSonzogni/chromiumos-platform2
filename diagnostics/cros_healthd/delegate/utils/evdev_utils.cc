@@ -168,11 +168,19 @@ void EvdevAudioJackObserver::FireEvent(const input_event& ev, libevdev* dev) {
     return;
   }
 
-  if (ev.code == SW_HEADPHONE_INSERT || ev.code == SW_MICROPHONE_INSERT) {
-    if (ev.value == 1) {
-      observer_->OnAdd();
-    } else {
-      observer_->OnRemove();
+  if (ev.value == 1) {
+    if (ev.code == SW_HEADPHONE_INSERT) {
+      observer_->OnAdd(mojom::AudioJackEventInfo::DeviceType::kHeadphone);
+    }
+    if (ev.code == SW_MICROPHONE_INSERT) {
+      observer_->OnAdd(mojom::AudioJackEventInfo::DeviceType::kMicrophone);
+    }
+  } else {
+    if (ev.code == SW_HEADPHONE_INSERT) {
+      observer_->OnRemove(mojom::AudioJackEventInfo::DeviceType::kHeadphone);
+    }
+    if (ev.code == SW_MICROPHONE_INSERT) {
+      observer_->OnRemove(mojom::AudioJackEventInfo::DeviceType::kMicrophone);
     }
   }
 }

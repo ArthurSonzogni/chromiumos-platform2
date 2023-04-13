@@ -78,8 +78,8 @@ interface ProcessControl {
 
 // Implemented by clients who desire audio jack notifications.
 interface AudioJackObserver {
-  OnAdd();
-  OnRemove();
+  OnAdd(AudioJackEventInfo.DeviceType device_type);
+  OnRemove(AudioJackEventInfo.DeviceType device_type);
 };
 
 // Implemented by clients who desire touchpad notifications.
