@@ -316,15 +316,16 @@ void AgentPlugin::StartEventStatusCallback(reporting::Status status) {
         base::Seconds(3));
   }
 
+  static bool sent_metrics = false;
   // Should be sent once per daemon lifetime.
-  if (!sent_metrics_) {
+  if (!sent_metrics) {
     MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kCrosBootmode,
                                                      cros_bootmode_metric_);
     MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kUefiBootmode,
                                                      uefi_bootmode_metric_);
     MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kTpm,
                                                      tpm_metric_);
-    sent_metrics_ = true;
+    sent_metrics = true;
   }
 }
 

@@ -153,7 +153,6 @@ class AgentPlugin : public PluginInterface {
       metrics::CrosBootmode::kValueNotSet;
   metrics::UefiBootmode uefi_bootmode_metric_ = metrics::UefiBootmode::kSuccess;
   metrics::Tpm tpm_metric_ = metrics::Tpm::kValueNotSet;
-  bool sent_metrics_ = false;
 };
 
 class PluginFactoryInterface {
