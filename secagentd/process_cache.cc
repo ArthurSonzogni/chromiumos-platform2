@@ -597,7 +597,10 @@ void ProcessCache::InitializeFilter(bool underscorify) {
       // TODO(b:267391049): We think this is being execve by some base library
       // to determine how much space is left on the system. This spams the event
       // logs so we add a filter. The base library should really be fixed.
-      {.image_pathname = "usr/sbin/spaced_cli"}};
+      {.image_pathname = "usr/sbin/spaced_cli"},
+      // TODO(b:274925855): dmsetup is called at 1 Hz by spaced. Evaluate
+      // if spaced needs to call it that often.
+      {.image_pathname = "sbin/dmsetup"}};
 
   std::vector<
       std::pair<InternalFilterRuleSetType&, std::vector<InternalFilterRule>&>>
