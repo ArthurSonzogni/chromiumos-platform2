@@ -28,7 +28,6 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <base/timer/timer.h>
-#include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/resource_manager/dbus-constants.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
@@ -36,10 +35,8 @@
 #include <featured/feature_library.h>
 #include <grpcpp/grpcpp.h>
 #include <spaced/disk_usage_proxy.h>
-#include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/common/vm_id.h"
-#include "vm_tools/concierge/dbus_adaptors/org.chromium.VmConcierge.h"
 #include "vm_tools/concierge/disk_image.h"
 #include "vm_tools/concierge/manatee_memory_service.h"
 #include "vm_tools/concierge/power_manager_client.h"
@@ -64,7 +61,7 @@ using KernelVersionAndMajorRevision = std::pair<int, int>;
 
 // VM Launcher Service responsible for responding to DBus method calls for
 // starting, stopping, and otherwise managing VMs.
-class Service final : public org::chromium::VmConciergeInterface {
+class Service final {
  public:
   // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
   // for the current thread when this process receives a SIGTERM.
@@ -126,8 +123,9 @@ class Service final : public org::chromium::VmConciergeInterface {
   // VM being started with the given request.
   int64_t GetArcVmMemoryMiB(const StartArcVmRequest& request);
 
-  // Handles a request to stop a VM.
-  StopVmResponse StopVm(const StopVmRequest& request) override;
+  // Handles a request to stop a VM.  |method_call| must have a StopVmRequest
+  // protobuf serialized as an array of bytes.
+  std::unique_ptr<dbus::Response> StopVm(dbus::MethodCall* method_call);
 
   // Handles a request to stop a VM.
   bool StopVmInternal(const VmId& vm_id, VmStopReason reason);
@@ -465,9 +463,6 @@ class Service final : public org::chromium::VmConciergeInterface {
   dbus::ObjectProxy* vmplugin_service_proxy_;          // Owned by |bus_|.
   dbus::ObjectProxy* resource_manager_service_proxy_;  // Owned by |bus_|.
   dbus::ObjectProxy* chrome_features_service_proxy_;   // Owned by |bus_|.
-
-  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
-  org::chromium::VmConciergeAdaptor concierge_adaptor_{this};
 
   // Used communicating with featured.
   std::unique_ptr<feature::PlatformFeatures> platform_features_;

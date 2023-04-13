@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 group("host") {
@@ -135,12 +134,6 @@ executable("vsh") {
   deps = [ ":libvsh-client" ]
 }
 
-generate_dbus_adaptors("vm_concierge-adaptors") {
-  dbus_service_config = "../dbus_bindings/dbus-service-config.json"
-  dbus_adaptors_out_dir = "include/vm_tools/concierge/dbus_adaptors"
-  sources = [ "../dbus_bindings/org.chromium.VmConcierge.xml" ]
-}
-
 static_library("libconcierge") {
   sources = [
     "../concierge/arc_vm.cc",
@@ -204,10 +197,7 @@ static_library("libconcierge") {
   # TODO(crbug.com/1082873): Remove after fixing usage of deprecated
   # declarations.
   cflags_cc = [ "-Wno-error=deprecated-declarations" ]
-  deps = [
-    ":vm_concierge-adaptors",
-    "//featured:libfeatures",
-  ]
+  deps = [ "//featured:libfeatures" ]
 }
 
 executable("vm_concierge") {
