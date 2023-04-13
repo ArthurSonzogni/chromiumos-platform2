@@ -11,7 +11,6 @@
 
 namespace {
 
-const char kBatteryFirmware[] = "/usr/sbin/ec_sb_firmware_update";
 const char kEcTool[] = "/usr/sbin/ectool";
 const char kUnsupportedMessage[] =
     "Sorry, but this command is unavailable on this device.";
@@ -33,14 +32,6 @@ std::string BatteryTool::BatteryFirmware(const std::string& option) {
     tool_name = kEcTool;
     process.AddArg(tool_name);
     process.AddArg("battery");
-  } else if (option == "update") {
-    tool_name = kBatteryFirmware;
-    process.AddArg(tool_name);
-    process.AddArg("update");
-  } else if (option == "check") {
-    tool_name = kBatteryFirmware;
-    process.AddArg(tool_name);
-    process.AddArg("check");
   } else {
     return "<process invalid option>";
   }
