@@ -149,7 +149,11 @@ void sl_mmap_end_access(struct sl_mmap* map) {
 
 void sl_mmap_unref(struct sl_mmap* map) {
   TRACE_EVENT("shm", "sl_mmap_unref");
-  if (map->refcount-- == 1) {
+
+  map->refcount--;
+  assert(map->refcount >= 0);
+
+  if (map->refcount == 0) {
     switch (map->map_type) {
       case SL_MMAP_SHM:
         munmap(map->addr, map->size + map->offset[0]);

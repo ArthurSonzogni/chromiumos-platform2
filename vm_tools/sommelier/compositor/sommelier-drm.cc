@@ -189,6 +189,19 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
           sl_shm_bpp_for_shm_format(host_buffer->shm_format),
           sl_shm_num_planes_for_shm_format(host_buffer->shm_format), stride0,
           width, height, format);
+
+      // The buffer_resource must be set appropriately here or else
+      // we will not perform the appropriate release at the end of
+      // sl_host_surface_commit (see the end of that function for details).
+      //
+      // This release should only be done IF we successfully perform
+      // the xshape interjection, as the host compositor will be using
+      // a different buffer. For non shaped windows or fallbacks due
+      // to map failure, where the buffer is relayed onto the host,
+      // we should not release the buffer. That is the responsibility
+      // of the host. The fallback path/non shape path takes care of this
+      // by setting the host_surface contents_shm_mmap to NULL.
+      host_buffer->shm_mmap->buffer_resource = host_buffer->resource;
     }
   } else {
     close(name);
