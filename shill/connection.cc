@@ -24,6 +24,7 @@
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -373,7 +374,15 @@ void Connection::UpdateRoutingPolicy() {
   // only.
   bool no_ipv6 = technology_ == Technology::kCellular && !is_primary_physical_;
 
-  AllowTrafficThrough(table_id_, priority_, no_ipv6);
+  uint32_t rule_priority = priority_;
+  // TODO(b/264963034): kUnknown here is to adapt to legacy test code where
+  // kUnknown instead of kVPN is used as test case for non-physical interfaces.
+  // Remove this and use kVPN in test code instead when executing the refactor.
+  if (technology_ != Technology::kVPN && technology_ != Technology::kUnknown) {
+    rule_priority += kPhysicalPriorityOffset;
+  }
+
+  AllowTrafficThrough(table_id_, rule_priority, no_ipv6);
 
   // b/177620923 Add uid rules just before the default rule to route to the VPN
   // interface any untagged traffic owner by a uid routed through VPN
@@ -395,12 +404,16 @@ void Connection::UpdateRoutingPolicy() {
     // Main routing table contains kernel-added routes for source address
     // selection. Sending traffic there before all other rules for physical
     // interfaces (but after any VPN rules) ensures that physical interface
-    // rules are not inadvertently too aggressive.
+    // rules are not inadvertently too aggressive. Since this rule is static,
+    // add it as interface index -1 so it never get removed by FlushRules().
+    // Note that this rule could be added multiple times when default network
+    // changes, but since the rule itself is identical, there will only be one
+    // instance added into kernel.
     auto main_table_rule = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
-                               .SetPriority(priority_ - 1)
+                               .SetPriority(kPhysicalPriorityOffset)
                                .SetTable(RT_TABLE_MAIN);
-    routing_table_->AddRule(interface_index_, main_table_rule);
-    routing_table_->AddRule(interface_index_, main_table_rule.FlipFamily());
+    routing_table_->AddRule(-1, main_table_rule);
+    routing_table_->AddRule(-1, main_table_rule.FlipFamily());
     // Add a default routing rule to use the primary interface if there is
     // nothing better.
     // TODO(crbug.com/999589) Remove this rule.

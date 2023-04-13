@@ -279,15 +279,14 @@ class ConnectionTest : public Test {
     if (is_primary_physical) {
       EXPECT_CALL(
           routing_table_,
-          AddRule(device->interface_index(),
-                  IsValidRoutingRule(IPAddress::kFamilyIPv4, priority - 1)))
+          AddRule(-1, IsValidRoutingRule(IPAddress::kFamilyIPv4,
+                                         Connection::kPhysicalPriorityOffset)))
           .WillOnce(Return(true));
       EXPECT_CALL(
           routing_table_,
-          AddRule(device->interface_index(),
-                  IsValidRoutingRule(IPAddress::kFamilyIPv6, priority - 1)))
+          AddRule(-1, IsValidRoutingRule(IPAddress::kFamilyIPv6,
+                                         Connection::kPhysicalPriorityOffset)))
           .WillOnce(Return(true));
-
       EXPECT_CALL(routing_table_,
                   AddRule(device->interface_index(),
                           IsValidRoutingRule(IPAddress::kFamilyIPv4,
@@ -303,31 +302,41 @@ class ConnectionTest : public Test {
     for (const auto& address : GetAddresses()) {
       EXPECT_CALL(routing_table_,
                   AddRule(device->interface_index(),
-                          IsValidRoutingRule(address.family(), priority)))
+                          IsValidRoutingRule(
+                              address.family(),
+                              Connection::kPhysicalPriorityOffset + priority)))
           .WillOnce(Return(true));
     }
 
     // Physical interfaces will have both iif and oif rules to send to the
     // per-interface table if the interface name matches.
-    EXPECT_CALL(routing_table_,
-                AddRule(device->interface_index(),
-                        IsValidIifRule(IPAddress::kFamilyIPv4, priority,
-                                       device->link_name())))
+    EXPECT_CALL(
+        routing_table_,
+        AddRule(device->interface_index(),
+                IsValidIifRule(IPAddress::kFamilyIPv4,
+                               Connection::kPhysicalPriorityOffset + priority,
+                               device->link_name())))
         .WillOnce(Return(true));
-    EXPECT_CALL(routing_table_,
-                AddRule(device->interface_index(),
-                        IsValidIifRule(IPAddress::kFamilyIPv6, priority,
-                                       device->link_name())))
+    EXPECT_CALL(
+        routing_table_,
+        AddRule(device->interface_index(),
+                IsValidIifRule(IPAddress::kFamilyIPv6,
+                               Connection::kPhysicalPriorityOffset + priority,
+                               device->link_name())))
         .WillOnce(Return(true));
-    EXPECT_CALL(routing_table_,
-                AddRule(device->interface_index(),
-                        IsValidOifRule(IPAddress::kFamilyIPv4, priority,
-                                       device->link_name())))
+    EXPECT_CALL(
+        routing_table_,
+        AddRule(device->interface_index(),
+                IsValidOifRule(IPAddress::kFamilyIPv4,
+                               Connection::kPhysicalPriorityOffset + priority,
+                               device->link_name())))
         .WillOnce(Return(true));
-    EXPECT_CALL(routing_table_,
-                AddRule(device->interface_index(),
-                        IsValidOifRule(IPAddress::kFamilyIPv6, priority,
-                                       device->link_name())))
+    EXPECT_CALL(
+        routing_table_,
+        AddRule(device->interface_index(),
+                IsValidOifRule(IPAddress::kFamilyIPv6,
+                               Connection::kPhysicalPriorityOffset + priority,
+                               device->link_name())))
         .WillOnce(Return(true));
 
     // Physical interfaces will have fwmark rules to send to the per-interface
@@ -337,13 +346,17 @@ class ConnectionTest : public Test {
     routing_fwmark.mask = 0xffff0000;
     EXPECT_CALL(routing_table_,
                 AddRule(device->interface_index(),
-                        IsValidFwMarkRule(IPAddress::kFamilyIPv4, priority,
-                                          routing_fwmark)))
+                        IsValidFwMarkRule(
+                            IPAddress::kFamilyIPv4,
+                            Connection::kPhysicalPriorityOffset + priority,
+                            routing_fwmark)))
         .WillOnce(Return(true));
     EXPECT_CALL(routing_table_,
                 AddRule(device->interface_index(),
-                        IsValidFwMarkRule(IPAddress::kFamilyIPv6, priority,
-                                          routing_fwmark)))
+                        IsValidFwMarkRule(
+                            IPAddress::kFamilyIPv6,
+                            Connection::kPhysicalPriorityOffset + priority,
+                            routing_fwmark)))
         .WillOnce(Return(true));
   }
 

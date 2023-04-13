@@ -43,6 +43,10 @@ class Connection {
   // |kDefaultPriority| + N*|kPriorityStep|.
   static const uint32_t kPriorityStep;
 
+  // An offset added to the priority of non-VPN services, so their rules comes
+  // after the main table rule.
+  static constexpr uint32_t kPhysicalPriorityOffset = 1000;
+
   Connection(int interface_index,
              const std::string& interface_name,
              bool fixed_ip_params,

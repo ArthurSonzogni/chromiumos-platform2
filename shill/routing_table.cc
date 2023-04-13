@@ -778,6 +778,9 @@ bool RoutingTable::ParseRoutingPolicyMessage(const RTNLMessage& message,
   }
 
   entry->family = message.family();
+  entry->src = IPAddress(entry->family);
+  entry->dst = IPAddress(entry->family);
+
   entry->invert_rule = !!(route_status.flags & FIB_RULE_INVERT);
 
   // The rtmsg structure [0] has a table id field that is only a single
