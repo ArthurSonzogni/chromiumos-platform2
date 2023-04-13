@@ -145,7 +145,7 @@ class Service final : public org::chromium::VmConciergeInterface {
 
   // Handles a request to stop all running VMs.
   void StopAllVmsImpl(VmStopReason reason);
-  void StopAllVms() override;
+  std::unique_ptr<dbus::Response> StopAllVms(dbus::MethodCall* method_call);
 
   // Handles a request to get VM info.
   std::unique_ptr<dbus::Response> GetVmInfo(dbus::MethodCall* method_call);

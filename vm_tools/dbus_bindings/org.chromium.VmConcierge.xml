@@ -26,11 +26,5 @@
                     value="vm_tools::concierge::StopVmResponse"/>
       </arg>
     </method>
-    <method name="StopAllVms">
-      <tp:docstring>
-        Stops all running VMs.
-      </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
-    </method>
   </interface>
 </node>
