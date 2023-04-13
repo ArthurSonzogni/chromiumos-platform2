@@ -253,6 +253,11 @@ int diag_main(int argc, char** argv) {
           mojo_ipc::RoutineArgument::NewCpuStress(std::move(argument)),
           FLAGS_single_line_json);
     }
+    if (FLAGS_routine == "audio_driver") {
+      return RunV2Routine(mojo_ipc::RoutineArgument::NewAudioDriver(
+                              mojo_ipc::AudioDriverRoutineArgument::New()),
+                          FLAGS_single_line_json);
+    }
 
     std::map<std::string, mojo_ipc::DiagnosticRoutineEnum>
         switch_to_diagnostic_routine;
