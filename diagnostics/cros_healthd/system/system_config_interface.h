@@ -16,9 +16,11 @@ enum SensorType {
   kBaseAccelerometer,
   kBaseGyroscope,
   kBaseMagnetometer,
+  kBaseGravitySensor,
   kLidAccelerometer,
   kLidGyroscope,
   kLidMagnetometer,
+  kLidGravitySensor,
 };
 
 class SystemConfigInterface {

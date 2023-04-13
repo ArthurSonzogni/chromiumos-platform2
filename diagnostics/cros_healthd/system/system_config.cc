@@ -14,6 +14,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/functional/callback.h>
+#include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -90,7 +91,19 @@ std::string GetSensorPropertyName(SensorType sensor) {
       return kHasLidGyroscope;
     case kLidMagnetometer:
       return kHasLidMagnetometer;
+    case kBaseGravitySensor:
+    case kLidGravitySensor:
+      // There are no |has-base-gravity-sensor| and |has-lid-gravity-sensor|
+      // configurations.
+      NOTREACHED_NORETURN();
   }
+}
+
+std::optional<bool> HasGravitySensor(std::optional<bool> has_accel,
+                                     std::optional<bool> has_gyro) {
+  if (!has_accel.has_value() || !has_gyro.has_value())
+    return std::nullopt;
+  return has_accel.value() && has_gyro.value();
 }
 
 }  // namespace
@@ -258,6 +271,16 @@ std::string SystemConfig::GetCodeName() {
 }
 
 std::optional<bool> SystemConfig::HasSensor(SensorType sensor) {
+  // Gravity sensor is a virtual fusion sensor of accelerometer and gyroscope
+  // instead of a hardware sensor. There is no static config for the gravity
+  // sensor, but we can refer to the config of accelerometer and gyroscope.
+  if (sensor == kBaseGravitySensor) {
+    return HasGravitySensor(HasSensor(kBaseAccelerometer),
+                            HasSensor(kBaseGyroscope));
+  } else if (sensor == kLidGravitySensor) {
+    return HasGravitySensor(HasSensor(kLidAccelerometer),
+                            HasSensor(kLidGyroscope));
+  }
   std::string has_sensor;
   if (!cros_config_->GetString(kHardwarePropertiesPath,
                                GetSensorPropertyName(sensor), &has_sensor)) {

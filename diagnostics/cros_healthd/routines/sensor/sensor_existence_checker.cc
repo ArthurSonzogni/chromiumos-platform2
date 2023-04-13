@@ -23,7 +23,8 @@ bool IsTargetType(const std::vector<cros::mojom::DeviceType>& types) {
   for (const auto& type : types) {
     if (type == cros::mojom::DeviceType::ACCEL ||
         type == cros::mojom::DeviceType::ANGLVEL ||
-        type == cros::mojom::DeviceType::MAGN)
+        type == cros::mojom::DeviceType::MAGN ||
+        type == cros::mojom::DeviceType::GRAVITY)
       return true;
   }
   return false;
@@ -104,6 +105,11 @@ void SensorExistenceChecker::HandleSensorLocationResponse(
         iio_sensor_ids_[kBaseMagnetometer].push_back(sensor_id);
       else if (location == cros::mojom::kLocationLid)
         iio_sensor_ids_[kLidMagnetometer].push_back(sensor_id);
+    } else if (type == cros::mojom::DeviceType::GRAVITY) {
+      if (location == cros::mojom::kLocationBase)
+        iio_sensor_ids_[kBaseGravitySensor].push_back(sensor_id);
+      else if (location == cros::mojom::kLocationLid)
+        iio_sensor_ids_[kLidGravitySensor].push_back(sensor_id);
     }
   }
 }
@@ -120,7 +126,8 @@ void SensorExistenceChecker::CheckSystemConfig(
   std::map<SensorType, Result> existence_check_result;
   for (const auto& sensor :
        {kBaseAccelerometer, kLidAccelerometer, kBaseGyroscope, kLidGyroscope,
-        kBaseMagnetometer, kLidMagnetometer}) {
+        kBaseGravitySensor, kBaseMagnetometer, kLidMagnetometer,
+        kLidGravitySensor}) {
     existence_check_result[sensor] = {
         .state = GetExistenceCheckState(
             /*has_sensor=*/system_config_->HasSensor(sensor),

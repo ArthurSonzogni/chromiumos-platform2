@@ -44,10 +44,12 @@ class SensorExistenceCheckerTest : public testing::Test {
       case kBaseAccelerometer:
       case kBaseGyroscope:
       case kBaseMagnetometer:
+      case kBaseGravitySensor:
         return cros::mojom::kLocationBase;
       case kLidAccelerometer:
       case kLidGyroscope:
       case kLidMagnetometer:
+      case kLidGravitySensor:
         return cros::mojom::kLocationLid;
     }
   }
@@ -63,6 +65,9 @@ class SensorExistenceCheckerTest : public testing::Test {
       case kBaseMagnetometer:
       case kLidMagnetometer:
         return cros::mojom::DeviceType::MAGN;
+      case kBaseGravitySensor:
+      case kLidGravitySensor:
+        return cros::mojom::DeviceType::GRAVITY;
     }
   }
 
@@ -105,7 +110,8 @@ class SensorExistenceCheckerTest : public testing::Test {
 TEST_F(SensorExistenceCheckerTest, PassWithAllSensorsPresent) {
   const auto& present_sensors = {kBaseAccelerometer, kLidAccelerometer,
                                  kBaseGyroscope,     kLidGyroscope,
-                                 kBaseMagnetometer,  kLidMagnetometer};
+                                 kBaseMagnetometer,  kLidMagnetometer,
+                                 kBaseGravitySensor, kLidGravitySensor};
   // Setup fake configurations.
   for (const auto& sensor : present_sensors) {
     fake_system_config()->SetSensor(sensor, true);
@@ -123,7 +129,8 @@ TEST_F(SensorExistenceCheckerTest, PassWithAllSensorsPresent) {
 TEST_F(SensorExistenceCheckerTest, NoSensor) {
   const auto& sensors = {kBaseAccelerometer, kLidAccelerometer,
                          kBaseGyroscope,     kLidGyroscope,
-                         kBaseMagnetometer,  kLidMagnetometer};
+                         kBaseMagnetometer,  kLidMagnetometer,
+                         kBaseGravitySensor, kLidGravitySensor};
   // Setup fake configurations.
   for (const auto& sensor : sensors) {
     fake_system_config()->SetSensor(sensor, false);
@@ -140,7 +147,8 @@ TEST_F(SensorExistenceCheckerTest, NoSensor) {
 TEST_F(SensorExistenceCheckerTest, NullConfig) {
   const auto& sensors = {kBaseAccelerometer, kLidAccelerometer,
                          kBaseGyroscope,     kLidGyroscope,
-                         kBaseMagnetometer,  kLidMagnetometer};
+                         kBaseMagnetometer,  kLidMagnetometer,
+                         kBaseGravitySensor, kLidGravitySensor};
   const auto& present_sensors = {kBaseAccelerometer, kBaseGyroscope,
                                  kLidGyroscope, kLidMagnetometer};
   // Setup fake configurations.
@@ -165,7 +173,8 @@ TEST_F(SensorExistenceCheckerTest, NullConfig) {
 TEST_F(SensorExistenceCheckerTest, MissingSensors) {
   const auto& missing_sensors = {kBaseAccelerometer, kLidAccelerometer,
                                  kBaseGyroscope,     kLidGyroscope,
-                                 kBaseMagnetometer,  kLidMagnetometer};
+                                 kBaseMagnetometer,  kLidMagnetometer,
+                                 kBaseGravitySensor, kLidGravitySensor};
   // Setup fake configurations.
   for (const auto& sensor : missing_sensors) {
     fake_system_config()->SetSensor(sensor, true);
@@ -182,7 +191,8 @@ TEST_F(SensorExistenceCheckerTest, MissingSensors) {
 TEST_F(SensorExistenceCheckerTest, UnexpectedSensors) {
   const auto& unexpected_sensors = {kBaseAccelerometer, kLidAccelerometer,
                                     kBaseGyroscope,     kLidGyroscope,
-                                    kBaseMagnetometer,  kLidMagnetometer};
+                                    kBaseMagnetometer,  kLidMagnetometer,
+                                    kBaseGravitySensor, kLidGravitySensor};
   // Setup fake configurations.
   for (const auto& sensor : unexpected_sensors) {
     fake_system_config()->SetSensor(sensor, false);

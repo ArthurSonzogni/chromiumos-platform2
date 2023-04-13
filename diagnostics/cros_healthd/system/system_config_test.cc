@@ -362,6 +362,30 @@ TEST_F(SystemConfigTest, TestBaseMagnetometerUnset) {
   EXPECT_FALSE(system_config()->HasSensor(kBaseMagnetometer).has_value());
 }
 
+TEST_F(SystemConfigTest, TestBaseGravitySensorTrue) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseAccelerometer,
+                                "true");
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseGyroscope,
+                                "true");
+  const auto& has_sensor = system_config()->HasSensor(kBaseGravitySensor);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_TRUE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestBaseGravitySensorFalse) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseAccelerometer,
+                                "false");
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseGyroscope,
+                                "false");
+  const auto& has_sensor = system_config()->HasSensor(kBaseGravitySensor);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_FALSE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestBaseGravitySensorUnset) {
+  EXPECT_FALSE(system_config()->HasSensor(kBaseGravitySensor).has_value());
+}
+
 TEST_F(SystemConfigTest, TestLidAccelerometerTrue) {
   fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidAccelerometer,
                                 "true");
@@ -420,6 +444,30 @@ TEST_F(SystemConfigTest, TestLidMagnetometerFalse) {
 
 TEST_F(SystemConfigTest, TestLidMagnetometerUnset) {
   EXPECT_FALSE(system_config()->HasSensor(kLidMagnetometer).has_value());
+}
+
+TEST_F(SystemConfigTest, TestLidGravitySensorTrue) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidAccelerometer,
+                                "true");
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidGyroscope,
+                                "true");
+  const auto& has_sensor = system_config()->HasSensor(kLidGravitySensor);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_TRUE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestLidGravitySensorFalse) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidAccelerometer,
+                                "false");
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidGyroscope,
+                                "false");
+  const auto& has_sensor = system_config()->HasSensor(kLidGravitySensor);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_FALSE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestLidGravitySensorUnset) {
+  EXPECT_FALSE(system_config()->HasSensor(kLidGravitySensor).has_value());
 }
 
 }  // namespace
