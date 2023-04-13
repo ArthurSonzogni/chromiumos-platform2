@@ -470,6 +470,8 @@ void IPsecConnection::WriteStrongSwanConfig() {
       "  ignore_routing_tables = 0",
       "  install_routes = no",
       "  install_virtual_ip = no",  // b/263688887
+      // Avoid that charon install a rule for 220 table. See b/277999673.
+      "  routing_table = 0",
       "  syslog {",
       "    daemon {",
       "      ike = 2",  // Logs some traffic selector info.
