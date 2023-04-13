@@ -25,3 +25,22 @@ cros_workon_make --test --board=brya \
   --install  # If vm_protos changed.
 cros_workon_make --test --board=brya chromeos-base/vm_host_tools
 ```
+
+### Obtaining backtrace on crash
+
+Observe the logs on the device. Trigger what you are trying to debug. For
+inspiration, the following are examples of triggering crash and observing logs.
+
+```
+tail -f /var/log/messages & start vm_concierge; fg
+tail -f /var/log/messages & stop vm_concierge; fg
+tail -f /var/log/messages & vmc stop termina; fg
+```
+
+Observe the dump log file on your workstation to get a backtrace. Using
+[tast symbolize](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/stack_traces.md#Symbolizing-minidumps-with-tast-symbolize)
+
+```
+scp dut:/var/spool/crash/vm_concierge.20230413.101819.53856.31734.dmp .
+tast symbolize vm_concierge.20230413.101819.53856.31734.dmp
+```
