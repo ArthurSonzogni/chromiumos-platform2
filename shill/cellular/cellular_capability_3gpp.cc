@@ -442,13 +442,10 @@ void CellularCapability3gpp::EnableModemCompleted(ResultCallback callback,
   }
 
   if (error.IsFailure()) {
-    /* Very cool that Error is not copyable for no good reason. */
-    auto passed_error = std::make_unique<Error>();
-    passed_error->CopyFrom(error);
     ResultCallback cb = base::BindOnce(
-        [](ResultCallback callback, std::unique_ptr<Error> error,
-           const Error& /*unused*/) { std::move(callback).Run(*error); },
-        std::move(callback), std::move(passed_error));
+        [](ResultCallback callback, const Error& error,
+           const Error& /*unused*/) { std::move(callback).Run(error); },
+        std::move(callback), error);
 
     // TODO(b/256525852): Revert this once we land the proper fix in modem fw.
     modem_proxy_->SetPowerState(
@@ -549,16 +546,12 @@ void CellularCapability3gpp::Stop_DisableCompleted(ResultCallback callback,
 void CellularCapability3gpp::Stop_PowerDown(ResultCallback callback,
                                             const Error& stop_disabled_error) {
   SLOG(this, 3) << __func__;
-  std::unique_ptr<Error> error = std::make_unique<Error>();
-  // Propagate |stop_disabled_error| since the final result of the operation is
-  // determined by this error.
-  error->CopyFrom(stop_disabled_error);
 
   modem_proxy_->SetPowerState(
       MM_MODEM_POWER_STATE_LOW,
       base::BindOnce(&CellularCapability3gpp::Stop_PowerDownCompleted,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback),
-                     std::move(error)),
+                     stop_disabled_error),
       kTimeoutSetPowerState.InMilliseconds());
 }
 
@@ -568,15 +561,14 @@ void CellularCapability3gpp::Stop_PowerDown(ResultCallback callback,
 // because StartModem re-initializes proxies.
 void CellularCapability3gpp::Stop_PowerDownCompleted(
     ResultCallback callback,
-    std::unique_ptr<Error> stop_disabled_error,
+    const Error& stop_disabled_error,
     const Error& error) {
   SLOG(this, 3) << __func__;
-  DCHECK(stop_disabled_error);
 
   if (error.IsFailure())
     SLOG(this, 2) << "Ignoring error returned by SetPowerState: " << error;
 
-  Stop_Completed(std::move(callback), *stop_disabled_error);
+  Stop_Completed(std::move(callback), stop_disabled_error);
 }
 
 void CellularCapability3gpp::Stop_Completed(ResultCallback callback,

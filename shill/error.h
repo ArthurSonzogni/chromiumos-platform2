@@ -77,8 +77,6 @@ class Error {
 
   void Reset();
 
-  void CopyFrom(const Error& error);
-
   // Sets the Chromeos |error| and returns true if Error represents failure.
   // Leaves error unchanged, and returns false otherwise.
   bool ToChromeosError(brillo::ErrorPtr* error) const;

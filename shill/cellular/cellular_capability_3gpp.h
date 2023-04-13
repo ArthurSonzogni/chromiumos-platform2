@@ -394,7 +394,7 @@ class CellularCapability3gpp {
   void Stop_DisableCompleted(ResultCallback callback, const Error& error);
   void Stop_PowerDown(ResultCallback callback, const Error& stop_disable_error);
   void Stop_PowerDownCompleted(ResultCallback callback,
-                               std::unique_ptr<Error> stop_disable_error,
+                               const Error& stop_disable_error,
                                const Error& error);
 
   void Register(ResultCallback callback);

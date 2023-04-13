@@ -48,7 +48,7 @@ class VirtualDeviceTest : public testing::Test {
   static void OnEnabledStateChanged(base::OnceClosure quit_closure,
                                     Error* to_return,
                                     const Error& error) {
-    to_return->CopyFrom(error);
+    *to_return = error;
     std::move(quit_closure).Run();
   }
 

@@ -177,7 +177,7 @@ class DnsClientTest : public Test {
   }
 
   void SaveCallbackArgs(const Error& error, const IPAddress& address) {
-    error_result_.CopyFrom(error);
+    error_result_ = error;
     address_result_ = address;
   }
 

@@ -117,7 +117,7 @@ TEST_F(DBusPropertiesProxyTest, GetAsyncFailed) {
           run_loop.QuitClosure(), &property),
       base::BindOnce(
           [](base::OnceClosure callback, Error* errorp, const Error& error) {
-            errorp->CopyFrom(error);
+            *errorp = error;
             std::move(callback).Run();
           },
           run_loop.QuitClosure(), &error));

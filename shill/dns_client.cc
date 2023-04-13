@@ -154,7 +154,7 @@ bool DnsClient::Start(const std::vector<std::string>& dns_list,
 
   if (!RefreshHandles()) {
     LOG(ERROR) << interface_name_ << ": Impossibly short timeout.";
-    error->CopyFrom(error_);
+    *error = error_;
     Stop();
     return false;
   }
@@ -189,8 +189,7 @@ bool DnsClient::IsActive() const {
 // call our destructor safely).
 void DnsClient::HandleCompletion() {
   SLOG(this, 3) << "In " << __func__;
-  Error error;
-  error.CopyFrom(error_);
+  Error error(error_);
   IPAddress address(address_);
   if (!error.IsSuccess()) {
     // If the DNS request did not succeed, do not trust it for future

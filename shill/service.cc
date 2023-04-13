@@ -939,7 +939,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       Error set_error;
       store_.SetBoolProperty(it.first, it.second.Get<bool>(), &set_error);
       if (error->IsSuccess() && set_error.IsFailure()) {
-        error->CopyFrom(set_error);
+        *error = set_error;
       }
     } else if (it.second.IsTypeCompatible<int32_t>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
@@ -950,7 +950,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       Error set_error;
       store_.SetInt32Property(it.first, it.second.Get<int32_t>(), &set_error);
       if (error->IsSuccess() && set_error.IsFailure()) {
-        error->CopyFrom(set_error);
+        *error = set_error;
       }
     } else if (it.second.IsTypeCompatible<KeyValueStore>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
@@ -962,7 +962,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       store_.SetKeyValueStoreProperty(it.first, it.second.Get<KeyValueStore>(),
                                       &set_error);
       if (error->IsSuccess() && set_error.IsFailure()) {
-        error->CopyFrom(set_error);
+        *error = set_error;
       }
     } else if (it.second.IsTypeCompatible<std::string>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
@@ -974,7 +974,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       store_.SetStringProperty(it.first, it.second.Get<std::string>(),
                                &set_error);
       if (error->IsSuccess() && set_error.IsFailure()) {
-        error->CopyFrom(set_error);
+        *error = set_error;
       }
     } else if (it.second.IsTypeCompatible<Strings>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
@@ -985,7 +985,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       Error set_error;
       store_.SetStringsProperty(it.first, it.second.Get<Strings>(), &set_error);
       if (error->IsSuccess() && set_error.IsFailure()) {
-        error->CopyFrom(set_error);
+        *error = set_error;
       }
     } else if (it.second.IsTypeCompatible<Stringmap>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
@@ -997,7 +997,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       store_.SetStringmapProperty(it.first, it.second.Get<Stringmap>(),
                                   &set_error);
       if (error->IsSuccess() && set_error.IsFailure()) {
-        error->CopyFrom(set_error);
+        *error = set_error;
       }
     } else if (it.second.IsTypeCompatible<Stringmaps>()) {
       if (base::Contains(parameters_ignored_for_configure_, it.first)) {
@@ -1009,7 +1009,7 @@ void Service::Configure(const KeyValueStore& args, Error* error) {
       store_.SetStringmapsProperty(it.first, it.second.Get<Stringmaps>(),
                                    &set_error);
       if (error->IsSuccess() && set_error.IsFailure()) {
-        error->CopyFrom(set_error);
+        *error = set_error;
       }
     }
   }

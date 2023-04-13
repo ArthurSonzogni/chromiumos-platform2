@@ -16,7 +16,7 @@ namespace shill {
 void SetErrorAndReturn(base::RepeatingClosure quit_closure,
                        Error* to_return,
                        const Error& error) {
-  to_return->CopyFrom(error);
+  *to_return = error;
   quit_closure.Run();
 }
 

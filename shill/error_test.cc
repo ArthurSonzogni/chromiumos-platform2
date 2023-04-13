@@ -52,14 +52,6 @@ TEST(ErrorTest, PopulateCustomMessage) {
   EXPECT_EQ(kMessage, e.message());
 }
 
-TEST(ErrorTest, CopyFrom) {
-  Error e(Error::kInvalidArguments, "Some message");
-  Error copy;
-  copy.CopyFrom(e);
-  EXPECT_EQ(e.type(), copy.type());
-  EXPECT_EQ(e.message(), copy.message());
-}
-
 TEST(ErrorTest, ToChromeosError) {
   brillo::ErrorPtr chromeos_error;
   EXPECT_EQ(nullptr, chromeos_error);

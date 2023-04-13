@@ -124,10 +124,6 @@ void Error::Reset() {
   Populate(kSuccess);
 }
 
-void Error::CopyFrom(const Error& error) {
-  Populate(error.type_, error.message_);
-}
-
 bool Error::ToChromeosError(brillo::ErrorPtr* error) const {
   if (IsFailure()) {
     brillo::Error::AddTo(error, location_, brillo::errors::dbus::kDomain,
