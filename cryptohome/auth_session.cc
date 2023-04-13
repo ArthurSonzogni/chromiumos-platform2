@@ -2521,24 +2521,6 @@ void AuthSession::AddAuthFactor(
     return;
   }
 
-  // The user has a UserSecretStash either because it's a new user and the
-  // experiment is on or it's an existing user who proceed with wrapping the
-  // USS via the new factor and persisting both.
-  // If user doesn't have UserSecretStash and hasn't configured credentials with
-  // VaultKeysets it is initial keyset and user can't add a PIN credential as an
-  // initial keyset since PIN VaultKeyset doesn't store reset_seed.
-  if (!user_secret_stash_ && !auth_factor_map_.HasFactorWithStorage(
-                                 AuthFactorStorageType::kVaultKeyset)) {
-    if (auth_factor_type == AuthFactorType::kPin) {
-      // The initial keyset cannot be a PIN, when using vault keysets.
-      std::move(on_done).Run(MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionTryAddInitialPinInAddAuthfActor),
-          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED));
-      return;
-    }
-  }
-
   // Report timer for how long AddAuthFactor operation takes.
   auto auth_session_performance_timer =
       user_secret_stash_ ? std::make_unique<AuthSessionPerformanceTimer>(
