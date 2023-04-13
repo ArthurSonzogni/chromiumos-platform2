@@ -11,6 +11,7 @@ group("all") {
     ":federated_service",
     ":install_dbus_config_file",
     ":install_dbus_service_activation_config",
+    ":install_minjail_conf",
     ":install_seccomp_policy",
     ":install_upstart_conf",
   ]
@@ -100,6 +101,11 @@ executable("federated_service") {
 install_config("install_upstart_conf") {
   sources = [ "init/federated-service.conf" ]
   install_path = "/etc/init"
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/federated-service.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 install_config("install_seccomp_policy") {
