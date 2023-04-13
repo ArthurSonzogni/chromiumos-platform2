@@ -312,6 +312,49 @@ def cmd_fake_hal_edit(editor: Optional[str]):
     fake_hal.edit_config_with_editor(editor)
 
 
+@cli.command(
+    "connect",
+    parent=cmd_fake_hal,
+    help="Connect camera(s)",
+    description=(
+        "Connect existing camera(s) in Fake HAL config."
+        " If --id is not specified, all cameras would be connected."
+    ),
+)
+@cli.option(
+    "--id",
+    dest="camera_id",
+    help="camera id to connect. This option can be specified multiple times.",
+    type=int,
+    action="append",
+)
+def cmd_fake_hal_connect(camera_id: Optional[List[int]]):
+    fake_hal.connect_cameras(lambda x: camera_id is None or x in camera_id)
+
+
+@cli.command(
+    "disconnect",
+    parent=cmd_fake_hal,
+    help="Disconnect camera(s)",
+    description=(
+        "Disconnect existing camera(s) in Fake HAL config."
+        " If --id is not specified, all cameras would be disconnected."
+    ),
+)
+@cli.option(
+    "--id",
+    dest="camera_id",
+    help=(
+        "camera id to disconnect."
+        " This option can be specified multiple times."
+    ),
+    type=int,
+    action="append",
+)
+def cmd_fake_hal_disconnect(camera_id: Optional[List[int]]):
+    fake_hal.disconnect_cameras(lambda x: camera_id is None or x in camera_id)
+
+
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
     return cli.run(argv)
 

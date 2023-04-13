@@ -80,6 +80,9 @@ def _save_config(config: Dict):
 # (width, height, fps_range) -> keep_or_not
 FormatFilter = Callable[[int, int, Tuple[int, int]], bool]
 
+# (camera_id) -> bool
+CameraFilter = Callable[[int], bool]
+
 
 def _generate_supported_formats(should_keep: FormatFilter) -> List[Dict]:
     """Generates and filters supported formats.
@@ -178,7 +181,7 @@ def add_camera(
     _save_config(config)
 
 
-def remove_cameras(should_remove: Callable[[int], bool]):
+def remove_cameras(should_remove: CameraFilter):
     """Removes specified cameras.
 
     Args:
@@ -226,3 +229,31 @@ def edit_config_with_editor(editor: Optional[str]):
     _load_config()
     logging.info("Config updated")
     # TODO(shik): Validate the config schema.
+
+
+def connect_cameras(should_connect: CameraFilter):
+    """Connects existing cameras.
+
+    Args:
+        should_connect: A predicate callback to select cameras to connect.
+    """
+    config = _load_config()
+    for cam in config["cameras"]:
+        if not cam["connected"] and should_connect(cam["id"]):
+            cam["connected"] = True
+            logging.info("Set connected to true for camera %d", cam["id"])
+    _save_config(config)
+
+
+def disconnect_cameras(should_disconnect: CameraFilter):
+    """Connects existing cameras.
+
+    Args:
+        should_disconnect: A predicate callback to select cameras to disconnect.
+    """
+    config = _load_config()
+    for cam in config["cameras"]:
+        if cam["connected"] and should_disconnect(cam["id"]):
+            cam["connected"] = False
+            logging.info("Set connected to false for camera %d", cam["id"])
+    _save_config(config)
