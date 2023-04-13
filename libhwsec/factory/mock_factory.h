@@ -59,6 +59,10 @@ class MockFactory : public Factory {
               GetLocalDataMigrationFrontend,
               (),
               (override));
+  MOCK_METHOD(std::unique_ptr<AttestationFrontend>,
+              GetAttestationFrontend,
+              (),
+              (override));
 };
 
 }  // namespace hwsec

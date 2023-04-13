@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include "libhwsec/frontend/attestation/frontend.h"
 #include "libhwsec/frontend/bootlockbox/frontend.h"
 #include "libhwsec/frontend/chaps/frontend.h"
 #include "libhwsec/frontend/client/frontend.h"
@@ -42,6 +43,7 @@ class Factory {
   virtual std::unique_ptr<OobeConfigFrontend> GetOobeConfigFrontend() = 0;
   virtual std::unique_ptr<LocalDataMigrationFrontend>
   GetLocalDataMigrationFrontend() = 0;
+  virtual std::unique_ptr<AttestationFrontend> GetAttestationFrontend() = 0;
 };
 
 }  // namespace hwsec

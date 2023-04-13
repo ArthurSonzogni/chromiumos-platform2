@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "libhwsec/backend/backend.h"
+#include "libhwsec/frontend/attestation/frontend_impl.h"
 #include "libhwsec/frontend/bootlockbox/frontend_impl.h"
 #include "libhwsec/frontend/chaps/frontend_impl.h"
 #include "libhwsec/frontend/client/frontend_impl.h"
@@ -77,6 +78,10 @@ std::unique_ptr<OobeConfigFrontend> FactoryImpl::GetOobeConfigFrontend() {
 std::unique_ptr<LocalDataMigrationFrontend>
 FactoryImpl::GetLocalDataMigrationFrontend() {
   return std::make_unique<LocalDataMigrationFrontendImpl>(middleware_.Derive());
+}
+
+std::unique_ptr<AttestationFrontend> FactoryImpl::GetAttestationFrontend() {
+  return std::make_unique<AttestationFrontendImpl>(middleware_.Derive());
 }
 
 }  // namespace hwsec

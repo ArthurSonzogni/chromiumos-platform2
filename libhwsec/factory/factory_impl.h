@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "libhwsec/factory/factory.h"
+#include "libhwsec/frontend/attestation/frontend.h"
 #include "libhwsec/frontend/bootlockbox/frontend.h"
 #include "libhwsec/frontend/chaps/frontend.h"
 #include "libhwsec/frontend/client/frontend.h"
@@ -49,6 +50,7 @@ class HWSEC_EXPORT FactoryImpl : public Factory {
   std::unique_ptr<OobeConfigFrontend> GetOobeConfigFrontend() override;
   std::unique_ptr<LocalDataMigrationFrontend> GetLocalDataMigrationFrontend()
       override;
+  std::unique_ptr<AttestationFrontend> GetAttestationFrontend() override;
 
  protected:
   std::unique_ptr<MiddlewareOwner> default_middleware_;
