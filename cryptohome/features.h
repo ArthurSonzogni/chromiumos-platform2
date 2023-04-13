@@ -59,7 +59,7 @@ class Features {
   ~Features() = default;
 
   // Fetches the value from the finch server using the feature library.
-  bool IsFeatureEnabled(ActiveFeature active_feature);
+  bool IsFeatureEnabled(ActiveFeature active_feature) const;
 
   // SetDefaultForFeature will set the default value for test for the feature.
   // This will be passed down to the feature library which inturn returns the
@@ -98,7 +98,7 @@ class AsyncInitFeatures {
 
   // Provides the same value as Features::IsFeatureEnabled if it is available,
   // otherwise provides the default value for the feature.
-  bool IsFeatureEnabled(Features::ActiveFeature active_feature);
+  bool IsFeatureEnabled(Features::ActiveFeature active_feature) const;
 
  private:
   base::RepeatingCallback<Features*()> getter_;

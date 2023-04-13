@@ -43,7 +43,7 @@ Features::Features(scoped_refptr<dbus::Bus> bus, bool test_instance)
   }
 }
 
-bool Features::IsFeatureEnabled(ActiveFeature active_feature) {
+bool Features::IsFeatureEnabled(ActiveFeature active_feature) const {
   const auto& variations_feature = GetVariationFeatureFor(active_feature);
   if (feature_lib_) {
     return feature_lib_->IsEnabledBlocking(variations_feature);
@@ -67,7 +67,7 @@ AsyncInitFeatures::AsyncInitFeatures(Features& features)
           [](Features* features) { return features; }, &features)) {}
 
 bool AsyncInitFeatures::IsFeatureEnabled(
-    Features::ActiveFeature active_feature) {
+    Features::ActiveFeature active_feature) const {
   if (Features* features = getter_.Run()) {
     return features->IsFeatureEnabled(active_feature);
   }
