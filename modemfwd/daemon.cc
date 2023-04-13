@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "modemfwd/daemon.h"
+#include "modemfwd/modem_sandbox.h"
 
 #include <signal.h>
 #include <sysexits.h>
@@ -10,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/containers/contains.h>
@@ -491,36 +493,6 @@ void Daemon::StopHeartbeatTimer() {
   heartbeat_timer_.Stop();
 }
 
-void Daemon::GetModemCheckResult(
-    const std::string& device_id,
-    base::OnceCallback<void(const std::string&, bool)> cb,
-    std::unique_ptr<brillo::Process> hb_cmd) {
-  int status = 0;
-
-  // It is necessary to refresh the PID information for the process existence
-  // to be properly determined with ProcessExists. We also use the return
-  // status to confirm a successful return code if the process was already done
-  waitpid(hb_cmd->pid(), &status, WNOHANG);
-  if (brillo::Process::ProcessExists(hb_cmd->pid())) {
-    // A SIGTERM should be sufficient to kill the process, but fall back on a
-    // SIGKILL just to be safe.
-    if (!hb_cmd->Kill(SIGTERM, kCmdKillDelay.InSeconds()) &&
-        !hb_cmd->Kill(SIGKILL, kCmdKillDelay.InSeconds())) {
-      // Should never happen
-      PLOG(ERROR) << "Failing to kill spawned process, stopping polling";
-      StopHeartbeatTimer();
-    }
-  } else if (WEXITSTATUS(status) == 0) {
-    // Modem ping completed cleanly with success
-    std::move(cb).Run(device_id, true);
-    hb_cmd->Release();
-    return;
-  }
-  // The task had to be killed or had non-zero exit code
-  std::move(cb).Run(device_id, false);
-  hb_cmd->Release();
-}
-
 void Daemon::CheckModemIsResponsive() {
   for (auto const& modem_info : modems_) {
     // We ignore any modems for which we haven't identified a primary port.
@@ -529,30 +501,21 @@ void Daemon::CheckModemIsResponsive() {
     if (modem_info.second->GetPrimaryPort().empty())
       continue;
 
-    std::unique_ptr<brillo::Process> hb_cmd(new brillo::ProcessImpl());
-    base::OnceCallback<void(const std::string&, bool)> cb = base::BindOnce(
-        &Daemon::HandleModemCheckResult, weak_ptr_factory_.GetWeakPtr());
+    std::vector<std::string> cmd_args;
 
-    hb_cmd->AddArg("/usr/bin/mbimcli");
-    hb_cmd->AddArg("-d");
-    hb_cmd->AddArg("/dev/" + modem_info.second->GetPrimaryPort());
-    hb_cmd->AddArg("-p");
-    hb_cmd->AddArg("--query-device-caps");
+    cmd_args.push_back("/usr/bin/mbimcli");
+    cmd_args.push_back("-d");
+    cmd_args.push_back("/dev/" + modem_info.second->GetPrimaryPort());
+    cmd_args.push_back("-p");
+    cmd_args.push_back("--query-device-caps");
 
-    if (!hb_cmd->Start()) {
-      LOG(ERROR) << "Failed to start ping process";
-      std::move(cb).Run(modem_info.second->GetDeviceId(), false);
-      return;
-    }
+    const base::FilePath mbimcli_seccomp_policy_file(base::StringPrintf(
+        "%s/modemfwd-mbimcli-seccomp.policy", kSeccompPolicyDirectory));
+    int ret =
+        RunProcessInSandboxWithTimeout(cmd_args, mbimcli_seccomp_policy_file,
+                                       true, nullptr, nullptr, kCmdKillDelay);
 
-    // Schedule closure task to gather ping result and time out ping process
-    // if necessary
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE,
-        base::BindOnce(
-            &Daemon::GetModemCheckResult, weak_ptr_factory_.GetWeakPtr(),
-            modem_info.second->GetDeviceId(), std::move(cb), std::move(hb_cmd)),
-        kCmdKillDelay);
+    HandleModemCheckResult(modem_info.second->GetDeviceId(), ret == 0);
   }
 }
 
@@ -583,6 +546,7 @@ void Daemon::HandleModemCheckResult(const std::string& device_id,
     modems_[device_id]->ResetHeartbeatFailures();
     return;  // All good
   }
+  LOG(WARNING) << "Modem ping failed";
 
   modems_[device_id]->IncrementHeartbeatFailures();
   if (modems_[device_id]->GetHeartbeatFailures() <

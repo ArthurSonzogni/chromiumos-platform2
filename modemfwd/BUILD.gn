@@ -76,6 +76,7 @@ static_library("libmodemfw") {
     "modem_flasher.cc",
     "modem_helper.cc",
     "modem_helper_directory.cc",
+    "modem_sandbox.cc",
     "modem_tracker.cc",
     "notification_manager.cc",
     "scoped_temp_file.cc",

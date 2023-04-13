@@ -2,111 +2,37 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+
 #include "modemfwd/modem_helper.h"
+#include "modemfwd/modem_sandbox.h"
 #include "modemfwd/upstart_job_controller.h"
 
-#include <linux/securebits.h>
-#include <sys/capability.h>
-
-#include <memory>
-#include <tuple>
-#include <utility>
-#include <vector>
-
-#include <base/check.h>
 #include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/memory/ptr_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/process/process.h>
 #include <chromeos/switches/modemfwd_switches.h>
-#include <libminijail.h>
-#include <scoped_minijail.h>
 
 namespace modemfwd {
 
 namespace {
 
 constexpr char kModemfwdLogDirectory[] = "/var/log/modemfwd";
-constexpr char kSeccompPolicyDirectory[] = "/usr/share/policy";
 constexpr char kUpstartServiceName[] = "com.ubuntu.Upstart";
 constexpr char kHermesJobPath[] = "/com/ubuntu/Upstart/jobs/hermes";
 constexpr char kModemHelperJobPath[] =
     "/com/ubuntu/Upstart/jobs/modemfwd_2dhelpers";
 
-// For security reasons, we want to apply security restrictions to helpers:
-// 1. We want to provide net admin capabilities only when necessary.
-// 2. We want to apply helper-specific seccomp filter.
-ScopedMinijail ConfigureSandbox(const HelperInfo& helper_info) {
-  ScopedMinijail j(minijail_new());
-
-  // Ensure no capability escalation occurs in the jail.
-  minijail_no_new_privs(j.get());
-
-  // Avoid setting securebits as we are running inside a minijail already.
-  // See b/112030238 for justification.
-  minijail_skip_setting_securebits(j.get(), SECURE_ALL_BITS | SECURE_ALL_LOCKS);
-
-  // Remove all capabilities if helper doesn't require cap_net_admin by setting
-  // sandboxed capabilities to 0. Only FM350 modem requires cap_net_admin.
-  if (!base::Contains(helper_info.executable_path.value(), "fm350")) {
-    LOG(INFO) << "Removing all capabilities from helper";
-    minijail_use_caps(j.get(), 0);
-  }
-
-  // Determine where this helper's seccomp policy would be. Expected location:
-  // /usr/share/policy/{modem_id}-helper-seccomp.policy
-  const base::FilePath helper_seccomp_policy_file(base::StringPrintf(
-      "%s/%s-seccomp.policy", kSeccompPolicyDirectory,
-      helper_info.executable_path.BaseName().value().c_str()));
-
-  // Apply seccomp filter, if it exists for this helper.
-  if (base::PathExists(helper_seccomp_policy_file)) {
-    minijail_use_seccomp_filter(j.get());
-    minijail_parse_seccomp_filters(j.get(),
-                                   helper_seccomp_policy_file.value().c_str());
-  } else {
-    LOG(WARNING) << "No seccomp policy found for helper: "
-                 << helper_info.executable_path.BaseName().value();
-  }
-
-  return j;
-}
-
-int RunProcessInSandbox(const HelperInfo& helper_info,
-                        const std::vector<std::string>& formatted_args,
-                        int* child_stdout,
-                        int* child_stderr) {
-  pid_t pid = -1;
-  std::vector<char*> args;
-
-  for (const std::string& argument : formatted_args)
-    args.push_back(const_cast<char*>(argument.c_str()));
-
-  args.push_back(nullptr);
-
-  // Create sandbox and run helper.
-  ScopedMinijail j = ConfigureSandbox(helper_info);
-  int ret = minijail_run_pid_pipes(j.get(), args[0], args.data(), &pid, nullptr,
-                                   child_stdout, child_stderr);
-
-  if (ret != 0) {
-    LOG(ERROR) << "Failed to run minijail: " << strerror(-ret);
-    return ret;
-  }
-
-  return minijail_wait(j.get());
-}
-
 bool RunHelperProcessWithLogs(const HelperInfo& helper_info,
                               const std::vector<std::string>& arguments) {
   int child_stdout = -1, child_stderr = -1;
   std::vector<std::string> formatted_args;
+  bool should_remove_capabilities = true;
 
   formatted_args.push_back(helper_info.executable_path.value());
   for (const std::string& argument : arguments)
@@ -114,8 +40,19 @@ bool RunHelperProcessWithLogs(const HelperInfo& helper_info,
   for (const std::string& extra_argument : helper_info.extra_arguments)
     formatted_args.push_back(extra_argument);
 
-  int exit_code = RunProcessInSandbox(helper_info, formatted_args,
-                                      &child_stdout, &child_stderr);
+  // Determine where this helper's seccomp policy would be. Expected location:
+  // /usr/share/policy/{modem_id}-helper-seccomp.policy
+  const base::FilePath helper_seccomp_policy_file(base::StringPrintf(
+      "%s/%s-seccomp.policy", kSeccompPolicyDirectory,
+      helper_info.executable_path.BaseName().value().c_str()));
+
+  // Allow cap_net_admin to persist only on fm350-helper
+  if (base::Contains(helper_info.executable_path.value(), "fm350"))
+    should_remove_capabilities = false;
+
+  int exit_code = RunProcessInSandbox(
+      formatted_args, helper_seccomp_policy_file, should_remove_capabilities,
+      &child_stdout, &child_stderr);
 
   base::Time::Exploded time;
   base::Time::Now().LocalExplode(&time);
@@ -149,6 +86,7 @@ bool RunHelperProcess(const HelperInfo& helper_info,
                       std::string* output) {
   int child_stdout = -1, child_stderr = -1;
   std::vector<std::string> formatted_args;
+  bool should_remove_capabilities = true;
 
   formatted_args.push_back(helper_info.executable_path.value());
   for (const std::string& argument : arguments)
@@ -156,8 +94,19 @@ bool RunHelperProcess(const HelperInfo& helper_info,
   for (const std::string& extra_argument : helper_info.extra_arguments)
     formatted_args.push_back(extra_argument);
 
-  int exit_code = RunProcessInSandbox(helper_info, formatted_args,
-                                      &child_stdout, &child_stderr);
+  // Determine where this helper's seccomp policy would be. Expected location:
+  // /usr/share/policy/{modem_id}-helper-seccomp.policy
+  const base::FilePath helper_seccomp_policy_file(base::StringPrintf(
+      "%s/%s-seccomp.policy", kSeccompPolicyDirectory,
+      helper_info.executable_path.BaseName().value().c_str()));
+
+  // Allow cap_net_admin to persist only on fm350-helper
+  if (base::Contains(helper_info.executable_path.value(), "fm350"))
+    should_remove_capabilities = false;
+
+  int exit_code = RunProcessInSandbox(
+      formatted_args, helper_seccomp_policy_file, should_remove_capabilities,
+      &child_stdout, &child_stderr);
 
   base::ScopedFD scoped_stdout(child_stdout);
   base::ScopedFD scoped_stderr(child_stderr);

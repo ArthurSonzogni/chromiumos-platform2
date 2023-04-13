@@ -24,6 +24,7 @@
 #include "modemfwd/modem.h"
 #include "modemfwd/modem_flasher.h"
 #include "modemfwd/modem_helper.h"
+#include "modemfwd/modem_sandbox.h"
 #include "modemfwd/modem_tracker.h"
 #include "modemfwd/notification_manager.h"
 
@@ -108,10 +109,6 @@ class Daemon : public brillo::DBusServiceDaemon {
   void StartHeartbeatTimer();
   void StopHeartbeatTimer();
   void CheckModemIsResponsive();
-  void GetModemCheckResult(
-      const std::string& device_id,
-      base::OnceCallback<void(const std::string&, bool)> cb,
-      std::unique_ptr<brillo::Process> hb_cmd);
   void HandleModemCheckResult(const std::string& device_id, bool check_result);
   void ResetModemWithHelper(const std::string& device_id, ModemHelper* helper);
 
