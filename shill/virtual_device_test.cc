@@ -45,13 +45,6 @@ class VirtualDeviceTest : public testing::Test {
   void SetUp() override { device_->rtnl_handler_ = &rtnl_handler_; }
 
  protected:
-  static void OnEnabledStateChanged(base::OnceClosure quit_closure,
-                                    Error* to_return,
-                                    const Error& error) {
-    *to_return = error;
-    std::move(quit_closure).Run();
-  }
-
   base::SingleThreadTaskExecutor task_executor_{base::MessagePumpType::IO};
 
   MockControl control_;
@@ -86,8 +79,8 @@ TEST_F(VirtualDeviceTest, Start) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, IFF_UP, IFF_UP));
 
   base::RunLoop run_loop;
-  device_->Start(base::BindOnce(&VirtualDeviceTest::OnEnabledStateChanged,
-                                run_loop.QuitClosure(), &error));
+  device_->Start(
+      base::BindOnce(&SetErrorAndReturn, run_loop.QuitClosure(), &error));
   run_loop.Run();
 
   EXPECT_TRUE(error.IsSuccess());
@@ -97,8 +90,8 @@ TEST_F(VirtualDeviceTest, Stop) {
   Error error;
 
   base::RunLoop run_loop;
-  device_->Stop(base::BindOnce(&VirtualDeviceTest::OnEnabledStateChanged,
-                               run_loop.QuitClosure(), &error));
+  device_->Stop(
+      base::BindOnce(&SetErrorAndReturn, run_loop.QuitClosure(), &error));
   run_loop.Run();
 
   EXPECT_TRUE(error.IsSuccess());
