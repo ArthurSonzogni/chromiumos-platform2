@@ -434,16 +434,6 @@ class AuthSession final {
       const KeyBlobs& key_blobs,
       OverwriteExistingKeyBlock override);
 
-  // Implements the AddauthFactor by adding the credential backing store either
-  // with AuthFactor & UsersecretStash or VaultKeyset.
-  void AddAuthFactorImpl(AuthFactorType auth_factor_type,
-                         const std::string& auth_factor_label,
-                         const AuthFactorMetadata& auth_factor_metadata,
-                         const AuthInput& auth_input,
-                         std::unique_ptr<AuthSessionPerformanceTimer>
-                             auth_session_performance_timer,
-                         StatusCallback on_done);
-
   // Returns the callback function to add and AuthFactor for the right key store
   // type.
   AuthBlock::CreateCallback GetAddAuthFactorCallback(

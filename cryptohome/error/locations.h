@@ -1052,7 +1052,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_session.cc */
   kLocAuthSessionPersistUSSFailedInRemoveAuthFactor = 613,
   /* ./auth_session.cc */
-  kLocAuthSessionInvalidBlockTypeInAddAuthFactorImpl = 614,
+  kLocAuthSessionInvalidBlockTypeInAddAuthFactor = 614,
   /* ./auth_session.cc */
   kLocAuthSessionNullParamInPersistToUSS = 615,
   /* ./auth_session.cc */

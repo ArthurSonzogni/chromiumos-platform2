@@ -2546,19 +2546,6 @@ void AuthSession::AddAuthFactor(
                          : std::make_unique<AuthSessionPerformanceTimer>(
                                kAuthSessionAddAuthFactorVKTimer);
 
-  AddAuthFactorImpl(auth_factor_type, auth_factor_label, auth_factor_metadata,
-                    auth_input_status.value(),
-                    std::move(auth_session_performance_timer),
-                    std::move(on_done));
-}
-
-void AuthSession::AddAuthFactorImpl(
-    AuthFactorType auth_factor_type,
-    const std::string& auth_factor_label,
-    const AuthFactorMetadata& auth_factor_metadata,
-    const AuthInput& auth_input,
-    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
-    StatusCallback on_done) {
   // Determine the auth block type to use.
   CryptoStatusOr<AuthBlockType> auth_block_type =
       auth_block_utility_->GetAuthBlockTypeForCreation(auth_factor_type);
@@ -2566,8 +2553,7 @@ void AuthSession::AddAuthFactorImpl(
   if (!auth_block_type.ok()) {
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionInvalidBlockTypeInAddAuthFactorImpl),
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAddAuthFactor),
             user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
             .Wrap(std::move(auth_block_type).status()));
     return;
@@ -2594,11 +2580,12 @@ void AuthSession::AddAuthFactorImpl(
 
   auto create_callback = GetAddAuthFactorCallback(
       auth_factor_type, auth_factor_label, auth_factor_metadata, key_data,
-      auth_input, auth_factor_storage_type,
+      auth_input_status.value(), auth_factor_storage_type,
       std::move(auth_session_performance_timer), std::move(on_done));
 
-  auth_block_utility_->CreateKeyBlobsWithAuthBlock(
-      auth_block_type.value(), auth_input, std::move(create_callback));
+  auth_block_utility_->CreateKeyBlobsWithAuthBlock(auth_block_type.value(),
+                                                   auth_input_status.value(),
+                                                   std::move(create_callback));
 }
 
 AuthBlock::CreateCallback AuthSession::GetAddAuthFactorCallback(
