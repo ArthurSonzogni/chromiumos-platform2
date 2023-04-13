@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors.
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -189,4 +189,8 @@ void sl_xshape_generate_argb_image(struct sl_context* ctx,
                            (rects[i].x2 - rects[i].x1),
                            (rects[i].y2 - rects[i].y1));
   }
+
+  // Release the memory associated with the above
+  pixman_image_unref(src);
+  pixman_region32_fini(&intersect_rects);
 }
