@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kStopAllVmsMethod, &Service::StopAllVms},
       {kSuspendVmMethod, &Service::SuspendVm},
       {kResumeVmMethod, &Service::ResumeVm},
       {kGetVmInfoMethod, &Service::GetVmInfo},
@@ -2535,10 +2534,9 @@ class VMDelegate : public base::PlatformThread::Delegate {
   VmBaseImpl* vm_;
 };
 
-std::unique_ptr<dbus::Response> Service::StopAllVms(
-    dbus::MethodCall* method_call) {
+void Service::StopAllVms() {
   StopAllVmsImpl(STOP_ALL_VMS_REQUESTED);
-  return nullptr;
+  return;
 }
 
 void Service::StopAllVmsImpl(VmStopReason reason) {
