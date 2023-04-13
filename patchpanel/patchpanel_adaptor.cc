@@ -329,6 +329,20 @@ TerminaVmStartupResponse PatchpanelAdaptor::TerminaVmStartup(
   return response;
 }
 
+NotifyAndroidWifiMulticastLockChangeResponse
+PatchpanelAdaptor::NotifyAndroidWifiMulticastLockChange(
+    const NotifyAndroidWifiMulticastLockChangeRequest& request) {
+  manager_->NotifyAndroidWifiMulticastLockChange(request.held());
+  return {};
+}
+
+NotifyAndroidInteractiveStateResponse
+PatchpanelAdaptor::NotifyAndroidInteractiveState(
+    const NotifyAndroidInteractiveStateRequest& request) {
+  manager_->NotifyAndroidInteractiveState(request.interactive());
+  return {};
+}
+
 void PatchpanelAdaptor::OnNetworkDeviceChanged(const Device& virtual_device,
                                                Device::ChangeEvent event) {
   NetworkDeviceChangedSignal signal;

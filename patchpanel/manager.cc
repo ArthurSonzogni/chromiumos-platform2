@@ -320,7 +320,18 @@ void Manager::OnGuestDeviceChanged(const Device& virtual_device,
           ? virtual_device.phys_ifname()
           : shill_client_->default_logical_interface();
   if (event == Device::ChangeEvent::kAdded) {
-    StartForwarding(upstream_device, virtual_device.host_ifname());
+    // If device is ARC, only starts forwarding multicast traffic for WiFi
+    // interfaces when multicast lock is held and device is interactive, but
+    // always start GuestIPv6Service for all interfaces and multicast
+    // traffic for non-WiFi interfaces.
+    ForwardingSet fwd_set = {.ipv6 = true, .multicast = true};
+    if ((virtual_device.type() == Device::Type::kARCContainer ||
+         virtual_device.type() == Device::Type::kARCVM) &&
+        (!is_arc_interactive_ || (Manager::IsWifiInterface(upstream_device) &&
+                                  !android_wifi_multicast_lock_held_))) {
+      fwd_set.multicast = false;
+    }
+    StartForwarding(upstream_device, virtual_device.host_ifname(), fwd_set);
   } else if (event == Device::ChangeEvent::kRemoved) {
     StopForwarding(upstream_device, virtual_device.host_ifname());
   }
@@ -923,4 +934,72 @@ void Manager::StopForwarding(const std::string& ifname_physical,
   }
 }
 
+void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {
+  // When multicast lock status changes from not held to held or the other
+  // way, decide whether to enable or disable multicast forwarder for ARC.
+  if (android_wifi_multicast_lock_held_ == is_held) {
+    return;
+  }
+
+  // If arc is not interactive, multicast lock held status does not
+  // affect multicast traffic.
+  android_wifi_multicast_lock_held_ = is_held;
+  if (!is_arc_interactive_) {
+    return;
+  }
+
+  // Only start/stop forwarding when multicast allowed status changes to avoid
+  // start/stop forwarding multiple times, also wifi multicast lock should
+  // only affect multicast traffic on wireless device.
+  for (const auto* device : arc_svc_->GetDevices()) {
+    if (!Manager::IsWifiInterface(device->phys_ifname())) {
+      continue;
+    }
+    if (android_wifi_multicast_lock_held_) {
+      StartForwarding(device->phys_ifname(), device->host_ifname(),
+                      ForwardingSet{.multicast = true});
+    } else {
+      StopForwarding(device->phys_ifname(), device->host_ifname(),
+                     ForwardingSet{.multicast = true});
+    }
+  }
+}
+
+void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
+  // When power state of device changes, decide whether to disable
+  // multicast forwarder for ARC.
+  if (is_arc_interactive_ == is_interactive) {
+    return;
+  }
+
+  // If ARC power state has changed to interactive, enable all
+  // interfaces that are not wifi interface, and only enable wifi interfaces
+  // when wifi multicast lock is held.
+  // If ARC power state has changed to non-interactive, disable all
+  // interfaces that are not wifi interface, and only disable wifi
+  // interfaces when they were in enabled state (multicast lock held).
+  is_arc_interactive_ = is_interactive;
+  for (const auto* device : arc_svc_->GetDevices()) {
+    if (Manager::IsWifiInterface(device->phys_ifname()) &&
+        !android_wifi_multicast_lock_held_) {
+      continue;
+    }
+    if (is_arc_interactive_) {
+      StartForwarding(device->phys_ifname(), device->host_ifname(),
+                      ForwardingSet{.multicast = true});
+    } else {
+      StopForwarding(device->phys_ifname(), device->host_ifname(),
+                     ForwardingSet{.multicast = true});
+    }
+  }
+}
+
+bool Manager::IsWifiInterface(const std::string& ifname) {
+  ShillClient::Device shill_device;
+  if (!shill_client_->GetDeviceProperties(ifname, &shill_device)) {
+    LOG(ERROR) << "Failed to get shill device for interface: " << ifname;
+    return false;
+  }
+  return shill_device.type == ShillClient::Device::Type::kWifi;
+}
 }  // namespace patchpanel

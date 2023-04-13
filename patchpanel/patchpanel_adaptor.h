@@ -84,6 +84,13 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
   TerminaVmStartupResponse TerminaVmStartup(
       const TerminaVmStartupRequest& request) override;
 
+  NotifyAndroidWifiMulticastLockChangeResponse
+  NotifyAndroidWifiMulticastLockChange(
+      const NotifyAndroidWifiMulticastLockChangeRequest& request) override;
+
+  NotifyAndroidInteractiveStateResponse NotifyAndroidInteractiveState(
+      const NotifyAndroidInteractiveStateRequest& request) override;
+
   // Implements Manager::ClientNotifier, which are mapping to the exported D-Bus
   // signals.
   void OnNetworkDeviceChanged(const Device& virtual_device,

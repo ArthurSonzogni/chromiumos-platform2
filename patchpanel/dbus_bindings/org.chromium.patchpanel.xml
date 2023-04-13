@@ -245,6 +245,30 @@
       </arg>
     </method>
 
+    <method name="NotifyAndroidWifiMulticastLockChange">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::NotifyAndroidWifiMulticastLockChangeRequest" />
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::NotifyAndroidWifiMulticastLockChangeResponse" />
+      </arg>
+    </method>
+
+    <method name="NotifyAndroidInteractiveState">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::NotifyAndroidInteractiveStateRequest" />
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::NotifyAndroidInteractiveStateResponse" />
+      </arg>
+    </method>
+
     <!-- Exported signals. -->
     <signal name="NetworkDeviceChanged">
       <arg name="payload" type="ay" direction="out">

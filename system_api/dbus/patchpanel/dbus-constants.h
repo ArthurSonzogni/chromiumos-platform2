@@ -25,6 +25,10 @@ const char kGetTrafficCountersMethod[] = "GetTrafficCounters";
 const char kModifyPortRuleMethod[] = "ModifyPortRule";
 const char kParallelsVmShutdownMethod[] = "ParallelsVmShutdown";
 const char kParallelsVmStartupMethod[] = "ParallelsVmStartup";
+const char kNotifyAndroidInteractiveStateMethod[] =
+    "NotifyAndroidInteractiveState";
+const char kNotifyAndroidWifiMulticastLockChangeMethod[] =
+    "NotifyAndroidWifiMulticastLockChange";
 const char kSetDnsRedirectionRuleMethod[] = "SetDnsRedirectionRule";
 const char kSetVpnIntentMethod[] = "SetVpnIntent";
 const char kSetVpnLockdown[] = "SetVpnLockdown";

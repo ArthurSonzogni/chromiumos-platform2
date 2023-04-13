@@ -127,12 +127,34 @@ class Manager {
   std::optional<DownstreamNetworkInfo> GetDownstreamNetworkInfo(
       const std::string& downstream_ifname) const;
 
+  // Start/Stop forwarding multicast traffic to ARC when ARC power state
+  // changes.
+  // When power state changes into interactive, start forwarding IPv4 and IPv6
+  // multicast mDNS and SSDP traffic for all non-WiFi interfaces, and for WiFi
+  // interface only when Android WiFi multicast lock is held by any app in ARC.
+  // When power state changes into non-interactive, stop forwarding multicast
+  // traffic for all interfaces if enabled.
+  void NotifyAndroidInteractiveState(bool is_interactive);
+
+  // Start/Stop forwarding WiFi multicast traffic to and from ARC when Android
+  // WiFi multicast lock held status changes. Start forwarding IPv4 and IPv6
+  // multicast mDNS and SSDP traffic for WiFi interfaces only when
+  // device power state is interactive and Android WiFi multicast lock is held
+  // by any app in ARC, otherwise stop multicast forwarder for ARC WiFi
+  // interface.
+  void NotifyAndroidWifiMulticastLockChange(bool is_held);
+
  private:
+  friend class ManagerTest;
+
   // Struct to specify which forwarders to start and stop.
   struct ForwardingSet {
     bool ipv6;
     bool multicast;
   };
+
+  // Helper function used to check if a given interface is a wifi interface.
+  bool IsWifiInterface(const std::string& ifname);
 
   // Callbacks from |shill_client_|.
   void OnShillDefaultLogicalDeviceChanged(
@@ -261,6 +283,14 @@ class Manager {
   // track of the FileDescriptorWatcher::Controller object associated with it.
   std::map<int, std::unique_ptr<base::FileDescriptorWatcher::Controller>>
       lifeline_fd_controllers_;
+
+  // Whether multicast lock is held by any app in ARC, used to decide whether
+  // to start/stop forwarding multicast traffic to ARC on WiFi.
+  bool android_wifi_multicast_lock_held_ = false;
+
+  // Whether device is interactive, used to decide whether to start/stop
+  // forwarding multicast traffic to ARC on all multicast enabled networks.
+  bool is_arc_interactive_ = false;
 
   base::WeakPtrFactory<Manager> weak_factory_{this};
 };

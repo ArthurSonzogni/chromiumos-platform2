@@ -733,3 +733,20 @@ message DownstreamNetworkInfoResponse {
   // Describes clients connected to the network.
   repeated NetworkClientInfo clients_info = 3;
 }
+
+// Notification change in power state of ARC.
+message NotifyAndroidInteractiveStateRequest {
+  bool interactive = 1;
+}
+
+// Response to a NotifyAndroidInteractiveState call.
+message NotifyAndroidInteractiveStateResponse {}
+
+// Notification change in whether Android WiFi multicast lock is held by any
+// app in ARC.
+message NotifyAndroidWifiMulticastLockChangeRequest {
+  bool held = 1;
+}
+
+// Response to a NotifyAndroidWifiMulticastLockChange call.
+message NotifyAndroidWifiMulticastLockChangeResponse {}
