@@ -774,7 +774,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
       return false;
     }
 
-    base::OnceClosure yuv_cleanup_closure;
+    base::ScopedClosureRunner cleanup_runner;
     if (last_set_effect_config_.HasEnabledEffects()) {
       RenderResult render_result = RenderEffect(result_buffer, *timestamp);
       num_processed_streams++;
@@ -782,7 +782,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
         metrics_.RecordError(render_result.result);
         continue;
       }
-      yuv_cleanup_closure = std::move(render_result.cleanup_closure);
+      cleanup_runner.ReplaceClosure(std::move(render_result.cleanup_closure));
     }
 
     // If this buffer is the YUV input for a blob stream, feed it into the still
@@ -801,7 +801,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
           still_capture_processor_->QueuePendingYuvImage(
               result.frame_number(), *result_buffer.buffer(), base::ScopedFD());
           capture_context->blob_intermediate_yuv_pending = false;
-          capture_context->yuv_cleanup_closure = std::move(yuv_cleanup_closure);
+          capture_context->yuv_cleanup_closure = cleanup_runner.Release();
         }
         // Don't append the same YUV buffer stream twice.
         if (capture_context->yuv_stream_appended) {
