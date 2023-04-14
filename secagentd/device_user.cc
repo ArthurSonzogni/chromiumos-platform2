@@ -89,10 +89,23 @@ void DeviceUser::UpdateDeviceId() {
 }
 
 void DeviceUser::UpdateDeviceUser() {
+  // Check if guest session is active.
+  bool is_guest = false;
+  brillo::ErrorPtr error;
+  if (!session_manager_->IsGuestSessionActive(&is_guest, &error) ||
+      error.get()) {
+    // Do not exit method because possible that it is user session.
+    LOG(ERROR) << "Failed to deterimine if guest session "
+               << error->GetMessage();
+  }
+  if (is_guest) {
+    device_user_ = "GuestUser";
+    return;
+  }
+
   // Retrieve the device username.
   std::string username;
   std::string sanitized;
-  brillo::ErrorPtr error;
   if (!session_manager_->RetrievePrimarySession(&username, &sanitized,
                                                 &error) ||
       error.get()) {
