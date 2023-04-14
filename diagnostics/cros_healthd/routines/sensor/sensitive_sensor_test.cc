@@ -71,6 +71,7 @@ class SensitiveSensorRoutineTest : public testing::Test {
       base::Value::Dict sensor_dict;
       sensor_dict.Set("passed_sensors", base::Value::List());
       sensor_dict.Set("failed_sensors", base::Value::List());
+      sensor_dict.Set("existence_check_result", "skipped");
       output.Set(sensor_name, std::move(sensor_dict));
     }
     return output;
@@ -264,9 +265,13 @@ TEST_F(SensitiveSensorRoutineTest, RoutineExistenceCheckError) {
 
   // Wait for the error to occur.
   task_environment()->RunUntilIdle();
+
+  auto output = ConstructDefaultOutput();
+  output.SetByDottedPath("base_accelerometer.existence_check_result",
+                         "missing");
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineFailedCheckConfigMessage,
-                     ConstructDefaultOutput());
+                     std::move(output));
 }
 
 // Test that the SensitiveSensorRoutine returns a kError status when sensor

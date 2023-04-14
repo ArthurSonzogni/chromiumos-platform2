@@ -1235,6 +1235,7 @@ Sample output:
 Progress: 100
 Output: {
    "base_accelerometer": {
+      "existence_check_result": "passed",
       "failed_sensors": [  ],
       "passed_sensors": [ {
          "channels": [ "accel_x", "accel_y", "accel_z", "timestamp" ],
@@ -1243,6 +1244,7 @@ Output: {
       } ]
    },
    "base_gravity_sensor": {
+      "existence_check_result": "passed",
       "failed_sensors": [  ],
       "passed_sensors": [ {
          "channels": [ "gravity_x", "gravity_y", "gravity_z", "timestamp" ],
@@ -1251,6 +1253,7 @@ Output: {
       } ]
    },
    "base_gyroscope": {
+      "existence_check_result": "passed",
       "failed_sensors": [  ],
       "passed_sensors": [ {
          "channels": [ "anglvel_x", "anglvel_y", "anglvel_z", "timestamp" ],
@@ -1259,6 +1262,7 @@ Output: {
       } ]
    },
    "base_magnetometer": {
+      "existence_check_result": "passed",
       "failed_sensors": [  ],
       "passed_sensors": [ {
          "channels": [ "magn_x", "magn_y", "magn_z", "timestamp" ],
@@ -1267,6 +1271,7 @@ Output: {
       } ]
    },
    "lid_accelerometer": {
+      "existence_check_result": "passed",
       "failed_sensors": [  ],
       "passed_sensors": [ {
          "channels": [ "accel_x", "accel_y", "accel_z", "timestamp" ],
@@ -1275,14 +1280,17 @@ Output: {
       } ]
    },
    "lid_gravity_sensor": {
+      "existence_check_result": "skipped",
       "failed_sensors": [  ],
       "passed_sensors": [  ]
    },
    "lid_gyroscope": {
+      "existence_check_result": "skipped",
       "failed_sensors": [  ],
       "passed_sensors": [  ]
    },
    "lid_magnetometer": {
+      "existence_check_result": "skipped",
       "failed_sensors": [  ],
       "passed_sensors": [  ]
    }

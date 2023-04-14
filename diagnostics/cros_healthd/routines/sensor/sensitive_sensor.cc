@@ -31,6 +31,7 @@ constexpr double kSampleReadingFrequency = 5;
 constexpr char kChannelAxes[] = {'x', 'y', 'z'};
 constexpr char kOutputDictPassedSensorsKey[] = "passed_sensors";
 constexpr char kOutputDictFailedSensorsKey[] = "failed_sensors";
+constexpr char kOutputDictExistenceCheckResultKey[] = "existence_check_result";
 
 // This routine only supports accelerometers, gyro sensors, gravity sensors and
 // magnetometers.
@@ -118,6 +119,20 @@ std::string Convert(SensorType sensor) {
       return "lid_magnetometer";
     case SensorType::kLidGravitySensor:
       return "lid_gravity_sensor";
+  }
+}
+
+// Convert the enum to readable string.
+std::string Convert(SensorExistenceChecker::Result::State state) {
+  switch (state) {
+    case SensorExistenceChecker::Result::State::kPassed:
+      return "passed";
+    case SensorExistenceChecker::Result::State::kSkipped:
+      return "skipped";
+    case SensorExistenceChecker::Result::State::kMissing:
+      return "missing";
+    case SensorExistenceChecker::Result::State::kUnexpected:
+      return "unexpected";
   }
 }
 
@@ -431,6 +446,7 @@ base::Value::Dict SensitiveSensorRoutine::ConstructSensorOutput(
   base::Value::Dict sensor_dict;
   base::Value::List passed_sensors, failed_sensors;
   const auto& result = existence_check_result_[sensor];
+  sensor_dict.Set(kOutputDictExistenceCheckResultKey, Convert(result.state));
   for (const auto& sensor_id : result.sensor_ids) {
     if (passed_sensors_.count(sensor_id))
       passed_sensors.Append(passed_sensors_[sensor_id].Clone());
