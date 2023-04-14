@@ -441,10 +441,9 @@ TEST_F(AccountManagerTest, SetConfigValidatesConfig) {
 
   krb5_->set_validate_config_error(ERROR_BAD_CONFIG);
   EXPECT_EQ(ERROR_BAD_CONFIG, SetConfig());
-  // The config has to be saved even if the validation returned error.
-  std::string krb5_conf;
-  EXPECT_TRUE(base::ReadFileToString(krb5conf_path_, &krb5_conf));
-  EXPECT_EQ(krb5_conf, kKrb5Conf);
+
+  // The config should not be saved if the validation returned error.
+  EXPECT_FALSE(base::PathExists(krb5conf_path_));
 }
 
 // SetConfig() triggers KerberosFilesChanged if the credential cache exists.

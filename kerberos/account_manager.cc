@@ -299,23 +299,26 @@ std::vector<Account> AccountManager::ListAccounts() const {
 ErrorType AccountManager::SetConfig(const std::string& principal_name,
                                     const std::string& krb5conf) const {
   const InternalAccount* account = GetAccount(principal_name);
-  if (!account)
+  if (!account) {
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
+  }
 
-  // Saving the krb5 configuration is done even if the syntax is invalid.
-  ErrorType error;
+  // Validate configuration before setting it to make sure it doesn't contain
+  // invalid options.
+  ConfigErrorInfo error_info;
+  ErrorType error = krb5_->ValidateConfig(krb5conf, &error_info);
+  if (error != ERROR_NONE) {
+    return error;
+  }
+
   error = SaveFile(GetKrb5ConfPath(principal_name), krb5conf);
 
-  if (error != ERROR_NONE)
-    return error;
-
-  // Triggering the signal is only necessary if the credential cache exists.
-  if (base::PathExists(GetKrb5CCPath(principal_name)))
+  // Triggering the signal is only necessary if the file was saved successfully,
+  // and the credential cache exists.
+  if (error == ERROR_NONE && base::PathExists(GetKrb5CCPath(principal_name))) {
     TriggerKerberosFilesChanged(principal_name);
+  }
 
-  // Validate configuration to make sure it doesn't contain invalid options.
-  ConfigErrorInfo error_info;
-  error = krb5_->ValidateConfig(krb5conf, &error_info);
   return error;
 }
 
