@@ -57,7 +57,7 @@ class EncryptionModuleInterface
   bool need_encryption_key() const;
 
  protected:
-  virtual ~EncryptionModuleInterface();
+  ~EncryptionModuleInterface() override;
 
  private:
   friend base::RefCountedThreadSafe<EncryptionModuleInterface>;

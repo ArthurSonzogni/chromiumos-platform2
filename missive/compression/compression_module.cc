@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 #include "missive/compression/compression_module.h"
 
-#include <atomic>
 #include <optional>
 #include <string>
 #include <utility>

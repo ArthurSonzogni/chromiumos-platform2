@@ -5,7 +5,6 @@
 #ifndef MISSIVE_COMPRESSION_COMPRESSION_MODULE_H_
 #define MISSIVE_COMPRESSION_COMPRESSION_MODULE_H_
 
-#include <atomic>
 #include <optional>
 #include <string>
 
@@ -52,7 +51,7 @@ class CompressionModule : public DynamicFlag,
       CompressionInformation::CompressionAlgorithm compression_type);
 
   // Refcounted object must have destructor declared protected or private.
-  virtual ~CompressionModule();
+  ~CompressionModule() override;
 
  private:
   friend base::RefCountedThreadSafe<CompressionModule>;
