@@ -156,19 +156,16 @@ TEST_F(StatusChainTest, CtorAssign) {
 
 TEST_F(StatusChainTest, PointerAccessSwapReset) {
   StatusChain<Fake1Error> ptr1;
-  EXPECT_EQ(ptr1.get(), StatusChain<Fake1Error>::pointer());
 
   StatusChain<Fake1Error> ptr2(new Fake1Error("e1", 1));
   ptr2.WrapInPlace(MakeStatus<Fake2Error>("e2", 2));
   EXPECT_EQ(ptr2->val(), 1);
-  EXPECT_EQ(ptr2.get()->val(), 1);
   EXPECT_EQ((*ptr2).val(), 1);
   EXPECT_EQ(ptr2.error().val(), 1);
 
   ptr1.reset(new Fake1Error("e3", 3));
   ptr1.WrapInPlace(MakeStatus<Fake2Error>("e4", 4));
   EXPECT_EQ(ptr1->val(), 3);
-  EXPECT_EQ(ptr1.get()->val(), 3);
   EXPECT_EQ((*ptr1).val(), 3);
   EXPECT_EQ(ptr1.error().val(), 3);
 
@@ -176,12 +173,10 @@ TEST_F(StatusChainTest, PointerAccessSwapReset) {
   ptr1.AssertNotOk();
   ptr2.AssertNotOk();
   EXPECT_EQ(ptr1->val(), 1);
-  EXPECT_EQ(ptr1.get()->val(), 1);
   EXPECT_EQ((*ptr1).val(), 1);
   EXPECT_EQ(ptr1.error().val(), 1);
 
   EXPECT_EQ(ptr2->val(), 3);
-  EXPECT_EQ(ptr2.get()->val(), 3);
   EXPECT_EQ((*ptr2).val(), 3);
   EXPECT_EQ(ptr2.error().val(), 3);
 
@@ -189,12 +184,10 @@ TEST_F(StatusChainTest, PointerAccessSwapReset) {
   ptr1.AssertNotOk();
   ptr2.AssertNotOk();
   EXPECT_EQ(ptr1->val(), 3);
-  EXPECT_EQ(ptr1.get()->val(), 3);
   EXPECT_EQ((*ptr1).val(), 3);
   EXPECT_EQ(ptr1.error().val(), 3);
 
   EXPECT_EQ(ptr2->val(), 1);
-  EXPECT_EQ(ptr2.get()->val(), 1);
   EXPECT_EQ((*ptr2).val(), 1);
   EXPECT_EQ(ptr2.error().val(), 1);
 
@@ -203,7 +196,6 @@ TEST_F(StatusChainTest, PointerAccessSwapReset) {
 
   ptr2.reset(new Fake1Error("e5", 5));
   EXPECT_EQ(ptr2->val(), 5);
-  EXPECT_EQ(ptr2.get()->val(), 5);
   EXPECT_EQ((*ptr2).val(), 5);
   EXPECT_EQ(ptr2.error().val(), 5);
 }

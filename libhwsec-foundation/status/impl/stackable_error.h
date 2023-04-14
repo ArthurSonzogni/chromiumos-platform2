@@ -65,7 +65,7 @@ struct WrapTransformOnly {};
 // Despite being a unique_ptr representation, raw pointer access is a temporary
 // convenience for converting existing code and will be deprecated, once the
 // codebase adopts |ok()| checks.
-// TODO(dlunev): Remove get/operator-> semantics when |ok()| is adopted.
+// TODO(dlunev): Remove operator-> semantics when |ok()| is adopted.
 //
 // The consumable state meaning:
 // * consumed => The stackable error is in the OK state.
@@ -182,18 +182,6 @@ class [[clang::consumable(unknown)]]   //
   // Return true if the object represents an |ok()| sequence.
   [[clang::test_typestate(consumed)]] bool IsOkInternal() const noexcept {
     return error_stack_.empty();
-  }
-
-  // Returns the pointer to the head error object or |nullptr| representing
-  // value.
-  // TODO(dlunev): deprecate when codebase adopts |ok()| checks.
-  pointer GetInternal() const noexcept {
-    // Return a |nullptr| representing value for an OK status.
-    if (IsOkInternal()) {
-      return pointer();
-    }
-
-    return GetErrInternal();
   }
 
   // Returns the pointer to the head error object.
@@ -494,16 +482,9 @@ class [[clang::consumable(unknown)]]   //
   // Returns the pointer to the head of the error stack or the value
   // representing a nullptr pointer.
   // TODO(dlunev): deprecate when codebase adopts |ok()| checks.
-  pointer get() const noexcept {
-    return GetInternal();
-  }
-
-  // Returns the pointer to the head of the error stack or the value
-  // representing a nullptr pointer.
-  // TODO(dlunev): deprecate when codebase adopts |ok()| checks.
   [[clang::callable_when("unconsumed")]] pointer operator->() const noexcept {
     CHECK(!ok()) << " Arrow operator on an OK chain is not allowed";
-    return get();
+    return GetErrInternal();
   }
 
   // Resets current stack.
@@ -586,7 +567,7 @@ class [[clang::consumable(unknown)]]   //
     // current error doees not appear in the view. We provide const_view to
     // prevent the modification of previously stacked objects from transform to
     // disallow creating side effects on the stack.
-    get()->WrapTransform(other.const_range());
+    GetErrInternal()->WrapTransform(other.const_range());
     WrapInternal(other.release_stack());
   }
 
@@ -608,7 +589,7 @@ class [[clang::consumable(unknown)]]   //
     // current error doees not appear in the view. We provide const_view to
     // prevent the modification of previously stacked objects from transform to
     // disallow creating side effects on the stack.
-    get()->WrapTransform(other.const_range());
+    GetErrInternal()->WrapTransform(other.const_range());
 
     // Discard the prior stack.
     other.reset();
