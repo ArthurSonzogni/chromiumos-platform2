@@ -5,6 +5,7 @@
 #ifndef SHILL_WIFI_PASSPOINT_CREDENTIALS_H_
 #define SHILL_WIFI_PASSPOINT_CREDENTIALS_H_
 
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -135,6 +136,9 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   // Encode an Organisation Identifier list to a string of hexadecimal values
   // separated by a ','.
   static std::string EncodeOIList(const std::vector<uint64_t>& ois);
+
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const PasspointCredentials& creds);
 
   // Home service provider FQDNs.
   std::vector<std::string> domains_;

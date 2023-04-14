@@ -4,6 +4,7 @@
 
 #include "shill/wifi/passpoint_credentials.h"
 
+#include <cstddef>
 #include <limits>
 #include <set>
 #include <string>
@@ -402,6 +403,12 @@ std::string PasspointCredentials::EncodeOIList(
     strings.push_back(EncodeOI(oi));
   }
   return base::JoinString(strings, ",");
+}
+
+std::ostream& operator<<(std::ostream& os, const PasspointCredentials& creds) {
+  os << "PasspointCredentials[id: " << creds.id()
+     << ", friendly_name: " << creds.friendly_name() << "]";
+  return os;
 }
 
 }  // namespace shill
