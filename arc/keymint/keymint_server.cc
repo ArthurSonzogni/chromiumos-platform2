@@ -8,8 +8,8 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/platform_thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <keymaster/android_keymaster_messages.h>
 #include <mojo/keymint.mojom.h>
 
@@ -87,7 +87,8 @@ void KeyMintServer::RunKeyMintRequest(
   // current task runner.
   backend_thread_.task_runner()->PostTask(
       location,
-      base::BindOnce(task_lambda, location, base::ThreadTaskRunnerHandle::Get(),
+      base::BindOnce(task_lambda, location,
+                     base::SingleThreadTaskRunner::GetCurrentDefault(),
                      backend_.keymint(), member, std::move(request),
                      std::move(callback)));
 }
