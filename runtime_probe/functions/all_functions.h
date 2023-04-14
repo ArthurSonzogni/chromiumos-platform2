@@ -23,6 +23,7 @@
 #include "runtime_probe/functions/input_device.h"
 #include "runtime_probe/functions/memory.h"
 #include "runtime_probe/functions/mipi_camera.h"
+#include "runtime_probe/functions/mmc_host.h"
 #include "runtime_probe/functions/mmc_storage.h"
 #include "runtime_probe/functions/nvme_storage.h"
 #include "runtime_probe/functions/sequence.h"
@@ -51,6 +52,7 @@ using AllFunctions = ProbeFunctions<ApI2cFunction,
                                     InputDeviceFunction,
                                     MemoryFunction,
                                     MipiCameraFunction,
+                                    MmcHostFunction,
                                     MmcStorageFunction,
                                     NetworkFunction,
                                     NvmeStorageFunction,
@@ -76,6 +78,7 @@ using AvlAllowedProbeFunctions = ProbeFunctions<AtaStorageFunction,
                                                 InputDeviceFunction,
                                                 MemoryFunction,
                                                 MipiCameraFunction,
+                                                MmcHostFunction,
                                                 MmcStorageFunction,
                                                 NetworkFunction,
                                                 NvmeStorageFunction,
