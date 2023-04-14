@@ -663,6 +663,7 @@ MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
     weight = 5;
   } else if (RE2::PartialMatch(line, *enable_failure, &error_code,
                                &error_message)) {
+    error_code = error_code + "-enable";
     weight = 200;
   } else if (RE2::PartialMatch(line, *mm_failure, &error_code,
                                &error_message)) {

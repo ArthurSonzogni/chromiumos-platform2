@@ -712,7 +712,7 @@ TEST(AnomalyDetectorTest, CellularFailureMM) {
 
 TEST(AnomalyDetectorTest, CellularFailureEnable) {
   ParserRun enable_failure = {
-      .expected_text = "InProgress",
+      .expected_text = "InProgress-enable",
       .expected_flags = {
           {"--modem_failure", base::StringPrintf("--weight=%d", 200)}}};
   ShillParser parser(/*testonly_send_all=*/true);
