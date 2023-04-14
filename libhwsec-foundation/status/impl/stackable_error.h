@@ -52,7 +52,7 @@ struct WrapTransformOnly {};
 // |StackableError| provides a unique_ptr-like access style for a stack of
 // errors. It can be constructed from a raw pointer - to take an ownership of
 // the pointer's lifetime - and linked with another StackableError via
-// Wrap/Unwrap calls. The object implements iterator's traits to be used with
+// Wrap calls. The object implements iterator's traits to be used with
 // range-for loops, and implements a |ToFullString| short-cut to combine the
 // error messages of the whole stack.
 // Since the object has unique_ptr-like semantics, it can never be copied, only
@@ -232,14 +232,6 @@ class [[clang::consumable(unknown)]]   //
     // The wrapped stack starts at |error_stack_.front() + 1|. It has to be
     // equal to |end()|, and the checks above ensure that.
     error_stack_.splice(error_stack_.end(), std::move(error_stack));
-  }
-
-  // Pop an error from the stack.
-  [[clang::callable_when("unconsumed")]]  //
-  [[clang::set_typestate(unknown)]]       //
-  void
-  UnwrapInternal() {
-    error_stack_.pop_front();
   }
 
   // Check if the object already wraps a stack.
@@ -645,54 +637,6 @@ class [[clang::consumable(unknown)]]   //
                               [[clang::return_typestate(consumed)]],
        WrapTransformOnly tag)&& {
     WrapInPlace(std::move(other), tag);
-    return std::move(*this);
-  }
-
-  // Pop an error from the stack. In-place unwrapping is allowed only for the
-  // stack with |Base| set as the head type, because otherwise we need to
-  // recreate the object with |Base| template argument.
-  // See the explanation for the template arguments in converting
-  // ctor/assignment operator.
-  template <int&... ExplicitArgumentBarrier, typename _Rt = _Et,
-            typename = std::enable_if_t<std::is_same_v<base_element_type, _Rt>>>
-  [[clang::return_typestate(unconsumed)]]  //
-  [[clang::callable_when("unconsumed")]]   //
-  auto&
-  UnwrapInPlace() {
-    CHECK(!ok()) << " OK object can't be unwrapped.";
-    UnwrapInternal();
-    return *this;
-  }
-
-  // Pop an error from the stack. rvalue return type is possible only in the
-  // case where we already have |Base| as the class template argument |_Et|,
-  // since otherwise we need to construct a new object via type conversion
-  // constructor.
-  // See the explanation for the template arguments in converting
-  // ctor/assignment operator.
-  template <int&... ExplicitArgumentBarrier, typename _Rt = _Et,
-            typename = std::enable_if_t<std::is_same_v<base_element_type, _Rt>>>
-  [[clang::callable_when("unconsumed")]]  //
-  [[nodiscard]] StackableError<base_element_type>&&
-  Unwrap()&& {
-    CHECK(!ok()) << " OK object can't be unwrapped.";
-    UnwrapInternal();
-    return std::move(*this);
-  }
-
-  // Pop an error from the stack. Since this will need to construct a new
-  // object - return by copy-elided value instead of rvalue.
-  // Note, that in this case we verify that |_Et| IS NOT |Base|.
-  // See the explanation for the template arguments in converting
-  // ctor/assignment operator.
-  template <int&... ExplicitArgumentBarrier, typename _Rt = _Et,
-            typename =
-                std::enable_if_t<!std::is_same_v<base_element_type, _Rt>>>
-  [[clang::callable_when("unconsumed")]]  //
-  [[nodiscard]] StackableError<base_element_type>
-  Unwrap()&& {
-    CHECK(!ok()) << " OK object can't be unwrapped.";
-    UnwrapInternal();
     return std::move(*this);
   }
 

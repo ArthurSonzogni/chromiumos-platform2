@@ -224,7 +224,7 @@ TEST_F(StatusChainTest, StackElementAccess) {
   EXPECT_EQ(e6->val(), 32);
 }
 
-TEST_F(StatusChainTest, WrappingUnwrapping) {
+TEST_F(StatusChainTest, Wrapping) {
   StatusChain<FakeBaseError> e0;
   EXPECT_FALSE(e0.IsWrapping());
 
@@ -243,32 +243,6 @@ TEST_F(StatusChainTest, WrappingUnwrapping) {
   EXPECT_FALSE(e1.IsWrapping());
   EXPECT_TRUE(e2.IsWrapping());
   EXPECT_EQ(e2->val(), 2);
-
-  auto e1_unwrap = std::move(e2).Unwrap();
-  EXPECT_FALSE(e2.IsWrapping());
-  EXPECT_TRUE(e1_unwrap.IsWrapping());
-  e1_unwrap.AssertNotOk();
-  EXPECT_EQ(e1_unwrap->val(), 1);
-
-  StatusChain<FakeBaseError> e3 =
-      MakeStatus<Fake1Error>("e3", 3).Wrap(std::move(e1_unwrap));
-  EXPECT_FALSE(e1_unwrap.IsWrapping());
-  EXPECT_TRUE(e3.IsWrapping());
-  EXPECT_EQ(e3->val(), 3);
-
-  auto e0_unwrap = std::move(e3).Unwrap().HintNotOk().Unwrap();
-  EXPECT_FALSE(e3.IsWrapping());
-  EXPECT_FALSE(e0_unwrap.IsWrapping());
-  e0_unwrap.AssertNotOk();
-  EXPECT_EQ(e0_unwrap->val(), -1);
-
-  e0_unwrap.WrapInPlace(MakeStatus<Fake2Error>("e4", 4));
-  EXPECT_TRUE(e0_unwrap.IsWrapping());
-  EXPECT_EQ(e0_unwrap->val(), -1);
-
-  e0_unwrap.UnwrapInPlace().UnwrapInPlace();
-  EXPECT_TRUE(e0_unwrap.ok());
-  EXPECT_FALSE(e0_unwrap.IsWrapping());
 }
 
 TEST_F(StatusChainTest, RangesAndIterators) {
