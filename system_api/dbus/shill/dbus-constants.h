@@ -36,6 +36,7 @@ const char kGetNetworksForGeolocation[] = "GetNetworksForGeolocation";
 const char kGetServiceFunction[] = "GetService";
 const char kSetLOHSEnabledFunction[] = "SetLOHSEnabled";
 const char kRequestScanFunction[] = "RequestScan";
+const char kRequestWiFiRestartFunction[] = "RequestWiFiRestart";
 const char kSetNetworkThrottlingFunction[] = "SetNetworkThrottlingStatus";
 const char kSetDNSProxyDOHProvidersFunction[] = "SetDNSProxyDOHProviders";
 const char kAddPasspointCredentialsFunction[] = "AddPasspointCredentials";
