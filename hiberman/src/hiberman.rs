@@ -20,7 +20,6 @@ mod resume_init;
 mod snapdev;
 mod snapwatch;
 mod suspend;
-mod sysfs;
 mod update_engine;
 mod volume;
 

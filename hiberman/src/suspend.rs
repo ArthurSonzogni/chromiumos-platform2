@@ -44,8 +44,6 @@ use crate::snapdev::SnapshotMode;
 use crate::update_engine::is_update_engine_idle;
 use crate::volume::VolumeManager;
 
-/// Define the swappiness value we'll set during hibernation.
-const SUSPEND_SWAPPINESS: i32 = 100;
 /// Define how low stateful free space must be as a percentage before we clean
 /// up the hiberfile after each hibernate.
 const LOW_DISK_FREE_THRESHOLD_PERCENT: u64 = 10;
