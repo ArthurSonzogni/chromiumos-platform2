@@ -48,7 +48,7 @@ class SystemConfig final : public SystemConfigInterface {
   std::optional<std::string> GetMarketingName() override;
   std::optional<std::string> GetOemName() override;
   std::string GetCodeName() override;
-  std::optional<bool> HasSensor(SensorConfig sensor) override;
+  std::optional<bool> HasSensor(SensorType sensor) override;
 
  private:
   // Unowned pointer. The CrosConfigInterface should outlive this instance.

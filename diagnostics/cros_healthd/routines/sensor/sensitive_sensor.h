@@ -18,7 +18,7 @@
 
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor_constants.h"
-#include "diagnostics/cros_healthd/routines/sensor/sensor_config_checker.h"
+#include "diagnostics/cros_healthd/routines/sensor/sensor_existence_checker.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -109,7 +109,7 @@ class SensitiveSensorRoutine final
   MojoService* const mojo_service_;
   // Used to check if any sensor is missing by iioservice by checking static
   // configuration.
-  SensorConfigChecker sensor_checker_;
+  SensorExistenceChecker sensor_checker_;
   // Details of the passed sensors and failed sensors, stored in |output| of
   // |response| and reported in status updates if requested. Also used to
   // calculate the progress percentage.

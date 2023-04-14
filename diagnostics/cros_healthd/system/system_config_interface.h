@@ -12,7 +12,7 @@
 
 namespace diagnostics {
 
-enum SensorConfig {
+enum SensorType {
   kBaseAccelerometer,
   kBaseGyroscope,
   kBaseMagnetometer,
@@ -80,7 +80,7 @@ class SystemConfigInterface {
   virtual std::string GetCodeName() = 0;
 
   // Returns if the device has a sensor of type |sensor|.
-  virtual std::optional<bool> HasSensor(SensorConfig sensor) = 0;
+  virtual std::optional<bool> HasSensor(SensorType sensor) = 0;
 };
 
 }  // namespace diagnostics

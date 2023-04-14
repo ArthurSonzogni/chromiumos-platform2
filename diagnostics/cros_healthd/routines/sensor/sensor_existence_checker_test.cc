@@ -12,18 +12,19 @@
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/routines/sensor/sensor_config_checker.h"
+#include "diagnostics/cros_healthd/routines/sensor/sensor_existence_checker.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 
 namespace diagnostics {
 namespace {
 
-class SensorConfigCheckerTest : public testing::Test {
+class SensorExistenceCheckerTest : public testing::Test {
  protected:
-  SensorConfigCheckerTest() = default;
-  SensorConfigCheckerTest(const SensorConfigCheckerTest&) = delete;
-  SensorConfigCheckerTest& operator=(const SensorConfigCheckerTest&) = delete;
+  SensorExistenceCheckerTest() = default;
+  SensorExistenceCheckerTest(const SensorExistenceCheckerTest&) = delete;
+  SensorExistenceCheckerTest& operator=(const SensorExistenceCheckerTest&) =
+      delete;
 
   void SetUp() override {
     mock_context_.fake_mojo_service()->InitializeFakeMojoService();
@@ -37,7 +38,7 @@ class SensorConfigCheckerTest : public testing::Test {
     return mock_context_.fake_system_config();
   }
 
-  std::string GetSensorLocation(SensorConfig sensor) {
+  std::string GetSensorLocation(SensorType sensor) {
     switch (sensor) {
       case kBaseAccelerometer:
       case kBaseGyroscope:
@@ -50,7 +51,7 @@ class SensorConfigCheckerTest : public testing::Test {
     }
   }
 
-  cros::mojom::DeviceType GetSensorType(SensorConfig sensor) {
+  cros::mojom::DeviceType GetSensorType(SensorType sensor) {
     switch (sensor) {
       case kBaseAccelerometer:
       case kLidAccelerometer:
@@ -65,7 +66,7 @@ class SensorConfigCheckerTest : public testing::Test {
   }
 
   base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>
-  SetupSensorDevice(std::vector<SensorConfig> present_sensors) {
+  SetupSensorDevice(std::vector<SensorType> present_sensors) {
     base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>> ids_types{};
 
     for (const auto& sensor : present_sensors) {
@@ -84,7 +85,7 @@ class SensorConfigCheckerTest : public testing::Test {
     return ids_types;
   }
 
-  bool VerifySensorInfoSync(std::vector<SensorConfig> present_sensors) {
+  bool VerifySensorInfoSync(std::vector<SensorType> present_sensors) {
     base::test::TestFuture<bool> future;
     const auto& ids_types = SetupSensorDevice(present_sensors);
     sensor_checker_.VerifySensorInfo(ids_types, future.GetCallback());
@@ -94,11 +95,11 @@ class SensorConfigCheckerTest : public testing::Test {
  private:
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
-  SensorConfigChecker sensor_checker_{mock_context_.mojo_service(),
-                                      mock_context_.fake_system_config()};
+  SensorExistenceChecker sensor_checker_{mock_context_.mojo_service(),
+                                         mock_context_.fake_system_config()};
 };
 
-TEST_F(SensorConfigCheckerTest, PassWithAllSensorsPresent) {
+TEST_F(SensorExistenceCheckerTest, PassWithAllSensorsPresent) {
   const auto& present_sensors = {kBaseAccelerometer, kLidAccelerometer,
                                  kBaseGyroscope,     kLidGyroscope,
                                  kBaseMagnetometer,  kLidMagnetometer};
@@ -110,7 +111,7 @@ TEST_F(SensorConfigCheckerTest, PassWithAllSensorsPresent) {
   EXPECT_TRUE(VerifySensorInfoSync(present_sensors));
 }
 
-TEST_F(SensorConfigCheckerTest, PassWithNoSensor) {
+TEST_F(SensorExistenceCheckerTest, PassWithNoSensor) {
   // Setup fake configurations.
   for (const auto& sensor :
        {kBaseAccelerometer, kLidAccelerometer, kBaseGyroscope, kLidGyroscope,
@@ -121,7 +122,7 @@ TEST_F(SensorConfigCheckerTest, PassWithNoSensor) {
   EXPECT_TRUE(VerifySensorInfoSync(/*present_sensors=*/{}));
 }
 
-TEST_F(SensorConfigCheckerTest, PassWithNullConfig) {
+TEST_F(SensorExistenceCheckerTest, PassWithNullConfig) {
   const auto& present_sensors = {kBaseAccelerometer, kBaseGyroscope,
                                  kLidGyroscope, kLidMagnetometer};
   // Setup fake configurations.
@@ -134,7 +135,7 @@ TEST_F(SensorConfigCheckerTest, PassWithNullConfig) {
   EXPECT_TRUE(VerifySensorInfoSync(present_sensors));
 }
 
-TEST_F(SensorConfigCheckerTest, FailWithUnexpectedBaseAccelerometer) {
+TEST_F(SensorExistenceCheckerTest, FailWithUnexpectedBaseAccelerometer) {
   const auto& present_sensors = {kBaseAccelerometer};
   // Setup fake configurations.
   fake_system_config()->SetSensor(kBaseAccelerometer, false);
@@ -142,7 +143,7 @@ TEST_F(SensorConfigCheckerTest, FailWithUnexpectedBaseAccelerometer) {
   EXPECT_FALSE(VerifySensorInfoSync(present_sensors));
 }
 
-TEST_F(SensorConfigCheckerTest, FailWithUnexpectedBaseGyroscope) {
+TEST_F(SensorExistenceCheckerTest, FailWithUnexpectedBaseGyroscope) {
   const auto& present_sensors = {kBaseGyroscope};
   // Setup fake configurations.
   fake_system_config()->SetSensor(kBaseGyroscope, false);
@@ -150,7 +151,7 @@ TEST_F(SensorConfigCheckerTest, FailWithUnexpectedBaseGyroscope) {
   EXPECT_FALSE(VerifySensorInfoSync(present_sensors));
 }
 
-TEST_F(SensorConfigCheckerTest, FailWithUnexpectedBaseMagnetometer) {
+TEST_F(SensorExistenceCheckerTest, FailWithUnexpectedBaseMagnetometer) {
   const auto& present_sensors = {kBaseMagnetometer};
   // Setup fake configurations.
   fake_system_config()->SetSensor(kBaseMagnetometer, false);
@@ -158,21 +159,21 @@ TEST_F(SensorConfigCheckerTest, FailWithUnexpectedBaseMagnetometer) {
   EXPECT_FALSE(VerifySensorInfoSync(present_sensors));
 }
 
-TEST_F(SensorConfigCheckerTest, FailWithMissingLidAccelerometer) {
+TEST_F(SensorExistenceCheckerTest, FailWithMissingLidAccelerometer) {
   // Setup fake configurations.
   fake_system_config()->SetSensor(kLidAccelerometer, true);
 
   EXPECT_FALSE(VerifySensorInfoSync(/*present_sensors=*/{}));
 }
 
-TEST_F(SensorConfigCheckerTest, FailWithMissingLidGyroscope) {
+TEST_F(SensorExistenceCheckerTest, FailWithMissingLidGyroscope) {
   // Setup fake configurations.
   fake_system_config()->SetSensor(kLidGyroscope, true);
 
   EXPECT_FALSE(VerifySensorInfoSync(/*present_sensors=*/{}));
 }
 
-TEST_F(SensorConfigCheckerTest, FailWithMissingLidMagnetometer) {
+TEST_F(SensorExistenceCheckerTest, FailWithMissingLidMagnetometer) {
   // Setup fake configurations.
   fake_system_config()->SetSensor(kLidMagnetometer, true);
 

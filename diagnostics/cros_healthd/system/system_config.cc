@@ -76,7 +76,7 @@ void NvmeSelfTestSupportedByDebugd(
       }).Then(base::BindOnce(std::move(cb2), false)));
 }
 
-std::string GetSensorPropertyName(SensorConfig sensor) {
+std::string GetSensorPropertyName(SensorType sensor) {
   switch (sensor) {
     case kBaseAccelerometer:
       return kHasBaseAccelerometer;
@@ -257,7 +257,7 @@ std::string SystemConfig::GetCodeName() {
   return code_name;
 }
 
-std::optional<bool> SystemConfig::HasSensor(SensorConfig sensor) {
+std::optional<bool> SystemConfig::HasSensor(SensorType sensor) {
   std::string has_sensor;
   if (!cros_config_->GetString(kHardwarePropertiesPath,
                                GetSensorPropertyName(sensor), &has_sensor)) {

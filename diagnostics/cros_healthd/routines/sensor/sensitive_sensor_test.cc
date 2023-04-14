@@ -242,9 +242,9 @@ TEST_F(SensitiveSensorRoutineTest, RoutineSuccessWithoutSensor) {
                      ConstructRoutineOutput());
 }
 
-// Test that the SensitiveSensorRoutine returns a kError status when the config
-// check is failed.
-TEST_F(SensitiveSensorRoutineTest, RoutineConfigCheckError) {
+// Test that the SensitiveSensorRoutine returns a kError status when the
+// existence check is failed.
+TEST_F(SensitiveSensorRoutineTest, RoutineExistenceCheckError) {
   fake_sensor_service().SetIdsTypes({});
   // Setup wrong configuration.
   fake_system_config()->SetSensor(kBaseAccelerometer, true);

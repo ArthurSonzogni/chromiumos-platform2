@@ -81,7 +81,7 @@ std::string FakeSystemConfig::GetCodeName() {
   return code_name_;
 }
 
-std::optional<bool> FakeSystemConfig::HasSensor(SensorConfig sensor) {
+std::optional<bool> FakeSystemConfig::HasSensor(SensorType sensor) {
   return has_sensors_[sensor];
 }
 
@@ -146,7 +146,7 @@ void FakeSystemConfig::SetCodeName(const std::string& value) {
   code_name_ = value;
 }
 
-void FakeSystemConfig::SetSensor(SensorConfig sensor,
+void FakeSystemConfig::SetSensor(SensorType sensor,
                                  const std::optional<bool>& value) {
   has_sensors_[sensor] = value;
 }

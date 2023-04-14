@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSOR_CONFIG_CHECKER_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSOR_CONFIG_CHECKER_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSOR_EXISTENCE_CHECKER_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSOR_EXISTENCE_CHECKER_H_
 
 #include <set>
 #include <string>
@@ -19,13 +19,13 @@
 namespace diagnostics {
 
 // Check if the sensor info from iioservice is consistent with static config.
-class SensorConfigChecker {
+class SensorExistenceChecker {
  public:
-  explicit SensorConfigChecker(MojoService* const mojo_service,
-                               SystemConfigInterface* const system_config);
-  SensorConfigChecker(const SensorConfigChecker&) = delete;
-  SensorConfigChecker& operator=(const SensorConfigChecker&) = delete;
-  ~SensorConfigChecker();
+  explicit SensorExistenceChecker(MojoService* const mojo_service,
+                                  SystemConfigInterface* const system_config);
+  SensorExistenceChecker(const SensorExistenceChecker&) = delete;
+  SensorExistenceChecker& operator=(const SensorExistenceChecker&) = delete;
+  ~SensorExistenceChecker();
 
   void VerifySensorInfo(
       const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
@@ -47,12 +47,12 @@ class SensorConfigChecker {
   SystemConfigInterface* const system_config_;
 
   // Used to check if the target sensor is present.
-  std::set<SensorConfig> iio_sensors_{};
+  std::set<SensorType> iio_sensors_{};
 
   // Must be the last class member.
-  base::WeakPtrFactory<SensorConfigChecker> weak_ptr_factory_{this};
+  base::WeakPtrFactory<SensorExistenceChecker> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSOR_CONFIG_CHECKER_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSOR_EXISTENCE_CHECKER_H_

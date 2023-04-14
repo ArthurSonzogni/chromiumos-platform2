@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/sensor/sensor_config_checker.h"
+#include "diagnostics/cros_healthd/routines/sensor/sensor_existence_checker.h"
 
 #include <string>
 #include <utility>
@@ -36,19 +36,19 @@ bool IsConfigConsistent(std::optional<bool> has_sensor, bool is_present) {
 }
 
 // Convert the enum to readable string.
-std::string Convert(diagnostics::SensorConfig sensor) {
+std::string Convert(diagnostics::SensorType sensor) {
   switch (sensor) {
-    case diagnostics::SensorConfig::kBaseAccelerometer:
+    case diagnostics::SensorType::kBaseAccelerometer:
       return "base accelerometer";
-    case diagnostics::SensorConfig::kBaseGyroscope:
+    case diagnostics::SensorType::kBaseGyroscope:
       return "base gyroscope";
-    case diagnostics::SensorConfig::kBaseMagnetometer:
+    case diagnostics::SensorType::kBaseMagnetometer:
       return "base magnetometer";
-    case diagnostics::SensorConfig::kLidAccelerometer:
+    case diagnostics::SensorType::kLidAccelerometer:
       return "lid accelerometer";
-    case diagnostics::SensorConfig::kLidGyroscope:
+    case diagnostics::SensorType::kLidGyroscope:
       return "lid gyroscope";
-    case diagnostics::SensorConfig::kLidMagnetometer:
+    case diagnostics::SensorType::kLidMagnetometer:
       return "lid magnetometer";
   }
 }
@@ -57,21 +57,21 @@ std::string Convert(diagnostics::SensorConfig sensor) {
 
 namespace diagnostics {
 
-SensorConfigChecker::SensorConfigChecker(
+SensorExistenceChecker::SensorExistenceChecker(
     MojoService* const mojo_service, SystemConfigInterface* const system_config)
     : mojo_service_(mojo_service), system_config_(system_config) {
   CHECK(mojo_service_);
   CHECK(system_config_);
 }
 
-SensorConfigChecker::~SensorConfigChecker() = default;
+SensorExistenceChecker::~SensorExistenceChecker() = default;
 
-void SensorConfigChecker::VerifySensorInfo(
+void SensorExistenceChecker::VerifySensorInfo(
     const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
         ids_types,
     base::OnceCallback<void(bool)> on_finish) {
   CallbackBarrier barrier{
-      base::BindOnce(&SensorConfigChecker::CheckSystemConfig,
+      base::BindOnce(&SensorExistenceChecker::CheckSystemConfig,
                      weak_ptr_factory_.GetWeakPtr(), std::move(on_finish))};
   for (const auto& [sensor_id, sensor_types] : ids_types) {
     if (!IsTargetType(sensor_types))
@@ -80,13 +80,13 @@ void SensorConfigChecker::VerifySensorInfo(
     // Get the sensor location.
     mojo_service_->GetSensorDevice(sensor_id)->GetAttributes(
         {cros::mojom::kLocation},
-        barrier.Depend(
-            base::BindOnce(&SensorConfigChecker::HandleSensorLocationResponse,
-                           weak_ptr_factory_.GetWeakPtr(), sensor_types)));
+        barrier.Depend(base::BindOnce(
+            &SensorExistenceChecker::HandleSensorLocationResponse,
+            weak_ptr_factory_.GetWeakPtr(), sensor_types)));
   }
 }
 
-void SensorConfigChecker::HandleSensorLocationResponse(
+void SensorExistenceChecker::HandleSensorLocationResponse(
     const std::vector<cros::mojom::DeviceType>& sensor_types,
     const std::vector<std::optional<std::string>>& attributes) {
   if (attributes.size() != 1 || !attributes[0].has_value()) {
@@ -115,7 +115,7 @@ void SensorConfigChecker::HandleSensorLocationResponse(
   }
 }
 
-void SensorConfigChecker::CheckSystemConfig(
+void SensorExistenceChecker::CheckSystemConfig(
     base::OnceCallback<void(bool)> on_finish, bool all_callbacks_called) {
   if (!all_callbacks_called) {
     LOG(ERROR) << "Some callbacks are not called successfully";
