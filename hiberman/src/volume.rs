@@ -611,13 +611,14 @@ impl VolumeManager {
 
     /// Get the desired size of a given hibernate volume type.
     fn get_volume_size(volume_type: HibernateVolume) -> u64 {
-        let ram_size = get_ram_size();
-        let num_pages = ram_size / get_page_size() as u64;
+        let hiberimage_size = get_ram_size() / 2;
 
         match volume_type {
-            HibernateVolume::Image => ram_size,
+            HibernateVolume::Image => hiberimage_size,
 
             HibernateVolume::Integrity => {
+                let num_pages = hiberimage_size / get_page_size() as u64;
+
                 // Eight 512 byte sectors are required for the superblock and eight
                 // padding sectors.
                 let initial_size = (8 + 8) * SECTOR_SIZE;
