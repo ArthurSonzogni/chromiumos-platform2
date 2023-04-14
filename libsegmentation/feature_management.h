@@ -10,7 +10,6 @@
 #include <utility>
 
 #include <brillo/brillo_export.h>
-#include <libsegmentation/feature_management_impl.h>
 #include <libsegmentation/feature_management_interface.h>
 
 namespace segmentation {

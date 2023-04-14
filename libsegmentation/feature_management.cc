@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <libsegmentation/feature_management.h>
+#include <libsegmentation/feature_management_impl.h>
 
 namespace segmentation {
 
