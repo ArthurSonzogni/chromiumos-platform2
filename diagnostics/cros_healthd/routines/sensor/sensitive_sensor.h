@@ -102,6 +102,9 @@ class SensitiveSensorRoutine final
       ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
       std::string status_message);
 
+  // Create routine output for the given sensor type.
+  base::Value::Dict ConstructSensorOutput(SensorType sensor);
+
   // cros::mojom::SensorDeviceSamplesObserver overrides:
   void OnSampleUpdated(const base::flat_map<int32_t, int64_t>& sample) override;
   void OnErrorOccurred(cros::mojom::ObserverErrorType type) override;
@@ -116,8 +119,8 @@ class SensitiveSensorRoutine final
   // Details of the passed sensors and failed sensors, stored in |output| of
   // |response| and reported in status updates if requested. Also used to
   // calculate the progress percentage.
-  base::Value::List passed_sensors_;
-  base::Value::List failed_sensors_;
+  std::map<int32_t, base::Value::Dict> passed_sensors_;
+  std::map<int32_t, base::Value::Dict> failed_sensors_;
   // First is unfinished sensor id and second is the sensor detail. Also used to
   // handle timeout and calculate the progress percentage.
   std::map<int32_t, SensorDetail> pending_sensors_;

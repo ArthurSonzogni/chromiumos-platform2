@@ -1234,28 +1234,58 @@ Sample output:
 ```bash
 Progress: 100
 Output: {
-   "failed_sensors": [  ],
-   "passed_sensors": [ {
-      "channels": [ "timestamp", "accel_x", "accel_y", "accel_z" ],
-      "id": 3,
-      "types": [ "Accel" ]
-   }, {
-      "channels": [ "timestamp", "gravity_x", "gravity_y", "gravity_z" ],
-      "id": 10000,
-      "types": [ "Gravity" ]
-   }, {
-      "channels": [ "timestamp", "magn_x", "magn_y", "magn_z" ],
-      "id": 5,
-      "types": [ "Magn" ]
-   }, {
-      "channels": [ "timestamp", "accel_x", "accel_y", "accel_z" ],
-      "id": 0,
-      "types": [ "Accel" ]
-   }, {
-      "channels": [ "timestamp", "anglvel_x", "anglvel_y", "anglvel_z" ],
-      "id": 4,
-      "types": [ "Gyro" ]
-   } ]
+   "base_accelerometer": {
+      "failed_sensors": [  ],
+      "passed_sensors": [ {
+         "channels": [ "accel_x", "accel_y", "accel_z", "timestamp" ],
+         "id": 3,
+         "types": [ "Accel" ]
+      } ]
+   },
+   "base_gravity_sensor": {
+      "failed_sensors": [  ],
+      "passed_sensors": [ {
+         "channels": [ "gravity_x", "gravity_y", "gravity_z", "timestamp" ],
+         "id": 10000,
+         "types": [ "Gravity" ]
+      } ]
+   },
+   "base_gyroscope": {
+      "failed_sensors": [  ],
+      "passed_sensors": [ {
+         "channels": [ "anglvel_x", "anglvel_y", "anglvel_z", "timestamp" ],
+         "id": 4,
+         "types": [ "Gyro" ]
+      } ]
+   },
+   "base_magnetometer": {
+      "failed_sensors": [  ],
+      "passed_sensors": [ {
+         "channels": [ "magn_x", "magn_y", "magn_z", "timestamp" ],
+         "id": 5,
+         "types": [ "Magn" ]
+      } ]
+   },
+   "lid_accelerometer": {
+      "failed_sensors": [  ],
+      "passed_sensors": [ {
+         "channels": [ "accel_x", "accel_y", "accel_z", "timestamp" ],
+         "id": 0,
+         "types": [ "Accel" ]
+      } ]
+   },
+   "lid_gravity_sensor": {
+      "failed_sensors": [  ],
+      "passed_sensors": [  ]
+   },
+   "lid_gyroscope": {
+      "failed_sensors": [  ],
+      "passed_sensors": [  ]
+   },
+   "lid_magnetometer": {
+      "failed_sensors": [  ],
+      "passed_sensors": [  ]
+   }
 }
 
 Status: Passed

@@ -62,29 +62,18 @@ class SensitiveSensorRoutineTest : public testing::Test {
                                    std::move(update_.output))));
   }
 
-  base::Value::Dict ConstructSensorOutput(int32_t id,
-                                          std::vector<std::string> types,
-                                          std::vector<std::string> channels) {
-    base::Value::Dict sensor_output;
-    sensor_output.Set("id", id);
-    base::Value::List out_types;
-    for (const auto& type : types)
-      out_types.Append(type);
-    sensor_output.Set("types", std::move(out_types));
-    base::Value::List out_channels;
-    for (const auto& channel : channels)
-      out_channels.Append(channel);
-    sensor_output.Set("channels", std::move(out_channels));
-    return sensor_output;
-  }
-
-  base::Value::Dict ConstructRoutineOutput(
-      base::Value::List passed_sensors = base::Value::List(),
-      base::Value::List failed_sensors = base::Value::List()) {
-    base::Value::Dict output_dict;
-    output_dict.Set("passed_sensors", std::move(passed_sensors));
-    output_dict.Set("failed_sensors", std::move(failed_sensors));
-    return output_dict;
+  base::Value::Dict ConstructDefaultOutput() {
+    base::Value::Dict output;
+    for (const auto& sensor_name :
+         {"base_accelerometer", "base_gyroscope", "base_magnetometer",
+          "base_gravity_sensor", "lid_accelerometer", "lid_gyroscope",
+          "lid_magnetometer", "lid_gravity_sensor"}) {
+      base::Value::Dict sensor_dict;
+      sensor_dict.Set("passed_sensors", base::Value::List());
+      sensor_dict.Set("failed_sensors", base::Value::List());
+      output.Set(sensor_name, std::move(sensor_dict));
+    }
+    return output;
   }
 
   std::unique_ptr<FakeSensorDevice> MakeSensorDevice(
@@ -107,16 +96,34 @@ class SensitiveSensorRoutineTest : public testing::Test {
     routine_->Start();
     CheckRoutineUpdate(0, mojom::DiagnosticRoutineStatusEnum::kRunning,
                        kSensitiveSensorRoutineRunningMessage,
-                       ConstructRoutineOutput());
+                       base::Value::Dict());
+  }
+
+  // Helper function for creating a list containing one sensor with given
+  // properties.
+  base::Value::List MakeListWithOneSensor(int32_t id,
+                                          std::vector<std::string> types,
+                                          std::vector<std::string> channels) {
+    base::Value::List out_sensors;
+    base::Value::Dict out_sensor;
+    out_sensor.Set("id", id);
+    base::Value::List out_types;
+    for (const auto& type : types)
+      out_types.Append(type);
+    out_sensor.Set("types", std::move(out_types));
+    base::Value::List out_channels;
+    for (const auto& channel : channels)
+      out_channels.Append(channel);
+    out_sensor.Set("channels", std::move(out_channels));
+    out_sensors.Append(std::move(out_sensor));
+    return out_sensors;
   }
 
   // Helper function for creating a list containing one accelerometer.
   base::Value::List MakeListWithOneAccelerometer() {
-    base::Value::List sensors;
-    sensors.Append(ConstructSensorOutput(
+    return MakeListWithOneSensor(
         0, {kSensitiveSensorRoutineTypeAccel},
-        {cros::mojom::kTimestampChannel, "accel_x", "accel_y", "accel_z"}));
-    return sensors;
+        {cros::mojom::kTimestampChannel, "accel_x", "accel_y", "accel_z"});
   }
 
  private:
@@ -146,10 +153,11 @@ TEST_F(SensitiveSensorRoutineTest, RoutineSuccess) {
   remote->OnSampleUpdated({{0, 5}, {1, 14613}, {2, 6336}, {3, 2389880497684}});
   remote.FlushForTesting();
 
+  auto output = ConstructDefaultOutput();
+  output.SetByDottedPath("base_accelerometer.passed_sensors",
+                         MakeListWithOneAccelerometer());
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed,
-                     kSensitiveSensorRoutinePassedMessage,
-                     ConstructRoutineOutput(
-                         /*passed_sensors=*/MakeListWithOneAccelerometer()));
+                     kSensitiveSensorRoutinePassedMessage, std::move(output));
 }
 
 // Test that the SensitiveSensorRoutine can be run successfully with multiple
@@ -212,22 +220,26 @@ TEST_F(SensitiveSensorRoutineTest, RoutineSuccessWithMultipleSensors) {
   remote3.FlushForTesting();
   remote4.FlushForTesting();
 
-  base::Value::List passed_sensors;
-  passed_sensors.Append(ConstructSensorOutput(
-      0, {kSensitiveSensorRoutineTypeAccel},
-      {cros::mojom::kTimestampChannel, "accel_x", "accel_y", "accel_z"}));
-  passed_sensors.Append(ConstructSensorOutput(
-      4, {kSensitiveSensorRoutineTypeGyro},
-      {cros::mojom::kTimestampChannel, "anglvel_x", "anglvel_y", "anglvel_z"}));
-  passed_sensors.Append(ConstructSensorOutput(
-      5, {kSensitiveSensorRoutineTypeMagn},
-      {cros::mojom::kTimestampChannel, "magn_x", "magn_y", "magn_z"}));
-  passed_sensors.Append(ConstructSensorOutput(
-      10000, {kSensitiveSensorRoutineTypeGravity},
-      {cros::mojom::kTimestampChannel, "gravity_x", "gravity_y", "gravity_z"}));
+  auto output = ConstructDefaultOutput();
+  output.SetByDottedPath("base_accelerometer.passed_sensors",
+                         MakeListWithOneAccelerometer());
+  output.SetByDottedPath(
+      "base_gyroscope.passed_sensors",
+      MakeListWithOneSensor(4, {kSensitiveSensorRoutineTypeGyro},
+                            {cros::mojom::kTimestampChannel, "anglvel_x",
+                             "anglvel_y", "anglvel_z"}));
+  output.SetByDottedPath(
+      "base_magnetometer.passed_sensors",
+      MakeListWithOneSensor(
+          5, {kSensitiveSensorRoutineTypeMagn},
+          {cros::mojom::kTimestampChannel, "magn_x", "magn_y", "magn_z"}));
+  output.SetByDottedPath(
+      "base_gravity_sensor.passed_sensors",
+      MakeListWithOneSensor(10000, {kSensitiveSensorRoutineTypeGravity},
+                            {cros::mojom::kTimestampChannel, "gravity_x",
+                             "gravity_y", "gravity_z"}));
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed,
-                     kSensitiveSensorRoutinePassedMessage,
-                     ConstructRoutineOutput(std::move(passed_sensors)));
+                     kSensitiveSensorRoutinePassedMessage, std::move(output));
 }
 
 // Test that the SensitiveSensorRoutine can be run successfully without sensor.
@@ -239,7 +251,7 @@ TEST_F(SensitiveSensorRoutineTest, RoutineSuccessWithoutSensor) {
   task_environment()->RunUntilIdle();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed,
                      kSensitiveSensorRoutinePassedMessage,
-                     ConstructRoutineOutput());
+                     ConstructDefaultOutput());
 }
 
 // Test that the SensitiveSensorRoutine returns a kError status when the
@@ -254,7 +266,7 @@ TEST_F(SensitiveSensorRoutineTest, RoutineExistenceCheckError) {
   task_environment()->RunUntilIdle();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineFailedCheckConfigMessage,
-                     ConstructRoutineOutput());
+                     ConstructDefaultOutput());
 }
 
 // Test that the SensitiveSensorRoutine returns a kError status when sensor
@@ -269,14 +281,13 @@ TEST_F(SensitiveSensorRoutineTest, RoutineSetFrequencyError) {
   // Wait for the error to occur.
   task_environment()->RunUntilIdle();
 
-  base::Value::List failed_sensors;
-  failed_sensors.Append(ConstructSensorOutput(
-      0, {kSensitiveSensorRoutineTypeAccel}, /*channels=*/{}));
-  CheckRoutineUpdate(
-      100, mojom::DiagnosticRoutineStatusEnum::kError,
-      kSensitiveSensorRoutineFailedUnexpectedlyMessage,
-      ConstructRoutineOutput(
-          /*passed_sensors=*/base::Value::List(), std::move(failed_sensors)));
+  auto output = ConstructDefaultOutput();
+  output.SetByDottedPath(
+      "base_accelerometer.failed_sensors",
+      MakeListWithOneSensor(0, {kSensitiveSensorRoutineTypeAccel}, {}));
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
+                     kSensitiveSensorRoutineFailedUnexpectedlyMessage,
+                     std::move(output));
 }
 
 // Test that the SensitiveSensorRoutine returns a kError status when sensor
@@ -291,16 +302,15 @@ TEST_F(SensitiveSensorRoutineTest, RoutineGetRequiredChannelsError) {
   // Wait for the error to occur.
   task_environment()->RunUntilIdle();
 
-  base::Value::List failed_sensors;
-  failed_sensors.Append(ConstructSensorOutput(
-      0, {kSensitiveSensorRoutineTypeAccel},
-      std::vector<std::string>{cros::mojom::kTimestampChannel, "accel_x",
-                               "accel_z"}));
-  CheckRoutineUpdate(
-      100, mojom::DiagnosticRoutineStatusEnum::kError,
-      kSensitiveSensorRoutineFailedUnexpectedlyMessage,
-      ConstructRoutineOutput(
-          /*passed_sensors=*/base::Value::List(), std::move(failed_sensors)));
+  auto output = ConstructDefaultOutput();
+  output.SetByDottedPath(
+      "base_accelerometer.failed_sensors",
+      MakeListWithOneSensor(
+          0, {kSensitiveSensorRoutineTypeAccel},
+          {cros::mojom::kTimestampChannel, "accel_x", "accel_z"}));
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
+                     kSensitiveSensorRoutineFailedUnexpectedlyMessage,
+                     std::move(output));
 }
 
 // Test that the SensitiveSensorRoutine returns a kError status when sensor
@@ -315,11 +325,12 @@ TEST_F(SensitiveSensorRoutineTest, RoutineSetChannelsEnabledError) {
 
   // Wait for the error to occur.
   task_environment()->RunUntilIdle();
+  auto output = ConstructDefaultOutput();
+  output.SetByDottedPath("base_accelerometer.failed_sensors",
+                         MakeListWithOneAccelerometer());
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineFailedUnexpectedlyMessage,
-                     ConstructRoutineOutput(
-                         /*passed_sensors=*/base::Value::List(),
-                         /*failed_sensors=*/MakeListWithOneAccelerometer()));
+                     std::move(output));
 }
 
 // Test that the SensitiveSensorRoutine returns a kError status when sensor
@@ -339,11 +350,13 @@ TEST_F(SensitiveSensorRoutineTest, RoutineReadSampleError) {
   // Send observer error.
   remote->OnErrorOccurred(cros::mojom::ObserverErrorType::READ_TIMEOUT);
   remote.FlushForTesting();
+
+  auto output = ConstructDefaultOutput();
+  output.SetByDottedPath("base_accelerometer.failed_sensors",
+                         MakeListWithOneAccelerometer());
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineFailedUnexpectedlyMessage,
-                     ConstructRoutineOutput(
-                         /*passed_sensors=*/base::Value::List(),
-                         /*failed_sensors=*/MakeListWithOneAccelerometer()));
+                     std::move(output));
 }
 
 // Test that the SensitiveSensorRoutine returns a kFailed status when timeout
@@ -357,11 +370,12 @@ TEST_F(SensitiveSensorRoutineTest, RoutineTimeoutOccurredError) {
 
   // Trigger timeout.
   task_environment()->FastForwardBy(kSensitiveSensorRoutineTimeout);
+
+  auto output = ConstructDefaultOutput();
+  output.SetByDottedPath("base_accelerometer.failed_sensors",
+                         MakeListWithOneAccelerometer());
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
-                     kSensitiveSensorRoutineFailedMessage,
-                     ConstructRoutineOutput(
-                         /*passed_sensors=*/base::Value::List(),
-                         /*failed_sensors=*/MakeListWithOneAccelerometer()));
+                     kSensitiveSensorRoutineFailedMessage, std::move(output));
 }
 
 }  // namespace

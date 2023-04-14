@@ -53,7 +53,7 @@ std::vector<cros::mojom::DeviceType> FilterSupportedTypes(
   return supported_types;
 }
 
-// Convert sensor type enum to string.
+// Convert sensor device type enum to string.
 std::string ConverDeviceTypeToString(cros::mojom::DeviceType type) {
   switch (type) {
     case cros::mojom::DeviceType::ACCEL:
@@ -66,11 +66,11 @@ std::string ConverDeviceTypeToString(cros::mojom::DeviceType type) {
       return kSensitiveSensorRoutineTypeMagn;
     default:
       // The other sensor types are not supported in this routine.
-      NOTREACHED();
-      return "";
+      NOTREACHED_NORETURN();
   }
 }
-// Convert sensor type enum to channel prefix.
+
+// Convert sensor device type enum to channel prefix.
 std::string ConvertDeviceTypeToChannelPrefix(cros::mojom::DeviceType type) {
   switch (type) {
     case cros::mojom::DeviceType::ACCEL:
@@ -83,8 +83,7 @@ std::string ConvertDeviceTypeToChannelPrefix(cros::mojom::DeviceType type) {
       return cros::mojom::kMagnetometerChannel;
     default:
       // The other sensor types are not supported in this routine.
-      NOTREACHED();
-      return "";
+      NOTREACHED_NORETURN();
   }
 }
 
@@ -98,6 +97,28 @@ std::vector<std::string> GetRequiredChannels(
       channels.push_back(channel_prefix + "_" + axis);
   }
   return channels;
+}
+
+// Convert the enum to readable string.
+std::string Convert(SensorType sensor) {
+  switch (sensor) {
+    case SensorType::kBaseAccelerometer:
+      return "base_accelerometer";
+    case SensorType::kBaseGyroscope:
+      return "base_gyroscope";
+    case SensorType::kBaseMagnetometer:
+      return "base_magnetometer";
+    case SensorType::kBaseGravitySensor:
+      return "base_gravity_sensor";
+    case SensorType::kLidAccelerometer:
+      return "lid_accelerometer";
+    case SensorType::kLidGyroscope:
+      return "lid_gyroscope";
+    case SensorType::kLidMagnetometer:
+      return "lid_magnetometer";
+    case SensorType::kLidGravitySensor:
+      return "lid_gravity_sensor";
+  }
 }
 
 }  // namespace
@@ -186,8 +207,9 @@ void SensitiveSensorRoutine::PopulateStatusUpdate(
 
   if (include_output) {
     base::Value::Dict output_dict;
-    output_dict.Set(kOutputDictPassedSensorsKey, passed_sensors_.Clone());
-    output_dict.Set(kOutputDictFailedSensorsKey, failed_sensors_.Clone());
+    for (const auto& [sensor, result] : existence_check_result_) {
+      output_dict.Set(Convert(sensor), ConstructSensorOutput(sensor));
+    }
     std::string json;
     base::JSONWriter::Write(output_dict, &json);
     response->output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
@@ -265,8 +287,8 @@ void SensitiveSensorRoutine::HandleFrequencyResponse(int32_t sensor_id,
                                                      double frequency) {
   if (frequency <= 0.0) {
     LOG(ERROR) << "Failed to set frequency on sensor with id: " << sensor_id;
-    failed_sensors_.Append(
-        pending_sensors_[sensor_id].GetDetailValue(sensor_id));
+    failed_sensors_[sensor_id] =
+        pending_sensors_[sensor_id].GetDetailValue(sensor_id);
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineFailedUnexpectedlyMessage);
     return;
@@ -287,8 +309,8 @@ void SensitiveSensorRoutine::HandleChannelIdsResponse(
     if (it == channels.end()) {
       LOG(ERROR) << "Failed to get required channels on sensor with id: "
                  << sensor_id;
-      failed_sensors_.Append(
-          pending_sensors_[sensor_id].GetDetailValue(sensor_id));
+      failed_sensors_[sensor_id] =
+          pending_sensors_[sensor_id].GetDetailValue(sensor_id);
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                        kSensitiveSensorRoutineFailedUnexpectedlyMessage);
       return;
@@ -311,8 +333,8 @@ void SensitiveSensorRoutine::HandleSetChannelsEnabledResponse(
   if (!failed_indices.empty()) {
     LOG(ERROR) << "Failed to set channels enabled on sensor with id: "
                << sensor_id;
-    failed_sensors_.Append(
-        pending_sensors_[sensor_id].GetDetailValue(sensor_id));
+    failed_sensors_[sensor_id] =
+        pending_sensors_[sensor_id].GetDetailValue(sensor_id);
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineFailedUnexpectedlyMessage);
     return;
@@ -338,7 +360,7 @@ void SensitiveSensorRoutine::OnSampleUpdated(
     mojo_service_->GetSensorDevice(sensor_id)->StopReadingSamples();
 
     // Store detail of passed sensor.
-    passed_sensors_.Append(sensor.GetDetailValue(sensor_id));
+    passed_sensors_[sensor_id] = sensor.GetDetailValue(sensor_id);
     pending_sensors_.erase(sensor_id);
     observer_receiver_set_.Remove(observer_receiver_set_.current_receiver());
     if (pending_sensors_.empty())
@@ -348,10 +370,10 @@ void SensitiveSensorRoutine::OnSampleUpdated(
 
 void SensitiveSensorRoutine::OnErrorOccurred(
     cros::mojom::ObserverErrorType type) {
-  const auto& sensor_id = observer_receiver_set_.current_context();
+  const auto& id = observer_receiver_set_.current_context();
   LOG(ERROR) << "Observer error occurred while reading sample: " << type
-             << ", sensor id: " << sensor_id;
-  failed_sensors_.Append(pending_sensors_[sensor_id].GetDetailValue(sensor_id));
+             << ", sensor id: " << id;
+  failed_sensors_[id] = pending_sensors_[id].GetDetailValue(id);
   SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                    kSensitiveSensorRoutineFailedUnexpectedlyMessage);
 }
@@ -367,12 +389,12 @@ void SensitiveSensorRoutine::OnTimeoutOccurred() {
   }
 
   // Sensor failed to pass the routine.
-  for (auto& sensor_id : pending_sensors_) {
-    mojo_service_->GetSensorDevice(sensor_id.first)->StopReadingSamples();
+  for (const auto& [sensor_id, _] : pending_sensors_) {
+    mojo_service_->GetSensorDevice(sensor_id)->StopReadingSamples();
 
     // Store detail of failed sensor.
-    failed_sensors_.Append(
-        pending_sensors_[sensor_id.first].GetDetailValue(sensor_id.first));
+    failed_sensors_[sensor_id] =
+        pending_sensors_[sensor_id].GetDetailValue(sensor_id);
   }
   OnRoutineFinished();
 }
@@ -402,6 +424,22 @@ void SensitiveSensorRoutine::SetResultAndStop(
   // Clear sensor observers.
   observer_receiver_set_.Clear();
   UpdateStatus(status, std::move(status_message));
+}
+
+base::Value::Dict SensitiveSensorRoutine::ConstructSensorOutput(
+    SensorType sensor) {
+  base::Value::Dict sensor_dict;
+  base::Value::List passed_sensors, failed_sensors;
+  const auto& result = existence_check_result_[sensor];
+  for (const auto& sensor_id : result.sensor_ids) {
+    if (passed_sensors_.count(sensor_id))
+      passed_sensors.Append(passed_sensors_[sensor_id].Clone());
+    if (failed_sensors_.count(sensor_id))
+      failed_sensors.Append(failed_sensors_[sensor_id].Clone());
+  }
+  sensor_dict.Set(kOutputDictPassedSensorsKey, std::move(passed_sensors));
+  sensor_dict.Set(kOutputDictFailedSensorsKey, std::move(failed_sensors));
+  return sensor_dict;
 }
 
 }  // namespace diagnostics
