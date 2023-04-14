@@ -5,7 +5,10 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":arcvm_boot_notification_server" ]
+  deps = [
+    ":arcvm_boot_notification_server",
+    ":install_minijail_conf",
+  ]
   if (use.test) {
     deps += [ ":arcvm_boot_notification_server_testrunner" ]
   }
@@ -17,6 +20,11 @@ pkg_config("arcvm_boot_notification_server_config") {
     "libchrome",
     "re2",
   ]
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/arcvm-boot-notification-server.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 executable("arcvm_boot_notification_server") {
