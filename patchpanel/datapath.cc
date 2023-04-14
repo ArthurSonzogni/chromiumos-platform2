@@ -16,6 +16,7 @@
 #include <sys/socket.h>
 
 #include <algorithm>
+#include <iostream>
 #include <optional>
 
 #include <base/check.h>
@@ -2237,8 +2238,7 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
   auto info = std::make_optional<DownstreamNetworkInfo>();
 
   info->topology = DownstreamNetworkTopology::kTethering;
-  // TODO(b/239559602) Enable IPv6 tethering according to upstream technology.
-  info->ipv6_mode = DownstreamNetworkIPv6Mode::kDisabled;
+  info->enable_ipv6 = request.enable_ipv6();
   info->upstream_ifname = request.upstream_ifname();
   info->downstream_ifname = request.ifname();
 
@@ -2289,6 +2289,9 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
     // Fill the domain search list.
     info->dhcp_domain_searches = {ipv4_config.domain_searches().begin(),
                                   ipv4_config.domain_searches().end()};
+
+    // TODO(b/239559602) Copy or generate the IPv6 prefix configuration for
+    // LocalOnlyHotspot mode.
   }
 
   return info;
@@ -2300,7 +2303,7 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
 
   info->topology = DownstreamNetworkTopology::kLocalOnly;
   // TODO(b/239559602) Enable IPv6 LocalOnlyNetwork with RAServer
-  info->ipv6_mode = DownstreamNetworkIPv6Mode::kDisabled;
+  info->enable_ipv6 = false;
   info->downstream_ifname = request.ifname();
   // TODO(b/239559602) Copy IPv4 configuration if any.
   // TODO(b/239559602) Copy IPv6 configuration if any.
@@ -2379,18 +2382,7 @@ std::ostream& operator<<(std::ostream& stream,
                                     info.ipv4_prefix_length);
   stream << ", ipv4 addr: ";
   stream << IPv4AddressToString(info.ipv4_addr);
-  stream << ", ipv6: ";
-  switch (info.ipv6_mode) {
-    case DownstreamNetworkIPv6Mode::kDisabled:
-      stream << "disabled";
-      break;
-    case DownstreamNetworkIPv6Mode::kNDProxy:
-      stream << "NDProxy";
-      break;
-    case DownstreamNetworkIPv6Mode::kRAServer:
-      stream << "RAServer";
-      break;
-  }
+  stream << ", enable_ipv6: " << std::boolalpha << info.enable_ipv6;
   return stream << "}";
 }
 

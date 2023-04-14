@@ -98,14 +98,6 @@ enum class DownstreamNetworkTopology {
   kLocalOnly,
 };
 
-// Describes the IPv6 provisioning mode used for a CreateLocalOnlyNetwork or
-// a CreateTetheredNetwork request issued by shill.
-enum class DownstreamNetworkIPv6Mode {
-  kDisabled,
-  kNDProxy,
-  kRAServer,
-};
-
 // Describes a CreateNetwork request issued by shill.
 struct DownstreamNetworkInfo {
   DownstreamNetworkTopology topology;
@@ -135,8 +127,9 @@ struct DownstreamNetworkInfo {
   // true.
   std::vector<std::string> dhcp_domain_searches;
 
-  DownstreamNetworkIPv6Mode ipv6_mode;
-  // TODO(b/239559602) Add IPv6 configuration.
+  // Set to true if GuestIPv6Service is used on the downstream network.
+  bool enable_ipv6;
+  // TODO(b/239559602) Add IPv6 configuration for LocalOnlyNetwork.
 
   // Creates the DownstreamNetworkInfo instance from TetheredNetworkRequest.
   static std::optional<DownstreamNetworkInfo> Create(

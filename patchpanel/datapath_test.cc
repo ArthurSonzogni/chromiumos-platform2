@@ -252,6 +252,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   request.set_upstream_ifname("wwan0");
   request.set_ifname("wlan1");
   request.set_allocated_ipv4_config(ipv4_config);
+  request.set_enable_ipv6(true);
 
   const auto info = DownstreamNetworkInfo::Create(request);
   ASSERT_NE(info, std::nullopt);
@@ -264,6 +265,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   EXPECT_EQ(info->ipv4_dhcp_end_addr, end_ip);
   EXPECT_EQ(info->dhcp_dns_servers, dns_servers);
   EXPECT_EQ(info->dhcp_domain_searches, domain_searches);
+  EXPECT_EQ(info->enable_ipv6, true);
 }
 
 TEST(DatapathTest,

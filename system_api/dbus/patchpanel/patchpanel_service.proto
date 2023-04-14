@@ -637,10 +637,11 @@ message TetheredNetworkRequest {
   // IPv6-only network.
   optional IPv4Configuration ipv4_config = 4;
 
-  // Optional. If true, IPv6 RAs from the upstream networks and IPv6 neighbor
-  // discovery packets are not served or forwarded on the downstream network
-  // and IPv6 forwarding is disabled on the downstream network.
-  bool disable_ipv6 = 5;
+  // If true, IPv6 RAs from the upstream networks and IPv6 neighbor discovery
+  // packets are forwarded on the downstream network and IPv6 forwarding is
+  // enabled between the upstream and downstream networks. The implementation
+  // will automatically choose between NDProxy mode and RA server mode.
+  bool enable_ipv6 = 5;
 }
 
 // Response to a CreateTetheredNetwork call.

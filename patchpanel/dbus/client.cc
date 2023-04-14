@@ -1310,8 +1310,7 @@ bool ClientImpl::CreateTetheredNetwork(const std::string& downstream_ifname,
     ipv4_config->add_domain_searches(domain_search);
   }
 
-  // TODO(b/239559602) Enable IPv6 requests.
-  request.set_disable_ipv6(true);
+  request.set_enable_ipv6(true);
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << kCreateTetheredNetworkMethod << "(" << downstream_ifname
                << "," << upstream_ifname

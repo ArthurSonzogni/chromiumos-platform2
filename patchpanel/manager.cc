@@ -1435,20 +1435,22 @@ void Manager::OnLifelineFdClosed(int client_fd) {
 
   auto downstream_network_it = downstream_networks_.find(client_fd);
   if (downstream_network_it != downstream_networks_.end()) {
-    // TODO(b/239559602) If IPv6 was specified in the request, stop guest IPv6
-    // service.
+    const auto& info = downstream_network_it->second;
+    // Stop IPv6 guest service on the downstream interface if IPv6 is enabled.
+    if (info.enable_ipv6) {
+      StopForwarding(info.upstream_ifname, info.downstream_ifname,
+                     ForwardingSet{.ipv6 = true});
+    }
 
     // Stop the DHCP server if exists.
     // TODO(b/274998094): Currently the DHCPServerController stop the process
     // asynchronously. It might cause the new DHCPServerController creation
     // failure if the new one is created before the process terminated. We
     // should polish the termination procedure to prevent this situation.
-    dhcp_server_controllers_.erase(
-        downstream_network_it->second.downstream_ifname);
+    dhcp_server_controllers_.erase(info.downstream_ifname);
 
-    datapath_->StopDownstreamNetwork(downstream_network_it->second);
-    LOG(INFO) << "Disconnected Downstream Network "
-              << downstream_network_it->second;
+    datapath_->StopDownstreamNetwork(info);
+    LOG(INFO) << "Disconnected Downstream Network " << info;
     downstream_networks_.erase(downstream_network_it);
     return;
   }
@@ -1625,8 +1627,14 @@ patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
         std::move(dhcp_server_controller);
   }
 
-  // TODO(b/239559602) If IPv6 is specified in the request, start guest IPv6
-  // service.
+  // Start IPv6 guest service on the downstream interface if IPv6 is enabled.
+  // TODO(b/278966909) Prevents neighbor discovery between the downstream
+  // network and other virtual guests and interfaces in the same upstream
+  // group.
+  if (info->enable_ipv6) {
+    StartForwarding(info->upstream_ifname, info->downstream_ifname,
+                    ForwardingSet{.ipv6 = true});
+  }
 
   int fdkey = local_client_fd.release();
   downstream_networks_[fdkey] = *info;
