@@ -141,15 +141,10 @@ mojom::RoutineUpdatePtr DiagActions::GetRoutineUpdate(
     int32_t id,
     mojom::DiagnosticRoutineCommandEnum command,
     bool include_output) {
-  mojom::RoutineUpdatePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RoutineUpdatePtr> waiter;
   cros_healthd_diagnostics_service_->GetRoutineUpdate(
-      id, command, include_output,
-      base::BindOnce(&OnMojoResponseReceived<mojom::RoutineUpdatePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return response;
+      id, command, include_output, waiter.CreateCallback());
+  return waiter.WaitForResponse();
 }
 
 std::optional<std::vector<mojom::DiagnosticRoutineEnum>>
@@ -187,320 +182,214 @@ bool DiagActions::ActionGetRoutines() {
 bool DiagActions::ActionRunAcPowerRoutine(
     mojom::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunAcPowerRoutine(
-      expected_status, expected_power_type,
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      expected_status, expected_power_type, waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunBatteryCapacityRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunBatteryCapacityRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunBatteryChargeRoutine(
     base::TimeDelta exec_duration, uint32_t minimum_charge_percent_required) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunBatteryChargeRoutine(
       exec_duration.InSeconds(), minimum_charge_percent_required,
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunBatteryDischargeRoutine(
     base::TimeDelta exec_duration, uint32_t maximum_discharge_percent_allowed) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunBatteryDischargeRoutine(
       exec_duration.InSeconds(), maximum_discharge_percent_allowed,
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunBatteryHealthRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunBatteryHealthRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunCaptivePortalRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunCaptivePortalRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunCpuCacheRoutine(
     const std::optional<base::TimeDelta>& exec_duration) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   mojom::NullableUint32Ptr exec_duration_parameter;
   if (exec_duration.has_value()) {
     exec_duration_parameter =
         mojom::NullableUint32::New(exec_duration.value().InSeconds());
   }
   cros_healthd_diagnostics_service_->RunCpuCacheRoutine(
-      std::move(exec_duration_parameter),
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      std::move(exec_duration_parameter), waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunCpuStressRoutine(
     const std::optional<base::TimeDelta>& exec_duration) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   mojom::NullableUint32Ptr exec_duration_parameter;
   if (exec_duration.has_value()) {
     exec_duration_parameter =
         mojom::NullableUint32::New(exec_duration.value().InSeconds());
   }
   cros_healthd_diagnostics_service_->RunCpuStressRoutine(
-      std::move(exec_duration_parameter),
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      std::move(exec_duration_parameter), waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunDiskReadRoutine(mojom::DiskReadRoutineTypeEnum type,
                                            base::TimeDelta exec_duration,
                                            uint32_t file_size_mb) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunDiskReadRoutine(
-      type, exec_duration.InSeconds(), file_size_mb,
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      type, exec_duration.InSeconds(), file_size_mb, waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunDnsLatencyRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunDnsLatencyRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunDnsResolutionRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunDnsResolutionRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunDnsResolverPresentRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunDnsResolverPresentRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunFloatingPointAccuracyRoutine(
     const std::optional<base::TimeDelta>& exec_duration) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   mojom::NullableUint32Ptr exec_duration_parameter;
   if (exec_duration.has_value()) {
     exec_duration_parameter =
         mojom::NullableUint32::New(exec_duration.value().InSeconds());
   }
   cros_healthd_diagnostics_service_->RunFloatingPointAccuracyRoutine(
-      std::move(exec_duration_parameter),
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      std::move(exec_duration_parameter), waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunGatewayCanBePingedRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunGatewayCanBePingedRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunHasSecureWiFiConnectionRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunHasSecureWiFiConnectionRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunHttpFirewallRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunHttpFirewallRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunHttpsFirewallRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunHttpsFirewallRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunHttpsLatencyRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunHttpsLatencyRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunLanConnectivityRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunLanConnectivityRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunMemoryRoutine(
     std::optional<uint32_t> max_testing_mem_kib) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  cros_healthd_diagnostics_service_->RunMemoryRoutine(
-      max_testing_mem_kib,
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
+  cros_healthd_diagnostics_service_->RunMemoryRoutine(max_testing_mem_kib,
+                                                      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunNvmeSelfTestRoutine(
     mojom::NvmeSelfTestTypeEnum nvme_self_test_type) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunNvmeSelfTestRoutine(
-      nvme_self_test_type,
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      nvme_self_test_type, waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunNvmeWearLevelRoutine(
     const std::optional<uint32_t>& wear_level_threshold) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   mojom::NullableUint32Ptr wear_level_threshold_parameter;
   if (wear_level_threshold.has_value()) {
     wear_level_threshold_parameter =
         mojom::NullableUint32::New(wear_level_threshold.value());
   }
   cros_healthd_diagnostics_service_->RunNvmeWearLevelRoutine(
-      std::move(wear_level_threshold_parameter),
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      std::move(wear_level_threshold_parameter), waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunPrimeSearchRoutine(
     const std::optional<base::TimeDelta>& exec_duration) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   mojom::NullableUint32Ptr exec_duration_parameter;
   if (exec_duration.has_value()) {
     exec_duration_parameter =
         mojom::NullableUint32::New(exec_duration.value().InSeconds());
   }
   cros_healthd_diagnostics_service_->RunPrimeSearchRoutine(
-      std::move(exec_duration_parameter),
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      std::move(exec_duration_parameter), waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunSignalStrengthRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunSignalStrengthRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunSmartctlCheckRoutine(
     const std::optional<uint32_t>& percentage_used_threshold) {
-  ash::cros_healthd::mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   ash::cros_healthd::mojom::NullableUint32Ptr
       percentage_used_threshold_parameter;
   if (percentage_used_threshold.has_value()) {
@@ -509,124 +398,76 @@ bool DiagActions::ActionRunSmartctlCheckRoutine(
             percentage_used_threshold.value());
   }
   cros_healthd_diagnostics_service_->RunSmartctlCheckRoutine(
-      std::move(percentage_used_threshold_parameter),
-      base::BindOnce(&OnMojoResponseReceived<
-                         ash::cros_healthd::mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      std::move(percentage_used_threshold_parameter), waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunUrandomRoutine(
     const std::optional<base::TimeDelta>& length_seconds) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   mojom::NullableUint32Ptr length_seconds_parameter;
   if (length_seconds.has_value()) {
     length_seconds_parameter =
         mojom::NullableUint32::New(length_seconds.value().InSeconds());
   }
   cros_healthd_diagnostics_service_->RunUrandomRoutine(
-      std::move(length_seconds_parameter),
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      std::move(length_seconds_parameter), waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunVideoConferencingRoutine(
     const std::optional<std::string>& stun_server_hostname) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunVideoConferencingRoutine(
-      stun_server_hostname,
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      stun_server_hostname, waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunArcHttpRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  cros_healthd_diagnostics_service_->RunArcHttpRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
+  cros_healthd_diagnostics_service_->RunArcHttpRoutine(waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunArcPingRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  cros_healthd_diagnostics_service_->RunArcPingRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
+  cros_healthd_diagnostics_service_->RunArcPingRoutine(waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunArcDnsResolutionRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunArcDnsResolutionRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunSensitiveSensorRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunSensitiveSensorRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunFingerprintRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunFingerprintRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunFingerprintAliveRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunFingerprintAliveRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunPrivacyScreenRoutine(bool target_state) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunPrivacyScreenRoutine(
-      target_state,
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      target_state, waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunLedRoutine(mojom::LedName name,
@@ -638,103 +479,68 @@ bool DiagActions::ActionRunLedRoutine(mojom::LedName name,
       std::make_unique<LedLitUpRoutineReplier>(std::move(replier_receiver));
   led_lit_up_routine_replier_->SetGetColorMatchedHandler(
       base::BindRepeating(&HandleGetLedColorMatchedInvocation));
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunLedLitUpRoutine(
-      name, color, std::move(replier_remote),
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      name, color, std::move(replier_remote), waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunEmmcLifetimeRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunEmmcLifetimeRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunAudioSetVolumeRoutine(uint64_t node_id,
                                                  uint8_t volume,
                                                  bool mute_on) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunAudioSetVolumeRoutine(
-      node_id, volume, mute_on,
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      node_id, volume, mute_on, waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunAudioSetGainRoutine(uint64_t node_id, uint8_t gain) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunAudioSetGainRoutine(
-      node_id, gain, /*deprecated_mute_on=*/false,
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-
-  return ProcessRoutineResponse(response);
+      node_id, gain, /*deprecated_mute_on=*/false, waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunBluetoothPowerRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunBluetoothPowerRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunBluetoothDiscoveryRoutine() {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunBluetoothDiscoveryRoutine(
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-  return ProcessRoutineResponse(response);
+      waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunBluetoothScanningRoutine(
     const std::optional<base::TimeDelta>& exec_duration) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   mojom::NullableUint32Ptr exec_duration_parameter;
   if (exec_duration.has_value()) {
     exec_duration_parameter =
         mojom::NullableUint32::New(exec_duration.value().InSeconds());
   }
   cros_healthd_diagnostics_service_->RunBluetoothScanningRoutine(
-      std::move(exec_duration_parameter),
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-  return ProcessRoutineResponse(response);
+      std::move(exec_duration_parameter), waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunBluetoothPairingRoutine(
     const std::string& peripheral_id) {
-  mojom::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunBluetoothPairingRoutine(
-      peripheral_id,
-      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
-                     &response, run_loop.QuitClosure()));
-  run_loop.Run();
-  return ProcessRoutineResponse(response);
+      peripheral_id, waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
