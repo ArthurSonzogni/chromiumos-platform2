@@ -9,6 +9,7 @@ group("all") {
   deps = [
     ":install_dbus_activation",
     ":install_dbus_config",
+    ":install_minijail_config",
     ":install_seccomp_policy",
     ":install_upstart_config",
     ":rgbkbd",
@@ -85,6 +86,12 @@ install_config("install_dbus_config") {
 install_config("install_dbus_activation") {
   sources = [ "dbus/org.chromium.Rgbkbd.service" ]
   install_path = "/usr/share/dbus-1/system-services"
+}
+
+# Install Minijail config.
+install_config("install_minijail_config") {
+  sources = [ "minijail/rgbkbd.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 # Install seccomp policy file.
