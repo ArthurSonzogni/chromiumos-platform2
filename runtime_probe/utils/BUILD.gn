@@ -13,6 +13,7 @@ pkg_config("target_defaults") {
 
 source_set("utils") {
   sources = [
+    "bus_utils.cc",
     "edid.cc",
     "file_utils.cc",
     "input_device.cc",
@@ -34,6 +35,7 @@ if (use.test) {
   }
   source_set("test") {
     sources = [
+      "bus_utils_test.cc",
       "file_test_utils_test.cc",
       "file_utils_test.cc",
       "function_test_utils_test.cc",
