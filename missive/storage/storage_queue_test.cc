@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <optional>
+#include <queue>
 #include <utility>
 #include <vector>
 
@@ -27,6 +28,7 @@
 #include <gtest/gtest.h>
 
 #include "base/files/file_enumerator.h"
+#include "base/functional/bind.h"
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/metrics_test_util.h"
 #include "missive/compression/compression_module.h"
@@ -631,6 +633,13 @@ class StorageQueueTest
         /*generation_guid=*/"GENERATION_GUID", options,
         base::BindRepeating(&StorageQueueTest::AsyncStartMockUploader,
                             base::Unretained(this)),
+        base::BindRepeating(
+            [](scoped_refptr<StorageQueue> queue,
+               base::OnceCallback<void(std::queue<scoped_refptr<StorageQueue>>)>
+                   result_cb) {
+              // Returns empty candidates queue - no degradation allowed.
+              std::move(result_cb).Run({});
+            }),
         test_encryption_module_,
         CompressionModule::Create(/*is_enabled=*/true, kCompressionThreshold,
                                   kCompressionType),
@@ -2224,9 +2233,9 @@ TEST_P(StorageQueueTest, WriteRecordDataWithInsufficientDiskSpaceFailure) {
 
   // Inject simulated failures.
   auto inject = InjectFailures();
-  EXPECT_CALL(*inject,
-              Call(Eq(test::StorageQueueOperationKind::kWriteLowDiskSpace),
-                   Eq(1)))  // seq_id already bumped up for data!
+  EXPECT_CALL(
+      *inject,
+      Call(Eq(test::StorageQueueOperationKind::kWriteLowDiskSpace), Eq(0)))
       .WillRepeatedly(WithArg<1>(Invoke([](int64_t seq_id) {
         return Status(error::INTERNAL,
                       base::StrCat({"Simulated data write low disk space, seq=",
@@ -2260,10 +2269,9 @@ TEST_P(StorageQueueTest, WriteRecordMetadataWithInsufficientDiskSpaceFailure) {
       })));
   EXPECT_CALL(
       analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-      SendLinearToUMA(
-          StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
-          Eq(StorageQueue::ResourceExhaustedCase::NO_DISK_SPACE_METADATA),
-          Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
+      SendLinearToUMA(StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
+                      Eq(StorageQueue::ResourceExhaustedCase::NO_DISK_SPACE),
+                      Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
       .WillOnce(Return(true));
   Status write_result = WriteString(kData[0]);
   EXPECT_FALSE(write_result.ok());

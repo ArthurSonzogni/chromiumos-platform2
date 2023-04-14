@@ -4,6 +4,7 @@
 
 #include "missive/storage/storage_base.h"
 
+#include <base/barrier_closure.h>
 #include <base/files/file.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
@@ -22,6 +23,7 @@
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/files/file_util.h"
+#include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
@@ -101,6 +103,97 @@ void QueueUploaderInterface::WrapInstantiatedUploader(
   std::move(start_uploader_cb)
       .Run(std::make_unique<QueueUploaderInterface>(
           priority, std::move(uploader_result.ValueOrDie())));
+}
+
+QueuesContainer::QueuesContainer(bool is_enabled)
+    : DynamicFlag("controlled_degradation", is_enabled) {
+  DETACH_FROM_SEQUENCE(sequence_checker_);
+}
+
+QueuesContainer::~QueuesContainer() = default;
+
+Status QueuesContainer::AddQueue(Priority priority,
+                                 scoped_refptr<StorageQueue> queue) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  auto [_, emplaced] = queues_.emplace(
+      std::make_tuple(priority, queue->generation_guid()), queue);
+  if (!emplaced) {
+    return Status(
+        error::DATA_LOSS,
+        base::StrCat({"Queue with generation GUID=", queue->generation_guid(),
+                      " created, but could not be stored."}));
+  }
+  return Status::StatusOK();
+}
+
+StatusOr<scoped_refptr<StorageQueue>> QueuesContainer::GetQueue(
+    Priority priority, GenerationGuid generation_guid) const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  auto it = queues_.find(std::make_tuple(priority, generation_guid));
+  if (it == queues_.end()) {
+    return Status(error::NOT_FOUND,
+                  base::StrCat({"No queue found with priority=",
+                                base::NumberToString(priority),
+                                " and generation_guid= ", generation_guid}));
+  }
+  return it->second;
+}
+
+size_t QueuesContainer::RunActionOnAllQueues(
+    Priority priority,
+    base::RepeatingCallback<void(scoped_refptr<StorageQueue>)> action) const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  // Flush each queue
+  size_t count = 0;
+  for (const auto& [priority_generation_tuple, queue] : queues_) {
+    auto queue_priority = std::get<Priority>(priority_generation_tuple);
+    const auto generation_guid =
+        std::get<GenerationGuid>(priority_generation_tuple);
+    if (queue_priority == priority) {
+      count++;  // Count the number of queues to flush
+      action.Run(queue);
+    }
+  }
+  return count;
+}
+
+// static
+void QueuesContainer::GetDegradationCandidates(
+    base::WeakPtr<QueuesContainer> container,
+    Priority priority,
+    const scoped_refptr<StorageQueue> queue,
+    base::OnceCallback<void(std::queue<scoped_refptr<StorageQueue>>)>
+        result_cb) {
+  if (!container) {
+    std::move(result_cb).Run({});
+    return;
+  }
+  DCHECK_CALLED_ON_VALID_SEQUENCE(container->sequence_checker_);
+  if (!container->is_enabled()) {
+    std::move(result_cb).Run({});
+    return;
+  }
+  // Degradation enabled, populate the queue from lowest to highest priority up
+  // to (but not including) the one referenced by `queue`.
+  NOTIMPLEMENTED();  // TODO(b/214038621): Produce and return actual candidates
+                     // queue.
+  std::move(result_cb).Run({});
+}
+
+void QueuesContainer::RegisterCompletionCallback(base::OnceClosure callback) {
+  DCHECK(callback);
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  const base::RepeatingClosure queue_callback =
+      base::BarrierClosure(queues_.size(), std::move(callback));
+  for (auto& queue : queues_) {
+    // Copy the callback as base::OnceClosure.
+    queue.second->RegisterCompletionCallback(queue_callback);
+  }
+}
+
+base::WeakPtr<QueuesContainer> QueuesContainer::GetWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
 }
 
 // Factory method, returns smart pointer with deletion on sequence.

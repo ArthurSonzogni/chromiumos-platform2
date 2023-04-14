@@ -60,6 +60,7 @@ void StorageModule::UpdateEncryptionKey(
 void StorageModule::Create(
     const StorageOptions& options,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
+    scoped_refptr<QueuesContainer> queues_container,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
@@ -86,11 +87,13 @@ void StorageModule::Create(
   const bool use_legacy_storage = true;
 
   if (use_legacy_storage) {
-    Storage::Create(options, async_start_upload_cb, encryption_module,
-                    compression_module, std::move(completion_cb));
+    Storage::Create(options, async_start_upload_cb, queues_container,
+                    encryption_module, compression_module,
+                    std::move(completion_cb));
   } else {
-    NewStorage::Create(options, async_start_upload_cb, encryption_module,
-                       compression_module, std::move(completion_cb));
+    NewStorage::Create(options, async_start_upload_cb, queues_container,
+                       encryption_module, compression_module,
+                       std::move(completion_cb));
   }
 }
 

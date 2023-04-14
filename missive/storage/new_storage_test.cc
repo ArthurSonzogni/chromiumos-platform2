@@ -908,6 +908,7 @@ class NewStorageTest
         options,
         base::BindRepeating(&NewStorageTest::AsyncStartMockUploader,
                             base::Unretained(this)),
+        base::MakeRefCounted<QueuesContainer>(/*is_enabled=*/false),
         encryption_module, test_compression_module_, e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
@@ -981,6 +982,7 @@ class NewStorageTest
         options,
         base::BindRepeating(&NewStorageTest::AsyncStartMockUploaderFailing,
                             base::Unretained(this)),
+        base::MakeRefCounted<QueuesContainer>(/*is_enabled=*/false),
         encryption_module, test_compression_module_, e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;

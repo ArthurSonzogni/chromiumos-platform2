@@ -87,7 +87,8 @@ class CreateQueueContext : public TaskRunnerContext<StatusOr<GenerationGuid>> {
     CheckOnValidSequence();
     DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
     // Verify this queue doesn't already exist
-    DCHECK(!storage_->GetQueue(priority_, generation_guid_).ok());
+    DCHECK(!storage_->queues_container_->GetQueue(priority_, generation_guid_)
+                .ok());
 
     // Set the extension of the queue directory name
     queue_options_.set_subdirectory_extension(generation_guid_);
@@ -107,6 +108,13 @@ class CreateQueueContext : public TaskRunnerContext<StatusOr<GenerationGuid>> {
                             /*priority=*/priority,
                             storage_->async_start_upload_cb_,
                             storage_->encryption_module_),
+        // `queues_container_` refers a weak pointer only, so that its
+        // callback does not hold a reference to it.
+        base::BindPostTask(
+            storage_->sequenced_task_runner_,
+            base::BindRepeating(&QueuesContainer::GetDegradationCandidates,
+                                storage_->queues_container_->GetWeakPtr(),
+                                priority)),
         storage_->encryption_module_, storage_->compression_module_,
         base::BindPostTaskToCurrentDefault(base::BindOnce(
             &CreateQueueContext::AddQueue, base::Unretained(this),
@@ -125,14 +133,10 @@ class CreateQueueContext : public TaskRunnerContext<StatusOr<GenerationGuid>> {
       return;
     }
     // Add queue to storage
-    auto [_, emplaced] =
-        storage_->queues_.emplace(std::make_tuple(priority, generation_guid_),
-                                  storage_queue_result.ValueOrDie());
-    if (!emplaced) {
-      Response(
-          Status(error::DATA_LOSS,
-                 base::StrCat({"Queue with generation GUID=", generation_guid_,
-                               " created, but could not be stored."})));
+    auto added_status = storage_->queues_container_->AddQueue(
+        priority, storage_queue_result.ValueOrDie());
+    if (!added_status.ok()) {
+      Response(added_status);
       return;
     }
 
@@ -149,6 +153,7 @@ class CreateQueueContext : public TaskRunnerContext<StatusOr<GenerationGuid>> {
 void NewStorage::Create(
     const StorageOptions& options,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
+    scoped_refptr<QueuesContainer> queues_container,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageInterface>>)>
@@ -290,8 +295,8 @@ void NewStorage::Create(
   // Cannot use base::MakeRefCounted<NewStorage>, because constructor is
   // private.
   scoped_refptr<NewStorage> storage = base::WrapRefCounted(
-      new NewStorage(options, encryption_module, compression_module,
-                     std::move(async_start_upload_cb)));
+      new NewStorage(options, queues_container, encryption_module,
+                     compression_module, std::move(async_start_upload_cb)));
 
   // Asynchronously run initialization.
   Start<StorageInitContext>(std::move(storage), std::move(completion_cb));
@@ -299,19 +304,21 @@ void NewStorage::Create(
 
 NewStorage::NewStorage(
     const StorageOptions& options,
+    scoped_refptr<QueuesContainer> queues_container,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb)
     : options_(options),
+      sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
+          {base::TaskPriority::BEST_EFFORT, base::MayBlock()})),
+      queues_container_(queues_container),
       encryption_module_(encryption_module),
       key_delivery_(
           KeyDelivery::Create(encryption_module, async_start_upload_cb)),
       compression_module_(compression_module),
       key_in_storage_(std::make_unique<KeyInStorage>(
           options.signature_verification_public_key(), options.directory())),
-      async_start_upload_cb_(async_start_upload_cb),
-      sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
-          {base::TaskPriority::BEST_EFFORT, base::MayBlock()})) {
+      async_start_upload_cb_(async_start_upload_cb) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 
@@ -398,7 +405,8 @@ void NewStorage::Write(Priority priority,
 
             // Find the queue for this generation guid + priority and write to
             // it.
-            if (!self->GetQueue(priority, generation_guid_result.ValueOrDie())
+            if (!self->queues_container_
+                     ->GetQueue(priority, generation_guid_result.ValueOrDie())
                      .ok()) {
               // We don't have a queue for this generation guid + priority, so
               // create one, and then let the context execute the write
@@ -490,18 +498,15 @@ class FlushContext : public TaskRunnerContext<Status> {
     DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
 
     // Flush each queue
-    for (const auto& [priority_generation_tuple, queue] : storage_->queues_) {
-      auto queue_priority = std::get<Priority>(priority_generation_tuple);
-      const auto generation_guid =
-          std::get<GenerationGuid>(priority_generation_tuple);
-      if (queue_priority == priority_) {
-        count_++;  // Count the number of queues to flush
-
-        queue->Flush(base::BindPostTaskToCurrentDefault(
-            base::BindOnce(&FlushContext::RespondIfAllQueuesAreFlush,
-                           base::Unretained(this), generation_guid)));
-      }
-    }
+    count_ = storage_->queues_container_->RunActionOnAllQueues(
+        priority_,
+        base::BindRepeating(
+            [](FlushContext* context, scoped_refptr<StorageQueue> queue) {
+              queue->Flush(base::BindPostTaskToCurrentDefault(base::BindOnce(
+                  &FlushContext::RespondIfAllQueuesAreFlush,
+                  base::Unretained(context), queue->generation_guid())));
+            },
+            base::Unretained(this)));
   }
 
   void RespondIfAllQueuesAreFlush(GenerationGuid generation_guid,
@@ -510,7 +515,9 @@ class FlushContext : public TaskRunnerContext<Status> {
     DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
 
     if (!status.ok()) {
-      final_status_ = status;
+      if (final_status_.ok()) {
+        final_status_ = status;
+      }
       LOG(ERROR) << "Failed to flush queue with priority = " << priority_
                  << " generation_guid=" << generation_guid
                  << ", error=" << status.error_message();
@@ -599,8 +606,8 @@ void NewStorage::AsyncGetQueueAndProceed(
             }
             // Attempt to get queue by priority and generation_guid on
             // the NewStorage task runner.
-            auto queue_result =
-                self->GetQueue(priority, generation_guid.ValueOrDie());
+            auto queue_result = self->queues_container_->GetQueue(
+                priority, generation_guid.ValueOrDie());
             if (!queue_result.ok()) {
               // Queue not found, abort.
               std::move(completion_cb).Run(queue_result.status());
@@ -615,19 +622,6 @@ void NewStorage::AsyncGetQueueAndProceed(
           std::move(queue_action), std::move(completion_cb)));
 }
 
-StatusOr<scoped_refptr<StorageQueue>> NewStorage::GetQueue(
-    Priority priority, GenerationGuid generation_guid) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto it = queues_.find(std::make_tuple(priority, generation_guid));
-  if (it == queues_.end()) {
-    return Status(error::NOT_FOUND,
-                  base::StrCat({"No queue found with priority=",
-                                base::NumberToString(priority),
-                                " and generation_guid= ", generation_guid}));
-  }
-  return it->second;
-}
-
 void NewStorage::RegisterCompletionCallback(base::OnceClosure callback) {
   // Although this is an asynchronous action, note that NewStorage cannot be
   // destructed until the callback is registered - StorageQueue is held by
@@ -635,17 +629,7 @@ void NewStorage::RegisterCompletionCallback(base::OnceClosure callback) {
   // to be called when the NewStorage is being destructed.
   DCHECK(callback);
   sequenced_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](base::OnceClosure callback, scoped_refptr<NewStorage> self) {
-            DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
-            const base::RepeatingClosure queue_callback =
-                base::BarrierClosure(self->queues_.size(), std::move(callback));
-            for (auto& queue : self->queues_) {
-              // Copy the callback as base::OnceClosure.
-              queue.second->RegisterCompletionCallback(queue_callback);
-            }
-          },
-          std::move(callback), base::WrapRefCounted(this)));
+      FROM_HERE, base::BindOnce(&QueuesContainer::RegisterCompletionCallback,
+                                queues_container_, std::move(callback)));
 }
 }  // namespace reporting

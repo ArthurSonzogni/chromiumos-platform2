@@ -63,6 +63,7 @@ class NewStorage : public StorageInterface {
   static void Create(
       const StorageOptions& options,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
+      scoped_refptr<QueuesContainer> queues_container,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
       scoped_refptr<CompressionModule> compression_module,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageInterface>>)>
@@ -116,6 +117,7 @@ class NewStorage : public StorageInterface {
   // Private constructor, to be called by Create factory method only.
   // Queues need to be added afterwards.
   NewStorage(const StorageOptions& options,
+             scoped_refptr<QueuesContainer> queues_container,
              scoped_refptr<EncryptionModuleInterface> encryption_module,
              scoped_refptr<CompressionModule> compression_module,
              UploaderInterface::AsyncStartUploaderCb async_start_upload_cb);
@@ -124,11 +126,6 @@ class NewStorage : public StorageInterface {
   // Must be called once and only once after construction.
   // Returns OK or error status, if anything failed to initialize.
   Status Init();
-
-  // Helper method that selects queue by priority. Returns error
-  // if priority does not match any queue.
-  StatusOr<scoped_refptr<StorageQueue>> GetQueue(
-      Priority priority, GenerationGuid generation_guid) const;
 
   // Helper method to select queue by priority on the NewStorage task runner and
   // then perform `queue_action`, if succeeded. Returns failure on any stage
@@ -162,6 +159,15 @@ class NewStorage : public StorageInterface {
   // Immutable options, stored at the time of creation.
   const StorageOptions options_;
 
+  // Task runner for storage-wide operations (initialization, queues selection).
+  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
+  SEQUENCE_CHECKER(sequence_checker_);
+
+  // Queues container and storage degradation controller. If degradation is
+  // enabled, in case of disk space pressure it facilitates dropping low
+  // priority events to free up space for the higher priority ones.
+  const scoped_refptr<QueuesContainer> queues_container_;
+
   // Encryption module.
   const scoped_refptr<EncryptionModuleInterface> encryption_module_;
 
@@ -176,15 +182,6 @@ class NewStorage : public StorageInterface {
 
   // Upload provider callback.
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
-
-  // Task runner for storage-wide operations (initialization, queues selection).
-  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
-  SEQUENCE_CHECKER(sequence_checker_);
-
-  // This map is used to retrieve queues for writes, confirms, and flushes.
-  base::flat_map<std::tuple<Priority, GenerationGuid>,
-                 scoped_refptr<StorageQueue>>
-      queues_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   // This map associates DM tokens of users or the device with a unique
   // GenerationGuid which is then associated to a queue in the `queues_` map.

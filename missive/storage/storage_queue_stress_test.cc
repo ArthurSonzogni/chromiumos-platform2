@@ -155,6 +155,13 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
         /*generation_guid=*/"GENERATION_GUID", options,
         base::BindRepeating(&StorageQueueStressTest::AsyncStartTestUploader,
                             base::Unretained(this)),
+        base::BindRepeating(
+            [](scoped_refptr<StorageQueue> queue,
+               base::OnceCallback<void(std::queue<scoped_refptr<StorageQueue>>)>
+                   result_cb) {
+              // Returns empty candidates queue - no degradation allowed.
+              std::move(result_cb).Run({});
+            }),
         test_encryption_module_, test_compression_module_,
         storage_queue_create_event.cb());
     StatusOr<scoped_refptr<StorageQueue>> storage_queue_result =

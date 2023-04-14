@@ -21,8 +21,11 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
+#include <base/memory/scoped_refptr.h>
+#include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
 #include <base/task/task_traits.h>
@@ -54,6 +57,7 @@ namespace reporting {
 void Storage::Create(
     const StorageOptions& options,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
+    scoped_refptr<QueuesContainer> queues_container,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageInterface>>)>
@@ -69,8 +73,7 @@ void Storage::Create(
             callback)
         : TaskRunnerContext<StatusOr<scoped_refptr<StorageInterface>>>(
               std::move(callback),
-              storage->sequenced_task_runner_),  // Same runner as the
-                                                 // Storage!
+              storage->sequenced_task_runner_),  // Same runner as the Storage!
           queues_options_(queues_options),
           storage_(std::move(storage)) {}
 
@@ -105,13 +108,8 @@ void Storage::Create(
       storage_->encryption_module_->UpdateAsymmetricKey(
           download_key_result.ValueOrDie().first,
           download_key_result.ValueOrDie().second,
-          base::BindOnce(&StorageInitContext::ScheduleEncryptionSetUp,
-                         base::Unretained(this)));
-    }
-
-    void ScheduleEncryptionSetUp(Status status) {
-      Schedule(&StorageInitContext::EncryptionSetUp, base::Unretained(this),
-               status);
+          base::BindPostTaskToCurrentDefault(base::BindOnce(
+              &StorageInitContext::EncryptionSetUp, base::Unretained(this))));
     }
 
     void EncryptionSetUp(Status status) {
@@ -141,28 +139,34 @@ void Storage::Create(
       // Construct all queues.
       DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
       count_ = queues_options_.size();
+      if (count_ == 0) {
+        Response(std::move(storage_));
+        return;
+      }
+
+      // Create queues the queue directories we found in the storage directory
       for (const auto& queue_options : queues_options_) {
         StorageQueue::Create(
             GenerationGuid(),
             /*options=*/queue_options.second,
-            // Note: the callback below belongs to the Queue and does not
-            // outlive Storage, so it cannot refer to `storage_` itself!
+            // Note: the callbacks below are attached to the Queue and do not
+            // outlive Storage, so they cannot refer to `storage_` itself!
             base::BindRepeating(&QueueUploaderInterface::AsyncProvideUploader,
                                 /*priority=*/queue_options.first,
                                 storage_->async_start_upload_cb_,
                                 storage_->encryption_module_),
+            // `queues_container_` refers a weak pointer only, so that its
+            // callback does not hold a reference to it.
+            base::BindPostTask(
+                storage_->sequenced_task_runner_,
+                base::BindRepeating(&QueuesContainer::GetDegradationCandidates,
+                                    storage_->queues_container_->GetWeakPtr(),
+                                    /*priority=*/queue_options.first)),
             storage_->encryption_module_, storage_->compression_module_,
-            base::BindOnce(&StorageInitContext::ScheduleAddQueue,
-                           base::Unretained(this),
-                           /*priority=*/queue_options.first));
+            base::BindPostTaskToCurrentDefault(base::BindOnce(
+                &StorageInitContext::AddQueue, base::Unretained(this),
+                /*priority=*/queue_options.first)));
       }
-    }
-
-    void ScheduleAddQueue(
-        Priority priority,
-        StatusOr<scoped_refptr<StorageQueue>> storage_queue_result) {
-      Schedule(&StorageInitContext::AddQueue, base::Unretained(this), priority,
-               std::move(storage_queue_result));
     }
 
     void AddQueue(Priority priority,
@@ -170,9 +174,11 @@ void Storage::Create(
       CheckOnValidSequence();
       DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
       if (storage_queue_result.ok()) {
-        auto add_result = storage_->queues_.emplace(
+        auto add_status = storage_->queues_container_->AddQueue(
             priority, storage_queue_result.ValueOrDie());
-        DCHECK(add_result.second);
+        if (final_status_.ok()) {
+          final_status_ = add_status;
+        }
       } else {
         LOG(ERROR) << "Could not create queue, priority=" << priority
                    << ", status=" << storage_queue_result.status();
@@ -200,8 +206,8 @@ void Storage::Create(
   // Create Storage object.
   // Cannot use base::MakeRefCounted<Storage>, because constructor is private.
   scoped_refptr<Storage> storage = base::WrapRefCounted(
-      new Storage(options, encryption_module, compression_module,
-                  std::move(async_start_upload_cb)));
+      new Storage(options, queues_container, encryption_module,
+                  compression_module, std::move(async_start_upload_cb)));
 
   // Asynchronously run initialization.
   Start<StorageInitContext>(options.ProduceQueuesOptionsList(),
@@ -209,19 +215,21 @@ void Storage::Create(
 }
 
 Storage::Storage(const StorageOptions& options,
+                 scoped_refptr<QueuesContainer> queues_container,
                  scoped_refptr<EncryptionModuleInterface> encryption_module,
                  scoped_refptr<CompressionModule> compression_module,
                  UploaderInterface::AsyncStartUploaderCb async_start_upload_cb)
     : options_(options),
+      sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
+          {base::TaskPriority::BEST_EFFORT, base::MayBlock()})),
+      queues_container_(queues_container),
       encryption_module_(encryption_module),
       key_delivery_(
           KeyDelivery::Create(encryption_module, async_start_upload_cb)),
       compression_module_(compression_module),
       key_in_storage_(std::make_unique<KeyInStorage>(
           options.signature_verification_public_key(), options.directory())),
-      async_start_upload_cb_(async_start_upload_cb),
-      sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
-          {base::TaskPriority::BEST_EFFORT, base::MayBlock()})) {
+      async_start_upload_cb_(async_start_upload_cb) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 
@@ -340,13 +348,14 @@ void Storage::AsyncGetQueueAndProceed(
   sequenced_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(
-          [](scoped_refptr<Storage> self, Priority priority,
+          [](scoped_refptr<QueuesContainer> queues_container, Priority priority,
              base::OnceCallback<void(scoped_refptr<StorageQueue>,
                                      base::OnceCallback<void(Status)>)>
                  queue_action,
              base::OnceCallback<void(Status)> completion_cb) {
             // Attempt to get queue by priority on the Storage task runner.
-            auto queue_result = self->GetQueue(priority);
+            auto queue_result =
+                queues_container->GetQueue(priority, GenerationGuid());
             if (!queue_result.ok()) {
               // Queue not found, abort.
               std::move(completion_cb).Run(queue_result.status());
@@ -357,40 +366,19 @@ void Storage::AsyncGetQueueAndProceed(
             std::move(queue_action)
                 .Run(queue_result.ValueOrDie(), std::move(completion_cb));
           },
-          base::WrapRefCounted(this), priority, std::move(queue_action),
+          queues_container_, priority, std::move(queue_action),
           std::move(completion_cb)));
-}
-
-StatusOr<scoped_refptr<StorageQueue>> Storage::GetQueue(
-    Priority priority) const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto it = queues_.find(priority);
-  if (it == queues_.end()) {
-    return Status(
-        error::NOT_FOUND,
-        base::StrCat({"Undefined priority=", base::NumberToString(priority)}));
-  }
-  return it->second;
 }
 
 void Storage::RegisterCompletionCallback(base::OnceClosure callback) {
   // Although this is an asynchronous action, note that Storage cannot be
-  // destructed until the callback is registered - StorageQueue is held by added
+  // destructed until the callback is registered - QueuesContainer owns
+  // a reference to each StorageQueue and is itself held by an added
   // reference here. Thus, the callback being registered is guaranteed
   // to be called when the Storage is being destructed.
   DCHECK(callback);
   sequenced_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          [](base::OnceClosure callback, scoped_refptr<Storage> self) {
-            DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
-            const base::RepeatingClosure queue_callback =
-                base::BarrierClosure(self->queues_.size(), std::move(callback));
-            for (auto& queue : self->queues_) {
-              // Copy the callback as base::OnceClosure.
-              queue.second->RegisterCompletionCallback(queue_callback);
-            }
-          },
-          std::move(callback), base::WrapRefCounted(this)));
+      FROM_HERE, base::BindOnce(&QueuesContainer::RegisterCompletionCallback,
+                                queues_container_, std::move(callback)));
 }
 }  // namespace reporting

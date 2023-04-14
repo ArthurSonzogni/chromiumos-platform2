@@ -5,6 +5,9 @@
 #ifndef MISSIVE_STORAGE_STORAGE_MODULE_H_
 #define MISSIVE_STORAGE_STORAGE_MODULE_H_
 
+#include <memory>
+#include <queue>
+
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
@@ -28,6 +31,7 @@ class StorageModule : public StorageModuleInterface {
   static void Create(
       const StorageOptions& options,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
+      scoped_refptr<QueuesContainer> queues_container,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
       scoped_refptr<CompressionModule> compression_module,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>

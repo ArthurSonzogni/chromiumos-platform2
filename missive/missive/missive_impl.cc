@@ -184,6 +184,8 @@ void MissiveImpl::OnStorageParameters(
   auto& parameters = storage_parameters_result.ValueOrDie();
 
   // Create `Storage` service modules and register for dynamic update.
+  queues_container_ =
+      base::MakeRefCounted<QueuesContainer>(parameters.controlled_degradation);
   compression_module_ = std::move(compression_module_factory_).Run(parameters);
   encryption_module_ = std::move(encryption_module_factory_).Run(parameters);
   args_->AsyncCall(&MissiveArgs::OnStorageParametersUpdate)
@@ -212,8 +214,8 @@ void MissiveImpl::CreateStorage(
   StorageModule::Create(std::move(storage_options),
                         base::BindPostTaskToCurrentDefault(base::BindRepeating(
                             &MissiveImpl::AsyncStartUpload, GetWeakPtr())),
-                        encryption_module_, compression_module_,
-                        std::move(callback));
+                        queues_container_, encryption_module_,
+                        compression_module_, std::move(callback));
 }
 
 // static
@@ -372,6 +374,7 @@ void MissiveImpl::UpdateEncryptionKey(
 
 void MissiveImpl::OnStorageParametersUpdate(
     MissiveArgs::StorageParameters storage_parameters) {
+  queues_container_->OnEnableUpdate(storage_parameters.controlled_degradation);
   compression_module_->OnEnableUpdate(storage_parameters.compression_enabled);
   encryption_module_->OnEnableUpdate(storage_parameters.encryption_enabled);
 }

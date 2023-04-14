@@ -16,6 +16,7 @@
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
 #include <base/strings/string_piece.h>
 #include <base/task/sequenced_task_runner.h>
@@ -39,10 +40,12 @@ namespace reporting {
 // according to the priority.
 class Storage : public StorageInterface {
  public:
-  // Creates Storage instance, and returns it with the completion callback.
+  // Factory method creates Storage instance, and returns it with the completion
+  // callback.
   static void Create(
       const StorageOptions& options,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
+      scoped_refptr<QueuesContainer> queues_container,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
       scoped_refptr<CompressionModule> compression_module,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageInterface>>)>
@@ -93,6 +96,7 @@ class Storage : public StorageInterface {
   // Private constructor, to be called by Create factory method only.
   // Queues need to be added afterwards.
   Storage(const StorageOptions& options,
+          scoped_refptr<QueuesContainer> queues_container,
           scoped_refptr<EncryptionModuleInterface> encryption_module,
           scoped_refptr<CompressionModule> compression_module,
           UploaderInterface::AsyncStartUploaderCb async_start_upload_cb);
@@ -101,10 +105,6 @@ class Storage : public StorageInterface {
   // Must be called once and only once after construction.
   // Returns OK or error status, if anything failed to initialize.
   Status Init();
-
-  // Helper method that selects queue by priority. Returns error
-  // if priority does not match any queue.
-  StatusOr<scoped_refptr<StorageQueue>> GetQueue(Priority priority) const;
 
   // Helper method to select queue by priority on the Storage task runner and
   // then perform `queue_action`, if succeeded. Returns failure on any stage
@@ -117,6 +117,15 @@ class Storage : public StorageInterface {
 
   // Immutable options, stored at the time of creation.
   const StorageOptions options_;
+
+  // Task runner for storage-wide operations (initialization, queues selection).
+  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
+  SEQUENCE_CHECKER(sequence_checker_);
+
+  // Queues container and storage degradation controller. If degradation is
+  // enabled, in case of disk space pressure it facilitates dropping low
+  // priority events to free up space for the higher priority ones.
+  const scoped_refptr<QueuesContainer> queues_container_;
 
   // Encryption module.
   const scoped_refptr<EncryptionModuleInterface> encryption_module_;
@@ -132,14 +141,6 @@ class Storage : public StorageInterface {
 
   // Upload provider callback.
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
-
-  // Task runner for storage-wide operations (initialization, queues selection).
-  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
-  SEQUENCE_CHECKER(sequence_checker_);
-
-  // Map priority->StorageQueue.
-  base::flat_map<Priority, scoped_refptr<StorageQueue>> queues_
-      GUARDED_BY_CONTEXT(sequence_checker_);
 };
 
 }  // namespace reporting

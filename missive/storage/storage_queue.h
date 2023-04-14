@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <queue>
 #include <string>
 
 #include <base/containers/flat_map.h>
@@ -67,7 +68,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // numeric values should never be reused.
   enum ResourceExhaustedCase : int {
     NO_DISK_SPACE = 0,
-    NO_DISK_SPACE_METADATA = 1,
+    DEPRECATED_NO_DISK_SPACE_METADATA = 1,
     CANNOT_WRITE_HEADER = 2,
     CANNOT_WRITE_DATA = 3,
     CANNOT_PAD = 4,
@@ -83,6 +84,11 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     kMaxValue = 14
   };
 
+  using DegradationCandidateCb = base::RepeatingCallback<void(
+      scoped_refptr<StorageQueue> queue,
+      base::OnceCallback<void(std::queue<scoped_refptr<StorageQueue>>)>
+          result_cb)>;
+
   // UMA name
   static constexpr char kResourceExhaustedCaseUmaName[] =
       "Platform.Missive.ResourceExhaustedCase";
@@ -96,6 +102,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
       GenerationGuid generation_guid,
       const QueueOptions& options,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
+      DegradationCandidateCb degradation_candidates_cb,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
       scoped_refptr<CompressionModule> compression_module,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageQueue>>)>
@@ -165,14 +172,15 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   void TestInjectErrorsForOperation(
       test::ErrorInjectionHandlerType handler = base::NullCallback());
 
-  // Access queue options.
-  const QueueOptions& options() const { return options_; }
-
   // Returns the file sequence ID (the first sequence ID in the file) if the
   // sequence ID can be extracted from the extension. Otherwise, returns an
   // error status.
   static StatusOr<int64_t> GetFileSequenceIdFromPath(
       const base::FilePath& file_name);
+
+  // Accessors.
+  const QueueOptions& options() const { return options_; }
+  GenerationGuid generation_guid() const { return generation_guid_; }
 
  protected:
   virtual ~StorageQueue();
@@ -278,6 +286,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
                scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
                const QueueOptions& options,
                UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
+               DegradationCandidateCb degradation_candidates_cb,
                scoped_refptr<EncryptionModuleInterface> encryption_module,
                scoped_refptr<CompressionModule> compression_module);
 
@@ -387,6 +396,46 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Helper method called by periodic time to upload data.
   void PeriodicUpload();
 
+  // Helper method to reserve space needed to write a new record.
+  Status ReserveNewRecordDiskSpace(size_t total_size);
+
+  // Sequentially removes the files comprising the queue from oldest to newest
+  // to recover disk space so higher priority files can be stored. This function
+  // is posted iteratively through all StorageQueues in the
+  // `degradation_candidates` until enough space is recovered. Once all the
+  // queues available are used to shed files, then the Helper function
+  // ShedOriginalQueueRecords is triggered to shed files from the queue that is
+  // trying to write a new record, `writing_storage_queue`.
+  // Parameters:
+  //  - `degradation_candidates` - contains the queues still available where
+  //  files can be shed from.
+  //  - `writing_storage_queue` - a reference to the queue that is trying to
+  //  write a record.
+  //  - `space_to_recover` - an addition of the space ShedRecords needs to
+  //  recover by shedding files to write the record.
+  //  - `resume_writing_cb` - callback to retry writing the new record with the
+  //  newly available space.
+  //  - `writing_failure_cb` - callback to log the writing error and close the
+  //  writing process.
+  void ShedRecords(
+      std::queue<scoped_refptr<StorageQueue>> degradation_candidates,
+      scoped_refptr<StorageQueue> writing_storage_queue,
+      size_t space_to_recover,
+      base::OnceClosure resume_writing_cb,
+      base::OnceClosure writing_failure_cb);
+
+  // Helper function for ShedRecords used to shed records from the queue
+  // that was trying to write a new record originally. It success or failure
+  // concludes the shedding process.
+  void ShedOriginalQueueRecords(size_t space_to_recover,
+                                base::OnceClosure resume_writing_cb,
+                                base::OnceClosure writing_failure_cb);
+
+  // This function iterates over the files_ map and removes them in order of
+  // oldest to newest until disk_space_resource has more space available than
+  // `space_to_recover`.
+  bool ShedFiles(size_t space_to_recover);
+
   // Sequential task runner for all activities in this StorageQueue
   // (must be first member in class).
   const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
@@ -429,6 +478,11 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   std::list<base::WeakPtr<WriteContext>> write_contexts_queue_
       GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
 
+  // Reflects reservation for the head of the write contexts queue. Will return
+  // to 0 after each writing process is finished. It helps keep disk space usage
+  // accurate and within the bounds of the reservation.
+  size_t active_write_reservation_size_ = 0;
+
   // Next sequencing id to store (not assigned yet).
   int64_t next_sequencing_id_ = 0;
 
@@ -464,6 +518,9 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
 
   // Upload provider callback.
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
+
+  // Degradation queues request callback.
+  const DegradationCandidateCb degradation_candidates_cb_;
 
   // Encryption module.
   scoped_refptr<EncryptionModuleInterface> encryption_module_;

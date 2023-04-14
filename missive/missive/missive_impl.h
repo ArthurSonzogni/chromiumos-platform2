@@ -172,6 +172,8 @@ class MissiveImpl : public MissiveService {
 
   // References to `Storage` components for dynamic parameters update.
   // Set up once by `StorageCreate` method.
+  scoped_refptr<QueuesContainer> queues_container_
+      GUARDED_BY_CONTEXT(sequence_checker_);
   scoped_refptr<CompressionModule> compression_module_
       GUARDED_BY_CONTEXT(sequence_checker_);
   scoped_refptr<EncryptionModuleInterface> encryption_module_
