@@ -804,8 +804,8 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
 
   std::string username;
   std::string homedir;
-  if (owner_id == primary_owner_id_) {
-    // Register this with the hostname resolver.
+  if (owner_id == primary_owner_id_ && string_ip != "0.0.0.0") {
+    // Register the IP address with the hostname resolver if it isn't 0.
     RegisterHostname(
         base::StringPrintf("%s.%s.linux.test", container_name.c_str(),
                            vm_name.c_str()),
