@@ -56,11 +56,8 @@ struct WrapTransformOnly {};
 // range-for loops, and implements a |ToFullString| short-cut to combine the
 // error messages of the whole stack.
 // Since the object has unique_ptr-like semantics, it can never be copied, only
-// moved, raw-ptr constructed or constructed from releasing another
-// |StackableError|. The content of releasing the |StackableError| is an
-// implementation detail and should always be referred as |auto&&| type. Storing
-// a copy of the released value may succeed, but is treated as unspecified
-// behaviour that is a subject to change at any time without prior notice.
+// moved, raw-ptr constructed or constructed from moving another
+// |StackableError|.
 //
 // Despite being a unique_ptr representation, raw pointer access is a temporary
 // convenience for converting existing code and will be deprecated, once the
@@ -98,6 +95,11 @@ class [[clang::consumable(unknown)]]   //
   // poke each unique pointer, thus some alternative storage arrangement
   // might be required.
   using stack_holder = StackHolderType<typename _Et::BaseErrorType>;
+  using pointer_holder = PointerHolderType<_Et>;
+
+  // Allow the other StackableError to access the head and error_stack.
+  template <typename T>
+  friend class StackableError;
 
  public:
   // Mimic unique_ptr type aliases. Through out the code when we check nullness
@@ -148,40 +150,39 @@ class [[clang::consumable(unknown)]]   //
   // stackable_error_forward_declarations.h).
   //
   // Invariants:
-  // * |error_stack_.front()| represents head of the stack.
-  // * |error_stack_.front() + 1, error_stack_.end()| represents wrapped stack.
-  // * |error_stack_.empty() == true| represents an OK chain.
+  // * |head_| represents head of the stack.
+  // * |error_stack_.front(), error_stack_.end()| represents wrapped stack.
+  // * |head_ == nullptr| represents an OK chain.
   // * |stack_error_| never contains null objects.
   // * |stack_error_| stores error cast to the |_Et::BaseErrorType|.
-  // * |stack_error_.front()| is castable to |_Et|. Combined with above, it
-  //   ensures type information for the head object only. It is useful when
-  //   there is no type conversion of returned value and the caller can directly
-  //   check the head's properties without casting.
+  pointer_holder head_;
   stack_holder error_stack_;
 
   // Backend interface.
 
   // Resets the stack.
   [[clang::set_typestate(consumed)]] void ResetInternal() {
+    head_.reset();
     error_stack_.clear();
   }
 
   [[clang::set_typestate(unconsumed)]] void ResetInternal(pointer ptr) {
     DCHECK_NE(ptr, pointer()) << " Reset with |nullptr|";
+    head_.reset(std::move(ptr));
     error_stack_.clear();
-    error_stack_.emplace_back(std::move(ptr));
   }
 
   void ResetInternal(std::nullptr_t ptr) = delete;
 
   // Swaps the stacks of two chains.
   void SwapInternal(StackableError& other) noexcept {
+    std::swap(head_, other.head_);
     std::swap(error_stack_, other.error_stack_);
   }
 
   // Return true if the object represents an |ok()| sequence.
   [[clang::test_typestate(consumed)]] bool IsOkInternal() const noexcept {
-    return error_stack_.empty();
+    return head_ == nullptr;
   }
 
   // Returns the pointer to the head error object.
@@ -190,62 +191,34 @@ class [[clang::consumable(unknown)]]   //
   [[clang::set_typestate(unconsumed)]]    //
   pointer
   GetErrInternal() const noexcept {
-    // It is an invariant that the type of the head can cast to |pointer|. This
-    // cast allows us to keep a uniformly typed internal stack across
-    // polymorphic type specializations of the |StackableError| container -
-    // since type casting a "list"-like container of "unique_ptr"-like objects
-    // is expensive. We check the invariant in the debug builds.
-    DCHECK_NE(error_stack_.front().get(), pointer())
-        << " |nullptr| in error stack";
-    DCHECK_NE(dynamic_cast<pointer>(error_stack_.front().get()), pointer())
-        << " Head pointer is not of the expected type.";
-    return static_cast<pointer>(error_stack_.front().get());
-  }
-
-  // Make current error to wrap another stack.
-  [[clang::callable_when("unconsumed")]]  //
-  [[clang::set_typestate(unconsumed)]]    //
-  void
-  WrapInternal(stack_holder && error_stack
-               [[clang::return_typestate(consumed)]]) noexcept {
-    DCHECK(!error_stack_.empty())
-        << " |WrapInternal| is called without checking |!ok()| of the wrapping "
-        << "object";
-    DCHECK(!error_stack.empty())
-        << " |WrapInternal| is called without checking |!ok()| of the wrapped "
-        << "object";
-    DCHECK(error_stack_.size() == 1)
-        << " |WrapInternal| is called without checking |IsWrappiing()| of the "
-        << "wrapping object.";
-    // The wrapped stack starts at |error_stack_.front() + 1|. It has to be
-    // equal to |end()|, and the checks above ensure that.
-    error_stack_.splice(error_stack_.end(), std::move(error_stack));
+    DCHECK_NE(head_, nullptr) << " |nullptr| in error stack";
+    return head_.get();
   }
 
   // Check if the object already wraps a stack.
   bool IsWrappingInternal() const noexcept {
-    return error_stack_.size() > 1;
+    return !error_stack_.empty();
   }
 
   // Returns a range object to use with range-for loops. Ensures const access
   // to the underlying object.
   const_iterator_range RangeInternal() const noexcept {
     return StackableErrorConstRangeFactory<base_element_type>()(
-        error_stack_.begin(), error_stack_.end());
+        head_.get(), error_stack_.begin(), error_stack_.end());
   }
 
   // Returns a range object to use with range-for loops. Allows non-const access
   // to the underlying object.
   iterator_range RangeInternal() noexcept {
-    return StackableErrorRangeFactory<base_element_type>()(error_stack_.begin(),
-                                                           error_stack_.end());
+    return StackableErrorRangeFactory<base_element_type>()(
+        head_.get(), error_stack_.begin(), error_stack_.end());
   }
 
  public:
   // The following code is considered StackablePointer's frontend. Constructors,
-  // assign operators and release_stack are allowed to construct and move the
-  // backend object, but they should not introspect into them. Other methods can
-  // only use the backend interface methods.
+  // assign operators are allowed to construct and move the backend object, but
+  // they should not introspect into them. Other methods can only use the
+  // backend interface methods.
 
   // Creates a chain that represents an Ok result.
   [[clang::return_typestate(consumed)]] static StackableError<_Et> Ok() {
@@ -263,41 +236,20 @@ class [[clang::consumable(unknown)]]   //
 
   // Default constructor creates an empty stack to represent success.
   [[clang::return_typestate(consumed)]] constexpr StackableError() noexcept
-      : error_stack_() {}
+      : head_(nullptr), error_stack_() {}
 
   StackableError(std::nullptr_t) = delete;
 
   // Constructor from a raw pointer takes ownership of the pointer and puts it
   // on top of the stack.
   [[clang::return_typestate(unconsumed)]] explicit StackableError(pointer ptr)
-      : error_stack_() {
-    ResetInternal(std::move(ptr));
-  }
-
-  // Constructor from the internal stack representation. Internal stack
-  // representation must never be constructed directly and must only be
-  // obtained through |release_stack()| method. Since the internal object's
-  // representation doesn't posses type information, the constructor can only
-  // be invoked the head type information is not present for the object, i.e.
-  // |_Et| is |Base|. We disable the constructor with SFINAE.
-  // We need to introduce a temporary argument |_Rt| in order to trigger SFINAE
-  // on the template - it is only triggered for unresolved until now arguments,
-  // and  thus |std::enable_if_t<std::is_same_v<base_element_type, _Et>>|
-  // wouldn't work correctly. Since |_Rt| is not deducible from the context,
-  // place it behind |ExplicitArgumentBarrier| idiom to disallow manual
-  // specialization to bypass SFINAE. Manually specialized call can break the
-  // invariant of the the head being castable to the class template argument
-  // |_Et|.
-  template <int&... ExplicitArgumentBarrier, typename _Rt = _Et,
-            typename = std::enable_if_t<std::is_same_v<base_element_type, _Rt>>>
-  [[clang::return_typestate(unconsumed)]] explicit StackableError(
-      stack_holder && error_stack)
-      : error_stack_(std::move(error_stack)) {}
+      : head_(std::move(ptr)), error_stack_() {}
 
   // Move constructor. Releases the backend object of |other| into our
   // backend object.
   StackableError(StackableError && other [[clang::return_typestate(consumed)]])
-      : error_stack_(other.release_stack()) {}
+      : head_(std::move(other.head_)),
+        error_stack_(std::move(other.error_stack_)) {}
 
   // Converting move constructor from a compatible type. It is fine, since
   // our internal stack representation is of a base |Base| type anyway.
@@ -310,7 +262,8 @@ class [[clang::consumable(unknown)]]   //
             typename = std::enable_if_t<std::is_convertible_v<_Ut*, pointer>>>
   [[clang::return_typestate(unconsumed)]] StackableError(
       StackableError<_Ut> && other [[clang::return_typestate(consumed)]])
-      : error_stack_(other.release_stack()) {
+      : head_(std::move(other.head_)),
+        error_stack_(std::move(other.error_stack_)) {
     static_assert(
         std::is_same_v<base_element_type, typename _Ut::BaseErrorType>,
         "|BaseErrorType| of |other| must be the same with |this|.");
@@ -320,7 +273,8 @@ class [[clang::consumable(unknown)]]   //
   // backend object.
   StackableError& operator=(StackableError&& other
                             [[clang::return_typestate(consumed)]]) {
-    error_stack_ = other.release_stack();
+    head_ = std::move(other.head_);
+    error_stack_ = std::move(other.error_stack_);
     return *this;
   }
 
@@ -333,23 +287,14 @@ class [[clang::consumable(unknown)]]   //
     static_assert(
         std::is_same_v<base_element_type, typename _Ut::BaseErrorType>,
         "|BaseErrorType| of |other| must be the same with |this|.");
-    error_stack_ = other.release_stack();
+    head_ = std::move(other.head_);
+    error_stack_ = std::move(other.error_stack_);
     return *this;
   }
 
   // Disallow copy since we provide unique_ptr-like semantics.
   StackableError(const StackableError&) = delete;
   StackableError& operator=(const StackableError&) = delete;
-
-  // Releases the content of the |StackableError| to be moved to another
-  // |StackableError|. The returned value must always be referred as |auto&&|
-  // type. Preserving a copy of the value may succeed, but is treated as an
-  // unspecified behaviour and is subject to change at any time without prior
-  // notice. The return object loses type information and only can be supplied
-  // to |StackableError<base_element_type>| specialization.
-  [[clang::set_typestate(consumed)]] stack_holder&& release_stack() {
-    return std::move(error_stack_);
-  }
 
   // Returns true if StackableError represents a success.
   [[clang::test_typestate(consumed)]] bool ok() const noexcept {
@@ -568,7 +513,10 @@ class [[clang::consumable(unknown)]]   //
     // prevent the modification of previously stacked objects from transform to
     // disallow creating side effects on the stack.
     GetErrInternal()->WrapTransform(other.const_range());
-    WrapInternal(other.release_stack());
+
+    // Because the error stack is empty, move the other error stack directly.
+    error_stack_ = std::move(other.error_stack_);
+    error_stack_.push_front(std::move(other.head_));
   }
 
   // This is an overload of |WrapInPlace| that drops the previous stack. In that

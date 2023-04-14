@@ -13,6 +13,9 @@ namespace hwsec_foundation {
 namespace status {
 namespace _impl_ {
 
+// The iterator contains a head and a inner iterator, the head would be the
+// default value if the head is not null.
+
 // Const iterator to the objects of the stack. The value of the iterator is a
 // const pointer to the underlying error object.
 template <typename _Et>
@@ -20,6 +23,7 @@ class StackableErrorConstIterator {
  private:
   // Internal iterator is an implementation detail clients should not know
   // about.
+  using head_pointer = typename StackPointerHolderType<_Et>::pointer;
   using internal_iterator = typename StackHolderType<_Et>::const_iterator;
 
  public:
@@ -40,6 +44,9 @@ class StackableErrorConstIterator {
   // Value access interface - returns a reference to a const pointer to the
   // underlying error object.
   std::add_const_t<value_type> value() const {
+    if (head_) {
+      return head_;
+    }
     // We expect the value to be "uinique_ptr"-like object.
     return iter_->get();
   }
@@ -51,22 +58,33 @@ class StackableErrorConstIterator {
   std::add_const_t<value_type> operator->() const { return value(); }
 
   StackableErrorConstIterator<_Et>& operator++() {
+    if (head_) {
+      head_ = nullptr;
+      return *this;
+    }
     ++iter_;
     return *this;
   }
 
-  StackableErrorConstIterator<_Et>& operator++(int) {
+  StackableErrorConstIterator<_Et> operator++(int) {
+    StackableErrorConstIterator<_Et> original = *this;
+    if (head_) {
+      head_ = nullptr;
+      return original;
+    }
     iter_++;
-    return *this;
+    return original;
   }
 
  private:
-  // Internal iterator must be explicitly supplied
+  // Internal iterator must be explicitly supplied.
   // Private to not allow explicit construction by clients.
-  explicit StackableErrorConstIterator(internal_iterator iter) noexcept
-      : iter_(iter) {}
+  StackableErrorConstIterator(head_pointer head,
+                              internal_iterator iter) noexcept
+      : head_(head), iter_(iter) {}
 
   // Iterator for StackableError wraps the iterator to its backend.
+  head_pointer head_;
   internal_iterator iter_;
 
   // Make range a friend to allow constructing the iterator from it.
@@ -86,6 +104,7 @@ class StackableErrorIterator {
  private:
   // Internal iterator is an implementation detail clients should not know
   // about.
+  using head_pointer = typename StackPointerHolderType<_Et>::pointer;
   using internal_iterator = typename StackHolderType<_Et>::iterator;
 
  public:
@@ -105,12 +124,15 @@ class StackableErrorIterator {
   // Non-const iterator must be castable to const version for assignment and
   // comparison.
   operator StackableErrorConstIterator<_Et>() noexcept {
-    return StackableErrorConstIterator<_Et>(iter_);
+    return StackableErrorConstIterator<_Et>(head_, iter_);
   }
 
   // Value access interface - returns a reference to a non-const pointer to the
   // underlying error object.
   value_type value() const {
+    if (head_) {
+      return head_;
+    }
     // We expect the value to be "uinique_ptr"-like object.
     return iter_->get();
   }
@@ -122,23 +144,33 @@ class StackableErrorIterator {
   value_type operator->() const { return value(); }
 
   StackableErrorIterator<_Et>& operator++() {
+    if (head_) {
+      head_ = nullptr;
+      return *this;
+    }
     ++iter_;
     return *this;
   }
 
-  StackableErrorIterator<_Et>& operator++(int) {
+  StackableErrorIterator<_Et> operator++(int) {
+    StackableErrorIterator<_Et> original = *this;
+    if (head_) {
+      head_ = nullptr;
+      return original;
+    }
     iter_++;
-    return *this;
+    return original;
   }
 
  private:
   // Iterator for StackableError wraps the iterator to its backend.
+  head_pointer head_;
   internal_iterator iter_;
 
   // Internal iterator must be explicitly supplied.
   // Private to not allow explicit construction by clients.
-  explicit StackableErrorIterator(internal_iterator iter) noexcept
-      : iter_(iter) {}
+  StackableErrorIterator(head_pointer head, internal_iterator iter) noexcept
+      : head_(head), iter_(iter) {}
 
   // Make range a friend to allow constructing the iterator from it.
   friend class StackableErrorRange<_Et>;
@@ -152,11 +184,11 @@ class StackableErrorIterator {
 struct IntrospectStackableErrorIterator {
   template <typename _Et>
   auto operator()(const StackableErrorConstIterator<_Et>& it) noexcept {
-    return it.iter_;
+    return std::pair(it.head_, it.iter_);
   }
   template <typename _Et>
   auto operator()(const StackableErrorIterator<_Et>& it) noexcept {
-    return it.iter_;
+    return operator()(StackableErrorConstIterator<_Et>(it.head_, it.iter_));
   }
 };
 

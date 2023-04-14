@@ -25,6 +25,7 @@ struct StackableErrorRangeFactory;
 template <typename _Et>
 class StackableErrorConstRange {
  private:
+  using head_pointer = typename StackPointerHolderType<_Et>::pointer;
   using internal_iterator =
       typename StackableErrorConstIterator<_Et>::internal_iterator;
 
@@ -41,20 +42,23 @@ class StackableErrorConstRange {
   // For-range loop traits.
 
   StackableErrorConstIterator<_Et> begin() const noexcept {
-    return StackableErrorConstIterator<_Et>(begin_);
+    return StackableErrorConstIterator<_Et>(head_, begin_);
   }
 
   StackableErrorConstIterator<_Et> end() const noexcept {
-    return StackableErrorConstIterator<_Et>(end_);
+    return StackableErrorConstIterator<_Et>(nullptr, end_);
   }
 
  private:
   // Internal iterators must be explicitly supplied.
   // Private to not allow explicit construction by clients.
-  StackableErrorConstRange(internal_iterator begin,
+  StackableErrorConstRange(head_pointer head,
+                           internal_iterator begin,
                            internal_iterator end) noexcept
-      : begin_(begin), end_(end) {}
+      : head_(head), begin_(begin), end_(end) {}
 
+  // Head pointer.
+  head_pointer head_;
   // Beginning and the end of the range iterators.
   internal_iterator begin_;
   internal_iterator end_;
@@ -72,15 +76,17 @@ class StackableErrorConstRange {
 template <typename _Et>
 struct StackableErrorConstRangeFactory {
   StackableErrorConstRange<_Et> operator()(
+      typename StackableErrorConstRange<_Et>::head_pointer head,
       typename StackableErrorConstRange<_Et>::internal_iterator begin,
       typename StackableErrorConstRange<_Et>::internal_iterator end) {
-    return StackableErrorConstRange<_Et>(begin, end);
+    return StackableErrorConstRange<_Et>(head, begin, end);
   }
 };
 
 template <typename _Et>
 class StackableErrorRange {
  private:
+  using head_pointer = typename StackPointerHolderType<_Et>::pointer;
   using internal_iterator =
       typename StackableErrorIterator<_Et>::internal_iterator;
 
@@ -93,25 +99,29 @@ class StackableErrorRange {
   StackableErrorRange& operator=(StackableErrorRange&&) noexcept = default;
 
   operator StackableErrorConstRange<_Et>() noexcept {
-    return StackableErrorConstRange<_Et>(begin_, end_);
+    return StackableErrorConstRange<_Et>(head_, begin_, end_);
   }
 
   // For-range loop traits.
 
   StackableErrorIterator<_Et> begin() const noexcept {
-    return StackableErrorIterator<_Et>(begin_);
+    return StackableErrorIterator<_Et>(head_, begin_);
   }
 
   StackableErrorIterator<_Et> end() const noexcept {
-    return StackableErrorIterator<_Et>(end_);
+    return StackableErrorIterator<_Et>(nullptr, end_);
   }
 
  private:
   // Internal iterators must be explicitly supplied.
   // Private to not allow explicit construction by clients.
-  StackableErrorRange(internal_iterator begin, internal_iterator end) noexcept
-      : begin_(begin), end_(end) {}
+  StackableErrorRange(head_pointer head,
+                      internal_iterator begin,
+                      internal_iterator end) noexcept
+      : head_(head), begin_(begin), end_(end) {}
 
+  // Head pointer.
+  head_pointer head_;
   // Beginning and the end of the range iterators.
   internal_iterator begin_;
   internal_iterator end_;
@@ -126,9 +136,10 @@ class StackableErrorRange {
 template <typename _Et>
 struct StackableErrorRangeFactory {
   StackableErrorRange<_Et> operator()(
+      typename StackableErrorRange<_Et>::head_pointer head,
       typename StackableErrorRange<_Et>::internal_iterator begin,
       typename StackableErrorRange<_Et>::internal_iterator end) {
-    return StackableErrorRange<_Et>(begin, end);
+    return StackableErrorRange<_Et>(head, begin, end);
   }
 };
 

@@ -148,10 +148,6 @@ TEST_F(StatusChainTest, CtorAssign) {
       MakeStatus<Fake4Error>("e3", 3).Wrap(std::move(ctor_type_mismatch));
   EXPECT_TRUE(ctor_type_mismatch.ok());
   EXPECT_EQ(assign_type_mismatch->val(), 3);
-
-  StatusChain<FakeBaseError> from_release(assign_type_mismatch.release_stack());
-  EXPECT_TRUE(assign_type_mismatch.ok());
-  EXPECT_EQ(from_release->val(), 3);
 }
 
 TEST_F(StatusChainTest, PointerAccessSwapReset) {
@@ -293,6 +289,18 @@ TEST_F(StatusChainTest, RangesAndIterators) {
   StatusChain<Fake3Error>::const_iterator cit = e6.range().begin();
   EXPECT_EQ(crange, e6.range());
   EXPECT_EQ(cit, e6.range().begin());
+
+  // Change the range content.
+  for (const auto error_obj_ptr : e6.range()) {
+    // shouldn't need to cast since iterator should point to FakeBaseError.
+    error_obj_ptr->set_val(10);
+  }
+  val = 0;
+  for (const auto error_obj_ptr : e6.const_range()) {
+    // shouldn't need to cast since iterator should point to FakeBaseError.
+    val += error_obj_ptr->val();
+  }
+  EXPECT_EQ(val, 10 * 6);
 }
 
 TEST_F(StatusChainTest, WrapTransform) {
