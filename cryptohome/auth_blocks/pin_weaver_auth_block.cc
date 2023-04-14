@@ -159,48 +159,53 @@ CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
 std::unique_ptr<AuthBlock> PinWeaverAuthBlock::New(
     AsyncInitFeatures& features, LECredentialManager* le_manager) {
   if (le_manager) {
-    return std::make_unique<SyncToAsyncAuthBlockAdapter>(
-        std::make_unique<PinWeaverAuthBlock>(features, le_manager));
+    return std::make_unique<PinWeaverAuthBlock>(features, le_manager);
   }
   return nullptr;
 }
 
 PinWeaverAuthBlock::PinWeaverAuthBlock(AsyncInitFeatures& features,
                                        LECredentialManager* le_manager)
-    : SyncAuthBlock(kLowEntropyCredential),
+    : AuthBlock(kLowEntropyCredential),
       features_(&features),
       le_manager_(le_manager) {
   CHECK(features_);
   CHECK_NE(le_manager, nullptr);
 }
 
-CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
-                                        AuthBlockState* auth_block_state,
-                                        KeyBlobs* key_blobs) {
-  DCHECK(key_blobs);
-
+void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
+                                CreateCallback callback) {
   if (!auth_input.user_input.has_value()) {
     LOG(ERROR) << "Missing user_input";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoUserInputInCreate),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoUserInputInCreate),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
+    return;
   }
   if (!auth_input.obfuscated_username.has_value()) {
     LOG(ERROR) << "Missing obfuscated_username";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoUsernameInCreate),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoUsernameInCreate),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
+    return;
   }
   if (!auth_input.reset_secret.has_value() &&
       !auth_input.reset_seed.has_value()) {
     LOG(ERROR) << "Missing reset_secret or reset_seed";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocPinWeaverAuthBlockNoResetSecretOrResetSeedInCreate),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocPinWeaverAuthBlockNoResetSecretOrResetSeedInCreate),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
+    return;
   }
 
   PinWeaverAuthBlockState pin_auth_state;
@@ -230,10 +235,14 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
       CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
   if (!DeriveSecretsScrypt(auth_input.user_input.value(), salt,
                            {&le_secret, &kdf_skey})) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockScryptDeriveFailedInCreate),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocPinWeaverAuthBlockScryptDeriveFailedInCreate),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
+    return;
   }
 
   // Create a randomly generated high entropy secret, derive VKKSeed from it,
@@ -252,6 +261,8 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   const auto chaps_iv = CreateSecureRandomBlob(kAesBlockSize);
 
   brillo::SecureBlob vkk_key = HmacSha256(kdf_skey, vkk_seed);
+  auto key_blobs = std::make_unique<KeyBlobs>();
+  auto auth_block_state = std::make_unique<AuthBlockState>();
 
   key_blobs->vkk_key = vkk_key;
   key_blobs->vkk_iv = fek_iv;
@@ -291,68 +302,88 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
       /*expiration_delay=*/std::nullopt, &label);
   if (!ret.ok()) {
     LogLERetCode(ret->local_lecred_error());
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocPinWeaverAuthBlockInsertCredentialFailedInCreate))
-        .Wrap(std::move(ret));
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocPinWeaverAuthBlockInsertCredentialFailedInCreate))
+            .Wrap(std::move(ret)),
+        nullptr, nullptr);
+    return;
   }
 
   pin_auth_state.le_label = label;
   pin_auth_state.salt = std::move(salt);
   *auth_block_state = AuthBlockState{.state = std::move(pin_auth_state)};
-  return OkStatus<CryptohomeCryptoError>();
+  std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
+                          std::move(key_blobs), std::move(auth_block_state));
 }
 
-CryptoStatus PinWeaverAuthBlock::Derive(
-    const AuthInput& auth_input,
-    const AuthBlockState& state,
-    KeyBlobs* key_blobs,
-    std::optional<AuthBlock::SuggestedAction>* suggested_action) {
+void PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
+                                const AuthBlockState& state,
+                                DeriveCallback callback) {
   if (!auth_input.user_input.has_value()) {
     LOG(ERROR) << "Missing user_input";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoUserInputInDerive),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoUserInputInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
   }
 
   const PinWeaverAuthBlockState* auth_state;
   if (!(auth_state = std::get_if<PinWeaverAuthBlockState>(&state.state))) {
     LOG(ERROR) << "Invalid AuthBlockState";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockInvalidBlockStateInDerive),
-        ErrorActionSet(
-            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockInvalidBlockStateInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
   }
 
   brillo::SecureBlob le_secret(kDefaultAesKeySize);
   brillo::SecureBlob kdf_skey(kDefaultAesKeySize);
   if (!auth_state->le_label.has_value()) {
     LOG(ERROR) << "Invalid PinWeaverAuthBlockState: missing le_label";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoLabelInDerive),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoLabelInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth,
+                            PossibleAction::kDeleteVault}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
   }
   if (!auth_state->salt.has_value()) {
     LOG(ERROR) << "Invalid PinWeaverAuthBlockState: missing salt";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoSaltInDerive),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoSaltInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth,
+                            PossibleAction::kDeleteVault}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
   }
   brillo::SecureBlob salt = auth_state->salt.value();
   if (!DeriveSecretsScrypt(auth_input.user_input.value(), salt,
                            {&le_secret, &kdf_skey})) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockDeriveScryptFailedInDerive),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_FATAL);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocPinWeaverAuthBlockDeriveScryptFailedInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_FATAL),
+        nullptr, std::nullopt);
+    return;
   }
-
+  auto key_blobs = std::make_unique<KeyBlobs>();
   key_blobs->reset_secret = brillo::SecureBlob();
   // Note: Yes it is odd to pass the IV from the auth state into the key blobs
   // without performing any operation on the data. However, the fact that the
@@ -378,29 +409,37 @@ CryptoStatus PinWeaverAuthBlock::Derive(
     if (GetLockoutDelay(auth_state->le_label.value()) > 0) {
       // If it is caused by invalid LE secret
       if (ret->local_lecred_error() == LE_CRED_ERROR_INVALID_LE_SECRET) {
-        return MakeStatus<CryptohomeCryptoError>(
-                   CRYPTOHOME_ERR_LOC(
-                       kLocPinWeaverAuthBlockCheckCredLockedInDerive),
-                   ErrorActionSet(PrimaryAction::kLeLockedOut),
-                   CryptoError::CE_CREDENTIAL_LOCKED)
-            .Wrap(std::move(ret));
+        std::move(callback).Run(
+            MakeStatus<CryptohomeCryptoError>(
+                CRYPTOHOME_ERR_LOC(
+                    kLocPinWeaverAuthBlockCheckCredLockedInDerive),
+                ErrorActionSet(PrimaryAction::kLeLockedOut),
+                CryptoError::CE_CREDENTIAL_LOCKED)
+                .Wrap(std::move(ret)),
+            nullptr, std::nullopt);
+        return;
         // Or the LE node specified by le_label in PinWeaver is under a lockout
         // timer from previous failed attempts.
       } else if (ret->local_lecred_error() == LE_CRED_ERROR_TOO_MANY_ATTEMPTS) {
-        return MakeStatus<CryptohomeCryptoError>(
-                   CRYPTOHOME_ERR_LOC(
-                       kLocPinWeaverAuthBlockCheckCredTPMLockedInDerive),
-                   ErrorActionSet(PrimaryAction::kLeLockedOut))
-            .Wrap(std::move(ret));
+        std::move(callback).Run(
+            MakeStatus<CryptohomeCryptoError>(
+                CRYPTOHOME_ERR_LOC(
+                    kLocPinWeaverAuthBlockCheckCredTPMLockedInDerive),
+                ErrorActionSet(PrimaryAction::kLeLockedOut))
+                .Wrap(std::move(ret)),
+            nullptr, std::nullopt);
+        return;
       }
     }
 
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocPinWeaverAuthBlockCheckCredFailedInDerive))
-        .Wrap(std::move(ret));
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockCheckCredFailedInDerive))
+            .Wrap(std::move(ret)),
+        nullptr, std::nullopt);
+    return;
   }
-
+  std::optional<AuthBlock::SuggestedAction> suggested_action;
   // If PIN migration is enabled, check if the credential is currently
   // configured to use the modern delay policy. If it is not, attempt to migrate
   // it. If any of that fails we don't fail the already-successful derivation.
@@ -409,7 +448,7 @@ CryptoStatus PinWeaverAuthBlock::Derive(
     if (delay_sched.ok()) {
       if (*delay_sched != PinDelaySchedule()) {
         LOG(INFO) << "PIN factor is using obsolete delay schedule";
-        *suggested_action = AuthBlock::SuggestedAction::kRecreate;
+        suggested_action = AuthBlock::SuggestedAction::kRecreate;
       }
     } else {
       LOG(WARNING) << "Unable to determine the PIN delay schedule: "
@@ -421,7 +460,8 @@ CryptoStatus PinWeaverAuthBlock::Derive(
       HmacSha256(he_secret, brillo::BlobFromString(kHESecretHmacData));
   key_blobs->vkk_key = HmacSha256(kdf_skey, vkk_seed);
 
-  return OkStatus<CryptohomeCryptoError>();
+  std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
+                          std::move(key_blobs), suggested_action);
 }
 
 CryptohomeStatus PinWeaverAuthBlock::PrepareForRemoval(

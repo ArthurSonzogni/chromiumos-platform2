@@ -26,7 +26,7 @@ const LECredentialManager::DelaySchedule& LockoutDelaySchedule();
 // more and more attempts are made.
 const LECredentialManager::DelaySchedule& PinDelaySchedule();
 
-class PinWeaverAuthBlock : public SyncAuthBlock {
+class PinWeaverAuthBlock : public AuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kPinWeaver;
@@ -41,15 +41,11 @@ class PinWeaverAuthBlock : public SyncAuthBlock {
   PinWeaverAuthBlock(const PinWeaverAuthBlock&) = delete;
   PinWeaverAuthBlock& operator=(const PinWeaverAuthBlock&) = delete;
 
-  CryptoStatus Create(const AuthInput& user_input,
-                      AuthBlockState* auth_block_state,
-                      KeyBlobs* key_blobs) override;
+  void Create(const AuthInput& user_input, CreateCallback callback) override;
 
-  CryptoStatus Derive(
-      const AuthInput& auth_input,
-      const AuthBlockState& state,
-      KeyBlobs* key_blobs,
-      std::optional<AuthBlock::SuggestedAction>* suggested_action) override;
+  void Derive(const AuthInput& auth_input,
+              const AuthBlockState& state,
+              DeriveCallback callback) override;
 
   // Removing the underlying Pinweaver leaf node before the AuthFactor is
   // removed.

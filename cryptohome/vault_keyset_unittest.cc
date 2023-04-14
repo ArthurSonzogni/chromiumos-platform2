@@ -17,6 +17,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/test/task_environment.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -29,6 +30,7 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
+#include "base/test/test_future.h"
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
@@ -45,6 +47,7 @@
 
 namespace cryptohome {
 using base::FilePath;
+using base::test::TestFuture;
 using brillo::SecureBlob;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
@@ -57,6 +60,9 @@ using hwsec_foundation::GetSecureRandom;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::kAesBlockSize;
 using hwsec_foundation::SecureBlobToHex;
+using hwsec_foundation::error::testing::IsOk;
+
+using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnOk;
 using hwsec_foundation::error::testing::ReturnValue;
@@ -1107,6 +1113,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
   MockLECredentialManager* le_cred_manager_;
+  base::test::TaskEnvironment task_environment_;
 
   VaultKeyset pin_vault_keyset_;
 
@@ -1134,14 +1141,17 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
                           ObfuscatedUsername("unused"),
                           /*reset_secret*/ std::nullopt,
                           pin_vault_keyset_.reset_seed_};
-  KeyBlobs key_blobs;
-  AuthBlockState auth_state;
-  CryptoStatus status = auth_block->Create(auth_input, &auth_state, &key_blobs);
-  ASSERT_TRUE(status.ok());
-
+  base::test::TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+                         std::unique_ptr<AuthBlockState>>
+      result;
+  auth_block->Create(auth_input, result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs, auth_state] = result.Take();
+  ASSERT_THAT(status, IsOk());
   EXPECT_TRUE(
-      std::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
-  EXPECT_TRUE(pin_vault_keyset_.EncryptEx(key_blobs, auth_state).ok());
+      std::holds_alternative<PinWeaverAuthBlockState>(auth_state->state));
+
+  EXPECT_TRUE(pin_vault_keyset_.EncryptEx(*key_blobs, *auth_state).ok());
   EXPECT_TRUE(pin_vault_keyset_.HasResetSalt());
   EXPECT_FALSE(pin_vault_keyset_.HasWrappedResetSeed());
   EXPECT_FALSE(pin_vault_keyset_.GetAuthLocked());
@@ -1172,13 +1182,13 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
                           ObfuscatedUsername("unused"),
                           /*reset_secret*/ std::nullopt,
                           pin_vault_keyset_.GetResetSeed()};
-  KeyBlobs key_blobs;
-  AuthBlockState auth_state;
-  CryptoStatus status = auth_block->Create(auth_input, &auth_state, &key_blobs);
-  ASSERT_FALSE(status.ok());
-
-  EXPECT_FALSE(
-      std::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
+  base::test::TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+                         std::unique_ptr<AuthBlockState>>
+      result;
+  auth_block->Create(auth_input, result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs, auth_state] = result.Take();
+  ASSERT_THAT(status, NotOk());
 }
 
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithNoResetSeed) {
@@ -1198,13 +1208,13 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithNoResetSeed) {
       ObfuscatedUsername("unused"),
       /*reset_secret*/ std::nullopt,
       /*reset_seed*/ std::nullopt};
-  KeyBlobs key_blobs;
-  AuthBlockState auth_state;
-  CryptoStatus status = auth_block->Create(auth_input, &auth_state, &key_blobs);
-  ASSERT_FALSE(status.ok());
-
-  EXPECT_FALSE(
-      std::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
+  base::test::TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+                         std::unique_ptr<AuthBlockState>>
+      result;
+  auth_block->Create(auth_input, result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs, auth_state] = result.Take();
+  ASSERT_THAT(status, NotOk());
 }
 
 TEST_F(LeCredentialsManagerTest, DecryptWithKeyBlobs) {
@@ -1226,16 +1236,19 @@ TEST_F(LeCredentialsManagerTest, DecryptWithKeyBlobs) {
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(features.async,
                                                          crypto_.le_manager());
 
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::optional<AuthBlock::SuggestedAction>>
+      result;
   AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)), false};
-  KeyBlobs key_blobs;
-  std::optional<AuthBlock::SuggestedAction> suggested_action;
   AuthBlockState auth_state;
-  EXPECT_TRUE(vk.GetPinWeaverState(&auth_state));
-  CryptoStatus status =
-      auth_block->Derive(auth_input, auth_state, &key_blobs, &suggested_action);
-  ASSERT_TRUE(status.ok());
+  ASSERT_TRUE(vk.GetPinWeaverState(&auth_state));
+  auth_block->Derive(auth_input, auth_state, result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs, suggested_action] = result.Take();
+  ASSERT_THAT(status, IsOk());
 
-  EXPECT_TRUE(vk.DecryptVaultKeysetEx(key_blobs).ok());
+  EXPECT_TRUE(vk.GetPinWeaverState(&auth_state));
+  EXPECT_TRUE(vk.DecryptVaultKeysetEx(*key_blobs).ok());
 }
 
 }  // namespace cryptohome

@@ -20,6 +20,7 @@
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
 #include <brillo/secure_blob.h>
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
@@ -74,6 +75,8 @@ using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::UnorderedElementsAre;
 
+using base::test::TestFuture;
+
 namespace cryptohome {
 
 namespace {
@@ -100,6 +103,9 @@ const brillo::SecureBlob kAdditionalBlob32(32, 'B');
 const brillo::SecureBlob kInitialBlob16(16, 'C');
 const brillo::SecureBlob kAdditionalBlob16(16, 'D');
 
+using CreateTestFuture = TestFuture<CryptohomeStatus,
+                                    std::unique_ptr<KeyBlobs>,
+                                    std::unique_ptr<AuthBlockState>>;
 }  // namespace
 
 class KeysetManagementTest : public ::testing::Test {
@@ -714,8 +720,6 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   ASSERT_THAT(vk_status, IsOk());
 
   // Setup pin credentials.
-  std::unique_ptr<AuthBlockState> auth_block_state =
-      std::make_unique<AuthBlockState>();
   FakeFeaturesForTesting features;
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(features.async,
                                                          crypto_.le_manager());
@@ -726,9 +730,11 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
                           users_[0].obfuscated,
                           /*reset_secret*/ std::nullopt,
                           vk_status->get()->GetResetSeed()};
-  KeyBlobs key_blobs;
-  CryptoStatus status =
-      auth_block->Create(auth_input, auth_block_state.get(), &key_blobs);
+  CreateTestFuture result;
+  auth_block->Create(auth_input, result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs, auth_state] = result.Take();
+
   KeyData key_data = DefaultLEKeyData();
 
   KeyBlobs new_key_blobs;
@@ -740,7 +746,7 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   ASSERT_THAT(keyset_management_->AddKeyset(
                   VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
                   key_data.label(), key_data, *vk_status.value(),
-                  std::move(new_key_blobs), std::move(auth_block_state), false),
+                  std::move(new_key_blobs), std::move(auth_state), false),
               IsOk());
 
   // When adding new keyset with an new label we expect it to have another
