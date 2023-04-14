@@ -468,16 +468,11 @@ class [[clang::consumable(unknown)]]   //
     }
 
     std::string result;
-    for (auto error_obj_ptr : const_range()) {
-      // Use |decltype| to deduce the correct type of the pointer for the
-      // typesafe comparison. See explanation for the typesafe comparison
-      // at |pointer| alias declaration.
-      DCHECK_NE(error_obj_ptr, decltype(error_obj_ptr)())
-          << " |nullptr| in the chain";
+    for (const auto& error_obj : const_range()) {
       if (!result.empty()) {
         result += ": ";
       }
-      result += error_obj_ptr->ToString();
+      result += error_obj.ToString();
     }
     return result;
   }

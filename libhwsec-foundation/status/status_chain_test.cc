@@ -84,9 +84,9 @@ class Fake3Error : public FakeBaseError {
 
   void WrapTransform(StatusChain<BaseErrorType>::const_iterator_range range) {
     int new_val = 0;
-    for (auto error_obj_ptr : range) {
+    for (const auto& error_obj : range) {
       // shouldn't need to cast since iterator should point to FakeBaseError.
-      new_val += error_obj_ptr->val();
+      new_val += error_obj.val();
     }
     set_val(new_val);
   }
@@ -254,17 +254,17 @@ TEST_F(StatusChainTest, RangesAndIterators) {
 
   // Non-const range-for loop.
   int val = 0;
-  for (auto error_obj_ptr : e6.range()) {
+  for (auto& error_obj : e6.range()) {
     // shouldn't need to cast since iterator should point to FakeBaseError.
-    val += error_obj_ptr->val();
+    val += error_obj.val();
   }
   EXPECT_EQ(val, 1 + 2 + 4 + 8 + 16 + 31);
 
   // const range-for loop.
   val = 0;
-  for (const auto error_obj_ptr : e6.const_range()) {
+  for (const auto& error_obj : e6.const_range()) {
     // shouldn't need to cast since iterator should point to FakeBaseError.
-    val += error_obj_ptr->val();
+    val += error_obj.val();
   }
   EXPECT_EQ(val, 1 + 2 + 4 + 8 + 16 + 31);
 
@@ -291,14 +291,14 @@ TEST_F(StatusChainTest, RangesAndIterators) {
   EXPECT_EQ(cit, e6.range().begin());
 
   // Change the range content.
-  for (const auto error_obj_ptr : e6.range()) {
+  for (auto& error_obj : e6.range()) {
     // shouldn't need to cast since iterator should point to FakeBaseError.
-    error_obj_ptr->set_val(10);
+    error_obj.set_val(10);
   }
   val = 0;
-  for (const auto error_obj_ptr : e6.const_range()) {
+  for (const auto& error_obj : e6.const_range()) {
     // shouldn't need to cast since iterator should point to FakeBaseError.
-    val += error_obj_ptr->val();
+    val += error_obj.val();
   }
   EXPECT_EQ(val, 10 * 6);
 }

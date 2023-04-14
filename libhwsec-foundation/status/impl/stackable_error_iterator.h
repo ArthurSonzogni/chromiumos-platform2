@@ -7,6 +7,8 @@
 
 #include <type_traits>
 
+#include <base/logging.h>
+
 #include "libhwsec-foundation/status/impl/stackable_error_forward_declarations.h"
 
 namespace hwsec_foundation {
@@ -23,13 +25,13 @@ class StackableErrorConstIterator {
  private:
   // Internal iterator is an implementation detail clients should not know
   // about.
-  using head_pointer = typename StackPointerHolderType<_Et>::pointer;
+  using head_pointer = std::add_pointer_t<
+      std::add_const_t<typename StackPointerHolderType<_Et>::element_type>>;
   using internal_iterator = typename StackHolderType<_Et>::const_iterator;
 
  public:
-  // The type which dereferencing the iterator provides. It is a pointer to the
-  // underlying error object, not the object itself.
-  using value_type = typename StackPointerHolderType<_Et>::pointer;
+  // The type which dereferencing the iterator provides.
+  using value_type = typename StackPointerHolderType<_Et>::element_type;
 
   // Copy and move constructability is safe since the underlying iterator must
   // be copy/move constructible/assignable.
@@ -41,21 +43,14 @@ class StackableErrorConstIterator {
   StackableErrorConstIterator& operator=(
       StackableErrorConstIterator&&) noexcept = default;
 
-  // Value access interface - returns a reference to a const pointer to the
-  // underlying error object.
-  std::add_const_t<value_type> value() const {
-    if (head_) {
-      return head_;
-    }
-    // We expect the value to be "uinique_ptr"-like object.
-    return iter_->get();
-  }
-
   // Iterator trais.
 
-  std::add_const_t<value_type> operator*() const { return value(); }
+  const value_type& operator*() const {
+    CHECK(get() != nullptr) << "Try to dereference a null iterator.";
+    return *get();
+  }
 
-  std::add_const_t<value_type> operator->() const { return value(); }
+  const value_type* operator->() const { return get(); }
 
   StackableErrorConstIterator<_Et>& operator++() {
     if (head_) {
@@ -83,6 +78,15 @@ class StackableErrorConstIterator {
                               internal_iterator iter) noexcept
       : head_(head), iter_(iter) {}
 
+  // Value access interface - returns a const pointer to the underlying error
+  // object.
+  const value_type* get() const {
+    if (head_) {
+      return head_;
+    }
+    return iter_->get();
+  }
+
   // Iterator for StackableError wraps the iterator to its backend.
   head_pointer head_;
   internal_iterator iter_;
@@ -108,9 +112,8 @@ class StackableErrorIterator {
   using internal_iterator = typename StackHolderType<_Et>::iterator;
 
  public:
-  // The type which dereferencing the iterator provides. It is a pointer to the
-  // underlying error object, not the object itself.
-  using value_type = typename StackPointerHolderType<_Et>::pointer;
+  // The type which dereferencing the iterator provides.
+  using value_type = typename StackPointerHolderType<_Et>::element_type;
 
   // Copy and move constructability is safe since the underlying iterator must
   // be copy/move constructible/assignable.
@@ -127,21 +130,14 @@ class StackableErrorIterator {
     return StackableErrorConstIterator<_Et>(head_, iter_);
   }
 
-  // Value access interface - returns a reference to a non-const pointer to the
-  // underlying error object.
-  value_type value() const {
-    if (head_) {
-      return head_;
-    }
-    // We expect the value to be "uinique_ptr"-like object.
-    return iter_->get();
-  }
-
   // Iterator trais.
 
-  value_type operator*() const { return value(); }
+  value_type& operator*() const {
+    CHECK(get() != nullptr) << "Try to dereference a null iterator.";
+    return *get();
+  }
 
-  value_type operator->() const { return value(); }
+  value_type* operator->() const { return get(); }
 
   StackableErrorIterator<_Et>& operator++() {
     if (head_) {
@@ -171,6 +167,14 @@ class StackableErrorIterator {
   // Private to not allow explicit construction by clients.
   StackableErrorIterator(head_pointer head, internal_iterator iter) noexcept
       : head_(head), iter_(iter) {}
+
+  // Value access interface - returns a pointer of the underlying error object.
+  value_type* get() const {
+    if (head_) {
+      return head_;
+    }
+    return iter_->get();
+  }
 
   // Make range a friend to allow constructing the iterator from it.
   friend class StackableErrorRange<_Et>;

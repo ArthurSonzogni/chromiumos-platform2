@@ -57,13 +57,12 @@ StatusChain<CryptohomeTPMError> FromTPMErrorBase(
 
   // Status chain currently doesn't offer a way to get the last element of the
   // stack, so we'll need to iterate through it.
-  hwsec::TPMErrorBase const* last;
+  std::optional<CryptohomeError::ErrorLocation> loc;
   for (const auto& err : status.const_range()) {
-    last = err;
+    loc = err.UnifiedErrorCode();
   }
 
-  // Get the unified error code from the last node.
-  CryptohomeError::ErrorLocation loc = last->UnifiedErrorCode();
+  CHECK(loc.has_value());
 
   // Populate the retry actions and status string.
   auto retry = status->ToTPMRetryAction();
@@ -72,7 +71,7 @@ StatusChain<CryptohomeTPMError> FromTPMErrorBase(
       base::StringPrintf("(%s)", status.ToFullString().c_str());
 
   return NewStatus<CryptohomeTPMError>(
-      CryptohomeError::ErrorLocationPair(loc, std::move(loc_str)),
+      CryptohomeError::ErrorLocationPair(loc.value(), std::move(loc_str)),
       std::move(actual_actions), retry, std::nullopt);
 }
 

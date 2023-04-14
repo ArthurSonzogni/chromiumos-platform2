@@ -24,7 +24,7 @@ using hwsec_foundation::status::StatusChain;
 void ReportAllLocations(const StatusChain<CryptohomeError>& stack,
                         const std::string& error_bucket_name) {
   for (const auto& err : stack.const_range()) {
-    auto loc = err->local_location();
+    auto loc = err.local_location();
     ReportCryptohomeErrorAllLocations(error_bucket_name,
                                       static_cast<uint32_t>(loc));
   }
@@ -49,13 +49,13 @@ void ReportHashedStack(const user_data_auth::CryptohomeErrorInfo& info,
 void ReportDevCheckUnexpectedState(const StatusChain<CryptohomeError>& stack,
                                    const std::string& error_bucket_name) {
   for (const auto& err : stack.const_range()) {
-    if (!std::holds_alternative<PossibleActions>(err->local_actions())) {
+    if (!std::holds_alternative<PossibleActions>(err.local_actions())) {
       continue;
     }
     const auto& possible_actions =
-        std::get<PossibleActions>(err->local_actions());
+        std::get<PossibleActions>(err.local_actions());
     if (possible_actions[PossibleAction::kDevCheckUnexpectedState]) {
-      auto loc = err->local_location();
+      auto loc = err.local_location();
       ReportCryptohomeErrorDevCheckUnexpectedState(error_bucket_name,
                                                    static_cast<uint32_t>(loc));
     }
@@ -71,7 +71,7 @@ void ReportLeafNode(const StatusChain<CryptohomeError>& stack,
   // that is of the type CryptohomeTPMError.
 
   for (const auto& node : stack.const_range()) {
-    auto loc = node->local_location();
+    auto loc = node.local_location();
     if ((loc & hwsec::unified_tpm_error::kUnifiedErrorBit) != 0) {
       // TPM case.
       have_tpm_error = true;

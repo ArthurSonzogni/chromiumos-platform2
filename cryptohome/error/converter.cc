@@ -100,7 +100,7 @@ std::string ErrorIDFromStack(
     if (!result.empty()) {
       result += "-";
     }
-    result += std::to_string(err->local_location());
+    result += std::to_string(err.local_location());
   }
   return result;
 }
@@ -128,10 +128,10 @@ void ActionsFromStack(
     // of the stack soon, and therefore other users of StatusChain should avoid
     // iterating through the StatusChain without consulting the owner of the
     // bug.
-    if (std::holds_alternative<PrimaryAction>(err->local_actions())) {
-      primary_actions[std::get<PrimaryAction>(err->local_actions())] = true;
+    if (std::holds_alternative<PrimaryAction>(err.local_actions())) {
+      primary_actions[std::get<PrimaryAction>(err.local_actions())] = true;
     } else {
-      possible |= std::get<PossibleActions>(err->local_actions());
+      possible |= std::get<PossibleActions>(err.local_actions());
     }
   }
 
@@ -193,7 +193,7 @@ user_data_auth::CryptohomeErrorCode LegacyErrorCodeFromStack(
     // of the stack soon, and therefore other users of StatusChain should avoid
     // iterating through the StatusChain without consulting the owner of the
     // bug.
-    auto current_legacy_err = err->local_legacy_error();
+    auto current_legacy_err = err.local_legacy_error();
     if (current_legacy_err) {
       return current_legacy_err.value();
     }
