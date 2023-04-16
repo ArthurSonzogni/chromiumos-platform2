@@ -6,7 +6,10 @@ import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":hpsd" ]
+  deps = [
+    ":hpsd",
+    ":install_minijail_conf",
+  ]
   if (use.test) {
     deps += [
       ":dev_test",
@@ -62,6 +65,12 @@ config("test_warning_suppressions") {
     "-Wno-used-but-marked-unused",
     "-Wno-covered-switch-default",  # required by EXPECT_DEATH
   ]
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/hpsd.conf" ]
+  install_path = "/usr/share/minijail"
+
 }
 
 generate_dbus_adaptors("hpsd-adaptors") {
