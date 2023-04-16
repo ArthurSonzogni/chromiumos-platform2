@@ -7,6 +7,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":install_minijail_config",
     ":typecd",
     ":typecd_tool",
   ]
@@ -38,6 +39,11 @@ pkg_config("target_defaults") {
     "libudev",
     "re2",
   ]
+}
+
+install_config("install_minijail_config") {
+  sources = ["minijail/typecd.conf"]
+  install_path = "/usr/share/minijail"
 }
 
 executable("typecd") {
