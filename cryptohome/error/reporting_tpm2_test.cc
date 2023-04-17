@@ -56,7 +56,8 @@ class ErrorReportingTpm2Test : public ::testing::Test {
           std::string("Testing1"));
 };
 
-constexpr trunks::TPM_RC kTestingTpmError1 = trunks::TPM_RC_LOCKOUT;
+// TPM_RC_LOCKOUT
+constexpr int kTestingTpmError1 = 2337;
 
 TEST_F(ErrorReportingTpm2Test, SimpleTPM2Error) {
   // Setup the expected result.

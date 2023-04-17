@@ -330,6 +330,8 @@ if (use.test) {
       "error/cryptohome_mount_error_test.cc",
       "error/cryptohome_tpm_error_test.cc",
       "error/reporting_test.cc",
+      "error/reporting_tpm1_test.cc",
+      "error/reporting_tpm2_test.cc",
       "fido/make_credential_response_test.cc",
       "filesystem_layout_unittest.cc",
       "fingerprint_manager_unittest.cc",
@@ -412,14 +414,6 @@ if (use.test) {
       "libuser_data_auth-client-test",
       "vboot_host",
     ]
-
-    if (use.tpm2) {
-      sources += [ "error/reporting_tpm2_test.cc" ]
-      libs += [ "trunks_test" ]
-    }
-    if (use.tpm) {
-      sources += [ "error/reporting_tpm1_test.cc" ]
-    }
   }
 
   executable("fake_platform_unittest") {
