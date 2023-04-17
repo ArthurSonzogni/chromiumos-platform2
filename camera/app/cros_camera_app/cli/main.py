@@ -355,6 +355,16 @@ def cmd_fake_hal_disconnect(camera_id: Optional[List[int]]):
     fake_hal.disconnect_cameras(lambda x: camera_id is None or x in camera_id)
 
 
+@cli.command(
+    "info",
+    parent=cmd_fake_hal,
+    help="Show config information",
+    description="Show the current Fake HAL config information.",
+)
+def cmd_fake_hal_info():
+    fake_hal.dump_config_info(sys.stdout)
+
+
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
     return cli.run(argv)
 
