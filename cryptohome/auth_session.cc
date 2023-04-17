@@ -48,6 +48,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/reap.h"
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -810,6 +811,8 @@ void AuthSession::OnMigrationUssCreated(
   if (!migration_auth_input_status.ok()) {
     LOG(ERROR) << "Failed to create migration AuthInput: "
                << migration_auth_input_status.status();
+    ReapAndReportError(std::move(migration_auth_input_status).status(),
+                       kCryptohomeErrorUssMigrationErrorBucket);
     ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedInput);
     std::move(on_done).Run(std::move(pre_migration_status));
     return;
@@ -2188,6 +2191,8 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
   if (!status.ok()) {
     LOG(ERROR) << "USS migration of VaultKeyset with label "
                << auth_factor_label << " is failed: " << status;
+    ReapAndReportError(std::move(status),
+                       kCryptohomeErrorUssMigrationErrorBucket);
     ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedPersist);
     std::move(on_done).Run(std::move(pre_migration_status));
     return;

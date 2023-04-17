@@ -16,6 +16,7 @@
 
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/error/reap.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
@@ -26,6 +27,7 @@ namespace cryptohome {
 namespace {
 using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::error::CryptohomeError;
+using cryptohome::error::ReapAndReportError;
 using hwsec::StatusOr;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::status::OkStatus;
@@ -64,6 +66,8 @@ void UssMigrator::MigrateVaultKeysetToUss(
       LOG(ERROR) << "UserSecretStash creation failed during migration of "
                     "VaultKeyset with label: "
                  << vault_keyset.GetLabel();
+      ReapAndReportError(std::move(uss_status).status(),
+                         kCryptohomeErrorUssMigrationErrorBucket);
       ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssCreation);
       std::move(completion_callback)
           .Run(/*user_secret_stash=*/nullptr,
@@ -89,6 +93,8 @@ void UssMigrator::MigrateVaultKeysetToUss(
         /*wrapping_key=*/*migration_secret_, &uss_main_key);
     if (!uss_status.ok()) {
       LOG(ERROR) << "Failed to decrypt the UserSecretStash during migration.";
+      ReapAndReportError(std::move(uss_status).status(),
+                         kCryptohomeErrorUssMigrationErrorBucket);
       ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssDecrypt);
       std::move(completion_callback)
           .Run(/*user_secret_stash=*/nullptr,
@@ -120,6 +126,8 @@ bool UssMigrator::AddMigrationSecretToUss(
       OverwriteExistingKeyBlock::kDisabled);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to add the migration secret to the UserSecretStash.";
+    ReapAndReportError(std::move(status),
+                       kCryptohomeErrorUssMigrationErrorBucket);
     return false;
   }
 
