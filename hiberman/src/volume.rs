@@ -629,8 +629,7 @@ impl VolumeManager {
                 )
             }
 
-            // TODO: reduce size
-            HibernateVolume::Meta => SIZE_1G,
+            HibernateVolume::Meta => 16 * SIZE_1M,
         }
     }
 
