@@ -140,6 +140,20 @@ TEST_F(BusUtilsTest, ProbeSdio) {
   EXPECT_EQ(result, ans);
 }
 
+TEST_F(BusUtilsTest, ProbePlatform) {
+  const std::string dev_name = "dev_name";
+  const std::string bus_dev = "/sys/devices/platform/AMDI0040:00";
+  const std::string bus_dev_relative_to_sys = "../../../";
+  SetSymbolicLink(bus_dev, {kFakeSysClassDir, dev_name, "device"});
+  // The symbolic link is for getting the bus type.
+  SetSymbolicLink({bus_dev_relative_to_sys, "bus", "platform"},
+                  {bus_dev, "subsystem"});
+
+  auto result = GetDeviceBusDataFromSysfsNode(
+      GetPathUnderRoot({kFakeSysClassDir, dev_name}));
+  EXPECT_EQ(result, std::nullopt);
+}
+
 TEST_F(BusUtilsTest, ProbeUnknown) {
   const std::string dev_name = "dev_name";
   const std::string bus_dev = "/sys/devices/unknown_device";

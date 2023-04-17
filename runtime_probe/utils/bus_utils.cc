@@ -89,6 +89,11 @@ std::optional<base::Value> GetDeviceBusDataFromSysfsNode(
   } else if (bus_type == "usb") {
     auto field_path = base::MakeAbsoluteFilePath(dev_path.Append(".."));
     res = MapFilesToDict(field_path, kUsbFields, kUsbOptionalFields);
+  } else if (bus_type == "platform") {
+    VLOG(2) << "Path " << node_path
+            << " has bus type \"platform\", which usually means it is a device "
+               "bound with SoC. Ignore it.";
+    return std::nullopt;
   } else {
     LOG(ERROR) << "Unknown bus_type " << bus_type;
     return std::nullopt;
