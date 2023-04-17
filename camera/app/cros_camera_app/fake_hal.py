@@ -60,6 +60,8 @@ set autoindent
 set tabstop=2
 set softtabstop=2
 set shiftwidth=2
+
+highlight Visual cterm=reverse ctermbg=none
 """
 
 # The space character class here follows the JSON spec at
