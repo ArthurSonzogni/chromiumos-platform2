@@ -196,19 +196,18 @@ bool DiagActions::ActionRunBatteryCapacityRoutine() {
 }
 
 bool DiagActions::ActionRunBatteryChargeRoutine(
-    base::TimeDelta exec_duration, uint32_t minimum_charge_percent_required) {
+    uint32_t length_seconds, uint32_t minimum_charge_percent_required) {
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunBatteryChargeRoutine(
-      exec_duration.InSeconds(), minimum_charge_percent_required,
-      waiter.CreateCallback());
+      length_seconds, minimum_charge_percent_required, waiter.CreateCallback());
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunBatteryDischargeRoutine(
-    base::TimeDelta exec_duration, uint32_t maximum_discharge_percent_allowed) {
+    uint32_t length_seconds, uint32_t maximum_discharge_percent_allowed) {
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunBatteryDischargeRoutine(
-      exec_duration.InSeconds(), maximum_discharge_percent_allowed,
+      length_seconds, maximum_discharge_percent_allowed,
       waiter.CreateCallback());
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
@@ -228,37 +227,37 @@ bool DiagActions::ActionRunCaptivePortalRoutine() {
 }
 
 bool DiagActions::ActionRunCpuCacheRoutine(
-    const std::optional<base::TimeDelta>& exec_duration) {
+    const std::optional<uint32_t>& length_seconds) {
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
-  mojom::NullableUint32Ptr exec_duration_parameter;
-  if (exec_duration.has_value()) {
-    exec_duration_parameter =
-        mojom::NullableUint32::New(exec_duration.value().InSeconds());
+  mojom::NullableUint32Ptr length_seconds_parameter;
+  if (length_seconds.has_value()) {
+    length_seconds_parameter =
+        mojom::NullableUint32::New(length_seconds.value());
   }
   cros_healthd_diagnostics_service_->RunCpuCacheRoutine(
-      std::move(exec_duration_parameter), waiter.CreateCallback());
+      std::move(length_seconds_parameter), waiter.CreateCallback());
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunCpuStressRoutine(
-    const std::optional<base::TimeDelta>& exec_duration) {
+    const std::optional<uint32_t>& length_seconds) {
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
-  mojom::NullableUint32Ptr exec_duration_parameter;
-  if (exec_duration.has_value()) {
-    exec_duration_parameter =
-        mojom::NullableUint32::New(exec_duration.value().InSeconds());
+  mojom::NullableUint32Ptr length_seconds_parameter;
+  if (length_seconds.has_value()) {
+    length_seconds_parameter =
+        mojom::NullableUint32::New(length_seconds.value());
   }
   cros_healthd_diagnostics_service_->RunCpuStressRoutine(
-      std::move(exec_duration_parameter), waiter.CreateCallback());
+      std::move(length_seconds_parameter), waiter.CreateCallback());
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
 bool DiagActions::ActionRunDiskReadRoutine(mojom::DiskReadRoutineTypeEnum type,
-                                           base::TimeDelta exec_duration,
+                                           uint32_t length_seconds,
                                            uint32_t file_size_mb) {
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   cros_healthd_diagnostics_service_->RunDiskReadRoutine(
-      type, exec_duration.InSeconds(), file_size_mb, waiter.CreateCallback());
+      type, length_seconds, file_size_mb, waiter.CreateCallback());
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
@@ -284,15 +283,15 @@ bool DiagActions::ActionRunDnsResolverPresentRoutine() {
 }
 
 bool DiagActions::ActionRunFloatingPointAccuracyRoutine(
-    const std::optional<base::TimeDelta>& exec_duration) {
+    const std::optional<uint32_t>& length_seconds) {
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
-  mojom::NullableUint32Ptr exec_duration_parameter;
-  if (exec_duration.has_value()) {
-    exec_duration_parameter =
-        mojom::NullableUint32::New(exec_duration.value().InSeconds());
+  mojom::NullableUint32Ptr length_seconds_parameter;
+  if (length_seconds.has_value()) {
+    length_seconds_parameter =
+        mojom::NullableUint32::New(length_seconds.value());
   }
   cros_healthd_diagnostics_service_->RunFloatingPointAccuracyRoutine(
-      std::move(exec_duration_parameter), waiter.CreateCallback());
+      std::move(length_seconds_parameter), waiter.CreateCallback());
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
@@ -368,15 +367,15 @@ bool DiagActions::ActionRunNvmeWearLevelRoutine(
 }
 
 bool DiagActions::ActionRunPrimeSearchRoutine(
-    const std::optional<base::TimeDelta>& exec_duration) {
+    const std::optional<uint32_t>& length_seconds) {
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
-  mojom::NullableUint32Ptr exec_duration_parameter;
-  if (exec_duration.has_value()) {
-    exec_duration_parameter =
-        mojom::NullableUint32::New(exec_duration.value().InSeconds());
+  mojom::NullableUint32Ptr length_seconds_parameter;
+  if (length_seconds.has_value()) {
+    length_seconds_parameter =
+        mojom::NullableUint32::New(length_seconds.value());
   }
   cros_healthd_diagnostics_service_->RunPrimeSearchRoutine(
-      std::move(exec_duration_parameter), waiter.CreateCallback());
+      std::move(length_seconds_parameter), waiter.CreateCallback());
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
@@ -403,12 +402,12 @@ bool DiagActions::ActionRunSmartctlCheckRoutine(
 }
 
 bool DiagActions::ActionRunUrandomRoutine(
-    const std::optional<base::TimeDelta>& length_seconds) {
+    const std::optional<uint32_t>& length_seconds) {
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
   mojom::NullableUint32Ptr length_seconds_parameter;
   if (length_seconds.has_value()) {
     length_seconds_parameter =
-        mojom::NullableUint32::New(length_seconds.value().InSeconds());
+        mojom::NullableUint32::New(length_seconds.value());
   }
   cros_healthd_diagnostics_service_->RunUrandomRoutine(
       std::move(length_seconds_parameter), waiter.CreateCallback());
@@ -523,15 +522,15 @@ bool DiagActions::ActionRunBluetoothDiscoveryRoutine() {
 }
 
 bool DiagActions::ActionRunBluetoothScanningRoutine(
-    const std::optional<base::TimeDelta>& exec_duration) {
+    const std::optional<uint32_t>& length_seconds) {
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
-  mojom::NullableUint32Ptr exec_duration_parameter;
-  if (exec_duration.has_value()) {
-    exec_duration_parameter =
-        mojom::NullableUint32::New(exec_duration.value().InSeconds());
+  mojom::NullableUint32Ptr length_seconds_parameter;
+  if (length_seconds.has_value()) {
+    length_seconds_parameter =
+        mojom::NullableUint32::New(length_seconds.value());
   }
   cros_healthd_diagnostics_service_->RunBluetoothScanningRoutine(
-      std::move(exec_duration_parameter), waiter.CreateCallback());
+      std::move(length_seconds_parameter), waiter.CreateCallback());
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 

@@ -242,8 +242,7 @@ int diag_main(int argc, char** argv) {
       case mojo_ipc::DiagnosticRoutineEnum::kUrandom:
         routine_result = actions.ActionRunUrandomRoutine(
             command_line->HasSwitch("urandom_length_seconds")
-                ? std::optional<base::TimeDelta>(
-                      base::Seconds(FLAGS_urandom_length_seconds))
+                ? std::optional<uint32_t>(FLAGS_urandom_length_seconds)
                 : std::nullopt);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck:
@@ -265,22 +264,19 @@ int diag_main(int argc, char** argv) {
       case mojo_ipc::DiagnosticRoutineEnum::kCpuCache:
         routine_result = actions.ActionRunCpuCacheRoutine(
             command_line->HasSwitch("cpu_stress_length_seconds")
-                ? std::optional<base::TimeDelta>(
-                      base::Seconds(FLAGS_cpu_stress_length_seconds))
+                ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
                 : std::nullopt);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kCpuStress:
         routine_result = actions.ActionRunCpuStressRoutine(
             command_line->HasSwitch("cpu_stress_length_seconds")
-                ? std::optional<base::TimeDelta>(
-                      base::Seconds(FLAGS_cpu_stress_length_seconds))
+                ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
                 : std::nullopt);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kFloatingPointAccuracy:
         routine_result = actions.ActionRunFloatingPointAccuracyRoutine(
             command_line->HasSwitch("cpu_stress_length_seconds")
-                ? std::optional<base::TimeDelta>(
-                      base::Seconds(FLAGS_cpu_stress_length_seconds))
+                ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
                 : std::nullopt);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel:
@@ -307,24 +303,21 @@ int diag_main(int argc, char** argv) {
           return EXIT_FAILURE;
         }
         routine_result = actions.ActionRunDiskReadRoutine(
-            type, base::Seconds(FLAGS_length_seconds), FLAGS_file_size_mb);
+            type, FLAGS_length_seconds, FLAGS_file_size_mb);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kPrimeSearch:
         routine_result = actions.ActionRunPrimeSearchRoutine(
             command_line->HasSwitch("cpu_stress_length_seconds")
-                ? std::optional<base::TimeDelta>(
-                      base::Seconds(FLAGS_cpu_stress_length_seconds))
+                ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
                 : std::nullopt);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kBatteryDischarge:
         routine_result = actions.ActionRunBatteryDischargeRoutine(
-            base::Seconds(FLAGS_length_seconds),
-            FLAGS_maximum_discharge_percent_allowed);
+            FLAGS_length_seconds, FLAGS_maximum_discharge_percent_allowed);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kBatteryCharge:
         routine_result = actions.ActionRunBatteryChargeRoutine(
-            base::Seconds(FLAGS_length_seconds),
-            FLAGS_minimum_charge_percent_required);
+            FLAGS_length_seconds, FLAGS_minimum_charge_percent_required);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kLanConnectivity:
         routine_result = actions.ActionRunLanConnectivityRoutine();
@@ -436,8 +429,7 @@ int diag_main(int argc, char** argv) {
       case mojo_ipc::DiagnosticRoutineEnum::kBluetoothScanning:
         routine_result = actions.ActionRunBluetoothScanningRoutine(
             command_line->HasSwitch("length_seconds")
-                ? std::optional<base::TimeDelta>(
-                      base::Seconds(FLAGS_length_seconds))
+                ? std::optional<uint32_t>(FLAGS_length_seconds)
                 : std::nullopt);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kBluetoothPairing:

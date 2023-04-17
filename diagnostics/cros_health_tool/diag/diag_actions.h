@@ -49,26 +49,23 @@ class DiagActions final {
       ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type);
   bool ActionRunBatteryCapacityRoutine();
-  bool ActionRunBatteryChargeRoutine(base::TimeDelta exec_duration,
+  bool ActionRunBatteryChargeRoutine(uint32_t length_seconds,
                                      uint32_t minimum_charge_percent_required);
   bool ActionRunBatteryDischargeRoutine(
-      base::TimeDelta exec_duration,
-      uint32_t maximum_discharge_percent_allowed);
+      uint32_t length_seconds, uint32_t maximum_discharge_percent_allowed);
   bool ActionRunBatteryHealthRoutine();
   bool ActionRunCaptivePortalRoutine();
-  bool ActionRunCpuCacheRoutine(
-      const std::optional<base::TimeDelta>& exec_duration);
-  bool ActionRunCpuStressRoutine(
-      const std::optional<base::TimeDelta>& exec_duration);
+  bool ActionRunCpuCacheRoutine(const std::optional<uint32_t>& length_seconds);
+  bool ActionRunCpuStressRoutine(const std::optional<uint32_t>& length_seconds);
   bool ActionRunDiskReadRoutine(
       ash::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
-      base::TimeDelta exec_duration,
+      uint32_t length_seconds,
       uint32_t file_size_mb);
   bool ActionRunDnsLatencyRoutine();
   bool ActionRunDnsResolutionRoutine();
   bool ActionRunDnsResolverPresentRoutine();
   bool ActionRunFloatingPointAccuracyRoutine(
-      const std::optional<base::TimeDelta>& exec_duration);
+      const std::optional<uint32_t>& length_seconds);
   bool ActionRunGatewayCanBePingedRoutine();
   bool ActionRunHasSecureWiFiConnectionRoutine();
   bool ActionRunHttpFirewallRoutine();
@@ -81,12 +78,11 @@ class DiagActions final {
   bool ActionRunNvmeWearLevelRoutine(
       const std::optional<uint32_t>& wear_level_threshold);
   bool ActionRunPrimeSearchRoutine(
-      const std::optional<base::TimeDelta>& exec_duration);
+      const std::optional<uint32_t>& length_seconds);
   bool ActionRunSignalStrengthRoutine();
   bool ActionRunSmartctlCheckRoutine(
       const std::optional<uint32_t>& percentage_used_threshold);
-  bool ActionRunUrandomRoutine(
-      const std::optional<base::TimeDelta>& length_seconds);
+  bool ActionRunUrandomRoutine(const std::optional<uint32_t>& length_seconds);
   bool ActionRunVideoConferencingRoutine(
       const std::optional<std::string>& stun_server_hostname);
   bool ActionRunArcHttpRoutine();
@@ -106,7 +102,7 @@ class DiagActions final {
   bool ActionRunBluetoothPowerRoutine();
   bool ActionRunBluetoothDiscoveryRoutine();
   bool ActionRunBluetoothScanningRoutine(
-      const std::optional<base::TimeDelta>& exec_duration);
+      const std::optional<uint32_t>& length_seconds);
   bool ActionRunBluetoothPairingRoutine(const std::string& peripheral_id);
 
   // Cancels the next routine run, when that routine reports a progress percent
