@@ -61,9 +61,9 @@ class Firewall {
                                      uint16_t dst_port);
 
  private:
-  enum IpFamily {
-    IPv4,
-    IPv6,
+  enum class IpFamily {
+    kIPv4,
+    kIPv6,
   };
 
   // Adds ACCEPT chain rules to the filter INPUT chain.

@@ -269,10 +269,10 @@ class CountersServiceTest : public testing::Test {
   void TestBadIptablesOutput(const std::string& ipv4_output,
                              const std::string& ipv6_output) {
     EXPECT_CALL(*datapath_,
-                DumpIptables(IpFamily::IPv4, Iptables::Table::kMangle))
+                DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle))
         .WillRepeatedly(Return(ipv4_output));
     EXPECT_CALL(*datapath_,
-                DumpIptables(IpFamily::IPv6, Iptables::Table::kMangle))
+                DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle))
         .WillRepeatedly(Return(ipv6_output));
 
     auto actual = counters_svc_->GetCounters({});
@@ -286,10 +286,10 @@ class CountersServiceTest : public testing::Test {
 
 TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
   // The following commands are expected when eth0 comes up.
-  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::Dual, Iptables::Table::kMangle,
+  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::kDual, Iptables::Table::kMangle,
                                       Iptables::Command::kN, "rx_eth0", _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::Dual, Iptables::Table::kMangle,
+  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::kDual, Iptables::Table::kMangle,
                                       Iptables::Command::kN, "tx_eth0", _))
       .WillOnce(Return(true));
   static const struct {
@@ -366,7 +366,7 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
 
   for (const auto& rule : expected_calls) {
     EXPECT_CALL(*datapath_,
-                ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+                ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                                rule.command, ElementsAreArray(rule.argv), _));
   }
 
@@ -386,7 +386,7 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
 
   for (const auto& rule : expected_calls) {
     EXPECT_CALL(*datapath_,
-                ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+                ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                                rule.command, ElementsAreArray(rule.argv), _));
   }
 
@@ -395,10 +395,10 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
 
 TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
   // The following commands are expected when tun0 comes up.
-  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::Dual, Iptables::Table::kMangle,
+  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::kDual, Iptables::Table::kMangle,
                                       Iptables::Command::kN, "rx_vpn", _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::Dual, Iptables::Table::kMangle,
+  EXPECT_CALL(*datapath_, ModifyChain(IpFamily::kDual, Iptables::Table::kMangle,
                                       Iptables::Command::kN, "tx_vpn", _))
       .WillOnce(Return(true));
   const struct {
@@ -475,7 +475,7 @@ TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
 
   for (const auto& rule : expected_calls) {
     EXPECT_CALL(*datapath_,
-                ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+                ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                                rule.command, ElementsAreArray(rule.argv), _));
   }
 
@@ -495,7 +495,7 @@ TEST_F(CountersServiceTest, OnVpnDeviceRemoved) {
 
   for (const auto& rule : expected_calls) {
     EXPECT_CALL(*datapath_,
-                ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+                ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                                rule.command, ElementsAreArray(rule.argv), _));
   }
 
@@ -521,7 +521,7 @@ TEST_F(CountersServiceTest, OnSameDeviceAppearAgain) {
   };
   for (const auto& rule : expected_calls) {
     EXPECT_CALL(*datapath_,
-                ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+                ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                                rule.command, ElementsAreArray(rule.argv), _));
   }
 
@@ -548,10 +548,10 @@ TEST_F(CountersServiceTest, ChainNameLength) {
 
 TEST_F(CountersServiceTest, QueryTrafficCounters) {
   EXPECT_CALL(*datapath_,
-              DumpIptables(IpFamily::IPv4, Iptables::Table::kMangle))
+              DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle))
       .WillOnce(Return(kIptablesOutput));
   EXPECT_CALL(*datapath_,
-              DumpIptables(IpFamily::IPv6, Iptables::Table::kMangle))
+              DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle))
       .WillOnce(Return(kIp6tablesOutput));
 
   auto actual = counters_svc_->GetCounters({});
@@ -615,10 +615,10 @@ TEST_F(CountersServiceTest, QueryTrafficCounters) {
 
 TEST_F(CountersServiceTest, QueryTrafficCountersWithFilter) {
   EXPECT_CALL(*datapath_,
-              DumpIptables(IpFamily::IPv4, Iptables::Table::kMangle))
+              DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle))
       .WillOnce(Return(kIptablesOutput));
   EXPECT_CALL(*datapath_,
-              DumpIptables(IpFamily::IPv6, Iptables::Table::kMangle))
+              DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle))
       .WillOnce(Return(kIp6tablesOutput));
 
   // Only counters for eth0 should be returned. eth1 should be ignored.
@@ -683,10 +683,10 @@ Chain tx_eth0 (1 references)
 )";
 
   EXPECT_CALL(*datapath_,
-              DumpIptables(IpFamily::IPv4, Iptables::Table::kMangle))
+              DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle))
       .WillOnce(Return(unknown_ipv4_traffic_only));
   EXPECT_CALL(*datapath_,
-              DumpIptables(IpFamily::IPv6, Iptables::Table::kMangle))
+              DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle))
       .WillOnce(Return(unknown_ipv6_traffic_only));
 
   auto actual = counters_svc_->GetCounters({});

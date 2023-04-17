@@ -159,10 +159,10 @@ std::ostream& operator<<(std::ostream& stream,
 
 // Simple enum of bitmasks used for specifying a set of IP family values.
 enum IpFamily {
-  NONE = 0,
-  IPv4 = 1 << 0,
-  IPv6 = 1 << 1,
-  Dual = IPv4 | IPv6,  // (1 << 0) | (1 << 1);
+  kNone = 0,
+  kIPv4 = 1 << 0,
+  kIPv6 = 1 << 1,
+  kDual = kIPv4 | kIPv6,  // (1 << 0) | (1 << 1);
 };
 
 // List of possible guest targets for automatic forwarding rules applied to

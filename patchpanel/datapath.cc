@@ -204,49 +204,50 @@ void Datapath::Start() {
       // Set up a mangle chain used in OUTPUT for applying the fwmark
       // TrafficSource tag and tagging the local traffic that should be routed
       // through a VPN.
-      {IpFamily::Dual, Iptables::Table::kMangle, kApplyLocalSourceMarkChain},
+      {IpFamily::kDual, Iptables::Table::kMangle, kApplyLocalSourceMarkChain},
       // Set up a mangle chain used in OUTPUT and PREROUTING to skip VPN fwmark
       // tagging applied through "apply_vpn_mark" chain. This is used to protect
       // DNS traffic that should go to the DNS proxy.
-      {IpFamily::Dual, Iptables::Table::kMangle, kSkipApplyVpnMarkChain},
+      {IpFamily::kDual, Iptables::Table::kMangle, kSkipApplyVpnMarkChain},
       // Sets up a mangle chain used in OUTPUT and PREROUTING for tagging "user"
       // traffic that should be routed through a VPN.
-      {IpFamily::Dual, Iptables::Table::kMangle, kApplyVpnMarkChain},
+      {IpFamily::kDual, Iptables::Table::kMangle, kApplyVpnMarkChain},
       // Set up nat chains for redirecting egress DNS queries to the DNS proxy
       // instances.
-      {IpFamily::Dual, Iptables::Table::kNat, kRedirectDefaultDnsChain},
-      {IpFamily::Dual, Iptables::Table::kNat, kRedirectUserDnsChain},
-      {IpFamily::Dual, Iptables::Table::kNat, kRedirectChromeDnsChain},
+      {IpFamily::kDual, Iptables::Table::kNat, kRedirectDefaultDnsChain},
+      {IpFamily::kDual, Iptables::Table::kNat, kRedirectUserDnsChain},
+      {IpFamily::kDual, Iptables::Table::kNat, kRedirectChromeDnsChain},
       // Set up nat chains for SNAT-ing egress DNS queries to the DNS proxy
       // instances.
-      {IpFamily::Dual, Iptables::Table::kNat, kSnatChromeDnsChain},
+      {IpFamily::kDual, Iptables::Table::kNat, kSnatChromeDnsChain},
       // For the case of non-Chrome "user" DNS queries, there is already an IPv4
       // SNAT rule with the ConnectNamespace. Only IPv6 USER SNAT is needed.
-      {IpFamily::IPv6, Iptables::Table::kNat, kSnatUserDnsChain},
+      {IpFamily::kIPv6, Iptables::Table::kNat, kSnatUserDnsChain},
       // b/178331695 Sets up a nat chain used in OUTPUT for redirecting DNS
       // queries of system services. When a VPN is connected, a query routed
       // through a physical network is redirected to the primary nameserver of
       // that network.
-      {IpFamily::IPv4, Iptables::Table::kNat, kRedirectDnsChain},
+      {IpFamily::kIPv4, Iptables::Table::kNat, kRedirectDnsChain},
       // Set up nat chains for redirecting ingress traffic to downstream guests.
       // These chains are only created for IPv4 since downstream guests obtain
       // their own addresses for IPv6.
-      {IpFamily::IPv4, Iptables::Table::kNat, kIngressPortForwardingChain},
-      {IpFamily::IPv4, Iptables::Table::kNat, kApplyAutoDnatToArcChain},
-      {IpFamily::IPv4, Iptables::Table::kNat, kApplyAutoDnatToCrostiniChain},
-      {IpFamily::IPv4, Iptables::Table::kNat, kApplyAutoDnatToPluginvmChain},
+      {IpFamily::kIPv4, Iptables::Table::kNat, kIngressPortForwardingChain},
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToArcChain},
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToCrostiniChain},
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToPluginvmChain},
       // Create filter subchains for managing the egress firewall VPN rules.
-      {IpFamily::Dual, Iptables::Table::kFilter, kVpnEgressFiltersChain},
-      {IpFamily::Dual, Iptables::Table::kFilter, kVpnAcceptChain},
-      {IpFamily::Dual, Iptables::Table::kFilter, kVpnLockdownChain},
-      {IpFamily::IPv4, Iptables::Table::kFilter, kDropGuestIpv4PrefixChain},
-      {IpFamily::IPv4, Iptables::Table::kFilter, kDropGuestInvalidIpv4Chain},
+      {IpFamily::kDual, Iptables::Table::kFilter, kVpnEgressFiltersChain},
+      {IpFamily::kDual, Iptables::Table::kFilter, kVpnAcceptChain},
+      {IpFamily::kDual, Iptables::Table::kFilter, kVpnLockdownChain},
+      {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestIpv4PrefixChain},
+      {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestInvalidIpv4Chain},
       // Create filter subchains for hosting permission_broker firewall rules
-      {IpFamily::Dual, Iptables::Table::kFilter, kIngressPortFirewallChain},
-      {IpFamily::Dual, Iptables::Table::kFilter, kEgressPortFirewallChain},
+      {IpFamily::kDual, Iptables::Table::kFilter, kIngressPortFirewallChain},
+      {IpFamily::kDual, Iptables::Table::kFilter, kEgressPortFirewallChain},
       // Create filter subchain for ingress firewall rules on downstream
       // networks (Tethering, LocalOnlyNetwork).
-      {IpFamily::Dual, Iptables::Table::kFilter, kAcceptDownstreamNetworkChain},
+      {IpFamily::kDual, Iptables::Table::kFilter,
+       kAcceptDownstreamNetworkChain},
   };
   for (const auto& c : makeCommands) {
     if (!AddChain(c.family, c.table, c.chain)) {
@@ -264,21 +265,21 @@ void Datapath::Start() {
     std::string jump_to;
     std::optional<Iptables::Command> op;
   } jumpCommands[] = {
-      {IpFamily::Dual, Iptables::Table::kMangle, "OUTPUT",
+      {IpFamily::kDual, Iptables::Table::kMangle, "OUTPUT",
        kApplyLocalSourceMarkChain},
-      {IpFamily::Dual, Iptables::Table::kNat, "PREROUTING",
+      {IpFamily::kDual, Iptables::Table::kNat, "PREROUTING",
        kRedirectDefaultDnsChain},
       // "ingress_port_forwarding" must be traversed before
       // the default "ingress_default_*" autoforwarding chains.
-      {IpFamily::IPv4, Iptables::Table::kNat, "PREROUTING",
+      {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
        kIngressPortForwardingChain},
       // ARC default ingress forwarding is always first, Crostini second, and
       // PluginVM last.
-      {IpFamily::IPv4, Iptables::Table::kNat, "PREROUTING",
+      {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
        kApplyAutoDnatToArcChain},
-      {IpFamily::IPv4, Iptables::Table::kNat, "PREROUTING",
+      {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
        kApplyAutoDnatToCrostiniChain},
-      {IpFamily::IPv4, Iptables::Table::kNat, "PREROUTING",
+      {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
        kApplyAutoDnatToPluginvmChain},
       // When VPN lockdown is enabled, a REJECT rule must stop
       // any egress traffic tagged with the |kFwmarkRouteOnVpn| intent mark.
@@ -292,26 +293,26 @@ void Datapath::Start() {
       //   FORWARD.
       // Finally, egress VPN filter rules must be inserted in front of the
       // OUTPUT chain to override basic rules set outside patchpanel.
-      {IpFamily::Dual, Iptables::Table::kFilter, "OUTPUT",
+      {IpFamily::kDual, Iptables::Table::kFilter, "OUTPUT",
        kVpnEgressFiltersChain, Iptables::Command::kI},
-      {IpFamily::Dual, Iptables::Table::kFilter, "FORWARD",
+      {IpFamily::kDual, Iptables::Table::kFilter, "FORWARD",
        kVpnEgressFiltersChain},
-      {IpFamily::Dual, Iptables::Table::kFilter, kVpnEgressFiltersChain,
+      {IpFamily::kDual, Iptables::Table::kFilter, kVpnEgressFiltersChain,
        kVpnAcceptChain},
-      {IpFamily::Dual, Iptables::Table::kFilter, kVpnEgressFiltersChain,
+      {IpFamily::kDual, Iptables::Table::kFilter, kVpnEgressFiltersChain,
        kVpnLockdownChain},
       // b/196898241: To ensure that the drop chains drop_guest_ipv4_prefix and
       // drop_guest_invalid_ipv4 chain are traversed before vpn_accept and
       // vpn_lockdown, they are inserted last in front of the OUTPUT chain and
       // FORWARD chains respectively.
-      {IpFamily::IPv4, Iptables::Table::kFilter, "OUTPUT",
+      {IpFamily::kIPv4, Iptables::Table::kFilter, "OUTPUT",
        kDropGuestIpv4PrefixChain, Iptables::Command::kI},
-      {IpFamily::IPv4, Iptables::Table::kFilter, "FORWARD",
+      {IpFamily::kIPv4, Iptables::Table::kFilter, "FORWARD",
        kDropGuestInvalidIpv4Chain, Iptables::Command::kI},
       // Attach ingress and egress firewall chains for permission_broker rules.
-      {IpFamily::Dual, Iptables::Table::kFilter, "INPUT",
+      {IpFamily::kDual, Iptables::Table::kFilter, "INPUT",
        kIngressPortFirewallChain},
-      {IpFamily::Dual, Iptables::Table::kFilter, "OUTPUT",
+      {IpFamily::kDual, Iptables::Table::kFilter, "OUTPUT",
        kEgressPortFirewallChain},
   };
   for (const auto& c : jumpCommands) {
@@ -393,7 +394,7 @@ void Datapath::Start() {
 
   // Applies the routing tag saved in conntrack for any established connection
   // for sockets created in the host network namespace.
-  if (!ModifyConnmarkRestore(IpFamily::Dual, "OUTPUT", Iptables::Command::kA,
+  if (!ModifyConnmarkRestore(IpFamily::kDual, "OUTPUT", Iptables::Command::kA,
                              /*iif=*/"", kFwmarkRoutingMask)) {
     LOG(ERROR) << "Failed to add OUTPUT CONNMARK restore rule";
   }
@@ -404,7 +405,7 @@ void Datapath::Start() {
   // packet. Currently this rule will only be triggered for wireguard sockets so
   // it has no side effect now. We may need to revisit this later.
   ModifyIptables(
-      IpFamily::Dual, Iptables::Table::kMangle, Iptables::Command::kA,
+      IpFamily::kDual, Iptables::Table::kMangle, Iptables::Command::kA,
       {kApplyLocalSourceMarkChain, "-m", "mark", "!", "--mark",
        "0x0/" + kFwmarkAllSourcesMask.ToString(), "-j", "RETURN", "-w"});
   // Create rules for tagging local sources with the source tag and the vpn
@@ -423,12 +424,12 @@ void Datapath::Start() {
 
   // Set up jump chains to the DNS nat chains for egress traffic from local
   // processes running on the host.
-  if (!ModifyRedirectDnsJumpRule(IpFamily::Dual, Iptables::Command::kA,
+  if (!ModifyRedirectDnsJumpRule(IpFamily::kDual, Iptables::Command::kA,
                                  "OUTPUT",
                                  /*ifname=*/"", kRedirectChromeDnsChain)) {
     LOG(ERROR) << "Failed to add jump rule for chrome DNS redirection";
   }
-  if (!ModifyRedirectDnsJumpRule(IpFamily::Dual, Iptables::Command::kA,
+  if (!ModifyRedirectDnsJumpRule(IpFamily::kDual, Iptables::Command::kA,
                                  "OUTPUT",
                                  /*ifname=*/"", kRedirectUserDnsChain,
                                  kFwmarkRouteOnVpn, kFwmarkVpnMask,
@@ -436,12 +437,12 @@ void Datapath::Start() {
     LOG(ERROR) << "Failed to add jump rule for user DNS redirection";
   }
   if (!ModifyRedirectDnsJumpRule(
-          IpFamily::Dual, Iptables::Command::kA, "POSTROUTING", /*ifname=*/"",
+          IpFamily::kDual, Iptables::Command::kA, "POSTROUTING", /*ifname=*/"",
           kSnatChromeDnsChain, Fwmark::FromSource(TrafficSource::kChrome),
           kFwmarkAllSourcesMask, /*redirect_on_mark=*/true)) {
     LOG(ERROR) << "Failed to add jump rule for chrome DNS SNAT";
   }
-  if (!ModifyRedirectDnsJumpRule(IpFamily::IPv6, Iptables::Command::kA,
+  if (!ModifyRedirectDnsJumpRule(IpFamily::kIPv6, Iptables::Command::kA,
                                  "POSTROUTING", /*ifname=*/"",
                                  kSnatUserDnsChain, kFwmarkRouteOnVpn,
                                  kFwmarkVpnMask, /*redirect_on_mark=*/true)) {
@@ -467,7 +468,7 @@ void Datapath::Start() {
   // incorrectly cause neighbor discovery icmpv6 packets to be dropped. Add
   // these rules to bypass connmark rule for those packets.
   for (const auto& type : kNeighborDiscoveryTypes) {
-    if (!ModifyIptables(IpFamily::IPv6, Iptables::Table::kMangle,
+    if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kMangle,
                         Iptables::Command::kI,
                         {"OUTPUT", "-p", "icmpv6", "--icmpv6-type", type, "-j",
                          "ACCEPT", "-w"})) {
@@ -498,36 +499,36 @@ void Datapath::Stop() {
 void Datapath::ResetIptables() {
   // If they exists, remove jump rules from built-in chains to custom chains
   // for any built-in chains that is not explicitly flushed.
-  ModifyJumpRule(IpFamily::IPv4, Iptables::Table::kFilter,
+  ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kFilter,
                  Iptables::Command::kD, "OUTPUT", kDropGuestIpv4PrefixChain,
                  /*iif=*/"", /*oif=*/"",
                  /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::Dual, Iptables::Table::kFilter,
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                  Iptables::Command::kD, "INPUT", kIngressPortFirewallChain,
                  /*iif=*/"", /*oif=*/"",
                  /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::Dual, Iptables::Table::kFilter,
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                  Iptables::Command::kD, "OUTPUT", kEgressPortFirewallChain,
                  /*iif=*/"", /*oif=*/"",
                  /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::IPv4, Iptables::Table::kNat, Iptables::Command::kD,
+  ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
                  "PREROUTING", kIngressPortForwardingChain, /*iif=*/"",
                  /*oif=*/"", /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::IPv4, Iptables::Table::kNat, Iptables::Command::kD,
+  ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
                  "PREROUTING", kApplyAutoDnatToArcChain, /*iif=*/"", /*oif=*/"",
                  /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::IPv4, Iptables::Table::kNat, Iptables::Command::kD,
+  ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
                  "PREROUTING", kApplyAutoDnatToCrostiniChain, /*iif=*/"",
                  /*oif=*/"", /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::IPv4, Iptables::Table::kNat, Iptables::Command::kD,
+  ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
                  "PREROUTING", kApplyAutoDnatToPluginvmChain, /*iif=*/"",
                  /*oif=*/"", /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::Dual, Iptables::Table::kNat, Iptables::Command::kD,
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kNat, Iptables::Command::kD,
                  "PREROUTING", kRedirectDefaultDnsChain, /*iif=*/"", /*oif=*/"",
                  /*log_failures=*/false);
   ModifyFwmarkSkipVpnJumpRule("OUTPUT", Iptables::Command::kD, kChronosUid,
                               /*log_failures=*/false);
-  ModifyJumpRule(IpFamily::Dual, Iptables::Table::kFilter,
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                  Iptables::Command::kD, "OUTPUT", kVpnEgressFiltersChain,
                  /*iif=*/"", /*oif=*/"",
                  /*log_failures=*/false);
@@ -546,37 +547,37 @@ void Datapath::ResetIptables() {
     std::string chain;
     bool should_delete;
   } resetOps[] = {
-      {IpFamily::Dual, Iptables::Table::kFilter, "FORWARD", false},
-      {IpFamily::Dual, Iptables::Table::kMangle, "FORWARD", false},
-      {IpFamily::Dual, Iptables::Table::kMangle, "INPUT", false},
-      {IpFamily::Dual, Iptables::Table::kMangle, "OUTPUT", false},
-      {IpFamily::Dual, Iptables::Table::kMangle, "POSTROUTING", false},
-      {IpFamily::Dual, Iptables::Table::kMangle, "PREROUTING", false},
-      {IpFamily::Dual, Iptables::Table::kMangle, kApplyLocalSourceMarkChain,
+      {IpFamily::kDual, Iptables::Table::kFilter, "FORWARD", false},
+      {IpFamily::kDual, Iptables::Table::kMangle, "FORWARD", false},
+      {IpFamily::kDual, Iptables::Table::kMangle, "INPUT", false},
+      {IpFamily::kDual, Iptables::Table::kMangle, "OUTPUT", false},
+      {IpFamily::kDual, Iptables::Table::kMangle, "POSTROUTING", false},
+      {IpFamily::kDual, Iptables::Table::kMangle, "PREROUTING", false},
+      {IpFamily::kDual, Iptables::Table::kMangle, kApplyLocalSourceMarkChain,
        true},
-      {IpFamily::Dual, Iptables::Table::kMangle, kApplyVpnMarkChain, true},
-      {IpFamily::Dual, Iptables::Table::kMangle, kSkipApplyVpnMarkChain, true},
-      {IpFamily::IPv4, Iptables::Table::kFilter, kDropGuestIpv4PrefixChain,
+      {IpFamily::kDual, Iptables::Table::kMangle, kApplyVpnMarkChain, true},
+      {IpFamily::kDual, Iptables::Table::kMangle, kSkipApplyVpnMarkChain, true},
+      {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestIpv4PrefixChain,
        true},
-      {IpFamily::IPv4, Iptables::Table::kFilter, kDropGuestInvalidIpv4Chain,
+      {IpFamily::kIPv4, Iptables::Table::kFilter, kDropGuestInvalidIpv4Chain,
        true},
-      {IpFamily::Dual, Iptables::Table::kFilter, kVpnEgressFiltersChain, true},
-      {IpFamily::Dual, Iptables::Table::kFilter, kVpnAcceptChain, true},
-      {IpFamily::Dual, Iptables::Table::kFilter, kVpnLockdownChain, true},
-      {IpFamily::Dual, Iptables::Table::kFilter, kAcceptDownstreamNetworkChain,
+      {IpFamily::kDual, Iptables::Table::kFilter, kVpnEgressFiltersChain, true},
+      {IpFamily::kDual, Iptables::Table::kFilter, kVpnAcceptChain, true},
+      {IpFamily::kDual, Iptables::Table::kFilter, kVpnLockdownChain, true},
+      {IpFamily::kDual, Iptables::Table::kFilter, kAcceptDownstreamNetworkChain,
        true},
-      {IpFamily::Dual, Iptables::Table::kNat, "OUTPUT", false},
-      {IpFamily::IPv4, Iptables::Table::kNat, "POSTROUTING", false},
-      {IpFamily::Dual, Iptables::Table::kNat, kRedirectDefaultDnsChain, true},
-      {IpFamily::Dual, Iptables::Table::kNat, kRedirectChromeDnsChain, true},
-      {IpFamily::Dual, Iptables::Table::kNat, kRedirectUserDnsChain, true},
-      {IpFamily::Dual, Iptables::Table::kNat, kSnatChromeDnsChain, true},
-      {IpFamily::IPv6, Iptables::Table::kNat, kSnatUserDnsChain, true},
-      {IpFamily::IPv4, Iptables::Table::kNat, kRedirectDnsChain, true},
-      {IpFamily::IPv4, Iptables::Table::kNat, kApplyAutoDnatToArcChain, true},
-      {IpFamily::IPv4, Iptables::Table::kNat, kApplyAutoDnatToCrostiniChain,
+      {IpFamily::kDual, Iptables::Table::kNat, "OUTPUT", false},
+      {IpFamily::kIPv4, Iptables::Table::kNat, "POSTROUTING", false},
+      {IpFamily::kDual, Iptables::Table::kNat, kRedirectDefaultDnsChain, true},
+      {IpFamily::kDual, Iptables::Table::kNat, kRedirectChromeDnsChain, true},
+      {IpFamily::kDual, Iptables::Table::kNat, kRedirectUserDnsChain, true},
+      {IpFamily::kDual, Iptables::Table::kNat, kSnatChromeDnsChain, true},
+      {IpFamily::kIPv6, Iptables::Table::kNat, kSnatUserDnsChain, true},
+      {IpFamily::kIPv4, Iptables::Table::kNat, kRedirectDnsChain, true},
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToArcChain, true},
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToCrostiniChain,
        true},
-      {IpFamily::IPv4, Iptables::Table::kNat, kApplyAutoDnatToPluginvmChain,
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToPluginvmChain,
        true},
   };
   for (const auto& op : resetOps) {
@@ -974,14 +975,14 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
     sa_family_t sa_family = GetIpFamily(rule.proxy_address);
     switch (sa_family) {
       case AF_INET:
-        if (family != IpFamily::IPv4) {
+        if (family != IpFamily::kIPv4) {
           LOG(ERROR) << "Invalid nameserver IPv4 address '" << nameserver
                      << "'";
           return false;
         }
         break;
       case AF_INET6:
-        if (family != IpFamily::IPv6) {
+        if (family != IpFamily::kIPv6) {
           LOG(ERROR) << "Invalid nameserver IPv6 address '" << nameserver
                      << "'";
           return false;
@@ -1083,10 +1084,10 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
   sa_family_t sa_family = GetIpFamily(rule.proxy_address);
   switch (sa_family) {
     case AF_INET:
-      family = IpFamily::IPv4;
+      family = IpFamily::kIPv4;
       break;
     case AF_INET6:
-      family = IpFamily::IPv6;
+      family = IpFamily::kIPv6;
       break;
     default:
       LOG(ERROR) << "Invalid proxy address " << rule.proxy_address;
@@ -1126,7 +1127,7 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
       }
 
       // Add MASQUERADE rule for user traffic.
-      if (family == IpFamily::IPv6 &&
+      if (family == IpFamily::kIPv6 &&
           !ModifyDnsProxyMasquerade(family, Iptables::Command::kA,
                                     kSnatUserDnsChain)) {
         LOG(ERROR) << "Failed to add user DNS MASQUERADE rule";
@@ -1159,10 +1160,10 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
   sa_family_t sa_family = GetIpFamily(rule.proxy_address);
   switch (sa_family) {
     case AF_INET:
-      family = IpFamily::IPv4;
+      family = IpFamily::kIPv4;
       break;
     case AF_INET6:
-      family = IpFamily::IPv6;
+      family = IpFamily::kIPv6;
       break;
     default:
       LOG(ERROR) << "Invalid proxy address " << rule.proxy_address;
@@ -1186,7 +1187,7 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
       ModifyDnsProxyDNAT(family, rule, Iptables::Command::kD, /*ifname=*/"",
                          kRedirectUserDnsChain);
       ModifyDnsRedirectionSkipVpnRule(family, Iptables::Command::kD);
-      if (family == IpFamily::IPv6) {
+      if (family == IpFamily::kIPv6) {
         ModifyDnsProxyMasquerade(family, Iptables::Command::kD,
                                  kSnatUserDnsChain);
       }
@@ -1210,13 +1211,13 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
                                   TrafficSource source,
                                   bool route_on_vpn,
                                   uint32_t peer_ipv4_addr) {
-  if (!ModifyJumpRule(IpFamily::Dual, Iptables::Table::kFilter,
+  if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                       Iptables::Command::kA, "FORWARD", "ACCEPT", /*iif=*/"",
                       int_ifname)) {
     LOG(ERROR) << "Failed to enable IP forwarding from " << ext_ifname;
   }
 
-  if (!ModifyJumpRule(IpFamily::Dual, Iptables::Table::kFilter,
+  if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                       Iptables::Command::kA, "FORWARD", "ACCEPT", int_ifname,
                       /*oif=*/"")) {
     LOG(ERROR) << "Failed to enable IP forwarding to " << ext_ifname;
@@ -1225,14 +1226,14 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
   std::string subchain = "PREROUTING_" + int_ifname;
   // This can fail if patchpanel did not stopped correctly or failed to cleanup
   // the chain when |int_ifname| was previously deleted.
-  if (!AddChain(IpFamily::Dual, Iptables::Table::kMangle, subchain))
+  if (!AddChain(IpFamily::kDual, Iptables::Table::kMangle, subchain))
     LOG(ERROR) << "Failed to create mangle chain " << subchain;
   // Make sure the chain is empty if patchpanel did not cleaned correctly that
   // chain before.
-  if (!FlushChain(IpFamily::Dual, Iptables::Table::kMangle, subchain)) {
+  if (!FlushChain(IpFamily::kDual, Iptables::Table::kMangle, subchain)) {
     LOG(ERROR) << "Could not flush " << subchain;
   }
-  if (!ModifyJumpRule(IpFamily::Dual, Iptables::Table::kMangle,
+  if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
                       Iptables::Command::kA, "PREROUTING", subchain, int_ifname,
                       /*oif=*/"")) {
     LOG(ERROR) << "Could not add jump rule from mangle PREROUTING to "
@@ -1240,7 +1241,7 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
   }
   // IPv4 traffic from all downstream interfaces should be tagged to go through
   // SNAT.
-  if (!ModifyFwmark(IpFamily::IPv4, subchain, Iptables::Command::kA, "", "", 0,
+  if (!ModifyFwmark(IpFamily::kIPv4, subchain, Iptables::Command::kA, "", "", 0,
                     kFwmarkLegacySNAT, kFwmarkLegacySNAT)) {
     LOG(ERROR) << "Failed to add fwmark SNAT tagging rule for " << int_ifname;
   }
@@ -1273,7 +1274,7 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
     // PREROUTING to apply any fwmark routing tag saved for the current
     // connection, and rely on implicit routing to the default logical network
     // otherwise.
-    if (!ModifyConnmarkRestore(IpFamily::Dual, subchain, Iptables::Command::kA,
+    if (!ModifyConnmarkRestore(IpFamily::kDual, subchain, Iptables::Command::kA,
                                /*iif=*/"", kFwmarkRoutingMask)) {
       LOG(ERROR) << "Failed to add CONNMARK restore rule in " << subchain;
     }
@@ -1294,7 +1295,7 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
     // ConnectNamespace traffic that needs DNS to go to the VPN
     // (ConnectNamespace of the DNS default instance).
     if (route_on_vpn && peer_ipv4_addr == 0 &&
-        !ModifyJumpRule(IpFamily::Dual, Iptables::Table::kMangle,
+        !ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
                         Iptables::Command::kA, subchain, kSkipApplyVpnMarkChain,
                         /*iif=*/"", /*oif=*/"")) {
       LOG(ERROR) << "Failed to add jump rule to DNS proxy VPN chain for "
@@ -1315,19 +1316,19 @@ void Datapath::StopRoutingDevice(const std::string& ext_ifname,
                                  uint32_t int_ipv4_addr,
                                  TrafficSource source,
                                  bool route_on_vpn) {
-  ModifyJumpRule(IpFamily::Dual, Iptables::Table::kFilter,
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                  Iptables::Command::kD, "FORWARD", "ACCEPT", /*iif=*/"",
                  int_ifname);
-  ModifyJumpRule(IpFamily::Dual, Iptables::Table::kFilter,
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                  Iptables::Command::kD, "FORWARD", "ACCEPT", int_ifname,
                  /*oif=*/"");
 
   std::string subchain = "PREROUTING_" + int_ifname;
-  ModifyJumpRule(IpFamily::Dual, Iptables::Table::kMangle,
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
                  Iptables::Command::kD, "PREROUTING", subchain, int_ifname,
                  /*oif=*/"");
-  FlushChain(IpFamily::Dual, Iptables::Table::kMangle, subchain);
-  RemoveChain(IpFamily::Dual, Iptables::Table::kMangle, subchain);
+  FlushChain(IpFamily::kDual, Iptables::Table::kMangle, subchain);
+  RemoveChain(IpFamily::kDual, Iptables::Table::kMangle, subchain);
 }
 
 void Datapath::AddInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
@@ -1419,7 +1420,7 @@ bool Datapath::ModifyRedirectDnsDNATRule(Iptables::Command op,
                                    "--to-destination",
                                    dns_ipv4_addr,
                                    "-w"};
-  return ModifyIptables(IpFamily::IPv4, Iptables::Table::kNat, op, args);
+  return ModifyIptables(IpFamily::kIPv4, Iptables::Table::kNat, op, args);
 }
 
 bool Datapath::ModifyRedirectDnsJumpRule(IpFamily family,
@@ -1563,15 +1564,15 @@ void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
   std::string subchain = "POSTROUTING_" + ext_ifname;
   // This can fail if patchpanel did not stopped correctly or failed to cleanup
   // the chain when |ext_ifname| was previously deleted.
-  if (!AddChain(IpFamily::Dual, Iptables::Table::kMangle, subchain)) {
+  if (!AddChain(IpFamily::kDual, Iptables::Table::kMangle, subchain)) {
     LOG(ERROR) << "Failed to create mangle chain " << subchain;
   }
   // Make sure the chain is empty if patchpanel did not cleaned correctly that
   // chain before.
-  if (!FlushChain(IpFamily::Dual, Iptables::Table::kMangle, subchain)) {
+  if (!FlushChain(IpFamily::kDual, Iptables::Table::kMangle, subchain)) {
     LOG(ERROR) << "Could not flush " << subchain;
   }
-  if (!ModifyJumpRule(IpFamily::Dual, Iptables::Table::kMangle,
+  if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
                       Iptables::Command::kA, "POSTROUTING", subchain,
                       /*iif=*/"", ext_ifname)) {
     LOG(ERROR) << "Could not add jump rule from mangle POSTROUTING to "
@@ -1587,12 +1588,12 @@ void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
   LOG(INFO) << "Start connection pinning on " << ext_ifname
             << " fwmark=" << routing_mark.value().ToString();
   // Set in CONNMARK the routing tag associated with |ext_ifname|.
-  if (!ModifyConnmarkSet(IpFamily::Dual, subchain, Iptables::Command::kA,
+  if (!ModifyConnmarkSet(IpFamily::kDual, subchain, Iptables::Command::kA,
                          routing_mark.value(), kFwmarkRoutingMask)) {
     LOG(ERROR) << "Could not start connection pinning on " << ext_ifname;
   }
   // Save in CONNMARK the source tag for egress traffic of this connection.
-  if (!ModifyConnmarkSave(IpFamily::Dual, subchain, Iptables::Command::kA,
+  if (!ModifyConnmarkSave(IpFamily::kDual, subchain, Iptables::Command::kA,
                           kFwmarkAllSourcesMask)) {
     LOG(ERROR) << "Failed to add POSTROUTING CONNMARK rule for saving fwmark "
                   "source tag on "
@@ -1600,7 +1601,7 @@ void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
   }
   // Restore from CONNMARK the source tag for ingress traffic of this connection
   // (returned traffic).
-  if (!ModifyConnmarkRestore(IpFamily::Dual, "PREROUTING",
+  if (!ModifyConnmarkRestore(IpFamily::kDual, "PREROUTING",
                              Iptables::Command::kA, ext_ifname,
                              kFwmarkAllSourcesMask)) {
     LOG(ERROR) << "Could not setup fwmark source tagging rule for return "
@@ -1611,12 +1612,12 @@ void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
 
 void Datapath::StopConnectionPinning(const std::string& ext_ifname) {
   std::string subchain = "POSTROUTING_" + ext_ifname;
-  ModifyJumpRule(IpFamily::Dual, Iptables::Table::kMangle,
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
                  Iptables::Command::kD, "POSTROUTING", subchain, /*iif=*/"",
                  ext_ifname);
-  FlushChain(IpFamily::Dual, Iptables::Table::kMangle, subchain);
-  RemoveChain(IpFamily::Dual, Iptables::Table::kMangle, subchain);
-  if (!ModifyConnmarkRestore(IpFamily::Dual, "PREROUTING",
+  FlushChain(IpFamily::kDual, Iptables::Table::kMangle, subchain);
+  RemoveChain(IpFamily::kDual, Iptables::Table::kMangle, subchain);
+  if (!ModifyConnmarkRestore(IpFamily::kDual, "PREROUTING",
                              Iptables::Command::kD, ext_ifname,
                              kFwmarkAllSourcesMask)) {
     LOG(ERROR) << "Could not remove fwmark source tagging rule for return "
@@ -1641,7 +1642,7 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
   }
   LOG(INFO) << "Start VPN routing on " << vpn_ifname
             << " fwmark=" << routing_mark.value().ToString();
-  if (!ModifyJumpRule(IpFamily::IPv4, Iptables::Table::kNat,
+  if (!ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat,
                       Iptables::Command::kA, "POSTROUTING", "MASQUERADE",
                       /*iif=*/"", vpn_ifname)) {
     LOG(ERROR) << "Could not set up SNAT for traffic outgoing " << vpn_ifname;
@@ -1650,7 +1651,7 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
 
   // Any traffic that already has a routing tag applied is accepted.
   if (!ModifyIptables(
-          IpFamily::Dual, Iptables::Table::kMangle, Iptables::Command::kA,
+          IpFamily::kDual, Iptables::Table::kMangle, Iptables::Command::kA,
           {kApplyVpnMarkChain, "-m", "mark", "!", "--mark",
            "0x0/" + kFwmarkRoutingMask.ToString(), "-j", "ACCEPT", "-w"})) {
     LOG(ERROR) << "Failed to add ACCEPT rule to VPN tagging chain for marked "
@@ -1669,7 +1670,7 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
                        TrafficSource::kArc, /*route_on_vpn=*/true);
   }
   if (!ModifyRedirectDnsJumpRule(
-          IpFamily::IPv4, Iptables::Command::kA, "OUTPUT",
+          IpFamily::kIPv4, Iptables::Command::kA, "OUTPUT",
           /*ifname=*/"", kRedirectDnsChain, kFwmarkRouteOnVpn, kFwmarkVpnMask,
           /*redirect_on_mark=*/false)) {
     LOG(ERROR) << "Failed to set jump rule to " << kRedirectDnsChain;
@@ -1678,7 +1679,7 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
   // All traffic with the VPN routing tag are explicitly accepted in the filter
   // table. This prevents the VPN lockdown chain to reject that traffic when VPN
   // lockdown is enabled.
-  if (!ModifyIptables(IpFamily::Dual, Iptables::Table::kFilter,
+  if (!ModifyIptables(IpFamily::kDual, Iptables::Table::kFilter,
                       Iptables::Command::kA,
                       {kVpnAcceptChain, "-m", "mark", "--mark",
                        routing_mark.value().ToString() + "/" +
@@ -1690,25 +1691,25 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
 
 void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
   LOG(INFO) << "Stop VPN routing on " << vpn_ifname;
-  if (!FlushChain(IpFamily::Dual, Iptables::Table::kFilter, kVpnAcceptChain)) {
+  if (!FlushChain(IpFamily::kDual, Iptables::Table::kFilter, kVpnAcceptChain)) {
     LOG(ERROR) << "Could not flush " << kVpnAcceptChain;
   }
   if (vpn_ifname != kArcBridge) {
     StopRoutingDevice(vpn_ifname, kArcBridge, /*int_ipv4_addr=*/0,
                       TrafficSource::kArc, /*route_on_vpn=*/false);
   }
-  if (!FlushChain(IpFamily::Dual, Iptables::Table::kMangle,
+  if (!FlushChain(IpFamily::kDual, Iptables::Table::kMangle,
                   kApplyVpnMarkChain)) {
     LOG(ERROR) << "Could not flush " << kApplyVpnMarkChain;
   }
   StopConnectionPinning(vpn_ifname);
-  if (!ModifyJumpRule(IpFamily::IPv4, Iptables::Table::kNat,
+  if (!ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat,
                       Iptables::Command::kD, "POSTROUTING", "MASQUERADE",
                       /*iif=*/"", vpn_ifname)) {
     LOG(ERROR) << "Could not stop SNAT for traffic outgoing " << vpn_ifname;
   }
   if (!ModifyRedirectDnsJumpRule(
-          IpFamily::IPv4, Iptables::Command::kD, "OUTPUT",
+          IpFamily::kIPv4, Iptables::Command::kD, "OUTPUT",
           /*ifname=*/"", kRedirectDnsChain, kFwmarkRouteOnVpn, kFwmarkVpnMask,
           /*redirect_on_mark=*/false)) {
     LOG(ERROR) << "Failed to remove jump rule to " << kRedirectDnsChain;
@@ -1718,14 +1719,14 @@ void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
 void Datapath::SetVpnLockdown(bool enable_vpn_lockdown) {
   if (enable_vpn_lockdown) {
     if (!ModifyIptables(
-            IpFamily::Dual, Iptables::Table::kFilter, Iptables::Command::kA,
+            IpFamily::kDual, Iptables::Table::kFilter, Iptables::Command::kA,
             {kVpnLockdownChain, "-m", "mark", "--mark",
              kFwmarkRouteOnVpn.ToString() + "/" + kFwmarkVpnMask.ToString(),
              "-j", "REJECT", "-w"})) {
       LOG(ERROR) << "Failed to start VPN lockdown mode";
     }
   } else {
-    if (!FlushChain(IpFamily::Dual, Iptables::Table::kFilter,
+    if (!FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
                     kVpnLockdownChain)) {
       LOG(ERROR) << "Failed to stop VPN lockdown mode";
     }
@@ -1751,7 +1752,7 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
 
   // Accept DHCP traffic if DHCP is used.
   if (info.enable_ipv4_dhcp &&
-      !ModifyIptables(IpFamily::IPv4, Iptables::Table::kFilter,
+      !ModifyIptables(IpFamily::kIPv4, Iptables::Table::kFilter,
                       Iptables::Command::kI,
                       {kAcceptDownstreamNetworkChain, "-p", "udp", "--dport",
                        "67", "--sport", "68", "-j", "ACCEPT", "-w"})) {
@@ -1760,7 +1761,7 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
     return false;
   }
 
-  if (!ModifyJumpRule(IpFamily::Dual, Iptables::Table::kFilter,
+  if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                       Iptables::Command::kI, "INPUT",
                       kAcceptDownstreamNetworkChain,
                       /*iif=*/info.downstream_ifname, /*oif=*/"")) {
@@ -1768,7 +1769,7 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
                << ": Failed to create jump rule from INPUT to "
                << kAcceptDownstreamNetworkChain << " for ingress traffic on "
                << info.downstream_ifname;
-    if (!FlushChain(IpFamily::Dual, Iptables::Table::kFilter,
+    if (!FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
                     kAcceptDownstreamNetworkChain)) {
       LOG(ERROR) << __func__ << " " << info << ": Failed to flush "
                  << kAcceptDownstreamNetworkChain;
@@ -1796,9 +1797,9 @@ void Datapath::StopDownstreamNetwork(const DownstreamNetworkInfo& info) {
   StopRoutingDevice(info.upstream_ifname, info.downstream_ifname,
                     /*int_ipv4_addr=*/0, source,
                     /*route_on_vpn=*/false);
-  FlushChain(IpFamily::Dual, Iptables::Table::kFilter,
+  FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
              kAcceptDownstreamNetworkChain);
-  ModifyJumpRule(IpFamily::Dual, Iptables::Table::kFilter,
+  ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                  Iptables::Command::kD, "INPUT", kAcceptDownstreamNetworkChain,
                  /*iif=*/info.downstream_ifname, /*oif=*/"");
 }
@@ -1840,7 +1841,7 @@ bool Datapath::ModifyConnmarkSave(IpFamily family,
 bool Datapath::ModifyFwmarkRoutingTag(const std::string& chain,
                                       Iptables::Command op,
                                       Fwmark routing_mark) {
-  return ModifyFwmark(IpFamily::Dual, chain, op, /*int_ifname=*/"",
+  return ModifyFwmark(IpFamily::kDual, chain, op, /*int_ifname=*/"",
                       /*uid_name=*/"", /*classid=*/0, routing_mark,
                       kFwmarkRoutingMask);
 }
@@ -1848,7 +1849,7 @@ bool Datapath::ModifyFwmarkRoutingTag(const std::string& chain,
 bool Datapath::ModifyFwmarkSourceTag(const std::string& chain,
                                      Iptables::Command op,
                                      TrafficSource source) {
-  return ModifyFwmark(IpFamily::Dual, chain, op, /*iif=*/"", /*uid_name=*/"",
+  return ModifyFwmark(IpFamily::kDual, chain, op, /*iif=*/"", /*uid_name=*/"",
                       /*classid=*/0, Fwmark::FromSource(source),
                       kFwmarkAllSourcesMask);
 }
@@ -1866,7 +1867,7 @@ bool Datapath::ModifyFwmarkDefaultLocalSourceTag(Iptables::Command op,
                                    Fwmark::FromSource(source).ToString() + "/" +
                                        kFwmarkAllSourcesMask.ToString(),
                                    "-w"};
-  return ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle,
+  return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                         Iptables::Command::kA, args);
 }
 
@@ -1879,7 +1880,7 @@ bool Datapath::ModifyFwmarkLocalSourceTag(Iptables::Command op,
   if (source.is_on_vpn)
     mark = mark | kFwmarkRouteOnVpn;
 
-  return ModifyFwmark(IpFamily::Dual, kApplyLocalSourceMarkChain, op,
+  return ModifyFwmark(IpFamily::kDual, kApplyLocalSourceMarkChain, op,
                       /*iif=*/"", source.uid_name, source.classid, mark,
                       kFwmarkPolicyMask);
 }
@@ -1953,7 +1954,7 @@ bool Datapath::ModifyFwmarkVpnJumpRule(const std::string& chain,
     args.push_back(mark.ToString() + "/" + mask.ToString());
   }
   args.insert(args.end(), {"-j", kApplyVpnMarkChain, "-w"});
-  return ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle, op, args);
+  return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, op, args);
 }
 
 bool Datapath::ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
@@ -1969,7 +1970,7 @@ bool Datapath::ModifyFwmarkSkipVpnJumpRule(const std::string& chain,
     args.push_back(uid);
   }
   args.insert(args.end(), {"-j", kSkipApplyVpnMarkChain, "-w"});
-  return ModifyIptables(IpFamily::Dual, Iptables::Table::kMangle, op, args,
+  return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, op, args,
                         log_failures);
 }
 
@@ -2007,9 +2008,9 @@ bool Datapath::ModifyIptables(IpFamily family,
                               const std::vector<std::string>& argv,
                               bool log_failures) {
   switch (family) {
-    case IPv4:
-    case IPv6:
-    case Dual:
+    case kIPv4:
+    case kIPv6:
+    case kDual:
       break;
     default:
       LOG(ERROR) << "Could not execute iptables command " << table << " " << op
@@ -2019,10 +2020,10 @@ bool Datapath::ModifyIptables(IpFamily family,
   }
 
   bool success = true;
-  if (family & IpFamily::IPv4) {
+  if (family & IpFamily::kIPv4) {
     success &= process_runner_->iptables(table, op, argv, log_failures) == 0;
   }
-  if (family & IpFamily::IPv6) {
+  if (family & IpFamily::kIPv6) {
     success &= process_runner_->ip6tables(table, op, argv, log_failures) == 0;
   }
   return success;
@@ -2032,19 +2033,19 @@ std::string Datapath::DumpIptables(IpFamily family, Iptables::Table table) {
   std::string result;
   std::vector<std::string> argv = {"-x", "-v", "-n", "-w"};
   switch (family) {
-    case IPv4:
+    case kIPv4:
       if (process_runner_->iptables(table, Iptables::Command::kL, argv,
                                     /*log_failures=*/true, &result) != 0) {
         LOG(ERROR) << "Could not dump iptables " << table;
       }
       break;
-    case IPv6:
+    case kIPv6:
       if (process_runner_->ip6tables(table, Iptables::Command::kL, argv,
                                      /*log_failures=*/true, &result) != 0) {
         LOG(ERROR) << "Could not dump ip6tables " << table;
       }
       break;
-    case Dual:
+    case kDual:
       LOG(ERROR) << "Cannot dump iptables and ip6tables at the same time";
       break;
     default:

@@ -86,14 +86,14 @@ bool Firewall::AddAcceptRules(Protocol protocol,
     return false;
   }
 
-  if (!AddAcceptRule(IPv4, protocol, port, interface)) {
+  if (!AddAcceptRule(IpFamily::kIPv4, protocol, port, interface)) {
     LOG(ERROR) << "Could not add IPv4 ACCEPT rule";
     return false;
   }
 
-  if (!AddAcceptRule(IPv6, protocol, port, interface)) {
+  if (!AddAcceptRule(IpFamily::kIPv6, protocol, port, interface)) {
     LOG(ERROR) << "Could not add IPv6 ACCEPT rule";
-    DeleteAcceptRule(IPv4, protocol, port, interface);
+    DeleteAcceptRule(IpFamily::kIPv4, protocol, port, interface);
     return false;
   }
 
@@ -113,8 +113,10 @@ bool Firewall::DeleteAcceptRules(Protocol protocol,
     return false;
   }
 
-  bool ip4_success = DeleteAcceptRule(IPv4, protocol, port, interface);
-  bool ip6_success = DeleteAcceptRule(IPv6, protocol, port, interface);
+  bool ip4_success =
+      DeleteAcceptRule(IpFamily::kIPv4, protocol, port, interface);
+  bool ip6_success =
+      DeleteAcceptRule(IpFamily::kIPv6, protocol, port, interface);
   return ip4_success && ip6_success;
 }
 
@@ -214,7 +216,7 @@ bool Firewall::ModifyIpv4DNATRule(Protocol protocol,
   argv.push_back("--to-destination");  // new output destination ip:port
   argv.push_back(dst_ip + ":" + std::to_string(dst_port));
   argv.push_back("-w");  // Wait for xtables lock.
-  return RunIptables(IPv4, Iptables::Table::kNat, command, argv);
+  return RunIptables(IpFamily::kIPv4, Iptables::Table::kNat, command, argv);
 }
 
 bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
@@ -258,7 +260,7 @@ bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
       "ACCEPT",
       "-w",
   };  // Wait for xtables lock.
-  return RunIptables(IPv4, Iptables::Table::kFilter, command, argv);
+  return RunIptables(IpFamily::kIPv4, Iptables::Table::kFilter, command, argv);
 }
 
 bool Firewall::AddLoopbackLockdownRules(Protocol protocol, uint16_t port) {
@@ -267,14 +269,14 @@ bool Firewall::AddLoopbackLockdownRules(Protocol protocol, uint16_t port) {
     return false;
   }
 
-  if (!AddLoopbackLockdownRule(IPv4, protocol, port)) {
+  if (!AddLoopbackLockdownRule(IpFamily::kIPv4, protocol, port)) {
     LOG(ERROR) << "Could not add loopback IPv4 REJECT rule";
     return false;
   }
 
-  if (!AddLoopbackLockdownRule(IPv6, protocol, port)) {
+  if (!AddLoopbackLockdownRule(IpFamily::kIPv6, protocol, port)) {
     LOG(ERROR) << "Could not add loopback IPv6 REJECT rule";
-    DeleteLoopbackLockdownRule(IPv4, protocol, port);
+    DeleteLoopbackLockdownRule(IpFamily::kIPv4, protocol, port);
     return false;
   }
 
@@ -287,8 +289,10 @@ bool Firewall::DeleteLoopbackLockdownRules(Protocol protocol, uint16_t port) {
     return false;
   }
 
-  bool ip4_success = DeleteLoopbackLockdownRule(IPv4, protocol, port);
-  bool ip6_success = DeleteLoopbackLockdownRule(IPv6, protocol, port);
+  bool ip4_success =
+      DeleteLoopbackLockdownRule(IpFamily::kIPv4, protocol, port);
+  bool ip6_success =
+      DeleteLoopbackLockdownRule(IpFamily::kIPv6, protocol, port);
   return ip4_success && ip6_success;
 }
 
@@ -393,10 +397,10 @@ bool Firewall::RunIptables(IpFamily ip_family,
                            Iptables::Table table,
                            Iptables::Command command,
                            const std::vector<std::string>& argv) {
-  if (ip_family == IPv4)
+  if (ip_family == IpFamily::kIPv4)
     return process_runner_->iptables(table, command, argv, false) == 0;
 
-  if (ip_family == IPv6)
+  if (ip_family == IpFamily::kIPv6)
     return process_runner_->ip6tables(table, command, argv, false) == 0;
 
   return false;
