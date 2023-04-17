@@ -12,6 +12,7 @@
 
 #include <gmock/gmock.h>
 
+#include "trunks/cr50_headers/ap_ro_status.h"
 #include "trunks/tpm_utility.h"
 
 namespace trunks {
@@ -379,7 +380,7 @@ class MockTpmUtility : public TpmUtility {
                       brillo::Blob*,
                       brillo::Blob*));
   MOCK_METHOD1(GetRsuDeviceId, TPM_RC(std::string*));
-  MOCK_METHOD1(GetRoVerificationStatus, TPM_RC(ApRoStatus*));
+  MOCK_METHOD1(GetRoVerificationStatus, TPM_RC(ap_ro_status*));
   MOCK_METHOD(bool, IsGsc, (), (override));
   MOCK_METHOD(std::string,
               SendCommandAndWait,

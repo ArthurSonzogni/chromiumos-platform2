@@ -11,6 +11,7 @@
 #include <trunks/error_codes.h>
 #include <trunks/tpm_generated.h>
 #include <trunks/trunks_factory_impl.h>
+#include <trunks/cr50_headers/ap_ro_status.h>
 
 using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
@@ -127,20 +128,41 @@ constexpr TpmAlerts kH1AlertsMap[trunks::kH1AlertsSize] = {
 };
 
 std::optional<tpm_manager::RoVerificationStatus> MapRoStatus(
-    const trunks::TpmUtility::ApRoStatus& raw_status) {
+    ap_ro_status raw_status) {
   switch (raw_status) {
-    case trunks::TpmUtility::ApRoStatus::kApRoNotRun:
+    case AP_RO_NOT_RUN:
       return tpm_manager::RO_STATUS_NOT_TRIGGERED;
-    case trunks::TpmUtility::ApRoStatus::kApRoPass:
+    case AP_RO_PASS_UNVERIFIED_GBB:
       return tpm_manager::RO_STATUS_PASS;
-    case trunks::TpmUtility::ApRoStatus::kApRoFail:
+    case AP_RO_FAIL:
       return tpm_manager::RO_STATUS_FAIL;
-    case trunks::TpmUtility::ApRoStatus::kApRoUnsupportedUnknown:
+    case AP_RO_UNSUPPORTED_UNKNOWN:
       return tpm_manager::RO_STATUS_UNSUPPORTED;
-    case trunks::TpmUtility::ApRoStatus::kApRoUnsupportedNotTriggered:
+    case AP_RO_UNSUPPORTED_NOT_TRIGGERED:
       return tpm_manager::RO_STATUS_UNSUPPORTED_NOT_TRIGGERED;
-    case trunks::TpmUtility::ApRoStatus::kApRoUnsupportedTriggered:
+    case AP_RO_UNSUPPORTED_TRIGGERED:
       return tpm_manager::RO_STATUS_UNSUPPORTED_TRIGGERED;
+    // TODO(chingkang): return proper values after updating the protobuf.
+    case AP_RO_PASS:
+    case AP_RO_IN_PROGRESS:
+    case AP_RO_V2_SUCCESS:
+    case AP_RO_V2_FAILED_VERIFICATION:
+    case AP_RO_V2_INCONSISTENT_GSCVD:
+    case AP_RO_V2_INCONSISTENT_KEYBLOCK:
+    case AP_RO_V2_INCONSISTENT_KEY:
+    case AP_RO_V2_SPI_READ:
+    case AP_RO_V2_UNSUPPORTED_CRYPTO_ALGORITHM:
+    case AP_RO_V2_VERSION_MISMATCH:
+    case AP_RO_V2_OUT_OF_MEMORY:
+    case AP_RO_V2_INTERNAL:
+    case AP_RO_V2_TOO_BIG:
+    case AP_RO_V2_MISSING_GSCVD:
+    case AP_RO_V2_BOARD_ID_MISMATCH:
+    case AP_RO_V2_SETTING_NOT_PROVISIONED:
+    case AP_RO_V2_NON_ZERO_GBB_FLAGS:
+    case AP_RO_V2_WRONG_ROOT_KEY:
+    case AP_RO_V2_UNKNOWN:
+      break;
   }
   LOG(ERROR) << __func__
              << ": unexpected status: " << static_cast<uint8_t>(raw_status);
@@ -331,7 +353,7 @@ bool Tpm2StatusImpl::TestTpmSrkAndSaltingSession() {
 
 bool Tpm2StatusImpl::GetRoVerificationStatus(
     tpm_manager::RoVerificationStatus* status) {
-  trunks::TpmUtility::ApRoStatus raw_status;
+  ap_ro_status raw_status;
   TPM_RC result = trunks_tpm_utility_->GetRoVerificationStatus(&raw_status);
   if (result != TPM_RC_SUCCESS) {
     return false;

@@ -13,6 +13,7 @@
 
 #include "trunks/authorization_delegate.h"
 #include "trunks/blob_parser.h"
+#include "trunks/cr50_headers/ap_ro_status.h"
 #include "trunks/hmac_session.h"
 #include "trunks/mock_blob_parser.h"
 #include "trunks/mock_hmac_session.h"
@@ -744,7 +745,7 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->GetRsuDeviceId(device_id);
   }
 
-  TPM_RC GetRoVerificationStatus(ApRoStatus* status) override {
+  TPM_RC GetRoVerificationStatus(ap_ro_status* status) override {
     return target_->GetRoVerificationStatus(status);
   }
 

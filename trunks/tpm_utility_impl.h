@@ -17,6 +17,7 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
 
+#include "trunks/cr50_headers/ap_ro_status.h"
 #include "trunks/scoped_key_handle.h"
 #include "trunks/trunks_export.h"
 
@@ -379,7 +380,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                    brillo::Blob* sig_r,
                    brillo::Blob* sig_s) override;
   TPM_RC GetRsuDeviceId(std::string* device_id) override;
-  TPM_RC GetRoVerificationStatus(ApRoStatus* status) override;
+  TPM_RC GetRoVerificationStatus(ap_ro_status* status) override;
 
   bool IsGsc() override;
 

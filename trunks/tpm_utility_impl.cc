@@ -31,6 +31,7 @@
 #include "trunks/authorization_delegate.h"
 #include "trunks/blob_parser.h"
 #include "trunks/command_transceiver.h"
+#include "trunks/cr50_headers/ap_ro_status.h"
 #include "trunks/error_codes.h"
 #include "trunks/hmac_authorization_delegate.h"
 #include "trunks/hmac_session.h"
@@ -3579,9 +3580,9 @@ TPM_RC TpmUtilityImpl::GetRsuDeviceId(std::string* device_id) {
   return result;
 }
 
-TPM_RC TpmUtilityImpl::GetRoVerificationStatus(ApRoStatus* status) {
+TPM_RC TpmUtilityImpl::GetRoVerificationStatus(ap_ro_status* status) {
   if (!IsGsc()) {
-    *status = ApRoStatus::kApRoUnsupportedNotTriggered;
+    *status = AP_RO_NOT_RUN;
     return TPM_RC_SUCCESS;
   }
   std::string res;
@@ -3594,7 +3595,7 @@ TPM_RC TpmUtilityImpl::GetRoVerificationStatus(ApRoStatus* status) {
     LOG(ERROR) << __func__ << ": empty response";
     return TPM_RC_FAILURE;
   }
-  *status = static_cast<ApRoStatus>(res[0]);
+  *status = static_cast<ap_ro_status>(res[0]);
   return TPM_RC_SUCCESS;
 }
 

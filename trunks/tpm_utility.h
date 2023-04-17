@@ -12,6 +12,7 @@
 
 #include <brillo/secure_blob.h>
 
+#include "trunks/cr50_headers/ap_ro_status.h"
 #include "trunks/hmac_session.h"
 #include "trunks/pinweaver.pb.h"
 #include "trunks/policy_session.h"
@@ -65,16 +66,6 @@ struct PinWeaverEccPoint {
 class TRUNKS_EXPORT TpmUtility {
  public:
   enum AsymmetricKeyUsage { kDecryptKey, kSignKey, kDecryptAndSignKey };
-  // Note that when this enum is updated, corresponding enum in
-  // cr50/include/ap_ro_integrity_check.h, ap_ro_status, should be also updated.
-  enum class ApRoStatus : uint8_t {
-    kApRoNotRun = 0,
-    kApRoPass = 1,
-    kApRoFail = 2,
-    kApRoUnsupportedUnknown = 3,
-    kApRoUnsupportedNotTriggered = 4,
-    kApRoUnsupportedTriggered = 5,
-  };
 
   TpmUtility() {}
   TpmUtility(const TpmUtility&) = delete;
@@ -1052,7 +1043,7 @@ class TRUNKS_EXPORT TpmUtility {
   // Retrieves cached RSU device id.
   virtual TPM_RC GetRsuDeviceId(std::string* device_id) = 0;
 
-  virtual TPM_RC GetRoVerificationStatus(ApRoStatus* status) = 0;
+  virtual TPM_RC GetRoVerificationStatus(ap_ro_status* status) = 0;
 
   // Returns true for TPMs running GSC.
   virtual bool IsGsc() = 0;

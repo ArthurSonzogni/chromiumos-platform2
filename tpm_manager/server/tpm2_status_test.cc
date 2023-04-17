@@ -9,6 +9,7 @@
 #include <base/functional/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <trunks/cr50_headers/ap_ro_status.h>
 #include <trunks/mock_tpm_state.h>
 #include <trunks/mock_tpm_utility.h>
 #include <trunks/tpm_constants.h>
@@ -299,8 +300,8 @@ TEST_F(Tpm2StatusTest, GetGscVersion) {
 
 TEST_F(Tpm2StatusTest, GetRoVerificationStatusSuccess) {
   EXPECT_CALL(mock_tpm_utility_, GetRoVerificationStatus(_))
-      .WillRepeatedly(Invoke([](trunks::TpmUtility::ApRoStatus* status) {
-        *status = trunks::TpmUtility::ApRoStatus::kApRoPass;
+      .WillRepeatedly(Invoke([](ap_ro_status* status) {
+        *status = AP_RO_PASS_UNVERIFIED_GBB;
         return TPM_RC_SUCCESS;
       }));
   tpm_manager::RoVerificationStatus status;

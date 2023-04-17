@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 #include <openssl/aes.h>
 
+#include "trunks/cr50_headers/ap_ro_status.h"
 #include "trunks/error_codes.h"
 #include "trunks/hmac_authorization_delegate.h"
 #include "trunks/mock_authorization_delegate.h"
@@ -3792,21 +3793,21 @@ TEST_F(TpmUtilityTest, GetRoVerificationStatus) {
       "\x00\x00\x00\x0D"  // size=13
       "\x00\x00\x00\x00"  // code=TPM_RC_SUCCESS
       "\x00\x39"          // subcommand=kGscSubcmdGetRoStatus
-      "\x01",             // ApRoStatus=kApRoPass
+      "\x01",             // ap_ro_status=AP_RO_PASS_UNVERIFIED_GBB
       13);
   SetGsc(true);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
       .WillOnce(Return(command_response));
-  TpmUtility::ApRoStatus status;
+  ap_ro_status status;
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetRoVerificationStatus(&status));
-  EXPECT_EQ(status, TpmUtility::ApRoStatus::kApRoPass);
+  EXPECT_EQ(status, AP_RO_PASS_UNVERIFIED_GBB);
 }
 
 TEST_F(TpmUtilityTest, GetRoVerificationStatusForNotGsc) {
   SetGsc(false);
-  TpmUtility::ApRoStatus status;
+  ap_ro_status status;
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetRoVerificationStatus(&status));
-  EXPECT_EQ(status, TpmUtility::ApRoStatus::kApRoUnsupportedNotTriggered);
+  EXPECT_EQ(status, AP_RO_NOT_RUN);
 }
 
 TEST_F(TpmUtilityTest, GetTi50Stats) {
