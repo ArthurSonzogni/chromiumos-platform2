@@ -21,9 +21,13 @@ enum class AuthFactorType {
   kUnspecified,
 };
 
-// Converts the auth factor type enum to a string into an enum. Returns empty
-// strings if the type is unknown.
+// Converts the auth factor type enum to a string into an enum. Returns an empty
+// string if the type is unknown.
 std::string AuthFactorTypeToString(AuthFactorType type);
+
+// Converts the auth factor type enum to a string into an enum. Returns an empty
+// string if the type is unknown.
+std::string AuthFactorTypeToCamelCaseString(AuthFactorType type);
 
 // Converts the auth factor type string into an enum. Returns a null optional
 // if the string is unknown.
