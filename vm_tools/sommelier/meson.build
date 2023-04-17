@@ -109,6 +109,7 @@ gamepad_dependencies = []
 if get_option('gamepad')
   gamepad_sources = [
     'sommelier-gaming.cc',
+    'libevdev/libevdev-shim.cc',
   ]
   gamepad_dependencies = [
     dependency('libevdev'),
@@ -202,6 +203,7 @@ if get_option('with_tests')
   sommelier_test = executable('sommelier_test',
     install: true,
     sources: [
+      'sommelier-gaming-test.cc',
       'sommelier-test.cc',
       'sommelier-test-main.cc',
       'sommelier-output-test.cc',
@@ -215,7 +217,7 @@ if get_option('with_tests')
       dependency('gtest'),
       dependency('gmock'),
       dependency('pixman-1')
-    ],
+    ] + gamepad_dependencies + tracing_dependencies,
     cpp_args: cpp_args + sommelier_defines,
     include_directories: includes + testing_includes,
   )

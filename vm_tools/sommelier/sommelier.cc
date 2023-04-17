@@ -6,6 +6,9 @@
 #include "sommelier-tracing.h"    // NOLINT(build/include_directory)
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
 #include "sommelier-xshape.h"     // NOLINT(build/include_directory)
+#ifdef GAMEPAD_SUPPORT
+#include "libevdev/libevdev-shim.h"
+#endif
 #include "xcb/xcb-shim.h"
 
 #include <assert.h>
@@ -3712,6 +3715,10 @@ void create_shims() {
   set_xdg_toplevel_shim(new XdgToplevelShim());
   set_xdg_surface_shim(new XdgSurfaceShim());
   set_xdg_wm_base_shim(new XdgWmBaseShim());
+
+#ifdef GAMEPAD_SUPPORT
+  Libevdev::Set(new LibevdevShim());
+#endif
 }
 
 int real_main(int argc, char** argv) {

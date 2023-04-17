@@ -10,6 +10,7 @@
 
 #include "../sommelier.h"                // NOLINT(build/include_directory)
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
+#include "gaming-input-unstable-v2-client-protocol.h"  // NOLINT(build/include_directory)
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-output-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"  // NOLINT(build/include_directory)
@@ -33,6 +34,8 @@ MAP_STRUCT_TO_LISTENER(wl_surface*, wl_surface_listener);
 MAP_STRUCT_TO_LISTENER(zaura_output*, zaura_output_listener);
 MAP_STRUCT_TO_LISTENER(zaura_toplevel*, zaura_toplevel_listener);
 MAP_STRUCT_TO_LISTENER(zxdg_output_v1*, zxdg_output_v1_listener);
+MAP_STRUCT_TO_LISTENER(zcr_gaming_seat_v2*, zcr_gaming_seat_v2_listener);
+MAP_STRUCT_TO_LISTENER(zcr_gamepad_v2*, zcr_gamepad_v2_listener);
 
 namespace vm_tools {
 namespace sommelier {

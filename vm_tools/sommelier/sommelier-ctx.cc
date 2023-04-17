@@ -115,6 +115,7 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->xdg_output_manager = NULL;
 #ifdef GAMEPAD_SUPPORT
   ctx->gaming_input_manager = NULL;
+  ctx->gaming_seat = NULL;
 #endif
   ctx->display_event_source = NULL;
   ctx->display_ready_event_source = NULL;

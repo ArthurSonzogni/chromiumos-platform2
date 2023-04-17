@@ -82,7 +82,10 @@ sommelier_defines = [
                     ] + gaming_defines + tracing_defines
 
 static_library("libgaming") {
-  sources = [ "sommelier-gaming.cc" ]
+  sources = [
+    "libevdev/libevdev-shim.cc",
+    "sommelier-gaming.cc",
+  ]
   defines = gaming_defines
   pkg_deps = [
     "libevdev",
@@ -128,6 +131,7 @@ static_library("libsommelier") {
   pkg_deps = [
                "gbm",
                "libdrm",
+               "libevdev",
                "pixman-1",
                "wayland-client",
                "wayland-server",
@@ -155,6 +159,7 @@ executable("sommelier") {
 if (use.test) {
   executable("sommelier_test") {
     sources = [
+      "sommelier-gaming-test.cc",
       "sommelier-output-test.cc",
       "sommelier-test-main.cc",
       "sommelier-test.cc",
@@ -167,7 +172,10 @@ if (use.test) {
 
     defines = sommelier_defines
 
-    pkg_deps = [ "pixman-1" ]
+    pkg_deps = [
+                 "libevdev",
+                 "pixman-1",
+               ] + tracing_pkg_deps
 
     # gnlint: disable=GnLintCommonTesting
     libs = [

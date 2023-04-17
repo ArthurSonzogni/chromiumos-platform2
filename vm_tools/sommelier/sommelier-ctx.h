@@ -88,6 +88,7 @@ struct sl_context {
   struct sl_xdg_output_manager* xdg_output_manager;
 #ifdef GAMEPAD_SUPPORT
   struct sl_gaming_input_manager* gaming_input_manager;
+  struct zcr_gaming_seat_v2* gaming_seat;
 #endif
   struct sl_relative_pointer_manager* relative_pointer_manager;
   struct sl_pointer_constraints* pointer_constraints;

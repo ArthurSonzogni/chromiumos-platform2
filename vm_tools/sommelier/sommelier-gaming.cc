@@ -9,10 +9,12 @@
 #include <errno.h>
 #include <libevdev/libevdev.h>
 #include <libevdev/libevdev-uinput.h>
+#include "libevdev/libevdev-shim.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unordered_map>
 
 #include "gaming-input-unstable-v2-client-protocol.h"  // NOLINT(build/include_directory)
 
@@ -46,21 +48,158 @@ enum GamepadActivationState {
   kStateError = 3       // Error occurred during construction; ignore gracefully
 };
 
+struct DeviceID {
+  const uint32_t vendor;
+  const uint32_t product;
+  const uint32_t version;
+
+  bool operator==(const DeviceID& other) const {
+    return vendor == other.vendor && product == other.product &&
+           version == other.version;
+  }
+};
+
+// Simple Hash/equal operators for DeviceID struct. Doesn't need to be efficient
+// as the size of our map will be small.
+template <>
+struct std::hash<DeviceID> {
+  std::size_t operator()(const DeviceID& device) const {
+    return device.vendor ^ device.product ^ device.version;
+  }
+};
+
+// Buttons being emulated by libevdev uinput.
+// Note: Do not enable BTN_TL2 or BTN_TR2, as they will significantly
+// change the Linux joydev interpretation of the triggers on ABS_Z/ABS_RZ.
+const int kButtons[] = {BTN_SOUTH,  BTN_EAST,  BTN_NORTH,  BTN_WEST,
+                        BTN_TL,     BTN_TR,    BTN_THUMBL, BTN_THUMBR,
+                        BTN_SELECT, BTN_START, BTN_MODE};
+
+// ID constants for identifying gamepads. Note that some gamepads
+// may share the same vendor if they're from the same brand. Bluetooth (BT)
+// and USB variants may also share the same product id - though this is
+// not guaranteed.
+
+// IDs for emulated controllers.
 const char kXboxName[] = "Microsoft X-Box One S pad";
 const uint32_t kUsbBus = 0x03;
 const uint32_t kXboxVendor = 0x45e;
 const uint32_t kXboxProduct = 0x2ea;
 const uint32_t kXboxVersion = 0x301;
 
-// Note: the BT vendor ID for SteelSeries is due to a chipset bug
+// Note: the Bluetooth (BT) vendor ID for SteelSeries is due to a chipset bug
 // and is not an actual claimed Vendor ID.
-const uint32_t kSteelSeriesVendorBt = 0x111;
-const uint32_t kSteelSeriesProductStratusDuoBt = 0x1431;
-const uint32_t kSteelSeriesProductStratusPlusBt = 0x1434;
+const uint32_t kSteelSeriesBTVendor = 0x111;
 
 const uint32_t kStadiaVendor = 0x18d1;
 const uint32_t kStadiaProduct = 0x9400;
-const uint32_t kStadiaVersion = 0x111;
+
+const uint32_t kSonyVendor = 0x54C;
+const uint32_t kDualSenseProduct = 0xCE6;
+
+const DeviceID kStadiaUSB = {
+    .vendor = kStadiaVendor, .product = kStadiaProduct, .version = 0x111};
+
+const DeviceID kStadiaBT = {
+    .vendor = kStadiaVendor, .product = kStadiaProduct, .version = 0x100};
+
+const DeviceID kStratusDuoBT = {
+    .vendor = kSteelSeriesBTVendor, .product = 0x1431, .version = 0x11B};
+
+const DeviceID kStratusPlusBT = {
+    .vendor = kSteelSeriesBTVendor, .product = 0x1434, .version = 0x216};
+
+// DualSense versions are the HID specification versions (bcdHID). We care about
+// these versions as hid-playstation and hid-sony use bcdHID to signal that the
+// broken hid-generic mapping is not used.
+const DeviceID kDualSenseUSB = {
+    .vendor = kSonyVendor, .product = kDualSenseProduct, .version = 0x111};
+
+const DeviceID kDualSenseBT = {
+    .vendor = kSonyVendor, .product = kDualSenseProduct, .version = 0x100};
+
+// Mappings from the input event of a given gamepad (key) to the
+// appropriate output event (value). These mappings are intended to maintain
+// the locality of a gamepad; i.e the left face button should map to a
+// left face button event. Input events not represented in a map will be
+// discarded.
+
+// DualSense (PS5).
+const std::unordered_map<uint32_t, uint32_t> kDualSenseMapping = {
+    // Left Joystick
+    {ABS_X, ABS_X},
+    {ABS_Y, ABS_Y},
+    // Right Joystick
+    {ABS_Z, ABS_RX},
+    {ABS_RZ, ABS_RY},
+    // Joystick press
+    {BTN_SELECT, BTN_THUMBL},
+    {BTN_START, BTN_THUMBR},
+    // DPad
+    {ABS_HAT0X, ABS_HAT0X},
+    {ABS_HAT0Y, ABS_HAT0Y},
+    // Face Buttons
+    {BTN_B, BTN_A},
+    {BTN_C, BTN_B},
+    {BTN_A, BTN_X},
+    {BTN_X, BTN_Y},
+    // Left bumper and trigger
+    {BTN_Y, BTN_TL},
+    {ABS_RX, ABS_Z},
+    // Right bumper and trigger
+    {BTN_Z, BTN_TR},
+    {ABS_RY, ABS_RZ},
+    // Menu buttons
+    {BTN_TL2, BTN_SELECT},
+    {BTN_TR2, BTN_START},
+    {BTN_MODE, BTN_MODE},
+    // Unused buttons: Touchpad_click: BTN_THUMBL, Microphone_button: BTN_THUMBR
+};
+
+// Represents how the input events of a certain controllers (key) should be
+// interpreted (value). So far this pattern has been observed in the Stadia
+// and several SteelSeries controllers in BT mode.
+const std::unordered_map<uint32_t, uint32_t> kAxisQuirkMapping = {
+    // Left Joystick
+    {ABS_X, ABS_X},
+    {ABS_Y, ABS_Y},
+    // Right Joystick
+    {ABS_Z, ABS_RX},
+    {ABS_RZ, ABS_RY},
+    // Joystick press
+    {BTN_THUMBL, BTN_THUMBL},
+    {BTN_THUMBR, BTN_THUMBR},
+    // DPad
+    {ABS_HAT0X, ABS_HAT0X},
+    {ABS_HAT0Y, ABS_HAT0Y},
+    // Face Buttons
+    {BTN_A, BTN_A},
+    {BTN_B, BTN_B},
+    {BTN_X, BTN_X},
+    {BTN_Y, BTN_Y},
+    // Left bumper and trigger
+    {BTN_TL, BTN_TL},
+    {ABS_BRAKE, ABS_Z},
+    // Right bumper and trigger
+    {BTN_TR, BTN_TR},
+    {ABS_GAS, ABS_RZ},
+    // Menu buttons
+    {BTN_SELECT, BTN_SELECT},
+    {BTN_START, BTN_START},
+    {BTN_MODE, BTN_MODE},
+};
+
+// Map of devices to their respctive input remappings.
+const std::unordered_map<DeviceID,
+                         const std::unordered_map<uint32_t, uint32_t>*>
+    kDeviceMappings = {
+        {kStadiaUSB, &kAxisQuirkMapping},
+        {kStadiaBT, &kAxisQuirkMapping},
+        {kStratusDuoBT, &kAxisQuirkMapping},
+        {kStratusPlusBT, &kAxisQuirkMapping},
+        {kDualSenseUSB, &kDualSenseMapping},
+        {kDualSenseBT, &kDualSenseMapping},
+};
 
 // Note: the majority of protocol errors are treated as non-fatal, and
 // are intended to be handled gracefully, as is removal at any
@@ -78,9 +217,9 @@ static void sl_internal_gamepad_removed(void* data,
          host_gamepad->state == kStateError);
 
   if (host_gamepad->uinput_dev != NULL)
-    libevdev_uinput_destroy(host_gamepad->uinput_dev);
+    Libevdev::Get()->uinput_destroy(host_gamepad->uinput_dev);
   if (host_gamepad->ev_dev != NULL)
-    libevdev_free(host_gamepad->ev_dev);
+    Libevdev::Get()->free(host_gamepad->ev_dev);
 
   zcr_gamepad_v2_destroy(gamepad);
 
@@ -88,19 +227,23 @@ static void sl_internal_gamepad_removed(void* data,
   delete host_gamepad;
 }
 
-static uint32_t remap_axis(struct sl_host_gamepad* host_gamepad,
-                           uint32_t axis) {
-  if (host_gamepad->axes_quirk) {
-    if (axis == ABS_Z)
-      axis = ABS_RX;
-    else if (axis == ABS_RZ)
-      axis = ABS_RY;
-    else if (axis == ABS_BRAKE)
-      axis = ABS_Z;
-    else if (axis == ABS_GAS)
-      axis = ABS_RZ;
+// Helper function to remap the input events from a host_gamepad into the
+// correct output event to be emulated by the generated uinput device.
+static bool remap_input(struct sl_host_gamepad* host_gamepad, uint32_t& input) {
+  if (host_gamepad->mapping == nullptr) {
+    return true;
   }
-  return axis;
+  auto it = host_gamepad->mapping->find(input);
+  if (it != host_gamepad->mapping->end()) {
+    input = it->second;
+    return true;
+  }
+  // If a mapping exists, and we get an input we don't expect
+  // or don't handle, we shouldn't emulate it. An example of this
+  // is that the DualSense controller's triggers activate an axis
+  // and a button at the same time, which would result in unexpected
+  // behaviour if we forwarded both inputs.
+  return false;
 }
 
 static void sl_internal_gamepad_axis(void* data,
@@ -114,11 +257,12 @@ static void sl_internal_gamepad_axis(void* data,
   if (host_gamepad->state != kStateActivated)
     return;
 
-  axis = remap_axis(host_gamepad, axis);
+  if (!remap_input(host_gamepad, axis))
+    return;
 
   // Note: incoming time is ignored, it will be regenerated from current time.
-  libevdev_uinput_write_event(host_gamepad->uinput_dev, EV_ABS, axis,
-                              wl_fixed_to_double(value));
+  Libevdev::Get()->uinput_write_event(host_gamepad->uinput_dev, EV_ABS, axis,
+                                      wl_fixed_to_double(value));
 }
 
 static void sl_internal_gamepad_button(void* data,
@@ -133,12 +277,16 @@ static void sl_internal_gamepad_button(void* data,
   if (host_gamepad->state != kStateActivated)
     return;
 
+  if (!remap_input(host_gamepad, button))
+    return;
+
   // Note: Exo wayland server always sends analog==0, only pay attention
   // to state.
   int value = (state == ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED) ? 1 : 0;
 
   // Note: incoming time is ignored, it will be regenerated from current time.
-  libevdev_uinput_write_event(host_gamepad->uinput_dev, EV_KEY, button, value);
+  Libevdev::Get()->uinput_write_event(host_gamepad->uinput_dev, EV_KEY, button,
+                                      value);
 }
 
 static void sl_internal_gamepad_frame(void* data,
@@ -151,7 +299,8 @@ static void sl_internal_gamepad_frame(void* data,
     return;
 
   // Note: incoming time is ignored, it will be regenerated from current time.
-  libevdev_uinput_write_event(host_gamepad->uinput_dev, EV_SYN, SYN_REPORT, 0);
+  Libevdev::Get()->uinput_write_event(host_gamepad->uinput_dev, EV_SYN,
+                                      SYN_REPORT, 0);
 }
 
 static void sl_internal_gamepad_axis_added(void* data,
@@ -178,9 +327,11 @@ static void sl_internal_gamepad_axis_added(void* data,
     return;
   }
 
-  index = remap_axis(host_gamepad, index);
+  if (!remap_input(host_gamepad, index))
+    return;
 
-  libevdev_enable_event_code(host_gamepad->ev_dev, EV_ABS, index, &info);
+  Libevdev::Get()->enable_event_code(host_gamepad->ev_dev, EV_ABS, index,
+                                     &info);
 }
 
 static void sl_internal_gamepad_activated(void* data,
@@ -195,9 +346,9 @@ static void sl_internal_gamepad_activated(void* data,
     return;
   }
 
-  int err = libevdev_uinput_create_from_device(host_gamepad->ev_dev,
-                                               LIBEVDEV_UINPUT_OPEN_MANAGED,
-                                               &host_gamepad->uinput_dev);
+  int err = Libevdev::Get()->uinput_create_from_device(
+      host_gamepad->ev_dev, LIBEVDEV_UINPUT_OPEN_MANAGED,
+      &host_gamepad->uinput_dev);
   if (err == 0) {
     // TODO(kenalba): can we destroy and clean up the ev_dev now?
     host_gamepad->state = kStateActivated;
@@ -242,9 +393,9 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
 
   host_gamepad->ctx = ctx;
   host_gamepad->state = kStatePending;
-  host_gamepad->ev_dev = libevdev_new();
+  host_gamepad->ev_dev = Libevdev::Get()->new_evdev();
   host_gamepad->uinput_dev = NULL;
-  host_gamepad->axes_quirk = false;
+  host_gamepad->mapping = nullptr;
 
   if (host_gamepad->ev_dev == NULL) {
     fprintf(stderr, "error: libevdev_new failed\n");
@@ -254,34 +405,22 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
 
   // We provide limited remapping at this time. Only moderately XBox360
   // HID compatible controllers are likely to work well.
-
-  if (product_id == kStadiaProduct && vendor_id == kStadiaVendor &&
-      version == kStadiaVersion) {
-    host_gamepad->axes_quirk = true;
-  } else if (bus == ZCR_GAMING_SEAT_V2_BUS_TYPE_BLUETOOTH &&
-             vendor_id == kSteelSeriesVendorBt &&
-             (product_id == kSteelSeriesProductStratusDuoBt ||
-              product_id == kSteelSeriesProductStratusPlusBt)) {
-    host_gamepad->axes_quirk = true;
+  auto it = kDeviceMappings.find(DeviceID{vendor_id, product_id, version});
+  if (it != kDeviceMappings.end()) {
+    host_gamepad->mapping = it->second;
   }
 
   // Describe a common controller
-  libevdev_set_name(host_gamepad->ev_dev, kXboxName);
-  libevdev_set_id_bustype(host_gamepad->ev_dev, kUsbBus);
-  libevdev_set_id_vendor(host_gamepad->ev_dev, kXboxVendor);
-  libevdev_set_id_product(host_gamepad->ev_dev, kXboxProduct);
-  libevdev_set_id_version(host_gamepad->ev_dev, kXboxVersion);
+  Libevdev::Get()->set_name(host_gamepad->ev_dev, kXboxName);
+  Libevdev::Get()->set_id_bustype(host_gamepad->ev_dev, kUsbBus);
+  Libevdev::Get()->set_id_vendor(host_gamepad->ev_dev, kXboxVendor);
+  Libevdev::Get()->set_id_product(host_gamepad->ev_dev, kXboxProduct);
+  Libevdev::Get()->set_id_version(host_gamepad->ev_dev, kXboxVersion);
 
   // Enable common set of buttons
-
-  // Note: Do not enable BTN_TL2 or BTN_TR2, as they will significantly
-  // change the Linux joydev interpretation of the triggers on ABS_Z/ABS_RZ.
-  int buttons[] = {BTN_SOUTH,  BTN_EAST,  BTN_NORTH,  BTN_WEST,
-                   BTN_TL,     BTN_TR,    BTN_THUMBL, BTN_THUMBR,
-                   BTN_SELECT, BTN_START, BTN_MODE};
-
-  for (unsigned int i = 0; i < ARRAY_SIZE(buttons); i++)
-    libevdev_enable_event_code(host_gamepad->ev_dev, EV_KEY, buttons[i], NULL);
+  for (unsigned int i = 0; i < ARRAY_SIZE(kButtons); i++)
+    Libevdev::Get()->enable_event_code(host_gamepad->ev_dev, EV_KEY,
+                                       kButtons[i], NULL);
 }  // NOLINT(whitespace/indent), lint bug b/173143790
 
 // Note: not currently implemented by Exo.
@@ -302,11 +441,9 @@ static const struct zcr_gaming_seat_v2_listener
 void sl_gaming_seat_add_listener(struct sl_context* ctx) {
   if (ctx->gaming_input_manager && ctx->gaming_input_manager->internal) {
     TRACE_EVENT("gaming", "sl_gaming_seat_add_listener");
-    // TODO(kenalba): does gaming_seat need to persist in ctx?
-    struct zcr_gaming_seat_v2* gaming_seat =
-        zcr_gaming_input_v2_get_gaming_seat(ctx->gaming_input_manager->internal,
-                                            ctx->default_seat->proxy);
-    zcr_gaming_seat_v2_add_listener(gaming_seat,
+    ctx->gaming_seat = zcr_gaming_input_v2_get_gaming_seat(
+        ctx->gaming_input_manager->internal, ctx->default_seat->proxy);
+    zcr_gaming_seat_v2_add_listener(ctx->gaming_seat,
                                     &sl_internal_gaming_seat_listener, ctx);
   }
 }

@@ -11,6 +11,7 @@
 
 #include "../sommelier.h"                // NOLINT(build/include_directory)
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
+#include "gaming-input-unstable-v2-client-protocol.h"  // NOLINT(build/include_directory)
 #include "mock-wayland-channel.h"        // NOLINT(build/include_directory)
 #include "sommelier-test-util.h"         // NOLINT(build/include_directory)
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
@@ -81,6 +82,18 @@ class FakeWaylandClient {
       }
     }
     EXPECT_EQ(bound, ids.size());
+    Flush();
+  }
+
+  // Bind to all wl_seats.
+  void BindToWlSeats(struct sl_context* ctx) {
+    struct sl_global* global;
+    wl_list_for_each(global, &ctx->globals, link) {
+      if (global->interface == &wl_seat_interface) {
+        wl_registry_bind(client_registry, global->name, global->interface,
+                         WL_OUTPUT_DONE_SINCE_VERSION);
+      }
+    }
     Flush();
   }
 
@@ -220,6 +233,10 @@ class WaylandTestBase : public ::testing::Test {
                         ZAURA_TOPLEVEL_SET_WINDOW_BOUNDS_SINCE_VERSION);
     sl_registry_handler(&ctx, registry, next_server_id++, "wp_viewporter",
                         WP_VIEWPORTER_DESTROY_SINCE_VERSION);
+    sl_registry_handler(&ctx, registry, next_server_id++, "zcr_gaming_input_v2",
+                        ZCR_GAMING_INPUT_V2_GET_GAMING_SEAT_SINCE_VERSION);
+    sl_registry_handler(&ctx, registry, next_server_id++, "wl_seat",
+                        WL_SEAT_RELEASE_SINCE_VERSION);
   }
 
   // Set up one or more fake outputs for the test.

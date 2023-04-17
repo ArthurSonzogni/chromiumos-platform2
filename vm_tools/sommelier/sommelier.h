@@ -8,6 +8,7 @@
 #include <limits.h>
 #include <linux/types.h>
 #include <sys/types.h>
+#include <unordered_map>
 #include <wayland-server.h>
 #include <wayland-util.h>
 #include <xcb/xcb.h>
@@ -414,13 +415,19 @@ struct sl_sync_point {
 };
 
 #ifdef GAMEPAD_SUPPORT
+struct sl_host_gaming_seat {
+  struct sl_host_gaming_seat* gaming_seat;
+  struct wl_resource* resource;
+  struct wl_seat* proxy;
+};
+
 struct sl_host_gamepad {
   struct sl_context* ctx;
   int state;
   struct libevdev* ev_dev;
   struct libevdev_uinput* uinput_dev;
-  bool axes_quirk;
   struct wl_list link;
+  const std::unordered_map<uint32_t, uint32_t>* mapping;
 };
 #endif
 
