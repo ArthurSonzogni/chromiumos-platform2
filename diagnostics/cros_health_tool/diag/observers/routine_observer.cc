@@ -10,6 +10,9 @@
 
 #include <base/check.h>
 #include <base/functional/callback_forward.h>
+#include <base/values.h>
+
+#include "diagnostics/cros_health_tool/output_util.h"
 
 namespace diagnostics {
 
@@ -18,15 +21,23 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 void PrintMemoryDetail(const mojom::MemoryRoutineDetailPtr& memory_detail) {
-  std::cout << ("Bytes: ") << memory_detail->bytes_tested << std::endl;
-  if (!memory_detail->result.is_null()) {
-    for (const auto& test : memory_detail->result->passed_items) {
-      std::cout << ("Passed Tests: ") << test << std::endl;
-    }
-    for (const auto& test : memory_detail->result->failed_items) {
-      std::cout << ("Failed Tests: ") << test << std::endl;
-    }
+  base::Value::Dict output;
+  base::Value::List passed_items;
+  base::Value::List failed_items;
+
+  for (auto passed_item : memory_detail->result->passed_items) {
+    passed_items.Append(EnumToString(passed_item));
   }
+  for (auto failed_item : memory_detail->result->failed_items) {
+    failed_items.Append(EnumToString(failed_item));
+  }
+
+  SET_DICT(bytes_tested, memory_detail, &output);
+  output.Set("passed_items", std::move(passed_items));
+  output.Set("failed_items", std::move(failed_items));
+
+  std::cout << "Output: " << std::endl;
+  OutputJson(output);
 }
 
 }  // namespace

@@ -15,6 +15,7 @@
 #include "diagnostics/mojom/external/network_health_types.mojom.h"
 #include "diagnostics/mojom/external/network_types.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
@@ -55,6 +56,7 @@ std::string EnumToString(ash::cros_healthd::mojom::UsbVersion version);
 std::string EnumToString(ash::cros_healthd::mojom::UsbSpecSpeed spec_speed);
 std::string EnumToString(ash::cros_healthd::mojom::PsrInfo::LogState state);
 std::string EnumToString(ash::cros_healthd::mojom::PsrEvent::EventType type);
+std::string EnumToString(ash::cros_healthd::mojom::MemtesterTestItemEnum test);
 
 #define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
 

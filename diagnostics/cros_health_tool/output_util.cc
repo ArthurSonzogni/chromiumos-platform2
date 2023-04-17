@@ -15,6 +15,7 @@
 #include "diagnostics/mojom/external/network_health_types.mojom.h"
 #include "diagnostics/mojom/external/network_types.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
@@ -465,6 +466,52 @@ std::string EnumToString(mojom::PsrEvent::EventType type) {
       return "CsmeRecovery";
     case mojom::PsrEvent::EventType::kSvnIncrease:
       return "SvnIncrease";
+  }
+}
+
+std::string EnumToString(mojom::MemtesterTestItemEnum test_item) {
+  switch (test_item) {
+    case mojom::MemtesterTestItemEnum::kStuckAddress:
+      return "StuckAddress";
+    case mojom::MemtesterTestItemEnum::kCompareAND:
+      return "CompareAND";
+    case mojom::MemtesterTestItemEnum::kCompareDIV:
+      return "CompareDIV";
+    case mojom::MemtesterTestItemEnum::kCompareMUL:
+      return "CompareMUL";
+    case mojom::MemtesterTestItemEnum::kCompareOR:
+      return "CompareOR";
+    case mojom::MemtesterTestItemEnum::kCompareSUB:
+      return "CompareSUB";
+    case mojom::MemtesterTestItemEnum::kCompareXOR:
+      return "CompareXOR";
+    case mojom::MemtesterTestItemEnum::kSequentialIncrement:
+      return "SequentialIncrement";
+    case mojom::MemtesterTestItemEnum::kBitFlip:
+      return "BitFlip";
+    case mojom::MemtesterTestItemEnum::kBitSpread:
+      return "BitSpread";
+    case mojom::MemtesterTestItemEnum::kBlockSequential:
+      return "BlockSequential";
+    case mojom::MemtesterTestItemEnum::kCheckerboard:
+      return "Checkerboard";
+    case mojom::MemtesterTestItemEnum::kRandomValue:
+      return "RandomValue";
+    case mojom::MemtesterTestItemEnum::kSolidBits:
+      return "SolidBits";
+    case mojom::MemtesterTestItemEnum::kWalkingOnes:
+      return "WalkingOnes";
+    case mojom::MemtesterTestItemEnum::kWalkingZeroes:
+      return "WalkingZeroes";
+    case mojom::MemtesterTestItemEnum::k8BitWrites:
+      return "8-bitWrites";
+    case mojom::MemtesterTestItemEnum::k16BitWrites:
+      return "16-bitWrites";
+    case mojom::MemtesterTestItemEnum::kUnknown:
+      return "Unknown";
+    case mojom::MemtesterTestItemEnum::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "Unmapped Enum Field";
   }
 }
 
