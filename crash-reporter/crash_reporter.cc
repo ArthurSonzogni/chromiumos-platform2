@@ -376,7 +376,7 @@ int main(int argc, char* argv[]) {
   // Can't log yet because we haven't initialized logging.
   std::vector<brillo::FlagHelper::ParseResultsEntry> results;
   bool unknown_flags = !brillo::FlagHelper::Init(
-      argc, argv, "ChromiumOS Crash Reporter",
+      argc, argv, "ChromeOS Crash Reporter",
       brillo::FlagHelper::InitFuncType::kReturn, &results);
 
   if (FLAGS_early) {

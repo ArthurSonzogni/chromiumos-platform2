@@ -139,7 +139,7 @@ void ParseCommandLine(int argc,
       "instead, writes the uploads.log content to standard output. "
       "(To be implemented.)");
 
-  brillo::FlagHelper::Init(argc, argv, "ChromiumOS Crash Sender");
+  brillo::FlagHelper::Init(argc, argv, "ChromeOS Crash Sender");
   if (FLAGS_max_spread_time < 0) {
     LOG(ERROR) << "Invalid value for max spread time: "
                << FLAGS_max_spread_time;
@@ -1000,9 +1000,6 @@ SenderBase::CrashRemoveReason Sender::WriteUploadLog(
     std::string product_name) {
   if (product_name == constants::kProductNameChromeAsh)
     product_name = "Chrome";
-  if (!util::IsOfficialImage()) {
-    base::ReplaceSubstringsAfterOffset(&product_name, 0, "Chrome", "Chromium");
-  }
   if (dry_run_) {
     // Writes the log to stdout under the dry run mode.
     auto entry_or_reason =

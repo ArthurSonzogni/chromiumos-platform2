@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(save_dump_data, false, "Save binary dump data");
   DEFINE_bool(enable_syslog, false, "Print logs to syslog");
 
-  brillo::FlagHelper::Init(argc, argv, "ChromiumOS Bluetooth Crash Parser");
+  brillo::FlagHelper::Init(argc, argv, "ChromeOS Bluetooth Crash Parser");
 
   brillo::OpenLog("bluetooth_devcd_parser", true);
   if (FLAGS_enable_syslog) {
