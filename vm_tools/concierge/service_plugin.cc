@@ -240,7 +240,7 @@ StartVmResponse Service::StartPluginVm(
     return response;
   }
 
-  VmBaseImpl::Info info = vm->GetInfo();
+  VmBase::Info info = vm->GetInfo();
 
   vm_info->set_ipv4_address(info.ipv4_address);
   vm_info->set_pid(info.pid);
@@ -248,11 +248,11 @@ StartVmResponse Service::StartPluginVm(
   vm_info->set_seneschal_server_handle(info.seneschal_server_handle);
   vm_info->set_permission_token(info.permission_token);
   switch (info.status) {
-    case VmBaseImpl::Status::STARTING: {
+    case VmBase::Status::STARTING: {
       response.set_status(VM_STATUS_STARTING);
       break;
     }
-    case VmBaseImpl::Status::RUNNING: {
+    case VmBase::Status::RUNNING: {
       response.set_status(VM_STATUS_RUNNING);
       break;
     }

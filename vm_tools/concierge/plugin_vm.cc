@@ -194,15 +194,15 @@ bool PluginVm::Shutdown() {
              pvm::dispatcher::VmOpResult::SUCCESS;
 }
 
-VmBaseImpl::Info PluginVm::GetInfo() {
-  VmBaseImpl::Info info = {
+VmBase::Info PluginVm::GetInfo() {
+  VmBase::Info info = {
       .ipv4_address = subnet_->AddressAtOffset(kGuestAddressOffset),
       .pid = process_.pid(),
       .cid = 0,
       .vm_memory_id = vm_memory_id_,
       .seneschal_server_handle = seneschal_server_handle(),
       .permission_token = permission_token_,
-      .status = VmBaseImpl::Status::RUNNING,
+      .status = VmBase::Status::RUNNING,
       .type = VmInfo::PLUGIN_VM,
   };
 
@@ -267,10 +267,10 @@ base::ScopedFD PluginVm::CreateUnixSocket(const base::FilePath& path,
 
 // static
 bool PluginVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
-  return VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
-                                         kPluginVmCpuCgroup) &&
-         VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
-                                         kPluginVmVcpuCpuCgroup);
+  return VmBase::SetVmCpuRestriction(cpu_restriction_state,
+                                     kPluginVmCpuCgroup) &&
+         VmBase::SetVmCpuRestriction(cpu_restriction_state,
+                                     kPluginVmVcpuCpuCgroup);
 }
 
 bool PluginVm::CreateUsbListeningSocket() {
@@ -627,10 +627,10 @@ PluginVm::PluginVm(VmId id,
                    base::FilePath root_dir,
                    base::FilePath runtime_dir,
                    VmMemoryId vm_memory_id)
-    : VmBaseImpl(std::move(network_client),
-                 std::move(seneschal_server_proxy),
-                 std::move(runtime_dir),
-                 vm_memory_id),
+    : VmBase(std::move(network_client),
+             std::move(seneschal_server_proxy),
+             std::move(runtime_dir),
+             vm_memory_id),
       id_(std::move(id)),
       iso_dir_(std::move(iso_dir)),
       bus_(std::move(bus)),

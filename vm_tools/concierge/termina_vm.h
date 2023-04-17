@@ -30,7 +30,7 @@
 
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
-#include "vm_tools/concierge/vm_base_impl.h"
+#include "vm_tools/concierge/vm_base.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
@@ -98,7 +98,7 @@ struct SiblingState {
 };
 
 // Represents a single instance of a running termina VM.
-class TerminaVm final : public VmBaseImpl {
+class TerminaVm final : public VmBase {
  public:
   // Type of a disk image.
   enum class DiskImageType {
@@ -234,7 +234,7 @@ class TerminaVm final : public VmBaseImpl {
   // sibling VM.
   void SetSiblingDeadCb(base::OnceCallback<void(VmId vm_id)> sibling_dead_cb);
 
-  // VmBaseImpl overrides.
+  // VmBase overrides.
   // Shuts down the VM.  First attempts a clean shutdown of the VM by sending
   // a Shutdown RPC to maitre'd.  If that fails, attempts to shut down the VM
   // using the control socket for the hypervisor.  If that fails, then sends a
@@ -242,7 +242,7 @@ class TerminaVm final : public VmBaseImpl {
   // by sending it a SIGKILL.  Returns true if the VM was shut down and false
   // otherwise.
   bool Shutdown() override;
-  VmBaseImpl::Info GetInfo() override;
+  VmBase::Info GetInfo() override;
   bool AttachUsbDevice(uint8_t bus,
                        uint8_t addr,
                        uint16_t vid,

@@ -42,7 +42,7 @@
 #include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/sibling_vms.h"
 #include "vm_tools/concierge/tap_device_builder.h"
-#include "vm_tools/concierge/vm_base_impl.h"
+#include "vm_tools/concierge/vm_base.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
 #include "vm_tools/concierge/vm_util.h"
@@ -154,12 +154,12 @@ TerminaVm::TerminaVm(
     VmInfo::VmType classification,
     base::Thread* dbus_thread,
     std::unique_ptr<ScopedWlSocket> socket)
-    : VmBaseImpl(std::move(network_client),
-                 vsock_cid,
-                 std::move(seneschal_server_proxy),
-                 kCrosvmSocket,
-                 std::move(runtime_dir),
-                 vm_memory_id),
+    : VmBase(std::move(network_client),
+             vsock_cid,
+             std::move(seneschal_server_proxy),
+             kCrosvmSocket,
+             std::move(runtime_dir),
+             vm_memory_id),
       features_(features),
       stateful_device_(stateful_device),
       stateful_size_(stateful_size),
@@ -188,12 +188,12 @@ TerminaVm::TerminaVm(
     VmFeatures features,
     VmInfo::VmType classification,
     base::Thread* dbus_thread)
-    : VmBaseImpl(nullptr /* network_client */,
-                 vsock_cid,
-                 std::move(seneschal_server_proxy),
-                 "" /* cros_vm_socket */,
-                 std::move(runtime_dir),
-                 0 /* vm_memory_id */),
+    : VmBase(nullptr /* network_client */,
+             vsock_cid,
+             std::move(seneschal_server_proxy),
+             "" /* cros_vm_socket */,
+             std::move(runtime_dir),
+             0 /* vm_memory_id */),
       subnet_(std::move(subnet)),
       features_(features),
       stateful_device_(stateful_device),
@@ -1029,10 +1029,10 @@ bool TerminaVm::GetVmEnterpriseReportingInfo(
 
 // static
 bool TerminaVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
-  return VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
-                                         kTerminaCpuCgroup) &&
-         VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
-                                         kTerminaVcpuCpuCgroup);
+  return VmBase::SetVmCpuRestriction(cpu_restriction_state,
+                                     kTerminaCpuCgroup) &&
+         VmBase::SetVmCpuRestriction(cpu_restriction_state,
+                                     kTerminaVcpuCpuCgroup);
 }
 
 // Extract the disk index of a virtio-blk device name.
@@ -1317,16 +1317,16 @@ std::string TerminaVm::PermissionToken() const {
   return permission_token_;
 }
 
-VmBaseImpl::Info TerminaVm::GetInfo() {
-  VmBaseImpl::Info info = {
+VmBase::Info TerminaVm::GetInfo() {
+  VmBase::Info info = {
       .ipv4_address = IPv4Address(),
       .pid = pid(),
       .cid = cid(),
       .vm_memory_id = vm_memory_id_,
       .seneschal_server_handle = seneschal_server_handle(),
       .permission_token = permission_token_,
-      .status = IsTremplinStarted() ? VmBaseImpl::Status::RUNNING
-                                    : VmBaseImpl::Status::STARTING,
+      .status = IsTremplinStarted() ? VmBase::Status::RUNNING
+                                    : VmBase::Status::STARTING,
       .type = classification_,
   };
 

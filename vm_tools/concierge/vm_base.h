@@ -1,9 +1,9 @@
-// Copyright 2020 The ChromiumOS Authors
+// Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_TOOLS_CONCIERGE_VM_BASE_IMPL_H_
-#define VM_TOOLS_CONCIERGE_VM_BASE_IMPL_H_
+#ifndef VM_TOOLS_CONCIERGE_VM_BASE_H_
+#define VM_TOOLS_CONCIERGE_VM_BASE_H_
 
 #include <memory>
 #include <optional>
@@ -30,29 +30,29 @@ class Client;
 namespace vm_tools {
 namespace concierge {
 
-// See VmBaseImpl.Info.vm_memory_id
+// See VmBase.Info.vm_memory_id
 typedef uint32_t VmMemoryId;
 
 // A base class implementing common features that are shared with ArcVm,
 // PluginVm and TerminaVm
-class VmBaseImpl {
+class VmBase {
  public:
-  VmBaseImpl(std::unique_ptr<patchpanel::Client> network_client,
-             std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-             base::FilePath runtime_dir,
-             VmMemoryId vm_memory_id);
+  VmBase(std::unique_ptr<patchpanel::Client> network_client,
+         std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+         base::FilePath runtime_dir,
+         VmMemoryId vm_memory_id);
 
-  VmBaseImpl(std::unique_ptr<patchpanel::Client> network_client,
-             uint32_t vsock_cid,
-             std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-             std::string cros_vm_socket,
-             base::FilePath runtime_dir,
-             VmMemoryId vm_memory_id);
+  VmBase(std::unique_ptr<patchpanel::Client> network_client,
+         uint32_t vsock_cid,
+         std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+         std::string cros_vm_socket,
+         base::FilePath runtime_dir,
+         VmMemoryId vm_memory_id);
 
-  VmBaseImpl(const VmBaseImpl&) = delete;
-  VmBaseImpl& operator=(const VmBaseImpl&) = delete;
+  VmBase(const VmBase&) = delete;
+  VmBase& operator=(const VmBase&) = delete;
 
-  virtual ~VmBaseImpl();
+  virtual ~VmBase();
 
  public:
   // The current status of the VM.
@@ -291,4 +291,4 @@ class VmBaseImpl {
 }  // namespace concierge
 }  // namespace vm_tools
 
-#endif  // VM_TOOLS_CONCIERGE_VM_BASE_IMPL_H_
+#endif  // VM_TOOLS_CONCIERGE_VM_BASE_H_

@@ -25,7 +25,7 @@
 #include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/concierge/seneschal_server_proxy.h"
-#include "vm_tools/concierge/vm_base_impl.h"
+#include "vm_tools/concierge/vm_base.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
@@ -65,7 +65,7 @@ struct ArcVmFeatures {
 std::string GetOemEtcSharedDataParam(uid_t euid, gid_t egid);
 
 // Represents a single instance of a running termina VM.
-class ArcVm final : public VmBaseImpl {
+class ArcVm final : public VmBase {
  public:
   // Starts a new virtual machine.  Returns nullptr if the virtual machine
   // failed to start for any reason.
@@ -98,9 +98,9 @@ class ArcVm final : public VmBaseImpl {
   // The IPv4 address of the VM in network byte order.
   uint32_t IPv4Address() const;
 
-  // VmBaseImpl overrides.
+  // VmBase overrides.
   bool Shutdown() override;
-  VmBaseImpl::Info GetInfo() override;
+  VmBase::Info GetInfo() override;
   // Currently only implemented for termina, returns "Not implemented".
   bool GetVmEnterpriseReportingInfo(
       GetVmEnterpriseReportingInfoResponse* response) override;

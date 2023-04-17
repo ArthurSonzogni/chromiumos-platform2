@@ -15,7 +15,7 @@
 #include <base/threading/thread.h>
 
 #include "vm_tools/concierge/balloon_policy.h"
-#include "vm_tools/concierge/vm_base_impl.h"
+#include "vm_tools/concierge/vm_base.h"
 
 namespace vm_tools {
 namespace concierge {
