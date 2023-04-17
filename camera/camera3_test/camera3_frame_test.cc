@@ -1751,8 +1751,8 @@ class Camera3PortraitModeTest : public Camera3FrameFixture,
       ScopedCameraMetadata metadata,
       std::vector<cros::ScopedBufferHandle> buffers) override;
 
-  // Get portrait mode vendor tags; return false if the tag  is not listed in
-  // available request keys.
+  // Get portrait mode vendor tags; return false if the tag is not listed in
+  // vendor tag manager.
   bool GetPortraitModeVendorTags(uint32_t* portrait_mode_vendor_tag,
                                  uint32_t* segmentation_result_vendor_tag);
 
@@ -2128,7 +2128,7 @@ INSTANTIATE_TEST_SUITE_P(
                        ::testing::Values(false, true)));
 
 INSTANTIATE_TEST_SUITE_P(
-    Camera3FrameTest,
+    Camera3PortraitModeTest,
     Camera3PortraitModeTest,
     ::testing::ValuesIn(Camera3Module().GetTestCameraIds()));
 
