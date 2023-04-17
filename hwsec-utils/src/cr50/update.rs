@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 use core::time;
-use std::path::Path;
 use std::thread;
 
 use log::info;
@@ -36,7 +35,7 @@ pub fn cr50_update(ctx: &mut impl Context) -> Result<(), HwsecError> {
 
     let cr50_image = cr50_get_name(ctx, &options[..])?;
 
-    if !Path::new(&cr50_image).exists() {
+    if !ctx.path_exists(cr50_image.as_str()) {
         info!("{} not found, quitting.", cr50_image);
         return Err(HwsecError::GsctoolError(1));
     }

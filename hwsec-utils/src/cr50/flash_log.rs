@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::fs;
-use std::path::Path;
 use std::str::SplitAsciiWhitespace;
 use std::time::SystemTime;
 
@@ -19,33 +17,31 @@ use crate::error::HwsecError;
 const FE_LOG_NVMEM: u64 = 5;
 const NVMEM_MALLOC: u64 = 200;
 
-pub fn read_prev_timestamp_from_file(file_path: &str) -> Result<u64, HwsecError> {
-    if !Path::new(&file_path).exists() {
+pub fn read_prev_timestamp_from_file(
+    ctx: &mut impl Context,
+    file_path: &str,
+) -> Result<u64, HwsecError> {
+    if !ctx.path_exists(file_path) {
         info!("{} not found, creating.", file_path);
-        match fs::write(file_path, b"0") {
+        match ctx.write_contents_to_file(file_path, b"0") {
             Ok(_) => return Ok(0),
-            Err(_) => {
-                error!("Failed to create {}", file_path);
-                return Err(HwsecError::FileError);
-            }
+            Err(_) => return Err(HwsecError::FileError),
         }
     }
 
-    let Ok(file_string) = fs::read_to_string(file_path) else {
-        error!("Failed to read {}", file_path);
-        return Err(HwsecError::FileError);
-    };
+    let file_string = ctx.read_file_to_string(file_path)?;
 
     file_string
         .parse::<u64>()
         .map_err(|_| HwsecError::InternalError)
 }
 
-pub fn update_timestamp_file(new_stamp: u64, file_path: &str) -> Result<(), HwsecError> {
-    fs::write(file_path, new_stamp.to_string()).map_err(|_| {
-        error!("Failed to write timestamp to {}", file_path);
-        HwsecError::FileError
-    })
+pub fn update_timestamp_file(
+    ctx: &mut impl Context,
+    new_stamp: u64,
+    file_path: &str,
+) -> Result<(), HwsecError> {
+    ctx.write_contents_to_file(file_path, &new_stamp.to_ne_bytes())
 }
 
 pub fn set_cr50_log_file_time_base(ctx: &mut impl Context) -> Result<(), HwsecError> {

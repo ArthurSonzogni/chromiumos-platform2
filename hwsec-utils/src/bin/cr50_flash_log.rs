@@ -12,7 +12,7 @@ const TIMESTAMP_FILE: &str = "/mnt/stateful_partition/unencrypted/preserve/cr50_
 fn main() {
     let mut real_ctx = RealContext::new();
 
-    let Ok(prev_stamp) = read_prev_timestamp_from_file(TIMESTAMP_FILE) else {
+    let Ok(prev_stamp) = read_prev_timestamp_from_file(&mut real_ctx, TIMESTAMP_FILE) else {
         std::process::exit(1)
     };
 
@@ -25,7 +25,9 @@ fn main() {
         Err((_, new_stamp)) => (1, new_stamp),
     };
 
-    if new_stamp > prev_stamp && update_timestamp_file(new_stamp, TIMESTAMP_FILE).is_err() {
+    if new_stamp > prev_stamp
+        && update_timestamp_file(&mut real_ctx, new_stamp, TIMESTAMP_FILE).is_err()
+    {
         std::process::exit(1)
     }
 
