@@ -26,8 +26,6 @@
 #include "diagnostics/cros_health_tool/diag/diag_constants.h"
 #include "diagnostics/cros_health_tool/diag/observers/routine_observer.h"
 #include "diagnostics/cros_health_tool/mojo_util.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -120,12 +118,12 @@ int diag_main(int argc, char** argv) {
                 "progress exceeds the flag's value.\nValid range: [0, 100]");
 
   // Flags for the urandom routine:
-  DEFINE_uint32(urandom_length_seconds, kUrandomDefaultLength.InSeconds(),
+  DEFINE_uint32(urandom_length_seconds, 0,
                 "Number of seconds to run the urandom routine for.");
 
   // Flag shared by the CPU stress, CPU cache, floating point accuracy and prime
   // search routines.
-  DEFINE_uint32(cpu_stress_length_seconds, kDefaultCpuStressRuntime.InSeconds(),
+  DEFINE_uint32(cpu_stress_length_seconds, 0,
                 "Number of seconds to run the {cpu_stress, cpu_cache, "
                 "floating_point_accuracy, prime_search} routine for.");
 
