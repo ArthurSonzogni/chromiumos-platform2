@@ -1789,7 +1789,7 @@ void Service::HandleChildExit() {
 
     // See if this is a process we launched.
     auto iter = std::find_if(vms_.begin(), vms_.end(), [=](auto& pair) {
-      VmInterface::Info info = pair.second->GetInfo();
+      VmBaseImpl::Info info = pair.second->GetInfo();
       return pid == info.pid;
     });
 
@@ -2530,11 +2530,11 @@ class VMDelegate : public base::PlatformThread::Delegate {
   VMDelegate& operator=(VMDelegate&& other) = default;
   explicit VMDelegate(const Service&) = delete;
   VMDelegate& operator=(const Service&) = delete;
-  explicit VMDelegate(VmInterface* vm) : vm_(vm) {}
+  explicit VMDelegate(VmBaseImpl* vm) : vm_(vm) {}
   void ThreadMain() override { vm_->Shutdown(); }
 
  private:
-  VmInterface* vm_;
+  VmBaseImpl* vm_;
 };
 
 std::unique_ptr<dbus::Response> Service::StopAllVms(
@@ -2559,8 +2559,8 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
     ThreadContext& ctx = ctxs[i++];
 
     const VmId& id = vm.first;
-    VmInterface* vm_interface = vm.second.get();
-    VmInterface::Info info = vm_interface->GetInfo();
+    VmBaseImpl* vm_interface = vm.second.get();
+    VmBaseImpl::Info info = vm_interface->GetInfo();
 
     // Notify that we are about to stop a VM.
     NotifyVmStopping(id, info.cid);
@@ -2579,8 +2579,8 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
     base::PlatformThread::Join(ctx.handle);
 
     const VmId& id = vm.first;
-    VmInterface* vm_interface = vm.second.get();
-    VmInterface::Info info = vm_interface->GetInfo();
+    VmBaseImpl* vm_interface = vm.second.get();
+    VmBaseImpl::Info info = vm_interface->GetInfo();
 
     if (USE_CROSVM_SIBLINGS) {
       // Notify HMS that the VM has exited.
@@ -2752,7 +2752,7 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
     return dbus_response;
   }
 
-  VmInterface::Info vm = iter->second->GetInfo();
+  VmBaseImpl::Info vm = iter->second->GetInfo();
 
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_ipv4_address(vm.ipv4_address);
@@ -4493,7 +4493,7 @@ std::unique_ptr<dbus::Response> Service::ListVms(
       continue;
     }
 
-    VmInterface::Info info = vm->GetInfo();
+    VmBaseImpl::Info info = vm->GetInfo();
     ExtendedVmInfo* proto = response.add_vms();
     VmInfo* proto_info = proto->mutable_vm_info();
     proto->set_name(id.name());
@@ -4507,15 +4507,15 @@ std::unique_ptr<dbus::Response> Service::ListVms(
     // The vms_ member only contains VMs with running crosvm instances. So the
     // STOPPED case below should not be possible.
     switch (info.status) {
-      case VmInterface::Status::STARTING: {
+      case VmBaseImpl::Status::STARTING: {
         proto->set_status(VM_STATUS_STARTING);
         break;
       }
-      case VmInterface::Status::RUNNING: {
+      case VmBaseImpl::Status::RUNNING: {
         proto->set_status(VM_STATUS_RUNNING);
         break;
       }
-      case VmInterface::Status::STOPPED: {
+      case VmBaseImpl::Status::STOPPED: {
         NOTREACHED();
         proto->set_status(VM_STATUS_STOPPED);
         break;
@@ -5314,11 +5314,11 @@ std::unique_ptr<dbus::Response> Service::SwapVm(dbus::MethodCall* method_call) {
 
   const auto& vm = iter->second;
   if (request.operation() == SwapOperation::ENABLE) {
-    response.set_success(vm->VmmSwap(VmInterface::SwapState::ENABLED));
+    response.set_success(vm->VmmSwap(VmBaseImpl::SwapState::ENABLED));
   } else if (request.operation() == SwapOperation::SWAPOUT) {
-    response.set_success(vm->VmmSwap(VmInterface::SwapState::SWAPPED_OUT));
+    response.set_success(vm->VmmSwap(VmBaseImpl::SwapState::SWAPPED_OUT));
   } else if (request.operation() == SwapOperation::DISABLE) {
-    response.set_success(vm->VmmSwap(VmInterface::SwapState::DISABLED));
+    response.set_success(vm->VmmSwap(VmBaseImpl::SwapState::DISABLED));
   } else {
     response.set_failure_reason("Unknown operation");
   }

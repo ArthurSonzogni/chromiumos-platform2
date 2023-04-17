@@ -47,6 +47,8 @@ VmBaseImpl::VmBaseImpl(
   CHECK(runtime_dir_.Set(runtime_dir));
 }
 
+VmBaseImpl::~VmBaseImpl() = default;
+
 std::optional<BalloonStats> VmBaseImpl::GetBalloonStats() {
   return vm_tools::concierge::GetBalloonStats(GetVmSocketPath());
 }

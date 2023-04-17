@@ -98,9 +98,9 @@ class ArcVm final : public VmBaseImpl {
   // The IPv4 address of the VM in network byte order.
   uint32_t IPv4Address() const;
 
-  // VmInterface overrides.
+  // VmBaseImpl overrides.
   bool Shutdown() override;
-  VmInterface::Info GetInfo() override;
+  VmBaseImpl::Info GetInfo() override;
   // Currently only implemented for termina, returns "Not implemented".
   bool GetVmEnterpriseReportingInfo(
       GetVmEnterpriseReportingInfoResponse* response) override;
