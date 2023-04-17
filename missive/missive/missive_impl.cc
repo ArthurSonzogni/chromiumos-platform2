@@ -188,7 +188,8 @@ void MissiveImpl::OnStorageParameters(
   encryption_module_ = std::move(encryption_module_factory_).Run(parameters);
   args_->AsyncCall(&MissiveArgs::OnStorageParametersUpdate)
       .WithArgs(base::BindPostTaskToCurrentDefault(base::BindRepeating(
-          &MissiveImpl::OnStorageParametersUpdate, GetWeakPtr())));
+                    &MissiveImpl::OnStorageParametersUpdate, GetWeakPtr())),
+                base::DoNothing());
 
   std::move(create_storage_factory_)
       .Run(this, std::move(storage_options), std::move(parameters),

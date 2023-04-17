@@ -244,7 +244,8 @@ void MissiveArgs::GetStorageParameters(
 }
 
 void MissiveArgs::OnCollectionParametersUpdate(
-    base::RepeatingCallback<void(CollectionParameters)> update_cb) {
+    base::RepeatingCallback<void(CollectionParameters)> update_cb,
+    base::OnceClosure done_cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto cb = base::BindRepeating(
       [](base::WeakPtr<MissiveArgs> self,
@@ -254,10 +255,12 @@ void MissiveArgs::OnCollectionParametersUpdate(
       },
       weak_ptr_factory_.GetWeakPtr(), update_cb);
   update_cbs_.push_back(cb);
+  std::move(done_cb).Run();
 }
 
 void MissiveArgs::OnStorageParametersUpdate(
-    base::RepeatingCallback<void(StorageParameters)> update_cb) {
+    base::RepeatingCallback<void(StorageParameters)> update_cb,
+    base::OnceClosure done_cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto cb = base::BindRepeating(
       [](base::WeakPtr<MissiveArgs> self,
@@ -267,5 +270,6 @@ void MissiveArgs::OnStorageParametersUpdate(
       },
       weak_ptr_factory_.GetWeakPtr(), update_cb);
   update_cbs_.push_back(cb);
+  std::move(done_cb).Run();
 }
 }  // namespace reporting

@@ -13,6 +13,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "base/functional/bind.h"
+#include "base/functional/callback_forward.h"
 #include "missive/dbus/dbus_test_environment.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
@@ -170,8 +172,13 @@ TEST_F(MissiveArgsTest, ListeningForCollectionValuesUpdate) {
 
   // Register update callback.
   test::TestEvent<MissiveArgs::CollectionParameters> update_collection;
-  args.AsyncCall(&MissiveArgs::OnCollectionParametersUpdate)
-      .WithArgs(update_collection.repeating_cb());
+  {
+    test::TestCallbackAutoWaiter waiter;
+    args.AsyncCall(&MissiveArgs::OnCollectionParametersUpdate)
+        .WithArgs(update_collection.repeating_cb(),
+                  base::BindOnce(&test::TestCallbackAutoWaiter::Signal,
+                                 base::Unretained(&waiter)));
+  }
 
   // Change parameters and refresh.
   fake_platform_features_ptr->SetParam(
@@ -305,8 +312,13 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
 
   // Register update callback.
   test::TestEvent<MissiveArgs::StorageParameters> update_storage;
-  args.AsyncCall(&MissiveArgs::OnStorageParametersUpdate)
-      .WithArgs(update_storage.repeating_cb());
+  {
+    test::TestCallbackAutoWaiter waiter;
+    args.AsyncCall(&MissiveArgs::OnStorageParametersUpdate)
+        .WithArgs(update_storage.repeating_cb(),
+                  base::BindOnce(&test::TestCallbackAutoWaiter::Signal,
+                                 base::Unretained(&waiter)));
+  }
 
   // Change parameters and refresh.
   fake_platform_features_ptr->SetParam(

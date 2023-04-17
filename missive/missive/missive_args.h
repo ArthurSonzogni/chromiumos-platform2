@@ -13,6 +13,7 @@
 #include <base/strings/string_piece.h>
 #include <base/thread_annotations.h>
 #include "base/functional/callback_forward.h"
+#include "base/functional/callback_helpers.h"
 #include "base/threading/sequence_bound.h"
 #include <base/time/time.h>
 #include <featured/feature_library.h>
@@ -77,11 +78,14 @@ class MissiveArgs {
       base::OnceCallback<void(StatusOr<StorageParameters>)> result_cb);
 
   // Registers a repeatable callback to be invoked every time the listener
-  // notifies about possible update.
+  // notifies about possible update. `done_cb` is called once `update_cb`
+  // has been registered.
   void OnCollectionParametersUpdate(
-      base::RepeatingCallback<void(CollectionParameters)> update_cb);
+      base::RepeatingCallback<void(CollectionParameters)> update_cb,
+      base::OnceClosure done_cb);
   void OnStorageParametersUpdate(
-      base::RepeatingCallback<void(StorageParameters)> update_cb);
+      base::RepeatingCallback<void(StorageParameters)> update_cb,
+      base::OnceClosure done_cb);
 
  private:
   void OnParamResultInitially(
