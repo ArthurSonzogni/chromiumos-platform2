@@ -15,6 +15,7 @@ executable("cros-health-tool") {
   sources = [
     "main.cc",
     "mojo_util.cc",
+    "output_util.cc",
   ]
   configs += [ ":cros_health_tool_pkg_deps" ]
   deps = [
