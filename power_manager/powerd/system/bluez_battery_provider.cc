@@ -65,7 +65,8 @@ void BluezBattery::Export(
 }
 
 void BluezBattery::Unexport() {
-  dbus_object_.UnregisterAsync();
+  // TODO(b/278483576): Replace it by UnregisterAsync.
+  dbus_object_.UnregisterAndBlock();
 }
 
 void BluezBattery::SetLevel(int level) {

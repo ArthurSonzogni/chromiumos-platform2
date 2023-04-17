@@ -40,7 +40,7 @@ IPConfigDBusAdaptor::IPConfigDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
 }
 
 IPConfigDBusAdaptor::~IPConfigDBusAdaptor() {
-  dbus_object()->UnregisterAsync();
+  dbus_object()->UnregisterAndBlock();
   ipconfig_ = nullptr;
 }
 

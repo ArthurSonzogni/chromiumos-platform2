@@ -53,7 +53,7 @@ ThirdPartyVpnDBusAdaptor::ThirdPartyVpnDBusAdaptor(
 }
 
 ThirdPartyVpnDBusAdaptor::~ThirdPartyVpnDBusAdaptor() {
-  dbus_object()->UnregisterAsync();
+  dbus_object()->UnregisterAndBlock();
 }
 
 void ThirdPartyVpnDBusAdaptor::EmitPacketReceived(

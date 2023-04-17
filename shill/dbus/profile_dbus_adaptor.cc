@@ -34,7 +34,7 @@ ProfileDBusAdaptor::ProfileDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
 }
 
 ProfileDBusAdaptor::~ProfileDBusAdaptor() {
-  dbus_object()->UnregisterAsync();
+  dbus_object()->UnregisterAndBlock();
   profile_ = nullptr;
 }
 

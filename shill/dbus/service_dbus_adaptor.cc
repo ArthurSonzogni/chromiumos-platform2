@@ -40,7 +40,7 @@ ServiceDBusAdaptor::ServiceDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
 }
 
 ServiceDBusAdaptor::~ServiceDBusAdaptor() {
-  dbus_object()->UnregisterAsync();
+  dbus_object()->UnregisterAndBlock();
   service_ = nullptr;
 }
 

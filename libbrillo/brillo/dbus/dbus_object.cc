@@ -349,7 +349,7 @@ void DBusObject::RegisterAndBlock() {
   }
 }
 
-void DBusObject::UnregisterAsync() {
+void DBusObject::UnregisterAndBlock() {
   VLOG(1) << "Unregistering D-Bus object '" << object_path_.value() << "'.";
   CHECK(exported_object_ != nullptr) << "Object not registered.";
 

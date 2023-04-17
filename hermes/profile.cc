@@ -388,7 +388,7 @@ int Profile::GetMCCMNCAsInt() {
 }
 
 Profile::~Profile() {
-  dbus_object_.UnregisterAsync();
+  dbus_object_.UnregisterAndBlock();
 }
 
 }  // namespace hermes

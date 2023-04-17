@@ -108,7 +108,7 @@ BiometricsManagerWrapper::RecordWrapper::RecordWrapper(
 }
 
 BiometricsManagerWrapper::RecordWrapper::~RecordWrapper() {
-  dbus_object_.UnregisterAsync();
+  dbus_object_.UnregisterAndBlock();
 }
 
 bool BiometricsManagerWrapper::RecordWrapper::SetLabel(
@@ -134,13 +134,13 @@ bool BiometricsManagerWrapper::RecordWrapper::Remove(brillo::ErrorPtr* error) {
 
 void BiometricsManagerWrapper::FinalizeEnrollSessionObject() {
   enroll_session_owner_.clear();
-  enroll_session_dbus_object_->UnregisterAsync();
+  enroll_session_dbus_object_->UnregisterAndBlock();
   enroll_session_dbus_object_.reset();
 }
 
 void BiometricsManagerWrapper::FinalizeAuthSessionObject() {
   auth_session_owner_.clear();
-  auth_session_dbus_object_->UnregisterAsync();
+  auth_session_dbus_object_->UnregisterAndBlock();
   auth_session_dbus_object_.reset();
 }
 

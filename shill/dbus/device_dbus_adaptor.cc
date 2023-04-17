@@ -35,7 +35,7 @@ DeviceDBusAdaptor::DeviceDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
 }
 
 DeviceDBusAdaptor::~DeviceDBusAdaptor() {
-  dbus_object()->UnregisterAsync();
+  dbus_object()->UnregisterAndBlock();
   device_ = nullptr;
 }
 

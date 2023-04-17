@@ -34,7 +34,7 @@ RpcTaskDBusAdaptor::RpcTaskDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
 }
 
 RpcTaskDBusAdaptor::~RpcTaskDBusAdaptor() {
-  dbus_object()->UnregisterAsync();
+  dbus_object()->UnregisterAndBlock();
   task_ = nullptr;
 }
 
