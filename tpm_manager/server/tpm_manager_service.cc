@@ -756,6 +756,7 @@ TpmManagerService::GetRoVerificationStatusTask(
   if (!tpm_status_->GetRoVerificationStatus(&ro_status)) {
     LOG(ERROR) << __func__ << ": failed to get RO verification status.";
     reply->set_status(STATUS_DEVICE_ERROR);
+    return reply;
   }
   reply->set_ro_verification_status(ro_status);
   reply->set_status(STATUS_SUCCESS);

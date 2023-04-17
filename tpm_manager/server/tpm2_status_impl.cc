@@ -126,7 +126,7 @@ constexpr TpmAlerts kH1AlertsMap[trunks::kH1AlertsSize] = {
     TpmAlerts::kXoJitteryTrim,
 };
 
-tpm_manager::RoVerificationStatus MapRoStatus(
+std::optional<tpm_manager::RoVerificationStatus> MapRoStatus(
     const trunks::TpmUtility::ApRoStatus& raw_status) {
   switch (raw_status) {
     case trunks::TpmUtility::ApRoStatus::kApRoNotRun:
@@ -142,7 +142,9 @@ tpm_manager::RoVerificationStatus MapRoStatus(
     case trunks::TpmUtility::ApRoStatus::kApRoUnsupportedTriggered:
       return tpm_manager::RO_STATUS_UNSUPPORTED_TRIGGERED;
   }
-  NOTREACHED();
+  LOG(ERROR) << __func__
+             << ": unexpected status: " << static_cast<uint8_t>(raw_status);
+  return std::nullopt;
 }
 
 }  // namespace
@@ -334,7 +336,12 @@ bool Tpm2StatusImpl::GetRoVerificationStatus(
   if (result != TPM_RC_SUCCESS) {
     return false;
   }
-  *status = MapRoStatus(raw_status);
+  std::optional<tpm_manager::RoVerificationStatus> map_result =
+      MapRoStatus(raw_status);
+  if (!map_result.has_value()) {
+    return false;
+  }
+  *status = map_result.value();
   return true;
 }
 
