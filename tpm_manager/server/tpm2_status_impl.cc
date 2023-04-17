@@ -133,7 +133,7 @@ std::optional<tpm_manager::RoVerificationStatus> MapRoStatus(
     case AP_RO_NOT_RUN:
       return tpm_manager::RO_STATUS_NOT_TRIGGERED;
     case AP_RO_PASS_UNVERIFIED_GBB:
-      return tpm_manager::RO_STATUS_PASS;
+      return tpm_manager::RO_STATUS_PASS_UNVERIFIED_GBB;
     case AP_RO_FAIL:
       return tpm_manager::RO_STATUS_FAIL;
     case AP_RO_UNSUPPORTED_UNKNOWN:
@@ -142,27 +142,44 @@ std::optional<tpm_manager::RoVerificationStatus> MapRoStatus(
       return tpm_manager::RO_STATUS_UNSUPPORTED_NOT_TRIGGERED;
     case AP_RO_UNSUPPORTED_TRIGGERED:
       return tpm_manager::RO_STATUS_UNSUPPORTED_TRIGGERED;
-    // TODO(chingkang): return proper values after updating the protobuf.
     case AP_RO_PASS:
+      return tpm_manager::RO_STATUS_PASS;
     case AP_RO_IN_PROGRESS:
+      return tpm_manager::RO_STATUS_IN_PROGRESS;
     case AP_RO_V2_SUCCESS:
+      return tpm_manager::RO_STATUS_V2_SUCCESS;
     case AP_RO_V2_FAILED_VERIFICATION:
+      return tpm_manager::RO_STATUS_V2_FAILED_VERIFICATION;
     case AP_RO_V2_INCONSISTENT_GSCVD:
+      return tpm_manager::RO_STATUS_V2_INCONSISTENT_GSCVD;
     case AP_RO_V2_INCONSISTENT_KEYBLOCK:
+      return tpm_manager::RO_STATUS_V2_INCONSISTENT_KEYBLOCK;
     case AP_RO_V2_INCONSISTENT_KEY:
+      return tpm_manager::RO_STATUS_V2_INCONSISTENT_KEY;
     case AP_RO_V2_SPI_READ:
+      return tpm_manager::RO_STATUS_V2_SPI_READ;
     case AP_RO_V2_UNSUPPORTED_CRYPTO_ALGORITHM:
+      return tpm_manager::RO_STATUS_V2_UNSUPPORTED_CRYPTO_ALGORITHM;
     case AP_RO_V2_VERSION_MISMATCH:
+      return tpm_manager::RO_STATUS_V2_VERSION_MISMATCH;
     case AP_RO_V2_OUT_OF_MEMORY:
+      return tpm_manager::RO_STATUS_V2_OUT_OF_MEMORY;
     case AP_RO_V2_INTERNAL:
+      return tpm_manager::RO_STATUS_V2_INTERNAL;
     case AP_RO_V2_TOO_BIG:
+      return tpm_manager::RO_STATUS_V2_TOO_BIG;
     case AP_RO_V2_MISSING_GSCVD:
+      return tpm_manager::RO_STATUS_V2_MISSING_GSCVD;
     case AP_RO_V2_BOARD_ID_MISMATCH:
+      return tpm_manager::RO_STATUS_V2_BOARD_ID_MISMATCH;
     case AP_RO_V2_SETTING_NOT_PROVISIONED:
+      return tpm_manager::RO_STATUS_V2_SETTING_NOT_PROVISIONED;
     case AP_RO_V2_NON_ZERO_GBB_FLAGS:
+      return tpm_manager::RO_STATUS_V2_NON_ZERO_GBB_FLAGS;
     case AP_RO_V2_WRONG_ROOT_KEY:
+      return tpm_manager::RO_STATUS_V2_WRONG_ROOT_KEY;
     case AP_RO_V2_UNKNOWN:
-      break;
+      return tpm_manager::RO_STATUS_V2_UNKNOWN;
   }
   LOG(ERROR) << __func__
              << ": unexpected status: " << static_cast<uint8_t>(raw_status);

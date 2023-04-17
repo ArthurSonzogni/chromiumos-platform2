@@ -53,7 +53,7 @@ TEST_F(TpmManagerClientTest, RoVerificationNotTriggered) {
 TEST_F(TpmManagerClientTest, RoVerificationPass) {
   tpm_manager::GetRoVerificationStatusReply reply;
   reply.set_status(tpm_manager::STATUS_SUCCESS);
-  reply.set_ro_verification_status(tpm_manager::RO_STATUS_PASS);
+  reply.set_ro_verification_status(tpm_manager::RO_STATUS_PASS_UNVERIFIED_GBB);
 
   auto mock_tpm_manager_proxy =
       std::make_unique<StrictMock<org::chromium::TpmManagerProxyMock>>();

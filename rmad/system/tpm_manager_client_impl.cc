@@ -22,7 +22,7 @@ RoVerificationStatus TpmManagerRoStatusToRmadRoStatus(
   switch (status) {
     case tpm_manager::RO_STATUS_NOT_TRIGGERED:
       return RMAD_RO_VERIFICATION_NOT_TRIGGERED;
-    case tpm_manager::RO_STATUS_PASS:
+    case tpm_manager::RO_STATUS_PASS_UNVERIFIED_GBB:
       return RMAD_RO_VERIFICATION_PASS;
     case tpm_manager::RO_STATUS_FAIL:
       return RMAD_RO_VERIFICATION_FAIL;

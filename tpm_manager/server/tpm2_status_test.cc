@@ -301,7 +301,7 @@ TEST_F(Tpm2StatusTest, GetGscVersion) {
 TEST_F(Tpm2StatusTest, GetRoVerificationStatusSuccess) {
   EXPECT_CALL(mock_tpm_utility_, GetRoVerificationStatus(_))
       .WillRepeatedly(Invoke([](ap_ro_status* status) {
-        *status = AP_RO_PASS_UNVERIFIED_GBB;
+        *status = AP_RO_PASS;
         return TPM_RC_SUCCESS;
       }));
   tpm_manager::RoVerificationStatus status;
