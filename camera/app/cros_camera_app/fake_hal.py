@@ -11,6 +11,8 @@ import shutil
 import subprocess
 from typing import Callable, Dict, List, Optional, Tuple
 
+from cros_camera_app import device
+
 
 _PERSISTENT_CONFIG_PATH = pathlib.Path("/etc/camera/fake_hal.json")
 _CONFIG_PATH = pathlib.Path("/run/camera/fake_hal.json")
@@ -71,10 +73,15 @@ def _save_config(config: Dict):
     Args:
         config: The config to be saved.
     """
+
+    # Serialize the config to string first to catch any potential error, so it
+    # won't break the config file with a partially written JSON.
+    config_json = json.dumps(config, indent=2)
+
     # TODO(shik): Save config in a human-readable but concise JSON. Currently
     # the excessive line breaks for frame_rates field make it less pleasant.
     with open(_CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=2)
+        f.write(config_json)
 
 
 # (width, height, fps_range) -> keep_or_not
@@ -164,7 +171,23 @@ def add_camera(
         "supported_formats": _generate_supported_formats(should_keep),
     }
     if frame_path is not None:
-        new_camera["frames"] = {"path": frame_path}
+        # Perform some smoke checks for the frame_path. Even if it failed, we
+        # just print warnings and still write the config accordingly. Those
+        # issues can be resolved later and the user may want to setup the
+        # config first.
+        if frame_path.exists():
+            if not device.is_readable_by_camera_service(frame_path):
+                logging.warning(
+                    "%s might not be readable by camera service in minijail,"
+                    " consider copying it to /var/cache/camera.",
+                    frame_path,
+                )
+        else:
+            logging.warning("%s does not exist", frame_path)
+
+        # Convert to absolute path and plain string to be JSON friendly.
+        path = frame_path.absolute().as_posix()
+        new_camera["frames"] = {"path": path}
     logging.debug("new_camera = %s", new_camera)
     config["cameras"].append(new_camera)
 

@@ -118,6 +118,52 @@ def setup():
     restart_chrome()
 
 
+def is_readable_by_camera_service(path: pathlib.Path) -> bool:
+    """Checks whether a path is readable by camera service in sandbox.
+
+    This is based on a simplified version of minijail arguments from
+    /etc/init/cros-camera.conf and might not be 100% accurate, but it's good
+    enough as a heuristic for developer tools.
+
+    Args:
+        path: The path to check.
+
+    Returns:
+        Whether it's readable by camera service.
+    """
+    if not path.exists():
+        return False
+
+    cmd = ["minijail0"]
+
+    # Setup user and group.
+    cmd.extend(["-u", "arc-camera", "-g", "arc-camera", "-G"])
+
+    # Setup mounts.
+    cmd.extend(["-v", "-P", "/mnt/empty", "-b", "/"])
+    cmd.extend(["-k", "tmpfs,/var,tmpfs", "-b", "/var/cache/camera"])
+    cmd.extend(["-k", "tmpfs,/run,tmpfs", "-b", "/run/camera"])
+
+    # Check if readable.
+    cmd.extend(["--", "/usr/bin/test", "-r", path.absolute().as_posix()])
+
+    # The argument `capture_output` is only supported by Python3.7+, so we
+    # specify stdout and stderr using the traditional way here.
+    # The argument `check` is not passed because we will check the returncode.
+    # pylint: disable=subprocess-run-check
+    p = subprocess.run(
+        cmd,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if p.returncode == 0:
+        return True
+    else:
+        logging.debug("test in minijail failed with %s", p)
+        return False
+
+
 def get_my_files_dir() -> pathlib.Path:
     """Gets the MyFiles path of the current logged in user.
 
