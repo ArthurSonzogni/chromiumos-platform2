@@ -11,6 +11,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/test/test_timeouts.h>
+#include <brillo/syslog_logging.h>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -38,11 +39,23 @@ class TestRunner {
     Options() {}
     bool instantiate_exit_manager = true;
     bool instantiate_test_timeouts = true;
+    // If true, initializes brillo logging so tests would be able to test logs
+    // by calling
+    //   brillo::LogToString(true);
+    //   brillo::ClearLog();
+    //   // Code that produces logs...
+    //   // Checks that examine logs from brillo::GetLog()...
+    bool initialize_brillo_logging = true;
   };
 
   TestRunner(int argc, char** argv, const Options& opts = Options()) {
     base::CommandLine::Init(argc, argv);
-    logging::InitLogging(logging::LoggingSettings());
+
+    if (opts.initialize_brillo_logging) {
+      brillo::InitLog(brillo::kLogToStderr);
+    } else {
+      logging::InitLogging(logging::LoggingSettings());
+    }
 
     if (opts.instantiate_exit_manager) {
       exit_manager_ = std::make_unique<base::AtExitManager>();
