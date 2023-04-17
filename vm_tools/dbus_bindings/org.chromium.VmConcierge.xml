@@ -101,6 +101,24 @@
                     value="vm_tools::concierge::GetVmInfoResponse"/>
       </arg>
     </method>
+    <method name="ResizeDiskImage">
+      <tp:docstring>
+        Resizes a disk image. Can return asynchronously.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::ResizeDiskImageRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::ResizeDiskImageResponse"/>
+        <tp:docstring>
+          status is DISK_STATUS_RESIZED when successful. status may be
+          DISK_STATUS_IN_PROGRESS when resize is still ongoing.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="ResumeVm">
       <tp:docstring>
         Resumes a VM.

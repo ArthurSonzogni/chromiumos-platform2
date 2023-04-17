@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kResizeDiskImageMethod, &Service::ResizeDiskImage},
       {kExportDiskImageMethod, &Service::ExportDiskImage},
       {kImportDiskImageMethod, &Service::ImportDiskImage},
       {kDiskImageStatusMethod, &Service::CheckDiskImageStatus},
@@ -3435,32 +3434,16 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::ResizeDiskImage(
-    dbus::MethodCall* method_call) {
+ResizeDiskImageResponse Service::ResizeDiskImage(
+    const ResizeDiskImageRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  ResizeDiskImageRequest request;
   ResizeDiskImageResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ResizeDiskImageRequest from message";
-    response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Unable to parse ResizeDiskImageRequest");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
 
   if (!ValidateVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   base::FilePath disk_path;
@@ -3469,8 +3452,7 @@ std::unique_ptr<dbus::Response> Service::ResizeDiskImage(
                      &location)) {
     response.set_status(DISK_STATUS_DOES_NOT_EXIST);
     response.set_failure_reason("Resize image doesn't exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   auto size = request.disk_size() & kDiskSizeMask;
@@ -3508,8 +3490,7 @@ std::unique_ptr<dbus::Response> Service::ResizeDiskImage(
     }
   }
 
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 void Service::ResizeDisk(const std::string& owner_id,

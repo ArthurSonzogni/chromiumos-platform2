@@ -172,8 +172,8 @@ class Service final : public org::chromium::VmConciergeInterface {
       const DestroyDiskImageRequest& request) override;
 
   // Handles a request to resize a disk image.
-  std::unique_ptr<dbus::Response> ResizeDiskImage(
-      dbus::MethodCall* method_call);
+  ResizeDiskImageResponse ResizeDiskImage(
+      const ResizeDiskImageRequest& request) override;
 
   // Handles a request to get disk resize status.
   std::unique_ptr<dbus::Response> GetDiskResizeStatus(
