@@ -13,11 +13,15 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 
+#include "runtime_probe/functions/all_functions.h"
 #include "runtime_probe/system/context.h"
 
 namespace runtime_probe {
 
 using DataType = typename ProbeFunction::DataType;
+
+auto ProbeFunction::registered_functions_ =
+    AllFunctions::ConstructRegisteredFunctionTable();
 
 ProbeFunction::ProbeFunction(base::Value&& raw_value) {}
 

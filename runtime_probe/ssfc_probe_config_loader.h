@@ -11,9 +11,7 @@
 
 #include <base/files/file_path.h>
 
-#include "runtime_probe/functions/ap_i2c.h"
-#include "runtime_probe/functions/ec_i2c.h"
-#include "runtime_probe/functions/tcpc.h"
+#include "runtime_probe/functions/all_functions.h"
 #include "runtime_probe/probe_config_loader.h"
 
 namespace runtime_probe {
@@ -24,9 +22,6 @@ inline constexpr char kSsfcProbeConfigName[] = "probe_config_ssfc.json";
 // SSFC.
 class SsfcProbeConfigLoader : public ProbeConfigLoader {
  public:
-  using AllowedProbeFunctions =
-      ProbeFunctions<ApI2cFunction, EcI2cFunction, TcpcFunction>;
-
   SsfcProbeConfigLoader() = default;
 
   // Load probe config from AVL config paths. The function will return
@@ -35,7 +30,7 @@ class SsfcProbeConfigLoader : public ProbeConfigLoader {
 
  private:
   static constexpr auto kAllowedProbeFunctionNames =
-      AllowedProbeFunctions::GetFunctionNames();
+      SsfcAllowedProbeFunctions::GetFunctionNames();
 
   static bool ValidateProbeConfig(const ProbeConfig& config);
 

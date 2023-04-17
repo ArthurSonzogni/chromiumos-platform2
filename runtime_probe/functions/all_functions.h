@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// TODO(stimim): auto generate this file.
+#ifndef RUNTIME_PROBE_FUNCTIONS_ALL_FUNCTIONS_H_
+#define RUNTIME_PROBE_FUNCTIONS_ALL_FUNCTIONS_H_
 
-#include "runtime_probe/probe_function.h"
+// TODO(stimim): auto generate this file.
 
 #include "runtime_probe/function_templates/network.h"
 #include "runtime_probe/functions/ap_i2c.h"
@@ -62,7 +63,29 @@ using AllFunctions = ProbeFunctions<ApI2cFunction,
                                     VPDCached,
                                     WirelessNetworkFunction>;
 
-auto ProbeFunction::registered_functions_ =
-    AllFunctions::ConstructRegisteredFunctionTable();
+using AvlAllowedProbeFunctions = ProbeFunctions<AtaStorageFunction,
+                                                AudioCodecFunction,
+                                                CellularNetworkFunction,
+                                                EdidFunction,
+                                                EthernetNetworkFunction,
+                                                GenericBattery,
+                                                GenericCameraFunction,
+                                                GenericNetworkFunction,
+                                                GenericStorageFunction,
+                                                GpuFunction,
+                                                InputDeviceFunction,
+                                                MemoryFunction,
+                                                MipiCameraFunction,
+                                                MmcStorageFunction,
+                                                NetworkFunction,
+                                                NvmeStorageFunction,
+                                                TcpcFunction,
+                                                UfsStorageFunction,
+                                                UsbCameraFunction,
+                                                WirelessNetworkFunction>;
 
+using SsfcAllowedProbeFunctions =
+    ProbeFunctions<ApI2cFunction, EcI2cFunction, TcpcFunction>;
 }  // namespace runtime_probe
+
+#endif  // RUNTIME_PROBE_FUNCTIONS_ALL_FUNCTIONS_H_

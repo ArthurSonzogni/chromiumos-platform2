@@ -11,26 +11,7 @@
 
 #include <base/files/file_path.h>
 
-#include "runtime_probe/function_templates/network.h"
-#include "runtime_probe/functions/ata_storage.h"
-#include "runtime_probe/functions/audio_codec.h"
-#include "runtime_probe/functions/cellular_network.h"
-#include "runtime_probe/functions/edid.h"
-#include "runtime_probe/functions/ethernet_network.h"
-#include "runtime_probe/functions/generic_battery.h"
-#include "runtime_probe/functions/generic_camera.h"
-#include "runtime_probe/functions/generic_network.h"
-#include "runtime_probe/functions/generic_storage.h"
-#include "runtime_probe/functions/gpu.h"
-#include "runtime_probe/functions/input_device.h"
-#include "runtime_probe/functions/memory.h"
-#include "runtime_probe/functions/mipi_camera.h"
-#include "runtime_probe/functions/mmc_storage.h"
-#include "runtime_probe/functions/nvme_storage.h"
-#include "runtime_probe/functions/tcpc.h"
-#include "runtime_probe/functions/ufs_storage.h"
-#include "runtime_probe/functions/usb_camera.h"
-#include "runtime_probe/functions/wireless_network.h"
+#include "runtime_probe/functions/all_functions.h"
 #include "runtime_probe/probe_config_loader.h"
 
 namespace runtime_probe {
@@ -40,27 +21,6 @@ inline constexpr char kAvlProbeConfigName[] = "probe_config.json";
 // AvlProbeConfigLoader loads probe configs for AVL verification.
 class AvlProbeConfigLoader : public ProbeConfigLoader {
  public:
-  using AllowedProbeFunctions = ProbeFunctions<AtaStorageFunction,
-                                               AudioCodecFunction,
-                                               CellularNetworkFunction,
-                                               EdidFunction,
-                                               EthernetNetworkFunction,
-                                               GenericBattery,
-                                               GenericCameraFunction,
-                                               GenericNetworkFunction,
-                                               GenericStorageFunction,
-                                               GpuFunction,
-                                               InputDeviceFunction,
-                                               MemoryFunction,
-                                               MipiCameraFunction,
-                                               MmcStorageFunction,
-                                               NetworkFunction,
-                                               NvmeStorageFunction,
-                                               TcpcFunction,
-                                               UfsStorageFunction,
-                                               UsbCameraFunction,
-                                               WirelessNetworkFunction>;
-
   AvlProbeConfigLoader() = default;
 
   // Load probe config from AVL config paths. The function will return
@@ -69,7 +29,7 @@ class AvlProbeConfigLoader : public ProbeConfigLoader {
 
  private:
   static constexpr auto kAllowedProbeFunctionNames =
-      AllowedProbeFunctions::GetFunctionNames();
+      AvlAllowedProbeFunctions::GetFunctionNames();
 
   static bool ValidateProbeConfig(const ProbeConfig& config);
 
