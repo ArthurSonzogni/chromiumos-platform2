@@ -7,6 +7,7 @@
 import json
 import logging
 import pathlib
+import re
 import shutil
 import subprocess
 from typing import Any, Callable, Dict, List, Optional, TextIO, Tuple
@@ -61,6 +62,30 @@ set softtabstop=2
 set shiftwidth=2
 """
 
+# The space character class here follows the JSON spec at
+# https://www.rfc-editor.org/rfc/rfc8259#section-2. Note that \s in regular
+# expression matches some extra characters like \f.
+_TRAILING_COMMA = r"""(?x:
+,           # comma itself
+[ \t\r\n]*  # optional extra spaces
+(]|})       # closing square/curly bracket as a capture group
+)"""
+
+
+def _load_json(s: str) -> Any:
+    """Deserializes a Chromium base::Value flavored JSON string.
+
+    Args:
+        s: The JSON string to be deserialized.
+
+    Returns:
+        Deserialized value.
+    """
+    # Strip trailing commas, which are not supoprted by Python standard
+    # library but might be used in Fake HAL.
+    s = re.sub(_TRAILING_COMMA, r"\1", s)
+    return json.loads(s)
+
 
 def _load_config(path: pathlib.Path = _CONFIG_PATH) -> Dict:
     """Loads the config from JSON file.
@@ -76,10 +101,8 @@ def _load_config(path: pathlib.Path = _CONFIG_PATH) -> Dict:
         return _EMPTY_CONFIG
 
     with open(path, encoding="utf-8") as f:
-        # TODD(shik): The JSON parser used in Fake HAL supports trailing
-        # commas, but there is no such parser in Python standard libraries. We
-        # might need to strip it first.
-        return json.load(f)
+        s = f.read()
+        return _load_json(s)
 
 
 def _save_config(config: Dict):
