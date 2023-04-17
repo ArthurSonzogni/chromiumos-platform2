@@ -9,11 +9,17 @@ group("all") {
   deps = [
     ":cecservice",
     ":cecservice-adaptors",
+    ":install_minijail_conf",
     ":libcecservice",
   ]
   if (use.test) {
     deps += [ ":cecservice_testrunner" ]
   }
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/cecservice.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 pkg_config("target_defaults_pkg_deps") {
