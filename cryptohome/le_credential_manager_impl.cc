@@ -104,63 +104,7 @@ LECredStatus LECredentialManagerImpl::ResetCredential(
 }
 
 LECredStatus LECredentialManagerImpl::RemoveCredential(uint64_t label) {
-  if (!hash_tree_->IsValid() || !Sync()) {
-    return MakeStatus<CryptohomeLECredError>(
-        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInRemoveCred),
-        ErrorActionSet({PossibleAction::kReboot}),
-        LECredError::LE_CRED_ERROR_HASH_TREE);
-  }
-
-  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
-  brillo::Blob orig_cred, orig_mac;
-  std::vector<brillo::Blob> h_aux;
-  bool metadata_lost;
-  LECredStatus ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
-                                       &h_aux, &metadata_lost);
-  if (!ret.ok()) {
-    ReportLEResult(kLEOpRemove, kLEActionLoadFromDisk,
-                   ret->local_lecred_error());
-    return MakeStatus<CryptohomeLECredError>(
-               CRYPTOHOME_ERR_LOC(kLocLECredManRetrieveLabelFailedInRemoveCred))
-        .Wrap(std::move(ret));
-  }
-
-  ReportLEResult(kLEOpRemove, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
-
-  hwsec::StatusOr<CredentialTreeResult> result =
-      pinweaver_->RemoveCredential(label, h_aux, orig_mac);
-  if (!result.ok()) {
-    ReportLEResult(kLEOpRemove, kLEActionBackend, LE_CRED_ERROR_HASH_TREE);
-    LOG(ERROR) << "Error executing TPM RemoveCredential command: "
-               << result.status();
-    return MakeStatus<CryptohomeLECredError>(
-        CRYPTOHOME_ERR_LOC(kLocLECredManRemoveCredFailedInRemoveCred),
-        ErrorActionSet({PossibleAction::kReboot}),
-        LECredError::LE_CRED_ERROR_HASH_TREE);
-  }
-  root_hash_ = result->new_root;
-
-  ReportLEResult(kLEOpRemove, kLEActionBackend, LE_CRED_SUCCESS);
-
-  if (!hash_tree_->RemoveLabel(label_object)) {
-    LOG(ERROR) << "Removed label from TPM but hash tree removal "
-                  "encountered error: "
-               << label;
-    ReportLEResult(kLEOpRemove, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
-    // This is an un-salvageable state. We can't make LE updates anymore,
-    // since the disk state can't be updated.
-    // We block further LE operations until at least the next boot.
-    // The hope is that on reboot, the disk operations start working. In that
-    // case, we will be able to replay this operation from the TPM log.
-    is_locked_ = true;
-    return MakeStatus<CryptohomeLECredError>(
-        CRYPTOHOME_ERR_LOC(kLocLECredManRemoveLabelFailedInRemoveCred),
-        ErrorActionSet({PossibleAction::kReboot}),
-        LECredError::LE_CRED_ERROR_HASH_TREE);
-  }
-  ReportLEResult(kLEOpRemove, kLEActionSaveToDisk, LE_CRED_SUCCESS);
-
-  return OkStatus<CryptohomeLECredError>();
+  return RemoveCredentialInternal(label, /*during_sync=*/false);
 }
 
 LECredStatus LECredentialManagerImpl::CheckSecret(
@@ -271,6 +215,73 @@ LECredStatus LECredentialManagerImpl::CheckSecret(
              CRYPTOHOME_ERR_LOC(kLocLECredManTpmFailedInCheckSecret),
              ErrorActionSet({PossibleAction::kReboot, PossibleAction::kAuth}))
       .Wrap(std::move(converted));
+}
+
+LECredStatus LECredentialManagerImpl::RemoveCredentialInternal(
+    uint64_t label, bool during_sync) {
+  if (!hash_tree_->IsValid()) {
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInRemoveCred),
+        ErrorActionSet({PossibleAction::kReboot}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
+  }
+  if (!during_sync && !Sync()) {
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManUnSyncedTreeInRemoveCred),
+        ErrorActionSet({PossibleAction::kReboot}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
+  }
+
+  SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
+  brillo::Blob orig_cred, orig_mac;
+  std::vector<brillo::Blob> h_aux;
+  bool metadata_lost;
+  LECredStatus ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
+                                       &h_aux, &metadata_lost);
+  if (!ret.ok()) {
+    ReportLEResult(kLEOpRemove, kLEActionLoadFromDisk,
+                   ret->local_lecred_error());
+    return MakeStatus<CryptohomeLECredError>(
+               CRYPTOHOME_ERR_LOC(kLocLECredManRetrieveLabelFailedInRemoveCred))
+        .Wrap(std::move(ret));
+  }
+
+  ReportLEResult(kLEOpRemove, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
+
+  hwsec::StatusOr<CredentialTreeResult> result =
+      pinweaver_->RemoveCredential(label, h_aux, orig_mac);
+  if (!result.ok()) {
+    ReportLEResult(kLEOpRemove, kLEActionBackend, LE_CRED_ERROR_HASH_TREE);
+    LOG(ERROR) << "Error executing TPM RemoveCredential command: "
+               << result.status();
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManRemoveCredFailedInRemoveCred),
+        ErrorActionSet({PossibleAction::kReboot}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
+  }
+  root_hash_ = result->new_root;
+
+  ReportLEResult(kLEOpRemove, kLEActionBackend, LE_CRED_SUCCESS);
+
+  if (!hash_tree_->RemoveLabel(label_object)) {
+    LOG(ERROR) << "Removed label from TPM but hash tree removal "
+                  "encountered error: "
+               << label;
+    ReportLEResult(kLEOpRemove, kLEActionSaveToDisk, LE_CRED_ERROR_HASH_TREE);
+    // This is an un-salvageable state. We can't make LE updates anymore,
+    // since the disk state can't be updated.
+    // We block further LE operations until at least the next boot.
+    // The hope is that on reboot, the disk operations start working. In that
+    // case, we will be able to replay this operation from the TPM log.
+    is_locked_ = true;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManRemoveLabelFailedInRemoveCred),
+        ErrorActionSet({PossibleAction::kReboot}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
+  }
+  ReportLEResult(kLEOpRemove, kLEActionSaveToDisk, LE_CRED_SUCCESS);
+
+  return OkStatus<CryptohomeLECredError>();
 }
 
 int LECredentialManagerImpl::GetWrongAuthAttempts(uint64_t label) {
@@ -1034,7 +1045,7 @@ bool LECredentialManagerImpl::ReplayLogEntries(
 
   // Remove any inserted leaves since they are unusable.
   for (const auto& label : inserted_leaves) {
-    if (!RemoveCredential(label).ok()) {
+    if (!RemoveCredentialInternal(label, /*during_sync=*/true).ok()) {
       LOG(ERROR) << "Failed to remove re-inserted label: " << label;
       ReportLEReplayResult(is_full_replay,
                            LEReplayError::kRemoveInsertedCredentialsError);

@@ -1671,6 +1671,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockServiceNotReadyIsSupported = 3388,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockAuthenticateCredentialLockedInSelect = 3389,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManUnSyncedTreeInRemoveCred = 3390,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

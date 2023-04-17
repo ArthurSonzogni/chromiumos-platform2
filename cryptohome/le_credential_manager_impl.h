@@ -147,6 +147,12 @@ class LECredentialManagerImpl : public LECredentialManager {
                            bool strong_reset,
                            bool is_le_secret);
 
+  // Helper function to perform RemoveCredential. The |during_sync| param is
+  // provided because RemoveCredential is one of the steps need to be performed
+  // during a sync. If it checks Sync() again, there might potentially be a
+  // infinite recursion.
+  LECredStatus RemoveCredentialInternal(uint64_t label, bool during_sync);
+
   // Helper function to retrieve the credential metadata, MAC, and auxiliary
   // hashes associated with a label |label| (stored in |cred_metadata|, |mac|
   // and |h_aux| respectively). |metadata_lost| will denote whether the label
