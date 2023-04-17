@@ -6,6 +6,7 @@ group("all") {
   deps = [
     ":arc-host-clock-service",
     ":install_init_config",
+    ":install_minijail_arc_host_clock_service",
   ]
 }
 
@@ -16,6 +17,11 @@ executable("arc-host-clock-service") {
     "libbrillo",
     "libchrome",
   ]
+}
+
+install_config("install_minijail_arc_host_clock_service") {
+  sources = [ "minijail/arc-host-clock-service.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 install_config("install_init_config") {
