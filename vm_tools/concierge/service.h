@@ -180,8 +180,8 @@ class Service final : public org::chromium::VmConciergeInterface {
       dbus::MethodCall* method_call);
 
   // Handles a request to export a disk image.
-  std::unique_ptr<dbus::Response> ExportDiskImage(
-      dbus::MethodCall* method_call);
+  void ExportDiskImage(dbus::MethodCall* method_call,
+                       dbus::ExportedObject::ResponseSender sender) override;
   ExportDiskImageResponse ExportDiskImageInternal(
       ExportDiskImageRequest request,
       base::ScopedFD storage_fd,

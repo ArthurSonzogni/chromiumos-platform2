@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kExportDiskImageMethod, &Service::ExportDiskImage},
       {kImportDiskImageMethod, &Service::ImportDiskImage},
       {kDiskImageStatusMethod, &Service::CheckDiskImageStatus},
       {kCancelDiskImageMethod, &Service::CancelDiskImageOperation},
@@ -3564,15 +3563,12 @@ void Service::FinishResize(const std::string& owner_id,
   }
 }
 
-std::unique_ptr<dbus::Response> Service::ExportDiskImage(
-    dbus::MethodCall* method_call) {
+void Service::ExportDiskImage(dbus::MethodCall* method_call,
+                              dbus::ExportedObject::ResponseSender sender) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
 
   dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
 
   ExportDiskImageRequest request;
   ExportDiskImageResponse response;
@@ -3581,8 +3577,8 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse ExportDiskImageRequest from message";
     response.set_failure_reason("Unable to parse ExportDiskRequest");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    SendDbusResponse(std::move(sender), method_call, response);
+    return;
   }
 
   // Get the FD to fill with disk image data.
@@ -3590,8 +3586,8 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
   if (!reader.PopFileDescriptor(&storage_fd)) {
     LOG(ERROR) << "export: no fd found";
     response.set_failure_reason("export: no fd found");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    SendDbusResponse(std::move(sender), method_call, response);
+    return;
   }
 
   base::ScopedFD digest_fd;
@@ -3599,13 +3595,15 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
       !reader.PopFileDescriptor(&digest_fd)) {
     LOG(ERROR) << "export: no digest fd found";
     response.set_failure_reason("export: no digest fd found");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    SendDbusResponse(std::move(sender), method_call, response);
+    return;
   }
 
-  writer.AppendProtoAsArrayOfBytes(ExportDiskImageInternal(
-      std::move(request), std::move(storage_fd), std::move(digest_fd)));
-  return dbus_response;
+  SendDbusResponse(
+      std::move(sender), method_call,
+      ExportDiskImageInternal(std::move(request), std::move(storage_fd),
+                              std::move(digest_fd)));
+  return;
 }
 
 ExportDiskImageResponse Service::ExportDiskImageInternal(
