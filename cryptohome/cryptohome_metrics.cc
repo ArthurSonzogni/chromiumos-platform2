@@ -641,7 +641,7 @@ void ReportLEReplayResult(bool is_full_replay, LEReplayError result) {
   }
 
   const char* replay_type =
-      is_full_replay ? kLEReplayTypeNormal : kLEReplayTypeFull;
+      is_full_replay ? kLEReplayTypeFull : kLEReplayTypeNormal;
 
   std::string hist_str = std::string(kCryptohomeLEResultHistogramPrefix)
                              .append(kLEOpReplay)

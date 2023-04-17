@@ -125,6 +125,8 @@ LECredStatus LECredentialManagerImpl::RemoveCredential(uint64_t label) {
         .Wrap(std::move(ret));
   }
 
+  ReportLEResult(kLEOpRemove, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
+
   hwsec::StatusOr<CredentialTreeResult> result =
       pinweaver_->RemoveCredential(label, h_aux, orig_mac);
   if (!result.ok()) {
@@ -929,8 +931,6 @@ bool LECredentialManagerImpl::ReplayResetTree() {
     return false;
   }
 
-  ReportLEResult(kLEOpReplayResetTree, kLEActionSaveToDisk, LE_CRED_SUCCESS);
-
   auto new_hash_tree =
       std::make_unique<SignInHashTree>(kLengthLabels, kBitsPerLevel, basedir_);
   if (!new_hash_tree->IsValid()) {
@@ -938,6 +938,9 @@ bool LECredentialManagerImpl::ReplayResetTree() {
                    LE_CRED_ERROR_HASH_TREE);
     return false;
   }
+
+  ReportLEResult(kLEOpReplayResetTree, kLEActionSaveToDisk, LE_CRED_SUCCESS);
+
   hash_tree_ = std::move(new_hash_tree);
   hash_tree_->GenerateAndStoreHashCache();
   return true;
