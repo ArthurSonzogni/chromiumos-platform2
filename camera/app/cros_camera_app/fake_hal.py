@@ -4,6 +4,8 @@
 
 """This module encapsulates various tasks for Fake HAL setup."""
 
+import base64
+import copy
 import json
 import logging
 import pathlib
@@ -11,6 +13,7 @@ import re
 import shutil
 import subprocess
 from typing import Any, Callable, Dict, List, Optional, TextIO, Tuple
+import uuid
 
 from cros_camera_app import device
 
@@ -114,14 +117,45 @@ def _save_config(config: Dict):
         config: The config to be saved.
     """
 
-    # Serialize the config to string first to catch any potential error, so it
-    # won't break the config file with a partially written JSON.
-    config_json = json.dumps(config, indent=2)
+    # helpers for base64 encode/decode with str instead of bytes
+    def b64encode(s: str) -> str:
+        return base64.b64encode(s.encode()).decode()
 
-    # TODO(shik): Save config in a human-readable but concise JSON. Currently
-    # the excessive line breaks for frame_rates field make it less pleasant.
+    def b64decode(s: str) -> str:
+        return base64.b64decode(s).decode()
+
+    # Reduce the excessive line breaks of frame_rates field by calling
+    # json.dumps() without the indent argument. Since there is no builtin way
+    # to control the formatting of individual fields, here we:
+    # 1. Patch the frame_rates fields in original config to a special string
+    #    "{tag}:{base64_encoded_compact_json}", where tag is a random uuid.
+    tag = uuid.uuid4()
+    patched_config = copy.deepcopy(config)
+    for cam in patched_config.get("cameras", []):
+        for fmt in cam.get("supported_formats", []):
+            if "frame_rates" in fmt:
+                slot = b64encode(json.dumps(fmt["frame_rates"]))
+                fmt["frame_rates"] = "%s:%s" % (tag, slot)
+
+    # 2. Serialize the patched config to JSON with usual indentations.
+    patched_json = json.dumps(patched_config, indent=2)
+
+    # 3. Restore the seralized frame_rates from special strings to compact
+    #    JSON by looking at the tag and base64 decoding.
+    restored_json = re.sub(
+        r'"%s:(.*?)"' % tag,
+        lambda m: b64decode(m.group(1)),
+        patched_json,
+    )
+
+    # 4. Ensure the new json is equivalent to the original config.
+    def normalize(val: Any) -> str:
+        return json.dumps(val, sort_keys=True)
+
+    assert normalize(json.loads(restored_json)) == normalize(config)
+
     with open(_CONFIG_PATH, "w", encoding="utf-8") as f:
-        f.write(config_json)
+        f.write(restored_json)
 
 
 def _dump_config_info(path: pathlib.Path, dst: TextIO):
