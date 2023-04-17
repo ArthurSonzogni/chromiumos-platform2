@@ -77,11 +77,6 @@ const SIZE_4K: u64 = 4 * SIZE_1K;
 const SIZE_1M: u64 = SIZE_1K * SIZE_1K;
 const SIZE_1G: u64 = SIZE_1K * SIZE_1M;
 
-/// Define the size of the hibermeta volume. This volume only
-/// only contains logs and metrics, which require not much space.
-// TODO: reduce size
-const HIBERMETA_VOLUME_SIZE: u64 = SIZE_1G;
-
 /// Define the number of sectors per dm-snapshot chunk.
 const DM_SNAPSHOT_CHUNK_SIZE: usize = 8;
 
@@ -148,9 +143,17 @@ enum ThinpoolMode {
     ReadWrite,
 }
 
+#[derive(Copy, Clone)]
 enum HibernateVolume {
     Integrity,
     Image,
+    Meta,
+}
+
+struct VolumeProperties {
+    name: String,
+    size: u64,
+    thicken_at_creation: bool,
 }
 
 pub struct VolumeManager {
@@ -225,8 +228,8 @@ impl VolumeManager {
         hiberimage_key: &[u8],
         format_integrity_dev: bool,
     ) -> Result<()> {
-        self.create_or_activate_lv(Self::HIBERIMAGE, HibernateVolume::Image)?;
-        self.create_or_activate_lv(Self::HIBERINTEGRITY, HibernateVolume::Integrity)?;
+        self.create_or_activate_lv(HibernateVolume::Image)?;
+        self.create_or_activate_lv(HibernateVolume::Integrity)?;
 
         self.create_hiberintegrity_dm_dev(hiberintegrity_key)
             .context(format!(
@@ -307,18 +310,14 @@ impl VolumeManager {
 
     /// Create the hibermeta volume.
     fn create_hibermeta_lv(&mut self) -> Result<()> {
-        info!("Creating hibermeta logical volume");
+        self.create_lv(HibernateVolume::Meta)?;
+
         let path = lv_path(&self.vg_name, HIBERMETA_VOLUME_NAME);
-        let size = HIBERMETA_VOLUME_SIZE;
-        let start = Instant::now();
-        create_thin_volume(&self.vg_name, size, HIBERMETA_VOLUME_NAME)
-            .context("Failed to create thin volume")?;
-        thicken_thin_volume(&path, size).context("Failed to thicken volume")?;
         // Use -K to tell mkfs not to run a discard on the block device, which
         // would destroy all the nice thickening done above.
         checked_command_output(Command::new(MKFS_EXT2_PATH).arg("-K").arg(path))
             .context("Cannot format hibermeta volume")?;
-        log_io_duration("Created hibermeta logical volume", size, start.elapsed());
+
         Ok(())
     }
 
@@ -628,24 +627,80 @@ impl VolumeManager {
                     SIZE_1M,
                 )
             }
+
+            // TODO: reduce size
+            HibernateVolume::Meta => SIZE_1G,
         }
     }
 
     /// Create a logical volume if it doesn't exist yet, otherwise activate it
     /// (if needed).
-    fn create_or_activate_lv(&self, name: &str, volume_type: HibernateVolume) -> Result<()> {
-        if lv_exists(&self.vg_name, name)? {
-            debug!("Activating '{}' volume", name);
+    fn create_or_activate_lv(&self, volume_type: HibernateVolume) -> Result<()> {
+        let lv_props = Self::get_volume_properties(volume_type);
 
-            activate_lv(&self.vg_name, name)?;
+        if lv_exists(&self.vg_name, &lv_props.name)? {
+            debug!("Activating '{}' volume", &lv_props.name);
+
+            activate_lv(&self.vg_name, &lv_props.name)?;
         } else {
-            let size = Self::get_volume_size(volume_type);
-
-            create_thin_volume(&self.vg_name, size, name)
-                .context(format!("Failed to create thin volume '{name}'"))?;
+            self.create_lv(volume_type)?;
         }
 
         Ok(())
+    }
+
+    /// Create a logical volume.
+    fn create_lv(&self, volume_type: HibernateVolume) -> Result<()> {
+        let lv_props = Self::get_volume_properties(volume_type);
+
+        debug!("Creating '{}' logical volume", lv_props.name);
+
+        let start = Instant::now();
+
+        // All space in the single volume group is allocated to a thinpool,
+        // so we can't create regular LVs. Instead create a thin volume and
+        // thicken it if/when needed.
+        create_thin_volume(&self.vg_name, lv_props.size, &lv_props.name)
+            .context(format!("Failed to create thin volume '{}'", lv_props.name))?;
+
+        if lv_props.thicken_at_creation {
+            let path = lv_path(&self.vg_name, &lv_props.name);
+            thicken_thin_volume(path, lv_props.size)
+                .context(format!("Failed to thicken volume '{}'", lv_props.name))?;
+        }
+
+        log_io_duration(
+            &format!("Created '{}' logical volume", lv_props.name),
+            lv_props.size,
+            start.elapsed(),
+        );
+
+        Ok(())
+    }
+
+    /// Get the properties of a logical volume for hibernate.
+    fn get_volume_properties(volume_type: HibernateVolume) -> VolumeProperties {
+        let size = Self::get_volume_size(volume_type);
+
+        match volume_type {
+            HibernateVolume::Image => VolumeProperties {
+                name: HIBERIMAGE_VOLUME_NAME.to_string(),
+                size,
+                thicken_at_creation: false,
+            },
+
+            HibernateVolume::Integrity => VolumeProperties {
+                name: HIBERINTEGRITY_VOLUME_NAME.to_string(),
+                size,
+                thicken_at_creation: false,
+            },
+
+            HibernateVolume::Meta => VolumeProperties {
+                name: HIBERMETA_VOLUME_NAME.to_string(),
+                size,
+                thicken_at_creation: true,
+            },
+        }
     }
 
     /// Create the dm-crypt device 'hiberintegrity' for dm-integrity data (on top
