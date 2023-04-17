@@ -57,6 +57,10 @@ bool ParsePasspointOiList(const KeyValueStore& args,
 // Size of an UUID string.
 constexpr size_t kUUIDStringLength = 37;
 
+// OUI and OUI-36 expected hex string length for supplicant.
+constexpr size_t kOUIHexLength = 6;
+constexpr size_t kOUI36HexLength = 10;
+
 PasspointCredentials::PasspointCredentials(std::string id) : id_(id) {}
 
 PasspointCredentials::~PasspointCredentials() = default;
@@ -353,7 +357,7 @@ std::string PasspointCredentials::EncodeOI(uint64_t oi) {
   // Each input byte creates two output hex characters.
   static const size_t size = sizeof(uint64_t) * 2;
 
-  std::string ret(size, '\0');
+  std::string ret(size, '0');
   size_t i = size;
   // wpa_supplicant expects an even number of char as a byte is filled by two
   // of them.
@@ -362,6 +366,30 @@ std::string PasspointCredentials::EncodeOI(uint64_t oi) {
     ret[--i] = kHexChars[(oi & 0xf0) >> 4];
     oi = oi >> 8;
   } while (oi > 0);
+
+  // Quoting IEEE802.11-2020 §9.4.1.31:
+  // "The Organization Identifier field contains a public unique identifier
+  // assigned by the IEEE Registration Authority as a 24-bit OUI, a 24-bit CID,
+  // or a 36-bit OUI-36.
+  // The length of the Organization Identifier field is the minimum number of
+  // octets required to contain the entire IEEE-assigned identifier. Thus, the
+  // Organization Identifier field is 3 octets in length if the IEEE-assigned
+  // identifier is an OUI or CID, or 5 octets in length if the IEEE-assigned
+  // identifier is an OUI-36."
+  // Pad 00s to have the expected OI length. This is necessary as ChromeOS OI
+  // value is taken from Android which unfortunately does not have the necessary
+  // length field.
+  // This padding fix is not technically correct, but is the best possible fix
+  // for ChromeOS given the missing OI length information. The matching fails
+  // when an entity owning an OUI value of "000xxx" (hex representation) creates
+  // their own OUI-36-based OI for Passpoint "0000xxxyyy". When this happens,
+  // ChromeOS uses "xxxyyy" as their OI value eventhough "0000xxxyyy" is needed.
+  size_t len = size - i;
+  if (len <= kOUIHexLength) {
+    i = size - kOUIHexLength;
+  } else if (len <= kOUI36HexLength) {
+    i = size - kOUI36HexLength;
+  }
 
   return ret.substr(i);
 }

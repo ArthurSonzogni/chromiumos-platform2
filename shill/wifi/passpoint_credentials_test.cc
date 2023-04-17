@@ -429,12 +429,12 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
   // can't be set with the constructor.
   EXPECT_TRUE(
       properties.Contains<std::string>(WPASupplicant::kNetworkPropertyEapEap));
-  EXPECT_EQ("1234,5678", properties.Get<std::string>(
-                             WPASupplicant::kCredentialsPropertyHomeOIs));
-  EXPECT_EQ("ABCD,CDEF",
+  EXPECT_EQ("001234,005678", properties.Get<std::string>(
+                                 WPASupplicant::kCredentialsPropertyHomeOIs));
+  EXPECT_EQ("00ABCD,00CDEF",
             properties.Get<std::string>(
                 WPASupplicant::kCredentialsPropertyRequiredHomeOIs));
-  EXPECT_EQ("11111111,22222222",
+  EXPECT_EQ("0011111111,0022222222",
             properties.Get<std::string>(
                 WPASupplicant::kCredentialsPropertyRoamingConsortiums));
 
@@ -461,25 +461,37 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
                          WPASupplicant::kCredentialsPropertyDomain));
   EXPECT_EQ(realm, properties.Get<std::string>(
                        WPASupplicant::kCredentialsPropertyRealm));
-  EXPECT_EQ("1234,5678", properties.Get<std::string>(
-                             WPASupplicant::kCredentialsPropertyHomeOIs));
-  EXPECT_EQ("11111111,22222222",
+  EXPECT_EQ("001234,005678", properties.Get<std::string>(
+                                 WPASupplicant::kCredentialsPropertyHomeOIs));
+  EXPECT_EQ("0011111111,0022222222",
             properties.Get<std::string>(
                 WPASupplicant::kCredentialsPropertyRoamingConsortiums));
 }
 
 TEST_F(PasspointCredentialsTest, EncodeOI) {
-  // Even count of digits
+  // OUI (24-bit).
+  // Even count of digits.
   EXPECT_EQ("506F9A", PasspointCredentials::EncodeOI(0x506F9A));
   // Odd count of digits
   EXPECT_EQ("0B69FE", PasspointCredentials::EncodeOI(0xB69FE));
+
+  // OUI-36 (36-bit).
+  // Even count of digits.
+  EXPECT_EQ("123456789A", PasspointCredentials::EncodeOI(0x123456789A));
+  // Odd count of digits
+  EXPECT_EQ("0123456789", PasspointCredentials::EncodeOI(0x123456789));
+
+  // 0s padding for OUI (24-bit).
+  EXPECT_EQ("00ABCD", PasspointCredentials::EncodeOI(0xABCD));
+  // 0s padding for OUI-36 (36-bit).
+  EXPECT_EQ("0009ABCDEF", PasspointCredentials::EncodeOI(0x9ABCDEF));
 
   EXPECT_EQ("123456789ABCDEF0",
             PasspointCredentials::EncodeOI(0x123456789ABCDEF0));
   EXPECT_EQ("FFFFFFFFFFFFFFFF", PasspointCredentials::EncodeOI(
                                     std::numeric_limits<uint64_t>::max()));
-  EXPECT_EQ("00", PasspointCredentials::EncodeOI(
-                      std::numeric_limits<uint64_t>::min()));
+  EXPECT_EQ("000000", PasspointCredentials::EncodeOI(
+                          std::numeric_limits<uint64_t>::min()));
 }
 
 TEST_F(PasspointCredentialsTest, EncodeOIList) {
@@ -490,9 +502,9 @@ TEST_F(PasspointCredentialsTest, EncodeOIList) {
                                            0xbf0ac789};
 
   EXPECT_EQ("", PasspointCredentials::EncodeOIList(empty));
-  EXPECT_EQ("80FC", PasspointCredentials::EncodeOIList(one_value));
-  EXPECT_EQ("00,123ABC", PasspointCredentials::EncodeOIList(two_values));
-  EXPECT_EQ("123456789ABCDEF0,96,BF0AC789",
+  EXPECT_EQ("0080FC", PasspointCredentials::EncodeOIList(one_value));
+  EXPECT_EQ("000000,123ABC", PasspointCredentials::EncodeOIList(two_values));
+  EXPECT_EQ("123456789ABCDEF0,000096,00BF0AC789",
             PasspointCredentials::EncodeOIList(three_values));
 }
 
