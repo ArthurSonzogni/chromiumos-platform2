@@ -1,8 +1,8 @@
-# ChromiumOS Crash Reporting
+# ChromiumOS Crash Reporting (original design doc)
 
 *2011-05-15*
 
-*** aside
+*** note
 This is the original design doc for this project.
 Some aspects are out of date or no longer accurate, but is still useful for
 historical reference purposes.
