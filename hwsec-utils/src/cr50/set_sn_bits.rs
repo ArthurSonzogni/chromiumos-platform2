@@ -5,10 +5,6 @@
 use std::fmt;
 use std::fmt::Display;
 
-use log::error;
-use log::info;
-use log::warn;
-
 use super::cr50_read_rma_sn_bits;
 use super::get_board_id_with_gsctool;
 use super::run_gsctool_cmd;
@@ -56,10 +52,10 @@ impl From<Cr50SetSnBitsVerdict> for i32 {
 
 pub fn report_device_has_been_rmaed(dry_run: bool) -> Result<(), Cr50SetSnBitsVerdict> {
     if dry_run {
-        warn!("WARNING: This device has been RMAed, preventing changes to SN Bits.");
+        println!("WARNING: This device has been RMAed, preventing changes to SN Bits.");
         Ok(())
     } else {
-        error!("This device has been RMAed, SN Bits cannot be set.");
+        eprintln!("ERROR: This device has been RMAed, SN Bits cannot be set.");
         Err(Cr50SetSnBitsVerdict::GeneralError)
     }
 }
@@ -74,7 +70,7 @@ pub fn cr50_compute_updater_sn_bits(sn: &str) -> SnBits {
 pub fn board_id_is_set(ctx: &mut impl Context) -> Result<bool, Cr50SetSnBitsVerdict> {
     let board_id: BoardID = {
         get_board_id_with_gsctool(ctx).map_err(|_| {
-            error!("Failed to execute gsctool -a -i");
+            eprintln!("ERROR: Failed to execute gsctool -a -i");
             Cr50SetSnBitsVerdict::GeneralError
         })?
     };
@@ -91,7 +87,7 @@ pub fn cr50_check_sn_bits(
     dry_run: bool,
 ) -> Result<(), Cr50SetSnBitsVerdict> {
     let rma_sn_bits = cr50_read_rma_sn_bits(ctx).map_err(|_| {
-        error!("Failed to read RMA+SN Bits.");
+        eprintln!("ERROR: Failed to read RMA+SN Bits.");
         Cr50SetSnBitsVerdict::GeneralError
     })?;
     if is_rmaed(rma_sn_bits) {
@@ -99,17 +95,17 @@ pub fn cr50_check_sn_bits(
     } else if rma_sn_bits.sn_bits == [0x00_u8; 12] {
         Ok(())
     } else if rma_sn_bits.sn_bits != sn_bits {
-        error!(
-            "SN Bits have been set differently ({} vs {}).",
+        eprintln!(
+            "ERROR: SN Bits have been set differently ({} vs {}).",
             u8_slice_to_hex_string(&rma_sn_bits.sn_bits),
             u8_slice_to_hex_string(&sn_bits)
         );
         Err(Cr50SetSnBitsVerdict::AlreadySetDifferentlyError)
     } else if dry_run {
-        info!("SN Bits are properly set.");
+        println!("SN Bits are properly set.");
         Err(Cr50SetSnBitsVerdict::Successful)
     } else {
-        error!("SN Bits had already been set before.");
+        eprintln!("ERROR: SN Bits had already been set before.");
         Err(Cr50SetSnBitsVerdict::AlreadySetError)
     }
 }
@@ -120,7 +116,7 @@ fn set_sn_bits_with_gsctool(
 ) -> Result<i32, Cr50SetSnBitsVerdict> {
     let gsctool_output = run_gsctool_cmd(ctx, vec!["-a", "-S", &u8_slice_to_hex_string(&sn_bits)])
         .map_err(|_| {
-            error!("Failed to run gsctool.");
+            eprintln!("ERROR: Failed to run gsctool.");
             Cr50SetSnBitsVerdict::GeneralError
         })?;
     Ok(gsctool_output.status.code().unwrap())
@@ -137,8 +133,8 @@ pub fn cr50_set_sn_bits(
         } else {
             ""
         };
-        error!(
-            "Failed to set SN Bits to {}{}.",
+        eprintln!(
+            "ERROR: Failed to set SN Bits to {}{}.",
             u8_slice_to_hex_string(&sn_bits),
             warn_str
         );

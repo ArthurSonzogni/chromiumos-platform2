@@ -7,9 +7,20 @@ use hwsec_utils::cr50::cr50_flash_log;
 use hwsec_utils::cr50::read_prev_timestamp_from_file;
 use hwsec_utils::cr50::set_cr50_log_file_time_base;
 use hwsec_utils::cr50::update_timestamp_file;
+use libchromeos::syslog;
 
 const TIMESTAMP_FILE: &str = "/mnt/stateful_partition/unencrypted/preserve/cr50_flog_timestamp";
 fn main() {
+    let ident = match syslog::get_ident_from_process() {
+        Some(ident) => ident,
+        None => std::process::exit(1),
+    };
+
+    if let Err(e) = syslog::init(ident, false /* Don't log to stderr */) {
+        eprintln!("failed to initialize syslog: {}", e);
+        std::process::exit(1)
+    }
+
     let mut real_ctx = RealContext::new();
 
     let Ok(prev_stamp) = read_prev_timestamp_from_file(&mut real_ctx, TIMESTAMP_FILE) else {

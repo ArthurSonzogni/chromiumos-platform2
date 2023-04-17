@@ -5,8 +5,19 @@
 use hwsec_utils::context::RealContext;
 use hwsec_utils::cr50::cr50_update;
 use hwsec_utils::error::HwsecError;
+use libchromeos::syslog;
 
 fn main() {
+    let ident = match syslog::get_ident_from_process() {
+        Some(ident) => ident,
+        None => std::process::exit(1),
+    };
+
+    if let Err(e) = syslog::init(ident, false /* Don't log to stderr */) {
+        eprintln!("failed to initialize syslog: {}", e);
+        std::process::exit(1)
+    }
+
     let mut real_ctx = RealContext::new();
     match cr50_update(&mut real_ctx) {
         Ok(()) => std::process::exit(0),

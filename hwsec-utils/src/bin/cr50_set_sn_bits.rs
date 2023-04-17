@@ -13,7 +13,6 @@ use hwsec_utils::cr50::cr50_check_sn_bits;
 use hwsec_utils::cr50::cr50_compute_updater_sn_bits;
 use hwsec_utils::cr50::cr50_set_sn_bits;
 use hwsec_utils::cr50::Cr50SetSnBitsVerdict;
-use log::error;
 
 fn main() {
     const VPD_KEY: &str = "attested_device_id";
@@ -28,14 +27,17 @@ fn main() {
         .cmd_runner()
         .run("vpd", vec!["-g", VPD_KEY])
         .map_err(|_| {
-            error!("Failed to access vpd key.");
+            eprintln!("ERROR: Failed to access vpd key.");
             exit(Cr50SetSnBitsVerdict::GeneralError as i32);
         })
         .unwrap()
         .stdout;
     let sn = std::str::from_utf8(&vpd_raw_output).unwrap();
     if sn.is_empty() {
-        error!("The RO VPD key {} must present and not empty.", VPD_KEY);
+        eprintln!(
+            "ERROR: The RO VPD key {} must present and not empty.",
+            VPD_KEY
+        );
         exit(Cr50SetSnBitsVerdict::MissingVpdKeyError as i32);
     }
 

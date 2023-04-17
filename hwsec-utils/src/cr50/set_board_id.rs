@@ -5,8 +5,6 @@
 use std::fmt;
 use std::fmt::Display;
 
-use log::error;
-
 use super::extract_board_id_from_gsctool_response;
 use super::run_gsctool_cmd;
 use super::Version;
@@ -60,14 +58,14 @@ pub fn cr50_check_board_id_and_flag(
 ) -> Result<(), Cr50SetBoardIDVerdict> {
     let board_id_output = {
         let gsctool_raw_response = run_gsctool_cmd(ctx, vec!["-a", "-i"]).map_err(|_| {
-            error!("Failed to run gsctool.");
+            eprintln!("Failed to run gsctool.");
             Cr50SetBoardIDVerdict::GeneralError
         })?;
         let board_id_output = std::str::from_utf8(&gsctool_raw_response.stdout).unwrap();
         extract_board_id_from_gsctool_response(board_id_output)
     };
     let board_id = board_id_output.map_err(|e| {
-        error!(
+        eprintln!(
             "Failed to execute gsctool or failed to read board id - {}",
             e
         );
@@ -78,19 +76,19 @@ pub fn cr50_check_board_id_and_flag(
         // Board ID is type cleared, it's ok to go ahead and set it.
         Ok(())
     } else if board_id.part_1 != new_board_id {
-        error!("Board ID had been set differently.");
+        eprintln!("Board ID had been set differently.");
         Err(Cr50SetBoardIDVerdict::AlreadySetDifferentlyError)
     } else if (board_id.flag ^ (new_flag as u32)) == WHITELABEL {
         // The 0x4000 bit is the difference between MP and whitelabel flags. Factory
         // scripts can ignore this mismatch if it's the only difference between the set
         // board id and the new board id.
-        error!("Board ID and flag have already been set. Whitelabel mismatched.");
+        eprintln!("Board ID and flag have already been set. Whitelabel mismatched.");
         Err(Cr50SetBoardIDVerdict::AlreadySetError)
     } else if board_id.flag != new_flag as u32 {
-        error!("Flag had been set differently.");
+        eprintln!("Flag had been set differently.");
         Err(Cr50SetBoardIDVerdict::AlreadySetDifferentlyError)
     } else {
-        error!("Board ID and flag have already been set.");
+        eprintln!("Board ID and flag have already been set.");
         Err(Cr50SetBoardIDVerdict::AlreadySetError)
     }
 }
@@ -102,11 +100,11 @@ pub fn cr50_set_board_id_and_flag(
 ) -> Result<(), Cr50SetBoardIDVerdict> {
     let updater_arg = &format!("{:08x}:{:08x}", board_id, flag);
     let update_output = run_gsctool_cmd(ctx, vec!["-a", "-i", updater_arg]).map_err(|_| {
-        error!("Failed to run gsctool.");
+        eprintln!("Failed to run gsctool.");
         Cr50SetBoardIDVerdict::GeneralError
     })?;
     if !update_output.status.success() {
-        error!("Failed to update with {}.", updater_arg);
+        eprintln!("Failed to update with {}.", updater_arg);
         Err(Cr50SetBoardIDVerdict::GeneralError)
     } else {
         Ok(())
@@ -124,26 +122,26 @@ pub fn check_cr50_support(
     desc: &str,
 ) -> Result<(), Cr50SetBoardIDVerdict> {
     let output = run_gsctool_cmd(ctx, vec!["-a", "-f", "-M"]).map_err(|_| {
-        error!("Failed to run gsctool.");
+        eprintln!("Failed to run gsctool.");
         Cr50SetBoardIDVerdict::GeneralError
     })?;
     if output.status.code().unwrap() != 0 {
-        error!("Failed to get the version");
+        eprintln!("Failed to get the version");
         return Err(Cr50SetBoardIDVerdict::GeneralError);
     }
     let rw_version = extract_rw_fw_version_from_gsctool_response(&format!(
         "{}{}",
         std::str::from_utf8(&output.stdout).map_err(|_| {
-            error!("Internal error occurred.");
+            eprintln!("Internal error occurred.");
             Cr50SetBoardIDVerdict::GeneralError
         })?,
         std::str::from_utf8(&output.stderr).map_err(|_| {
-            error!("Internal error occurred.");
+            eprintln!("Internal error occurred.");
             Cr50SetBoardIDVerdict::GeneralError
         })?,
     ))
     .map_err(|_| {
-        error!("Failed to extract RW_FW_VERSION from gsctool response");
+        eprintln!("Failed to extract RW_FW_VERSION from gsctool response");
         Cr50SetBoardIDVerdict::GeneralError
     })?;
     let target = if rw_version.is_prod_image() {
@@ -152,7 +150,7 @@ pub fn check_cr50_support(
         target_prepvt
     };
     if rw_version.to_ord() < target.to_ord() {
-        error!(
+        eprintln!(
             "Running cr50 {}. {} support was added in .{}.",
             rw_version, desc, target
         );
@@ -193,12 +191,12 @@ pub fn check_device(ctx: &mut impl Context) -> Result<(), Cr50SetBoardIDVerdict>
         .cmd_runner()
         .run("flashrom", vec!["-p", "host", "--wp-status"])
         .map_err(|_| {
-            error!("Failed to run flashrom.");
+            eprintln!("Failed to run flashrom.");
             Cr50SetBoardIDVerdict::GeneralError
         })?;
 
     if !flash_output.status.success() {
-        error!(
+        eprintln!(
             "{}{}",
             String::from_utf8_lossy(&flash_output.stdout),
             String::from_utf8_lossy(&flash_output.stderr)
@@ -213,11 +211,11 @@ pub fn check_device(ctx: &mut impl Context) -> Result<(), Cr50SetBoardIDVerdict>
             vec![r"'mainfw_type?normal'", r"'cros_debug?0'"],
         )
         .map_err(|_| {
-            error!("Failed to run crossystem");
+            eprintln!("Failed to run crossystem");
             Cr50SetBoardIDVerdict::GeneralError
         })?;
     if !crossystem_output.status.success() {
-        error!("Not running normal image.");
+        eprintln!("Not running normal image.");
         return Err(Cr50SetBoardIDVerdict::GeneralError);
     }
 
@@ -227,7 +225,7 @@ pub fn check_device(ctx: &mut impl Context) -> Result<(), Cr50SetBoardIDVerdict>
         String::from_utf8_lossy(&flash_output.stderr)
     );
     if flash_output_string.contains("write protect is disabled") {
-        error!("write protection is disabled");
+        eprintln!("write protection is disabled");
         Err(Cr50SetBoardIDVerdict::DeviceStateError)
     } else {
         Err(Cr50SetBoardIDVerdict::Successful)

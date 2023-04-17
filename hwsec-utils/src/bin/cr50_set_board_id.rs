@@ -14,7 +14,11 @@ use hwsec_utils::cr50::cr50_check_board_id_and_flag;
 use hwsec_utils::cr50::cr50_set_board_id_and_flag;
 use hwsec_utils::cr50::Cr50SetBoardIDVerdict;
 use hwsec_utils::cr50::GSC_NAME;
-use log::error;
+
+pub fn die(message: &str) -> ! {
+    eprintln!("ERROR: {}", message);
+    exit(Cr50SetBoardIDVerdict::GeneralError as i32)
+}
 
 fn exit_if_not_support_partial_board_id(ctx: &mut impl Context) {
     check_cr50_support_partial_board_id(ctx)
@@ -26,8 +30,7 @@ fn main() {
     let args_string: Vec<String> = env::args().collect();
     let args: Vec<&str> = args_string.iter().map(|s| s.as_str()).collect();
     if args.len() <= 1 || args.len() >= 4 {
-        error!("Usage: {} phase [board_id]", args[0]);
-        exit(Cr50SetBoardIDVerdict::GeneralError as i32)
+        die(&format!("Usage: {} phase [board_id]", args[0]));
     }
     let phase: &str = args[1];
     if phase == "check_device" {
@@ -76,8 +79,7 @@ fn main() {
     } else if phase.starts_with("mp") || phase.starts_with("pvt") {
         0x7f80
     } else {
-        error!("Unknown phase ({})", phase);
-        exit(Cr50SetBoardIDVerdict::GeneralError as i32);
+        die(&format!("Unknown phase ({})", phase))
     };
 
     let tmp_vec: Vec<u8>;
@@ -92,32 +94,27 @@ fn main() {
                 tmp_vec = cros_config_exec_result.stdout;
                 rlz = std::str::from_utf8(&tmp_vec).unwrap();
             } else {
-                error!("cros_config returned non-zero.");
-                exit(Cr50SetBoardIDVerdict::GeneralError as i32);
+                die("cros_config returned non-zero.");
             }
         } else {
-            error!("Failed to run cros_config.");
-            exit(Cr50SetBoardIDVerdict::GeneralError as i32);
+            die("Failed to run cros_config.");
         }
     }
 
     match rlz.len() {
         0 => {
-            error!("No RLZ brand code assigned yet.");
-            exit(Cr50SetBoardIDVerdict::GeneralError as i32);
+            die("No RLZ brand code assigned yet.");
         }
         4 => {
             // Valid RLZ consists of 4 letters
         }
         10 => {
             if rlz != "0xffffffff" {
-                error!("Only support erased hex RLZ not {}", rlz);
-                exit(Cr50SetBoardIDVerdict::GeneralError as i32);
+                die(&format!("Only support erased hex RLZ not {}", rlz));
             }
         }
         _ => {
-            error!("Invalid RLZ brand code ({}).", rlz);
-            exit(Cr50SetBoardIDVerdict::GeneralError as i32);
+            die(&format!("Invalid RLZ brand code ({}).", rlz));
         }
     };
 
