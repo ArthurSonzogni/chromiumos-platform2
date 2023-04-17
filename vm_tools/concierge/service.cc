@@ -3758,36 +3758,19 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
 
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
 
+  ExportDiskImageRequest request;
   ExportDiskImageResponse response;
   response.set_status(DISK_STATUS_FAILED);
 
-  ExportDiskImageRequest request;
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse ExportDiskImageRequest from message";
     response.set_failure_reason("Unable to parse ExportDiskRequest");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!ValidateVmNameAndOwner(request, response)) {
-    response.set_status(DISK_STATUS_FAILED);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  base::FilePath disk_path;
-  StorageLocation location;
-  if (!CheckVmExists(request.vm_name(), request.cryptohome_id(), &disk_path,
-                     &location)) {
-    response.set_status(DISK_STATUS_DOES_NOT_EXIST);
-    response.set_failure_reason("Export image doesn't exist");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -3810,6 +3793,32 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     return dbus_response;
   }
 
+  writer.AppendProtoAsArrayOfBytes(ExportDiskImageInternal(
+      std::move(request), std::move(storage_fd), std::move(digest_fd)));
+  return dbus_response;
+}
+
+ExportDiskImageResponse Service::ExportDiskImageInternal(
+    ExportDiskImageRequest request,
+    base::ScopedFD storage_fd,
+    base::ScopedFD digest_fd) {
+  ExportDiskImageResponse response;
+  response.set_status(DISK_STATUS_FAILED);
+
+  if (!ValidateVmNameAndOwner(request, response)) {
+    response.set_status(DISK_STATUS_FAILED);
+    return response;
+  }
+
+  base::FilePath disk_path;
+  StorageLocation location;
+  if (!CheckVmExists(request.vm_name(), request.cryptohome_id(), &disk_path,
+                     &location)) {
+    response.set_status(DISK_STATUS_DOES_NOT_EXIST);
+    response.set_failure_reason("Export image doesn't exist");
+    return response;
+  }
+
   ArchiveFormat fmt;
   switch (location) {
     case STORAGE_CRYPTOHOME_ROOT:
@@ -3821,8 +3830,7 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     default:
       LOG(ERROR) << "Unsupported location for source image";
       response.set_failure_reason("Unsupported location for image");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
   }
 
   VmId vm_id(request.cryptohome_id(), request.vm_name());
@@ -3831,8 +3839,7 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     if (FindVm(vm_id) != vms_.end()) {
       LOG(ERROR) << "VM is currently running";
       response.set_failure_reason("VM is currently running");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
 
     // For Parallels VMs we want to be sure that the VM is shut down, not
@@ -3843,14 +3850,12 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
                                          &is_shut_down)) {
         LOG(ERROR) << "Unable to query VM state";
         response.set_failure_reason("Unable to query VM state");
-        writer.AppendProtoAsArrayOfBytes(response);
-        return dbus_response;
+        return response;
       }
       if (!is_shut_down) {
         LOG(ERROR) << "VM is not shut down";
         response.set_failure_reason("VM needs to be shut down for exporting");
-        writer.AppendProtoAsArrayOfBytes(response);
-        return dbus_response;
+        return response;
       }
     }
   }
@@ -3871,8 +3876,7 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
                        weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
   }
 
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::ImportDiskImage(

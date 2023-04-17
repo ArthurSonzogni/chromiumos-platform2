@@ -185,6 +185,10 @@ class Service final {
   // Handles a request to export a disk image.
   std::unique_ptr<dbus::Response> ExportDiskImage(
       dbus::MethodCall* method_call);
+  ExportDiskImageResponse ExportDiskImageInternal(
+      ExportDiskImageRequest request,
+      base::ScopedFD storage_fd,
+      base::ScopedFD digest_fd);
 
   // Handles a request to import a disk image.
   std::unique_ptr<dbus::Response> ImportDiskImage(
