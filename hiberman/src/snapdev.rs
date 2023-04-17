@@ -177,7 +177,10 @@ impl SnapshotDevice {
 
             let res = image_file.read(&mut buf);
 
-            let bytes_written = self.file.write(&buf)?;
+            let bytes_written = self
+                .file
+                .write(&buf)
+                .context("Failed to transfer snapshot image to kernel")?;
 
             if res.is_err() {
                 if bytes_written == 0 {
