@@ -30,6 +30,7 @@ using ::testing::NiceMock;
 using ::testing::Return;
 
 using ::anomaly::CryptohomeParser;
+using ::anomaly::HermesParser;
 using ::anomaly::KernelParser;
 using ::anomaly::ParserRun;
 using ::anomaly::ParserTest;
@@ -732,4 +733,30 @@ TEST(AnomalyDetectorTest, CellularFailureBlocked) {
   ParserRun modem_failure = {.expected_size = 0};
   ShillParser parser(/*testonly_send_all=*/true);
   ParserTest("TEST_CELLULAR_FAILURE_BLOCKED", {modem_failure}, &parser);
+}
+
+TEST(AnomalyDetectorTest, ESimInstallSendHttpsFailure) {
+  ParserRun install_failure = {
+      .expected_text = "SendHttpsFailure",
+      .expected_flags = {
+          {"--hermes_failure", base::StringPrintf("--weight=%d", 5)}}};
+  HermesParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_ESIM_INSTALL_SEND_HTTPS_FAILURE", {install_failure},
+             &parser);
+}
+
+TEST(AnomalyDetectorTest, ESimInstallUnknownFailure) {
+  ParserRun install_failure = {
+      .expected_text = "Unknown",
+      .expected_flags = {
+          {"--hermes_failure", base::StringPrintf("--weight=%d", 1)}}};
+  HermesParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_ESIM_INSTALL_UNKNOWN_FAILURE", {install_failure}, &parser);
+}
+
+TEST(AnomalyDetectorTest, ESimInstallFailureBlocked) {
+  ParserRun install_failure = {.expected_size = 0};
+  HermesParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_ESIM_INSTALL_MALFORMED_RESPONSE", {install_failure},
+             &parser);
 }

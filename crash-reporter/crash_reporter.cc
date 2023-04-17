@@ -366,6 +366,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(arc_kernel, false, "ARC Kernel Crash");
 #endif
   DEFINE_bool(modem_failure, false, "Report modem failure");
+  DEFINE_bool(hermes_failure, false, "Report hermes failure");
   DEFINE_bool(guest_oom_event, false,
               "OOM event in Crostini (captured via stdin)");
 
@@ -642,10 +643,19 @@ int main(int argc, char* argv[]) {
       FLAGS_kernel_smmu_fault, FLAGS_kernel_suspend_warning,
       FLAGS_kernel_iwlwifi_error, FLAGS_kernel_ath10k_error));
 
-  collectors.push_back(GenericFailureCollector::GetHandlerInfo(
-      FLAGS_suspend_failure, FLAGS_auth_failure, FLAGS_modem_failure,
-      FLAGS_cryptohome_recovery_failure, FLAGS_arc_service_failure,
-      FLAGS_service_failure, FLAGS_guest_oom_event, FLAGS_weight));
+  GenericFailureCollector::HandlerInfoOptions handler_info_options = {
+      .suspend_failure = FLAGS_suspend_failure,
+      .auth_failure = FLAGS_auth_failure,
+      .modem_failure = FLAGS_modem_failure,
+      .recovery_failure = FLAGS_cryptohome_recovery_failure,
+      .hermes_failure = FLAGS_hermes_failure,
+      .arc_service_failure = FLAGS_arc_service_failure,
+      .service_failure = FLAGS_service_failure,
+      .guest_oom_event = FLAGS_guest_oom_event,
+      .weight = FLAGS_weight};
+
+  collectors.push_back(
+      GenericFailureCollector::GetHandlerInfo(handler_info_options));
 
   collectors.push_back(SELinuxViolationCollector::GetHandlerInfo(
       FLAGS_selinux_violation, FLAGS_weight));

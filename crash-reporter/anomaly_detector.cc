@@ -636,6 +636,48 @@ MaybeCrashReport TcsdParser::ParseLogEntry(const std::string& line) {
   return CrashReport(std::move(text), {std::move("--auth_failure")});
 }
 
+HermesParser::HermesParser(bool testonly_send_all)
+    : testonly_send_all_(testonly_send_all) {}
+
+constexpr LazyRE2 esim_installation_failure = {
+    R"(Domain=dbus, Code=org.chromium.Hermes.Error.(\S+), Message=(.*))"};
+
+MaybeCrashReport HermesParser::ParseLogEntry(const std::string& line) {
+  std::string error_code;
+  std::string error_message;
+
+  int weight = 1;
+  if (!RE2::PartialMatch(line, *esim_installation_failure, &error_code,
+                         &error_message)) {
+    return std::nullopt;
+  }
+
+  if (error_code != "SendHttpsFailure" && error_code != "Unknown" &&
+      error_code != "ModemMessageProcessing" &&
+      error_code != "UnexpectedModemManagerState") {
+    return std::nullopt;
+  }
+
+  if (error_code == "SendHttpsFailure") {
+    weight = 5;
+  }
+
+  if (!testonly_send_all_ && base::RandGenerator(weight) != 0) {
+    return std::nullopt;
+  }
+
+  uint32_t hash = StringHash(error_message.c_str());
+  if (WasAlreadySeen(hash)) {
+    return std::nullopt;
+  }
+
+  std::string text = base::StringPrintf("%08x-%s\n", hash, error_code.c_str());
+  const std::string kFlag = "--hermes_failure";
+  return CrashReport(std::move(text),
+                     {std::move("--hermes_failure"),
+                      base::StringPrintf("--weight=%d", weight)});
+}
+
 ShillParser::ShillParser(bool testonly_send_all)
     : testonly_send_all_(testonly_send_all) {}
 

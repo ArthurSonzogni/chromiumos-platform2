@@ -51,14 +51,19 @@ class GenericFailureCollector : public CrashCollector {
                    std::optional<int> weight,
                    bool use_log_conf_file);
 
-  static CollectorInfo GetHandlerInfo(bool suspend_failure,
-                                      bool auth_failure,
-                                      bool modem_failure,
-                                      bool recovery_failure,
-                                      const std::string& arc_service_failure,
-                                      const std::string& service_failure,
-                                      bool guest_oom_event,
-                                      int32_t weight);
+  struct HandlerInfoOptions {
+    bool suspend_failure = false;
+    bool auth_failure = false;
+    bool modem_failure = false;
+    bool recovery_failure = false;
+    bool hermes_failure = false;
+    std::string arc_service_failure;
+    std::string service_failure;
+    bool guest_oom_event = false;
+    int32_t weight;
+  };
+
+  static CollectorInfo GetHandlerInfo(const HandlerInfoOptions& options);
 
  protected:
   std::string failure_report_path_;
@@ -81,6 +86,7 @@ class GenericFailureCollector : public CrashCollector {
   static const char* const kArcServiceFailure;
   static const char* const kModemFailure;
   static const char* const kGuestOomEvent;
+  static const char* const kHermesFailure;
 
   // Generic failure dump consists only of the signature.
   bool LoadGenericFailure(std::string* content, std::string* signature);

@@ -33,6 +33,7 @@ const char* const GenericFailureCollector::kArcServiceFailure =
     "arc-service-failure";
 const char* const GenericFailureCollector::kModemFailure = "cellular-failure";
 const char* const GenericFailureCollector::kGuestOomEvent = "guest-oom-event";
+const char* const GenericFailureCollector::kHermesFailure = "hermes_failure";
 
 GenericFailureCollector::GenericFailureCollector()
     : CrashCollector("generic_failure"), failure_report_path_("/dev/stdin") {}
@@ -96,68 +97,68 @@ bool GenericFailureCollector::CollectFull(const std::string& exec_name,
 
 // static
 CollectorInfo GenericFailureCollector::GetHandlerInfo(
-    bool suspend_failure,
-    bool auth_failure,
-    bool modem_failure,
-    bool recovery_failure,
-    const std::string& arc_service_failure,
-    const std::string& service_failure,
-    bool guest_oom_event,
-    int32_t weight) {
+    const HandlerInfoOptions& options) {
   auto generic_failure_collector = std::make_shared<GenericFailureCollector>();
-  return {.collector = generic_failure_collector,
-          .handlers = {
-              {
-                  .should_handle = suspend_failure,
-                  .cb = base::BindRepeating(
-                      &GenericFailureCollector::CollectWithWeight,
-                      generic_failure_collector, kSuspendFailure,
-                      util::GetSuspendFailureWeight()),
-              },
-              {
-                  .should_handle = auth_failure,
-                  .cb = base::BindRepeating(&GenericFailureCollector::Collect,
-                                            generic_failure_collector,
-                                            kAuthFailure),
-              },
-              {
-                  .should_handle = modem_failure,
-                  .cb = base::BindRepeating(
-                      &GenericFailureCollector::CollectWithWeight,
-                      generic_failure_collector, kModemFailure, weight),
-              },
-              {
-                  .should_handle = !arc_service_failure.empty(),
-                  .cb = base::BindRepeating(
-                      &GenericFailureCollector::CollectFull,
-                      generic_failure_collector,
-                      StringPrintf("%s-%s", kArcServiceFailure,
-                                   arc_service_failure.c_str()),
-                      kArcServiceFailure, util::GetServiceFailureWeight(),
-                      /*use_log_conf_file=*/true),
-              },
-              {
-                  .should_handle = !service_failure.empty(),
-                  .cb = base::BindRepeating(
-                      &GenericFailureCollector::CollectFull,
-                      generic_failure_collector,
-                      StringPrintf("%s-%s", kServiceFailure,
-                                   service_failure.c_str()),
-                      kServiceFailure, util::GetServiceFailureWeight(),
-                      /*use_log_conf_file=*/true),
-              },
-              {.should_handle = guest_oom_event,
-               .should_check_appsync = true,
-               .cb = base::BindRepeating(
-                   &GenericFailureCollector::CollectFull,
-                   generic_failure_collector, kGuestOomEvent, "",
-                   util::GetOomEventWeight(), /*use_log_conf_file=*/false)},
-              {
-                  .should_handle = recovery_failure,
-                  .cb = base::BindRepeating(
-                      &GenericFailureCollector::CollectWithWeight,
-                      generic_failure_collector, kCryptohome,
-                      util::GetRecoveryFailureWeight()),
-              },
-          }};
+  return {
+      .collector = generic_failure_collector,
+      .handlers = {
+          {
+              .should_handle = options.suspend_failure,
+              .cb = base::BindRepeating(
+                  &GenericFailureCollector::CollectWithWeight,
+                  generic_failure_collector, kSuspendFailure,
+                  util::GetSuspendFailureWeight()),
+          },
+          {
+              .should_handle = options.auth_failure,
+              .cb =
+                  base::BindRepeating(&GenericFailureCollector::Collect,
+                                      generic_failure_collector, kAuthFailure),
+          },
+          {
+              .should_handle = options.modem_failure,
+              .cb = base::BindRepeating(
+                  &GenericFailureCollector::CollectWithWeight,
+                  generic_failure_collector, kModemFailure, options.weight),
+          },
+          {
+              .should_handle = options.hermes_failure,
+              .cb = base::BindRepeating(
+                  &GenericFailureCollector::CollectWithWeight,
+                  generic_failure_collector, kHermesFailure, options.weight),
+          },
+          {
+              .should_handle = !options.arc_service_failure.empty(),
+              .cb = base::BindRepeating(
+                  &GenericFailureCollector::CollectFull,
+                  generic_failure_collector,
+                  StringPrintf("%s-%s", kArcServiceFailure,
+                               options.arc_service_failure.c_str()),
+                  kArcServiceFailure, util::GetServiceFailureWeight(),
+                  /*use_log_conf_file=*/true),
+          },
+          {
+              .should_handle = !options.service_failure.empty(),
+              .cb = base::BindRepeating(
+                  &GenericFailureCollector::CollectFull,
+                  generic_failure_collector,
+                  StringPrintf("%s-%s", kServiceFailure,
+                               options.service_failure.c_str()),
+                  kServiceFailure, util::GetServiceFailureWeight(),
+                  /*use_log_conf_file=*/true),
+          },
+          {.should_handle = options.guest_oom_event,
+           .should_check_appsync = true,
+           .cb = base::BindRepeating(&GenericFailureCollector::CollectFull,
+                                     generic_failure_collector, kGuestOomEvent,
+                                     "", util::GetOomEventWeight(),
+                                     /*use_log_conf_file=*/false)},
+          {
+              .should_handle = options.recovery_failure,
+              .cb = base::BindRepeating(
+                  &GenericFailureCollector::CollectWithWeight,
+                  generic_failure_collector, kCryptohome,
+                  util::GetRecoveryFailureWeight()),
+          },
+      }};
 }
