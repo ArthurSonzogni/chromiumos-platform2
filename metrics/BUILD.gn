@@ -11,6 +11,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":chromeos-pgmem",
+    ":install_minijail_conf",
     ":libmetrics",
     ":libmetrics_daemon",
     ":libupload_service",
@@ -41,6 +42,11 @@ group("all") {
       ":metrics_serialization_utils_fuzzer",
     ]
   }
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/metrics_daemon.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 shared_library("libmetrics") {
