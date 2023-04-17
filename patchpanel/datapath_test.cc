@@ -339,11 +339,11 @@ TEST(DatapathTest, Start) {
   FakeSystem system;
 
   // Asserts for sysctl modifications
-  EXPECT_CALL(system, SysNetSet(System::SysNet::IPv4Forward, "1", ""));
+  EXPECT_CALL(system, SysNetSet(System::SysNet::kIPv4Forward, "1", ""));
   EXPECT_CALL(system,
-              SysNetSet(System::SysNet::IPLocalPortRange, "32768 47103", ""));
-  EXPECT_CALL(system, SysNetSet(System::SysNet::IPv6Forward, "1", ""));
-  EXPECT_CALL(system, SysNetSet(System::SysNet::IPv6ProxyNDP, "1", ""));
+              SysNetSet(System::SysNet::kIPLocalPortRange, "32768 47103", ""));
+  EXPECT_CALL(system, SysNetSet(System::SysNet::kIPv6Forward, "1", ""));
+  EXPECT_CALL(system, SysNetSet(System::SysNet::kIPv6ProxyNDP, "1", ""));
 
   static struct {
     IpFamily family;
@@ -605,10 +605,10 @@ TEST(DatapathTest, Stop) {
   auto firewall = new MockFirewall();
   FakeSystem system;
   // Asserts for sysctl modifications
-  EXPECT_CALL(system, SysNetSet(System::SysNet::IPv4Forward, "0", ""));
+  EXPECT_CALL(system, SysNetSet(System::SysNet::kIPv4Forward, "0", ""));
   EXPECT_CALL(system,
-              SysNetSet(System::SysNet::IPLocalPortRange, "32768 61000", ""));
-  EXPECT_CALL(system, SysNetSet(System::SysNet::IPv6Forward, "0", ""));
+              SysNetSet(System::SysNet::kIPLocalPortRange, "32768 61000", ""));
+  EXPECT_CALL(system, SysNetSet(System::SysNet::kIPv6Forward, "0", ""));
   // Asserts for iptables chain reset.
   std::vector<std::pair<IpFamily, std::string>> iptables_commands = {
       {IPv4, "filter -D OUTPUT -j drop_guest_ipv4_prefix -w"},
@@ -929,7 +929,7 @@ TEST(DatapathTest, StartRoutingNamespace) {
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = kTestPID;
   nsinfo.netns_name = "netns_foo";
-  nsinfo.source = TrafficSource::USER;
+  nsinfo.source = TrafficSource::kUser;
   nsinfo.outbound_ifname = "";
   nsinfo.route_on_vpn = true;
   nsinfo.host_ifname = "arc_ns0";
@@ -959,7 +959,7 @@ TEST(DatapathTest, StopRoutingNamespace) {
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = kTestPID;
   nsinfo.netns_name = "netns_foo";
-  nsinfo.source = TrafficSource::USER;
+  nsinfo.source = TrafficSource::kUser;
   nsinfo.outbound_ifname = "";
   nsinfo.route_on_vpn = true;
   nsinfo.host_ifname = "arc_ns0";
@@ -1091,7 +1091,7 @@ TEST(DatapathTest, StartRoutingNewNamespace) {
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = ConnectedNamespace::kNewNetnsPid;
   nsinfo.netns_name = "netns_foo";
-  nsinfo.source = TrafficSource::USER;
+  nsinfo.source = TrafficSource::kUser;
   nsinfo.outbound_ifname = "";
   nsinfo.route_on_vpn = true;
   nsinfo.host_ifname = "arc_ns0";
@@ -1126,7 +1126,7 @@ TEST(DatapathTest, StartRoutingDevice_Arc) {
 
   Datapath datapath(runner, firewall, &system);
   datapath.StartRoutingDevice("eth0", "arc_eth0", Ipv4Addr(1, 2, 3, 4),
-                              TrafficSource::ARC, false);
+                              TrafficSource::kArc, false);
 }
 
 TEST(DatapathTest, StartRoutingDevice_CrosVM) {
@@ -1155,7 +1155,7 @@ TEST(DatapathTest, StartRoutingDevice_CrosVM) {
 
   Datapath datapath(runner, firewall, &system);
   datapath.StartRoutingDevice("", "vmtap0", Ipv4Addr(1, 2, 3, 4),
-                              TrafficSource::CROSVM, true);
+                              TrafficSource::kCrosVM, true);
 }
 
 TEST(DatapathTest, StopRoutingDevice_Arc) {
@@ -1171,7 +1171,7 @@ TEST(DatapathTest, StopRoutingDevice_Arc) {
 
   Datapath datapath(runner, firewall, &system);
   datapath.StopRoutingDevice("eth0", "arc_eth0", Ipv4Addr(1, 2, 3, 4),
-                             TrafficSource::ARC, true);
+                             TrafficSource::kArc, true);
 }
 
 TEST(DatapathTest, StopRoutingDevice_CrosVM) {
@@ -1187,7 +1187,7 @@ TEST(DatapathTest, StopRoutingDevice_CrosVM) {
 
   Datapath datapath(runner, firewall, &system);
   datapath.StopRoutingDevice("", "vmtap0", Ipv4Addr(1, 2, 3, 4),
-                             TrafficSource::CROSVM, true);
+                             TrafficSource::kCrosVM, true);
 }
 
 TEST(DatapathTest, StartStopConnectionPinning) {
@@ -1643,8 +1643,8 @@ TEST(DatapathTest, SetConntrackHelpers) {
   auto firewall = new MockFirewall();
   FakeSystem system;
 
-  EXPECT_CALL(system, SysNetSet(System::SysNet::ConntrackHelper, "1", ""));
-  EXPECT_CALL(system, SysNetSet(System::SysNet::ConntrackHelper, "0", ""));
+  EXPECT_CALL(system, SysNetSet(System::SysNet::kConntrackHelper, "1", ""));
+  EXPECT_CALL(system, SysNetSet(System::SysNet::kConntrackHelper, "0", ""));
 
   Datapath datapath(runner, firewall, &system);
   datapath.SetConntrackHelpers(true);
@@ -2034,9 +2034,9 @@ TEST(DatapathTest, SetRouteLocalnet) {
   FakeSystem system;
 
   EXPECT_CALL(system,
-              SysNetSet(System::SysNet::IPv4RouteLocalnet, "1", "eth0"));
+              SysNetSet(System::SysNet::kIPv4RouteLocalnet, "1", "eth0"));
   EXPECT_CALL(system,
-              SysNetSet(System::SysNet::IPv4RouteLocalnet, "0", "wlan0"));
+              SysNetSet(System::SysNet::kIPv4RouteLocalnet, "0", "wlan0"));
 
   Datapath datapath(runner, firewall, &system);
   datapath.SetRouteLocalnet("eth0", true);

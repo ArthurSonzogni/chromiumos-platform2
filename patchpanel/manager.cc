@@ -465,7 +465,7 @@ void Manager::OnGuestDeviceChanged(const Device& virtual_device,
                                    GuestMessage::GuestType guest_type) {
   dbus::Signal signal(kPatchPanelInterface, kNetworkDeviceChangedSignal);
   NetworkDeviceChangedSignal proto;
-  proto.set_event(event == Device::ChangeEvent::ADDED
+  proto.set_event(event == Device::ChangeEvent::kAdded
                       ? NetworkDeviceChangedSignal::DEVICE_ADDED
                       : NetworkDeviceChangedSignal::DEVICE_REMOVED);
   auto* dev = proto.mutable_device();
@@ -498,9 +498,9 @@ void Manager::OnGuestDeviceChanged(const Device& virtual_device,
             ? virtual_device.phys_ifname()
             : shill_client_->default_logical_interface();
 
-    if (event == Device::ChangeEvent::ADDED) {
+    if (event == Device::ChangeEvent::kAdded) {
       StartForwarding(upstream_device, virtual_device.host_ifname());
-    } else if (event == Device::ChangeEvent::REMOVED) {
+    } else if (event == Device::ChangeEvent::kRemoved) {
       StopForwarding(upstream_device, virtual_device.host_ifname());
     }
   }
@@ -622,10 +622,10 @@ std::unique_ptr<dbus::Response> Manager::OnGetDevices(
     auto* dev = response.add_devices();
     FillDeviceProto(*crosvm_device, dev);
     switch (crosvm_device->type()) {
-      case GuestType::VM_TERMINA:
+      case GuestType::kVmTermina:
         dev->set_guest_type(NetworkDevice::TERMINA_VM);
         break;
-      case GuestType::VM_PLUGIN:
+      case GuestType::kVmPlugin:
         dev->set_guest_type(NetworkDevice::PLUGIN_VM);
         break;
       default:
@@ -1309,7 +1309,7 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   auto response = std::make_unique<patchpanel::ConnectNamespaceResponse>();
 
   std::unique_ptr<Subnet> subnet =
-      addr_mgr_.AllocateIPv4Subnet(GuestType::MINIJAIL_NETNS);
+      addr_mgr_.AllocateIPv4Subnet(GuestType::kNetns);
   if (!subnet) {
     LOG(ERROR) << "Exhausted IPv4 subnet space";
     return response;
@@ -1326,8 +1326,8 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   nsinfo.pid = request.pid();
   nsinfo.netns_name = "connected_netns_" + ifname_id;
   nsinfo.source = ProtoToTrafficSource(request.traffic_source());
-  if (nsinfo.source == TrafficSource::UNKNOWN)
-    nsinfo.source = TrafficSource::SYSTEM;
+  if (nsinfo.source == TrafficSource::kUnknown)
+    nsinfo.source = TrafficSource::kSystem;
   nsinfo.outbound_ifname = request.outbound_physical_device();
   nsinfo.route_on_vpn = request.route_on_vpn();
   nsinfo.host_ifname = "arc_ns" + ifname_id;

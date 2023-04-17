@@ -38,34 +38,34 @@ constexpr const int kInterfaceTableIdIncrement = 1000;
 // offset by 0x20 so that their most significant bit is always set and can be
 // easily matched separately from local sources.
 enum TrafficSource {
-  UNKNOWN = 0,
+  kUnknown = 0,
 
   // Local sources:
   // Traffic corresponding to uid "chronos".
-  CHROME = 1,
+  kChrome = 1,
   // Other uids classified as "user" for traffic purposes: debugd, cups,
   // tlsdate, pluginvm, etc.
-  USER = 2,
+  kUser = 2,
   // Traffic from Update engine.
-  UPDATE_ENGINE = 3,
+  kUpdateEngine = 3,
   // Other system traffic.
-  SYSTEM = 4,
+  kSystem = 4,
   // Traffic emitted on an underlying physical network by the built-in OpenVPN
   // and L2TP clients, or Chrome 3rd party VPN Apps. This traffic constitutes
   // the VPN tunnel.
-  HOST_VPN = 5,
+  kHostVpn = 5,
 
   // Forwarded sources:
   // ARC++ and ARCVM.
-  ARC = 0x20,
+  kArc = 0x20,
   // Crostini VMs and lxc containers.
-  CROSVM = 0x21,
+  kCrosVM = 0x21,
   // Other plugin VMs.
-  PLUGINVM = 0x22,
+  kPluginVM = 0x22,
   // A tethered downstream network. Currently reserved for future use.
-  TETHER_DOWNSTREAM = 0x23,
+  kTetherDownstream = 0x23,
   // Traffic emitted by Android VPNs for their tunnelled connections.
-  ARC_VPN = 0x24,
+  kArcVpn = 0x24,
 };
 
 const std::string& TrafficSourceName(TrafficSource source);
@@ -196,32 +196,32 @@ constexpr char kUidFuseSmbfs[] = "fuse-smbfs";
 // source (or 0 if none is defined), and 4) if the traffic originated from that
 // source should be routed through VPN connections by default or not.
 constexpr std::array<LocalSourceSpecs, 10> kLocalSourceTypes{{
-    {TrafficSource::CHROME, kUidChronos, 0, true},
-    {TrafficSource::USER, kUidDebugd, 0, true},
-    {TrafficSource::USER, kUidCups, 0, true},
-    {TrafficSource::USER, kUidLpadmin, 0, true},
-    {TrafficSource::SYSTEM, kUidKerberosd, 0, true},
-    {TrafficSource::SYSTEM, kUidKerberosdExec, 0, true},
-    {TrafficSource::SYSTEM, kUidTlsdate, 0, true},
-    {TrafficSource::USER, kUidPluginvm, 0, true},
-    {TrafficSource::SYSTEM, kUidFuseSmbfs, 0, true},
+    {TrafficSource::kChrome, kUidChronos, 0, true},
+    {TrafficSource::kUser, kUidDebugd, 0, true},
+    {TrafficSource::kUser, kUidCups, 0, true},
+    {TrafficSource::kUser, kUidLpadmin, 0, true},
+    {TrafficSource::kSystem, kUidKerberosd, 0, true},
+    {TrafficSource::kSystem, kUidKerberosdExec, 0, true},
+    {TrafficSource::kSystem, kUidTlsdate, 0, true},
+    {TrafficSource::kUser, kUidPluginvm, 0, true},
+    {TrafficSource::kSystem, kUidFuseSmbfs, 0, true},
     // The classid value for update engine must stay in sync with
     // src/aosp/system/update_engine/init/update-engine.conf.
-    {TrafficSource::UPDATE_ENGINE, "", 0x10001, false},
+    {TrafficSource::kUpdateEngine, "", 0x10001, false},
 }};
 
 // All local sources
 constexpr std::array<TrafficSource, 5> kLocalSources{
-    {CHROME, USER, UPDATE_ENGINE, SYSTEM, HOST_VPN}};
+    {kChrome, kUser, kUpdateEngine, kSystem, kHostVpn}};
 
 // All forwarded sources
 constexpr std::array<TrafficSource, 5> kForwardedSources{
-    {ARC, CROSVM, PLUGINVM, TETHER_DOWNSTREAM, ARC_VPN}};
+    {kArc, kCrosVM, kPluginVM, kTetherDownstream, kArcVpn}};
 
 // All sources
 constexpr std::array<TrafficSource, 10> kAllSources{
-    {CHROME, USER, UPDATE_ENGINE, SYSTEM, HOST_VPN, ARC, CROSVM, PLUGINVM,
-     TETHER_DOWNSTREAM, ARC_VPN}};
+    {kChrome, kUser, kUpdateEngine, kSystem, kHostVpn, kArc, kCrosVM, kPluginVM,
+     kTetherDownstream, kArcVpn}};
 
 // iptables type keywords for neighbor discovery packets
 constexpr std::array<char[32], 4> kNeighborDiscoveryTypes{

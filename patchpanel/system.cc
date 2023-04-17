@@ -86,11 +86,11 @@ bool System::SysNetSet(SysNet target,
                        const std::string& iface) {
   std::string path;
   switch (target) {
-    case SysNet::IPv4Forward:
+    case SysNet::kIPv4Forward:
       return Write(kSysNetIPv4ForwardingPath, content);
-    case SysNet::IPLocalPortRange:
+    case SysNet::kIPLocalPortRange:
       return Write(kSysNetIPLocalPortRangePath, content);
-    case SysNet::IPv4RouteLocalnet:
+    case SysNet::kIPv4RouteLocalnet:
       if (iface.empty()) {
         LOG(ERROR) << "IPv4LocalPortRange requires a valid interface";
         return false;
@@ -98,24 +98,21 @@ bool System::SysNetSet(SysNet target,
       return Write(
           kSysNetIPv4ConfPrefix + iface + kSysNetIPv4RouteLocalnetSuffix,
           content);
-    case SysNet::IPv6Forward:
+    case SysNet::kIPv6Forward:
       return Write(kSysNetIPv6ForwardingPath, content);
-    case SysNet::IPv6AcceptRA:
+    case SysNet::kIPv6AcceptRA:
       if (iface.empty()) {
         LOG(ERROR) << "IPv6AcceptRA requires a valid interface";
         return false;
       }
       return Write(kSysNetIPv6ConfPrefix + iface + kSysNetIPv6AcceptRaSuffix,
                    content);
-    case ConntrackHelper:
+    case SysNet::kConntrackHelper:
       return Write(kSysNetConntrackHelperPath, content);
-    case SysNet::IPv6Disable:
+    case SysNet::kIPv6Disable:
       return Write(kSysNetDisableIPv6Path, content);
-    case SysNet::IPv6ProxyNDP:
+    case SysNet::kIPv6ProxyNDP:
       return Write(kSysNetIPv6ProxyNDPPath, content);
-    default:
-      LOG(ERROR) << "Unknown SysNet value " << target;
-      return false;
   }
 }
 

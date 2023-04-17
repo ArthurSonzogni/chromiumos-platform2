@@ -101,7 +101,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = pid;
   nsinfo.netns_name = netns_name;
-  nsinfo.source = TrafficSource::USER;
+  nsinfo.source = TrafficSource::kUser;
   nsinfo.outbound_ifname = ifname;
   nsinfo.route_on_vpn = route_on_vpn;
   nsinfo.host_ifname = ifname2;
@@ -121,9 +121,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   datapath.AddBridge(ifname, addr, prefix_len);
   datapath.RemoveBridge(ifname);
   datapath.AddToBridge(ifname, ifname2);
-  datapath.StartRoutingDevice(ifname, ifname2, addr, TrafficSource::UNKNOWN,
+  datapath.StartRoutingDevice(ifname, ifname2, addr, TrafficSource::kUnknown,
                               route_on_vpn);
-  datapath.StopRoutingDevice(ifname, ifname2, addr, TrafficSource::UNKNOWN,
+  datapath.StopRoutingDevice(ifname, ifname2, addr, TrafficSource::kUnknown,
                              route_on_vpn);
   datapath.StartRoutingNamespace(nsinfo);
   datapath.StopRoutingNamespace(nsinfo);

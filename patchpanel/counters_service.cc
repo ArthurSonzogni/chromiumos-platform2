@@ -64,7 +64,7 @@ bool MatchCounterLine(const std::string& line,
   }
 
   if (RE2::FullMatch(line, *kFinalCounterLine, pkts, bytes)) {
-    *source = TrafficSource::UNKNOWN;
+    *source = TrafficSource::kUnknown;
     return true;
   }
 
@@ -276,27 +276,27 @@ void CountersService::SetupJumpRules(Iptables::Command command,
 
 TrafficCounter::Source TrafficSourceToProto(TrafficSource source) {
   switch (source) {
-    case CHROME:
+    case TrafficSource::kChrome:
       return TrafficCounter::CHROME;
-    case USER:
+    case TrafficSource::kUser:
       return TrafficCounter::USER;
-    case UPDATE_ENGINE:
+    case TrafficSource::kUpdateEngine:
       return TrafficCounter::UPDATE_ENGINE;
-    case SYSTEM:
+    case TrafficSource::kSystem:
       return TrafficCounter::SYSTEM;
-    case HOST_VPN:
+    case TrafficSource::kHostVpn:
       return TrafficCounter::VPN;
-    case ARC:
+    case TrafficSource::kArc:
       return TrafficCounter::ARC;
-    case CROSVM:
+    case TrafficSource::kCrosVM:
       return TrafficCounter::CROSVM;
-    case PLUGINVM:
+    case TrafficSource::kPluginVM:
       return TrafficCounter::PLUGINVM;
-    case TETHER_DOWNSTREAM:
+    case TrafficSource::kTetherDownstream:
       return TrafficCounter::SYSTEM;
-    case ARC_VPN:
+    case TrafficSource::kArcVpn:
       return TrafficCounter::VPN;
-    case UNKNOWN:
+    case TrafficSource::kUnknown:
     default:
       return TrafficCounter::UNKNOWN;
   }
@@ -305,24 +305,24 @@ TrafficCounter::Source TrafficSourceToProto(TrafficSource source) {
 TrafficSource ProtoToTrafficSource(TrafficCounter::Source source) {
   switch (source) {
     case TrafficCounter::CHROME:
-      return CHROME;
+      return TrafficSource::kChrome;
     case TrafficCounter::USER:
-      return USER;
+      return TrafficSource::kUser;
     case TrafficCounter::UPDATE_ENGINE:
-      return UPDATE_ENGINE;
+      return TrafficSource::kUpdateEngine;
     case TrafficCounter::SYSTEM:
-      return SYSTEM;
+      return TrafficSource::kSystem;
     case TrafficCounter::VPN:
-      return HOST_VPN;
+      return TrafficSource::kHostVpn;
     case TrafficCounter::ARC:
-      return ARC;
+      return TrafficSource::kArc;
     case TrafficCounter::CROSVM:
-      return CROSVM;
+      return TrafficSource::kCrosVM;
     case TrafficCounter::PLUGINVM:
-      return PLUGINVM;
+      return TrafficSource::kPluginVM;
     default:
     case TrafficCounter::UNKNOWN:
-      return UNKNOWN;
+      return TrafficSource::kUnknown;
   }
 }
 

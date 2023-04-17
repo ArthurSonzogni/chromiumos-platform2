@@ -133,17 +133,26 @@ TEST_F(RoutingServiceTest, FwmarkAndMaskConstants) {
 }
 
 TEST_F(RoutingServiceTest, FwmarkSources) {
-  EXPECT_EQ("0x00000000", Fwmark::FromSource(UNKNOWN).ToString());
-  EXPECT_EQ("0x00000100", Fwmark::FromSource(CHROME).ToString());
-  EXPECT_EQ("0x00000200", Fwmark::FromSource(USER).ToString());
-  EXPECT_EQ("0x00000300", Fwmark::FromSource(UPDATE_ENGINE).ToString());
-  EXPECT_EQ("0x00000400", Fwmark::FromSource(SYSTEM).ToString());
-  EXPECT_EQ("0x00000500", Fwmark::FromSource(HOST_VPN).ToString());
-  EXPECT_EQ("0x00002000", Fwmark::FromSource(ARC).ToString());
-  EXPECT_EQ("0x00002100", Fwmark::FromSource(CROSVM).ToString());
-  EXPECT_EQ("0x00002200", Fwmark::FromSource(PLUGINVM).ToString());
-  EXPECT_EQ("0x00002300", Fwmark::FromSource(TETHER_DOWNSTREAM).ToString());
-  EXPECT_EQ("0x00002400", Fwmark::FromSource(ARC_VPN).ToString());
+  EXPECT_EQ("0x00000000",
+            Fwmark::FromSource(TrafficSource::kUnknown).ToString());
+  EXPECT_EQ("0x00000100",
+            Fwmark::FromSource(TrafficSource::kChrome).ToString());
+  EXPECT_EQ("0x00000200", Fwmark::FromSource(TrafficSource::kUser).ToString());
+  EXPECT_EQ("0x00000300",
+            Fwmark::FromSource(TrafficSource::kUpdateEngine).ToString());
+  EXPECT_EQ("0x00000400",
+            Fwmark::FromSource(TrafficSource::kSystem).ToString());
+  EXPECT_EQ("0x00000500",
+            Fwmark::FromSource(TrafficSource::kHostVpn).ToString());
+  EXPECT_EQ("0x00002000", Fwmark::FromSource(TrafficSource::kArc).ToString());
+  EXPECT_EQ("0x00002100",
+            Fwmark::FromSource(TrafficSource::kCrosVM).ToString());
+  EXPECT_EQ("0x00002200",
+            Fwmark::FromSource(TrafficSource::kPluginVM).ToString());
+  EXPECT_EQ("0x00002300",
+            Fwmark::FromSource(TrafficSource::kTetherDownstream).ToString());
+  EXPECT_EQ("0x00002400",
+            Fwmark::FromSource(TrafficSource::kArcVpn).ToString());
 
   for (auto ts : kLocalSources) {
     EXPECT_EQ(
@@ -266,15 +275,15 @@ TEST_F(RoutingServiceTest, LocalSourceSpecsPrettyPrinting) {
     std::string expected_output;
   } testcases[] = {
       {{}, "{source: UNKNOWN, uid: , classid: 0, is_on_vpn: false}"},
-      {{TrafficSource::CHROME, kUidChronos, 0, true},
+      {{TrafficSource::kChrome, kUidChronos, 0, true},
        "{source: CHROME, uid: chronos, classid: 0, is_on_vpn: true}"},
-      {{TrafficSource::USER, kUidDebugd, 0, true},
+      {{TrafficSource::kUser, kUidDebugd, 0, true},
        "{source: USER, uid: debugd, classid: 0, is_on_vpn: true}"},
-      {{TrafficSource::SYSTEM, kUidTlsdate, 0, true},
+      {{TrafficSource::kSystem, kUidTlsdate, 0, true},
        "{source: SYSTEM, uid: tlsdate, classid: 0, is_on_vpn: true}"},
-      {{TrafficSource::USER, kUidPluginvm, 0, true},
+      {{TrafficSource::kUser, kUidPluginvm, 0, true},
        "{source: USER, uid: pluginvm, classid: 0, is_on_vpn: true}"},
-      {{TrafficSource::UPDATE_ENGINE, "", 1234, false},
+      {{TrafficSource::kUpdateEngine, "", 1234, false},
        "{source: UPDATE_ENGINE, uid: , classid: 1234, is_on_vpn: false}"},
   };
 

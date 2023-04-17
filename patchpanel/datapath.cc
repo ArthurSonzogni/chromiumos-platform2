@@ -129,7 +129,7 @@ bool Ioctl(System* system, ioctl_req_t req, const char* arg) {
 TrafficSource DownstreamNetworkInfoTrafficSource(
     const DownstreamNetworkInfo& info) {
   // TODO(b/257880335): define source for LocalOnlyNetwork.
-  return TETHER_DOWNSTREAM;
+  return TrafficSource::kTetherDownstream;
 }
 
 std::string AutoDnatTargetChainName(AutoDnatTarget auto_dnat_target) {
@@ -169,7 +169,7 @@ void Datapath::Start() {
   ResetIptables();
 
   // Enable IPv4 packet forwarding
-  if (!system_->SysNetSet(System::SysNet::IPv4Forward, "1")) {
+  if (!system_->SysNetSet(System::SysNet::kIPv4Forward, "1")) {
     LOG(ERROR) << "Failed to update net.ipv4.ip_forward."
                << " Guest connectivity will not work correctly.";
   }
@@ -177,17 +177,17 @@ void Datapath::Start() {
   // Limit local port range: Android owns 47104-61000.
   // TODO(garrick): The original history behind this tweak is gone. Some
   // investigation is needed to see if it is still applicable.
-  if (!system_->SysNetSet(System::SysNet::IPLocalPortRange, "32768 47103")) {
+  if (!system_->SysNetSet(System::SysNet::kIPLocalPortRange, "32768 47103")) {
     LOG(ERROR) << "Failed to limit local port range. Some Android features or"
                << " apps may not work correctly.";
   }
 
   // Enable IPv6 packet forwarding and cross-interface proxying
-  if (!system_->SysNetSet(System::SysNet::IPv6Forward, "1")) {
+  if (!system_->SysNetSet(System::SysNet::kIPv6Forward, "1")) {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.forwarding."
                << " IPv6 functionality may be broken.";
   }
-  if (!system_->SysNetSet(System::SysNet::IPv6ProxyNDP, "1")) {
+  if (!system_->SysNetSet(System::SysNet::kIPv6ProxyNDP, "1")) {
     LOG(ERROR) << "Failed to update net.ipv6.conf.all.proxy_ndp."
                << " IPv6 functionality may be broken.";
   }
@@ -418,7 +418,7 @@ void Datapath::Start() {
   // Finally add a catch-all rule for tagging any remaining local sources with
   // the SYSTEM source tag
   if (!ModifyFwmarkDefaultLocalSourceTag(Iptables::Command::kA,
-                                         TrafficSource::SYSTEM))
+                                         TrafficSource::kSystem))
     LOG(ERROR) << "Failed to set up rule tagging traffic with default source";
 
   // Set up jump chains to the DNS nat chains for egress traffic from local
@@ -437,7 +437,7 @@ void Datapath::Start() {
   }
   if (!ModifyRedirectDnsJumpRule(
           IpFamily::Dual, Iptables::Command::kA, "POSTROUTING", /*ifname=*/"",
-          kSnatChromeDnsChain, Fwmark::FromSource(TrafficSource::CHROME),
+          kSnatChromeDnsChain, Fwmark::FromSource(TrafficSource::kChrome),
           kFwmarkAllSourcesMask, /*redirect_on_mark=*/true)) {
     LOG(ERROR) << "Failed to add jump rule for chrome DNS SNAT";
   }
@@ -481,15 +481,15 @@ void Datapath::Stop() {
   // Restore original local port range.
   // TODO(garrick): The original history behind this tweak is gone. Some
   // investigation is needed to see if it is still applicable.
-  if (!system_->SysNetSet(System::SysNet::IPLocalPortRange, "32768 61000")) {
+  if (!system_->SysNetSet(System::SysNet::kIPLocalPortRange, "32768 61000")) {
     LOG(ERROR) << "Failed to restore local port range";
   }
 
   // Disable packet forwarding
-  if (!system_->SysNetSet(System::SysNet::IPv6Forward, "0"))
+  if (!system_->SysNetSet(System::SysNet::kIPv6Forward, "0"))
     LOG(ERROR) << "Failed to restore net.ipv6.conf.all.forwarding.";
 
-  if (!system_->SysNetSet(System::SysNet::IPv4Forward, "0"))
+  if (!system_->SysNetSet(System::SysNet::kIPv4Forward, "0"))
     LOG(ERROR) << "Failed to restore net.ipv4.ip_forward.";
 
   ResetIptables();
@@ -816,10 +816,10 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
 }
 
 void Datapath::RestartIPv6() {
-  if (!system_->SysNetSet(System::SysNet::IPv6Disable, "1")) {
+  if (!system_->SysNetSet(System::SysNet::kIPv6Disable, "1")) {
     LOG(ERROR) << "Failed to disable IPv6";
   }
-  if (!system_->SysNetSet(System::SysNet::IPv6Disable, "0")) {
+  if (!system_->SysNetSet(System::SysNet::kIPv6Disable, "0")) {
     LOG(ERROR) << "Failed to re-enable IPv6";
   }
 }
@@ -1666,7 +1666,7 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
   // that ARC can access the VPN network through arc0.
   if (vpn_ifname != kArcBridge) {
     StartRoutingDevice(vpn_ifname, kArcBridge, /*int_ipv4_addr=*/0,
-                       TrafficSource::ARC, /*route_on_vpn=*/true);
+                       TrafficSource::kArc, /*route_on_vpn=*/true);
   }
   if (!ModifyRedirectDnsJumpRule(
           IpFamily::IPv4, Iptables::Command::kA, "OUTPUT",
@@ -1695,7 +1695,7 @@ void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
   }
   if (vpn_ifname != kArcBridge) {
     StopRoutingDevice(vpn_ifname, kArcBridge, /*int_ipv4_addr=*/0,
-                      TrafficSource::ARC, /*route_on_vpn=*/false);
+                      TrafficSource::kArc, /*route_on_vpn=*/false);
   }
   if (!FlushChain(IpFamily::Dual, Iptables::Table::kMangle,
                   kApplyVpnMarkChain)) {
@@ -2155,12 +2155,12 @@ void Datapath::DeleteAdbPortAccessRule(const std::string& ifname) {
 }
 
 bool Datapath::SetConntrackHelpers(const bool enable_helpers) {
-  return system_->SysNetSet(System::SysNet::ConntrackHelper,
+  return system_->SysNetSet(System::SysNet::kConntrackHelper,
                             enable_helpers ? "1" : "0");
 }
 
 bool Datapath::SetRouteLocalnet(const std::string& ifname, const bool enable) {
-  return system_->SysNetSet(System::SysNet::IPv4RouteLocalnet,
+  return system_->SysNetSet(System::SysNet::kIPv4RouteLocalnet,
                             enable ? "1" : "0", ifname);
 }
 

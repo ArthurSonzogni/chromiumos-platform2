@@ -44,8 +44,8 @@ namespace patchpanel {
 class Device {
  public:
   enum class ChangeEvent {
-    ADDED,
-    REMOVED,
+    kAdded,
+    kRemoved,
   };
   using ChangeEventHandler = base::RepeatingCallback<void(
       const Device&, ChangeEvent, GuestMessage::GuestType)>;

@@ -19,12 +19,12 @@ namespace patchpanel {
 
 TEST(AddressManager, BaseAddresses) {
   std::map<GuestType, size_t> addrs = {
-      {GuestType::ARC0, Ipv4Addr(100, 115, 92, 0)},
-      {GuestType::ARC_NET, Ipv4Addr(100, 115, 92, 4)},
-      {GuestType::VM_TERMINA, Ipv4Addr(100, 115, 92, 24)},
-      {GuestType::VM_PLUGIN, Ipv4Addr(100, 115, 93, 0)},
-      {GuestType::LXD_CONTAINER, Ipv4Addr(100, 115, 92, 192)},
-      {GuestType::MINIJAIL_NETNS, Ipv4Addr(100, 115, 92, 128)},
+      {GuestType::kArc0, Ipv4Addr(100, 115, 92, 0)},
+      {GuestType::kArcNet, Ipv4Addr(100, 115, 92, 4)},
+      {GuestType::kVmTermina, Ipv4Addr(100, 115, 92, 24)},
+      {GuestType::kVmPlugin, Ipv4Addr(100, 115, 93, 0)},
+      {GuestType::kLxdContainer, Ipv4Addr(100, 115, 92, 192)},
+      {GuestType::kNetns, Ipv4Addr(100, 115, 92, 128)},
   };
   AddressManager mgr;
   for (const auto a : addrs) {
@@ -38,9 +38,9 @@ TEST(AddressManager, BaseAddresses) {
 
 TEST(AddressManager, AddressesPerSubnet) {
   std::map<GuestType, size_t> addrs = {
-      {GuestType::ARC0, 2},           {GuestType::ARC_NET, 2},
-      {GuestType::VM_TERMINA, 2},     {GuestType::VM_PLUGIN, 6},
-      {GuestType::LXD_CONTAINER, 14}, {GuestType::MINIJAIL_NETNS, 2},
+      {GuestType::kArc0, 2},          {GuestType::kArcNet, 2},
+      {GuestType::kVmTermina, 2},     {GuestType::kVmPlugin, 6},
+      {GuestType::kLxdContainer, 14}, {GuestType::kNetns, 2},
   };
   AddressManager mgr;
   for (const auto a : addrs) {
@@ -52,9 +52,9 @@ TEST(AddressManager, AddressesPerSubnet) {
 
 TEST(AddressManager, SubnetsPerPool) {
   std::map<GuestType, size_t> addrs = {
-      {GuestType::ARC0, 1},          {GuestType::ARC_NET, 5},
-      {GuestType::VM_TERMINA, 26},   {GuestType::VM_PLUGIN, 32},
-      {GuestType::LXD_CONTAINER, 4}, {GuestType::MINIJAIL_NETNS, 16},
+      {GuestType::kArc0, 1},         {GuestType::kArcNet, 5},
+      {GuestType::kVmTermina, 26},   {GuestType::kVmPlugin, 32},
+      {GuestType::kLxdContainer, 4}, {GuestType::kNetns, 16},
   };
   AddressManager mgr;
   for (const auto a : addrs) {
@@ -71,12 +71,12 @@ TEST(AddressManager, SubnetsPerPool) {
 
 TEST(AddressManager, SubnetIndexing) {
   AddressManager mgr;
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::ARC0, 1));
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::ARC_NET, 1));
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::VM_TERMINA, 1));
-  EXPECT_TRUE(mgr.AllocateIPv4Subnet(GuestType::VM_PLUGIN, 1));
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::LXD_CONTAINER, 1));
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::MINIJAIL_NETNS, 1));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kArc0, 1));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kArcNet, 1));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kVmTermina, 1));
+  EXPECT_TRUE(mgr.AllocateIPv4Subnet(GuestType::kVmPlugin, 1));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kLxdContainer, 1));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kNetns, 1));
 }
 
 TEST(AddressManager, StableMacAddresses) {

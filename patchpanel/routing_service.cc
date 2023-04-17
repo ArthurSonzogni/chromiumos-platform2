@@ -70,21 +70,21 @@ bool RoutingService::SetVpnFwmark(
 
 const std::string& TrafficSourceName(TrafficSource source) {
   static std::map<TrafficSource, std::string> kTrafficSourceNames = {
-      {CHROME, "CHROME"},
-      {USER, "USER"},
-      {UPDATE_ENGINE, "UPDATE_ENGINE"},
-      {SYSTEM, "SYSTEM"},
-      {HOST_VPN, "HOST_VPN"},
-      {ARC, "ARC"},
-      {CROSVM, "CROSVM"},
-      {PLUGINVM, "PLUGINVM"},
-      {TETHER_DOWNSTREAM, "TETHER_DOWNSTREAM"},
-      {ARC_VPN, "ARC_VPN"},
-      {UNKNOWN, "UNKNOWN"},
+      {kChrome, "CHROME"},
+      {kUser, "USER"},
+      {kUpdateEngine, "UPDATE_ENGINE"},
+      {kSystem, "SYSTEM"},
+      {kHostVpn, "HOST_VPN"},
+      {kArc, "ARC"},
+      {kCrosVM, "CROSVM"},
+      {kPluginVM, "PLUGINVM"},
+      {kTetherDownstream, "TETHER_DOWNSTREAM"},
+      {kArcVpn, "ARC_VPN"},
+      {kUnknown, "UNKNOWN"},
   };
   const auto& it = kTrafficSourceNames.find(source);
   if (it == kTrafficSourceNames.end()) {
-    return kTrafficSourceNames.find(UNKNOWN)->second;
+    return kTrafficSourceNames.find(kUnknown)->second;
   }
   return it->second;
 }

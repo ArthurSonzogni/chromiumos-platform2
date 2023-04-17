@@ -8,17 +8,17 @@ namespace patchpanel {
 
 std::ostream& operator<<(std::ostream& stream, const GuestType guest_type) {
   switch (guest_type) {
-    case GuestType::ARC0:
+    case GuestType::kArc0:
       return stream << "ARC0";
-    case GuestType::ARC_NET:
+    case GuestType::kArcNet:
       return stream << "ARC_NET";
-    case GuestType::VM_TERMINA:
+    case GuestType::kVmTermina:
       return stream << "VM_TERMINA";
-    case GuestType::VM_PLUGIN:
+    case GuestType::kVmPlugin:
       return stream << "VM_PLUGIN";
-    case GuestType::LXD_CONTAINER:
+    case GuestType::kLxdContainer:
       return stream << "LXD_CONTAINER";
-    case GuestType::MINIJAIL_NETNS:
+    case GuestType::kNetns:
       return stream << "MINIJAIL_NETNS";
     default:
       return stream << "UNKNOWN";

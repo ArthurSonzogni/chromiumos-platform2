@@ -154,7 +154,7 @@ bool OneTimeContainerSetup(Datapath& datapath, pid_t pid) {
 // Creates the ARC management Device used for VPN forwarding, ADB-over-TCP.
 std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
                                        GuestMessage::GuestType guest) {
-  auto ipv4_subnet = addr_mgr->AllocateIPv4Subnet(GuestType::ARC0);
+  auto ipv4_subnet = addr_mgr->AllocateIPv4Subnet(GuestType::kArc0);
   if (!ipv4_subnet) {
     LOG(ERROR) << "Subnet already in use or unavailable";
     return nullptr;
@@ -181,7 +181,7 @@ std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
   // used to forward host traffic into an Android VPN. Therefore, |phys_ifname|
   // is not meaningful for the "arc0" virtual device and is set to a placeholder
   // value.
-  return std::make_unique<Device>(GuestType::ARC0, kArcIfname, kArcBridge,
+  return std::make_unique<Device>(GuestType::kArc0, kArcIfname, kArcBridge,
                                   kArcIfname, std::move(config));
 }
 }  // namespace
@@ -221,7 +221,7 @@ void ArcService::AllocateAddressConfigs() {
         ShillClient::Device::Type::kEthernet, ShillClient::Device::Type::kWifi,
         ShillClient::Device::Type::kWifi,
         ShillClient::Device::Type::kCellular}) {
-    auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::ARC_NET);
+    auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::kArcNet);
     if (!ipv4_subnet) {
       LOG(ERROR) << "Subnet already in use or unavailable";
       continue;
@@ -490,7 +490,7 @@ void ArcService::AddDevice(const std::string& ifname,
     }
   }
 
-  auto device = std::make_unique<Device>(GuestType::ARC_NET, ifname,
+  auto device = std::make_unique<Device>(GuestType::kArcNet, ifname,
                                          ArcBridgeName(ifname), guest_ifname,
                                          std::move(config));
   LOG(INFO) << "Starting ARC Device " << *device;
@@ -504,7 +504,7 @@ void ArcService::AddDevice(const std::string& ifname,
 
   datapath_->StartRoutingDevice(device->phys_ifname(), device->host_ifname(),
                                 device->config().guest_ipv4_addr(),
-                                TrafficSource::ARC, /*route_on_vpn=*/false);
+                                TrafficSource::kArc, /*route_on_vpn=*/false);
   datapath_->AddInboundIPv4DNAT(
       AutoDnatTarget::kArc, device->phys_ifname(),
       IPv4AddressToString(device->config().guest_ipv4_addr()));
@@ -546,7 +546,7 @@ void ArcService::AddDevice(const std::string& ifname,
     LOG(ERROR) << "Failed to add ADB port access rule";
   }
 
-  device_changed_handler_.Run(*device, Device::ChangeEvent::ADDED, guest_);
+  device_changed_handler_.Run(*device, Device::ChangeEvent::kAdded, guest_);
   devices_.emplace(ifname, std::move(device));
   RecordEvent(metrics_, ArcServiceUmaEvent::kAddDeviceSuccess);
 }
@@ -566,7 +566,7 @@ void ArcService::RemoveDevice(const std::string& ifname) {
   const auto* device = it->second.get();
   LOG(INFO) << "Removing ARC Device " << *device;
 
-  device_changed_handler_.Run(*device, Device::ChangeEvent::REMOVED, guest_);
+  device_changed_handler_.Run(*device, Device::ChangeEvent::kRemoved, guest_);
 
   // ARCVM TAP devices are removed in VmImpl::Stop() when the service stops
   if (guest_ == GuestMessage::ARC)
@@ -574,7 +574,7 @@ void ArcService::RemoveDevice(const std::string& ifname) {
 
   datapath_->StopRoutingDevice(device->phys_ifname(), device->host_ifname(),
                                device->config().guest_ipv4_addr(),
-                               TrafficSource::ARC, /*route_on_vpn=*/false);
+                               TrafficSource::kArc, /*route_on_vpn=*/false);
   datapath_->RemoveInboundIPv4DNAT(
       AutoDnatTarget::kArc, device->phys_ifname(),
       IPv4AddressToString(device->config().guest_ipv4_addr()));

@@ -281,7 +281,7 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                              kFirstEthGuestIP,
-                                             TrafficSource::ARC, false, _));
+                                             TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
                                  StrEq("100.115.92.6")));
@@ -328,7 +328,7 @@ TEST_F(ArcServiceTest, ContainerImpl_GetDevices) {
   EXPECT_NE(it1, devs.end());
   EXPECT_EQ((*it1)->host_ifname(), "arc_eth0");
   EXPECT_EQ((*it1)->guest_ifname(), "eth0");
-  EXPECT_EQ((*it1)->type(), GuestType::ARC_NET);
+  EXPECT_EQ((*it1)->type(), GuestType::kArcNet);
 
   const auto it2 = std::find_if(
       devs.begin(), devs.end(),
@@ -336,7 +336,7 @@ TEST_F(ArcServiceTest, ContainerImpl_GetDevices) {
   EXPECT_NE(it2, devs.end());
   EXPECT_EQ((*it2)->host_ifname(), "arc_wlan0");
   EXPECT_EQ((*it2)->guest_ifname(), "wlan0");
-  EXPECT_EQ((*it2)->type(), GuestType::ARC_NET);
+  EXPECT_EQ((*it2)->type(), GuestType::kArcNet);
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
@@ -368,20 +368,20 @@ TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
   EXPECT_EQ(guest_devices_.size(), 2);
   EXPECT_THAT(guest_devices_,
               UnorderedElementsAre(
-                  Pair(StrEq("arc_eth0"), Device::ChangeEvent::ADDED),
-                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::ADDED)));
+                  Pair(StrEq("arc_eth0"), Device::ChangeEvent::kAdded),
+                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::kAdded)));
   guest_devices_.clear();
 
   svc->RemoveDevice("wlan0");
   EXPECT_THAT(guest_devices_,
               UnorderedElementsAre(
-                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::REMOVED)));
+                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::kRemoved)));
   guest_devices_.clear();
 
   svc->AddDevice("wlan0", ShillClient::Device::Type::kWifi);
   EXPECT_THAT(guest_devices_,
               UnorderedElementsAre(
-                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::ADDED)));
+                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::kAdded)));
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
@@ -408,7 +408,7 @@ TEST_F(ArcServiceTest, ContainerImpl_StartAfterDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                              kFirstEthGuestIP,
-                                             TrafficSource::ARC, false, _));
+                                             TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
                                  StrEq("100.115.92.6")));
@@ -501,7 +501,7 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
   EXPECT_CALL(*datapath_, RemoveInterface(StrEq("vetheth0"))).Times(1);
   EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                             Ipv4Addr(100, 115, 92, 6),
-                                            TrafficSource::ARC, false));
+                                            TrafficSource::kArc, false));
   EXPECT_CALL(*datapath_,
               RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
                                     StrEq("100.115.92.6")));
@@ -538,7 +538,7 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                              kFirstEthGuestIP,
-                                             TrafficSource::ARC, false, _));
+                                             TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
                                  StrEq("100.115.92.6")));
@@ -578,7 +578,7 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                              kFirstEthGuestIP,
-                                             TrafficSource::ARC, false, _));
+                                             TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
                                  StrEq("100.115.92.6")));
@@ -639,7 +639,7 @@ TEST_F(ArcServiceTest, VmImpl_StartDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                              Ipv4Addr(100, 115, 92, 6),
-                                             TrafficSource::ARC, false, _));
+                                             TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
                                  StrEq("100.115.92.6")));
@@ -676,7 +676,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                              Ipv4Addr(100, 115, 92, 6),
-                                             TrafficSource::ARC, false, _));
+                                             TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
                                  StrEq("100.115.92.6")));
@@ -691,7 +691,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("wlan0"), StrEq("arc_wlan0"),
                                              Ipv4Addr(100, 115, 92, 14),
-                                             TrafficSource::ARC, false, _));
+                                             TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("wlan0"),
                                  StrEq("100.115.92.14")));
@@ -706,7 +706,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth1"), StrEq("arc_eth1"),
                                              Ipv4Addr(100, 115, 92, 10),
-                                             TrafficSource::ARC, false, _));
+                                             TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth1"),
                                  StrEq("100.115.92.10")));
@@ -780,7 +780,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                              Ipv4Addr(100, 115, 92, 6),
-                                             TrafficSource::ARC, false, _));
+                                             TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
                                  StrEq("100.115.92.6")));
@@ -799,7 +799,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                             Ipv4Addr(100, 115, 92, 6),
-                                            TrafficSource::ARC, false));
+                                            TrafficSource::kArc, false));
   EXPECT_CALL(*datapath_,
               RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
                                     StrEq("100.115.92.6")));
@@ -828,7 +828,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                              Ipv4Addr(100, 115, 92, 6),
-                                             TrafficSource::ARC, false, _));
+                                             TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
                                  StrEq("100.115.92.6")));
@@ -865,7 +865,7 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                              Ipv4Addr(100, 115, 92, 6),
-                                             TrafficSource::ARC, false, _));
+                                             TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
                                  StrEq("100.115.92.6")));
@@ -876,7 +876,7 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   // Expectations for eth0 teardown.
   EXPECT_CALL(*datapath_, StopRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
                                             Ipv4Addr(100, 115, 92, 6),
-                                            TrafficSource::ARC, false));
+                                            TrafficSource::kArc, false));
   EXPECT_CALL(*datapath_,
               RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
                                     StrEq("100.115.92.6")));
@@ -922,7 +922,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   EXPECT_NE(it1, devs.end());
   EXPECT_EQ((*it1)->host_ifname(), "arc_eth0");
   EXPECT_EQ((*it1)->guest_ifname(), "eth1");
-  EXPECT_EQ((*it1)->type(), GuestType::ARC_NET);
+  EXPECT_EQ((*it1)->type(), GuestType::kArcNet);
 
   const auto it2 = std::find_if(
       devs.begin(), devs.end(),
@@ -930,7 +930,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   EXPECT_NE(it2, devs.end());
   EXPECT_EQ((*it2)->host_ifname(), "arc_wlan0");
   EXPECT_EQ((*it2)->guest_ifname(), "eth3");
-  EXPECT_EQ((*it2)->type(), GuestType::ARC_NET);
+  EXPECT_EQ((*it2)->type(), GuestType::kArcNet);
 
   const auto it3 = std::find_if(
       devs.begin(), devs.end(),
@@ -938,7 +938,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   EXPECT_NE(it3, devs.end());
   EXPECT_EQ((*it3)->host_ifname(), "arc_eth1");
   EXPECT_EQ((*it3)->guest_ifname(), "eth2");
-  EXPECT_EQ((*it3)->type(), GuestType::ARC_NET);
+  EXPECT_EQ((*it3)->type(), GuestType::kArcNet);
 }
 
 TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
@@ -969,20 +969,20 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
   EXPECT_EQ(guest_devices_.size(), 2);
   EXPECT_THAT(guest_devices_,
               UnorderedElementsAre(
-                  Pair(StrEq("arc_eth0"), Device::ChangeEvent::ADDED),
-                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::ADDED)));
+                  Pair(StrEq("arc_eth0"), Device::ChangeEvent::kAdded),
+                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::kAdded)));
   guest_devices_.clear();
 
   svc->RemoveDevice("wlan0");
   EXPECT_THAT(guest_devices_,
               UnorderedElementsAre(
-                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::REMOVED)));
+                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::kRemoved)));
   guest_devices_.clear();
 
   svc->AddDevice("wlan0", ShillClient::Device::Type::kWifi);
   EXPECT_THAT(guest_devices_,
               UnorderedElementsAre(
-                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::ADDED)));
+                  Pair(StrEq("arc_wlan0"), Device::ChangeEvent::kAdded)));
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 

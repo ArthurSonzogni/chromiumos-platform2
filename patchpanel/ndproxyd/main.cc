@@ -44,12 +44,12 @@ int main(int argc, char* argv[]) {
   brillo::Daemon daemon;
 
   patchpanel::System system;
-  if (!system.SysNetSet(patchpanel::System::SysNet::IPv6AcceptRA, "2",
+  if (!system.SysNetSet(patchpanel::System::SysNet::kIPv6AcceptRA, "2",
                         args[0])) {
     LOG(ERROR) << "Failed to enable net.ipv6.conf." << args[0] << ".accept_ra";
     return EXIT_FAILURE;
   }
-  if (!system.SysNetSet(patchpanel::System::SysNet::IPv6Forward, "1")) {
+  if (!system.SysNetSet(patchpanel::System::SysNet::kIPv6Forward, "1")) {
     LOG(ERROR) << "Failed to enable net.ipv6.conf.all.forwarding.";
     return EXIT_FAILURE;
   }

@@ -17,17 +17,17 @@ namespace patchpanel {
 // with patchpanel ConnectNamespace API.
 enum class GuestType {
   // ARC++ or ARCVM management interface.
-  ARC0,
+  kArc0,
   // ARC++ or ARCVM virtual networks connected to shill Devices.
-  ARC_NET,
+  kArcNet,
   /// Crostini VM root namespace.
-  VM_TERMINA,
+  kVmTermina,
   // Crostini plugin VMs.
-  VM_PLUGIN,
+  kVmPlugin,
   // Crostini VM user containers.
-  LXD_CONTAINER,
+  kLxdContainer,
   // Other network namespaces hosting minijailed host processes.
-  MINIJAIL_NETNS,
+  kNetns,
 };
 
 std::ostream& operator<<(std::ostream& stream, const GuestType guest_type);

@@ -34,26 +34,26 @@ constexpr char kPatchpaneldGroup[] = "patchpaneld";
 class System {
  public:
   // Enum used for restricting the possible paths that SysNetSet can write to.
-  enum SysNet {
+  enum class SysNet {
     // Used for modifying "net.ipv4.ip_forward"
-    IPv4Forward = 1,
+    kIPv4Forward = 1,
     // Used for modifying "net.ipv4.ip_local_port_range"
-    IPLocalPortRange,
+    kIPLocalPortRange,
     // Used for modifying "net.ipv4.conf.%s.route_localnet", requires an
     // interface
     // argument
-    IPv4RouteLocalnet,
+    kIPv4RouteLocalnet,
     // Used for modifying "net.ipv6.conf.%s.accept_ra", requires an interface
     // argument
-    IPv6AcceptRA,
+    kIPv6AcceptRA,
     // Used for modifying "net.ipv6.conf.all.forwarding"
-    IPv6Forward,
+    kIPv6Forward,
     // Used for enabling netfilter connection tracking helper modules.
-    ConntrackHelper,
+    kConntrackHelper,
     // Used for modifying "net.ipv6.conf.all.disable_ipv6"
-    IPv6Disable,
+    kIPv6Disable,
     // Used for modifying "net.ipv6.conf.all.proxy_ndp"
-    IPv6ProxyNDP,
+    kIPv6ProxyNDP,
   };
 
   System() = default;
