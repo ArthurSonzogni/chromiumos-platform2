@@ -59,6 +59,20 @@
                     value="vm_tools::concierge::CreateDiskImageResponse"/>
       </arg>
     </method>
+    <method name="DestroyDiskImage">
+      <tp:docstring>
+        Destroys a disk image.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::DestroyDiskImageRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::DestroyDiskImageResponse"/>
+      </arg>
+    </method>
     <method name="GetVmEnterpriseReportingInfo">
       <tp:docstring>
         Gets VM info specific to enterprise reporting.

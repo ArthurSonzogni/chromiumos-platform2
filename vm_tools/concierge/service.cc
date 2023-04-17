@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kDestroyDiskImageMethod, &Service::DestroyDiskImage},
       {kResizeDiskImageMethod, &Service::ResizeDiskImage},
       {kExportDiskImageMethod, &Service::ExportDiskImage},
       {kImportDiskImageMethod, &Service::ImportDiskImage},
@@ -3325,33 +3324,16 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
-    dbus::MethodCall* method_call) {
+DestroyDiskImageResponse Service::DestroyDiskImage(
+    const DestroyDiskImageRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  DestroyDiskImageRequest request;
   DestroyDiskImageResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse DestroyDiskImageRequest from message";
-    response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Unable to parse DestroyDiskRequest");
-
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
 
   if (!ValidateVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Stop the associated VM if it is still running.
@@ -3365,8 +3347,7 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
 
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("Unable to shut down VM");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
   }
 
@@ -3376,8 +3357,7 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
                      &location)) {
     response.set_status(DISK_STATUS_DOES_NOT_EXIST);
     response.set_failure_reason("No such image");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (!EraseGuestSshKeys(request.cryptohome_id(), request.vm_name())) {
@@ -3395,18 +3375,16 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason(
           "failed to check Plugin VM registration status");
-      writer.AppendProtoAsArrayOfBytes(response);
 
-      return dbus_response;
+      return response;
     }
 
     if (registered &&
         !pvm::dispatcher::UnregisterVm(bus_, vmplugin_service_proxy_, vm_id)) {
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("failed to unregister Plugin VM");
-      writer.AppendProtoAsArrayOfBytes(response);
 
-      return dbus_response;
+      return response;
     }
 
     base::FilePath iso_dir;
@@ -3417,9 +3395,8 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
 
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("Unable to remove ISO directory");
-      writer.AppendProtoAsArrayOfBytes(response);
 
-      return dbus_response;
+      return response;
     }
 
     // Delete GPU shader disk cache.
@@ -3436,9 +3413,8 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
   if (!delete_result) {
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Disk removal failed");
-    writer.AppendProtoAsArrayOfBytes(response);
 
-    return dbus_response;
+    return response;
   }
 
   // Pflash may not be present for all VMs. We should only report error if it
@@ -3450,15 +3426,13 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     if (!base::DeleteFile(pflash_metadata->path)) {
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("Pflash removal failed");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
+      return response;
     }
   }
 
   response.set_status(DISK_STATUS_DESTROYED);
-  writer.AppendProtoAsArrayOfBytes(response);
 
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::ResizeDiskImage(

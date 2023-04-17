@@ -168,8 +168,8 @@ class Service final : public org::chromium::VmConciergeInterface {
       CreateDiskImageRequest request, base::ScopedFD in_fd);
 
   // Handles a request to destroy a disk image.
-  std::unique_ptr<dbus::Response> DestroyDiskImage(
-      dbus::MethodCall* method_call);
+  DestroyDiskImageResponse DestroyDiskImage(
+      const DestroyDiskImageRequest& request) override;
 
   // Handles a request to resize a disk image.
   std::unique_ptr<dbus::Response> ResizeDiskImage(
