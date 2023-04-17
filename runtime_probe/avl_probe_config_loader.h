@@ -11,6 +11,7 @@
 
 #include <base/files/file_path.h>
 
+#include "runtime_probe/function_templates/network.h"
 #include "runtime_probe/functions/ata_storage.h"
 #include "runtime_probe/functions/audio_codec.h"
 #include "runtime_probe/functions/cellular_network.h"
@@ -53,6 +54,7 @@ class AvlProbeConfigLoader : public ProbeConfigLoader {
                                                MemoryFunction,
                                                MipiCameraFunction,
                                                MmcStorageFunction,
+                                               NetworkFunction,
                                                NvmeStorageFunction,
                                                TcpcFunction,
                                                UfsStorageFunction,
