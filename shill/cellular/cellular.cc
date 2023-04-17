@@ -138,6 +138,17 @@ std::string GetFriendlyModelId(const std::string& model_id) {
   return model_id;
 }
 
+Metrics::DetailedCellularConnectionResult::ConnectionAttemptType
+ConnectionAttemptTypeToMetrics(CellularServiceRefPtr service) {
+  using MetricsType =
+      Metrics::DetailedCellularConnectionResult::ConnectionAttemptType;
+  if (!service)
+    return MetricsType::kUnknown;
+  if (service->is_in_user_connect())
+    return MetricsType::kUserConnect;
+  return MetricsType::kAutoConnect;
+}
+
 }  // namespace
 
 // static
@@ -1189,6 +1200,7 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   result.iccid_length = iccid_len;
   result.sim_type = sim_type;
   result.gid1 = mobile_operator_info_->gid1();
+  result.connection_attempt_type = ConnectionAttemptTypeToMetrics(service_);
   result.modem_state = modem_state_;
   result.interface_index = interface_index();
   metrics()->NotifyDetailedCellularConnectionResult(result);

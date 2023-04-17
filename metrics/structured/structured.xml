@@ -646,6 +646,12 @@
         Indicates if the new APN revamp UI is being used.
       </summary>
     </metric>
+    <metric name="connection_attempt_type" type="int">
+      <summary>
+        Indicates the way the connection attempt was triggered.
+        Options are Unknown == 0 , UserConnect == 1 , AutoConnect == 2.
+      </summary>
+    </metric>
   </event>
   <event name="ModemFwdFwInstallResult">
     <summary>

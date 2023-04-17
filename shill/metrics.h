@@ -1532,6 +1532,11 @@ class Metrics : public DefaultServiceObserver {
       kStatic = 2,
       kDHCP = 3
     };
+    enum class ConnectionAttemptType {
+      kUnknown = 0,
+      kUserConnect = 1,
+      kAutoConnect = 2
+    };
     Error::Type error;
     std::string detailed_error;
     std::string uuid;
@@ -1548,6 +1553,7 @@ class Metrics : public DefaultServiceObserver {
     uint32_t modem_state;
     int interface_index;
     uint32_t use_apn_revamp_ui;
+    ConnectionAttemptType connection_attempt_type;
   };
 
   // Notifies this object of the resulting status of a cellular connection
