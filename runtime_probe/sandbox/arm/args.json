@@ -112,6 +112,17 @@
     ],
     "user": "arc-camera"
   },
+  "mmc_host": {
+    "binds": [
+      "/sys/class/mmc_host/",
+      "/sys/bus/mmc/devices/",
+      "/sys/devices/platform/"
+    ],
+    "other_args": [
+      "-k",
+      "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
+    ]
+  },
   "mmc_storage": {
     "binds": [
       "/sys/class/block/",
