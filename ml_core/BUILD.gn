@@ -17,7 +17,7 @@ group("all") {
     deps += [ "//ml_core/opencl_caching:all" ]
   }
   if (use.test) {
-    deps += []
+    deps += [ ":unittest_deps" ]
   }
   if (use.fuzzer) {
     deps += []
@@ -60,6 +60,13 @@ install_config("install_headers") {
     "effects_pipeline_bindings.h",
     "effects_pipeline_types.h",
   ]
+
+  if (use.local_ml_core_internal) {
+    sources += [
+      "ica.proto",
+      "interface.h",
+    ]
+  }
   install_path = "/usr/include/ml_core"
 }
 
@@ -69,4 +76,21 @@ install_config("maybe_install_dev_lib") {
     sources += [ "libcros_ml_core_internal.so" ]
   }
   install_path = "/usr/local/lib64/"
+}
+
+# Install lib and test data for unit tests under /build/share/ml_core
+install_config("unittest_deps") {
+  sources = []
+
+  # Use either local or DLC version of ml-core-internal.
+  if (use.local_ml_core_internal) {
+    sources += [
+      "libcros_ml_core_internal.so",
+      "moon_big.jpg",
+    ]
+  } else if (use.camera_feature_effects) {
+    sources += [ "${sysroot}/build/rootfs/dlc-scaled/ml-core-internal/" +
+                 "package/root/libcros_ml_core_internal.so" ]
+  }
+  install_path = "/build/share/ml_core/"
 }
