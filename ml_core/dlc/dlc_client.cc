@@ -6,6 +6,8 @@
 
 #include <memory>
 #include <utility>
+#include "base/files/file_path.h"
+#include "base/functional/bind.h"
 
 #include <base/strings/strcat.h>
 #include <dbus/bus.h>
@@ -37,6 +39,7 @@ class DlcClientImpl : public cros::DlcClient {
     bus_ = new dbus::Bus(std::move(opts));
     if (!bus_->Connect()) {
       LOG(ERROR) << "Failed to connect to system bus";
+      return;
     }
     LOG(INFO) << "Connected to system bus";
 
@@ -161,16 +164,59 @@ class DlcClientImpl : public cros::DlcClient {
   base::WeakPtrFactory<DlcClientImpl> weak_factory_{this};
 };
 
+class DlcClientForTest : public cros::DlcClient {
+ public:
+  DlcClientForTest(
+      base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb,
+      base::OnceCallback<void(const std::string&)> error_cb,
+      const base::FilePath path)
+      : dlc_root_path_cb_(std::move(dlc_root_path_cb)),
+        error_cb_(std::move(error_cb)),
+        path_(path) {}
+
+  void InstallDlc() override {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(&DlcClientForTest::InvokeSuccessCb,
+                                  base::Unretained(this)));
+  }
+
+  void InvokeSuccessCb() {
+    if (dlc_root_path_cb_)
+      std::move(dlc_root_path_cb_).Run(path_);
+  }
+
+  base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb_;
+  base::OnceCallback<void(const std::string&)> error_cb_;
+  const base::FilePath path_;
+};
+
 }  // namespace
 
 namespace cros {
 
+#ifdef USE_LOCAL_ML_CORE_INTERNAL
+// TODO(nbowe): work out why this is building this lib once for ml_core
+// then again for ml
+const base::FilePath* path_for_test = new base::FilePath("/usr/local/lib64");
+#else
+const base::FilePath* path_for_test = nullptr;
+#endif
+
 std::unique_ptr<DlcClient> DlcClient::Create(
     base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb,
     base::OnceCallback<void(const std::string&)> error_cb) {
-  auto client = std::make_unique<DlcClientImpl>();
-  client->Initialize(std::move(dlc_root_path_cb), std::move(error_cb));
-  return client;
+  if (path_for_test) {
+    auto client = std::make_unique<DlcClientForTest>(
+        std::move(dlc_root_path_cb), std::move(error_cb), *path_for_test);
+    return client;
+  } else {
+    auto client = std::make_unique<DlcClientImpl>();
+    client->Initialize(std::move(dlc_root_path_cb), std::move(error_cb));
+    return client;
+  }
+}
+void DlcClient::SetDlcPathForTest(const base::FilePath* path) {
+  path_for_test = path;
 }
 
 }  // namespace cros
