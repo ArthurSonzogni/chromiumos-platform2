@@ -226,7 +226,7 @@ class Service final : public org::chromium::VmConciergeInterface {
   AdjustVmResponse AdjustVm(const AdjustVmRequest& request) override;
 
   // Handles a request to list all the VMs.
-  std::unique_ptr<dbus::Response> ListVms(dbus::MethodCall* method_call);
+  ListVmsResponse ListVms(const ListVmsRequest& request) override;
 
   // Handles a request to get VM's GPU cache path.
   std::unique_ptr<dbus::Response> GetVmGpuCachePath(

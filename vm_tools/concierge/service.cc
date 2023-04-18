@@ -1517,7 +1517,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kListVmsMethod, &Service::ListVms},
       {kGetVmGpuCachePathMethod, &Service::GetVmGpuCachePath},
       {kAddGroupPermissionMesaMethod, &Service::AddGroupPermissionMesa},
       {kGetVmLaunchAllowedMethod, &Service::GetVmLaunchAllowed},
@@ -4083,31 +4082,14 @@ SetVmCpuRestrictionResponse Service::SetVmCpuRestriction(
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::ListVms(
-    dbus::MethodCall* method_call) {
+ListVmsResponse Service::ListVms(const ListVmsRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  ListVmsRequest request;
   ListVmsResponse response;
 
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ListVmsRequest request from message";
-    response.set_failure_reason(
-        "Unable to parse ListVmsRequest request from message");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   if (!ValidateVmNameAndOwner(request, response)) {
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   for (const auto& vm_entry : vms_) {
@@ -4148,8 +4130,7 @@ std::unique_ptr<dbus::Response> Service::ListVms(
     }
   }
   response.set_success(true);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 void Service::ReclaimVmMemory(
