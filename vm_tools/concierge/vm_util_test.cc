@@ -10,7 +10,7 @@
 #include <gtest/gtest.h>
 #include <optional>
 
-#include "vm_tools/concierge/mock_crosvm_control.h"
+#include "vm_tools/concierge/fake_crosvm_control.h"
 
 using testing::Exactly;
 using testing::NotNull;
@@ -566,31 +566,22 @@ TEST(VMUtilTest, SharedDataParamWithPrivilegedQuotaUids) {
 }
 
 TEST(VMUtilTest, GetBalloonStats) {
-  MockCrosvmControl::Init();
-
-  EXPECT_CALL(*MockCrosvmControl::Get(),
-              BalloonStats(StrEq("/run/nothing"), NotNull(), NotNull()))
-      .Times(Exactly(1))
-      .WillOnce([](const char* path, struct BalloonStatsFfi* stats,
-                   uint64_t* actual) {
-        *actual = 100;
-        *stats = {
-            .swap_in = 1,
-            .swap_out = 2,
-            .major_faults = 3,
-            .minor_faults = 4,
-            .free_memory = 5,
-            .total_memory = 6,
-            .available_memory = 7,
-            .disk_caches = 8,
-            .hugetlb_allocations = 9,
-            .hugetlb_failures = 10,
-            .shared_memory = 11,
-            .unevictable_memory = 12,
-        };
-
-        return true;
-      });
+  FakeCrosvmControl::Init();
+  FakeCrosvmControl::Get()->actual_balloon_size_ = 100;
+  FakeCrosvmControl::Get()->balloon_stats_ = {
+      .swap_in = 1,
+      .swap_out = 2,
+      .major_faults = 3,
+      .minor_faults = 4,
+      .free_memory = 5,
+      .total_memory = 6,
+      .available_memory = 7,
+      .disk_caches = 8,
+      .hugetlb_allocations = 9,
+      .hugetlb_failures = 10,
+      .shared_memory = 11,
+      .unevictable_memory = 12,
+  };
 
   std::optional<BalloonStats> stats = GetBalloonStats("/run/nothing");
 
@@ -608,6 +599,7 @@ TEST(VMUtilTest, GetBalloonStats) {
   ASSERT_EQ(stats->stats_ffi.hugetlb_failures, 10);
   ASSERT_EQ(stats->stats_ffi.shared_memory, 11);
   ASSERT_EQ(stats->stats_ffi.unevictable_memory, 12);
+  ASSERT_EQ(FakeCrosvmControl::Get()->target_socket_path_, "/run/nothing");
   CrosvmControl::Reset();
 }
 
