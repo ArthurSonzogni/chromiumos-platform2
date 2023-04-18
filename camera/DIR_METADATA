@@ -25,6 +25,10 @@ chromeos {
         project: "chromeos/config-internal"
         path: "test/plans/v2/ctpv1_compatible/video_conference_cq_critical.star"
       }
+      # The `app` subdirectory has its own DIR_METADATA file with a testplan.
+      # TODO(b/241934701): Remove exclusion once DIR_METADATA files can specify
+      # that they do not want to inherit SourceTestPlans from their parent.
+      path_regexp_excludes: "camera/app/.*"
     }
   }
 }
