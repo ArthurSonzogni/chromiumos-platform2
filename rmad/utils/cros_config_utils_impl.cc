@@ -252,7 +252,8 @@ SsfcConfig CrosConfigUtilsImpl::GetSsfc() const {
          component_type_config.probeable_components) {
       if (value & ssfc.mask) {
         LOG(WARNING) << "Component " << identifier << " has SSFC value "
-                     << value << "which conflicts with SSFC mask " << ssfc.mask;
+                     << value << " which conflicts with SSFC mask "
+                     << ssfc.mask;
       }
     }
   }
