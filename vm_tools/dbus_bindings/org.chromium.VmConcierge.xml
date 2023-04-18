@@ -169,6 +169,16 @@
                     value="vm_tools::concierge::ContainerSshKeysResponse"/>
       </arg>
     </method>
+    <method name="GetDnsSettings">
+      <tp:docstring>
+        Gets DNS info.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::DnsSettings"/>
+      </arg>
+    </method>
     <method name="GetVmEnterpriseReportingInfo">
       <tp:docstring>
         Gets VM info specific to enterprise reporting.

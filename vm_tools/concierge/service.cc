@@ -1517,7 +1517,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kGetDnsSettingsMethod, &Service::GetDnsSettings},
       {kSetVmCpuRestrictionMethod, &Service::SetVmCpuRestriction},
       {kListVmsMethod, &Service::ListVms},
       {kGetVmGpuCachePathMethod, &Service::GetVmGpuCachePath},
@@ -4036,8 +4035,7 @@ ListUsbDeviceResponse Service::ListUsbDevices(
   response.set_success(true);
   return response;
 }
-
-void Service::ComposeDnsResponse(dbus::MessageWriter* writer) {
+DnsSettings Service::ComposeDnsResponse() {
   DnsSettings dns_settings;
   for (const auto& server : nameservers_) {
     dns_settings.add_nameservers(server);
@@ -4045,20 +4043,14 @@ void Service::ComposeDnsResponse(dbus::MessageWriter* writer) {
   for (const auto& domain : search_domains_) {
     dns_settings.add_search_domains(domain);
   }
-  writer->AppendProtoAsArrayOfBytes(dns_settings);
+  return dns_settings;
 }
 
-std::unique_ptr<dbus::Response> Service::GetDnsSettings(
-    dbus::MethodCall* method_call) {
+DnsSettings Service::GetDnsSettings() {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageWriter writer(dbus_response.get());
-  ComposeDnsResponse(&writer);
-  return dbus_response;
+  return ComposeDnsResponse();
 }
 
 std::unique_ptr<dbus::Response> Service::SetVmCpuRestriction(
@@ -4237,7 +4229,7 @@ void Service::OnResolvConfigChanged(std::vector<string> nameservers,
   // well.
   dbus::Signal signal(kVmConciergeInterface, kDnsSettingsChangedSignal);
   dbus::MessageWriter writer(&signal);
-  ComposeDnsResponse(&writer);
+  writer.AppendProtoAsArrayOfBytes(ComposeDnsResponse());
   exported_object_->SendSignal(&signal);
 }
 
