@@ -20,6 +20,7 @@
 #include "ml/dlcservice_client.h"
 #include "ml/model_metadata.h"
 #include "ml/mojom/machine_learning_service.mojom.h"
+#include "ml_core/dlc/dlc_client.h"
 
 namespace ml {
 
@@ -111,6 +112,13 @@ class MachineLearningServiceImpl
           ::chromeos::machine_learning::mojom::ImageContentAnnotator> receiver,
       LoadImageAnnotatorCallback callback) override;
 
+  void InternalLoadImageAnnotator(
+      chromeos::machine_learning::mojom::ImageAnnotatorConfigPtr config,
+      mojo::PendingReceiver<
+          ::chromeos::machine_learning::mojom::ImageContentAnnotator> receiver,
+      LoadImageAnnotatorCallback callback,
+      const base::FilePath& dlc_root);
+
   // Metadata required to load builtin models. Initialized at construction.
   const std::map<chromeos::machine_learning::mojom::BuiltinModelId,
                  BuiltinModelMetadata>
@@ -120,6 +128,9 @@ class MachineLearningServiceImpl
 
   // DlcserviceClient used to communicate with DlcService.
   std::unique_ptr<DlcserviceClient> dlcservice_client_;
+
+  // ml_core's DlcClient.
+  std::unique_ptr<cros::DlcClient> ml_core_dlc_client_;
 
   // Primordial receiver bootstrapped over D-Bus. Once opened, is never closed.
   mojo::Receiver<chromeos::machine_learning::mojom::MachineLearningService>

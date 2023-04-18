@@ -6,23 +6,24 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/native_library.h>
-#include <chromeos/libica/interface.h>
+#include <ml_core/interface.h>
 
 #include "chrome/knowledge/ica/ica.pb.h"
 
 namespace ml {
 
-ImageContentAnnotationLibrary::ImageContentAnnotationLibrary() {
+ImageContentAnnotationLibrary::ImageContentAnnotationLibrary(
+    const base::FilePath& dso_path) {
   // Load the library with an option preferring own symbols. Otherwise the
   // library will try to call, e.g., external tflite, which leads to crash.
   base::NativeLibraryOptions native_library_options;
   native_library_options.prefer_own_symbols = true;
   base::NativeLibraryLoadError error;
   library_.reset(base::LoadNativeLibraryWithOptions(
-      base::FilePath("/opt/google/chrome/ml_models/ica/libica.so"),
-      native_library_options, &error));
+      dso_path, native_library_options, &error));
   if (!library_.is_valid()) {
     LOG(ERROR) << "Error loading library: " << error.ToString();
     status_ = Status::kLoadLibraryFailed;
@@ -44,6 +45,7 @@ ImageContentAnnotationLibrary::ImageContentAnnotationLibrary() {
   ML_ICA_LOOKUP_FUNCTION(init_image_content_annotator_,
                          InitImageContentAnnotator);
   ML_ICA_LOOKUP_FUNCTION(annotate_image_, AnnotateImage);
+  ML_ICA_LOOKUP_FUNCTION(annotate_encoded_image_, AnnotateEncodedImage);
   ML_ICA_LOOKUP_FUNCTION(delete_annotate_image_result_,
                          DeleteAnnoteImageResult);
 
@@ -51,8 +53,9 @@ ImageContentAnnotationLibrary::ImageContentAnnotationLibrary() {
   return;
 }
 
-ImageContentAnnotationLibrary* ImageContentAnnotationLibrary::GetInstance() {
-  static base::NoDestructor<ImageContentAnnotationLibrary> instance;
+ImageContentAnnotationLibrary* ImageContentAnnotationLibrary::GetInstance(
+    const base::FilePath& dso_path) {
+  static base::NoDestructor<ImageContentAnnotationLibrary> instance(dso_path);
   return instance.get();
 }
 
@@ -89,10 +92,28 @@ bool ImageContentAnnotationLibrary::AnnotateImage(
   DCHECK(status_ == Status::kOk);
   uint8_t* result_data = nullptr;
   int32_t result_size = 0;
-  // TODO(nbowe): Remove const_cast after next uprev.
-  bool successful =
-      (*annotate_image_)(annotator, const_cast<uint8_t*>(rgb_bytes), width,
-                         height, line_stride, &result_data, &result_size);
+  bool successful = (*annotate_image_)(annotator, rgb_bytes, width, height,
+                                       line_stride, &result_data, &result_size);
+  if (successful) {
+    result->Clear();
+    const bool parse_result_status =
+        result->ParseFromArray(result_data, result_size);
+    DCHECK(parse_result_status);
+    (*delete_annotate_image_result_)(result_data);
+  }
+  return successful;
+}
+
+bool ImageContentAnnotationLibrary::AnnotateEncodedImage(
+    ImageContentAnnotator* annotator,
+    const uint8_t* encoded_bytes,
+    int num_bytes,
+    chrome_knowledge::AnnotationScoreList* result) {
+  DCHECK(status_ == Status::kOk);
+  uint8_t* result_data = nullptr;
+  int32_t result_size = 0;
+  bool successful = (*annotate_encoded_image_)(
+      annotator, encoded_bytes, num_bytes, &result_data, &result_size);
   if (successful) {
     result->Clear();
     const bool parse_result_status =

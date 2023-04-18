@@ -116,7 +116,7 @@ proto_library("ml_assist_ranker_proto") {
 }
 
 proto_library("ml_ica_proto") {
-  proto_in_dir = "${sysroot}/usr/include/chromeos/libica/proto"
+  proto_in_dir = "${sysroot}/usr/include/ml_core"
   proto_out_dir = "chrome/knowledge/ica/"
   sources = [ "${proto_in_dir}/ica.proto" ]
 }
@@ -199,6 +199,7 @@ static_library("ml_common") {
     ":ml_grammar_proto",
     ":ml_handwriting_proto",
     ":ml_text_suggester_proto",
+    "//ml_core/dlc:dlc_client",
   ]
   if (use.ondevice_speech) {
     sources += [
@@ -216,8 +217,6 @@ static_library("ml_common") {
       "image_content_annotation_impl.cc",
     ]
     deps += [ ":ml_ica_proto" ]
-
-    pkg_deps += [ "opencv4" ]
   } else {
     sources += [ "image_content_annotation_impl_fake.cc" ]
   }

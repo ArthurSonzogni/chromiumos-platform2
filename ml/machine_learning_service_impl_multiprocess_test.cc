@@ -261,6 +261,8 @@ TEST(WebPlatformHandwritingModel, NoCrashOnNonsupportedBoards) {
   EXPECT_TRUE(model_callback_done);
 }
 
+// TODO(b/208909641): Work out how to make subprocess DlcClient use /build/ for
+// DSO.
 #if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
 static ReadOnlySharedMemoryRegionPtr ToSharedMemory(
     const std::vector<uint8_t>& data) {
@@ -273,7 +275,7 @@ static ReadOnlySharedMemoryRegionPtr ToSharedMemory(
   return image;
 }
 
-TEST(ImageAnnotationMultiProcessTest, LoadAndAnnotate) {
+TEST(ImageAnnotationMultiProcessTest, DISABLED_LoadAndAnnotate) {
   base::RunLoop runloop;
 
   // Sets the process to be control to test multiprocess code.
@@ -303,6 +305,10 @@ TEST(ImageAnnotationMultiProcessTest, LoadAndAnnotate) {
   // binary.
   Process::GetInstance()->SetMlServicePathForTesting(GetMlServicePath());
 
+  // Set DlcClient to return paths from /build.
+  auto dlc_path = base::FilePath("/build/share/ml_core");
+  cros::DlcClient::SetDlcPathForTest(&dlc_path);
+
   mojo::Remote<MachineLearningService> ml_service;
   auto ml_service_impl = std::make_unique<MachineLearningServiceImplForTesting>(
       ml_service.BindNewPipeAndPassReceiver());
@@ -330,7 +336,7 @@ TEST(ImageAnnotationMultiProcessTest, LoadAndAnnotate) {
 
   std::string image_encoded;
   ASSERT_TRUE(base::ReadFileToString(
-      base::FilePath("/build/share/ica/moon_big.jpg"), &image_encoded));
+      base::FilePath("/build/share/ml_core/moon_big.jpg"), &image_encoded));
   auto matrix =
       cv::imdecode(cv::_InputArray(image_encoded.data(), image_encoded.size()),
                    cv::IMREAD_COLOR);

@@ -8,6 +8,8 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
+#include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 #include <opencv2/core.hpp>
@@ -18,13 +20,17 @@
 
 namespace ml {
 
+static base::FilePath LibPath() {
+  return base::FilePath("/build/share/ml_core/libcros_ml_core_internal.so");
+}
+
 TEST(ImageContentAnnotationLibraryTest, CanLoadLibrary) {
-  auto* instance = ImageContentAnnotationLibrary::GetInstance();
+  auto* instance = ImageContentAnnotationLibrary::GetInstance(LibPath());
   ASSERT_EQ(instance->GetStatus(), ImageContentAnnotationLibrary::Status::kOk);
 }
 
 TEST(ImageContentAnnotationLibraryTest, AnnotateImage) {
-  auto* instance = ImageContentAnnotationLibrary::GetInstance();
+  auto* instance = ImageContentAnnotationLibrary::GetInstance(LibPath());
   ASSERT_EQ(instance->GetStatus(), ImageContentAnnotationLibrary::Status::kOk);
   ImageContentAnnotator* annotator = instance->CreateImageContentAnnotator();
   ASSERT_NE(annotator, nullptr);
@@ -32,7 +38,7 @@ TEST(ImageContentAnnotationLibraryTest, AnnotateImage) {
 
   std::string image_encoded;
   ASSERT_TRUE(base::ReadFileToString(
-      base::FilePath("/build/share/ica/moon_big.jpg"), &image_encoded));
+      base::FilePath("/build/share/ml_core/moon_big.jpg"), &image_encoded));
 
   auto mat =
       cv::imdecode(cv::_InputArray(image_encoded.data(), image_encoded.size()),

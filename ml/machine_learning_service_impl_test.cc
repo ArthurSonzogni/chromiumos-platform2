@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/containers/flat_map.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/run_loop.h>
@@ -49,6 +50,7 @@
 #include "ml/text_suggester_proto_mojom_conversion.h"
 #include "ml/text_suggestions.h"
 #include "ml/util.h"
+#include "ml_core/dlc/dlc_client.h"
 
 namespace ml {
 namespace {
@@ -1920,10 +1922,15 @@ class ImageContentAnnotationTest : public ::testing::Test {
     Process::GetInstance()->SetTypeForTesting(
         Process::Type::kSingleProcessForTest);
 
+    // Set DlcClient to return paths from /build.
+    dlc_path_ = base::FilePath("/build/share/ml_core");
+    cros::DlcClient::SetDlcPathForTest(&dlc_path_);
+
     // Set ml_service.
     ml_service_impl_ = std::make_unique<MachineLearningServiceImplForTesting>(
         ml_service_.BindNewPipeAndPassReceiver());
   }
+
   void Connect() {
     auto config =
         chromeos::machine_learning::mojom::ImageAnnotatorConfig::New();
@@ -1948,6 +1955,7 @@ class ImageContentAnnotationTest : public ::testing::Test {
   mojo::Remote<MachineLearningService> ml_service_;
   mojo::Remote<chromeos::machine_learning::mojom::ImageContentAnnotator>
       annotator_;
+  base::FilePath dlc_path_;
 };
 
 TEST_F(ImageContentAnnotationTest, AnnotateRawImage) {
@@ -1955,7 +1963,7 @@ TEST_F(ImageContentAnnotationTest, AnnotateRawImage) {
 
   std::string image_encoded;
   ASSERT_TRUE(base::ReadFileToString(
-      base::FilePath("/build/share/ica/moon_big.jpg"), &image_encoded));
+      base::FilePath("/build/share/ml_core/moon_big.jpg"), &image_encoded));
   auto matrix =
       cv::imdecode(cv::_InputArray(image_encoded.data(), image_encoded.size()),
                    cv::IMREAD_COLOR);
@@ -1980,7 +1988,7 @@ TEST_F(ImageContentAnnotationTest, AnnotateRawImageRegionTooSmall) {
 
   std::string image_encoded;
   ASSERT_TRUE(base::ReadFileToString(
-      base::FilePath("/build/share/ica/moon_big.jpg"), &image_encoded));
+      base::FilePath("/build/share/ml_core/moon_big.jpg"), &image_encoded));
   auto matrix =
       cv::imdecode(cv::_InputArray(image_encoded.data(), image_encoded.size()),
                    cv::IMREAD_COLOR);
@@ -2007,7 +2015,7 @@ TEST_F(ImageContentAnnotationTest, AnnotateEncodedImage) {
 
   std::string image_encoded;
   ASSERT_TRUE(base::ReadFileToString(
-      base::FilePath("/build/share/ica/moon_big.jpg"), &image_encoded));
+      base::FilePath("/build/share/ml_core/moon_big.jpg"), &image_encoded));
   std::vector<uint8_t> buf;
   buf.assign(image_encoded.begin(), image_encoded.end());
 
@@ -2028,7 +2036,7 @@ TEST_F(ImageContentAnnotationTest, AnnotateEncodedImageNonImage) {
 
   std::string image_encoded;
   ASSERT_TRUE(base::ReadFileToString(
-      base::FilePath("/opt/google/chrome/ml_models/ica/libica.so"),
+      base::FilePath("/build/share/ml_core/libcros_ml_core_internal.so"),
       &image_encoded));
   std::vector<uint8_t> buf;
   buf.assign(image_encoded.begin(), image_encoded.end());

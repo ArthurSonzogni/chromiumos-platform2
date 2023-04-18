@@ -21,9 +21,10 @@ namespace ml {
 bool ImageContentAnnotatorImpl::Create(
     chromeos::machine_learning::mojom::ImageAnnotatorConfigPtr config,
     mojo::PendingReceiver<
-        chromeos::machine_learning::mojom::ImageContentAnnotator> receiver) {
-  auto impl =
-      new ImageContentAnnotatorImpl(std::move(config), std::move(receiver));
+        chromeos::machine_learning::mojom::ImageContentAnnotator> receiver,
+    ImageContentAnnotationLibrary* interface) {
+  auto impl = new ImageContentAnnotatorImpl(std::move(config),
+                                            std::move(receiver), interface);
 
   // In production, `impl` is intentionally leaked, because this
   // model runs in its own process and the model's memory is freed when the
@@ -46,7 +47,8 @@ bool ImageContentAnnotatorImpl::Create(
 ImageContentAnnotatorImpl::ImageContentAnnotatorImpl(
     chromeos::machine_learning::mojom::ImageAnnotatorConfigPtr config,
     mojo::PendingReceiver<
-        chromeos::machine_learning::mojom::ImageContentAnnotator> receiver)
+        chromeos::machine_learning::mojom::ImageContentAnnotator> receiver,
+    ImageContentAnnotationLibrary* interface)
     : receiver_(this, std::move(receiver)) {
   DCHECK(!USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION);
   successfully_loaded_ = false;

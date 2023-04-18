@@ -19,6 +19,8 @@ struct ImageContentAnnotator;
 
 namespace ml {
 
+class ImageContentAnnotationLibrary;
+
 // The implementation of ImageContentAnnotator.
 // The implementation will either be a fake implementation when the USE flag is
 // disabled, or a real implementation which utilizes libica.so when the USE flag
@@ -35,7 +37,8 @@ class ImageContentAnnotatorImpl
   static bool Create(
       chromeos::machine_learning::mojom::ImageAnnotatorConfigPtr config,
       mojo::PendingReceiver<
-          chromeos::machine_learning::mojom::ImageContentAnnotator> receiver);
+          chromeos::machine_learning::mojom::ImageContentAnnotator> receiver,
+      ImageContentAnnotationLibrary* interface);
 
   ImageContentAnnotatorImpl(const ImageContentAnnotatorImpl&) = delete;
   ImageContentAnnotatorImpl& operator=(const ImageContentAnnotatorImpl&) =
@@ -45,7 +48,8 @@ class ImageContentAnnotatorImpl
   explicit ImageContentAnnotatorImpl(
       chromeos::machine_learning::mojom::ImageAnnotatorConfigPtr config,
       mojo::PendingReceiver<
-          chromeos::machine_learning::mojom::ImageContentAnnotator> receiver);
+          chromeos::machine_learning::mojom::ImageContentAnnotator> receiver,
+      ImageContentAnnotationLibrary* interface);
 
   // Called when mojom connection is destroyed.
   ~ImageContentAnnotatorImpl() override;

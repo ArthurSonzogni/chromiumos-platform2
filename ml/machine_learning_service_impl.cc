@@ -9,12 +9,14 @@
 
 #include <unistd.h>
 
+#include <base/bind.h>
+#include <base/callback_helpers.h>
 #include <base/check.h>
-#include <base/files/file.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/file.h>
 #include <base/files/memory_mapped_file.h>
 #include <base/functional/bind.h>
-#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/message_loops/message_loop.h>
@@ -30,7 +32,7 @@
 #include "ml/grammar_library.h"
 #include "ml/handwriting.h"
 #include "ml/handwriting_recognizer_impl.h"
-#include "ml/mojom/shared_memory.mojom.h"
+#include "ml_core/dlc/dlc_client.h"
 #if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
 #include "ml/image_content_annotation.h"
 #endif
@@ -74,6 +76,8 @@ constexpr char kSystemModelDir[] = "/opt/google/chrome/ml_models/";
 // Base name for UMA metrics related to model loading (`LoadBuiltinModel`,
 // `LoadFlatBufferModel`, `LoadTextClassifier` or LoadHandwritingModel).
 constexpr char kMetricsRequestName[] = "LoadModelResult";
+
+constexpr int kMlServiceDBusUid = 20177;
 
 constexpr char kIcuDataFilePath[] = "/opt/google/chrome/icudtl.dat";
 
@@ -851,15 +855,6 @@ void MachineLearningServiceImpl::LoadImageAnnotator(
     std::move(callback).Run(LoadModelResult::FEATURE_NOT_SUPPORTED_ERROR);
     return;
   }
-#if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
-  auto* const ica_library = ImageContentAnnotationLibrary::GetInstance();
-  if (ica_library->GetStatus() != ImageContentAnnotationLibrary::Status::kOk) {
-    LOG(ERROR) << "Failed to initialize ImageContentAnnotationLibrary, error "
-               << static_cast<int>(ica_library->GetStatus());
-    std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
-    return;
-  }
-#endif
 
   // If it is run in the control process, spawn a worker process and forward the
   // request to it.
@@ -881,13 +876,58 @@ void MachineLearningServiceImpl::LoadImageAnnotator(
                              std::move(callback));
     return;
   }
-
   // From here below is the worker process.
+
+  // Change euid so we can connect to dbus to install DLC.
+  if (seteuid(kMlServiceDBusUid) != 0) {
+    LOG(ERROR) << "Failed to seteuid for dbus";
+    std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
+    return;
+  }
+  // Create ml core dlc client for this worker process.
+  auto split = base::SplitOnceCallback(std::move(callback));
+  ml_core_dlc_client_ = cros::DlcClient::Create(
+      base::BindOnce(&MachineLearningServiceImpl::InternalLoadImageAnnotator,
+                     base::Unretained(this), std::move(config),
+                     std::move(receiver), std::move(split.first)),
+      base::BindOnce(
+          [](LoadImageAnnotatorCallback callback,
+             const std::string& error_msg) {
+            LOG(ERROR) << "Couldn't install DLC: " << error_msg;
+            std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
+          },
+          std::move(split.second)));
+  if (seteuid(0) != 0) {
+    LOG(ERROR) << "Failed to seteuid";
+    std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
+    return;
+  }
+  ml_core_dlc_client_->InstallDlc();
+}
+
+void MachineLearningServiceImpl::InternalLoadImageAnnotator(
+    chromeos::machine_learning::mojom::ImageAnnotatorConfigPtr config,
+    mojo::PendingReceiver<
+        ::chromeos::machine_learning::mojom::ImageContentAnnotator> receiver,
+    LoadImageAnnotatorCallback callback,
+    const base::FilePath& dlc_root) {
   RequestMetrics request_metrics("ImageAnnotator", kMetricsRequestName);
   request_metrics.StartRecordingPerformanceMetrics();
 
-  if (!ImageContentAnnotatorImpl::Create(std::move(config),
-                                         std::move(receiver))) {
+#if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
+  auto* const ica_library = ImageContentAnnotationLibrary::GetInstance(
+      dlc_root.Append("libcros_ml_core_internal.so"));
+  if (ica_library->GetStatus() != ImageContentAnnotationLibrary::Status::kOk) {
+    LOG(ERROR) << "Failed to initialize ImageContentAnnotationLibrary, error "
+               << static_cast<int>(ica_library->GetStatus());
+    std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
+    return;
+  }
+#else
+  ImageContentAnnotationLibrary* const ica_library = nullptr;
+#endif
+  if (!ImageContentAnnotatorImpl::Create(std::move(config), std::move(receiver),
+                                         ica_library)) {
     LOG(ERROR) << "Image content annotator creation failed.";
     std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
     request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);

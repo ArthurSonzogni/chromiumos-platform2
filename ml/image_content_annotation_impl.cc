@@ -10,12 +10,10 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/message_loops/message_loop.h>
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
 
 #include "base/debug/leak_annotations.h"
 #include "chrome/knowledge/ica/ica.pb.h"
+#include "ml/image_content_annotation.h"
 #include "ml/mojom/shared_memory.mojom.h"
 #include "ml/request_metrics.h"
 
@@ -53,9 +51,10 @@ ImageAnnotationScorePtr AnnotationScorePtrFromProto(
 bool ImageContentAnnotatorImpl::Create(
     chromeos::machine_learning::mojom::ImageAnnotatorConfigPtr config,
     mojo::PendingReceiver<
-        chromeos::machine_learning::mojom::ImageContentAnnotator> receiver) {
-  auto* const impl =
-      new ImageContentAnnotatorImpl(std::move(config), std::move(receiver));
+        chromeos::machine_learning::mojom::ImageContentAnnotator> receiver,
+    ImageContentAnnotationLibrary* interface) {
+  auto* const impl = new ImageContentAnnotatorImpl(
+      std::move(config), std::move(receiver), interface);
 
   // In production, `impl` is intentionally leaked, because this
   // model runs in its own process and the model's memory is freed when the
@@ -78,9 +77,9 @@ bool ImageContentAnnotatorImpl::Create(
 ImageContentAnnotatorImpl::ImageContentAnnotatorImpl(
     chromeos::machine_learning::mojom::ImageAnnotatorConfigPtr config,
     mojo::PendingReceiver<
-        chromeos::machine_learning::mojom::ImageContentAnnotator> receiver)
-    : library_(ImageContentAnnotationLibrary::GetInstance()),
-      receiver_(this, std::move(receiver)) {
+        chromeos::machine_learning::mojom::ImageContentAnnotator> receiver,
+    ImageContentAnnotationLibrary* interface)
+    : library_(interface), receiver_(this, std::move(receiver)) {
   DCHECK(USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION);
   DCHECK(library_->GetStatus() == ImageContentAnnotationLibrary::Status::kOk)
       << "ImageContentAnnotatorImpl should only be created if "
@@ -176,17 +175,23 @@ void ImageContentAnnotatorImpl::AnnotateEncodedImage(
     ErrorCallback(callback, request_metrics);
     return;
   }
-  auto matrix =
-      cv::imdecode(cv::_InputArray(encoded_bytes.data(), encoded_bytes.size()),
-                   cv::IMREAD_COLOR);
-  if (matrix.empty()) {
-    LOG(ERROR) << "Failed to decode image.";
+
+  chrome_knowledge::AnnotationScoreList annotation_scores;
+  if (!library_->AnnotateEncodedImage(annotator_, encoded_bytes.data(),
+                                      encoded_bytes.size(),
+                                      &annotation_scores)) {
+    LOG(ERROR) << "Failed to annotate image.";
     ErrorCallback(callback, request_metrics);
     return;
   }
-  cv::cvtColor(matrix, matrix, cv::COLOR_BGR2RGB);
-  AnnotateImage(matrix.data, matrix.cols, matrix.rows, matrix.step,
-                std::move(callback), request_metrics);
+  ImageAnnotationResultPtr result = ImageAnnotationResult::New();
+  result->status = ImageAnnotationResult::Status::OK;
+  for (const auto& annotation : annotation_scores.annotation()) {
+    result->annotations.push_back(AnnotationScorePtrFromProto(annotation));
+  }
+  request_metrics.FinishRecordingPerformanceMetrics();
+  request_metrics.RecordRequestEvent(result->status);
+  std::move(callback).Run(std::move(result));
 }
 
 }  // namespace ml

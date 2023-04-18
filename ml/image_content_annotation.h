@@ -7,20 +7,21 @@
 
 #include <optional>
 
+#include <base/files/file_path.h>
 #include <base/no_destructor.h>
 #include <base/scoped_native_library.h>
-#include <chromeos/libica/interface.h>
+#include <ml_core/interface.h>
 
 #include "chrome/knowledge/ica/ica.pb.h"
 #include "ml/util.h"
 
 namespace ml {
 
-// A singleton proxy class for the Image Content Annotation DSO.
-// Used by ImageContentAnnotatorImpl to call into the DSO.
+// A singleton proxy class for the Image Content Annotation Dynamic Shared
+// Object (ICA DSO). Used by ImageContentAnnotatorImpl to call into the DSO.
 //
 // Usage:
-//   auto* const library = ImageContentAnnotationLibrary::GetInstance();
+//   auto* const library = ImageContentAnnotationLibrary::GetInstance(dso_path);
 //   if (library->GetStatus() == ImageContentAnnotationLibrary::kOk) {
 //     annotator = library->CreateImageContentAnnotator();
 //     ...
@@ -37,7 +38,8 @@ class ImageContentAnnotationLibrary {
     kNotSupported = 4,
   };
 
-  static ImageContentAnnotationLibrary* GetInstance();
+  static ImageContentAnnotationLibrary* GetInstance(
+      const base::FilePath& dso_path);
 
   // Get whether the library is successfully initialized.
   // Initially, the status is `Status::kUninitialized` (this value should never
@@ -60,9 +62,14 @@ class ImageContentAnnotationLibrary {
                              int height,
                              int line_stride,
                              chrome_knowledge::AnnotationScoreList* result);
+  virtual bool AnnotateEncodedImage(
+      ImageContentAnnotator* annotator,
+      const uint8_t* encoded_bytes,
+      int num_bytes,
+      chrome_knowledge::AnnotationScoreList* result);
 
  protected:
-  ImageContentAnnotationLibrary();
+  explicit ImageContentAnnotationLibrary(const base::FilePath& dso_path);
   virtual ~ImageContentAnnotationLibrary() = default;
 
  private:
@@ -74,6 +81,7 @@ class ImageContentAnnotationLibrary {
   DestroyImageContentAnnotatorFn destroy_image_content_annotator_ = nullptr;
   InitImageContentAnnotatorFn init_image_content_annotator_ = nullptr;
   AnnotateImageFn annotate_image_ = nullptr;
+  AnnotateEncodedImageFn annotate_encoded_image_ = nullptr;
   DeleteAnnoteImageResultFn delete_annotate_image_result_ = nullptr;
 };
 
