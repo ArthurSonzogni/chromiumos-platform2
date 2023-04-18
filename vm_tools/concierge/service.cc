@@ -1517,7 +1517,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kSetVmCpuRestrictionMethod, &Service::SetVmCpuRestriction},
       {kListVmsMethod, &Service::ListVms},
       {kGetVmGpuCachePathMethod, &Service::GetVmGpuCachePath},
       {kAddGroupPermissionMesaMethod, &Service::AddGroupPermissionMesa},
@@ -4053,28 +4052,15 @@ DnsSettings Service::GetDnsSettings() {
   return ComposeDnsResponse();
 }
 
-std::unique_ptr<dbus::Response> Service::SetVmCpuRestriction(
-    dbus::MethodCall* method_call) {
+SetVmCpuRestrictionResponse Service::SetVmCpuRestriction(
+    const SetVmCpuRestrictionRequest& request) {
   // TODO(yusukes,hashimoto): Instead of allowing Chrome to decide when to
   // restrict each VM's CPU usage, let Concierge itself do that for potentially
   // better security. See crrev.com/c/3564880 for more context.
   DCHECK(sequence_checker_.CalledOnValidSequence());
   VLOG(3) << "Received SetVmCpuRestriction request";
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  SetVmCpuRestrictionRequest request;
   SetVmCpuRestrictionResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse SetVmCpuRestrictionRequest from message";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
 
   bool success = false;
   const CpuRestrictionState state = request.cpu_restriction_state();
@@ -4094,8 +4080,7 @@ std::unique_ptr<dbus::Response> Service::SetVmCpuRestriction(
   }
 
   response.set_success(success);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::ListVms(

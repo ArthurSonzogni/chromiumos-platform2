@@ -300,6 +300,20 @@
                     value="vm_tools::concierge::SetBalloonTimerResponse"/>
       </arg>
     </method>
+    <method name="SetVmCpuRestriction">
+      <tp:docstring>
+        Set VM's CPU restriction state.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::SetVmCpuRestrictionRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::SetVmCpuRestrictionResponse"/>
+      </arg>
+    </method>
     <method name="StopVm">
       <tp:docstring>
         Stops VM.

@@ -219,8 +219,8 @@ class Service final : public org::chromium::VmConciergeInterface {
 
   DnsSettings GetDnsSettings() override;
 
-  std::unique_ptr<dbus::Response> SetVmCpuRestriction(
-      dbus::MethodCall* method_call);
+  SetVmCpuRestrictionResponse SetVmCpuRestriction(
+      const SetVmCpuRestrictionRequest& request) override;
 
   // Handles a request to adjust parameters of a given VM.
   AdjustVmResponse AdjustVm(const AdjustVmRequest& request) override;
