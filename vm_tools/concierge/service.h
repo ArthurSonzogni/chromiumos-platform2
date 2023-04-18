@@ -214,8 +214,8 @@ class Service final : public org::chromium::VmConciergeInterface {
                                           const base::ScopedFD& fd) override;
   DetachUsbDeviceResponse DetachUsbDevice(
       const DetachUsbDeviceRequest& request) override;
-
-  std::unique_ptr<dbus::Response> ListUsbDevices(dbus::MethodCall* method_call);
+  ListUsbDeviceResponse ListUsbDevices(
+      const ListUsbDeviceRequest& request) override;
 
   std::unique_ptr<dbus::Response> GetDnsSettings(dbus::MethodCall* method_call);
 

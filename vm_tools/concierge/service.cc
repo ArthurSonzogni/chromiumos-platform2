@@ -1517,7 +1517,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kListUsbDeviceMethod, &Service::ListUsbDevices},
       {kGetDnsSettingsMethod, &Service::GetDnsSettings},
       {kSetVmCpuRestrictionMethod, &Service::SetVmCpuRestriction},
       {kListVmsMethod, &Service::ListVms},
@@ -4006,43 +4005,27 @@ DetachUsbDeviceResponse Service::DetachUsbDevice(
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::ListUsbDevices(
-    dbus::MethodCall* method_call) {
+ListUsbDeviceResponse Service::ListUsbDevices(
+    const ListUsbDeviceRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  ListUsbDeviceRequest request;
   ListUsbDeviceResponse response;
 
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ListUsbDeviceRequest from message";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   if (!ValidateVmNameAndOwner(request, response)) {
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   auto iter = FindVm(request.owner_id(), request.vm_name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   std::vector<UsbDeviceEntry> usb_list;
   if (!iter->second->ListUsbDevice(&usb_list)) {
     LOG(ERROR) << "Failed to list USB devices";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
   for (auto usb : usb_list) {
     UsbDeviceMessage* usb_proto = response.add_usb_devices();
@@ -4051,8 +4034,7 @@ std::unique_ptr<dbus::Response> Service::ListUsbDevices(
     usb_proto->set_product_id(usb.product_id);
   }
   response.set_success(true);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 void Service::ComposeDnsResponse(dbus::MessageWriter* writer) {
