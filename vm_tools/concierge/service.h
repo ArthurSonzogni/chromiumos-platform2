@@ -210,9 +210,8 @@ class Service final : public org::chromium::VmConciergeInterface {
   ContainerSshKeysResponse GetContainerSshKeys(
       const ContainerSshKeysRequest& request) override;
 
-  std::unique_ptr<dbus::Response> AttachUsbDevice(
-      dbus::MethodCall* method_call);
-
+  AttachUsbDeviceResponse AttachUsbDevice(const AttachUsbDeviceRequest& request,
+                                          const base::ScopedFD& fd) override;
   std::unique_ptr<dbus::Response> DetachUsbDevice(
       dbus::MethodCall* method_call);
 

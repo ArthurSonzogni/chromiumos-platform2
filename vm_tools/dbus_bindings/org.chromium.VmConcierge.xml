@@ -40,6 +40,22 @@
                     value="vm_tools::concierge::ArcVmCompleteBootResponse"/>
       </arg>
     </method>
+    <method name="AttachUsbDevice">
+      <tp:docstring>
+        Attaches a USB device to a VM.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::AttachUsbDeviceRequest"/>
+      </arg>
+      <arg type="h" name="fd" direction="in">
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::AttachUsbDeviceResponse"/>
+      </arg>
+    </method>
     <method name="CancelDiskImageOperation">
       <tp:docstring>
         Cancels a disk image operation.
