@@ -172,6 +172,20 @@
                     value="vm_tools::concierge::ImportDiskImageResponse"/>
       </arg>
     </method>
+    <method name="ListVmDisks">
+      <tp:docstring>
+        Lists existing disk images.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::ListVmDisksRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::ListVmDisksResponse"/>
+      </arg>
+    </method>
     <method name="ResizeDiskImage">
       <tp:docstring>
         Resizes a disk image. Can return asynchronously.

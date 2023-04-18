@@ -203,7 +203,7 @@ class Service final : public org::chromium::VmConciergeInterface {
   void RunDiskImageOperation(std::string uuid);
 
   // Handles a request to list existing disk images.
-  std::unique_ptr<dbus::Response> ListVmDisks(dbus::MethodCall* method_call);
+  ListVmDisksResponse ListVmDisks(const ListVmDisksRequest& request) override;
 
   // Handles a request to get the SSH keys for a container.
   std::unique_ptr<dbus::Response> GetContainerSshKeys(

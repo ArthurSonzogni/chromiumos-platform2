@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kListVmDisksMethod, &Service::ListVmDisks},
       {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
       {kSyncVmTimesMethod, &Service::SyncVmTimes},
       {kAttachUsbDeviceMethod, &Service::AttachUsbDevice},
@@ -3849,31 +3848,15 @@ CancelDiskImageResponse Service::CancelDiskImageOperation(
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::ListVmDisks(
-    dbus::MethodCall* method_call) {
+ListVmDisksResponse Service::ListVmDisks(const ListVmDisksRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  ListVmDisksRequest request;
   ListVmDisksResponse response;
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ListVmDisksRequest from message";
-    response.set_failure_reason("Unable to parse ListVmDisksRequest");
-
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
 
   if (!ValidateVmNameAndOwner(request, response,
                               true /* Empty VmName allowed*/)) {
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   response.set_success(true);
@@ -3890,8 +3873,7 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
     }
   }
 
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
