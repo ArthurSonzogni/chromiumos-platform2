@@ -161,6 +161,11 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
     let mut opts = Options::new();
     opts.optflag("h", "help", "Print this help text");
     opts.optflag("n", "dry-run", "Create the hibernate image, but then exit rather than shutting down. This image should only be restored with --dry-run");
+    opts.optflag(
+        "r",
+        "reboot",
+        "Reboot after creating the snapshot image instead of shutting down",
+    );
     let args: Vec<String> = args.collect();
     let matches = match opts.parse(args) {
         Ok(m) => m,
@@ -178,6 +183,7 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
 
     let options = HibernateOptions {
         dry_run: matches.opt_present("n"),
+        reboot: matches.opt_present("r"),
     };
 
     if let Err(e) = hiberman::hibernate(options) {

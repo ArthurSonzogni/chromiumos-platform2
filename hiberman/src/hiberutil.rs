@@ -106,6 +106,7 @@ pub enum HibernateError {
 #[derive(Default)]
 pub struct HibernateOptions {
     pub dry_run: bool,
+    pub reboot: bool,
 }
 
 /// Options taken from the command line affecting resume-init.

@@ -11,6 +11,7 @@ use std::time::Instant;
 use anyhow::Context;
 use anyhow::Result;
 use libc::reboot;
+use libc::RB_AUTOBOOT;
 use libc::RB_POWER_OFF;
 use libchromeos::sys::syscall;
 use log::debug;
@@ -195,8 +196,13 @@ impl SuspendConductor {
 
             // Power the thing down.
             if !dry_run {
-                Self::power_off()?;
-                error!("Returned from power off");
+                if !self.options.reboot {
+                    Self::power_off()?;
+                    error!("Returned from power off");
+                } else {
+                    Self::reboot()?;
+                    error!("Returned from reboot");
+                }
             }
         } else {
             // This is the resume path. First, forcefully reset the logger, which is some
@@ -250,6 +256,21 @@ impl SuspendConductor {
                 libchromeos::sys::Error::last(),
             ))
             .context("Failed to shut down")
+        }
+    }
+
+    /// Utility function to reboot the system immediately.
+    fn reboot() -> Result<()> {
+        // This is safe because the system either ceases to exist, or does
+        // nothing to memory.
+        unsafe {
+            // On success, we shouldn't be executing, so the return code can be
+            // ignored because we already know it's a failure.
+            let _ = reboot(RB_AUTOBOOT);
+            Err(HibernateError::ShutdownError(
+                libchromeos::sys::Error::last(),
+            ))
+            .context("Failed to reboot")
         }
     }
 }
