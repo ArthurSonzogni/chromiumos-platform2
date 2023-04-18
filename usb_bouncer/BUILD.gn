@@ -42,6 +42,7 @@ proto_library("usb_bouncer_protos") {
 static_library("usb_bouncer_common") {
   sources = [
     "entry_manager.cc",
+    "metrics_allowlist.cc",
     "rule_db_storage.cc",
     "util.cc",
   ]
@@ -74,6 +75,7 @@ if (use.test) {
     sources = [
       "entry_manager_test.cc",
       "entry_manager_test_util.cc",
+      "metrics_allowlist_test.cc",
       "util_test.cc",
     ]
     configs += [
