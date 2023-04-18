@@ -34,7 +34,7 @@ class DeviceUser : public DeviceUserInterface {
 
  public:
   explicit DeviceUser(
-      std::unique_ptr<org::chromium::SessionManagerInterfaceProxy>
+      std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
           session_manager_);
 
   // Start monitoring for login/out events.
@@ -67,11 +67,11 @@ class DeviceUser : public DeviceUserInterface {
   bool IsAffiliated(const enterprise_management::PolicyData& user_policy);
 
   base::WeakPtrFactory<DeviceUser> weak_ptr_factory_;
-  std::unique_ptr<org::chromium::SessionManagerInterfaceProxy> session_manager_;
+  std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
+      session_manager_;
   std::string device_user_ = "None";
   std::string device_id_ = "";
   int unaffiliated_count_ = 0;
-  int unknown_affiliation_count_ = 0;
 };
 
 }  // namespace secagentd

@@ -23,7 +23,7 @@
 namespace secagentd {
 
 DeviceUser::DeviceUser(
-    std::unique_ptr<org::chromium::SessionManagerInterfaceProxy>
+    std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
         session_manager)
     : weak_ptr_factory_(this), session_manager_(std::move(session_manager)) {}
 
@@ -33,8 +33,6 @@ void DeviceUser::RegisterSessionChangeHandler() {
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&DeviceUser::HandleRegistrationResult,
                      weak_ptr_factory_.GetWeakPtr()));
-  UpdateDeviceId();
-  UpdateDeviceUser();
 }
 
 std::string DeviceUser::GetDeviceUser() {
@@ -48,6 +46,9 @@ void DeviceUser::HandleRegistrationResult(const std::string& interface,
     LOG(ERROR) << "Callback registration failed for dbus signal: " << signal
                << " on interface: " << interface;
     device_user_ = "Unknown";
+  } else {
+    UpdateDeviceId();
+    UpdateDeviceUser();
   }
 }
 
@@ -94,11 +95,11 @@ void DeviceUser::UpdateDeviceUser() {
   brillo::ErrorPtr error;
   if (!session_manager_->IsGuestSessionActive(&is_guest, &error) ||
       error.get()) {
+    device_user_ = "Unknown";
     // Do not exit method because possible that it is user session.
     LOG(ERROR) << "Failed to deterimine if guest session "
                << error->GetMessage();
-  }
-  if (is_guest) {
+  } else if (is_guest) {
     device_user_ = "GuestUser";
     return;
   }
@@ -115,7 +116,10 @@ void DeviceUser::UpdateDeviceUser() {
   } else {
     // No active session.
     if (username.empty()) {
-      device_user_ = "";
+      // Only set as empty when Guest session retrieval succeeds.
+      if (device_user_ != "Unknown") {
+        device_user_ = "";
+      }
       return;
     }
     // Retrieve user policy information.
