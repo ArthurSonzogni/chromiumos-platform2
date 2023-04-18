@@ -27,6 +27,7 @@ base::WaitableEvent waitable(base::WaitableEvent::ResetPolicy::MANUAL,
 
 base::FilePath DlcPath;
 EGLContext context;
+bool use_opengl = false;
 
 class EffectsPipelineTest : public ::testing::Test {
  protected:
@@ -34,6 +35,10 @@ class EffectsPipelineTest : public ::testing::Test {
     waitable.Reset();
     effect_set_success = false;
     pipeline_ = cros::EffectsPipeline::Create(DlcPath, context);
+    if (use_opengl) {
+      config_.segmentation_gpu_api = cros::GpuApi::kOpenGL;
+      config_.relighting_gpu_api = cros::GpuApi::kOpenGL;
+    }
   }
 
   std::unique_ptr<cros::EffectsPipeline> pipeline_;
@@ -112,6 +117,7 @@ int main(int argc, char* argv[]) {
     }
     DlcPath = client.GetDlcRootPath();
   }
+  use_opengl = cl->HasSwitch("use_opengl");
 
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
