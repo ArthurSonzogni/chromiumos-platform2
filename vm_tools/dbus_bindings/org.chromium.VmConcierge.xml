@@ -103,6 +103,20 @@
                     value="vm_tools::concierge::DestroyDiskImageResponse"/>
       </arg>
     </method>
+    <method name="DetachUsbDevice">
+      <tp:docstring>
+        Detaches a USB device from a VM.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::DetachUsbDeviceRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::DetachUsbDeviceResponse"/>
+      </arg>
+    </method>
     <method name="DiskImageStatus">
       <tp:docstring>
         Checks status of a disk image operation.

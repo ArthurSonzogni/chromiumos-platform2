@@ -1517,7 +1517,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kDetachUsbDeviceMethod, &Service::DetachUsbDevice},
       {kListUsbDeviceMethod, &Service::ListUsbDevices},
       {kGetDnsSettingsMethod, &Service::GetDnsSettings},
       {kSetVmCpuRestrictionMethod, &Service::SetVmCpuRestriction},
@@ -3974,56 +3973,37 @@ AttachUsbDeviceResponse Service::AttachUsbDevice(
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::DetachUsbDevice(
-    dbus::MethodCall* method_call) {
+DetachUsbDeviceResponse Service::DetachUsbDevice(
+    const DetachUsbDeviceRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  DetachUsbDeviceRequest request;
   DetachUsbDeviceResponse response;
 
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse DetachUsbDeviceRequest from message";
-    response.set_reason("Unable to parse protobuf");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   if (!ValidateVmNameAndOwner(request, response)) {
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   auto iter = FindVm(request.owner_id(), request.vm_name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
     response.set_reason("Requested VM does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (request.guest_port() > 0xFF) {
     LOG(ERROR) << "Guest port number out of valid range "
                << request.guest_port();
     response.set_reason("Invalid guest port number");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (!iter->second->DetachUsbDevice(request.guest_port())) {
     LOG(ERROR) << "Failed to detach USB device";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
   response.set_success(true);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::ListUsbDevices(

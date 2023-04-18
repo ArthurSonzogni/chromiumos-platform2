@@ -212,8 +212,8 @@ class Service final : public org::chromium::VmConciergeInterface {
 
   AttachUsbDeviceResponse AttachUsbDevice(const AttachUsbDeviceRequest& request,
                                           const base::ScopedFD& fd) override;
-  std::unique_ptr<dbus::Response> DetachUsbDevice(
-      dbus::MethodCall* method_call);
+  DetachUsbDeviceResponse DetachUsbDevice(
+      const DetachUsbDeviceRequest& request) override;
 
   std::unique_ptr<dbus::Response> ListUsbDevices(dbus::MethodCall* method_call);
 
