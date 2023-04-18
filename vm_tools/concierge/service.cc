@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
       {kSyncVmTimesMethod, &Service::SyncVmTimes},
       {kAttachUsbDeviceMethod, &Service::AttachUsbDevice},
       {kDetachUsbDeviceMethod, &Service::DetachUsbDevice},
@@ -3876,35 +3875,21 @@ ListVmDisksResponse Service::ListVmDisks(const ListVmDisksRequest& request) {
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
-    dbus::MethodCall* method_call) {
+ContainerSshKeysResponse Service::GetContainerSshKeys(
+    const ContainerSshKeysRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  ContainerSshKeysRequest request;
   ContainerSshKeysResponse response;
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ContainerSshKeysRequest from message";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
 
   if (!ValidateVmNameAndOwner(request, response)) {
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   auto iter = FindVm(request.cryptohome_id(), request.vm_name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   std::string container_name = request.container_name().empty()
@@ -3918,8 +3903,7 @@ std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
   response.set_host_private_key(GetHostSshPrivateKey(request.cryptohome_id()));
   response.set_hostname(base::StringPrintf(
       "%s.%s.linux.test", container_name.c_str(), request.vm_name().c_str()));
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::AttachUsbDevice(

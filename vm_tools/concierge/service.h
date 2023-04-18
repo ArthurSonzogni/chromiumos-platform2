@@ -206,8 +206,8 @@ class Service final : public org::chromium::VmConciergeInterface {
   ListVmDisksResponse ListVmDisks(const ListVmDisksRequest& request) override;
 
   // Handles a request to get the SSH keys for a container.
-  std::unique_ptr<dbus::Response> GetContainerSshKeys(
-      dbus::MethodCall* method_call);
+  ContainerSshKeysResponse GetContainerSshKeys(
+      const ContainerSshKeysRequest& request) override;
 
   std::unique_ptr<dbus::Response> AttachUsbDevice(
       dbus::MethodCall* method_call);
