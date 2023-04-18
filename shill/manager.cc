@@ -2689,6 +2689,8 @@ void Manager::RequestWiFiRestart(Error* error) {
   DeviceRefPtr wifi = GetEnabledDeviceWithTechnology(Technology::kWiFi);
   if (wifi) {
     LOG(ERROR) << "RequestWiFiRestart: restarting WiFi device";
+    metrics_->SendEnumToUMA(Metrics::kMetricNetworkWiFiRestartReason,
+                            Metrics::kRestartReasonCannotAssoc);
     static_cast<WiFi*>(wifi.get())->Restart();
   } else {
     LOG(ERROR) << "RequestWiFiRestart: no WiFi device available";
