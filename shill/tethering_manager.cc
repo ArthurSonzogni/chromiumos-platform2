@@ -692,6 +692,11 @@ void TetheringManager::SetEnabled(bool enabled,
                                   SetEnabledResultCallback callback) {
   result_callback_ = std::move(callback);
 
+  if (!enabled) {
+    StopTetheringSession(StopReason::kClientStop);
+    return;
+  }
+
   if (!allowed_) {
     LOG(ERROR) << __func__ << ": not allowed";
     PostSetEnabledResult(SetEnabledResult::kNotAllowed);
@@ -712,11 +717,7 @@ void TetheringManager::SetEnabled(bool enabled,
     return;
   }
 
-  if (enabled) {
-    StartTetheringSession();
-  } else {
-    StopTetheringSession(StopReason::kClientStop);
-  }
+  StartTetheringSession();
 }
 
 // static
