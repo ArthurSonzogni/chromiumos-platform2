@@ -197,7 +197,7 @@ void DoHCurlClient::TimeoutCallback() {
 }
 
 int DoHCurlClient::TimerCallback(CURLM* multi,
-                                 int64_t timeout_ms,
+                                 long timeout_ms,  // NOLINT(runtime/int)
                                  void* userp) {
   DoHCurlClient* client = static_cast<DoHCurlClient*>(userp);
   if (timeout_ms > 0) {
