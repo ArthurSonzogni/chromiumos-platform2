@@ -5,39 +5,49 @@
 #ifndef VM_TOOLS_SOMMELIER_TESTING_SOMMELIER_TEST_UTIL_H_
 #define VM_TOOLS_SOMMELIER_TESTING_SOMMELIER_TEST_UTIL_H_
 
+#include <gtest/gtest.h>
 #include <wayland-server.h>
 
 #include "../sommelier.h"                // NOLINT(build/include_directory)
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-output-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
-#include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
+#include "xdg-shell-client-protocol.h"  // NOLINT(build/include_directory)
+
+// Maps a wayland object to its listener struct.
+template <typename WaylandType>
+struct WlToListener;
+
+#define MAP_STRUCT_TO_LISTENER(WlType, Listener) \
+  template <>                                    \
+  struct WlToListener<WlType> {                  \
+    using type = Listener;                       \
+  };
+
+MAP_STRUCT_TO_LISTENER(xdg_surface*, xdg_surface_listener);
+MAP_STRUCT_TO_LISTENER(xdg_toplevel*, xdg_toplevel_listener);
+MAP_STRUCT_TO_LISTENER(wl_output*, wl_output_listener);
+MAP_STRUCT_TO_LISTENER(wl_callback*, wl_callback_listener);
+MAP_STRUCT_TO_LISTENER(wl_surface*, wl_surface_listener);
+MAP_STRUCT_TO_LISTENER(zaura_output*, zaura_output_listener);
+MAP_STRUCT_TO_LISTENER(zaura_toplevel*, zaura_toplevel_listener);
+MAP_STRUCT_TO_LISTENER(zxdg_output_v1*, zxdg_output_v1_listener);
 
 namespace vm_tools {
 namespace sommelier {
 
-// This family of functions retrieves Sommelier's listeners for events received
+// This function retrieves Sommelier's listeners for events received
 // from the host, so we can call them directly in the test rather than
 // (a) exporting the actual functions (which are typically static), or (b)
 // creating a fake host compositor to dispatch events via libwayland
 // (unnecessarily complicated).
-const zaura_toplevel_listener* HostEventHandler(
-    struct zaura_toplevel* aura_toplevel);
-
-const xdg_surface_listener* HostEventHandler(struct xdg_surface* xdg_surface);
-
-const xdg_toplevel_listener* HostEventHandler(
-    struct xdg_toplevel* xdg_toplevel);
-
-const wl_callback_listener* HostEventHandler(struct wl_callback* callback);
-
-const wl_output_listener* HostEventHandler(struct wl_output* output);
-
-const zaura_output_listener* HostEventHandler(struct zaura_output* output);
-
-const wl_surface_listener* HostEventHandler(struct wl_surface* surface);
-
-const zxdg_output_v1_listener* HostEventHandler(struct zxdg_output_v1* output);
+template <typename T>
+const typename WlToListener<T>::type* HostEventHandler(T proxy) {
+  const void* listener =
+      wl_proxy_get_listener(reinterpret_cast<wl_proxy*>(proxy));
+  EXPECT_NE(listener, nullptr);
+  return static_cast<const typename WlToListener<T>::type*>(listener);
+}
 
 uint32_t XdgToplevelId(sl_window* window);
 uint32_t AuraSurfaceId(sl_window* window);
