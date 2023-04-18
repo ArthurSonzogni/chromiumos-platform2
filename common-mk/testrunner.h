@@ -36,7 +36,9 @@ namespace platform2 {
 class TestRunner {
  public:
   struct Options {
-    Options() {}
+    // Should be "= default". Using an empty constructor instead to work around
+    // a clang bug: https://github.com/llvm/llvm-project/issues/36032
+    Options() {}  // = default;
     bool instantiate_exit_manager = true;
     bool instantiate_test_timeouts = true;
     // If true, initializes brillo logging so tests would be able to test logs
