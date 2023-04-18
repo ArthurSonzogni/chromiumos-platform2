@@ -489,8 +489,6 @@ void TetheringManager::StartTetheringSession() {
     return;
   }
 
-  SetState(TetheringState::kTetheringStarting);
-
   if (hotspot_dev_) {
     LOG(ERROR) << "Tethering resources are not null when starting tethering "
                   "session.";
@@ -499,7 +497,7 @@ void TetheringManager::StartTetheringSession() {
   }
 
   LOG(INFO) << __func__;
-
+  SetState(TetheringState::kTetheringStarting);
   start_timer_callback_.Reset(base::BindOnce(
       &TetheringManager::OnStartingTetheringTimeout, base::Unretained(this)));
   manager_->dispatcher()->PostDelayedTask(
