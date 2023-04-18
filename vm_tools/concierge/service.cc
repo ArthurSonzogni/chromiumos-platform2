@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kDiskImageStatusMethod, &Service::DiskImageStatus},
       {kCancelDiskImageMethod, &Service::CancelDiskImageOperation},
       {kListVmDisksMethod, &Service::ListVmDisks},
       {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
@@ -3786,27 +3785,13 @@ void Service::RunDiskImageOperation(std::string uuid) {
   }
 }
 
-std::unique_ptr<dbus::Response> Service::DiskImageStatus(
-    dbus::MethodCall* method_call) {
+DiskImageStatusResponse Service::DiskImageStatus(
+    const DiskImageStatusRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
   DiskImageStatusResponse response;
   response.set_status(DISK_STATUS_FAILED);
-
-  DiskImageStatusRequest request;
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse DiskImageStatusRequest from message";
-    response.set_failure_reason("Unable to parse DiskImageStatusRequest");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
 
   // Locate the pending command in the list.
   auto iter = std::find_if(disk_image_ops_.begin(), disk_image_ops_.end(),
@@ -3817,20 +3802,18 @@ std::unique_ptr<dbus::Response> Service::DiskImageStatus(
   if (iter == disk_image_ops_.end() || iter->canceled) {
     LOG(ERROR) << "Unknown command uuid in DiskImageStatusRequest";
     response.set_failure_reason("Unknown command uuid");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   auto op = iter->op.get();
   FormatDiskImageStatus(op, &response);
-  writer.AppendProtoAsArrayOfBytes(response);
 
   // Erase operation form the list if it is no longer in progress.
   if (op->status() != DISK_STATUS_IN_PROGRESS) {
     disk_image_ops_.erase(iter);
   }
 
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::CancelDiskImageOperation(

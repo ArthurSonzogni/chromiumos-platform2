@@ -192,8 +192,8 @@ class Service final : public org::chromium::VmConciergeInterface {
                                           const base::ScopedFD& in_fd) override;
 
   // Handles a request to check status of a disk image operation.
-  std::unique_ptr<dbus::Response> DiskImageStatus(
-      dbus::MethodCall* method_call);
+  DiskImageStatusResponse DiskImageStatus(
+      const DiskImageStatusRequest& request) override;
 
   // Handles a request to cancel a disk image operation.
   std::unique_ptr<dbus::Response> CancelDiskImageOperation(

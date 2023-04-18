@@ -73,6 +73,20 @@
                     value="vm_tools::concierge::DestroyDiskImageResponse"/>
       </arg>
     </method>
+    <method name="DiskImageStatus">
+      <tp:docstring>
+        Checks status of a disk image operation.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::DiskImageStatusRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::DiskImageStatusResponse"/>
+      </arg>
+    </method>
     <method name="ExportDiskImage">
       <tp:docstring>
         Exports a VM disk image.
