@@ -413,6 +413,6 @@ TEST_F(KerberosAdaptorTest, Metrics_ValidateConfigErrorCode) {
   EXPECT_EQ(ERROR_NONE, ValidateConfig());
 }
 
-// TODO(https://crbug.com/952247): Add more tests.
+// TODO(b/259178130): Add more tests.
 
 }  // namespace kerberos

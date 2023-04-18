@@ -266,8 +266,6 @@ std::vector<Account> AccountManager::ListAccounts() const {
         base::PathExists(GetPasswordPath(it.data.principal_name())));
     account.set_use_login_password(it.data.use_login_password());
 
-    // TODO(https://crbug.com/952239): Set additional properties.
-
     // Do a best effort reporting results, don't bail on the first error. If
     // there's a broken account, the user is able to recover the situation
     // this way (reauthenticate or remove account and add back).
@@ -492,9 +490,6 @@ void AccountManager::NotifyTgtExpiration(
   // Only if that isn't possible or doesn't work, trigger the signal.
   ErrorType error = ERROR_NONE;
   if (!MaybeAutoAcquireTgt(principal_name, &error) || error != ERROR_NONE) {
-    // TODO(https://crbug.com/952245): Distinguish between "about to expire" and
-    // "expired" in the KerberosTicketExpiring signal and in the Chrome
-    // notification.
     TriggerKerberosTicketExpiring(principal_name);
   }
 }

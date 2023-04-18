@@ -21,15 +21,13 @@ namespace system_proxy {
 
 namespace {
 // The kerberos files are written in the mount namespace of the System-proxy
-// darmon.
+// daemon.
 constexpr char kKrb5ConfFile[] = "/tmp/krb5.conf";
 constexpr char kCCacheFile[] = "/tmp/ccache";
 
 // Additional kerberos canonicalization settings and default realm. kerberosd
 // doesn't set a default_realm. Chrome doesn't need it as it specifies the
 // principal name when invoking gssapi methods.
-// TODO(acostinas, crbug.com/1087312): Set DNS canonicalization from user
-// policy.
 constexpr char kKrb5Settings[] =
     "[libdefaults]\n"
     "\tdns_canonicalize_hostname = false\n"

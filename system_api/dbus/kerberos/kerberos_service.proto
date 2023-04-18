@@ -130,8 +130,6 @@ message Account {
   optional bool password_was_remembered = 6;
   // Whether the account uses the Chrome OS login password for authentication.
   optional bool use_login_password = 7;
-
-  // TODO(https://crbug.com/952239): Set additional properties.
 }
 
 // Contains error information from config validation.
