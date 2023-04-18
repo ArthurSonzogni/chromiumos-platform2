@@ -192,7 +192,7 @@ class Service final : public org::chromium::VmConciergeInterface {
                                           const base::ScopedFD& in_fd) override;
 
   // Handles a request to check status of a disk image operation.
-  std::unique_ptr<dbus::Response> CheckDiskImageStatus(
+  std::unique_ptr<dbus::Response> DiskImageStatus(
       dbus::MethodCall* method_call);
 
   // Handles a request to cancel a disk image operation.
@@ -311,13 +311,15 @@ class Service final : public org::chromium::VmConciergeInterface {
   std::optional<bool> IsFeatureEnabled(const std::string& feature_name,
                                        std::string* error_out);
 
+  using DiskImageStatusEnum = vm_tools::concierge::DiskImageStatus;
+
   // Initiate a disk resize request for the VM identified by |owner_id| and
   // |vm_name|.
   void ResizeDisk(const std::string& owner_id,
                   const std::string& vm_name,
                   StorageLocation location,
                   uint64_t new_size,
-                  DiskImageStatus* status,
+                  DiskImageStatusEnum* status,
                   std::string* failure_reason);
   // Query the status of the most recent ResizeDisk request.
   // If this returns DISK_STATUS_FAILED, |failure_reason| will be filled with an
@@ -326,14 +328,14 @@ class Service final : public org::chromium::VmConciergeInterface {
                      const std::string& vm_name,
                      StorageLocation location,
                      uint64_t target_size,
-                     DiskImageStatus* status,
+                     DiskImageStatusEnum* status,
                      std::string* failure_reason);
 
   // Finalize the resize process after a success resize has completed.
   void FinishResize(const std::string& owner_id,
                     const std::string& vm_name,
                     StorageLocation location,
-                    DiskImageStatus* status,
+                    DiskImageStatusEnum* status,
                     std::string* failure_reason);
 
   // Executes rename operation of a Plugin VM.

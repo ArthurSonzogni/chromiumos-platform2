@@ -1515,7 +1515,7 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kDiskImageStatusMethod, &Service::CheckDiskImageStatus},
+      {kDiskImageStatusMethod, &Service::DiskImageStatus},
       {kCancelDiskImageMethod, &Service::CancelDiskImageOperation},
       {kListVmDisksMethod, &Service::ListVmDisks},
       {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
@@ -3478,7 +3478,7 @@ ResizeDiskImageResponse Service::ResizeDiskImage(
         base::BindOnce(&Service::RunDiskImageOperation,
                        weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
   } else if (op->status() == DISK_STATUS_RESIZED) {
-    DiskImageStatus status = DISK_STATUS_RESIZED;
+    DiskImageStatusEnum status = DISK_STATUS_RESIZED;
     std::string failure_reason;
     FinishResize(request.cryptohome_id(), request.vm_name(), location, &status,
                  &failure_reason);
@@ -3495,7 +3495,7 @@ void Service::ResizeDisk(const std::string& owner_id,
                          const std::string& vm_name,
                          StorageLocation location,
                          uint64_t new_size,
-                         DiskImageStatus* status,
+                         DiskImageStatusEnum* status,
                          std::string* failure_reason) {
   auto iter = FindVm(owner_id, vm_name);
   if (iter == vms_.end()) {
@@ -3512,7 +3512,7 @@ void Service::ProcessResize(const std::string& owner_id,
                             const std::string& vm_name,
                             StorageLocation location,
                             uint64_t target_size,
-                            DiskImageStatus* status,
+                            DiskImageStatusEnum* status,
                             std::string* failure_reason) {
   auto iter = FindVm(owner_id, vm_name);
   if (iter == vms_.end()) {
@@ -3532,7 +3532,7 @@ void Service::ProcessResize(const std::string& owner_id,
 void Service::FinishResize(const std::string& owner_id,
                            const std::string& vm_name,
                            StorageLocation location,
-                           DiskImageStatus* status,
+                           DiskImageStatusEnum* status,
                            std::string* failure_reason) {
   base::FilePath disk_path;
   if (!GetDiskPathFromName(vm_name, owner_id, location,
@@ -3786,7 +3786,7 @@ void Service::RunDiskImageOperation(std::string uuid) {
   }
 }
 
-std::unique_ptr<dbus::Response> Service::CheckDiskImageStatus(
+std::unique_ptr<dbus::Response> Service::DiskImageStatus(
     dbus::MethodCall* method_call) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
