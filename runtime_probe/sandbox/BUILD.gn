@@ -16,6 +16,7 @@ install_seccomp_policy("install_sandbox_seccomp") {
   _arch = getenv("ARCH")
   sources = [
     "${_arch}/ata_storage-seccomp.policy",
+    "${_arch}/audio_codec-seccomp.policy",
     "${_arch}/edid-seccomp.policy",
     "${_arch}/ethernet_network-seccomp.policy",
     "${_arch}/generic_battery-seccomp.policy",

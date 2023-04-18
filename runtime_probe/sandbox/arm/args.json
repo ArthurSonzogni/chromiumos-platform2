@@ -11,6 +11,15 @@
       "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
     ]
   },
+  "audio_codec": {
+    "binds": [
+      "/sys/kernel/debug/asoc/"
+    ],
+    "other_args": [
+      "-k",
+      "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
+    ]
+  },
   "cellular_network": {
     "binds": [
       "/run/dbus",
