@@ -21,7 +21,7 @@ constexpr int kSeneschalServerPort = 3000;
 constexpr int kLcdDensity = 160;
 }  // namespace
 
-TEST(ArcVmTest, NonDevModeKernelParams) {
+TEST(ArcVmParamsTest, NonDevModeKernelParams) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   cros_system.VbSetSystemPropertyInt("cros_debug", 0);
@@ -32,7 +32,7 @@ TEST(ArcVmTest, NonDevModeKernelParams) {
   EXPECT_TRUE(base::Contains(params, "androidboot.disable_runas=1"));
 }
 
-TEST(ArcVmTest, DevModeKernelParams) {
+TEST(ArcVmParamsTest, DevModeKernelParams) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   cros_system.VbSetSystemPropertyInt("cros_debug", 1);
@@ -43,7 +43,7 @@ TEST(ArcVmTest, DevModeKernelParams) {
   EXPECT_TRUE(base::Contains(params, "androidboot.disable_runas=0"));
 }
 
-TEST(ArcVmTest, SeneschalServerPortParam) {
+TEST(ArcVmParamsTest, SeneschalServerPortParam) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -54,7 +54,7 @@ TEST(ArcVmTest, SeneschalServerPortParam) {
                                  kSeneschalServerPort)));
 }
 
-TEST(ArcVmTest, EnableConsumerAutoUpdateToggleParamTrue) {
+TEST(ArcVmParamsTest, EnableConsumerAutoUpdateToggleParamTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -66,7 +66,7 @@ TEST(ArcVmTest, EnableConsumerAutoUpdateToggleParamTrue) {
       params, "androidboot.enable_consumer_auto_update_toggle=1"));
 }
 
-TEST(ArcVmTest, EnableConsumerAutoUpdateToggleParamFalse) {
+TEST(ArcVmParamsTest, EnableConsumerAutoUpdateToggleParamFalse) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -78,7 +78,7 @@ TEST(ArcVmTest, EnableConsumerAutoUpdateToggleParamFalse) {
       params, "androidboot.enable_consumer_auto_update_toggle=0"));
 }
 
-TEST(ArcVmTest, ArcFilePickerParamTrue) {
+TEST(ArcVmParamsTest, ArcFilePickerParamTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -89,7 +89,7 @@ TEST(ArcVmTest, ArcFilePickerParamTrue) {
   EXPECT_TRUE(base::Contains(params, "androidboot.arc_file_picker=1"));
 }
 
-TEST(ArcVmTest, ArcFilePickerParamFalse) {
+TEST(ArcVmParamsTest, ArcFilePickerParamFalse) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -100,7 +100,7 @@ TEST(ArcVmTest, ArcFilePickerParamFalse) {
   EXPECT_TRUE(base::Contains(params, "androidboot.arc_file_picker=0"));
 }
 
-TEST(ArcVmTest, CustomTabsParamTrue) {
+TEST(ArcVmParamsTest, CustomTabsParamTrue) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=canary-channel", base::Time::Now());
   crossystem::Crossystem cros_system(
@@ -113,7 +113,7 @@ TEST(ArcVmTest, CustomTabsParamTrue) {
   EXPECT_TRUE(base::Contains(params, "androidboot.arc_custom_tabs=1"));
 }
 
-TEST(ArcVmTest, CustomTabsParamFalse) {
+TEST(ArcVmParamsTest, CustomTabsParamFalse) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=canary-channel", base::Time::Now());
   crossystem::Crossystem cros_system(
@@ -126,7 +126,7 @@ TEST(ArcVmTest, CustomTabsParamFalse) {
   EXPECT_TRUE(base::Contains(params, "androidboot.arc_custom_tabs=0"));
 }
 
-TEST(ArcVmTest, CustomTabsParamStableChannel) {
+TEST(ArcVmParamsTest, CustomTabsParamStableChannel) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=stable-channel", base::Time::Now());
   crossystem::Crossystem cros_system(
@@ -139,7 +139,7 @@ TEST(ArcVmTest, CustomTabsParamStableChannel) {
   EXPECT_TRUE(base::Contains(params, "androidboot.arc_custom_tabs=1"));
 }
 
-TEST(ArcVmTest, KeyboardShortcutHelperParamTrue) {
+TEST(ArcVmParamsTest, KeyboardShortcutHelperParamTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -150,7 +150,7 @@ TEST(ArcVmTest, KeyboardShortcutHelperParamTrue) {
       params, "androidboot.keyboard_shortcut_helper_integration=1"));
 }
 
-TEST(ArcVmTest, KeyboardShortcutHelperParamFalse) {
+TEST(ArcVmParamsTest, KeyboardShortcutHelperParamFalse) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -161,7 +161,7 @@ TEST(ArcVmTest, KeyboardShortcutHelperParamFalse) {
       params, "androidboot.keyboard_shortcut_helper_integration=0"));
 }
 
-TEST(ArcVmTest, EnableNotificationsRefreshParamTrue) {
+TEST(ArcVmParamsTest, EnableNotificationsRefreshParamTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -173,7 +173,7 @@ TEST(ArcVmTest, EnableNotificationsRefreshParamTrue) {
       base::Contains(params, "androidboot.enable_notifications_refresh=1"));
 }
 
-TEST(ArcVmTest, EnableNotificationsRefreshParamFalse) {
+TEST(ArcVmParamsTest, EnableNotificationsRefreshParamFalse) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -185,7 +185,7 @@ TEST(ArcVmTest, EnableNotificationsRefreshParamFalse) {
       base::Contains(params, "androidboot.enable_notifications_refresh=0"));
 }
 
-TEST(ArcVmTest, EnableTtsCachingParamTrue) {
+TEST(ArcVmParamsTest, EnableTtsCachingParamTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -196,7 +196,7 @@ TEST(ArcVmTest, EnableTtsCachingParamTrue) {
   EXPECT_TRUE(base::Contains(params, "androidboot.arc.tts.caching=1"));
 }
 
-TEST(ArcVmTest, EnableTtsCachingParamFalse) {
+TEST(ArcVmParamsTest, EnableTtsCachingParamFalse) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -207,7 +207,7 @@ TEST(ArcVmTest, EnableTtsCachingParamFalse) {
   EXPECT_FALSE(base::Contains(params, "androidboot.arc.tts.caching=1"));
 }
 
-TEST(ArcVmTest, EnableVirtioBlockDataParamTrue) {
+TEST(ArcVmParamsTest, EnableVirtioBlockDataParamTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -217,7 +217,7 @@ TEST(ArcVmTest, EnableVirtioBlockDataParamTrue) {
   EXPECT_TRUE(base::Contains(params, "androidboot.arcvm_virtio_blk_data=1"));
 }
 
-TEST(ArcVmTest, EnableVirtioBlockDataParamFalse) {
+TEST(ArcVmParamsTest, EnableVirtioBlockDataParamFalse) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -227,7 +227,7 @@ TEST(ArcVmTest, EnableVirtioBlockDataParamFalse) {
   EXPECT_TRUE(base::Contains(params, "androidboot.arcvm_virtio_blk_data=0"));
 }
 
-TEST(ArcVmTest, EnableBroadcastAnrPrenotifyTrue) {
+TEST(ArcVmParamsTest, EnableBroadcastAnrPrenotifyTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -238,7 +238,7 @@ TEST(ArcVmTest, EnableBroadcastAnrPrenotifyTrue) {
       base::Contains(params, "androidboot.arc.broadcast_anr_prenotify=1"));
 }
 
-TEST(ArcVmTest, EnableBroadcastAnrPrenotifyFalse) {
+TEST(ArcVmParamsTest, EnableBroadcastAnrPrenotifyFalse) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -249,7 +249,7 @@ TEST(ArcVmTest, EnableBroadcastAnrPrenotifyFalse) {
       base::Contains(params, "androidboot.arc.broadcast_anr_prenotify=1"));
 }
 
-TEST(ArcVmTest, VmMemoryPSIReports) {
+TEST(ArcVmParamsTest, VmMemoryPSIReports) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -260,7 +260,7 @@ TEST(ArcVmTest, VmMemoryPSIReports) {
       base::Contains(params, "androidboot.arcvm_metrics_mem_psi_period=300"));
 }
 
-TEST(ArcVmTest, VmMemoryPSIReportsDefault) {
+TEST(ArcVmParamsTest, VmMemoryPSIReportsDefault) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -273,7 +273,7 @@ TEST(ArcVmTest, VmMemoryPSIReportsDefault) {
   }
 }
 
-TEST(ArcVmTest, DisableMediaStoreMaintenanceTrue) {
+TEST(ArcVmParamsTest, DisableMediaStoreMaintenanceTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -285,7 +285,7 @@ TEST(ArcVmTest, DisableMediaStoreMaintenanceTrue) {
       base::Contains(params, "androidboot.disable_media_store_maintenance=1"));
 }
 
-TEST(ArcVmTest, DisableMediaStoreMaintenanceFalse) {
+TEST(ArcVmParamsTest, DisableMediaStoreMaintenanceFalse) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -297,7 +297,7 @@ TEST(ArcVmTest, DisableMediaStoreMaintenanceFalse) {
       base::Contains(params, "androidboot.disable_media_store_maintenance=1"));
 }
 
-TEST(ArcVmTest, ArcGeneratePlayAutoInstallTrue) {
+TEST(ArcVmParamsTest, ArcGeneratePlayAutoInstallTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -308,7 +308,7 @@ TEST(ArcVmTest, ArcGeneratePlayAutoInstallTrue) {
   EXPECT_TRUE(base::Contains(params, "androidboot.arc_generate_pai=1"));
 }
 
-TEST(ArcVmTest, ArcGeneratePlayAutoInstallFalse) {
+TEST(ArcVmParamsTest, ArcGeneratePlayAutoInstallFalse) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -319,7 +319,7 @@ TEST(ArcVmTest, ArcGeneratePlayAutoInstallFalse) {
   EXPECT_FALSE(base::Contains(params, "androidboot.arc_generate_pai=1"));
 }
 
-TEST(ArcVmTest, DisableDownloadProviderTrue) {
+TEST(ArcVmParamsTest, DisableDownloadProviderTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -331,7 +331,7 @@ TEST(ArcVmTest, DisableDownloadProviderTrue) {
       base::Contains(params, "androidboot.disable_download_provider=1"));
 }
 
-TEST(ArcVmTest, DisableDownloadProviderFalse) {
+TEST(ArcVmParamsTest, DisableDownloadProviderFalse) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -343,7 +343,7 @@ TEST(ArcVmTest, DisableDownloadProviderFalse) {
       base::Contains(params, "androidboot.disable_download_provider=1"));
 }
 
-TEST(ArcVmTest, GuestZramSize0) {
+TEST(ArcVmParamsTest, GuestZramSize0) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -353,7 +353,7 @@ TEST(ArcVmTest, GuestZramSize0) {
   EXPECT_TRUE(base::Contains(params, "androidboot.zram_size=0"));
 }
 
-TEST(ArcVmTest, GuestZramSize100) {
+TEST(ArcVmParamsTest, GuestZramSize100) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -363,7 +363,7 @@ TEST(ArcVmTest, GuestZramSize100) {
   EXPECT_TRUE(base::Contains(params, "androidboot.zram_size=100"));
 }
 
-TEST(ArcVmTest, ChromeOsChannelStable) {
+TEST(ArcVmParamsTest, ChromeOsChannelStable) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=stable-channel", base::Time::Now());
   crossystem::Crossystem cros_system(
@@ -374,7 +374,7 @@ TEST(ArcVmTest, ChromeOsChannelStable) {
   EXPECT_TRUE(base::Contains(params, "androidboot.chromeos_channel=stable"));
 }
 
-TEST(ArcVmTest, ChromeOsChannelTestImage) {
+TEST(ArcVmParamsTest, ChromeOsChannelTestImage) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=testimage-channel", base::Time::Now());
   crossystem::Crossystem cros_system(
@@ -386,7 +386,7 @@ TEST(ArcVmTest, ChromeOsChannelTestImage) {
       params, "androidboot.vshd_service_override=vshd_for_test"));
 }
 
-TEST(ArcVmTest, ChromeOsChannelUnknown) {
+TEST(ArcVmParamsTest, ChromeOsChannelUnknown) {
   base::test::ScopedChromeOSVersionInfo info("CHROMEOS_RELEASE_TRACK=invalid",
                                              base::Time::Now());
   crossystem::Crossystem cros_system(
@@ -397,7 +397,7 @@ TEST(ArcVmTest, ChromeOsChannelUnknown) {
   EXPECT_TRUE(base::Contains(params, "androidboot.chromeos_channel=unknown"));
 }
 
-TEST(ArcVmTest, PanelOrientation) {
+TEST(ArcVmParamsTest, PanelOrientation) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -408,7 +408,7 @@ TEST(ArcVmTest, PanelOrientation) {
       params, "androidboot.arc.primary_display_rotation=ORIENTATION_180"));
 }
 
-TEST(ArcVmTest, IioservicePresentParam) {
+TEST(ArcVmParamsTest, IioservicePresentParam) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -419,7 +419,7 @@ TEST(ArcVmTest, IioservicePresentParam) {
       base::StringPrintf("androidboot.iioservice_present=%d", USE_IIOSERVICE)));
 }
 
-TEST(ArcVmTest, SwappinessNotPresentByDefault) {
+TEST(ArcVmParamsTest, SwappinessNotPresentByDefault) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -430,7 +430,7 @@ TEST(ArcVmTest, SwappinessNotPresentByDefault) {
   }
 }
 
-TEST(ArcVmTest, SwappinessPresentParam) {
+TEST(ArcVmParamsTest, SwappinessPresentParam) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -441,7 +441,7 @@ TEST(ArcVmTest, SwappinessPresentParam) {
       params, base::StringPrintf("sysctl.vm.swappiness=%d", 55)));
 }
 
-TEST(ArcVmTest, MglruReclaimIntervalDisabled) {
+TEST(ArcVmParamsTest, MglruReclaimIntervalDisabled) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -454,7 +454,7 @@ TEST(ArcVmTest, MglruReclaimIntervalDisabled) {
   }
 }
 
-TEST(ArcVmTest, MglruReclaimWithoutSwappiness) {
+TEST(ArcVmParamsTest, MglruReclaimWithoutSwappiness) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -469,7 +469,7 @@ TEST(ArcVmTest, MglruReclaimWithoutSwappiness) {
       base::StringPrintf("androidboot.arcvm_mglru_reclaim_swappiness=0")));
 }
 
-TEST(ArcVmTest, MglruReclaimWithSwappiness) {
+TEST(ArcVmParamsTest, MglruReclaimWithSwappiness) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -485,7 +485,7 @@ TEST(ArcVmTest, MglruReclaimWithSwappiness) {
       base::StringPrintf("androidboot.arcvm_mglru_reclaim_swappiness=100")));
 }
 
-TEST(ArcVmTest, UpdateO4CListViaA2C2Param) {
+TEST(ArcVmParamsTest, UpdateO4CListViaA2C2Param) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -505,7 +505,7 @@ TEST(ArcVmTest, UpdateO4CListViaA2C2Param) {
   }
 }
 
-TEST(ArcVmTest, NativeBridgeExperimentNone) {
+TEST(ArcVmParamsTest, NativeBridgeExperimentNone) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -516,7 +516,7 @@ TEST(ArcVmTest, NativeBridgeExperimentNone) {
   EXPECT_TRUE(base::Contains(params, "androidboot.native_bridge=0"));
 }
 
-TEST(ArcVmTest, NativeBridgeExperimentHoudini) {
+TEST(ArcVmParamsTest, NativeBridgeExperimentHoudini) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -528,7 +528,7 @@ TEST(ArcVmTest, NativeBridgeExperimentHoudini) {
       base::Contains(params, "androidboot.native_bridge=libhoudini.so"));
 }
 
-TEST(ArcVmTest, NativeBridgeExperimentNdkTranslation) {
+TEST(ArcVmParamsTest, NativeBridgeExperimentNdkTranslation) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -541,7 +541,7 @@ TEST(ArcVmTest, NativeBridgeExperimentNdkTranslation) {
       params, "androidboot.native_bridge=libndk_translation.so"));
 }
 
-TEST(ArcVmTest, UsapProfileDefault) {
+TEST(ArcVmParamsTest, UsapProfileDefault) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -554,7 +554,7 @@ TEST(ArcVmTest, UsapProfileDefault) {
   }
 }
 
-TEST(ArcVmTest, UsapProfile4G) {
+TEST(ArcVmParamsTest, UsapProfile4G) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -565,7 +565,7 @@ TEST(ArcVmTest, UsapProfile4G) {
   EXPECT_TRUE(base::Contains(params, "androidboot.usap_profile=4G"));
 }
 
-TEST(ArcVmTest, UsapProfile8G) {
+TEST(ArcVmParamsTest, UsapProfile8G) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -576,7 +576,7 @@ TEST(ArcVmTest, UsapProfile8G) {
   EXPECT_TRUE(base::Contains(params, "androidboot.usap_profile=8G"));
 }
 
-TEST(ArcVmTest, UsapProfile16G) {
+TEST(ArcVmParamsTest, UsapProfile16G) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -587,7 +587,7 @@ TEST(ArcVmTest, UsapProfile16G) {
   EXPECT_TRUE(base::Contains(params, "androidboot.usap_profile=16G"));
 }
 
-TEST(ArcVmTest, PlayStoreAutoUpdateDefault) {
+TEST(ArcVmParamsTest, PlayStoreAutoUpdateDefault) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -602,7 +602,7 @@ TEST(ArcVmTest, PlayStoreAutoUpdateDefault) {
   }
 }
 
-TEST(ArcVmTest, PlayStoreAutoUpdateON) {
+TEST(ArcVmParamsTest, PlayStoreAutoUpdateON) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -614,7 +614,7 @@ TEST(ArcVmTest, PlayStoreAutoUpdateON) {
   EXPECT_TRUE(base::Contains(params, "androidboot.play_store_auto_update=1"));
 }
 
-TEST(ArcVmTest, PlayStoreAutoUpdateOFF) {
+TEST(ArcVmParamsTest, PlayStoreAutoUpdateOFF) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -626,7 +626,7 @@ TEST(ArcVmTest, PlayStoreAutoUpdateOFF) {
   EXPECT_TRUE(base::Contains(params, "androidboot.play_store_auto_update=0"));
 }
 
-TEST(ArcVmTest, DalvikMemoryProfileDefault) {
+TEST(ArcVmParamsTest, DalvikMemoryProfileDefault) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -639,7 +639,7 @@ TEST(ArcVmTest, DalvikMemoryProfileDefault) {
       base::Contains(params, "androidboot.arc_dalvik_memory_profile=4G"));
 }
 
-TEST(ArcVmTest, DalvikMemoryProfile4G) {
+TEST(ArcVmParamsTest, DalvikMemoryProfile4G) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -652,7 +652,7 @@ TEST(ArcVmTest, DalvikMemoryProfile4G) {
       base::Contains(params, "androidboot.arc_dalvik_memory_profile=4G"));
 }
 
-TEST(ArcVmTest, DalvikMemoryProfile8G) {
+TEST(ArcVmParamsTest, DalvikMemoryProfile8G) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -665,7 +665,7 @@ TEST(ArcVmTest, DalvikMemoryProfile8G) {
       base::Contains(params, "androidboot.arc_dalvik_memory_profile=8G"));
 }
 
-TEST(ArcVmTest, DalvikMemoryProfile16G) {
+TEST(ArcVmParamsTest, DalvikMemoryProfile16G) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -678,7 +678,7 @@ TEST(ArcVmTest, DalvikMemoryProfile16G) {
       base::Contains(params, "androidboot.arc_dalvik_memory_profile=16G"));
 }
 
-TEST(ArcVmTest, LcdDensity) {
+TEST(ArcVmParamsTest, LcdDensity) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -690,7 +690,7 @@ TEST(ArcVmTest, LcdDensity) {
       params, base::StringPrintf("androidboot.lcd_density=%d", kLcdDensity)));
 }
 
-TEST(ArcVmTest, HostOnVmTrue) {
+TEST(ArcVmParamsTest, HostOnVmTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   cros_system.VbSetSystemPropertyInt("inside_vm", 1);
@@ -700,7 +700,7 @@ TEST(ArcVmTest, HostOnVmTrue) {
   EXPECT_TRUE(base::Contains(params, "androidboot.host_is_in_vm=1"));
 }
 
-TEST(ArcVmTest, HostOnVmFalse) {
+TEST(ArcVmParamsTest, HostOnVmFalse) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   cros_system.VbSetSystemPropertyInt("inside_vm", 0);
@@ -710,7 +710,7 @@ TEST(ArcVmTest, HostOnVmFalse) {
   EXPECT_TRUE(base::Contains(params, "androidboot.host_is_in_vm=0"));
 }
 
-TEST(ArcVmTest, UreadaheadModeReadahead) {
+TEST(ArcVmParamsTest, UreadaheadModeReadahead) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -722,7 +722,7 @@ TEST(ArcVmTest, UreadaheadModeReadahead) {
       base::Contains(params, "androidboot.arcvm_ureadahead_mode=readahead"));
 }
 
-TEST(ArcVmTest, UreadaheadModeGenerate) {
+TEST(ArcVmParamsTest, UreadaheadModeGenerate) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -734,7 +734,7 @@ TEST(ArcVmTest, UreadaheadModeGenerate) {
       base::Contains(params, "androidboot.arcvm_ureadahead_mode=generate"));
 }
 
-TEST(ArcVmTest, UreadaheadModeDisabled) {
+TEST(ArcVmParamsTest, UreadaheadModeDisabled) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -748,7 +748,7 @@ TEST(ArcVmTest, UreadaheadModeDisabled) {
   }
 }
 
-TEST(ArcVmTest, ReadWriteEnabled) {
+TEST(ArcVmParamsTest, ReadWriteEnabled) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -758,7 +758,7 @@ TEST(ArcVmTest, ReadWriteEnabled) {
   EXPECT_TRUE(base::Contains(params, "rw"));
 }
 
-TEST(ArcVmTest, ReadWriteDisabled) {
+TEST(ArcVmParamsTest, ReadWriteDisabled) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -768,7 +768,7 @@ TEST(ArcVmTest, ReadWriteDisabled) {
   EXPECT_FALSE(base::Contains(params, "rw"));
 }
 
-TEST(ArcVmTest, WebViewZygoteLazyInitEnabled) {
+TEST(ArcVmParamsTest, WebViewZygoteLazyInitEnabled) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -779,7 +779,7 @@ TEST(ArcVmTest, WebViewZygoteLazyInitEnabled) {
       base::Contains(params, "androidboot.arc.web_view_zygote.lazy_init=1"));
 }
 
-TEST(ArcVmTest, WebViewZygoteLazyInitDisabled) {
+TEST(ArcVmParamsTest, WebViewZygoteLazyInitDisabled) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -790,7 +790,7 @@ TEST(ArcVmTest, WebViewZygoteLazyInitDisabled) {
       base::Contains(params, "androidboot.arc.web_view_zygote.lazy_init=1"));
 }
 
-TEST(ArcVmTest, PrivacyHubForChromeEnabled) {
+TEST(ArcVmParamsTest, PrivacyHubForChromeEnabled) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -802,7 +802,7 @@ TEST(ArcVmTest, PrivacyHubForChromeEnabled) {
       base::Contains(params, "androidboot.enable_privacy_hub_for_chrome=1"));
 }
 
-TEST(ArcVmTest, PrivacyHubForChromeDisabled) {
+TEST(ArcVmParamsTest, PrivacyHubForChromeDisabled) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
@@ -814,7 +814,7 @@ TEST(ArcVmTest, PrivacyHubForChromeDisabled) {
       base::Contains(params, "androidboot.enable_privacy_hub_for_chrome=0"));
 }
 
-TEST(ArcVmTest, GetOemEtcSharedDataParam) {
+TEST(ArcVmParamsTest, GetOemEtcSharedDataParam) {
   EXPECT_EQ(
       GetOemEtcSharedDataParam(299 /* uid */,
                                // gid is usually 299 but use a different value
