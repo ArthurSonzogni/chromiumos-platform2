@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kSyncVmTimesMethod, &Service::SyncVmTimes},
       {kAttachUsbDeviceMethod, &Service::AttachUsbDevice},
       {kDetachUsbDeviceMethod, &Service::DetachUsbDevice},
       {kListUsbDeviceMethod, &Service::ListUsbDevices},
@@ -2834,15 +2833,9 @@ AdjustVmResponse Service::AdjustVm(const AdjustVmRequest& request) {
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::SyncVmTimes(
-    dbus::MethodCall* method_call) {
+SyncVmTimesResponse Service::SyncVmTimes() {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageWriter writer(dbus_response.get());
 
   SyncVmTimesResponse response;
   int failures = 0;
@@ -2858,9 +2851,7 @@ std::unique_ptr<dbus::Response> Service::SyncVmTimes(
   response.set_requests(requests);
   response.set_failures(failures);
 
-  writer.AppendProtoAsArrayOfBytes(response);
-
-  return dbus_response;
+  return response;
 }
 
 bool Service::StartTermina(TerminaVm* vm,

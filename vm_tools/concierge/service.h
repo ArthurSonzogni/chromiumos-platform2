@@ -159,7 +159,7 @@ class Service final : public org::chromium::VmConciergeInterface {
       const SetBalloonTimerRequest& request) override;
 
   // Handles a request to update all VMs' times to the current host time.
-  std::unique_ptr<dbus::Response> SyncVmTimes(dbus::MethodCall* method_call);
+  SyncVmTimesResponse SyncVmTimes() override;
 
   // Handles a request to create a disk image.
   void CreateDiskImage(dbus::MethodCall* method_call,

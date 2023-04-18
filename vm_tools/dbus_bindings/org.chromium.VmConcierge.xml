@@ -280,5 +280,15 @@
                     value="vm_tools::concierge::SuspendVmResponse"/>
       </arg>
     </method>
+    <method name="SyncVmTimes">
+      <tp:docstring>
+         Updates all VMs' times to the current host time.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::SyncVmTimesResponse"/>
+      </arg>
+    </method>
   </interface>
 </node>
