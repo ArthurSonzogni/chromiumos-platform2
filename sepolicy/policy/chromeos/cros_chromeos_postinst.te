@@ -1,6 +1,7 @@
 type cros_chromeos_postinst, domain, chromeos_domain;
 
 domain_auto_trans_nnp(cros_chromeos_install, cros_chromeos_postinst_exec, cros_chromeos_postinst)
+allow cros_chromeos_install cros_chromeos_postinst:process2 { nosuid_transition };
 
 allow cros_chromeos_postinst self:capability { sys_admin sys_chroot };
 
