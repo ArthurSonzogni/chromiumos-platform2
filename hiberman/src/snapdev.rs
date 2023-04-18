@@ -171,7 +171,9 @@ impl SnapshotDevice {
     }
 
     /// Load a snapshot image from a file into the kernel.
-    pub fn load_image(&mut self, mut image_file: File) -> Result<()> {
+    pub fn load_image(&mut self, mut image_file: File) -> Result<u64> {
+        let mut image_size: u64 = 0;
+
         loop {
             let mut buf = [0; HIBERIMAGE_BLOCK_SIZE];
 
@@ -205,9 +207,11 @@ impl SnapshotDevice {
                                     bytes from previous read."
                 ));
             }
+
+            image_size += bytes_written as u64;
         }
 
-        Ok(())
+        Ok(image_size)
     }
 
     /// Freeze userspace, stopping all userspace processes except this one.
