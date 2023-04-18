@@ -555,6 +555,13 @@ message IPv4Configuration {
   // iff |use_dhcp| is true and |ipv4_subnet| is set.
   optional bytes dhcp_start_addr = 5;
   optional bytes dhcp_end_addr = 6;
+
+  // The DNS servers for DHCP option number 6, represented as 4 bytes in network
+  // order.
+  repeated bytes dns_servers = 7;
+
+  // The list of domain search for DHCP option number 119.
+  repeated string domain_searches = 8;
 }
 
 // Describes possible errors when creating a downstream network for

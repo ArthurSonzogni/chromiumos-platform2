@@ -228,8 +228,8 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
       *IPAddress::CreateFromString("1.2.3.4"),
       *IPAddress::CreateFromString("5.6.7.8"),
   };
-  const std::vector<std::string> domain_sesarches = {"domain.local0",
-                                                     "domain.local1"};
+  const std::vector<std::string> domain_searches = {"domain.local0",
+                                                    "domain.local1"};
 
   IPv4Subnet* ipv4_subnet = new IPv4Subnet();
   ipv4_subnet->set_addr(&subnet_ip, sizeof(subnet_ip));
@@ -241,14 +241,19 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   ipv4_config->set_use_dhcp(true);
   ipv4_config->set_dhcp_start_addr(&start_ip, sizeof(start_ip));
   ipv4_config->set_dhcp_end_addr(&end_ip, sizeof(end_ip));
+  ipv4_config->add_dns_servers(dns_servers[0].GetConstData(),
+                               dns_servers[0].GetLength());
+  ipv4_config->add_dns_servers(dns_servers[1].GetConstData(),
+                               dns_servers[1].GetLength());
+  ipv4_config->add_domain_searches(domain_searches[0]);
+  ipv4_config->add_domain_searches(domain_searches[1]);
 
   TetheredNetworkRequest request;
   request.set_upstream_ifname("wwan0");
   request.set_ifname("wlan1");
   request.set_allocated_ipv4_config(ipv4_config);
 
-  const auto info =
-      DownstreamNetworkInfo::Create(request, dns_servers, domain_sesarches);
+  const auto info = DownstreamNetworkInfo::Create(request);
   ASSERT_NE(info, std::nullopt);
   EXPECT_EQ(info->topology, DownstreamNetworkTopology::kTethering);
   EXPECT_EQ(info->upstream_ifname, "wwan0");
@@ -258,7 +263,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   EXPECT_EQ(info->ipv4_dhcp_start_addr, start_ip);
   EXPECT_EQ(info->ipv4_dhcp_end_addr, end_ip);
   EXPECT_EQ(info->dhcp_dns_servers, dns_servers);
-  EXPECT_EQ(info->dhcp_domain_searches, domain_sesarches);
+  EXPECT_EQ(info->dhcp_domain_searches, domain_searches);
 }
 
 TEST(DatapathTest,
@@ -266,7 +271,7 @@ TEST(DatapathTest,
   using shill::IPAddress;
 
   TetheredNetworkRequest request;
-  const auto info = DownstreamNetworkInfo::Create(request, {}, {});
+  const auto info = DownstreamNetworkInfo::Create(request);
   ASSERT_NE(info, std::nullopt);
 
   // When the request doesn't have |ipv4_config|, the info should be randomly

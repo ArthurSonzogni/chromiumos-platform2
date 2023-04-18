@@ -1285,6 +1285,10 @@ void ClientImpl::RegisterNeighborReachabilityEventHandler(
 bool ClientImpl::CreateTetheredNetwork(const std::string& downstream_ifname,
                                        const std::string& upstream_ifname,
                                        CreateTetheredNetworkCallback callback) {
+  // TODO(b/275278561): Get the DNS server and domain search from the caller.
+  const std::vector<std::array<uint8_t, 4>> dns_servers = {{8, 8, 8, 8}};
+  const std::vector<std::string> domain_searches = {};
+
   dbus::MethodCall method_call(kPatchPanelInterface,
                                kCreateTetheredNetworkMethod);
   dbus::MessageWriter writer(&method_call);
@@ -1295,12 +1299,17 @@ bool ClientImpl::CreateTetheredNetwork(const std::string& downstream_ifname,
   // TODO(b/239559602) Fill out DHCP options:
   //  - If the upstream network has a DHCP lease, copy relevant options.
   //  - Option 43 with ANDROID_METERED if the upstream network is metered.
-  //  - If the upstream network has a static DNS or static domain search list
-  //    configuration, copy appropriate options.
   //  - Forward DHCP WPAD proxy configuration if advertised by the upstream
   //    network.
   auto* ipv4_config = request.mutable_ipv4_config();
   ipv4_config->set_use_dhcp(true);
+  for (const auto& dns_server : dns_servers) {
+    ipv4_config->add_dns_servers(dns_server.data(), dns_server.size());
+  }
+  for (const auto& domain_search : domain_searches) {
+    ipv4_config->add_domain_searches(domain_search);
+  }
+
   // TODO(b/239559602) Enable IPv6 requests.
   request.set_disable_ipv6(true);
   if (!writer.AppendProtoAsArrayOfBytes(request)) {

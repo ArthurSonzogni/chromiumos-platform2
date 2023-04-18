@@ -139,13 +139,8 @@ struct DownstreamNetworkInfo {
   // TODO(b/239559602) Add IPv6 configuration.
 
   // Creates the DownstreamNetworkInfo instance from TetheredNetworkRequest.
-  // Note that |dhcp_dns_servers| and |dhcp_domain_searches| information is not
-  // included inside the TetheredNetworkRequest, so we pass them separatedly
-  // from the IPv4 configuration of the upstream network.
   static std::optional<DownstreamNetworkInfo> Create(
-      const TetheredNetworkRequest& request,
-      const std::vector<shill::IPAddress>& dhcp_dns_servers,
-      const std::vector<std::string>& dhcp_domain_searches);
+      const TetheredNetworkRequest& request);
   // Creates the DownstreamNetworkInfo instance from LocalOnlyNetworkRequest.
   static std::optional<DownstreamNetworkInfo> Create(
       const LocalOnlyNetworkRequest& request);

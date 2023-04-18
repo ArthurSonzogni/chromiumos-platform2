@@ -1167,27 +1167,7 @@ std::optional<DownstreamNetworkInfo> Manager::ParseTetheredNetworkRequest(
     return std::nullopt;
   }
 
-  // Get the DNS server and domain search from shill.
-  ShillClient::Device shill_device;
-  if (!shill_client_->GetDeviceProperties(request.upstream_ifname(),
-                                          &shill_device)) {
-    LOG(ERROR) << "Failed to get DNS servers of upstream interface";
-    return std::nullopt;
-  }
-  std::vector<IPAddress> dns_servers;
-  for (const auto& ip_str : shill_device.ipconfig.ipv4_dns_addresses) {
-    const auto ip = IPAddress::CreateFromString(ip_str, IPAddress::kFamilyIPv4);
-    if (!ip) {
-      LOG(ERROR) << "Invalid DNS server: " << ip_str;
-      return std::nullopt;
-    }
-    dns_servers.push_back(*ip);
-  }
-
-  // TODO(b/275278561): Get the domain search from shill.
-  const std::vector<std::string> domain_searches;
-
-  return DownstreamNetworkInfo::Create(request, dns_servers, domain_searches);
+  return DownstreamNetworkInfo::Create(request);
 }
 
 std::optional<DownstreamNetworkInfo> Manager::ParseLocalOnlyNetworkRequest(
