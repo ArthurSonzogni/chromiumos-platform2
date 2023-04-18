@@ -14,6 +14,7 @@
 namespace secagentd::testing {
 
 class MockDeviceUser : public DeviceUserInterface {
+ public:
   MOCK_METHOD(void, RegisterSessionChangeHandler, (), (override));
   MOCK_METHOD(std::string, GetDeviceUser, (), (override));
 };

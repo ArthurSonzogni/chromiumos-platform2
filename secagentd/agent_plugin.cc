@@ -264,25 +264,36 @@ void AgentPlugin::GetTpmInformation(bool available) {
 }
 
 void AgentPlugin::SendAgentStartEvent() {
-  auto agent_event = std::make_unique<pb::XdrAgentEvent>();
+  auto xdr_proto = std::make_unique<pb::XdrAgentEvent>();
+  auto agent_start = xdr_proto->add_batched_events();
   base::AutoLock lock(tcb_attributes_lock_);
-  agent_event->mutable_agent_start()->mutable_tcb()->CopyFrom(tcb_attributes_);
+  agent_start->mutable_agent_start()->mutable_tcb()->CopyFrom(tcb_attributes_);
+  agent_start->mutable_common()->set_create_timestamp_us(
+      base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
+  agent_start->mutable_common()->set_device_user(device_user_->GetDeviceUser());
+
   message_sender_->SendMessage(
-      reporting::CROS_SECURITY_AGENT, agent_event->mutable_common(),
-      std::move(agent_event),
+      reporting::CROS_SECURITY_AGENT, xdr_proto->mutable_common(),
+      std::move(xdr_proto),
       base::BindOnce(&AgentPlugin::StartEventStatusCallback,
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
 void AgentPlugin::SendAgentHeartbeatEvent() {
   // Create agent heartbeat event.
-  auto agent_event = std::make_unique<pb::XdrAgentEvent>();
+  auto xdr_proto = std::make_unique<pb::XdrAgentEvent>();
+  auto agent_heartbeat = xdr_proto->add_batched_events();
   base::AutoLock lock(tcb_attributes_lock_);
-  agent_event->mutable_agent_heartbeat()->mutable_tcb()->CopyFrom(
+  agent_heartbeat->mutable_agent_heartbeat()->mutable_tcb()->CopyFrom(
       tcb_attributes_);
+  agent_heartbeat->mutable_common()->set_create_timestamp_us(
+      base::Time::Now().ToJavaTime() * base::Time::kMicrosecondsPerMillisecond);
+  agent_heartbeat->mutable_common()->set_device_user(
+      device_user_->GetDeviceUser());
+
   message_sender_->SendMessage(reporting::CROS_SECURITY_AGENT,
-                               agent_event->mutable_common(),
-                               std::move(agent_event), std::nullopt);
+                               xdr_proto->mutable_common(),
+                               std::move(xdr_proto), std::nullopt);
 }
 
 void AgentPlugin::StartEventStatusCallback(reporting::Status status) {

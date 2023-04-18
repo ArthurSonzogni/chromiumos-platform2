@@ -137,8 +137,11 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
     LOG(ERROR) << "ProcessBPF: unknown BPF process event type.";
     return;
   }
+
   if (policies_features_broker_->GetFeature(
           PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdBatchEvents)) {
+    atomic_event->mutable_common()->set_device_user(
+        device_user_->GetDeviceUser());
     EnqueueBatchedEvent(std::move(atomic_event));
   } else {
     DeprecatedSendImmediate(std::move(atomic_event));
