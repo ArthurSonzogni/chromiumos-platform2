@@ -188,8 +188,8 @@ class Service final : public org::chromium::VmConciergeInterface {
       base::ScopedFD digest_fd);
 
   // Handles a request to import a disk image.
-  std::unique_ptr<dbus::Response> ImportDiskImage(
-      dbus::MethodCall* method_call);
+  ImportDiskImageResponse ImportDiskImage(const ImportDiskImageRequest& request,
+                                          const base::ScopedFD& in_fd) override;
 
   // Handles a request to check status of a disk image operation.
   std::unique_ptr<dbus::Response> CheckDiskImageStatus(

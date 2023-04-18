@@ -125,6 +125,25 @@
                     value="vm_tools::concierge::GetVmInfoResponse"/>
       </arg>
     </method>
+    <method name="ImportDiskImage">
+      <tp:docstring>
+        Imports a disk image.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::ImportDiskImageRequest"/>
+      </arg>
+      <arg type="h" name="in_fd" direction="in">
+        <tp:docstring>
+          fd for image to import.
+        </tp:docstring>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::ImportDiskImageResponse"/>
+      </arg>
+    </method>
     <method name="ResizeDiskImage">
       <tp:docstring>
         Resizes a disk image. Can return asynchronously.

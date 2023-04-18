@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kImportDiskImageMethod, &Service::ImportDiskImage},
       {kDiskImageStatusMethod, &Service::CheckDiskImageStatus},
       {kCancelDiskImageMethod, &Service::CancelDiskImageOperation},
       {kListVmDisksMethod, &Service::ListVmDisks},
@@ -3687,46 +3686,29 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::ImportDiskImage(
-    dbus::MethodCall* method_call) {
+ImportDiskImageResponse Service::ImportDiskImage(
+    const ImportDiskImageRequest& request, const base::ScopedFD& in_fd) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
 
   ImportDiskImageResponse response;
   response.set_status(DISK_STATUS_FAILED);
 
-  ImportDiskImageRequest request;
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ImportDiskImageRequest from message";
-    response.set_failure_reason("Unable to parse ImportDiskRequest");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   if (!ValidateVmNameAndOwner(request, response)) {
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (CheckVmExists(request.vm_name(), request.cryptohome_id())) {
     response.set_status(DISK_STATUS_EXISTS);
     response.set_failure_reason("VM/disk with such name already exists");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   if (request.storage_location() != STORAGE_CRYPTOHOME_PLUGINVM) {
     LOG(ERROR)
         << "Locations other than STORAGE_CRYPTOHOME_PLUGINVM are not supported";
     response.set_failure_reason("Unsupported location for image");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   base::FilePath disk_path;
@@ -3735,21 +3717,11 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
                            true, /* create_parent_dir */
                            &disk_path)) {
     response.set_failure_reason("Failed to set up vm image name");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  // Get the FD to fill with disk image data.
-  base::ScopedFD in_fd;
-  if (!reader.PopFileDescriptor(&in_fd)) {
-    LOG(ERROR) << "import: no fd found";
-    response.set_failure_reason("import: no fd found");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   auto op = PluginVmImportOperation::Create(
-      std::move(in_fd), disk_path, request.source_size(),
+      base::ScopedFD(dup(in_fd.get())), disk_path, request.source_size(),
       VmId(request.cryptohome_id(), request.vm_name()), bus_,
       vmplugin_service_proxy_);
 
@@ -3766,8 +3738,7 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
                        weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
   }
 
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 void Service::RunDiskImageOperation(std::string uuid) {
