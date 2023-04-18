@@ -193,6 +193,20 @@
                     value="vm_tools::concierge::GetVmEnterpriseReportingInfoResponse"/>
       </arg>
     </method>
+    <method name="GetVmGpuCachePath">
+      <tp:docstring>
+        Gets VM's GPU cache path.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::GetVmGpuCachePathRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::GetVmGpuCachePathResponse"/>
+      </arg>
+    </method>
     <method name="GetVmInfo">
       <tp:docstring>
         Gets VM info.

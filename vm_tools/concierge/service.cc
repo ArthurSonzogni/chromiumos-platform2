@@ -1517,7 +1517,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kGetVmGpuCachePathMethod, &Service::GetVmGpuCachePath},
       {kAddGroupPermissionMesaMethod, &Service::AddGroupPermissionMesa},
       {kGetVmLaunchAllowedMethod, &Service::GetVmLaunchAllowed},
       {kGetVmLogsMethod, &Service::GetVmLogs},
@@ -5035,45 +5034,35 @@ std::unique_ptr<dbus::Response> Service::InstallPflash(
 }
 
 // TODO(b/244486983): separate out GPU VM cache methods out of service.cc file
-std::unique_ptr<dbus::Response> Service::GetVmGpuCachePath(
-    dbus::MethodCall* method_call) {
+bool Service::GetVmGpuCachePath(brillo::ErrorPtr* error,
+                                const GetVmGpuCachePathRequest& request,
+                                GetVmGpuCachePathResponse* response) {
   LOG(INFO) << "Received request: " << __func__;
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  GetVmGpuCachePathRequest request;
-  GetVmGpuCachePathResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    return dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_FAILED,
-        "Unable to parse GetGpuCachePathForVmRequest from message");
-  }
-
-  if (!ValidateVmNameAndOwner(request, response)) {
-    return dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_FAILED,
-        "Empty or malformed owner ID / VM name");
+  if (!ValidateVmNameAndOwner(request, *response)) {
+    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                                   DBUS_ERROR_FAILED,
+                                   "Empty or malformed owner ID / VM name");
+    return false;
   }
 
   base::FilePath path =
       GetVmGpuCachePathInternal(request.owner_id(), request.name());
   if (!base::DirectoryExists(path)) {
-    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
-                                               "GPU cache path does not exist");
+    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                                   DBUS_ERROR_FAILED,
+                                   "GPU cache path does not exist");
+    return false;
+
   } else if (path.empty()) {
-    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
-                                               "GPU cache path is empty");
+    *error =
+        brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                              DBUS_ERROR_FAILED, "GPU cache path is empty");
+    return false;
   }
 
-  response.set_path(path.value());
-
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  response->set_path(path.value());
+  return true;
 }
 
 int Service::GetCpuQuota() {

@@ -229,8 +229,9 @@ class Service final : public org::chromium::VmConciergeInterface {
   ListVmsResponse ListVms(const ListVmsRequest& request) override;
 
   // Handles a request to get VM's GPU cache path.
-  std::unique_ptr<dbus::Response> GetVmGpuCachePath(
-      dbus::MethodCall* method_call);
+  bool GetVmGpuCachePath(brillo::ErrorPtr* error,
+                         const GetVmGpuCachePathRequest& request,
+                         GetVmGpuCachePathResponse* response) override;
 
   // Handles a request to add group permission to directories created by mesa
   // for a specified VM.
