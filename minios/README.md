@@ -1,5 +1,5 @@
 # MiniOS
-MiniOS is a subset of thanOS, also known as the Network Based Recovery Project
+MiniOS is a subset of CrOS, also known as the Network Based Recovery Project
 (go/cros-nbr). MiniOS consumer facing feature used to help recover devices
 using only a network or ethernet connection. Once connected to the network,
 MiniOS will automatically repartition the disk, wipe the stateful partition and
