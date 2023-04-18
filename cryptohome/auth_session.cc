@@ -2505,16 +2505,45 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     }
-  } else if (factor_driver.NeedsResetSecret() &&
-             key_blobs.reset_secret.has_value() &&
-             !user_secret_stash_->SetResetSecretForLabel(
-                 auth_factor.label(), key_blobs.reset_secret.value())) {
-    LOG(ERROR) << "AuthSession: Failed to insert reset secret for auth factor.";
-    // TODO(b/229834676): Migrate USS and wrap the error.
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionAddResetSecretFailedInAddSecretToUSS),
-        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry}),
-        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+  }
+
+  if (factor_driver.NeedsResetSecret() && key_blobs.reset_secret.has_value()) {
+    // USS schema allows adding reset secrets before adding the actual key
+    // blocks. And it is possible that there is already an existing reset secret
+    // due to the USS migration flows such as password migration added the reset
+    // secret for the PIN beforehand.
+    bool reset_secret_exists =
+        user_secret_stash_->GetResetSecretForLabel(auth_factor.label())
+            .has_value();
+    if (reset_secret_exists &&
+        clobber == OverwriteExistingKeyBlock::kDisabled) {
+      return OkStatus<CryptohomeError>();
+    }
+
+    if ((reset_secret_exists) &&
+        clobber == OverwriteExistingKeyBlock::kEnabled) {
+      if (!user_secret_stash_->RemoveResetSecretForLabel(auth_factor.label())) {
+        LOG(ERROR) << "AuthSession: Failed to add reset secret for auth factor "
+                      "since clobbering failed removing existing secret.";
+        return MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionClobberResetSecretFailedInAddSecretToUSS),
+            ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry}),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+      }
+    }
+
+    if (!user_secret_stash_->SetResetSecretForLabel(
+            auth_factor.label(), key_blobs.reset_secret.value())) {
+      LOG(ERROR)
+          << "AuthSession: Failed to insert reset secret for auth factor.";
+      // TODO(b/229834676): Migrate USS and wrap the error.
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocAuthSessionAddResetSecretFailedInAddSecretToUSS),
+          ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry}),
+          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+    }
   }
 
   return OkStatus<CryptohomeError>();

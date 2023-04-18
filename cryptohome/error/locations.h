@@ -1407,6 +1407,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionRemoveFailedInCleanUpAllBackupKeysets = 2508,
   /* ./auth_session.cc */
   kLocAuthSessionCleanupBackupFailedInAddauthFactor = 2509,
+  /* ./auth_session.cc */
+  kLocAuthSessionClobberResetSecretFailedInAddSecretToUSS = 2510,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2700
   //// See location_db.py for more info.
