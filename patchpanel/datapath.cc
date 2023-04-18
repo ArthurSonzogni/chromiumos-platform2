@@ -990,7 +990,7 @@ bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
         }
         break;
       default:
-        LOG(ERROR) << "Invalid IP family " << family;
+        LOG(ERROR) << "Invalid IP family " << sa_family;
         return false;
     }
   }
@@ -2008,23 +2008,11 @@ bool Datapath::ModifyIptables(IpFamily family,
                               Iptables::Command op,
                               const std::vector<std::string>& argv,
                               bool log_failures) {
-  switch (family) {
-    case kIPv4:
-    case kIPv6:
-    case kDual:
-      break;
-    default:
-      LOG(ERROR) << "Could not execute iptables command " << table << " " << op
-                 << " " << base::JoinString(argv, " ")
-                 << ": incorrect IP family " << family;
-      return false;
-  }
-
   bool success = true;
-  if (family & IpFamily::kIPv4) {
+  if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
     success &= process_runner_->iptables(table, op, argv, log_failures) == 0;
   }
-  if (family & IpFamily::kIPv6) {
+  if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
     success &= process_runner_->ip6tables(table, op, argv, log_failures) == 0;
   }
   return success;
@@ -2034,23 +2022,21 @@ std::string Datapath::DumpIptables(IpFamily family, Iptables::Table table) {
   std::string result;
   std::vector<std::string> argv = {"-x", "-v", "-n", "-w"};
   switch (family) {
-    case kIPv4:
+    case IpFamily::kIPv4:
       if (process_runner_->iptables(table, Iptables::Command::kL, argv,
                                     /*log_failures=*/true, &result) != 0) {
         LOG(ERROR) << "Could not dump iptables " << table;
       }
       break;
-    case kIPv6:
+    case IpFamily::kIPv6:
       if (process_runner_->ip6tables(table, Iptables::Command::kL, argv,
                                      /*log_failures=*/true, &result) != 0) {
         LOG(ERROR) << "Could not dump ip6tables " << table;
       }
       break;
-    case kDual:
+    case IpFamily::kDual:
       LOG(ERROR) << "Cannot dump iptables and ip6tables at the same time";
       break;
-    default:
-      LOG(ERROR) << "Could not dump iptables: incorrect IP family " << family;
   }
   return result;
 }

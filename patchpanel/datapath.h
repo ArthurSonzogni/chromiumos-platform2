@@ -150,12 +150,11 @@ std::ostream& operator<<(std::ostream& stream, const DnsRedirectionRule& rule);
 std::ostream& operator<<(std::ostream& stream,
                          const DownstreamNetworkInfo& info);
 
-// Simple enum of bitmasks used for specifying a set of IP family values.
-enum IpFamily {
-  kNone = 0,
-  kIPv4 = 1 << 0,
-  kIPv6 = 1 << 1,
-  kDual = kIPv4 | kIPv6,  // (1 << 0) | (1 << 1);
+// Simple enum for specifying a set of IP family values.
+enum class IpFamily {
+  kIPv4,
+  kIPv6,
+  kDual,
 };
 
 // List of possible guest targets for automatic forwarding rules applied to
