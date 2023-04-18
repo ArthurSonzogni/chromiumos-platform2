@@ -196,8 +196,8 @@ class Service final : public org::chromium::VmConciergeInterface {
       const DiskImageStatusRequest& request) override;
 
   // Handles a request to cancel a disk image operation.
-  std::unique_ptr<dbus::Response> CancelDiskImageOperation(
-      dbus::MethodCall* method_call);
+  CancelDiskImageResponse CancelDiskImageOperation(
+      const CancelDiskImageRequest& request) override;
 
   // Run import/export disk image operation with given UUID.
   void RunDiskImageOperation(std::string uuid);

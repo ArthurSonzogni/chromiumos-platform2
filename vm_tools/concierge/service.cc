@@ -1515,7 +1515,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kCancelDiskImageMethod, &Service::CancelDiskImageOperation},
       {kListVmDisksMethod, &Service::ListVmDisks},
       {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
       {kSyncVmTimesMethod, &Service::SyncVmTimes},
@@ -3816,26 +3815,12 @@ DiskImageStatusResponse Service::DiskImageStatus(
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::CancelDiskImageOperation(
-    dbus::MethodCall* method_call) {
+CancelDiskImageResponse Service::CancelDiskImageOperation(
+    const CancelDiskImageRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
   CancelDiskImageResponse response;
-  CancelDiskImageRequest request;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse CancelDiskImageRequest from message";
-    response.set_failure_reason("Unable to parse CancelDiskImageRequest");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
 
   // Locate the pending command in the list.
   auto iter = std::find_if(disk_image_ops_.begin(), disk_image_ops_.end(),
@@ -3846,15 +3831,13 @@ std::unique_ptr<dbus::Response> Service::CancelDiskImageOperation(
   if (iter == disk_image_ops_.end()) {
     LOG(ERROR) << "Unknown command uuid in CancelDiskImageRequest";
     response.set_failure_reason("Unknown command uuid");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   auto op = iter->op.get();
   if (op->status() != DISK_STATUS_IN_PROGRESS) {
     response.set_failure_reason("Command is no longer in progress");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // Mark the operation as canceled. We can't erase it from the list right
@@ -3863,8 +3846,7 @@ std::unique_ptr<dbus::Response> Service::CancelDiskImageOperation(
   iter->canceled = true;
 
   response.set_success(true);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::ListVmDisks(
