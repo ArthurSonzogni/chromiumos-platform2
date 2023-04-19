@@ -17,6 +17,7 @@
 
 #include <absl/container/flat_hash_set.h>
 #include <base/check_op.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <crypto/libcrypto-compat.h>
@@ -39,6 +40,7 @@
 #include <openssl/x509.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
+#include "cryptohome/auth_blocks/sync_to_async_auth_block_adapter.h"
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
@@ -46,6 +48,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/utilities.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/username.h"
 
@@ -63,69 +66,105 @@ namespace {
 constexpr int kSecretSizeBytes = 32;
 constexpr uint32_t kTpm12Family = 0x312E3200;
 constexpr uint32_t kTpm20Family = 0x322E3000;
+constexpr char kPassword[] = "pass";
+constexpr char kWrongPassword[] = "wrong";
+constexpr char kUser[] = "user";
 
+void TestPasswordBasedAuthBlockOnIncorrectDerive(
+    TPMTestCallback callback,
+    CryptohomeStatus error,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::optional<AuthBlock::SuggestedAction> suggested_action) {
+  if (!error.ok()) {
+    LOG(ERROR) << "Derivation succeeded despite wrong password";
+    std::move(callback).Run(false);
+    return;
+  }
+  if (!error::PrimaryActionIs(error, error::PrimaryAction::kIncorrectAuth)) {
+    LOG(ERROR) << "Derivation with wrong password returned wrong action: "
+               << error.status();
+    std::move(callback).Run(false);
+    return;
+  }
+
+  std::move(callback).Run(true);
+}
+void TestPasswordBasedAuthBlockOnCorrectDerive(
+    std::unique_ptr<AuthBlock> auth_block,
+    std::unique_ptr<KeyBlobs> created_key_blobs,
+    std::unique_ptr<AuthBlockState> created_auth_block_state,
+    TPMTestCallback callback,
+    CryptohomeStatus error,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::optional<AuthBlock::SuggestedAction> suggested_action) {
+  if (!error.ok()) {
+    LOG(ERROR) << "Derivation failed: " << error;
+    std::move(callback).Run(false);
+    return;
+  }
+  if (!key_blobs->vkk_key.has_value() ||
+      created_key_blobs->vkk_key.value() != key_blobs->vkk_key.value()) {
+    LOG(ERROR) << "Derivation gave wrong VKK key: "
+               << (key_blobs->vkk_key.has_value()
+                       ? hwsec_foundation::SecureBlobToHex(
+                             key_blobs->vkk_key.value())
+                       : "<none>")
+               << ", expected: "
+               << hwsec_foundation::SecureBlobToHex(key_blobs->vkk_key.value());
+    std::move(callback).Run(false);
+    return;
+  }
+  const ObfuscatedUsername obfuscated_username(kUser);
+
+  // Check derivation using a wrong password.
+  auth_block->Derive(
+      AuthInput{.user_input = SecureBlob(kWrongPassword),
+                .obfuscated_username = obfuscated_username},
+      *created_auth_block_state,
+      base::BindOnce(&TestPasswordBasedAuthBlockOnIncorrectDerive,
+                     std::move(callback)));
+}
+
+void TestPasswordBasedAuthBlockOnCreate(
+    std::unique_ptr<AuthBlock> auth_block,
+    TPMTestCallback callback,
+    CryptohomeStatus error,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::unique_ptr<AuthBlockState> auth_block_state) {
+  if (!error.ok()) {
+    LOG(ERROR) << "Creation failed: " << error;
+    std::move(callback).Run(false);
+    return;
+  }
+  if (!key_blobs->vkk_key.has_value()) {
+    LOG(ERROR) << "Creation returned no VKK key";
+    std::move(callback).Run(false);
+    return;
+  }
+
+  const ObfuscatedUsername obfuscated_username(kUser);
+
+  // Check derivation using the correct password.
+  auth_block->Derive(
+      AuthInput{.user_input = SecureBlob(kPassword),
+                .obfuscated_username = obfuscated_username},
+      *auth_block_state,
+      base::BindOnce(&TestPasswordBasedAuthBlockOnCorrectDerive,
+                     std::move(auth_block), std::move(key_blobs),
+                     std::move(auth_block_state), std::move(callback)));
+}
 // Performs common tests for an auth block against correct/wrong passwords.
-bool TestPasswordBasedAuthBlock(SyncAuthBlock& auth_block) {
-  const ObfuscatedUsername kObfuscatedUsername("user");
-  constexpr char kPassword[] = "pass";
-  constexpr char kWrongPassword[] = "wrong";
-
+void TestPasswordBasedAuthBlock(std::unique_ptr<AuthBlock> auth_block,
+                                TPMTestCallback callback) {
+  const ObfuscatedUsername obfuscated_username(kUser);
   // Create auth block state.
   AuthBlockState auth_block_state;
   KeyBlobs key_blobs;
-  CryptohomeStatus creation_status =
-      auth_block.Create(AuthInput{.user_input = SecureBlob(kPassword),
-                                  .obfuscated_username = kObfuscatedUsername},
-                        &auth_block_state, &key_blobs);
-  if (!creation_status.ok()) {
-    LOG(ERROR) << "Creation failed: " << creation_status;
-    return false;
-  }
-  if (!key_blobs.vkk_key.has_value()) {
-    LOG(ERROR) << "Creation returned no VKK key";
-    return false;
-  }
-
-  // Check derivation using the correct password.
-  KeyBlobs derived_key_blobs;
-  std::optional<AuthBlock::SuggestedAction> suggested_action;
-  CryptohomeStatus derivation_status = auth_block.Derive(
+  auth_block->Create(
       AuthInput{.user_input = SecureBlob(kPassword),
-                .obfuscated_username = kObfuscatedUsername},
-      auth_block_state, &derived_key_blobs, &suggested_action);
-  if (!derivation_status.ok()) {
-    LOG(ERROR) << "Derivation failed: " << derivation_status;
-    return false;
-  }
-  if (!derived_key_blobs.vkk_key.has_value() ||
-      key_blobs.vkk_key.value() != derived_key_blobs.vkk_key.value()) {
-    LOG(ERROR) << "Derivation gave wrong VKK key: "
-               << (derived_key_blobs.vkk_key.has_value()
-                       ? hwsec_foundation::SecureBlobToHex(
-                             derived_key_blobs.vkk_key.value())
-                       : "<none>")
-               << ", expected: "
-               << hwsec_foundation::SecureBlobToHex(key_blobs.vkk_key.value());
-    return false;
-  }
-
-  // Check derivation using a wrong password.
-  derivation_status = auth_block.Derive(
-      AuthInput{.user_input = SecureBlob(kWrongPassword),
-                .obfuscated_username = kObfuscatedUsername},
-      auth_block_state, &derived_key_blobs, &suggested_action);
-  if (derivation_status.ok()) {
-    LOG(ERROR) << "Derivation succeeded despite wrong password";
-    return false;
-  }
-  if (!error::PrimaryActionIs(derivation_status.err_status(),
-                              error::PrimaryAction::kIncorrectAuth)) {
-    LOG(ERROR) << "Derivation with wrong password returned wrong action: "
-               << derivation_status.status();
-    return false;
-  }
-
-  return true;
+                .obfuscated_username = obfuscated_username},
+      base::BindOnce(&TestPasswordBasedAuthBlockOnCreate, std::move(auth_block),
+                     std::move(callback)));
 }
 
 hwsec::GenerateDhSharedSecretRequest CloneDhSharedSecretRequest(
@@ -157,7 +196,7 @@ TpmLiveTest::TpmLiveTest()
   cryptohome_keys_manager_.Init();
 }
 
-bool TpmLiveTest::TpmEccAuthBlockTest() {
+void TpmLiveTest::TpmEccAuthBlockTest(TPMTestCallback callback) {
   LOG(INFO) << "TpmEccAuthBlockTest started";
 
   // Skip the test if elliptic-curve cryptography is not supported on the
@@ -167,42 +206,38 @@ bool TpmLiveTest::TpmEccAuthBlockTest() {
   if (!algorithms_status.ok()) {
     LOG(ERROR) << "Failed to get supported algorithms: "
                << algorithms_status.status();
-    return false;
+    std::move(callback).Run(false);
+    return;
   }
   if (!algorithms_status->count(hwsec::KeyAlgoType::kEcc)) {
     LOG(INFO) << "Skipping the test: ECC is not supported by the TPM.";
-    return true;
+    std::move(callback).Run(true);
+    return;
   }
 
-  TpmEccAuthBlock auth_block(hwsec_.get(), &cryptohome_keys_manager_);
-  if (!TestPasswordBasedAuthBlock(auth_block)) {
-    LOG(ERROR) << "TpmEccAuthBlockTest failed.";
-    return false;
-  }
-  LOG(INFO) << "TpmEccAuthBlockTest ended successfully.";
-  return true;
+  std::unique_ptr<SyncToAsyncAuthBlockAdapter> auth_block =
+      std::make_unique<SyncToAsyncAuthBlockAdapter>(
+          std::make_unique<TpmEccAuthBlock>(hwsec_.get(),
+                                            &cryptohome_keys_manager_));
+  TestPasswordBasedAuthBlock(std::move(auth_block), std::move(callback));
 }
 
-bool TpmLiveTest::TpmBoundToPcrAuthBlockTest() {
+void TpmLiveTest::TpmBoundToPcrAuthBlockTest(TPMTestCallback callback) {
   LOG(INFO) << "TpmBoundToPcrAuthBlockTest started";
-  TpmBoundToPcrAuthBlock auth_block(hwsec_.get(), &cryptohome_keys_manager_);
-  if (!TestPasswordBasedAuthBlock(auth_block)) {
-    LOG(ERROR) << "TpmBoundToPcrAuthBlockTest failed.";
-    return false;
-  }
-  LOG(INFO) << "TpmBoundToPcrAuthBlockTest ended successfully.";
-  return true;
+  std::unique_ptr<SyncToAsyncAuthBlockAdapter> auth_block =
+      std::make_unique<SyncToAsyncAuthBlockAdapter>(
+          std::make_unique<TpmBoundToPcrAuthBlock>(hwsec_.get(),
+                                                   &cryptohome_keys_manager_));
+  TestPasswordBasedAuthBlock(std::move(auth_block), std::move(callback));
 }
 
-bool TpmLiveTest::TpmNotBoundToPcrAuthBlockTest() {
+void TpmLiveTest::TpmNotBoundToPcrAuthBlockTest(TPMTestCallback callback) {
   LOG(INFO) << "TpmNotBoundToPcrAuthBlockTest started";
-  TpmNotBoundToPcrAuthBlock auth_block(hwsec_.get(), &cryptohome_keys_manager_);
-  if (!TestPasswordBasedAuthBlock(auth_block)) {
-    LOG(ERROR) << "TpmNotBoundToPcrAuthBlockTest failed.";
-    return false;
-  }
-  LOG(INFO) << "TpmNotBoundToPcrAuthBlockTest ended successfully.";
-  return true;
+  std::unique_ptr<SyncToAsyncAuthBlockAdapter> auth_block =
+      std::make_unique<SyncToAsyncAuthBlockAdapter>(
+          std::make_unique<TpmNotBoundToPcrAuthBlock>(
+              hwsec_.get(), &cryptohome_keys_manager_));
+  TestPasswordBasedAuthBlock(std::move(auth_block), std::move(callback));
 }
 
 bool TpmLiveTest::DecryptionKeyTest() {
@@ -366,7 +401,7 @@ class SignatureSealedSecretTestCase final {
   SignatureSealedSecretTestCase& operator=(
       const SignatureSealedSecretTestCase&) = delete;
 
-  ~SignatureSealedSecretTestCase() {}
+  ~SignatureSealedSecretTestCase() = default;
 
   bool SetUp() {
     if (!GenerateRsaKey(param_.key_size_bits, &pkey_, &key_spki_der_)) {

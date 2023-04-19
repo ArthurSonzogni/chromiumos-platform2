@@ -7,6 +7,7 @@
 #include <cstdlib>
 
 #include <base/at_exit.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
@@ -26,11 +27,17 @@ class ClientLoop : public brillo::Daemon {
     if (test_.empty()) {
       LOG(ERROR) << "--test is required.";
     } else if (test_ == "tpm_ecc_auth_block_test") {
-      success = cryptohome::TpmLiveTest().TpmEccAuthBlockTest();
+      cryptohome::TpmLiveTest().TpmEccAuthBlockTest(base::BindOnce(
+          &ClientLoop::TPMPasswordAuthCallback, weak_factory_.GetWeakPtr()));
+      return EXIT_SUCCESS;
     } else if (test_ == "tpm_bound_to_pcr_auth_block_test") {
-      success = cryptohome::TpmLiveTest().TpmBoundToPcrAuthBlockTest();
+      cryptohome::TpmLiveTest().TpmBoundToPcrAuthBlockTest(base::BindOnce(
+          &ClientLoop::TPMPasswordAuthCallback, weak_factory_.GetWeakPtr()));
+      return EXIT_SUCCESS;
     } else if (test_ == "tpm_not_bound_to_pcr_auth_block_test") {
-      success = cryptohome::TpmLiveTest().TpmNotBoundToPcrAuthBlockTest();
+      cryptohome::TpmLiveTest().TpmNotBoundToPcrAuthBlockTest(base::BindOnce(
+          &ClientLoop::TPMPasswordAuthCallback, weak_factory_.GetWeakPtr()));
+      return EXIT_SUCCESS;
     } else if (test_ == "decryption_key_test") {
       success = cryptohome::TpmLiveTest().DecryptionKeyTest();
     } else if (test_ == "seal_with_current_user_test") {
@@ -48,7 +55,11 @@ class ClientLoop : public brillo::Daemon {
   }
 
  private:
+  void TPMPasswordAuthCallback(bool success) {
+    QuitWithExitCode(success ? EXIT_SUCCESS : EXIT_FAILURE);
+  }
   std::string test_;
+  base::WeakPtrFactory<ClientLoop> weak_factory_{this};
 };
 
 int main(int argc, char** argv) {

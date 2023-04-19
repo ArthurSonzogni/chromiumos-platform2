@@ -21,6 +21,8 @@
 
 namespace cryptohome {
 
+using TPMTestCallback = base::OnceCallback<void(bool status)>;
+
 class TpmLiveTest {
  public:
   TpmLiveTest();
@@ -30,9 +32,9 @@ class TpmLiveTest {
   ~TpmLiveTest() = default;
 
   // These tests check TPM-bound AuthBlocks work correctly.
-  bool TpmEccAuthBlockTest();
-  bool TpmBoundToPcrAuthBlockTest();
-  bool TpmNotBoundToPcrAuthBlockTest();
+  void TpmEccAuthBlockTest(TPMTestCallback callback);
+  void TpmBoundToPcrAuthBlockTest(TPMTestCallback callback);
+  void TpmNotBoundToPcrAuthBlockTest(TPMTestCallback callback);
 
   // This test checks if we can create and load an RSA decryption key and use
   // it to encrypt and decrypt.
