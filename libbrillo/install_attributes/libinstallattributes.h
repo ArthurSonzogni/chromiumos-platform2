@@ -22,10 +22,10 @@ class BRILLO_EXPORT InstallAttributesReader {
 
   // Constants for the possible device modes.
   // The consumer owned devices don't have the enterprise.mode attribute.
-  static const char kDeviceModeEnterprise[];
-  static const char kDeviceModeEnterpriseAD[];
-  static const char kDeviceModeLegacyRetail[];
-  static const char kDeviceModeConsumerKiosk[];
+  static constexpr char kDeviceModeEnterprise[] = "enterprise";
+  static constexpr char kDeviceModeEnterpriseAD[] = "enterprise_ad";
+  static constexpr char kDeviceModeLegacyRetail[] = "kiosk";
+  static constexpr char kDeviceModeConsumerKiosk[] = "consumer_kiosk";
 
   InstallAttributesReader();
   virtual ~InstallAttributesReader();
