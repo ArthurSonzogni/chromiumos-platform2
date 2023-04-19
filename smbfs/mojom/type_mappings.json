@@ -8,6 +8,7 @@
         "smbfs/mojom/password_mojom_traits.h"
       ],
       "copyable_pass_by_value": false,
+      "default_constructible": true,
       "force_serialize": false,
       "move_only": true,
       "nullable_is_same_type": false,
@@ -24,6 +25,7 @@
         "smbfs/mojom/file_path_mojom_traits.h"
       ],
       "copyable_pass_by_value": false,
+      "default_constructible": true,
       "force_serialize": false,
       "move_only": false,
       "nullable_is_same_type": false,
