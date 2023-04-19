@@ -333,6 +333,9 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       converter_(keyset_management_),
       token_(platform_->CreateUnguessableToken()),
       serialized_token_(GetSerializedStringFromToken(token_).value_or("")),
+      public_token_(platform_->CreateUnguessableToken()),
+      serialized_public_token_(
+          GetSerializedStringFromToken(public_token_).value_or("")),
       user_exists_(*params.user_exists),
       auth_factor_map_(std::move(params.auth_factor_map)),
       migrate_to_user_secret_stash_(*params.migrate_to_user_secret_stash) {

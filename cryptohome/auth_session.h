@@ -134,6 +134,15 @@ class AuthSession final {
   const base::UnguessableToken& token() const { return token_; }
   const std::string& serialized_token() const { return serialized_token_; }
 
+  // Returns the token which is used as the secondary identifier for the
+  // session. This is not used to identify the session internally in cryptohome
+  // but it is used in external APIs where the session needs to be identified
+  // without providing the ability to act on the session.
+  const base::UnguessableToken& public_token() const { return public_token_; }
+  const std::string& serialized_public_token() const {
+    return serialized_public_token_;
+  }
+
   // This function return the current status of this AuthSession.
   AuthStatus status() const { return status_; }
 
@@ -658,8 +667,11 @@ class AuthSession final {
   // VaultKeysets to AuthFactor API.
   AuthFactorVaultKeysetConverter converter_;
 
+  // Tokens (and their serialized forms) used to identify the session.
   const base::UnguessableToken token_;
   const std::string serialized_token_;
+  const base::UnguessableToken public_token_;
+  const std::string serialized_public_token_;
 
   // Used to decrypt/ encrypt & store credentials.
   std::unique_ptr<VaultKeyset> vault_keyset_;

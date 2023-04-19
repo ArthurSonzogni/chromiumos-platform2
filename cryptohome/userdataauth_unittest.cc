@@ -2842,11 +2842,17 @@ TEST_F(UserDataAuthExTest, StartAuthSession) {
   std::optional<base::UnguessableToken> auth_session_id =
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply_future.Get().auth_session_id());
-  EXPECT_TRUE(auth_session_id.has_value());
+  ASSERT_TRUE(auth_session_id.has_value());
   InUseAuthSession auth_session =
       userdataauth_->auth_session_manager_->FindAuthSession(
           auth_session_id.value());
-  EXPECT_TRUE(auth_session.AuthSessionStatus().ok());
+  ASSERT_TRUE(auth_session.AuthSessionStatus().ok());
+  EXPECT_EQ(auth_session->token(), *auth_session_id);
+  std::optional<base::UnguessableToken> broadcast_id =
+      AuthSession::GetTokenFromSerializedString(
+          auth_session_reply_future.Get().broadcast_id());
+  ASSERT_TRUE(broadcast_id.has_value());
+  EXPECT_EQ(auth_session->public_token(), *broadcast_id);
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {

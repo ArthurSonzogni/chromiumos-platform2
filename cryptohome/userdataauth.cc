@@ -2070,6 +2070,7 @@ void UserDataAuth::StartAuthSession(
   AuthSession* auth_session = auth_session_status.value().Get();
 
   reply.set_auth_session_id(auth_session->serialized_token());
+  reply.set_broadcast_id(auth_session->serialized_public_token());
   reply.set_user_exists(auth_session->user_exists());
 
   if (auth_session->auth_factor_map().empty() &&

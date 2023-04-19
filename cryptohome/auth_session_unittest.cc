@@ -369,6 +369,27 @@ const CryptohomeError::ErrorLocationPair kErrorLocationForTestingAuthSession =
         static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
         std::string("MockErrorLocationAuthSession"));
 
+TEST_F(AuthSessionTest, TokensAreValid) {
+  AuthSession auth_session(
+      {.username = kFakeUsername,
+       .is_ephemeral_user = false,
+       .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .user_exists = false,
+       .auth_factor_map = AuthFactorMap(),
+       .migrate_to_user_secret_stash = false},
+      backing_apis_);
+
+  EXPECT_FALSE(auth_session.token().is_empty());
+  EXPECT_FALSE(auth_session.public_token().is_empty());
+  EXPECT_NE(auth_session.token(), auth_session.public_token());
+
+  EXPECT_FALSE(auth_session.serialized_token().empty());
+  EXPECT_FALSE(auth_session.serialized_public_token().empty());
+  EXPECT_NE(auth_session.serialized_token(),
+            auth_session.serialized_public_token());
+}
+
 TEST_F(AuthSessionTest, InitiallyNotAuthenticated) {
   AuthSession auth_session(
       {.username = kFakeUsername,
