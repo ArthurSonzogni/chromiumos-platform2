@@ -15,6 +15,7 @@
 #include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
 #include <google-lpa/lpa/core/lpa.h>
+#include <google-lpa/lpa/data/activation_code.h>
 #include <google-lpa/lpa/data/proto/euicc_info_1.pb.h>
 #include <metrics/structured_events.h>
 
@@ -84,7 +85,10 @@ void Euicc::InstallProfileFromActivationCode(
     std::string activation_code,
     std::string confirmation_code,
     DbusResult<dbus::ObjectPath> dbus_result) {
-  LOG(INFO) << __func__;
+  std::unique_ptr<lpa::data::ActivationCode> ac_ptr =
+      lpa::data::ActivationCode::FromString(activation_code);
+  LOG(INFO) << __func__ << ": SMDP="
+            << (ac_ptr ? std::hash<std::string>{}(ac_ptr->smdp_addr()) : 0);
   if (context_->dbus_ongoing_) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
