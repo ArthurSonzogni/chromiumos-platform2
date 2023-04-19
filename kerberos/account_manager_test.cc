@@ -203,7 +203,9 @@ class AccountManagerTest : public ::testing::Test {
       EXPECT_EQ(account1.principal_name(), account2.principal_name());
       EXPECT_EQ(account1.is_managed(), account2.is_managed());
       EXPECT_EQ(account1.use_login_password(), account2.use_login_password());
-      // TODO(https://crbug.com/952239): Check additional properties.
+      EXPECT_EQ(account1.krb5conf(), account2.krb5conf());
+      EXPECT_EQ(account1.password_was_remembered(),
+                account2.password_was_remembered());
     }
   }
 
@@ -723,13 +725,14 @@ TEST_F(AccountManagerTest, ListAccountsSuccess) {
   EXPECT_EQ(ERROR_NONE,
             manager_->AcquireTgt(kUser, kPassword, kRememberPassword,
                                  kDontUseLoginPassword));
+  EXPECT_TRUE(base::PathExists(krb5cc_path_));
+
   SaveLoginPassword(kPassword);
   EXPECT_EQ(ERROR_NONE, manager_->AddAccount(kUser2, kUnmanaged));
   // Note: kRememberPassword should be ignored here, see below.
   EXPECT_EQ(ERROR_NONE,
             manager_->AcquireTgt(kUser2, kPassword, kRememberPassword,
                                  kUseLoginPassword));
-  EXPECT_TRUE(base::PathExists(krb5cc_path_));
 
   // Set a fake tgt status.
   constexpr int kRenewalSeconds = 10;
@@ -737,7 +740,7 @@ TEST_F(AccountManagerTest, ListAccountsSuccess) {
   krb5_->set_tgt_status(
       Krb5Interface::TgtStatus(kValiditySeconds, kRenewalSeconds));
 
-  // Verify that ListAccounts returns the expected account.
+  // Verify that ListAccounts returns the expected accounts.
   std::vector<Account> accounts = manager_->ListAccounts();
   ASSERT_EQ(2u, accounts.size());
 
@@ -747,8 +750,11 @@ TEST_F(AccountManagerTest, ListAccountsSuccess) {
   EXPECT_EQ(kValiditySeconds, accounts[0].tgt_validity_seconds());
   EXPECT_TRUE(accounts[0].is_managed());
   EXPECT_TRUE(accounts[0].password_was_remembered());
+  EXPECT_FALSE(accounts[0].use_login_password());
 
   EXPECT_EQ(kUser2, accounts[1].principal_name());
+  EXPECT_FALSE(accounts[1].has_krb5conf());
+  EXPECT_FALSE(accounts[1].is_managed());
   EXPECT_FALSE(accounts[1].password_was_remembered());
   EXPECT_TRUE(accounts[1].use_login_password());
 }
@@ -818,13 +824,15 @@ TEST_F(AccountManagerTest, MethodsReturnUnknownPrincipal) {
 TEST_F(AccountManagerTest, SerializationSuccess) {
   SaveLoginPassword(kPassword);
   EXPECT_EQ(ERROR_NONE, manager_->AddAccount(kUser, kManaged));
+  EXPECT_EQ(ERROR_NONE, SetConfig(kKrb5Conf));
   EXPECT_EQ(ERROR_NONE,
             manager_->AcquireTgt(kUser, kPassword, kDontRememberPassword,
                                  kUseLoginPassword));
 
   EXPECT_EQ(ERROR_NONE, manager_->AddAccount(kUser2, kUnmanaged));
+  EXPECT_EQ(ERROR_NONE, manager_->SetConfig(kUser2, kStrongKrb5Conf));
   EXPECT_EQ(ERROR_NONE,
-            manager_->AcquireTgt(kUser2, kPassword, kDontRememberPassword,
+            manager_->AcquireTgt(kUser2, kPassword, kRememberPassword,
                                  kDontUseLoginPassword));
 
   EXPECT_EQ(ERROR_NONE, manager_->SaveAccounts());
@@ -846,7 +854,11 @@ TEST_F(AccountManagerTest, SerializationSuccess) {
   EXPECT_TRUE(accounts[0].use_login_password());
   EXPECT_FALSE(accounts[1].use_login_password());
 
-  // TODO(https://crbug.com/952239): Check additional Account properties.
+  EXPECT_EQ(kKrb5Conf, accounts[0].krb5conf());
+  EXPECT_EQ(kStrongKrb5Conf, accounts[1].krb5conf());
+
+  EXPECT_FALSE(accounts[0].password_was_remembered());
+  EXPECT_TRUE(accounts[1].password_was_remembered());
 }
 
 // The StartObservingTickets() method triggers KerberosTicketExpiring for
