@@ -14,10 +14,12 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
+#include <libminijail.h>
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"
@@ -33,6 +35,22 @@ const char kRustPanicSigFileTarget[] = "/memfd:RUST_PANIC_SIG (deleted)";
 const char kStatePrefix[] = "State:\t";
 const char kUptimeField[] = "ptime";
 const char kUserCrashSignal[] = "org.chromium.CrashReporter.UserCrash";
+
+// Linux syscall numbers are `long`, so we need to handle the edge cases when
+// parsing since long is 32-bit for ARM while long is 64-bit for x86_64 and
+// aarch64.
+bool StringToSyscallNumber(base::StringPiece input, long* output) {
+  static_assert(sizeof(long) <= sizeof(int64_t));
+  int64_t parsed;
+  if (!base::StringToInt64(input, &parsed)) {
+    return false;
+  }
+  if (parsed < 0 || (sizeof(int64_t) > sizeof(long) && parsed > LONG_MAX)) {
+    return false;
+  }
+  *output = static_cast<long>(parsed);
+  return true;
+}
 
 }  // namespace
 
@@ -346,10 +364,7 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
       LOG(WARNING) << "Failed to read syscall file, continuing anyway.";
     } else {
       contents.pop_back();  // remove trailing newline
-      std::vector<std::string> split = base::SplitString(
-          contents, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-      AddCrashMetaUploadData("seccomp_blocked_syscall_nr", split[0]);
-      AddCrashMetaUploadData("seccomp_proc_pid_syscall", contents);
+      HandleSyscall(exec, contents);
     }
   }
 
@@ -376,6 +391,35 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
 
   base::DeletePathRecursively(container_dir);
   return kErrorNone;
+}
+
+void UserCollectorBase::HandleSyscall(const std::string& exec,
+                                      const std::string& contents) {
+  std::vector<std::string> split = base::SplitString(
+      contents, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  AddCrashMetaUploadData("seccomp_blocked_syscall_nr", split[0]);
+  AddCrashMetaUploadData("seccomp_proc_pid_syscall", contents);
+
+  long syscall_num;
+  if (!StringToSyscallNumber(split[0], &syscall_num)) {
+    LOG(WARNING) << "Failed to parse syscall number: " << split[0];
+    return;
+  }
+
+  const char* name = minijail_syscall_name(nullptr, syscall_num);
+  if (name == nullptr) {
+    LOG(WARNING) << "Failed to lookup syscall name for: " << syscall_num;
+    return;
+  }
+
+  AddCrashMetaUploadData("seccomp_blocked_syscall_name", name);
+
+  // The main information needed to act on this crash report is the syscall
+  // name and seccomp policy file, so use the syscall name in the crash
+  // signature. The policy file path is sometimes available as an
+  // environment variable which gets included with the process information,
+  // but isn't available here, so it isn't included in the signature.
+  AddCrashMetaData("sig", exec + std::string("-seccomp-violation-") + name);
 }
 
 bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid,

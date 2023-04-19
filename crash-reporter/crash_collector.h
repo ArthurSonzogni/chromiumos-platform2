@@ -281,6 +281,7 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, GetNewFileHandle_Symlink);
   FRIEND_TEST(CrashCollectorTest, WriteNewCompressedFile);
   FRIEND_TEST(CrashCollectorTest, WriteNewCompressedFileFailsIfFileExists);
+  FRIEND_TEST(UserCollectorTest, HandleSyscall);
 
   // Default value if OS version/description cannot be determined.
   static const char* const kUnknownValue;

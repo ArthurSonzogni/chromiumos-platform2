@@ -7,6 +7,7 @@
 #include <bits/wordsize.h>
 #include <elf.h>
 #include <sys/mman.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #include <memory>
@@ -653,6 +654,23 @@ TEST_F(UserCollectorTest, ValidateCoreFile) {
       test_util::CreateFile(core_file, std::string(e_ident, sizeof(e_ident))));
   EXPECT_EQ(UserCollector::kErrorInvalidCoreFile,
             collector_.ValidateCoreFile(core_file));
+}
+
+TEST_F(UserCollectorTest, HandleSyscall) {
+  const std::string exec = "placeholder";
+  const std::string contents = std::to_string(SYS_read) + " col1 col2 col3";
+
+  collector_.HandleSyscall(exec, contents);
+  EXPECT_TRUE(
+      base::Contains(collector_.extra_metadata_,
+                     "seccomp_blocked_syscall_nr=" + std::to_string(SYS_read)));
+  EXPECT_TRUE(base::Contains(collector_.extra_metadata_,
+                             "seccomp_proc_pid_syscall=" + contents));
+  EXPECT_TRUE(base::Contains(collector_.extra_metadata_,
+                             std::string("seccomp_blocked_syscall_name=read")));
+  EXPECT_TRUE(
+      base::Contains(collector_.extra_metadata_,
+                     std::string("sig=") + exec + "-seccomp-violation-read"));
 }
 
 struct CopyStdinToCoreFileTestParams {

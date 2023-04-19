@@ -142,6 +142,7 @@ static_library("libcrash_reporter") {
     "redaction_tool",
   ]
   deps = [ "//common-mk/external_dependencies:policy-protos" ]
+  pkg_deps = [ "libminijail" ]
 
   if (use.arcpp || use.arcvm) {
     sources += [

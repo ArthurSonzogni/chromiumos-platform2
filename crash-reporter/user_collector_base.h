@@ -102,6 +102,8 @@ class UserCollectorBase : public CrashCollector {
   static const char* kGroupId;
 
  private:
+  FRIEND_TEST(UserCollectorTest, HandleSyscall);
+
   // Send DBus message announcing the crash. Virtual so that we can mock out
   // during unit tests.
   virtual void AnnounceUserCrash();
@@ -137,6 +139,10 @@ class UserCollectorBase : public CrashCollector {
                                    int signal,
                                    const base::TimeDelta& crash_time,
                                    bool* out_of_capacity);
+
+  // Helper function for populating seccomp related fields from the contents of
+  // /proc/<pid>/syscall.
+  void HandleSyscall(const std::string& exec, const std::string& contents);
 
   // Determines the crash directory for given pid based on pid's owner,
   // and creates the directory if necessary with appropriate permissions.
