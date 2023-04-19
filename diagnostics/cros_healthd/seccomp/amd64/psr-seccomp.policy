@@ -6,7 +6,7 @@ access: 1
 # ioctl values:
 #   0xc0104801 == IOCTL_MEI_CONNECT_CLIENT
 ioctl: arg1 == 0xc0104801
-socket: 1
+socket: arg0 == AF_UNIX
 connect: 1
 pselect6: 1
 getuid: 1
