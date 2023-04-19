@@ -9,6 +9,7 @@ import("//common-mk/pkg_config.gni")
 # by the platform2 build system.
 group("all") {
   deps = [
+    ":install_minijail_conf",
     ":ocr_service",
     ":ocr_tool",
   ]
@@ -23,6 +24,11 @@ group("all") {
 generate_mojom_bindings("ocr_mojo_bindings") {
   mojo_root = "${platform2_root}"
   sources = [ "mojo/ocr_service.mojom" ]
+}
+
+install_config("install_minijail_conf") {
+  install_path = "/usr/share/minijail"
+  sources = [ "minijail/ocr.conf" ]
 }
 
 pkg_config("target_defaults") {
