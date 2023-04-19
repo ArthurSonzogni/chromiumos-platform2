@@ -41,6 +41,8 @@
 #include <usbguard/DeviceManager.hpp>
 #include <usbguard/DeviceManagerHooks.hpp>
 
+#include "usb_bouncer/metrics_allowlist.h"
+
 using brillo::GetFDPath;
 using brillo::SafeFD;
 using brillo::ScopedDIR;
@@ -546,10 +548,11 @@ void StructuredMetricsHubError(int ErrorCode,
   int string_len_limit = 20;
   UsbTreePath = UsbTreePath.substr(0, string_len_limit);
 
-  // TODO(b/269770946): allow popular VID/PIDs to be recorded in the HubError
-  // metric once the USB peripheral popularity study completes.
-  VendorId = 0;
-  ProductId = 0;
+  // Mask VID/PID if the error was reported about an obscure device.
+  if (!DeviceInMetricsAllowlist(VendorId, ProductId)) {
+    VendorId = 0;
+    ProductId = 0;
+  }
 
   metrics::structured::events::usb_error::HubError()
       .SetErrorCode(ErrorCode)
