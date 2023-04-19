@@ -245,6 +245,20 @@
                     value="vm_tools::concierge::GetVmLaunchAllowedResponse"/>
       </arg>
     </method>
+    <method name="GetVmLogs">
+      <tp:docstring>
+        Gets VM logs.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::GetVmLogsRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::GetVmLogsResponse"/>
+      </arg>
+    </method>
     <method name="ImportDiskImage">
       <tp:docstring>
         Imports a disk image.

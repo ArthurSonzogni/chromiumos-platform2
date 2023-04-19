@@ -1517,7 +1517,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kGetVmLogsMethod, &Service::GetVmLogs},
       {kSwapVmMethod, &Service::SwapVm},
       {kInstallPflashMethod, &Service::InstallPflash},
   };
@@ -4819,30 +4818,17 @@ GetVmLaunchAllowedResponse Service::GetVmLaunchAllowed(
   return response;
 }
 
-std::unique_ptr<dbus::Response> Service::GetVmLogs(
-    dbus::MethodCall* method_call) {
+bool Service::GetVmLogs(brillo::ErrorPtr* error,
+                        const GetVmLogsRequest& request,
+                        GetVmLogsResponse* response) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  GetVmLogsRequest request;
-  GetVmLogsResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    return dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_FAILED,
-        "Unable to parse GetVmLogsRequest from message");
-  }
-
-  if (!ValidateVmNameAndOwner(request, response)) {
-    return dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_FAILED,
-        "Empty or malformed owner ID / VM name");
+  if (!ValidateVmNameAndOwner(request, *response)) {
+    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                                   DBUS_ERROR_FAILED,
+                                   "Empty or malformed owner ID / VM name");
+    return false;
   }
 
   base::FilePath log_path =
@@ -4870,12 +4856,10 @@ std::unique_ptr<dbus::Response> Service::GetVmLogs(
       continue;
     }
 
-    response.mutable_log()->append(file_contents);
+    response->mutable_log()->append(file_contents);
   }
 
-  writer.AppendProtoAsArrayOfBytes(response);
-
-  return dbus_response;
+  return true;
 }
 
 std::unique_ptr<dbus::Response> Service::SwapVm(dbus::MethodCall* method_call) {

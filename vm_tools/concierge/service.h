@@ -243,7 +243,10 @@ class Service final : public org::chromium::VmConciergeInterface {
   GetVmLaunchAllowedResponse GetVmLaunchAllowed(
       const GetVmLaunchAllowedRequest& request) override;
 
-  std::unique_ptr<dbus::Response> GetVmLogs(dbus::MethodCall* method_call);
+  // Handles a request to get VM logs.
+  bool GetVmLogs(brillo::ErrorPtr* error,
+                 const GetVmLogsRequest& request,
+                 GetVmLogsResponse* response) override;
 
   // Handles a request to change VM swap state.
   std::unique_ptr<dbus::Response> SwapVm(dbus::MethodCall* method_call);
