@@ -239,8 +239,9 @@ class Service final : public org::chromium::VmConciergeInterface {
       brillo::ErrorPtr* error,
       const AddGroupPermissionMesaRequest& request) override;
 
-  std::unique_ptr<dbus::Response> GetVmLaunchAllowed(
-      dbus::MethodCall* method_call);
+  // Handles a request to get if allowed to launch VM.
+  GetVmLaunchAllowedResponse GetVmLaunchAllowed(
+      const GetVmLaunchAllowedRequest& request) override;
 
   std::unique_ptr<dbus::Response> GetVmLogs(dbus::MethodCall* method_call);
 

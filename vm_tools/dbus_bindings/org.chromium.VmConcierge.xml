@@ -231,6 +231,20 @@
                     value="vm_tools::concierge::GetVmInfoResponse"/>
       </arg>
     </method>
+    <method name="GetVmLaunchAllowed">
+      <tp:docstring>
+        Get if allowed to launch VM.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="response" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::GetVmLaunchAllowedRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::GetVmLaunchAllowedResponse"/>
+      </arg>
+    </method>
     <method name="ImportDiskImage">
       <tp:docstring>
         Imports a disk image.

@@ -1517,7 +1517,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kGetVmLaunchAllowedMethod, &Service::GetVmLaunchAllowed},
       {kGetVmLogsMethod, &Service::GetVmLogs},
       {kSwapVmMethod, &Service::SwapVm},
       {kInstallPflashMethod, &Service::InstallPflash},
@@ -4798,25 +4797,12 @@ bool Service::AddGroupPermissionMesa(
   return true;
 }
 
-std::unique_ptr<dbus::Response> Service::GetVmLaunchAllowed(
-    dbus::MethodCall* method_call) {
+GetVmLaunchAllowedResponse Service::GetVmLaunchAllowed(
+    const GetVmLaunchAllowedRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  GetVmLaunchAllowedRequest request;
   GetVmLaunchAllowedResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    return dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_FAILED,
-        "Unable to parse GetVmLaunchAllowedRequest from message");
-  }
 
   bool allowed = true;
   std::string reason;
@@ -4829,9 +4815,8 @@ std::unique_ptr<dbus::Response> Service::GetVmLaunchAllowed(
 
   response.set_allowed(allowed);
   response.set_reason(reason);
-  writer.AppendProtoAsArrayOfBytes(response);
 
-  return dbus_response;
+  return response;
 }
 
 std::unique_ptr<dbus::Response> Service::GetVmLogs(
