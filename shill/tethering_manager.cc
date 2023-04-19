@@ -465,8 +465,7 @@ void TetheringManager::CheckAndPostTetheringStartResult() {
 }
 
 void TetheringManager::CheckAndPostTetheringStopResult() {
-  if (upstream_technology_ == Technology::kCellular &&
-      upstream_network_ != nullptr) {
+  if (upstream_network_ != nullptr) {
     return;
   }
 
@@ -486,9 +485,8 @@ void TetheringManager::OnStartingTetheringTimeout() {
 
   if (!hotspot_dev_ || !hotspot_dev_->IsServiceUp()) {
     result = SetEnabledResult::kDownstreamWiFiFailure;
-  } else if (upstream_technology_ == Technology::kCellular &&
-             (!upstream_network_ ||
-              !upstream_network_->HasInternetConnectivity())) {
+  } else if (!upstream_network_ ||
+             !upstream_network_->HasInternetConnectivity()) {
     result = SetEnabledResult::kUpstreamNetworkNotAvailable;
   }
   PostSetEnabledResult(result);
@@ -506,8 +504,12 @@ void TetheringManager::OnStoppingTetheringTimeout() {
              << kStopTimeout;
 
   SetEnabledResult result = SetEnabledResult::kFailure;
-  if (upstream_technology_ == Technology::kCellular &&
-      upstream_network_ != nullptr) {
+  if (upstream_network_ != nullptr) {
+    // TODO(b/235762746) Cellular: if the upstream cellular network already
+    // exists, use CellularServiceProvider::ReleaseTetheringNetwork() instead.
+
+    // For other types of upstream technology like ethernet or WiFi, there is
+    // no particular cleanup other than resetting the internal state.
     FreeUpstreamNetwork();
     result = SetEnabledResult::kUpstreamFailure;
   }
@@ -572,6 +574,22 @@ void TetheringManager::StartTetheringSession() {
     manager_->cellular_service_provider()->AcquireTetheringNetwork(
         base::BindOnce(&TetheringManager::OnUpstreamNetworkAcquired,
                        base::Unretained(this)));
+  } else if (upstream_technology_ == Technology::kEthernet) {
+    const auto eth_service = manager_->GetFirstEthernetService();
+    const auto upstream_network =
+        manager_->FindActiveNetworkFromService(eth_service);
+    const auto result = upstream_network
+                            ? SetEnabledResult::kSuccess
+                            : SetEnabledResult::kUpstreamNetworkNotAvailable;
+    OnUpstreamNetworkAcquired(result, upstream_network);
+  } else {
+    // TODO(b/235762746) Add support for WiFi as an upstream technology for "usb
+    // tethering" and for chipsets that support simultaneous hotspot and station
+    // modes.
+    LOG(ERROR) << __func__ << ": " << upstream_technology_
+               << " not supported as an upstream technology";
+    PostSetEnabledResult(SetEnabledResult::kFailure);
+    StopTetheringSession(StopReason::kError);
   }
 }
 
@@ -609,14 +627,21 @@ void TetheringManager::StopTetheringSession(StopReason reason) {
   }
   hotspot_service_up_ = false;
 
-  if (upstream_technology_ == Technology::kCellular && upstream_network_) {
+  if (!upstream_network_) {
+    CheckAndPostTetheringStopResult();
+    return;
+  }
+
+  if (upstream_technology_ == Technology::kCellular) {
     manager_->cellular_service_provider()->ReleaseTetheringNetwork(
         upstream_network_,
         base::BindOnce(&TetheringManager::OnUpstreamNetworkReleased,
                        base::Unretained(this)));
+  } else {
+    // For other types of upstream technology like ethernet or WiFi, there is
+    // no particular cleanup other than resetting the internal state.
+    OnUpstreamNetworkReleased(/*is_success=*/true);
   }
-
-  CheckAndPostTetheringStopResult();
 }
 
 void TetheringManager::StartInactiveTimer() {
@@ -738,6 +763,8 @@ void TetheringManager::OnDownstreamNetworkReady(
 void TetheringManager::OnUpstreamNetworkAcquired(SetEnabledResult result,
                                                  Network* network) {
   if (result != SetEnabledResult::kSuccess) {
+    LOG(ERROR) << __func__ << ": no upstream " << upstream_technology_
+               << " Network available";
     PostSetEnabledResult(result);
     StopTetheringSession(StopReason::kError);
     return;
@@ -761,16 +788,9 @@ void TetheringManager::OnUpstreamNetworkAcquired(SetEnabledResult result,
 }
 
 void TetheringManager::OnUpstreamNetworkReleased(bool is_success) {
-  if (upstream_technology_ != Technology::kCellular ||
-      upstream_network_ == nullptr) {
-    LOG(WARNING) << __func__ << ": entered in wrong state, upstream tech is "
-                 << upstream_technology_ << " upstream_network_ is "
-                 << upstream_network_;
-    return;
-  }
-
   if (!is_success) {
-    LOG(ERROR) << __func__ << ": failed to release upstream network.";
+    LOG(ERROR) << __func__ << ": failed to release upstream "
+               << upstream_technology_ << " Network.";
   }
 
   FreeUpstreamNetwork();

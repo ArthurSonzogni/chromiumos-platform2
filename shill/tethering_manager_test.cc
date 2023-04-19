@@ -877,7 +877,7 @@ TEST_F(TetheringManagerTest, SetEnabledResultName) {
           TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable));
 }
 
-TEST_F(TetheringManagerTest, StartTetheringSessionSuccess) {
+TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithCellularUpstream) {
   TetheringPrerequisite(tethering_manager_);
 
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
@@ -904,6 +904,53 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccess) {
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringActive);
   Mock::VerifyAndClearExpectations(&manager_);
+}
+
+TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithEthernetUpstream) {
+  MockNetwork eth_network(kTestInterfaceIndex + 1, "eth0",
+                          Technology::kEthernet);
+  ON_CALL(eth_network, HasInternetConnectivity()).WillByDefault(Return(true));
+  ON_CALL(eth_network, IsConnected()).WillByDefault(Return(true));
+  scoped_refptr<MockService> eth_service = new MockService(&manager_);
+  EXPECT_CALL(manager_, GetFirstEthernetService())
+      .WillOnce(Return(eth_service));
+  EXPECT_CALL(manager_, FindActiveNetworkFromService(_))
+      .WillOnce(Return(&eth_network));
+
+  EXPECT_CALL(*patchpanel_, CreateTetheredNetwork("ap0", "eth0", _))
+      .WillOnce(Return(true));
+
+  // TetheringManager will evaluate the downstream service readiness as soon as
+  // it finds the ethernet upstream network.
+  ON_CALL(*hotspot_device_.get(), IsServiceUp()).WillByDefault(Return(false));
+
+  // Change the upstream technology to ethernet.
+  TetheringPrerequisite(tethering_manager_);
+  KeyValueStore config =
+      GenerateFakeConfig("757365725F73736964", "user_password");
+  SetConfigUpstream(config, TechnologyName(Technology::kEthernet));
+  EXPECT_TRUE(FromProperties(tethering_manager_, config));
+
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
+  SetEnabled(tethering_manager_, true);
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringStarting);
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  // Downstream device event service up.
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
+  ON_CALL(*hotspot_device_.get(), IsServiceUp()).WillByDefault(Return(true));
+  DownStreamDeviceEvent(tethering_manager_,
+                        LocalDevice::DeviceEvent::kServiceUp,
+                        hotspot_device_.get());
+
+  // Tethering network created.
+  OnDownstreamNetworkReady(tethering_manager_, MakeFd());
+
+  Mock::VerifyAndClearExpectations(&manager_);
+  VerifyResult(TetheringManager::SetEnabledResult::kSuccess);
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringActive);
 }
 
 TEST_F(TetheringManagerTest,

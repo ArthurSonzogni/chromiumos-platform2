@@ -142,6 +142,10 @@ class MockManager : public Manager {
               CreateDefaultDHCPOption,
               (),
               (const, override));
+  MOCK_METHOD(Network*,
+              FindActiveNetworkFromService,
+              (const ServiceRefPtr&),
+              (const, override));
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }

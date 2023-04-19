@@ -197,7 +197,8 @@ class Manager {
   // with the Device which has selected this Service. This pointer is owned by
   // Device and thus cannot be held. Returns nullptr if no such Network or the
   // Service pointer is null.
-  Network* FindActiveNetworkFromService(const ServiceRefPtr& service) const;
+  mockable Network* FindActiveNetworkFromService(
+      const ServiceRefPtr& service) const;
 
   // Return the highest priority service of a physical technology type (i.e. not
   // VPN, ARC, etc), or nullptr if no such service is found.
