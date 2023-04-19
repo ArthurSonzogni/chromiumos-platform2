@@ -340,6 +340,20 @@
                     value="vm_tools::concierge::ListVmsResponse"/>
       </arg>
     </method>
+    <method name="ReclaimVmMemory">
+      <tp:docstring>
+        Requests to reclaim memory of a given VM.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::ReclaimVmMemoryRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::ReclaimVmMemoryResponse"/>
+      </arg>
+    </method>
     <method name="ResizeDiskImage">
       <tp:docstring>
         Resizes a disk image. Can return asynchronously.

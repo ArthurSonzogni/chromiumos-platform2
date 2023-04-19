@@ -1475,7 +1475,6 @@ bool Service::Init() {
       dbus::MethodCall*, dbus::ExportedObject::ResponseSender);
   static const std::map<const char*, AsyncServiceMethod> kAsyncServiceMethods =
       {
-          {kReclaimVmMemoryMethod, &Service::ReclaimVmMemory},
           {kStartVmMethod,
            &Service::StartVmHelper<StartVmRequest, &Service::GetVmMemoryMiB,
                                    &Service::StartVm>},
@@ -3954,25 +3953,16 @@ ListVmsResponse Service::ListVms(const ListVmsRequest& request) {
 }
 
 void Service::ReclaimVmMemory(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        ReclaimVmMemoryResponse>> response_sender,
+    const ReclaimVmMemoryRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  dbus::MessageReader reader(method_call);
-  ReclaimVmMemoryRequest request;
   ReclaimVmMemoryResponse response;
 
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ReclaimVmMemoryRequest from message";
-    response.set_failure_reason(
-        "Unable to parse ReclaimVmMemoryRequest from message");
-    SendDbusResponse(std::move(response_sender), method_call, response);
-    return;
-  }
-
   if (!ValidateVmNameAndOwner(request, response)) {
-    SendDbusResponse(std::move(response_sender), method_call, response);
+    response_sender->Return(response);
     return;
   }
 
@@ -3980,7 +3970,7 @@ void Service::ReclaimVmMemory(
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
     response.set_failure_reason("Requested VM does not exist");
-    SendDbusResponse(std::move(response_sender), method_call, response);
+    response_sender->Return(response);
     return;
   }
 
@@ -3988,8 +3978,13 @@ void Service::ReclaimVmMemory(
   const auto page_limit = request.page_limit();
   reclaim_thread_.task_runner()->PostTaskAndReplyWithResult(
       FROM_HERE, base::BindOnce(&ReclaimVmMemoryInternal, pid, page_limit),
-      base::BindOnce(&SendDbusResponse, std::move(response_sender),
-                     method_call));
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 ReclaimVmMemoryResponse>> response_sender,
+             ReclaimVmMemoryResponse response) {
+            std::move(response_sender)->Return(response);
+          },
+          std::move(response_sender)));
 }
 
 void Service::AggressiveBalloon(

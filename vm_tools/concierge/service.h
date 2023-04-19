@@ -255,8 +255,10 @@ class Service final : public org::chromium::VmConciergeInterface {
       const base::ScopedFD& pflash_src_fd) override;
 
   // Asynchronously handles a request to reclaim memory of a given VM.
-  void ReclaimVmMemory(dbus::MethodCall* method_call,
-                       dbus::ExportedObject::ResponseSender response_sender);
+  void ReclaimVmMemory(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          vm_tools::concierge::ReclaimVmMemoryResponse>> response,
+      const vm_tools::concierge::ReclaimVmMemoryRequest& request) override;
 
   // Inflate balloon in a vm until perceptible processes in the guest are tried
   // to kill.
