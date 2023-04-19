@@ -743,10 +743,17 @@ void TetheringManager::OnUpstreamNetworkAcquired(SetEnabledResult result,
     return;
   }
 
+  DCHECK(network);
+  if (!network->IsConnected()) {
+    LOG(ERROR) << __func__ << ": upstream Network was not connected";
+    PostSetEnabledResult(SetEnabledResult::kFailure);
+    StopTetheringSession(StopReason::kError);
+    return;
+  }
+
   // TODO(b/273975270): Restart portal detection if the upstream network does
   // not have Internet access and if portal detection is no currently running.
 
-  DCHECK(network);
   DCHECK(!upstream_network_);
   upstream_network_ = network;
   upstream_network_->RegisterEventHandler(this);

@@ -185,6 +185,7 @@ class TetheringManagerTest : public testing::Test {
     ON_CALL(*cellular_service_provider_, ReleaseTetheringNetwork(_, _))
         .WillByDefault(Return());
     ON_CALL(*network_, HasInternetConnectivity()).WillByDefault(Return(true));
+    ON_CALL(*network_, IsConnected()).WillByDefault(Return(true));
   }
   ~TetheringManagerTest() override = default;
 
@@ -994,6 +995,25 @@ TEST_F(TetheringManagerTest,
 
   VerifyResult(TetheringManager::SetEnabledResult::kFailure);
   CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonError);
+}
+
+TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkNotConnected) {
+  TetheringPrerequisite(tethering_manager_);
+
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
+  SetEnabled(tethering_manager_, true);
+  EXPECT_EQ(TetheringState(tethering_manager_),
+            TetheringManager::TetheringState::kTetheringStarting);
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  // Upstream Network fetched but the the Network has disconnected.
+  EXPECT_CALL(*network_, IsConnected()).WillRepeatedly(Return(false));
+  OnUpstreamNetworkAcquired(tethering_manager_,
+                            TetheringManager::SetEnabledResult::kSuccess);
+
+  VerifyResult(TetheringManager::SetEnabledResult::kFailure);
+  // Expect idle state: there is no downstream device to tear down.
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
 }
 
 TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkNotReady) {
