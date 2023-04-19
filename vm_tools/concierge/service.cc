@@ -4969,14 +4969,7 @@ std::unique_ptr<dbus::Response> Service::InstallPflash(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    response.set_failure_reason("Empty or malformed owner ID");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.vm_name())) {
-    response.set_failure_reason("Empty or malformed VM name");
+  if (!ValidateVmNameAndOwner(request, response)) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
