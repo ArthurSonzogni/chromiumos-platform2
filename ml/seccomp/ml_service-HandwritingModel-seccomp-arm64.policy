@@ -8,6 +8,7 @@
 brk: 1
 clock_gettime: 1
 close: 1
+connect: 1
 epoll_ctl: 1
 epoll_pwait: 1
 eventfd2: 1
@@ -33,6 +34,7 @@ rt_sigprocmask: 1
 sched_getaffinity: 1
 sched_getscheduler: 1
 sendto: 1
+socket: arg0 == AF_UNIX
 sysinfo: 1
 uname: 1
 write: 1
