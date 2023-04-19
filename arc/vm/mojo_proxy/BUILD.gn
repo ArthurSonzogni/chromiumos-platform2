@@ -6,10 +6,18 @@ import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 group("all") {
-  deps = [ ":server_proxy" ]
+  deps = [
+    ":install_minijail_conf",
+    ":server_proxy",
+  ]
   if (use.test) {
     deps += [ ":mojo_proxy_test" ]
   }
+}
+
+install_config("install_minijail_conf") {
+  install_path = "/usr/share/minijail"
+  sources = [ "minijail/arcvm-server-proxy.conf" ]
 }
 
 pkg_config("target_defaults") {
