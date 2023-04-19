@@ -1517,7 +1517,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kAddGroupPermissionMesaMethod, &Service::AddGroupPermissionMesa},
       {kGetVmLaunchAllowedMethod, &Service::GetVmLaunchAllowed},
       {kGetVmLogsMethod, &Service::GetVmLogs},
       {kSwapVmMethod, &Service::SwapVm},
@@ -4778,28 +4777,16 @@ void AddGroupPermissionChildren(const base::FilePath& path) {
   }
 }
 
-std::unique_ptr<dbus::Response> Service::AddGroupPermissionMesa(
-    dbus::MethodCall* method_call) {
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
+bool Service::AddGroupPermissionMesa(
+    brillo::ErrorPtr* error, const AddGroupPermissionMesaRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  AddGroupPermissionMesaRequest request;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    return dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_FAILED,
-        "Unable to parse AddGroupPermissionMesaRequest from message");
-  }
 
   if (!ValidateVmNameAndOwner(request,
                               request /* in place of a response proto */)) {
-    return dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_FAILED,
-        "Empty or malformed owner ID / VM name");
+    *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                                   DBUS_ERROR_FAILED,
+                                   "Empty or malformed owner ID / VM name");
+    return false;
   }
 
   base::FilePath cache_path =
@@ -4807,7 +4794,7 @@ std::unique_ptr<dbus::Response> Service::AddGroupPermissionMesa(
 
   AddGroupPermissionChildren(cache_path);
 
-  return dbus_response;
+  return true;
 }
 
 std::unique_ptr<dbus::Response> Service::GetVmLaunchAllowed(

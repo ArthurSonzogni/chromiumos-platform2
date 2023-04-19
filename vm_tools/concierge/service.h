@@ -235,8 +235,9 @@ class Service final : public org::chromium::VmConciergeInterface {
 
   // Handles a request to add group permission to directories created by mesa
   // for a specified VM.
-  std::unique_ptr<dbus::Response> AddGroupPermissionMesa(
-      dbus::MethodCall* method_call);
+  bool AddGroupPermissionMesa(
+      brillo::ErrorPtr* error,
+      const AddGroupPermissionMesaRequest& request) override;
 
   std::unique_ptr<dbus::Response> GetVmLaunchAllowed(
       dbus::MethodCall* method_call);

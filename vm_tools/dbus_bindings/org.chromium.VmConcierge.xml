@@ -12,6 +12,16 @@
 <node name="/org/chromium/VmConcierge"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.VmConcierge">
+    <method name="AddGroupPermissionMesa">
+      <tp:docstring>
+        Adds group permission to directories created by mesa for a specified VM.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::AddGroupPermissionMesaRequest"/>
+      </arg>
+    </method>
     <method name="AdjustVm">
       <tp:docstring>
         Adjusts parameters of a given VM.
