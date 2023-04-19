@@ -65,6 +65,15 @@ class AsyncChallengeCredentialAuthBlock : public AuthBlock {
       CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
           result);
 
+  // This continues the creating process after Scrypt::Create.
+  void CreateContinueAfterScrypt(
+      CreateCallback callback,
+      std::unique_ptr<structure::SignatureChallengeInfo>
+          signature_challenge_info,
+      CryptohomeStatus error,
+      std::unique_ptr<KeyBlobs> key_blobs,
+      std::unique_ptr<AuthBlockState> auth_block_state);
+
   // This continues the deriving process after decrypted the high entropy secret
   // from the key challenge service.
   void DeriveContinue(

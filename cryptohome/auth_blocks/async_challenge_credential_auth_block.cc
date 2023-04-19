@@ -10,6 +10,7 @@
 #include <variant>
 
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
@@ -184,18 +185,26 @@ void AsyncChallengeCredentialAuthBlock::CreateContinue(
   // We only need passkey for the AuthInput.
   AuthInput auth_input = {.user_input = std::move(*passkey)};
 
-  auto key_blobs = std::make_unique<KeyBlobs>();
-  auto scrypt_auth_state = std::make_unique<AuthBlockState>();
-
   ScryptAuthBlock scrypt_auth_block;
-  CryptoStatus error = scrypt_auth_block.Create(
-      auth_input, scrypt_auth_state.get(), key_blobs.get());
+  scrypt_auth_block.Create(
+      auth_input,
+      base::BindOnce(
+          &AsyncChallengeCredentialAuthBlock::CreateContinueAfterScrypt,
+          weak_factory_.GetWeakPtr(), std::move(callback),
+          std::move(signature_challenge_info)));
+}
 
+void AsyncChallengeCredentialAuthBlock::CreateContinueAfterScrypt(
+    CreateCallback callback,
+    std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info,
+    CryptohomeStatus error,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::unique_ptr<AuthBlockState> auth_block_state) {
   if (!error.ok()) {
     LOG(ERROR) << __func__
                << "scrypt creation failed for challenge credential.";
     std::move(callback).Run(
-        MakeStatus<CryptohomeCryptoError>(
+        MakeStatus<error::CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAsyncChalCredAuthBlockCannotCreateScryptInCreate))
             .Wrap(std::move(error)),
@@ -204,7 +213,7 @@ void AsyncChallengeCredentialAuthBlock::CreateContinue(
   }
 
   if (auto* scrypt_state =
-          std::get_if<ScryptAuthBlockState>(&scrypt_auth_state->state)) {
+          std::get_if<ScryptAuthBlockState>(&auth_block_state->state)) {
     ChallengeCredentialAuthBlockState cc_state = {
         .scrypt_state = std::move(*scrypt_state),
         .keyset_challenge_info = std::move(*signature_challenge_info),
@@ -343,25 +352,7 @@ void AsyncChallengeCredentialAuthBlock::DeriveContinue(
 
   ScryptAuthBlock scrypt_auth_block;
   auto key_blobs = std::make_unique<KeyBlobs>();
-  std::optional<AuthBlock::SuggestedAction> suggested_action;
-  CryptoStatus error = scrypt_auth_block.Derive(
-      auth_input, scrypt_state, key_blobs.get(), &suggested_action);
-
-  if (!error.ok()) {
-    LOG(ERROR) << __func__
-               << "scrypt derivation failed for challenge credential.";
-    std::move(callback).Run(
-        MakeStatus<CryptohomeCryptoError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAsyncChalCredAuthBlockScryptDeriveFailedInDerive))
-            .Wrap(std::move(error)),
-        nullptr, std::nullopt);
-    return;
-  }
-
-  std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
-                          std::move(key_blobs), suggested_action);
-  return;
+  scrypt_auth_block.Derive(auth_input, scrypt_state, std::move(callback));
 }
 
 }  // namespace cryptohome

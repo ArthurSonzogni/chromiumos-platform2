@@ -5,6 +5,7 @@
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -47,60 +48,101 @@ CryptoStatus DoubleWrappedCompatAuthBlock::IsSupported(Crypto& crypto) {
 std::unique_ptr<AuthBlock> DoubleWrappedCompatAuthBlock::New(
     hwsec::CryptohomeFrontend& hwsec,
     CryptohomeKeysManager& cryptohome_keys_manager) {
-  return std::make_unique<SyncToAsyncAuthBlockAdapter>(
-      std::make_unique<DoubleWrappedCompatAuthBlock>(&hwsec,
-                                                     &cryptohome_keys_manager));
+  return std::make_unique<DoubleWrappedCompatAuthBlock>(
+      &hwsec, &cryptohome_keys_manager);
 }
 
 DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(
     hwsec::CryptohomeFrontend* hwsec,
     CryptohomeKeysManager* cryptohome_keys_manager)
-    : SyncAuthBlock(kDoubleWrapped),
-      tpm_auth_block_(hwsec, cryptohome_keys_manager) {}
+    : AuthBlock(kDoubleWrapped),
+      tpm_auth_block_(std::make_unique<TpmNotBoundToPcrAuthBlock>(
+          hwsec, cryptohome_keys_manager)) {}
 
-CryptoStatus DoubleWrappedCompatAuthBlock::Create(
-    const AuthInput& user_input,
-    AuthBlockState* auth_block_state,
-    KeyBlobs* key_blobs) {
+void DoubleWrappedCompatAuthBlock::Create(const AuthInput& user_input,
+                                          CreateCallback callback) {
   LOG(FATAL) << "Cannot create a keyset wrapped with both scrypt and TPM.";
-  return MakeStatus<CryptohomeCryptoError>(
-      CRYPTOHOME_ERR_LOC(kLocDoubleWrappedAuthBlockUnsupportedInCreate),
-      ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-      CryptoError::CE_OTHER_CRYPTO);
+  std::move(callback).Run(
+      MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(kLocDoubleWrappedAuthBlockUnsupportedInCreate),
+          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+          CryptoError::CE_OTHER_CRYPTO),
+      nullptr, nullptr);
 }
 
-CryptoStatus DoubleWrappedCompatAuthBlock::Derive(
-    const AuthInput& auth_input,
-    const AuthBlockState& state,
-    KeyBlobs* key_blobs,
-    std::optional<AuthBlock::SuggestedAction>* suggested_action) {
+void DoubleWrappedCompatAuthBlock::Derive(const AuthInput& user_input,
+                                          const AuthBlockState& state,
+                                          DeriveCallback callback) {
   const DoubleWrappedCompatAuthBlockState* auth_state;
   if (!(auth_state =
             std::get_if<DoubleWrappedCompatAuthBlockState>(&state.state))) {
     DLOG(FATAL) << "Invalid AuthBlockState";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocDoubleWrappedAuthBlockInvalidBlockStateInDerive),
-        ErrorActionSet(
-            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocDoubleWrappedAuthBlockInvalidBlockStateInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
   }
 
   AuthBlockState scrypt_state = {.state = auth_state->scrypt_state};
-  CryptoStatus error = scrypt_auth_block_.Derive(auth_input, scrypt_state,
-                                                 key_blobs, suggested_action);
+  scrypt_auth_block_.Derive(
+      user_input, scrypt_state,
+      base::BindOnce(&DoubleWrappedCompatAuthBlock::CreateDeriveAfterScrypt,
+                     weak_factory_.GetWeakPtr(), std::move(callback),
+                     std::move(user_input), std::move(state)));
+}
+
+void DoubleWrappedCompatAuthBlock::CreateDeriveAfterScrypt(
+    DeriveCallback callback,
+    const AuthInput& user_input,
+    const AuthBlockState& state,
+    CryptohomeStatus error,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::optional<SuggestedAction> suggested_action) {
   if (error.ok()) {
-    return OkStatus<CryptohomeCryptoError>();
+    std::move(callback).Run(std::move(error), std::move(key_blobs),
+                            std::move(suggested_action));
+    return;
+  }
+  const DoubleWrappedCompatAuthBlockState* auth_state;
+  if (!(auth_state =
+            std::get_if<DoubleWrappedCompatAuthBlockState>(&state.state))) {
+    DLOG(FATAL) << "Invalid AuthBlockState";
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocDoubleWrappedAuthBlockInvalidBlockStateInAfterScrypt),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
   }
 
   AuthBlockState tpm_state = {.state = auth_state->tpm_state};
-  error = tpm_auth_block_.Derive(auth_input, tpm_state, key_blobs,
-                                 suggested_action);
-  if (error.ok())
-    return OkStatus<CryptohomeCryptoError>();
-  return MakeStatus<CryptohomeCryptoError>(
-             CRYPTOHOME_ERR_LOC(
-                 kLocDoubleWrappedAuthBlockTpmDeriveFailedInDerive))
-      .Wrap(std::move(error));
+  tpm_auth_block_.Derive(
+      user_input, tpm_state,
+      base::BindOnce(&DoubleWrappedCompatAuthBlock::CreateDeriveAfterTpm,
+                     weak_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void DoubleWrappedCompatAuthBlock::CreateDeriveAfterTpm(
+    DeriveCallback callback,
+    CryptohomeStatus error,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::optional<SuggestedAction> suggested_action) {
+  if (error.ok()) {
+    std::move(callback).Run(std::move(error), std::move(key_blobs),
+                            std::move(suggested_action));
+    return;
+  }
+  std::move(callback).Run(
+      MakeStatus<error::CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocDoubleWrappedAuthBlockTpmDeriveFailedInDerive))
+          .Wrap(std::move(error)),
+      nullptr, std::nullopt);
 }
 
 }  // namespace cryptohome

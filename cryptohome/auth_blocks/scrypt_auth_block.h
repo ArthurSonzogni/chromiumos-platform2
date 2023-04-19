@@ -15,7 +15,7 @@ namespace cryptohome {
 
 // This auth block would generate the standard vkk_key that's
 // similar to the other standard auth block.
-class ScryptAuthBlock : public SyncAuthBlock {
+class ScryptAuthBlock : public AuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kScrypt;
@@ -31,16 +31,12 @@ class ScryptAuthBlock : public SyncAuthBlock {
   // Derives a high entropy secret from the user's password with scrypt.
   // Returns a key for each field that must be wrapped by scrypt, such as the
   // wrapped_chaps_key, etc.
-  CryptoStatus Create(const AuthInput& user_input,
-                      AuthBlockState* auth_block_state,
-                      KeyBlobs* key_blobs) override;
+  void Create(const AuthInput& user_input, CreateCallback callback) override;
 
   // This uses Scrypt to derive high entropy keys from the user's password.
-  CryptoStatus Derive(
-      const AuthInput& auth_input,
-      const AuthBlockState& state,
-      KeyBlobs* key_blobs,
-      std::optional<AuthBlock::SuggestedAction>* suggested_action) override;
+  void Derive(const AuthInput& auth_input,
+              const AuthBlockState& state,
+              DeriveCallback callback) override;
 
  protected:
   explicit ScryptAuthBlock(DerivationType);

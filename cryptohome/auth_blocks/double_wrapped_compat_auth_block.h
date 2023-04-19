@@ -13,6 +13,7 @@
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
+#include "cryptohome/auth_blocks/sync_to_async_auth_block_adapter.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
@@ -23,7 +24,7 @@ namespace cryptohome {
 
 class CryptohomeKeysManager;
 
-class DoubleWrappedCompatAuthBlock : public SyncAuthBlock {
+class DoubleWrappedCompatAuthBlock : public AuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kDoubleWrappedCompat;
@@ -42,20 +43,28 @@ class DoubleWrappedCompatAuthBlock : public SyncAuthBlock {
 
   // This auth block represents legacy keysets left in an inconsistent state, so
   // calling Create() here is FATAL.
-  CryptoStatus Create(const AuthInput& user_input,
-                      AuthBlockState* auth_block_state,
-                      KeyBlobs* key_blobs) override;
+  void Create(const AuthInput& user_input, CreateCallback callback) override;
 
   // First tries to derive the keys with scrypt, and falls back to the TPM.
-  CryptoStatus Derive(
-      const AuthInput& auth_input,
-      const AuthBlockState& state,
-      KeyBlobs* key_blobs,
-      std::optional<AuthBlock::SuggestedAction>* suggested_action) override;
+  void Derive(const AuthInput& user_input,
+              const AuthBlockState& state,
+              DeriveCallback callback) override;
 
  private:
-  TpmNotBoundToPcrAuthBlock tpm_auth_block_;
+  void CreateDeriveAfterScrypt(DeriveCallback callback,
+                               const AuthInput& user_input,
+                               const AuthBlockState& state,
+                               CryptohomeStatus error,
+                               std::unique_ptr<KeyBlobs> key_blobs,
+                               std::optional<SuggestedAction> suggested_action);
+
+  void CreateDeriveAfterTpm(DeriveCallback callback,
+                            CryptohomeStatus error,
+                            std::unique_ptr<KeyBlobs> key_blobs,
+                            std::optional<SuggestedAction> suggested_action);
   ScryptAuthBlock scrypt_auth_block_;
+  SyncToAsyncAuthBlockAdapter tpm_auth_block_;
+  base::WeakPtrFactory<DoubleWrappedCompatAuthBlock> weak_factory_{this};
 };
 
 }  // namespace cryptohome

@@ -276,7 +276,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_blocks/double_wrapped_compat_auth_block.cc */
   kLocDoubleWrappedAuthBlockTpmDeriveFailedInDerive = 225,
   /* =Obsolete= */
-  kLocChalCredAuthBlockCreateScryptAuthBlockFailedInCreate = 226,
+  kLocDoubleWrappedAuthBlockInvalidBlockStateInAfterScrypt = 226,
   /* =Obsolete= */
   kLocChalCredAuthBlockDerivationFailedInCreate = 227,
   /* =Obsolete= */
