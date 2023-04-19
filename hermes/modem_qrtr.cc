@@ -419,10 +419,17 @@ bool ModemQrtr::SendCommand(QmiCmdInterface* qmi_command,
                << qmi_command->qmi_type();
     return false;
   }
-
-  LOG(INFO) << "ModemQrtr sending transaction type " << qmi_command->qmi_type()
-            << " with data (size : " << packet.data_len
-            << ") : " << base::HexEncode(packet.data, packet.data_len);
+  if (qmi_command->qmi_type() != UimCmd::QmiType::kSendApdu) {
+    LOG(INFO) << "ModemQrtr sending transaction type "
+              << qmi_command->qmi_type()
+              << " with data (size : " << packet.data_len
+              << ") : " << base::HexEncode(packet.data, packet.data_len);
+  } else {
+    // We aren't sure about what data is contained in SendApdu, so avoid
+    // logging it.
+    LOG(INFO) << "ModemQrtr sending transaction type "
+              << qmi_command->qmi_type() << " with size=" << packet.data_len;
+  }
 
   int success = -1;
   success =
