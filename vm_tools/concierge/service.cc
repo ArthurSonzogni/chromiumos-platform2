@@ -174,7 +174,7 @@ constexpr const char* kPluginVmImageExtensions[] = {kPluginVmImageExtension,
 constexpr char kDefaultContainerName[] = "penguin";
 
 // The Id of the DLC that supplies the Bios for the Bruschetta VM.
-constexpr char kBruschettaBiosDlcId[] = "bruschetta-bios-dlc";
+constexpr char kBruschettaBiosDlcId[] = "edk2-ovmf-dlc";
 
 // File path for the Bruschetta Bios file inside the DLC root.
 constexpr char kBruschettaBiosDlcPath[] = "opt/CROSVM_CODE.fd";
