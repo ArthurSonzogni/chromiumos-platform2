@@ -19,6 +19,7 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/username.h"
@@ -48,15 +49,10 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
                            AuthFactorType& out_auth_factor_type,
                            std::string& out_auth_factor_label);
 
-// Returns the D-Bus API proto containing the auth factor description.
-std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
-    const AuthFactorMetadata& auth_factor_metadata,
-    const AuthFactorType& auth_factor_type,
-    const std::string& auth_factor_label);
-
 // Gets AuthFactor for a given user and label. Returns false if the
 // corresponding AuthFactor does not exist.
-bool LoadUserAuthFactorByLabel(AuthFactorManager* manager,
+bool LoadUserAuthFactorByLabel(AuthFactorDriverManager* driver_manager,
+                               AuthFactorManager* manager,
                                const AuthBlockUtility& auth_block_utility,
                                const ObfuscatedUsername& obfuscated_username,
                                const std::string& factor_label,

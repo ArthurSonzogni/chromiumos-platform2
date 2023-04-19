@@ -2093,9 +2093,12 @@ void UserDataAuth::StartAuthSession(
   for (AuthFactorMap::ValueView stored_auth_factor :
        auth_session->auth_factor_map()) {
     const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
+    const AuthFactorDriver& factor_driver =
+        auth_factor_driver_manager_.GetDriver(auth_factor.type());
 
-    std::optional<user_data_auth::AuthFactor> proto_factor = GetAuthFactorProto(
-        auth_factor.metadata(), auth_factor.type(), auth_factor.label());
+    std::optional<user_data_auth::AuthFactor> proto_factor =
+        factor_driver.ConvertToProto(auth_factor.label(),
+                                     auth_factor.metadata());
     if (proto_factor.has_value()) {
       // Only output one factor per label.
       auto [unused, was_inserted] =
@@ -2129,9 +2132,11 @@ void UserDataAuth::StartAuthSession(
             sessions_->Find(GetAccountId(request.account_id()))) {
       for (const CredentialVerifier* verifier :
            user_session->GetCredentialVerifiers()) {
-        if (auto proto_factor = GetAuthFactorProto(
-                verifier->auth_factor_metadata(), verifier->auth_factor_type(),
-                verifier->auth_factor_label())) {
+        const AuthFactorDriver& factor_driver =
+            auth_factor_driver_manager_.GetDriver(verifier->auth_factor_type());
+        if (auto proto_factor = factor_driver.ConvertToProto(
+                verifier->auth_factor_label(),
+                verifier->auth_factor_metadata())) {
           auto [unused, was_inserted] =
               listed_auth_factor_labels.insert(verifier->auth_factor_label());
           if (was_inserted) {
@@ -2881,8 +2886,10 @@ void UserDataAuth::ListAuthFactors(
     // Populate the response from the items in the AuthFactorMap.
     for (AuthFactorMap::ValueView item : auth_factor_map) {
       AuthFactor auth_factor = item.auth_factor();
-      auto auth_factor_proto = GetAuthFactorProto(
-          auth_factor.metadata(), auth_factor.type(), auth_factor.label());
+      const AuthFactorDriver& factor_driver =
+          auth_factor_driver_manager_.GetDriver(auth_factor.type());
+      auto auth_factor_proto = factor_driver.ConvertToProto(
+          auth_factor.label(), auth_factor.metadata());
       if (auth_factor_proto) {
         user_data_auth::AuthFactorWithStatus auth_factor_with_status;
         *auth_factor_with_status.mutable_auth_factor() =
@@ -2941,9 +2948,11 @@ void UserDataAuth::ListAuthFactors(
     if (user_session) {
       for (const CredentialVerifier* verifier :
            user_session->GetCredentialVerifiers()) {
-        if (auto proto_factor = GetAuthFactorProto(
-                verifier->auth_factor_metadata(), verifier->auth_factor_type(),
-                verifier->auth_factor_label())) {
+        const AuthFactorDriver& factor_driver =
+            auth_factor_driver_manager_.GetDriver(verifier->auth_factor_type());
+        if (auto proto_factor = factor_driver.ConvertToProto(
+                verifier->auth_factor_label(),
+                verifier->auth_factor_metadata())) {
           user_data_auth::AuthFactorWithStatus auth_factor_with_status;
           *auth_factor_with_status.mutable_auth_factor() =
               std::move(*proto_factor);
@@ -2997,7 +3006,8 @@ void UserDataAuth::GetAuthFactorExtendedInfo(
       SanitizeUserName(GetAccountId(request.account_id()));
   user_data_auth::AuthFactor auth_factor_proto;
   if (LoadUserAuthFactorByLabel(
-          auth_factor_manager_, *auth_block_utility_, obfuscated_username,
+          &auth_factor_driver_manager_, auth_factor_manager_,
+          *auth_block_utility_, obfuscated_username,
           request.auth_factor_label(), &auth_factor_proto)) {
     *reply.mutable_auth_factor() = std::move(auth_factor_proto);
   }

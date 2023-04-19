@@ -10,7 +10,7 @@
 namespace cryptohome {
 
 LegacyFingerprintAuthFactorDriver::LegacyFingerprintAuthFactorDriver()
-    : AuthFactorDriver(AuthFactorType::kLegacyFingerprint) {}
+    : TypedAuthFactorDriver(AuthFactorType::kLegacyFingerprint) {}
 
 bool LegacyFingerprintAuthFactorDriver::NeedsResetSecret() const {
   return false;
@@ -23,6 +23,15 @@ bool LegacyFingerprintAuthFactorDriver::NeedsRateLimiter() const {
 AuthFactorLabelArity
 LegacyFingerprintAuthFactorDriver::GetAuthFactorLabelArity() const {
   return AuthFactorLabelArity::kNone;
+}
+
+std::optional<user_data_auth::AuthFactor>
+LegacyFingerprintAuthFactorDriver::TypedConvertToProto(
+    const CommonAuthFactorMetadata& common,
+    const std::monostate& typed_metadata) const {
+  user_data_auth::AuthFactor proto;
+  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+  return proto;
 }
 
 }  // namespace cryptohome

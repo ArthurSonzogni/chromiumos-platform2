@@ -5,17 +5,30 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_TYPES_KIOSK_H_
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_KIOSK_H_
 
+#include <optional>
+#include <string>
+
+#include "cryptohome/auth_factor/auth_factor_label_arity.h"
+#include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/types/common.h"
 #include "cryptohome/auth_factor/types/interface.h"
 
 namespace cryptohome {
 
-class KioskAuthFactorDriver : public AuthFactorDriver {
+class KioskAuthFactorDriver final
+    : public TypedAuthFactorDriver<KioskAuthFactorMetadata> {
  public:
   KioskAuthFactorDriver();
 
+ private:
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
+
+  std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
+      const CommonAuthFactorMetadata& common,
+      const KioskAuthFactorMetadata& typed_metadata) const override;
 };
 
 }  // namespace cryptohome

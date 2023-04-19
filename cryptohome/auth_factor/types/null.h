@@ -5,7 +5,11 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_TYPES_NULL_H_
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_NULL_H_
 
+#include <optional>
+#include <string>
+
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
+#include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 
@@ -21,6 +25,11 @@ class NullAuthFactorDriver : public AuthFactorDriver {
   bool NeedsRateLimiter() const override { return false; }
   AuthFactorLabelArity GetAuthFactorLabelArity() const override {
     return AuthFactorLabelArity::kNone;
+  }
+  std::optional<user_data_auth::AuthFactor> ConvertToProto(
+      const std::string& label,
+      const AuthFactorMetadata& metadata) const override {
+    return std::nullopt;
   }
 };
 

@@ -64,84 +64,6 @@ void GetFingerprintMetadata(const user_data_auth::AuthFactor& auth_factor,
   out_auth_factor_metadata.metadata = FingerprintAuthFactorMetadata();
 }
 
-// Creates a D-Bus proto for a password auth factor.
-std::optional<user_data_auth::AuthFactor> ToPasswordProto(
-    const PasswordAuthFactorMetadata& metadata) {
-  user_data_auth::AuthFactor proto;
-  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
-  // There's no metadata for password auth factors currently.
-  proto.mutable_password_metadata();
-  return proto;
-}
-
-// Creates a D-Bus proto for a pin auth factor.
-std::optional<user_data_auth::AuthFactor> ToPinProto(
-    const PinAuthFactorMetadata& metadata) {
-  user_data_auth::AuthFactor proto;
-  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
-  // There's no metadata for pin auth factors currently.
-  proto.mutable_pin_metadata();
-  return proto;
-}
-
-// Creates a D-Bus proto for a cryptohome recovery auth factor.
-std::optional<user_data_auth::AuthFactor> ToCryptohomeRecoveryProto(
-    const CryptohomeRecoveryAuthFactorMetadata& metadata) {
-  user_data_auth::AuthFactor proto;
-  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
-  // TODO(b/232896212): There's no metadata for recovery auth factor currently.
-  proto.mutable_cryptohome_recovery_metadata();
-  return proto;
-}
-
-// Creates a D-Bus proto for a kiosk auth factor.
-std::optional<user_data_auth::AuthFactor> ToKioskProto(
-    const KioskAuthFactorMetadata& metadata) {
-  user_data_auth::AuthFactor proto;
-  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_KIOSK);
-  proto.mutable_kiosk_metadata();
-  return proto;
-}
-
-// Creates a D-Bus proto for a smart card auth factor.
-std::optional<user_data_auth::AuthFactor> ToSmartCardProto(
-    const SmartCardAuthFactorMetadata& metadata) {
-  user_data_auth::AuthFactor proto;
-  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD);
-  proto.mutable_smart_card_metadata()->set_public_key_spki_der(
-      brillo::BlobToString(*metadata.public_key_spki_der));
-  return proto;
-}
-
-// Creates a D-Bus proto for a legacy fingerprint auth factor.
-std::optional<user_data_auth::AuthFactor> ToLegacyFingerprintProto() {
-  user_data_auth::AuthFactor proto;
-  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
-  return proto;
-}
-
-// Creates a D-Bus proto for a fingerprint auth factor.
-std::optional<user_data_auth::AuthFactor> ToFingerprintProto() {
-  user_data_auth::AuthFactor proto;
-  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
-  return proto;
-}
-
-user_data_auth::LockoutPolicy LockoutPolicyToAuthFactor(
-    const std::optional<LockoutPolicy>& policy) {
-  if (!policy.has_value()) {
-    return user_data_auth::LOCKOUT_POLICY_UNKNOWN;
-  }
-  switch (policy.value()) {
-    case cryptohome::LockoutPolicy::kNoLockout:
-      return user_data_auth::LOCKOUT_POLICY_NONE;
-    case cryptohome::LockoutPolicy::kAttemptLimited:
-      return user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED;
-    case cryptohome::LockoutPolicy::kTimeLimited:
-      return user_data_auth::LOCKOUT_POLICY_TIME_LIMITED;
-  }
-}
-
 LockoutPolicy LockoutPolicyFromAuthFactorProto(
     const user_data_auth::LockoutPolicy& policy) {
   switch (policy) {
@@ -284,86 +206,8 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
   return true;
 }
 
-std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
-    const AuthFactorMetadata& auth_factor_metadata,
-    const AuthFactorType& auth_factor_type,
-    const std::string& auth_factor_label) {
-  std::optional<user_data_auth::AuthFactor> proto;
-  // Try to populate the factor-specific data into the proto.
-  switch (auth_factor_type) {
-    case AuthFactorType::kPassword: {
-      auto* password_metadata = std::get_if<PasswordAuthFactorMetadata>(
-          &auth_factor_metadata.metadata);
-      proto = password_metadata ? ToPasswordProto(*password_metadata)
-                                : std::nullopt;
-      break;
-    }
-    case AuthFactorType::kPin: {
-      auto* pin_metadata =
-          std::get_if<PinAuthFactorMetadata>(&auth_factor_metadata.metadata);
-      proto = pin_metadata ? ToPinProto(*pin_metadata) : std::nullopt;
-      if (proto.has_value()) {
-        proto->mutable_common_metadata()->set_lockout_policy(
-            LockoutPolicyToAuthFactor(
-                auth_factor_metadata.common.lockout_policy));
-      }
-      break;
-    }
-    case AuthFactorType::kCryptohomeRecovery: {
-      auto* cryptohome_recovery_metadata =
-          std::get_if<CryptohomeRecoveryAuthFactorMetadata>(
-              &auth_factor_metadata.metadata);
-      proto = cryptohome_recovery_metadata
-                  ? ToCryptohomeRecoveryProto(*cryptohome_recovery_metadata)
-                  : std::nullopt;
-      break;
-    }
-    case AuthFactorType::kKiosk: {
-      auto* kiosk_metadata =
-          std::get_if<KioskAuthFactorMetadata>(&auth_factor_metadata.metadata);
-      proto = kiosk_metadata ? ToKioskProto(*kiosk_metadata) : std::nullopt;
-      break;
-    }
-    case AuthFactorType::kSmartCard: {
-      auto* smart_card_metadata = std::get_if<SmartCardAuthFactorMetadata>(
-          &auth_factor_metadata.metadata);
-      proto = smart_card_metadata ? ToSmartCardProto(*smart_card_metadata)
-                                  : std::nullopt;
-      break;
-    }
-    case AuthFactorType::kLegacyFingerprint: {
-      proto = ToLegacyFingerprintProto();
-      break;
-    }
-    case AuthFactorType::kFingerprint: {
-      proto = ToFingerprintProto();
-      break;
-    }
-    case AuthFactorType::kUnspecified: {
-      LOG(ERROR) << "Cannot convert unspecified AuthFactor to proto";
-      return std::nullopt;
-    }
-  }
-  if (!proto.has_value()) {
-    LOG(ERROR) << "Failed to convert auth factor to proto";
-    return std::nullopt;
-  }
-  // If we get here we were able to populate a proto with all the
-  // factor-specific data. Now fill in the common metadata and the label.
-  // This step cannot fail.
-  if (!proto->has_common_metadata()) {
-    proto->mutable_common_metadata()->set_lockout_policy(
-        user_data_auth::LOCKOUT_POLICY_NONE);
-  }
-  proto->set_label(auth_factor_label);
-  proto->mutable_common_metadata()->set_chromeos_version_last_updated(
-      auth_factor_metadata.common.chromeos_version_last_updated);
-  proto->mutable_common_metadata()->set_chrome_version_last_updated(
-      auth_factor_metadata.common.chrome_version_last_updated);
-  return proto;
-}
-
-bool LoadUserAuthFactorByLabel(AuthFactorManager* manager,
+bool LoadUserAuthFactorByLabel(AuthFactorDriverManager* driver_manager,
+                               AuthFactorManager* manager,
                                const AuthBlockUtility& auth_block_utility,
                                const ObfuscatedUsername& obfuscated_username,
                                const std::string& factor_label,
@@ -378,8 +222,11 @@ bool LoadUserAuthFactorByLabel(AuthFactorManager* manager,
       }
 
       AuthFactor& auth_factor = **owned_auth_factor;
-      auto auth_factor_proto = GetAuthFactorProto(
-          auth_factor.metadata(), auth_factor.type(), auth_factor.label());
+      const AuthFactorDriver& factor_driver =
+          driver_manager->GetDriver(auth_factor.type());
+
+      auto auth_factor_proto = factor_driver.ConvertToProto(
+          auth_factor.label(), auth_factor.metadata());
       if (!auth_factor_proto) {
         return false;
       }

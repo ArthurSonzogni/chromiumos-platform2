@@ -5,7 +5,13 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_TYPES_INTERFACE_H_
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_INTERFACE_H_
 
+#include <optional>
+#include <string>
+
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
+
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
+#include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 
 namespace cryptohome {
@@ -33,6 +39,11 @@ class AuthFactorDriver {
   // Return an enum indicating the label arity of the auth factor (e.g. does the
   // factor support single-label authentication or multi-label authentication).
   virtual AuthFactorLabelArity GetAuthFactorLabelArity() const = 0;
+
+  // Attempt to construct the D-Bus API proto for an AuthFactor using the given
+  // metadata and label. Returns null if the conversion fails.
+  virtual std::optional<user_data_auth::AuthFactor> ConvertToProto(
+      const std::string& label, const AuthFactorMetadata& metadata) const = 0;
 
  private:
   const AuthFactorType type_;
