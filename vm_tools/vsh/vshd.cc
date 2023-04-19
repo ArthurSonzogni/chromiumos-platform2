@@ -186,7 +186,7 @@ int main(int argc, char** argv) {
         int waitpid_exit;
         while ((waitpid_exit = waitpid(-1, nullptr, WNOHANG)) > 0)
           continue;
-        if (waitpid_exit < 0)
+        if (waitpid_exit < 0 && errno != ECHILD)
           PLOG(ERROR) << "Failed to clean up child process";
       } else if (i == 1) {
         // sock_fd.
