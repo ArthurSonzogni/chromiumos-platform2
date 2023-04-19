@@ -18,6 +18,7 @@ allow cros_chromeos_install cros_mke2fs_exec:file rx_file_perms;
 allow cros_chromeos_install cros_mount_exec:file rx_file_perms;
 allow cros_chromeos_install cros_mountpoint_exec:file rx_file_perms;
 allow cros_chromeos_install cros_sed_exec:file rx_file_perms;
+allow cros_chromeos_install cros_sfdisk_exec:file rx_file_perms;
 allow cros_chromeos_install cros_system_file:file rx_file_perms;
 allow cros_chromeos_install cros_udevadm_exec:file rx_file_perms;
 allow cros_chromeos_install cros_umount_exec:file rx_file_perms;
