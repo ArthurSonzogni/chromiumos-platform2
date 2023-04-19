@@ -211,7 +211,7 @@ std::string SwapTool::SwapSetSwappiness(uint32_t swappiness_value) const {
 
 bool SwapTool::KstaledSetRatio(brillo::ErrorPtr* error,
                                uint8_t kstaled_ratio) const {
-  std::string buf = std::to_string(kstaled_ratio > 0 ? 1 : 0);
+  std::string buf = std::to_string(kstaled_ratio);
 
   errno = 0;
   size_t res = base::WriteFile(base::FilePath(kMGLRUEnabledPath), buf.c_str(),
