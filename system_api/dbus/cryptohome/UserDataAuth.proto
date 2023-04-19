@@ -574,11 +574,16 @@ message StartAuthSessionReply {
   // Error if any to start the Auth Session
   // TODO(b/229807416): Remove once CryptohomeError refactor is complete.
   CryptohomeErrorCode error = 1;
+
   // Token that would be used to conduct any auth-related operation.
   bytes auth_session_id = 2;
+  // Token that is used to identify the session in other replies and signals.
+  // Unlike the session ID this cannot be used as an input to perform actions
+  // with the session and so is safe to share.
+  bytes broadcast_id = 8;
+
   // True if the user that the Auth Session is created for exists or not.
   bool user_exists = 3;
-
   // List of AuthFactors configured and available for authentication in the
   // context of this session.
   repeated AuthFactor auth_factors = 5;
