@@ -11,7 +11,7 @@ group("all") {
     ":federated_service",
     ":install_dbus_config_file",
     ":install_dbus_service_activation_config",
-    ":install_minjail_conf",
+    ":install_minijail_conf",
     ":install_seccomp_policy",
     ":install_upstart_conf",
   ]
