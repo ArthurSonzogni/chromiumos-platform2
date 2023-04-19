@@ -30,3 +30,6 @@ allow cros_periodic_scheduler cros_launched_by_periodic_scheduler_domain:process
 allow cros_periodic_scheduler self:capability sys_admin;
 # modprobe, and cros_browser is some process that doesn't have caller path cleared yet.
 neverallow cros_periodic_scheduler { domain - cros_launched_by_periodic_scheduler_domain -modprobe -cros_browser }:process transition;
+
+# SafeFD requires traversing from /
+allow cros_periodic_scheduler rootfs:dir { r_dir_perms };

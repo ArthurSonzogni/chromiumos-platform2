@@ -65,6 +65,9 @@ allow cros_metrics_daemon domain:file { getattr open read };
 allow cros_metrics_daemon domain:lnk_file { read getattr };
 allow cros_metrics_daemon domain:dir { search getattr };
 
+# SafeFD requires traversing from /
+allow cros_metrics_daemon rootfs:dir { r_dir_perms };
+
 # TODO(crbug.com/954670)
 # Temporary workaround before a fixed signer have /etc/lsb-release correctly labelled.
 r_dir_file(cros_metrics_daemon, unlabeled)
