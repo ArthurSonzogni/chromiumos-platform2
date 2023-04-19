@@ -4780,6 +4780,7 @@ void AddGroupPermissionChildren(const base::FilePath& path) {
 bool Service::AddGroupPermissionMesa(
     brillo::ErrorPtr* error, const AddGroupPermissionMesaRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
+  DCHECK(sequence_checker_.CalledOnValidSequence());
 
   if (!ValidateVmNameAndOwner(request,
                               request /* in place of a response proto */)) {
@@ -4896,6 +4897,7 @@ std::unique_ptr<dbus::Response> Service::SwapVm(dbus::MethodCall* method_call) {
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
   LOG(INFO) << "Received request: " << __func__;
+  DCHECK(sequence_checker_.CalledOnValidSequence());
 
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
