@@ -26,6 +26,7 @@
 #include "diagnostics/cros_health_tool/diag/diag_constants.h"
 #include "diagnostics/cros_health_tool/diag/observers/routine_observer.h"
 #include "diagnostics/cros_health_tool/mojo_util.h"
+#include "diagnostics/cros_health_tool/output_util.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -91,8 +92,11 @@ int RunV2Routine(mojo_ipc::RoutineArgumentPtr argument) {
       routine_control.BindNewPipeAndPassReceiver();
   routine_control.set_disconnect_with_reason_handler(
       base::BindOnce([](uint32_t error, const std::string& message) {
-        LOG(INFO) << "Connection dropped by routine control. Error: " << error
-                  << ", message: " << message << ". End Routine.";
+        base::Value::Dict output;
+        SetJsonDictValue("error", error, &output);
+        SetJsonDictValue("message", message, &output);
+        std::cout << "\nError: " << std::endl;
+        OutputJson(output);
       }).Then(run_loop.QuitClosure()));
   cros_healthd_routines_service_->CreateRoutine(std::move(argument),
                                                 std::move(pending_receiver));
