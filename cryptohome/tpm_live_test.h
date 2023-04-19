@@ -29,9 +29,6 @@ class TpmLiveTest {
 
   ~TpmLiveTest() = default;
 
-  // This method runs all of the tests.
-  bool RunLiveTests();
-
   // These tests check TPM-bound AuthBlocks work correctly.
   bool TpmEccAuthBlockTest();
   bool TpmBoundToPcrAuthBlockTest();

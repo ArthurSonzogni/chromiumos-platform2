@@ -157,35 +157,6 @@ TpmLiveTest::TpmLiveTest()
   cryptohome_keys_manager_.Init();
 }
 
-bool TpmLiveTest::RunLiveTests() {
-  if (!TpmEccAuthBlockTest()) {
-    LOG(ERROR) << "Error running TpmEccAuthBlockTest.";
-    return false;
-  }
-  if (!TpmBoundToPcrAuthBlockTest()) {
-    LOG(ERROR) << "Error running TpmBoundToPcrAuthBlockTest.";
-    return false;
-  }
-  if (!TpmNotBoundToPcrAuthBlockTest()) {
-    LOG(ERROR) << "Error running TpmNotBoundToPcrAuthBlockTest.";
-    return false;
-  }
-  if (!DecryptionKeyTest()) {
-    LOG(ERROR) << "Error running Decryption test.";
-    return false;
-  }
-  if (!SealWithCurrentUserTest()) {
-    LOG(ERROR) << "Error running SealWithCurrentUserTest.";
-    return false;
-  }
-  if (!SignatureSealedSecretTest()) {
-    LOG(ERROR) << "Error running SignatureSealedSecretTest.";
-    return false;
-  }
-  LOG(INFO) << "All tests run successfully.";
-  return true;
-}
-
 bool TpmLiveTest::TpmEccAuthBlockTest() {
   LOG(INFO) << "TpmEccAuthBlockTest started";
 
