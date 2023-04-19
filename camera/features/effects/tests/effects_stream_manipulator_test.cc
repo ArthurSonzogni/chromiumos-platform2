@@ -30,16 +30,14 @@ constexpr uint32_t kBufferUsage = GRALLOC_USAGE_SW_READ_OFTEN |
                                   GRALLOC_USAGE_HW_TEXTURE;
 
 const base::FilePath kSampleImagePath = base::FilePath(
-    "/usr/local/share/ml-core-effects-test-assets/tom_sample_720.yuv");
-const base::FilePath kBlurImagePath = base::FilePath(
-    "/usr/local/share/ml-core-effects-test-assets/tom_blur_720.yuv");
-const base::FilePath kMaxBlurImagePath = base::FilePath(
-    "/usr/local/share/ml-core-effects-test-assets/tom_max_blur_720.yuv");
-const base::FilePath kReplaceImagePath = base::FilePath(
-    "/usr/local/share/ml-core-effects-test-assets/tom_replace_720.yuv");
-const base::FilePath kOfficeSampleImagePath = base::FilePath(
     "/usr/local/share/ml-core-effects-test-assets/office_sample_720.yuv");
-const base::FilePath kOfficeRelightImagePath = base::FilePath(
+const base::FilePath kBlurImagePath = base::FilePath(
+    "/usr/local/share/ml-core-effects-test-assets/office_blur_720.yuv");
+const base::FilePath kMaxBlurImagePath = base::FilePath(
+    "/usr/local/share/ml-core-effects-test-assets/office_max_blur_720.yuv");
+const base::FilePath kReplaceImagePath = base::FilePath(
+    "/usr/local/share/ml-core-effects-test-assets/office_replace_720.yuv");
+const base::FilePath kRelightImagePath = base::FilePath(
     "/usr/local/share/ml-core-effects-test-assets/office_relight_720.yuv");
 
 const int kNumFrames = 5;
@@ -304,16 +302,15 @@ TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEnableFlag) {
 
   ConfigureStreams(&yuv_720_stream);
 
-  ProcessFileThroughStreamManipulator(kOfficeSampleImagePath,
-                                      base::FilePath(""), 1);
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
-  ProcessFileThroughStreamManipulator(kOfficeSampleImagePath,
-                                      base::FilePath(""), kNumFrames);
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
+                                      kNumFrames);
 
   ScopedBufferHandle ref_buffer = CameraBufferManager::AllocateScopedBuffer(
       yuv_720_stream.width, yuv_720_stream.height, yuv_720_stream.format,
       yuv_720_stream.usage);
-  ReadFileIntoBuffer(*ref_buffer, kOfficeRelightImagePath);
+  ReadFileIntoBuffer(*ref_buffer, kRelightImagePath);
 
   EXPECT_TRUE(CompareFrames(ref_buffer, output_buffer_));
 }
@@ -341,7 +338,7 @@ TEST_F(EffectsStreamManipulatorTest, NoneEffectApplied) {
 }
 
 TEST_F(EffectsStreamManipulatorTest,
-       DISABLED_RotateThroughEffectsWhileProcessingFrames) {
+       RotateThroughEffectsWhileProcessingFrames) {
   stream_manipulator_ = EffectsStreamManipulator::Create(
       config_path_, &runtime_options_,
       std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
@@ -357,24 +354,23 @@ TEST_F(EffectsStreamManipulatorTest,
       yuv_720_stream.usage);
 
   mojom::EffectsConfigPtr config1 = mojom::EffectsConfig::New();
-  config1->blur_enabled = true;
+  config1->relight_enabled = true;
   runtime_options_.SetEffectsConfig(std::move(config1));
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
-  ReadFileIntoBuffer(*ref_buffer, kBlurImagePath);
+  ReadFileIntoBuffer(*ref_buffer, kRelightImagePath);
   EXPECT_TRUE(CompareFrames(ref_buffer, output_buffer_));
 
   mojom::EffectsConfigPtr config2 = mojom::EffectsConfig::New();
-  config2->relight_enabled = true;
+  config2->blur_enabled = true;
   runtime_options_.SetEffectsConfig(std::move(config2));
-  ProcessFileThroughStreamManipulator(kOfficeSampleImagePath,
-                                      base::FilePath(""), 1);
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
-  ProcessFileThroughStreamManipulator(kOfficeSampleImagePath,
-                                      base::FilePath(""), kNumFrames);
-  ReadFileIntoBuffer(*ref_buffer, kOfficeRelightImagePath);
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
+                                      kNumFrames);
+  ReadFileIntoBuffer(*ref_buffer, kBlurImagePath);
   EXPECT_TRUE(CompareFrames(ref_buffer, output_buffer_));
 
   mojom::EffectsConfigPtr config3 = mojom::EffectsConfig::New();
