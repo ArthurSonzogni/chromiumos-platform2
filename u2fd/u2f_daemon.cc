@@ -99,13 +99,11 @@ void OnPolicySignalConnected(const std::string& interface,
 U2fDaemon::U2fDaemon(bool force_u2f,
                      bool force_g2f,
                      bool enable_corp_protocol,
-                     bool g2f_allowlist_data,
                      bool legacy_kh_fallback)
     : brillo::DBusServiceDaemon(kU2FServiceName),
       force_u2f_(force_u2f),
       force_g2f_(force_g2f),
       enable_corp_protocol_(enable_corp_protocol),
-      g2f_allowlist_data_(g2f_allowlist_data),
       legacy_kh_fallback_(legacy_kh_fallback),
       service_started_(false),
       hwsec_factory_(hwsec::ThreadingMode::kCurrentThread) {
@@ -207,9 +205,9 @@ int U2fDaemon::StartU2fHidService() {
   LOG(INFO) << "Starting U2fHid service, enable_corp_protocol: "
             << enable_corp_protocol_ << ".";
 
-  // If g2f is enabled by policy, we always include allowlisting data.
-  bool include_g2f_allowlist_data =
-      g2f_allowlist_data_ || (ReadU2fPolicy() == U2fMode::kU2fExtended);
+  // If g2f is enabled by policy, we always allow g2f attestation and include
+  // allowlisting data.
+  bool is_g2f_mode = u2f_mode == U2fMode::kU2fExtended;
 
   std::function<void()> request_presence = [this]() {
     IgnorePowerButtonPress();
@@ -219,10 +217,8 @@ int U2fDaemon::StartU2fHidService() {
   service_started_ = true;
 
   return u2fhid_service_->CreateU2fHid(
-             u2f_mode == U2fMode::kU2fExtended /* Allow G2F Attestation */,
-             include_g2f_allowlist_data, enable_corp_protocol_,
-             request_presence, user_state_.get(), sm_proxy_.get(),
-             &metrics_library_)
+             is_g2f_mode, is_g2f_mode, enable_corp_protocol_, request_presence,
+             user_state_.get(), sm_proxy_.get(), &metrics_library_)
              ? EX_OK
              : EX_PROTOCOL;
 }
@@ -314,8 +310,7 @@ bool U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
   std::unique_ptr<U2fCommandProcessor> u2f_command_processor;
 
   // If g2f is enabled by policy, we always include allowlisting data.
-  if (u2fhid_service_ &&
-      (g2f_allowlist_data_ || (ReadU2fPolicy() == U2fMode::kU2fExtended))) {
+  if (u2fhid_service_ && u2f_mode == U2fMode::kU2fExtended) {
     allowlisting_util =
         std::make_unique<AllowlistingUtil>([this](int cert_size) {
           return u2fhid_service_->GetCertifiedG2fCert(cert_size);

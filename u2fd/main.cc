@@ -16,8 +16,6 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(force_u2f, false, "force U2F mode even if disabled by policy");
   DEFINE_bool(force_g2f, false,
               "force U2F mode plus extensions regardless of policy");
-  DEFINE_bool(g2f_allowlist_data, false,
-              "append allowlisting data to G2F register responses");
   DEFINE_bool(verbose, false, "verbose logging");
   DEFINE_bool(user_keys, false, "Whether to use user-specific keys");
   DEFINE_bool(legacy_kh_fallback, false,
@@ -42,8 +40,7 @@ int main(int argc, char* argv[]) {
   bool legacy_kh_fallback = FLAGS_legacy_kh_fallback || !FLAGS_user_keys;
 
   u2f::U2fDaemon daemon(FLAGS_force_u2f, FLAGS_force_g2f,
-                        !FLAGS_force_disable_corp_protocol,
-                        FLAGS_g2f_allowlist_data, legacy_kh_fallback);
+                        !FLAGS_force_disable_corp_protocol, legacy_kh_fallback);
 
   // Start profiling.
   hwsec_foundation::SetUpProfiling();
