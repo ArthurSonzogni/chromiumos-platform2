@@ -34,6 +34,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::AdjustVmResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, see failure_reason when not.
+        </tp:docstring>
       </arg>
     </method>
     <method name="AggressiveBalloon">
@@ -63,6 +66,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ArcVmCompleteBootResponse"/>
+        <tp:docstring>
+          Returns result==ArcVmCompleteBootResult::SUCCESS when successful.
+        </tp:docstring>
       </arg>
     </method>
     <method name="AttachUsbDevice">
@@ -79,6 +85,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::AttachUsbDeviceResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, see reason when not.
+        </tp:docstring>
       </arg>
     </method>
     <method name="CancelDiskImageOperation">
@@ -93,6 +102,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::CancelDiskImageResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, see failure_reason when not.
+        </tp:docstring>
       </arg>
     </method>
     <method name="CreateDiskImage">
@@ -112,6 +124,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::CreateDiskImageResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, see failure_reason when not.
+        </tp:docstring>
       </arg>
     </method>
     <method name="DestroyDiskImage">
@@ -126,6 +141,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::DestroyDiskImageResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, see failure_reason when not.
+        </tp:docstring>
       </arg>
     </method>
     <method name="DetachUsbDevice">
@@ -140,6 +158,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::DetachUsbDeviceResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, see reason when not.
+        </tp:docstring>
       </arg>
     </method>
     <method name="DiskImageStatus">
@@ -154,6 +175,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::DiskImageStatusResponse"/>
+        <tp:docstring>
+          Please check status and failure_reason.
+        </tp:docstring>
       </arg>
     </method>
     <method name="ExportDiskImage">
@@ -178,6 +202,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ExportDiskImageResponse"/>
+        <tp:docstring>
+          Please check status and failure_reason.
+        </tp:docstring>
       </arg>
     </method>
     <method name="GetDnsSettings">
@@ -188,6 +215,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::DnsSettings"/>
+        <tp:docstring>
+          Always successful.
+        </tp:docstring>
       </arg>
     </method>
     <method name="GetVmEnterpriseReportingInfo">
@@ -202,11 +232,14 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::GetVmEnterpriseReportingInfoResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, see failure_reason when not.
+        </tp:docstring>
       </arg>
     </method>
     <method name="GetVmGpuCachePath">
       <tp:docstring>
-        Gets VM's GPU cache path.
+        Gets VM's GPU cache path. Returns dbus error on failure.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal" />
       <arg type="ay" name="request" direction="in">
@@ -230,6 +263,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::GetVmInfoResponse"/>
+        <tp:docstring>
+          Returns success==true when successful.
+        </tp:docstring>
       </arg>
     </method>
     <method name="GetVmLaunchAllowed">
@@ -277,6 +313,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ImportDiskImageResponse"/>
+        <tp:docstring>
+          See status and failure_reason for result.
+        </tp:docstring>
       </arg>
     </method>
     <method name="InstallPflash">
@@ -296,6 +335,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::InstallPflashResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, failure_reason is set on failure.
+        </tp:docstring>
       </arg>
     </method>
     <method name="ListUsbDevices">
@@ -310,6 +352,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ListUsbDeviceResponse"/>
+        <tp:docstring>
+          Returns success==true when successful.
+        </tp:docstring>
       </arg>
     </method>
     <method name="ListVmDisks">
@@ -324,6 +369,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ListVmDisksResponse"/>
+        <tp:docstring>
+          Returns success==true when successful.
+        </tp:docstring>
       </arg>
     </method>
     <method name="ListVms">
@@ -338,6 +386,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ListVmsResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, failure_reason is set on failure.
+        </tp:docstring>
       </arg>
     </method>
     <method name="ReclaimVmMemory">
@@ -352,6 +403,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ReclaimVmMemoryResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, failure_reason is set on failure.
+        </tp:docstring>
       </arg>
     </method>
     <method name="ResizeDiskImage">
@@ -384,6 +438,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ResumeVmResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, failure_reason is set on failure.
+        </tp:docstring>
       </arg>
     </method>
     <method name="SetBalloonTimer">
@@ -398,6 +455,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::SetBalloonTimerResponse"/>
+        <tp:docstring>
+          Returns success==true when successful.
+        </tp:docstring>
       </arg>
     </method>
     <method name="SetVmCpuRestriction">
@@ -412,6 +472,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::SetVmCpuRestrictionResponse"/>
+        <tp:docstring>
+          Returns success==true when successful.
+        </tp:docstring>
       </arg>
     </method>
     <method name="StopVm">
@@ -426,6 +489,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::StopVmResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, failure_reason is set on failure.
+        </tp:docstring>
       </arg>
     </method>
     <method name="StopAllVms">
@@ -446,6 +512,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::SuspendVmResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, failure_reason is set on failure.
+        </tp:docstring>
       </arg>
     </method>
     <method name="SwapVm">
@@ -460,6 +529,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::SwapVmResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, failure_reason is set on failure.
+        </tp:docstring>
       </arg>
     </method>
     <method name="SyncVmTimes">
@@ -470,6 +542,9 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::SyncVmTimesResponse"/>
+        <tp:docstring>
+          Returns failures for the count of failures and failure_reason for reasons.
+        </tp:docstring>
       </arg>
     </method>
 
