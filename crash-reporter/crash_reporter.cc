@@ -261,6 +261,7 @@ void EnterSandbox(bool write_proc, bool log_to_stderr) {
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(init, false, "Initialize crash logging");
+  DEFINE_bool(ec_collect, false, "Run ec_collect");
   DEFINE_bool(boot_collect, false, "Run per-boot crash collection tasks");
   DEFINE_bool(clean_shutdown, false, "Signal clean shutdown");
   DEFINE_bool(clobber_state, false,
@@ -614,9 +615,14 @@ int main(int argc, char* argv[]) {
   });
 
   auto ec_collector = std::make_shared<ECCollector>();
+  auto ec_collector_handlers(boot_handlers);
+  ec_collector_handlers.push_back({
+      .should_handle = FLAGS_ec_collect,
+      .cb = base::BindRepeating(&ECCollector::Collect, ec_collector, false),
+  });
   collectors.push_back({
       .collector = ec_collector,
-      .handlers = boot_handlers,
+      .handlers = ec_collector_handlers,
   });
 
   auto gsc_collector = std::make_shared<GscCollector>();
