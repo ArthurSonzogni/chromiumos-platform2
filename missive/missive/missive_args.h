@@ -56,12 +56,16 @@ class MissiveArgs {
   static constexpr bool kControlledDegradationDefault = false;
   static constexpr char kControlledDegradationParameter[] =
       "controlled_degradation";
+  static constexpr bool kLegacyStorageEnabledDefault = true;
+  static constexpr char kLegacyStorageEnabledParameter[] =
+      "legacy_storage_enabled";
   static constexpr VariationsFeature kStorageFeature{
       "CrOSLateBootMissiveStorage", FEATURE_ENABLED_BY_DEFAULT};
   struct StorageParameters {
     bool compression_enabled = kCompressionEnabledDefault;
     bool encryption_enabled = kEncryptionEnabledDefault;
     bool controlled_degradation = kControlledDegradationDefault;
+    bool legacy_storage_enabled = kLegacyStorageEnabledDefault;
   };
 
   explicit MissiveArgs(

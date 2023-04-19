@@ -168,6 +168,8 @@ TEST_F(MissiveArgsTest, ListeningForCollectionValuesUpdate) {
                 Eq(MissiveArgs::kEncryptionEnabledDefault));
     ASSERT_THAT(collection.ValueOrDie().controlled_degradation,
                 Eq(MissiveArgs::kControlledDegradationDefault));
+    ASSERT_THAT(collection.ValueOrDie().legacy_storage_enabled,
+                Eq(MissiveArgs::kLegacyStorageEnabledDefault));
   }
 
   // Register update callback.
@@ -225,6 +227,8 @@ TEST_F(MissiveArgsTest, DefaultStorageValues) {
               Eq(MissiveArgs::kEncryptionEnabledDefault));
   ASSERT_THAT(storage.ValueOrDie().controlled_degradation,
               Eq(MissiveArgs::kControlledDegradationDefault));
+  ASSERT_THAT(storage.ValueOrDie().legacy_storage_enabled,
+              Eq(MissiveArgs::kLegacyStorageEnabledDefault));
 }
 
 TEST_F(MissiveArgsTest, ExplicitStorageValues) {
@@ -242,6 +246,9 @@ TEST_F(MissiveArgsTest, ExplicitStorageValues) {
   fake_platform_features->SetParam(MissiveArgs::kStorageFeature.name,
                                    MissiveArgs::kControlledDegradationParameter,
                                    "True");
+  fake_platform_features->SetParam(MissiveArgs::kStorageFeature.name,
+                                   MissiveArgs::kLegacyStorageEnabledParameter,
+                                   "False");
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
       std::move(fake_platform_features));
@@ -253,6 +260,7 @@ TEST_F(MissiveArgsTest, ExplicitStorageValues) {
   ASSERT_FALSE(storage.ValueOrDie().compression_enabled);
   ASSERT_FALSE(storage.ValueOrDie().encryption_enabled);
   ASSERT_TRUE(storage.ValueOrDie().controlled_degradation);
+  ASSERT_FALSE(storage.ValueOrDie().legacy_storage_enabled);
 }
 
 TEST_F(MissiveArgsTest, BadStorageValues) {
@@ -267,6 +275,9 @@ TEST_F(MissiveArgsTest, BadStorageValues) {
                                    "Nothing");
   fake_platform_features->SetParam(MissiveArgs::kStorageFeature.name,
                                    MissiveArgs::kControlledDegradationParameter,
+                                   "BadValue");
+  fake_platform_features->SetParam(MissiveArgs::kStorageFeature.name,
+                                   MissiveArgs::kLegacyStorageEnabledParameter,
                                    "BadValue");
   fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
   SequencedMissiveArgs args(
@@ -283,6 +294,8 @@ TEST_F(MissiveArgsTest, BadStorageValues) {
               Eq(MissiveArgs::kEncryptionEnabledDefault));
   ASSERT_THAT(storage.ValueOrDie().controlled_degradation,
               Eq(MissiveArgs::kControlledDegradationDefault));
+  ASSERT_THAT(storage.ValueOrDie().legacy_storage_enabled,
+              Eq(MissiveArgs::kLegacyStorageEnabledDefault));
 }
 
 TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
@@ -308,6 +321,8 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
                 Eq(MissiveArgs::kEncryptionEnabledDefault));
     ASSERT_THAT(storage.ValueOrDie().controlled_degradation,
                 Eq(MissiveArgs::kControlledDegradationDefault));
+    ASSERT_THAT(storage.ValueOrDie().legacy_storage_enabled,
+                Eq(MissiveArgs::kLegacyStorageEnabledDefault));
   }
 
   // Register update callback.
@@ -332,11 +347,17 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
       MissiveArgs::kControlledDegradationParameter, "True");
   fake_platform_features_ptr->TriggerRefetchSignal();
 
+  fake_platform_features_ptr->SetParam(
+      MissiveArgs::kStorageFeature.name,
+      MissiveArgs::kLegacyStorageEnabledParameter, "False");
+  fake_platform_features_ptr->TriggerRefetchSignal();
+
   {
     const auto& storage = update_storage.result();
     ASSERT_FALSE(storage.compression_enabled);
     ASSERT_FALSE(storage.encryption_enabled);
     ASSERT_TRUE(storage.controlled_degradation);
+    ASSERT_FALSE(storage.legacy_storage_enabled);
   }
 }
 }  // namespace

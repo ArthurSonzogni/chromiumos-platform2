@@ -198,6 +198,7 @@ void MissiveArgs::UpdateParameters(
     std::string compression_enabled;
     std::string encryption_enabled;
     std::string controlled_degradation;
+    std::string legacy_storage_enabled;
     auto it = result.find(kStorageFeature.name);
     if (it != result.end() && it->second.enabled) {
       compression_enabled =
@@ -206,6 +207,8 @@ void MissiveArgs::UpdateParameters(
           FindValueOrEmpty(kEncryptionEnabledParameter, it->second.params);
       controlled_degradation =
           FindValueOrEmpty(kControlledDegradationParameter, it->second.params);
+      legacy_storage_enabled =
+          FindValueOrEmpty(kLegacyStorageEnabledParameter, it->second.params);
     }
     storage_parameters_.compression_enabled = BoolParameterValue(
         kCompressionEnabledParameter, compression_enabled, true);
@@ -213,6 +216,8 @@ void MissiveArgs::UpdateParameters(
         kEncryptionEnabledParameter, encryption_enabled, true);
     storage_parameters_.controlled_degradation = BoolParameterValue(
         kControlledDegradationParameter, controlled_degradation, false);
+    storage_parameters_.legacy_storage_enabled = BoolParameterValue(
+        kLegacyStorageEnabledParameter, legacy_storage_enabled, true);
   }
 }
 
