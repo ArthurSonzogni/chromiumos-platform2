@@ -12164,8 +12164,19 @@ mno {
     }
     mccmnc : "52501"
     mccmnc : "52502"
+    mccmnc : "52507"
     mobile_apn {
-      apn : "internet"
+      apn : "e-ideas"
+      localized_name {
+        name : "Singtel (PostPaid)"
+      }
+      type : DEFAULT
+    }
+    mobile_apn {
+      apn : "hicard"
+      localized_name {
+        name : "Singtel (PrePaid)"
+      }
       type : DEFAULT
     }
   }
