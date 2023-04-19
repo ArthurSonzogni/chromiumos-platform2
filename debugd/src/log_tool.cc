@@ -97,7 +97,10 @@ class ArcBugReportLog : public LogTool::Log {
   ArcBugReportLog()
       : Log(kCommand,
             "arc-bugreport",
-            "/usr/bin/nsenter -t1 -m /usr/sbin/android-sh -c "
+            // This command could take longer than 2 minutes. Give up after 1
+            // minute since ARC bugreport since P99.94 takes 60 second or less.
+            "timeout -s KILL 1m /usr/bin/nsenter -t1 -m /usr/sbin/android-sh "
+            "-c "
             "/system/bin/arc-bugreport",
             kRoot,
             kRoot,
