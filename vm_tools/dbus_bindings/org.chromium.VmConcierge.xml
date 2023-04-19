@@ -414,6 +414,20 @@
                     value="vm_tools::concierge::SuspendVmResponse"/>
       </arg>
     </method>
+    <method name="SwapVm">
+      <tp:docstring>
+        Handles a request to change VM swap state.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::SwapVmRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::SwapVmResponse"/>
+      </arg>
+    </method>
     <method name="SyncVmTimes">
       <tp:docstring>
          Updates all VMs' times to the current host time.

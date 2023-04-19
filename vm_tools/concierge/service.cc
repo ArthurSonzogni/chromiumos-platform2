@@ -1517,7 +1517,6 @@ bool Service::Init() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kSwapVmMethod, &Service::SwapVm},
       {kInstallPflashMethod, &Service::InstallPflash},
   };
 
@@ -4862,35 +4861,21 @@ bool Service::GetVmLogs(brillo::ErrorPtr* error,
   return true;
 }
 
-std::unique_ptr<dbus::Response> Service::SwapVm(dbus::MethodCall* method_call) {
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
+SwapVmResponse Service::SwapVm(const SwapVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  SwapVmRequest request;
   SwapVmResponse response;
 
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    return dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_FAILED,
-        "Unable to parse SwapVmRequest from message");
-  }
-
   if (!ValidateVmNameAndOwner(request, response)) {
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   auto iter = FindVm(request.owner_id(), request.name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
     response.set_failure_reason("Requested VM does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   const auto& vm = iter->second;
@@ -4904,8 +4889,7 @@ std::unique_ptr<dbus::Response> Service::SwapVm(dbus::MethodCall* method_call) {
     response.set_failure_reason("Unknown operation");
   }
 
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 void Service::NotifyVmSwapping(const VmId& vm_id) {

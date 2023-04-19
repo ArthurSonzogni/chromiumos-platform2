@@ -249,7 +249,8 @@ class Service final : public org::chromium::VmConciergeInterface {
                  GetVmLogsResponse* response) override;
 
   // Handles a request to change VM swap state.
-  std::unique_ptr<dbus::Response> SwapVm(dbus::MethodCall* method_call);
+  SwapVmResponse SwapVm(const SwapVmRequest& request) override;
+
   void NotifyVmSwapping(const VmId& vm_id);
 
   // Handles a request to install the Pflash image associated with a VM.
