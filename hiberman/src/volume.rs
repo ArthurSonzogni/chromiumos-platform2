@@ -40,6 +40,8 @@ use crate::hiberutil::checked_command_output;
 use crate::hiberutil::emergency_reboot;
 use crate::hiberutil::get_device_mounted_at_dir;
 use crate::hiberutil::get_page_size;
+use crate::hiberutil::keyctl_add_key;
+use crate::hiberutil::keyctl_remove_key;
 use crate::hiberutil::log_io_duration;
 use crate::hiberutil::mount_filesystem;
 use crate::hiberutil::stateful_block_partition_one;
@@ -704,18 +706,26 @@ impl VolumeManager {
 
     /// Create the dm-crypt device 'hiberintegrity' for dm-integrity data (on top
     /// of the logical volume with the same name).
-    fn create_hiberintegrity_dm_dev(&self, key: &[u8]) -> Result<()> {
+    fn create_hiberintegrity_dm_dev(&self, key_data: &[u8]) -> Result<()> {
+        let key_desc = "dmcrypt:hiberintegrity";
+
+        keyctl_add_key(key_desc, key_data)?;
+
         let backing_dev = lv_path(&self.vg_name, Self::HIBERINTEGRITY);
         let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
-        let key_hex_str = hex::encode(key);
         let table = format!(
-            "0 {backing_dev_nr_sectors} crypt capi:ctr(aes)-plain64 {key_hex_str} \
+            "0 {backing_dev_nr_sectors} crypt capi:ctr(aes)-plain64 :32:logon:{key_desc} \
                              0 {} 0 4 no_read_workqueue no_write_workqueue \
                              sector_size:{SIZE_4K} iv_large_sectors",
             backing_dev.display()
         );
 
-        DeviceMapper::create_device(Self::HIBERINTEGRITY, &table)
+        let res = DeviceMapper::create_device(Self::HIBERINTEGRITY, &table);
+
+        // Now that the device is set up we can remove the key again from the kernel key ring.
+        keyctl_remove_key(key_desc)?;
+
+        res
     }
 
     /// Create the dm-integrity device 'hiberimage_hiberintegrity' (on top of
@@ -749,19 +759,27 @@ impl VolumeManager {
 
     /// Create the dm-crypt device 'hiberimage' for the hibernation image (on top of the
     /// dm-integrity device 'hiberimage_integrity'.
-    fn create_hiberimage_dm_dev(&self, key: &[u8]) -> Result<()> {
+    fn create_hiberimage_dm_dev(&self, key_data: &[u8]) -> Result<()> {
+        let key_desc = "dmcrypt:hiberimage";
+
+        keyctl_add_key(key_desc, key_data)?;
+
         let backing_dev = DeviceMapper::device_path(Self::HIBERIMAGE_INTEGRITY).unwrap();
         let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
-        let key_hex_str = hex::encode(key);
         let table = format!(
-            "0 {backing_dev_nr_sectors} crypt capi:gcm(aes)-random {key_hex_str} \
+            "0 {backing_dev_nr_sectors} crypt capi:gcm(aes)-random :32:logon:{key_desc} \
                              0 {} 0 5 allow_discards no_read_workqueue \
                              no_write_workqueue sector_size:{SIZE_4K} \
                              integrity:{AES_GCM_INTEGRITY_BYTES_PER_BLOCK}:aead",
             backing_dev.display()
         );
 
-        DeviceMapper::create_device(Self::HIBERIMAGE, &table)
+        let res = DeviceMapper::create_device(Self::HIBERIMAGE, &table);
+
+        // Now that the device is set up we can remove the key again from the kernel key ring.
+        keyctl_remove_key(key_desc)?;
+
+        res
     }
 }
 

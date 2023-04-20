@@ -38,6 +38,8 @@ use crate::metrics::MetricsLogger;
 use crate::metrics::MetricsSample;
 use crate::mmapbuf::MmapBuffer;
 
+const KEYCTL_PATH: &str = "/bin/keyctl";
+
 /// Define the hibernate stages.
 pub enum HibernateStage {
     Suspend,
@@ -523,4 +525,26 @@ pub fn unmount_filesystem<P: AsRef<OsStr>>(mountpoint: P) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Add a logon key to the kernel key ring
+pub fn keyctl_add_key(description: &str, key_data: &[u8]) -> Result<()> {
+    checked_command(Command::new(KEYCTL_PATH).args([
+        "add",
+        "-x",
+        "logon",
+        description,
+        &hex::encode(key_data),
+        "@s",
+    ]))
+    .context(format!(
+        "Failed to add key '{description}' to the kernel key ring"
+    ))
+}
+
+/// Remove a logon key from the kernel key ring
+pub fn keyctl_remove_key(description: &str) -> Result<()> {
+    checked_command(Command::new(KEYCTL_PATH).args(["purge", "-s", "logon", description])).context(
+        format!("Failed to remove key '{description}' from the kernel key ring"),
+    )
 }
