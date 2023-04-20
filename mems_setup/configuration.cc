@@ -61,6 +61,11 @@ constexpr char kCalibrationBias[] = "bias";
 constexpr char kCalibrationScale[] = "scale";
 constexpr char kSysfsTriggerPrefix[] = "sysfstrig";
 
+constexpr char kCellular[] = "cellular";
+// TODO(b/280013155): Drop it after all boards are updated.
+constexpr char kLte[] = "lte";
+constexpr char kWifi[] = "wifi";
+
 constexpr int kGyroMaxVpdCalibration = 16384;  // 16dps
 constexpr int kAccelMaxVpdCalibration = 256;   // .250g
 constexpr int kAccelSysfsTriggerId = 0;
@@ -635,10 +640,19 @@ bool Configuration::ConfigProximity() {
       return false;
     }
 
-    std::string devlink_suffix =
-        devlink_opt.value().substr(std::strlen(kDevlinkPrefix) + 1);
-    if (devlink_suffix.compare("lte") == 0)
-      devlink_suffix = "cellular";
+    bool isCellular = false, isWifi = false;
+    if (devlink_opt.value().find(kLte) != std::string::npos ||
+        devlink_opt.value().find(kCellular) != std::string::npos) {
+      isCellular = true;
+    }
+    if (devlink_opt.value().find(kWifi) != std::string::npos)
+      isWifi = true;
+
+    if (!isCellular && !isWifi) {
+      LOG(ERROR) << "Invalid devlink: " << devlink_opt.value()
+                 << ", neither lte nor wifi";
+      return false;
+    }
 
     std::string config_filename = "";
     for (int i = 0; i < kSystemPathIndexLimit; ++i) {
@@ -650,16 +664,24 @@ bool Configuration::ConfigProximity() {
         break;
       }
 
-      // It should have the format of
-      // "/.../semtech_config_|devlink_suffix|.json".
-      if (system_path.size() > devlink_suffix.size() + 5 &&
-          system_path
-                  .substr(system_path.size() - (devlink_suffix.size() + 5),
-                          devlink_suffix.size())
-                  .compare(devlink_suffix) == 0) {
-        config_filename = system_path;
-        break;
+      // It should have the format of "/.../semtech_config_|xxx|.json" based on
+      // the type.
+      std::string system_path_base =
+          base::FilePath(system_path).BaseName().value();
+
+      if (isCellular) {
+        if (system_path_base.find(kCellular) == std::string::npos &&
+            system_path_base.find(kLte) == std::string::npos) {
+          break;
+        }
       }
+
+      if (isWifi) {
+        if (system_path_base.find(kWifi) == std::string::npos)
+          break;
+      }
+
+      config_filename = system_path;
     }
 
     if (config_filename.empty()) {
