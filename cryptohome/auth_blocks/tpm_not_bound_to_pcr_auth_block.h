@@ -23,7 +23,7 @@
 
 namespace cryptohome {
 
-class TpmNotBoundToPcrAuthBlock : public SyncAuthBlock {
+class TpmNotBoundToPcrAuthBlock : public AuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kTpmNotBoundToPcr;
@@ -40,27 +40,13 @@ class TpmNotBoundToPcrAuthBlock : public SyncAuthBlock {
   TpmNotBoundToPcrAuthBlock& operator=(const TpmNotBoundToPcrAuthBlock&) =
       delete;
 
-  CryptoStatus Create(const AuthInput& user_input,
-                      AuthBlockState* auth_block_state,
-                      KeyBlobs* key_blobs) override;
+  void Create(const AuthInput& user_input, CreateCallback callback) override;
 
-  CryptoStatus Derive(
-      const AuthInput& auth_input,
-      const AuthBlockState& state,
-      KeyBlobs* key_blobs,
-      std::optional<AuthBlock::SuggestedAction>* suggested_action) override;
+  void Derive(const AuthInput& auth_input,
+              const AuthBlockState& state,
+              DeriveCallback callback) override;
 
  private:
-  // Decrypt the |vault_key| that is not bound to PCR, returning the |vkk_iv|
-  // and |vkk_key|.
-  CryptoStatus DecryptTpmNotBoundToPcr(
-      const TpmNotBoundToPcrAuthBlockState& tpm_state,
-      const brillo::SecureBlob& vault_key,
-      const brillo::SecureBlob& tpm_key,
-      const brillo::SecureBlob& salt,
-      brillo::SecureBlob* vkk_iv,
-      brillo::SecureBlob* vkk_key) const;
-
   hwsec::CryptohomeFrontend* hwsec_;
   CryptohomeKeyLoader* cryptohome_key_loader_;
   TpmAuthBlockUtils utils_;

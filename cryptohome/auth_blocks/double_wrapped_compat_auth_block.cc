@@ -56,8 +56,7 @@ DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(
     hwsec::CryptohomeFrontend* hwsec,
     CryptohomeKeysManager* cryptohome_keys_manager)
     : AuthBlock(kDoubleWrapped),
-      tpm_auth_block_(std::make_unique<TpmNotBoundToPcrAuthBlock>(
-          hwsec, cryptohome_keys_manager)) {}
+      tpm_auth_block_(hwsec, cryptohome_keys_manager) {}
 
 void DoubleWrappedCompatAuthBlock::Create(const AuthInput& user_input,
                                           CreateCallback callback) {

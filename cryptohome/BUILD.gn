@@ -289,6 +289,8 @@ if (use.test) {
       "auth_blocks/pin_weaver_auth_block_unittest.cc",
       "auth_blocks/revocation_unittest.cc",
       "auth_blocks/scrypt_auth_block_test.cc",
+      "auth_blocks/tpm_ecc_auth_block_test.cc",
+      "auth_blocks/tpm_not_bound_to_pcr_auth_block_test.cc",
       "auth_factor/auth_factor_label_unittest.cc",
       "auth_factor/auth_factor_manager_unittest.cc",
       "auth_factor/auth_factor_map_unittest.cc",

@@ -233,10 +233,9 @@ void TpmLiveTest::TpmBoundToPcrAuthBlockTest(TPMTestCallback callback) {
 
 void TpmLiveTest::TpmNotBoundToPcrAuthBlockTest(TPMTestCallback callback) {
   LOG(INFO) << "TpmNotBoundToPcrAuthBlockTest started";
-  std::unique_ptr<SyncToAsyncAuthBlockAdapter> auth_block =
-      std::make_unique<SyncToAsyncAuthBlockAdapter>(
-          std::make_unique<TpmNotBoundToPcrAuthBlock>(
-              hwsec_.get(), &cryptohome_keys_manager_));
+  std::unique_ptr<AuthBlock> auth_block =
+      std::make_unique<TpmNotBoundToPcrAuthBlock>(hwsec_.get(),
+                                                  &cryptohome_keys_manager_);
   TestPasswordBasedAuthBlock(std::move(auth_block), std::move(callback));
 }
 

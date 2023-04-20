@@ -63,7 +63,7 @@ class DoubleWrappedCompatAuthBlock : public AuthBlock {
                             std::unique_ptr<KeyBlobs> key_blobs,
                             std::optional<SuggestedAction> suggested_action);
   ScryptAuthBlock scrypt_auth_block_;
-  SyncToAsyncAuthBlockAdapter tpm_auth_block_;
+  TpmNotBoundToPcrAuthBlock tpm_auth_block_;
   base::WeakPtrFactory<DoubleWrappedCompatAuthBlock> weak_factory_{this};
 };
 
