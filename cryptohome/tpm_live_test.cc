@@ -215,10 +215,9 @@ void TpmLiveTest::TpmEccAuthBlockTest(TPMTestCallback callback) {
     return;
   }
 
-  std::unique_ptr<SyncToAsyncAuthBlockAdapter> auth_block =
-      std::make_unique<SyncToAsyncAuthBlockAdapter>(
-          std::make_unique<TpmEccAuthBlock>(hwsec_.get(),
-                                            &cryptohome_keys_manager_));
+  std::unique_ptr<TpmEccAuthBlock> auth_block =
+      std::make_unique<TpmEccAuthBlock>(hwsec_.get(),
+                                        &cryptohome_keys_manager_);
   TestPasswordBasedAuthBlock(std::move(auth_block), std::move(callback));
 }
 

@@ -25,7 +25,7 @@
 
 namespace cryptohome {
 
-class TpmEccAuthBlock : public SyncAuthBlock {
+class TpmEccAuthBlock : public AuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kTpmEcc;
@@ -41,23 +41,18 @@ class TpmEccAuthBlock : public SyncAuthBlock {
   TpmEccAuthBlock(const TpmEccAuthBlock&) = delete;
   TpmEccAuthBlock& operator=(const TpmEccAuthBlock&) = delete;
 
-  CryptoStatus Create(const AuthInput& auth_input,
-                      AuthBlockState* auth_block_state,
-                      KeyBlobs* key_blobs) override;
+  void Create(const AuthInput& user_input, CreateCallback callback) override;
 
-  CryptoStatus Derive(
-      const AuthInput& auth_input,
-      const AuthBlockState& state,
-      KeyBlobs* key_blobs,
-      std::optional<AuthBlock::SuggestedAction>* suggested_action) override;
+  void Derive(const AuthInput& auth_input,
+              const AuthBlockState& state,
+              DeriveCallback callback) override;
 
  private:
   // The create process may fail due to the scalar of EC_POINT_mul out of range.
   // We should retry the process again when retry_limit is not zero.
-  CryptoStatus TryCreate(const AuthInput& auth_input,
-                         AuthBlockState* auth_block_state,
-                         KeyBlobs* key_blobs,
-                         int retry_limit);
+  void TryCreate(const AuthInput& auth_input,
+                 int retry_limit,
+                 AuthBlock::CreateCallback callback);
 
   // Derive the VKK from the user input and auth state.
   CryptoStatus DeriveVkk(bool locked_to_single_user,
