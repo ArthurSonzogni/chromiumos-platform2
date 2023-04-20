@@ -85,6 +85,30 @@ bool StoreToConfigString(const StoreInterface* storage,
   return true;
 }
 
+std::optional<patchpanel::Client::DHCPOptions> GetDHCPOptions(
+    const Network& network) {
+  const auto ipconfig = network.ipconfig();
+  if (!ipconfig) {
+    return std::nullopt;
+  }
+
+  patchpanel::Client::DHCPOptions options;
+  for (const auto& dns_server : ipconfig->properties().dns_servers) {
+    const auto dns_server_ip =
+        IPAddress::CreateFromString(dns_server, IPAddress::kFamilyIPv4);
+    if (dns_server_ip) {
+      std::array<uint8_t, 4> ip_bytes;
+      for (size_t i = 0; i < 4; ++i) {
+        ip_bytes[i] =
+            static_cast<uint8_t>(*(dns_server_ip->GetConstData() + i));
+      }
+      options.dns_server_addresses.push_back(ip_bytes);
+    }
+  }
+  options.domain_search_list = ipconfig->properties().domain_search;
+  return options;
+}
+
 }  // namespace
 
 TetheringManager::TetheringManager(Manager* manager)
@@ -444,6 +468,7 @@ void TetheringManager::CheckAndStartDownstreamTetheredNetwork() {
   downstream_network_started_ =
       manager_->patchpanel_client()->CreateTetheredNetwork(
           downstream_ifname, upstream_ifname,
+          GetDHCPOptions(*upstream_network_),
           base::BindOnce(&TetheringManager::OnDownstreamNetworkReady,
                          base::Unretained(this)));
   if (!downstream_network_started_) {

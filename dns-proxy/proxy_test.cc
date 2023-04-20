@@ -232,6 +232,7 @@ class MockPatchpanelClient : public patchpanel::Client {
               CreateTetheredNetwork,
               (const std::string&,
                const std::string&,
+               const std::optional<DHCPOptions>& dhcp_options,
                patchpanel::Client::CreateTetheredNetworkCallback));
   MOCK_METHOD(bool,
               CreateLocalOnlyNetwork,

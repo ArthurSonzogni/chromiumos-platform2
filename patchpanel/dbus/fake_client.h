@@ -88,6 +88,7 @@ class BRILLO_EXPORT FakeClient : public Client {
   bool CreateTetheredNetwork(
       const std::string& downstream_ifname,
       const std::string& upstream_ifname,
+      const std::optional<DHCPOptions>& dhcp_options,
       Client::CreateTetheredNetworkCallback callback) override;
 
   bool CreateLocalOnlyNetwork(

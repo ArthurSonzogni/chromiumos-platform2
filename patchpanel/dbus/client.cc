@@ -614,6 +614,7 @@ class ClientImpl : public Client {
 
   bool CreateTetheredNetwork(const std::string& downstream_ifname,
                              const std::string& upstream_ifname,
+                             const std::optional<DHCPOptions>& dhcp_options,
                              CreateTetheredNetworkCallback callback) override;
 
   bool CreateLocalOnlyNetwork(const std::string& ifname,
@@ -1282,13 +1283,11 @@ void ClientImpl::RegisterNeighborReachabilityEventHandler(
       base::BindOnce(OnSignalConnectedCallback));
 }
 
-bool ClientImpl::CreateTetheredNetwork(const std::string& downstream_ifname,
-                                       const std::string& upstream_ifname,
-                                       CreateTetheredNetworkCallback callback) {
-  // TODO(b/275278561): Get the DNS server and domain search from the caller.
-  const std::vector<std::array<uint8_t, 4>> dns_servers = {{8, 8, 8, 8}};
-  const std::vector<std::string> domain_searches = {};
-
+bool ClientImpl::CreateTetheredNetwork(
+    const std::string& downstream_ifname,
+    const std::string& upstream_ifname,
+    const std::optional<DHCPOptions>& dhcp_options,
+    CreateTetheredNetworkCallback callback) {
   dbus::MethodCall method_call(kPatchPanelInterface,
                                kCreateTetheredNetworkMethod);
   dbus::MessageWriter writer(&method_call);
@@ -1302,12 +1301,14 @@ bool ClientImpl::CreateTetheredNetwork(const std::string& downstream_ifname,
   //  - Forward DHCP WPAD proxy configuration if advertised by the upstream
   //    network.
   auto* ipv4_config = request.mutable_ipv4_config();
-  ipv4_config->set_use_dhcp(true);
-  for (const auto& dns_server : dns_servers) {
-    ipv4_config->add_dns_servers(dns_server.data(), dns_server.size());
-  }
-  for (const auto& domain_search : domain_searches) {
-    ipv4_config->add_domain_searches(domain_search);
+  if (dhcp_options) {
+    ipv4_config->set_use_dhcp(true);
+    for (const auto& dns_server : dhcp_options->dns_server_addresses) {
+      ipv4_config->add_dns_servers(dns_server.data(), dns_server.size());
+    }
+    for (const auto& domain_search : dhcp_options->domain_search_list) {
+      ipv4_config->add_domain_searches(domain_search);
+    }
   }
 
   request.set_enable_ipv6(true);

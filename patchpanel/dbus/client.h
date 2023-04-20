@@ -179,6 +179,12 @@ class BRILLO_EXPORT Client {
     NeighborStatus status;
   };
 
+  // Contains the options for creating the IPv4 DHCP server.
+  struct DHCPOptions {
+    std::vector<std::array<uint8_t, 4>> dns_server_addresses;
+    std::vector<std::string> domain_search_list;
+  };
+
   using GetTrafficCountersCallback =
       base::OnceCallback<void(const std::vector<TrafficCounter>&)>;
   using NeighborReachabilityEventHandler =
@@ -321,6 +327,7 @@ class BRILLO_EXPORT Client {
   virtual bool CreateTetheredNetwork(
       const std::string& downstream_ifname,
       const std::string& upstream_ifname,
+      const std::optional<DHCPOptions>& dhcp_options,
       CreateTetheredNetworkCallback callback) = 0;
 
   // Sends request for creating a local-only L3 network on |ifname|.
