@@ -33,12 +33,16 @@ namespace arc::keymint {
 namespace {
 
 constexpr size_t kOperationTableSize = 16;
+// TODO(b/278968783): Add version negotiation for KeyMint.
+// KeyMint Message versions are drawn from Android
+// Keymaster Messages.
+constexpr int32_t kKeyMintMessageVersion = 4;
 
 }  // namespace
 
 KeyMintServer::Backend::Backend()
     : context_(new context::ArcKeyMintContext()),
-      keymint_(context_, kOperationTableSize) {}
+      keymint_(context_, kOperationTableSize, kKeyMintMessageVersion) {}
 
 KeyMintServer::Backend::~Backend() = default;
 
@@ -76,7 +80,8 @@ void KeyMintServer::RunKeyMintRequest(
          std::unique_ptr<KmRequest> request,
          base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback) {
         // Prepare a KeyMint response data structure.
-        auto response = std::make_unique<KmResponse>();
+        auto response =
+            std::make_unique<KmResponse>(keymaster->message_version());
         // Execute the operation.
         (*keymaster.*member)(*request, response.get());
         // Post |callback| to the |original_task_runner| given |response|.
@@ -91,6 +96,45 @@ void KeyMintServer::RunKeyMintRequest(
                      base::SingleThreadTaskRunner::GetCurrentDefault(),
                      backend_.keymint(), member, std::move(request),
                      std::move(callback)));
+}
+
+void KeyMintServer::DeleteKey(const std::vector<uint8_t>& key_blob,
+                              DeleteKeyCallback callback) {
+  // Convert input |key_blob| into |km_request|. All data is deep copied to
+  // avoid use-after-free.
+  auto km_request = std::make_unique<::keymaster::DeleteKeyRequest>(
+      backend_.keymint()->message_version());
+  km_request->SetKeyMaterial(key_blob.data(), key_blob.size());
+
+  // Call keymint.
+  RunKeyMintRequest(
+      FROM_HERE, &::keymaster::AndroidKeymaster::DeleteKey,
+      std::move(km_request),
+      base::BindOnce(
+          [](DeleteKeyCallback callback,
+             std::unique_ptr<::keymaster::DeleteKeyResponse> km_response) {
+            // Run callback.
+            std::move(callback).Run(km_response->error);
+          },
+          std::move(callback)));
+}
+
+void KeyMintServer::DeleteAllKeys(DeleteAllKeysCallback callback) {
+  // Prepare keymint request.
+  auto km_request = std::make_unique<::keymaster::DeleteAllKeysRequest>(
+      backend_.keymint()->message_version());
+
+  // Call keymint.
+  RunKeyMintRequest(
+      FROM_HERE, &::keymaster::AndroidKeymaster::DeleteAllKeys,
+      std::move(km_request),
+      base::BindOnce(
+          [](DeleteAllKeysCallback callback,
+             std::unique_ptr<::keymaster::DeleteAllKeysResponse> km_response) {
+            // Run callback.
+            std::move(callback).Run(km_response->error);
+          },
+          std::move(callback)));
 }
 
 }  // namespace arc::keymint
