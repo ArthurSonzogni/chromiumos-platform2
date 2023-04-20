@@ -4,6 +4,8 @@
 
 #include "tpm_manager/server/tpm_manager_service.h"
 
+#include <fcntl.h>
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -42,6 +44,8 @@ constexpr char kPowerWashCompletedFile[] =
     "/mnt/stateful_partition/unencrypted/.powerwash_completed";
 constexpr char kPowerWashReportedFile[] =
     "/var/lib/tpm_manager/.powerwash_reported";
+constexpr char kAllowedStateFile[] = "/var/lib/tpm_manager/.allowed";
+constexpr mode_t kAllowedStateFilePermissions = 0600;
 
 // Produce 20 random human unreadable bytes.
 constexpr size_t kRandomOwnerPasswordLength = 20;
@@ -75,6 +79,19 @@ int GetFingerprint(uint32_t family,
       static_cast<uint8_t>(hash[0]) | static_cast<uint8_t>(hash[1]) << 8 |
       static_cast<uint8_t>(hash[2]) << 16 | static_cast<uint8_t>(hash[3]) << 24;
   return result & 0x7fffffff;
+}
+
+void StoreTpmAllowState(bool allowed) {
+  base::FilePath allowed_file = base::FilePath(kAllowedStateFile);
+  std::string data = base::NumberToString(static_cast<int>(allowed));
+  if (base::WriteFile(allowed_file, data.c_str(), data.length()) < 0) {
+    LOG(WARNING) << __func__ << ": Unable to create " << allowed_file.value();
+  }
+  if (!base::SetPosixFilePermissions(allowed_file,
+                                     kAllowedStateFilePermissions)) {
+    LOG(WARNING) << __func__ << ": Unable to set permission for "
+                 << allowed_file.value();
+  }
 }
 
 }  // namespace
@@ -303,6 +320,10 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
   }
 
   tpm_allowed_ = tpm_allowlist_->IsAllowed();
+
+  if (USE_TPM_DYNAMIC) {
+    StoreTpmAllowState(tpm_allowed_);
+  }
 
   if (!tpm_allowed_) {
     LOG(WARNING) << __func__ << ": The TPM is not allowed on the device.";
