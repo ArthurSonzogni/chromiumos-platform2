@@ -122,7 +122,7 @@ impl HibernateCookie {
     /// set (indicating the on-disk file systems should not be altered).
     pub fn read(&mut self) -> Result<HibernateCookieValue> {
         self.blockdev
-            .seek(SeekFrom::Start(0))
+            .rewind()
             .context("Failed to seek in hibernate cookie")?;
         let buffer_slice = self.buffer.u8_slice_mut();
         self.blockdev
@@ -173,7 +173,7 @@ impl HibernateCookie {
     pub fn write(&mut self, value: HibernateCookieValue) -> Result<()> {
         let existing = self.read()?;
         self.blockdev
-            .seek(SeekFrom::Start(0))
+            .rewind()
             .context("Failed to seek hibernate cookie")?;
         if value == existing {
             return Ok(());
