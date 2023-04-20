@@ -18,6 +18,7 @@
 #include "runtime_probe/system/context.h"
 #include "runtime_probe/utils/file_utils.h"
 
+namespace runtime_probe {
 namespace {
 
 constexpr int kReadFileMaxSize = 1024;
@@ -25,7 +26,7 @@ constexpr int kGlobIterateCountLimit = 32768;
 
 bool ReadFile(const base::FilePath& dir_path,
               base::StringPiece file_name,
-              std::string* out) {
+              std::string& out) {
   if (base::FilePath{file_name}.IsAbsolute()) {
     LOG(ERROR) << "file_name " << file_name << " is absolute";
     return false;
@@ -33,11 +34,10 @@ bool ReadFile(const base::FilePath& dir_path,
   const auto file_path = dir_path.Append(file_name);
   if (!base::PathExists(file_path))
     return false;
-  if (!base::ReadFileToStringWithMaxSize(file_path, out, kReadFileMaxSize)) {
+  if (!ReadAndTrimFileToString(file_path, out)) {
     LOG(ERROR) << file_path.value() << " exists, but we can't read it";
     return false;
   }
-  base::TrimWhitespaceASCII(*out, base::TrimPositions::TRIM_ALL, out);
   return true;
 }
 
@@ -84,7 +84,6 @@ std::vector<base::FilePath> GlobInternal(
 
 }  // namespace
 
-namespace runtime_probe {
 namespace internal {
 
 bool ReadFileToDict(const base::FilePath& dir_path,
@@ -100,7 +99,7 @@ bool ReadFileToDict(const base::FilePath& dir_path,
                     base::Value& result) {
   base::StringPiece file_name = key.second;
   std::string content;
-  if (!ReadFile(dir_path, file_name, &content)) {
+  if (!ReadFile(dir_path, file_name, content)) {
     LOG_IF(ERROR, log_error) << "file \"" << file_name << "\" is required.";
     return false;
   }
@@ -110,6 +109,15 @@ bool ReadFileToDict(const base::FilePath& dir_path,
 }
 
 }  // namespace internal
+
+bool ReadAndTrimFileToString(const base::FilePath& file_path,
+                             std::string& out) {
+  if (!base::ReadFileToStringWithMaxSize(file_path, &out, kReadFileMaxSize)) {
+    return false;
+  }
+  base::TrimWhitespaceASCII(out, base::TrimPositions::TRIM_ALL, &out);
+  return true;
+}
 
 std::vector<base::FilePath> Glob(const base::FilePath& pattern) {
   std::vector<std::string> components = pattern.GetComponents();

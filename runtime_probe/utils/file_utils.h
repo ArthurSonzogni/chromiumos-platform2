@@ -29,6 +29,8 @@ bool ReadFileToDict(const base::FilePath& dir_path,
 
 }  // namespace internal
 
+bool ReadAndTrimFileToString(const base::FilePath& file_path, std::string& out);
+
 // Maps files listed in |keys| and |optional_keys| under |dir_path| into key
 // value pairs.
 //

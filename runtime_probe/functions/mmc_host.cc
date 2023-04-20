@@ -4,6 +4,8 @@
 
 #include "runtime_probe/functions/mmc_host.h"
 
+#include <set>
+#include <string>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -14,9 +16,28 @@
 
 namespace runtime_probe {
 
+std::set<std::string> GetEmmcAttachedHosts() {
+  std::set<std::string> result;
+  base::FilePath pattern =
+      Context::Get()->root_dir().Append("sys/bus/mmc/devices/*");
+  for (const auto& mmc_path : Glob(pattern)) {
+    std::string type;
+    if (!ReadAndTrimFileToString(mmc_path.Append("type"), type) ||
+        type != "MMC") {
+      continue;
+    }
+    base::FilePath mmc_host_path =
+        base::MakeAbsoluteFilePath(mmc_path.Append(".."));
+    std::string mmc_host_name = mmc_host_path.BaseName().value();
+    result.insert(mmc_host_name);
+  }
+  return result;
+}
+
 MmcHostFunction::DataType MmcHostFunction::EvalImpl() const {
   DataType results;
 
+  std::set<std::string> mmc_attached_hosts = GetEmmcAttachedHosts();
   base::FilePath pattern =
       Context::Get()->root_dir().Append("sys/class/mmc_host/*");
   for (const auto& mmc_host_path : Glob(pattern)) {
@@ -24,6 +45,10 @@ MmcHostFunction::DataType MmcHostFunction::EvalImpl() const {
     if (!node_res) {
       continue;
     }
+    std::string mmc_host_name = mmc_host_path.BaseName().value();
+    node_res->GetDict().Set(
+        "is_emmc_attached",
+        mmc_attached_hosts.count(mmc_host_name) ? "1" : "0");
     results.Append(std::move(*node_res));
   }
 
