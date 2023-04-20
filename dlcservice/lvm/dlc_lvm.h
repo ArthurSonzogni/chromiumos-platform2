@@ -26,6 +26,14 @@ class DlcLvm : public DlcBase {
   DlcLvm& operator=(const DlcLvm&) = delete;
 
  protected:
+  FRIEND_TEST(DlcLvmTest, CreateDlc);
+  FRIEND_TEST(DlcLvmTest, CreateDlcLvmFailed);
+  FRIEND_TEST(DlcLvmTest, DeleteDlc);
+  FRIEND_TEST(DlcLvmTest, DeleteDlcLvmFailed);
+  FRIEND_TEST(DlcLvmTest, MountDlc);
+  FRIEND_TEST(DlcLvmTest, MountDlcImageLoaderFailed);
+  FRIEND_TEST(DlcLvmTest, MountDlcEmptyMountPoint);
+
   // `DlcBase` overrides.
   bool CreateDlc(brillo::ErrorPtr* err) override;
   bool DeleteInternal(brillo::ErrorPtr* err) override;

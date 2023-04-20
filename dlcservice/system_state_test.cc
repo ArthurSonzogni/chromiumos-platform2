@@ -52,6 +52,8 @@ TEST_F(SystemStateTest, GettersTest) {
 TEST_F(SystemStateTest, IsLvmStackEnabled) {
   auto* ptr = SystemState::Get();
 
+  ptr->ResetIsLvmStackEnabled();
+
   EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, GetPhysicalVolume(_, _))
       .WillOnce(Return(true));
 

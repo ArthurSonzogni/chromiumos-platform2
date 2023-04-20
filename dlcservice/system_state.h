@@ -93,6 +93,7 @@ class SystemState {
 
 #if USE_LVM_STATEFUL_PARTITION
   bool IsLvmStackEnabled();
+  void ResetIsLvmStackEnabled();
   void SetIsLvmStackEnabled(bool enabled);
 #endif  // USE_LVM_STATEFUL_PARTITION
 

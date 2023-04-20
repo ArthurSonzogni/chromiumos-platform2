@@ -238,6 +238,10 @@ bool SystemState::IsLvmStackEnabled() {
   return is_lvm_stack_enabled_.value();
 }
 
+void SystemState::ResetIsLvmStackEnabled() {
+  is_lvm_stack_enabled_.reset();
+}
+
 void SystemState::SetIsLvmStackEnabled(bool enabled) {
   is_lvm_stack_enabled_ = enabled;
 }
