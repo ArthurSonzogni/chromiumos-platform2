@@ -40,7 +40,6 @@ use crate::hiberutil::checked_command_output;
 use crate::hiberutil::emergency_reboot;
 use crate::hiberutil::get_device_mounted_at_dir;
 use crate::hiberutil::get_page_size;
-use crate::hiberutil::get_total_memory_pages;
 use crate::hiberutil::log_io_duration;
 use crate::hiberutil::mount_filesystem;
 use crate::hiberutil::stateful_block_partition_one;

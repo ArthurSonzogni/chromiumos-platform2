@@ -20,8 +20,6 @@ use log::warn;
 
 /// Define the directory where hibernate state files are kept.
 pub const HIBERMETA_DIR: &str = "/mnt/hibermeta";
-/// Define the root of the stateful partition mount.
-pub const STATEFUL_DIR: &str = "/mnt/stateful_partition";
 /// Define the ramfs location where ephemeral files are stored that should not
 /// persist across even an unexpected reboot.
 pub const TMPFS_DIR: &str = "/run/hibernate/";

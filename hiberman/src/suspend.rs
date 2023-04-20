@@ -4,8 +4,6 @@
 
 //! Implements hibernate suspend functionality.
 
-use std::ffi::CString;
-use std::mem::MaybeUninit;
 use std::time::Instant;
 
 use anyhow::Context;
@@ -13,7 +11,6 @@ use anyhow::Result;
 use libc::reboot;
 use libc::RB_AUTOBOOT;
 use libc::RB_POWER_OFF;
-use libchromeos::sys::syscall;
 use log::debug;
 use log::error;
 use log::info;
@@ -22,7 +19,6 @@ use log::warn;
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
 use crate::files::does_hiberfile_exist;
-use crate::files::STATEFUL_DIR;
 use crate::hiberlog;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::replay_logs;
@@ -44,10 +40,6 @@ use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
 use crate::update_engine::is_update_engine_idle;
 use crate::volume::VolumeManager;
-
-/// Define how low stateful free space must be as a percentage before we clean
-/// up the hiberfile after each hibernate.
-const LOW_DISK_FREE_THRESHOLD_PERCENT: u64 = 10;
 
 /// The SuspendConductor weaves a delicate baton to guide us through the
 /// symphony of hibernation.
@@ -218,30 +210,6 @@ impl SuspendConductor {
         info!("Clearing hibernate cookie at {}", block_path);
         set_hibernate_cookie(Some(&block_path), HibernateCookieValue::NoResume)
             .context("Failed to clear hibernate cookie")
-    }
-
-    /// Clean up the hibernate files, releasing that space back to other usermode apps.
-    fn delete_data_if_disk_full(&mut self, fs_stats: libc::statvfs) {
-        let free_percent = fs_stats.f_bfree * 100 / fs_stats.f_blocks;
-        if free_percent < LOW_DISK_FREE_THRESHOLD_PERCENT {
-            debug!("Freeing hiberdata: FS is only {}% free", free_percent);
-            // TODO: Unlink hiberfile.
-        } else {
-            debug!("Not freeing hiberfile: FS is {}% free", free_percent);
-        }
-    }
-
-    /// Utility function to get the current stateful file system usage.
-    fn get_fs_stats() -> Result<libc::statvfs> {
-        let path = CString::new(STATEFUL_DIR).unwrap();
-        let mut stats: MaybeUninit<libc::statvfs> = MaybeUninit::zeroed();
-
-        // This is safe because only stats is modified.
-        syscall!(unsafe { libc::statvfs(path.as_ptr(), stats.as_mut_ptr()) })?;
-
-        // Safe because the syscall just initialized it, and we just verified
-        // the return was successful.
-        unsafe { Ok(stats.assume_init()) }
     }
 
     /// Utility function to power the system down immediately.
