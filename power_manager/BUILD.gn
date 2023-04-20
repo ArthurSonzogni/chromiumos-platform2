@@ -13,6 +13,7 @@ group("all") {
     ":cpufreq_config",
     ":dump_power_status",
     ":inject_powerd_input_event",
+    ":install_minijail_conf",
     ":libpolicy",
     ":libpolicy_stub",
     ":libpowerd",
@@ -84,6 +85,11 @@ if (use.cellular) {
       "dbus_bindings/dbus-objectmanager.dbus-xml",
     ]
   }
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/temp_logger.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 pkg_config("target_defaults") {
