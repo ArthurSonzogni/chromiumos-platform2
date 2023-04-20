@@ -25,7 +25,7 @@
 
 namespace cryptohome {
 
-class TpmBoundToPcrAuthBlock : public SyncAuthBlock {
+class TpmBoundToPcrAuthBlock : public AuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kTpmBoundToPcr;
@@ -41,15 +41,11 @@ class TpmBoundToPcrAuthBlock : public SyncAuthBlock {
   TpmBoundToPcrAuthBlock(const TpmBoundToPcrAuthBlock&) = delete;
   TpmBoundToPcrAuthBlock& operator=(const TpmBoundToPcrAuthBlock&) = delete;
 
-  CryptoStatus Create(const AuthInput& user_input,
-                      AuthBlockState* auth_block_state,
-                      KeyBlobs* key_blobs) override;
+  void Create(const AuthInput& user_input, CreateCallback callback) override;
 
-  CryptoStatus Derive(
-      const AuthInput& auth_input,
-      const AuthBlockState& state,
-      KeyBlobs* key_blobs,
-      std::optional<AuthBlock::SuggestedAction>* suggested_action) override;
+  void Derive(const AuthInput& auth_input,
+              const AuthBlockState& state,
+              DeriveCallback callback) override;
 
  private:
   // Decrypt the |vault_key| that is bound to PCR, returning the |vkk_iv|

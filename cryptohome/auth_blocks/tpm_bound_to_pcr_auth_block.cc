@@ -98,15 +98,14 @@ CryptoStatus TpmBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
 std::unique_ptr<AuthBlock> TpmBoundToPcrAuthBlock::New(
     hwsec::CryptohomeFrontend& hwsec,
     CryptohomeKeysManager& cryptohome_keys_manager) {
-  return std::make_unique<SyncToAsyncAuthBlockAdapter>(
-      std::make_unique<TpmBoundToPcrAuthBlock>(&hwsec,
-                                               &cryptohome_keys_manager));
+  return std::make_unique<TpmBoundToPcrAuthBlock>(&hwsec,
+                                                  &cryptohome_keys_manager);
 }
 
 TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
     hwsec::CryptohomeFrontend* hwsec,
     CryptohomeKeysManager* cryptohome_keys_manager)
-    : SyncAuthBlock(kTpmBackedPcrBound),
+    : AuthBlock(kTpmBackedPcrBound),
       hwsec_(hwsec),
       cryptohome_key_loader_(
           cryptohome_keys_manager->GetKeyLoader(CryptohomeKeyType::kRSA)),
@@ -123,22 +122,27 @@ TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
   scrypt_task_runner_ = scrypt_thread_->task_runner();
 }
 
-CryptoStatus TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
-                                            AuthBlockState* auth_block_state,
-                                            KeyBlobs* key_blobs) {
+void TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
+                                    CreateCallback callback) {
   if (!user_input.user_input.has_value()) {
     LOG(ERROR) << "Missing user_input";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoUserInputInCreate),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoUserInputInCreate),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
+    return;
   }
   if (!user_input.obfuscated_username.has_value()) {
     LOG(ERROR) << "Missing obfuscated_username";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoUsernameInCreate),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoUsernameInCreate),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
+    return;
   }
 
   const brillo::SecureBlob& vault_key = user_input.user_input.value();
@@ -150,22 +154,29 @@ CryptoStatus TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
 
   // If the key still isn't loaded, fail the operation.
   if (!cryptohome_key_loader_->HasCryptohomeKey()) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoCryptohomeKeyInCreate),
-        ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry,
-                        PossibleAction::kPowerwash}),
-        CryptoError::CE_TPM_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocTpmBoundToPcrAuthBlockNoCryptohomeKeyInCreate),
+            ErrorActionSet({PossibleAction::kReboot, PossibleAction::kRetry,
+                            PossibleAction::kPowerwash}),
+            CryptoError::CE_TPM_CRYPTO),
+        nullptr, nullptr);
+    return;
   }
 
   const auto vkk_key = CreateSecureRandomBlob(kDefaultAesKeySize);
   brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
   brillo::SecureBlob vkk_iv(kAesBlockSize);
   if (!DeriveSecretsScrypt(vault_key, salt, {&pass_blob, &vkk_iv})) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocTpmBoundToPcrAuthBlockScryptDeriveFailedInCreate),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocTpmBoundToPcrAuthBlockScryptDeriveFailedInCreate),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, nullptr);
+    return;
   }
 
   // Encrypt the VKK using the TPM and the user's passkey. The output is two
@@ -176,41 +187,51 @@ CryptoStatus TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   hwsec::StatusOr<brillo::SecureBlob> auth_value =
       hwsec_->GetAuthValue(cryptohome_key, pass_blob);
   if (!auth_value.ok()) {
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocTpmBoundToPcrAuthBlockGetAuthFailedInCreate),
-               ErrorActionSet({PossibleAction::kReboot,
-                               PossibleAction::kDevCheckUnexpectedState}))
-        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(auth_value).err_status()));
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockGetAuthFailedInCreate),
+            ErrorActionSet({PossibleAction::kReboot,
+                            PossibleAction::kDevCheckUnexpectedState}))
+            .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+                std::move(auth_value).err_status())),
+        nullptr, nullptr);
+    return;
   }
 
   hwsec::StatusOr<brillo::Blob> tpm_key = hwsec_->SealWithCurrentUser(
       /*current_user=*/std::nullopt, *auth_value, vkk_key);
   if (!tpm_key.ok()) {
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocTpmBoundToPcrAuthBlockDefaultSealFailedInCreate),
-               ErrorActionSet({PossibleAction::kReboot,
-                               PossibleAction::kDevCheckUnexpectedState,
-                               PossibleAction::kPowerwash}))
-        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(tpm_key).err_status()));
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocTpmBoundToPcrAuthBlockDefaultSealFailedInCreate),
+            ErrorActionSet({PossibleAction::kReboot,
+                            PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kPowerwash}))
+            .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+                std::move(tpm_key).err_status())),
+        nullptr, nullptr);
+    return;
   }
 
   hwsec::StatusOr<brillo::Blob> extended_tpm_key =
       hwsec_->SealWithCurrentUser(*obfuscated_username, *auth_value, vkk_key);
   if (!extended_tpm_key.ok()) {
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocTpmBoundToPcrAuthBlockExtendedSealFailedInCreate),
-               ErrorActionSet({PossibleAction::kReboot,
-                               PossibleAction::kDevCheckUnexpectedState,
-                               PossibleAction::kPowerwash}))
-        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(extended_tpm_key).err_status()));
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocTpmBoundToPcrAuthBlockExtendedSealFailedInCreate),
+            ErrorActionSet({PossibleAction::kReboot,
+                            PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kPowerwash}))
+            .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+                std::move(extended_tpm_key).err_status())),
+        nullptr, nullptr);
+    return;
   }
 
+  auto key_blobs = std::make_unique<KeyBlobs>();
+  auto auth_block_state = std::make_unique<AuthBlockState>();
   TpmBoundToPcrAuthBlockState tpm_state;
 
   // Allow this to fail.  It is not absolutely necessary; it allows us to
@@ -241,73 +262,102 @@ CryptoStatus TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   key_blobs->chaps_iv = vkk_iv;
 
   *auth_block_state = AuthBlockState{.state = std::move(tpm_state)};
-  return OkStatus<CryptohomeCryptoError>();
+  std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
+                          std::move(key_blobs), std::move(auth_block_state));
 }
 
-CryptoStatus TpmBoundToPcrAuthBlock::Derive(
-    const AuthInput& auth_input,
-    const AuthBlockState& state,
-    KeyBlobs* key_out_data,
-    std::optional<AuthBlock::SuggestedAction>* suggested_action) {
+void TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
+                                    const AuthBlockState& state,
+                                    DeriveCallback callback) {
   if (!auth_input.user_input.has_value()) {
     LOG(ERROR) << "Missing user_input";
 
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoUserInputInDerive),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoUserInputInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
   }
 
   const TpmBoundToPcrAuthBlockState* tpm_state;
   if (!(tpm_state = std::get_if<TpmBoundToPcrAuthBlockState>(&state.state))) {
     LOG(ERROR) << "Invalid AuthBlockState";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockInvalidBlockStateInDerive),
-        ErrorActionSet(
-            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocTpmBoundToPcrAuthBlockInvalidBlockStateInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
   }
 
   if (!tpm_state->scrypt_derived.has_value()) {
     LOG(ERROR) << "Invalid TpmBoundToPcrAuthBlockState: missing scrypt_derived";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoScryptDerivedInDerive),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocTpmBoundToPcrAuthBlockNoScryptDerivedInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth,
+                            PossibleAction::kDeleteVault}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
   }
   if (!tpm_state->scrypt_derived.value()) {
     LOG(ERROR) << "All TpmBoundtoPcr operations should be scrypt derived.";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNotScryptDerivedInDerive),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocTpmBoundToPcrAuthBlockNotScryptDerivedInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth,
+                            PossibleAction::kDeleteVault}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
   }
   if (!tpm_state->salt.has_value()) {
     LOG(ERROR) << "Invalid TpmBoundToPcrAuthBlockState: missing salt";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoSaltInDerive),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoSaltInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth,
+                            PossibleAction::kDeleteVault}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
   }
   if (!tpm_state->tpm_key.has_value()) {
     LOG(ERROR) << "Invalid TpmBoundToPcrAuthBlockState: missing tpm_key";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoTpmKeyInDerive),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoTpmKeyInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth,
+                            PossibleAction::kDeleteVault}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
   }
   if (!tpm_state->extended_tpm_key.has_value()) {
     LOG(ERROR)
         << "Invalid TpmBoundToPcrAuthBlockState: missing extended_tpm_key";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoExtendedTpmKeyInDerive),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                        PossibleAction::kAuth, PossibleAction::kDeleteVault}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocTpmBoundToPcrAuthBlockNoExtendedTpmKeyInDerive),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kAuth,
+                            PossibleAction::kDeleteVault}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
   }
 
   brillo::SecureBlob tpm_public_key_hash =
@@ -317,49 +367,23 @@ CryptoStatus TpmBoundToPcrAuthBlock::Derive(
       tpm_state->tpm_key.has_value(),
       tpm_state->tpm_public_key_hash.has_value(), tpm_public_key_hash);
   if (!error.ok()) {
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocTpmBoundToPcrAuthBlockTpmNotReadyInDerive))
-        .Wrap(std::move(error));
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockTpmNotReadyInDerive))
+            .Wrap(std::move(error)),
+        nullptr, std::nullopt);
+    return;
   }
-
-  key_out_data->vkk_iv = brillo::SecureBlob(kAesBlockSize);
-  key_out_data->vkk_key = brillo::SecureBlob(kDefaultAesKeySize);
+  auto key_blobs = std::make_unique<KeyBlobs>();
+  key_blobs->vkk_iv = brillo::SecureBlob(kAesBlockSize);
+  key_blobs->vkk_key = brillo::SecureBlob(kDefaultAesKeySize);
 
   bool locked_to_single_user = auth_input.locked_to_single_user.value_or(false);
   brillo::SecureBlob salt = tpm_state->salt.value();
   brillo::SecureBlob tpm_key = locked_to_single_user
                                    ? tpm_state->extended_tpm_key.value()
                                    : tpm_state->tpm_key.value();
-  error = DecryptTpmBoundToPcr(auth_input.user_input.value(), tpm_key, salt,
-                               &key_out_data->vkk_iv.value(),
-                               &key_out_data->vkk_key.value());
-  if (!error.ok()) {
-    if (!tpm_state->tpm_public_key_hash.has_value()) {
-      return MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockNoPubKeyHashInDerive),
-          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                          PossibleAction::kAuth}),
-          CryptoError::CE_NO_PUBLIC_KEY_HASH);
-    }
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocTpmBoundToPcrAuthBlockDecryptFailedInDerive),
-               ErrorActionSet(PrimaryAction::kIncorrectAuth))
-        .Wrap(std::move(error));
-  }
 
-  key_out_data->chaps_iv = key_out_data->vkk_iv;
-
-  return OkStatus<CryptohomeCryptoError>();
-}
-
-CryptoStatus TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
-    const brillo::SecureBlob& vault_key,
-    const brillo::SecureBlob& tpm_key,
-    const brillo::SecureBlob& salt,
-    brillo::SecureBlob* vkk_iv,
-    brillo::SecureBlob* vkk_key) const {
   brillo::Blob sealed_data(tpm_key.begin(), tpm_key.end());
 
   bool derive_result = false;
@@ -367,7 +391,8 @@ CryptoStatus TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
   std::optional<hwsec::ScopedKey> preload_scoped_key;
   {
     // Prepare the parameters for scrypt.
-    std::vector<brillo::SecureBlob*> gen_secrets{&pass_blob, vkk_iv};
+    std::vector<brillo::SecureBlob*> gen_secrets{&pass_blob,
+                                                 &key_blobs->vkk_iv.value()};
 
     base::WaitableEvent done(base::WaitableEvent::ResetPolicy::MANUAL,
                              base::WaitableEvent::InitialState::NOT_SIGNALED);
@@ -383,7 +408,8 @@ CryptoStatus TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
                                                        std::move(gen_secrets));
                          done->Signal();
                        },
-                       vault_key, salt, gen_secrets, &derive_result, &done));
+                       auth_input.user_input.value(), salt, gen_secrets,
+                       &derive_result, &done));
 
     // The scrypt should be finished before exiting this scope.
     absl::Cleanup joiner = [&done]() { done.Wait(); };
@@ -394,13 +420,16 @@ CryptoStatus TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
     if (!preload_data.ok()) {
       LOG(ERROR) << "Failed to preload the sealed data: "
                  << preload_data.status();
-      return MakeStatus<CryptohomeCryptoError>(
-                 CRYPTOHOME_ERR_LOC(
-                     kLocTpmBoundToPcrAuthBlockPreloadFailedInDecrypt),
-                 ErrorActionSet({PossibleAction::kReboot,
-                                 PossibleAction::kDevCheckUnexpectedState}))
-          .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-              std::move(preload_data).err_status()));
+      std::move(callback).Run(
+          MakeStatus<CryptohomeCryptoError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocTpmBoundToPcrAuthBlockPreloadFailedInDecrypt),
+              ErrorActionSet({PossibleAction::kReboot,
+                              PossibleAction::kDevCheckUnexpectedState}))
+              .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+                  std::move(preload_data).err_status())),
+          nullptr, std::nullopt);
+      return;
     }
 
     preload_scoped_key = std::move(*preload_data);
@@ -408,11 +437,14 @@ CryptoStatus TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
 
   if (!derive_result) {
     LOG(ERROR) << "scrypt derivation failed";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocTpmBoundToPcrAuthBlockScryptDeriveFailedInDecrypt),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocTpmBoundToPcrAuthBlockScryptDeriveFailedInDecrypt),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr, std::nullopt);
+    return;
   }
 
   // On TPM1.2 devices, preloading sealed data is meaningless and
@@ -429,26 +461,34 @@ CryptoStatus TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
       hwsec_->GetAuthValue(cryptohome_key, pass_blob);
   if (!auth_value.ok()) {
     LOG(ERROR) << "Failed to get auth value: " << auth_value.status();
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocTpmBoundToPcrAuthBlockGetAuthValueFailedInDecrypt))
-        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(auth_value).err_status()));
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocTpmBoundToPcrAuthBlockGetAuthValueFailedInDecrypt))
+            .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+                std::move(auth_value).err_status())),
+        nullptr, std::nullopt);
+    return;
   }
 
   hwsec::StatusOr<brillo::SecureBlob> unsealed_data =
       hwsec_->UnsealWithCurrentUser(preload_key, *auth_value, sealed_data);
   if (!unsealed_data.ok()) {
     LOG(ERROR) << "Failed to unseal with auth: " << unsealed_data.status();
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocTpmBoundToPcrAuthBlockUnsealFailedInDecrypt))
-        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(unsealed_data).err_status()));
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockUnsealFailedInDecrypt))
+            .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+                std::move(unsealed_data).err_status())),
+        nullptr, std::nullopt);
+    return;
   }
 
-  *vkk_key = std::move(*unsealed_data);
-  return OkStatus<CryptohomeCryptoError>();
+  *&key_blobs->vkk_key = std::move(*unsealed_data);
+
+  key_blobs->chaps_iv = key_blobs->vkk_iv;
+  std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
+                          std::move(key_blobs), std::nullopt);
 }
 
 }  // namespace cryptohome
