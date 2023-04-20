@@ -41,20 +41,6 @@
 #include "permission_broker/rule.h"
 #include "permission_broker/usb_control.h"
 
-using permission_broker::AllowGroupTtyDeviceRule;
-using permission_broker::AllowHidrawDeviceRule;
-using permission_broker::AllowTtyDeviceRule;
-using permission_broker::AllowUsbDeviceRule;
-using permission_broker::DenyClaimedHidrawDeviceRule;
-using permission_broker::DenyClaimedUsbDeviceRule;
-using permission_broker::DenyGroupTtyDeviceRule;
-using permission_broker::DenyHammerDeviceRule;
-using permission_broker::DenyUninitializedDeviceRule;
-using permission_broker::DenyUnsafeHidrawDeviceRule;
-using permission_broker::DenyUsbDeviceClassRule;
-using permission_broker::DenyUsbVendorIdRule;
-using permission_broker::PermissionBroker;
-
 namespace {
 const uint16_t kLinuxFoundationUsbVendorId = 0x1d6b;
 
