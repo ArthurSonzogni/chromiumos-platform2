@@ -18,6 +18,9 @@ class AttestationFrontendImpl : public AttestationFrontend,
  public:
   using FrontendImpl::FrontendImpl;
   ~AttestationFrontendImpl() override = default;
+
+  StatusOr<brillo::SecureBlob> Unseal(const brillo::Blob& sealed_data) override;
+  StatusOr<brillo::Blob> Seal(const brillo::SecureBlob& unsealed_data) override;
 };
 
 }  // namespace hwsec

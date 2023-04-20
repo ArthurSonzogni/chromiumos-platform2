@@ -19,6 +19,14 @@ class MockAttestationFrontend : public MockFrontend,
  public:
   MockAttestationFrontend() = default;
   ~MockAttestationFrontend() override = default;
+  MOCK_METHOD(StatusOr<brillo::SecureBlob>,
+              Unseal,
+              (const brillo::Blob& sealed_data),
+              (override));
+  MOCK_METHOD(StatusOr<brillo::Blob>,
+              Seal,
+              (const brillo::SecureBlob& unsealed_data),
+              (override));
 };
 
 }  // namespace hwsec

@@ -15,6 +15,10 @@ namespace hwsec {
 class AttestationFrontend : public Frontend {
  public:
   ~AttestationFrontend() override = default;
+  virtual StatusOr<brillo::SecureBlob> Unseal(
+      const brillo::Blob& sealed_data) = 0;
+  virtual StatusOr<brillo::Blob> Seal(
+      const brillo::SecureBlob& unsealed_data) = 0;
 };
 
 }  // namespace hwsec
