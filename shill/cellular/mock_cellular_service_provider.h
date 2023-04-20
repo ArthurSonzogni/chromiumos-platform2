@@ -7,7 +7,10 @@
 
 #include "shill/cellular/cellular_service_provider.h"
 
+#include <base/functional/callback.h>
 #include <gmock/gmock.h>
+
+#include "shill/network/network.h"
 
 namespace shill {
 
@@ -19,12 +22,17 @@ class MockCellularServiceProvider : public CellularServiceProvider {
 
   MOCK_METHOD(
       void,
+      TetheringEntitlementCheck,
+      (base::OnceCallback<void(TetheringManager::EntitlementStatus result)>),
+      ());
+  MOCK_METHOD(
+      void,
       AcquireTetheringNetwork,
       (base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>),
       ());
   MOCK_METHOD(void,
               ReleaseTetheringNetwork,
-              (Network*, base::OnceCallback<void(bool is_success)>),
+              (Network*, base::OnceCallback<void(bool)>),
               ());
 };
 

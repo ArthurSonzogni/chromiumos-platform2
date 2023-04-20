@@ -690,7 +690,7 @@ TEST_F(TetheringManagerTest, TetheringInDefaultProfile) {
                          TetheringManager::SetEnabledResult::kNotAllowed);
 }
 
-TEST_F(TetheringManagerTest, CheckReadiness) {
+TEST_F(TetheringManagerTest, CheckReadinessNotAllowed) {
   base::MockOnceCallback<void(TetheringManager::EntitlementStatus)> cb;
   KeyValueStore config =
       GenerateFakeConfig("757365725F73736964", "user_password");
@@ -700,12 +700,17 @@ TEST_F(TetheringManagerTest, CheckReadiness) {
   EXPECT_CALL(cb, Run(TetheringManager::EntitlementStatus::kNotAllowed));
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
+}
 
+TEST_F(TetheringManagerTest, CheckReadinessCellularUpstream) {
+  base::MockOnceCallback<void(TetheringManager::EntitlementStatus)> cb;
+  KeyValueStore config =
+      GenerateFakeConfig("757365725F73736964", "user_password");
+  SetConfigUpstream(config, TechnologyName(Technology::kCellular));
   SetAllowed(tethering_manager_, true);
-
-  // No ethernet Device.
-  SetConfigUpstream(config, TechnologyName(Technology::kEthernet));
   EXPECT_TRUE(FromProperties(tethering_manager_, config));
+
+  // No cellular Device.
   tethering_manager_->CheckReadiness(cb.Get());
   EXPECT_CALL(
       cb,
@@ -713,30 +718,30 @@ TEST_F(TetheringManagerTest, CheckReadiness) {
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
 
-  // Fake Devices: one Ethernet Device, one Cellular Device.
+  // Set one fake ethernet Device.
   auto eth =
       new NiceMock<MockDevice>(&manager_, "eth0", "0a:0b:0c:0d:0e:0f", 1);
-  auto cell = MakeCellular("wwan0", "000102030405", 2);
   ON_CALL(*eth, technology()).WillByDefault(Return(Technology::kEthernet));
   const std::vector<DeviceRefPtr> eth_devices = {eth};
-  const std::vector<DeviceRefPtr> cell_devices = {cell};
   ON_CALL(manager_, FilterByTechnology(Technology::kEthernet))
       .WillByDefault(Return(eth_devices));
-  ON_CALL(manager_, FilterByTechnology(Technology::kCellular))
-      .WillByDefault(Return(cell_devices));
-
-  // No Service connected on Ethernet.
-  tethering_manager_->CheckReadiness(cb.Get());
-  EXPECT_CALL(
-      cb,
-      Run(TetheringManager::EntitlementStatus::kUpstreamNetworkNotAvailable));
-  DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(&cb);
-
-  // Ethernet Service is not connected.
   auto eth_service(new MockService(&manager_));
   eth->set_selected_service_for_testing(eth_service);
+
+  // Set one fake cellular Device.
+  auto cell = MakeCellular("wwan0", "000102030405", 2);
+  const std::vector<DeviceRefPtr> cell_devices = {cell};
+  ON_CALL(manager_, FilterByTechnology(Technology::kCellular))
+      .WillByDefault(Return(cell_devices));
+  scoped_refptr<MockCellularService> cell_service =
+      new MockCellularService(&manager_, cell);
+  AddServiceToCellularProvider(cell_service);
+  cell->set_selected_service_for_testing(cell_service);
+
+  // Both Ethernet Service and Cellular Service are disconnected.
   EXPECT_CALL(*eth_service, IsConnected(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*cell_service, state())
+      .WillRepeatedly(Return(Service::kStateIdle));
   tethering_manager_->CheckReadiness(cb.Get());
   EXPECT_CALL(
       cb,
@@ -744,21 +749,110 @@ TEST_F(TetheringManagerTest, CheckReadiness) {
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
 
-  // Service connected on Ethernet
+  // Ethernet Service is connected, Cellular Service is disconnected.
   EXPECT_CALL(*eth_service, IsConnected(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*cell_service, state())
+      .WillRepeatedly(Return(Service::kStateIdle));
+  tethering_manager_->CheckReadiness(cb.Get());
+  EXPECT_CALL(
+      cb,
+      Run(TetheringManager::EntitlementStatus::kUpstreamNetworkNotAvailable));
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
+  // Ethernet Service is disconnected, Cellular Service is connected.
+  EXPECT_CALL(*eth_service, IsConnected(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*cell_service, state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*cellular_service_provider_, TetheringEntitlementCheck(_));
+  tethering_manager_->CheckReadiness(cb.Get());
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+  Mock::VerifyAndClearExpectations(cellular_service_provider_);
+
+  // Both Ethernet Service and Cellular Service are connected.
+  EXPECT_CALL(*eth_service, IsConnected(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*cell_service, state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*cellular_service_provider_, TetheringEntitlementCheck(_));
+  tethering_manager_->CheckReadiness(cb.Get());
+  DispatchPendingEvents();
+}
+
+TEST_F(TetheringManagerTest, CheckReadinessEthernetUpstream) {
+  base::MockOnceCallback<void(TetheringManager::EntitlementStatus)> cb;
+  KeyValueStore config =
+      GenerateFakeConfig("757365725F73736964", "user_password");
+  SetConfigUpstream(config, TechnologyName(Technology::kEthernet));
+  SetAllowed(tethering_manager_, true);
+  EXPECT_TRUE(FromProperties(tethering_manager_, config));
+
+  // No ethernet Device.
+  tethering_manager_->CheckReadiness(cb.Get());
+  EXPECT_CALL(
+      cb,
+      Run(TetheringManager::EntitlementStatus::kUpstreamNetworkNotAvailable));
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
+  // Set one fake ethernet Device.
+  auto eth =
+      new NiceMock<MockDevice>(&manager_, "eth0", "0a:0b:0c:0d:0e:0f", 1);
+  ON_CALL(*eth, technology()).WillByDefault(Return(Technology::kEthernet));
+  const std::vector<DeviceRefPtr> eth_devices = {eth};
+  ON_CALL(manager_, FilterByTechnology(Technology::kEthernet))
+      .WillByDefault(Return(eth_devices));
+  auto eth_service(new MockService(&manager_));
+  eth->set_selected_service_for_testing(eth_service);
+
+  // Set one fake cellular Device.
+  auto cell = MakeCellular("wwan0", "000102030405", 2);
+  const std::vector<DeviceRefPtr> cell_devices = {cell};
+  ON_CALL(manager_, FilterByTechnology(Technology::kCellular))
+      .WillByDefault(Return(cell_devices));
+  scoped_refptr<MockCellularService> cell_service =
+      new MockCellularService(&manager_, cell);
+  AddServiceToCellularProvider(cell_service);
+  cell->set_selected_service_for_testing(cell_service);
+
+  EXPECT_CALL(*cellular_service_provider_, TetheringEntitlementCheck(_))
+      .Times(0);
+
+  // Both Ethernet Service and Cellular Service are disconnected.
+  EXPECT_CALL(*eth_service, IsConnected(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*cell_service, state())
+      .WillRepeatedly(Return(Service::kStateIdle));
+  tethering_manager_->CheckReadiness(cb.Get());
+  EXPECT_CALL(
+      cb,
+      Run(TetheringManager::EntitlementStatus::kUpstreamNetworkNotAvailable));
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
+  // Ethernet Service is connected, Cellular Service is disconnected.
+  EXPECT_CALL(*eth_service, IsConnected(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*cell_service, state())
+      .WillRepeatedly(Return(Service::kStateIdle));
   tethering_manager_->CheckReadiness(cb.Get());
   EXPECT_CALL(cb, Run(TetheringManager::EntitlementStatus::kReady));
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
 
-  // Cellular upstream.
-  scoped_refptr<MockCellularService> cell_service =
-      new MockCellularService(&manager_, cell);
-  SetConfigUpstream(config, TechnologyName(Technology::kCellular));
+  // Ethernet Service is disconnected, Cellular Service is connected.
+  EXPECT_CALL(*eth_service, IsConnected(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(*cell_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  AddServiceToCellularProvider(cell_service);
-  cell->set_selected_service_for_testing(cell_service);
+  tethering_manager_->CheckReadiness(cb.Get());
+  EXPECT_CALL(
+      cb,
+      Run(TetheringManager::EntitlementStatus::kUpstreamNetworkNotAvailable));
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
+  // Both Ethernet Service and Cellular Service are connected.
+  EXPECT_CALL(*eth_service, IsConnected(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*cell_service, state())
+      .WillRepeatedly(Return(Service::kStateConnected));
   tethering_manager_->CheckReadiness(cb.Get());
   EXPECT_CALL(cb, Run(TetheringManager::EntitlementStatus::kReady));
   DispatchPendingEvents();
