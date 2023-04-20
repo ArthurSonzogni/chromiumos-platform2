@@ -12,17 +12,32 @@
 namespace runtime_probe {
 namespace {
 
-class MmcHostFunctionTest : public BaseFunctionTest {};
+constexpr char kSysClassMmcHostDir[] = "/sys/class/mmc_host";
+
+class MmcHostFunctionTest : public BaseFunctionTest {
+ protected:
+  void SetMmcHost() {
+    const std::string dev_name = "mmc0";
+    const std::string bus_dev = "/sys/devices/pci0000:00/0000:00:08.1";
+    const std::string bus_dev_relative_to_sys = "../../../";
+    SetSymbolicLink(bus_dev, {kSysClassMmcHostDir, dev_name, "device"});
+    // The symbolic link is for getting the bus type.
+    SetSymbolicLink({bus_dev_relative_to_sys, "bus", "pci"},
+                    {bus_dev, "subsystem"});
+    SetFile({bus_dev, "device"}, "0x1111");
+    SetFile({bus_dev, "vendor"}, "0x2222");
+  }
+};
 
 TEST_F(MmcHostFunctionTest, ProbeMmcHost) {
+  SetMmcHost();
   base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function = CreateProbeFunction<MmcHostFunction>(probe_statement);
 
   auto result = probe_function->Eval();
-  auto ans = CreateProbeResultFromJson(R"JSON(
-    []
-  )JSON");
-  EXPECT_EQ(result, ans);
+  EXPECT_EQ(result.size(), 1);
+  EXPECT_TRUE(result[0].GetDict().FindString("path"));
+  EXPECT_TRUE(result[0].GetDict().FindString("bus_type"));
 }
 
 }  // namespace
