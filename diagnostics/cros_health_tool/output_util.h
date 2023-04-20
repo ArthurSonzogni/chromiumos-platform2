@@ -125,6 +125,8 @@ void SetJsonDictValue(const std::string& key,
 
 void OutputJson(const base::Value::Dict& output);
 
+void OutputSingleLineJson(const base::Value::Dict& output);
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTH_TOOL_OUTPUT_UTIL_H_

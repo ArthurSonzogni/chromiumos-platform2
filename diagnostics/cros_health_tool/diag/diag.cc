@@ -79,7 +79,17 @@ mojo_ipc::LedColor LedColorFromString(const std::string& str) {
   return mojo_ipc::LedColor::kUnmappedEnumField;
 }
 
-int RunV2Routine(mojo_ipc::RoutineArgumentPtr argument) {
+void FormatJsonOutput(bool single_line_json, const base::Value::Dict& output) {
+  if (single_line_json) {
+    std::cout << "Output: ";
+    OutputSingleLineJson(output);
+    return;
+  }
+  std::cout << "Output: " << std::endl;
+  OutputJson(output);
+}
+
+int RunV2Routine(mojo_ipc::RoutineArgumentPtr argument, bool single_line_json) {
   mojo::Remote<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
       cros_healthd_routines_service_;
   RequestMojoServiceWithDisconnectHandler(
@@ -91,16 +101,23 @@ int RunV2Routine(mojo_ipc::RoutineArgumentPtr argument) {
   mojo::PendingReceiver<mojo_ipc::RoutineControl> pending_receiver =
       routine_control.BindNewPipeAndPassReceiver();
   routine_control.set_disconnect_with_reason_handler(
-      base::BindOnce([](uint32_t error, const std::string& message) {
-        base::Value::Dict output;
-        SetJsonDictValue("error", error, &output);
-        SetJsonDictValue("message", message, &output);
-        std::cout << "\nError: " << std::endl;
-        OutputJson(output);
-      }).Then(run_loop.QuitClosure()));
+      base::BindOnce(
+          [](base::OnceCallback<void(const base::Value::Dict&)>
+                 format_output_callback,
+             uint32_t error, const std::string& message) {
+            base::Value::Dict output;
+            SetJsonDictValue("error", error, &output);
+            SetJsonDictValue("message", message, &output);
+            std::cout << "Status: Error" << std::endl;
+            std::move(format_output_callback).Run(output);
+          },
+          base::BindOnce(&FormatJsonOutput, single_line_json))
+          .Then(run_loop.QuitClosure()));
   cros_healthd_routines_service_->CreateRoutine(std::move(argument),
                                                 std::move(pending_receiver));
   RoutineObserver observer = RoutineObserver(run_loop.QuitClosure());
+  observer.SetFormatOutputCallback(
+      base::BindOnce(&FormatJsonOutput, single_line_json));
   routine_control->AddObserver(observer.BindNewPipdAndPassRemote());
   routine_control->Start();
   run_loop.Run();
@@ -190,6 +207,10 @@ int diag_main(int argc, char** argv) {
   DEFINE_uint32(max_testing_mem_kib, std::numeric_limits<uint32_t>::max(),
                 "Number of kib to run the memory test for.");
 
+  // Flag for the output format of routine v2.
+  DEFINE_bool(single_line_json, false,
+              "Whether to print JSON objects in a single line.");
+
   brillo::FlagHelper::Init(argc, argv, "diag - Device diagnostic tool.");
 
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
@@ -219,7 +240,8 @@ int diag_main(int argc, char** argv) {
         argument->max_testing_mem_kib = FLAGS_max_testing_mem_kib;
       }
       return RunV2Routine(
-          mojo_ipc::RoutineArgument::NewMemory(std::move(argument)));
+          mojo_ipc::RoutineArgument::NewMemory(std::move(argument)),
+          FLAGS_single_line_json);
     }
     if (FLAGS_routine == "cpu_stress_v2") {
       auto argument = mojo_ipc::CpuStressRoutineArgument::New();
@@ -228,7 +250,8 @@ int diag_main(int argc, char** argv) {
             base::Seconds(FLAGS_cpu_stress_length_seconds);
       }
       return RunV2Routine(
-          mojo_ipc::RoutineArgument::NewCpuStress(std::move(argument)));
+          mojo_ipc::RoutineArgument::NewCpuStress(std::move(argument)),
+          FLAGS_single_line_json);
     }
 
     std::map<std::string, mojo_ipc::DiagnosticRoutineEnum>

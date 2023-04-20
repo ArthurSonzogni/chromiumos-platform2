@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTH_TOOL_DIAG_OBSERVERS_ROUTINE_OBSERVER_H_
 #define DIAGNOSTICS_CROS_HEALTH_TOOL_DIAG_OBSERVERS_ROUTINE_OBSERVER_H_
 
+#include <base/values.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -31,7 +32,22 @@ class RoutineObserver final : public ash::cros_healthd::mojom::RoutineObserver {
     return receiver_.BindNewPipeAndPassRemote();
   }
 
+  // This function will output a base::Value::Dict json object based on the
+  // |format_output_callback| given, this function should be set to format the
+  // json output. If this callback is not set, by default the json output will
+  // be pretty printed into the console.
+  void SetFormatOutputCallback(
+      base::OnceCallback<void(const base::Value::Dict&)>
+          format_output_callback);
+
  private:
+  // This function prints the json object either through
+  // |format_output_callback_| if set, or default to printing the JSON with
+  // pretty print format.
+  void PrintOutput(const base::Value::Dict& output);
+
+  // Print the json object in a customized way.
+  base::OnceCallback<void(const base::Value::Dict&)> format_output_callback_;
   // Allows the remote cros_healthd to call RoutineObserver's
   // RoutineObserver methods.
   mojo::Receiver<ash::cros_healthd::mojom::RoutineObserver> receiver_;

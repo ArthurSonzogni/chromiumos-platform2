@@ -523,4 +523,10 @@ void OutputJson(const base::Value::Dict& output) {
   std::cout << json << std::endl;
 }
 
+void OutputSingleLineJson(const base::Value::Dict& output) {
+  std::string json;
+  base::JSONWriter::Write(output, &json);
+  std::cout << json << std::endl;
+}
+
 }  // namespace diagnostics

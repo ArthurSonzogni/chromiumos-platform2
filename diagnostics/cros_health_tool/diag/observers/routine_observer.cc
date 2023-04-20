@@ -20,7 +20,8 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-void PrintMemoryDetail(const mojom::MemoryRoutineDetailPtr& memory_detail) {
+base::Value::Dict ParseMemoryDetail(
+    const mojom::MemoryRoutineDetailPtr& memory_detail) {
   base::Value::Dict output;
   base::Value::List passed_items;
   base::Value::List failed_items;
@@ -35,20 +36,17 @@ void PrintMemoryDetail(const mojom::MemoryRoutineDetailPtr& memory_detail) {
   SET_DICT(bytes_tested, memory_detail, &output);
   output.Set("passed_items", std::move(passed_items));
   output.Set("failed_items", std::move(failed_items));
-
-  std::cout << "Output: " << std::endl;
-  OutputJson(output);
+  return output;
 }
 
-void PrintAudioDriverDetail(
+base::Value::Dict ParseAudioDriverDetail(
     const mojom::AudioDriverRoutineDetailPtr& audio_driver_detail) {
   base::Value::Dict output;
 
   SET_DICT(internal_card_detected, audio_driver_detail, &output);
   SET_DICT(audio_devices_succeed_to_open, audio_driver_detail, &output);
 
-  std::cout << "Output: " << std::endl;
-  OutputJson(output);
+  return output;
 }
 
 }  // namespace
@@ -57,6 +55,20 @@ RoutineObserver::RoutineObserver(base::OnceClosure quit_closure)
     : receiver_{this /* impl */}, quit_closure_{std::move(quit_closure)} {}
 
 RoutineObserver::~RoutineObserver() = default;
+
+void RoutineObserver::SetFormatOutputCallback(
+    base::OnceCallback<void(const base::Value::Dict&)> format_output_callback) {
+  format_output_callback_ = std::move(format_output_callback);
+}
+
+void RoutineObserver::PrintOutput(const base::Value::Dict& output) {
+  if (format_output_callback_) {
+    std::move(format_output_callback_).Run(output);
+    return;
+  }
+  std::cout << "Output: " << std::endl;
+  OutputJson(output);
+}
 
 void RoutineObserver::OnRoutineStateChange(
     mojom::RoutineStatePtr state_update) {
@@ -74,11 +86,11 @@ void RoutineObserver::OnRoutineStateChange(
         case mojom::RoutineDetail::Tag::kCpuStress:
           break;
         case mojom::RoutineDetail::Tag::kMemory:
-          PrintMemoryDetail(finished_state->detail->get_memory());
+          PrintOutput(ParseMemoryDetail(finished_state->detail->get_memory()));
           break;
         case mojom::RoutineDetail::Tag::kAudioDriver:
-          PrintAudioDriverDetail(finished_state->detail->get_audio_driver());
-          break;
+          PrintOutput(ParseAudioDriverDetail(
+              finished_state->detail->get_audio_driver()));
       }
       std::move(quit_closure_).Run();
       return;
