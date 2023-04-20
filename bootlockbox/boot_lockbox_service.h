@@ -11,6 +11,7 @@
 #include <libhwsec/factory/factory_impl.h>
 
 #include "bootlockbox/boot_lockbox_dbus_adaptor.h"
+#include "bootlockbox/metrics.h"
 #include "bootlockbox/nvram_boot_lockbox.h"
 
 namespace bootlockbox {
@@ -32,6 +33,7 @@ class BootLockboxService : public brillo::DBusServiceDaemon {
 
  private:
   hwsec::FactoryImpl hwsec_factory_;
+  std::unique_ptr<Metrics> metrics_;
   std::unique_ptr<HwsecSpace> nvspace_utility_;
   std::unique_ptr<NVRamBootLockbox> boot_lockbox_;
   std::unique_ptr<BootLockboxDBusAdaptor> boot_lockbox_dbus_adaptor_;

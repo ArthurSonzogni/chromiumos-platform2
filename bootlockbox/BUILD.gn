@@ -58,6 +58,7 @@ executable("bootlockboxd") {
     "boot_lockbox_dbus_adaptor.cc",
     "boot_lockbox_service.cc",
     "boot_lockboxd.cc",
+    "metrics.cc",
   ]
 
   all_dependent_configs = [ ":bootlockbox_dependent_config" ]

@@ -16,8 +16,31 @@
 
 #include "bootlockbox/hwsec_space.h"
 #include "bootlockbox/hwsec_space_impl.h"
+#include "bootlockbox/metrics.h"
 
 namespace bootlockbox {
+
+namespace {
+
+void ReportSpaceAvailabilityFromState(Metrics& metrics, SpaceState state) {
+  switch (state) {
+    case SpaceState::kSpaceNormal:
+    case SpaceState::kSpaceUninitialized:
+      metrics.ReportSpaceAvailabilityAtStart(SpaceAvailability::kAvailable);
+      break;
+    case SpaceState::kSpaceWriteLocked:
+      metrics.ReportSpaceAvailabilityAtStart(SpaceAvailability::kWriteLocked);
+      break;
+    case SpaceState::kSpaceNeedPowerwash:
+      metrics.ReportSpaceAvailabilityAtStart(SpaceAvailability::kNeedPowerWash);
+      break;
+    default:
+      metrics.ReportSpaceAvailabilityAtStart(SpaceAvailability::kUnknown);
+      break;
+  }
+}
+
+}  // namespace
 
 int BootLockboxService::OnInit() {
   nvspace_utility_ =
@@ -41,6 +64,8 @@ int BootLockboxService::OnInit() {
       LOG(ERROR) << "Failed to create nvspace";
     }
   }
+
+  ReportSpaceAvailabilityFromState(*metrics_, boot_lockbox_->GetState());
 
   // Publish the service to dbus. Note that if nvspace is not defined,
   // calls to the interface would receive failure messages.
@@ -70,7 +95,8 @@ void BootLockboxService::RegisterDBusObjectsAsync(
 
 BootLockboxService::BootLockboxService()
     : brillo::DBusServiceDaemon("org.chromium.BootLockbox"),
-      hwsec_factory_(hwsec::ThreadingMode::kCurrentThread) {}
+      hwsec_factory_(hwsec::ThreadingMode::kCurrentThread),
+      metrics_(std::make_unique<Metrics>()) {}
 
 BootLockboxService::~BootLockboxService() {}
 
