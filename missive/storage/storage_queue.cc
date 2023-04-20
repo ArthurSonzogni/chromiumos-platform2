@@ -215,6 +215,7 @@ StorageQueue::StorageQueue(
           base::MakeRefCounted<RefCountedClosureList>(sequenced_task_runner)),
       low_priority_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
           {base::TaskPriority::BEST_EFFORT, base::MayBlock()})),
+      time_stamp_(base::Time::Now()),
       options_(options),
       generation_guid_(std::move(generation_guid)),
       async_start_upload_cb_(async_start_upload_cb),
@@ -1772,7 +1773,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     Status reserve_result = storage_queue_->ReserveNewRecordDiskSpace(
         storage_queue_->active_write_reservation_size_);
     if (!reserve_result.ok()) {
-      storage_queue_->active_write_reservation_size_ = 0;
+      storage_queue_->active_write_reservation_size_ = 0u;
       storage_queue_->degradation_candidates_cb_.Run(
           storage_queue_, base::BindPostTaskToCurrentDefault(base::BindOnce(
                               &WriteContext::RetryWithDegradation,
@@ -1891,6 +1892,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
       DCHECK(!status.ok());
       storage_queue_->options_.disk_space_resource()->Discard(
           storage_queue_->active_write_reservation_size_);
+      storage_queue_->active_write_reservation_size_ = 0u;
     }
   }
 

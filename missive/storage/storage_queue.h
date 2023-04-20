@@ -181,6 +181,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Accessors.
   const QueueOptions& options() const { return options_; }
   GenerationGuid generation_guid() const { return generation_guid_; }
+  base::Time time_stamp() const { return time_stamp_; }
 
  protected:
   virtual ~StorageQueue();
@@ -450,6 +451,10 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Serializeing them should reduce their impact.
   const scoped_refptr<base::SequencedTaskRunner> low_priority_task_runner_;
 
+  // StorageQueue object construction time (used for sorting the queue for
+  // degradation).
+  base::Time time_stamp_;
+
   // Immutable options, stored at the time of creation.
   const QueueOptions options_;
 
@@ -481,7 +486,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Reflects reservation for the head of the write contexts queue. Will return
   // to 0 after each writing process is finished. It helps keep disk space usage
   // accurate and within the bounds of the reservation.
-  size_t active_write_reservation_size_ = 0;
+  size_t active_write_reservation_size_ = 0u;
 
   // Next sequencing id to store (not assigned yet).
   int64_t next_sequencing_id_ = 0;

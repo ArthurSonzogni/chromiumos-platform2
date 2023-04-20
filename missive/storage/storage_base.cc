@@ -172,6 +172,47 @@ size_t QueuesContainer::RunActionOnAllQueues(
   return count;
 }
 
+namespace {
+
+// Comparator class for ordering degradation candidates queue.
+class QueueComparator {
+ public:
+  QueueComparator() : priority_to_order_(MapPriorityToOrder()) {}
+
+  bool operator()(
+      const std::pair<Priority, scoped_refptr<StorageQueue>>& a,
+      const std::pair<Priority, scoped_refptr<StorageQueue>>& b) const {
+    // Compare priorities.
+    DCHECK_LT(a.first, Priority_ARRAYSIZE);
+    DCHECK_LT(b.first, Priority_ARRAYSIZE);
+    const auto pa = priority_to_order_[a.first];
+    const auto pb = priority_to_order_[b.first];
+    if (pa < pb) {
+      return true;  // Lower priority.
+    }
+    if (pa > pb) {
+      return false;  // Higner priority.
+    }
+    // Equal priority. Compare time stamps: earlier ones first.
+    return a.second->time_stamp() < b.second->time_stamp();
+  }
+
+ private:
+  static std::array<size_t, Priority_ARRAYSIZE> MapPriorityToOrder() {
+    size_t index = Priority_MAX;
+    std::array<size_t, Priority_ARRAYSIZE> priority_to_order;
+    for (const auto& priority : StorageOptions::GetPrioritiesOrder()) {
+      priority_to_order[priority] = index;
+      --index;
+    }
+    return priority_to_order;
+  }
+
+  // Reverse mapping Priority->index in ascending priorities order.
+  const std::array<size_t, Priority_ARRAYSIZE> priority_to_order_;
+};
+}  // namespace
+
 // static
 void QueuesContainer::GetDegradationCandidates(
     base::WeakPtr<QueuesContainer> container,
@@ -188,11 +229,35 @@ void QueuesContainer::GetDegradationCandidates(
     std::move(result_cb).Run({});
     return;
   }
-  // Degradation enabled, populate the queue from lowest to highest priority up
+
+  // Degradation enabled, populate the result from lowest to highest priority up
   // to (but not including) the one referenced by `queue`.
-  NOTIMPLEMENTED();  // TODO(b/214038621): Produce and return actual candidates
-                     // queue.
-  std::move(result_cb).Run({});
+  // Note: base::NoDestruct<QueueComparator> does not compile.
+  static const QueueComparator comparator;
+
+  // Collect queues with lower or same priorities as `queue` except the `queue`
+  // itself.
+  std::vector<std::pair<Priority, scoped_refptr<StorageQueue>>>
+      candidate_queues;
+  const auto writing_queue_pair = std::make_pair(priority, queue);
+  for (const auto& [priority_generation_tuple, candidate_queue] :
+       container->queues_) {
+    auto queue_priority = std::get<Priority>(priority_generation_tuple);
+    auto queue_pair = std::make_pair(queue_priority, candidate_queue);
+    if (comparator(writing_queue_pair, queue_pair)) {
+      DCHECK_NE(candidate_queue.get(), queue.get());
+      candidate_queues.emplace_back(queue_pair);
+    }
+  }
+
+  // Sort them by priority and time stamp.
+  std::sort(candidate_queues.begin(), candidate_queues.end(), comparator);
+
+  std::queue<scoped_refptr<StorageQueue>> result;
+  for (auto& [_, candidate_queue] : candidate_queues) {
+    result.emplace(std::move(candidate_queue));
+  }
+  std::move(result_cb).Run(std::move(result));
 }
 
 void QueuesContainer::RegisterCompletionCallback(base::OnceClosure callback) {

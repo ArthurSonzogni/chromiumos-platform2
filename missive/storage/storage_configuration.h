@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/string_piece.h>
@@ -58,8 +59,11 @@ class StorageOptions {
   // Can be overridden by tests to modify queues options.
   virtual QueueOptions ProduceQueuesOptions(Priority priority) const;
 
-  // Generates list queue options. One QueueOption for each priority
+  // Generates list queue options. One QueueOption for each priority.
   virtual QueuesOptionsList ProduceQueuesOptionsList() const;
+
+  // Exposes priorities in order.
+  static base::span<const Priority> GetPrioritiesOrder();
 
   StorageOptions& set_signature_verification_public_key(
       base::StringPiece signature_verification_public_key) {

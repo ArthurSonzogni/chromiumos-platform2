@@ -5,6 +5,7 @@
 #include "missive/storage/storage_configuration.h"
 
 #include <base/containers/flat_set.h>
+#include <base/containers/span.h>
 
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
@@ -121,7 +122,13 @@ StorageOptions::QueuesOptionsList StorageOptions::ProduceQueuesOptionsList()
   return queue_options_list;
 }
 
+// static
+base::span<const Priority> StorageOptions::GetPrioritiesOrder() {
+  return base::make_span(kPriorityOrder);
+}
+
 QueueOptions::QueueOptions(const StorageOptions& storage_options)
     : storage_options_(storage_options) {}
 QueueOptions::QueueOptions(const QueueOptions& options) = default;
+
 }  // namespace reporting
