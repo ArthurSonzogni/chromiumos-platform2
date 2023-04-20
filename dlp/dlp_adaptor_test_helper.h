@@ -50,8 +50,7 @@ class DlpAdaptorTestHelper {
   scoped_refptr<dbus::MockObjectProxy> mock_dlp_files_policy_service_proxy_;
   scoped_refptr<dbus::MockObjectProxy> mock_session_manager_proxy_;
 
-  // Owned by adaptor_
-  feature::FakePlatformFeatures* feature_lib_;
+  std::unique_ptr<feature::FakePlatformFeatures> feature_lib_;
 
   base::ScopedTempDir home_dir_;
   std::unique_ptr<DlpAdaptor> adaptor_;

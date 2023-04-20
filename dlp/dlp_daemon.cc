@@ -37,11 +37,15 @@ void DlpDaemon::RegisterDBusObjectsAsync(
       object_manager_.get(), object_manager_->GetBus(),
       org::chromium::DlpAdaptor::GetObjectPath());
   DCHECK(!adaptor_);
-  std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib =
-      feature::PlatformFeatures::New(dbus_object->GetBus());
-  adaptor_ = std::make_unique<DlpAdaptor>(
-      std::move(dbus_object), std::move(feature_lib), fanotify_perm_fd_,
-      fanotify_notif_fd_, home_path_);
+  feature::PlatformFeatures* feature_lib;
+  if (!feature::PlatformFeatures::Initialize(dbus_object->GetBus())) {
+    feature_lib = nullptr;
+  } else {
+    feature_lib = feature::PlatformFeatures::Get();
+  }
+  adaptor_ = std::make_unique<DlpAdaptor>(std::move(dbus_object), feature_lib,
+                                          fanotify_perm_fd_, fanotify_notif_fd_,
+                                          home_path_);
   adaptor_->InitDatabase(database_path_, base::DoNothing());
   adaptor_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));

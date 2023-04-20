@@ -42,7 +42,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
                    public DlpDatabase::Delegate {
  public:
   DlpAdaptor(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-             std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib,
+             feature::PlatformFeaturesInterface* feature_lib,
              int fanotify_perm_fd,
              int fanotify_notif_fd,
              const base::FilePath& home_path);
@@ -251,7 +251,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
-  std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib_;
+  feature::PlatformFeaturesInterface* feature_lib_ = nullptr;
 
   // Cache of IsFilesTransferRestricted replies from Chrome.
   DlpRequestsCache requests_cache_;

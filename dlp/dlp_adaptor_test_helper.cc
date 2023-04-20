@@ -62,14 +62,12 @@ DlpAdaptorTestHelper::DlpAdaptorTestHelper() {
   base::ScopedFD fd_1, fd_2;
   EXPECT_TRUE(base::CreatePipe(&fd_1, &fd_2));
 
-  auto feature_lib = std::make_unique<feature::FakePlatformFeatures>(bus_);
-  CHECK_NE(feature_lib, nullptr);
-  feature_lib_ = feature_lib.get();
+  feature_lib_ = std::make_unique<feature::FakePlatformFeatures>(bus_);
+  CHECK_NE(feature_lib_.get(), nullptr);
   adaptor_ = std::make_unique<DlpAdaptor>(
       std::make_unique<brillo::dbus_utils::DBusObject>(nullptr, bus_,
                                                        object_path),
-      std::move(feature_lib), fd_1.release(), fd_2.release(),
-      home_dir_.GetPath());
+      feature_lib_.get(), fd_1.release(), fd_2.release(), home_dir_.GetPath());
 }
 
 DlpAdaptorTestHelper::~DlpAdaptorTestHelper() = default;

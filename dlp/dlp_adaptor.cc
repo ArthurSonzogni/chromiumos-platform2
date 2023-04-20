@@ -118,13 +118,13 @@ const struct VariationsFeature kCrOSLateBootDlpDatabaseCleanupFeature = {
 
 DlpAdaptor::DlpAdaptor(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-    std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib,
+    feature::PlatformFeaturesInterface* feature_lib,
     int fanotify_perm_fd,
     int fanotify_notif_fd,
     const base::FilePath& home_path)
     : org::chromium::DlpAdaptor(this),
       dbus_object_(std::move(dbus_object)),
-      feature_lib_(std::move(feature_lib)),
+      feature_lib_(feature_lib),
       home_path_(home_path) {
   dlp_metrics_ = std::make_unique<DlpMetrics>();
   fanotify_watcher_ = std::make_unique<FanotifyWatcher>(this, fanotify_perm_fd,
