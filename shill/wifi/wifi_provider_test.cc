@@ -1917,6 +1917,18 @@ TEST_F(WiFiProviderTest, NumAutoConnectableServices) {
   EXPECT_EQ(1, provider_.NumAutoConnectableServices());
 }
 
+TEST_F(WiFiProviderTest, ResetAutoConnectCooldownTime) {
+  provider_.Start();
+  MockWiFiServiceRefPtr service0 = AddMockService(
+      std::vector<uint8_t>(1, '0'), kModeManaged, kSecurityClassNone, false);
+  MockWiFiServiceRefPtr service1 = AddMockService(
+      std::vector<uint8_t>(1, '1'), kModeManaged, kSecurityClassNone, false);
+
+  EXPECT_CALL(*service0, ResetAutoConnectCooldownTime).Times(1);
+  EXPECT_CALL(*service1, ResetAutoConnectCooldownTime).Times(1);
+  provider_.ResetServicesAutoConnectCooldownTime();
+}
+
 TEST_F(WiFiProviderTest, GetSsidsConfiguredForAutoConnect) {
   std::vector<uint8_t> ssid0(3, '0');
   std::vector<uint8_t> ssid1(5, '1');

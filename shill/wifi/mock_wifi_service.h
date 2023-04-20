@@ -34,6 +34,7 @@ class MockWiFiService : public WiFiService {
   MOCK_METHOD(void, SetFailure, (ConnectFailure), (override));
   MOCK_METHOD(void, SetFailureSilent, (ConnectFailure), (override));
   MOCK_METHOD(void, SetState, (ConnectState), (override));
+  MOCK_METHOD(void, ResetAutoConnectCooldownTime, (), (override));
   MOCK_METHOD(bool,
               AddEAPCertification,
               (const std::string&, size_t),

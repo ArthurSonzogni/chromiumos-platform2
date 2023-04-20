@@ -156,6 +156,9 @@ class WiFiProvider : public ProviderInterface {
   // Returns number of services available for auto-connect.
   virtual int NumAutoConnectableServices();
 
+  // Reset autoconnect cooldown time for all services.
+  mockable void ResetServicesAutoConnectCooldownTime();
+
   // Returns a list of ByteStrings representing the SSIDs of WiFi services
   // configured for auto-connect.
   std::vector<ByteString> GetSsidsConfiguredForAutoConnect();

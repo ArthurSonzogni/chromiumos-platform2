@@ -314,6 +314,11 @@ void WiFi::Stop(EnabledStateChangedCallback callback) {
   pending_scan_results_.reset();
   current_service_ = nullptr;  // breaks a reference cycle
   pending_service_ = nullptr;  // breaks a reference cycle
+  // Reset autoconnect cooldown time for all WiFi services to 0. When WiFi
+  // interface is toggled off-and-on (which is often used to fix issues by
+  // resetting states), the cooldown time should be reset so that it does not
+  // block auto-connection in the next adapter session.
+  provider_->ResetServicesAutoConnectCooldownTime();
   is_debugging_connection_ = false;
   SetPhyState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
               __func__);

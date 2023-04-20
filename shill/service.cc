@@ -519,6 +519,11 @@ bool Service::IsOnline() const {
   return state() == kStateOnline;
 }
 
+void Service::ResetAutoConnectCooldownTime() {
+  auto_connect_cooldown_ = base::TimeDelta();
+  reenable_auto_connect_task_.Cancel();
+}
+
 void Service::SetState(ConnectState state) {
   if (state == state_) {
     return;
@@ -588,8 +593,7 @@ void Service::SetState(ConnectState state) {
     // When we succeed in connecting, forget that connects failed in the past.
     // Give services one chance at a fast autoconnect retry by resetting the
     // cooldown to 0 to indicate that the last connect was successful.
-    auto_connect_cooldown_ = base::TimeDelta();
-    reenable_auto_connect_task_.Cancel();
+    ResetAutoConnectCooldownTime();
   }
   UpdateErrorProperty();
   manager_->NotifyServiceStateChanged(this);
@@ -1663,8 +1667,7 @@ void Service::OnBeforeSuspend(ResultCallback callback) {
 
 void Service::OnAfterResume() {
   // Forget old autoconnect failures across suspend/resume.
-  auto_connect_cooldown_ = base::TimeDelta();
-  reenable_auto_connect_task_.Cancel();
+  ResetAutoConnectCooldownTime();
   // Forget if the user disconnected us, we might be able to connect now.
   ClearExplicitlyDisconnected();
 }

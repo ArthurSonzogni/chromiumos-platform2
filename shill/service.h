@@ -397,6 +397,10 @@ class Service : public base::RefCounted<Service> {
   // its value to true and mark it saved.
   virtual void EnableAndRetainAutoConnect();
 
+  // Reset |auto_connect_cooldown_| and cancel |reenable_auto_connect_task_|,
+  // but don't notify manager on the service update.
+  mockable void ResetAutoConnectCooldownTime();
+
   // Returns the Network attached to this Service, or nullptr if the Service is
   // not connected and has no associated Network.
   Network* attached_network() const { return attached_network_.get(); }

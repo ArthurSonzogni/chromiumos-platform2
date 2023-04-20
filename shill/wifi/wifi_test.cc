@@ -2681,8 +2681,11 @@ TEST_F(WiFiMainTest, Stop) {
       .WillOnce(Return(nullptr));
   EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(EndpointMatch(endpoint1)))
       .WillOnce(Return(nullptr));
+  EXPECT_CALL(*wifi_provider(), ResetServicesAutoConnectCooldownTime())
+      .Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(1);
   StopWiFi();
+  Mock::VerifyAndClearExpectations(wifi_provider());
   EXPECT_TRUE(GetScanTimer().IsCancelled());
   EXPECT_FALSE(wifi()->weak_ptr_factory_while_started_.HasWeakPtrs());
 }

@@ -722,6 +722,12 @@ int WiFiProvider::NumAutoConnectableServices() {
   return num_services;
 }
 
+void WiFiProvider::ResetServicesAutoConnectCooldownTime() {
+  for (const auto& service : services_) {
+    service->ResetAutoConnectCooldownTime();
+  }
+}
+
 std::vector<ByteString> WiFiProvider::GetSsidsConfiguredForAutoConnect() {
   std::vector<ByteString> results;
   for (const auto& service : services_) {
