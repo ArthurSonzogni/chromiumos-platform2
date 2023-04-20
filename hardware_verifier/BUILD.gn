@@ -13,6 +13,7 @@ group("all") {
     ":install_dbus_service",
     ":install_init_config",
     ":install_minijail_config",
+    ":install_minijail_dbus_config",
   ]
   if (use.test) {
     deps += [ ":unittest_runner" ]
@@ -87,6 +88,11 @@ install_config("install_init_config") {
 
 install_config("install_minijail_config") {
   sources = [ "minijail/hardware_verifier.conf" ]
+  install_path = "/usr/share/minijail"
+}
+
+install_config("install_minijail_dbus_config") {
+  sources = [ "minijail/hardware_verifier-dbus.conf" ]
   install_path = "/usr/share/minijail"
 }
 
