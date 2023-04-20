@@ -12,6 +12,7 @@ group("all") {
     ":dlcservice_adaptors",
     ":dlcservice_util",
     ":dlcverify",
+    ":install_minijail_conf",
     ":libdlcservice",
     ":libdlcservice_utils",
   ]
@@ -24,6 +25,11 @@ group("all") {
       ":dlcservice_boot_slot_fuzzer",
     ]
   }
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/dlcservice.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 pkg_config("target_defaults") {
