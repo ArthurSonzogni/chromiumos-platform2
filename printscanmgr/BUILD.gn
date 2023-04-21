@@ -11,6 +11,7 @@ group("all") {
     "//printscanmgr/dbus_bindings:printscanmgr-adaptors",
     "//printscanmgr/dbus_service:dbus_service",
     "//printscanmgr/init:init_config",
+    "//printscanmgr/mojom:mojo_bindings",
     "//printscanmgr/seccomp:seccomp_policy",
   ]
   if (use.test) {
