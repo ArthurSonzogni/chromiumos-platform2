@@ -172,11 +172,19 @@ std::unique_ptr<ProbeResultCheckerList> ProbeResultCheckerList::FromValue(
 }
 
 bool ProbeResultCheckerList::Apply(base::Value* probe_result) const {
+  CHECK(probe_result != nullptr);
+
   if (checkers.size() == 0)
     return true;
   for (const auto& checker : checkers) {
-    if (checker->Apply(probe_result))
+    // Pass the copy of |probe_result| in as the checker may modify it.
+    auto probe_result_copy = probe_result->Clone();
+    if (checker->Apply(&probe_result_copy)) {
+      // We need the values in |probe_result| to be converted, so update
+      // |probe_result| if it passes the validation.
+      *probe_result = std::move(probe_result_copy);
       return true;
+    }
   }
   return false;
 }

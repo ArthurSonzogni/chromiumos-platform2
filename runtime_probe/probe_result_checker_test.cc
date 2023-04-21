@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/probe_result_checker.h"
+
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -10,8 +13,6 @@
 #include <brillo/map_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "runtime_probe/probe_result_checker.h"
 
 namespace runtime_probe {
 
@@ -261,7 +262,8 @@ TEST(ProbeResultCheckerListTest, TestApply) {
       ON_CALL(*mock_checker, Apply(_)).WillByDefault(Return(input));
       checker_list->checkers.push_back(std::move(mock_checker));
     }
-    ASSERT_EQ(output, checker_list->Apply(nullptr));
+    auto probe_result_stub = std::make_unique<base::Value>();
+    ASSERT_EQ(output, checker_list->Apply(&*probe_result_stub));
   }
 }
 
@@ -276,7 +278,8 @@ TEST(ProbeResultCheckerListTest, TestApplyShortCircuit) {
   mock_checker = std::make_unique<StrictMock<MockProbeResultChecker>>();
   checker_list->checkers.push_back(std::move(mock_checker));
 
-  ASSERT_TRUE(checker_list->Apply(nullptr));
+  auto probe_result_stub = std::make_unique<base::Value>();
+  ASSERT_TRUE(checker_list->Apply(&*probe_result_stub));
 }
 
 TEST(ProbeResultCheckerTest, TestFromValueDict) {
