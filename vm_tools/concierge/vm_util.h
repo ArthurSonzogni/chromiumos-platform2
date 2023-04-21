@@ -159,6 +159,12 @@ bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares);
 // based on |percent|.
 bool UpdateCpuQuota(const base::FilePath& cpu_cgroup, int percent);
 
+// Updates |cpu_cgroup|'s cpu.uclamp.latency_sensitive to |enable|.
+bool UpdateCpuLatencySensitive(const base::FilePath& cpu_cgroup, bool enable);
+
+// Updates |cpu_cgroup|'s cpu.uclamp.min based on |percent|.
+bool UpdateCpuUclampMin(const base::FilePath& cpu_cgroup, double percent);
+
 // Convert file path into fd path
 // This will open the file and append SafeFD into provided container
 std::string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
@@ -248,6 +254,7 @@ class ArcVmCPUTopology {
   const std::string& CapacityMask();
   const std::vector<std::string>& PackageMask();
   int TopAppUclampMin();
+  double GlobalVMBoost();
 
   // Unit Testing crud
   void AddCpuToCapacityGroupForTesting(uint32_t cpu, uint32_t capacity);
@@ -280,6 +287,8 @@ class ArcVmCPUTopology {
   std::vector<std::string> package_mask_;
   // Default uclamp.min for performance tasks based on capacity
   int top_app_uclamp_min_;
+  // Amount of the global VM boost, which should be applied to the host cgroups
+  double global_vm_boost_;
 };
 
 class VmStartChecker {

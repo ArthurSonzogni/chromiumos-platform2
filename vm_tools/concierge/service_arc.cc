@@ -209,6 +209,31 @@ bool ShouldEnableAAudioMMAP(bool is_feature_enabled, bool is_dev_mode) {
   return is_feature_enabled && supported_cpu;
 }
 
+// This function boosts the arcvm and arcvm-vcpus cgroups, by applying the
+// cpu.uclamp.min boost for all the vcpus and crosvm services and enabling the
+// latency_sensitive attribute.
+// Appropriate boost is required for the little.BIG architecture, to reduce
+// latency and improve general ARCVM experience. b/217825939
+bool BoostArcVmCgroups(double boost_value) {
+  bool ret = true;
+  const base::FilePath arcvm_cgroup = base::FilePath(kArcvmCpuCgroup);
+  const base::FilePath arcvm_vcpu_cgroup = base::FilePath(kArcvmVcpuCpuCgroup);
+
+  if (!UpdateCpuLatencySensitive(arcvm_cgroup, 1))
+    ret = false;
+
+  if (!UpdateCpuLatencySensitive(arcvm_vcpu_cgroup, 1))
+    ret = false;
+
+  if (!UpdateCpuUclampMin(arcvm_cgroup, boost_value))
+    ret = false;
+
+  if (!UpdateCpuUclampMin(arcvm_vcpu_cgroup, boost_value))
+    ret = false;
+
+  return ret;
+}
+
 }  // namespace
 
 StartVmResponse Service::StartArcVm(StartArcVmRequest request,
@@ -542,6 +567,12 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   HandleVmStarted(vm_id, *vm_info, vm->GetVmSocketPath(), response.status());
 
   vms_[vm_id] = std::move(vm);
+
+  double vm_boost = topology.GlobalVMBoost();
+  if (vm_boost > 0.0) {
+    if (!BoostArcVmCgroups(vm_boost))
+      LOG(WARNING) << "Failed to boost the ARCVM to " << vm_boost;
+  }
 
   return response;
 }

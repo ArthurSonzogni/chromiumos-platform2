@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <csignal>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -62,6 +63,7 @@ constexpr char kEpollAsyncExecutorString[] = "epoll";
 
 constexpr char kSchedulerTunePath[] = "/scheduler-tune";
 constexpr char kBoostTopAppProperty[] = "boost-top-app";
+constexpr char kBoostArcVmProperty[] = "boost-arcvm";
 
 std::string BooleanParameter(const char* parameter, bool value) {
   std::string result = base::StrCat({parameter, value ? "true" : "false"});
@@ -198,6 +200,12 @@ std::optional<int32_t> GetCpuCapacity(int32_t cpu) {
   base::FilePath cpu_capacity_path(
       base::StringPrintf("/sys/devices/system/cpu/cpu%d/cpu_capacity", cpu));
   return ReadFileToInt32(cpu_capacity_path);
+}
+
+std::optional<int32_t> GetCpuMaxFrequency(int32_t cpu) {
+  base::FilePath cpu_max_freq_path(base::StringPrintf(
+      "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq", cpu));
+  return ReadFileToInt32(cpu_max_freq_path);
 }
 
 std::optional<std::string> GetCpuAffinityFromClusters(
@@ -453,6 +461,32 @@ bool UpdateCpuQuota(const base::FilePath& cpu_cgroup, int percent) {
   return true;
 }
 
+bool UpdateCpuLatencySensitive(const base::FilePath& cpu_cgroup, bool enable) {
+  std::string enable_str = std::to_string(static_cast<int>(enable));
+  auto latency_sensitive = cpu_cgroup.Append("cpu.uclamp.latency_sensitive");
+  if (base::WriteFile(latency_sensitive, enable_str.c_str(),
+                      enable_str.size()) != enable_str.size()) {
+    PLOG(ERROR) << "Failed to update " << latency_sensitive.value() << " to "
+                << enable_str;
+    return false;
+  }
+  return true;
+}
+
+bool UpdateCpuUclampMin(const base::FilePath& cpu_cgroup, double percent) {
+  LOG_ASSERT(percent <= 100.0 && percent >= 0.0);
+
+  std::string uclamp_min_str = std::to_string(percent);
+  auto uclamp_min = cpu_cgroup.Append("cpu.uclamp.min");
+  if (base::WriteFile(uclamp_min, uclamp_min_str.c_str(),
+                      uclamp_min_str.size()) != uclamp_min_str.size()) {
+    PLOG(ERROR) << "Failed to update " << uclamp_min.value() << " to "
+                << uclamp_min_str;
+    return false;
+  }
+  return true;
+}
+
 // Convert file path into fd path
 // This will open the file and append SafeFD into provided container
 std::string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
@@ -654,6 +688,46 @@ void ArcVmCPUTopology::CreateAffinity(void) {
                    << kBoostTopAppProperty << " to number";
   }
 
+  // The board may request to boost the whole ARCVM globally, in order to reduce
+  // the latency and improve general experience of the ARCVM, especially on the
+  // little.BIG CPU architecture.
+  // If the global boost wasn't defined, it won't be used at all. b/217825939
+  global_vm_boost_ = 0.0;
+  if (cros_config.GetString(kSchedulerTunePath, kBoostArcVmProperty, &boost)) {
+    double boost_factor;
+    if (base::StringToDouble(boost, &boost_factor)) {
+      int32_t little_max_freq = std::numeric_limits<int32_t>::max();
+      int32_t big_max_freq = 0;
+
+      // The global boost factor is defined as:
+      // max_freq(little_core) / max_freq(big_core) * boost_factor
+      for (int32_t cpu = 0; cpu < num_cpus_; cpu++) {
+        auto max_freq = GetCpuMaxFrequency(cpu);
+        if (max_freq) {
+          little_max_freq = std::min(little_max_freq, *max_freq);
+          big_max_freq = std::max(big_max_freq, *max_freq);
+        }
+      }
+
+      if (little_max_freq <= big_max_freq && little_max_freq != 0 &&
+          big_max_freq != 0) {
+        double freq_ratio = static_cast<double>(little_max_freq) / big_max_freq;
+        global_vm_boost_ = freq_ratio * boost_factor * 100.0;
+        if (global_vm_boost_ > 100.0) {
+          LOG(INFO) << "Clamping global VM boost from " << global_vm_boost_
+                    << "% to 100%";
+          global_vm_boost_ = 100.0;
+        }
+
+        LOG(INFO) << "Calculated global VM boost: " << global_vm_boost_ << "%";
+      } else {
+        LOG(WARNING) << "VM cannot be boosted - invalid frequencies detected "
+                     << "little: " << little_max_freq
+                     << " big: " << big_max_freq;
+      }
+    }
+  }
+
   for (const auto& pkg : package_) {
     bool is_rt_vcpu_package = false;
     for (auto cpu : pkg.second) {
@@ -818,6 +892,10 @@ const std::vector<std::string>& ArcVmCPUTopology::PackageMask() {
 
 int ArcVmCPUTopology::TopAppUclampMin() {
   return top_app_uclamp_min_;
+}
+
+double ArcVmCPUTopology::GlobalVMBoost() {
+  return global_vm_boost_;
 }
 
 ArcVmCPUTopology::ArcVmCPUTopology(uint32_t num_cpus, uint32_t num_rt_cpus) {
