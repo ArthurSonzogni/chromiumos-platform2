@@ -23,6 +23,8 @@
 #include <brillo/daemons/daemon.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec/factory/factory_impl.h>
+#include <libhwsec/frontend/attestation/frontend.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include "attestation/common/crypto_utility_impl.h"
@@ -827,7 +829,9 @@ class ClientLoop : public ClientLoopBase {
     if (attestation_key_info.status() != STATUS_SUCCESS) {
       PrintReplyAndQuit(attestation_key_info);
     }
-    CryptoUtilityImpl crypto(nullptr);
+    hwsec::FactoryImpl factory(hwsec::ThreadingMode::kCurrentThread);
+    auto hwsec = factory.GetAttestationFrontend();
+    CryptoUtilityImpl crypto(nullptr, hwsec.get());
     EncryptedIdentityCredential encrypted;
 
     TpmVersion tpm_version;
@@ -896,7 +900,9 @@ class ClientLoop : public ClientLoopBase {
   }
 
   void Encrypt2(const std::string& input, const GetKeyInfoReply& key_info) {
-    CryptoUtilityImpl crypto(nullptr);
+    hwsec::FactoryImpl factory(hwsec::ThreadingMode::kCurrentThread);
+    auto hwsec = factory.GetAttestationFrontend();
+    CryptoUtilityImpl crypto(nullptr, hwsec.get());
     std::string output;
     if (!crypto.EncryptForUnbind(key_info.public_key(), input, &output)) {
       QuitWithExitCode(EX_SOFTWARE);
@@ -963,7 +969,9 @@ class ClientLoop : public ClientLoopBase {
   void VerifySignature2(const std::string& input,
                         const std::string& signature,
                         const GetKeyInfoReply& key_info) {
-    CryptoUtilityImpl crypto(nullptr);
+    hwsec::FactoryImpl factory(hwsec::ThreadingMode::kCurrentThread);
+    auto hwsec = factory.GetAttestationFrontend();
+    CryptoUtilityImpl crypto(nullptr, hwsec.get());
     if (crypto.VerifySignature(crypto.DefaultDigestAlgoForSignature(),
                                key_info.public_key(), input, signature)) {
       printf("Signature is OK!\n");

@@ -9,9 +9,10 @@
 
 #include <string>
 
+#include <crypto/scoped_openssl_types.h>
+#include <libhwsec/frontend/attestation/frontend.h>
 #include <openssl/rsa.h>
 #include <openssl/ec.h>
-#include <crypto/scoped_openssl_types.h>
 
 #include "attestation/common/tpm_utility.h"
 
@@ -21,7 +22,7 @@ namespace attestation {
 class CryptoUtilityImpl : public CryptoUtility {
  public:
   // Does not take ownership of pointers.
-  explicit CryptoUtilityImpl(TpmUtility* tpm_utility);
+  CryptoUtilityImpl(TpmUtility* tpm_utility, hwsec::AttestationFrontend* hwsec);
   ~CryptoUtilityImpl() override;
 
   // CryptoUtility methods.
@@ -201,6 +202,7 @@ class CryptoUtilityImpl : public CryptoUtility {
                            std::string* spkac);
 
   TpmUtility* tpm_utility_;
+  hwsec::AttestationFrontend* hwsec_;
 };
 
 }  // namespace attestation

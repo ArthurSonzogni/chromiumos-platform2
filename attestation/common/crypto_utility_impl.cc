@@ -16,10 +16,13 @@
 #include <base/hash/sha1.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/secure_blob.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/secure_util.h>
 #include <crypto/sha2.h>
+#include <libhwsec/frontend/attestation/frontend.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -28,6 +31,8 @@
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <openssl/x509.h>
+
+using ::hwsec::TPMError;
 
 namespace {
 
@@ -88,8 +93,10 @@ crypto::ScopedOpenSSL<X509, X509_free> CreateX509FromCertificate(
 
 namespace attestation {
 
-CryptoUtilityImpl::CryptoUtilityImpl(TpmUtility* tpm_utility)
-    : tpm_utility_(tpm_utility) {
+CryptoUtilityImpl::CryptoUtilityImpl(TpmUtility* tpm_utility,
+                                     hwsec::AttestationFrontend* hwsec)
+    : tpm_utility_(tpm_utility), hwsec_(hwsec) {
+  CHECK(hwsec_);
   OpenSSL_add_all_algorithms();
   EVP_PKEY_asn1_add_alias(EVP_PKEY_RSA, NID_rsaesOaep);
   ERR_load_crypto_strings();
@@ -117,10 +124,11 @@ bool CryptoUtilityImpl::CreateSealedKey(std::string* aes_key,
     LOG(ERROR) << __func__ << ": GetRandom failed.";
     return false;
   }
-  if (!tpm_utility_->SealToPCR0(*aes_key, sealed_key)) {
-    LOG(ERROR) << __func__ << ": Failed to seal cipher key.";
-    return false;
-  }
+  ASSIGN_OR_RETURN(
+      const brillo::Blob& sealed_key_blob,
+      hwsec_->Seal(brillo::SecureBlob(*aes_key)),
+      _.WithStatus<TPMError>("Failed to seal aes key").LogError().As(false));
+  *sealed_key = brillo::BlobToString(sealed_key_blob);
   return true;
 }
 
@@ -149,10 +157,11 @@ bool CryptoUtilityImpl::UnsealKey(const std::string& encrypted_data,
     LOG(ERROR) << __func__ << ": Failed to parse protobuf.";
     return false;
   }
-  if (!tpm_utility_->Unseal(encrypted_pb.wrapped_key(), aes_key)) {
-    LOG(ERROR) << __func__ << ": Cannot unseal aes key.";
-    return false;
-  }
+  ASSIGN_OR_RETURN(
+      const brillo::SecureBlob& aes_key_blob,
+      hwsec_->Unseal(brillo::BlobFromString(encrypted_pb.wrapped_key())),
+      _.WithStatus<TPMError>("Failed to unseal aes key").LogError().As(false));
+  *aes_key = aes_key_blob.to_string();
   *sealed_key = encrypted_pb.wrapped_key();
   return true;
 }

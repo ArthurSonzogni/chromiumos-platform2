@@ -29,6 +29,9 @@
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
 #include <crypto/sha2.h>
+#include <libhwsec/factory/factory_impl.h>
+#include <libhwsec/frontend/attestation/frontend.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <openssl/objects.h>
 #include <policy/device_policy.h>
@@ -465,12 +468,20 @@ void AttestationService::InitializeTask(InitializeCompleteCallback callback) {
     CHECK(default_tpm_utility_->Initialize());
     tpm_utility_ = default_tpm_utility_.get();
   }
+  if (!hwsec_factory_) {
+    default_hwsec_factory_ = std::make_unique<hwsec::FactoryImpl>();
+    hwsec_factory_ = default_hwsec_factory_.get();
+  }
+  if (!hwsec_) {
+    default_hwsec_ = hwsec_factory_->GetAttestationFrontend();
+    hwsec_ = default_hwsec_.get();
+  }
   if (!nvram_quoter_) {
     default_nvram_quoter_.reset(NvramQuoterFactory::New(*tpm_utility_));
     nvram_quoter_ = default_nvram_quoter_.get();
   }
   if (!crypto_utility_) {
-    default_crypto_utility_.reset(new CryptoUtilityImpl(tpm_utility_));
+    default_crypto_utility_.reset(new CryptoUtilityImpl(tpm_utility_, hwsec_));
     crypto_utility_ = default_crypto_utility_.get();
   }
 

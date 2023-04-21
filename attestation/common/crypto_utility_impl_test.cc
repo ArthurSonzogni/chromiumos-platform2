@@ -11,12 +11,18 @@
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/attestation/mock_frontend.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <openssl/objects.h>
 
 #include "attestation/common/crypto_utility_impl.h"
 #include "attestation/common/mock_tpm_utility.h"
 
+using ::hwsec::TPMError;
+using ::hwsec::TPMRetryAction;
+using ::hwsec_foundation::error::testing::ReturnError;
 using testing::_;
+using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
 
@@ -75,6 +81,22 @@ std::string HexDecode(const std::string hex) {
   return std::string(reinterpret_cast<char*>(output.data()), output.size());
 }
 
+brillo::SecureBlob UnsealBlob(const brillo::Blob& blob) {
+  std::string s = brillo::BlobToString(blob);
+  reverse(s.begin(), s.end());
+  if (!s.empty()) {
+    s.pop_back();
+  }
+  return brillo::SecureBlob(s);
+}
+
+brillo::Blob SealBlob(const brillo::SecureBlob& blob) {
+  std::string s = blob.to_string();
+  s.push_back('a');
+  reverse(s.begin(), s.end());
+  return brillo::BlobFromString(s);
+}
+
 }  // namespace
 
 namespace attestation {
@@ -83,7 +105,10 @@ class CryptoUtilityImplTest : public testing::Test {
  public:
   ~CryptoUtilityImplTest() override = default;
   void SetUp() override {
-    crypto_utility_.reset(new CryptoUtilityImpl(&mock_tpm_utility_));
+    crypto_utility_.reset(
+        new CryptoUtilityImpl(&mock_tpm_utility_, &mock_hwsec_));
+    EXPECT_CALL(mock_hwsec_, Seal).WillRepeatedly(Invoke(SealBlob));
+    EXPECT_CALL(mock_hwsec_, Unseal).WillRepeatedly(Invoke(UnsealBlob));
   }
 
   bool EncryptIdentityCertificate(const std::string& credential,
@@ -103,6 +128,7 @@ class CryptoUtilityImplTest : public testing::Test {
 
  protected:
   NiceMock<MockTpmUtility> mock_tpm_utility_;
+  NiceMock<hwsec::MockAttestationFrontend> mock_hwsec_;
   std::unique_ptr<CryptoUtilityImpl> crypto_utility_;
 };
 
@@ -137,8 +163,8 @@ TEST_F(CryptoUtilityImplTest, PairwiseSealedEncryption) {
 }
 
 TEST_F(CryptoUtilityImplTest, SealFailure) {
-  EXPECT_CALL(mock_tpm_utility_, SealToPCR0(_, _))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_hwsec_, Seal)
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   std::string key;
   std::string sealed_key;
   EXPECT_FALSE(crypto_utility_->CreateSealedKey(&key, &sealed_key));
@@ -162,7 +188,8 @@ TEST_F(CryptoUtilityImplTest, UnsealInvalidData) {
 }
 
 TEST_F(CryptoUtilityImplTest, UnsealError) {
-  EXPECT_CALL(mock_tpm_utility_, Unseal(_, _)).WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_hwsec_, Unseal)
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   std::string key(32, 0);
   std::string data;
   EXPECT_TRUE(crypto_utility_->EncryptData("data", key, key, &data));

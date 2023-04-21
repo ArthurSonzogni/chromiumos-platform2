@@ -21,6 +21,8 @@
 #include <brillo/errors/error.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/attestation/mock_frontend.h>
+#include <libhwsec/factory/mock_factory.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <policy/mock_device_policy.h>
 #include <policy/mock_libpolicy.h>
@@ -207,6 +209,8 @@ class AttestationServiceBaseTest : public testing::Test {
     SET_DEFAULT_TPM_FOR_TESTING;
     service_.reset(new AttestationService(nullptr, ""));
     service_->set_database(&mock_database_);
+    service_->set_hwsec_factory(&mock_hwsec_factory_);
+    service_->set_hwsec(&mock_hwsec_);
     service_->set_crypto_utility(&mock_crypto_utility_);
     service_->set_key_store(&mock_key_store_);
     service_->set_tpm_utility(&mock_tpm_utility_);
@@ -409,6 +413,8 @@ class AttestationServiceBaseTest : public testing::Test {
   NiceMock<MockDatabase> mock_database_;
   NiceMock<MockKeyStore> mock_key_store_;
   NiceMock<MockTpmUtility> mock_tpm_utility_;
+  NiceMock<hwsec::MockAttestationFrontend> mock_hwsec_;
+  NiceMock<hwsec::MockFactory> mock_hwsec_factory_;
   StrictMock<MockNvramQuoterWithFakeCertify> mock_nvram_quoter_;
   StrictMock<policy::MockPolicyProvider>* mock_policy_provider_;  // Not Owned.
   StrictMock<policy::MockDevicePolicy> mock_device_policy_;
@@ -802,7 +808,7 @@ TEST_F(AttestationServiceBaseTest, GetEnrollmentId) {
           DoAll(SetArgPointee<1>(std::string("ekm")), Return(true)));
   brillo::SecureBlob abe_data(0xCA, 32);
   service_->set_abe_data(&abe_data);
-  CryptoUtilityImpl crypto_utility(&mock_tpm_utility_);
+  CryptoUtilityImpl crypto_utility(&mock_tpm_utility_, &mock_hwsec_);
   service_->set_crypto_utility(&crypto_utility);
   std::string enrollment_id = GetEnrollmentId();
   EXPECT_EQ("635c4526dfa583362273e2987944007b09131cfa0f4e5874e7a76d55d333e3cc",
@@ -2497,7 +2503,7 @@ TEST_P(AttestationServiceTest, ComputeEnterpriseEnrollmentId) {
           DoAll(SetArgPointee<1>(std::string("ekm")), Return(true)));
   brillo::SecureBlob abe_data(0xCA, 32);
   service_->set_abe_data(&abe_data);
-  CryptoUtilityImpl crypto_utility(&mock_tpm_utility_);
+  CryptoUtilityImpl crypto_utility(&mock_tpm_utility_, &mock_hwsec_);
   service_->set_crypto_utility(&crypto_utility);
   std::string enrollment_id = ComputeEnterpriseEnrollmentId();
   EXPECT_EQ("635c4526dfa583362273e2987944007b09131cfa0f4e5874e7a76d55d333e3cc",

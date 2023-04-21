@@ -24,6 +24,8 @@
 #include <base/threading/thread.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
+#include <libhwsec/factory/factory.h>
+#include <libhwsec/frontend/attestation/frontend.h>
 #include <policy/libpolicy.h>
 
 #include "attestation/common/crypto_utility.h"
@@ -179,6 +181,12 @@ class AttestationService : public AttestationInterface {
   void set_key_store(KeyStore* key_store) { key_store_ = key_store; }
 
   void set_tpm_utility(TpmUtility* tpm_utility) { tpm_utility_ = tpm_utility; }
+
+  void set_hwsec_factory(hwsec::Factory* hwsec_factory) {
+    hwsec_factory_ = hwsec_factory;
+  }
+
+  void set_hwsec(hwsec::AttestationFrontend* hwsec) { hwsec_ = hwsec; }
 
   void set_nvram_quoter(NvramQuoter* nvram_quoter) {
     nvram_quoter_ = nvram_quoter;
@@ -768,6 +776,8 @@ class AttestationService : public AttestationInterface {
   // on the |worker_thread_|. As such, should not be accessed after that thread
   // is stopped/destroyed.
   TpmUtility* tpm_utility_{nullptr};
+  hwsec::Factory* hwsec_factory_{nullptr};
+  hwsec::AttestationFrontend* hwsec_{nullptr};
   NvramQuoter* nvram_quoter_{nullptr};
   std::string hwid_;
   CertRequestMap pending_cert_requests_;
@@ -803,6 +813,8 @@ class AttestationService : public AttestationInterface {
   // |default_tpm_utility_| is created and destroyed on the |worker_thread_|,
   // and is not available after the thread is stopped/destroyed.
   std::unique_ptr<TpmUtility> default_tpm_utility_;
+  std::unique_ptr<hwsec::Factory> default_hwsec_factory_;
+  std::unique_ptr<hwsec::AttestationFrontend> default_hwsec_;
   std::unique_ptr<NvramQuoter> default_nvram_quoter_;
 
   scoped_refptr<dbus::Bus> bus_;
