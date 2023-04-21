@@ -13200,6 +13200,50 @@ mno {
   }
   mvno {
     mvno_filter {
+      type : GID1
+      regex : "52FF"
+    }
+    data {
+      uuid : "441d4e56-d8e8-4ab0-883f-4728017ff002"
+      country : "us"
+      localized_name {
+        name : "AT&T"
+      }
+      mccmnc : "310410"
+      mccmnc : "310280"
+      mccmnc : "311180"
+      mccmnc : "310950"
+      mhs_entitlement_url : "http://entitlement.mobile.att.net/mhs1"
+      mhs_entitlement_method : GET
+      mobile_apn {
+        apn : "5gcbroadband"
+        localized_name {
+          name : "ATT 5GC Broadband"
+        }
+        ip_type: IPV4V6
+        type : DEFAULT
+        type : IA
+      }
+      mobile_apn {
+        apn : "broadband"
+        localized_name {
+          name : "ATT Broadband"
+        }
+        ip_type: IPV4V6
+        type : DEFAULT
+        type : IA
+      }
+      mobile_apn {
+        apn : "hotspot"
+        is_required_by_carrier_spec : true
+        ip_type: IPV4V6
+        type : DUN
+      }
+      mtu : 1430
+    }
+  }
+  mvno {
+    mvno_filter {
       type : IMSI
       range {
         start: 310170403827411
