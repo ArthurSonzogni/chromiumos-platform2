@@ -150,11 +150,29 @@ void AddNegativeGtestFilter(const std::string& pattern) {
 
 // This is for Android SurfaceViewPreviewTest CTS test cases.
 bool CheckTimestampsInOrder(const std::vector<int64_t>& timestamps) {
+  std::vector<size_t> out_of_order_ids;
   for (size_t i = 1; i < timestamps.size(); i++) {
     if (timestamps[i - 1] >= timestamps[i])
-      return false;
+      out_of_order_ids.push_back(i);
   }
-  return true;
+  if (out_of_order_ids.empty()) {
+    return true;
+  }
+  LOGF(ERROR) << "Found out-of-order timestamps:";
+  constexpr size_t kTap = 2;
+  size_t next_id = 0;
+  DCHECK_GT(timestamps.size(), 0);
+  for (size_t i : out_of_order_ids) {
+    for (size_t j = std::max(next_id, i - std::min(i, kTap));
+         j <= std::min(i + kTap, timestamps.size() - 1); ++j) {
+      if (j > next_id) {
+        LOGF(ERROR) << "  ...";
+      }
+      LOGF(ERROR) << "  [" << j << "] " << timestamps[j];
+      next_id = j + 1;
+    }
+  }
+  return false;
 }
 
 // This is for Android testCameraToSurfaceTextureMetadata CTS test case.
