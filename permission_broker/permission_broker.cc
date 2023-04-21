@@ -249,8 +249,10 @@ bool PermissionBroker::OpenPathImpl(brillo::ErrorPtr* error,
       auto maybe_client_id =
           usb_driver_tracker_.RegisterClient(lifeline_fd, file_path);
       if (!maybe_client_id.has_value()) {
-        LOG(ERROR) << "Failed to register client with lifeline_fd "
-                   << lifeline_fd << " for path " << in_path;
+        brillo::Error::AddToPrintf(
+            error, FROM_HERE, kErrorDomainPermissionBroker, kOpenFailedError,
+            "Failed to register client with lifeline_fd '%d' for path '%s'",
+            lifeline_fd, in_path.c_str());
         return false;
       }
       *client_id = maybe_client_id.value();
@@ -258,7 +260,9 @@ bool PermissionBroker::OpenPathImpl(brillo::ErrorPtr* error,
 
     if (to_detach && !usb_driver_tracker_.DetachPathFromKernel(
                          fd.get(), client_id, file_path)) {
-      LOG(ERROR) << "Failed to detach path " << file_path << " from kernel";
+      brillo::Error::AddToPrintf(
+          error, FROM_HERE, kErrorDomainPermissionBroker, kOpenFailedError,
+          "Failed to detach path '%s' from kernel", in_path.c_str());
       return false;
     }
   }
