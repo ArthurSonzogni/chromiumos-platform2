@@ -424,7 +424,7 @@ TEST_F(BluetoothDiscoveryRoutineTest, UnexpectedHciDeviceConfigError) {
       "Failed to ensure powered status is on from HCI device config.");
 }
 
-// Test that the BluetoothDiscoveryRoutine returns a kFailed status when timeout
+// Test that the BluetoothDiscoveryRoutine returns a kError status when timeout
 // occurred.
 TEST_F(BluetoothDiscoveryRoutineTest, RoutineTimeoutOccurred) {
   InSequence s;
@@ -441,8 +441,8 @@ TEST_F(BluetoothDiscoveryRoutineTest, RoutineTimeoutOccurred) {
   routine_->Start();
   // Trigger timeout.
   task_environment_.FastForwardBy(kRoutineDiscoveryTimeout);
-  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
-                     kBluetoothRoutineFailedVerifyDiscovering);
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
+                     "Bluetooth routine failed to complete before timeout.");
 }
 
 }  // namespace

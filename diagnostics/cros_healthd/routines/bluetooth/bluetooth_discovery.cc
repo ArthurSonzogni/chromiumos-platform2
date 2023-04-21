@@ -256,8 +256,8 @@ void BluetoothDiscoveryRoutine::VerifyAdapterDiscovering(bool is_complete) {
 }
 
 void BluetoothDiscoveryRoutine::OnTimeoutOccurred() {
-  SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
-                   kBluetoothRoutineFailedVerifyDiscovering);
+  SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
+                   "Bluetooth routine failed to complete before timeout.");
 }
 
 void BluetoothDiscoveryRoutine::SetResultAndStop(

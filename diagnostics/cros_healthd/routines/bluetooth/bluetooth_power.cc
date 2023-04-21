@@ -195,8 +195,8 @@ void BluetoothPowerRoutine::VerifyAdapterPowered(bool hci_powered) {
 }
 
 void BluetoothPowerRoutine::OnTimeoutOccurred() {
-  SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
-                   kBluetoothRoutineFailedVerifyPowered);
+  SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
+                   "Bluetooth routine failed to complete before timeout.");
 }
 
 void BluetoothPowerRoutine::SetResultAndStop(
