@@ -6,6 +6,7 @@
 #define SHILL_NETWORK_NETWORK_CONFIG_H_
 
 #include <optional>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -47,6 +48,8 @@ struct NetworkConfig {
   std::optional<std::vector<std::string>> dns_servers;
   std::optional<std::vector<std::string>> dns_search_domains;
 };
+
+std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config);
 
 }  // namespace shill
 

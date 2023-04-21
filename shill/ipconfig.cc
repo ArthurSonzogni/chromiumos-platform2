@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -240,6 +241,57 @@ bool operator==(const IPConfig::Properties& lhs,
          lhs.isns_option_data == rhs.isns_option_data &&
          lhs.web_proxy_auto_discovery == rhs.web_proxy_auto_discovery &&
          lhs.lease_duration_seconds == rhs.lease_duration_seconds;
+}
+
+std::ostream& operator<<(std::ostream& stream, const IPConfig& config) {
+  return stream << config.properties();
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         const IPConfig::Properties& properties) {
+  stream << "{address: " << properties.address << "/"
+         << properties.subnet_prefix << ", gateway: " << properties.gateway;
+  if (!properties.peer_address.empty()) {
+    stream << ", peer_address: " << properties.peer_address;
+  }
+  if (!properties.inclusion_list.empty()) {
+    stream << ", included routes: ["
+           << base::JoinString(properties.inclusion_list, ",") << "]";
+  }
+  if (!properties.exclusion_list.empty()) {
+    stream << ", excluded routes: ["
+           << base::JoinString(properties.exclusion_list, ",") << "]";
+  }
+  if (!properties.dns_servers.empty()) {
+    stream << ", DNS: [" << base::JoinString(properties.dns_servers, ",")
+           << "]";
+  }
+  if (!properties.domain_search.empty()) {
+    stream << ", search domains: ["
+           << base::JoinString(properties.domain_search, ",") << "]";
+  }
+  if (!properties.domain_name.empty()) {
+    stream << ", domain name: " << properties.domain_name;
+  }
+  if (!properties.web_proxy_auto_discovery.empty()) {
+    stream << ", wpad: " << properties.web_proxy_auto_discovery;
+  }
+  if (!properties.default_route) {
+    stream << ", default_route: true";
+  }
+  if (!properties.blackhole_ipv6) {
+    stream << ", blackhole_ipv6: true";
+  }
+  if (!properties.use_if_addrs) {
+    stream << ", use_if_addrs: true";
+  }
+  if (properties.mtu != IPConfig::kUndefinedMTU) {
+    stream << ", mtu: " << properties.mtu;
+  }
+  if (properties.lease_duration_seconds != 0) {
+    stream << ", lease: " << properties.lease_duration_seconds << "s";
+  }
+  return stream << "}";
 }
 
 }  // namespace shill

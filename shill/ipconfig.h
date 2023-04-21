@@ -6,6 +6,7 @@
 #define SHILL_IPCONFIG_H_
 
 #include <memory>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -156,6 +157,9 @@ class IPConfig {
 bool operator==(const IPConfig::Route& lhs, const IPConfig::Route& rhs);
 bool operator==(const IPConfig::Properties& lhs,
                 const IPConfig::Properties& rhs);
+std::ostream& operator<<(std::ostream& stream, const IPConfig& config);
+std::ostream& operator<<(std::ostream& stream,
+                         const IPConfig::Properties& properties);
 
 }  // namespace shill
 

@@ -7,11 +7,13 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
 #include <base/notreached.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
@@ -166,10 +168,31 @@ void Network::Start(const Network::StartOptions& opts) {
         FROM_HERE, base::BindOnce(&Network::OnIPv4ConfigUpdated, AsWeakPtr()));
   } else if (!dhcp_started && !ipv6_started) {
     // Neither v4 nor v6 is running, trigger the failure callback directly.
+    LOG(WARNING) << logging_tag_ << ": Failed to start IP provisioning";
     dispatcher_->PostTask(
         FROM_HERE,
         base::BindOnce(&Network::StopInternal, AsWeakPtr(),
                        /*is_failure=*/true, /*trigger_callback=*/true));
+  }
+
+  LOG(INFO) << logging_tag_ << ": Started IP provisioning, dhcp: "
+            << (dhcp_started ? "started" : "no")
+            << ", accept_ra: " << std::boolalpha << opts.accept_ra;
+  if (static_network_config_.ipv4_address_cidr.has_value()) {
+    LOG(INFO) << logging_tag_ << ": has IPv4 static config "
+              << static_network_config_;
+  }
+  if (link_protocol_ipv4_properties_) {
+    LOG(INFO) << logging_tag_ << ": has IPv4 link properties "
+              << *link_protocol_ipv4_properties_;
+  }
+  if (ipv6_static_properties_) {
+    LOG(INFO) << logging_tag_ << ": has IPv6 static properties "
+              << *ipv6_static_properties_;
+  }
+  if (link_protocol_ipv6_properties_) {
+    LOG(INFO) << logging_tag_ << ": has IPv6 link properties "
+              << *link_protocol_ipv6_properties_;
   }
 }
 
@@ -181,6 +204,10 @@ std::unique_ptr<SLAACController> Network::CreateSLAACController() {
 
 void Network::SetupConnection(IPConfig* ipconfig) {
   DCHECK(ipconfig);
+  LOG(INFO) << logging_tag_ << ": Setting "
+            << IPAddress::GetAddressFamilyName(
+                   ipconfig->properties().address_family)
+            << " connection";
   if (connection_ == nullptr) {
     connection_ = CreateConnection();
   }
@@ -218,10 +245,15 @@ void Network::Stop() {
 }
 
 void Network::StopInternal(bool is_failure, bool trigger_callback) {
-  SLOG(2) << logging_tag_
-          << ": Stopping. IPv4 configured: " << (ipconfig() ? "true" : "false")
-          << ", IPv6 configured: " << (ip6config() ? "true" : "false")
-          << ", is_failure: " << std::boolalpha << is_failure;
+  std::stringstream ss;
+  if (ipconfig()) {
+    ss << ", IPv4 config: " << *ipconfig();
+  }
+  if (ip6config()) {
+    ss << ", IPv6 config: " << *ip6config();
+  }
+  LOG(INFO) << logging_tag_ << ": Stopping "
+            << (is_failure ? " after failure" : " normally") << ss.str();
 
   weak_factory_for_connection_.InvalidateWeakPtrs();
 
@@ -325,6 +357,8 @@ void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
     return;
   }
 
+  LOG(INFO) << logging_tag_ << ": static IPv4 config update " << config;
+
   // Clear the previously applied static IP parameters. The new config will be
   // applied in ConfigureStaticIPTask().
   ipconfig()->ApplyNetworkConfig(saved_network_config_);
@@ -364,6 +398,8 @@ void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
   // |dhcp_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_controller_);
   DCHECK(ipconfig());
+  LOG(INFO) << logging_tag_ << ": DHCP lease "
+            << (new_lease_acquired ? "acquired " : "update ") << properties;
   if (new_lease_acquired) {
     for (auto* ev : event_handlers_) {
       ev->OnGetDHCPLease(interface_index_);
@@ -493,6 +529,7 @@ void Network::ConfigureStaticIPv6Address() {
                << ipv6_static_properties_->address << " is invalid";
     return;
   }
+  LOG(INFO) << logging_tag_ << ": configuring static IPv6 address " << *local;
   rtnl_handler_->AddInterfaceAddress(interface_index_, *local,
                                      local->GetDefaultBroadcast());
 }
@@ -509,6 +546,7 @@ void Network::OnIPv6AddressChanged() {
   auto slaac_addresses = slaac_controller_->GetAddresses();
   if (slaac_addresses.size() == 0) {
     if (ip6config()) {
+      LOG(INFO) << logging_tag_ << ": Removing all observed IPv6 addresses";
       set_ip6config(nullptr);
       for (auto* ev : event_handlers_) {
         ev->OnIPConfigsPropertyUpdated(interface_index_);
@@ -551,6 +589,16 @@ void Network::OnIPv6AddressChanged() {
   if (connection_) {
     connection_->UpdateRoutingPolicy(GetAddresses());
   }
+
+  std::string addresses_str;
+  std::string sep;
+  for (const auto& addr : slaac_addresses) {
+    addresses_str += sep;
+    addresses_str += addr.ToString();
+    sep = ",";
+  }
+  LOG(INFO) << logging_tag_ << ": Updating IPv6 addresses to [" << addresses_str
+            << "]";
 
   if (!ip6config()) {
     set_ip6config(
@@ -627,6 +675,7 @@ void Network::OnIPv6DnsServerAddressesChanged() {
     if (!ip6config()) {
       return;
     }
+    LOG(INFO) << logging_tag_ << ": Removing all observed IPv6 DNS addresses";
     ip6config()->UpdateDNSServers(std::vector<std::string>());
     for (auto* ev : event_handlers_) {
       ev->OnIPConfigsPropertyUpdated(interface_index_);
@@ -657,6 +706,8 @@ void Network::OnIPv6DnsServerAddressesChanged() {
     return;
   }
 
+  LOG(INFO) << logging_tag_ << ": Updating DNS IPv6 addresses to ["
+            << base::JoinString(addresses_str, ",") << "]";
   ip6config()->UpdateDNSServers(std::move(addresses_str));
   for (auto* ev : event_handlers_) {
     ev->OnIPConfigsPropertyUpdated(interface_index_);
@@ -899,7 +950,7 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
         network_validation_result_->GetValidationState());
   }
   LOG(INFO) << logging_tag_
-            << " OnPortalDetectorResult: " << previous_validation_state
+            << ": OnPortalDetectorResult: " << previous_validation_state
             << " -> " << result.GetValidationState();
 
   int portal_status = Metrics::PortalDetectionResultToEnum(result);
