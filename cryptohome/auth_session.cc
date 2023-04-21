@@ -50,6 +50,7 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/reap.h"
+#include "cryptohome/error/reporting.h"
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -75,6 +76,7 @@ using cryptohome::error::ErrorActionSet;
 using cryptohome::error::PossibleAction;
 using cryptohome::error::PrimaryAction;
 using cryptohome::error::PrimaryActionIs;
+using cryptohome::error::ReportCryptohomeOk;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::kAesBlockSize;
@@ -255,6 +257,13 @@ void ReportRecreateAuthFactorError(CryptohomeStatus status,
       std::string(kCryptohomeErrorRecreateAuthFactorErrorBucket) + "." +
       AuthFactorTypeToCamelCaseString(auth_factor_type);
   ReapAndReportError(std::move(status), std::move(error_bucket_name));
+}
+
+void ReportRecreateAuthFactorOk(AuthFactorType auth_factor_type) {
+  std::string error_bucket_name =
+      std::string(kCryptohomeErrorRecreateAuthFactorErrorBucket) + "." +
+      AuthFactorTypeToCamelCaseString(auth_factor_type);
+  ReportCryptohomeOk(std::move(error_bucket_name));
 }
 
 }  // namespace
@@ -3003,6 +3012,10 @@ void AuthSession::RecreateUssAuthFactor(
                        << update_status;
           ReportRecreateAuthFactorError(std::move(update_status),
                                         auth_factor_type);
+        } else {
+          // If we reach here, the recreate operation is successful. If more
+          // error locations are added after this point, this needs to be moved.
+          ReportRecreateAuthFactorOk(auth_factor_type);
         }
         std::move(on_done).Run(std::move(original_status));
       },
