@@ -5,18 +5,14 @@
 #ifndef PRINTSCANMGR_DAEMON_PRINTSCAN_TOOL_H_
 #define PRINTSCANMGR_DAEMON_PRINTSCAN_TOOL_H_
 
-// This tool is used to create debug flag files for printing and scanning
-// services that will put those services into debug modes.
-
-#include "printscanmgr/daemon/upstart_tools.h"
-
 #include <memory>
-#include <string>
 
 #include <base/files/file_path.h>
-#include <brillo/errors/error.h>
-#include <chromeos/dbus/printscanmgr/dbus-constants.h>
-#include <dbus/bus.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/remote.h>
+#include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
+
+#include "printscanmgr/mojom/executor.mojom.h"
 
 namespace printscanmgr {
 
@@ -26,58 +22,48 @@ enum PrintscanFilePaths {
   PRINTSCAN_LORGNETTE_FILEPATH,
 };
 
-enum class PrintscanCategories {
-  PRINTSCAN_NO_CATEGORIES = 0x0,
-  PRINTSCAN_PRINTING_CATEGORY = 0x1,
-  PRINTSCAN_SCANNING_CATEGORY = 0x2,
-  PRINTSCAN_ALL_CATEGORIES = 0x3,
-};
-
+// This tool is used to create debug flag files for printing and scanning
+// services that will put those services into debug modes.
 class PrintscanTool {
  public:
-  explicit PrintscanTool(const scoped_refptr<dbus::Bus>& bus);
+  explicit PrintscanTool(mojo::PendingRemote<mojom::Executor> remote);
   PrintscanTool(const PrintscanTool&) = delete;
   PrintscanTool& operator=(const PrintscanTool&) = delete;
   ~PrintscanTool() = default;
 
   // Set categories to debug.
-  bool DebugSetCategories(brillo::ErrorPtr* error,
-                          PrintscanCategories categories);
+  PrintscanDebugSetCategoriesResponse DebugSetCategories(
+      const PrintscanDebugSetCategoriesRequest& request);
 
-  // Create a testing PrintscanTool with a given root path.
+  // Create a PrintscanTool with the given root path. Only for unit testing.
   static std::unique_ptr<PrintscanTool> CreateForTesting(
-      const scoped_refptr<dbus::Bus>& bus,
-      const base::FilePath& path,
-      std::unique_ptr<UpstartTools> upstart_tools);
+      mojo::PendingRemote<mojom::Executor> remote, const base::FilePath& path);
 
  private:
-  // Creates an empty file at the given path from root_path_.
+  // Creates an empty file at the given path from `root_path_`.
   bool CreateEmptyFile(PrintscanFilePaths path);
 
-  // Deletes a file at the given path from root_path_.
+  // Deletes a file at the given path from `root_path_`.
   bool DeleteFile(PrintscanFilePaths path);
 
   // Creates or deletes Cups debug flag files.
-  bool ToggleCups(brillo::ErrorPtr* error, bool enable);
+  bool ToggleCups(bool enable);
   //
   // Creates or deletes Ippusb debug flag files.
-  bool ToggleIppusb(brillo::ErrorPtr* error, bool enable);
+  bool ToggleIppusb(bool enable);
 
   // Creates or deletes Lorgnette debug flag files.
-  bool ToggleLorgnette(brillo::ErrorPtr* error, bool enable);
+  bool ToggleLorgnette(bool enable);
 
   // Restarts cupsd and lorgnette.
-  bool RestartServices(brillo::ErrorPtr* error);
+  bool RestartServices();
 
   // For testing only.
-  PrintscanTool(const scoped_refptr<dbus::Bus>& bus,
-                const base::FilePath& root_path,
-                std::unique_ptr<UpstartTools> upstart_tools);
+  PrintscanTool(mojo::PendingRemote<mojom::Executor> remote,
+                const base::FilePath& root_path);
 
-  scoped_refptr<dbus::Bus> bus_;
   const base::FilePath root_path_;
-  std::unique_ptr<UpstartTools> upstart_tools_ =
-      std::make_unique<UpstartToolsImpl>(bus_);
+  mojo::Remote<mojom::Executor> remote_;
 };
 
 }  // namespace printscanmgr

@@ -10,83 +10,85 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <dbus/mock_bus.h>
+#include <base/task/single_thread_task_runner.h>
+#include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
+#include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
+
+#include "printscanmgr/executor/mock_executor.h"
 
 using ::testing::_;
-using ::testing::Return;
+using ::testing::Invoke;
+using ::testing::StrictMock;
+using ::testing::WithArg;
 
 namespace printscanmgr {
 
 namespace {
+
 const char kCupsDebugPath[] = "run/cups/debug/debug-flag";
 const char kIppusbDebugPath[] = "run/ippusb/debug/debug-flag";
 const char kLorgnetteDebugPath[] = "run/lorgnette/debug/debug-flag";
-}  // namespace
 
-class MockUpstartTools : public UpstartTools {
- public:
-  MOCK_METHOD(bool,
-              IsJobRunning,
-              (const std::string& job_name, brillo::ErrorPtr* error),
-              (override));
-  MOCK_METHOD(bool,
-              RestartJob,
-              (const std::string& job_name, brillo::ErrorPtr* error),
-              (override));
-  MOCK_METHOD(bool,
-              StartJob,
-              (const std::string& job_name, brillo::ErrorPtr* error),
-              (override));
-  MOCK_METHOD(bool,
-              StopJob,
-              (const std::string& job_name, brillo::ErrorPtr* error),
-              (override));
-};
+}  // namespace
 
 class PrintscanToolTest : public testing::Test {
  protected:
   base::ScopedTempDir temp_dir_;
+  StrictMock<MockExecutor> mock_executor_;
   std::unique_ptr<PrintscanTool> printscan_tool_;
-  scoped_refptr<dbus::MockBus> bus_;
-  MockUpstartTools* mock_upstart_tools_;
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    ASSERT_TRUE(base::SetPosixFilePermissions(temp_dir_.GetPath(), 0755));
+    // Initialize IPC support for Mojo.
+    ipc_support_ = std::make_unique<::mojo::core::ScopedIPCSupport>(
+        base::SingleThreadTaskRunner::
+            GetCurrentDefault() /* io_thread_task_runner */,
+        ::mojo::core::ScopedIPCSupport::ShutdownPolicy::
+            CLEAN /* blocking shutdown */);
 
     // Create directories we expect PrintscanTool to interact with.
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    ASSERT_TRUE(base::SetPosixFilePermissions(temp_dir_.GetPath(), 0755));
     ASSERT_TRUE(
         base::CreateDirectory(temp_dir_.GetPath().Append("run/cups/debug/")));
     ASSERT_TRUE(
         base::CreateDirectory(temp_dir_.GetPath().Append("run/ippusb/debug/")));
     ASSERT_TRUE(base::CreateDirectory(
         temp_dir_.GetPath().Append("run/lorgnette/debug/")));
-    // Set a mock bus for testing.
-    bus_ = new dbus::MockBus{dbus::Bus::Options{}};
-    std::unique_ptr<MockUpstartTools> mock_upstart_tools =
-        std::make_unique<MockUpstartTools>();
-    ON_CALL(*mock_upstart_tools, IsJobRunning(_, _))
-        .WillByDefault(Return(true));
-    ON_CALL(*mock_upstart_tools, RestartJob(_, _)).WillByDefault(Return(true));
-    ON_CALL(*mock_upstart_tools, StartJob(_, _)).WillByDefault(Return(true));
-    ON_CALL(*mock_upstart_tools, StopJob(_, _)).WillByDefault(Return(true));
-    mock_upstart_tools_ = mock_upstart_tools.get();
+
+    // Prepare default responses for the mock Mojo methods.
+    ON_CALL(mock_executor_, StopUpstartJob(_, _))
+        .WillByDefault(WithArg<1>(
+            Invoke([](mojom::Executor::StopUpstartJobCallback callback) {
+              std::move(callback).Run(/*success=*/true, /*errorMsg=*/"");
+            })));
+    ON_CALL(mock_executor_, RestartUpstartJob(_, _))
+        .WillByDefault(WithArg<1>(
+            Invoke([](mojom::Executor::RestartUpstartJobCallback callback) {
+              std::move(callback).Run(/*success=*/true, /*errorMsg=*/"");
+            })));
+
     // Initialize PrintscanTool with a fake root for testing.
     printscan_tool_ = PrintscanTool::CreateForTesting(
-        bus_, temp_dir_.GetPath(), std::move(mock_upstart_tools));
+        mock_executor_.pending_remote(), temp_dir_.GetPath());
   }
+
+ private:
+  base::test::SingleThreadTaskEnvironment task_environment_;
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 };
 
 TEST_F(PrintscanToolTest, SetNoCategories) {
-  brillo::ErrorPtr error;
   // Test disabling debugging when it is already off.
-  EXPECT_CALL(*mock_upstart_tools_, RestartJob("cupsd", _));
-  EXPECT_CALL(*mock_upstart_tools_, StopJob("lorgnette", _));
-  EXPECT_TRUE(printscan_tool_->DebugSetCategories(
-      &error, PrintscanCategories::PRINTSCAN_NO_CATEGORIES));
-  EXPECT_EQ(error, nullptr);
+  EXPECT_CALL(mock_executor_, RestartUpstartJob(mojom::UpstartJob::kCupsd, _));
+  EXPECT_CALL(mock_executor_, StopUpstartJob(mojom::UpstartJob::kLorgnette, _));
+  PrintscanDebugSetCategoriesRequest request;
+
+  auto response = printscan_tool_->DebugSetCategories(request);
+
+  EXPECT_TRUE(response.result());
   EXPECT_FALSE(base::PathExists(temp_dir_.GetPath().Append(kCupsDebugPath)));
   EXPECT_FALSE(base::PathExists(temp_dir_.GetPath().Append(kIppusbDebugPath)));
   EXPECT_FALSE(
@@ -94,13 +96,16 @@ TEST_F(PrintscanToolTest, SetNoCategories) {
 }
 
 TEST_F(PrintscanToolTest, SetPrintingCategory) {
-  brillo::ErrorPtr error;
   // Test starting printing debugging only.
-  EXPECT_CALL(*mock_upstart_tools_, RestartJob("cupsd", _));
-  EXPECT_CALL(*mock_upstart_tools_, StopJob("lorgnette", _));
-  EXPECT_TRUE(printscan_tool_->DebugSetCategories(
-      &error, PrintscanCategories::PRINTSCAN_PRINTING_CATEGORY));
-  EXPECT_EQ(error, nullptr);
+  EXPECT_CALL(mock_executor_, RestartUpstartJob(mojom::UpstartJob::kCupsd, _));
+  EXPECT_CALL(mock_executor_, StopUpstartJob(mojom::UpstartJob::kLorgnette, _));
+  PrintscanDebugSetCategoriesRequest request;
+  request.add_categories(
+      PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_PRINTING);
+
+  auto response = printscan_tool_->DebugSetCategories(request);
+
+  EXPECT_TRUE(response.result());
   EXPECT_TRUE(base::PathExists(temp_dir_.GetPath().Append(kCupsDebugPath)));
   EXPECT_TRUE(base::PathExists(temp_dir_.GetPath().Append(kIppusbDebugPath)));
   EXPECT_FALSE(
@@ -108,13 +113,16 @@ TEST_F(PrintscanToolTest, SetPrintingCategory) {
 }
 
 TEST_F(PrintscanToolTest, SetScanningCategory) {
-  brillo::ErrorPtr error;
   // Test starting scanning debugging only.
-  EXPECT_CALL(*mock_upstart_tools_, RestartJob("cupsd", _));
-  EXPECT_CALL(*mock_upstart_tools_, StopJob("lorgnette", _));
-  EXPECT_TRUE(printscan_tool_->DebugSetCategories(
-      &error, PrintscanCategories::PRINTSCAN_SCANNING_CATEGORY));
-  EXPECT_EQ(error, nullptr);
+  EXPECT_CALL(mock_executor_, RestartUpstartJob(mojom::UpstartJob::kCupsd, _));
+  EXPECT_CALL(mock_executor_, StopUpstartJob(mojom::UpstartJob::kLorgnette, _));
+  PrintscanDebugSetCategoriesRequest request;
+  request.add_categories(
+      PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_SCANNING);
+
+  auto response = printscan_tool_->DebugSetCategories(request);
+
+  EXPECT_TRUE(response.result());
   EXPECT_FALSE(base::PathExists(temp_dir_.GetPath().Append(kCupsDebugPath)));
   EXPECT_TRUE(base::PathExists(temp_dir_.GetPath().Append(kIppusbDebugPath)));
   EXPECT_TRUE(
@@ -122,13 +130,18 @@ TEST_F(PrintscanToolTest, SetScanningCategory) {
 }
 
 TEST_F(PrintscanToolTest, SetAllCategories) {
-  brillo::ErrorPtr error;
   // Test starting all debugging.
-  EXPECT_CALL(*mock_upstart_tools_, RestartJob("cupsd", _));
-  EXPECT_CALL(*mock_upstart_tools_, StopJob("lorgnette", _));
-  EXPECT_TRUE(printscan_tool_->DebugSetCategories(
-      &error, PrintscanCategories::PRINTSCAN_ALL_CATEGORIES));
-  EXPECT_EQ(error, nullptr);
+  EXPECT_CALL(mock_executor_, RestartUpstartJob(mojom::UpstartJob::kCupsd, _));
+  EXPECT_CALL(mock_executor_, StopUpstartJob(mojom::UpstartJob::kLorgnette, _));
+  PrintscanDebugSetCategoriesRequest request;
+  request.add_categories(
+      PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_PRINTING);
+  request.add_categories(
+      PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_SCANNING);
+
+  auto response = printscan_tool_->DebugSetCategories(request);
+
+  EXPECT_TRUE(response.result());
   EXPECT_TRUE(base::PathExists(temp_dir_.GetPath().Append(kCupsDebugPath)));
   EXPECT_TRUE(base::PathExists(temp_dir_.GetPath().Append(kIppusbDebugPath)));
   EXPECT_TRUE(
@@ -136,21 +149,31 @@ TEST_F(PrintscanToolTest, SetAllCategories) {
 }
 
 TEST_F(PrintscanToolTest, ResetCategories) {
-  brillo::ErrorPtr error;
   // Test starting all debugging.
-  EXPECT_CALL(*mock_upstart_tools_, RestartJob("cupsd", _)).Times(2);
-  EXPECT_CALL(*mock_upstart_tools_, StopJob("lorgnette", _)).Times(2);
-  EXPECT_TRUE(printscan_tool_->DebugSetCategories(
-      &error, PrintscanCategories::PRINTSCAN_ALL_CATEGORIES));
-  EXPECT_EQ(error, nullptr);
+  EXPECT_CALL(mock_executor_, RestartUpstartJob(mojom::UpstartJob::kCupsd, _))
+      .Times(2);
+  EXPECT_CALL(mock_executor_, StopUpstartJob(mojom::UpstartJob::kLorgnette, _))
+      .Times(2);
+  PrintscanDebugSetCategoriesRequest request;
+  request.add_categories(
+      PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_PRINTING);
+  request.add_categories(
+      PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_SCANNING);
+
+  auto response = printscan_tool_->DebugSetCategories(request);
+
+  EXPECT_TRUE(response.result());
   EXPECT_TRUE(base::PathExists(temp_dir_.GetPath().Append(kCupsDebugPath)));
   EXPECT_TRUE(base::PathExists(temp_dir_.GetPath().Append(kIppusbDebugPath)));
   EXPECT_TRUE(
       base::PathExists(temp_dir_.GetPath().Append(kLorgnetteDebugPath)));
+
   // Test stopping all debugging.
-  EXPECT_TRUE(printscan_tool_->DebugSetCategories(
-      &error, PrintscanCategories::PRINTSCAN_NO_CATEGORIES));
-  EXPECT_EQ(error, nullptr);
+  PrintscanDebugSetCategoriesRequest empty_request;
+
+  response = printscan_tool_->DebugSetCategories(empty_request);
+
+  EXPECT_TRUE(response.result());
   EXPECT_FALSE(base::PathExists(temp_dir_.GetPath().Append(kCupsDebugPath)));
   EXPECT_FALSE(base::PathExists(temp_dir_.GetPath().Append(kIppusbDebugPath)));
   EXPECT_FALSE(

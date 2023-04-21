@@ -4,31 +4,19 @@
 
 #include "printscanmgr/daemon/printscan_tool.h"
 
-#include <sys/mount.h>
-
-#include <memory>
+#include <set>
 #include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <brillo/errors/error.h>
 #include <brillo/files/file_util.h>
 #include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
-
-#include "printscanmgr/daemon/utils/error_utils.h"
 
 namespace printscanmgr {
 
 namespace {
-
-constexpr uint32_t kAllCategories =
-    PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_PRINTING |
-    PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_SCANNING;
-
-constexpr char kPrintscanToolErrorString[] =
-    "org.chromium.debugd.error.Printscan";
 
 const base::FilePath kCupsFilePath =
     base::FilePath("run/cups/debug/debug-flag");
@@ -39,65 +27,70 @@ const base::FilePath kLorgnetteFilePath =
 
 }  // namespace
 
-PrintscanTool::PrintscanTool(const scoped_refptr<dbus::Bus>& bus)
-    : PrintscanTool(
-          bus, base::FilePath("/"), std::make_unique<UpstartToolsImpl>(bus)) {}
+PrintscanTool::PrintscanTool(mojo::PendingRemote<mojom::Executor> remote)
+    : PrintscanTool(std::move(remote), base::FilePath("/")) {}
 
-PrintscanTool::PrintscanTool(const scoped_refptr<dbus::Bus>& bus,
-                             const base::FilePath& root_path,
-                             std::unique_ptr<UpstartTools> upstart_tools)
-    : bus_(bus),
-      root_path_(root_path),
-      upstart_tools_(std::move(upstart_tools)) {}
+PrintscanTool::PrintscanTool(mojo::PendingRemote<mojom::Executor> remote,
+                             const base::FilePath& root_path)
+    : root_path_(root_path) {
+  remote_.Bind(std::move(remote));
+}
 
-bool PrintscanTool::DebugSetCategories(brillo::ErrorPtr* error,
-                                       PrintscanCategories categories) {
-  if (static_cast<uint32_t>(categories) & ~kAllCategories) {
-    PRINTSCANMGR_ADD_ERROR_FMT(
-        error, kPrintscanToolErrorString, "Unknown category flags: 0x%x",
-        static_cast<uint32_t>(categories) & ~kAllCategories);
-    return false;
+PrintscanDebugSetCategoriesResponse PrintscanTool::DebugSetCategories(
+    const PrintscanDebugSetCategoriesRequest& request) {
+  PrintscanDebugSetCategoriesResponse response;
+
+  std::set<PrintscanDebugSetCategoriesRequest::DebugLogCategory> categories;
+  for (const auto category : request.categories()) {
+    if (!PrintscanDebugSetCategoriesRequest_DebugLogCategory_IsValid(
+            category)) {
+      LOG(ERROR) << "Unknown category flag: " << category;
+      response.set_result(false);
+      return response;
+    }
+    categories.insert(
+        static_cast<PrintscanDebugSetCategoriesRequest::DebugLogCategory>(
+            category));
   }
+
+  auto printing_search = categories.find(
+      PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_PRINTING);
+  auto scanning_search = categories.find(
+      PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_SCANNING);
+  bool enable_cups = printing_search != categories.end();
+  bool enable_ippusb = printing_search != categories.end() ||
+                       scanning_search != categories.end();
+  bool enable_lorgnette = scanning_search != categories.end();
 
   bool success = true;
   // Enable Cups logging if the printing category is enabled.
-  success = ToggleCups(
-      error,
-      static_cast<uint32_t>(categories) &
-          PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_PRINTING);
+  success = ToggleCups(enable_cups);
   if (success) {
     // Enable Ippusb logging if the printing or scanning category is
     // enabled.
-    success = ToggleIppusb(
-        error,
-        static_cast<uint32_t>(categories) &
-            (PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_SCANNING |
-             PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_PRINTING));
+    success = ToggleIppusb(enable_ippusb);
   }
   if (success) {
-    // Enable Lorgnette logging is the scanning category is enabled.
-    ToggleLorgnette(
-        error,
-        static_cast<uint32_t>(categories) &
-            PrintscanDebugSetCategoriesRequest::DEBUG_LOG_CATEGORY_SCANNING);
+    // Enable Lorgnette logging if the scanning category is enabled.
+    success = ToggleLorgnette(enable_lorgnette);
   }
   if (!success) {
     // Disable all logging if there were any errors setting up logging.
-    ToggleCups(error, false);
-    ToggleIppusb(error, false);
-    ToggleLorgnette(error, false);
+    ToggleCups(false);
+    ToggleIppusb(false);
+    ToggleLorgnette(false);
   }
-  success = RestartServices(error);
+  success &= RestartServices();
 
-  return success;
+  response.set_result(success);
+  return response;
 }
 
+// static
 std::unique_ptr<PrintscanTool> PrintscanTool::CreateForTesting(
-    const scoped_refptr<dbus::Bus>& bus,
-    const base::FilePath& path,
-    std::unique_ptr<UpstartTools> upstart_tools) {
+    mojo::PendingRemote<mojom::Executor> remote, const base::FilePath& path) {
   return std::unique_ptr<PrintscanTool>(
-      new PrintscanTool(bus, path, std::move(upstart_tools)));
+      new PrintscanTool(std::move(remote), path));
 }
 
 // Create an empty file at the given path from root_path_.
@@ -136,17 +129,15 @@ bool PrintscanTool::DeleteFile(PrintscanFilePaths path) {
 
 // Enable Cups debug logs if `enable` is set, otherwise disable the logs.
 // Return true on success.
-bool PrintscanTool::ToggleCups(brillo::ErrorPtr* error, bool enable) {
+bool PrintscanTool::ToggleCups(bool enable) {
   if (enable) {
     if (!CreateEmptyFile(PRINTSCAN_CUPS_FILEPATH)) {
-      PRINTSCANMGR_ADD_ERROR(error, kPrintscanToolErrorString,
-                             "Failed to create cups debug-flag.");
+      LOG(ERROR) << "Failed to create cups debug-flag.";
       return false;
     }
   } else {
     if (!DeleteFile(PRINTSCAN_CUPS_FILEPATH)) {
-      PRINTSCANMGR_ADD_ERROR(error, kPrintscanToolErrorString,
-                             "Failed to delete cups debug-flag.");
+      LOG(ERROR) << "Failed to delete cups debug-flag.";
       return false;
     }
   }
@@ -155,17 +146,15 @@ bool PrintscanTool::ToggleCups(brillo::ErrorPtr* error, bool enable) {
 
 // Enable Ippusb debug logs if `enable` is set, otherwise disable the logs.
 // Return true on success.
-bool PrintscanTool::ToggleIppusb(brillo::ErrorPtr* error, bool enable) {
+bool PrintscanTool::ToggleIppusb(bool enable) {
   if (enable) {
     if (!CreateEmptyFile(PRINTSCAN_IPPUSB_FILEPATH)) {
-      PRINTSCANMGR_ADD_ERROR(error, kPrintscanToolErrorString,
-                             "Failed to create ippusb debug-flag.");
+      LOG(ERROR) << "Failed to create ippusb debug-flag.";
       return false;
     }
   } else {
     if (!DeleteFile(PRINTSCAN_IPPUSB_FILEPATH)) {
-      PRINTSCANMGR_ADD_ERROR(error, kPrintscanToolErrorString,
-                             "Failed to delete ippusb delete-flag.");
+      LOG(ERROR) << "Failed to delete ippusb delete-flag.";
       return false;
     }
   }
@@ -174,33 +163,51 @@ bool PrintscanTool::ToggleIppusb(brillo::ErrorPtr* error, bool enable) {
 
 // Enable Lorgnette debug logs if `enable` is set, otherwise disable the logs.
 // Return true on success.
-bool PrintscanTool::ToggleLorgnette(brillo::ErrorPtr* error, bool enable) {
+bool PrintscanTool::ToggleLorgnette(bool enable) {
   if (enable) {
     if (!CreateEmptyFile(PRINTSCAN_LORGNETTE_FILEPATH)) {
-      PRINTSCANMGR_ADD_ERROR(error, kPrintscanToolErrorString,
-                             "Failed to create lorgnette debug-flag.");
+      LOG(ERROR) << "Failed to create lorgnette debug-flag.";
       return false;
     }
   } else {
     if (!DeleteFile(PRINTSCAN_LORGNETTE_FILEPATH)) {
-      PRINTSCANMGR_ADD_ERROR(error, kPrintscanToolErrorString,
-                             "Failed to delete lorgnette debug-flag.");
+      LOG(ERROR) << "Failed to delete lorgnette debug-flag.";
       return false;
     }
   }
   return true;
 }
 
-// Restart cups, lorgnette, and ippusb_bridge.
-bool PrintscanTool::RestartServices(brillo::ErrorPtr* error) {
+// Restart cups and lorgnette.
+bool PrintscanTool::RestartServices() {
   // cupsd is intended to have the same lifetime as the ui, so we need to
   // fully restart it.
-  bool success = upstart_tools_->RestartJob("cupsd", error);
+  std::string error;
+  bool cups_success;
+  if (!remote_->RestartUpstartJob(mojom::UpstartJob::kCupsd, &cups_success,
+                                  &error)) {
+    LOG(ERROR)
+        << "Error calling executor mojo method RestartUpstartJob for cupsd.";
+  }
+  if (!cups_success) {
+    LOG(ERROR) << "Executor mojo method RestartUpstartJob for cupsd failed: "
+               << error;
+  }
 
   // lorgnette will be restarted when the next d-bus call happens, so it
   // can simply be shut down.
-  success &= upstart_tools_->StopJob("lorgnette", error);
-  return success;
+  bool lorgnette_success;
+  if (!remote_->StopUpstartJob(mojom::UpstartJob::kLorgnette,
+                               &lorgnette_success, &error)) {
+    LOG(ERROR)
+        << "Error calling executor mojo method StopUpstartJob for lorgnette.";
+  }
+  if (!lorgnette_success) {
+    LOG(ERROR) << "Executor mojo method StopUpstartJob for lorgnette failed: "
+               << error;
+  }
+
+  return cups_success && lorgnette_success;
 }
 
 }  // namespace printscanmgr

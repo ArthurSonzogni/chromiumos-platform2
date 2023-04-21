@@ -10,6 +10,7 @@ pkg_config("libdaemon_pkg_deps") {
     "dbus-1",
     "libbrillo",
     "libchrome",
+    "libmojo",
 
     # system_api depends on protobuf(or protobuf - lite).It must appear before
     # protobuf here or the linker flags won't be in the right order.
@@ -31,6 +32,7 @@ source_set("libdaemon") {
   deps = [
     "//printscanmgr/cups_uri_helper:cups_uri_helper_utils",
     "//printscanmgr/dbus_bindings:printscanmgr-adaptors",
+    "//printscanmgr/mojom:mojo_bindings",
   ]
 }
 
@@ -56,6 +58,9 @@ if (use.test) {
       "upstart_tools_test.cc",
     ]
     configs += [ ":libdaemon_test_pkg_deps" ]
-    deps = [ ":libdaemon" ]
+    deps = [
+      ":libdaemon",
+      "//printscanmgr/executor:mock_executor",
+    ]
   }
 }
