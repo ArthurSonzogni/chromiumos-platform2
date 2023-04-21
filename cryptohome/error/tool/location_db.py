@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 # Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -724,7 +723,7 @@ class SourceScanner:
         """
 
         logging.debug("Scanning file %s", path)
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             content = f.read()
         linenum_util = LineNumberFinder(content)
         results = []
@@ -1084,7 +1083,7 @@ class LocationDB:
             bool: True if successful.
         """
 
-        with open(self.path, "r") as f:
+        with open(self.path, "r", encoding="utf-8") as f:
             self._lines = f.readlines()
         if not self._find_generated_marker():
             return False
@@ -1127,7 +1126,7 @@ class LocationDB:
         result_lines += self._generate_header_lines()
         # Include the portion that is after the generated content.
         result_lines += self._lines[self._end_line - 1 :]
-        with open(self.path, "w") as f:
+        with open(self.path, "w", encoding="utf-8") as f:
             f.write("".join(result_lines))
         # Invalidate the variables to ensure stale data isn't left behind.
         self.symbols = None
@@ -1297,7 +1296,7 @@ class EnumsXmlDB:
             successful: True if successful.
         """
 
-        with open(self.enums_xml_path, "r") as f:
+        with open(self.enums_xml_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
         start_marker = EnumsXmlDB.ENUM_START_MARKER_TEMPLATE % enum_name
@@ -1339,7 +1338,7 @@ class EnumsXmlDB:
 
         result += lines[idx:]
 
-        with open(self.enums_xml_path, "w") as f:
+        with open(self.enums_xml_path, "w", encoding="utf-8") as f:
             f.write("".join(result))
 
         # Pretty print for conformance with the style.
@@ -1438,7 +1437,7 @@ class DBTool:
     def _load_dup_allowlist(self):
         """Load self._dup_allowlist from file."""
 
-        with open(self.allowlist_path, "r") as f:
+        with open(self.allowlist_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
         lines = [line.strip() for line in lines]
         lines = [line for line in lines if len(line) > 0 and line[0] != "#"]
