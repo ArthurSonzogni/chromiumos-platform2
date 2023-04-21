@@ -26,7 +26,7 @@ namespace {
 
 static gid_t kIioserviceGroupId = 777;
 
-class LightTest : public SensorTestBase {
+class LightTest : public SensorTestBase, public ::testing::Test {
  public:
   LightTest() : SensorTestBase("cros-ec-light", 4) {
     mock_delegate_->AddGroup(GetConfiguration()->GetGroupNameForSysfs(),

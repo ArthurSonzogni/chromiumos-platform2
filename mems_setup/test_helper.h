@@ -12,8 +12,6 @@
 #include <utility>
 #include <vector>
 
-#include <gtest/gtest.h>
-
 #include <libmems/iio_context.h>
 #include <libmems/iio_device.h>
 #include <libmems/test_fakes.h>
@@ -41,7 +39,7 @@ class FakeSysfsTrigger : public libmems::fakes::FakeIioDevice {
   std::unique_ptr<libmems::fakes::FakeIioDevice> mock_trigger_;
 };
 
-class SensorTestBase : public ::testing::Test {
+class SensorTestBase {
  public:
   Configuration* GetConfiguration();
 

@@ -34,7 +34,7 @@ constexpr char kTriggerString[] = "trigger";
 constexpr char kHwfifoTimeoutString[] = "buffer/hwfifo_timeout";
 constexpr char kFlushString[] = "flush";
 
-class AccelerometerTest : public SensorTestBase {
+class AccelerometerTest : public SensorTestBase, public ::testing::Test {
  public:
   AccelerometerTest() : SensorTestBase("cros-ec-accel", kDeviceId) {
     mock_delegate_->AddGroup("chronos", kChronosGroupId);

@@ -34,7 +34,7 @@ constexpr char kScanElementsString[] = "scan_elements";
 constexpr char kFakeChannel[] = "in_accel_a_en";
 constexpr char kInvalidChannel[] = "in_accel_a_enn";
 
-class HidAccelerometerTest : public SensorTestBase {
+class HidAccelerometerTest : public SensorTestBase, public ::testing::Test {
  public:
   HidAccelerometerTest() : SensorTestBase("accel_3d", kDeviceId) {
     mock_delegate_->AddGroup(GetConfiguration()->GetGroupNameForSysfs(),

@@ -28,7 +28,7 @@ namespace {
 constexpr int kDeviceId = 5;
 static gid_t kIioserviceGroupId = 777;
 
-class AlsTest : public SensorTestBase {
+class AlsTest : public SensorTestBase, public ::testing::Test {
  public:
   AlsTest() : SensorTestBase("acpi-als", kDeviceId) {
     mock_delegate_->AddGroup(GetConfiguration()->GetGroupNameForSysfs(),

@@ -39,7 +39,7 @@ constexpr char kProximityConfigJson[] =
     "\"threshRising\" : 1014, \"threshRisingHysteresis\" : 72}], "
     "\"threshFallingPeriod\" : 2, \"threshRisingPeriod\" : 2}";
 
-class ProximityTest : public SensorTestBase {
+class ProximityTest : public SensorTestBase, public ::testing::Test {
  public:
   ProximityTest() : SensorTestBase("sx9360", kDeviceId) {
     SetAbsolutePath();

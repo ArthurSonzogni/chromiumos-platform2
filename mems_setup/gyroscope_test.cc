@@ -26,7 +26,7 @@ namespace {
 
 static gid_t kIioserviceGroupId = 777;
 
-class GyroscopeTest : public SensorTestBase {
+class GyroscopeTest : public SensorTestBase, public ::testing::Test {
  public:
   GyroscopeTest() : SensorTestBase("cros-ec-gyro", 2) {
     mock_delegate_->AddGroup(GetConfiguration()->GetGroupNameForSysfs(),
