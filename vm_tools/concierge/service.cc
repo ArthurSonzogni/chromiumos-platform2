@@ -2763,6 +2763,12 @@ ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
     return response;
   }
 
+  // Notify the VM guest userland ready
+  VmId vm_id(request.owner_id(), kArcVmName);
+
+  SendVmGuestUserlandReadySignal(vm_id,
+                                 GuestUserlandReady::ARC_BRIDGE_CONNECTED);
+
   response.set_result(ArcVmCompleteBootResult::SUCCESS);
   return response;
 }
@@ -4261,6 +4267,17 @@ void Service::SendVmStartingUpSignal(
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.mutable_vm_info()->CopyFrom(vm_info);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  exported_object_->SendSignal(&signal);
+}
+
+void Service::SendVmGuestUserlandReadySignal(
+    const VmId& vm_id, const vm_tools::concierge::GuestUserlandReady ready) {
+  dbus::Signal signal(kVmConciergeInterface, kVmGuestUserlandReadySignal);
+  vm_tools::concierge::VmGuestUserlandReadySignal proto;
+  proto.set_owner_id(vm_id.owner_id());
+  proto.set_name(vm_id.name());
+  proto.set_ready(ready);
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   exported_object_->SendSignal(&signal);
 }

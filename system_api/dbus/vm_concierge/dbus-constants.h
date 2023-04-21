@@ -51,6 +51,7 @@ const char kInstallPflashMethod[] = "InstallPflash";
 
 const char kDiskImageProgressSignal[] = "DiskImageProgress";
 const char kDnsSettingsChangedSignal[] = "DnsSettingsChanged";
+const char kVmGuestUserlandReadySignal[] = "VmGuestUserlandReadySignal";
 const char kVmStartedSignal[] = "VmStartedSignal";
 const char kVmStartingUpSignal[] = "VmStartingUpSignal";
 const char kVmStoppedSignal[] = "VmStoppedSignal";

@@ -587,6 +587,26 @@ message VmStartedSignal {
   VmStatus status = 4;
 }
 
+enum GuestUserlandReady {
+  // Userland unknown status.
+  USERLAND_UNKNOWN = 0;
+
+  // The ArcBridgeService in the ARCVM is connected to Chrome.
+  ARC_BRIDGE_CONNECTED = 1;
+}
+
+message VmGuestUserlandReadySignal {
+  // The name of the VM which has started.
+  string name = 1;
+
+  // The owner of the vm.
+  string owner_id = 2;
+
+  // Ready status of the guest userland. The ready status will be defined
+  // for each type of VM.
+  GuestUserlandReady ready = 3;
+}
+
 // Information that must be included with every StopVm dbus message.
 message StopVmRequest {
   // The name of the VM to be stopped.
