@@ -82,10 +82,24 @@ void ReportLeafNode(const StatusChain<CryptohomeError>& stack,
     }
   }
 
+  DCHECK_EQ(last_non_tpm_loc & (~hwsec::unified_tpm_error::kUnifiedErrorMask),
+            0);
+
   if (!have_tpm_error) {
-    // No TPM error, just report the leaf node.
+    // TODO(b/278988634): Remove ReportCryptohomeErrorLeaf after the unified
+    // leaf node bucket is stable.
     ReportCryptohomeErrorLeaf(error_bucket_name,
                               static_cast<uint32_t>(last_non_tpm_loc));
+
+    // We now report leaf nodes without TPM error in the LeafWithTPM bucket too.
+    // The format is the same as cryptohome errors with TPM error, but with the
+    // TPM error bits (last 16 bits) zeroed. It will never collide with leaf
+    // nodes with TPM error because in that case TPM error shouldn't be zero
+    // (meaning SUCCESS).
+    CryptohomeError::ErrorLocation encoded =
+        (last_non_tpm_loc & hwsec::unified_tpm_error::kUnifiedErrorMask) << 16;
+    ReportCryptohomeErrorLeafWithTPM(error_bucket_name,
+                                     static_cast<uint32_t>(encoded));
   } else {
     // There's a TPM error, report the leaf node and the TPM error.
     // For the TPM error, we always report only the last node.
@@ -97,8 +111,6 @@ void ReportLeafNode(const StatusChain<CryptohomeError>& stack,
     DCHECK_EQ(
         tpm_error_to_report & (~hwsec::unified_tpm_error::kUnifiedErrorMask),
         0);
-    DCHECK_EQ(last_non_tpm_loc & (~hwsec::unified_tpm_error::kUnifiedErrorMask),
-              0);
     CryptohomeError::ErrorLocation mixed =
         ((last_non_tpm_loc & hwsec::unified_tpm_error::kUnifiedErrorMask)
          << 16) |
@@ -127,6 +139,11 @@ void ReportCryptohomeError(const StatusChain<CryptohomeError>& err,
   ReportHashedStack(info, error_bucket_name);
   ReportDevCheckUnexpectedState(err, error_bucket_name);
   ReportLeafNode(err, error_bucket_name);
+}
+
+void ReportCryptohomeOk(const std::string& error_bucket_name) {
+  // 0 represents success in the mapping.
+  ReportCryptohomeErrorLeafWithTPM(error_bucket_name, 0);
 }
 
 }  // namespace error

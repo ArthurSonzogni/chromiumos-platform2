@@ -67,6 +67,13 @@ TEST_F(ErrorReportingTest, SuccessNoReporting) {
   ReportCryptohomeError(err1, info, kErrorBucketName);
 }
 
+TEST_F(ErrorReportingTest, ReportSuccess) {
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(EndsWith(kCryptohomeErrorLeafWithTPMSuffix), 0))
+      .WillOnce(Return(true));
+  ReportCryptohomeOk(kErrorBucketName);
+}
+
 TEST_F(ErrorReportingTest, NoTPMError) {
   // Setup the expected result.
   EXPECT_CALL(metrics_,
@@ -80,6 +87,10 @@ TEST_F(ErrorReportingTest, NoTPMError) {
   EXPECT_CALL(metrics_,
               SendSparseToUMA(EndsWith(kCryptohomeErrorLeafWithoutTPMSuffix),
                               kErrorLocationForTesting1.location()))
+      .WillOnce(Return(true));
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(EndsWith(kCryptohomeErrorLeafWithTPMSuffix),
+                              kErrorLocationForTesting1.location() << 16))
       .WillOnce(Return(true));
   // HashedStack value is precomputed.
   EXPECT_CALL(
@@ -113,6 +124,9 @@ TEST_F(ErrorReportingTest, DevCheckUnexpectedState) {
       .Times(2);
   EXPECT_CALL(metrics_, SendSparseToUMA(
                             EndsWith(kCryptohomeErrorLeafWithoutTPMSuffix), _))
+      .Times(1);
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(EndsWith(kCryptohomeErrorLeafWithTPMSuffix), _))
       .Times(1);
   EXPECT_CALL(metrics_,
               SendSparseToUMA(EndsWith(kCryptohomeErrorHashedStackSuffix), _))

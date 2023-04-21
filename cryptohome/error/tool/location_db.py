@@ -1646,14 +1646,28 @@ class DBTool:
     def _decode_leaf_and_tpm_loc(self, val: int) -> str:
         """Decode a leaf+tpm composite value into textual representation"""
 
+        # The first 16 bits of the composite value represents the
+        # cryptohome error location. The last 16 bits represents the
+        # TPM error. As cryptohome location with value 0 is reserved, it
+        # should never appear in ordinary errors, hence we use an all-zero
+        # composite value to represent success case (no error).
+        # In addition, if location is non-zero but TPM error is zero, it means
+        # that the error location doesn't have a TPM error.
         leaf_part = (val >> 16) & 0xFFFF
         tpm_part = val & 0xFFFF
+
+        if leaf_part == 0 and tpm_part == 0:
+            return "Success"
 
         leaf_repr = (
             self.db.value_to_symbol[leaf_part]
             if leaf_part in self.db.value_to_symbol
             else ("Unknown Loc %d" % leaf_part)
         )
+
+        if tpm_part == 0:
+            return leaf_repr
+
         tpm_repr = TPMErrorDecoder.decode(tpm_part)
 
         return "%s - %s" % (leaf_repr, tpm_repr)

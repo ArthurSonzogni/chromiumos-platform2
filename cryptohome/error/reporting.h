@@ -25,6 +25,14 @@ void ReportCryptohomeError(
     const user_data_auth::CryptohomeErrorInfo& info,
     const std::string& error_bucket_name);
 
+// Report a Cryptohome Ok status. For each error bucket, if the error bucket
+// represents the error results of a logical operation (like a dbus request),
+// where each operation reports exactly 1 error to the bucket when failing, then
+// when the operation succeeds, it can report an Ok status using this function.
+// This can make the error bucket show meaningful results of error/success
+// percentage for each operation.
+void ReportCryptohomeOk(const std::string& error_bucket_name);
+
 }  // namespace error
 
 }  // namespace cryptohome
