@@ -210,6 +210,8 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
   libusb_context* context;
   if (libusb_init(&context) != 0) {
     LOG(ERROR) << "Error initializing libusb";
+    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
+                         "Error initializing libusb");
     return false;
   }
   base::ScopedClosureRunner release_libusb(
@@ -240,12 +242,19 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
             "ippusb:[^:]+:[^:]+:([0-9a-fA-F]{4})_([0-9a-fA-F]{4})/.*", &vid_str,
             &pid_str)) {
       LOG(ERROR) << "Problem matching ippusb name for " << scanner.name();
+      brillo::Error::AddToPrintf(
+          error, FROM_HERE, kDbusDomain, kManagerServiceError,
+          "Problem matching ippusb name for '%s'", scanner.name().c_str());
       return false;
     }
     if (!(base::HexStringToInt(vid_str, &vid) &&
           base::HexStringToInt(pid_str, &pid))) {
       LOG(ERROR) << "Problems converting" << vid_str + ":" + pid_str
                  << "information into readable format";
+      brillo::Error::AddToPrintf(
+          error, FROM_HERE, kDbusDomain, kManagerServiceError,
+          "Problems converting '%s':'%s' information into readable format",
+          vid_str.c_str(), pid_str.c_str());
       return false;
     }
     seen_vidpid.insert(vid_str + ":" + pid_str);
@@ -272,7 +281,7 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
   std::optional<std::vector<ScannerInfo>> sane_scanners =
       sane_client_->ListDevices(error);
   if (!sane_scanners.has_value()) {
-    return false;
+    return false;  // brillo::Error::AddTo already called.
   }
   LOG(INFO) << sane_scanners.value().size() << " scanners returned from SANE";
   // Only add sane scanners that don't have ippusb connection
@@ -354,12 +363,12 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
   std::unique_ptr<SaneDevice> device =
       sane_client_->ConnectToDevice(error, nullptr, device_name);
   if (!device)
-    return false;
+    return false;  // brillo::Error::AddTo already called.
 
   std::optional<ValidOptionValues> options =
       device->GetValidOptionValues(error);
   if (!options.has_value())
-    return false;
+    return false;  // brillo::Error::AddTo already called.
 
   // These values correspond to the values of Chromium's
   // ScanJobSettingsResolution enum in
@@ -653,7 +662,7 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
     if (failure_mode)
       *failure_mode = GetScanFailureMode(status);
 
-    return false;
+    return false;  // brillo::Error::AddTo already called.
   }
 
   ReportScanRequested(request.device_name());
@@ -663,12 +672,12 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
   if (settings.resolution() != 0) {
     LOG(INFO) << "User requested resolution: " << settings.resolution();
     if (!device->SetScanResolution(error, settings.resolution())) {
-      return false;
+      return false;  // brillo::Error::AddTo already called.
     }
 
     std::optional<int> resolution = device->GetScanResolution(error);
     if (!resolution.has_value()) {
-      return false;
+      return false;  // brillo::Error::AddTo already called.
     }
     LOG(INFO) << "Device is using resolution: " << resolution.value();
   }
@@ -677,7 +686,7 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
     LOG(INFO) << "User requested document source: '" << settings.source_name()
               << "'";
     if (!device->SetDocumentSource(error, settings.source_name())) {
-      return false;
+      return false;  // brillo::Error::AddTo already called.
     }
   }
 
@@ -685,7 +694,7 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
     LOG(INFO) << "User requested color mode: '"
               << ColorMode_Name(settings.color_mode()) << "'";
     if (!device->SetColorMode(error, settings.color_mode())) {
-      return false;
+      return false;  // brillo::Error::AddTo already called.
     }
   }
 
@@ -696,7 +705,7 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
               << region.bottom_right_x() << ", " << region.bottom_right_y()
               << ")";
     if (!device->SetScanRegion(error, region)) {
-      return false;
+      return false;  // brillo::Error::AddTo already called.
     }
   }
 
@@ -818,7 +827,7 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
   SaneDevice* device = scan_state->device.get();
   std::optional<ScanParameters> params = device->GetScanParameters(error);
   if (!params.has_value()) {
-    return SCAN_STATE_FAILED;
+    return SCAN_STATE_FAILED;  // brillo::Error::AddTo already called.
   }
 
   // Get resolution value in DPI so that we can record it in the image.
@@ -889,6 +898,8 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
     } else if (result == SANE_STATUS_EOF) {
       break;
     } else if (result == SANE_STATUS_CANCELLED) {
+      brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
+                           "Scan job has been cancelled.");
       LOG(INFO) << __func__ << ": Scan job has been cancelled.";
       return SCAN_STATE_CANCELLED;
     } else {
@@ -909,7 +920,7 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
            rows_written < params->lines) {
       if (!image_reader->ReadRow(error,
                                  image_buffer.data() + bytes_converted)) {
-        return SCAN_STATE_FAILED;
+        return SCAN_STATE_FAILED;  // brillo::Error::AddTo already called.
       }
       bytes_converted += params->bytes_per_line;
       rows_written++;
@@ -941,7 +952,7 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
   }
 
   if (!image_reader->Finalize(error)) {
-    return SCAN_STATE_FAILED;
+    return SCAN_STATE_FAILED;  // brillo::Error::AddTo already called.
   }
 
   return SCAN_STATE_PAGE_COMPLETED;

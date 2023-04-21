@@ -26,7 +26,7 @@ std::unique_ptr<ImageReader> JpegReader::Create(
 
   if (!reader->ValidateParams(error) ||
       !reader->Initialize(error, resolution)) {
-    return nullptr;
+    return nullptr;  // brillo::Error::AddTo already called.
   }
 
   return reader;
@@ -80,7 +80,7 @@ JpegReader::JpegReader(const ScanParameters& params, base::ScopedFILE out_file)
 
 bool JpegReader::ValidateParams(brillo::ErrorPtr* error) {
   if (!ImageReader::ValidateParams(error)) {
-    return false;
+    return false;  // brillo::Error::AddTo already called.
   }
 
   if (params_.depth != 1 && params_.depth != 8) {

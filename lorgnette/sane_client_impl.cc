@@ -173,7 +173,7 @@ std::optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
   // DocumentSource instead of ScannerCapabilities, remove this logic.
   std::optional<std::vector<uint32_t>> resolutions = GetResolutions(error);
   if (!resolutions.has_value()) {
-    return std::nullopt;
+    return std::nullopt;  // brillo::Error::AddTo already called.
   }
   values.resolutions = std::move(resolutions.value());
 
@@ -218,24 +218,24 @@ std::optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
     // color modes.
     std::optional<std::string> initial_source = GetDocumentSource(error);
     if (!initial_source.has_value()) {
-      return std::nullopt;
+      return std::nullopt;  // brillo::Error::AddTo already called.
     }
 
     for (DocumentSource& source : values.sources) {
       if (!SetDocumentSource(error, source.name())) {
-        return std::nullopt;
+        return std::nullopt;  // brillo::Error::AddTo already called.
       }
 
       std::optional<ScannableArea> area = CalculateScannableArea(error);
       if (!area.has_value()) {
-        return std::nullopt;
+        return std::nullopt;  // brillo::Error::AddTo already called.
       }
 
       *source.mutable_area() = std::move(area.value());
 
       std::optional<std::vector<uint32_t>> resolutions = GetResolutions(error);
       if (!resolutions.has_value()) {
-        return std::nullopt;
+        return std::nullopt;  // brillo::Error::AddTo already called.
       }
 
       // These values correspond to the values of Chromium's
@@ -254,7 +254,7 @@ std::optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
       std::optional<std::vector<std::string>> color_modes =
           GetColorModes(error);
       if (!color_modes.has_value()) {
-        return std::nullopt;
+        return std::nullopt;  // brillo::Error::AddTo already called.
       }
 
       for (const std::string& mode : color_modes.value()) {
@@ -267,7 +267,7 @@ std::optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
 
     // Restore DocumentSource to its initial value.
     if (!SetDocumentSource(error, initial_source.value())) {
-      return std::nullopt;
+      return std::nullopt;  // brillo::Error::AddTo already called.
     }
   }
 
@@ -275,7 +275,7 @@ std::optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
   // DocumentSource instead of ScannerCapabilities, remove this logic.
   std::optional<std::vector<std::string>> color_modes = GetColorModes(error);
   if (!color_modes.has_value()) {
-    return std::nullopt;
+    return std::nullopt;  // brillo::Error::AddTo already called.
   }
   values.color_modes = std::move(color_modes.value());
 
@@ -305,7 +305,7 @@ std::optional<ColorMode> SaneDeviceImpl::GetColorMode(brillo::ErrorPtr* error) {
   std::optional<std::string> sane_color_mode =
       GetOption<std::string>(error, kScanMode);
   if (!sane_color_mode.has_value())
-    return std::nullopt;
+    return std::nullopt;  // brillo::Error::AddTo already called.
 
   return ColorModeFromSaneString(sane_color_mode.value());
 }
@@ -340,13 +340,13 @@ bool SaneDeviceImpl::SetScanRegion(brillo::ErrorPtr* error,
   if (base::Contains(options_, kPageWidth)) {
     double page_width = region.bottom_right_x() - region.top_left_x();
     if (!SetOption(error, kPageWidth, page_width)) {
-      return false;
+      return false;  // brillo::Error::AddTo already called.
     }
   }
   if (base::Contains(options_, kPageHeight)) {
     double page_height = region.bottom_right_y() - region.top_left_y();
     if (!SetOption(error, kPageHeight, page_height)) {
-      return false;
+      return false;  // brillo::Error::AddTo already called.
     }
   }
 
@@ -356,19 +356,19 @@ bool SaneDeviceImpl::SetScanRegion(brillo::ErrorPtr* error,
   // region options start at (0, 0).
   std::optional<double> x_offset = GetOptionOffset(error, kTopLeftX);
   if (!x_offset.has_value())
-    return false;
+    return false;  // brillo::Error::AddTo already called.
 
   // Get ADF justification offset modification if justification is specified.
   std::optional<uint32_t> justification_x_offset =
       GetJustificationXOffset(region, error);
   if (!justification_x_offset.has_value()) {
-    return false;
+    return false;  // brillo::Error::AddTo already called.
   }
   x_offset.value() += justification_x_offset.value();
 
   std::optional<double> y_offset = GetOptionOffset(error, kTopLeftY);
   if (!y_offset.has_value())
-    return false;
+    return false;  // brillo::Error::AddTo already called.
 
   const base::flat_map<ScanOption, double> values{
       {kTopLeftX, region.top_left_x() + x_offset.value()},
@@ -382,7 +382,7 @@ bool SaneDeviceImpl::SetScanRegion(brillo::ErrorPtr* error,
     double value = kv.second;
 
     if (!SetOption(error, option_name, value)) {
-      return false;
+      return false;  // brillo::Error::AddTo already called.
     }
   }
   return true;
@@ -809,13 +809,13 @@ std::optional<ScannableArea> SaneDeviceImpl::CalculateScannableArea(
   ScannableArea area;
   std::optional<OptionRange> x_range = GetXRange(error);
   if (!x_range.has_value()) {
-    return std::nullopt;
+    return std::nullopt;  // brillo::Error::AddTo already called.
   }
   area.set_width(x_range.value().size);
 
   std::optional<OptionRange> y_range = GetYRange(error);
   if (!y_range.has_value()) {
-    return std::nullopt;
+    return std::nullopt;  // brillo::Error::AddTo already called.
   }
   area.set_height(y_range.value().size);
   return area;
@@ -925,6 +925,8 @@ std::optional<T> SaneDeviceImpl::GetOption(brillo::ErrorPtr* error,
 std::optional<std::vector<uint32_t>> SaneDeviceImpl::GetResolutions(
     brillo::ErrorPtr* error) {
   if (options_.count(kResolution) == 0) {
+    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
+                         "No resolutions available");
     return std::nullopt;
   }
 
@@ -951,6 +953,8 @@ std::optional<std::vector<uint32_t>> SaneDeviceImpl::GetResolutions(
 std::optional<std::vector<std::string>> SaneDeviceImpl::GetColorModes(
     brillo::ErrorPtr* error) {
   if (options_.count(kScanMode) == 0) {
+    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
+                         "No color modes available");
     return std::nullopt;
   }
 
@@ -980,7 +984,7 @@ std::optional<uint32_t> SaneDeviceImpl::GetJustificationXOffset(
   // Offset modification only necessary for ADF source at the moment.
   std::optional<std::string> current_source = GetDocumentSource(error);
   if (!current_source.has_value()) {
-    return std::nullopt;
+    return std::nullopt;  // brillo::Error::AddTo already called.
   }
   DocumentSource src = CreateDocumentSource(current_source.value());
   if (src.type() != SOURCE_ADF_SIMPLEX && src.type() != SOURCE_ADF_DUPLEX) {
@@ -989,7 +993,7 @@ std::optional<uint32_t> SaneDeviceImpl::GetJustificationXOffset(
 
   std::optional<OptionRange> x_range = GetXRange(error);
   if (!x_range.has_value()) {
-    return std::nullopt;
+    return std::nullopt;  // brillo::Error::AddTo already called.
   }
 
   std::optional<std::string> x_justification =
@@ -1053,7 +1057,7 @@ std::optional<OptionRange> SaneDeviceImpl::GetYRange(brillo::ErrorPtr* error) {
 
   std::optional<OptionRange> y_range = GetOptionRange(error, *descriptor);
   if (!y_range.has_value()) {
-    return std::nullopt;
+    return std::nullopt;  // brillo::Error::AddTo already called.
   }
 
   return y_range;

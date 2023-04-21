@@ -35,6 +35,7 @@ int LibpngErrorWrap(brillo::ErrorPtr* error,
   int result = setjmp(*buf);
   if (result != 0) {
     // |libpng_function| failed and longjmp'ed here.
+    // Note that error is not set here. It needs to be set by the caller.
     return result;
   }
   libpng_function(png, args...);
@@ -56,7 +57,7 @@ std::unique_ptr<ImageReader> PngReader::Create(
 
   if (!reader->ValidateParams(error) ||
       !reader->Initialize(error, resolution)) {
-    return nullptr;
+    return nullptr;  // brillo::Error::AddTo already called.
   }
 
   return reader;
@@ -108,7 +109,7 @@ PngReader::PngReader(const ScanParameters& params, base::ScopedFILE out_file)
 
 bool PngReader::ValidateParams(brillo::ErrorPtr* error) {
   if (!ImageReader::ValidateParams(error)) {
-    return false;
+    return false;  // brillo::Error::AddTo already called.
   }
 
   if (params_.depth != 1 && params_.depth != 8 && params_.depth != 16) {
