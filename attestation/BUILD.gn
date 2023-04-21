@@ -15,6 +15,7 @@ group("all") {
     ":attestation_client",
     ":attestationd",
     ":install_init",
+    ":install_minijail_conf",
     ":install_policy",
     ":install_systemd",
     ":libattestation",
@@ -351,6 +352,11 @@ install_config("install_init") {
     "server/attestationd.conf",
   ]
   install_path = "/etc/init"
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "pca_agent/server/minijail/pca_agentd.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 install_config("install_policy") {
