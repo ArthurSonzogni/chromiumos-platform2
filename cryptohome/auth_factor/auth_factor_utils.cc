@@ -237,14 +237,6 @@ bool LoadUserAuthFactorByLabel(AuthFactorDriverManager* driver_manager,
   return false;
 }
 
-bool NeedsResetSecret(AuthFactorType auth_factor_type) {
-  return auth_factor_type == AuthFactorType::kPin;
-}
-
-bool NeedsRateLimiter(AuthFactorType auth_factor_type) {
-  return auth_factor_type == AuthFactorType::kFingerprint;
-}
-
 std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
     user_data_auth::AuthFactorPreparePurpose purpose) {
   switch (purpose) {
@@ -318,22 +310,6 @@ AuthFactorMap LoadAuthFactorMap(bool is_uss_migration_enabled,
   }
 
   return auth_factor_map;
-}
-
-AuthFactorLabelArity GetAuthFactorLabelArity(AuthFactorType auth_factor_type) {
-  switch (auth_factor_type) {
-    case AuthFactorType::kPassword:
-    case AuthFactorType::kPin:
-    case AuthFactorType::kCryptohomeRecovery:
-    case AuthFactorType::kKiosk:
-    case AuthFactorType::kSmartCard:
-      return AuthFactorLabelArity::kSingle;
-    case AuthFactorType::kFingerprint:
-      return AuthFactorLabelArity::kMultiple;
-    case AuthFactorType::kLegacyFingerprint:
-    case AuthFactorType::kUnspecified:
-      return AuthFactorLabelArity::kNone;
-  }
 }
 
 }  // namespace cryptohome
