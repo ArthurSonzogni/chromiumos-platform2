@@ -158,6 +158,37 @@ impl TryFrom<u8> for FullscreenVideo {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum VmBootMode {
+    // VM boot mode is not active.
+    Inactive = 0,
+    // VM boot mode active.
+    Active = 1,
+}
+static VMBOOT_MODE: Lazy<Mutex<VmBootMode>> = Lazy::new(|| Mutex::new(VmBootMode::Inactive));
+
+impl TryFrom<u8> for VmBootMode {
+    type Error = anyhow::Error;
+
+    fn try_from(mode_raw: u8) -> Result<VmBootMode> {
+        Ok(match mode_raw {
+            0 => VmBootMode::Inactive,
+            1 => VmBootMode::Active,
+            _ => bail!("Unsupported VM boot mode"),
+        })
+    }
+}
+
+pub fn is_vm_boot_mode_enabled() -> bool {
+    // Since this vm_boot_mode has no performance impact on lower end x86_64
+    // devices and may hit thermal throttole on high end x86_64 ddevices,
+    // this feature is disabled on x86_64.
+    #[cfg(not(target_arch = "x86_64"))]
+    return true;
+    #[cfg(target_arch = "x86_64")]
+    return false;
+}
+
 pub fn update_power_preferences(
     power_preference_manager: &dyn power::PowerPreferencesManager,
 ) -> Result<()> {
@@ -166,8 +197,11 @@ pub fn update_power_preferences(
     match RTC_AUDIO_ACTIVE.lock() {
         Ok(rtc_data) => match FULLSCREEN_VIDEO.lock() {
             Ok(fsv_data) => match GAME_MODE.lock() {
-                Ok(game_data) => power_preference_manager
-                    .update_power_preferences(*rtc_data, *fsv_data, *game_data)?,
+                Ok(game_data) => match VMBOOT_MODE.lock() {
+                    Ok(boot_data) => power_preference_manager
+                        .update_power_preferences(*rtc_data, *fsv_data, *game_data, *boot_data)?,
+                    Err(_) => bail!("Failed to get VM boot mode"),
+                },
                 Err(_) => bail!("Failed to get game mode"),
             },
             Err(_) => bail!("Failed to get fullscreen mode!"),
@@ -230,6 +264,25 @@ pub fn get_fullscreen_video() -> Result<FullscreenVideo> {
         Ok(data) => Ok(*data),
         Err(_) => bail!("Failed to get full screen video activity"),
     }
+}
+
+pub fn set_vm_boot_mode(
+    power_preference_manager: &dyn power::PowerPreferencesManager,
+    mode: VmBootMode,
+) -> Result<()> {
+    if !is_vm_boot_mode_enabled() {
+        bail!("VM boot mode is not enabled");
+    }
+    match VMBOOT_MODE.lock() {
+        Ok(mut data) => {
+            *data = mode;
+        }
+        Err(_) => bail!("Failed to set VM boot mode activity"),
+    }
+
+    update_power_preferences(power_preference_manager)?;
+
+    Ok(())
 }
 
 fn set_gt_boost_freq_mhz(mode: RTCAudioActive) -> Result<()> {

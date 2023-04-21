@@ -61,6 +61,7 @@ pub enum PowerPreferencesType {
     Default,
     WebRTC,
     Fullscreen,
+    VmBoot,
     BorealisGaming,
     ArcvmGaming,
 }
@@ -71,6 +72,7 @@ impl PowerPreferencesType {
             PowerPreferencesType::Default => "default-power-preferences",
             PowerPreferencesType::WebRTC => "web-rtc-power-preferences",
             PowerPreferencesType::Fullscreen => "fullscreen-power-preferences",
+            PowerPreferencesType::VmBoot => "vm-boot-power-preferences",
             PowerPreferencesType::BorealisGaming => "borealis-gaming-power-preferences",
             PowerPreferencesType::ArcvmGaming => "arcvm-gaming-power-preferences",
         }
@@ -167,6 +169,7 @@ fn parse_governor(path: &Path) -> Result<Option<Governor>> {
  *         * powersave-bias
  *     * fullscreen-power-preferences/governor/
  *       * schedutil/
+ *     * vm-boot-power-preferences/governor/..
  *     * borealis-gaming-power-preferences/governor/..
  *     * arcvm-gaming-power-preferences/governor/..
  *     * default-power-preferences/governor/..
@@ -263,6 +266,7 @@ mod tests {
                 PowerPreferencesType::Fullscreen,
                 "fullscreen-power-preferences",
             ),
+            (PowerPreferencesType::VmBoot, "vm-boot-power-preferences"),
             (
                 PowerPreferencesType::BorealisGaming,
                 "borealis-gaming-power-preferences",

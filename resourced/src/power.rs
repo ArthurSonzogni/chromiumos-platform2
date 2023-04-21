@@ -11,7 +11,7 @@ use glob::glob;
 use libchromeos::sys::{error, info};
 
 use crate::common;
-use crate::common::{FullscreenVideo, GameMode, RTCAudioActive};
+use crate::common::{FullscreenVideo, GameMode, RTCAudioActive, VmBootMode};
 use crate::config;
 
 const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
@@ -140,6 +140,7 @@ pub trait PowerPreferencesManager {
     /// 2) [ARCVM Gaming](config::PowerPreferencesType::ArcvmGaming)
     /// 3) [WebRTC](config::PowerPreferencesType::WebRTC)
     /// 4) [Fullscreen Video](config::PowerPreferencesType::Fullscreen)
+    /// 5) [VM boot Mode] (config::PowerPreferencesType::VmBoot)
     ///
     /// The [default](config::PowerPreferencesType::Default) preference will be applied when no
     /// activity is active.
@@ -148,6 +149,7 @@ pub trait PowerPreferencesManager {
         rtc: common::RTCAudioActive,
         fullscreen: common::FullscreenVideo,
         game: common::GameMode,
+        vmboot: common::VmBootMode,
     ) -> Result<()>;
 }
 
@@ -301,6 +303,7 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
         rtc: RTCAudioActive,
         fullscreen: FullscreenVideo,
         game: GameMode,
+        vmboot: VmBootMode,
     ) -> Result<()> {
         let mut preferences: Option<config::PowerPreferences> = None;
 
@@ -329,6 +332,12 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
             preferences = self
                 .config_provider
                 .read_power_preferences(power_source, config::PowerPreferencesType::Fullscreen)?;
+        }
+
+        if preferences.is_none() && vmboot == VmBootMode::Active {
+            preferences = self
+                .config_provider
+                .read_power_preferences(power_source, config::PowerPreferencesType::VmBoot)?;
         }
 
         if preferences.is_none() {
@@ -515,6 +524,8 @@ mod tests {
             fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
         fullscreen_power_preferences:
             fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
+        vm_boot_power_preferences:
+            fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
         borealis_gaming_power_preferences:
             fn(config::PowerSourceType) -> Result<Option<config::PowerPreferences>>,
         arcvm_gaming_power_preferences:
@@ -529,6 +540,7 @@ mod tests {
                 default_power_preferences: |_| bail!("Default not Implemented"),
                 web_rtc_power_preferences: |_| bail!("WebRTC not Implemented"),
                 fullscreen_power_preferences: |_| bail!("Fullscreen not Implemented"),
+                vm_boot_power_preferences: |_| bail!("VM boot mode not Implemented"),
                 borealis_gaming_power_preferences: |_| bail!("Borealis gaming not Implemented"),
                 arcvm_gaming_power_preferences: |_| bail!("ARCVM gaming not Implemented"),
             }
@@ -550,6 +562,9 @@ mod tests {
                 }
                 config::PowerPreferencesType::Fullscreen => {
                     (self.fullscreen_power_preferences)(power_source_type)
+                }
+                config::PowerPreferencesType::VmBoot => {
+                    (self.vm_boot_power_preferences)(power_source_type)
                 }
                 config::PowerPreferencesType::BorealisGaming => {
                     (self.borealis_gaming_power_preferences)(power_source_type)
@@ -748,6 +763,7 @@ mod tests {
             common::RTCAudioActive::Inactive,
             common::FullscreenVideo::Inactive,
             common::GameMode::Off,
+            common::VmBootMode::Inactive,
         )?;
 
         // We shouldn't have written anything.
@@ -783,6 +799,7 @@ mod tests {
             common::RTCAudioActive::Inactive,
             common::FullscreenVideo::Inactive,
             common::GameMode::Off,
+            common::VmBootMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -829,6 +846,7 @@ mod tests {
             common::RTCAudioActive::Inactive,
             common::FullscreenVideo::Inactive,
             common::GameMode::Off,
+            common::VmBootMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -875,6 +893,7 @@ mod tests {
             common::RTCAudioActive::Inactive,
             common::FullscreenVideo::Inactive,
             common::GameMode::Off,
+            common::VmBootMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -920,6 +939,7 @@ mod tests {
             common::RTCAudioActive::Active,
             common::FullscreenVideo::Inactive,
             common::GameMode::Off,
+            common::VmBootMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -964,6 +984,7 @@ mod tests {
             common::RTCAudioActive::Active,
             common::FullscreenVideo::Inactive,
             common::GameMode::Off,
+            common::VmBootMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -1024,7 +1045,12 @@ mod tests {
         ];
 
         for test in tests {
-            manager.update_power_preferences(test.0, test.1, common::GameMode::Off)?;
+            manager.update_power_preferences(
+                test.0,
+                test.1,
+                common::GameMode::Off,
+                common::VmBootMode::Inactive,
+            )?;
 
             let epp = read_epp(root.path())?;
 
@@ -1067,6 +1093,7 @@ mod tests {
             common::RTCAudioActive::Inactive,
             common::FullscreenVideo::Active,
             common::GameMode::Off,
+            common::VmBootMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -1111,6 +1138,7 @@ mod tests {
             common::RTCAudioActive::Inactive,
             common::FullscreenVideo::Inactive,
             common::GameMode::Borealis,
+            common::VmBootMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -1155,6 +1183,7 @@ mod tests {
             common::RTCAudioActive::Inactive,
             common::FullscreenVideo::Inactive,
             common::GameMode::Arc,
+            common::VmBootMode::Inactive,
         )?;
 
         let powersave_bias = read_global_powersave_bias(root.path())?;
@@ -1210,6 +1239,7 @@ mod tests {
             common::RTCAudioActive::Inactive,
             common::FullscreenVideo::Inactive,
             common::GameMode::Arc,
+            common::VmBootMode::Inactive,
         )?;
         check_per_policy_scaling_governor(root, ondemand);
         check_per_policy_powersave_bias(root, CONFIG_POWERSAVE_BIAS);
@@ -1280,6 +1310,7 @@ mod tests {
                 common::RTCAudioActive::Inactive,
                 common::FullscreenVideo::Inactive,
                 common::GameMode::Arc,
+                common::VmBootMode::Inactive,
             )?;
 
             check_per_policy_scaling_governor(root, governor);

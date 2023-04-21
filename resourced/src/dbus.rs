@@ -14,6 +14,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use anyhow::bail;
 use anyhow::Result;
 use dbus::channel::MatchingReceiver;
 use dbus::channel::Sender;
@@ -36,7 +37,13 @@ const SERVICE_NAME: &str = "org.chromium.ResourceManager";
 const PATH_NAME: &str = "/org/chromium/ResourceManager";
 const INTERFACE_NAME: &str = SERVICE_NAME;
 
+const VMCONCIEGE_INTERFACE_NAME: &str = "org.chromium.VmConcierge";
+
 const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(2);
+
+// The timeout in second for VM boot mode. Currently this is
+// 60seconds which is long enough for booting a VM on low-end DUTs.
+const DEFAULT_VM_BOOT_TIMEOUT: Duration = Duration::from_secs(60);
 
 type PowerPreferencesManager = power::DirectoryPowerPreferencesManager<
     config::DirectoryConfigProvider,
@@ -44,13 +51,15 @@ type PowerPreferencesManager = power::DirectoryPowerPreferencesManager<
 >;
 
 // Context data for the D-Bus service.
+#[derive(Clone)]
 struct DbusContext {
-    power_preferences_manager: PowerPreferencesManager,
+    power_preferences_manager: Arc<PowerPreferencesManager>,
 
     // Timer ids for skipping out-of-dated timer events.
     reset_game_mode_timer_id: Arc<AtomicUsize>,
     reset_vc_mode_timer_id: Arc<AtomicUsize>,
     reset_fullscreen_video_timer_id: Arc<AtomicUsize>,
+    reset_vm_boot_mode_timer_id: Arc<AtomicUsize>,
 }
 
 fn send_pressure_signal(
@@ -220,7 +229,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                     .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
 
                 set_game_mode_and_tune_swappiness(
-                    &context.power_preferences_manager,
+                    context.power_preferences_manager.as_ref(),
                     mode,
                     conn_clone.clone(),
                 )
@@ -246,7 +255,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                     .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
                 let timeout = Duration::from_secs(timeout_raw.into());
                 set_game_mode_and_tune_swappiness(
-                    &context.power_preferences_manager,
+                    context.power_preferences_manager.as_ref(),
                     mode,
                     conn.clone(),
                 )
@@ -271,7 +280,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                     // If the timer id is changed, this event is canceled.
                     if timer_id == reset_game_mode_timer_id.load(Ordering::Relaxed)
                         && set_game_mode_and_tune_swappiness(
-                            &power_preferences_manager,
+                            power_preferences_manager.as_ref(),
                             common::GameMode::Off,
                             conn_clone,
                         )
@@ -297,7 +306,10 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             move |_, context, (active_raw,): (u8,)| {
                 let active = common::RTCAudioActive::try_from(active_raw)
                     .map_err(|_| MethodErr::failed("Unsupported RTC audio active value"))?;
-                match common::set_rtc_audio_active(&context.power_preferences_manager, active) {
+                match common::set_rtc_audio_active(
+                    context.power_preferences_manager.as_ref(),
+                    active,
+                ) {
                     Ok(()) => Ok(()),
                     Err(e) => {
                         error!("set_rtc_audeio_active failed: {:#}", e);
@@ -321,13 +333,12 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                     .map_err(|_| MethodErr::failed("Unsupported fullscreen video value"))?;
                 let timeout = Duration::from_secs(timeout_raw.into());
 
-                common::set_fullscreen_video(&context.power_preferences_manager, mode).map_err(
-                    |e| {
+                common::set_fullscreen_video(context.power_preferences_manager.as_ref(), mode)
+                    .map_err(|e| {
                         error!("set_fullscreen_video failed: {:#}", e);
 
                         MethodErr::failed("Failed to set full screen video mode")
-                    },
-                )?;
+                    })?;
 
                 context
                     .reset_fullscreen_video_timer_id
@@ -342,7 +353,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                     tokio::time::sleep(timeout).await;
                     if timer_id == reset_fullscreen_video_timer_id.load(Ordering::Relaxed)
                         && common::set_fullscreen_video(
-                            &power_preferences_manager,
+                            power_preferences_manager.as_ref(),
                             common::FullscreenVideo::Inactive,
                         )
                         .is_err()
@@ -355,7 +366,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             },
         );
         b.method("PowerSupplyChange", (), (), move |_, context, ()| {
-            match common::update_power_preferences(&context.power_preferences_manager) {
+            match common::update_power_preferences(context.power_preferences_manager.as_ref()) {
                 Ok(()) => Ok(()),
                 Err(e) => {
                     error!("update_power_preferences failed: {:#}", e);
@@ -394,10 +405,47 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
     })
 }
 
+fn set_vm_boot_mode(context: DbusContext, mode: common::VmBootMode) -> Result<()> {
+    if !common::is_vm_boot_mode_enabled() {
+        bail!("VM boot mode is not enabled");
+    }
+    common::set_vm_boot_mode(context.power_preferences_manager.as_ref(), mode).map_err(|e| {
+        error!("set_vm_boot_mode failed: {:#}", e);
+        MethodErr::failed("Failed to set VM boot mode")
+    })?;
+
+    context
+        .reset_vm_boot_mode_timer_id
+        .fetch_add(1, Ordering::Relaxed);
+
+    if mode == common::VmBootMode::Active {
+        let timer_id = context.reset_vm_boot_mode_timer_id.load(Ordering::Relaxed);
+        let power_preferences_manager = context.power_preferences_manager.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(DEFAULT_VM_BOOT_TIMEOUT).await;
+            if timer_id == context.reset_vm_boot_mode_timer_id.load(Ordering::Relaxed)
+                && common::set_vm_boot_mode(
+                    power_preferences_manager.as_ref(),
+                    common::VmBootMode::Inactive,
+                )
+                .is_err()
+            {
+                error!("Reset VM boot mode failed.");
+            }
+        });
+    }
+    Ok(())
+}
+
 pub async fn service_main() -> Result<()> {
     let root = Path::new("/");
-
-    let power_preferences_manager = power::new_directory_power_preferences_manager(root);
+    let context = DbusContext {
+        power_preferences_manager: Arc::new(power::new_directory_power_preferences_manager(root)),
+        reset_game_mode_timer_id: Arc::new(AtomicUsize::new(0)),
+        reset_vc_mode_timer_id: Arc::new(AtomicUsize::new(0)),
+        reset_fullscreen_video_timer_id: Arc::new(AtomicUsize::new(0)),
+        reset_vm_boot_mode_timer_id: Arc::new(AtomicUsize::new(0)),
+    };
 
     let (io_resource, conn) = connection::new_system_sync()?;
 
@@ -421,20 +469,11 @@ pub async fn service_main() -> Result<()> {
     )));
 
     let token = register_interface(&mut cr, conn.clone());
-    cr.insert(
-        PATH_NAME,
-        &[token],
-        DbusContext {
-            power_preferences_manager,
-            reset_game_mode_timer_id: Arc::new(AtomicUsize::new(0)),
-            reset_vc_mode_timer_id: Arc::new(AtomicUsize::new(0)),
-            reset_fullscreen_video_timer_id: Arc::new(AtomicUsize::new(0)),
-        },
-    );
+    cr.insert(PATH_NAME, &[token], context.clone());
 
     #[cfg(feature = "vm_grpc")]
     {
-        let vm_started_rule = MatchRule::new_signal("org.chromium.VmConcierge", "VmStartedSignal");
+        let vm_started_rule = MatchRule::new_signal(VMCONCIEGE_INTERFACE_NAME, "VmStartedSignal");
 
         // Swallow any errors related to grpc dbus messages.  Failure to initialize
         // VM_GRPC sohuld not bring down resourced.
@@ -451,6 +490,43 @@ pub async fn service_main() -> Result<()> {
                     Err(e) => warn!("Failed to initialize GRPC client/server pair. {}", e),
                 }
                 true
+            }),
+        );
+    }
+
+    if common::is_vm_boot_mode_enabled() {
+        // Receive VmStartingUpSignal for VM boot mode
+        let vm_starting_up_rule =
+            MatchRule::new_signal(VMCONCIEGE_INTERFACE_NAME, "VmStartingUpSignal");
+        conn.add_match_no_cb(&vm_starting_up_rule.match_str())
+            .await?;
+        let context2 = context.clone();
+        conn.start_receive(
+            vm_starting_up_rule,
+            Box::new(move |_, _| {
+                match set_vm_boot_mode(context2.clone(), common::VmBootMode::Active) {
+                    Ok(_) => true,
+                    Err(e) => {
+                        error!("Failed to initalize VM boot boosting. {}", e);
+                        false
+                    }
+                }
+            }),
+        );
+        let vm_complete_boot_rule =
+            MatchRule::new_signal(VMCONCIEGE_INTERFACE_NAME, "VmGuestUserlandReadySignal");
+        conn.add_match_no_cb(&vm_complete_boot_rule.match_str())
+            .await?;
+        conn.start_receive(
+            vm_complete_boot_rule,
+            Box::new(move |_, _| {
+                match set_vm_boot_mode(context.clone(), common::VmBootMode::Inactive) {
+                    Ok(_) => true,
+                    Err(e) => {
+                        error!("Failed to stop VM boot boosting. {}", e);
+                        false
+                    }
+                }
             }),
         );
     }
