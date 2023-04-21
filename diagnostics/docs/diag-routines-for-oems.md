@@ -1347,3 +1347,203 @@ Errors:
 - `Not lit up in the specified color.`
 - `Replier disconnected.`
 - `Failed to set the LED color`
+
+## Bluetooth Routines
+
+### Bluetooth Power
+
+Checks whether the Bluetooth adapter can be powered off/on and the powered
+status is consistent in both HCI and D-Bus levels. The Bluetooth powered status
+is on after the routine is complete.
+
+The Bluetooth power routine has no parameters.
+
+To run the Bluetooth power routine:
+
+From crosh:
+
+```bash
+crosh> diag bluetooth_power
+```
+
+From cros-health-tool:
+
+```bash
+$ cros-health-tool diag --action=run_routine --routine=bluetooth_power
+```
+
+Sample output:
+
+```bash
+Progress: 100
+Output: {
+   "power_off_result": {
+      "dbus_powered": false,
+      "hci_powered": false
+   },
+   "power_on_result": {
+      "dbus_powered": true,
+      "hci_powered": true
+   }
+}
+
+Status: Passed
+Status message: Bluetooth routine passed.
+```
+
+Errors:
+
+- `Bluetooth routine is not supported when adapter is in discovery mode.`
+- `Bluetooth routine failed to change adapter powered status.`
+- `Bluetooth routine failed to verify adapter powered status.`
+- `Bluetooth routine failed to complete before timeout.`
+
+### Bluetooth Discovery
+
+Checks whether the Bluetooth adapter can start/stop discovery mode and the
+discovering status is consistent in both HCI and D-Bus levels.
+
+The Bluetooth discovery routine has no parameters.
+
+To run the Bluetooth discovery routine:
+
+From crosh:
+
+```bash
+crosh> diag bluetooth_discovery
+```
+
+From cros-health-tool:
+
+```bash
+$ cros-health-tool diag --action=run_routine --routine=bluetooth_discovery
+```
+
+Sample output:
+
+```bash
+Progress: 100
+Output: {
+   "start_discovery_result": {
+      "dbus_discovering": true,
+      "hci_discovering": true
+   },
+   "stop_discovery_result": {
+      "dbus_discovering": false,
+      "hci_discovering": false
+   }
+}
+
+Status: Passed
+Status message: Bluetooth routine passed.
+```
+
+Errors:
+
+- `Bluetooth routine is not supported when adapter is in discovery mode.`
+- `Bluetooth routine failed to change adapter powered status.`
+- `Bluetooth routine failed to switch adapter discovery mode.`
+- `Bluetooth routine failed to verify adapter discovering status.`
+- `Bluetooth routine failed to complete before timeout.`
+
+### Bluetooth Scanning
+
+Checks whether the Bluetooth adapter can scan successfully nearby Bluetooth
+peripherals. This routine also provides peripheral information for human
+validation to check for antenna issues.
+
+Parameters:
+
+-   `--length_seconds` - Length of time to run the routine for, in seconds.
+    Type: `uint32_t`. Default: `10`.
+
+To run the Bluetooth scanning routine for 5 seconds:
+
+From crosh:
+
+```bash
+crosh> diag bluetooth_scanning --length_seconds=5
+```
+
+From cros-health-tool:
+
+```bash
+$ cros-health-tool diag --action=run_routine --routine=bluetooth_scanning --length_seconds=5
+```
+
+Sample output:
+
+```bash
+Progress: 100
+Output: {
+   "peripherals": [ {
+      "bluetooth_class": "123456",
+      "name": "Example Bluetooth device name",
+      "peripheral_id": "36974412",
+      "rssi_history": [ -52, -46, -63 ],
+      "uuids": [ "0000110a-0000-1000-8000-00805f9b34fb", "00000000-0000-0000-0000-000000000000" ]
+   } ]
+}
+
+Status: Passed
+Status message: Bluetooth routine passed.
+```
+
+Errors:
+
+- `Bluetooth routine is not supported when adapter is in discovery mode.`
+- `Bluetooth routine failed to change adapter powered status.`
+- `Bluetooth routine failed to switch adapter discovery mode.`
+- `Routine execution time should be strictly greater than zero`.
+
+### Bluetooth Pairing
+
+Checks whether the adapter can find, connect and pair with a device with a
+specific peripheral id.
+
+Parameters:
+
+-   `--peripheral_id` - The unique id of the target peripheral device to test.
+    This id can be obtained from the output of the Bluetooth scanning routine.
+    Type: `string`. Default: `""`.
+
+To run the Bluetooth pairing routine with a Bluetooth device with id 36974412:
+
+(Note that the device must be in pairing mode.)
+
+From crosh:
+
+```bash
+crosh> diag bluetooth_pairing --peripheral_id=36974412
+```
+
+From cros-health-tool:
+
+```bash
+$ cros-health-tool diag --action=run_routine --routine=bluetooth_pairing --peripheral_id=36974412
+```
+
+Sample output:
+
+```bash
+Progress: 100
+Output: {
+   "bluetooth_class": "123456",
+   "uuids": [ "0000110a-0000-1000-8000-00805f9b34fb", "00000000-0000-0000-0000-000000000000" ]
+}
+
+Status: Passed
+Status message: Bluetooth routine passed.
+```
+
+Errors:
+
+- `Bluetooth routine is not supported when adapter is in discovery mode.`
+- `Bluetooth routine failed to change adapter powered status.`
+- `Bluetooth routine failed to switch adapter discovery mode.`
+- `The target peripheral is already paired.`
+- `Bluetooth routine failed to find the device with peripheral ID.`
+- `Bluetooth routine failed to create baseband connection.`
+- `Bluetooth routine failed to finish pairing.`
+- `Bluetooth routine failed to remove target peripheral.`
+- `Bluetooth routine failed to set target device's alias.`
