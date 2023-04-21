@@ -17,18 +17,6 @@ namespace cros {
 
 namespace {
 
-void CopyMappedBuffer(
-    std::unique_ptr<FrameBuffer::ScopedMapping> mapped_buffer,
-    std::unique_ptr<FrameBuffer::ScopedMapping> mapped_output_buffer) {
-  CHECK_EQ(mapped_buffer->num_planes(), mapped_output_buffer->num_planes());
-  for (size_t i = 0; i < mapped_buffer->num_planes(); i++) {
-    auto src_plane = mapped_buffer->plane(i);
-    auto dst_plane = mapped_output_buffer->plane(i);
-    CHECK_LE(src_plane.size, dst_plane.size);
-    memcpy(dst_plane.addr, src_plane.addr, src_plane.size);
-  }
-}
-
 bool ConvertNv12ToJpeg(FrameBuffer& buffer, FrameBuffer& output_buffer) {
   auto jpeg_compressor = JpegCompressor::GetInstance(
       CameraHal::GetInstance().GetMojoManagerToken());
@@ -172,8 +160,16 @@ bool FrameBuffer::ConvertFromNv12(FrameBuffer& buffer,
     case V4L2_PIX_FMT_NV12:
     case V4L2_PIX_FMT_NV12M: {
       // NV12 -> NV12
-      CopyMappedBuffer(std::move(mapped_buffer),
-                       std::move(mapped_output_buffer));
+      auto output_y_plane = mapped_output_buffer->plane(0);
+      auto output_uv_plane = mapped_output_buffer->plane(1);
+      int ret = libyuv::NV12Copy(
+          y_plane.addr, y_plane.stride, uv_plane.addr, uv_plane.stride,
+          output_y_plane.addr, output_y_plane.stride, output_uv_plane.addr,
+          output_uv_plane.stride, size.width, size.height);
+      if (ret != 0) {
+        LOGF(WARNING) << "NV12Copy() failed with " << ret;
+        return false;
+      }
       return true;
     }
     case V4L2_PIX_FMT_YUV420:
@@ -268,8 +264,16 @@ bool FrameBuffer::ConvertToNv12(FrameBuffer& buffer,
     case V4L2_PIX_FMT_NV12:
     case V4L2_PIX_FMT_NV12M: {
       // NV12 -> NV12
-      CopyMappedBuffer(std::move(mapped_buffer),
-                       std::move(mapped_output_buffer));
+      auto y_plane = mapped_buffer->plane(0);
+      auto uv_plane = mapped_buffer->plane(1);
+      int ret = libyuv::NV12Copy(
+          y_plane.addr, y_plane.stride, uv_plane.addr, uv_plane.stride,
+          output_y_plane.addr, output_y_plane.stride, output_uv_plane.addr,
+          output_uv_plane.stride, size.width, size.height);
+      if (ret != 0) {
+        LOGF(WARNING) << "NV12Copy() failed with " << ret;
+        return false;
+      }
       return true;
     }
     case V4L2_PIX_FMT_YUV420:
