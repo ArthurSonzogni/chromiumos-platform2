@@ -2,17 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "printscanmgr/daemon/upstart_tools.h"
+#include "printscanmgr/executor/upstart_tools.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
-#include <brillo/dbus/mock_dbus_method_response.h>
 #include <dbus/bus.h>
+#include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
+#include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "printscanmgr/mojom/executor.mojom.h"
 
 using testing::_;
 using testing::ByMove;
@@ -40,7 +44,7 @@ class UpstartToolsTest : public testing::Test {
                                   dbus::ObjectPath("/com/ubuntu/Upstart"));
     job_object_proxy_ = new dbus::MockObjectProxy(
         bus_.get(), "com.ubuntu.Upstart",
-        dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob"));
+        dbus::ObjectPath("/com/ubuntu/Upstart/jobs/lorgnette"));
   }
 
   void ExpectUpstartCalls() {
@@ -56,14 +60,14 @@ class UpstartToolsTest : public testing::Test {
         dbus::Response::CreateEmpty();
     dbus::MessageWriter response_writer(job_response.get());
     response_writer.AppendObjectPath(
-        dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob"));
+        dbus::ObjectPath("/com/ubuntu/Upstart/jobs/lorgnette"));
 
     return job_response;
   }
 
   void SetUp() override {
     ExpectUpstartCalls();
-    upstart_tools_ = std::make_unique<UpstartToolsImpl>(bus_);
+    upstart_tools_ = UpstartTools::Create(bus_);
   }
 
   UpstartTools* upstart_tools() { return upstart_tools_.get(); }
@@ -78,72 +82,60 @@ class UpstartToolsTest : public testing::Test {
 };
 
 TEST_F(UpstartToolsTest, TestIsJobRunning) {
-  EXPECT_CALL(*bus_, GetObjectProxy(
-                         "com.ubuntu.Upstart",
-                         dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob")))
+  EXPECT_CALL(
+      *bus_,
+      GetObjectProxy("com.ubuntu.Upstart",
+                     dbus::ObjectPath("/com/ubuntu/Upstart/jobs/lorgnette")))
       .WillOnce(Return(job_object_proxy_.get()));
   std::unique_ptr<dbus::Response> job_response = dbus::Response::CreateEmpty();
   dbus::MessageWriter response_writer(job_response.get());
   response_writer.AppendObjectPath(
-      dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob"));
+      dbus::ObjectPath("/com/ubuntu/Upstart/jobs/lorgnette"));
   dbus::MethodCall method_call("com.ubuntu.Upstart0_6.Job", "GetInstance");
   EXPECT_CALL(*job_object_proxy_,
               CallMethodAndBlock(IsMethod("GetInstance"), _))
       .WillOnce(Return(ByMove(std::move(job_response))));
-  brillo::ErrorPtr error;
-  bool result = upstart_tools()->IsJobRunning("fakejob", &error);
-  EXPECT_EQ(error, nullptr);
+  std::string error;
+  bool result =
+      upstart_tools()->IsJobRunning(mojom::UpstartJob::kLorgnette, &error);
+  EXPECT_EQ(error, "");
   EXPECT_EQ(result, true);
 }
 
 TEST_F(UpstartToolsTest, TestRestartJob) {
-  EXPECT_CALL(*bus_, GetObjectProxy(
-                         "com.ubuntu.Upstart",
-                         dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob")))
+  EXPECT_CALL(
+      *bus_,
+      GetObjectProxy("com.ubuntu.Upstart",
+                     dbus::ObjectPath("/com/ubuntu/Upstart/jobs/lorgnette")))
       .WillOnce(Return(job_object_proxy_.get()));
   std::unique_ptr<dbus::Response> job_response = dbus::Response::CreateEmpty();
   dbus::MessageWriter response_writer(job_response.get());
   response_writer.AppendObjectPath(
-      dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob"));
+      dbus::ObjectPath("/com/ubuntu/Upstart/jobs/lorgnette"));
   EXPECT_CALL(*job_object_proxy_, CallMethodAndBlock(IsMethod("Restart"), _))
       .WillOnce(Return(ByMove(std::move(job_response))));
-  brillo::ErrorPtr error;
-  bool result = upstart_tools()->RestartJob("fakejob", &error);
-  EXPECT_EQ(error, nullptr);
+  std::string error;
+  bool result =
+      upstart_tools()->RestartJob(mojom::UpstartJob::kLorgnette, &error);
+  EXPECT_EQ(error, "");
   EXPECT_EQ(result, true);
 }
 
 TEST_F(UpstartToolsTest, TestStopJob) {
-  EXPECT_CALL(*bus_, GetObjectProxy(
-                         "com.ubuntu.Upstart",
-                         dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob")))
+  EXPECT_CALL(
+      *bus_,
+      GetObjectProxy("com.ubuntu.Upstart",
+                     dbus::ObjectPath("/com/ubuntu/Upstart/jobs/lorgnette")))
       .WillRepeatedly(Return(job_object_proxy_.get()));
   std::unique_ptr<dbus::Response> job_response = dbus::Response::CreateEmpty();
   dbus::MessageWriter response_writer(job_response.get());
   response_writer.AppendObjectPath(
-      dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob"));
+      dbus::ObjectPath("/com/ubuntu/Upstart/jobs/lorgnette"));
   EXPECT_CALL(*job_object_proxy_, CallMethodAndBlock(_, _))
       .WillRepeatedly(Invoke(this, &UpstartToolsTest::CreateMockResponse));
-  brillo::ErrorPtr error;
-  bool result = upstart_tools()->StopJob("fakejob", &error);
-  EXPECT_EQ(error, nullptr);
-  EXPECT_EQ(result, true);
-}
-
-TEST_F(UpstartToolsTest, TestStartJob) {
-  EXPECT_CALL(*bus_, GetObjectProxy(
-                         "com.ubuntu.Upstart",
-                         dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob")))
-      .WillOnce(Return(job_object_proxy_.get()));
-  std::unique_ptr<dbus::Response> job_response = dbus::Response::CreateEmpty();
-  dbus::MessageWriter response_writer(job_response.get());
-  response_writer.AppendObjectPath(
-      dbus::ObjectPath("/com/ubuntu/Upstart/jobs/fakejob"));
-  EXPECT_CALL(*job_object_proxy_, CallMethodAndBlock(_, _))
-      .WillRepeatedly(Invoke(this, &UpstartToolsTest::CreateMockResponse));
-  brillo::ErrorPtr error;
-  bool result = upstart_tools()->StartJob("fakejob", &error);
-  EXPECT_EQ(error, nullptr);
+  std::string error;
+  bool result = upstart_tools()->StopJob(mojom::UpstartJob::kLorgnette, &error);
+  EXPECT_EQ(error, "");
   EXPECT_EQ(result, true);
 }
 

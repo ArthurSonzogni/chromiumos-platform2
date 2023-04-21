@@ -56,6 +56,7 @@ if (use.test) {
       "//common-mk/testrunner",
       "//printscanmgr/cups_uri_helper:cups_uri_helper_utils_test",
       "//printscanmgr/daemon:libdaemon_test",
+      "//printscanmgr/executor:libexecutor_test",
     ]
   }
 }
