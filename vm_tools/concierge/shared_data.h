@@ -98,57 +98,26 @@ std::optional<PflashMetadata> GetPflashMetadata(
 std::optional<base::FilePath> GetInstalledOrRequestPflashPath(
     const VmId& vm_id, const base::FilePath& start_vm_request_pflash_path);
 
-template <class StartXXRequest,
-          StartVmResponse (Service::*StartVm)(
-              StartXXRequest, std::unique_ptr<dbus::MessageReader>, VmMemoryId)>
-void Service::StartVmHelper(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-
-  auto reader = std::make_unique<dbus::MessageReader>(method_call);
-
-  StartXXRequest request;
-  StartVmResponse response;
-  // We change to a success status later if necessary.
-  response.set_status(VM_STATUS_FAILURE);
-
-  if (!reader->PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse StartVmRequest from message";
-    response.set_failure_reason("Unable to parse protobuf");
-    SendDbusResponse(std::move(response_sender), method_call, response);
-    return;
-  }
-
-  if (!IsValidOwnerId(request.owner_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-    response.set_failure_reason("Empty or malformed owner ID");
-    SendDbusResponse(std::move(response_sender), method_call, response);
-    return;
-  }
-
-  if (!IsValidVmName(request.name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_failure_reason("Empty or malformed VM name");
-    SendDbusResponse(std::move(response_sender), method_call, response);
-    return;
-  }
-
+template <class T>
+bool CheckCpuCount(const T& request, StartVmResponse* response) {
   // Check the CPU count.
   if (request.cpus() > base::SysInfo::NumberOfProcessors()) {
     LOG(ERROR) << "Invalid number of CPUs: " << request.cpus();
-    response.set_failure_reason("Invalid CPU count");
-    SendDbusResponse(std::move(response_sender), method_call, response);
-    return;
+    response->set_failure_reason("Invalid CPU count");
+    return false;
   }
+  return true;
+}
 
+template <class T>
+bool Service::CheckExistingVm(const T& request, StartVmResponse* response) {
   auto iter = FindVm(request.owner_id(), request.name());
   if (iter != vms_.end()) {
     LOG(INFO) << "VM with requested name is already running";
 
     VmInterface::Info vm = iter->second->GetInfo();
 
-    VmInfo* vm_info = response.mutable_vm_info();
+    VmInfo* vm_info = response->mutable_vm_info();
     vm_info->set_ipv4_address(vm.ipv4_address);
     vm_info->set_pid(vm.pid);
     vm_info->set_cid(vm.cid);
@@ -156,24 +125,27 @@ void Service::StartVmHelper(
     vm_info->set_vm_type(ToLegacyVmType(vm.type));
     switch (vm.status) {
       case VmInterface::Status::STARTING: {
-        response.set_status(VM_STATUS_STARTING);
+        response->set_status(VM_STATUS_STARTING);
         break;
       }
       case VmInterface::Status::RUNNING: {
-        response.set_status(VM_STATUS_RUNNING);
+        response->set_status(VM_STATUS_RUNNING);
         break;
       }
       default: {
-        response.set_status(VM_STATUS_UNKNOWN);
+        response->set_status(VM_STATUS_UNKNOWN);
         break;
       }
     }
-    response.set_success(true);
+    response->set_success(true);
 
-    SendDbusResponse(std::move(response_sender), method_call, response);
-    return;
+    return false;
   }
+  return true;
+}
 
+template <class T>
+bool Service::CheckExistingDisk(const T& request, StartVmResponse* response) {
   VmId vm_id(request.owner_id(), request.name());
   auto op_iter = std::find_if(
       disk_image_ops_.begin(), disk_image_ops_.end(), [&vm_id](auto& info) {
@@ -183,18 +155,43 @@ void Service::StartVmHelper(
   if (op_iter != disk_image_ops_.end()) {
     LOG(INFO) << "A disk operation for the VM is in progress";
 
-    response.set_status(VM_STATUS_DISK_OP_IN_PROGRESS);
-    response.set_failure_reason("A disk operation for the VM is in progress");
-    response.set_success(false);
+    response->set_status(VM_STATUS_DISK_OP_IN_PROGRESS);
+    response->set_failure_reason("A disk operation for the VM is in progress");
+    response->set_success(false);
 
-    SendDbusResponse(std::move(response_sender), method_call, response);
-    return;
+    return false;
+  }
+  return true;
+}
+
+// Returns false if any preconditions are not met.
+template <class StartXXRequest>
+bool Service::CheckStartVmPreconditions(const StartXXRequest& request,
+                                        StartVmResponse* response) {
+  if (!IsValidOwnerId(request.owner_id())) {
+    LOG(ERROR) << "Empty or malformed owner ID";
+    response->set_failure_reason("Empty or malformed owner ID");
+    return false;
   }
 
-  response = (this->*StartVm)(std::move(request), std::move(reader),
-                              next_vm_memory_id_++);
-  SendDbusResponse(std::move(response_sender), method_call, response);
-  return;
+  if (!IsValidVmName(request.name())) {
+    LOG(ERROR) << "Empty or malformed VM name";
+    response->set_failure_reason("Empty or malformed VM name");
+    return false;
+  }
+
+  if (!CheckCpuCount(request, response)) {
+    return false;
+  }
+
+  if (!CheckExistingVm(request, response)) {
+    return false;
+  }
+
+  if (!CheckExistingDisk(request, response)) {
+    return false;
+  }
+  return true;
 }
 
 }  // namespace concierge

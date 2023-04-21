@@ -236,13 +236,29 @@ bool BoostArcVmCgroups(double boost_value) {
 
 }  // namespace
 
-StartVmResponse Service::StartArcVm(StartArcVmRequest request,
-                                    std::unique_ptr<dbus::MessageReader> reader,
-                                    VmMemoryId vm_memory_id) {
+void Service::StartArcVm(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        vm_tools::concierge::StartVmResponse>> response_sender,
+    const vm_tools::concierge::StartArcVmRequest& request) {
   LOG(INFO) << "Received StartArcVm request";
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+
   StartVmResponse response;
+  // We change to a success status later if necessary.
   response.set_status(VM_STATUS_FAILURE);
 
+  if (!CheckStartVmPreconditions(request, &response)) {
+    response_sender->Return(response);
+    return;
+  }
+
+  StartArcVmInternal(request, next_vm_memory_id_++, response);
+  response_sender->Return(response);
+}
+
+StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
+                                            VmMemoryId vm_memory_id,
+                                            StartVmResponse& response) {
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(VmInfo::ARC_VM);
 

@@ -95,13 +95,30 @@ bool GetPlugin9PSocketPath(const std::string& vm_id, base::FilePath* path_out) {
 
 }  // namespace
 
-StartVmResponse Service::StartPluginVm(
-    StartPluginVmRequest request,
-    std::unique_ptr<dbus::MessageReader> reader,
-    VmMemoryId vm_memory_id) {
+void Service::StartPluginVm(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        vm_tools::concierge::StartVmResponse>> response_sender,
+    const vm_tools::concierge::StartPluginVmRequest& request) {
   LOG(INFO) << "Received StartPluginVm request";
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+
   StartVmResponse response;
+  // We change to a success status later if necessary.
   response.set_status(VM_STATUS_FAILURE);
+
+  if (!CheckStartVmPreconditions(request, &response)) {
+    response_sender->Return(response);
+    return;
+  }
+
+  StartPluginVmInternal(request, next_vm_memory_id_++, response);
+  response_sender->Return(response);
+}
+
+StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
+                                               VmMemoryId vm_memory_id,
+                                               StartVmResponse& response) {
+  LOG(INFO) << "Received StartPluginVm request";
 
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(VmInfo::PLUGIN_VM);

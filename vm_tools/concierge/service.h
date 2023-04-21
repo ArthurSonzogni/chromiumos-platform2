@@ -93,28 +93,46 @@ class Service final : public org::chromium::VmConciergeInterface {
   void HandleSigterm();
 
   // Helper function that is used by StartVm, StartPluginVm and StartArcVm
-  template <
-      class StartXXRequest,
-      StartVmResponse (Service::*StartVm)(StartXXRequest,
-                                          std::unique_ptr<dbus::MessageReader>,
-                                          VmMemoryId vm_memory_id)>
-  void StartVmHelper(dbus::MethodCall* method_call,
-                     dbus::ExportedObject::ResponseSender response_sender);
+  //
+  // Returns false if any preconditions are not met for Start*Vm.
+  template <class StartXXRequest>
+  bool CheckStartVmPreconditions(const StartXXRequest& request,
+                                 StartVmResponse* response);
+  // Checks if existing disk with same name is there before creating. true if
+  // name is available, false if one already exists.
+  template <class StartXXRequest>
+  bool CheckExistingDisk(const StartXXRequest& request,
+                         StartVmResponse* response);
+  // Checks if existing VM with same name is there before creating. true if name
+  // is available, false if one already exists.
+  template <class StartXXRequest>
+  bool CheckExistingVm(const StartXXRequest& request,
+                       StartVmResponse* response);
 
   // Handles a request to start a VM.
-  StartVmResponse StartVm(StartVmRequest request,
-                          std::unique_ptr<dbus::MessageReader> reader,
-                          VmMemoryId vm_memory_id);
+  StartVmResponse StartVmInternal(StartVmRequest request,
+                                  std::unique_ptr<dbus::MessageReader> reader,
+                                  VmMemoryId vm_memory_id);
+  void StartVm(dbus::MethodCall* method_call,
+               dbus::ExportedObject::ResponseSender sender) override;
 
   // Handles a request to start a plugin-based VM.
-  StartVmResponse StartPluginVm(StartPluginVmRequest request,
-                                std::unique_ptr<dbus::MessageReader> reader,
-                                VmMemoryId vm_memory_id);
+  StartVmResponse StartPluginVmInternal(StartPluginVmRequest request,
+                                        VmMemoryId vm_memory_id,
+                                        StartVmResponse& response);
+  void StartPluginVm(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          vm_tools::concierge::StartVmResponse>> response,
+      const vm_tools::concierge::StartPluginVmRequest& request) override;
 
   // Handles a request to start ARCVM.
-  StartVmResponse StartArcVm(StartArcVmRequest request,
-                             std::unique_ptr<dbus::MessageReader> reader,
-                             VmMemoryId vm_memory_id);
+  StartVmResponse StartArcVmInternal(StartArcVmRequest request,
+                                     VmMemoryId vm_memory_id,
+                                     StartVmResponse& response);
+  void StartArcVm(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          vm_tools::concierge::StartVmResponse>> response,
+      const vm_tools::concierge::StartArcVmRequest& request) override;
 
   // Handles a request to stop a VM.
   StopVmResponse StopVm(const StopVmRequest& request) override;

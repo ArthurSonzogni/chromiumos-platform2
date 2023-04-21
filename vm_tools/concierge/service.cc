@@ -440,14 +440,6 @@ void SetVmCpuArgs(int32_t cpus, VmBuilder& vm_builder) {
   }
 }
 
-void HandleAsynchronousDBusMethodCall(
-    base::OnceCallback<void(dbus::MethodCall*,
-                            dbus::ExportedObject::ResponseSender)> handler,
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  std::move(handler).Run(method_call, std::move(response_sender));
-}
-
 // Posted to a grpc thread to startup a listener service. Puts a copy of
 // the pointer to the grpc server in |server_copy| and then signals |event|.
 // It will listen on the address specified in |listener_address|.
@@ -1469,22 +1461,6 @@ bool Service::Init() {
 
   dlcservice_client_ = std::make_unique<DlcHelper>(bus_);
 
-  // Asynchronously calls the callback ResponseSender.
-  using AsyncServiceMethod = void (Service::*)(
-      dbus::MethodCall*, dbus::ExportedObject::ResponseSender);
-  static const std::map<const char*, AsyncServiceMethod> kAsyncServiceMethods =
-      {
-          {kStartVmMethod,
-           &Service::StartVmHelper<StartVmRequest, &Service::StartVm>},
-          // TODO(b/220235105): Query pvm memsize and then make the return
-          // type a plain int64_t.
-          {kStartPluginVmMethod,
-           &Service::StartVmHelper<StartPluginVmRequest,
-                                   &Service::StartPluginVm>},
-          {kStartArcVmMethod,
-           &Service::StartVmHelper<StartArcVmRequest, &Service::StartArcVm>},
-      };
-
   // TODO(b/269214379): Wait for completion for RegisterAsync on
   // chromeos-dbus-bindings after we complete migration and remove
   // ExportMethodAndBlock.
@@ -1493,20 +1469,6 @@ bool Service::Init() {
            base::BindOnce(
                [](Service* service, dbus::ExportedObject* exported_object_,
                   scoped_refptr<dbus::Bus> bus) {
-                 for (const auto& iter : kAsyncServiceMethods) {
-                   bool ret = exported_object_->ExportMethodAndBlock(
-                       kVmConciergeInterface, iter.first,
-                       base::BindRepeating(
-                           &HandleAsynchronousDBusMethodCall,
-                           base::BindRepeating(iter.second,
-                                               base::Unretained(service))));
-                   if (!ret) {
-                     LOG(ERROR)
-                         << "Failed to export async method " << iter.first;
-                     return false;
-                   }
-                 }
-
                  if (!bus->RequestOwnershipAndBlock(
                          kVmConciergeServiceName, dbus::Bus::REQUIRE_PRIMARY)) {
                    LOG(ERROR) << "Failed to take ownership of "
@@ -1742,9 +1704,39 @@ std::string GetFilesystem(const base::FilePath& disk_location) {
   return output;
 }
 
-StartVmResponse Service::StartVm(StartVmRequest request,
-                                 std::unique_ptr<dbus::MessageReader> reader,
-                                 VmMemoryId vm_memory_id) {
+void Service::StartVm(dbus::MethodCall* method_call,
+                      dbus::ExportedObject::ResponseSender response_sender) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+
+  auto reader = std::make_unique<dbus::MessageReader>(method_call);
+
+  StartVmRequest request;
+  StartVmResponse response;
+  // We change to a success status later if necessary.
+  response.set_status(VM_STATUS_FAILURE);
+
+  if (!reader->PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse StartVmRequest from message";
+    response.set_failure_reason("Unable to parse protobuf");
+    SendDbusResponse(std::move(response_sender), method_call, response);
+    return;
+  }
+
+  if (!CheckStartVmPreconditions(request, &response)) {
+    SendDbusResponse(std::move(response_sender), method_call, response);
+    return;
+  }
+
+  response = StartVmInternal(std::move(request), std::move(reader),
+                             next_vm_memory_id_++);
+  SendDbusResponse(std::move(response_sender), method_call, response);
+  return;
+}
+
+StartVmResponse Service::StartVmInternal(
+    StartVmRequest request,
+    std::unique_ptr<dbus::MessageReader> reader,
+    VmMemoryId vm_memory_id) {
   LOG(INFO) << "Received request: " << __func__;
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
