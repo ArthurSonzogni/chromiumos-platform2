@@ -391,19 +391,19 @@ TEST_F(VPNServiceTest, ReportIPTypeMetrics) {
   EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_ip_props);
   EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_nullptr);
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
-                                      Metrics::kVpnIPTypeIPv4Only));
+                                      Metrics::kIPTypeIPv4Only));
   service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
 
   EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_nullptr);
   EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_ip_props);
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
-                                      Metrics::kVpnIPTypeIPv6Only));
+                                      Metrics::kIPTypeIPv6Only));
   service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
 
   EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_ip_props);
   EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_ip_props);
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
-                                      Metrics::kVpnIPTypeDualStack));
+                                      Metrics::kIPTypeDualStack));
   service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
 }
 

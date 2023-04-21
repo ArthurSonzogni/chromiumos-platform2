@@ -1148,6 +1148,13 @@ class NetworkStartTest : public NetworkTest {
     }
   }
 
+  void VerifyIPTypeReportScheduled(Metrics::IPType type) {
+    // Report should be triggered at T+30.
+    dispatcher_.task_environment().FastForwardBy(base::Seconds(20));
+    EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricIPType, _, type));
+    dispatcher_.task_environment().FastForwardBy(base::Seconds(20));
+  }
+
  private:
   IPConfig::Properties GetIPPropertiesFromType(IPConfigType type) {
     switch (type) {
@@ -1271,6 +1278,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCP) {
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4DHCP, IPConfigType::kNone);
+  VerifyIPTypeReportScheduled(Metrics::kIPTypeIPv4Only);
 }
 
 TEST_F(NetworkStartTest, IPv4OnlyDHCPWithStaticIP) {
@@ -1401,6 +1409,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAAC) {
   TriggerSLAACUpdate();
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kIPv6SLAAC);
+  VerifyIPTypeReportScheduled(Metrics::kIPTypeIPv6Only);
 }
 
 TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
@@ -1673,6 +1682,7 @@ TEST_F(NetworkStartTest, DualStackDHCPFirst) {
   EXPECT_EQ(network_->state(), Network::State::kConnected);
 
   VerifyIPConfigs(IPConfigType::kIPv4DHCP, IPConfigType::kIPv6SLAAC);
+  VerifyIPTypeReportScheduled(Metrics::kIPTypeDualStack);
 }
 
 // The dual-stack VPN case, Connection should be set up with IPv6 at first, and
@@ -1771,6 +1781,19 @@ TEST_F(NetworkStartTest, CurrentIPConfigChangeHandler) {
   EXPECT_CALL(handler, OnCurrentIPChange());
   network_->Stop();
   EXPECT_EQ(network_->GetCurrentIPConfig(), nullptr);
+}
+
+TEST_F(NetworkStartTest, NoReportIPTypeForShortConnection) {
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricIPType, _, _)).Times(0);
+
+  const TestOptions test_opts = {.dhcp = true};
+  ExpectCreateDHCPController(/*request_ip_result=*/true);
+  InvokeStart(test_opts);
+
+  // Stop() should cancel the metric report task.
+  network_->Stop();
+
+  dispatcher_.task_environment().FastForwardBy(base::Minutes(1));
 }
 
 }  // namespace

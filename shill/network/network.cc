@@ -186,6 +186,15 @@ void Network::SetupConnection(IPConfig* ipconfig) {
   }
   connection_->UpdateFromIPConfig(ipconfig->properties());
   connection_->UpdateRoutingPolicy(GetAddresses());
+  if (state_ != State::kConnected && technology_ != Technology::kVPN) {
+    // The Network becomes connected, wait for 30 seconds to report its IP type.
+    // Skip VPN since it's already reported separately in VPNService.
+    dispatcher_->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&Network::ReportIPType,
+                       weak_factory_for_connection_.GetWeakPtr()),
+        base::Seconds(30));
+  }
   state_ = State::kConnected;
   ConfigureStaticIPv6Address();
   for (auto* ev : event_handlers_) {
@@ -213,6 +222,8 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
           << ": Stopping. IPv4 configured: " << (ipconfig() ? "true" : "false")
           << ", IPv6 configured: " << (ip6config() ? "true" : "false")
           << ", is_failure: " << std::boolalpha << is_failure;
+
+  weak_factory_for_connection_.InvalidateWeakPtrs();
 
   network_validation_result_.reset();
   StopPortalDetection();
@@ -969,6 +980,21 @@ bool Network::HasInternetConnectivity() const {
   return network_validation_result_.has_value() &&
          network_validation_result_->GetValidationState() ==
              PortalDetector::ValidationState::kInternetConnectivity;
+}
+
+void Network::ReportIPType() {
+  const bool has_ipv4 = ipconfig() && !ipconfig()->properties().address.empty();
+  const bool has_ipv6 =
+      ip6config() && !ip6config()->properties().address.empty();
+  Metrics::IPType ip_type = Metrics::kIPTypeUnknown;
+  if (has_ipv4 && has_ipv6) {
+    ip_type = Metrics::kIPTypeDualStack;
+  } else if (has_ipv4) {
+    ip_type = Metrics::kIPTypeIPv4Only;
+  } else if (has_ipv6) {
+    ip_type = Metrics::kIPTypeIPv6Only;
+  }
+  metrics_->SendEnumToUMA(Metrics::kMetricIPType, technology_, ip_type);
 }
 
 }  // namespace shill

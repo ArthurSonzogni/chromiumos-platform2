@@ -152,15 +152,15 @@ void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
 
   // Report IP type metrics. All a VPN connection, we have all IP configuration
   // when it becomes connected, so we can report the metrics here, but this is
-  // not the case for other techologies (v4 and v6 configurations can come at
+  // not the case for other technologies (v4 and v6 configurations can come at
   // different time).
-  Metrics::VpnIPType ip_type = Metrics::kVpnIPTypeUnknown;
+  Metrics::IPType ip_type = Metrics::kIPTypeUnknown;
   if (ipv4_props && ipv6_props) {
-    ip_type = Metrics::kVpnIPTypeDualStack;
+    ip_type = Metrics::kIPTypeDualStack;
   } else if (ipv4_props) {
-    ip_type = Metrics::kVpnIPTypeIPv4Only;
+    ip_type = Metrics::kIPTypeIPv4Only;
   } else if (ipv6_props) {
-    ip_type = Metrics::kVpnIPTypeIPv6Only;
+    ip_type = Metrics::kIPTypeIPv6Only;
   }
   metrics()->SendEnumToUMA(Metrics::kMetricVpnIPType, driver_->vpn_type(),
                            ip_type);

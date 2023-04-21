@@ -413,6 +413,9 @@ class Network {
   // contain the best local address for the target.
   void EnableARPFiltering();
 
+  // Report the current IP type metrics (v4, v6 or dual-stack) to UMA.
+  void ReportIPType();
+
   const int interface_index_;
   const std::string interface_name_;
   const Technology technology_;
@@ -499,6 +502,12 @@ class Network {
   DHCPProvider* dhcp_provider_;
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
+
+  // All the weak pointers created by this factory will be invalidated when the
+  // Network state becomes kIdle. Can be useful when the concept of a connected
+  // Network is needed. Note that the "connection" in the name is not the same
+  // thing with the Connection class in shill.
+  base::WeakPtrFactory<Network> weak_factory_for_connection_{this};
 
   base::WeakPtrFactory<Network> weak_factory_{this};
 };
