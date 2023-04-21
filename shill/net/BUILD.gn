@@ -106,6 +106,7 @@ net_sources = [
   "io_input_handler.cc",
   "io_ready_handler.cc",
   "ip_address.cc",
+  "ip_address_utils.cc",
   "ipv4_address.cc",
   "ipv6_address.cc",
   "netlink_attribute.cc",

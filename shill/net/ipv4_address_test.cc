@@ -79,5 +79,91 @@ TEST(IPv4AddressTest, Order) {
   }
 }
 
+TEST(IPv4CIDR, CreateFromCIDRString) {
+  const auto cidr1 = IPv4CIDR::CreateFromCIDRString("192.168.10.1/0");
+  ASSERT_TRUE(cidr1);
+  EXPECT_EQ(cidr1->address(), IPv4Address(192, 168, 10, 1));
+  EXPECT_EQ(cidr1->prefix_length(), 0);
+
+  const auto cidr2 = IPv4CIDR::CreateFromCIDRString("192.168.10.1/25");
+  ASSERT_TRUE(cidr2);
+  EXPECT_EQ(cidr2->address(), IPv4Address(192, 168, 10, 1));
+  EXPECT_EQ(cidr2->prefix_length(), 25);
+
+  const auto cidr3 = IPv4CIDR::CreateFromCIDRString("192.168.10.1/32");
+  ASSERT_TRUE(cidr3);
+  EXPECT_EQ(cidr3->address(), IPv4Address(192, 168, 10, 1));
+  EXPECT_EQ(cidr3->prefix_length(), 32);
+}
+
+TEST(IPv4CIDR, CreateFromCIDRString_Fail) {
+  EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("192.168.10.1"));
+  EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("192.168.10.1/-1"));
+  EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("192.168.10.1/33"));
+  EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("192.168.10/24"));
+  EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("::1"));
+  EXPECT_FALSE(IPv4CIDR::CreateFromCIDRString("::1/24"));
+}
+
+TEST(IPv4CIDR, CreateFromStringAndPrefix) {
+  const auto cidr1 = IPv4CIDR::CreateFromStringAndPrefix("192.168.10.1", 0);
+  ASSERT_TRUE(cidr1);
+  EXPECT_EQ(cidr1->address(), IPv4Address(192, 168, 10, 1));
+  EXPECT_EQ(cidr1->prefix_length(), 0);
+
+  const auto cidr2 = IPv4CIDR::CreateFromStringAndPrefix("192.168.10.1", 25);
+  ASSERT_TRUE(cidr2);
+  EXPECT_EQ(cidr2->address(), IPv4Address(192, 168, 10, 1));
+  EXPECT_EQ(cidr2->prefix_length(), 25);
+
+  const auto cidr3 = IPv4CIDR::CreateFromStringAndPrefix("192.168.10.1", 32);
+  ASSERT_TRUE(cidr3);
+  EXPECT_EQ(cidr3->address(), IPv4Address(192, 168, 10, 1));
+  EXPECT_EQ(cidr3->prefix_length(), 32);
+}
+
+TEST(IPv4CIDR, CreateFromAddressAndPrefix) {
+  const IPv4Address address(192, 168, 10, 1);
+  ASSERT_TRUE(IPv4CIDR::CreateFromAddressAndPrefix(address, 0));
+  ASSERT_TRUE(IPv4CIDR::CreateFromAddressAndPrefix(address, 25));
+  ASSERT_TRUE(IPv4CIDR::CreateFromAddressAndPrefix(address, 32));
+
+  ASSERT_FALSE(IPv4CIDR::CreateFromAddressAndPrefix(address, 33));
+  ASSERT_FALSE(IPv4CIDR::CreateFromAddressAndPrefix(address, -1));
+}
+
+TEST(IPv4CIDR, GetPrefixAddress) {
+  const auto cidr1 = *IPv4CIDR::CreateFromCIDRString("192.168.10.123/24");
+  EXPECT_EQ(cidr1.GetPrefixAddress().ToString(), "192.168.10.0");
+
+  const auto cidr2 = *IPv4CIDR::CreateFromCIDRString("192.168.255.123/20");
+  EXPECT_EQ(cidr2.GetPrefixAddress().ToString(), "192.168.240.0");
+}
+
+TEST(IPv4CIDR, GetBroadcast) {
+  const auto cidr1 = *IPv4CIDR::CreateFromCIDRString("192.168.10.123/24");
+  EXPECT_EQ(cidr1.GetBroadcast().ToString(), "192.168.10.255");
+
+  const auto cidr2 = *IPv4CIDR::CreateFromCIDRString("192.168.1.123/20");
+  EXPECT_EQ(cidr2.GetBroadcast().ToString(), "192.168.15.255");
+}
+
+TEST(IPv4CIDR, ContainsAddress) {
+  const auto cidr = *IPv4CIDR::CreateFromCIDRString("192.168.10.123/24");
+  EXPECT_TRUE(cidr.ContainsAddress(IPv4Address(192, 168, 10, 1)));
+  EXPECT_TRUE(cidr.ContainsAddress(IPv4Address(192, 168, 10, 123)));
+  EXPECT_TRUE(cidr.ContainsAddress(IPv4Address(192, 168, 10, 255)));
+  EXPECT_FALSE(cidr.ContainsAddress(IPv4Address(192, 168, 11, 123)));
+  EXPECT_FALSE(cidr.ContainsAddress(IPv4Address(193, 168, 10, 123)));
+}
+
+TEST(IPv4CIDR, ToString) {
+  const std::string cidr_string = "192.168.10.123/24";
+  const auto cidr = *IPv4CIDR::CreateFromCIDRString(cidr_string);
+  EXPECT_EQ(cidr.ToString(), cidr_string);
+  // Make sure std::ostream operator<<() works.
+  LOG(INFO) << "cidr = " << cidr;
+}
+
 }  // namespace
 }  // namespace shill

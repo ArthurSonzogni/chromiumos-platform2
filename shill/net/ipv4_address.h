@@ -12,6 +12,7 @@
 #include <string>
 #include <utility>
 
+#include "shill/net/ip_address_utils.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
@@ -59,6 +60,9 @@ class SHILL_EXPORT IPv4Address {
 
 SHILL_EXPORT std::ostream& operator<<(std::ostream& os,
                                       const IPv4Address& address);
+
+// Represents the IPv4 CIDR, that contains a IPv4 address and a prefix length.
+using IPv4CIDR = CIDR<IPv4Address>;
 
 }  // namespace shill
 #endif  // SHILL_NET_IPV4_ADDRESS_H_
