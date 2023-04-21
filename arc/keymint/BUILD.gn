@@ -23,7 +23,8 @@ group("all") {
 executable("arc-keymintd") {
   sources = [
     "main.cc",
-    "keymint_server.cc"
+    "keymint_server.cc",
+    "conversion.cc"
   ]
   pkg_deps = [
     "libbrillo",
@@ -128,8 +129,15 @@ shared_library("libkeymint") {
     "${keymint_src}/km_openssl/wrapped_key.cpp",
   ]
   public_configs = [ ":libkeymint_config" ]
-  configs += [ ":boringssl_config" ]
-  deps = [ ":libcppbor_external" ]
+  configs += [
+    #TODO(b/280102444): Disable default visibility.
+    "//common-mk:visibility_default",
+    ":boringssl_config",
+  ]
+  deps = [
+    ":libcppbor_external",
+    ":liblog",
+  ]
 }
 
 # KeyMint Config
@@ -243,6 +251,7 @@ if (use.test) {
   }
   executable("arc-keymintd_testrunner") {
     sources = [
+      "conversion.cc",
       "conversion_test.cc",
     ]
     configs += [
