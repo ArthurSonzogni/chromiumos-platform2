@@ -12,3 +12,19 @@ source_set("libexecutor") {
   sources = [ "executor.cc" ]
   configs += [ ":libexecutor_pkg_deps" ]
 }
+
+if (use.test) {
+  pkg_config("mock_executor_pkg_deps") {
+    pkg_deps = [
+      "libchrome",
+      "libchrome-test",
+      "libmojo",
+    ]
+  }
+
+  source_set("mock_executor") {
+    sources = [ "mock_executor.cc" ]
+    configs += [ ":mock_executor_pkg_deps" ]
+    deps = [ "//printscanmgr/mojom:mojo_bindings" ]
+  }
+}
