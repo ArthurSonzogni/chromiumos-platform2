@@ -53,49 +53,80 @@ void EnterMinijail(bool set_admin_caps) {
   minijail_enter_pivot_root(j.get(), "/mnt/empty");
 
   minijail_mount_tmp(j.get());
+
   minijail_bind(j.get(), "/", "/", 0);
-  minijail_bind(j.get(), "/dev/", "/dev", 0);
+  minijail_add_fs_restriction_ro(j.get(), "/");
+
+  minijail_bind(j.get(), "/dev", "/dev", 0);
   minijail_bind(j.get(), "/proc", "/proc", 0);
 
   minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs", 0, nullptr);
+
   // Required to read cros_config.
   minijail_bind(j.get(), "/run/chromeos-config/v1", "/run/chromeos-config/v1",
                 0);
+  minijail_add_fs_restriction_ro(j.get(), "/run/chromeos-config/v1");
+
   // Required for using D-Bus.
   minijail_bind(j.get(), "/run/dbus", "/run/dbus", 0);
+  minijail_add_fs_restriction_ro(j.get(), "/run/dbus");
+
   // Required by |mojo_service_manager| utility.
   minijail_bind(j.get(), "/run/mojo", "/run/mojo", 0);
+  minijail_add_fs_restriction_ro(j.get(), "/run/mojo");
+
   // Required by |vpd| utility.
   minijail_bind(j.get(), "/run/lock", "/run/lock", 1);
+  minijail_add_fs_restriction_rw(j.get(), "/run/lock");
 
   minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, nullptr);
+
   // Required to write structured metrics.
   minijail_bind(j.get(), "/var/lib/metrics/structured",
                 "/var/lib/metrics/structured", 1);
+  minijail_add_fs_restriction_rw(j.get(), "/var/lib/metrics/structured");
+
   // Required to access rmad working directory.
   minijail_bind(j.get(), "/var/lib/rmad", "/var/lib/rmad", 1);
+  minijail_add_fs_restriction_rw(j.get(), "/var/lib/rmad");
+
   // Required to read system logs.
   minijail_bind(j.get(), "/var/log", "/var/log", 0);
+  minijail_add_fs_restriction_ro(j.get(), "/var/log");
 
   minijail_mount_with_data(j.get(), "tmpfs", "/sys", "tmpfs", 0, nullptr);
+
   // Required to read HWWP GPIO and sensor attributes.
   minijail_bind(j.get(), "/sys/devices", "/sys/devices", 0);
+  minijail_add_fs_restriction_ro(j.get(), "/sys/devices");
+
   // Required to read HWWP GPIO and sensor attributes.
   minijail_bind(j.get(), "/sys/class", "/sys/class", 0);
+  minijail_add_fs_restriction_ro(j.get(), "/sys/class");
+
   // Required to read VPD and sensor attributes.
   minijail_bind(j.get(), "/sys/bus", "/sys/bus", 0);
+  minijail_add_fs_restriction_ro(j.get(), "/sys/bus");
+
   // Required to read system properties (crossystem) on arm.
   BindMountIfPathExists(j.get(),
                         base::FilePath("/sys/firmware/devicetree/base"));
+  minijail_add_fs_restriction_ro(j.get(), "/sys/firmware/devicetree/base");
 
   minijail_mount_with_data(j.get(), "tmpfs", "/mnt/stateful_partition", "tmpfs",
                            0, nullptr);
+
   // Required to write rmad state file.
   minijail_bind(j.get(), "/mnt/stateful_partition/unencrypted/rma-data",
                 "/mnt/stateful_partition/unencrypted/rma-data", 1);
+  minijail_add_fs_restriction_rw(
+      j.get(), "/mnt/stateful_partition/unencrypted/rma-data");
+
   // Required to read powerwash_count.
   minijail_bind(j.get(), "/mnt/stateful_partition/unencrypted/preserve",
                 "/mnt/stateful_partition/unencrypted/preserve", 0);
+  minijail_add_fs_restriction_ro(
+      j.get(), "/mnt/stateful_partition/unencrypted/preserve");
 
   if (set_admin_caps) {
     minijail_use_caps(j.get(), CAP_TO_MASK(CAP_SYS_RAWIO) |
@@ -106,7 +137,15 @@ void EnterMinijail(bool set_admin_caps) {
     // capabilities above.
     // TODO(chenghan): Can we move VPD to executor?
     minijail_bind(j.get(), "/dev/mem", "/dev/mem", 0);
+    minijail_add_fs_restriction_ro(j.get(), "/dev/mem");
+  } else {
+    // TODO(jeffulin): Withdraw this cap after we move the function of getting
+    // HWWP to executor.
+    minijail_use_caps(j.get(), CAP_TO_MASK(CAP_DAC_OVERRIDE));
   }
+
+  minijail_set_using_minimalistic_mountns(j.get());
+  minijail_add_minimalistic_mountns_fs_rules(j.get());
 
   minijail_use_seccomp_filter(j.get());
   minijail_parse_seccomp_filters(j.get(), kRmadSeccompFilterPath);
