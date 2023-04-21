@@ -75,7 +75,7 @@ constexpr std::initializer_list<const char*> kAccelAxes = {
 
 constexpr char kTriggerString[] = "trigger";
 
-constexpr char kDevlinkPrefix[] = "/dev/proximity-";
+constexpr char kDevlinkPrefix[] = "/dev/proximity";
 constexpr int kSystemPathIndexLimit = 100;
 constexpr char kSystemPathProperty[] = "system-path";
 
@@ -626,7 +626,8 @@ bool Configuration::ConfigProximity() {
     return false;
 
   if (isSar) {
-    // |devlink_opt.value()| should have prefix "/dev/proximity-"
+    // |devlink_opt.value()| should have prefix "/dev/proximity_" or
+    // "/dev/proximity-".
     if (devlink_opt.value().compare(0, std::strlen(kDevlinkPrefix),
                                     kDevlinkPrefix) != 0) {
       LOG(ERROR) << "Devlink isn't in the proper format: "
@@ -635,7 +636,7 @@ bool Configuration::ConfigProximity() {
     }
 
     std::string devlink_suffix =
-        devlink_opt.value().substr(std::strlen(kDevlinkPrefix));
+        devlink_opt.value().substr(std::strlen(kDevlinkPrefix) + 1);
     if (devlink_suffix.compare("lte") == 0)
       devlink_suffix = "cellular";
 

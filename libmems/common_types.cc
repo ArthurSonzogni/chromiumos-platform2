@@ -67,9 +67,10 @@ std::optional<std::string> GetIioSarSensorDevlink(const std::string& sys_path) {
   }
 
   for (const auto& dl : devlinks) {
-    const auto proximity_index = dl.find("proximity-");
-    if (proximity_index != std::string::npos)
+    if (dl.find("proximity-") != std::string::npos ||
+        dl.find("proximity_") != std::string::npos) {
       return dl;
+    }
   }
 
   return std::nullopt;

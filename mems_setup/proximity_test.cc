@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors.
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,7 +29,7 @@ constexpr int kDeviceId = 1;
 constexpr char kSystemPath[] = "/proximity-sensor/semtech-config/0/file";
 constexpr char kSystemPathProperty[] = "system-path";
 
-constexpr char kFakeDevlink[] = "/dev/proximity-lte";
+constexpr char kFakeDevlink[] = "/dev/proximity_lte";
 constexpr char kProximityConfigPath[] =
     "/usr/share/chromeos-assets/proximity-sensor/bugzzy/"
     "semtech_config_cellular.json";
