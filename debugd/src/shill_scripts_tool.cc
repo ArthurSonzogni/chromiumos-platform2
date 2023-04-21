@@ -65,7 +65,7 @@ bool ShillScriptsTool::Run(const base::ScopedFD& outfd,
                            std::string* out_id,
                            brillo::ErrorPtr* error) {
   if (!AllowedScript(script, error))
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
 
   auto p = std::make_unique<ProcessWithId>();
   p->SandboxAs(kUser, kGroup);

@@ -77,7 +77,7 @@ bool EcTypeCTool::EnterMode(brillo::ErrorPtr* error,
 
   if (!RunEctoolWithArgs(error, seccomp_policy_path, ectool_args, kRunAs,
                          output))
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
 
   return true;
 }
@@ -95,7 +95,7 @@ bool EcTypeCTool::ExitMode(brillo::ErrorPtr* error,
 
   if (!RunEctoolWithArgs(error, seccomp_policy_path, ectool_args, kRunAs,
                          output))
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
 
   return true;
 }
@@ -111,7 +111,7 @@ bool EcTypeCTool::DpState(brillo::ErrorPtr* error,
 
   if (!RunEctoolWithArgs(error, seccomp_policy_path, ectool_args, kRunAs,
                          &result))
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
 
   return ParseDpState(error, port_num, result, output);
 }
@@ -163,7 +163,7 @@ bool EcTypeCTool::HpdState(brillo::ErrorPtr* error,
 
   if (!RunEctoolWithArgs(error, seccomp_policy_path, ectool_args, kRunAs,
                          &result))
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
 
   return ParseHpdState(error, port_num, result, output);
 }

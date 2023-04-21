@@ -152,6 +152,8 @@ bool CheckDeviceBasedCaptureMode(const brillo::VariantDictionary& options,
   // present in device based capture mode.
   if (debugd::GetOption(options, "device", &device_value, error) !=
       debugd::ParseResult::PARSED) {
+    DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
+                     "Option 'device' is required.");
     return false;
   }
   int freq_value;
@@ -159,6 +161,9 @@ bool CheckDeviceBasedCaptureMode(const brillo::VariantDictionary& options,
   // present in device based capture mode.
   if (debugd::GetOption(options, "frequency", &freq_value, error) ==
       debugd::ParseResult::PARSED) {
+    DEBUGD_ADD_ERROR(
+        error, kPacketCaptureToolErrorString,
+        "Option 'frequency' cannot be present in device based capture mode.");
     return false;
   }
   std::string frequency_based_options[] = {"ht_location", "vht_width",
@@ -170,6 +175,11 @@ bool CheckDeviceBasedCaptureMode(const brillo::VariantDictionary& options,
     debugd::ParseResult result =
         debugd::GetOption(options, option, &val, error);
     if (result == debugd::ParseResult::PARSED) {
+      DEBUGD_ADD_ERROR_FMT(
+          error, kPacketCaptureToolErrorString,
+          "Frequency-based option '%s' cannot be present in device based "
+          "capture mode.",
+          val.c_str());
       return false;
     }
   }
@@ -206,17 +216,17 @@ PacketCaptureTool::CreateCaptureProcessForFrequencyBasedCapture(
   }
   p->AddArg(exec_path);
   if (!AddValidatedStringOption(p, options, "device", "--device", error))
-    return nullptr;
+    return nullptr;  // DEBUGD_ADD_ERROR is already called.
   if (!AddIntOption(p, options, "frequency", "--frequency", error))
-    return nullptr;
+    return nullptr;  // DEBUGD_ADD_ERROR is already called.
   if (!AddValidatedStringOption(p, options, "ht_location", "--ht-location",
                                 error))
-    return nullptr;
+    return nullptr;  // DEBUGD_ADD_ERROR is already called.
   if (!AddValidatedStringOption(p, options, "vht_width", "--vht-width", error))
-    return nullptr;
+    return nullptr;  // DEBUGD_ADD_ERROR is already called.
   if (!AddValidatedStringOption(p, options, "monitor_connection_on",
                                 "--monitor-connection-on", error))
-    return nullptr;
+    return nullptr;  // DEBUGD_ADD_ERROR is already called.
   int max_size = 0;
   debugd::GetOption(options, "max_size", &max_size, error);
   p->AddIntOption("--max-size", max_size);

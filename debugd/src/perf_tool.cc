@@ -291,7 +291,7 @@ bool PerfTool::GetPerfOutputV2(const std::vector<std::string>& quipper_args,
                                brillo::ErrorPtr* error) {
   PerfSubcommand subcommand;
   if (!ValidateQuipperArguments(quipper_args, subcommand, error))
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
 
   if (perf_running()) {
     // Do not run multiple sessions at the same time. Attempt to start another
@@ -374,7 +374,7 @@ bool PerfTool::GetPerfOutput(uint32_t duration_secs,
       return false;
     }
   } else if (!ValidateQuipperArguments(perf_args, subcommand, error)) {
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
   }
 
   // This whole method is synchronous, so we create a subprocess, let it run to
@@ -444,7 +444,7 @@ bool PerfTool::GetPerfOutputFd(uint32_t duration_secs,
       return false;
     }
   } else if (!ValidateQuipperArguments(perf_args, subcommand, error)) {
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
   }
 
   if (perf_running()) {

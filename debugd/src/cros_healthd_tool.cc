@@ -93,7 +93,7 @@ bool CrosHealthdTool::CollectSmartBatteryMetric(brillo::ErrorPtr* error,
           .Append(GetEctoolPolicyFile(kI2cReadCommand));
   if (!RunEctoolWithArgs(error, seccomp_policy_path, ectool_args, kRunAs,
                          output))
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
 
   return true;
 }

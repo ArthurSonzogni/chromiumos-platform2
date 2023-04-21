@@ -153,7 +153,7 @@ bool DevFeaturesTool::SetUserPassword(const std::string& username,
                  &password,  // pipe the password through stdin.
                  nullptr,    // exit status doesn't matter.
                  error)) {
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
   }
 
   // If rootfs is locked, don't bother setting the system password.
@@ -172,10 +172,10 @@ bool DevFeaturesTool::SetUserPassword(const std::string& username,
 bool DevFeaturesTool::EnableChromeDevFeatures(const std::string& root_password,
                                               brillo::ErrorPtr* error) const {
   if (!EnableBootFromUsb(error))
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
 
   if (!ConfigureSshServer(error))
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
 
   return SetUserPassword(
       "root", root_password.empty() ? kDefaultRootPassword : root_password,
@@ -219,7 +219,7 @@ bool DevFeaturesTool::QueryDevFeatures(int32_t* flags,
     if (!std::move(query.function).Run(&exit_status, error)) {
       // D-Bus is only set up to handle a single error so exit as soon as we
       // hit one.
-      return false;
+      return false;  // DEBUGD_ADD_ERROR is already called.
     }
     if (exit_status == 0)
       result_flags |= query.flag;

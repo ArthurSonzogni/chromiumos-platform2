@@ -68,7 +68,7 @@ DevModeNoOwnerRestriction::DevModeNoOwnerRestriction(
 bool DevModeNoOwnerRestriction::AllowToolUse(brillo::ErrorPtr* error) {
   // Check dev mode first to avoid unnecessary cryptohome query delays.
   if (!InDevMode(error)) {
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
   }
 
   bool owner_exists, boot_lockbox_finalized;

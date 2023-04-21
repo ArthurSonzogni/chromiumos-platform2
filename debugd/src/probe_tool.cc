@@ -96,7 +96,7 @@ bool ProbeTool::EvaluateProbeFunction(brillo::ErrorPtr* error,
   // directory. Sandboxing is mandatory when we don't allow debug features.
   auto process = CreateSandboxedProcess(error, probe_statement);
   if (process == nullptr)
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
 
   base::ScopedFD out_r_fd, out_w_fd;
   base::ScopedFD err_r_fd, err_w_fd;
@@ -157,13 +157,13 @@ bool ProbeTool::GetValidMinijailArguments(
   if (!minijail_args_dict_) {
     minijail_args_dict_ = LoadMinijailArguments(error);
     if (!minijail_args_dict_) {
-      return false;
+      return false;  // DEBUGD_ADD_ERROR is already called.
     }
   }
 
   auto probe_statement = ParseProbeStatement(error, probe_statement_str);
   if (!probe_statement) {
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
   }
 
   const auto& function_name = probe_statement->begin()->first;
@@ -307,7 +307,7 @@ std::unique_ptr<brillo::Process> ProbeTool::CreateSandboxedProcess(
   std::string sandbox_user, sandbox_group;
   if (!GetValidMinijailArguments(error, probe_statement, &function_name,
                                  &sandbox_user, &sandbox_group, &config_args))
-    return nullptr;
+    return nullptr;  // DEBUGD_ADD_ERROR is already called.
 
   parsed_args.insert(std::end(parsed_args),
                      std::make_move_iterator(std::begin(config_args)),

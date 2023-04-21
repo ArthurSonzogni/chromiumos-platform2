@@ -31,6 +31,8 @@ const char kDevCoredumpDBusErrorString[] =
     "org.chromium.debugd.error.DevCoreDump";
 const char kPrintscanDebugSetCategoriesErrorString[] =
     "org.chromium.debugd.error.PrintscanDebugSetCategories";
+const char kSetCrashSenderTestModeErrorString[] =
+    "org.chromium.debugd.error.SetCrashSenderTestMode";
 
 const char kShouldSendRlzPingKey[] = "should_send_rlz_ping";
 
@@ -757,8 +759,11 @@ bool DebugdDBusAdaptor::DRMTraceSnapshot(brillo::ErrorPtr* error,
 
 bool DebugdDBusAdaptor::SetCrashSenderTestMode(brillo::ErrorPtr* error,
                                                bool mode) {
-  if (!dev_features_tool_wrapper_->restriction().InDevMode())
+  if (!dev_features_tool_wrapper_->restriction().InDevMode()) {
+    DEBUGD_ADD_ERROR(error, kSetCrashSenderTestModeErrorString,
+                     "Dev mode is required to use this API.");
     return false;
+  }
 
   crash_sender_tool_->SetTestMode(mode);
   return true;

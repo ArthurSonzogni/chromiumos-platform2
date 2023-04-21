@@ -63,15 +63,15 @@ bool PingTool::Start(const base::ScopedFD& outfd,
   if (options.count("broadcast") == 1)
     p->AddArg("-b");
   if (!AddIntOption(p, options, "count", "-c", error))
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
   if (!AddIntOption(p, options, "interval", "-i", error))
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
   if (options.count("numeric") == 1)
     p->AddArg("-n");
   if (!AddIntOption(p, options, "packetsize", "-s", error))
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
   if (!AddIntOption(p, options, "waittime", "-W", error))
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
 
   auto interface = options.find("interface");
   if (interface != options.end()) {

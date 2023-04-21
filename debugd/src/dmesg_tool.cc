@@ -21,7 +21,13 @@
 
 namespace {
 
-constexpr char kDmesgPath[] = "/bin/dmesg";
+constexpr const char kDmesgPath[] = "/bin/dmesg";
+constexpr const char kErrorPath[] = "org.chromium.debugd.error.DmesgTool";
+
+constexpr const char kInvalidOption[] = "<invalid option>";
+constexpr const char kNonzeroExitStatus[] =
+    "<process exited with nonzero status>";
+constexpr const char kProcessInitFailed[] = "<process init failed>";
 
 }  // namespace
 
@@ -68,7 +74,8 @@ bool DmesgTool::CallDmesg(const brillo::VariantDictionary& options,
   // WARNING: CAP_TO_MASK() produces bad results when used with values >=32.
   process.SetCapabilities(1ULL << CAP_SYSLOG);
   if (!process.Init()) {
-    *output = "<process init failed>";
+    *output = kProcessInitFailed;
+    DEBUGD_ADD_ERROR(error, kErrorPath, kProcessInitFailed);
     return false;
   }
 
@@ -84,12 +91,14 @@ bool DmesgTool::CallDmesg(const brillo::VariantDictionary& options,
       !AddBoolOption(&process, options, "notime", "-t", error) ||
       !AddBoolOption(&process, options, "userspace", "-u", error) ||
       !AddBoolOption(&process, options, "decode", "-x", error)) {
-    *output = "<invalid option>";
+    *output = kInvalidOption;
+    DEBUGD_ADD_ERROR(error, kErrorPath, kInvalidOption);
     return false;
   }
 
   if (process.Run() != 0) {
-    *output = "<process exited with nonzero status>";
+    *output = kNonzeroExitStatus;
+    DEBUGD_ADD_ERROR(error, kErrorPath, kNonzeroExitStatus);
     return false;
   }
 
@@ -99,7 +108,7 @@ bool DmesgTool::CallDmesg(const brillo::VariantDictionary& options,
   ParseResult result = GetOption(options, "tail", &lines, error);
   if (result == ParseResult::PARSE_ERROR) {
     *output = "<invalid option to tail>";
-    return false;
+    return false;  // DEBUGD_ADD_ERROR is already called.
   }
   if (result == ParseResult::PARSED) {
     Tail(lines, *output);
