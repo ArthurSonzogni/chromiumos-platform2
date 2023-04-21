@@ -255,6 +255,7 @@
           }
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -481,6 +482,7 @@
         },
         "regulatory-label": "fake_regulatory_label",
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -718,6 +720,7 @@
         },
         "regulatory-label": "fake_regulatory_label",
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -1072,6 +1075,7 @@
           }
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -1277,6 +1281,7 @@
           "project": "project_b"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -1496,6 +1501,7 @@
           "project": "project_b"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -1745,6 +1751,7 @@
           "project": "project_b"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -1959,6 +1966,7 @@
           "project": "project_c"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -2174,6 +2182,7 @@
           "project": "project_d"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -2412,6 +2421,7 @@
           "project": "project_e"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -2610,6 +2620,7 @@
           "project": "project_e"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -2821,6 +2832,7 @@
           "project": "project_e"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -3019,6 +3031,7 @@
           "project": "project_e"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -3225,6 +3238,7 @@
           "project": "project_e"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -3431,6 +3445,7 @@
           "project": "project_e"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -3637,6 +3652,7 @@
           "project": "project_wl"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -3849,6 +3865,7 @@
           "project": "project_wl"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -4061,6 +4078,7 @@
           "project": "project_wl"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -4273,6 +4291,7 @@
           "project": "project_wl"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -4475,6 +4494,7 @@
           "project": "project_rebrand"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -4658,6 +4678,7 @@
           "project": "project_box"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -4836,6 +4857,7 @@
           "project": "project_box"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -5014,6 +5036,7 @@
           "project": "project_box"
         },
         "scheduler-tune": {
+          "boost-arcvm": 0.5,
           "boost-top-app": 60,
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",

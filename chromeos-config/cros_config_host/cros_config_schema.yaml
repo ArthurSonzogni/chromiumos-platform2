@@ -1509,6 +1509,23 @@ properties:
                     higher than that. 0 means no boost and is not recommended.
                   minimum: 0
                   maximum: 100
+                boost-arcvm:
+                  type: number
+                  description: (Optional) Global scheduler's boost factor of the
+                    ARCVM vcores and host services. For normal architectures,
+                    the boost-arcvm is directly converted to % boost value,
+                    where 1.0 is 100%. For the little.Big architecture, the
+                    ARCVM will be boosted by a % value, calculated from the
+                    formula
+                      little-core-freq / big-core-freq * boost-arcvm.
+                    Besides boosting the scheduler for the VM by a % value, the
+                    cgroup's uclamp.latency_sensitive attribute is enabled to
+                    further reduce the scheduling latency.
+                    Note - this is intended to be a temporary solution, which
+                    will be removed upon having the more appropriate scheduler
+                    improvements ready.
+                  minimum: 0.0
+                  maximum: 1.0
                 cpuset-nonurgent:
                   type: string
                   pattern: "^[0-9]+(-[0-9]+|(,[0-9]+)+)$"
