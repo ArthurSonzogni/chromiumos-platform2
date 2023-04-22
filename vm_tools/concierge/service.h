@@ -477,9 +477,6 @@ class Service final : public org::chromium::VmConciergeInterface {
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   org::chromium::VmConciergeAdaptor concierge_adaptor_{this};
 
-  // Used communicating with featured.
-  std::unique_ptr<feature::PlatformFeatures> platform_features_;
-
   // The port number to assign to the next shared directory server.
   uint32_t next_seneschal_server_port_;
 

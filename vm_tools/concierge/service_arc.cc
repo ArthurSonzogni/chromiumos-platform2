@@ -405,18 +405,21 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   features.rootfs_writable = request.rootfs_writable();
   features.use_dev_conf = !request.ignore_dev_conf();
   features.low_mem_jemalloc_arenas_enabled =
-      platform_features_->IsEnabledBlocking(kArcVmLowMemJemallocArenasFeature);
+      feature::PlatformFeatures::Get()->IsEnabledBlocking(
+          kArcVmLowMemJemallocArenasFeature);
 
   // Enable the responsive balloon feature in LMKD
   params.emplace_back(base::StringPrintf("androidboot.lmkd.vsock_timeout=%d",
                                          kLmkdVsockTimeoutMs));
 
   if (ShouldEnableAAudioMMAP(
-          platform_features_->IsEnabledBlocking(kArcVmAAudioMMAPFeature),
+          feature::PlatformFeatures::Get()->IsEnabledBlocking(
+              kArcVmAAudioMMAPFeature),
           is_dev_mode)) {
     params.emplace_back("androidboot.audio.aaudio_mmap_enabled=1");
-    bool low_latency_enabled = platform_features_->IsEnabledBlocking(
-        kArcVmAAudioMMAPLowLatencyFeature);
+    bool low_latency_enabled =
+        feature::PlatformFeatures::Get()->IsEnabledBlocking(
+            kArcVmAAudioMMAPLowLatencyFeature);
     params.emplace_back(
         base::StringPrintf("androidboot.audio.aaudio_mmap_period_size=%d",
                            GetAAudioMMAPPeriodSize(low_latency_enabled)));

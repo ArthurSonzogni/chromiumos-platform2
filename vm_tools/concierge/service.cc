@@ -1568,8 +1568,6 @@ bool Service::Init() {
     return false;
   }
 
-  platform_features_ = feature::PlatformFeatures::New(bus_);
-
   shadercached_proxy_ = bus_->GetObjectProxy(
       shadercached::kShaderCacheServiceName,
       dbus::ObjectPath(shadercached::kShaderCacheServicePath));
@@ -1578,6 +1576,8 @@ bool Service::Init() {
                << shadercached::kShaderCacheServiceName;
     return false;
   }
+
+  CHECK(feature::PlatformFeatures::Initialize(bus_));
 
   // Setup & start the gRPC listener services.
   if (!SetupListenerService(
@@ -4812,7 +4812,7 @@ bool Service::GetVmGpuCachePath(brillo::ErrorPtr* error,
 
 int Service::GetCpuQuota() {
   const feature::PlatformFeatures::ParamsResult& result =
-      platform_features_->GetParamsAndEnabledBlocking(
+      feature::PlatformFeatures::Get()->GetParamsAndEnabledBlocking(
           {&kArcVmInitialThrottleFeature});
 
   const auto result_iter = result.find(kArcVmInitialThrottleFeatureName);
