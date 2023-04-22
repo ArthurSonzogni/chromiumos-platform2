@@ -323,8 +323,6 @@ class NewStorageTest
       // First record enqueue to NewStorage would need key delivered.
       expect_to_need_key_ = true;
     }
-    test_compression_module_ =
-        base::MakeRefCounted<test::TestCompressionModule>();
     upload_store_.Reset();
   }
 
@@ -902,14 +900,12 @@ class NewStorageTest
       scoped_refptr<EncryptionModuleInterface> encryption_module) {
     // Initialize NewStorage with no key.
     test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
-    test_compression_module_ =
-        base::MakeRefCounted<test::TestCompressionModule>();
     NewStorage::Create(
         options,
         base::BindRepeating(&NewStorageTest::AsyncStartMockUploader,
                             base::Unretained(this)),
-        base::MakeRefCounted<QueuesContainer>(/*is_enabled=*/false),
-        encryption_module, test_compression_module_, e.cb());
+        QueuesContainer::Create(/*is_enabled=*/false), encryption_module,
+        base::MakeRefCounted<test::TestCompressionModule>(), e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
@@ -976,14 +972,12 @@ class NewStorageTest
               /*renew_encryption_key_period=*/base::Minutes(30))) {
     // Initialize NewStorage with no key.
     test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
-    test_compression_module_ =
-        base::MakeRefCounted<test::TestCompressionModule>();
     NewStorage::Create(
         options,
         base::BindRepeating(&NewStorageTest::AsyncStartMockUploaderFailing,
                             base::Unretained(this)),
-        base::MakeRefCounted<QueuesContainer>(/*is_enabled=*/false),
-        encryption_module, test_compression_module_, e.cb());
+        QueuesContainer::Create(/*is_enabled=*/false), encryption_module,
+        base::MakeRefCounted<test::TestCompressionModule>(), e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
@@ -1166,11 +1160,11 @@ class NewStorageTest
     expected_uploads_count_ = count;
   }
 
-  // Track records that are uploaded across multiple uploads
-  RecordUploadStore upload_store_;
-
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+
+  // Track records that are uploaded across multiple uploads
+  RecordUploadStore upload_store_;
 
   // Initializes mock metric functions for UMA
   analytics::Metrics::TestEnvironment metrics_test_environment_;
@@ -1192,7 +1186,6 @@ class NewStorageTest
   SignedEncryptionInfo signed_encryption_key_;
   bool expect_to_need_key_{false};
   std::atomic<bool> key_delivery_failure_{false};
-  scoped_refptr<test::TestCompressionModule> test_compression_module_;
 
   // Test-wide global mapping of <generation id, sequencing id> to record
   // digest. Serves all TestUploaders created by test fixture.
@@ -2464,9 +2457,9 @@ INSTANTIATE_TEST_SUITE_P(
     VaryingFileSize,
     NewStorageTest,
     ::testing::Combine(::testing::Bool() /* true - encryption enabled */,
-                       ::testing::Values(128 * 1024LL * 1024LL,
-                                         256 /* two records in file */,
-                                         1 /* single record in file */)));
+                       ::testing::Values(128u * 1024uLL * 1024uLL,
+                                         256u /* two records in file */,
+                                         1u /* single record in file */)));
 
 }  // namespace
 }  // namespace reporting

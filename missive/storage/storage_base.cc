@@ -4,13 +4,7 @@
 
 #include "missive/storage/storage_base.h"
 
-#include <base/barrier_closure.h>
-#include <base/files/file.h>
-#include <base/functional/callback.h>
-#include <base/memory/ref_counted.h>
-#include <base/task/thread_pool.h>
-#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
-
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <optional>
@@ -19,15 +13,21 @@
 #include <utility>
 #include <vector>
 
-#include "base/containers/adapters.h"
-#include "base/containers/flat_map.h"
-#include "base/containers/flat_set.h"
-#include "base/files/file_util.h"
-#include "base/functional/callback_forward.h"
-#include "base/memory/scoped_refptr.h"
-#include "base/strings/strcat.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/timer/timer.h"
+#include <base/barrier_closure.h>
+#include <base/files/file.h>
+#include <base/functional/callback.h>
+#include <base/memory/ref_counted.h>
+#include <base/task/thread_pool.h>
+#include <base/containers/adapters.h>
+#include <base/containers/flat_map.h>
+#include <base/containers/flat_set.h>
+#include <base/functional/callback_forward.h>
+#include <base/memory/scoped_refptr.h>
+#include <base/strings/strcat.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/timer/timer.h>
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+
 #include "missive/analytics/metrics.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/primitives.h"
@@ -105,12 +105,26 @@ void QueueUploaderInterface::WrapInstantiatedUploader(
           priority, std::move(uploader_result.ValueOrDie())));
 }
 
-QueuesContainer::QueuesContainer(bool is_enabled)
-    : DynamicFlag("controlled_degradation", is_enabled) {
+// static
+scoped_refptr<QueuesContainer> QueuesContainer::Create(bool is_enabled) {
+  // Cannot use MakeRefCounted, because constructor is declared private.
+  return base::WrapRefCounted(new QueuesContainer(
+      is_enabled, base::ThreadPool::CreateSequencedTaskRunner(
+                      {base::TaskPriority::BEST_EFFORT, base::MayBlock()})));
+}
+
+QueuesContainer::QueuesContainer(
+    bool is_enabled,
+    scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
+    : DynamicFlag("controlled_degradation", is_enabled),
+      base::RefCountedDeleteOnSequence<QueuesContainer>(sequenced_task_runner),
+      sequenced_task_runner_(sequenced_task_runner) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 
-QueuesContainer::~QueuesContainer() = default;
+QueuesContainer::~QueuesContainer() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+}
 
 Status QueuesContainer::AddQueue(Priority priority,
                                  scoped_refptr<StorageQueue> queue) {
@@ -194,6 +208,11 @@ void QueuesContainer::RegisterCompletionCallback(base::OnceClosure callback) {
 
 base::WeakPtr<QueuesContainer> QueuesContainer::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
+}
+
+scoped_refptr<base::SequencedTaskRunner>
+QueuesContainer::sequenced_task_runner() const {
+  return sequenced_task_runner_;
 }
 
 // Factory method, returns smart pointer with deletion on sequence.

@@ -2555,9 +2555,9 @@ TEST_P(StorageQueueTest, WriteWithUnencryptedCopy) {
 INSTANTIATE_TEST_SUITE_P(
     VaryingFileSize,
     StorageQueueTest,
-    testing::Combine(testing::Values(128 * 1024LL * 1024LL,
-                                     256 /* two records in file */,
-                                     1 /* single record in file */),
+    testing::Combine(testing::Values(128u * 1024uLL * 1024uLL,
+                                     256u /* two records in file */,
+                                     1u /* single record in file */),
                      testing::Values("DM TOKEN", "")));
 
 }  // namespace

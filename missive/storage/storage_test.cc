@@ -4,6 +4,7 @@
 
 #include "missive/storage/storage.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <optional>
@@ -130,6 +131,9 @@ constexpr char kKeyDeliveryErrorMessage[] = "Test cannot start upload";
 
 // Test uploader counter - for generation of unique ids.
 std::atomic<int64_t> next_uploader_id{0};
+
+// Maximum length of debug data prints to prevent excessive output.
+static constexpr size_t kDebugDataPrintSize = 16uL;
 
 // Storage options to be used in tests.
 class TestStorageOptions : public StorageOptions {
@@ -321,8 +325,6 @@ class LegacyStorageTest
       // First record enqueue to Storage would need key delivered.
       expect_to_need_key_ = true;
     }
-    test_compression_module_ =
-        base::MakeRefCounted<test::TestCompressionModule>();
     upload_store_.Reset();
   }
 
@@ -520,7 +522,7 @@ class LegacyStorageTest
           .append("/")
           .append(base::NumberToString(generation_id))
           .append(" '")
-          .append(data.data(), data.size())
+          .append(data.data(), 0, std::min(data.size(), kDebugDataPrintSize))
           .append("'\n");
       std::move(processed_cb)
           .Run(mock_upload_->UploadRecord(uploader_id, priority, sequencing_id,
@@ -881,14 +883,12 @@ class LegacyStorageTest
       scoped_refptr<EncryptionModuleInterface> encryption_module) {
     // Initialize Storage with no key.
     test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
-    test_compression_module_ =
-        base::MakeRefCounted<test::TestCompressionModule>();
     Storage::Create(
         options,
         base::BindRepeating(&LegacyStorageTest::AsyncStartMockUploader,
                             base::Unretained(this)),
-        base::MakeRefCounted<QueuesContainer>(/*is_enabled=*/false),
-        encryption_module, test_compression_module_, e.cb());
+        QueuesContainer::Create(/*is_enabled=*/false), encryption_module,
+        base::MakeRefCounted<test::TestCompressionModule>(), e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
@@ -955,14 +955,12 @@ class LegacyStorageTest
               /*renew_encryption_key_period=*/base::Minutes(30))) {
     // Initialize Storage with no key.
     test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
-    test_compression_module_ =
-        base::MakeRefCounted<test::TestCompressionModule>();
     Storage::Create(
         options,
         base::BindRepeating(&LegacyStorageTest::AsyncStartMockUploaderFailing,
                             base::Unretained(this)),
-        base::MakeRefCounted<QueuesContainer>(/*is_enabled=*/false),
-        encryption_module, test_compression_module_, e.cb());
+        QueuesContainer::Create(/*is_enabled=*/false), encryption_module,
+        base::MakeRefCounted<test::TestCompressionModule>(), e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
@@ -1032,8 +1030,8 @@ class LegacyStorageTest
     record.set_data(std::string(data));
     record.set_destination(UPLOAD_EVENTS);
     record.set_dm_token("DM TOKEN");
-    LOG(ERROR) << "Write priority=" << priority << " data='" << record.data()
-               << "'";
+    LOG(ERROR) << "Write priority=" << priority << " data='"
+               << record.data().substr(0, kDebugDataPrintSize) << "'";
     storage_->Write(priority, std::move(record), w.cb());
     return w.result();
   }
@@ -1130,11 +1128,11 @@ class LegacyStorageTest
     expected_uploads_count_ = count;
   }
 
-  // Track records that are uploaded across multiple uploads
-  RecordUploadStore upload_store_;
-
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+
+  // Track records that are uploaded across multiple uploads
+  RecordUploadStore upload_store_;
 
   // Initializes mock metric functions for UMA
   analytics::Metrics::TestEnvironment metrics_test_environment_;
@@ -1156,7 +1154,6 @@ class LegacyStorageTest
   SignedEncryptionInfo signed_encryption_key_;
   bool expect_to_need_key_{false};
   std::atomic<bool> key_delivery_failure_{false};
-  scoped_refptr<test::TestCompressionModule> test_compression_module_;
 
   // Test-wide global mapping of <generation id, sequencing id> to record
   // digest. Serves all TestUploaders created by test fixture.
@@ -2330,9 +2327,9 @@ INSTANTIATE_TEST_SUITE_P(
     VaryingFileSize,
     LegacyStorageTest,
     ::testing::Combine(::testing::Bool() /* true - encryption enabled */,
-                       ::testing::Values(128 * 1024LL * 1024LL,
-                                         256 /* two records in file */,
-                                         1 /* single record in file */)));
+                       ::testing::Values(128u * 1024uLL * 1024uLL,
+                                         256u /* two records in file */,
+                                         1u /* single record in file */)));
 
 }  // namespace
 }  // namespace reporting

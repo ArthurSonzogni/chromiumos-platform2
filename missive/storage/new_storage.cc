@@ -309,8 +309,7 @@ NewStorage::NewStorage(
     scoped_refptr<CompressionModule> compression_module,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb)
     : options_(options),
-      sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
-          {base::TaskPriority::BEST_EFFORT, base::MayBlock()})),
+      sequenced_task_runner_(queues_container->sequenced_task_runner()),
       queues_container_(queues_container),
       encryption_module_(encryption_module),
       key_delivery_(

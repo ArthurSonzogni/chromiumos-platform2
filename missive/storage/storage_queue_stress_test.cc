@@ -141,13 +141,11 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
 
   void CreateTestStorageQueueOrDie(const QueueOptions& options) {
     ASSERT_FALSE(storage_queue_) << "StorageQueue already assigned";
-    test_encryption_module_ =
+    auto test_encryption_module =
         base::MakeRefCounted<test::TestEncryptionModule>(/*is_enabled=*/true);
-    test_compression_module_ =
-        base::MakeRefCounted<test::TestCompressionModule>();
     test::TestEvent<Status> key_update_event;
-    test_encryption_module_->UpdateAsymmetricKey("DUMMY KEY", 0,
-                                                 key_update_event.cb());
+    test_encryption_module->UpdateAsymmetricKey("DUMMY KEY", 0,
+                                                key_update_event.cb());
     ASSERT_OK(key_update_event.result());
     test::TestEvent<StatusOr<scoped_refptr<StorageQueue>>>
         storage_queue_create_event;
@@ -162,7 +160,8 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
               // Returns empty candidates queue - no degradation allowed.
               std::move(result_cb).Run({});
             }),
-        test_encryption_module_, test_compression_module_,
+        test_encryption_module,
+        base::MakeRefCounted<test::TestCompressionModule>(),
         storage_queue_create_event.cb());
     StatusOr<scoped_refptr<StorageQueue>> storage_queue_result =
         storage_queue_create_event.result();
@@ -229,8 +228,6 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
 
   base::ScopedTempDir location_;
   StorageOptions options_;
-  scoped_refptr<test::TestEncryptionModule> test_encryption_module_;
-  scoped_refptr<test::TestCompressionModule> test_compression_module_;
   scoped_refptr<StorageQueue> storage_queue_;
 
   // Test-wide global mapping of <generation id, sequencing id> to record
@@ -294,7 +291,7 @@ TEST_P(StorageQueueStressTest,
 INSTANTIATE_TEST_SUITE_P(
     VaryingFileSize,
     StorageQueueStressTest,
-    testing::Values(1 * 1024LL, 2 * 1024LL, 3 * 1024LL, 4 * 1024LL));
+    testing::Values(1 * 1024uLL, 2 * 1024uLL, 3 * 1024uLL, 4 * 1024uLL));
 
 }  // namespace
 }  // namespace reporting

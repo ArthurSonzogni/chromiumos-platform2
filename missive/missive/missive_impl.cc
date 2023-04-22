@@ -185,7 +185,7 @@ void MissiveImpl::OnStorageParameters(
 
   // Create `Storage` service modules and register for dynamic update.
   queues_container_ =
-      base::MakeRefCounted<QueuesContainer>(parameters.controlled_degradation);
+      QueuesContainer::Create(parameters.controlled_degradation);
   compression_module_ = std::move(compression_module_factory_).Run(parameters);
   encryption_module_ = std::move(encryption_module_factory_).Run(parameters);
   args_->AsyncCall(&MissiveArgs::OnStorageParametersUpdate)

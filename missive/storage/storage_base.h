@@ -5,11 +5,6 @@
 #ifndef MISSIVE_STORAGE_STORAGE_BASE_H_
 #define MISSIVE_STORAGE_STORAGE_BASE_H_
 
-#include <base/files/file.h>
-#include <base/functional/callback.h>
-#include <base/memory/ref_counted.h>
-
-#include <map>
 #include <memory>
 #include <optional>
 #include <queue>
@@ -17,6 +12,14 @@
 #include <tuple>
 #include <utility>
 #include <vector>
+
+#include <base/containers/flat_map.h>
+#include <base/files/file.h>
+#include <base/functional/callback.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/ref_counted_delete_on_sequence.h>
+#include <base/task/sequenced_task_runner.h>
+#include <base/memory/scoped_refptr.h>
 
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/verification.h"
@@ -93,10 +96,12 @@ class StorageInterface : public base::RefCountedThreadSafe<StorageInterface> {
 // `QueuesContainer` (weak pointers are OK) - otherwise destruction of
 // `Storage` will not trigger destruction of `QueuesContainer` and thus
 // `StorageQueues`.
-class QueuesContainer : public DynamicFlag,
-                        public base::RefCountedThreadSafe<QueuesContainer> {
+class QueuesContainer
+    : public DynamicFlag,
+      public base::RefCountedDeleteOnSequence<QueuesContainer> {
  public:
-  explicit QueuesContainer(bool is_enabled);
+  // Factory method creates task runner and the container.
+  static scoped_refptr<QueuesContainer> Create(bool is_enabled);
   QueuesContainer(const QueuesContainer&) = delete;
   QueuesContainer& operator=(const QueuesContainer) = delete;
 
@@ -130,12 +135,20 @@ class QueuesContainer : public DynamicFlag,
 
   base::WeakPtr<QueuesContainer> GetWeakPtr();
 
+  scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner() const;
+
  protected:
   ~QueuesContainer() override;
 
  private:
-  friend base::RefCountedThreadSafe<QueuesContainer>;
+  friend base::RefCountedDeleteOnSequence<QueuesContainer>;
+  friend class base::DeleteHelper<QueuesContainer>;
 
+  QueuesContainer(
+      bool is_enabled,
+      scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
+
+  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
 
   // Map used to retrieve queues for writes, confirms, and flushes.
