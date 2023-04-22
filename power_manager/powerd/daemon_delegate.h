@@ -195,8 +195,8 @@ class DaemonDelegate {
   virtual std::unique_ptr<system::MachineQuirksInterface> CreateMachineQuirks(
       PrefsInterface* prefs) = 0;
 
-  virtual std::unique_ptr<feature::PlatformFeaturesInterface>
-  CreatePlatformFeatures(system::DBusWrapperInterface* dbus_wrapper) = 0;
+  virtual feature::PlatformFeaturesInterface* CreatePlatformFeatures(
+      system::DBusWrapperInterface* dbus_wrapper) = 0;
   virtual std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() = 0;
 
   virtual std::unique_ptr<system::ChargeControllerHelperInterface>

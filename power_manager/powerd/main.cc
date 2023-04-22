@@ -330,9 +330,12 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return machine_quirks;
   }
 
-  std::unique_ptr<feature::PlatformFeaturesInterface> CreatePlatformFeatures(
+  feature::PlatformFeaturesInterface* CreatePlatformFeatures(
       system::DBusWrapperInterface* dbus_wrapper) override {
-    return feature::PlatformFeatures::New(dbus_wrapper->GetBus());
+    if (!feature::PlatformFeatures::Initialize(dbus_wrapper->GetBus())) {
+      return nullptr;
+    }
+    return feature::PlatformFeatures::Get();
   }
 
   std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() override {

@@ -392,8 +392,8 @@ void Daemon::Init() {
   metrics_sender_ = delegate_->CreateMetricsSender();
   udev_ = delegate_->CreateUdev();
   input_watcher_ = delegate_->CreateInputWatcher(prefs_.get(), udev_.get());
-  suspend_configurator_ = delegate_->CreateSuspendConfigurator(
-      platform_features_.get(), prefs_.get());
+  suspend_configurator_ =
+      delegate_->CreateSuspendConfigurator(platform_features_, prefs_.get());
   suspend_freezer_ = delegate_->CreateSuspendFreezer(prefs_.get());
   wakeup_source_identifier_ =
       std::make_unique<system::WakeupSourceIdentifier>(udev_.get());
@@ -525,7 +525,7 @@ void Daemon::Init() {
   if (psu_type == kBattery) {
     adaptive_charging_controller_ = delegate_->CreateAdaptiveChargingController(
         this, display_backlight_controller_.get(), input_watcher_.get(),
-        power_supply_.get(), dbus_wrapper_.get(), platform_features_.get(),
+        power_supply_.get(), dbus_wrapper_.get(), platform_features_,
         prefs_.get());
   }
 
@@ -563,7 +563,7 @@ void Daemon::Init() {
     audio_client_->AddObserver(this);
   }
 
-  bluetooth_controller_->Init(udev_.get(), platform_features_.get(),
+  bluetooth_controller_->Init(udev_.get(), platform_features_,
                               dbus_wrapper_.get());
   wifi_controller_->Init(this, prefs_.get(), udev_.get(), tablet_mode);
   cellular_controller_->Init(this, prefs_.get(), dbus_wrapper_.get());

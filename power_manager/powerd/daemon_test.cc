@@ -91,8 +91,9 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   DaemonTest()
       : passed_prefs_(new FakePrefs()),
         passed_dbus_wrapper_(new system::DBusWrapperStub()),
-        passed_platform_features_(new feature::FakePlatformFeatures(
-            passed_dbus_wrapper_.get()->GetBus())),
+        passed_platform_features_(
+            std::make_unique<feature::FakePlatformFeatures>(
+                passed_dbus_wrapper_.get()->GetBus())),
         passed_udev_(new system::UdevStub()),
         passed_ambient_light_sensor_manager_(
             new system::AmbientLightSensorManagerStub()),
@@ -229,9 +230,9 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   std::unique_ptr<PrefsInterface> CreatePrefs() override {
     return std::move(passed_prefs_);
   }
-  std::unique_ptr<feature::PlatformFeaturesInterface> CreatePlatformFeatures(
+  feature::FakePlatformFeatures* CreatePlatformFeatures(
       system::DBusWrapperInterface* dbus_wrapper) override {
-    return std::move(passed_platform_features_);
+    return passed_platform_features_.get();
   }
   std::unique_ptr<system::DBusWrapperInterface> CreateDBusWrapper() override {
     return std::move(passed_dbus_wrapper_);
@@ -565,7 +566,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   // Stub objects to be transferred by Create* methods.
   std::unique_ptr<FakePrefs> passed_prefs_;
   std::unique_ptr<system::DBusWrapperStub> passed_dbus_wrapper_;
-  std::unique_ptr<feature::PlatformFeaturesInterface> passed_platform_features_;
+  std::unique_ptr<feature::FakePlatformFeatures> passed_platform_features_;
   std::unique_ptr<system::UdevStub> passed_udev_;
   std::unique_ptr<system::AmbientLightSensorManagerStub>
       passed_ambient_light_sensor_manager_;

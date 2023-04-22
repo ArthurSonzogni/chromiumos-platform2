@@ -345,7 +345,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   DaemonDelegate* delegate_;  // owned elsewhere
 
   std::unique_ptr<PrefsInterface> prefs_;
-  std::unique_ptr<feature::PlatformFeaturesInterface> platform_features_;
+  feature::PlatformFeaturesInterface* platform_features_;
 
   std::unique_ptr<system::DBusWrapperInterface> dbus_wrapper_;
 
