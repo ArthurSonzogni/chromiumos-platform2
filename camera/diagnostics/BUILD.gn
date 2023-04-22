@@ -11,6 +11,7 @@ group("all") {
     ":install_cros_camera_diagnostics_conf",
     ":install_cros_camera_diagnostics_mojo",
     ":install_cros_camera_diagnostics_policy",
+    ":install_minijail_conf",
   ]
 }
 
@@ -53,6 +54,11 @@ install_config("install_cros_camera_diagnostics_conf") {
 install_config("install_cros_camera_diagnostics_mojo") {
   sources = [ "mojo/cros_camera_diagnostics_mojo.jsonc" ]
   install_path = "/etc/mojo/service_manager/policy"
+}
+
+install_config() {
+  sources = [ "minijail/cros-camera-diagnostics.conf"  ]
+  install_path = "/usr/share/minijail"
 }
 
 install_seccomp_policy("install_cros_camera_diagnostics_policy") {
