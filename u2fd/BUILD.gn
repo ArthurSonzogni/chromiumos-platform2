@@ -7,6 +7,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":install_minijail_conf",
     ":install_tmpfiles_config",
     ":u2fd",
   ]
@@ -21,6 +22,11 @@ group("all") {
       ":u2fhid_fuzzer",
     ]
   }
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/u2fd.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 pkg_config("target_defaults") {
