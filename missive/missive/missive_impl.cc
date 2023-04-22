@@ -94,10 +94,9 @@ MissiveImpl::~MissiveImpl() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 }
 
-void MissiveImpl::StartUp(
-    scoped_refptr<dbus::Bus> bus,
-    std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib,
-    base::OnceCallback<void(Status)> cb) {
+void MissiveImpl::StartUp(scoped_refptr<dbus::Bus> bus,
+                          feature::PlatformFeaturesInterface* feature_lib,
+                          base::OnceCallback<void(Status)> cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   analytics::Metrics::Initialize();
 
@@ -105,7 +104,7 @@ void MissiveImpl::StartUp(
   DCHECK(create_storage_factory_) << "May be called only once";
   DCHECK(!args_) << "Can only be called once";
   args_ = std::make_unique<SequencedMissiveArgs>(bus->GetDBusTaskRunner(),
-                                                 std::move(feature_lib));
+                                                 feature_lib);
 
   // Migrate from /var/cache to /var/spool
   Status migration_status;

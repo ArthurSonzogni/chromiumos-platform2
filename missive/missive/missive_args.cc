@@ -90,11 +90,10 @@ bool BoolParameterValue(base::StringPiece parameter_name,
 
 }  // namespace
 
-MissiveArgs::MissiveArgs(
-    std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib)
-    : feature_lib_(std::move(feature_lib)),
+MissiveArgs::MissiveArgs(feature::PlatformFeaturesInterface* feature_lib)
+    : feature_lib_(feature_lib),
       features_to_load_({&kCollectorFeature, &kStorageFeature}) {
-  DCHECK(feature_lib_);
+  CHECK(feature_lib_);
   feature_lib_->GetParamsAndEnabled(
       features_to_load_, base::BindPostTaskToCurrentDefault(base::BindOnce(
                              &MissiveArgs::OnParamResultInitially,

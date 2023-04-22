@@ -15,6 +15,7 @@
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
+#include <dbus/mock_object_proxy.h>
 #include <featured/feature_library.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -54,7 +55,7 @@ class MockMissive : public MissiveService {
   MOCK_METHOD(void,
               StartUp,
               (scoped_refptr<dbus::Bus> bus,
-               std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib,
+               feature::PlatformFeaturesInterface* feature_lib,
                base::OnceCallback<void(Status)> cb),
               (override));
 
@@ -97,6 +98,7 @@ class MissiveDaemonTest : public ::testing::Test {
         EXPECT_CALL(*mock_missive_, ShutDown()).Times(1);
         mock_missive_ = nullptr;
       }
+      feature::PlatformFeatures::ShutdownForTesting();
       missive_daemon_->Shutdown();
       missive_daemon_.reset();
     }
@@ -127,6 +129,14 @@ class MissiveDaemonTest : public ::testing::Test {
     EXPECT_CALL(*mock_exported_object_, ExportMethod(_, _, _, _))
         .Times(AnyNumber());
 
+    scoped_refptr<dbus::MockObjectProxy> mock_proxy_(
+        base::MakeRefCounted<dbus::MockObjectProxy>(
+            mock_bus_.get(), chromeos::kChromeFeaturesServiceName,
+            dbus::ObjectPath(chromeos::kChromeFeaturesServicePath)));
+
+    ON_CALL(*mock_bus_, GetObjectProxy(_, _))
+        .WillByDefault(Return(mock_proxy_.get()));
+
     auto missive = std::make_unique<StrictMock<MockMissive>>();
     mock_missive_ = missive.get();
     EXPECT_CALL(*mock_missive_, StartUp(NotNull(), _, _))
@@ -149,6 +159,8 @@ class MissiveDaemonTest : public ::testing::Test {
 
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
+  // Necessary for feature::PlatformFeatures::Initialize in DbusAdaptor.
+  scoped_refptr<dbus::MockObjectProxy> mock_proxy_;
   StrictMock<MockMissive>* mock_missive_ = nullptr;
   std::unique_ptr<DBusAdaptor> missive_daemon_;
 };

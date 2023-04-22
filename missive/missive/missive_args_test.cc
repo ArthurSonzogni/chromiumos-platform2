@@ -74,7 +74,7 @@ TEST_F(MissiveArgsTest, DefaultCollectionValues) {
   fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
-      std::move(fake_platform_features));
+      fake_platform_features.get());
 
   test::TestEvent<StatusOr<MissiveArgs::CollectionParameters>> get_collection;
   args.AsyncCall(&MissiveArgs::GetCollectionParameters)
@@ -118,7 +118,7 @@ TEST_F(MissiveArgsTest, ExplicitCollectionValues) {
   fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
-      std::move(fake_platform_features));
+      fake_platform_features.get());
 
   test::TestEvent<StatusOr<MissiveArgs::CollectionParameters>> get_collection;
   args.AsyncCall(&MissiveArgs::GetCollectionParameters)
@@ -154,7 +154,7 @@ TEST_F(MissiveArgsTest, BadCollectionValues) {
   fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
-      std::move(fake_platform_features));
+      fake_platform_features.get());
 
   test::TestEvent<StatusOr<MissiveArgs::CollectionParameters>> get_collection;
   args.AsyncCall(&MissiveArgs::GetCollectionParameters)
@@ -187,7 +187,7 @@ TEST_F(MissiveArgsTest, ListeningForCollectionValuesUpdate) {
   auto* const fake_platform_features_ptr = fake_platform_features.get();
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
-      std::move(fake_platform_features));
+      fake_platform_features.get());
 
   // Get initial results
   test::TestEvent<StatusOr<MissiveArgs::CollectionParameters>> get_collection;
@@ -257,7 +257,7 @@ TEST_F(MissiveArgsTest, DefaultStorageValues) {
   fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
-      std::move(fake_platform_features));
+      fake_platform_features.get());
 
   test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
   args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
@@ -293,7 +293,7 @@ TEST_F(MissiveArgsTest, ExplicitStorageValues) {
                                    "False");
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
-      std::move(fake_platform_features));
+      fake_platform_features.get());
 
   test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
   args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
@@ -324,7 +324,7 @@ TEST_F(MissiveArgsTest, BadStorageValues) {
   fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, false);
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
-      std::move(fake_platform_features));
+      fake_platform_features.get());
 
   test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
   args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
@@ -349,7 +349,7 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
   auto* const fake_platform_features_ptr = fake_platform_features.get();
   SequencedMissiveArgs args(
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
-      std::move(fake_platform_features));
+      fake_platform_features.get());
 
   // Get initial results
   test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;

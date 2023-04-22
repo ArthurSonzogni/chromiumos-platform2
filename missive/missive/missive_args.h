@@ -68,8 +68,7 @@ class MissiveArgs {
     bool legacy_storage_enabled = kLegacyStorageEnabledDefault;
   };
 
-  explicit MissiveArgs(
-      std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib);
+  explicit MissiveArgs(feature::PlatformFeaturesInterface* feature_lib);
   MissiveArgs(const MissiveArgs&) = delete;
   MissiveArgs& operator=(const MissiveArgs&) = delete;
   ~MissiveArgs();
@@ -101,7 +100,7 @@ class MissiveArgs {
 
   void EnableListeningForUpdates(base::OnceClosure done_cb);
 
-  const std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib_;
+  feature::PlatformFeaturesInterface* feature_lib_;
 
   const std::vector<const VariationsFeature*> features_to_load_;
 

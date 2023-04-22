@@ -65,7 +65,7 @@ class MissiveImpl : public MissiveService {
   ~MissiveImpl() override;
 
   void StartUp(scoped_refptr<dbus::Bus> bus,
-               std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib,
+               feature::PlatformFeaturesInterface* feature_lib,
                base::OnceCallback<void(Status)> cb) override;
 
   Status ShutDown() override;

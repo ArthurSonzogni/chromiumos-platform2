@@ -144,17 +144,17 @@ class MissiveImplTest : public ::testing::Test {
             },
             base::Unretained(this)));
 
-    auto fake_platform_features =
-        std::make_unique<feature::FakePlatformFeatures>(
-            dbus_test_environment_.mock_bus().get());
-    fake_platform_features->SetEnabled(MissiveArgs::kCollectorFeature.name,
-                                       false);
-    fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, true);
-    fake_platform_features_ptr_ = fake_platform_features.get();
+    fake_platform_features_ = std::make_unique<feature::FakePlatformFeatures>(
+        dbus_test_environment_.mock_bus().get());
+    fake_platform_features_->SetEnabled(MissiveArgs::kCollectorFeature.name,
+                                        false);
+    fake_platform_features_->SetEnabled(MissiveArgs::kStorageFeature.name,
+                                        true);
+    fake_platform_features_ptr_ = fake_platform_features_.get();
 
     test::TestEvent<Status> started;
     missive_->StartUp(dbus_test_environment_.mock_bus(),
-                      std::move(fake_platform_features), started.cb());
+                      fake_platform_features_ptr_, started.cb());
     ASSERT_OK(started.result());
     EXPECT_TRUE(compression_module_->is_enabled());
     EXPECT_TRUE(encryption_module_->is_enabled());
@@ -170,6 +170,7 @@ class MissiveImplTest : public ::testing::Test {
 
   base::test::TaskEnvironment task_environment_;
   test::DBusTestEnvironment dbus_test_environment_;
+  std::unique_ptr<feature::FakePlatformFeatures> fake_platform_features_;
   feature::FakePlatformFeatures* fake_platform_features_ptr_;
 
   // Use the metrics test environment to prevent the real metrics from
