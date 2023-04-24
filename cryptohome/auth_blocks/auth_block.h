@@ -125,62 +125,6 @@ class AuthBlock {
   const DerivationType derivation_type_;
 };
 
-// This is a pure virtual interface designed to be implemented by the different
-// authentication methods - U2F, PinWeaver, TPM backed passwords, etc. - so that
-// they take some arbitrary user input and give out a key.
-class SyncAuthBlock {
- public:
-  virtual ~SyncAuthBlock() = default;
-
-  // This is implemented by concrete auth methods to create a fresh key from
-  // user input. The key will then be used to wrap the keyset.
-  // On success, it returns an ok status, or the specific error on failure.
-  virtual CryptoStatus Create(const AuthInput& user_input,
-                              AuthBlockState* auth_block_state,
-                              KeyBlobs* key_blobs) = 0;
-
-  // This is implemented by concrete auth methods to map the user secret
-  // input into a key. This method should successfully authenticate the user.
-  virtual CryptoStatus Derive(
-      const AuthInput& auth_input,
-      const AuthBlockState& state,
-      KeyBlobs* key_blobs,
-      std::optional<AuthBlock::SuggestedAction>* suggested_action) = 0;
-
-  // This is implemented by concrete auth factor methods which need to execute
-  // additional steps before removal of the AuthFactor from disk.
-  virtual CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) {
-    // By default, do nothing. Subclasses can provide custom behavior.
-    return hwsec_foundation::status::OkStatus<error::CryptohomeError>();
-  }
-
-  // This is implemented by concrete auth factor methods to construct the
-  // AuthInput used for deriving key blobs, and to select the correct AuthFactor
-  // that should be used for deriving the key blobs in the candidates
-  // |auth_factors|.
-  virtual CryptoStatus SelectFactor(const AuthInput& auth_input,
-                                    std::vector<AuthFactor> auth_factors,
-                                    AuthInput* auth_input_out,
-                                    AuthFactor* auth_factor) {
-    return hwsec_foundation::status::MakeStatus<error::CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthBlockSyncSelectFactorNotSupported),
-        error::ErrorActionSet(
-            {error::PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
-  }
-
-  DerivationType derivation_type() const { return derivation_type_; }
-
- protected:
-  // This is a virtual interface that should not be directly constructed.
-  explicit SyncAuthBlock(DerivationType derivation_type)
-      : derivation_type_(derivation_type) {}
-
- private:
-  // For UMA - keeps track of the encryption type used in Derive().
-  const DerivationType derivation_type_;
-};
-
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_AUTH_BLOCKS_AUTH_BLOCK_H_

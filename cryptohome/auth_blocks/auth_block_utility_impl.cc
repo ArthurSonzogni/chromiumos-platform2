@@ -30,7 +30,6 @@
 #include "cryptohome/auth_blocks/generic.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
-#include "cryptohome/auth_blocks/sync_to_async_auth_block_adapter.h"
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
@@ -472,7 +471,7 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(AuthBlockType auth_block_type,
   if (auto status = IsAuthBlockSupported(auth_block_type); !status.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
-                   kLocAuthBlockUtilNotSupportedInGetAsyncAuthBlockWithType))
+                   kLocAuthBlockUtilNotSupportedInGetAuthBlockWithType))
         .Wrap(std::move(status));
   }
   GenericAuthBlockFunctions generic(
@@ -482,7 +481,7 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(AuthBlockType auth_block_type,
   if (!auth_block) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
-            kLocAuthBlockUtilUnknownUnsupportedInGetAsyncAuthBlockWithType),
+            kLocAuthBlockUtilUnknownUnsupportedInGetAuthBlockWithType),
         ErrorActionSet(
             {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
@@ -648,7 +647,7 @@ CryptohomeStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
     LOG(ERROR) << "Failed to retrieve auth block.";
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
-                   kLocAuthBlockUtilNoAsyncAuthBlockInPrepareForRemoval))
+                   kLocAuthBlockUtilNoAuthBlockInPrepareForRemoval))
         .Wrap(std::move(auth_block).err_status());
   }
 

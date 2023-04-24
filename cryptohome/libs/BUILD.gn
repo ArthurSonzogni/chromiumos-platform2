@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This file defines library targets and other auxillary definitions that
+# This file defines library targets and other auxiliary definitions that
 # are used for the resulting executable targets.
 
 import("//common-mk/flatbuffer.gni")
@@ -395,7 +395,6 @@ static_library("libcrostpm") {
     "../auth_blocks/pin_weaver_auth_block.cc",
     "../auth_blocks/revocation.cc",
     "../auth_blocks/scrypt_auth_block.cc",
-    "../auth_blocks/sync_to_async_auth_block_adapter.cc",
     "../auth_blocks/tpm_auth_block_utils.cc",
     "../auth_blocks/tpm_bound_to_pcr_auth_block.cc",
     "../auth_blocks/tpm_ecc_auth_block.cc",

@@ -24,7 +24,6 @@
 #include <libhwsec-foundation/crypto/sha.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
-#include "cryptohome/auth_blocks/sync_to_async_auth_block_adapter.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
