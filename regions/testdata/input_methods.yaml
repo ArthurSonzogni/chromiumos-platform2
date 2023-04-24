@@ -112,6 +112,7 @@
 - xkb:hu:qwerty:hun
 - xkb:ie::ga
 - xkb:il::heb
+- xkb:in::eng
 - xkb:is::ice
 - xkb:it::ita
 - xkb:jp::jpn
@@ -123,6 +124,7 @@
 - xkb:mn::mon
 - xkb:mt::mlt
 - xkb:no::nob
+- xkb:pk::eng
 - xkb:pl::pol
 - xkb:pt::por
 - xkb:ro::rum
