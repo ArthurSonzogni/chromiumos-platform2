@@ -50,10 +50,29 @@ TEST_F(TpmManagerClientTest, RoVerificationNotTriggered) {
   EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_NOT_TRIGGERED);
 }
 
-TEST_F(TpmManagerClientTest, RoVerificationPass) {
+TEST_F(TpmManagerClientTest, RoVerificationPassUnverifiedGbb) {
   tpm_manager::GetRoVerificationStatusReply reply;
   reply.set_status(tpm_manager::STATUS_SUCCESS);
   reply.set_ro_verification_status(tpm_manager::RO_STATUS_PASS_UNVERIFIED_GBB);
+
+  auto mock_tpm_manager_proxy =
+      std::make_unique<StrictMock<org::chromium::TpmManagerProxyMock>>();
+  EXPECT_CALL(*mock_tpm_manager_proxy, GetRoVerificationStatus(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
+
+  auto tpm_manager_client =
+      std::make_unique<TpmManagerClientImpl>(std::move(mock_tpm_manager_proxy));
+
+  RoVerificationStatus ro_verification_status;
+  EXPECT_TRUE(
+      tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
+  EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_PASS);
+}
+
+TEST_F(TpmManagerClientTest, RoVerificationPass) {
+  tpm_manager::GetRoVerificationStatusReply reply;
+  reply.set_status(tpm_manager::STATUS_SUCCESS);
+  reply.set_ro_verification_status(tpm_manager::RO_STATUS_PASS);
 
   auto mock_tpm_manager_proxy =
       std::make_unique<StrictMock<org::chromium::TpmManagerProxyMock>>();
