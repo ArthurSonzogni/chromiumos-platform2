@@ -66,8 +66,6 @@ class MockStorageModule : public StorageModule {
               UpdateEncryptionKey,
               (SignedEncryptionInfo signed_encryption_key),
               (override));
-
-  MOCK_METHOD(base::StringPiece, GetPipelineId, (), (const override));
 };
 
 class MissiveImplTest : public ::testing::Test {
