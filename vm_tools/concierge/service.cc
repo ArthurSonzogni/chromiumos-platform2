@@ -1114,23 +1114,13 @@ void Service::RunBalloonPolicy() {
       // yet.
       continue;
     }
-    if (!USE_CROSVM_SIBLINGS) {
-      auto stats_opt = vm->GetBalloonStats();
-      if (stats_opt) {
-        balloon_stats.emplace_back(vm->GetInfo().vm_memory_id, *stats_opt);
-      }
-    } else {
-      ids.emplace_back(vm->GetInfo().vm_memory_id);
+    auto stats_opt = vm->GetBalloonStats();
+    if (stats_opt) {
+      balloon_stats.emplace_back(vm->GetInfo().vm_memory_id, *stats_opt);
     }
   }
 
-  if (!USE_CROSVM_SIBLINGS) {
-    FinishBalloonPolicy(*memory_margins, std::move(balloon_stats));
-  } else {
-    mms_->GetBalloonStats(
-        ids, base::BindOnce(&Service::FinishBalloonPolicy,
-                            weak_ptr_factory_.GetWeakPtr(), *memory_margins));
-  }
+  FinishBalloonPolicy(*memory_margins, std::move(balloon_stats));
 }
 
 std::optional<bool> Service::IsFeatureEnabled(const std::string& feature_name,
@@ -1221,24 +1211,12 @@ void Service::FinishBalloonPolicy(MemoryMargins memory_margins,
         stats, available_memory_for_vm, is_in_game_mode, vm_entry.first.name(),
         *available_memory, *component_margins);
 
-    if (!USE_CROSVM_SIBLINGS) {
-      uint64_t target =
-          std::max(static_cast<int64_t>(0),
-                   static_cast<int64_t>(stats.balloon_actual) + delta);
-      if (target != stats.balloon_actual) {
-        vm->SetBalloonSize(target);
-      }
-    } else {
-      if (delta)
-        deltas.emplace_back(vm->GetInfo().vm_memory_id, delta);
+    uint64_t target =
+        std::max(static_cast<int64_t>(0),
+                 static_cast<int64_t>(stats.balloon_actual) + delta);
+    if (target != stats.balloon_actual) {
+      vm->SetBalloonSize(target);
     }
-  }
-
-  if (USE_CROSVM_SIBLINGS && !deltas.empty()) {
-    mms_->RebalanceMemory(std::move(deltas), base::BindOnce([](bool success) {
-                            if (!success)
-                              LOG(ERROR) << "Failed to fully rebalance memory";
-                          }));
   }
 }
 
@@ -1698,43 +1676,6 @@ bool Service::Init() {
   balloon_resizing_timer_.Start(FROM_HERE, base::Seconds(1), this,
                                 &Service::RunBalloonPolicy);
 
-  if (USE_CROSVM_SIBLINGS) {
-    auto dugong_client =
-        std::make_unique<org::chromium::ManaTEEInterfaceProxy>(bus_);
-    if (!dugong_client) {
-      LOG(ERROR) << "Failed to connect to manatee client";
-      return false;
-    }
-
-    base::ScopedFD fd =
-        AsyncNoReject(
-            dbus_thread_.task_runner(),
-            base::BindOnce(
-                [](std::unique_ptr<org::chromium::ManaTEEInterfaceProxy>
-                       client) {
-                  base::ScopedFD fd;
-                  brillo::ErrorPtr err;
-                  if (!client->GetManateeMemoryServiceSocket(&fd, &err)) {
-                    LOG(ERROR) << "Failed to get manatee memory service socket "
-                               << err->GetMessage();
-                    return base::ScopedFD();
-                  }
-                  return fd;
-                },
-                std::move(dugong_client)))
-            .Get()
-            .val;
-    if (!fd.is_valid()) {
-      return false;
-    }
-
-    mms_ = ManateeMemoryService::Create(std::move(fd));
-    if (!mms_) {
-      LOG(ERROR) << "Failed to connect to manatee memory service";
-      return false;
-    }
-  }
-
   if (!localtime_watcher_.Watch(
           base::FilePath(kLocaltimePath),
           base::FilePathWatcher::Type::kNonRecursive,
@@ -1781,11 +1722,6 @@ void Service::HandleChildExit() {
     });
 
     if (iter != vms_.end()) {
-      if (USE_CROSVM_SIBLINGS) {
-        // Notify HMS that the VM has exited.
-        mms_->RemoveVm(iter->second->GetInfo().vm_memory_id);
-      }
-
       // Remove it from VMs using storage ballooning. This is quick and needs
       // to be done to clean up balloon state before we notify others of the
       // VM being stopped.
@@ -2214,17 +2150,12 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   // layout.
   SetVmCpuArgs(cpus, vm_builder);
 
-  if (USE_CROSVM_SIBLINGS) {
-    vm_builder.SetVmMemoryId(vm_memory_id);
-  }
-
   auto vm = TerminaVm::Create(
       vsock_cid, std::move(network_client), std::move(server_proxy),
       std::move(runtime_dir), vm_memory_id, std::move(log_path),
       std::move(stateful_device), std::move(stateful_size),
       GetVmMemoryMiB(request), features, vm_permission_service_proxy_, bus_,
-      vm_id, classification, std::move(vm_builder), &dbus_thread_,
-      std::move(socket));
+      vm_id, classification, std::move(vm_builder), std::move(socket));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
@@ -2353,12 +2284,6 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     }
   }
 
-  if (USE_CROSVM_SIBLINGS) {
-    // This is guaranteed to be called only once by a sibling VM instance.
-    vm->SetSiblingDeadCb(base::BindOnce(&Service::OnSiblingVmDead,
-                                        weak_ptr_factory_.GetWeakPtr()));
-  }
-
   response.set_success(true);
   response.set_status(request.start_termina() ? VM_STATUS_STARTING
                                               : VM_STATUS_RUNNING);
@@ -2464,16 +2389,8 @@ bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
   // Notify that we are about to stop a VM.
   NotifyVmStopping(iter->first, iter->second->GetInfo().cid);
 
-  // If the sibling VM process has died on the hypervisor there is nothing to
-  // shutdown.
-  if (reason != VmStopReason::SIBLING_VM_EXITED) {
-    if (!iter->second->Shutdown()) {
-      return false;
-    }
-  }
-
-  if (USE_CROSVM_SIBLINGS) {
-    mms_->RemoveVm(iter->second->GetInfo().vm_memory_id);
+  if (!iter->second->Shutdown()) {
+    return false;
   }
 
   // Notify that we have stopped a VM.
@@ -2549,11 +2466,6 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
     const VmId& id = vm.first;
     VmBase* vm_interface = vm.second.get();
     VmBase::Info info = vm_interface->GetInfo();
-
-    if (USE_CROSVM_SIBLINGS) {
-      // Notify HMS that the VM has exited.
-      mms_->RemoveVm(info.vm_memory_id);
-    }
 
     // Notify that we have stopped a VM.
     NotifyVmStopped(id, info.cid, reason);

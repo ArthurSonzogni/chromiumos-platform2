@@ -40,7 +40,6 @@
 #include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/concierge/future.h"
-#include "vm_tools/concierge/sibling_vms.h"
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/vm_base.h"
 #include "vm_tools/concierge/vm_builder.h"
@@ -106,35 +105,6 @@ std::unique_ptr<patchpanel::Subnet> MakeSubnet(
                                               base::DoNothing());
 }
 
-std::optional<std::vector<std::unique_ptr<brillo::ProcessImpl>>>
-StartSiblingVvuDevices(std::vector<base::StringPairs> vvu_device_cmds) {
-  std::vector<std::unique_ptr<brillo::ProcessImpl>> vvu_device_processes;
-  for (base::StringPairs cmd : vvu_device_cmds) {
-    auto process = std::make_unique<brillo::ProcessImpl>();
-    std::string command_line_for_log{};
-
-    for (std::pair<std::string, std::string>& arg : cmd) {
-      command_line_for_log += arg.first;
-      command_line_for_log += " ";
-
-      process->AddArg(std::move(arg.first));
-      if (!arg.second.empty()) {
-        command_line_for_log += arg.second;
-        command_line_for_log += " ";
-        process->AddArg(std::move(arg.second));
-      }
-    }
-    LOG(INFO) << "Invoking VVU device: " << command_line_for_log;
-    if (!process->Start()) {
-      PLOG(ERROR) << "Failed to start VVU device";
-      return std::nullopt;
-    }
-    vvu_device_processes.push_back(std::move(process));
-  }
-
-  return vvu_device_processes;
-}
-
 }  // namespace
 
 TerminaVm::TerminaVm(
@@ -152,7 +122,6 @@ TerminaVm::TerminaVm(
     scoped_refptr<dbus::Bus> bus,
     VmId id,
     VmInfo::VmType classification,
-    base::Thread* dbus_thread,
     std::unique_ptr<ScopedWlSocket> socket)
     : VmBase(std::move(network_client),
              vsock_cid,
@@ -172,7 +141,6 @@ TerminaVm::TerminaVm(
       classification_(classification),
       manatee_client_(
           std::make_unique<org::chromium::ManaTEEInterfaceProxy>(bus_)),
-      dbus_thread_(dbus_thread),
       socket_(std::move(socket)) {}
 
 // For testing.
@@ -186,8 +154,7 @@ TerminaVm::TerminaVm(
     uint64_t stateful_size,
     int64_t mem_mib,
     VmFeatures features,
-    VmInfo::VmType classification,
-    base::Thread* dbus_thread)
+    VmInfo::VmType classification)
     : VmBase(nullptr /* network_client */,
              vsock_cid,
              std::move(seneschal_server_proxy),
@@ -202,8 +169,7 @@ TerminaVm::TerminaVm(
       mem_mib_(mem_mib),
       log_path_(std::move(log_path)),
       id_(VmId("foo", "bar")),
-      classification_(classification),
-      dbus_thread_(dbus_thread) {
+      classification_(classification) {
   CHECK(subnet_);
 }
 
@@ -227,14 +193,13 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     VmId id,
     VmInfo::VmType classification,
     VmBuilder vm_builder,
-    base::Thread* dbus_thread,
     std::unique_ptr<ScopedWlSocket> socket) {
   auto vm = base::WrapUnique(new TerminaVm(
       vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
       std::move(runtime_dir), vm_memory_id, std::move(log_path),
       std::move(stateful_device), std::move(stateful_size), mem_mib, features,
       vm_permission_service_proxy, std::move(bus), std::move(id),
-      classification, dbus_thread, std::move(socket)));
+      classification, std::move(socket)));
 
   if (!vm->Start(std::move(vm_builder)))
     vm.reset();
@@ -402,23 +367,8 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   process_.SetPreExecCallback(base::BindOnce(
       &SetUpCrosvmProcess, base::FilePath(kTerminaCpuCgroup).Append("tasks")));
 
-  if (USE_CROSVM_SIBLINGS) {
-    auto cmds = vm_builder.BuildSiblingCmds(GetVvuDevicesInfo(), runtime_dir_);
-    if (!cmds) {
-      LOG(ERROR) << "Failed to build sibling VM commands";
-      return false;
-    }
-
-    // TODO(b/196186396): There needs to be a way of knowing when the devices
-    // have booted up before we start the sibling VM.
-    if (!StartSiblingVm(cmds->vvu_cmds, cmds->sibling_cmd_args)) {
-      LOG(ERROR) << "Failed to start termina as a sibling";
-      return false;
-    }
-  } else {
-    if (!StartProcess(vm_builder.BuildVmArgs()))
-      return false;
-  }
+  if (!StartProcess(vm_builder.BuildVmArgs()))
+    return false;
 
   // Create a stub for talking to the maitre'd instance inside the VM.
   stub_ = std::make_unique<vm_tools::Maitred::Stub>(grpc::CreateChannel(
@@ -457,119 +407,6 @@ bool TerminaVm::SetTimezone(const std::string& timezone,
   return false;
 }
 
-bool TerminaVm::StartSiblingVm(std::vector<base::StringPairs> vvu_device_cmds,
-                               std::vector<std::string> sibling_vm_args) {
-  // First start the VVU device backend processes. Without these the VM won't
-  // boot.
-  auto vvu_device_processes = StartSiblingVvuDevices(vvu_device_cmds);
-  if (!vvu_device_processes) {
-    LOG(ERROR) << "Failed to start VVU device processes for the sibling VM";
-    return false;
-  }
-
-  std::string sibling_args;
-  for (std::string arg : sibling_vm_args) {
-    sibling_args += " " + arg;
-  }
-  LOG(INFO) << "Send command to start sibling VM: " << sibling_args;
-
-  int32_t error_code;
-  base::ScopedFD fd_in;
-  base::ScopedFD fd_out;
-  brillo::ErrorPtr error;
-  bool vm_started =
-      AsyncNoReject(dbus_thread_->task_runner(),
-                    base::BindOnce(
-                        [](org::chromium::ManaTEEInterfaceProxy* manatee_client,
-                           const std::vector<std::string>& args,
-                           int32_t* error_code, base::ScopedFD* fd_in,
-                           base::ScopedFD* fd_out, brillo::ErrorPtr* error) {
-                          return manatee_client->StartTEEApplication(
-                              "termina", args, false /* allow_unverified */,
-                              error_code, fd_in, fd_out, error);
-                        },
-                        manatee_client_.get(), sibling_vm_args, &error_code,
-                        &fd_in, &fd_out, &error))
-          .Get()
-          .val;
-
-  // The |fd_in| is for writing from us. Watching it as readable will trigger an
-  // event if the sibling is shutdown from under us and |fd_in|'s socket connect
-  // is closed.
-  auto fd_in_watcher = base::FileDescriptorWatcher::WatchReadable(
-      fd_in.get(), base::BindRepeating(&TerminaVm::OnFdToSiblingReadable,
-                                       base::Unretained(this)));
-  sibling_state_ = std::make_optional(
-      SiblingState{.fd_in = std::move(fd_in),
-                   .fd_out = std::move(fd_out),
-                   .fd_in_watcher = std::move(fd_in_watcher),
-                   .vvu_device_processes = std::move(*vvu_device_processes)});
-  LOG(INFO) << "Sibling Vm Started: " << vm_started;
-  return vm_started;
-}
-
-bool TerminaVm::ShutdownSiblingVm() {
-  if (!sibling_state_.has_value()) {
-    LOG(INFO) << "No sibling VM exists to shutdown";
-    return true;
-  }
-
-  // Shutting down involves two parts -
-  // - Sending a Shutdown gRPC to the VM.
-  // - epoll the sibling's output fd for a peer closed connection
-  // event i.e. EPOLLRDHUP. If we detect this then we can safely
-  // say the VM has shutdown.
-
-  // For epoll detection add the sibling FD to the epoll set before the
-  // shutdown gRPC is sent to the VM.
-  base::ScopedFD sibling_vm_alive_epoll_fd(epoll_create1(0));
-  if (!sibling_vm_alive_epoll_fd.is_valid()) {
-    PLOG(ERROR) << "Failed to create epoll fd for the sibling "
-                   "VM alive check";
-    return false;
-  }
-
-  struct epoll_event ep_event {
-    .events = EPOLLRDHUP, .data.u32 = 0,
-  };
-  if (epoll_ctl(sibling_vm_alive_epoll_fd.get(), EPOLL_CTL_ADD,
-                sibling_state_->fd_out.get(), &ep_event) < 0) {
-    PLOG(ERROR) << "Failed to epoll add sibling VM alive check fd";
-    return false;
-  }
-
-  grpc::Status status = SendVMShutdownMessage();
-  if (!status.ok()) {
-    LOG(WARNING) << "Shutdown RPC failed for VM " << vsock_cid_
-                 << " with error "
-                 << "code " << status.error_code() << ": "
-                 << status.error_message();
-    return false;
-  }
-
-  // TODO(b/236747571): If guest shutdown fails or is not detected with in the
-  // given timeout, ask Dugong to kill the crosvm process as a fail safe.
-  if (epoll_wait(sibling_vm_alive_epoll_fd.get(), &ep_event, 1,
-                 (kShutdownTimeoutSeconds *
-                  base::Time::kMillisecondsPerSecond)) <= 0) {
-    PLOG(ERROR) << "Failed to wait for sibling VM shutdown";
-    return false;
-  }
-
-  // Ensure that the stream socket peer connection closed and no
-  // other implicit event caused the epoll_wait call to return.
-  if ((ep_event.events & EPOLLRDHUP) == 0) {
-    LOG(ERROR) << "Failed to detect sibling VM fd closure. event: "
-               << ep_event.events;
-    return false;
-  }
-
-  // At this point the VM has shutdown, delete its state.
-  sibling_state_.reset();
-  LOG(INFO) << "Sibling VM shutdown complete";
-  return true;
-}
-
 grpc::Status TerminaVm::SendVMShutdownMessage() {
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
@@ -578,39 +415,6 @@ grpc::Status TerminaVm::SendVMShutdownMessage() {
 
   vm_tools::EmptyMessage empty;
   return stub_->Shutdown(&ctx, empty, &empty);
-}
-
-void TerminaVm::OnFdToSiblingReadable() {
-  // Peek the sibling's socket to detect a disconnection. We never write to
-  // |fd_in| so this event means the sibling has died. However, we peek and make
-  // sure that that is the case. EAGAIN means that the socket is alive, so don't
-  // treat it as a disconnect event.
-  //
-  // A disconnection means that the sibling has died. Reset the sibling's state
-  // in this case.
-  uint8_t buf;
-  int ret = recv(sibling_state_->fd_in.get(), &buf, sizeof(buf),
-                 MSG_PEEK | MSG_DONTWAIT);
-  if ((ret == 0) || ((ret < 0) && (errno != EAGAIN))) {
-    // Notify concierge of the sibling VM process dying for it to update its
-    // internal state. `sibling_state` houses `sibling_dead_cb` so this
-    // needs to happen before it's reset.
-    std::move(sibling_state_->sibling_dead_cb).Run(id_);
-
-    // The sibling VM process is dead, reset all its state. This also ensures
-    // that `sibling_dead_cb` is only called once.
-    sibling_state_.reset();
-  }
-}
-
-void TerminaVm::SetSiblingDeadCb(
-    base::OnceCallback<void(VmId vm_id)> sibling_dead_cb) {
-  if (!sibling_state_) {
-    LOG(ERROR) << "Sibling VM not initialized to set callback";
-    return;
-  }
-
-  sibling_state_->sibling_dead_cb = std::move(sibling_dead_cb);
 }
 
 bool TerminaVm::Shutdown() {
@@ -626,11 +430,6 @@ bool TerminaVm::Shutdown() {
   // Notify permission service of VM destruction.
   if (!permission_token_.empty()) {
     vm_permission::UnregisterVm(bus_, vm_permission_service_proxy_, id_);
-  }
-
-  // All parts above this are common to a regular VM as well as a sibling VM.
-  if (USE_CROSVM_SIBLINGS) {
-    return ShutdownSiblingVm();
   }
 
   // Do a check here to make sure the process is still around.  It may have
@@ -1353,8 +1152,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
     std::string kernel_version,
     std::unique_ptr<vm_tools::Maitred::Stub> stub,
     VmInfo::VmType classification,
-    VmBuilder vm_builder,
-    base::Thread* dbus_thread) {
+    VmBuilder vm_builder) {
   VmFeatures features{
       .gpu = false,
       .software_tpm = false,
@@ -1364,7 +1162,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
   auto vm = base::WrapUnique(new TerminaVm(
       std::move(subnet), vsock_cid, nullptr, std::move(runtime_dir),
       std::move(log_path), std::move(stateful_device), std::move(stateful_size),
-      mem_mib, features, classification, dbus_thread));
+      mem_mib, features, classification));
   vm->set_kernel_version_for_testing(kernel_version);
   vm->set_stub_for_testing(std::move(stub));
 

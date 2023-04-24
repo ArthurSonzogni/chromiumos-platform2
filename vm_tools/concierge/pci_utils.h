@@ -26,8 +26,6 @@ namespace concierge {
 namespace pci_utils {
 
 enum class PciDeviceType : uint8_t {
-  // VVU Device
-  PCI_DEVICE_TYPE_VVU = 0,
   // Discrete GPU.
   PCI_DEVICE_TYPE_DGPU_PASSTHROUGH = 1
 };
@@ -56,10 +54,6 @@ std::optional<uint32_t> GetPciDeviceBootVga(const base::FilePath& pci_device);
 // Returns the device driver name for the PCI device at |pci_device|. Returns
 // std::nullopt in case of any parsing errors or if no driver is loaded.
 std::string GetPciDeviceDriverName(const base::FilePath& pci_device);
-
-// Returns true iff |pci_device| is a VVU device by comparing it's vendor id and
-// device id.
-bool IsVvuPciDevice(const base::FilePath& pci_device);
 
 // Returns true iff |pci_device| is a dGPU device available for passthough
 // by comparing it's class number, ensuring it's a non boot_vga device and

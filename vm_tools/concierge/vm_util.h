@@ -57,8 +57,6 @@ struct Disk {
   // corresponding to this disk.
   base::StringPairs GetCrosvmArgs() const;
 
-  base::StringPairs GetVvuArgs() const;
-
   // Path to the disk image on the host.
   base::FilePath path;
 

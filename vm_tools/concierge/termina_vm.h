@@ -77,26 +77,6 @@ struct VmFeatures {
   std::vector<std::string> oem_strings;
 };
 
-// Auxiliary state associated if Termina is started as a sibling VM.
-struct SiblingState {
-  // Input fd for the sibling VM.
-  base::ScopedFD fd_in;
-
-  // Output fd for the sibling VM.
-  base::ScopedFD fd_out;
-
-  // Watches if there is a read event on |fd_in|. Used as a proxy for if the
-  // sibling has shutdown.
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> fd_in_watcher;
-
-  // Processes for virtio-vhost-user device backend processes.
-  std::vector<std::unique_ptr<brillo::ProcessImpl>> vvu_device_processes;
-
-  // Callback fired when the sibling VM process dies on the hypervisor.
-  // Guaranteed to be called only once in the lifetime of this object.
-  base::OnceCallback<void(VmId id)> sibling_dead_cb;
-};
-
 // Represents a single instance of a running termina VM.
 class TerminaVm final : public VmBase {
  public:
@@ -133,7 +113,6 @@ class TerminaVm final : public VmBase {
       VmId id,
       VmInfo::VmType classification,
       VmBuilder vm_builder,
-      base::Thread* dbus_thread,
       std::unique_ptr<ScopedWlSocket> socket);
   ~TerminaVm() override;
 
@@ -226,14 +205,6 @@ class TerminaVm final : public VmBase {
   // Whether a TremplinStartedSignal has been received for the VM.
   bool IsTremplinStarted() const { return is_tremplin_started_; }
 
-  // Fired when a sibling VM's input descriptor is written.
-  void OnFdToSiblingReadable();
-
-  // Sets the callback that is fired when the sibling VM process dies on the
-  // hypervisor. Does nothing if `sibling_state_` isn't set i.e. this is not a
-  // sibling VM.
-  void SetSiblingDeadCb(base::OnceCallback<void(VmId vm_id)> sibling_dead_cb);
-
   // VmBase overrides.
   // Shuts down the VM.  First attempts a clean shutdown of the VM by sending
   // a Shutdown RPC to maitre'd.  If that fails, attempts to shut down the VM
@@ -282,8 +253,7 @@ class TerminaVm final : public VmBase {
       std::string kernel_version,
       std::unique_ptr<vm_tools::Maitred::Stub> stub,
       VmInfo::VmType classification,
-      VmBuilder vm_builder,
-      base::Thread* dbus_thread);
+      VmBuilder vm_builder);
 
  private:
   TerminaVm(uint32_t vsock_cid,
@@ -300,7 +270,6 @@ class TerminaVm final : public VmBase {
             scoped_refptr<dbus::Bus> bus,
             VmId id,
             VmInfo::VmType classification,
-            base::Thread* dbus_thread,
             std::unique_ptr<ScopedWlSocket> socket);
 
   // Constructor for testing only.
@@ -313,8 +282,7 @@ class TerminaVm final : public VmBase {
             uint64_t stateful_size,
             int64_t mem_mib,
             VmFeatures features,
-            VmInfo::VmType classification,
-            base::Thread* dbus_thread);
+            VmInfo::VmType classification);
   TerminaVm(const TerminaVm&) = delete;
   TerminaVm& operator=(const TerminaVm&) = delete;
 
@@ -336,13 +304,6 @@ class TerminaVm final : public VmBase {
 
   bool ResizeDiskImage(uint64_t new_size);
   bool ResizeFilesystem(uint64_t new_size);
-
-  // Starts Termina as a sibling VM on ManaTEE.
-  bool StartSiblingVm(std::vector<base::StringPairs> vvu_device_cmds,
-                      std::vector<std::string> sibling_vm_args);
-  // Sends message to sibling VM to shutdown and waits for it to shutdown.
-  // Returns true if a successful VM shutdown was detected and false otherwise.
-  bool ShutdownSiblingVm();
 
   // Sends a gRPC message to the VM to shutdown.
   grpc::Status SendVMShutdownMessage();
@@ -415,13 +376,6 @@ class TerminaVm final : public VmBase {
   // The manatee-client D-Bus client to talk to dugong that will eventually
   // talk to the hypervisor.
   std::unique_ptr<org::chromium::ManaTEEInterfaceProxy> manatee_client_;
-
-  // The thread to run D-Bus APIs on.
-  base::Thread* dbus_thread_;
-
-  // Auxiliary state associated with a Termina VM if it's started as a sibling
-  // VM.
-  std::optional<SiblingState> sibling_state_;
 
   // Handle to the wayland socket used by this VM. This object cleans up the
   // server/socket in its destructor.

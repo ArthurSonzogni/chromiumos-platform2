@@ -538,10 +538,6 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
-  if (USE_CROSVM_SIBLINGS) {
-    vm_builder.SetVmMemoryId(vm_memory_id);
-  }
-
   if (features.vmm_swap_enabled)
     vm_builder.SetVmmSwapDir(GetCryptohomePath(request.owner_id()));
 

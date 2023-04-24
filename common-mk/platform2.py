@@ -118,7 +118,6 @@ _IUSE = [
     "local_federated_server",
     "local_ml_core_internal",
     "lvm_stateful_partition",
-    "crosvm_siblings",
     "manage_efi_boot_entries",
     "metrics_uploader",
     "ml_benchmark_drivers",

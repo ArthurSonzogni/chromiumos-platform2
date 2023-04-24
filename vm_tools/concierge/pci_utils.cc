@@ -56,10 +56,6 @@ constexpr char kPciBootVgaFileName[] = "boot_vga";
 // driver.
 constexpr char kPciDriverFileName[] = "driver";
 
-// The Vendor and Device Ids that identify Virtio Vhost User devices.
-constexpr int16_t kVvuVendorId = 0x1af4;
-constexpr int16_t kVvuDeviceId = 0x107d;
-
 // The Vendor Id for NVIDIA devices.
 constexpr uint16_t kNvidiaVendorId = 0x10de;
 
@@ -145,32 +141,6 @@ std::string GetPciDeviceDriverName(const base::FilePath& pci_device) {
   return driver_name;
 }
 
-// Returns true iff |pci_device| is a VVU device by comparing it's vendor id and
-// device id.
-bool IsVvuPciDevice(const base::FilePath& pci_device) {
-  std::optional<uint32_t> vendor_id = GetPciDeviceVendorId(pci_device);
-  if (!vendor_id) {
-    return false;
-  }
-
-  uint32_t parsed_vendor_id = vendor_id.value();
-  if (parsed_vendor_id != kVvuVendorId) {
-    return false;
-  }
-
-  std::optional<uint32_t> device_id = GetPciDeviceDeviceId(pci_device);
-  if (!device_id) {
-    return false;
-  }
-
-  uint32_t parsed_device_id = device_id.value();
-  if (parsed_device_id != kVvuDeviceId) {
-    return false;
-  }
-
-  return true;
-}
-
 // Returns true iff |pci_device| is a dGPU device by comparing it's
 // class number.
 bool IsDGpuPassthroughDevice(const base::FilePath& pci_device) {
@@ -224,12 +194,6 @@ std::vector<base::FilePath> GetPciDevicesList(PciDeviceType device_type) {
   for (base::FilePath pci_device = pci_devices.Next(); !pci_device.empty();
        pci_device = pci_devices.Next()) {
     switch (device_type) {
-      case PciDeviceType::PCI_DEVICE_TYPE_VVU:
-        // Check if this is a VVU device.
-        if (!IsVvuPciDevice(pci_device))
-          continue;
-        dev_name = "VVU";
-        break;
       case PciDeviceType::PCI_DEVICE_TYPE_DGPU_PASSTHROUGH:
         // Check if this is a dGPU passthough device.
         if (!IsDGpuPassthroughDevice(pci_device))

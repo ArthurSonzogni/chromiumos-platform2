@@ -224,10 +224,6 @@ StartVmResponse Service::StartPluginVm(
     vm_builder.AppendCustomParam(std::string("--params=") + param, "");
   }
 
-  if (USE_CROSVM_SIBLINGS) {
-    vm_builder.SetVmMemoryId(vm_memory_id);
-  }
-
   auto vm = PluginVm::Create(
       vm_id, std::move(stateful_dir), std::move(iso_dir), root_dir.Take(),
       runtime_dir.Take(), vm_memory_id, std::move(network_client),

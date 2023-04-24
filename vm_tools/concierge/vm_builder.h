@@ -15,7 +15,6 @@
 #include <base/strings/string_split.h>
 #include <dbus/object_proxy.h>
 
-#include "vm_tools/concierge/sibling_vms.h"
 #include "vm_tools/concierge/vm_base.h"
 #include "vm_tools/concierge/vm_util.h"
 
@@ -35,16 +34,6 @@ class VmBuilder {
   enum class AudioDeviceType {
     kAC97,
     kVirtio,
-  };
-
-  // Encapsulates the arguments to start VVU devices for sibling VMs and the
-  // arguments to start the sibling VM itself.
-  struct SiblingStartCommands {
-    // Arguments to be passed into VVU devices.
-    std::vector<base::StringPairs> vvu_cmds;
-
-    // Arguments to be passed into sibling VMs.
-    std::vector<std::string> sibling_cmd_args;
   };
 
   VmBuilder();
@@ -125,24 +114,10 @@ class VmBuilder {
   base::StringPairs BuildVmArgs(
       CustomParametersForDev* dev_params = nullptr) const;
 
-  // Given the VVU device info and the runtime directory which VVU device
-  // processes should use, returns the command line arguments to start a sibling
-  // VM as well as the VVU devices associated with it. Returns std::nullopt in
-  // case of any error.
-  std::optional<SiblingStartCommands> BuildSiblingCmds(
-      std::vector<VvuDeviceInfo> vvu_devices_info,
-      const base::ScopedTempDir& runtime_dir) const;
-
   static void SetValidWaylandRegexForTesting(char* regex);
 
  private:
   bool HasValidWaylandSockets() const;
-
-  // Given the VVU device info to use and the resource bridge paths, adds
-  // command line arguments for the sibling VM to use a GPU.
-  bool AddGpuSiblingCmd(const VvuDeviceInfo& vvu_device_info,
-                        const std::vector<std::string>& resource_bridges,
-                        SiblingStartCommands* cmds) const;
 
   // Builds the parameters for `crosvm run` to start a VM based on this
   // VmBuilder's settings.
