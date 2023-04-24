@@ -1097,19 +1097,20 @@ void Service::RunBalloonPolicy() {
   // TODO(b/191946183): Design and migrate to a new D-Bus API
   // that is less chatty for implementing balloon logic.
 
-  std::optional<MemoryMargins> memory_margins = GetMemoryMargins();
-  if (!memory_margins) {
+  std::optional<MemoryMargins> memory_margins_opt = GetMemoryMargins();
+  if (!memory_margins_opt) {
     LOG(ERROR) << "Failed to get ChromeOS memory margins, stopping balloon "
                << "policy";
     balloon_resizing_timer_.Stop();
     return;
   }
+  MemoryMargins memory_margins = *memory_margins_opt;
 
   std::vector<std::pair<uint32_t, BalloonStats>> balloon_stats;
   std::vector<uint32_t> ids;
   for (auto& vm_entry : vms_) {
     auto& vm = vm_entry.second;
-    if (!vm->GetBalloonPolicy(*memory_margins, vm_entry.first.name())) {
+    if (!vm->GetBalloonPolicy(memory_margins, vm_entry.first.name())) {
       // Skip VMs that don't have a memory policy. It may just not be ready
       // yet.
       continue;
@@ -1120,39 +1121,6 @@ void Service::RunBalloonPolicy() {
     }
   }
 
-  FinishBalloonPolicy(*memory_margins, std::move(balloon_stats));
-}
-
-std::optional<bool> Service::IsFeatureEnabled(const std::string& feature_name,
-                                              std::string* error_out) {
-  dbus::MethodCall method_call(
-      chromeos::kChromeFeaturesServiceInterface,
-      chromeos::kChromeFeaturesServiceIsFeatureEnabledMethod);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendString(feature_name);
-
-  dbus::ScopedDBusError error;
-  auto dbus_response = brillo::dbus_utils::CallDBusMethodWithErrorResponse(
-      bus_, chrome_features_service_proxy_, &method_call,
-      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
-  if (error.is_set()) {
-    *error_out = error.message();
-    return std::nullopt;
-  }
-
-  dbus::MessageReader reader(dbus_response.get());
-  bool result;
-  if (!reader.PopBool(&result)) {
-    *error_out = "Failed to read bool from D-Bus response";
-    return std::nullopt;
-  }
-
-  *error_out = "";
-  return result;
-}
-
-void Service::FinishBalloonPolicy(MemoryMargins memory_margins,
-                                  TaggedBalloonStats stats) {
   const auto available_memory = GetAvailableMemory();
   if (!available_memory.has_value()) {
     return;
@@ -1186,20 +1154,15 @@ void Service::FinishBalloonPolicy(MemoryMargins memory_margins,
       continue;
     }
     auto stats_iter = std::find_if(
-        stats.begin(), stats.end(),
+        balloon_stats.begin(), balloon_stats.end(),
         [&vm](auto& pair) { return pair.first == vm->GetInfo().vm_memory_id; });
-    if (stats_iter == stats.end()) {
+    if (stats_iter == balloon_stats.end()) {
       // Stats not available. Skip running policies.
       continue;
     }
     BalloonStats stats = stats_iter->second;
     const std::unique_ptr<BalloonPolicyInterface>& policy =
         vm->GetBalloonPolicy(memory_margins, vm_entry.first.name());
-
-    if (!policy) {
-      // Policy temporarily not available, skip this iteration.
-      continue;
-    }
 
     // Switch available memory for this VM based on the current game mode.
     bool is_in_game_mode = foreground_vm_name.has_value() &&
@@ -1218,6 +1181,34 @@ void Service::FinishBalloonPolicy(MemoryMargins memory_margins,
       vm->SetBalloonSize(target);
     }
   }
+}
+
+std::optional<bool> Service::IsFeatureEnabled(const std::string& feature_name,
+                                              std::string* error_out) {
+  dbus::MethodCall method_call(
+      chromeos::kChromeFeaturesServiceInterface,
+      chromeos::kChromeFeaturesServiceIsFeatureEnabledMethod);
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString(feature_name);
+
+  dbus::ScopedDBusError error;
+  auto dbus_response = brillo::dbus_utils::CallDBusMethodWithErrorResponse(
+      bus_, chrome_features_service_proxy_, &method_call,
+      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
+  if (error.is_set()) {
+    *error_out = error.message();
+    return std::nullopt;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  bool result;
+  if (!reader.PopBool(&result)) {
+    *error_out = "Failed to read bool from D-Bus response";
+    return std::nullopt;
+  }
+
+  *error_out = "";
+  return result;
 }
 
 bool Service::ListVmDisksInLocation(const string& cryptohome_id,
