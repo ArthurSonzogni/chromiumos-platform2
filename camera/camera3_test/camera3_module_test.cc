@@ -386,6 +386,23 @@ static void InitCameraModuleByFacing(int facing,
   FAIL() << "Cannot find camera with facing=" << facing;
 }
 
+static void EnableCameraFacing(int facing,
+                               camera3_test::CameraHalClient* camera_hal_client,
+                               base::FilePath* camera_hal_path) {
+  ASSERT_NE(nullptr, camera_hal_client) << "camera_hal_client is not valid";
+  for (const auto& hal_path : cros::GetCameraHalPaths()) {
+    for (int i = 0; i < camera_hal_client->GetNumberOfCameras(); i++) {
+      camera_info info;
+      ASSERT_EQ(0, camera_hal_client->GetCameraInfo(i, &info));
+      if (info.facing == facing) {
+        *camera_hal_path = hal_path;
+        return;
+      }
+    }
+  }
+  FAIL() << "Cannot find camera with facing=" << facing;
+}
+
 static void InitPerfLog() {
   // GetNumberOfCameras() returns the number of internal cameras, so here we
   // should not see any external cameras (facing = 2).
@@ -1322,6 +1339,28 @@ static int GetCmdLineTestCameraFacing(const base::CommandLine& cmd_line) {
   return idx;
 }
 
+// Return true if connect_to_camera_service is true, else false
+static bool GetCmdLineTestConnectToCameraService(
+    const base::CommandLine& cmd_line) {
+  const auto& connect_to_camera_service =
+      cmd_line.GetSwitchValueASCII("connect_to_camera_service");
+  // Camera_service is connected by default.
+  if (connect_to_camera_service.empty()) {
+    return true;
+  }
+  std::string str(connect_to_camera_service);
+  std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+  if (str == "true" || str == "1") {
+    return true;
+  } else if (str == "false" || str == "0") {
+    return false;
+  } else {
+    ADD_FAILURE() << "Invalid connect_to_camera_service option: "
+                  << connect_to_camera_service;
+    return false;
+  }
+}
+
 bool InitializeTest(int* argc,
                     char*** argv,
                     cros::CameraMojoChannelManagerToken* token,
@@ -1367,19 +1406,31 @@ bool InitializeTest(int* argc,
     }
   }
 
-  // Open camera HAL and get module
-  if (facing != -ENOENT) {
-    camera3_test::GetModuleThread().Start();
-    camera3_test::InitCameraModuleByFacing(facing, token, cam_hal_handle,
-                                           cros_camera_hal, &camera_hal_path);
-  } else if (!camera_hal_path.empty()) {
-    camera3_test::GetModuleThread().Start();
-    camera3_test::InitCameraModuleByHalPath(camera_hal_path, token,
-                                            cam_hal_handle, cros_camera_hal);
+  if (!GetCmdLineTestConnectToCameraService(*cmd_line)) {
+    // Open camera HAL and get module
+    if (facing != -ENOENT) {
+      camera3_test::GetModuleThread().Start();
+      camera3_test::InitCameraModuleByFacing(facing, token, cam_hal_handle,
+                                             cros_camera_hal, &camera_hal_path);
+    } else if (!camera_hal_path.empty()) {
+      camera3_test::GetModuleThread().Start();
+      camera3_test::InitCameraModuleByHalPath(camera_hal_path, token,
+                                              cam_hal_handle, cros_camera_hal);
+    } else {
+      LOGF(ERROR) << "Cannot specify both --camera_hal_path/--camera_ids and "
+                     "--camera_facing.";
+      return false;
+    }
   } else {
-    if (camera3_test::CameraHalClient::GetInstance()->Start(
+    // Run camera3 module test through camera_service
+    camera3_test::CameraHalClient* camera_hal_client =
+        camera3_test::CameraHalClient::GetInstance();
+    if (camera_hal_client->Start(
             camera3_test::CameraModuleCallbacksAux::GetInstance()) != 0) {
       return false;
+    }
+    if (facing != -ENOENT) {
+      EnableCameraFacing(facing, camera_hal_client, &camera_hal_path);
     }
   }
 
