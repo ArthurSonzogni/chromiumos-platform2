@@ -2973,8 +2973,9 @@ void UserDataAuth::ListAuthFactors(
       if (!type) {
         continue;
       }
-      if (auth_block_utility_->IsVerifyWithAuthFactorSupported(
-              AuthIntent::kVerifyOnly, *type)) {
+      const AuthFactorDriver& factor_driver =
+          auth_factor_driver_manager_.GetDriver(*type);
+      if (factor_driver.IsVerifySupported(AuthIntent::kVerifyOnly)) {
         reply.add_supported_auth_factors(proto_type);
       }
     }

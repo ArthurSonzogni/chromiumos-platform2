@@ -908,8 +908,7 @@ void AuthSession::AuthenticateAuthFactor(
       }
       // A CredentialVerifier must exist if there is no label and the verifier
       // will be used for authentication.
-      if (!verifier || !auth_block_utility_->IsVerifyWithAuthFactorSupported(
-                           auth_intent_, *request_auth_factor_type)) {
+      if (!verifier || !factor_driver.IsVerifySupported(auth_intent_)) {
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionVerifierNotValidInAuthAuthFactor),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -958,8 +957,7 @@ void AuthSession::AuthenticateAuthFactor(
 
       // Attempt lightweight authentication via a credential verifier if
       // suitable.
-      if (verifier && auth_block_utility_->IsVerifyWithAuthFactorSupported(
-                          auth_intent_, *request_auth_factor_type)) {
+      if (verifier && factor_driver.IsVerifySupported(auth_intent_)) {
         CryptohomeStatusOr<AuthInput> auth_input =
             CreateAuthInputForAuthentication(auth_input_proto,
                                              verifier->auth_factor_metadata());
@@ -1660,6 +1658,9 @@ void AuthSession::PrepareAuthFactor(
     std::move(on_done).Run(std::move(status));
     return;
   }
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(*auth_factor_type);
+
   std::optional<AuthFactorPreparePurpose> purpose =
       AuthFactorPreparePurposeFromProto(request.purpose());
   if (!purpose.has_value()) {
@@ -1671,7 +1672,7 @@ void AuthSession::PrepareAuthFactor(
     return;
   }
 
-  if (auth_block_utility_->IsPrepareAuthFactorRequired(*auth_factor_type)) {
+  if (factor_driver.IsPrepareRequired()) {
     switch (*purpose) {
       case AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor: {
         auth_block_utility_->PrepareAuthFactorForAuth(
@@ -1731,10 +1732,12 @@ void AuthSession::TerminateAuthFactor(
     std::move(on_done).Run(std::move(status));
     return;
   }
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(*auth_factor_type);
 
   // For auth factor types that do not need Prepare, neither do they need
   // Terminate, return an invalid argument error.
-  if (!auth_block_utility_->IsPrepareAuthFactorRequired(*auth_factor_type)) {
+  if (!factor_driver.IsPrepareRequired()) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionTerminateBadAuthFactorType),
         ErrorActionSet({PossibleAction::kRetry}),

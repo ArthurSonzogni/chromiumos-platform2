@@ -1769,10 +1769,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
   EXPECT_CALL(*verifier, VerifySync(_)).WillOnce(ReturnOk<CryptohomeError>());
   user_session->AddCredentialVerifier(std::move(verifier));
   EXPECT_TRUE(user_session_map_.Add(kUsername, std::move(user_session)));
-  EXPECT_CALL(mock_auth_block_utility_,
-              IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
-                                              AuthFactorType::kPassword))
-      .WillRepeatedly(Return(true));
 
   // Create an AuthSession.
   std::string serialized_token;
@@ -2487,10 +2483,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
       AddPasswordAuthFactor(*first_auth_session, kPasswordLabel, kPassword)
           .error(),
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_CALL(mock_auth_block_utility_,
-              IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
-                                              AuthFactorType::kPassword))
-      .WillRepeatedly(Return(true));
 
   // Act.
   AuthSession* second_auth_session;
@@ -2531,10 +2523,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
       AddPasswordAuthFactor(*first_auth_session, kPasswordLabel, kPassword)
           .error(),
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_CALL(mock_auth_block_utility_,
-              IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
-                                              AuthFactorType::kPassword))
-      .WillRepeatedly(Return(true));
 
   // Act.
   AuthSession* second_auth_session;
@@ -2572,10 +2560,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
       AddPasswordAuthFactor(*first_auth_session, kPasswordLabel, kPassword)
           .error(),
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_CALL(mock_auth_block_utility_,
-              IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
-                                              AuthFactorType::kPassword))
-      .WillRepeatedly(Return(true));
 
   // Act.
   AuthSession* second_auth_session;
@@ -2608,10 +2592,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   MockOwnerUser("whoever", homedirs_);
   // Prepare the ephemeral user without any factor configured.
   EXPECT_TRUE(PrepareEphemeralUser());
-  EXPECT_CALL(mock_auth_block_utility_,
-              IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
-                                              AuthFactorType::kPassword))
-      .WillRepeatedly(Return(true));
 
   // Act.
   AuthSession* auth_session;

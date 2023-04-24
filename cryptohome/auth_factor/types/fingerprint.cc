@@ -13,6 +13,15 @@ namespace cryptohome {
 FingerprintAuthFactorDriver::FingerprintAuthFactorDriver()
     : TypedAuthFactorDriver(AuthFactorType::kFingerprint) {}
 
+bool FingerprintAuthFactorDriver::IsPrepareRequired() const {
+  return true;
+}
+
+bool FingerprintAuthFactorDriver::IsVerifySupported(
+    AuthIntent auth_intent) const {
+  return false;
+}
+
 bool FingerprintAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }

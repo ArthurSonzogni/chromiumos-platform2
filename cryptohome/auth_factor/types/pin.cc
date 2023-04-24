@@ -31,6 +31,14 @@ user_data_auth::LockoutPolicy LockoutPolicyToAuthFactor(
 PinAuthFactorDriver::PinAuthFactorDriver()
     : TypedAuthFactorDriver(AuthFactorType::kPin) {}
 
+bool PinAuthFactorDriver::IsPrepareRequired() const {
+  return false;
+}
+
+bool PinAuthFactorDriver::IsVerifySupported(AuthIntent auth_intent) const {
+  return false;
+}
+
 bool PinAuthFactorDriver::NeedsResetSecret() const {
   return true;
 }

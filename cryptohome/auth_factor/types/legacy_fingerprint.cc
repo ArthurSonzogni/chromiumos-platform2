@@ -6,11 +6,22 @@
 
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_intent.h"
 
 namespace cryptohome {
 
 LegacyFingerprintAuthFactorDriver::LegacyFingerprintAuthFactorDriver()
     : TypedAuthFactorDriver(AuthFactorType::kLegacyFingerprint) {}
+
+bool LegacyFingerprintAuthFactorDriver::IsPrepareRequired() const {
+  return true;
+}
+
+bool LegacyFingerprintAuthFactorDriver::IsVerifySupported(
+    AuthIntent auth_intent) const {
+  return auth_intent == AuthIntent::kWebAuthn ||
+         auth_intent == AuthIntent::kVerifyOnly;
+}
 
 bool LegacyFingerprintAuthFactorDriver::NeedsResetSecret() const {
   return false;

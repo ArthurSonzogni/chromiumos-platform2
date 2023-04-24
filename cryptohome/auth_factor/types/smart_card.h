@@ -13,6 +13,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/common.h"
 #include "cryptohome/auth_factor/types/interface.h"
+#include "cryptohome/auth_intent.h"
 
 namespace cryptohome {
 
@@ -22,6 +23,8 @@ class SmartCardAuthFactorDriver final
   SmartCardAuthFactorDriver();
 
  private:
+  bool IsPrepareRequired() const override;
+  bool IsVerifySupported(AuthIntent auth_intent) const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;

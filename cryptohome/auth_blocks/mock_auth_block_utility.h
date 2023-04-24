@@ -38,14 +38,6 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                AuthFactorStorageType,
                const std::set<AuthFactorType>&),
               (const, override));
-  MOCK_METHOD(bool,
-              IsPrepareAuthFactorRequired,
-              (AuthFactorType),
-              (const, override));
-  MOCK_METHOD(bool,
-              IsVerifyWithAuthFactorSupported,
-              (AuthIntent, AuthFactorType),
-              (const, override));
   MOCK_METHOD(std::unique_ptr<CredentialVerifier>,
               CreateCredentialVerifier,
               (AuthFactorType, const std::string&, const AuthInput&),

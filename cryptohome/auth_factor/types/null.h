@@ -12,6 +12,7 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
+#include "cryptohome/auth_intent.h"
 
 namespace cryptohome {
 
@@ -21,6 +22,11 @@ class NullAuthFactorDriver : public AuthFactorDriver {
  public:
   NullAuthFactorDriver() : AuthFactorDriver(AuthFactorType::kUnspecified) {}
 
+ private:
+  bool IsPrepareRequired() const override { return false; }
+  bool IsVerifySupported(AuthIntent auth_intent) const override {
+    return false;
+  }
   bool NeedsResetSecret() const override { return false; }
   bool NeedsRateLimiter() const override { return false; }
   AuthFactorLabelArity GetAuthFactorLabelArity() const override {

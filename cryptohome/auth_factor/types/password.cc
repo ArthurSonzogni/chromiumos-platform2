@@ -7,11 +7,20 @@
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_intent.h"
 
 namespace cryptohome {
 
 PasswordAuthFactorDriver::PasswordAuthFactorDriver()
     : TypedAuthFactorDriver(AuthFactorType::kPassword) {}
+
+bool PasswordAuthFactorDriver::IsPrepareRequired() const {
+  return false;
+}
+
+bool PasswordAuthFactorDriver::IsVerifySupported(AuthIntent auth_intent) const {
+  return auth_intent == AuthIntent::kVerifyOnly;
+}
 
 bool PasswordAuthFactorDriver::NeedsResetSecret() const {
   return false;

@@ -59,19 +59,6 @@ class AuthBlockUtility {
       AuthFactorStorageType auth_factor_storage_type,
       const std::set<AuthFactorType>& configured_factors) const = 0;
 
-  // Given an AuthFactorType, returns a boolean indicating if this factor
-  // should call PrepareAuthFactor before AuthenticateAuthFactor
-  // or AddAuthFactor.
-  virtual bool IsPrepareAuthFactorRequired(
-      AuthFactorType auth_factor_type) const = 0;
-
-  // Given AuthIntent and AuthFactorType, returns a boolean indicating if this
-  // factor supports Verify via CreateCredentialVerifier. Note that (unlike
-  // IsAuthFactorSupported) this is purely an indicator of software support
-  // being present for a particular factor.
-  virtual bool IsVerifyWithAuthFactorSupported(
-      AuthIntent auth_intent, AuthFactorType auth_factor_type) const = 0;
-
   // Creates a credential verifier for the specified type and input.
   virtual std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       AuthFactorType auth_factor_type,

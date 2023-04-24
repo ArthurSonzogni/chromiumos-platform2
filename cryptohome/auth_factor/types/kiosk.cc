@@ -13,6 +13,14 @@ namespace cryptohome {
 KioskAuthFactorDriver::KioskAuthFactorDriver()
     : TypedAuthFactorDriver(AuthFactorType::kKiosk) {}
 
+bool KioskAuthFactorDriver::IsPrepareRequired() const {
+  return false;
+}
+
+bool KioskAuthFactorDriver::IsVerifySupported(AuthIntent auth_intent) const {
+  return false;
+}
+
 bool KioskAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }

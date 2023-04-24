@@ -244,10 +244,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     // Make sure FreeDiskSpaceDuringLogin is not called unexpectedly.
     EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_)).Times(0);
 
-    EXPECT_CALL(auth_block_utility_, IsVerifyWithAuthFactorSupported(_, _))
-        .WillRepeatedly([](AuthIntent, AuthFactorType type) {
-          return type == AuthFactorType::kPassword;
-        });
     EXPECT_CALL(auth_block_utility_, CreateCredentialVerifier(_, _, _))
         .WillRepeatedly(
             [](AuthFactorType type, const std::string& label,
@@ -3244,7 +3240,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithoutVerifier) {
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(list_reply.configured_auth_factors_with_status(), IsEmpty());
   EXPECT_THAT(list_reply.supported_auth_factors(),
-              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD));
+              UnorderedElementsAre(
+                  user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                  user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD,
+                  user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT));
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
@@ -3286,7 +3285,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
                 .lockout_policy(),
             user_data_auth::LOCKOUT_POLICY_NONE);
   EXPECT_THAT(list_reply.supported_auth_factors(),
-              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD));
+              UnorderedElementsAre(
+                  user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                  user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD,
+                  user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT));
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithoutPinweaver) {
@@ -3816,9 +3818,6 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintSuccess) {
   auto token = std::make_unique<TrackedPreparedAuthFactorToken>(
       AuthFactorType::kLegacyFingerprint, OkStatus<CryptohomeError>(),
       &token_was_called);
-  EXPECT_CALL(auth_block_utility_,
-              IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
-      .WillOnce(Return(true));
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
@@ -3866,9 +3865,6 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintFailure) {
       user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
   prepare_auth_factor_req.set_purpose(
       user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
-  EXPECT_CALL(auth_block_utility_,
-              IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
-      .WillRepeatedly(Return(true));
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
@@ -3941,9 +3937,6 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorPasswordFailure) {
       user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
   prepare_auth_factor_req.set_purpose(
       user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
-  EXPECT_CALL(auth_block_utility_,
-              IsPrepareAuthFactorRequired(AuthFactorType::kPassword))
-      .WillRepeatedly(Return(false));
 
   // Test.
   TestFuture<user_data_auth::PrepareAuthFactorReply>
@@ -3986,9 +3979,6 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorLegacyFingerprintSuccess) {
   auto token = std::make_unique<TrackedPreparedAuthFactorToken>(
       AuthFactorType::kLegacyFingerprint, OkStatus<CryptohomeError>(),
       &token_was_called);
-  EXPECT_CALL(auth_block_utility_,
-              IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
-      .WillRepeatedly(Return(true));
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
@@ -4042,9 +4032,6 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorInactiveFactorFailure) {
       auth_session_reply_future.Get().auth_session_id();
   EXPECT_TRUE(
       AuthSession::GetTokenFromSerializedString(auth_session_id).has_value());
-  EXPECT_CALL(auth_block_utility_,
-              IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
-      .WillOnce(Return(true));
 
   // Test. TerminateAuthFactor fails when there is
   // no pending fingerprint auth factor to be terminated.
@@ -4080,9 +4067,6 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorBadTypeFailure) {
       auth_session_reply_future.Get().auth_session_id();
   EXPECT_TRUE(
       AuthSession::GetTokenFromSerializedString(auth_session_id).has_value());
-  EXPECT_CALL(auth_block_utility_,
-              IsPrepareAuthFactorRequired(AuthFactorType::kPassword))
-      .WillOnce(Return(false));
 
   // Test. TerminateAuthFactor fails when the auth factor type
   // does not support PrepareAuthFactor.

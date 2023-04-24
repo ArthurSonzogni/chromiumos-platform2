@@ -322,52 +322,6 @@ TEST_F(AuthBlockUtilityImplTest, GetSupportedAuthFactors) {
       {}));
 }
 
-TEST_F(AuthBlockUtilityImplTest, IsVerifyWithAuthFactorSupported) {
-  MakeAuthBlockUtilityImpl();
-
-  EXPECT_TRUE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthIntent::kVerifyOnly, AuthFactorType::kPassword));
-  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthIntent::kVerifyOnly, AuthFactorType::kPin));
-  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthIntent::kVerifyOnly, AuthFactorType::kCryptohomeRecovery));
-  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthIntent::kVerifyOnly, AuthFactorType::kKiosk));
-  EXPECT_TRUE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthIntent::kVerifyOnly, AuthFactorType::kSmartCard));
-  EXPECT_TRUE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthIntent::kVerifyOnly, AuthFactorType::kLegacyFingerprint));
-  EXPECT_TRUE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthIntent::kWebAuthn, AuthFactorType::kLegacyFingerprint));
-  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthIntent::kDecrypt, AuthFactorType::kLegacyFingerprint));
-  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthIntent::kVerifyOnly, AuthFactorType::kFingerprint));
-  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthIntent::kVerifyOnly, AuthFactorType::kUnspecified));
-}
-
-TEST_F(AuthBlockUtilityImplTest, IsPrepareAuthFactorRequired) {
-  MakeAuthBlockUtilityImpl();
-
-  EXPECT_FALSE(auth_block_utility_impl_->IsPrepareAuthFactorRequired(
-      AuthFactorType::kPassword));
-  EXPECT_FALSE(auth_block_utility_impl_->IsPrepareAuthFactorRequired(
-      AuthFactorType::kPin));
-  EXPECT_FALSE(auth_block_utility_impl_->IsPrepareAuthFactorRequired(
-      AuthFactorType::kCryptohomeRecovery));
-  EXPECT_FALSE(auth_block_utility_impl_->IsPrepareAuthFactorRequired(
-      AuthFactorType::kKiosk));
-  EXPECT_FALSE(auth_block_utility_impl_->IsPrepareAuthFactorRequired(
-      AuthFactorType::kSmartCard));
-  EXPECT_TRUE(auth_block_utility_impl_->IsPrepareAuthFactorRequired(
-      AuthFactorType::kLegacyFingerprint));
-  EXPECT_TRUE(auth_block_utility_impl_->IsPrepareAuthFactorRequired(
-      AuthFactorType::kFingerprint));
-  EXPECT_FALSE(auth_block_utility_impl_->IsPrepareAuthFactorRequired(
-      AuthFactorType::kUnspecified));
-}
-
 TEST_F(AuthBlockUtilityImplTest, PreparePasswordFailure) {
   MakeAuthBlockUtilityImpl();
   // password auth factor always fails the prepare.

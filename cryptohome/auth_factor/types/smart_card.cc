@@ -9,11 +9,21 @@
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_intent.h"
 
 namespace cryptohome {
 
 SmartCardAuthFactorDriver::SmartCardAuthFactorDriver()
     : TypedAuthFactorDriver(AuthFactorType::kSmartCard) {}
+
+bool SmartCardAuthFactorDriver::IsPrepareRequired() const {
+  return false;
+}
+
+bool SmartCardAuthFactorDriver::IsVerifySupported(
+    AuthIntent auth_intent) const {
+  return auth_intent == AuthIntent::kVerifyOnly;
+}
 
 bool SmartCardAuthFactorDriver::NeedsResetSecret() const {
   return false;

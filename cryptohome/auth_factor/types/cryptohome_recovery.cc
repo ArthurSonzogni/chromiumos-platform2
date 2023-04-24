@@ -13,6 +13,15 @@ namespace cryptohome {
 CryptohomeRecoveryAuthFactorDriver::CryptohomeRecoveryAuthFactorDriver()
     : TypedAuthFactorDriver(AuthFactorType::kCryptohomeRecovery) {}
 
+bool CryptohomeRecoveryAuthFactorDriver::IsPrepareRequired() const {
+  return false;
+}
+
+bool CryptohomeRecoveryAuthFactorDriver::IsVerifySupported(
+    AuthIntent auth_intent) const {
+  return false;
+}
+
 bool CryptohomeRecoveryAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }

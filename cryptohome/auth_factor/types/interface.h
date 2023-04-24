@@ -13,6 +13,7 @@
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_intent.h"
 
 namespace cryptohome {
 
@@ -29,6 +30,16 @@ class AuthFactorDriver {
   virtual ~AuthFactorDriver() = default;
 
   AuthFactorType type() const { return type_; }
+
+  // Indicates if the factor requires the use of a Prepare operation before it
+  // can be added or authenticated.
+  virtual bool IsPrepareRequired() const = 0;
+
+  // Indicates if the factor supports creating credential verifiers for a given
+  // intent. Note that this only indicates that the driver software support is
+  // present; this does not indicate that underlying firmware or hardware
+  // support (if required) is available.
+  virtual bool IsVerifySupported(AuthIntent auth_intent) const = 0;
 
   // This returns if a type is PinWeaver backed, and thus needs a reset secret.
   virtual bool NeedsResetSecret() const = 0;

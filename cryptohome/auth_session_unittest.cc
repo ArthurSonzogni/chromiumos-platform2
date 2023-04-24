@@ -3336,13 +3336,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
        .migrate_to_user_secret_stash = false},
       backing_apis_);
 
-  // Expect that next authentication will go through lightweight
-  // verification.
-  EXPECT_CALL(auth_block_utility_,
-              IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
-                                              AuthFactorType::kSmartCard))
-      .WillRepeatedly(Return(true));
-
   // Simulate a successful key verification.
   EXPECT_CALL(challenge_credentials_helper_, VerifyKey(_, _, _, _))
       .WillOnce(ReplyToVerifyKey{/*is_key_valid=*/true});
@@ -3382,10 +3375,6 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
            AfMapBuilder().AddPassword<void>(kFakeLabel).Consume(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_CALL(auth_block_utility_,
-              IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
-                                              AuthFactorType::kPassword))
-      .WillRepeatedly(Return(true));
 
   // Test.
   std::string auth_factor_labels[] = {kFakeLabel};
@@ -3426,10 +3415,6 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightFingerprintAuthentication) {
           .auth_factor_map = AuthFactorMap(),
           .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_CALL(auth_block_utility_,
-              IsVerifyWithAuthFactorSupported(
-                  AuthIntent::kVerifyOnly, AuthFactorType::kLegacyFingerprint))
-      .WillRepeatedly(Return(true));
 
   // Test.
   user_data_auth::AuthInput auth_input_proto;
@@ -3464,9 +3449,6 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth) {
   auto token = std::make_unique<TrackedPreparedAuthFactorToken>(
       AuthFactorType::kLegacyFingerprint, OkStatus<CryptohomeError>(),
       &token_was_called);
-  EXPECT_CALL(auth_block_utility_,
-              IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
-      .WillOnce(Return(true));
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
@@ -3505,9 +3487,6 @@ TEST_F(AuthSessionWithUssExperimentTest, PreparePasswordFailure) {
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_CALL(auth_block_utility_,
-              IsPrepareAuthFactorRequired(AuthFactorType::kPassword))
-      .WillOnce(Return(false));
 
   // Test.
   user_data_auth::PrepareAuthFactorRequest request;
@@ -3535,9 +3514,6 @@ TEST_F(AuthSessionWithUssExperimentTest, TerminateAuthFactorBadTypeFailure) {
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_CALL(auth_block_utility_,
-              IsPrepareAuthFactorRequired(AuthFactorType::kPassword))
-      .WillOnce(Return(false));
 
   // Test.
   user_data_auth::TerminateAuthFactorRequest request;
@@ -3565,9 +3541,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_CALL(auth_block_utility_,
-              IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
-      .WillOnce(Return(true));
 
   // Test.
   user_data_auth::TerminateAuthFactorRequest request;
@@ -3600,9 +3573,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
   auto token = std::make_unique<TrackedPreparedAuthFactorToken>(
       AuthFactorType::kLegacyFingerprint, OkStatus<CryptohomeError>(),
       &token_was_called);
-  EXPECT_CALL(auth_block_utility_,
-              IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
-      .WillRepeatedly(Return(true));
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
@@ -4370,10 +4340,6 @@ TEST_F(AuthSessionWithUssExperimentTest, FingerprintAuthenticationForWebAuthn) {
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_CALL(auth_block_utility_,
-              IsVerifyWithAuthFactorSupported(
-                  AuthIntent::kWebAuthn, AuthFactorType::kLegacyFingerprint))
-      .WillRepeatedly(Return(true));
 
   // Test.
   user_data_auth::AuthInput auth_input_proto;
@@ -4526,9 +4492,6 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareFingerprintAdd) {
   auto token = std::make_unique<TrackedPreparedAuthFactorToken>(
       AuthFactorType::kLegacyFingerprint, OkStatus<CryptohomeError>(),
       &token_was_called);
-  EXPECT_CALL(auth_block_utility_,
-              IsPrepareAuthFactorRequired(AuthFactorType::kFingerprint))
-      .WillOnce(Return(true));
   EXPECT_CALL(auth_block_utility_,
               PrepareAuthFactorForAdd(AuthFactorType::kFingerprint, _, _))
       .WillOnce([&](AuthFactorType, const ObfuscatedUsername&,

@@ -10,6 +10,7 @@
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
+#include "cryptohome/auth_intent.h"
 
 namespace cryptohome {
 namespace {
@@ -18,7 +19,75 @@ using ::testing::Eq;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
 
-// Test AuthFactorDriver::NeedsResetSecert. We do this here instead of in a
+// Test AuthFactorDriver::IsPrepareRequired. We do this here instead of in a
+// per-driver test because the check is trivial enough that one test is simpler
+// to validate than N separate tests.
+TEST(AuthFactorDriverManagerTest, IsPrepareRequired) {
+  AuthFactorDriverManager manager;
+  auto prepare_req = [&manager](AuthFactorType type) {
+    return manager.GetDriver(type).IsPrepareRequired();
+  };
+
+  EXPECT_THAT(prepare_req(AuthFactorType::kPassword), IsFalse());
+  EXPECT_THAT(prepare_req(AuthFactorType::kPin), IsFalse());
+  EXPECT_THAT(prepare_req(AuthFactorType::kCryptohomeRecovery), IsFalse());
+  EXPECT_THAT(prepare_req(AuthFactorType::kKiosk), IsFalse());
+  EXPECT_THAT(prepare_req(AuthFactorType::kSmartCard), IsFalse());
+  EXPECT_THAT(prepare_req(AuthFactorType::kLegacyFingerprint), IsTrue());
+  EXPECT_THAT(prepare_req(AuthFactorType::kFingerprint), IsTrue());
+
+  EXPECT_THAT(prepare_req(AuthFactorType::kUnspecified), IsFalse());
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
+                "All types of AuthFactorType are not all included here");
+}
+
+// Test AuthFactorDriver::IsVerifySupported. We do this here instead of in a
+// per-driver test because the check is trivial enough that one test is simpler
+// to validate than N separate tests.
+TEST(AuthFactorDriverManagerTest, IsVerifySupported) {
+  AuthFactorDriverManager manager;
+  auto decrypt_verify = [&manager](AuthFactorType type) {
+    return manager.GetDriver(type).IsVerifySupported(AuthIntent::kDecrypt);
+  };
+  auto vonly_verify = [&manager](AuthFactorType type) {
+    return manager.GetDriver(type).IsVerifySupported(AuthIntent::kVerifyOnly);
+  };
+  auto webauthn_verify = [&manager](AuthFactorType type) {
+    return manager.GetDriver(type).IsVerifySupported(AuthIntent::kWebAuthn);
+  };
+
+  EXPECT_THAT(decrypt_verify(AuthFactorType::kPassword), IsFalse());
+  EXPECT_THAT(decrypt_verify(AuthFactorType::kPin), IsFalse());
+  EXPECT_THAT(decrypt_verify(AuthFactorType::kCryptohomeRecovery), IsFalse());
+  EXPECT_THAT(decrypt_verify(AuthFactorType::kKiosk), IsFalse());
+  EXPECT_THAT(decrypt_verify(AuthFactorType::kSmartCard), IsFalse());
+  EXPECT_THAT(decrypt_verify(AuthFactorType::kLegacyFingerprint), IsFalse());
+  EXPECT_THAT(decrypt_verify(AuthFactorType::kFingerprint), IsFalse());
+
+  EXPECT_THAT(vonly_verify(AuthFactorType::kPassword), IsTrue());
+  EXPECT_THAT(vonly_verify(AuthFactorType::kPin), IsFalse());
+  EXPECT_THAT(vonly_verify(AuthFactorType::kCryptohomeRecovery), IsFalse());
+  EXPECT_THAT(vonly_verify(AuthFactorType::kKiosk), IsFalse());
+  EXPECT_THAT(vonly_verify(AuthFactorType::kSmartCard), IsTrue());
+  EXPECT_THAT(vonly_verify(AuthFactorType::kLegacyFingerprint), IsTrue());
+  EXPECT_THAT(vonly_verify(AuthFactorType::kFingerprint), IsFalse());
+
+  EXPECT_THAT(webauthn_verify(AuthFactorType::kPassword), IsFalse());
+  EXPECT_THAT(webauthn_verify(AuthFactorType::kPin), IsFalse());
+  EXPECT_THAT(webauthn_verify(AuthFactorType::kCryptohomeRecovery), IsFalse());
+  EXPECT_THAT(webauthn_verify(AuthFactorType::kKiosk), IsFalse());
+  EXPECT_THAT(webauthn_verify(AuthFactorType::kSmartCard), IsFalse());
+  EXPECT_THAT(webauthn_verify(AuthFactorType::kLegacyFingerprint), IsTrue());
+  EXPECT_THAT(webauthn_verify(AuthFactorType::kFingerprint), IsFalse());
+
+  EXPECT_THAT(decrypt_verify(AuthFactorType::kUnspecified), IsFalse());
+  EXPECT_THAT(vonly_verify(AuthFactorType::kUnspecified), IsFalse());
+  EXPECT_THAT(webauthn_verify(AuthFactorType::kUnspecified), IsFalse());
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
+                "All types of AuthFactorType are not all included here");
+}
+
+// Test AuthFactorDriver::NeedsResetSecret. We do this here instead of in a
 // per-driver test because the check is trivial enough that one test is simpler
 // to validate than N separate tests.
 TEST(AuthFactorDriverManagerTest, NeedsResetSecret) {

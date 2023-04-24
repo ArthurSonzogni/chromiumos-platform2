@@ -180,49 +180,6 @@ bool AuthBlockUtilityImpl::IsAuthFactorSupported(
   }
 }
 
-bool AuthBlockUtilityImpl::IsPrepareAuthFactorRequired(
-    AuthFactorType auth_factor_type) const {
-  switch (auth_factor_type) {
-    case AuthFactorType::kLegacyFingerprint:
-    case AuthFactorType::kFingerprint:
-      return true;
-    case AuthFactorType::kPassword:
-    case AuthFactorType::kPin:
-    case AuthFactorType::kCryptohomeRecovery:
-    case AuthFactorType::kKiosk:
-    case AuthFactorType::kSmartCard:
-    case AuthFactorType::kUnspecified:
-      return false;
-  }
-}
-
-bool AuthBlockUtilityImpl::IsVerifyWithAuthFactorSupported(
-    AuthIntent auth_intent, AuthFactorType auth_factor_type) const {
-  // Legacy Fingerprint + WebAuthn is a special case that supports a lightweight
-  // verify.
-  if (auth_intent == AuthIntent::kWebAuthn &&
-      auth_factor_type == AuthFactorType::kLegacyFingerprint) {
-    return true;
-  }
-  // Verify can only be used with verify-only intents, other than the above
-  // special cases.
-  if (auth_intent != AuthIntent::kVerifyOnly) {
-    return false;
-  }
-  switch (auth_factor_type) {
-    case AuthFactorType::kPassword:
-    case AuthFactorType::kLegacyFingerprint:
-    case AuthFactorType::kSmartCard:
-      return true;
-    case AuthFactorType::kPin:
-    case AuthFactorType::kCryptohomeRecovery:
-    case AuthFactorType::kKiosk:
-    case AuthFactorType::kFingerprint:
-    case AuthFactorType::kUnspecified:
-      return false;
-  }
-}
-
 std::unique_ptr<CredentialVerifier>
 AuthBlockUtilityImpl::CreateCredentialVerifier(
     AuthFactorType auth_factor_type,
