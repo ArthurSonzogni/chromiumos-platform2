@@ -22,7 +22,7 @@ namespace cryptohome {
 // AuthBlock for Cryptohome Recovery flow. Secret is generated on the device and
 // later derived by Cryptohome Recovery process using data stored on the device
 // and by Recovery Mediator service.
-class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
+class CryptohomeRecoveryAuthBlock : public AuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kCryptohomeRecovery;
@@ -51,19 +51,15 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
 
   // `auth_input` object should have `salt` and
   // `cryptohome_recovery_auth_input.mediator_pub_key` fields set.
-  CryptoStatus Create(const AuthInput& auth_input,
-                      AuthBlockState* auth_block_state,
-                      KeyBlobs* key_blobs) override;
+  void Create(const AuthInput& auth_input, CreateCallback callback) override;
 
   // `auth_input` object should have `salt`,
   // `cryptohome_recovery_auth_input.epoch_pub_key`,
   // `cryptohome_recovery_auth_input.ephemeral_pub_key` and
   // `cryptohome_recovery_auth_input.recovery_response` fields set.
-  CryptoStatus Derive(
-      const AuthInput& auth_input,
-      const AuthBlockState& state,
-      KeyBlobs* key_blobs,
-      std::optional<AuthBlock::SuggestedAction>* suggested_action) override;
+  void Derive(const AuthInput& auth_input,
+              const AuthBlockState& state,
+              DeriveCallback callback) override;
 
   CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) override;
 
