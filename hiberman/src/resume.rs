@@ -167,43 +167,44 @@ impl ResumeConductor {
         // indicate readiness, skip the resume unless testing manually.
         let cookie = get_hibernate_cookie(Some(&self.stateful_block_path))
             .context("Failed to get hibernate cookie")?;
-        if cookie != HibernateCookieValue::ResumeInProgress {
-            let description = cookie_description(&cookie);
-            if self.options.dry_run {
+        let description = cookie_description(&cookie);
+
+        if cookie == HibernateCookieValue::ResumeInProgress || self.options.dry_run {
+            if cookie != HibernateCookieValue::ResumeInProgress {
                 info!(
                     "Hibernate cookie was {}, continuing anyway due to --dry-run",
                     description
                 );
-            } else {
-                if cookie == HibernateCookieValue::NoResume {
-                    info!("No resume pending");
-                } else {
-                    warn!("Hibernate cookie was {}, abandoning resume", description);
-                }
-
-                // If the cookie indicates an emergency reboot, clear it back to
-                // nothing, as the problem was logged.
-                if cookie == HibernateCookieValue::EmergencyReboot {
-                    set_hibernate_cookie(
-                        Some(&self.stateful_block_path),
-                        HibernateCookieValue::NoResume,
-                    )
-                    .context("Failed to clear emergency reboot cookie")?;
-                    // Resume-init doesn't activate the hibermeta LV in order to
-                    // minimize failures in the critical path. Activate it now
-                    // so logs can be replayed.
-                    pending_merge.volume_manager.setup_hibermeta_lv(false)?;
-                }
-
-                return Err(HibernateError::CookieError(format!(
-                    "Cookie was {}, abandoning resume",
-                    description
-                )))
-                .context("Aborting resume due to cookie");
             }
+
+            return Ok(());
+        } else if cookie == HibernateCookieValue::NoResume {
+            info!("No resume pending");
+
+            return Err(HibernateError::CookieError("No resume pending".to_string()).into());
         }
 
-        Ok(())
+        warn!("Hibernate cookie was {}, abandoning resume", description);
+
+        // If the cookie indicates an emergency reboot, clear it back to
+        // nothing, as the problem was logged.
+        if cookie == HibernateCookieValue::EmergencyReboot {
+            set_hibernate_cookie(
+                Some(&self.stateful_block_path),
+                HibernateCookieValue::NoResume,
+            )
+            .context("Failed to clear emergency reboot cookie")?;
+            // Resume-init doesn't activate the hibermeta LV in order to
+            // minimize failures in the critical path. Activate it now
+            // so logs can be replayed.
+            pending_merge.volume_manager.setup_hibermeta_lv(false)?;
+        }
+
+        return Err(HibernateError::CookieError(format!(
+            "Cookie was {}, abandoning resume",
+            description
+        )))
+        .context("Aborting resume due to cookie");
     }
 
     /// Inner helper function to read the resume image and launch it.
