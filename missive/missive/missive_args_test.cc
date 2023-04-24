@@ -335,7 +335,7 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
                                  base::Unretained(&waiter)));
   }
 
-  // Change parameters and refresh.
+  // Change parameters.
   fake_platform_features_ptr->SetParam(
       MissiveArgs::kStorageFeature.name,
       MissiveArgs::kCompressionEnabledParameter, "False");
@@ -345,11 +345,11 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
   fake_platform_features_ptr->SetParam(
       MissiveArgs::kStorageFeature.name,
       MissiveArgs::kControlledDegradationParameter, "True");
-  fake_platform_features_ptr->TriggerRefetchSignal();
-
   fake_platform_features_ptr->SetParam(
       MissiveArgs::kStorageFeature.name,
       MissiveArgs::kLegacyStorageEnabledParameter, "False");
+
+  // Fetch the updated feature flag values.
   fake_platform_features_ptr->TriggerRefetchSignal();
 
   {
