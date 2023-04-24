@@ -35,10 +35,6 @@ std::string WiFiBandName(WiFiBand band);
 
 WiFiBand WiFiBandFromName(const std::string& name);
 
-// Converts WiFiBand to the value used in Netlink messages.  Returns negative
-// value for kUnknownBand and kAllBands since these can't be converted.
-int WiFiBandToNl(WiFiBand band);
-
 inline std::ostream& operator<<(std::ostream& stream, WiFiBand band) {
   return stream << WiFiBandName(band);
 }

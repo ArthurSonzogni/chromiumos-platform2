@@ -138,9 +138,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   ~WiFi() override;
 
-  // Returns phy index associated with WiFi device.
-  uint32_t phy_index() const { return phy_index_; }
-
   void Start(EnabledStateChangedCallback callback) override;
   void Stop(EnabledStateChangedCallback callback) override;
   void Scan(Error* error, const std::string& reason) override;
@@ -781,7 +778,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool SupportsWEP() const;
 
   // Get the WiFiPhy object from provider which corresponds to phy_index_.
-  const WiFiPhy* GetWiFiPhy() const;
+  const WiFiPhy* GetWiFiPhy();
 
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider* provider_;

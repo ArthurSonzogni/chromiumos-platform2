@@ -26,8 +26,7 @@ class HotspotService : public LocalService {
   HotspotService(LocalDeviceConstRefPtr device,
                  const std::string& ssid,
                  const std::string& passphrase,
-                 WiFiSecurity security,
-                 int frequency);
+                 const WiFiSecurity security);
   HotspotService(const HotspotService&) = delete;
   HotspotService& operator=(const HotspotService&) = delete;
 
@@ -42,8 +41,6 @@ class HotspotService : public LocalService {
   std::string passphrase_;
   // The security mode to be used in WiFi downstream.
   WiFiSecurity security_;
-  // The WiFi frequency to be used for the hotspot.
-  int frequency_;
 };
 
 }  // namespace shill

@@ -33,7 +33,6 @@ namespace shill {
 namespace {
 constexpr char kHexSSID[] = "74657374";  // Hex encode for "test"
 constexpr char kPassphrase[] = "passphrase";
-constexpr int kFrequency = 2437;
 }  // namespace
 
 class HotspotServiceTest : public testing::Test {
@@ -49,7 +48,7 @@ class HotspotServiceTest : public testing::Test {
   std::unique_ptr<HotspotService> CreateHotspotService(
       const WiFiSecurity security) {
     std::unique_ptr<HotspotService> service = std::make_unique<HotspotService>(
-        device_, kHexSSID, kPassphrase, security, kFrequency);
+        device_, kHexSSID, kPassphrase, security);
     return service;
   }
 
@@ -121,37 +120,30 @@ MATCHER(HasCipherCCMP, "") {
              WPASupplicant::kNetworkCipherSuiteCCMP;
 }
 
-MATCHER_P(HasFrequency, freq, "") {
-  return arg.template Contains<int>(WPASupplicant::kNetworkPropertyFrequency) &&
-         arg.template Get<int>(WPASupplicant::kNetworkPropertyFrequency) ==
-             freq;
-}
-
 TEST_F(HotspotServiceTest, GetSupplicantConfigWEP) {
   // Get configuration with non PSK or OPEN mode should result in an empty
   // dictionary.
-  auto service = CreateHotspotService(WiFiSecurity::kWep);
+  auto service = CreateHotspotService(WiFiSecurity(WiFiSecurity::Mode::kWep));
   KeyValueStore params = service->GetSupplicantConfigurationParameters();
   EXPECT_TRUE(params.IsEmpty());
 }
 
 TEST_F(HotspotServiceTest, GetSupplicantConfigOpen) {
-  auto service = CreateHotspotService(WiFiSecurity::kNone);
+  auto service = CreateHotspotService(WiFiSecurity(WiFiSecurity::Mode::kNone));
   KeyValueStore params = service->GetSupplicantConfigurationParameters();
   EXPECT_THAT(params, HasHotspotArgs(kHexSSID));
   EXPECT_THAT(params, HasKeyMgmtArgs(WPASupplicant::kKeyManagementNone));
-  EXPECT_THAT(params, HasFrequency(kFrequency));
 }
 
 TEST_F(HotspotServiceTest, GetSupplicantConfigWpa) {
   // Hotspot does not support WPA.
-  auto service = CreateHotspotService(WiFiSecurity::kWpa);
+  auto service = CreateHotspotService(WiFiSecurity(WiFiSecurity::Mode::kWpa));
   KeyValueStore params = service->GetSupplicantConfigurationParameters();
   EXPECT_TRUE(params.IsEmpty());
 }
 
 TEST_F(HotspotServiceTest, GetSupplicantConfigWpa2) {
-  auto service = CreateHotspotService(WiFiSecurity::kWpa2);
+  auto service = CreateHotspotService(WiFiSecurity(WiFiSecurity::Mode::kWpa2));
   KeyValueStore params = service->GetSupplicantConfigurationParameters();
   EXPECT_THAT(params, HasHotspotArgs(kHexSSID));
   EXPECT_THAT(params, HasPskArgs(std::string(kPassphrase)));
@@ -159,18 +151,18 @@ TEST_F(HotspotServiceTest, GetSupplicantConfigWpa2) {
   EXPECT_THAT(params, HasKeyMgmtArgs(WPASupplicant::kKeyManagementWPAPSK));
   EXPECT_THAT(params, HasPmfArgs(WPASupplicant::kNetworkIeee80211wEnabled));
   EXPECT_THAT(params, HasCipherCCMP());
-  EXPECT_THAT(params, HasFrequency(kFrequency));
 }
 
 TEST_F(HotspotServiceTest, GetSupplicantConfigWpaWpa2) {
   // Hotspot does not support WPAWPA2.
-  auto service = CreateHotspotService(WiFiSecurity::kWpaWpa2);
+  auto service =
+      CreateHotspotService(WiFiSecurity(WiFiSecurity::Mode::kWpaWpa2));
   KeyValueStore params = service->GetSupplicantConfigurationParameters();
   EXPECT_TRUE(params.IsEmpty());
 }
 
 TEST_F(HotspotServiceTest, GetSupplicantConfigWpa3) {
-  auto service = CreateHotspotService(WiFiSecurity::kWpa3);
+  auto service = CreateHotspotService(WiFiSecurity(WiFiSecurity::Mode::kWpa3));
   KeyValueStore params = service->GetSupplicantConfigurationParameters();
   EXPECT_THAT(params, HasHotspotArgs(kHexSSID));
   EXPECT_THAT(params, HasPskArgs(std::string(kPassphrase)));
@@ -178,11 +170,11 @@ TEST_F(HotspotServiceTest, GetSupplicantConfigWpa3) {
   EXPECT_THAT(params, HasKeyMgmtArgs(WPASupplicant::kKeyManagementSAE));
   EXPECT_THAT(params, HasPmfArgs(WPASupplicant::kNetworkIeee80211wRequired));
   EXPECT_THAT(params, HasCipherCCMP());
-  EXPECT_THAT(params, HasFrequency(kFrequency));
 }
 
 TEST_F(HotspotServiceTest, GetSupplicantConfigWpa2Wpa3) {
-  auto service = CreateHotspotService(WiFiSecurity::kWpa2Wpa3);
+  auto service =
+      CreateHotspotService(WiFiSecurity(WiFiSecurity::Mode::kWpa2Wpa3));
   KeyValueStore params = service->GetSupplicantConfigurationParameters();
   EXPECT_THAT(params, HasHotspotArgs(kHexSSID));
   EXPECT_THAT(params, HasPskArgs(std::string(kPassphrase)));
@@ -193,7 +185,6 @@ TEST_F(HotspotServiceTest, GetSupplicantConfigWpa2Wpa3) {
   EXPECT_THAT(params, HasKeyMgmtArgs(key_mgmt));
   EXPECT_THAT(params, HasPmfArgs(WPASupplicant::kNetworkIeee80211wRequired));
   EXPECT_THAT(params, HasCipherCCMP());
-  EXPECT_THAT(params, HasFrequency(kFrequency));
 }
 
 }  // namespace shill

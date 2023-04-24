@@ -20,13 +20,11 @@ namespace shill {
 HotspotService::HotspotService(LocalDeviceConstRefPtr device,
                                const std::string& ssid,
                                const std::string& passphrase,
-                               WiFiSecurity security,
-                               int frequency)
+                               const WiFiSecurity security)
     : LocalService(device),
       hex_ssid_(ssid),
       passphrase_(passphrase),
-      security_(security),
-      frequency_(frequency) {}
+      security_(security) {}
 
 KeyValueStore HotspotService::GetSupplicantConfigurationParameters() const {
   KeyValueStore params;
@@ -94,7 +92,7 @@ KeyValueStore HotspotService::GetSupplicantConfigurationParameters() const {
   params.Set<std::vector<uint8_t>>(WPASupplicant::kNetworkPropertySSID,
                                    ssid_bytes);
 
-  params.Set<int>(WPASupplicant::kNetworkPropertyFrequency, frequency_);
+  // TODO(b/235762295): Add frequency to BSS parameters.
 
   return params;
 }

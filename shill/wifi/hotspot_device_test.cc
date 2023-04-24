@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <base/memory/ref_counted.h>
@@ -21,9 +20,10 @@
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
-#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
+#include "shill/supplicant/wpa_supplicant.h"
+#include "shill/wifi/hotspot_device.h"
 #include "shill/wifi/hotspot_service.h"
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/wifi_security.h"
@@ -47,7 +47,6 @@ const char kInterfaceName[] = "ap0";
 const char kDeviceAddress[] = "00:01:02:03:04:05";
 const char kHotspotSSID[] = "chromeOS-1234";
 const char kHotspotPassphrase[] = "test0000";
-const int kHotspotFrequency = 2437;
 const std::vector<uint8_t> kStationAddress1 = {00, 11, 22, 33, 44, 55};
 const std::vector<uint8_t> kStationAddress2 = {00, 11, 22, 33, 44, 66};
 const uint32_t kPhyIndex = 5678;
@@ -187,8 +186,8 @@ TEST_F(HotspotDeviceTest, ConfigureDeconfigureService) {
 
   // Configure service for the first time.
   auto service0 = std::make_unique<HotspotService>(
-      device_, kHotspotSSID, kHotspotPassphrase, WiFiSecurity::kWpa2,
-      kHotspotFrequency);
+      device_, kHotspotSSID, kHotspotPassphrase,
+      WiFiSecurity(WiFiSecurity::Mode::kWpa2));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kNetworkPath), Return(true)));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SelectNetwork(Eq(kNetworkPath)))
@@ -197,8 +196,8 @@ TEST_F(HotspotDeviceTest, ConfigureDeconfigureService) {
 
   // Configure a second service should be a no-op and return false.
   auto service1 = std::make_unique<HotspotService>(
-      device_, kHotspotSSID, kHotspotPassphrase, WiFiSecurity::kWpa2,
-      kHotspotFrequency);
+      device_, kHotspotSSID, kHotspotPassphrase,
+      WiFiSecurity(WiFiSecurity::Mode::kWpa2));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _)).Times(0);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SelectNetwork(Eq(kNetworkPath)))
       .Times(0);
@@ -217,8 +216,8 @@ TEST_F(HotspotDeviceTest, ConfigureDeconfigureService) {
 
 TEST_F(HotspotDeviceTest, ServiceEvent) {
   auto service = std::make_unique<HotspotService>(
-      device_, kHotspotSSID, kHotspotPassphrase, WiFiSecurity::kWpa2,
-      kHotspotFrequency);
+      device_, kHotspotSSID, kHotspotPassphrase,
+      WiFiSecurity(WiFiSecurity::Mode::kWpa2));
   EXPECT_TRUE(device_->Start());
   ON_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
       .WillByDefault(DoAll(SetArgPointee<1>(kNetworkPath), Return(true)));

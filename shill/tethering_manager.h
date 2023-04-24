@@ -6,9 +6,7 @@
 #define SHILL_TETHERING_MANAGER_H_
 
 #include <memory>
-#include <set>
 #include <string>
-#include <vector>
 
 #include <base/cancelable_callback.h>
 #include <base/files/scoped_file.h>
@@ -20,7 +18,7 @@
 #include "shill/store/property_store.h"
 #include "shill/technology.h"
 #include "shill/wifi/local_device.h"
-#include "shill/wifi/wifi_phy.h"
+#include "shill/wifi/local_service.h"
 #include "shill/wifi/wifi_rf.h"
 #include "shill/wifi/wifi_security.h"
 
@@ -126,9 +124,6 @@ class TetheringManager : public Network::EventHandler {
   FRIEND_TEST(TetheringManagerTest, GetTetheringCapabilities);
   FRIEND_TEST(TetheringManagerTest, SaveConfig);
   FRIEND_TEST(TetheringManagerTest, SetEnabled);
-  FRIEND_TEST(TetheringManagerTest, SelectFrequency_Empty);
-  FRIEND_TEST(TetheringManagerTest, SelectFrequency_NoValid5G);
-  FRIEND_TEST(TetheringManagerTest, SelectFrequency);
   FRIEND_TEST(TetheringManagerTest, MARWithSSIDChange);
   FRIEND_TEST(TetheringManagerTest, MARWithTetheringRestart);
   FRIEND_TEST(TetheringManagerTest, CheckMACStored);
@@ -249,11 +244,6 @@ class TetheringManager : public Network::EventHandler {
   // session when region needs to be updated.  The argument indicates if the
   // regulatory domain change has been attempted.
   void OnPhyInfoReady();
-  // Utility function to choose frequency used for the hotspot from the
-  // frequencies passed as the argument |bands|.  This argument has the same
-  // format as one returned by the WiFiPhy::frequencies().
-  // Returns frequency or negative value on error.
-  int SelectFrequency(const WiFiPhy::Frequencies& bands);
 
   // TODO(b/267804414): Remove it after fishfood.
   // Asynchronous function triggered when the Allowed property changes.
