@@ -4737,12 +4737,10 @@ void Service::NotifyVmSwapping(const VmId& vm_id) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
   // Send the D-Bus signal out to notify everyone that we are swapping a VM.
-  dbus::Signal signal(kVmConciergeInterface, kVmSwappingSignal);
   vm_tools::concierge::VmSwappingSignal proto;
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
-  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
-  exported_object_->SendSignal(&signal);
+  concierge_adaptor_.SendVmSwappingSignalSignal(proto);
 }
 
 InstallPflashResponse Service::InstallPflash(

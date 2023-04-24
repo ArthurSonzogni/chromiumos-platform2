@@ -473,5 +473,15 @@
                     value="vm_tools::concierge::VmStoppingSignal"/>
       </arg>
     </signal>
+    <signal name="VmSwappingSignal">
+      <tp:docstring>
+        Indicates a VM is starting memory swap out so the receiver can
+        expect the VM will experience a transitional jank.
+      </tp:docstring>
+      <arg name="signal" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::VmSwappingSignal"/>
+      </arg>
+    </signal>
   </interface>
 </node>
