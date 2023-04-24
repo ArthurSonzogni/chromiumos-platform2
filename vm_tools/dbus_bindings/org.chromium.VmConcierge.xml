@@ -457,5 +457,16 @@
                     value="vm_tools::concierge::SyncVmTimesResponse"/>
       </arg>
     </method>
+
+    <signal name="VmStartingUpSignal">
+      <tp:docstring>
+        Indicates a new vm is starting so logging can be captured as early as
+        possible.
+      </tp:docstring>
+      <arg name="signal" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::ExtendedVmInfo"/>
+      </arg>
+    </signal>
   </interface>
 </node>
