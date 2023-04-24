@@ -108,7 +108,7 @@ goproto_library("enterprise_management_goprotos") {
     "private_membership_rlwe.proto=chromiumos/policy/github.com/google/private-membership",
     "serialization.proto=chromiumos/policy/github.com/google/shell-encryption",
   ]
-
+  gen_grpc = true
   sources = [
     "${proto_in_dir}/chrome_device_policy.proto",
     "${proto_in_dir}/chrome_extension_policy.proto",
