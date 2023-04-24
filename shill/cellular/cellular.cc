@@ -575,9 +575,15 @@ void Cellular::DestroySockets() {
     return;
 
   for (const auto& address : network()->GetAddresses()) {
+    SLOG(2) << LoggingTag() << ": Destroy all sockets of address:" << address;
     rtnl_handler()->RemoveInterfaceAddress(interface_index(), address);
-    socket_destroyer_->DestroySockets(IPPROTO_TCP, address);
+    if (!socket_destroyer_->DestroySockets(IPPROTO_TCP, address))
+      SLOG(2) << LoggingTag() << ": no tcp sockets found for " << address;
+    // Chrome sometimes binds to UDP sockets, so lets destroy them.
+    if (!socket_destroyer_->DestroySockets(IPPROTO_UDP, address))
+      SLOG(2) << LoggingTag() << ": no udp sockets found for " << address;
   }
+  SLOG(2) << LoggingTag() << ": " << __func__ << " complete.";
 }
 
 void Cellular::CompleteActivation(Error* error) {
@@ -1787,6 +1793,8 @@ void Cellular::OnTerminationCompleted(const Error& error) {
 }
 
 bool Cellular::DisconnectCleanup() {
+  SLOG(2) << LoggingTag() << ": " << __func__;
+  DestroySockets();
   if (!StateIsConnected())
     return false;
   StopLinkListener();
