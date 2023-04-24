@@ -22,6 +22,7 @@ pkg_config("target_defaults") {
     "libexif",
     "libsync",
     "libyuv",
+    "mojo_service_manager",
   ]
   configs = [ "//camera/build:cros_camera_common" ]
 }

@@ -17,6 +17,7 @@
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
+#include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 #include "camera/mojo/algorithm/camera_algorithm.mojom.h"
 #include "camera/mojo/cros_camera_service.mojom.h"
@@ -97,6 +98,10 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager
   virtual void BindServiceToMojoServiceManager(
       const std::string& service_name,
       mojo::ScopedMessagePipeHandle remote) = 0;
+
+  virtual void RequestServiceFromMojoServiceManager(
+      const std::string& service_name,
+      mojo::ScopedMessagePipeHandle receiver) = 0;
 };
 
 }  // namespace cros

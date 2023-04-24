@@ -1,0 +1,62 @@
+// Copyright 2023 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Start with an array of policies.
+// Validate this file in CrOS device: mojo_service_manager --check_policy
+[
+  {
+    "identity": "u:r:cros_camera_service:s0",
+    "request": [
+      "CrosCameraHalDispatcher"
+    ]
+  },
+  {
+    "identity": "u:r:cros_ssh_session:s0",
+    "request": [
+      "CrosCameraHalDispatcher"
+    ]
+  },
+  {
+    "identity": "u:r:cros_agetty:s0",
+    "request": [
+      "CrosCameraHalDispatcher"
+    ]
+  },
+  {
+    "identity": "u:r:cros_camera_algo:s0",
+    "request": [
+      "CrosCameraHalDispatcher"
+    ]
+  },
+  {
+    "identity": "u:r:cros_camera_diagnostics_service:s0",
+    "request": [
+      "CrosCameraHalDispatcher"
+    ]
+  },
+  {
+    "identity": "u:r:arcvm_server_proxy:s0",
+    "request": [
+      "CrosCameraHalDispatcher"
+    ]
+  },
+  {
+    "identity": "u:r:seneschal:s0",
+    "request": [
+      "CrosCameraHalDispatcher"
+    ]
+  },
+  {
+    "identity": "u:r:vm_concierge:s0",
+    "request": [
+      "CrosCameraHalDispatcher"
+    ]
+  },
+  {
+    "identity": "u:r:vm_cicerone:s0",
+    "request": [
+      "CrosCameraHalDispatcher"
+    ]
+  }
+]

@@ -176,8 +176,6 @@ class CameraHalClient : public cros::mojom::CameraHalClient,
                              cros::mojom::TorchModeStatus new_status) override;
   void onIpcConnectionLost();
 
-  base::Thread ipc_thread_;
-  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   mojo::Receiver<cros::mojom::CameraHalClient> camera_hal_client_;
   mojo::AssociatedReceiver<cros::mojom::CameraModuleCallbacks>
       mojo_module_callbacks_;
@@ -205,6 +203,8 @@ class CameraHalClient : public cros::mojom::CameraHalClient,
 
   mojo::Remote<cros::mojom::VendorTagOps> vendor_tag_ops_;
   mojo::Remote<cros::mojom::CameraModule> camera_module_;
+
+  scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
 };
 
 }  // namespace camera3_test

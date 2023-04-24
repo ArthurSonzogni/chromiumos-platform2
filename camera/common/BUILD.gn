@@ -10,6 +10,7 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":cros_camera_algo",
+    ":install_camera_hal_dispatcher_mojo",
     ":install_cros_camera_algo_conf",
     ":install_cros_camera_algo_policy",
     ":install_dbus_cros_camera_algo_conf",
@@ -171,6 +172,7 @@ pkg_config("pkg_config_mojo_base") {
   pkg_deps = [
     "libmetrics",
     "libmojo",
+    "mojo_service_manager",
   ]
 }
 
@@ -598,4 +600,9 @@ install_config("install_minijail_algo_conf") {
 install_config("install_minijail_gpu_algo_conf") {
   sources = [ "minijail/cros-camera-gpu-algo.conf" ]
   install_path = "/usr/share/minijail"
+}
+
+install_config("install_camera_hal_dispatcher_mojo") {
+  sources = [ "//camera/common/camera_hal_dispatcher_mojo_policy.jsonc" ]
+  install_path = "/etc/mojo/service_manager/policy"
 }

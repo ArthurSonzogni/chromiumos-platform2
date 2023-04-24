@@ -15,6 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/no_destructor.h>
 #include <base/unguessable_token.h>
+#include <chromeos/mojo/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <gtest/gtest.h>
@@ -22,6 +23,7 @@
 
 #include "camera/mojo/unguessable_token.mojom.h"
 #include "camera3_test/camera3_device_connector.h"
+#include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/future.h"
@@ -179,32 +181,23 @@ CameraHalClient* CameraHalClient::GetInstance() {
 }
 
 CameraHalClient::CameraHalClient()
-    : ipc_thread_("CameraHALClientIPCThread"),
-      camera_hal_client_(this),
+    : camera_hal_client_(this),
       mojo_module_callbacks_(this),
       ipc_initialized_(base::WaitableEvent::ResetPolicy::MANUAL,
                        base::WaitableEvent::InitialState::NOT_SIGNALED),
-      vendor_tag_count_(0) {}
+      vendor_tag_count_(0),
+      ipc_task_runner_(
+          cros::CameraMojoChannelManager::GetInstance()->GetIpcTaskRunner()) {}
 
 int CameraHalClient::Start(camera_module_callbacks_t* callbacks) {
   static constexpr ::base::TimeDelta kIpcTimeout = ::base::Seconds(3);
-
   if (!callbacks) {
     return -EINVAL;
   }
   camera_module_callbacks_ = callbacks;
-  mojo::core::Init();
-  if (!ipc_thread_.StartWithOptions(
-          base::Thread::Options(base::MessagePumpType::IO, 0))) {
-    LOGF(ERROR) << "Failed to start thread";
-    return -EIO;
-  }
-  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
-      ipc_thread_.task_runner(),
-      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 
   auto future = cros::Future<int>::Create(nullptr);
-  ipc_thread_.task_runner()->PostTask(
+  ipc_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraHalClient::ConnectToDispatcher,
                      base::Unretained(this), cros::GetFutureCallback(future)));
@@ -224,19 +217,13 @@ int CameraHalClient::Start(camera_module_callbacks_t* callbacks) {
 
 void CameraHalClient::ConnectToDispatcher(
     base::OnceCallback<void(int)> callback) {
-  ASSERT_TRUE(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  mojo::ScopedMessagePipeHandle child_pipe;
-  base::FilePath socket_path(cros::constants::kCrosCameraSocketPathString);
-  if (cros::CreateMojoChannelToParentByUnixDomainSocket(
-          socket_path, &child_pipe) != MOJO_RESULT_OK) {
-    LOGF(ERROR) << "Failed to create mojo channel";
-    std::move(callback).Run(-EIO);
-    return;
-  }
+  ASSERT_TRUE(ipc_task_runner_->BelongsToCurrentThread());
 
-  dispatcher_ = mojo::Remote<cros::mojom::CameraHalDispatcher>(
-      mojo::PendingRemote<cros::mojom::CameraHalDispatcher>(
-          std::move(child_pipe), 0u));
+  cros::CameraMojoChannelManager::GetInstance()
+      ->RequestServiceFromMojoServiceManager(
+          /*service_name=*/chromeos::mojo_services::kCrosCameraHalDispatcher,
+          dispatcher_.BindNewPipeAndPassReceiver().PassPipe());
+
   if (!dispatcher_.is_bound()) {
     LOGF(ERROR) << "Failed to bind mojo dispatcher";
     std::move(callback).Run(-EIO);
@@ -260,7 +247,7 @@ void CameraHalClient::ConnectToDispatcher(
 
 void CameraHalClient::SetUpChannel(
     mojo::PendingRemote<cros::mojom::CameraModule> camera_module) {
-  ASSERT_TRUE(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  ASSERT_TRUE(ipc_task_runner_->BelongsToCurrentThread());
   camera_module_.Bind(std::move(camera_module));
   camera_module_.set_disconnect_handler(base::BindOnce(
       &CameraHalClient::onIpcConnectionLost, base::Unretained(this)));
@@ -271,7 +258,7 @@ void CameraHalClient::SetUpChannel(
 }
 
 void CameraHalClient::OnSetCallbacks(int32_t result) {
-  ASSERT_TRUE(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  ASSERT_TRUE(ipc_task_runner_->BelongsToCurrentThread());
   if (result != 0) {
     LOGF(ERROR) << "Failed to set callbacks";
     exit(EXIT_FAILURE);
@@ -340,7 +327,7 @@ void CameraHalClient::OnGotTagType(uint32_t tag, int32_t type) {
 
 int CameraHalClient::GetNumberOfCameras() {
   auto future = cros::Future<int32_t>::Create(nullptr);
-  ipc_thread_.task_runner()->PostTask(
+  ipc_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraHalClient::GetNumberOfCamerasOnIpcThread,
                      base::Unretained(this), cros::GetFutureCallback(future)));
@@ -365,7 +352,7 @@ int CameraHalClient::GetCameraInfo(int cam_id, camera_info* info) {
     return -EINVAL;
   }
   auto future = cros::Future<int32_t>::Create(nullptr);
-  ipc_thread_.task_runner()->PostTask(
+  ipc_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&CameraHalClient::GetCameraInfoOnIpcThread,
                                 base::Unretained(this), cam_id, info,
                                 cros::GetFutureCallback(future)));
@@ -424,7 +411,7 @@ void CameraHalClient::OnGotCameraInfo(int cam_id,
 void CameraHalClient::OpenDevice(
     int cam_id, mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> dev_ops) {
   auto future = cros::Future<int32_t>::Create(nullptr);
-  ipc_thread_.task_runner()->PostTask(
+  ipc_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraHalClient::OpenDeviceOnIpcThread,
                      base::Unretained(this), cam_id, std::move(dev_ops),
@@ -463,7 +450,7 @@ bool CameraHalClient::GetVendorTagByName(const std::string name,
 
 void CameraHalClient::CameraDeviceStatusChange(
     int32_t camera_id, cros::mojom::CameraDeviceStatus new_status) {
-  ASSERT_TRUE(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  ASSERT_TRUE(ipc_task_runner_->BelongsToCurrentThread());
   camera_module_callbacks_->camera_device_status_change(
       camera_module_callbacks_, camera_id,
       static_cast<camera_device_status_t>(new_status));
@@ -471,7 +458,7 @@ void CameraHalClient::CameraDeviceStatusChange(
 
 void CameraHalClient::TorchModeStatusChange(
     int32_t camera_id, cros::mojom::TorchModeStatus new_status) {
-  ASSERT_TRUE(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  ASSERT_TRUE(ipc_task_runner_->BelongsToCurrentThread());
   std::stringstream ss;
   ss << camera_id;
   camera_module_callbacks_->torch_mode_status_change(

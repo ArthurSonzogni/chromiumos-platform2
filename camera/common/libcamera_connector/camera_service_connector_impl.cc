@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/no_destructor.h>
 #include <base/sequence_checker.h>
+#include <chromeos/mojo/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
@@ -25,8 +26,7 @@
 
 namespace cros {
 
-CameraServiceConnector::CameraServiceConnector()
-    : ipc_thread_("CamConn"), camera_client_(nullptr) {}
+CameraServiceConnector::CameraServiceConnector() : camera_client_(nullptr) {}
 
 CameraServiceConnector* CameraServiceConnector::GetInstance() {
   static base::NoDestructor<CameraServiceConnector> instance;
@@ -51,20 +51,12 @@ int CameraServiceConnector::Init(const cros_cam_init_option_t* option) {
     }
     token_ = *token;
   }
-
-  mojo::core::Init();
-  bool ret = ipc_thread_.StartWithOptions(
-      base::Thread::Options(base::MessagePumpType::IO, 0));
-  if (!ret) {
-    LOGF(ERROR) << "Failed to start IPC thread";
-    return -ENODEV;
-  }
-  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
-      ipc_thread_.task_runner(),
-      mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+  mojo_manager_ = CameraMojoChannelManager::FromToken(
+      CameraMojoChannelManagerToken::CreateInstance());
+  ipc_task_runner_ = mojo_manager_->GetIpcTaskRunner();
 
   auto future = cros::Future<int>::Create(nullptr);
-  ipc_thread_.task_runner()->PostTask(
+  ipc_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraServiceConnector::InitOnThread,
                      base::Unretained(this), GetFutureCallback(future)));
@@ -84,10 +76,6 @@ int CameraServiceConnector::Exit() {
   }
 
   int ret = camera_client_->Exit();
-
-  ipc_support_ = nullptr;
-  ipc_thread_.Stop();
-
   return ret;
 }
 
@@ -130,7 +118,7 @@ void CameraServiceConnector::RegisterClient(
   // (for example here it is called from CameraClient thread),
   // but mojo operations have to run on the same thread that bound
   // the interface, so we bounce the request over to that thread/runner.
-  ipc_thread_.task_runner()->PostTask(
+  ipc_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraServiceConnector::RegisterClientOnThread,
                      base::Unretained(this), std::move(camera_hal_client),
@@ -140,7 +128,7 @@ void CameraServiceConnector::RegisterClient(
 void CameraServiceConnector::RegisterClientOnThread(
     mojo::PendingRemote<mojom::CameraHalClient> camera_hal_client,
     IntOnceCallback on_registered_callback) {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(!token_.is_empty());
 
   auto mojo_token = mojo_base::mojom::UnguessableToken::New();
@@ -156,7 +144,7 @@ void CameraServiceConnector::RegisterClientOnThread(
 
 void CameraServiceConnector::OnRegisteredClient(
     IntOnceCallback on_registered_callback, int32_t result) {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   if (result != 0) {
     LOGF(ERROR) << "Failed to register client: " << result;
@@ -165,21 +153,12 @@ void CameraServiceConnector::OnRegisteredClient(
 }
 
 void CameraServiceConnector::InitOnThread(IntOnceCallback init_callback) {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
-  mojo::ScopedMessagePipeHandle child_pipe;
-  base::FilePath socket_path(constants::kCrosCameraSocketPathString);
-  MojoResult res =
-      CreateMojoChannelToParentByUnixDomainSocket(socket_path, &child_pipe);
-  if (res != MOJO_RESULT_OK) {
-    LOGF(ERROR) << "Failed to create mojo channel to dispatcher";
-    std::move(init_callback).Run(-ENODEV);
-    return;
-  }
+  mojo_manager_->RequestServiceFromMojoServiceManager(
+      /*service_name=*/chromeos::mojo_services::kCrosCameraHalDispatcher,
+      dispatcher_.BindNewPipeAndPassReceiver().PassPipe());
 
-  dispatcher_ = mojo::Remote<mojom::CameraHalDispatcher>(
-      mojo::PendingRemote<mojom::CameraHalDispatcher>(std::move(child_pipe),
-                                                      0u));
   bool connected = dispatcher_.is_bound();
   if (!connected) {
     LOGF(ERROR) << "Failed to make a proxy to dispatcher";

@@ -73,6 +73,10 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
       const std::string& service_name,
       mojo::ScopedMessagePipeHandle receiver) override;
 
+  void RequestServiceFromMojoServiceManager(
+      const std::string& service_name,
+      mojo::ScopedMessagePipeHandle receiver) override;
+
  protected:
   friend class CameraMojoChannelManager;
 
@@ -98,13 +102,6 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   template <typename T>
   using JpegPendingMojoTask = PendingMojoTask<T, Callback>;
 
-  void OnSocketFileStatusChange(const base::FilePath& socket_path, bool error);
-
-  // Callback method for the unix domain socket file change events.  The method
-  // will try to establish the Mojo connection to the CameraHalDispatcher
-  // started by Chrome.
-  void OnSocketFileStatusChangeOnIpcThread();
-
   void TryConnectToDispatcher();
 
   void TryConsumePendingMojoTasks();
@@ -113,6 +110,9 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
 
   // Reset the dispatcher.
   void ResetDispatcherPtr();
+
+  chromeos::mojo_service_manager::mojom::ServiceManager*
+  GetServiceManagerProxy();
 
   // The Mojo channel to CameraHalDispatcher in Chrome. All the Mojo
   // communication to |dispatcher_| happens on |ipc_thread_|.
@@ -123,9 +123,6 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   // Upon file change OnSocketFileStatusChange will be called to initiate
   // connection to CameraHalDispatcher.
   base::FilePathWatcher watcher_;
-
-  // Inode number of current bound socket file.
-  ino_t bound_socket_inode_num_;
 
   // Pending Mojo tasks information which should be consumed when the
   // |dispatcher_| is connected.

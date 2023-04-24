@@ -22,6 +22,7 @@
 
 #include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/libcamera_connector/camera_client.h"
+#include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/camera_service_connector.h"
 
 namespace cros {
@@ -73,8 +74,8 @@ class CameraServiceConnector {
 
   void OnDispatcherError();
 
-  base::Thread ipc_thread_;
-  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
+  CameraMojoChannelManager* mojo_manager_;
+  scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
   mojo::Remote<mojom::CameraHalDispatcher> dispatcher_;
   std::unique_ptr<CameraClient> camera_client_;
   base::UnguessableToken token_;

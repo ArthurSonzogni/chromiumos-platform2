@@ -16,7 +16,9 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
+#include <chromeos/mojo/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
+#include <mojo_service_manager/lib/connect.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
@@ -29,36 +31,6 @@ namespace {
 constexpr char kServerTokenPath[] = "/run/camera_tokens/server/token";
 constexpr char kServerSensorClientTokenPath[] =
     "/run/camera_tokens/server/sensor_client_token";
-
-constexpr ino_t kInvalidInodeNum = 0;
-
-// Gets the socket file by |socket_path| and checks if it is in correct group
-// and has correct permission. Returns |kInvalidInodeNum| if it is invalid.
-// Otherwise, returns its inode number.
-ino_t GetSocketInodeNumber(const base::FilePath& socket_path) {
-  // Ensure that socket file is ready before trying to connect the dispatcher.
-  struct group arc_camera_group;
-  struct group* result = nullptr;
-  char buf[1024];
-
-  getgrnam_r(constants::kArcCameraGroup, &arc_camera_group, buf, sizeof(buf),
-             &result);
-  if (!result) {
-    return kInvalidInodeNum;
-  }
-
-  int mode;
-  if (!base::GetPosixFilePermissions(socket_path, &mode) || mode != 0660) {
-    return kInvalidInodeNum;
-  }
-
-  struct stat st;
-  if (stat(socket_path.value().c_str(), &st) ||
-      st.st_gid != arc_camera_group.gr_gid) {
-    return kInvalidInodeNum;
-  }
-  return st.st_ino;
-}
 
 std::optional<base::UnguessableToken> ReadToken(std::string path) {
   base::FilePath token_path(path);
@@ -76,7 +48,7 @@ std::optional<base::UnguessableToken> ReadToken(std::string path) {
 CameraMojoChannelManagerImpl* CameraMojoChannelManagerImpl::instance_ = nullptr;
 
 CameraMojoChannelManagerImpl::CameraMojoChannelManagerImpl()
-    : ipc_thread_("MojoIpcThread"), bound_socket_inode_num_(kInvalidInodeNum) {
+    : ipc_thread_("MojoIpcThread") {
   instance_ = this;
   if (!ipc_thread_.StartWithOptions(
           base::Thread::Options(base::MessagePumpType::IO, 0))) {
@@ -85,25 +57,19 @@ CameraMojoChannelManagerImpl::CameraMojoChannelManagerImpl()
   }
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
-      ipc_thread_.task_runner(),
-      mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
+      GetIpcTaskRunner(), mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 
-  base::FilePath socket_path(constants::kCrosCameraSocketPathString);
-  if (!watcher_.Watch(
-          socket_path, base::FilePathWatcher::Type::kNonRecursive,
-          base::BindRepeating(
-              &CameraMojoChannelManagerImpl::OnSocketFileStatusChange,
-              base::Unretained(this)))) {
-    LOGF(ERROR) << "Failed to watch socket path";
-    return;
-  }
+  GetIpcTaskRunner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
+                     base::Unretained(this)));
 }
 
 CameraMojoChannelManagerImpl::~CameraMojoChannelManagerImpl() {
   if (ipc_thread_.IsRunning()) {
     base::AutoLock lock(sensor_lock_);
     sensor_hal_client_.reset();
-    ipc_thread_.task_runner()->PostTask(
+    GetIpcTaskRunner()->PostTask(
         FROM_HERE,
         base::BindOnce(
             &CameraMojoChannelManagerImpl::TearDownMojoEnvOnIpcThread,
@@ -134,13 +100,13 @@ void CameraMojoChannelManagerImpl::RegisterServer(
     mojom::CameraHalDispatcher::RegisterServerWithTokenCallback
         on_construct_callback,
     Callback on_error_callback) {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
 
   camera_hal_server_task_ = {
       .pendingReceiverOrRemote = std::move(server),
       .on_construct_callback = std::move(on_construct_callback),
       .on_error_callback = std::move(on_error_callback)};
-  ipc_thread_.task_runner()->PostTask(
+  GetIpcTaskRunner()->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
                      base::Unretained(this)));
@@ -150,14 +116,14 @@ void CameraMojoChannelManagerImpl::CreateMjpegDecodeAccelerator(
     mojo::PendingReceiver<mojom::MjpegDecodeAccelerator> receiver,
     Callback on_construct_callback,
     Callback on_error_callback) {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
 
   JpegPendingMojoTask<mojo::PendingReceiver<mojom::MjpegDecodeAccelerator>>
       pending_task = {.pendingReceiverOrRemote = std::move(receiver),
                       .on_construct_callback = std::move(on_construct_callback),
                       .on_error_callback = std::move(on_error_callback)};
   jda_tasks_.push_back(std::move(pending_task));
-  ipc_thread_.task_runner()->PostTask(
+  GetIpcTaskRunner()->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
                      base::Unretained(this)));
@@ -167,14 +133,14 @@ void CameraMojoChannelManagerImpl::CreateJpegEncodeAccelerator(
     mojo::PendingReceiver<mojom::JpegEncodeAccelerator> receiver,
     Callback on_construct_callback,
     Callback on_error_callback) {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
 
   JpegPendingMojoTask<mojo::PendingReceiver<mojom::JpegEncodeAccelerator>>
       pending_task = {.pendingReceiverOrRemote = std::move(receiver),
                       .on_construct_callback = std::move(on_construct_callback),
                       .on_error_callback = std::move(on_error_callback)};
   jea_tasks_.push_back(std::move(pending_task));
-  ipc_thread_.task_runner()->PostTask(
+  GetIpcTaskRunner()->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
                      base::Unretained(this)));
@@ -220,7 +186,7 @@ void CameraMojoChannelManagerImpl::RegisterSensorHalClient(
       .pendingReceiverOrRemote = std::move(client),
       .on_construct_callback = std::move(on_construct_callback),
       .on_error_callback = std::move(on_error_callback)};
-  ipc_thread_.task_runner()->PostTask(
+  GetIpcTaskRunner()->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
                      base::Unretained(this)));
@@ -228,7 +194,7 @@ void CameraMojoChannelManagerImpl::RegisterSensorHalClient(
 
 void CameraMojoChannelManagerImpl::BindServiceToMojoServiceManager(
     const std::string& service_name, mojo::ScopedMessagePipeHandle receiver) {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
   if (!dispatcher_.is_bound()) {
     LOGF(ERROR) << "Dispatcher is not bound!";
     return;
@@ -237,79 +203,33 @@ void CameraMojoChannelManagerImpl::BindServiceToMojoServiceManager(
                                                std::move(receiver));
 }
 
-void CameraMojoChannelManagerImpl::OnSocketFileStatusChange(
-    const base::FilePath& socket_path, bool error) {
-  if (error) {
-    LOGF(ERROR) << "Error occurs in socket file watcher.";
-    return;
-  }
-
-  ipc_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          &CameraMojoChannelManagerImpl::OnSocketFileStatusChangeOnIpcThread,
-          base::Unretained(this)));
-}
-
-void CameraMojoChannelManagerImpl::OnSocketFileStatusChangeOnIpcThread() {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-
-  base::FilePath socket_path(constants::kCrosCameraSocketPathString);
-  if (dispatcher_.is_bound()) {
-    // If the dispatcher is already bound but the inode number of the socket is
-    // unreadable or has been changed, we assume the other side of the
-    // dispatcher (Chrome) might be destroyed. As a result, we fire the on error
-    // event here in case it is not fired correctly.
-    if (bound_socket_inode_num_ != GetSocketInodeNumber(socket_path)) {
-      ipc_thread_.task_runner()->PostTask(
-          FROM_HERE,
-          base::BindOnce(&CameraMojoChannelManagerImpl::ResetDispatcherPtr,
-                         base::Unretained(this)));
-    }
-    return;
-  }
-
-  ipc_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&CameraMojoChannelManagerImpl::TryConnectToDispatcher,
-                     base::Unretained(this)));
+void CameraMojoChannelManagerImpl::RequestServiceFromMojoServiceManager(
+    const std::string& service_name, mojo::ScopedMessagePipeHandle receiver) {
+  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
+  GetServiceManagerProxy()->Request(service_name, std::nullopt,
+                                    std::move(receiver));
 }
 
 void CameraMojoChannelManagerImpl::TryConnectToDispatcher() {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
 
   if (dispatcher_.is_bound()) {
     TryConsumePendingMojoTasks();
     return;
   }
 
-  base::FilePath socket_path(constants::kCrosCameraSocketPathString);
-  ino_t socket_inode_num = GetSocketInodeNumber(socket_path);
-  if (socket_inode_num == kInvalidInodeNum) {
-    return;
-  }
+  RequestServiceFromMojoServiceManager(
+      /*service_name=*/chromeos::mojo_services::kCrosCameraHalDispatcher,
+      dispatcher_.BindNewPipeAndPassReceiver().PassPipe());
 
-  mojo::ScopedMessagePipeHandle child_pipe;
-  MojoResult result = cros::CreateMojoChannelToParentByUnixDomainSocket(
-      socket_path, &child_pipe);
-  if (result != MOJO_RESULT_OK) {
-    LOGF(WARNING) << "Failed to create Mojo Channel to " << socket_path.value();
-    return;
-  }
-
-  dispatcher_ = mojo::Remote<cros::mojom::CameraHalDispatcher>(
-      mojo::PendingRemote<cros::mojom::CameraHalDispatcher>(
-          std::move(child_pipe), 0u));
   dispatcher_.set_disconnect_handler(
       base::BindOnce(&CameraMojoChannelManagerImpl::ResetDispatcherPtr,
                      base::Unretained(this)));
-  bound_socket_inode_num_ = socket_inode_num;
-
   TryConsumePendingMojoTasks();
 }
 
 void CameraMojoChannelManagerImpl::TryConsumePendingMojoTasks() {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
 
   if (camera_hal_server_task_.pendingReceiverOrRemote) {
     auto server_token = ReadToken(kServerTokenPath);
@@ -362,14 +282,14 @@ void CameraMojoChannelManagerImpl::TryConsumePendingMojoTasks() {
 }
 
 void CameraMojoChannelManagerImpl::TearDownMojoEnvOnIpcThread() {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
 
   ResetDispatcherPtr();
   ipc_support_.reset();
 }
 
 void CameraMojoChannelManagerImpl::ResetDispatcherPtr() {
-  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
 
   if (camera_hal_server_task_.on_error_callback) {
     std::move(camera_hal_server_task_.on_error_callback).Run();
@@ -396,7 +316,16 @@ void CameraMojoChannelManagerImpl::ResetDispatcherPtr() {
   jea_tasks_.clear();
 
   dispatcher_.reset();
-  bound_socket_inode_num_ = kInvalidInodeNum;
+}
+
+chromeos::mojo_service_manager::mojom::ServiceManager*
+CameraMojoChannelManagerImpl::GetServiceManagerProxy() {
+  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
+  static const base::NoDestructor<
+      mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
+      remote(chromeos::mojo_service_manager::ConnectToMojoServiceManager());
+  CHECK(remote->is_bound()) << "Failed to connect to mojo service manager.";
+  return remote->get();
 }
 
 }  // namespace cros

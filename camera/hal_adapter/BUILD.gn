@@ -28,6 +28,7 @@ pkg_config("target_defaults") {
     "libmojo",
     "libsync",
     "libyuv",
+    "mojo_service_manager",
     "re2",
   ]
 }
