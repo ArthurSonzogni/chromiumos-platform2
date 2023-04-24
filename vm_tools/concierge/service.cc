@@ -4177,13 +4177,11 @@ void Service::NotifyVmStopping(const VmId& vm_id, int64_t cid) {
   }
 
   // Send the D-Bus signal out to notify everyone that we are stopping a VM.
-  dbus::Signal signal(kVmConciergeInterface, kVmStoppingSignal);
   vm_tools::concierge::VmStoppingSignal proto;
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.set_cid(cid);
-  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
-  exported_object_->SendSignal(&signal);
+  concierge_adaptor_.SendVmStoppingSignalSignal(proto);
 }
 
 void Service::NotifyVmStopped(const VmId& vm_id,

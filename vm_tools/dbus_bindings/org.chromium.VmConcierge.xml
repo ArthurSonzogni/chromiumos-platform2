@@ -445,5 +445,11 @@
                     value="vm_tools::concierge::ExtendedVmInfo"/>
       </arg>
     </signal>
+    <signal name="VmStoppingSignal">
+      <arg name="signal" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::VmStoppingSignal"/>
+      </arg>
+    </signal>
   </interface>
 </node>
