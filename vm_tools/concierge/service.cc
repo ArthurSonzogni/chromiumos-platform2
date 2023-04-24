@@ -4114,13 +4114,11 @@ void Service::SendVmStartingUpSignal(
 
 void Service::SendVmGuestUserlandReadySignal(
     const VmId& vm_id, const vm_tools::concierge::GuestUserlandReady ready) {
-  dbus::Signal signal(kVmConciergeInterface, kVmGuestUserlandReadySignal);
   vm_tools::concierge::VmGuestUserlandReadySignal proto;
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.set_ready(ready);
-  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
-  exported_object_->SendSignal(&signal);
+  concierge_adaptor_.SendVmGuestUserlandReadySignalSignal(proto);
 }
 
 void Service::NotifyVmStopping(const VmId& vm_id, int64_t cid) {

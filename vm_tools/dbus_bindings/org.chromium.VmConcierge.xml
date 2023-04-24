@@ -445,6 +445,12 @@
                     value="vm_tools::concierge::DiskImageStatusResponse"/>
       </arg>
     </signal>
+    <signal name="VmGuestUserlandReadySignal">
+      <arg name="signal" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::VmGuestUserlandReadySignal"/>
+      </arg>
+    </signal>
     <signal name="VmStartedSignal">
       <arg name="signal" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
