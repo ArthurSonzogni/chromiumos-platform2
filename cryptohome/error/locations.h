@@ -187,32 +187,32 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocRecoveryAuthBlockScryptDeriveFailedInDerive = 180,
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocRecoveryAuthBlockRevocationDeriveFailedInDerive = 181,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockNoKeyServiceInCreate = 182,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockNoInputUserInCreate = 183,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockNoInputAuthInCreate = 184,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockNoInputAlgInCreate = 185,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockServiceGenerateFailedInCreate = 186,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockCannotCreateScryptInCreate = 187,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockScryptDerivationFailedInCreate = 188,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockNoKeyServiceInDerive = 189,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockInvalidBlockStateInDerive = 190,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockNoChallengeInfoInDerive = 191,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockNoAlgorithmInfoInDerive = 192,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockServiceDeriveFailedInDerive = 193,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockScryptDeriveFailedInDerive = 194,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockNoKeyServiceInCreate = 182,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockNoInputUserInCreate = 183,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockNoInputAuthInCreate = 184,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockNoInputAlgInCreate = 185,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockServiceGenerateFailedInCreate = 186,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockCannotCreateScryptInCreate = 187,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockScryptDerivationFailedInCreate = 188,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockNoKeyServiceInDerive = 189,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockInvalidBlockStateInDerive = 190,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockNoChallengeInfoInDerive = 191,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockNoAlgorithmInfoInDerive = 192,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockServiceDeriveFailedInDerive = 193,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockScryptDeriveFailedInDerive = 194,
   /* =Obsolete= */
   kLocTpmAuthBlockUtilsCryptohomeKeyLoadFailedInPubkeyHash = 195,
   /* ./auth_blocks/tpm_auth_block_utils.cc */
@@ -280,9 +280,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* =Obsolete= */
   kLocChalCredAuthBlockDerivationFailedInCreate = 227,
   /* =Obsolete= */
-  kLocChalCredAuthBlockInvalidBlockStateInDerive = 228,
+  kLocChalCredAuthBlockInvalidBlockStateInDeriveObsolete = 228,
   /* =Obsolete= */
-  kLocChalCredAuthBlockScryptDeriveFailedInDerive = 229,
+  kLocChalCredAuthBlockScryptDeriveFailedInDeriveObsolete = 229,
   /* ./auth_blocks/tpm_ecc_auth_block.cc */
   kLocTpmEccAuthBlockRetryLimitExceededInCreate = 230,
   /* ./auth_blocks/tpm_ecc_auth_block.cc */
@@ -1071,8 +1071,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNullParamInLoadUSS = 622,
   /* ./auth_session.cc */
   kLocAuthSessionDeriveFailedInLoadUSS = 623,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockNoInputAuthInDerive = 624,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockNoInputAuthInDerive = 624,
   /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
   kLocChalCredDecryptNoHwsecBackend = 625,
   /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
@@ -1427,10 +1427,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocTpmNotBoundToPcrAuthBlockHwsecNotReadyInIsSupported = 2706,
   /* ./auth_blocks/tpm_not_bound_to_pcr_auth_block.cc */
   kLocTpmNotBoundToPcrAuthBlockNoKeyLoaderInIsSupported = 2707,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockHwsecReadyErrorInIsSupported = 2708,
-  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
-  kLocAsyncChalCredAuthBlockHwsecNotReadyInIsSupported = 2709,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockHwsecReadyErrorInIsSupported = 2708,
+  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  kLocChalCredAuthBlockHwsecNotReadyInIsSupported = 2709,
   /* ./auth_blocks/tpm_ecc_auth_block.cc */
   kLocTpmEccAuthBlockHwsecReadyErrorInIsSupported = 2710,
   /* ./auth_blocks/tpm_ecc_auth_block.cc */

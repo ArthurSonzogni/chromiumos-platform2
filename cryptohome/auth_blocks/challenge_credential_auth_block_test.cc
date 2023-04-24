@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/auth_blocks/async_challenge_credential_auth_block.h"
+#include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 
 #include <stdint.h>
 
@@ -109,20 +109,20 @@ void VerifyCreateCallback(base::RunLoop* run_loop,
 }
 }  // namespace
 
-class AsyncChallengeCredentialAuthBlockTest : public ::testing::Test {
+class ChallengeCredentialAuthBlockTest : public ::testing::Test {
  public:
-  AsyncChallengeCredentialAuthBlockTest() = default;
-  AsyncChallengeCredentialAuthBlockTest(
-      const AsyncChallengeCredentialAuthBlockTest&) = delete;
-  AsyncChallengeCredentialAuthBlockTest& operator=(
-      const AsyncChallengeCredentialAuthBlockTest&) = delete;
+  ChallengeCredentialAuthBlockTest() = default;
+  ChallengeCredentialAuthBlockTest(const ChallengeCredentialAuthBlockTest&) =
+      delete;
+  ChallengeCredentialAuthBlockTest& operator=(
+      const ChallengeCredentialAuthBlockTest&) = delete;
 
-  ~AsyncChallengeCredentialAuthBlockTest() override = default;
+  ~ChallengeCredentialAuthBlockTest() override = default;
 
   void SetUp() override {
     auto mock_key_challenge_service =
         std::make_unique<NiceMock<MockKeyChallengeService>>();
-    auth_block_ = std::make_unique<AsyncChallengeCredentialAuthBlock>(
+    auth_block_ = std::make_unique<ChallengeCredentialAuthBlock>(
         &challenge_credentials_helper_, std::move(mock_key_challenge_service),
         kFakeAccountId);
   }
@@ -132,7 +132,7 @@ class AsyncChallengeCredentialAuthBlockTest : public ::testing::Test {
 
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
   const Username kFakeAccountId{"account_id"};
-  std::unique_ptr<AsyncChallengeCredentialAuthBlock> auth_block_;
+  std::unique_ptr<ChallengeCredentialAuthBlock> auth_block_;
 
   const error::CryptohomeError::ErrorLocationPair kErrorLocationPlaceholder =
       error::CryptohomeError::ErrorLocationPair(
@@ -140,8 +140,8 @@ class AsyncChallengeCredentialAuthBlockTest : public ::testing::Test {
           "Testing1");
 };
 
-// The AsyncChallengeCredentialAuthBlock::Create should work correctly.
-TEST_F(AsyncChallengeCredentialAuthBlockTest, Create) {
+// The ChallengeCredentialAuthBlock::Create should work correctly.
+TEST_F(ChallengeCredentialAuthBlockTest, Create) {
   AuthInput auth_input{
       .obfuscated_username = ObfuscatedUsername("obfuscated_username"),
       .challenge_credential_auth_input =
@@ -176,9 +176,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, Create) {
   run_loop.Run();
 }
 
-// The AsyncChallengeCredentialAuthBlock::Create should fail when the challenge
+// The ChallengeCredentialAuthBlock::Create should fail when the challenge
 // service failed.
-TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateCredentialsFailed) {
+TEST_F(ChallengeCredentialAuthBlockTest, CreateCredentialsFailed) {
   EXPECT_CALL(challenge_credentials_helper_,
               GenerateNew(kFakeAccountId, _, _, _, _))
       .WillOnce(
@@ -215,9 +215,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateCredentialsFailed) {
   run_loop.Run();
 }
 
-// The AsyncChallengeCredentialAuthBlock::Create should fail when called
+// The ChallengeCredentialAuthBlock::Create should fail when called
 // multiple create.
-TEST_F(AsyncChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
+TEST_F(ChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
   AuthInput auth_input{
       .obfuscated_username = ObfuscatedUsername("obfuscated_username"),
       .challenge_credential_auth_input =
@@ -266,9 +266,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
   run_loop2.Run();
 }
 
-// The AsyncChallengeCredentialAuthBlock::Create should fail when missing
+// The ChallengeCredentialAuthBlock::Create should fail when missing
 // obfuscated username.
-TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateMissingObfuscatedUsername) {
+TEST_F(ChallengeCredentialAuthBlockTest, CreateMissingObfuscatedUsername) {
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
       [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
@@ -292,9 +292,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateMissingObfuscatedUsername) {
   run_loop.Run();
 }
 
-// The AsyncChallengeCredentialAuthBlock::Create should fail when missing auth
+// The ChallengeCredentialAuthBlock::Create should fail when missing auth
 // input.
-TEST_F(AsyncChallengeCredentialAuthBlockTest,
+TEST_F(ChallengeCredentialAuthBlockTest,
        CreateMissingChallengeCredentialAuthInput) {
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
@@ -312,9 +312,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest,
   run_loop.Run();
 }
 
-// The AsyncChallengeCredentialAuthBlock::Create should fail when missing
+// The ChallengeCredentialAuthBlock::Create should fail when missing
 // algorithm.
-TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateMissingAlgorithm) {
+TEST_F(ChallengeCredentialAuthBlockTest, CreateMissingAlgorithm) {
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
       [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
@@ -337,8 +337,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateMissingAlgorithm) {
   run_loop.Run();
 }
 
-// The AsyncChallengeCredentialAuthBlock::Derive should work correctly.
-TEST_F(AsyncChallengeCredentialAuthBlockTest, Derive) {
+// The ChallengeCredentialAuthBlock::Derive should work correctly.
+TEST_F(ChallengeCredentialAuthBlockTest, Derive) {
   AuthBlockState auth_state{
       .state =
           ChallengeCredentialAuthBlockState{
@@ -429,9 +429,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, Derive) {
   run_loop.Run();
 }
 
-// The AsyncChallengeCredentialAuthBlock::Derive should fail when the key
+// The ChallengeCredentialAuthBlock::Derive should fail when the key
 // challenge service failed.
-TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveFailed) {
+TEST_F(ChallengeCredentialAuthBlockTest, DeriveFailed) {
   AuthBlockState auth_state{
       .state =
           ChallengeCredentialAuthBlockState{
@@ -477,9 +477,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveFailed) {
   run_loop.Run();
 }
 
-// The AsyncChallengeCredentialAuthBlock::Derive should fail when missing
+// The ChallengeCredentialAuthBlock::Derive should fail when missing
 // algorithms.
-TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveMissingAlgorithms) {
+TEST_F(ChallengeCredentialAuthBlockTest, DeriveMissingAlgorithms) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
       [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
@@ -497,8 +497,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveMissingAlgorithms) {
   run_loop.Run();
 }
 
-// The AsyncChallengeCredentialAuthBlock::Derive should fail when missing state.
-TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoState) {
+// The ChallengeCredentialAuthBlock::Derive should fail when missing state.
+TEST_F(ChallengeCredentialAuthBlockTest, DeriveNoState) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
       [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
@@ -522,9 +522,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoState) {
   run_loop.Run();
 }
 
-// The AsyncChallengeCredentialAuthBlock::Derive should fail when missing keyset
+// The ChallengeCredentialAuthBlock::Derive should fail when missing keyset
 // info.
-TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoKeysetInfo) {
+TEST_F(ChallengeCredentialAuthBlockTest, DeriveNoKeysetInfo) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
       [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
@@ -551,9 +551,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoKeysetInfo) {
   run_loop.Run();
 }
 
-// The AsyncChallengeCredentialAuthBlock::Derive should fail when missing scrypt
+// The ChallengeCredentialAuthBlock::Derive should fail when missing scrypt
 // state.
-TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoScryptState) {
+TEST_F(ChallengeCredentialAuthBlockTest, DeriveNoScryptState) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
       [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
@@ -600,13 +600,13 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoScryptState) {
 // Test fixture that sets up a real `ChallengeCredentialsHelperImpl` and mocks
 // at the `SignatureSealingBackend` level, hence achieving more extensive test
 // coverage than the fixture above.
-class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
+class ChallengeCredentialAuthBlockFullTest : public ::testing::Test {
  protected:
   const ObfuscatedUsername kObfuscatedUsername{"obfuscated_username"};
   const brillo::Blob kPublicKeySpkiDer =
       brillo::BlobFromString("public_key_spki_der");
 
-  AsyncChallengeCredentialAuthBlockFullTest() {
+  ChallengeCredentialAuthBlockFullTest() {
     ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, IsSrkRocaVulnerable()).WillByDefault(ReturnValue(false));
 
@@ -618,13 +618,13 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
         std::make_unique<ChallengeCredentialsHelperImpl>(&hwsec_);
   }
 
-  ~AsyncChallengeCredentialAuthBlockFullTest() = default;
+  ~ChallengeCredentialAuthBlockFullTest() = default;
 
   void CreateAuthBlock() {
     auto owned_key_challenge_service =
         std::make_unique<MockKeyChallengeService>();
     key_challenge_service_ = owned_key_challenge_service.get();
-    auth_block_ = std::make_unique<AsyncChallengeCredentialAuthBlock>(
+    auth_block_ = std::make_unique<ChallengeCredentialAuthBlock>(
         challenge_credentials_helper_.get(),
         std::move(owned_key_challenge_service), kFakeAccountId);
   }
@@ -718,13 +718,13 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   std::unique_ptr<ChallengeCredentialsHelperImpl> challenge_credentials_helper_;
-  std::unique_ptr<AsyncChallengeCredentialAuthBlock> auth_block_;
+  std::unique_ptr<ChallengeCredentialAuthBlock> auth_block_;
   // Unowned - pointing to the object owned by `*auth_block_`.
   MockKeyChallengeService* key_challenge_service_ = nullptr;
 };
 
 // Verifies that Derive succeeds on the output of Create.
-TEST_F(AsyncChallengeCredentialAuthBlockFullTest, DeriveCreated) {
+TEST_F(ChallengeCredentialAuthBlockFullTest, DeriveCreated) {
   constexpr auto kHwsecAlgorithm = HwsecAlgorithm::kRsassaPkcs1V15Sha256;
   constexpr auto kAlgorithm =
       structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;
@@ -768,8 +768,7 @@ TEST_F(AsyncChallengeCredentialAuthBlockFullTest, DeriveCreated) {
 
 // Verifies that Derive succeeds on the output of Create, even when different
 // algorithms are used for salt and for the TPM-backed secret.
-TEST_F(AsyncChallengeCredentialAuthBlockFullTest,
-       DeriveCreatedDifferentAlgorithms) {
+TEST_F(ChallengeCredentialAuthBlockFullTest, DeriveCreatedDifferentAlgorithms) {
   constexpr auto kHwsecSaltAlgorithm = HwsecAlgorithm::kRsassaPkcs1V15Sha256;
   constexpr auto kSaltAlgorithm =
       structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256;

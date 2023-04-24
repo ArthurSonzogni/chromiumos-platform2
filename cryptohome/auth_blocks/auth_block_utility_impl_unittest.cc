@@ -1338,7 +1338,7 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterDerive) {
 // Test that CreateKeyBlobsWithAuthBlock creates AuthBlockState
 // and KeyBlobs, internally using a AsyncChallengeCredentialAuthBlock for
 // accessing the key material.
-TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
+TEST_F(AuthBlockUtilityImplTest, ChallengeCredentialCreate) {
   brillo::SecureBlob passkey("passkey");
   Credentials credentials(kUser, passkey);
   crypto_.Init();
@@ -1422,8 +1422,8 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
       std::move(create_callback));
 }
 
-// The AsyncChallengeCredentialAuthBlock::Derive should work correctly.
-TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
+// The ChallengeCredentialAuthBlock::Derive should work correctly.
+TEST_F(AuthBlockUtilityImplTest, ChallengeCredentialDerive) {
   brillo::SecureBlob passkey("passkey");
   Credentials credentials(kUser, passkey);
   crypto_.Init();
@@ -2045,7 +2045,7 @@ TEST_F(AuthBlockUtilityImplTest, GetAuthBlockWithTypeChallengeCredential) {
                        kRsassaPkcs1V15Sha256},
               .dbus_service_name = kKeyDelegateDBusService},
   };
-  // Test. All fields are valid to get an AsyncChallengeCredentialAuthBlock.
+  // Test. All fields are valid to get an ChallengeCredentialAuthBlock.
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
       auth_block_utility_impl_->GetAuthBlockWithType(
           AuthBlockType::kChallengeCredential, auth_input);

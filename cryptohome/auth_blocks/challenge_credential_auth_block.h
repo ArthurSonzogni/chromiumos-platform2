@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_AUTH_BLOCKS_ASYNC_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
-#define CRYPTOHOME_AUTH_BLOCKS_ASYNC_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
+#ifndef CRYPTOHOME_AUTH_BLOCKS_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
+#define CRYPTOHOME_AUTH_BLOCKS_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
 
 #include <map>
 #include <memory>
@@ -25,10 +25,10 @@
 
 namespace cryptohome {
 
-// The asynchronous auth block for challenge credential.
+// The auth block definition for challenge credential.
 // Note: Create/Derive cannot be called twice after we instantiate this auth
 // block.
-class AsyncChallengeCredentialAuthBlock : public AuthBlock {
+class ChallengeCredentialAuthBlock : public AuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kChallengeCredential;
@@ -39,15 +39,14 @@ class AsyncChallengeCredentialAuthBlock : public AuthBlock {
       ChallengeCredentialsHelper* challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory);
 
-  AsyncChallengeCredentialAuthBlock(
+  ChallengeCredentialAuthBlock(
       ChallengeCredentialsHelper* challenge_credentials_helper,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       const Username& account_id);
 
-  AsyncChallengeCredentialAuthBlock(const AsyncChallengeCredentialAuthBlock&) =
+  ChallengeCredentialAuthBlock(const ChallengeCredentialAuthBlock&) = delete;
+  ChallengeCredentialAuthBlock& operator=(const ChallengeCredentialAuthBlock&) =
       delete;
-  AsyncChallengeCredentialAuthBlock& operator=(
-      const AsyncChallengeCredentialAuthBlock&) = delete;
 
   // This creates the KeyBlobs & AuthBlockState  from the key challenge service.
   void Create(const AuthInput& user_input, CreateCallback callback) override;
@@ -86,9 +85,9 @@ class AsyncChallengeCredentialAuthBlock : public AuthBlock {
   std::unique_ptr<KeyChallengeService> key_challenge_service_;
   const Username account_id_;
 
-  base::WeakPtrFactory<AsyncChallengeCredentialAuthBlock> weak_factory_{this};
+  base::WeakPtrFactory<ChallengeCredentialAuthBlock> weak_factory_{this};
 };
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_AUTH_BLOCKS_ASYNC_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_
+#endif  // CRYPTOHOME_AUTH_BLOCKS_CHALLENGE_CREDENTIAL_AUTH_BLOCK_H_

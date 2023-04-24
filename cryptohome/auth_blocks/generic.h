@@ -12,9 +12,9 @@
 
 #include <libhwsec-foundation/status/status_chain.h>
 
-#include "cryptohome/auth_blocks/async_challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
+#include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
 #include "cryptohome/auth_blocks/fingerprint_auth_block.h"
@@ -74,7 +74,7 @@ class GenericAuthBlockFunctions {
   // functions. Usually used as the initial TypeContainer parameter for all of
   // the variadic functions.
   using AllBlockTypes = TypeContainer<PinWeaverAuthBlock,
-                                      AsyncChallengeCredentialAuthBlock,
+                                      ChallengeCredentialAuthBlock,
                                       DoubleWrappedCompatAuthBlock,
                                       TpmBoundToPcrAuthBlock,
                                       TpmNotBoundToPcrAuthBlock,

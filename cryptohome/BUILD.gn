@@ -277,12 +277,12 @@ if (use.test || use.fuzzer) {
 if (use.test) {
   executable("cryptohome_testrunner") {
     sources = [
-      "auth_blocks/async_challenge_credential_auth_block_test.cc",
       "auth_blocks/auth_block_state_unittest.cc",
       "auth_blocks/auth_block_unittest.cc",
       "auth_blocks/auth_block_utility_impl_unittest.cc",
       "auth_blocks/biometrics_auth_block_service_test.cc",
       "auth_blocks/biometrics_command_processor_impl_test.cc",
+      "auth_blocks/challenge_credential_auth_block_test.cc",
       "auth_blocks/double_wrapped_compat_auth_block_test.cc",
       "auth_blocks/fingerprint_auth_block_test.cc",
       "auth_blocks/fp_service_unittest.cc",

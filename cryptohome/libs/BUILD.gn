@@ -383,11 +383,11 @@ install_config("install_platform_headers") {
 
 static_library("libcrostpm") {
   sources = [
-    "../auth_blocks/async_challenge_credential_auth_block.cc",
     "../auth_blocks/auth_block_utility_impl.cc",
     "../auth_blocks/auth_block_utils.cc",
     "../auth_blocks/biometrics_auth_block_service.cc",
     "../auth_blocks/biometrics_command_processor_impl.cc",
+    "../auth_blocks/challenge_credential_auth_block.cc",
     "../auth_blocks/cryptohome_recovery_auth_block.cc",
     "../auth_blocks/double_wrapped_compat_auth_block.cc",
     "../auth_blocks/fingerprint_auth_block.cc",

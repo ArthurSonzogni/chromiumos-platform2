@@ -20,10 +20,10 @@
 #include <chromeos/constants/cryptohome.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
 
-#include "cryptohome/auth_blocks/async_challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
+#include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
 #include "cryptohome/auth_blocks/fingerprint_auth_block.h"
@@ -166,7 +166,7 @@ bool AuthBlockUtilityImpl::IsAuthFactorSupported(
     case AuthFactorType::kKiosk:
       return configured_factors.empty() || user_has_kiosk;
     case AuthFactorType::kSmartCard:
-      return AsyncChallengeCredentialAuthBlock::IsSupported(*crypto_).ok();
+      return ChallengeCredentialAuthBlock::IsSupported(*crypto_).ok();
     case AuthFactorType::kLegacyFingerprint:
       return false;
     case AuthFactorType::kFingerprint: {
