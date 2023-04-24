@@ -4188,14 +4188,12 @@ void Service::HandleVmStarted(const VmId& vm_id,
 void Service::SendVmStartedSignal(const VmId& vm_id,
                                   const vm_tools::concierge::VmInfo& vm_info,
                                   vm_tools::concierge::VmStatus status) {
-  dbus::Signal signal(kVmConciergeInterface, kVmStartedSignal);
-  vm_tools::concierge::ExtendedVmInfo proto;
+  vm_tools::concierge::VmStartedSignal proto;
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.mutable_vm_info()->CopyFrom(vm_info);
   proto.set_status(status);
-  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
-  exported_object_->SendSignal(&signal);
+  concierge_adaptor_.SendVmStartedSignalSignal(proto);
 }
 
 void Service::SendVmStartingUpSignal(

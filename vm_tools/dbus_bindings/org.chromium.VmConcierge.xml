@@ -458,6 +458,12 @@
       </arg>
     </method>
 
+    <signal name="VmStartedSignal">
+      <arg name="signal" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::VmStartedSignal"/>
+      </arg>
+    </signal>
     <signal name="VmStartingUpSignal">
       <tp:docstring>
         Indicates a new vm is starting so logging can be captured as early as
