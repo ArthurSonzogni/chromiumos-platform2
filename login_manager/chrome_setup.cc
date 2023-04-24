@@ -416,6 +416,11 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
       base::FilePath("/var/cache/device_policy_external_data"), uid, gid,
       0700));
 
+  // Create the directory where screensaver images data referenced by device
+  // policy is cached. This data is read and written by chronos.
+  CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/managed_screensaver"),
+                              uid, gid, 0700));
+
   // Create the directory where the AppPack extensions are cached.
   // These extensions are read and written by chronos.
   CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/app_pack"), uid, gid,
