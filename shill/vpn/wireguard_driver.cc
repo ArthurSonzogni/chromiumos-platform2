@@ -537,7 +537,7 @@ void WireGuardDriver::OnConfigurationDone(int exit_code) {
   }
 
   if (!PopulateIPProperties()) {
-    FailService(Service::kFailureInternal, "Failed to populate ip properties");
+    FailService(Service::kFailureConnect, "Failed to populate ip properties");
     return;
   }
 
@@ -598,8 +598,8 @@ bool WireGuardDriver::PopulateIPProperties() {
     ipv6_properties_.gateway = "::";
   }
   if ((ipv4_address_list.size() == 0) && (ipv6_address_list.size() == 0)) {
-    LOG(INFO) << "IP address is not set in WireGuard properties. Might be set "
-                 "in StaticIPConfig.";
+    LOG(ERROR) << "Missing client IP address in the configuration";
+    return false;
   }
 
   // When we arrive here, the value of AllowedIPs has already been validated
