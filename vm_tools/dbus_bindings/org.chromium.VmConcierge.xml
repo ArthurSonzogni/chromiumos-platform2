@@ -429,6 +429,17 @@
       </arg>
     </method>
 
+    <signal name="DiskImageProgress">
+      <tp:docstring>
+        Signaled by Concierge after an ImportDiskImage
+        call has been made and an update about the status of the import
+        is available.
+      </tp:docstring>
+      <arg name="signal" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::DiskImageStatusResponse"/>
+      </arg>
+    </signal>
     <signal name="VmStartedSignal">
       <arg name="signal" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"

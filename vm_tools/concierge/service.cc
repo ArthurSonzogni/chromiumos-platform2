@@ -3654,9 +3654,7 @@ void Service::RunDiskImageOperation(std::string uuid) {
     // Send the D-Bus signal out updating progress of the operation.
     DiskImageStatusResponse status;
     FormatDiskImageStatus(op, &status);
-    dbus::Signal signal(kVmConciergeInterface, kDiskImageProgressSignal);
-    dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(status);
-    exported_object_->SendSignal(&signal);
+    concierge_adaptor_.SendDiskImageProgressSignal(status);
 
     // Note the time we sent out the notification.
     iter->last_report_time = base::TimeTicks::Now();
