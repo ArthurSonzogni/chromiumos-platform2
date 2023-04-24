@@ -37,8 +37,16 @@ impl ResumeInitConductor {
                 info!("Hibernate cookie was not set, continuing anyway due to --force");
 
             // In the most common case, no resume from hibernate will be imminent.
-            } else if cookie == HibernateCookieValue::NoResume {
+            } else if cookie == HibernateCookieValue::NoResume
+                || cookie == HibernateCookieValue::Uninitialized
+            {
                 info!("Hibernate cookie was not set, doing nothing");
+
+                if cookie == HibernateCookieValue::Uninitialized {
+                    set_hibernate_cookie::<PathBuf>(None, HibernateCookieValue::NoResume)
+                        .context("Failed to set hibernate cookie to NoResume")?;
+                }
+
                 return Err(HibernateError::CookieError(
                     "Cookie not set, doing nothing".to_string(),
                 ))
