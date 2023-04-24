@@ -4051,10 +4051,7 @@ void Service::OnResolvConfigChanged(std::vector<string> nameservers,
 
   // Broadcast DnsSettingsChanged signal so Plugin VM dispatcher is aware as
   // well.
-  dbus::Signal signal(kVmConciergeInterface, kDnsSettingsChangedSignal);
-  dbus::MessageWriter writer(&signal);
-  writer.AppendProtoAsArrayOfBytes(ComposeDnsResponse());
-  exported_object_->SendSignal(&signal);
+  concierge_adaptor_.SendDnsSettingsChangedSignal(ComposeDnsResponse());
 }
 
 void Service::OnDefaultNetworkServiceChanged() {

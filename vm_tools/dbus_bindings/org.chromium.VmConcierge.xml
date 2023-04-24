@@ -484,6 +484,15 @@
         </tp:docstring>
       </arg>
     </signal>
+    <signal name="DnsSettingsChanged">
+      <tp:docstring>
+        Signal to let Parallels dispatcher aware of DNS settings change.
+      </tp:docstring>
+      <arg name="signal" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::DnsSettings"/>
+      </arg>
+    </signal>
     <signal name="VmStartedSignal">
       <tp:docstring>
         Indicates that the concierge successfully launched crosvm as its child
