@@ -23,14 +23,12 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/storage/storage_uploader_interface.h"
-#include "missive/util/dynamic_flag.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
 
-StorageModule::StorageModule(bool legacy_storage_enabled)
-    : DynamicFlag("legacy_storage_enabled", legacy_storage_enabled) {}
+StorageModule::StorageModule() = default;
 
 StorageModule::~StorageModule() = default;
 
@@ -61,7 +59,6 @@ void StorageModule::UpdateEncryptionKey(
 // static
 void StorageModule::Create(
     const StorageOptions& options,
-    bool legacy_storage_enabled,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
     scoped_refptr<QueuesContainer> queues_container,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
@@ -69,7 +66,7 @@ void StorageModule::Create(
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
   scoped_refptr<StorageModule> instance =
       // Cannot base::MakeRefCounted, since constructor is protected.
-      base::WrapRefCounted(new StorageModule(legacy_storage_enabled));
+      base::WrapRefCounted(new StorageModule());
 
   auto completion_cb = base::BindOnce(
       [](scoped_refptr<StorageModule> instance,
@@ -85,9 +82,11 @@ void StorageModule::Create(
       },
       std::move(instance), std::move(callback));
 
-  // TOOD(b/279057326): dynamically update storage implementation when
-  // `legacy_storage_enabled` changes
-  if (instance->legacy_storage_enabled()) {
+  // TODO(b/278121325): Create and use feature flag to switch storage
+  // implementations
+  const bool use_legacy_storage = true;
+
+  if (use_legacy_storage) {
     Storage::Create(options, async_start_upload_cb, queues_container,
                     encryption_module, compression_module,
                     std::move(completion_cb));
@@ -98,7 +97,4 @@ void StorageModule::Create(
   }
 }
 
-bool StorageModule::legacy_storage_enabled() const {
-  return is_enabled();
-}
 }  // namespace reporting

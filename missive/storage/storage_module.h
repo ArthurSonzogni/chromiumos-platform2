@@ -20,18 +20,16 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/storage/storage_uploader_interface.h"
-#include "missive/util/dynamic_flag.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
 
-class StorageModule : public StorageModuleInterface, public DynamicFlag {
+class StorageModule : public StorageModuleInterface {
  public:
   // Factory method creates |StorageModule| object.
   static void Create(
       const StorageOptions& options,
-      bool legacy_storage_enabled,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<QueuesContainer> queues_container,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
@@ -71,9 +69,7 @@ class StorageModule : public StorageModuleInterface, public DynamicFlag {
 
  protected:
   // Constructor can only be called by |Create| factory method.
-  explicit StorageModule(bool legacy_storage_enabled);
-
-  bool legacy_storage_enabled() const;
+  StorageModule();
 
   // Refcounted object must have destructor declared protected or private.
   ~StorageModule() override;
