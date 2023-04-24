@@ -13,7 +13,10 @@ group("all") {
     ":missived",
   ]
   if (use.test) {
-    deps += [ ":missived_testrunner" ]
+    deps += [
+      ":missive_testing_tool",
+      ":missived_testrunner",
+    ]
   }
 }
 
@@ -235,6 +238,15 @@ if (use.test) {
       "//missive/util:status",
       "//missive/util:test_callbacks_support",
       "//missive/util:time",
+    ]
+  }
+
+  executable("missive_testing_tool") {
+    sources = [ "testing_tool.cc" ]
+    configs += [ ":target_defaults" ]
+    deps = [
+      ":missiveclientlib",
+      "//missive/analytics:libanalytics",
     ]
   }
 }

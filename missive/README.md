@@ -82,3 +82,27 @@ issues:
 - chromium://components/reporting/util/status.proto has been moved to
   .../missive/proto/status.proto. This is due to difficulties in including
   protos within protos on ChromeOS.
+
+### Test tool for manual Enqueue and Flush operations.
+
+The tool is built as part of missive when running tests.
+
+```
+# HOST (inside chroot)
+~$ FEATURES=test emerge-${BOARD} missive
+~$ scp -P 9222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no                      \
+       /build/${BOARD}/var/cache/portage/chromeos-base/missive/out/Default/missive_testing_tool \
+       root@localhost:/usr/bin/missive_testing_tool
+```
+
+(If targeting DUT, replace port in -P parameter - usually with 2222)
+
+```
+# VM/DUT
+To enqueue event:
+~# sudo -u chronos /usr/bin/missive_testing_tool --enqueue="Some record data..." \
+   --priority=SLOW_BATCH --destination=HEARTBEAT_EVENTS
+To flush all events in a queue:
+~# sudo -u chronos /usr/bin/missive_testing_tool --flush \
+   --priority=SLOW_BATCH
+```
