@@ -1145,7 +1145,6 @@ void Service::RunBalloonPolicy() {
     return;
   }
 
-  TaggedMemoryMiBDeltas deltas;
   const auto foreground_vm_name = GameModeToForegroundVmName(*game_mode);
   for (auto& vm_entry : vms_) {
     auto& vm = vm_entry.second;

@@ -41,7 +41,6 @@
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/dbus_adaptors/org.chromium.VmConcierge.h"
 #include "vm_tools/concierge/disk_image.h"
-#include "vm_tools/concierge/manatee_memory_service.h"
 #include "vm_tools/concierge/power_manager_client.h"
 #include "vm_tools/concierge/shill_client.h"
 #include "vm_tools/concierge/spaced_observer.h"
@@ -528,9 +527,6 @@ class Service final : public org::chromium::VmConciergeInterface {
 
   // Thread on which memory reclaim operations are performed.
   base::Thread reclaim_thread_{"memory reclaim thread"};
-
-  // The connection to the manatee manatee memory service.
-  std::unique_ptr<ManateeMemoryService> mms_;
 
   // The next vm memory id. Only used for non-manatee builds, since
   // the manatee memory service specifies the id on manatee builds.

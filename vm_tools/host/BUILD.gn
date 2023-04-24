@@ -147,7 +147,6 @@ static_library("libconcierge") {
     "../concierge/crosvm_control_impl.cc",
     "../concierge/disk_image.cc",
     "../concierge/dlc_helper.cc",
-    "../concierge/manatee_memory_service.cc",
     "../concierge/mglru_util.cc",
     "../concierge/pci_utils.cc",
     "../concierge/plugin_vm.cc",
