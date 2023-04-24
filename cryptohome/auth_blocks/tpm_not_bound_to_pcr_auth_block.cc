@@ -400,8 +400,9 @@ void TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   key_blobs->vkk_iv = vkk_iv;
   key_blobs->chaps_iv = vkk_iv;
 
-  *auth_block_state = AuthBlockState{.state = std::move(auth_state)};
+  auth_block_state->state = std::move(auth_state);
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
                           std::move(key_blobs), std::move(auth_block_state));
 }
+
 }  // namespace cryptohome

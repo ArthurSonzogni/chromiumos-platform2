@@ -48,14 +48,6 @@ class TpmBoundToPcrAuthBlock : public AuthBlock {
               DeriveCallback callback) override;
 
  private:
-  // Decrypt the |vault_key| that is bound to PCR, returning the |vkk_iv|
-  // and |vkk_key|.
-  CryptoStatus DecryptTpmBoundToPcr(const brillo::SecureBlob& vault_key,
-                                    const brillo::SecureBlob& tpm_key,
-                                    const brillo::SecureBlob& salt,
-                                    brillo::SecureBlob* vkk_iv,
-                                    brillo::SecureBlob* vkk_key) const;
-
   hwsec::CryptohomeFrontend* hwsec_;
   CryptohomeKeyLoader* cryptohome_key_loader_;
   TpmAuthBlockUtils utils_;

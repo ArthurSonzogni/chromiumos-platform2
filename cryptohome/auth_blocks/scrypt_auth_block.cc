@@ -123,7 +123,7 @@ void ScryptAuthBlock::Create(const AuthInput& auth_input,
   key_blobs->scrypt_chaps_key = std::move(derived_scrypt_chaps_key);
   key_blobs->scrypt_reset_seed_key = std::move(derived_scrypt_reset_seed_key);
 
-  *auth_block_state = AuthBlockState{.state = std::move(scrypt_state)};
+  auth_block_state->state = std::move(scrypt_state);
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
                           std::move(key_blobs), std::move(auth_block_state));
 }

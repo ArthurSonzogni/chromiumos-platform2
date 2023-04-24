@@ -26,7 +26,6 @@ namespace cryptohome {
 
 class FileSystemKeyset;
 class Platform;
-class SyncAuthBlock;
 
 // VaultKeyset holds the File Encryption Key (FEK) and File Name Encryption Key
 // (FNEK) and their corresponding signatures.

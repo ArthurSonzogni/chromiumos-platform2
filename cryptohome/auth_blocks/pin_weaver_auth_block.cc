@@ -313,7 +313,7 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
 
   pin_auth_state.le_label = label;
   pin_auth_state.salt = std::move(salt);
-  *auth_block_state = AuthBlockState{.state = std::move(pin_auth_state)};
+  auth_block_state->state = std::move(pin_auth_state);
   std::move(callback).Run(OkStatus<CryptohomeCryptoError>(),
                           std::move(key_blobs), std::move(auth_block_state));
 }

@@ -216,25 +216,22 @@ void TpmLiveTest::TpmEccAuthBlockTest(TPMTestCallback callback) {
     return;
   }
 
-  std::unique_ptr<TpmEccAuthBlock> auth_block =
-      std::make_unique<TpmEccAuthBlock>(hwsec_.get(),
-                                        &cryptohome_keys_manager_);
+  auto auth_block = std::make_unique<TpmEccAuthBlock>(
+      hwsec_.get(), &cryptohome_keys_manager_);
   TestPasswordBasedAuthBlock(std::move(auth_block), std::move(callback));
 }
 
 void TpmLiveTest::TpmBoundToPcrAuthBlockTest(TPMTestCallback callback) {
   LOG(INFO) << "TpmBoundToPcrAuthBlockTest started";
-  std::unique_ptr<AuthBlock> auth_block =
-      std::make_unique<TpmBoundToPcrAuthBlock>(hwsec_.get(),
-                                               &cryptohome_keys_manager_);
+  auto auth_block = std::make_unique<TpmBoundToPcrAuthBlock>(
+      hwsec_.get(), &cryptohome_keys_manager_);
   TestPasswordBasedAuthBlock(std::move(auth_block), std::move(callback));
 }
 
 void TpmLiveTest::TpmNotBoundToPcrAuthBlockTest(TPMTestCallback callback) {
   LOG(INFO) << "TpmNotBoundToPcrAuthBlockTest started";
-  std::unique_ptr<AuthBlock> auth_block =
-      std::make_unique<TpmNotBoundToPcrAuthBlock>(hwsec_.get(),
-                                                  &cryptohome_keys_manager_);
+  auto auth_block = std::make_unique<TpmNotBoundToPcrAuthBlock>(
+      hwsec_.get(), &cryptohome_keys_manager_);
   TestPasswordBasedAuthBlock(std::move(auth_block), std::move(callback));
 }
 
