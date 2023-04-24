@@ -156,20 +156,28 @@ TEST_F(MissiveArgsTest, ListeningForCollectionValuesUpdate) {
       std::move(fake_platform_features));
 
   // Get initial results
-  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_collection;
-  args.AsyncCall(&MissiveArgs::GetStorageParameters)
+  test::TestEvent<StatusOr<MissiveArgs::CollectionParameters>> get_collection;
+  args.AsyncCall(&MissiveArgs::GetCollectionParameters)
       .WithArgs(get_collection.cb());
   {
     const auto& collection = get_collection.result();
     ASSERT_OK(collection) << collection.status();
-    ASSERT_THAT(collection.ValueOrDie().compression_enabled,
-                Eq(MissiveArgs::kCompressionEnabledDefault));
-    ASSERT_THAT(collection.ValueOrDie().encryption_enabled,
-                Eq(MissiveArgs::kEncryptionEnabledDefault));
-    ASSERT_THAT(collection.ValueOrDie().controlled_degradation,
-                Eq(MissiveArgs::kControlledDegradationDefault));
-    ASSERT_THAT(collection.ValueOrDie().legacy_storage_enabled,
-                Eq(MissiveArgs::kLegacyStorageEnabledDefault));
+    ASSERT_THAT(collection.ValueOrDie().enqueuing_record_tallier,
+                Eq(base::TimeDeltaFromString(
+                       MissiveArgs::kEnqueuingRecordTallierDefault)
+                       .value()));
+    ASSERT_THAT(
+        collection.ValueOrDie().cpu_collector_interval,
+        Eq(base::TimeDeltaFromString(MissiveArgs::kCpuCollectorIntervalDefault)
+               .value()));
+    ASSERT_THAT(collection.ValueOrDie().storage_collector_interval,
+                Eq(base::TimeDeltaFromString(
+                       MissiveArgs::kStorageCollectorIntervalDefault)
+                       .value()));
+    ASSERT_THAT(collection.ValueOrDie().memory_collector_interval,
+                Eq(base::TimeDeltaFromString(
+                       MissiveArgs::kMemoryCollectorIntervalDefault)
+                       .value()));
   }
 
   // Register update callback.
