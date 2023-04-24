@@ -135,8 +135,7 @@ void DeviceUser::UpdateDeviceUser() {
         device_user_ = username;
       } else {
         // TODO(b/277796550): Make count stable across reboots.
-        device_user_ =
-            "UnaffiliatedUser" + std::to_string(++unaffiliated_count_);
+        device_user_ = "UnaffiliatedUser";
       }
     }
   }

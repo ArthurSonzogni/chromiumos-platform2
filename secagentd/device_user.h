@@ -71,7 +71,6 @@ class DeviceUser : public DeviceUserInterface {
       session_manager_;
   std::string device_user_ = "None";
   std::string device_id_ = "";
-  int unaffiliated_count_ = 0;
 };
 
 }  // namespace secagentd

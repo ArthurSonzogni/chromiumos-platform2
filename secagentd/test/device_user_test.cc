@@ -24,7 +24,7 @@ using ::testing::Return;
 using ::testing::WithArg;
 
 constexpr char kDeviceUser[] = "deviceUser@email.com";
-constexpr char kUnaffiliated[] = "UnaffiliatedUser1";
+constexpr char kUnaffiliated[] = "UnaffiliatedUser";
 constexpr char kGuest[] = "GuestUser";
 constexpr char kUnknown[] = "Unknown";
 constexpr char kAffiliationID[] = "affiliation_id";
