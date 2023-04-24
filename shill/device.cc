@@ -203,8 +203,7 @@ Device::Device(Manager* manager,
 }
 
 Device::~Device() {
-  SLOG(this, 1) << "~Device(): " << link_name_
-                << " index: " << interface_index_;
+  LOG(INFO) << "~Device(): " << link_name_ << " index: " << interface_index_;
   network_->UnregisterEventHandler(this);
 }
 

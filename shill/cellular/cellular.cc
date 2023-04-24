@@ -285,7 +285,7 @@ Cellular::Cellular(Manager* manager,
 }
 
 Cellular::~Cellular() {
-  SLOG(1) << LoggingTag() << ": ~Cellular()";
+  LOG(INFO) << LoggingTag() << ": ~Cellular()";
   if (capability_)
     DestroyCapability();
 }
