@@ -16,6 +16,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
@@ -41,7 +42,6 @@
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service_util.h"
 #include "login_manager/policy_store.h"
-#include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"
 
 namespace em = enterprise_management;
@@ -49,6 +49,9 @@ namespace em = enterprise_management;
 namespace login_manager {
 using crypto::RSAPrivateKey;
 using google::protobuf::RepeatedPtrField;
+
+constexpr char DevicePolicyService::kChromadMigrationSkipOobePreservePath[] =
+    "/mnt/stateful_partition/unencrypted/preserve/chromad_migration_skip_oobe";
 
 namespace {
 
@@ -251,7 +254,7 @@ bool DevicePolicyService::Store(const PolicyNamespace& ns,
     // The later gets the new settings to pass to DeviceLocalAccount and at
     // that point the old settings_ have to be reset.
     //
-    // The oprations leading to notification to SessionManagerImpl are
+    // The operations leading to notification to SessionManagerImpl are
     // synchronous, so when PolicyService::Store finishes, the new settings_
     // are already populated. Which makes it safe against possible requests
     // to GetSettings() that could come from other places.
@@ -483,14 +486,12 @@ void DevicePolicyService::PersistPolicy(const PolicyNamespace& ns,
 }
 
 bool DevicePolicyService::MayUpdateSystemSettings() {
-  // Check if device ownership is established or if device is enrolled to Active
-  // Directory (Chromad).
-  if (!key()->IsPopulated() &&
-      GetEnterpriseMode() != InstallAttributesReader::kDeviceModeEnterpriseAD) {
+  // Check if device ownership is established.
+  if (!key()->IsPopulated()) {
     return false;
   }
 
-  // Check whether device is running on Chrome OS firmware.
+  // Check whether device is running on ChromeOS firmware.
   char buffer[Crossystem::kVbMaxStringProperty];
   if (!crossystem_->VbGetSystemPropertyString(Crossystem::kMainfwType, buffer,
                                               sizeof(buffer)) ||
@@ -553,18 +554,16 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
     return true;
   }
 
-  const std::string& mode = GetEnterpriseMode();
+  // If the install attributes are finalized (OOBE completed), try to delete the
+  // Chromad migration skip OOBE flag. This insures that the file gets deleted
+  // when it's no longer needed.
+  //
+  // TODO(b/263367348): Delete this `RemoveFile()` call, when all supported
+  // devices are guaranteed to not have this file persisted.
+  system_->RemoveFile(base::FilePath(kChromadMigrationSkipOobePreservePath));
 
-  // If the install attributes are finalized (OOBE completed) and the device is
-  // not AD managed, try to delete the Chromad migration skip OOBE flag. This
-  // insures that the file gets deleted when it's no longer needed.
-  if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
-    system_->RemoveFile(base::FilePath(
-        SessionManagerImpl::kChromadMigrationSkipOobePreservePath));
-  }
-
-  bool is_enrolled = (mode == InstallAttributesReader::kDeviceModeEnterprise ||
-                      mode == InstallAttributesReader::kDeviceModeEnterpriseAD);
+  bool is_enrolled =
+      GetEnterpriseMode() == InstallAttributesReader::kDeviceModeEnterprise;
 
   // It's impossible for block_devmode to be true and the device to not be
   // enrolled. If we end up in this situation, log the error and don't update
@@ -583,12 +582,8 @@ bool DevicePolicyService::UpdateSystemSettings(Completion completion) {
   updates.push_back(std::make_pair(Crossystem::kCheckEnrollment,
                                    std::to_string(is_enrolled)));
 
-  // Note that VPD update errors will be ignored if the device is not enrolled
-  // or if device is enrolled to Active Directory (Chromad).
-  // TODO(crbug.com/1060640): Revisit ignoring VPD update errors for Chromad
-  // after better solution is found.
-  bool ignore_errors =
-      !is_enrolled || mode == InstallAttributesReader::kDeviceModeEnterpriseAD;
+  // Note that VPD update errors will be ignored if the device is not enrolled.
+  bool ignore_errors = !is_enrolled;
   return vpd_process_->RunInBackground(
       updates, false,
       base::BindOnce(&HandleVpdUpdateCompletion, ignore_errors,

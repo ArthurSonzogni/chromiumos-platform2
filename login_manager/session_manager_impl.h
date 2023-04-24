@@ -112,12 +112,6 @@ class SessionManagerImpl
   // preserve the encrypted stateful file system across a TPM reset.
   static const char kStatefulPreservationRequestFile[];
 
-  // Flag file indicating that the following OOBE screens should be skipped
-  // after the device is powerwashed: (a) "Welcome to your chromebook" and (b)
-  // "Enterprise enrollment completed". This flag should be set only before the
-  // device starts the migration from AD management to cloud management.
-  static const char kChromadMigrationSkipOobePreservePath[];
-
   // Name of impulse emitted when user session starts.
   static const char kStartUserSessionImpulse[];
 
@@ -432,11 +426,6 @@ class SessionManagerImpl
       bool is_incognito,
       brillo::ErrorPtr* error);
 
-  // Verifies whether unsigned policies are permitted to be stored.
-  // Returns nullptr on success. Otherwise, an error that should be used in a
-  // reply to the D-Bus method call is returned.
-  brillo::ErrorPtr VerifyUnsignedPolicyStore();
-
   // Returns the appropriate PolicyService for the given |descriptor|.
   // Returns nullptr and sets |error| if no PolicyService could be found.
   PolicyService* GetPolicyService(const PolicyDescriptor& descriptor,
@@ -450,6 +439,8 @@ class SessionManagerImpl
   int GetKeyInstallFlags(const PolicyDescriptor& descriptor);
 
   // Shared implementation of StorePolicyEx() and StoreUnsignedPolicyEx().
+  // TODO(b/279725159): Remove the signature_check parameter, now that this
+  // method is always called with value `kEnabled`.
   void StorePolicyInternalEx(
       const std::vector<uint8_t>& descriptor_blob,
       const std::vector<uint8_t>& policy_blob,

@@ -103,9 +103,6 @@ constexpr char SessionManagerImpl::kTPMFirmwareUpdateRequestFlagFile[] =
 constexpr char SessionManagerImpl::kStatefulPreservationRequestFile[] =
     "/mnt/stateful_partition/preservation_request";
 
-constexpr char SessionManagerImpl::kChromadMigrationSkipOobePreservePath[] =
-    "/mnt/stateful_partition/unencrypted/preserve/chromad_migration_skip_oobe";
-
 constexpr char SessionManagerImpl::kStartUserSessionImpulse[] =
     "start-user-session";
 
@@ -189,11 +186,6 @@ constexpr char kDefaultUiLogSymlinkPath[] = "/var/log/ui/ui.LATEST";
 // persistent login screen storage.
 constexpr char kLoginScreenStoragePath[] = "/var/lib/login_screen_storage";
 
-// The device wipe reason that should be written in the `kResetFile` when we're
-// starting the Chromad to cloud migration.
-constexpr char kChromadMigrationDeviceWipeReason[] =
-    "ad_migration_wipe_request";
-
 const char* ToSuccessSignal(bool success) {
   return success ? "success" : "failure";
 }
@@ -249,7 +241,7 @@ void HandleDBusSignalConnected(const std::string& interface,
 // Replaces the log file that |symlink_path| (typically /var/log/ui/ui.LATEST)
 // points to with a new file containing the same contents. This is used to
 // disconnect Chrome's stderr and stdout after a user logs in:
-// https://crbug.com/904850
+// https://crbug.com/904850.
 void DisconnectLogFile(const base::FilePath& symlink_path) {
   base::FilePath log_path;
   if (!base::ReadSymbolicLink(symlink_path, &log_path))
@@ -752,13 +744,13 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
 
   // Make sure that Chrome's stdout and stderr, which may contain log messages
   // with user-specific data, don't get saved after the first user logs in:
-  // https://crbug.com/904850
+  // https://crbug.com/904850.
   //
-  // On test images, disable this behavior so that developers can see in-process
-  // crash dump which is printed to stderr. b/188858313
-  // NOTE: Here we check the image type instead of the device's mode, so that
-  // developers can verify what's happening on user devices with a developer
-  // mode device running a regular image.
+  // On test images, disable this behavior, so that developers can see
+  // in-process crash dump which is printed to stderr (b/188858313). NOTE: Here
+  // we check the image type instead of the device's mode, so that developers
+  // can verify what's happening on user devices with a developer mode device
+  // running a regular image.
   std::string channel_string;
   const bool is_test_image = base::SysInfo::GetLsbReleaseValue(
                                  "CHROMEOS_RELEASE_TRACK", &channel_string) &&
@@ -780,17 +772,10 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
   DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged: " << kStarted;
   adaptor_.SendSessionStateChangedSignal(kStarted);
 
-  // Active Directory managed devices are not expected to have a policy key.
-  // Don't create one for them.
   // TODO(b/244407123): If `chrome_owner_key` is true, Chrome will generate the
   // key instead.
-  const bool is_active_directory =
-      install_attributes_reader_->GetAttribute(
-          InstallAttributesReader::kAttrMode) ==
-      InstallAttributesReader::kDeviceModeEnterpriseAD;
-  if (device_policy_->KeyMissing() && !is_active_directory &&
-      !device_policy_->Mitigating() && is_first_real_user &&
-      !chrome_owner_key) {
+  if (device_policy_->KeyMissing() && !device_policy_->Mitigating() &&
+      is_first_real_user && !chrome_owner_key) {
     // This is the first sign-in on this unmanaged device.  Take ownership.
     key_gen_->Start(actual_account_id, ns_mnt_path);
   }
@@ -893,13 +878,12 @@ void SessionManagerImpl::StoreUnsignedPolicyEx(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::vector<uint8_t>& in_descriptor_blob,
     const std::vector<uint8_t>& in_policy_blob) {
-  brillo::ErrorPtr error = VerifyUnsignedPolicyStore();
-  if (error) {
-    response->ReplyWithError(error.get());
-    return;
-  }
-  StorePolicyInternalEx(in_descriptor_blob, in_policy_blob,
-                        SignatureCheck::kDisabled, std::move(response));
+  // TODO(b/274758883): Remove this method, the corresponding DBus declaration,
+  // and it's usage in Authpolicy. For now, it's safe to always return error.
+  brillo::ErrorPtr error =
+      CREATE_ERROR_AND_LOG(dbus_error::kPolicySignatureRequired,
+                           "Device mode doesn't permit unsigned policy.");
+  response->ReplyWithError(error.get());
 }
 
 bool SessionManagerImpl::RetrievePolicyEx(
@@ -1211,25 +1195,6 @@ bool SessionManagerImpl::StartRemoteDeviceWipeInternal(
     brillo::ErrorPtr* error,
     const std::vector<uint8_t>& in_signed_command,
     uint8_t in_signature_type) {
-  const bool is_active_directory =
-      install_attributes_reader_->GetAttribute(
-          InstallAttributesReader::kAttrMode) ==
-      InstallAttributesReader::kDeviceModeEnterpriseAD;
-
-  // Unsigned remote powerwash D-Bus call is allowed only in enterprise_ad mode.
-  // Unsigned requests will be sent from Ash Chrome only if the
-  // `ChromadToCloudMigrationEnabled` policy is true.
-  //
-  // As part of the AD to cloud management migration, a flag file is set,
-  // indicating that some OOBE screens should be skipped after the powerwash.
-  if (is_active_directory) {
-    system_->AtomicFileWrite(
-        base::FilePath(kChromadMigrationSkipOobePreservePath), "1");
-    InitiateDeviceWipe(kChromadMigrationDeviceWipeReason);
-
-    return true;
-  }
-
   if (!enterprise_management::PolicyFetchRequest::SignatureType_IsValid(
           in_signature_type)) {
     *error = CreateError(dbus_error::kInvalidParameter,
@@ -1412,7 +1377,7 @@ void SessionManagerImpl::OnSuspendImminent(dbus::Signal* signal) {
 
   // If Chrome crashed recently, it might've missed this SuspendImminent signal
   // and failed to lock the screen. Stop the session as a precaution:
-  // https://crbug.com/867970
+  // https://crbug.com/867970.
   const base::TimeTicks start_time = manager_->GetLastBrowserRestartTime();
   if (!start_time.is_null() &&
       tick_clock_->NowTicks() - start_time <= kCrashBeforeSuspendInterval) {
@@ -1901,9 +1866,7 @@ void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
       '_');
   const base::FilePath reset_path(kResetFile);
   const std::string reset_file_content =
-      (reason == kChromadMigrationDeviceWipeReason)
-          ? "fast safe ad_migration keepimg reason=" + sanitized_reason
-          : "fast safe keepimg reason=" + sanitized_reason;
+      "fast safe keepimg reason=" + sanitized_reason;
   system_->AtomicFileWrite(reset_path, reset_file_content);
 
   RestartDevice(sanitized_reason);
@@ -1976,18 +1939,6 @@ SessionManagerImpl::CreateUserSession(const std::string& username,
   return std::make_unique<UserSession>(
       username, *SanitizeUserName(Username(username)), is_incognito,
       std::move(nss_desc), std::move(user_policy));
-}
-
-brillo::ErrorPtr SessionManagerImpl::VerifyUnsignedPolicyStore() {
-  // Unsigned policy store D-Bus call is allowed only in enterprise_ad mode.
-  if (install_attributes_reader_->GetAttribute(
-          InstallAttributesReader::kAttrMode) !=
-      InstallAttributesReader::kDeviceModeEnterpriseAD) {
-    return CREATE_ERROR_AND_LOG(dbus_error::kPolicySignatureRequired,
-                                "Device mode doesn't permit unsigned policy.");
-  }
-
-  return nullptr;
 }
 
 PolicyService* SessionManagerImpl::GetPolicyService(

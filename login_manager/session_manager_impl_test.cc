@@ -156,9 +156,6 @@ const char* const kGuestArgv[] = {
     "arg 2",
 };
 
-const base::FilePath kChromadMigrationFilePath =
-    base::FilePath(SessionManagerImpl::kChromadMigrationSkipOobePreservePath);
-
 // Test Bus instance to inject MockExportedObject.
 class FakeBus : public dbus::Bus {
  public:
@@ -834,12 +831,6 @@ class SessionManagerImplTest : public ::testing::Test,
                                          false);  // key_gen
   }
 
-  void ExpectStartSessionActiveDirectory(const string& account_id_string) {
-    ExpectStartSessionUnownedBoilerplate(account_id_string,
-                                         false,   // mitigating
-                                         false);  // key_gen
-  }
-
   void ExpectLockScreen() { expected_locks_ = 1; }
 
   // Since expected_restarts_ is 0 by default, ExpectDeviceRestart(0) initially
@@ -1379,15 +1370,6 @@ TEST_F(SessionManagerImplTest, StartSession_KeyMitigation) {
   EXPECT_FALSE(error.get());
 }
 
-// Ensure that starting Active Directory session does not create owner key.
-TEST_F(SessionManagerImplTest, StartSession_ActiveDirectorManaged) {
-  SetDeviceMode("enterprise_ad");
-  ExpectStartSessionActiveDirectory(kSaneEmail);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
-  EXPECT_FALSE(error.get());
-}
-
 TEST_F(SessionManagerImplTest, SaveLoginPassword) {
   const string kPassword("thepassword");
   base::ScopedFD password_fd = secret_util::WriteSizeAndDataToPipe(
@@ -1530,7 +1512,7 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_SessionStarted) {
       MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
 }
 
-TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureConsumer) {
+TEST_F(SessionManagerImplTest, StoreUnsignedPolicyEx_ConsumerDevice) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   ExpectNoStorePolicy(device_policy_service_);
 
@@ -1540,7 +1522,7 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureConsumer) {
       MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
 }
 
-TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureEnterprise) {
+TEST_F(SessionManagerImplTest, StoreUnsignedPolicyEx_EnterpriseDevice) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   SetDeviceMode("enterprise");
   ExpectNoStorePolicy(device_policy_service_);
@@ -1549,36 +1531,6 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureEnterprise) {
   impl_->StoreUnsignedPolicyEx(
       capturer.CreateMethodResponse<>(),
       MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
-}
-
-TEST_F(SessionManagerImplTest, StorePolicyEx_NoSignatureEnterpriseAD) {
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  SetDeviceMode("enterprise_ad");
-  ExpectStorePolicy(device_policy_service_, policy_blob, kAllKeyFlags,
-                    SignatureCheck::kDisabled);
-
-  ResponseCapturer capturer;
-  impl_->StoreUnsignedPolicyEx(
-      capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
-}
-
-TEST_F(SessionManagerImplTest, StorePolicyEx_DeleteComponentPolicy) {
-  PolicyDescriptor descriptor;
-  descriptor.set_account_type(ACCOUNT_TYPE_DEVICE);
-  descriptor.set_account_id(kEmptyAccountId);
-  descriptor.set_domain(POLICY_DOMAIN_EXTENSIONS);
-  descriptor.set_component_id("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-  std::vector<uint8_t> descriptor_blob =
-      StringToBlob(descriptor.SerializeAsString());
-
-  SetDeviceMode("enterprise_ad");
-  ExpectDeletePolicy(device_policy_service_);
-
-  ResponseCapturer capturer;
-  impl_->StoreUnsignedPolicyEx(capturer.CreateMethodResponse<>(),
-                               StringToBlob(descriptor.SerializeAsString()),
-                               std::vector<uint8_t>() /* policy_blob */);
 }
 
 TEST_F(SessionManagerImplTest, RetrievePolicyEx) {
@@ -1761,7 +1713,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
   Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
 }
 
-TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureConsumer) {
+TEST_F(SessionManagerImplTest, StoreUnsignedPolicyEx_ConsumerUser) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _, _))
@@ -1773,28 +1725,12 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureConsumer) {
       MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), policy_blob);
 }
 
-TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureEnterprise) {
+TEST_F(SessionManagerImplTest, StoreUnsignedPolicyEx_EnterpriseUser) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   SetDeviceMode("enterprise");
   EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _, _))
       .Times(0);
-
-  ResponseCapturer capturer;
-  impl_->StoreUnsignedPolicyEx(
-      capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), policy_blob);
-}
-
-TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSignatureEnterpriseAD) {
-  ExpectAndRunStartSession(kSaneEmail);
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  SetDeviceMode("enterprise_ad");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(MakeChromePolicyNamespace(), policy_blob,
-                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
-                    SignatureCheck::kDisabled, _))
-      .WillOnce(Return(true));
 
   ResponseCapturer capturer;
   impl_->StoreUnsignedPolicyEx(
@@ -2412,9 +2348,6 @@ TEST_F(StartRemoteDeviceWipeTest,
       .WillOnce(Return(true));
 
   impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
-
-  // This file should NOT be set in cloud managed devices.
-  EXPECT_FALSE(utils_.Exists(kChromadMigrationFilePath));
 }
 
 TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_BadSignatureType) {
@@ -2455,9 +2388,6 @@ TEST_P(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_Enterprise) {
       .WillOnce(Return(true));
 
   impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
-
-  // This file should NOT be set in cloud managed devices.
-  EXPECT_FALSE(utils_.Exists(kChromadMigrationFilePath));
 }
 
 // Unsigned commands should fail on cloud managed devices.
@@ -2482,32 +2412,6 @@ TEST_F(StartRemoteDeviceWipeTest,
   impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
 
   EXPECT_EQ(dbus_error::kInvalidParameter, sender.Get()->GetErrorName());
-  // This file should NOT be set in cloud managed devices.
-  EXPECT_FALSE(utils_.Exists(kChromadMigrationFilePath));
-}
-
-// On AD managed devices, any command (signed or not) should succeed.
-TEST_P(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_EnterpriseAD) {
-  SetDeviceMode("enterprise_ad");
-  ExpectDeviceRestart(1);
-
-  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
-  dbus::MessageWriter writer(method_call.get());
-  std::vector<uint8_t> in_signed_command;
-  in_signed_command.push_back(1);
-  const em::PolicyFetchRequest::SignatureType signature_type = GetParam();
-  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
-  writer.AppendByte(signature_type);
-
-  TestFuture<std::unique_ptr<dbus::Response>> sender;
-
-  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(_, _))
-      .Times(0);
-
-  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
-
-  // This file should be set in AD managed devices.
-  EXPECT_TRUE(utils_.Exists(kChromadMigrationFilePath));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -2531,19 +2435,6 @@ TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
       "fast safe keepimg reason="
       "overly_long_test_message_with_special_chars_____12",
       contents);
-}
-
-TEST_F(SessionManagerImplTest, InitiateDeviceWipe_ChromadMigration) {
-  ASSERT_TRUE(
-      utils_.RemoveFile(base::FilePath(SessionManagerImpl::kLoggedInFlag)));
-  ExpectDeviceRestart(1);
-  impl_->InitiateDeviceWipe("ad_migration_wipe_request");
-  std::string contents;
-  base::FilePath reset_path = real_utils_.PutInsideBaseDirForTesting(
-      base::FilePath(SessionManagerImpl::kResetFile));
-  ASSERT_TRUE(base::ReadFileToString(reset_path, &contents));
-  ASSERT_EQ("fast safe ad_migration keepimg reason=ad_migration_wipe_request",
-            contents);
 }
 
 TEST_F(SessionManagerImplTest, ClearForcedReEnrollmentVpd) {

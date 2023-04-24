@@ -38,7 +38,6 @@
 #include "login_manager/mock_policy_store.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_vpd_process.h"
-#include "login_manager/session_manager_impl.h"
 
 namespace em = enterprise_management;
 
@@ -64,7 +63,7 @@ namespace {
 constexpr char kTestUser[] = "user@example.com";
 
 const base::FilePath kChromadMigrationFilePath =
-    base::FilePath(SessionManagerImpl::kChromadMigrationSkipOobePreservePath);
+    base::FilePath(DevicePolicyService::kChromadMigrationSkipOobePreservePath);
 
 ACTION_P(AssignVector, str) {
   arg0->assign(str.begin(), str.end());
@@ -731,46 +730,6 @@ TEST_F(DevicePolicyServiceTest, CheckEnrolledDevice) {
   // This file should be removed, because the device is cloud managed.
   EXPECT_CALL(utils_, RemoveFile(kChromadMigrationFilePath))
       .WillOnce(Return(true));
-
-  PersistPolicy(&service);
-}
-
-// Ensure device enrolled to Active Directory gets VPD updated.
-// A MockDevicePolicyService object is used.
-TEST_F(DevicePolicyServiceTest, CheckADEnrolledDevice) {
-  MockNssUtil nss;
-  InitService(&nss, true);
-
-  MockPolicyKey key;
-  MockPolicyStore* store = new MockPolicyStore();
-  MockDevicePolicyService service(&key);
-  service.SetStoreForTesting(MakeChromePolicyNamespace(),
-                             std::unique_ptr<MockPolicyStore>(store));
-
-  service.set_system_utils(&utils_);
-  service.set_crossystem(&crossystem_);
-  service.set_vpd_process(&vpd_process_);
-  service.set_install_attributes_reader(&install_attributes_reader_);
-  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
-
-  auto proto = std::make_unique<em::ChromeDeviceSettingsProto>();
-  proto->mutable_system_settings()->set_block_devmode(false);
-  SetSettings(&service, std::move(proto));
-  SetPolicyKey(&service, &key);
-
-  EXPECT_CALL(key, IsPopulated()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
-  SetDataInInstallAttributes("enterprise_ad");
-
-  VpdProcess::KeyValuePairs updates{
-      {Crossystem::kBlockDevmode, "0"},
-      {Crossystem::kCheckEnrollment, "1"},
-  };
-  EXPECT_CALL(vpd_process_, RunInBackground(updates, false, _))
-      .WillOnce(Return(true));
-
-  // No file should be removed, because the device is still AD managed.
-  EXPECT_CALL(utils_, RemoveFile(_)).Times(0);
 
   PersistPolicy(&service);
 }
