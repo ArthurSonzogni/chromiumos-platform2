@@ -12,6 +12,7 @@
 #include <string>
 #include <utility>
 
+#include "shill/net/ip_address_utils.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
@@ -57,6 +58,8 @@ class SHILL_EXPORT IPv6Address {
 SHILL_EXPORT std::ostream& operator<<(std::ostream& os,
                                       const IPv6Address& address);
 
-}  // namespace shill
+// Represents the IPv6 CIDR, that contains a IPv6 address and a prefix length.
+using IPv6CIDR = CIDR<IPv6Address>;
 
+}  // namespace shill
 #endif  // SHILL_NET_IPV6_ADDRESS_H_

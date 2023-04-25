@@ -83,5 +83,98 @@ TEST(IPv6AddressTest, Order) {
   }
 }
 
+TEST(IPv6CIDR, CreateFromCIDRString) {
+  const auto address = *IPv6Address::CreateFromString("2401:fa00:480:c6::30");
+  const auto cidr1 = IPv6CIDR::CreateFromCIDRString("2401:fa00:480:c6::30/0");
+  ASSERT_TRUE(cidr1);
+  EXPECT_EQ(cidr1->address(), address);
+  EXPECT_EQ(cidr1->prefix_length(), 0);
+
+  const auto cidr2 = IPv6CIDR::CreateFromCIDRString("2401:fa00:480:c6::30/25");
+  ASSERT_TRUE(cidr2);
+  EXPECT_EQ(cidr2->address(), address);
+  EXPECT_EQ(cidr2->prefix_length(), 25);
+
+  const auto cidr3 = IPv6CIDR::CreateFromCIDRString("2401:fa00:480:c6::30/128");
+  ASSERT_TRUE(cidr3);
+  EXPECT_EQ(cidr3->address(), address);
+  EXPECT_EQ(cidr3->prefix_length(), 128);
+}
+
+TEST(IPv6CIDR, CreateFromCIDRString_Fail) {
+  EXPECT_FALSE(IPv6CIDR::CreateFromCIDRString("192.168.10.1"));
+  EXPECT_FALSE(IPv6CIDR::CreateFromCIDRString("192.168.10.1/24"));
+  EXPECT_FALSE(IPv6CIDR::CreateFromCIDRString("2401:fa00:480:c6::30"));
+  EXPECT_FALSE(IPv6CIDR::CreateFromCIDRString("2401:fa00:480:c6::30/-1"));
+  EXPECT_FALSE(IPv6CIDR::CreateFromCIDRString("2401:fa00:480:c6::30/130"));
+}
+
+TEST(IPv6CIDR, CreateFromStringAndPrefix) {
+  const std::string address_string = "fe80:1000::";
+  const auto address = *IPv6Address::CreateFromString(address_string);
+
+  const auto cidr1 = IPv6CIDR::CreateFromStringAndPrefix(address_string, 0);
+  ASSERT_TRUE(cidr1);
+  EXPECT_EQ(cidr1->address(), address);
+  EXPECT_EQ(cidr1->prefix_length(), 0);
+
+  const auto cidr2 = IPv6CIDR::CreateFromStringAndPrefix(address_string, 64);
+  ASSERT_TRUE(cidr2);
+  EXPECT_EQ(cidr2->address(), address);
+  EXPECT_EQ(cidr2->prefix_length(), 64);
+
+  const auto cidr3 = IPv6CIDR::CreateFromStringAndPrefix(address_string, 128);
+  ASSERT_TRUE(cidr3);
+  EXPECT_EQ(cidr3->address(), address);
+  EXPECT_EQ(cidr3->prefix_length(), 128);
+}
+
+TEST(IPv6CIDR, CreateFromAddressAndPrefix) {
+  const auto address = *IPv6Address::CreateFromString("::1");
+
+  EXPECT_TRUE(IPv6CIDR::CreateFromAddressAndPrefix(address, 0));
+  EXPECT_TRUE(IPv6CIDR::CreateFromAddressAndPrefix(address, 50));
+  EXPECT_TRUE(IPv6CIDR::CreateFromAddressAndPrefix(address, 128));
+
+  EXPECT_FALSE(IPv6CIDR::CreateFromAddressAndPrefix(address, 129));
+  EXPECT_FALSE(IPv6CIDR::CreateFromAddressAndPrefix(address, -1));
+}
+
+TEST(IPv6CIDR, GetPrefixAddress) {
+  const auto cidr1 = *IPv6CIDR::CreateFromCIDRString("2401:fa00:480:f6::6/16");
+  EXPECT_EQ(cidr1.GetPrefixAddress(), *IPv6Address::CreateFromString("2401::"));
+
+  const auto cidr2 = *IPv6CIDR::CreateFromCIDRString("2401:fa00:480:f6::6/20");
+  EXPECT_EQ(cidr2.GetPrefixAddress(),
+            *IPv6Address::CreateFromString("2401:f000::"));
+
+  const auto cidr3 = *IPv6CIDR::CreateFromCIDRString("2401:fa00:480:f6::6/0");
+  EXPECT_EQ(cidr3.GetPrefixAddress(), *IPv6Address::CreateFromString("::"));
+
+  const auto cidr4 = *IPv6CIDR::CreateFromCIDRString("2401:fa00:480:f6::6/128");
+  EXPECT_EQ(cidr4.GetPrefixAddress(),
+            *IPv6Address::CreateFromString("2401:fa00:480:f6::6"));
+}
+
+TEST(IPv6CIDR, ContainsAddress) {
+  const auto cidr = *IPv6CIDR::CreateFromCIDRString("2401:fa00:480:f6::6/16");
+
+  EXPECT_TRUE(cidr.ContainsAddress(*IPv6Address::CreateFromString("2401::")));
+  EXPECT_TRUE(
+      cidr.ContainsAddress(*IPv6Address::CreateFromString("2401:abc::")));
+  EXPECT_TRUE(cidr.ContainsAddress(*IPv6Address::CreateFromString("2401::1")));
+
+  EXPECT_FALSE(cidr.ContainsAddress(*IPv6Address::CreateFromString("2402::6")));
+  EXPECT_FALSE(cidr.ContainsAddress(*IPv6Address::CreateFromString("::6")));
+}
+
+TEST(IPv6CIDR, ToString) {
+  const std::string cidr_string = "2401:fa00:480:c6::1:10/24";
+  const auto cidr = *IPv6CIDR::CreateFromCIDRString(cidr_string);
+  EXPECT_EQ(cidr.ToString(), cidr_string);
+  // Make sure std::ostream operator<<() works.
+  LOG(INFO) << "cidr = " << cidr;
+}
+
 }  // namespace
 }  // namespace shill
