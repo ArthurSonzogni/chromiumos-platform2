@@ -2243,9 +2243,9 @@ TEST_P(StorageQueueTest, WriteRecordDataWithInsufficientDiskSpaceFailure) {
       })));
   EXPECT_CALL(
       analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-      SendLinearToUMA(StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
-                      Eq(StorageQueue::ResourceExhaustedCase::NO_DISK_SPACE),
-                      Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
+      SendEnumToUMA(StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
+                    Eq(StorageQueue::ResourceExhaustedCase::NO_DISK_SPACE),
+                    Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
       .WillOnce(Return(true));
   Status write_result = WriteString(kData[0]);
   EXPECT_FALSE(write_result.ok());
@@ -2269,9 +2269,9 @@ TEST_P(StorageQueueTest, WriteRecordMetadataWithInsufficientDiskSpaceFailure) {
       })));
   EXPECT_CALL(
       analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-      SendLinearToUMA(StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
-                      Eq(StorageQueue::ResourceExhaustedCase::NO_DISK_SPACE),
-                      Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
+      SendEnumToUMA(StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
+                    Eq(StorageQueue::ResourceExhaustedCase::NO_DISK_SPACE),
+                    Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
       .WillOnce(Return(true));
   Status write_result = WriteString(kData[0]);
   EXPECT_FALSE(write_result.ok());
@@ -2299,7 +2299,7 @@ TEST_P(StorageQueueTest, WrappedRecordWithInsufficientMemoryWithRetry) {
       .RetiresOnSaturation();
   EXPECT_CALL(
       analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-      SendLinearToUMA(
+      SendEnumToUMA(
           StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
           Eq(StorageQueue::ResourceExhaustedCase::NO_MEMORY_FOR_WRITE_BUFFER),
           Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
@@ -2335,7 +2335,7 @@ TEST_P(StorageQueueTest, WrappedRecordWithInsufficientMemoryWithFailure) {
       .RetiresOnSaturation();
   EXPECT_CALL(
       analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-      SendLinearToUMA(
+      SendEnumToUMA(
           StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
           Eq(StorageQueue::ResourceExhaustedCase::NO_MEMORY_FOR_WRITE_BUFFER),
           Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
@@ -2375,12 +2375,11 @@ TEST_P(StorageQueueTest, EncryptedRecordWithInsufficientMemoryWithRetry) {
                           " attempt=", base::NumberToString(attempts++)}));
       })))
       .RetiresOnSaturation();
-  EXPECT_CALL(
-      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-      SendLinearToUMA(StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
-                      Eq(StorageQueue::ResourceExhaustedCase::
-                             NO_MEMORY_FOR_ENCRYPTED_RECORD),
-                      Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
+  EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+              SendEnumToUMA(StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
+                            Eq(StorageQueue::ResourceExhaustedCase::
+                                   NO_MEMORY_FOR_ENCRYPTED_RECORD),
+                            Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
       .Times(0);  // No UMA call!
   Record record;
   record.set_data(std::string(kData[0]));
@@ -2413,12 +2412,11 @@ TEST_P(StorageQueueTest, EncryptedRecordWithInsufficientMemoryWithFailure) {
                           base::NumberToString(seq_id)}));
       })))
       .RetiresOnSaturation();
-  EXPECT_CALL(
-      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-      SendLinearToUMA(StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
-                      Eq(StorageQueue::ResourceExhaustedCase::
-                             NO_MEMORY_FOR_ENCRYPTED_RECORD),
-                      Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
+  EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+              SendEnumToUMA(StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
+                            Eq(StorageQueue::ResourceExhaustedCase::
+                                   NO_MEMORY_FOR_ENCRYPTED_RECORD),
+                            Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
       .WillOnce(Return(true));
   Record record;
   record.set_data(std::string(kData[0]));

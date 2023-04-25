@@ -52,7 +52,7 @@ void EnqueueResponded(ReportQueue::EnqueueCallback callback, Status status) {
   const auto res = analytics::Metrics::SendEnumToUMA(
       /*name=*/ReportQueue::kEnqueueMetricsName, status.code(),
       error::Code::MAX_VALUE);
-  LOG_IF(ERROR, !res) << "SendLinearToUMA failure, "
+  LOG_IF(ERROR, !res) << "SendEnumToUMA failure, "
                       << ReportQueue::kEnqueueMetricsName << " "
                       << static_cast<int>(status.code());
   std::move(callback).Run(status);

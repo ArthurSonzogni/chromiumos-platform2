@@ -44,7 +44,7 @@ enum class MigrationStatusForUma {
   // Destination directory does not exist.
   DestinationNotExist,
   // Max value
-  MaxValue
+  kMaxValue
 };
 
 static constexpr char kMigrationStatusUmaName[] =

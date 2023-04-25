@@ -351,7 +351,7 @@ void KeyDelivery::RequestKeyIfNeeded() {
     // Log the request status in UMA
     const auto res = analytics::Metrics::SendEnumToUMA(
         /*name=*/kKeyDeliveryResultUma, status.code(), error::Code::MAX_VALUE);
-    LOG_IF(ERROR, !res) << "SendLinearToUMA failure, " << kKeyDeliveryResultUma
+    LOG_IF(ERROR, !res) << "SendEnumToUMA failure, " << kKeyDeliveryResultUma
                         << " " << static_cast<int>(status.code());
   }));
 }

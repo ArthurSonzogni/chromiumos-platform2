@@ -47,11 +47,11 @@ class Metrics {
   // `MetricsLibraryInterface::SendEnumToUMA(const std::string& name, T
   // sample)`, where `T::kMaxValue` is an inclusive max (i.e., sample can equal
   // `T::kMaxValue`), whereas here sample can only be smaller than
-  // `T::MaxValue`.
+  // `T::kMaxValue`.
   template <typename T>
   static bool SendEnumToUMA(const std::string& name,
                             T sample,
-                            T exclusive_max = T::MaxValue) {
+                            T exclusive_max = T::kMaxValue) {
     static_assert(std::is_enum_v<T>, "T is not an enum.");
     DCHECK_LT(static_cast<int>(sample), static_cast<int>(exclusive_max));
     return SendEnumToUMA(name, static_cast<int>(sample),

@@ -176,7 +176,7 @@ class MigrationTest : public ::testing::Test {
         analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
         SendEnumToUMA(StrEq(kMigrationStatusUmaName),
                       Eq(static_cast<int>(status)),
-                      Eq(static_cast<int>(MigrationStatusForUma::MaxValue))))
+                      Eq(static_cast<int>(MigrationStatusForUma::kMaxValue))))
         .WillOnce(Return(true));
   }
 
