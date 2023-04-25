@@ -111,6 +111,19 @@ bool AddListItemToMetadataTag(android::CameraMetadata* metadata,
 [[nodiscard]] bool CROS_CAMERA_EXPORT
 WaitOnAndClearReleaseFence(camera3_stream_buffer_t& buffer, int timeout_ms);
 
+// Extracts frame number from a notify message.
+inline uint32_t GetFrameNumber(const camera3_notify_msg_t& msg) {
+  switch (msg.type) {
+    case CAMERA3_MSG_ERROR:
+      return msg.message.error.frame_number;
+    case CAMERA3_MSG_SHUTTER:
+      return msg.message.shutter.frame_number;
+    default:
+      NOTREACHED();
+      return 0u;
+  }
+}
+
 // A container for passing metadata across different StreamManipulator instances
 // to allow different feature implementations to communicate with one another.
 struct FeatureMetadata {

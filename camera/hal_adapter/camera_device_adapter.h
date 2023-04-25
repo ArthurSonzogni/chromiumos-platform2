@@ -331,6 +331,18 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   //   CAMERA3_MSG_ERROR_REQUEST.
   // - process_capture_result() will be called to return all the buffers.
   const bool async_capture_request_call_ = false;
+
+  uint32_t partial_result_count_ = 0;
+
+  struct InflightRequestInfo {
+    base::flat_set<const camera3_stream_t*> pending_streams;
+    bool has_pending_metadata = false;
+  };
+
+  base::Lock inflight_requests_lock_;
+  base::ConditionVariable inflight_requests_empty_cv_;
+  std::map<uint32_t, InflightRequestInfo> inflight_requests_
+      GUARDED_BY(inflight_requests_lock_);
 };
 
 }  // namespace cros

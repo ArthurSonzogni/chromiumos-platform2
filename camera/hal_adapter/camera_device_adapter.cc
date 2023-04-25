@@ -22,6 +22,8 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/synchronization/lock.h>
+#include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 #include <drm_fourcc.h>
 #include <hardware/camera3.h>
@@ -33,6 +35,7 @@
 #include "common/camera_buffer_handle.h"
 #include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_buffer_manager.h"
+#include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
 #include "cros-camera/tracing.h"
@@ -195,9 +198,15 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       static_info_(static_info),
       camera_metrics_(CameraMetrics::New()),
       stream_manipulator_manager_(std::move(stream_manipulator_manager)),
-      async_capture_request_call_(async_capture_request_call) {
+      async_capture_request_call_(async_capture_request_call),
+      inflight_requests_empty_cv_(&inflight_requests_lock_) {
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
   camera3_callback_ops_t::notify = Notify;
+
+  std::optional<int32_t> partial_result_count =
+      GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
+  partial_result_count_ =
+      base::checked_cast<uint32_t>(partial_result_count.value_or(1));
 }
 
 CameraDeviceAdapter::~CameraDeviceAdapter() {
@@ -244,6 +253,7 @@ void CameraDeviceAdapter::Bind(
 int32_t CameraDeviceAdapter::Initialize(
     mojo::PendingRemote<mojom::Camera3CallbackOps> callback_ops) {
   TRACE_HAL_ADAPTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
   {
     base::AutoLock l(fence_sync_thread_lock_);
@@ -280,8 +290,14 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     mojom::Camera3StreamConfigurationPtr config,
     mojom::Camera3StreamConfigurationPtr* updated_config) {
   TRACE_HAL_ADAPTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
   base::ElapsedTimer timer;
+
+  {
+    base::AutoLock l(inflight_requests_lock_);
+    inflight_requests_.clear();
+  }
 
   base::AutoLock l(streams_lock_);
 
@@ -465,6 +481,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
 mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
     mojom::Camera3RequestTemplate type) {
   TRACE_HAL_ADAPTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
   size_t type_index = static_cast<size_t>(type);
   if (type_index >= CAMERA3_TEMPLATE_COUNT) {
@@ -632,6 +649,25 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
         output_buffer.stream()->width, "height", output_buffer.stream()->height,
         "format", output_buffer.stream()->format);
   }
+  {
+    base::AutoLock l(inflight_requests_lock_);
+    CHECK(inflight_requests_.find(request->frame_number) ==
+          inflight_requests_.end());
+    base::flat_set<const camera3_stream_t*> pending_streams;
+    if (const auto* b = request_descriptor.GetInputBuffer()) {
+      pending_streams.insert(b->stream());
+    }
+    for (const auto& b : request_descriptor.GetOutputBuffers()) {
+      pending_streams.insert(b.stream());
+    }
+    inflight_requests_.emplace(
+        request->frame_number,
+        InflightRequestInfo{
+            .pending_streams = std::move(pending_streams),
+            .has_pending_metadata = true,
+        });
+    DVLOGF(2) << "Inflight requests ++: " << inflight_requests_.size();
+  }
 
   stream_manipulator_manager_->ProcessCaptureRequest(&request_descriptor);
   {
@@ -651,6 +687,7 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
 
 void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
   TRACE_HAL_ADAPTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
   base::ScopedFD dump_fd(mojo::UnwrapPlatformHandle(std::move(fd)).TakeFD());
   camera_device_->ops->dump(camera_device_, dump_fd.get());
@@ -658,9 +695,31 @@ void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
 
 int32_t CameraDeviceAdapter::Flush() {
   TRACE_HAL_ADAPTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
+  // By Android spec flush() must return in 1000ms.
+  constexpr base::TimeDelta kFlushTimeout = base::Milliseconds(1000);
+  base::ElapsedTimer timer;
+
+  const int32_t ret = camera_device_->ops->flush(camera_device_);
+  if (ret != 0) {
+    LOGF(ERROR) << "flush() failed with status " << ret;
+    return ret;
+  }
   stream_manipulator_manager_->Flush();
-  return camera_device_->ops->flush(camera_device_);
+
+  {
+    base::AutoLock l(inflight_requests_lock_);
+    while (!inflight_requests_.empty()) {
+      const base::TimeDelta elapsed_time = timer.Elapsed();
+      if (elapsed_time >= kFlushTimeout) {
+        LOGF(ERROR) << "Flushing pending requests timed out";
+        return -ENODEV;
+      }
+      inflight_requests_empty_cv_.TimedWait(kFlushTimeout - elapsed_time);
+    }
+  }
+  return 0;
 }
 
 int32_t CameraDeviceAdapter::RegisterBuffer(
@@ -778,6 +837,30 @@ void CameraDeviceAdapter::ReturnResultToClient(
 
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
+  {
+    base::AutoLock l(self->inflight_requests_lock_);
+    auto it = self->inflight_requests_.find(result_descriptor.frame_number());
+    if (it != self->inflight_requests_.end()) {
+      InflightRequestInfo& info = it->second;
+      if (const auto* b = result_descriptor.GetInputBuffer()) {
+        info.pending_streams.erase(b->stream());
+      }
+      for (const auto& b : result_descriptor.GetOutputBuffers()) {
+        info.pending_streams.erase(b.stream());
+      }
+      if (result_descriptor.partial_result() == self->partial_result_count_) {
+        info.has_pending_metadata = false;
+      }
+      if (info.pending_streams.empty() && !info.has_pending_metadata) {
+        self->inflight_requests_.erase(it);
+        DVLOGF(2) << "Inflight requests --: "
+                  << self->inflight_requests_.size();
+        if (self->inflight_requests_.empty()) {
+          self->inflight_requests_empty_cv_.Signal();
+        }
+      }
+    }
+  }
   mojom::Camera3CaptureResultPtr result_ptr;
   camera3_capture_result_t* locked_result = result_descriptor.LockForResult();
   result_ptr = self->PrepareCaptureResult(locked_result);
@@ -815,7 +898,7 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
                                  const camera3_notify_msg_t* msg) {
   CHECK(msg);
   TRACE_HAL_ADAPTER([&](perfetto::EventContext ctx) {
-    ctx.AddDebugAnnotation("frame_number", msg->message.shutter.frame_number);
+    ctx.AddDebugAnnotation("frame_number", GetFrameNumber(*msg));
     ctx.AddDebugAnnotation("type", msg->type);
     switch (msg->type) {
       case CAMERA3_MSG_SHUTTER:
@@ -848,10 +931,36 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
 // static
 void CameraDeviceAdapter::NotifyClient(const camera3_callback_ops_t* ops,
                                        camera3_notify_msg_t msg) {
-  TRACE_HAL_ADAPTER("frame_number", msg.message.shutter.frame_number);
+  TRACE_HAL_ADAPTER("frame_number", GetFrameNumber(msg));
 
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
+  if (msg.type == CAMERA3_MSG_ERROR) {
+    base::AutoLock l(self->inflight_requests_lock_);
+    auto it = self->inflight_requests_.find(msg.message.error.frame_number);
+    if (it != self->inflight_requests_.end()) {
+      InflightRequestInfo& info = it->second;
+      switch (msg.message.error.error_code) {
+        case CAMERA3_MSG_ERROR_REQUEST:
+        case CAMERA3_MSG_ERROR_RESULT:
+          // Some partial metadata won't be available, so stop tracking it.
+          // For request error, HAL still returns buffers with capture results.
+          info.has_pending_metadata = false;
+          break;
+        case CAMERA3_MSG_ERROR_BUFFER:
+          info.pending_streams.erase(msg.message.error.error_stream);
+          break;
+      }
+      if (info.pending_streams.empty() && !info.has_pending_metadata) {
+        self->inflight_requests_.erase(it);
+        DVLOGF(2) << "Inflight requests --: "
+                  << self->inflight_requests_.size();
+        if (self->inflight_requests_.empty()) {
+          self->inflight_requests_empty_cv_.Signal();
+        }
+      }
+    }
+  }
   mojom::Camera3NotifyMsgPtr msg_ptr = self->PrepareNotifyMsg(&msg);
   base::AutoLock l(self->callback_ops_delegate_lock_);
   if (self->callback_ops_delegate_) {
