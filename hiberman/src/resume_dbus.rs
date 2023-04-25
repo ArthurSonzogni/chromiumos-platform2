@@ -15,7 +15,6 @@ use dbus_crossroads::Crossroads;
 use libchromeos::secure_blob::SecureBlob;
 use log::{debug, error};
 use protobuf::Message;
-use protobuf::SingularPtrField;
 use system_api::client::OrgChromiumUserDataAuthInterface; // For get_hibernate_secret
 use system_api::rpc::AccountIdentifier;
 use system_api::UserDataAuth::GetHibernateSecretReply;
@@ -178,7 +177,7 @@ pub fn get_user_key(account_id: &str, auth_session_id: &[u8]) -> Result<SecureBl
     let mut proto: GetHibernateSecretRequest = Message::new();
     let mut account_identifier = AccountIdentifier::new();
     account_identifier.set_account_id(account_id.to_string());
-    proto.account_id = SingularPtrField::some(account_identifier);
+    proto.account_id = Some(account_identifier).into();
     proto.auth_session_id = auth_session_id.to_vec();
     let mut response = proxy
         .get_hibernate_secret(proto.write_to_bytes().unwrap())

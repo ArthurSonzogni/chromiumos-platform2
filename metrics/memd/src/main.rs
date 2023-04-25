@@ -749,7 +749,8 @@ trait Dbus {
     // Processes incoming dbus events as indicated by |watcher|.  Returns
     // vectors of tab discards reported by chrome, and OOM kills reported by
     // the anomaly detector.
-    fn process_dbus_events(&mut self, watcher: &mut FileWatcher) -> Result<Vec<(Event_Type, i64)>>;
+    fn process_dbus_events(&mut self, watcher: &mut FileWatcher)
+        -> Result<Vec<(event::Type, i64)>>;
 }
 
 #[cfg(not(test))]
@@ -775,8 +776,11 @@ impl Dbus for GenuineDbus {
     // PAYLOAD=array:byte:0x10,0xa8,0xa2,0xc5,0x51
     // dbus-send --system --type=signal / $INTERFACE.ChromeEvent $PAYLOAD
     //
-    fn process_dbus_events(&mut self, watcher: &mut FileWatcher) -> Result<Vec<(Event_Type, i64)>> {
-        let mut events: Vec<(Event_Type, i64)> = Vec::new();
+    fn process_dbus_events(
+        &mut self,
+        watcher: &mut FileWatcher,
+    ) -> Result<Vec<(event::Type, i64)>> {
+        let mut events: Vec<(event::Type, i64)> = Vec::new();
         for &fd in self.fds.iter() {
             if !watcher.has_fired_fd(fd)? {
                 continue;
@@ -804,8 +808,8 @@ impl Dbus for GenuineDbus {
                     let mut protobuf = Event::new();
                     protobuf.merge_from_bytes(&raw_buffer)?;
 
-                    let event_type = protobuf.get_field_type();
-                    let time_stamp = protobuf.get_timestamp();
+                    let event_type = protobuf.type_.enum_value_or_default();
+                    let time_stamp = protobuf.timestamp;
                     events.push((event_type, time_stamp))
                 }
             }
@@ -1136,9 +1140,9 @@ impl<'a> Sampler<'a> {
                 }
                 for event in events {
                     let sample_type = match event.0 {
-                        Event_Type::TAB_DISCARD => SampleType::TabDiscard,
-                        Event_Type::OOM_KILL => SampleType::OomKillBrowser,
-                        Event_Type::OOM_KILL_KERNEL => SampleType::OomKillKernel,
+                        event::Type::TAB_DISCARD => SampleType::TabDiscard,
+                        event::Type::OOM_KILL => SampleType::OomKillBrowser,
+                        event::Type::OOM_KILL_KERNEL => SampleType::OomKillKernel,
                         _ => {
                             warn!("unknown event type {:?}", event.0);
                             continue;

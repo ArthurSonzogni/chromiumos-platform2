@@ -315,8 +315,8 @@ impl Dbus for MockDbus {
     fn process_dbus_events(
         &mut self,
         _watcher: &mut FileWatcher,
-    ) -> Result<Vec<(Event_Type, i64)>> {
-        let mut events: Vec<(Event_Type, i64)> = Vec::new();
+    ) -> Result<Vec<(event::Type, i64)>> {
+        let mut events: Vec<(event::Type, i64)> = Vec::new();
         let mut buf = [0u8; 4096];
         let read_bytes = read_nonblocking_pipe(&mut self.fifo_in, &mut buf)?;
         let mock_events = str::from_utf8(&buf[..read_bytes])?.lines();
@@ -326,8 +326,8 @@ impl Dbus for MockDbus {
             let event_time_string = split_iterator.next().unwrap();
             let event_time = event_time_string.parse::<i64>()?;
             match event_type {
-                "tab-discard" => events.push((Event_Type::TAB_DISCARD, event_time)),
-                "oom-kill" => events.push((Event_Type::OOM_KILL, event_time)),
+                "tab-discard" => events.push((event::Type::TAB_DISCARD, event_time)),
+                "oom-kill" => events.push((event::Type::OOM_KILL, event_time)),
                 other => return Err(format!("unexpected mock event {:?}", other).into()),
             };
         }

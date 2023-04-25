@@ -30,7 +30,7 @@ pub fn signal_mount_status(
 }
 
 fn emit_signal(
-    to_emit: &dyn protobuf::Message,
+    to_emit: &(impl protobuf::Message + std::fmt::Debug),
     signal_name: &str,
     conn: &Arc<SyncConnection>,
 ) -> Result<()> {

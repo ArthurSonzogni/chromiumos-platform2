@@ -153,7 +153,7 @@ fn main() {
     };
 
     let mut input_paths = Vec::new();
-    let mut generator = protoc_rust::Codegen::new();
+    let mut generator = protobuf_codegen::Codegen::new();
     let mut constants = Default::default();
     for api in APIS {
         // Some APIs have no .proto file that needs parsing.

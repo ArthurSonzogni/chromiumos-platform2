@@ -102,10 +102,10 @@ impl ShaderCacheMount {
             let unmount_result = self.unmount(steam_app_id);
 
             let mut status = ShaderCacheMountStatus::new();
-            status.set_mounted(unmount_result.is_err());
-            status.set_steam_app_id(steam_app_id);
+            status.mounted = unmount_result.is_err();
+            status.steam_app_id = steam_app_id;
             if let Err(e) = unmount_result {
-                status.set_error(format!("Unmount failure: {}", e));
+                status.error = format!("Unmount failure: {}", e);
                 warn!(
                     "Failed to unmount {}, will be retried again: {:?}\n",
                     steam_app_id, e

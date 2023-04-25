@@ -71,17 +71,21 @@ pub async fn handle_disk_space_update(
 
     debug!(
         "Spaced status {:?}, free space bytes {}",
-        update_signal.get_state(),
+        update_signal.state,
         update_signal.free_space_bytes
     );
 
+    let state = update_signal
+        .state
+        .enum_value()
+        .map_err(|e| dbus::MethodErr::invalid_arg(&e))?;
+
     let mut is_purged = PURGED.lock().await;
     let mut limited_quota_paths = LIMITED_QUOTA_PATHS.lock().await;
+
     // Clean things up if low
     // LOW = < 1%
-    if update_signal.get_state() == StatefulDiskSpaceState::LOW
-        || update_signal.get_state() == StatefulDiskSpaceState::CRITICAL
-    {
+    if state == StatefulDiskSpaceState::LOW || state == StatefulDiskSpaceState::CRITICAL {
         if !*is_purged {
             // In the first attempt, just delete the DLCs and see if disk space
             // recovers.
@@ -113,7 +117,7 @@ pub async fn handle_disk_space_update(
                 }
             }
         }
-    } else if update_signal.get_state() == StatefulDiskSpaceState::NORMAL {
+    } else if state == StatefulDiskSpaceState::NORMAL {
         debug!("Normal disk space, recovering if required");
         // TODO(b/271776528): Ditto as above
         let _mount_map = mount_map.write().await;

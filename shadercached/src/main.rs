@@ -200,8 +200,8 @@ pub async fn main() -> Result<()> {
             for (vm_id, shader_cache_mount) in mount_map.iter_mut() {
                 let mut mount_statuses = shader_cache_mount.process_unmount_queue();
                 for status in mount_statuses.iter_mut() {
-                    status.set_vm_name(vm_id.vm_name.clone());
-                    status.set_vm_owner_id(vm_id.vm_owner_id.clone());
+                    status.vm_name = vm_id.vm_name.clone();
+                    status.vm_owner_id = vm_id.vm_owner_id.clone();
                 }
 
                 if let Err(e) =

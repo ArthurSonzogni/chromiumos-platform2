@@ -42,7 +42,7 @@ pub async fn handle_install(
     mount_map: ShaderCacheMountMapPtr,
     conn: Arc<SyncConnection>,
 ) -> Result<()> {
-    let request: InstallRequest = protobuf::Message::parse_from_bytes(&raw_bytes)?;
+    let request: InstallRequest = Message::parse_from_bytes(&raw_bytes)?;
     // Populate mount path before installation to ensure mount happens
     if request.mount {
         debug!(
@@ -159,7 +159,7 @@ pub async fn handle_prepare_shader_cache(
     if let Err(e) = set_quota_normal(&path) {
         warn!("Failed to set quota for {}: {}", path, e);
     }
-    response.set_precompiled_cache_path(path);
+    response.precompiled_cache_path = path;
 
     Ok(response.write_to_bytes()?)
 }

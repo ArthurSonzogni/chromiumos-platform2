@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-extern crate protoc_rust;
-
 use std::env;
 use std::ffi::OsStr;
 use std::fmt::Write as FmtWrite;
@@ -42,7 +40,7 @@ fn main() {
     ];
     let include_dirs = [chunneld_dir, cicerone_dir];
 
-    protoc_rust::Codegen::new()
+    protobuf_codegen::Codegen::new()
         .out_dir(out_dir.as_os_str().to_str().unwrap())
         .inputs(&paths_to_strs(&input_files))
         .includes(&paths_to_strs(&include_dirs))

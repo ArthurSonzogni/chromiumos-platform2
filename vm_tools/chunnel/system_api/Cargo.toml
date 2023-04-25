@@ -5,7 +5,7 @@ authors = ["The ChromiumOS Authors"]
 build = "build.rs"
 
 [dependencies]
-protobuf = "2"
+protobuf = "3.2"
 
 [build-dependencies]
-protoc-rust = "2"
+protobuf-codegen = "3.2"

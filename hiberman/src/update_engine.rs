@@ -21,11 +21,12 @@ const UPDATE_ENGINE_DBUS_PROXY_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub fn is_update_engine_idle() -> Result<bool> {
     let status = get_status().context("Failed to get update engine status")?;
-    if status.current_operation != Operation::IDLE {
+    let current_operation = status.current_operation.enum_value();
+    if current_operation != Ok(Operation::IDLE) {
         info!("Update engine status is {:?}", status.current_operation);
     }
 
-    Ok(status.current_operation == Operation::IDLE)
+    Ok(current_operation == Ok(Operation::IDLE))
 }
 
 fn get_status() -> Result<StatusResult> {

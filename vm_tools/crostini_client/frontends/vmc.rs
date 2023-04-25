@@ -4,18 +4,17 @@
 
 use std::collections::HashMap;
 use std::error::Error;
-use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::{fmt, fs};
 
-use std::io::{copy, stdin, stdout, BufRead, Write};
+use std::io::{stdin, stdout, BufRead, Write};
 
 use getopts::Options;
 
 use super::Frontend;
 use crate::disk::DiskOpType;
 use crate::methods::{ContainerSource, Methods, UserDisks, VmFeatures};
-use crate::proto::system_api::cicerone_service::StartLxdContainerRequest_PrivilegeLevel;
+use crate::proto::system_api::cicerone_service::start_lxd_container_request::PrivilegeLevel;
 use crate::proto::system_api::cicerone_service::VmDeviceAction;
 
 use crate::EnvMap;
@@ -788,11 +787,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         // The privileged flag is optional but when its given it must be followed by a valid value.
         let privilege_level = match matches.opt_str(PRIVILEGED_FLAG) {
             Some(s) => match s.as_str() {
-                "True" | "true" => StartLxdContainerRequest_PrivilegeLevel::PRIVILEGED,
-                "False" | "false" => StartLxdContainerRequest_PrivilegeLevel::UNPRIVILEGED,
+                "True" | "true" => PrivilegeLevel::PRIVILEGED,
+                "False" | "false" => PrivilegeLevel::UNPRIVILEGED,
                 _ => return Err(ExpectedPrivilegedFlagValue.into()),
             },
-            None => StartLxdContainerRequest_PrivilegeLevel::UNCHANGED,
+            None => PrivilegeLevel::UNCHANGED,
         };
 
         let timeout = matches.opt_str("timeout").map(|x| x.parse()).transpose()?;
@@ -1139,7 +1138,7 @@ mod tests {
             match member.as_cstr().to_bytes() {
                 b"GetDlcState" => {
                     let mut dlc_state = DlcState::new();
-                    dlc_state.state = DlcState_State::INSTALLED;
+                    dlc_state.state = dlc_state::State::INSTALLED.into();
                     let msg_return = msg
                         .method_return()
                         .append1(dlc_state.write_to_bytes().unwrap());
@@ -1151,7 +1150,7 @@ mod tests {
                 }
                 b"DestroyDiskImage" => {
                     let mut resp = DestroyDiskImageResponse::new();
-                    resp.status = DiskImageStatus::DISK_STATUS_DOES_NOT_EXIST;
+                    resp.status = DiskImageStatus::DISK_STATUS_DOES_NOT_EXIST.into();
                     let msg_return = msg.method_return().append1(resp.write_to_bytes().unwrap());
                     return Err(Ok(msg_return));
                 }
@@ -1166,10 +1165,11 @@ mod tests {
                 }
                 b"ListVmDisks" => {
                     let mut resp = ListVmDisksResponse::new();
-                    resp.mut_images()
-                        .push_default()
-                        .set_name("PvmDefault".to_owned());
-                    resp.set_success(true);
+                    resp.images.push(VmDiskInfo {
+                        name: "PvmDefault".to_owned(),
+                        ..Default::default()
+                    });
+                    resp.success = true;
                     let msg_return = msg.method_return().append1(resp.write_to_bytes().unwrap());
                     return Err(Ok(msg_return));
                 }

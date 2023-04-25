@@ -24,7 +24,7 @@ use libchromeos::sys::unix::vsock::{VsockCid, VsockListener, VMADDR_PORT_ANY};
 use libchromeos::sys::{block_signal, pipe};
 use libchromeos::syslog;
 use log::{error, warn};
-use protobuf::{self, Message as ProtoMessage, ProtobufError};
+use protobuf::{self, Message as ProtoMessage};
 
 use chunnel::forwarder::ForwarderSession;
 use system_api::chunneld_service::*;
@@ -77,8 +77,8 @@ enum Error {
     PollContextDelete(libchromeos::sys::Error),
     PollContextNew(libchromeos::sys::Error),
     PollWait(libchromeos::sys::Error),
-    ProtobufDeserialize(ProtobufError),
-    ProtobufSerialize(ProtobufError),
+    ProtobufDeserialize(protobuf::Error),
+    ProtobufSerialize(protobuf::Error),
     SetVsockNonblocking(io::Error),
     Syslog(syslog::Error),
     TcpAccept(io::Error),
@@ -446,8 +446,8 @@ fn launch_chunnel(
     let response: cicerone_service::ConnectChunnelResponse =
         ProtoMessage::parse_from_bytes(&raw_buffer).map_err(Error::ProtobufDeserialize)?;
 
-    match response.status {
-        cicerone_service::ConnectChunnelResponse_Status::SUCCESS => Ok(()),
+    match response.status.enum_value() {
+        Ok(cicerone_service::connect_chunnel_response::Status::SUCCESS) => Ok(()),
         _ => Err(Error::ConnectChunnelFailure(response.failure_reason)),
     }
 }
@@ -513,7 +513,7 @@ fn create_forwarder_session(
 
 /// Enqueues the new listening ports received over D-Bus for the main worker thread to process.
 fn update_listening_ports(
-    req: &mut UpdateListeningPortsRequest,
+    req: UpdateListeningPortsRequest,
     update_queue: &Arc<Mutex<VecDeque<TcpForwardTarget>>>,
     update_evt: &EventFd,
 ) -> UpdateListeningPortsResponse {
@@ -522,22 +522,22 @@ fn update_listening_ports(
     // Unwrap of LockResult is customary.
     let mut update_queue = update_queue.lock().unwrap();
 
-    for (forward_port, forward_target) in req.mut_tcp4_forward_targets().iter_mut() {
+    for (forward_port, forward_target) in req.tcp4_forward_targets {
         update_queue.push_back(TcpForwardTarget {
-            port: *forward_port as u16,
-            vm_name: forward_target.take_vm_name(),
-            owner_id: forward_target.take_owner_id(),
-            container_name: forward_target.take_container_name(),
+            port: forward_port as u16,
+            vm_name: forward_target.vm_name,
+            owner_id: forward_target.owner_id,
+            container_name: forward_target.container_name,
             vsock_cid: forward_target.vsock_cid.into(),
         });
     }
 
     match update_evt.write(1) {
         Ok(_) => {
-            response.set_status(UpdateListeningPortsResponse_Status::SUCCESS);
+            response.status = update_listening_ports_response::Status::SUCCESS.into();
         }
         Err(_) => {
-            response.set_status(UpdateListeningPortsResponse_Status::FAILED);
+            response.status = update_listening_ports_response::Status::FAILED.into();
         }
     }
 
@@ -561,11 +561,10 @@ fn dbus_thread(
         .method(UPDATE_LISTENING_PORTS_METHOD, (), move |m| {
             let reply = m.msg.method_return();
             let raw_buf: Vec<u8> = m.msg.read1().map_err(|_| dbus_tree::MethodErr::no_arg())?;
-            let mut proto: UpdateListeningPortsRequest =
-                ProtoMessage::parse_from_bytes(&raw_buf)
-                    .map_err(|e| dbus_tree::MethodErr::invalid_arg(&e))?;
+            let proto: UpdateListeningPortsRequest = ProtoMessage::parse_from_bytes(&raw_buf)
+                .map_err(|e| dbus_tree::MethodErr::invalid_arg(&e))?;
 
-            let response = update_listening_ports(&mut proto, &update_queue, &update_evt);
+            let response = update_listening_ports(proto, &update_queue, &update_evt);
             Ok(vec![reply.append1(
                 response
                     .write_to_bytes()

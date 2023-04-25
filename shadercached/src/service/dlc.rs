@@ -26,13 +26,12 @@ pub async fn handle_dlc_state_changed(
     let dlc_state: DlcState = protobuf::Message::parse_from_bytes(&raw_bytes).unwrap();
     debug!(
         "DLC state changed: {}, {}",
-        dlc_state.get_id(),
-        dlc_state.get_progress()
+        dlc_state.id, dlc_state.progress
     );
-    if dlc_state.get_state() == system_api::dlcservice::DlcState_State::INSTALLED
-        && dlc_state.get_progress() == 1.0
+    if dlc_state.state.enum_value() == Ok(system_api::dlcservice::dlc_state::State::INSTALLED)
+        && dlc_state.progress == 1.0
     {
-        if let Ok(id) = dlc_to_steam_app_id(dlc_state.get_id()) {
+        if let Ok(id) = dlc_to_steam_app_id(&dlc_state.id) {
             info!("DLC state changed for shader cache DLC");
             debug!("ShaderCache DLC for {} installed, mounting if required", id);
             if let Err(e) = mount_dlc(id, mount_map, conn).await {
@@ -64,13 +63,13 @@ async fn mount_dlc(
                 .and_then(|_| shader_cache_mount.add_game_to_db_list(steam_app_id));
 
             let mut mount_status = ShaderCacheMountStatus::new();
-            mount_status.set_mounted(mount_result.is_ok());
-            mount_status.set_vm_name(vm_id.vm_name.clone());
-            mount_status.set_vm_owner_id(vm_id.vm_owner_id.clone());
-            mount_status.set_steam_app_id(steam_app_id);
+            mount_status.mounted = mount_result.is_ok();
+            mount_status.vm_name = vm_id.vm_name.clone();
+            mount_status.vm_owner_id = vm_id.vm_owner_id.clone();
+            mount_status.steam_app_id = steam_app_id;
             if let Err(e) = mount_result {
                 errors.push(format!("Failed to mount {:?}, {:?}", vm_id, e));
-                mount_status.set_error(e.to_string());
+                mount_status.error = e.to_string();
             }
             if let Err(e) = signal::signal_mount_status(vec![mount_status], &conn) {
                 errors.push(format!("Failed to send mount signal, {:?}\n", e));

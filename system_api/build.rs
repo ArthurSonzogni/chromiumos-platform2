@@ -124,7 +124,7 @@ fn generate_protos(source_dir: &Path, protos: &[(&str, &str)]) -> Result<()> {
         let parent_input_dir = source_dir.join("system_api/dbus");
 
         // Invoke protobuf compiler.
-        protoc_rust::Codegen::new()
+        protobuf_codegen::Codegen::new()
             .input(input_path.as_os_str().to_str().unwrap())
             .include(input_dir.as_os_str().to_str().unwrap())
             .include(parent_input_dir)

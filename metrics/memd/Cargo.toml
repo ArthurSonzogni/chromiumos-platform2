@@ -12,7 +12,7 @@ env_logger = { version = "0.9", default-features = false }
 libc = "0.2.40"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
 log = "0.4.1"
-protobuf = "2.3"
+protobuf = "3.2"
 syslog = "6.0.1"
 tempfile = "3.0"
 time = "0.3"
@@ -23,7 +23,7 @@ lto = true
 panic = 'abort'
 
 [build-dependencies]
-protoc-rust = "2.3"
+protobuf-codegen = "3.2"
 
 [workspace]
 
