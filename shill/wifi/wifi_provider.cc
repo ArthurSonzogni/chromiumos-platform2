@@ -746,7 +746,12 @@ void WiFiProvider::LoadCredentialsFromProfile(const ProfileRefPtr& profile) {
   KeyValueStore args;
   args.Set<std::string>(PasspointCredentials::kStorageType,
                         PasspointCredentials::kTypePasspoint);
-  for (const auto& group : storage->GetGroupsWithProperties(args)) {
+  const auto passpoint_credentials = storage->GetGroupsWithProperties(args);
+  if (!profile->IsDefault()) {
+    metrics()->SendSparseToUMA(Metrics::kMetricPasspointSavedCredentials,
+                               passpoint_credentials.size());
+  }
+  for (const auto& group : passpoint_credentials) {
     PasspointCredentialsRefPtr creds = new PasspointCredentials(group);
     creds->SetEapSlotGetter(slot_getter);
     creds->Load(storage);

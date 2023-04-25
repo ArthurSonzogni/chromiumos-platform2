@@ -1199,6 +1199,12 @@ class Metrics : public DefaultServiceObserver {
           .num_buckets = kTimerHistogramNumBuckets,
       };
 
+  // Sparse histogram metric recording the number of Passpoint credentials
+  // saved for a user profile. This metric is recorded once every time the
+  // WifiProvider loads a user profile.
+  static constexpr char kMetricPasspointSavedCredentials[] =
+      "Network.Shill.WiFi.Passpoint.SavedCredentials";
+
   // Histogram parameters for next two are the same as for
   // kMetricRememberedWiFiNetworkCount. Must be constexpr, for static
   // checking of format string. Must be defined inline, for constexpr.
