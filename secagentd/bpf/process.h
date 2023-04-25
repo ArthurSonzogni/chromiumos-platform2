@@ -51,6 +51,7 @@ struct cros_image_info {
   uint32_t inode;
   uint32_t uid;
   uint32_t gid;
+  uint32_t pid_for_setns;
   uint16_t mode;
   struct cros_timespec mtime;
   struct cros_timespec ctime;

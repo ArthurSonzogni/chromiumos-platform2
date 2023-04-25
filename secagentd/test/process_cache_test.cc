@@ -15,7 +15,9 @@
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
+#include "brillo/files/file_util.h"
 #include "gmock/gmock.h"  // IWYU pragma: keep
 #include "gtest/gtest.h"
 #include "secagentd/bpf/process.h"
@@ -47,17 +49,6 @@ void ExpectPartialMatch(pb::Process& expected, pb::Process& actual) {
   }
 }
 
-void FillDynamicImageInfoFromMockFs(
-    const char* filename, secagentd::bpf::cros_image_info* image_info) {
-  base::stat_wrapper_t stat;
-  ASSERT_EQ(0, base::File::Stat(filename, &stat));
-  image_info->inode_device_id = stat.st_dev;
-  image_info->inode = stat.st_ino;
-  image_info->mtime.tv_sec = stat.st_mtim.tv_sec;
-  image_info->mtime.tv_nsec = stat.st_mtim.tv_nsec;
-  image_info->ctime.tv_sec = stat.st_ctim.tv_sec;
-  image_info->ctime.tv_nsec = stat.st_ctim.tv_nsec;
-}
 }  // namespace
 
 namespace secagentd::testing {
@@ -68,6 +59,7 @@ class ProcessCacheTestFixture : public ::testing::Test {
     std::string procstat;
     uint64_t starttime_ns;
     std::string cmdline;
+    base::FilePath mnt_ns_root;
     base::FilePath exe_path;
     std::string exe_contents;
     std::string exe_sha256;
@@ -92,6 +84,22 @@ class ProcessCacheTestFixture : public ::testing::Test {
   static constexpr uint64_t kPidChildOfThermalProcess = 9024;
   static constexpr uint64_t kPidRecoverDutProcess = 9168;
   static constexpr uint64_t kPidChildOfRecoverDutProcess = 9114;
+  static constexpr uint64_t kPidContainerInit = 3997;
+  static constexpr uint64_t kPidChildOfContainerInit = 3949;
+
+  base::FilePath GetPathInCurrentMountNsOrDie(uint64_t pid_for_setns,
+                                              const base::FilePath& path) {
+    auto setns_proc = mock_procfs_.find(pid_for_setns);
+    // This is a limitation of the test because BPF spawns don't get a mock
+    // procfs entry. We use /proc/pid_for_setns/root as the mount namespace
+    // root which needs to exist for the test to work.
+    EXPECT_NE(mock_procfs_.end(), setns_proc)
+        << "Test error. No procfs entry exists for pid " << pid_for_setns;
+    auto statusorpath = ProcessCache::SafeAppendAbsolutePath(
+        setns_proc->second.mnt_ns_root, path);
+    EXPECT_TRUE(statusorpath.ok());
+    return *statusorpath;
+  }
 
   void CreateFakeFs(const base::FilePath& root) {
     const base::FilePath proc_dir = root.Append("proc");
@@ -102,10 +110,18 @@ class ProcessCacheTestFixture : public ::testing::Test {
       ASSERT_TRUE(base::CreateDirectory(pid_dir));
       ASSERT_TRUE(base::WriteFile(pid_dir.Append("stat"), p.second.procstat));
       ASSERT_TRUE(base::WriteFile(pid_dir.Append("cmdline"), p.second.cmdline));
-      if (!p.second.exe_path.empty()) {
-        ASSERT_TRUE(base::WriteFile(p.second.exe_path, p.second.exe_contents));
+      if (!p.second.exe_path.empty() && !p.second.mnt_ns_root.empty()) {
+        base::FilePath exe_path_in_current_ns =
+            p.second.mnt_ns_root.Append(p.second.exe_path);
+        ASSERT_TRUE(base::CreateSymbolicLink(p.second.mnt_ns_root,
+                                             pid_dir.Append("root")));
         ASSERT_TRUE(
-            base::CreateSymbolicLink(p.second.exe_path, pid_dir.Append("exe")));
+            base::WriteFile(exe_path_in_current_ns, p.second.exe_contents));
+        // Procfs exe_path is always absolute. As in starts with a '/' where the
+        // '/' is to be interpreted as the root of the mount namespace.
+        ASSERT_TRUE(base::CreateSymbolicLink(
+            base::FilePath("/").Append(p.second.exe_path),
+            pid_dir.Append("exe")));
       }
       const base::FilePath ns_dir = pid_dir.Append("ns");
       ASSERT_TRUE(base::CreateDirectory(ns_dir));
@@ -115,9 +131,30 @@ class ProcessCacheTestFixture : public ::testing::Test {
 
     for (auto& p : mock_spawns_) {
       ASSERT_TRUE(base::WriteFile(
-          base::FilePath(p.second.process_start.image_info.pathname),
+          GetPathInCurrentMountNsOrDie(
+              p.second.process_start.image_info.pid_for_setns,
+              base::FilePath(p.second.process_start.image_info.pathname)),
           p.second.exe_contents));
     }
+  }
+
+  void FillDynamicImageInfoFromMockFs(
+      secagentd::bpf::cros_image_info* image_info) {
+    ASSERT_NE(nullptr, image_info->pathname);
+    // See mock_spawns_ loop in CreateFakeFs for explanation.
+    auto setns_proc = mock_procfs_.find(image_info->pid_for_setns);
+    ASSERT_NE(mock_procfs_.end(), setns_proc);
+    auto pathname_in_current_ns = GetPathInCurrentMountNsOrDie(
+        image_info->pid_for_setns, base::FilePath(image_info->pathname));
+    base::stat_wrapper_t stat;
+    ASSERT_EQ(0,
+              base::File::Stat(pathname_in_current_ns.value().c_str(), &stat));
+    image_info->inode_device_id = stat.st_dev;
+    image_info->inode = stat.st_ino;
+    image_info->mtime.tv_sec = stat.st_mtim.tv_sec;
+    image_info->mtime.tv_nsec = stat.st_mtim.tv_nsec;
+    image_info->ctime.tv_sec = stat.st_ctim.tv_sec;
+    image_info->ctime.tv_nsec = stat.st_ctim.tv_nsec;
   }
 
   void ClearInternalCache() { process_cache_->process_cache_->Clear(); }
@@ -125,6 +162,8 @@ class ProcessCacheTestFixture : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
     const base::FilePath& root = fake_root_.GetPath();
+    ASSERT_TRUE(fake_container_root_.CreateUniqueTempDir());
+    const base::FilePath& container_root = fake_container_root_.GetPath();
     process_cache_ = ProcessCache::CreateForTesting(root);
 
     mock_procfs_ = {
@@ -138,7 +177,8 @@ class ProcessCacheTestFixture : public ::testing::Test {
               "140721417363437 0 ",
           .starttime_ns = 20000000,
           .cmdline = "/sbin/init",
-          .exe_path = root.Append("sbin_init"),
+          .mnt_ns_root = root,
+          .exe_path = base::FilePath("sbin_init"),
           .exe_contents = "This is the init binary",
           // echo -ne "This is the init binary" | sha256sum -
           // 4d4328fb2f25759a7bd95772f2caf19af15ad7722c4105dd403a391a6e795b88  -
@@ -152,6 +192,7 @@ class ProcessCacheTestFixture : public ::testing::Test {
                       "0 1 0 0 0 4 0 0 0 0 0 0 0 0 0 0 0 0 0",
           .starttime_ns = 20000001,
           .cmdline = "",
+          .mnt_ns_root = base::FilePath(),
           .exe_path = base::FilePath(),
           .exe_contents = "",
           .mnt_ns_symlink = base::FilePath("mnt:[402653184]"),
@@ -168,7 +209,8 @@ class ProcessCacheTestFixture : public ::testing::Test {
           .cmdline = std::string("cryptohomed\0--noclose\0--direncryption\0--"
                                  "fscrypt_v2\0--vmodule=",
                                  61),
-          .exe_path = root.Append("usr_sbin_cryptohomed"),
+          .mnt_ns_root = root,
+          .exe_path = base::FilePath("usr_sbin_cryptohomed"),
           .exe_contents = "This is the cryptohome binary",
           // # echo -ne "This is the cryptohome binary" | sha256sum -
           // 6923461afaed79a0ecd65048f47524fd7b873d7ff9e164b09b5d9a1d4b5e54f2  -
@@ -187,7 +229,8 @@ class ProcessCacheTestFixture : public ::testing::Test {
               "140737338596750 140737338596750 140737338597346 0 ",
           .starttime_ns = 9780000000,
           .cmdline = "commspoofer",
-          .exe_path = root.Append("tmp_commspoofer"),
+          .mnt_ns_root = root,
+          .exe_path = base::FilePath("tmp_commspoofer"),
           .exe_contents = "unused",
           .exe_sha256 = "unused",
           .mnt_ns_symlink = base::FilePath("mnt:[402653184]"),
@@ -204,7 +247,8 @@ class ProcessCacheTestFixture : public ::testing::Test {
              .starttime_ns = 9780000000,
              .cmdline = std::string(
                  "/bin/sh\0/usr/share/cros/init/temp_logger.sh", 43),
-             .exe_path = root.Append("bin_sh"),
+             .mnt_ns_root = root,
+             .exe_path = base::FilePath("bin_sh"),
              .exe_contents = "This is the shell binary",
              // echo -ne "This is the shell binary" | sha256sum
              // 9DF8B99E5B9F67AAD3F2382F7633BDE35EE032881F7FFE4037550F831392FF81
@@ -225,7 +269,8 @@ class ProcessCacheTestFixture : public ::testing::Test {
              .starttime_ns = 0,
              .cmdline = std::string(
                  "/bin/sh\0/usr/local/libexec/recover-duts/recover_duts", 52),
-             .exe_path = root.Append("bin_sh"),
+             .mnt_ns_root = root,
+             .exe_path = base::FilePath("bin_sh"),
              .exe_contents = "This is the shell binary",
              // echo -ne "This is the shell binary" | sha256sum
              // 9DF8B99E5B9F67AAD3F2382F7633BDE35EE032881F7FFE4037550F831392FF81
@@ -233,13 +278,34 @@ class ProcessCacheTestFixture : public ::testing::Test {
                            "50F831392FF81",
              .mnt_ns_symlink = base::FilePath("mnt:[4026531840]"),
              .expected_proto = pb::Process(),
-         }}};
+         }},
+        {kPidContainerInit,
+         {.procstat =
+              "3997 (main) S 3941 3997 3669 0 -1 4194560 31765 707181 468 8540 "
+              "73 127 9920 2653 20 0 5 0 5812 3846950912 41147 "
+              "18446744073709551615 94131135979520 94131135996864 "
+              "140722056860464 0 0 0 4612 1 1073841400 0 0 0 17 1 0 0 44 0 0 "
+              "94131136002680 94131136004096 94131168919552 140722056866380 "
+              "140722056866479 140722056866479 140722056867806 0",
+          .starttime_ns = 58120000000,
+          .cmdline = "init",
+          .mnt_ns_root = container_root,
+          .exe_path = base::FilePath("system_bin_init"),
+          .exe_contents = "This is the init binary",
+          // echo -ne "This is the init binary" | sha256sum -
+          // 4d4328fb2f25759a7bd95772f2caf19af15ad7722c4105dd403a391a6e795b88
+          // -
+          .exe_sha256 = "4D4328FB2F25759A7BD95772F2CAF19AF15AD7722C4105DD403A39"
+                        "1A6E795B88",
+          .mnt_ns_symlink = base::FilePath("mnt:[4026534311]"),
+          .expected_proto = pb::Process()}},
+    };
 
     // ParseFromString unfortunately doesn't work with Lite protos.
     mock_procfs_[kPidInit].expected_proto.set_canonical_pid(kPidInit);
     mock_procfs_[kPidInit].expected_proto.set_commandline("'/sbin/init'");
     mock_procfs_[kPidInit].expected_proto.mutable_image()->set_pathname(
-        root.Append("sbin_init").value());
+        "/sbin_init");
     mock_procfs_[kPidInit].expected_proto.mutable_image()->set_mnt_ns(
         402653184);
     mock_procfs_[kPidInit].expected_proto.mutable_image()->set_sha256(
@@ -252,7 +318,7 @@ class ProcessCacheTestFixture : public ::testing::Test {
         "'cryptohomed' '--noclose' '--direncryption' '--fscrypt_v2' "
         "'--vmodule='");
     mock_procfs_[kPidChildOfInit].expected_proto.mutable_image()->set_pathname(
-        root.Append("usr_sbin_cryptohomed").value());
+        "/usr_sbin_cryptohomed");
     mock_procfs_[kPidChildOfInit].expected_proto.mutable_image()->set_mnt_ns(
         402653184);
     mock_procfs_[kPidChildOfInit].expected_proto.mutable_image()->set_sha256(
@@ -262,11 +328,21 @@ class ProcessCacheTestFixture : public ::testing::Test {
     mock_procfs_[kPidTrickyComm].expected_proto.set_commandline(
         "'commspoofer'");
     mock_procfs_[kPidTrickyComm].expected_proto.mutable_image()->set_pathname(
-        root.Append("tmp_comspoofer").value());
-    mock_procfs_[kPidChildOfInit].expected_proto.mutable_image()->set_mnt_ns(
+        "/tmp_comspoofer");
+    mock_procfs_[kPidTrickyComm].expected_proto.mutable_image()->set_mnt_ns(
         402653184);
     mock_procfs_[kPidTrickyComm].expected_proto.mutable_image()->set_sha256(
         mock_procfs_[kPidTrickyComm].exe_sha256);
+    mock_procfs_[kPidContainerInit].expected_proto.set_canonical_pid(
+        kPidContainerInit);
+    mock_procfs_[kPidContainerInit].expected_proto.set_commandline("'init'");
+    mock_procfs_[kPidContainerInit]
+        .expected_proto.mutable_image()
+        ->set_pathname("/system_bin_init");
+    mock_procfs_[kPidContainerInit].expected_proto.mutable_image()->set_mnt_ns(
+        4026534311);
+    mock_procfs_[kPidContainerInit].expected_proto.mutable_image()->set_sha256(
+        mock_procfs_[kPidContainerInit].exe_sha256);
 
     mock_spawns_ = {
         {kPidChildOfRecoverDutProcess,
@@ -284,12 +360,13 @@ class ProcessCacheTestFixture : public ::testing::Test {
                     .gid = 0},
                .image_info =
                    {
-                       .pathname = "bin_sh",
+                       .pathname = "/bin_sh",
                        .mnt_ns = 4026531840,
                        .inode_device_id = 0,
                        .inode = 0,
                        .uid = 0,
                        .gid = 0,
+                       .pid_for_setns = kPidInit,
                        .mode = 0100755,
                    },
                .spawn_namespace =
@@ -324,12 +401,13 @@ class ProcessCacheTestFixture : public ::testing::Test {
                     .gid = 0},
                .image_info =
                    {
-                       .pathname = "usr_bin_logger",
+                       .pathname = "/usr_bin_logger",
                        .mnt_ns = 4026531840,
                        .inode_device_id = 0,
                        .inode = 0,
                        .uid = 0,
                        .gid = 0,
+                       .pid_for_setns = kPidInit,
                        .mode = 0100755,
                    },
                .spawn_namespace =
@@ -362,12 +440,13 @@ class ProcessCacheTestFixture : public ::testing::Test {
                              .gid = 0},
                .image_info =
                    {
-                       .pathname = "bin_sh",
+                       .pathname = "/bin_sh",
                        .mnt_ns = 4026531840,
                        .inode_device_id = 0,
                        .inode = 0,
                        .uid = 0,
                        .gid = 0,
+                       .pid_for_setns = kPidChildOfInit,
                        .mode = 0100755,
                    },
                .spawn_namespace =
@@ -401,12 +480,13 @@ class ProcessCacheTestFixture : public ::testing::Test {
                              .gid = 0},
                .image_info =
                    {
-                       .pathname = "usr_sbin_spaced_cli",
+                       .pathname = "/usr_sbin_spaced_cli",
                        .mnt_ns = 4026531840,
                        .inode_device_id = 0,
                        .inode = 0,
                        .uid = 0,
                        .gid = 0,
+                       .pid_for_setns = kPidChildOfInit,
                        .mode = 0100755,
                    },
                .spawn_namespace =
@@ -424,22 +504,51 @@ class ProcessCacheTestFixture : public ::testing::Test {
           // 7c3ad304a78de0191f3c682d84f22787ad1085ae1cf1c158544b097556dcf408  -
           .exe_sha256 = "7C3AD304A78DE0191F3C682D84F22787AD1085AE1CF1C158544B09"
                         "7556DCF408",
-          .expected_proto = pb::Process()}}};
-    // Prefix each pathname with mock fs root. Awkward to do this at
-    // initialization due to pathname being a char array.
-    for (auto& p : mock_spawns_) {
-      base::strlcpy(p.second.process_start.image_info.pathname,
-                    root.Append(p.second.process_start.image_info.pathname)
-                        .value()
-                        .c_str(),
-                    sizeof(p.second.process_start.image_info.pathname));
-    }
+          .expected_proto = pb::Process()}},
+        {kPidChildOfContainerInit,
+         {.process_start =
+              {.task_info = {.pid = kPidChildOfContainerInit,
+                             .ppid = kPidContainerInit,
+                             .start_time = 58200000000,
+                             .parent_start_time =
+                                 mock_procfs_[kPidContainerInit].starttime_ns,
+                             .commandline = "/sbin/udevadm",
+                             .commandline_len = 14,
+                             .uid = 655360,
+                             .gid = 655360},
+               .image_info =
+                   {
+                       .pathname = "/sbin_udevadm",
+                       .mnt_ns = 4026534311,
+                       .inode_device_id = 0,
+                       .inode = 0,
+                       .uid = 0,
+                       .gid = 0,
+                       .pid_for_setns = kPidContainerInit,
+                       .mode = 0100755,
+                   },
+               .spawn_namespace =
+                   {
+                       .cgroup_ns = 4026534072,
+                       .pid_ns = 4026533764,
+                       .user_ns = 4026532803,
+                       .uts_ns = 4026531838,
+                       .mnt_ns = 4026534311,
+                       .net_ns = 4026533768,
+                       .ipc_ns = 4026533766,
+                   }},
+          .exe_contents = "This is the container udevadm binary",
+          // # echo -ne "This is the container udevadm binary" | sha256sum -
+          // 8db47df5ef67311335c2d2d464491d08a1c84030cf16031ea22b3c5eb82abb27  -
+          .exe_sha256 = "8DB47DF5EF67311335C2D2D464491D08A1C84030CF16031EA22B3C"
+                        "5EB82ABB27",
+          .expected_proto = pb::Process()}},
+    };
 
     CreateFakeFs(root);
 
-    FillDynamicImageInfoFromMockFs(
-        mock_spawns_[kPidChildOfChild].process_start.image_info.pathname,
-        &mock_spawns_[kPidChildOfChild].process_start.image_info);
+    ASSERT_NO_FATAL_FAILURE(FillDynamicImageInfoFromMockFs(
+        &mock_spawns_[kPidChildOfChild].process_start.image_info));
     mock_spawns_[kPidChildOfChild].expected_proto.set_canonical_pid(
         kPidChildOfChild);
     mock_spawns_[kPidChildOfChild].expected_proto.set_canonical_uid(0);
@@ -449,7 +558,7 @@ class ProcessCacheTestFixture : public ::testing::Test {
     mock_spawns_[kPidChildOfChild].expected_proto.set_commandline(
         "'/usr/sbin/spaced_cli' '--get_free_disk_space=/home/.shadow'");
     mock_spawns_[kPidChildOfChild].expected_proto.mutable_image()->set_pathname(
-        root.Append("usr_sbin_spaced_cli").value());
+        "/usr_sbin_spaced_cli");
     mock_spawns_[kPidChildOfChild].expected_proto.mutable_image()->set_mnt_ns(
         4026531840);
     mock_spawns_[kPidChildOfChild]
@@ -468,10 +577,49 @@ class ProcessCacheTestFixture : public ::testing::Test {
         0100755);
     mock_spawns_[kPidChildOfChild].expected_proto.mutable_image()->set_sha256(
         mock_spawns_[kPidChildOfChild].exe_sha256);
+
+    ASSERT_NO_FATAL_FAILURE(FillDynamicImageInfoFromMockFs(
+        &mock_spawns_[kPidChildOfContainerInit].process_start.image_info));
+    mock_spawns_[kPidChildOfContainerInit].expected_proto.set_canonical_pid(
+        kPidChildOfContainerInit);
+    mock_spawns_[kPidChildOfContainerInit].expected_proto.set_canonical_uid(
+        655360);
+    mock_spawns_[kPidChildOfContainerInit].expected_proto.set_rel_start_time_s(
+        ProcessCache::ClockTToSeconds(
+            ProcessCache::LossyNsecToClockT(58200000000)));
+    mock_spawns_[kPidChildOfContainerInit].expected_proto.set_commandline(
+        "'/sbin/udevadm'");
+    mock_spawns_[kPidChildOfContainerInit]
+        .expected_proto.mutable_image()
+        ->set_pathname("/sbin_udevadm");
+    mock_spawns_[kPidChildOfContainerInit]
+        .expected_proto.mutable_image()
+        ->set_mnt_ns(4026534311);
+    mock_spawns_[kPidChildOfContainerInit]
+        .expected_proto.mutable_image()
+        ->set_inode_device_id(mock_spawns_[kPidChildOfContainerInit]
+                                  .process_start.image_info.inode_device_id);
+    mock_spawns_[kPidChildOfContainerInit]
+        .expected_proto.mutable_image()
+        ->set_inode(mock_spawns_[kPidChildOfContainerInit]
+                        .process_start.image_info.inode);
+    mock_spawns_[kPidChildOfContainerInit]
+        .expected_proto.mutable_image()
+        ->set_canonical_uid(0);
+    mock_spawns_[kPidChildOfContainerInit]
+        .expected_proto.mutable_image()
+        ->set_canonical_gid(0);
+    mock_spawns_[kPidChildOfContainerInit]
+        .expected_proto.mutable_image()
+        ->set_mode(0100755);
+    mock_spawns_[kPidChildOfContainerInit]
+        .expected_proto.mutable_image()
+        ->set_sha256(mock_spawns_[kPidChildOfContainerInit].exe_sha256);
   }
 
   scoped_refptr<ProcessCache> process_cache_;
   base::ScopedTempDir fake_root_;
+  base::ScopedTempDir fake_container_root_;
   std::map<uint64_t, MockProcFsFile> mock_procfs_;
   std::map<uint64_t, MockBpfSpawnEvent> mock_spawns_;
 };
@@ -756,7 +904,7 @@ TEST_F(ProcessCacheTestFixture, DontFailProcfsIfParentLinkageNotFound) {
   bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfChild].process_start;
   // "Kill" init
-  base::DeletePathRecursively(
+  brillo::DeletePathRecursively(
       fake_root_.GetPath().Append("proc").Append(std::to_string(kPidInit)));
   process_cache_->PutFromBpfExec(process_start);
   auto actual = process_cache_->GetProcessHierarchy(
@@ -832,7 +980,7 @@ TEST_F(ProcessCacheTestFixture, ImageCacheMissThenHit) {
   // information. Note that the file deletion is a bit of a cheat because
   // there's otherwise no externally visible signal for a cache hit. We'll never
   // get an exec from BPF for a deleted file.
-  ASSERT_TRUE(base::DeleteFile(base::FilePath(
+  ASSERT_TRUE(brillo::DeleteFile(base::FilePath(
       mock_spawns_[kPidChildOfChild].process_start.image_info.pathname)));
 
   // Make this a "new" process spawn so that we also miss the process cache.
@@ -868,10 +1016,12 @@ TEST_F(ProcessCacheTestFixture, ImageCacheMissDueToModification) {
          (new_proc_modified_image.image_info.mtime.tv_nsec ==
           process_start.image_info.mtime.tv_nsec)) {
     ASSERT_TRUE(base::WriteFile(
-        base::FilePath(new_proc_modified_image.image_info.pathname),
+        GetPathInCurrentMountNsOrDie(
+            new_proc_modified_image.image_info.pid_for_setns,
+            base::FilePath(new_proc_modified_image.image_info.pathname)),
         "This file has been altered"));
-    FillDynamicImageInfoFromMockFs(new_proc_modified_image.image_info.pathname,
-                                   &new_proc_modified_image.image_info);
+    ASSERT_NO_FATAL_FAILURE(
+        FillDynamicImageInfoFromMockFs(&new_proc_modified_image.image_info));
   }
   ASSERT_EQ(new_proc_modified_image.image_info.inode_device_id,
             process_start.image_info.inode_device_id);
@@ -895,11 +1045,12 @@ TEST_F(ProcessCacheTestFixture, ImageCacheHashAFileLargerThanBuf) {
   bpf::cros_process_start proc_with_large_image =
       mock_spawns_[kPidChildOfChild].process_start;
   ASSERT_TRUE(base::WriteFile(
-      base::FilePath(
-          mock_spawns_[kPidChildOfChild].process_start.image_info.pathname),
+      GetPathInCurrentMountNsOrDie(
+          proc_with_large_image.image_info.pid_for_setns,
+          base::FilePath(proc_with_large_image.image_info.pathname)),
       std::string(9999, '.')));
-  FillDynamicImageInfoFromMockFs(proc_with_large_image.image_info.pathname,
-                                 &proc_with_large_image.image_info);
+  ASSERT_NO_FATAL_FAILURE(
+      FillDynamicImageInfoFromMockFs(&proc_with_large_image.image_info));
 
   process_cache_->PutFromBpfExec(proc_with_large_image);
   auto actual = process_cache_->GetProcessHierarchy(
@@ -910,6 +1061,30 @@ TEST_F(ProcessCacheTestFixture, ImageCacheHashAFileLargerThanBuf) {
   EXPECT_STRCASEEQ(
       "6C9C6E06F2269516F665541D40859DC514FA7AB87C114C6FDFAE4BBDD6A93416",
       actual[0]->image().sha256().c_str());
+}
+
+TEST_F(ProcessCacheTestFixture, HashImageInForeignMountNamespace) {
+  bpf::cros_process_start proc_in_foreign_ns =
+      mock_spawns_[kPidChildOfContainerInit].process_start;
+  // Assert that the exe doesn't exist in the init namespace.
+  ASSERT_FALSE(base::PathExists(GetPathInCurrentMountNsOrDie(
+      kPidInit, base::FilePath(proc_in_foreign_ns.image_info.pathname))));
+  process_cache_->PutFromBpfExec(proc_in_foreign_ns);
+  auto actual = process_cache_->GetProcessHierarchy(
+      proc_in_foreign_ns.task_info.pid, proc_in_foreign_ns.task_info.start_time,
+      2);
+  EXPECT_EQ(2, actual.size());
+  mock_spawns_[kPidChildOfContainerInit].expected_proto.set_process_uuid(
+      actual[0]->process_uuid());
+  for (auto& proc : actual) {
+    EXPECT_TRUE(proc->has_meta_first_appearance());
+    EXPECT_TRUE(proc->meta_first_appearance());
+    proc->clear_meta_first_appearance();
+  }
+  EXPECT_THAT(mock_spawns_[kPidChildOfContainerInit].expected_proto,
+              EqualsProto(*actual[0]));
+  ExpectPartialMatch(mock_procfs_[kPidContainerInit].expected_proto,
+                     *actual[1]);
 }
 
 }  // namespace secagentd::testing

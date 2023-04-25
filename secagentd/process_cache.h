@@ -110,6 +110,13 @@ class ProcessCache : public ProcessCacheInterface {
       const bpf::cros_process_task_info& task_info,
       cros_xdr::reporting::Process* process_proto);
 
+  // Appends an absolute path to the given base path. base::FilePath has a
+  // DCHECK that avoids appending such absolute paths. We absolutely do need
+  // to though because /proc/pid/exe is an absolute symlink that needs to be
+  // resolved and appended to /proc/pid/root or root_path_.
+  static absl::StatusOr<base::FilePath> SafeAppendAbsolutePath(
+      const base::FilePath& path, const base::FilePath& abs_component);
+
   ProcessCache();
   void PutFromBpfExec(const bpf::cros_process_start& process_start) override;
   void EraseProcess(uint64_t pid, bpf::time_ns_t start_time_ns) override;
@@ -145,10 +152,21 @@ class ProcessCache : public ProcessCacheInterface {
   absl::StatusOr<InternalProcessValueType> MakeFromProcfs(
       const InternalProcessKeyType& key);
   // Similar to InclusiveGetProcess but operates on image_cache_.
-  // TODO(b/253661187): nsenter the process' mount namespace for correctness.
   InternalImageCacheType::const_iterator InclusiveGetImage(
       const InternalImageKeyType& image_key,
+      uint64_t pid_for_setns,
       const base::FilePath& image_path_in_ns);
+  // Fills in the image proto from the given procfs directory. Uses
+  // pid_for_setns to resolve any exe symlinks.
+  absl::Status FillImageFromProcfs(
+      const base::FilePath& proc_pid_dir,
+      uint64_t pid_for_setns,
+      cros_xdr::reporting::FileImage* file_image_proto);
+  // Returns a hashable and statable path of the given image path in the current
+  // (i.e init) mount namespace.
+  absl::StatusOr<base::FilePath> GetPathInCurrentMountNs(
+      uint64_t pid_for_setns,
+      const base::FilePath& image_path_in_pids_ns) const;
 
   base::Lock process_cache_lock_;
   std::unique_ptr<InternalProcessCacheType> process_cache_;

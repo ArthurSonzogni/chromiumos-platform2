@@ -37,6 +37,23 @@ static inline __attribute__((always_inline)) void fill_ns_info(
   ns_info->uts_ns = BPF_CORE_READ(t, nsproxy, uts_ns, ns.inum);
 }
 
+static inline __attribute__((always_inline)) struct task_struct*
+normalize_to_last_newns(const struct task_struct* t) {
+  const struct task_struct* ret = t;
+  // Arbitrarily selected limit to convince the verifier that the BPF will
+  // always halt.
+  for (int i = 0; i < 64; ++i) {
+    struct task_struct* parent = BPF_CORE_READ(ret, real_parent, group_leader);
+    if ((!parent) || (BPF_CORE_READ(parent, tgid) == 0) ||
+        (BPF_CORE_READ(ret, nsproxy, mnt_ns, ns.inum) !=
+         BPF_CORE_READ(parent, nsproxy, mnt_ns, ns.inum))) {
+      break;
+    }
+    ret = parent;
+  }
+  return ret;
+}
+
 static inline __attribute__((always_inline)) void fill_image_info(
     struct cros_image_info* image_info,
     const struct linux_binprm* bprm,
@@ -65,13 +82,17 @@ static inline __attribute__((always_inline)) void fill_image_info(
   bpf_probe_read_str(image_info->pathname, sizeof(image_info->pathname),
                      interp_start);
 
-  // Fill in mnt_ns from the parent context.
-  image_info->mnt_ns = BPF_CORE_READ(t, real_parent, nsproxy, mnt_ns, ns.inum);
+  // Fill in the mnt_ns from the task.
+  image_info->mnt_ns = BPF_CORE_READ(t, nsproxy, mnt_ns, ns.inum);
+  // Find an ancestral pid with the same mnt_ns. To increase the chances of its
+  // ns/mnt being available to userspace.
+  const struct task_struct* n = normalize_to_last_newns(t);
+  image_info->pid_for_setns = BPF_CORE_READ(n, tgid);
 }
 
 static inline __attribute__((always_inline)) struct task_struct*
 normalize_to_last_exec(const struct task_struct* t) {
-  struct task_struct* ret = t;
+  const struct task_struct* ret = t;
   // Arbitrarily selected limit to convince the verifier that the BPF will
   // always halt.
   for (int i = 0; i < 64; ++i) {
