@@ -56,8 +56,6 @@ class TpmUtilityV2 : public TpmUtilityCommon {
                           std::string* public_key_tpm_format,
                           std::string* key_info,
                           std::string* proof) override;
-  bool SealToPCR0(const std::string& data, std::string* sealed_data) override;
-  bool Unseal(const std::string& sealed_data, std::string* data) override;
   bool GetEndorsementPublicKey(KeyType key_type,
                                std::string* public_key_der) override;
   bool GetEndorsementCertificate(KeyType key_type,

@@ -684,59 +684,6 @@ bool TpmUtilityV2::CreateCertifiedKey(
   return true;
 }
 
-bool TpmUtilityV2::SealToPCR0(const std::string& data,
-                              std::string* sealed_data) {
-  std::string policy_digest;
-  TPM_RC result = trunks_utility_->GetPolicyDigestForPcrValues(
-      std::map<uint32_t, std::string>(
-          {{0, std::string() /* Use current PCR value */}}),
-      false, /* No authorization session */
-      &policy_digest);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to compute policy digest: "
-               << trunks::GetErrorString(result);
-    return false;
-  }
-  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
-      trunks_factory_->GetPasswordAuthorization(std::string());
-  result = trunks_utility_->SealData(
-      data, policy_digest, "", /*require_admin_with_policy=*/true,
-      empty_password_authorization.get(), sealed_data);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__
-               << ": Failed to seal data: " << trunks::GetErrorString(result);
-    return false;
-  }
-  return true;
-}
-
-bool TpmUtilityV2::Unseal(const std::string& sealed_data, std::string* data) {
-  std::unique_ptr<trunks::PolicySession> session =
-      trunks_factory_->GetPolicySession();
-  TPM_RC result = session->StartUnboundSession(true /* salted */,
-                                               true /* enable_encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to start encrypted session: "
-               << trunks::GetErrorString(result);
-    return false;
-  }
-  result = session->PolicyPCR(std::map<uint32_t, std::string>(
-      {{0, std::string() /* Use current PCR value */}}));
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to setup policy session: "
-               << trunks::GetErrorString(result);
-    return false;
-  }
-  result =
-      trunks_utility_->UnsealData(sealed_data, session->GetDelegate(), data);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__
-               << ": Failed to unseal data: " << trunks::GetErrorString(result);
-    return false;
-  }
-  return true;
-}
-
 bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
                                            std::string* public_key_der) {
   TPM_HANDLE key_handle;

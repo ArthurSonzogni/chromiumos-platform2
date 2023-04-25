@@ -27,23 +27,6 @@ class TransformString {
   std::string method_;
 };
 
-class UntransformString {
- public:
-  explicit UntransformString(std::string method) : method_(method) {}
-  bool operator()(const std::string& in, std::string* out) {
-    std::string suffix = "_fake_transform_" + method_;
-    auto position = in.find(suffix);
-    if (position == std::string::npos) {
-      return false;
-    }
-    *out = in.substr(0, position);
-    return true;
-  }
-
- private:
-  std::string method_;
-};
-
 // Puts the fake identity key and binding data to |identity| to mock
 // |MockTpmUtility::CreateIdentity|.
 bool SetFakeIdentity(attestation::AttestationDatabase::Identity* identity) {
@@ -82,10 +65,6 @@ MockTpmUtility::MockTpmUtility() {
       .WillByDefault(Return(true));
   ON_CALL(*this, CreateCertifiedKey(_, _, _, _, _, _, _, _, _, _, _))
       .WillByDefault(Return(true));
-  ON_CALL(*this, SealToPCR0(_, _))
-      .WillByDefault(Invoke(TransformString("SealToPCR0")));
-  ON_CALL(*this, Unseal(_, _))
-      .WillByDefault(Invoke(UntransformString("SealToPCR0")));
   ON_CALL(*this, Unbind(_, _, _))
       .WillByDefault(WithArgs<1, 2>(Invoke(TransformString("Unbind"))));
   ON_CALL(*this, Sign(_, _, _))

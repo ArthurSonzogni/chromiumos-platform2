@@ -62,8 +62,6 @@ class MockTpmUtility : public TpmUtility {
                std::string*,
                std::string*),
               (override));
-  MOCK_METHOD(bool, SealToPCR0, (const std::string&, std::string*), (override));
-  MOCK_METHOD(bool, Unseal, (const std::string&, std::string*), (override));
   MOCK_METHOD(bool,
               GetEndorsementPublicKey,
               (KeyType, std::string*),

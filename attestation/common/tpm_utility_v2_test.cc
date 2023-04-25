@@ -550,42 +550,6 @@ TEST_F(TpmUtilityTest, CreateCertifiedKeyFailCertify) {
       &key_blob, &public_key_der, &public_key_tpm_format, &key_info, &proof));
 }
 
-TEST_F(TpmUtilityTest, SealToPCR0) {
-  EXPECT_CALL(mock_tpm_utility_,
-              SealData("fake_data", _, "",
-                       /*require_admin_with_policy=*/true, _, _))
-      .WillOnce(DoAll(SetArgPointee<5>("fake_sealed"), Return(TPM_RC_SUCCESS)));
-  std::string sealed_data;
-  EXPECT_TRUE(tpm_utility_->SealToPCR0("fake_data", &sealed_data));
-  EXPECT_EQ("fake_sealed", sealed_data);
-}
-
-TEST_F(TpmUtilityTest, SealToPCR0Fail) {
-  EXPECT_CALL(mock_tpm_utility_,
-              SealData("fake_data", _, "",
-                       /*require_admin_with_policy=*/true, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  std::string sealed_data;
-  EXPECT_FALSE(tpm_utility_->SealToPCR0("fake_data", &sealed_data));
-  EXPECT_EQ("", sealed_data);
-}
-
-TEST_F(TpmUtilityTest, Unseal) {
-  EXPECT_CALL(mock_tpm_utility_, UnsealData("fake_sealed", _, _))
-      .WillOnce(DoAll(SetArgPointee<2>("fake_data"), Return(TPM_RC_SUCCESS)));
-  std::string data;
-  EXPECT_TRUE(tpm_utility_->Unseal("fake_sealed", &data));
-  EXPECT_EQ("fake_data", data);
-}
-
-TEST_F(TpmUtilityTest, UnsealFail) {
-  EXPECT_CALL(mock_tpm_utility_, UnsealData("fake_sealed", _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  std::string data;
-  EXPECT_FALSE(tpm_utility_->Unseal("fake_sealed", &data));
-  EXPECT_EQ("", data);
-}
-
 TEST_F(TpmUtilityTest, GetEndorsementPublicKey) {
   ExpectGetTpmStatus();
   std::string key;

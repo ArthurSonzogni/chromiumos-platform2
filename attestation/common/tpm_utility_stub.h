@@ -56,12 +56,6 @@ class TpmUtilityStub : public TpmUtility {
                           std::string* proof) override {
     return false;
   }
-  bool SealToPCR0(const std::string& data, std::string* sealed_data) override {
-    return false;
-  }
-  bool Unseal(const std::string& sealed_data, std::string* data) override {
-    return false;
-  }
   bool GetEndorsementPublicKey(KeyType key_type,
                                std::string* public_key_der) override {
     return false;
