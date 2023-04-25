@@ -69,6 +69,11 @@ class CrostiniService {
   // Returns a list of all tap Devices currently managed by this service.
   std::vector<const Device*> GetDevices() const;
 
+  // Notifies CrostiniService about a change in the default logical Device.
+  void OnShillDefaultLogicalDeviceChanged(
+      const ShillClient::Device& new_device,
+      const ShillClient::Device& prev_device);
+
  private:
   std::unique_ptr<Device> AddTAP(VMType vm_type, uint32_t subnet_index);
 
@@ -84,8 +89,14 @@ class CrostiniService {
   void StartAdbPortForwarding(const std::string& ifname);
   void StopAdbPortForwarding(const std::string& ifname);
 
+  // Starts and stop automatic DNAT forwarding of inbound traffic into a
+  // Crostini virtual device. |crostini_device| must not be null.
+  void StartAutoDNAT(const Device* crostini_device);
+  void StopAutoDNAT(const Device* crostini_device);
+
   AddressManager* addr_mgr_;
   Datapath* datapath_;
+  std::optional<ShillClient::Device> default_logical_device_;
   Device::ChangeEventHandler device_changed_handler_;
 
   // Mapping of VM IDs to TAP devices

@@ -42,6 +42,17 @@ std::ostream& operator<<(
   return stream << "{id: " << vm_info.first << ", vm_type: " << vm_info.second
                 << "}";
 }
+
+std::optional<AutoDnatTarget> GetAutoDNATTarget(Device::Type guest_type) {
+  switch (guest_type) {
+    case Device::Type::kTerminaVM:
+      return AutoDnatTarget::kCrostini;
+    case Device::Type::kParallelsVM:
+      return AutoDnatTarget::kParallels;
+    default:
+      return std::nullopt;
+  }
+}
 }  // namespace
 
 CrostiniService::CrostiniService(
@@ -97,6 +108,10 @@ const Device* CrostiniService::Start(uint64_t vm_id,
   if (adb_sideloading_enabled_) {
     StartAdbPortForwarding(tap->host_ifname());
   }
+  if (vm_type == VMType::kParallels) {
+    StartAutoDNAT(tap.get());
+  }
+
   LOG(INFO) << __func__ << " " << vm_info
             << ": Crostini network service started on " << tap->host_ifname();
   device_changed_handler_.Run(*tap, Device::ChangeEvent::kAdded);
@@ -124,6 +139,9 @@ void CrostiniService::Stop(uint64_t vm_id) {
   datapath_->StopRoutingDevice(tap_ifname);
   if (adb_sideloading_enabled_) {
     StopAdbPortForwarding(tap_ifname);
+  }
+  if (vm_type == VMType::kParallels) {
+    StopAutoDNAT(it->second.get());
   }
   datapath_->RemoveInterface(tap_ifname);
   taps_.erase(vm_id);
@@ -279,6 +297,57 @@ void CrostiniService::CheckAdbSideloadingStatus() {
   for (const auto& tap : taps_) {
     StartAdbPortForwarding(tap.second->host_ifname());
   }
+}
+
+void CrostiniService::OnShillDefaultLogicalDeviceChanged(
+    const ShillClient::Device& new_device,
+    const ShillClient::Device& prev_device) {
+  // b/197930417: Update Auto DNAT rules if a Parallels VM is running.
+  const Device* parallels_device = nullptr;
+  for (const auto& [_, dev] : taps_) {
+    if (dev->type() == Device::Type::kParallelsVM) {
+      parallels_device = dev.get();
+      break;
+    }
+  }
+
+  if (parallels_device) {
+    StopAutoDNAT(parallels_device);
+  }
+  if (new_device.ifname.empty()) {
+    default_logical_device_ = std::nullopt;
+  } else {
+    default_logical_device_ = new_device;
+  }
+  if (parallels_device) {
+    StartAutoDNAT(parallels_device);
+  }
+}
+
+void CrostiniService::StartAutoDNAT(const Device* virtual_device) {
+  if (!default_logical_device_) {
+    return;
+  }
+  const auto target = GetAutoDNATTarget(virtual_device->type());
+  if (!target) {
+    LOG(ERROR) << __func__ << ": unexpected Device " << *virtual_device;
+    return;
+  }
+  datapath_->AddInboundIPv4DNAT(*target, *default_logical_device_,
+                                virtual_device->config().guest_ipv4_addr());
+}
+
+void CrostiniService::StopAutoDNAT(const Device* virtual_device) {
+  if (!default_logical_device_) {
+    return;
+  }
+  const auto target = GetAutoDNATTarget(virtual_device->type());
+  if (!target) {
+    LOG(ERROR) << __func__ << ": unexpected Device " << *virtual_device;
+    return;
+  }
+  datapath_->RemoveInboundIPv4DNAT(*target, *default_logical_device_,
+                                   virtual_device->config().guest_ipv4_addr());
 }
 
 // static

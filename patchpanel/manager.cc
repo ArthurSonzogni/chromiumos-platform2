@@ -132,10 +132,14 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
   // When the default logical network changes, Crostini's tap devices must leave
   // their current forwarding group for multicast and IPv6 ndproxy and join the
   // forwarding group of the new logical default network.
+  // TODO(b/197930417): Introduce a separate forwarding service and migrate the
+  // update of the forwarding setup inside the default logical device change
+  // handler CrostiniService::OnShillDefaultLogicalDeviceChanged.
   for (const auto* tap_device : cros_svc_->GetDevices()) {
     StopForwarding(prev_device, tap_device->host_ifname());
     StartForwarding(new_device, tap_device->host_ifname());
   }
+  cros_svc_->OnShillDefaultLogicalDeviceChanged(new_device, prev_device);
 
   // When the default logical network changes, ConnectedNamespaces' devices
   // which follow the logical network must leave their current forwarding group
