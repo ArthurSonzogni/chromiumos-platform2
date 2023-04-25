@@ -16,6 +16,8 @@ group("all") {
     ":install_gen_include_iioservice_mojo",
     ":install_include_cros_camera",
     ":install_libcamera_connector_so",
+    ":install_minijail_algo_conf",
+    ":install_minijail_gpu_algo_conf",
     ":libcros_camera",
     ":libcros_camera_device_config",
     ":libcros_camera_device_config_pkg_config",
@@ -582,4 +584,14 @@ install_config("install_libcamera_connector_so") {
   install_path = "${libdir}"
   symlinks = [ "libcamera_connector.so" ]
   deps = [ ":libcros_camera" ]
+}
+
+install_config("install_minijail_algo_conf") {
+  sources = [ "minijail/cros-camera-algo.conf" ]
+  install_path = "/usr/share/minijail"
+}
+
+install_config("install_minijail_gpu_algo_conf") {
+  sources = [ "minijail/cros-camera-gpu-algo.conf" ]
+  install_path = "/usr/share/minijail"
 }
