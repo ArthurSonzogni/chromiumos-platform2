@@ -11,7 +11,7 @@
 
 static void sl_clear_shape_region(sl_window* window) {
   window->shaped = false;
-  pixman_region32_fini(&window->shape_rectangles);
+  pixman_region32_clear(&window->shape_rectangles);
 }
 
 static void sl_attach_shape_region(struct sl_context* ctx,
