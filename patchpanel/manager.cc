@@ -1662,6 +1662,7 @@ patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
   // TODO(b/278966909) Prevents neighbor discovery between the downstream
   // network and other virtual guests and interfaces in the same upstream
   // group.
+  // TODO(b/279371725) Add MTU support in GuestIPv6Service.
   if (info->enable_ipv6) {
     StartForwarding(info->upstream_ifname, info->downstream_ifname,
                     ForwardingSet{.ipv6 = true});

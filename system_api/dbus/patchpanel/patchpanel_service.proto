@@ -642,6 +642,13 @@ message TetheredNetworkRequest {
   // enabled between the upstream and downstream networks. The implementation
   // will automatically choose between NDProxy mode and RA server mode.
   bool enable_ipv6 = 5;
+
+  // The MTU of the upstream. Set the value when it is not the default value
+  // (i.e. 1500). When the value is set, we should:
+  // - configure it on the downstream interface
+  // - advertise through DHCP if DHCP is used
+  // - advertise through the RA server if RA server is used
+  optional int32 mtu = 6;
 }
 
 // Response to a CreateTetheredNetwork call.

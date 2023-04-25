@@ -2292,6 +2292,9 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
   info->enable_ipv6 = request.enable_ipv6();
   info->upstream_ifname = request.upstream_ifname();
   info->downstream_ifname = request.ifname();
+  if (request.has_mtu()) {
+    info->mtu = request.mtu();
+  }
 
   // Fill the DHCP parameters if needed.
   if (request.has_ipv4_config()) {
@@ -2381,7 +2384,7 @@ DownstreamNetworkInfo::ToDHCPServerConfig() const {
 
   return DHCPServerController::Config::Create(
       ipv4_cidr, ipv4_dhcp_start_addr, ipv4_dhcp_end_addr, dhcp_dns_servers,
-      dhcp_domain_searches);
+      dhcp_domain_searches, mtu);
 }
 
 std::ostream& operator<<(std::ostream& stream,

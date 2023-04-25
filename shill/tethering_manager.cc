@@ -449,6 +449,12 @@ void TetheringManager::CheckAndStartDownstreamTetheredNetwork() {
 
   const auto& downstream_ifname = hotspot_dev_->link_name();
   const auto& upstream_ifname = upstream_network_->interface_name();
+  std::optional<int> mtu = std::nullopt;
+  if (upstream_network_->GetCurrentIPConfig() &&
+      upstream_network_->GetCurrentIPConfig()->properties().mtu !=
+          IPConfig::kUndefinedMTU) {
+    mtu = upstream_network_->GetCurrentIPConfig()->properties().mtu;
+  }
 
   if (downstream_network_started_) {
     LOG(ERROR) << "Request to start downstream network " << downstream_ifname
@@ -461,7 +467,7 @@ void TetheringManager::CheckAndStartDownstreamTetheredNetwork() {
   downstream_network_started_ =
       manager_->patchpanel_client()->CreateTetheredNetwork(
           downstream_ifname, upstream_ifname,
-          GetDHCPOptions(*upstream_network_),
+          GetDHCPOptions(*upstream_network_), mtu,
           base::BindOnce(&TetheringManager::OnDownstreamNetworkReady,
                          base::Unretained(this)));
   if (!downstream_network_started_) {

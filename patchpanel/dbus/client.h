@@ -328,6 +328,7 @@ class BRILLO_EXPORT Client {
       const std::string& downstream_ifname,
       const std::string& upstream_ifname,
       const std::optional<DHCPOptions>& dhcp_options,
+      const std::optional<int>& mtu,
       CreateTetheredNetworkCallback callback) = 0;
 
   // Sends request for creating a local-only L3 network on |ifname|.

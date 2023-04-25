@@ -226,6 +226,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   };
   const std::vector<std::string> domain_searches = {"domain.local0",
                                                     "domain.local1"};
+  const int mtu = 1540;
 
   IPv4Subnet* ipv4_subnet = new IPv4Subnet();
   ipv4_subnet->set_addr(subnet_ip.ToByteString());
@@ -248,6 +249,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   request.set_ifname("wlan1");
   request.set_allocated_ipv4_config(ipv4_config);
   request.set_enable_ipv6(true);
+  request.set_mtu(mtu);
 
   const auto info = DownstreamNetworkInfo::Create(request);
   ASSERT_NE(info, std::nullopt);
@@ -259,6 +261,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   EXPECT_EQ(info->ipv4_dhcp_end_addr, end_ip);
   EXPECT_EQ(info->dhcp_dns_servers, dns_servers);
   EXPECT_EQ(info->dhcp_domain_searches, domain_searches);
+  EXPECT_EQ(info->mtu, mtu);
   EXPECT_EQ(info->enable_ipv6, true);
 }
 
@@ -297,6 +300,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_ToDHCPServerConfig) {
   info.dhcp_dns_servers.push_back(IPv4Address(5, 6, 7, 8));
   info.dhcp_domain_searches.push_back("domain.local0");
   info.dhcp_domain_searches.push_back("domain.local1");
+  info.mtu = 1450;
 
   const auto config = info.ToDHCPServerConfig();
   ASSERT_NE(config, std::nullopt);
@@ -306,6 +310,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_ToDHCPServerConfig) {
   EXPECT_EQ(config->end_ip(), "192.168.3.100");
   EXPECT_EQ(config->dns_servers(), "1.2.3.4,5.6.7.8");
   EXPECT_EQ(config->domain_searches(), "domain.local0,domain.local1");
+  EXPECT_EQ(config->mtu(), "1450");
 }
 
 TEST(DatapathTest, Start) {

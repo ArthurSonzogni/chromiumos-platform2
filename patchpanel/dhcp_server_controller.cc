@@ -30,7 +30,8 @@ std::optional<Config> Config::Create(
     const shill::IPv4Address& start_ip,
     const shill::IPv4Address& end_ip,
     const std::vector<shill::IPv4Address>& dns_servers,
-    const std::vector<std::string>& domain_searches) {
+    const std::vector<std::string>& domain_searches,
+    const std::optional<int>& mtu) {
   // The start_ip and end_ip should be in the same subnet as host_cidr.
   if (!(host_cidr.InSameSubnetWith(start_ip) &&
         host_cidr.InSameSubnetWith(end_ip))) {
@@ -48,10 +49,12 @@ std::optional<Config> Config::Create(
     dns_server_strs.push_back(ip.ToString());
   }
 
+  const std::string mtu_str = (mtu) ? std::to_string(*mtu) : "";
+
   return Config(host_cidr.address().ToString(),
                 host_cidr.ToNetmask().ToString(), start_ip.ToString(),
                 end_ip.ToString(), base::JoinString(dns_server_strs, ","),
-                base::JoinString(domain_searches, ","));
+                base::JoinString(domain_searches, ","), mtu_str);
 }
 
 Config::Config(const std::string& host_ip,
@@ -59,13 +62,15 @@ Config::Config(const std::string& host_ip,
                const std::string& start_ip,
                const std::string& end_ip,
                const std::string& dns_servers,
-               const std::string& domain_searches)
+               const std::string& domain_searches,
+               const std::string& mtu)
     : host_ip_(host_ip),
       netmask_(netmask),
       start_ip_(start_ip),
       end_ip_(end_ip),
       dns_servers_(dns_servers),
-      domain_searches_(domain_searches) {}
+      domain_searches_(domain_searches),
+      mtu_(mtu) {}
 
 std::ostream& operator<<(std::ostream& os, const Config& config) {
   os << "{host_ip: " << config.host_ip() << ", netmask: " << config.netmask()
@@ -114,6 +119,10 @@ bool DHCPServerController::Start(const Config& config,
     dnsmasq_args.push_back(
         base::StringPrintf("--dhcp-option=option:domain-search,%s",
                            config.domain_searches().c_str()));
+  }
+  if (!config.mtu().empty()) {
+    dnsmasq_args.push_back(base::StringPrintf("--dhcp-option=option:mtu,%s",
+                                              config.mtu().c_str()));
   }
 
   shill::ProcessManager::MinijailOptions minijail_options = {};

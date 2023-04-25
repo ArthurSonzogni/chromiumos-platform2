@@ -615,6 +615,7 @@ class ClientImpl : public Client {
   bool CreateTetheredNetwork(const std::string& downstream_ifname,
                              const std::string& upstream_ifname,
                              const std::optional<DHCPOptions>& dhcp_options,
+                             const std::optional<int>& mtu,
                              CreateTetheredNetworkCallback callback) override;
 
   bool CreateLocalOnlyNetwork(const std::string& ifname,
@@ -1287,6 +1288,7 @@ bool ClientImpl::CreateTetheredNetwork(
     const std::string& downstream_ifname,
     const std::string& upstream_ifname,
     const std::optional<DHCPOptions>& dhcp_options,
+    const std::optional<int>& mtu,
     CreateTetheredNetworkCallback callback) {
   dbus::MethodCall method_call(kPatchPanelInterface,
                                kCreateTetheredNetworkMethod);
@@ -1295,6 +1297,9 @@ bool ClientImpl::CreateTetheredNetwork(
   TetheredNetworkRequest request;
   request.set_ifname(downstream_ifname);
   request.set_upstream_ifname(upstream_ifname);
+  if (mtu) {
+    request.set_mtu(*mtu);
+  }
   // TODO(b/239559602) Fill out DHCP options:
   //  - If the upstream network has a DHCP lease, copy relevant options.
   //  - Option 43 with ANDROID_METERED if the upstream network is metered.

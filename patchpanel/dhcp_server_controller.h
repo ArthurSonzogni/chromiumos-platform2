@@ -36,7 +36,8 @@ class DHCPServerController {
         const shill::IPv4Address& start_ip,
         const shill::IPv4Address& end_ip,
         const std::vector<shill::IPv4Address>& dns_servers,
-        const std::vector<std::string>& domain_searches);
+        const std::vector<std::string>& domain_searches,
+        const std::optional<int>& mtu);
 
     // Getter methods of each field.
     const std::string& host_ip() const { return host_ip_; }
@@ -45,6 +46,7 @@ class DHCPServerController {
     const std::string& end_ip() const { return end_ip_; }
     const std::string& dns_servers() const { return dns_servers_; }
     const std::string& domain_searches() const { return domain_searches_; }
+    const std::string& mtu() const { return mtu_; }
 
    private:
     Config(const std::string& host_ip,
@@ -52,7 +54,8 @@ class DHCPServerController {
            const std::string& start_ip,
            const std::string& end_ip,
            const std::string& dns_servers,
-           const std::string& domain_searches);
+           const std::string& domain_searches,
+           const std::string& mtu);
 
     friend std::ostream& operator<<(std::ostream& os, const Config& config);
 
@@ -64,6 +67,8 @@ class DHCPServerController {
     std::string dns_servers_;
     // The comma-split string for the list of domain search.
     std::string domain_searches_;
+    // Empty if the MTU is default value.
+    std::string mtu_;
   };
 
   explicit DHCPServerController(const std::string& ifname);
