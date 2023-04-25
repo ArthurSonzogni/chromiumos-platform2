@@ -402,11 +402,12 @@ TEST_F(SwapToolTest, SwapZramEnableWriteback) {
       .WillOnce(
           DoAll(SetArgPointee<1>("/dev/loop11\n"), Return(absl::OkStatus())));
 
-  EXPECT_CALL(mock_util_,
-              RunProcessHelper(ElementsAre(
-                  "/sbin/dmsetup", "create", "zram-integrity", "--table",
-                  "0 262144 integrity /dev/loop10 0 24 D 2 block_size:4096 "
-                  "meta_device:/dev/loop11")))
+  EXPECT_CALL(
+      mock_util_,
+      RunProcessHelper(ElementsAre(
+          "/sbin/dmsetup", "create", "zram-integrity", "--table",
+          "0 262144 integrity /dev/loop10 0 24 D 4 block_size:4096 "
+          "meta_device:/dev/loop11 journal_sectors:1 buffer_sectors:128")))
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(mock_util_,
               PathExists(base::FilePath("/dev/mapper/zram-integrity")))

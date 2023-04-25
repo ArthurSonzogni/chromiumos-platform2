@@ -32,8 +32,7 @@ constexpr char kZramBackingDevice[] = "/sys/block/zram0/backing_dev";
 constexpr char kStatefulPartitionDir[] =
     "/mnt/stateful_partition/unencrypted/userspace_swap.tmp";
 constexpr uint32_t kMiB = 1048576;
-// AES-GCM uses a fixed 12 byte IV. The other 12 bytes are auth tag.
-constexpr size_t kDmIntegrityBytesPerBlock = 24;
+constexpr uint32_t kSectorSize = 512;
 
 constexpr base::TimeDelta kMaxIdleAge = base::Days(30);
 constexpr uint64_t kMinFilelistDefaultValueKB = 1000000;
@@ -385,12 +384,6 @@ absl::Status SwapTool::CreateDmDevicesAndEnableWriteback() {
   if (!status.ok())
     return status;
 
-  // Eight 512 byte sectors are required for the superblock and eight padding
-  // sectors.
-  constexpr size_t kInitialSize = 16 * 512;
-  size_t integrity_size_bytes = RoundupMultiple(
-      wb_nr_blocks_ * kDmIntegrityBytesPerBlock + kInitialSize, kMiB);
-
   // Create writeback loop device.
   // See drivers/block/loop.c:230
   // We support direct I/O only if lo_offset is aligned with the
@@ -419,9 +412,39 @@ absl::Status SwapTool::CreateDmDevicesAndEnableWriteback() {
     return status;
 
   // Create integrity loop device.
+  // See drivers/md/dm-integrity.c and
+  // https://docs.kernel.org/admin-guide/device-mapper/dm-integrity.html
+  // In direct write mode, The size of dm-integrity is data(tag) area + initial
+  // segment.
+  // The size of data(tag) area is (number of blocks in wb device) *
+  // (tag size), and then roundup with the size of dm-integrity buffer. The
+  // default number of sector in a dm-integrity buffer is 128 so the size is
+  // 65536 bytes.
+  // The size of initial segment is (superblock size == 4KB) + (size of
+  // journal). dm-integrity requires at least one journal section even with
+  // direct write mode. As for now, the size of a single journal section is
+  // 167936 bytes (328 sectors)
+
+  // AES-GCM uses a fixed 12 byte IV. The other 12 bytes are auth tag.
+  constexpr size_t kDmIntegrityTagSize = 24;
+  constexpr size_t kDmIntegrityBufSize = 65536;
+  constexpr size_t kJournalSectionSize = kSectorSize * 328;
+  constexpr size_t kSuperblockSize = 4096;
+  constexpr size_t kInitialSegmentSize = kSuperblockSize + kJournalSectionSize;
+
+  size_t data_area_size =
+      RoundupMultiple(wb_nr_blocks_ * kDmIntegrityTagSize, kDmIntegrityBufSize);
+
+  size_t integrity_size_bytes = data_area_size + kInitialSegmentSize;
+  // To be safe, in case the size of dm-integrity increases in the future
+  // development, roundup it with MiB.
+  integrity_size_bytes = RoundupMultiple(integrity_size_bytes, kMiB);
+
   constexpr char kZramIntegrityBackFileName[] = "zram_integrity.swap";
   scoped_filepath = ScopedFilePath(base::FilePath(kZramWritebackIntegrityMount)
                                        .Append(kZramIntegrityBackFileName));
+  // Truncate the file to the length of |integrity_size_bytes| by filling with
+  // 0s.
   status = SwapToolUtil::Get()->WriteFile(scoped_filepath.get(),
                                           std::string(integrity_size_bytes, 0));
   if (!status.ok())
@@ -436,11 +459,11 @@ absl::Status SwapTool::CreateDmDevicesAndEnableWriteback() {
   // For the table format, refer to
   // https://wiki.gentoo.org/wiki/Device-mapper#Integrity
   std::string table_fmt = base::StringPrintf(
-      "0 %" PRId64 " integrity %s 0 %zu D 2 block_size:%" PRId64
-      " meta_device:%s",
-      wb_size_bytes_ / 512, writeback_loop_path.c_str(),
-      kDmIntegrityBytesPerBlock, stateful_block_size_,
-      integrity_loop_path.c_str());
+      "0 %" PRId64 " integrity %s 0 %zu D 4 block_size:%" PRId64
+      " meta_device:%s journal_sectors:1 buffer_sectors:%zu",
+      wb_size_bytes_ / kSectorSize, writeback_loop_path.c_str(),
+      kDmIntegrityTagSize, stateful_block_size_, integrity_loop_path.c_str(),
+      kDmIntegrityBufSize / kSectorSize);
   auto integrity_dm = DmDev::Create(kZramIntegrityName, table_fmt);
   if (!integrity_dm.ok())
     return integrity_dm.status();
@@ -455,8 +478,8 @@ absl::Status SwapTool::CreateDmDevicesAndEnableWriteback() {
       "0 %" PRId64
       " crypt capi:gcm(aes)-random %s 0 /dev/mapper/%s 0 4 allow_discards "
       "submit_from_crypt_cpus sector_size:%" PRId64 " integrity:%zu:aead",
-      wb_size_bytes_ / 512, (*rand_hex32).c_str(), kZramIntegrityName,
-      stateful_block_size_, kDmIntegrityBytesPerBlock);
+      wb_size_bytes_ / kSectorSize, (*rand_hex32).c_str(), kZramIntegrityName,
+      stateful_block_size_, kDmIntegrityTagSize);
 
   auto writeback_dm = DmDev::Create(kZramWritebackName, table_fmt);
   if (!writeback_dm.ok())
