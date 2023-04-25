@@ -666,6 +666,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // |all_scan_frequencies_|.
   void OnNewWiphy(const Nl80211Message& nl80211_message);
 
+  // Utility function used to detect the end of PHY info dump.
+  void OnGetPhyInfoAuxMessage(NetlinkManager::AuxiliaryMessageType type,
+                              const NetlinkMessage* raw_message);
+
   // Requests regulatory information via NL80211_CMD_GET_REG.
   void GetRegulatory();
 

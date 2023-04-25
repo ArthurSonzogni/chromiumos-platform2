@@ -57,6 +57,11 @@ class WiFiPhy {
   // Add a WiFi local device instance to wifi_local_devices_.
   void AddWiFiLocalDevice(LocalDeviceConstRefPtr device);
 
+  // Signals the end of the sequence of the PHY dump messages - all the
+  // frequencies cached during parsing of NewWiphy messages are accepted as
+  // a new value.
+  void PhyDumpComplete();
+
   // Parse an NL80211_CMD_NEW_WIPHY netlink message.
   // TODO(b/248103586): Move NL80211_CMD_NEW_WIPHY parsing out of WiFiPhy and
   // into WiFiProvider.
@@ -125,6 +130,10 @@ class WiFiPhy {
   std::set<nl80211_iftype> supported_ifaces_;
   std::vector<ConcurrencyCombination> concurrency_combs_;
   Frequencies frequencies_;
+  // This is temporarily used during parsing of WiFi PHY dumps.  At the end of
+  // PHY dump this is transferred into |frequencies_| - see also
+  // PhyDumpComplete().
+  Frequencies temp_freqs_;
 };
 
 inline bool operator==(const WiFiPhy::Frequency& f1,

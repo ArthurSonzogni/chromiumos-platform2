@@ -222,6 +222,9 @@ class WiFiProvider : public ProviderInterface {
   mockable void DeregisterDeviceFromPhy(WiFiConstRefPtr device,
                                         uint32_t phy_index);
 
+  // Helper that indicates to WiFiPhy at |phy_index| that PHY dump has ended.
+  void PhyDumpComplete(uint32_t phy_index);
+
   // Handle a NL80211_CMD_NEW_WIPHY. Creates a WiFiPhy object if there isn't one
   // at the phy index, and forwards the message to the WiFiPhy.
   mockable void OnNewWiphy(const Nl80211Message& nl80211_message);

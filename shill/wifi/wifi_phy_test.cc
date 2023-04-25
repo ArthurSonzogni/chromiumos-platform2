@@ -13,6 +13,7 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_packet.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
@@ -39,12 +40,14 @@ const uint8_t kNewWiphyNlMsg_IfTypes[] = {
     0x0A, 0x00, 0x00, 0x00, 0x08, 0x00, 0x2E, 0x00, 0x0F, 0x00, 0x00, 0x00};
 
 // Bytes representing a NL80211_CMD_NEW_WIPHY message reporting the WiFi
-// capabilities of a NIC with wiphy index |kNewWiphyNlMsg_PhyIndex| which
-// supports operating bands with the frequencies specified in
-// |kNewWiphyNlMsg_UniqueFrequencies|.
+// capabilities of a NIC with wiphy index |kWiFiPhyIndex| which supports
+// operating bands with the frequencies specified in
+// |kNewWiphyNlMsg_AllFrequencies|.
+// Note that this message is marked as part of multi-message PHY dump so you
+// need to signal to WiFiPhy the end of it via PhyDumpComplete() call.
 const uint8_t kNewWiphyNlMsg[] = {
-    0x38, 0x0C, 0x00, 0x00, 0x14, 0x00, 0x01, 0x00, 0x0D, 0x00, 0x00, 0x00,
-    0x0D, 0x00, 0x00, 0x00, 0x03, 0x01, 0x00, 0x00, 0x08, 0x00, 0x01, 0x00,
+    0x38, 0x0C, 0x00, 0x00, 0x14, 0x00, 0x03, 0x00, 0x0D, 0x00, 0x00, 0x00,
+    0x1D, 0x00, 0x00, 0x00, 0x03, 0x01, 0x00, 0x00, 0x08, 0x00, 0x01, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x09, 0x00, 0x02, 0x00, 0x70, 0x68, 0x79, 0x30,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x16, 0x00, 0xF8, 0x01, 0x00, 0x00,
     0x28, 0x01, 0x01, 0x00, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00, 0x01, 0x00,
@@ -556,6 +559,8 @@ class WiFiPhyTest : public ::testing::Test {
     return base::Contains(wifi_phy_.wifi_devices_, device);
   }
 
+  void PhyDumpComplete() { wifi_phy_.PhyDumpComplete(); }
+
   void OnNewWiphy(const Nl80211Message& nl80211_message) {
     wifi_phy_.OnNewWiphy(nl80211_message);
   }
@@ -675,6 +680,62 @@ TEST_F(WiFiPhyTest, OnNewWiphy_CheckFreqs) {
   NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
   msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   OnNewWiphy(msg);
+  PhyDumpComplete();
+  EXPECT_EQ(kNewWiphyNlMsg_AllFrequencies, wifi_phy_.frequencies());
+}
+
+TEST_F(WiFiPhyTest, OnNewWiphy_KeepLastFreqs) {
+  NewWiphyMessage msg1;
+  NetlinkPacket packet1(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  msg1.InitFromPacket(&packet1, NetlinkMessage::MessageContext());
+
+  // Modify flags and attributes for the frequencies reported in the message.
+  AttributeListRefPtr bands_list;
+  EXPECT_TRUE(msg1.attributes()->GetNestedAttributeList(
+      NL80211_ATTR_WIPHY_BANDS, &bands_list));
+  AttributeIdIterator bands_iter(*bands_list);
+  for (; !bands_iter.AtEnd(); bands_iter.Advance()) {
+    AttributeListRefPtr band_attrs;
+    if (bands_list->GetNestedAttributeList(bands_iter.GetId(), &band_attrs)) {
+      AttributeListRefPtr freqs_list;
+      if (!band_attrs->GetNestedAttributeList(NL80211_BAND_ATTR_FREQS,
+                                              &freqs_list)) {
+        continue;
+      }
+      AttributeIdIterator freqs_iter(*freqs_list);
+      for (; !freqs_iter.AtEnd(); freqs_iter.Advance()) {
+        AttributeListRefPtr freq_attrs;
+        if (freqs_list->GetNestedAttributeList(freqs_iter.GetId(),
+                                               &freq_attrs)) {
+          uint32_t value;
+          for (auto attr = AttributeIdIterator(*freq_attrs); !attr.AtEnd();
+               attr.Advance()) {
+            if (attr.GetType() == NetlinkAttribute::kTypeFlag) {
+              freq_attrs->SetFlagAttributeValue(attr.GetId(), false);
+            } else {
+              EXPECT_EQ(attr.GetType(), NetlinkAttribute::kTypeU32);
+              if (attr.GetId() == NL80211_FREQUENCY_ATTR_FREQ) {
+                continue;
+              }
+              freq_attrs->GetU32AttributeValue(attr.GetId(), &value);
+              freq_attrs->SetU32AttributeValue(attr.GetId(), value ^ -1U);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  EXPECT_NE(kNewWiphyNlMsg_AllFrequencies, wifi_phy_.frequencies());
+  OnNewWiphy(msg1);
+  // Now parse the original packet and observe that the attributes get
+  // overwritten with proper values, each frequency is visible only once and the
+  // frequencies get "public" visibility.
+  NewWiphyMessage msg2;
+  NetlinkPacket packet2(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  msg2.InitFromPacket(&packet2, NetlinkMessage::MessageContext());
+  OnNewWiphy(msg2);
+  PhyDumpComplete();
   EXPECT_EQ(kNewWiphyNlMsg_AllFrequencies, wifi_phy_.frequencies());
 }
 

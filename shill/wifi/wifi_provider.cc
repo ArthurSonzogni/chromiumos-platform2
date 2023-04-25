@@ -1050,6 +1050,14 @@ void WiFiProvider::RemovePasspointCredentialsObserver(
   credentials_observers_.RemoveObserver(observer);
 }
 
+void WiFiProvider::PhyDumpComplete(uint32_t phy_index) {
+  if (!base::Contains(wifi_phys_, phy_index)) {
+    LOG(ERROR) << "Invalid PHY index: " << phy_index;
+    return;
+  }
+  return wifi_phys_[phy_index]->PhyDumpComplete();
+}
+
 void WiFiProvider::GetPhyInfo(uint32_t phy_index) {
   GetWiphyMessage get_wiphy;
   get_wiphy.AddFlag(NLM_F_DUMP);
@@ -1105,6 +1113,10 @@ void WiFiProvider::HandleNetlinkBroadcast(const NetlinkMessage& message) {
   }
 
   if ((nl80211_message.command() == NewWiphyMessage::kCommand)) {
+    if (nl80211_message.flags() & NLM_F_MULTI) {
+      LOG(WARNING)
+          << "Unsolicited NEW_WIPHY message is not expected to be multi-part";
+    }
     OnNewWiphy(nl80211_message);
     return;
   }
@@ -1359,6 +1371,10 @@ void WiFiProvider::OnGetPhyInfoAuxMessage(
   if (type != NetlinkManager::kDone) {
     NetlinkManager::OnNetlinkMessageError(type, raw_message);
     return;
+  }
+  // Signal the end of dump.
+  for (auto& it : wifi_phys_) {
+    it.second->PhyDumpComplete();
   }
   if (!phy_update_timeout_cb_.IsCancelled()) {
     phy_update_timeout_cb_.Cancel();

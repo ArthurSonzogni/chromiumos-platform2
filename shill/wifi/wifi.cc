@@ -3456,7 +3456,8 @@ void WiFi::GetPhyInfo() {
       base::BindRepeating(&WiFi::OnNewWiphy,
                           weak_ptr_factory_while_started_.GetWeakPtr()),
       base::BindRepeating(&NetlinkManager::OnAckDoNothing),
-      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
+      base::BindRepeating(&WiFi::OnGetPhyInfoAuxMessage,
+                          weak_ptr_factory_while_started_.GetWeakPtr()));
 }
 
 void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
@@ -3501,6 +3502,15 @@ void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
   // This checks NL80211_ATTR_CIPHER_SUITES and pupulates
   // supported_cipher_suites_.
   ParseCipherSuites(nl80211_message);
+}
+
+void WiFi::OnGetPhyInfoAuxMessage(NetlinkManager::AuxiliaryMessageType type,
+                                  const NetlinkMessage* raw_message) {
+  if (type != NetlinkManager::kDone) {
+    NetlinkManager::OnNetlinkMessageError(type, raw_message);
+    return;
+  }
+  provider_->PhyDumpComplete(phy_index_);
 }
 
 void WiFi::GetRegulatory() {

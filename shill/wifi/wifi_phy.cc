@@ -135,6 +135,11 @@ void WiFiPhy::ParseConcurrency(const Nl80211Message& nl80211_message) {
   }
 }
 
+void WiFiPhy::PhyDumpComplete() {
+  std::swap(frequencies_, temp_freqs_);
+  temp_freqs_.clear();
+}
+
 void WiFiPhy::ParseFrequencies(const Nl80211Message& nl80211_message) {
   // Code below depends on being able to pack all flags into bits.
   static_assert(
@@ -142,6 +147,10 @@ void WiFiPhy::ParseFrequencies(const Nl80211Message& nl80211_message) {
       "Not enough bits to hold all possible flags");
 
   SLOG(3) << __func__;
+  if (!(nl80211_message.flags() & NLM_F_MULTI)) {
+    return;
+  }
+
   AttributeListConstRefPtr bands_list;
   if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_WIPHY_BANDS, &bands_list)) {
@@ -184,7 +193,17 @@ void WiFiPhy::ParseFrequencies(const Nl80211Message& nl80211_message) {
               continue;
             }
             SLOG(3) << "Found frequency: " << freq.value;
-            frequencies_[current_band].emplace_back(std::move(freq));
+            auto& fvec = temp_freqs_[current_band];
+            auto it =
+                std::find_if(std::begin(fvec), std::end(fvec),
+                             [&](auto& f) { return f.value == freq.value; });
+            if (it == fvec.end()) {
+              temp_freqs_[current_band].emplace_back(std::move(freq));
+            } else {
+              LOG(WARNING) << "Repeated frequency in WIPHY dump: "
+                           << freq.value;
+              *it = std::move(freq);
+            }
           }
         }
       }
