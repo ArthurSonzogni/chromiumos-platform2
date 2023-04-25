@@ -50,6 +50,7 @@ ioctl: arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == TCGETS || \
        arg1 == 0xc00c6448 || arg1 == 0xc0486446 || arg1 == 0x40206447 || \
        arg1 == 0xc00c642e || arg1 == 0x4004644b || arg1 == 0xc0186440 || \
        arg1 == 0xc0406400
+kcmp: 1
 kill: 1
 listen: 1
 lseek: 1
