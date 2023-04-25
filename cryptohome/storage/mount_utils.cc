@@ -124,6 +124,9 @@ MountError CryptoErrorToMountError(CryptoError crypto_error) {
     case CryptoError::CE_TPM_REBOOT:
       local_error = MOUNT_ERROR_TPM_NEEDS_REBOOT;
       break;
+    case CryptoError::CE_CREDENTIAL_LOCKED:
+      local_error = MOUNT_ERROR_CREDENTIAL_LOCKED;
+      break;
     case CryptoError::CE_RECOVERY_TRANSIENT:
       local_error = MOUNT_ERROR_RECOVERY_TRANSIENT;
       break;
@@ -154,6 +157,8 @@ user_data_auth::CryptohomeErrorCode MountErrorToCryptohomeError(
       return user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
     case MOUNT_ERROR_TPM_DEFEND_LOCK:
       return user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK;
+    case MOUNT_ERROR_CREDENTIAL_LOCKED:
+      return user_data_auth::CRYPTOHOME_ERROR_CREDENTIAL_LOCKED;
     case MOUNT_ERROR_TPM_UPDATE_REQUIRED:
       return user_data_auth::CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED;
     case MOUNT_ERROR_USER_DOES_NOT_EXIST:
