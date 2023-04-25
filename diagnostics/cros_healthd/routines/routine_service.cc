@@ -9,6 +9,7 @@
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
+#include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
 
 namespace diagnostics {
 
@@ -35,6 +36,11 @@ void RoutineService::CreateRoutine(
     case mojom::RoutineArgument::Tag::kCpuStress:
       AddRoutine(std::make_unique<CpuStressRoutineV2>(
                      context_, routine_arg->get_cpu_stress()),
+                 std::move(routine_receiver));
+      break;
+    case mojom::RoutineArgument::Tag::kUfsLifetime:
+      AddRoutine(std::make_unique<UfsLifetimeRoutine>(
+                     context_, routine_arg->get_ufs_lifetime()),
                  std::move(routine_receiver));
       break;
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:

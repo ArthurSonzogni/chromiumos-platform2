@@ -34,7 +34,7 @@ interface CrosHealthdRoutinesService {
 
 // Possible routines the RoutineControl API can create.
 //
-// NextMinVersion: 4, NextIndex: 4
+// NextMinVersion: 5, NextIndex: 5
 [Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
@@ -46,6 +46,8 @@ union RoutineArgument {
   [MinVersion=2] AudioDriverRoutineArgument audio_driver@2;
   // Arguments to create a cpu stress routine.
   [MinVersion=3] CpuStressRoutineArgument cpu_stress@3;
+  // Arguments to create a UFS lifetime routine.
+  [MinVersion=4] UfsLifetimeRoutineArgument ufs_lifetime@4;
 };
 
 // This routine checks whether there is any memory problem by
@@ -79,6 +81,11 @@ struct CpuStressRoutineArgument {
   // std::trunc()).
   ash.cros_healthd.external.mojo_base.mojom.TimeDelta? exec_duration@0;
 };
+
+// This routine checks the UFS drive's life time.
+//
+// NextMinVersion: 1, NextIndex: 0
+struct UfsLifetimeRoutineArgument {};
 
 // Interface exposed to clients for controlling a routine.
 //
@@ -167,6 +174,7 @@ union RoutineDetail {
   MemoryRoutineDetail memory;
   AudioDriverRoutineDetail audio_driver;
   CpuStressRoutineDetail cpu_stress;
+  UfsLifetimeRoutineDetail ufs_lifetime;
 };
 
 // Details regarding memory routine.
@@ -193,6 +201,18 @@ struct AudioDriverRoutineDetail {
 //
 // NextMinVersion: 1, NextIndex: 0
 struct CpuStressRoutineDetail {
+};
+
+// Details regarding UFS lifetime routine.
+//
+// NextMinVersion: 1, NextIndex: 3
+struct UfsLifetimeRoutineDetail {
+  // Pre-end of life information.
+  uint8 pre_eol_info@0;
+  // Device life time estimation (type A).
+  uint8 device_life_time_est_a@1;
+  // Device life time estimation (type B).
+  uint8 device_life_time_est_b@2;
 };
 
 // Enumeration of each possible memtester test item.

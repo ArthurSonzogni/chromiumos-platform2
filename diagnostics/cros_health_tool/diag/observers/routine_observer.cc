@@ -49,6 +49,17 @@ base::Value::Dict ParseAudioDriverDetail(
   return output;
 }
 
+base::Value::Dict ParseUfsLifetimeDetail(
+    const mojom::UfsLifetimeRoutineDetailPtr& ufs_lifetime_detail) {
+  base::Value::Dict output;
+
+  SET_DICT(pre_eol_info, ufs_lifetime_detail, &output);
+  SET_DICT(device_life_time_est_a, ufs_lifetime_detail, &output);
+  SET_DICT(device_life_time_est_b, ufs_lifetime_detail, &output);
+
+  return output;
+}
+
 }  // namespace
 
 RoutineObserver::RoutineObserver(base::OnceClosure quit_closure)
@@ -91,6 +102,11 @@ void RoutineObserver::OnRoutineStateChange(
         case mojom::RoutineDetail::Tag::kAudioDriver:
           PrintOutput(ParseAudioDriverDetail(
               finished_state->detail->get_audio_driver()));
+          break;
+        case mojom::RoutineDetail::Tag::kUfsLifetime:
+          PrintOutput(ParseUfsLifetimeDetail(
+              finished_state->detail->get_ufs_lifetime()));
+          break;
       }
       std::move(quit_closure_).Run();
       return;
