@@ -44,8 +44,10 @@ namespace {
 class MockStorageModule : public StorageModule {
  public:
   // As opposed to the production |StorageModule|, test module does not need to
-  // call factory method - it is created directly by constructor.
-  MockStorageModule() = default;
+  // call factory method - it is created directly by constructor. The
+  // `legacy_storage_enabled` parameter can be any value since this is a feature
+  // flag that only affects internal implementation details.
+  MockStorageModule() : StorageModule(/*legacy_storage_enabled=*/true) {}
 
   MOCK_METHOD(void,
               AddRecord,
