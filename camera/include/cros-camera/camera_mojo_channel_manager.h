@@ -93,6 +93,10 @@ class CROS_CAMERA_EXPORT CameraMojoChannelManager
       mojom::CameraHalDispatcher::RegisterSensorClientWithTokenCallback
           on_construct_callback,
       Callback on_error_callback) = 0;
+
+  virtual void BindServiceToMojoServiceManager(
+      const std::string& service_name,
+      mojo::ScopedMessagePipeHandle remote) = 0;
 };
 
 }  // namespace cros

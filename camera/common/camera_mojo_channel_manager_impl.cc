@@ -226,6 +226,17 @@ void CameraMojoChannelManagerImpl::RegisterSensorHalClient(
                      base::Unretained(this)));
 }
 
+void CameraMojoChannelManagerImpl::BindServiceToMojoServiceManager(
+    const std::string& service_name, mojo::ScopedMessagePipeHandle receiver) {
+  DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
+  if (!dispatcher_.is_bound()) {
+    LOGF(ERROR) << "Dispatcher is not bound!";
+    return;
+  }
+  dispatcher_->BindServiceToMojoServiceManager(service_name,
+                                               std::move(receiver));
+}
+
 void CameraMojoChannelManagerImpl::OnSocketFileStatusChange(
     const base::FilePath& socket_path, bool error) {
   if (error) {

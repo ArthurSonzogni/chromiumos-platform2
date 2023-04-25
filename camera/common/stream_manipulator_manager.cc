@@ -206,7 +206,7 @@ StreamManipulatorManager::StreamManipulatorManager(
 
 #if USE_CAMERA_FEATURE_DIAGNOSTICS
   stream_manipulators_.emplace_back(
-      std::make_unique<FrameAnalysisStreamManipulator>());
+      std::make_unique<FrameAnalysisStreamManipulator>(mojo_manager_token));
   LOGF(INFO) << "Frame analysis stream manipulator enabled";
 #endif
 

@@ -70,6 +70,7 @@ generate_mojom_bindings("libcros_camera_mojom") {
     "//camera/mojo/algorithm/camera_algorithm.mojom",
     "//camera/mojo/camera3.mojom",
     "//camera/mojo/camera_common.mojom",
+    "//camera/mojo/camera_diagnostics.mojom",
     "//camera/mojo/camera_features.mojom",
     "//camera/mojo/camera_metadata.mojom",
     "//camera/mojo/camera_metadata_tags.mojom",
@@ -305,8 +306,10 @@ source_set("stream_manipulator") {
     "//camera/common/sw_privacy_switch_stream_manipulator.cc",
   ]
   if (use.camera_feature_diagnostics) {
-    sources +=
-        [ "//camera/common/analyze_frame/frame_analysis_stream_manipulator.cc" ]
+    sources += [
+      "//camera/common/analyze_frame/camera_diagnostics_client.cc",
+      "//camera/common/analyze_frame/frame_analysis_stream_manipulator.cc",
+    ]
   }
   public_configs = [ ":target_defaults" ]
 

@@ -4,17 +4,27 @@
 
 #include "common/analyze_frame/frame_analysis_stream_manipulator.h"
 
+#include <cstdint>
 #include <memory>
 #include <utility>
 
+#include <drm_fourcc.h>
 #include <libyuv/scale.h>
 
 #include "camera/mojo/camera_diagnostics.mojom.h"
+#include "common/analyze_frame/camera_diagnostics_client.h"
 #include "cros-camera/camera_buffer_manager.h"
+#include "cros-camera/camera_mojo_channel_manager.h"
+#include "mojo/public/c/system/types.h"
 
 namespace cros {
 
 constexpr uint32_t kFrameCopyInterval = 27;
+
+FrameAnalysisStreamManipulator::FrameAnalysisStreamManipulator(
+    CameraMojoChannelManagerToken* mojo_manager_token)
+    : mojo_manager_token_(mojo_manager_token),
+      camera_buffer_manager_(cros::CameraBufferManager::GetInstance()) {}
 
 bool FrameAnalysisStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
@@ -112,7 +122,7 @@ void FrameAnalysisStreamManipulator::ProcessBuffer(ScopedMapping& mapping_src) {
     return;
   }
 
-  // scaling step
+  // Scaling step
   ScopedBufferHandle scoped_handle = CameraBufferManager::AllocateScopedBuffer(
       target_width, target_height, mapping_src.hal_pixel_format(),
       kBufferUsage);
@@ -128,7 +138,38 @@ void FrameAnalysisStreamManipulator::ProcessBuffer(ScopedMapping& mapping_src) {
   if (ret != 0) {
     LOGF(ERROR) << "libyuv::NV12Scale() failed: " << ret;
   }
-  // TODO(rabbim): Dispatch |scaled_buffer|
+  mojom::CameraDiagnosticsFramePtr buffer =
+      mojom::CameraDiagnosticsFrame::New();
+
+  uint32_t y_size = mapping_scaled.width() * mapping_scaled.height();
+  uint32_t nv12_data_size = y_size * 3 / 2;
+  uint8_t* nv12_y_data = new uint8_t[nv12_data_size];
+  uint8_t* nv12_uv_data = nv12_y_data + y_size;
+
+  memcpy(nv12_y_data, mapping_scaled.plane(0).addr,
+         mapping_scaled.plane(0).size);
+
+  memcpy(nv12_uv_data, mapping_scaled.plane(1).addr,
+         mapping_scaled.plane(1).size);
+
+  mojo::ScopedDataPipeProducerHandle producer;
+  mojo::ScopedDataPipeConsumerHandle consumer;
+  mojo::CreateDataPipe(nv12_data_size, producer, consumer);
+
+  uint32_t nv12_data_size_before = nv12_data_size;
+
+  MojoResult mojo_res = producer->WriteData(nv12_y_data, &nv12_data_size,
+                                            MOJO_WRITE_DATA_FLAG_NONE);
+  if (mojo_res != MOJO_RESULT_OK || nv12_data_size != nv12_data_size_before) {
+    LOGF(ERROR) << "Could not write nv12 data properly";
+  }
+  buffer->data_handle = std::move(consumer);
+  buffer->width = target_width;
+  buffer->height = target_height;
+  buffer->data_size = nv12_data_size;
+
+  CameraDiagnosticsClient::GetInstance(mojo_manager_token_)
+      ->AnalyzeYuvFrame(std::move(buffer));
 }
 
 }  // namespace cros

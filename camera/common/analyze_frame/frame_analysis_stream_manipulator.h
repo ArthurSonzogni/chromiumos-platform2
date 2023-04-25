@@ -9,13 +9,18 @@
 
 #include <cutils/native_handle.h>
 #include <drm_fourcc.h>
+
+#include "camera/mojo/camera_diagnostics.mojom.h"
+#include "common/analyze_frame/camera_diagnostics_client.h"
 #include "common/stream_manipulator.h"
+#include "cros-camera/camera_mojo_channel_manager_token.h"
 
 namespace cros {
 
 class FrameAnalysisStreamManipulator : public StreamManipulator {
  public:
-  FrameAnalysisStreamManipulator() = default;
+  explicit FrameAnalysisStreamManipulator(
+      CameraMojoChannelManagerToken* mojo_manager_token);
 
   // Implementations of StreamManipulator.
   bool Initialize(const camera_metadata_t* static_info,
@@ -34,7 +39,8 @@ class FrameAnalysisStreamManipulator : public StreamManipulator {
   // Used to copy a buffer and downsample it before dispatching it to
   // diagnostics service.
   void ProcessBuffer(ScopedMapping& mapping_src);
-
+  CameraMojoChannelManagerToken* mojo_manager_token_;
+  CameraBufferManager* camera_buffer_manager_;
   StreamManipulator::Callbacks callbacks_;
 };
 
