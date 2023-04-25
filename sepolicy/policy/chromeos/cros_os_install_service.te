@@ -18,9 +18,14 @@ allow cros_os_install_service sh_exec:file rx_file_perms;
 
 # Allow mounting and unmounting the target stateful partition to copy the install log, these rules are needed only for Reven
 no_arc(`
-allow cros_os_install_service tmpfs:dir mounton;
 allow cros_os_install_service cros_os_install_service:capability sys_admin;
 allow cros_os_install_service kernel:process setsched;
 allow cros_os_install_service labeledfs:filesystem { mount unmount };
-allow cros_os_install_service unlabeled:dir { search getattr write add_name create };
+# Create type for access to /tmp/, for copying the log to the new root.
+tmp_file(cros_os_install_service, { dir file });
+# Allow mounting the new root, creating a dir, and to copying the log over.
+allow cros_os_install_service cros_os_install_service_tmp_file:dir { mounton create_dir_perms};
+# Label our log file and allow access.
+filetrans_pattern(cros_os_install_service, unlabeled, cros_os_install_service_tmp_file, file, "flex-install.log");
+allow cros_os_install_service cros_os_install_service_tmp_file:file { create_file_perms};
 ')
