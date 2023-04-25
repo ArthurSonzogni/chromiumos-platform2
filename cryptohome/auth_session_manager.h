@@ -77,6 +77,11 @@ class AuthSessionManager {
 
   void set_features(Features* features) { features_ = features; }
 
+  // Used to set the auth factor status update callback inside class so it could
+  // be passed to each auth session.
+  void SetAuthFactorStatusUpdateCallback(
+      const AuthFactorStatusUpdateCallback& callback);
+
  private:
   friend class InUseAuthSession;
 
@@ -95,9 +100,12 @@ class AuthSessionManager {
   // RemoveAuthSession overload for the callback.
   void ExpireAuthSession(const base::UnguessableToken& token);
 
-  // Run as the destructor for InUseAuthSession, signaling that any active
-  // dbus calls that referenced the AuthSession have now finished.
+  // Run as the destructor for InUseAuthSession, signaling that any active dbus
+  // calls that referenced the AuthSession have now finished.
   void MarkNotInUse(std::unique_ptr<AuthSession> session);
+
+  // The repeating callback to send AuthFactorStatusUpdateSignal.
+  AuthFactorStatusUpdateCallback auth_factor_status_update_callback_;
 
   // Defines a type for tracking Auth Sessions by token.
   // For AuthSessions in active use, the unique_ptr for the AuthSession for a

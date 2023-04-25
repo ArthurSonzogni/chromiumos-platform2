@@ -181,6 +181,11 @@ class UserDataAuth {
   void set_critical_cleanup_threshold(uint64_t critical_cleanup_threshold);
   void set_target_free_space(uint64_t target_free_space);
 
+  // Set the AuthFactorStatusUpdate callback which is called by the DBUS
+  // adaptor.
+  void SetAuthFactorStatusUpdateCallback(
+      const AuthFactorStatusUpdateCallback& callback);
+
   // Set the |low_disk_space_callback_| variable. This is usually called by the
   // DBus adaptor.
   void SetLowDiskSpaceCallback(

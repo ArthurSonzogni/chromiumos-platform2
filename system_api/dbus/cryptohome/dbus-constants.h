@@ -103,6 +103,7 @@ inline constexpr char kGetRsuDeviceId[] = "GetRsuDeviceId";
 // Signals of the |kUserDataAuthInterface| interface:
 inline constexpr char kDircryptoMigrationProgress[] =
     "DircryptoMigrationProgress";
+inline constexpr char kAuthFactorStatusUpdate[] = "AuthFactorStatusUpdate";
 inline constexpr char kLowDiskSpace[] = "LowDiskSpace";
 inline constexpr char kAuthScanResultSignal[] = "AuthScanResult";
 inline constexpr char kAuthEnrollmentProgressSignal[] =

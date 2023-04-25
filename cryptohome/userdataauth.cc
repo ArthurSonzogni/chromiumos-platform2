@@ -1049,7 +1049,6 @@ user_data_auth::UnmountReply UserDataAuth::Unmount() {
   // Since all the user mounts are now gone, there should not be any active
   // authsessions left.
   auth_session_manager_->RemoveAllAuthSessions();
-
   CryptohomeStatus result;
   if (!unmount_ok) {
     result = MakeStatus<CryptohomeError>(
@@ -1157,6 +1156,11 @@ void UserDataAuth::SetPrepareAuthFactorProgressCallback(
     const base::RepeatingCallback<
         void(user_data_auth::PrepareAuthFactorProgress)>& callback) {
   prepare_auth_factor_progress_callback_ = callback;
+}
+
+void UserDataAuth::SetAuthFactorStatusUpdateCallback(
+    const AuthFactorStatusUpdateCallback& callback) {
+  auth_session_manager_->SetAuthFactorStatusUpdateCallback(callback);
 }
 
 void UserDataAuth::HwsecReadyCallback(hwsec::Status status) {

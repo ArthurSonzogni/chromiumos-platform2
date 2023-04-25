@@ -230,4 +230,9 @@ AuthSession* InUseAuthSession::Get() {
   return session_.get();
 }
 
+void AuthSessionManager::SetAuthFactorStatusUpdateCallback(
+    const AuthFactorStatusUpdateCallback& callback) {
+  auth_factor_status_update_callback_ = callback;
+}
+
 }  // namespace cryptohome

@@ -26,6 +26,9 @@ class UserDataAuthAdaptor
       : org::chromium::UserDataAuthInterfaceAdaptor(this),
         dbus_object_(dbus_object),
         service_(service) {
+    service_->SetAuthFactorStatusUpdateCallback(base::BindRepeating(
+        &UserDataAuthAdaptor::AuthFactorStatusUpdateCallback,
+        base::Unretained(this)));
     service_->SetLowDiskSpaceCallback(base::BindRepeating(
         &UserDataAuthAdaptor::LowDiskSpaceCallback, base::Unretained(this)));
     service_->SetFingerprintScanResultCallback(
@@ -333,6 +336,12 @@ class UserDataAuthAdaptor
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::ResetApplicationContainerReply>> response,
       const user_data_auth::ResetApplicationContainerRequest& in_request);
+
+  // This is called by UserDataAuth to update the status of locked out users in
+  // a passwordless login. This will create and send the signal.
+  void AuthFactorStatusUpdateCallback(
+      user_data_auth::AuthFactorWithStatus auth_factor_with_status,
+      const std::string& broadcast_id);
 
   // This is called by UserDataAuth when it detects that it's running low on
   // disk space. All we do here is send the signal.

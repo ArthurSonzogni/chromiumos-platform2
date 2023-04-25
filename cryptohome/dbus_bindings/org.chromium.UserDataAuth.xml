@@ -475,6 +475,16 @@ do.
       </arg>
     </method>
 
+    <!-- Emitted to update the remaining time on an authfactor lockout time -->
+    <signal name="AuthFactorStatusUpdate">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="status" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::AuthFactorStatusUpdate" />
+      </arg>
+    </signal>
+
     <!-- LowDiskSpace: Emitted when the system is running low on disk space
                        for home directories. -->
     <signal name="LowDiskSpace">

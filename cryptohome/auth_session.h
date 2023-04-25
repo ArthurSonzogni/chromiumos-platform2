@@ -53,6 +53,9 @@
 
 namespace cryptohome {
 
+using AuthFactorStatusUpdateCallback = base::RepeatingCallback<void(
+    user_data_auth::AuthFactorWithStatus, const std::string&)>;
+
 // This enum holds the states an AuthSession could be in during the session.
 enum class AuthStatus {
   // kAuthStatusFurtherFactorRequired is a state where the session is waiting
