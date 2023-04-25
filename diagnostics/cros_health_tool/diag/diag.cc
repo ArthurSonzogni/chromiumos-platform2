@@ -258,6 +258,11 @@ int diag_main(int argc, char** argv) {
                               mojo_ipc::AudioDriverRoutineArgument::New()),
                           FLAGS_single_line_json);
     }
+    if (FLAGS_routine == "ufs_lifetime") {
+      return RunV2Routine(mojo_ipc::RoutineArgument::NewUfsLifetime(
+                              mojo_ipc::UfsLifetimeRoutineArgument::New()),
+                          FLAGS_single_line_json);
+    }
 
     std::map<std::string, mojo_ipc::DiagnosticRoutineEnum>
         switch_to_diagnostic_routine;
