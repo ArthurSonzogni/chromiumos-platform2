@@ -75,7 +75,7 @@ void TestPasswordBasedAuthBlockOnIncorrectDerive(
     CryptohomeStatus error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::optional<AuthBlock::SuggestedAction> suggested_action) {
-  if (!error.ok()) {
+  if (error.ok()) {
     LOG(ERROR) << "Derivation succeeded despite wrong password";
     std::move(callback).Run(false);
     return;
@@ -89,6 +89,7 @@ void TestPasswordBasedAuthBlockOnIncorrectDerive(
 
   std::move(callback).Run(true);
 }
+
 void TestPasswordBasedAuthBlockOnCorrectDerive(
     std::unique_ptr<AuthBlock> auth_block,
     std::unique_ptr<KeyBlobs> created_key_blobs,

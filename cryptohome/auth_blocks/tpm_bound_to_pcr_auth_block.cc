@@ -477,7 +477,8 @@ void TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
     LOG(ERROR) << "Failed to unseal with auth: " << unsealed_data.status();
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
-            CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockUnsealFailedInDecrypt))
+            CRYPTOHOME_ERR_LOC(kLocTpmBoundToPcrAuthBlockUnsealFailedInDecrypt),
+            ErrorActionSet(PrimaryAction::kIncorrectAuth))
             .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
                 std::move(unsealed_data).err_status())),
         nullptr, std::nullopt);

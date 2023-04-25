@@ -259,9 +259,7 @@ void TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocTpmNotBoundToPcrAuthBlockDecryptFailedInDecrypt),
-            ErrorActionSet({PossibleAction::kReboot,
-                            PossibleAction::kDevCheckUnexpectedState,
-                            PossibleAction::kAuth}))
+            ErrorActionSet(PrimaryAction::kIncorrectAuth))
             .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
                 std::move(result).err_status())),
         nullptr, std::nullopt);
