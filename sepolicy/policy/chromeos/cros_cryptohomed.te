@@ -249,7 +249,7 @@ allow cros_cryptohomed cros_run_udev:dir { read search};
 allow cros_cryptohomed cros_var_lock:dir { getattr search };
 allow cros_cryptohomed cros_run_lock:dir { add_name remove_name write };
 allow cros_cryptohomed cros_run_lock:file { append create getattr lock open read unlink };
-allow cros_cryptohomed device:lnk_file { create unlink };
+allow cros_cryptohomed device:lnk_file { create open read unlink };
 allow cros_cryptohomed device:dir { add_name open read remove_name write};
 allow cros_cryptohomed devpts:dir { open read search };
 allow cros_cryptohomed cros_udevadm_exec:file rx_file_perms;
