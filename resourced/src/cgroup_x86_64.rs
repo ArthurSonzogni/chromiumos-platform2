@@ -89,7 +89,7 @@ fn is_dynamic_cgroup_enabled() -> Result<bool> {
             .get()
             .context("CGROUP_FEATURE is not initialized")?;
         if let Ok(feature) = feature_wrapper.feature.lock() {
-            Ok(featured::PlatformFeatures::new()?.is_feature_enabled_blocking(&feature))
+            Ok(featured::PlatformFeatures::get()?.is_feature_enabled_blocking(&feature))
         } else {
             bail!("Failed to lock CGROUP_FEATURE");
         }
