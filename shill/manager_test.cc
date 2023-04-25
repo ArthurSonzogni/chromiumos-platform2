@@ -114,7 +114,7 @@ class ManagerTest : public PropertyStoreTest {
         manager_adaptor_(new NiceMock<ManagerMockAdaptor>()),
         ethernet_provider_(new NiceMock<MockEthernetProvider>()),
         ethernet_eap_provider_(new NiceMock<MockEthernetEapProvider>()),
-        wifi_provider_(new NiceMock<MockWiFiProvider>()),
+        wifi_provider_(new NiceMock<MockWiFiProvider>(manager())),
         throttler_(new StrictMock<MockThrottler>()),
         upstart_(new NiceMock<MockUpstart>(control_interface())) {
     ON_CALL(*control_interface(), CreatePowerManagerProxy(_, _, _))
@@ -3686,7 +3686,7 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
                   storage_path(), temp_dir.GetPath().value());
   // Can't use |wifi_provider_|, because it's owned by the Manager
   // object in the fixture.
-  MockWiFiProvider* wifi_provider = new NiceMock<MockWiFiProvider>();
+  MockWiFiProvider* wifi_provider = new NiceMock<MockWiFiProvider>(&manager);
   manager.wifi_provider_.reset(wifi_provider);  // pass ownership
   manager.UpdateProviderMapping();
   // Give manager a valid place to write the user profile list.

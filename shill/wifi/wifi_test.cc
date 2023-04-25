@@ -600,6 +600,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                        kInterfaceIndex,
                        kPhyIndex,
                        std::make_unique<MockWakeOnWiFi>())),
+        wifi_provider_(&manager_),
         bss_counter_(0),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_bss_proxy_(new NiceMock<MockSupplicantBSSProxy>()),

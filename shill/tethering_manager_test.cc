@@ -155,7 +155,7 @@ class TetheringManagerTest : public testing::Test {
             &control_interface_, &dispatcher_, &metrics_, path_, path_, path_),
         modem_info_(&control_interface_, &manager_),
         tethering_manager_(manager_.tethering_manager()),
-        wifi_provider_(new NiceMock<MockWiFiProvider>()),
+        wifi_provider_(new NiceMock<MockWiFiProvider>(&manager_)),
         ethernet_provider_(new NiceMock<MockEthernetProvider>()),
         cellular_service_provider_(
             new NiceMock<MockCellularServiceProvider>(&manager_)),

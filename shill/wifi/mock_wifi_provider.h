@@ -10,6 +10,7 @@
 
 #include <gmock/gmock.h>
 
+#include "shill/manager.h"
 #include "shill/wifi/hotspot_device.h"
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/passpoint_credentials.h"
@@ -22,7 +23,7 @@ namespace shill {
 
 class MockWiFiProvider : public WiFiProvider {
  public:
-  MockWiFiProvider();
+  explicit MockWiFiProvider(Manager* manager);
   MockWiFiProvider(const MockWiFiProvider&) = delete;
   MockWiFiProvider& operator=(const MockWiFiProvider&) = delete;
 
