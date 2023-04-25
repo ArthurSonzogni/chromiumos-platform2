@@ -142,18 +142,6 @@ class SHILL_EXPORT IPAddress {
   // Returns whether |b| has the same family and address as |this|.
   bool HasSameAddressAs(const IPAddress& b) const;
 
-  // Perform an AND operation between the address data of |this| and that
-  // of |b|.  Returns an IPAddress containing the result of the operation.
-  // It is an error if |this| and |b| are not of the same address family
-  // or if either are not valid,
-  IPAddress MaskWith(const IPAddress& b) const;
-
-  // Perform an OR operation between the address data of |this| and that
-  // of |b|.  Returns an IPAddress containing the result of the operation.
-  // It is an error if |this| and |b| are not of the same address family
-  // or if either are not valid,
-  IPAddress MergeWith(const IPAddress& b) const;
-
   // Return an address that represents the network-part of the address,
   // i.e, the address with all but the prefix bits masked out.
   IPAddress GetNetworkPart() const;
@@ -180,6 +168,18 @@ class SHILL_EXPORT IPAddress {
   bool SetAddressFromString(const std::string& address_string);
   // Parse an "address/prefix" IP address and prefix pair from a string.
   bool SetAddressAndPrefixFromString(const std::string& address_string);
+
+  // Perform an AND operation between the address data of |this| and that
+  // of |b|.  Returns an IPAddress containing the result of the operation.
+  // The process will crash if |this| and |b| are not of the same address family
+  // or if either are not valid.
+  IPAddress MaskWith(const IPAddress& b) const;
+
+  // Perform an OR operation between the address data of |this| and that
+  // of |b|.  Returns an IPAddress containing the result of the operation.
+  // The process will crash if |this| and |b| are not of the same address family
+  // or if either are not valid.
+  IPAddress MergeWith(const IPAddress& b) const;
 
   Family family_;
   ByteString address_;
