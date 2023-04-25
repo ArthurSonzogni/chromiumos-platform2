@@ -318,6 +318,14 @@ class Datapath {
   // because Android already implements VPN lockdown.
   virtual void SetVpnLockdown(bool enable_vpn_lockdown);
 
+  // Start, stop and update IPv6 prefix enforcement on cellular network, so the
+  // egress traffic using a source address not in current assigned prefix
+  // (usually a leftover address from previous connection) will be dropped.
+  virtual void StartSourceIPv6PrefixEnforcement(const std::string& ifname);
+  virtual void StopSourceIPv6PrefixEnforcement(const std::string& ifname);
+  virtual void UpdateSourceEnforcementIPv6Prefix(
+      const std::string& ifname, const std::optional<std::string>& prefix);
+
   // Configures IPv4 interface parameters, IP forwarding rules, and traffic
   // marking for the downstream network interface specified in |info|. Exact
   // firewall rules being configured depend on the DownstreamNetworkTopology

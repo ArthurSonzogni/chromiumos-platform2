@@ -404,6 +404,11 @@ void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
     datapath_->RemoveRedirectDnsRule(ifname);
     arc_svc_->RemoveDevice(ifname);
     counters_svc_->OnPhysicalDeviceRemoved(ifname);
+
+    // We have no good way to tell whether the removed Device was cellular now,
+    // so we always call this. StopSourcePrefixEnforcement will find out by
+    // matching |ifname| with existing rules.
+    datapath_->StopSourceIPv6PrefixEnforcement(ifname);
   }
 
   for (const std::string& ifname : added) {
@@ -430,6 +435,10 @@ void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
           ifname, shill_device.ipconfig.ipv4_dns_addresses.front());
 
     arc_svc_->AddDevice(ifname, shill_device.type);
+
+    if (shill_device.type == ShillClient::Device::Type::kCellular) {
+      datapath_->StartSourceIPv6PrefixEnforcement(ifname);
+    }
   }
 }
 
@@ -444,8 +453,19 @@ void Manager::OnIPConfigsChanged(const std::string& ifname,
 
 void Manager::OnIPv6NetworkChanged(const std::string& ifname,
                                    const std::string& ipv6_address) {
-  if (ipv6_address.empty())
+  ShillClient::Device shill_device;
+  if (!shill_client_->GetDeviceProperties(ifname, &shill_device)) {
+    LOG(ERROR) << __func__ << ": unknown shill Device " << ifname;
     return;
+  }
+
+  if (ipv6_address.empty()) {
+    if (shill_device.type == ShillClient::Device::Type::kCellular) {
+      datapath_->UpdateSourceEnforcementIPv6Prefix(ifname,
+                                                   /*prefix=*/std::nullopt);
+    }
+    return;
+  }
 
   ipv6_svc_->OnUplinkIPv6Changed(ifname, ipv6_address);
 
@@ -457,6 +477,17 @@ void Manager::OnIPv6NetworkChanged(const std::string& ifname,
     // Disable and re-enable IPv6 inside the namespace. This is necessary to
     // trigger SLAAC in the kernel to send RS.
     RestartIPv6(nsinfo.netns_name);
+  }
+
+  if (shill_device.type == ShillClient::Device::Type::kCellular) {
+    // TODO(b/279871350): Support prefix shorter than /64.
+    std::string prefix = GuestIPv6Service::IPAddressTo64BitPrefix(ipv6_address);
+    if (prefix.empty()) {
+      LOG(ERROR) << "Fail to get prefix from IP address \"" << ipv6_address
+                 << "\"";
+      return;
+    }
+    datapath_->UpdateSourceEnforcementIPv6Prefix(ifname, prefix);
   }
 }
 

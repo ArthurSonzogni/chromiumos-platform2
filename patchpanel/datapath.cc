@@ -79,6 +79,9 @@ constexpr char kDropGuestInvalidIpv4Chain[] = "drop_guest_invalid_ipv4";
 // TODO(b/162788331) Remove once dns-proxy has become fully operational.
 constexpr char kRedirectDnsChain[] = "redirect_dns";
 
+// OUTPUT filter chain to enforce source IP on egress IPv6 packets.
+constexpr char kEnforceSourcePrefixChain[] = "enforce_ipv6_src_prefix";
+
 // VPN egress filter chains for the filter OUTPUT and FORWARD chains.
 constexpr char kVpnEgressFiltersChain[] = "vpn_egress_filters";
 constexpr char kVpnAcceptChain[] = "vpn_accept";
@@ -250,6 +253,8 @@ void Datapath::Start() {
       // networks (Tethering, LocalOnlyNetwork).
       {IpFamily::kDual, Iptables::Table::kFilter,
        kAcceptDownstreamNetworkChain},
+      // Create OUTPUT filter chain to enforce source IP on egress IPv6 packets.
+      {IpFamily::kIPv6, Iptables::Table::kFilter, kEnforceSourcePrefixChain},
   };
   for (const auto& c : makeCommands) {
     if (!AddChain(c.family, c.table, c.chain)) {
@@ -1732,6 +1737,57 @@ void Datapath::SetVpnLockdown(bool enable_vpn_lockdown) {
                     kVpnLockdownChain)) {
       LOG(ERROR) << "Failed to stop VPN lockdown mode";
     }
+  }
+}
+
+void Datapath::StartSourceIPv6PrefixEnforcement(const std::string& ifname) {
+  VLOG(2) << __func__ << ": " << ifname;
+  ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
+                 Iptables::Command::kI, "OUTPUT", kEnforceSourcePrefixChain,
+                 /*iif=*/"", /*oif=*/ifname);
+}
+
+void Datapath::StopSourceIPv6PrefixEnforcement(const std::string& ifname) {
+  VLOG(2) << __func__ << ": " << ifname;
+  if (ModifyJumpRule(IpFamily::kIPv6, Iptables::Table::kFilter,
+                     Iptables::Command::kD, "OUTPUT", kEnforceSourcePrefixChain,
+                     /*iif=*/"", /*oif=*/ifname)) {
+    // if we removed the jump rule, also clear the prefix RETURN rule in the
+    // chain to prepare for the next time when that jump rule will be added.
+    UpdateSourceEnforcementIPv6Prefix(ifname, std::nullopt);
+  }
+}
+
+void Datapath::UpdateSourceEnforcementIPv6Prefix(
+    const std::string& ifname, const std::optional<std::string>& prefix) {
+  VLOG(2) << __func__ << ": " << ifname << ", {"
+          << (prefix ? prefix.value() : "") << "}";
+  if (!FlushChain(IpFamily::kIPv6, Iptables::Table::kFilter,
+                  kEnforceSourcePrefixChain)) {
+    LOG(ERROR) << "Failed to flush " << kEnforceSourcePrefixChain;
+  }
+  if (prefix) {
+    if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
+                        Iptables::Command::kA,
+                        {kEnforceSourcePrefixChain, "-s",
+                         prefix.value() + "/64", "-j", "RETURN", "-w"})) {
+      LOG(ERROR) << "Fail to add " + prefix.value() + "/64" + " RETURN rule in "
+                 << kEnforceSourcePrefixChain;
+    }
+  }
+  // Adding default DROP rule to DROP any packet with global unicast or unique
+  // local source addresses.
+  if (!ModifyIptables(
+          IpFamily::kIPv6, Iptables::Table::kFilter, Iptables::Command::kA,
+          {kEnforceSourcePrefixChain, "-s", "2000::/3", "-j", "DROP", "-w"})) {
+    LOG(ERROR) << "Fail to add 2000::/3 DROP rule in "
+               << kEnforceSourcePrefixChain;
+  }
+  if (!ModifyIptables(
+          IpFamily::kIPv6, Iptables::Table::kFilter, Iptables::Command::kA,
+          {kEnforceSourcePrefixChain, "-s", "fc00::/7", "-j", "DROP", "-w"})) {
+    LOG(ERROR) << "Fail to add fc00::/7 DROP rule in "
+               << kEnforceSourcePrefixChain;
   }
 }
 

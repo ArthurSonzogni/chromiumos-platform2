@@ -545,6 +545,8 @@ TEST(DatapathTest, Start) {
       {IpFamily::kDual, "filter -A vpn_egress_filters -j vpn_lockdown -w"},
       {IpFamily::kDual, "filter -N vpn_accept -w"},
       {IpFamily::kDual, "filter -A vpn_egress_filters -j vpn_accept -w"},
+      // Asserts for cellular prefix enforcement chain creation
+      {IpFamily::kIPv6, "filter -N enforce_ipv6_src_prefix -w"},
       // Asserts for DNS proxy rules
       {IpFamily::kDual, "mangle -N skip_apply_vpn_mark -w"},
       {IpFamily::kDual,
@@ -2038,6 +2040,58 @@ TEST(DatapathTest, StopDnsRedirection_ExcludeDestination) {
   Datapath datapath(runner, firewall, &system);
   datapath.StopDnsRedirection(rule4);
   datapath.StopDnsRedirection(rule6);
+}
+
+TEST(DatapathTest, PrefixEnforcement) {
+  auto runner = new MockProcessRunner();
+  auto firewall = new MockFirewall();
+  FakeSystem system;
+
+  Datapath datapath(runner, firewall, &system);
+
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -I OUTPUT -o wwan0 -j enforce_ipv6_src_prefix -w");
+  datapath.StartSourceIPv6PrefixEnforcement("wwan0");
+
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -F enforce_ipv6_src_prefix -w");
+  Verify_iptables(
+      *runner, IpFamily::kIPv6,
+      "filter -A enforce_ipv6_src_prefix -s 2001:db8:1:1::/64 -j RETURN -w");
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
+  datapath.UpdateSourceEnforcementIPv6Prefix("wwan0", "2001:db8:1:1::");
+
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -F enforce_ipv6_src_prefix -w");
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
+  datapath.UpdateSourceEnforcementIPv6Prefix("wwan0", std::nullopt);
+
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -F enforce_ipv6_src_prefix -w");
+  Verify_iptables(
+      *runner, IpFamily::kIPv6,
+      "filter -A enforce_ipv6_src_prefix -s 2001:db8:1:2::/64 -j RETURN -w");
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
+  datapath.UpdateSourceEnforcementIPv6Prefix("wwan0", "2001:db8:1:2::");
+
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -D OUTPUT -o wwan0 -j enforce_ipv6_src_prefix -w");
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -F enforce_ipv6_src_prefix -w");
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -A enforce_ipv6_src_prefix -s 2000::/3 -j DROP -w");
+  Verify_iptables(*runner, IpFamily::kIPv6,
+                  "filter -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP -w");
+  datapath.StopSourceIPv6PrefixEnforcement("wwan0");
 }
 
 TEST(DatapathTest, SetRouteLocalnet) {

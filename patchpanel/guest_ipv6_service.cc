@@ -53,16 +53,6 @@ GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
   }
 }
 
-// TODO(b/228585272): Support prefix larger than /64
-std::string IPAddressTo64BitPrefix(const std::string addr_str) {
-  if (addr_str.empty()) {
-    return "";
-  }
-  in6_addr addr = StringToIPv6Address(addr_str);
-  memset(&addr.s6_addr[8], 0, 8);
-  return IPv6AddressToString(addr);
-}
-
 bool PrepareRunPath() {
   base::FilePath run_path(kRadvdRunDir);
   if (!base::DirectoryExists(run_path) && !base::CreateDirectory(run_path)) {
@@ -122,6 +112,18 @@ bool CreateConfigFile(const std::string& ifname, const std::string& prefix) {
 }
 
 }  // namespace
+
+// TODO(b/228585272): Support prefix larger than /64
+// static
+std::string GuestIPv6Service::IPAddressTo64BitPrefix(
+    const std::string addr_str) {
+  if (addr_str.empty()) {
+    return "";
+  }
+  in6_addr addr = StringToIPv6Address(addr_str);
+  memset(&addr.s6_addr[8], 0, 8);
+  return IPv6AddressToString(addr);
+}
 
 GuestIPv6Service::GuestIPv6Service(SubprocessController* nd_proxy,
                                    Datapath* datapath,

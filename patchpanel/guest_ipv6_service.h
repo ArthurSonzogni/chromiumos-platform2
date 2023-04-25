@@ -78,6 +78,8 @@ class GuestIPv6Service {
   void RegisterDownstreamNeighborIP(const std::string& ifname_downlink,
                                     const std::string& ip);
 
+  static std::string IPAddressTo64BitPrefix(const std::string addr_str);
+
  protected:
   virtual void SendNDProxyControl(
       NDProxyControlMessage::NDProxyRequestType type,
