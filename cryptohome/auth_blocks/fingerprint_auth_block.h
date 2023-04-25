@@ -17,6 +17,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/le_credential_manager.h"
+#include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 
@@ -26,12 +27,9 @@ class FingerprintAuthBlock : public AuthBlock {
   static constexpr auto kType = AuthBlockType::kFingerprint;
   using StateType = FingerprintAuthBlockState;
   static CryptoStatus IsSupported(
-      Crypto& crypto,
-      base::RepeatingCallback<BiometricsAuthBlockService*()>&
-          bio_service_getter);
+      Crypto& crypto, AsyncInitPtr<BiometricsAuthBlockService> bio_service);
   static std::unique_ptr<AuthBlock> New(
-      Crypto& crypto,
-      base::RepeatingCallback<BiometricsAuthBlockService*()>& service_getter);
+      Crypto& crypto, AsyncInitPtr<BiometricsAuthBlockService> bio_service);
 
   FingerprintAuthBlock(LECredentialManager* le_manager,
                        BiometricsAuthBlockService* service);

@@ -94,10 +94,7 @@ FingerprintAuthBlock::FingerprintAuthBlock(LECredentialManager* le_manager,
 }
 
 CryptoStatus FingerprintAuthBlock::IsSupported(
-    Crypto& crypto,
-    base::RepeatingCallback<BiometricsAuthBlockService*()>&
-        bio_service_getter) {
-  auto* bio_service = bio_service_getter.Run();
+    Crypto& crypto, AsyncInitPtr<BiometricsAuthBlockService> bio_service) {
   if (!bio_service) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoServiceInIsSupported),
@@ -155,12 +152,11 @@ CryptoStatus FingerprintAuthBlock::IsSupported(
 }
 
 std::unique_ptr<AuthBlock> FingerprintAuthBlock::New(
-    Crypto& crypto,
-    base::RepeatingCallback<BiometricsAuthBlockService*()>& service_getter) {
+    Crypto& crypto, AsyncInitPtr<BiometricsAuthBlockService> bio_service) {
   auto* le_manager = crypto.le_manager();
-  auto* bio_service = service_getter.Run();
   if (le_manager && bio_service) {
-    return std::make_unique<FingerprintAuthBlock>(le_manager, bio_service);
+    return std::make_unique<FingerprintAuthBlock>(le_manager,
+                                                  bio_service.get());
   }
   return nullptr;
 }

@@ -11,6 +11,8 @@
 #include <utility>
 
 #include <libhwsec-foundation/status/status_chain.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libhwsec/frontend/recovery_crypto/frontend.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -35,8 +37,7 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/platform.h"
-#include "libhwsec/frontend/cryptohome/frontend.h"
-#include "libhwsec/frontend/recovery_crypto/frontend.h"
+#include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 
@@ -148,14 +149,13 @@ class GenericAuthBlockFunctions {
       AsyncInitFeatures* features,
       ChallengeCredentialsHelper* challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory,
-      base::RepeatingCallback<BiometricsAuthBlockService*()> bio_service_getter,
+      AsyncInitPtr<BiometricsAuthBlockService> bio_service,
       Crypto* crypto)
-      : bio_service_getter_(std::move(bio_service_getter)),
-        parameters_(std::forward_as_tuple(*platform,
+      : parameters_(std::forward_as_tuple(*platform,
                                           *features,
                                           challenge_credentials_helper,
                                           key_challenge_service_factory,
-                                          bio_service_getter_,
+                                          std::move(bio_service),
                                           *crypto,
                                           crypto->le_manager(),
                                           *crypto->GetHwsec(),
@@ -202,7 +202,7 @@ class GenericAuthBlockFunctions {
              AsyncInitFeatures&,
              ChallengeCredentialsHelper*,
              KeyChallengeServiceFactory*,
-             base::RepeatingCallback<BiometricsAuthBlockService*()>&,
+             AsyncInitPtr<BiometricsAuthBlockService>,
              Crypto&,
              LECredentialManager*,
              hwsec::CryptohomeFrontend&,

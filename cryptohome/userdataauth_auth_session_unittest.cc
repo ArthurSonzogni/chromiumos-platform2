@@ -395,7 +395,7 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
         &keyset_management_, &crypto_, &platform_, &features_.async,
         FingerprintAuthBlockService::MakeNullService(),
-        BiometricsAuthBlockService::NullGetter());
+        AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
     CreateAuthSessionManager(auth_block_utility_impl_.get());
   }
 

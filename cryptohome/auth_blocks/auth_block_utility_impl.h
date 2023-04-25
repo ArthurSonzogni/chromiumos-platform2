@@ -31,6 +31,7 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 
@@ -47,8 +48,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
                        Platform* platform,
                        AsyncInitFeatures* features,
                        std::unique_ptr<FingerprintAuthBlockService> fp_service,
-                       base::RepeatingCallback<BiometricsAuthBlockService*()>
-                           bio_service_getter);
+                       AsyncInitPtr<BiometricsAuthBlockService> bio_service);
 
   AuthBlockUtilityImpl(const AuthBlockUtilityImpl&) = delete;
   AuthBlockUtilityImpl& operator=(const AuthBlockUtilityImpl&) = delete;
@@ -166,9 +166,10 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // fingerprint sensors.
   std::unique_ptr<FingerprintAuthBlockService> fp_service_;
 
-  // Biometrics service getter. This is because AuthBlockUtility is created pre
-  // dbus initialization and biometrics service can only be created after that.
-  base::RepeatingCallback<BiometricsAuthBlockService*()> bio_service_getter_;
+  // Biometrics service, used by operations that need to interact with biod.
+  // TODO(b/276453357): Replace with BiometricsAuthBlockService* once that
+  // object is guaranteed to always be available.
+  AsyncInitPtr<BiometricsAuthBlockService> bio_service_;
 };
 
 }  // namespace cryptohome

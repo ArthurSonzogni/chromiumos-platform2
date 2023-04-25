@@ -773,10 +773,6 @@ class UserDataAuth {
   // and connects to signals.
   void CreateFingerprintManager();
 
-  // Called on Mount thread. The returns a pointer to the fingerprint manager,
-  // or null if it has not been created.
-  FingerprintManager* GetFingerprintManager() const;
-
   // OnFingerprintScanResult will be called on every received fingerprint
   // scan result. It will forward results to
   // |fingerprint_scan_result_callback_|.
@@ -796,10 +792,6 @@ class UserDataAuth {
   // Called on Mount thread. This creates a biometrics service that connects
   // to the biometrics daemon and connect to signals.
   void CreateBiometricsService();
-
-  // Called on Mount thread. The returns a pointer to the biometrics service,
-  // or null if it has not been created.
-  BiometricsAuthBlockService* GetBiometricsService() const;
 
   // =============== PKCS#11 Related Utilities ===============
 

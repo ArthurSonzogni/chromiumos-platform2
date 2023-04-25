@@ -466,7 +466,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       &platform_,
       &features_.async,
       FingerprintAuthBlockService::MakeNullService(),
-      BiometricsAuthBlockService::NullGetter()};
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   NiceMock<MockAuthBlockUtility> mock_auth_block_utility_;
   AuthFactorDriverManager auth_factor_driver_manager_;
   AuthFactorManager auth_factor_manager_{&platform_};

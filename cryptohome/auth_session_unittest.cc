@@ -987,7 +987,7 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
   AuthBlockUtilityImpl real_auth_block_utility(
       &keyset_management_, &crypto_, &platform_, &features.async,
       FingerprintAuthBlockService::MakeNullService(),
-      BiometricsAuthBlockService::NullGetter());
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
   auto test_backing_apis = backing_apis_;
   test_backing_apis.auth_block_utility = &real_auth_block_utility;
 

@@ -15,13 +15,14 @@
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fingerprint_manager.h"
+#include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 
 class FingerprintAuthBlockService {
  public:
   FingerprintAuthBlockService(
-      base::RepeatingCallback<FingerprintManager*()> fp_manager_getter,
+      AsyncInitPtr<FingerprintManager> fp_manager,
       base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
           signal_sender);
 
@@ -88,7 +89,10 @@ class FingerprintAuthBlockService {
   // and cancels all existing pending callbacks.
   void EndAuthSession();
 
-  base::RepeatingCallback<FingerprintManager*()> fp_manager_getter_;
+  // TODO(b/276453357): Replace with FingerprintManager* once that object is
+  // guaranteed to always be available.
+  AsyncInitPtr<FingerprintManager> fp_manager_;
+
   // The most recent fingerprint scan result.
   FingerprintScanStatus scan_result_ =
       FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED;

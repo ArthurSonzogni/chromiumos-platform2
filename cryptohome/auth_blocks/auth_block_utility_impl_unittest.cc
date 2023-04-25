@@ -134,8 +134,9 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   std::unique_ptr<FingerprintAuthBlockService>
   MakeFingerprintAuthBlockService() {
     return std::make_unique<FingerprintAuthBlockService>(
-        base::BindRepeating(&AuthBlockUtilityImplTest::GetFingerprintManager,
-                            base::Unretained(this)),
+        AsyncInitPtr<FingerprintManager>(base::BindRepeating(
+            &AuthBlockUtilityImplTest::GetFingerprintManager,
+            base::Unretained(this))),
         base::BindRepeating(&AuthBlockUtilityImplTest::OnFingerprintScanResult,
                             base::Unretained(this)));
   }
@@ -146,8 +147,8 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_.get(), &crypto_, &platform_, &features_.async,
         MakeFingerprintAuthBlockService(),
-        base::BindRepeating(&AuthBlockUtilityImplTest::GetBioService,
-                            base::Unretained(this)));
+        AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
+            &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this))));
   }
 
  protected:
@@ -1412,7 +1413,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       &keyset_management, &crypto_, &platform_, &features_.async,
       MakeFingerprintAuthBlockService(),
-      BiometricsAuthBlockService::NullGetter());
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
   // Test
   AuthBlockState out_state;
   EXPECT_CALL(keyset_management, GetVaultKeyset(_, _))

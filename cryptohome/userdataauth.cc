@@ -336,12 +336,20 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     default_auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_, crypto_, platform_, &async_init_features_,
         std::make_unique<FingerprintAuthBlockService>(
-            base::BindRepeating(&UserDataAuth::GetFingerprintManager,
-                                base::Unretained(this)),
+            AsyncInitPtr<FingerprintManager>(base::BindRepeating(
+                [](UserDataAuth* uda) {
+                  uda->AssertOnMountThread();
+                  return uda->fingerprint_manager_;
+                },
+                base::Unretained(this))),
             base::BindRepeating(&UserDataAuth::OnFingerprintScanResult,
                                 base::Unretained(this))),
-        base::BindRepeating(&UserDataAuth::GetBiometricsService,
-                            base::Unretained(this)));
+        AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
+            [](UserDataAuth* uda) {
+              uda->AssertOnMountThread();
+              return uda->biometrics_service_;
+            },
+            base::Unretained(this))));
     auth_block_utility_ = default_auth_block_utility_.get();
   }
 
@@ -581,11 +589,6 @@ void UserDataAuth::CreateFingerprintManager() {
   }
 }
 
-FingerprintManager* UserDataAuth::GetFingerprintManager() const {
-  AssertOnMountThread();
-  return fingerprint_manager_;
-}
-
 void UserDataAuth::OnFingerprintScanResult(
     user_data_auth::FingerprintScanResult result) {
   AssertOnMountThread();
@@ -617,11 +620,6 @@ void UserDataAuth::CreateBiometricsService() {
     }
     biometrics_service_ = default_biometrics_service_.get();
   }
-}
-
-BiometricsAuthBlockService* UserDataAuth::GetBiometricsService() const {
-  AssertOnMountThread();
-  return biometrics_service_;
 }
 
 void UserDataAuth::OnFingerprintEnrollProgress(

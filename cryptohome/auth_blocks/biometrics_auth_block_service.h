@@ -40,15 +40,6 @@ class BiometricsAuthBlockService {
       delete;
   ~BiometricsAuthBlockService() = default;
 
-  // Create a null getter that always return a null BiometricsAuthBlockService
-  // pointer. This is mostly useful in tests that don't need to do any
-  // biometrics operations and just want a placeholder when constructing
-  // AuthBlockUtility.
-  static base::RepeatingCallback<BiometricsAuthBlockService*()> NullGetter() {
-    return base::BindRepeating(
-        []() -> BiometricsAuthBlockService* { return nullptr; });
-  }
-
   // IsReady returns whether the biometrics auth block service is ready. Once
   // this returns true in a boot cycle, the caller can assume it's always ready.
   // This can be used to determine biometrics auth factor's availability.

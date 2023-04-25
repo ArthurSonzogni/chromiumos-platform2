@@ -91,9 +91,9 @@ TEST_F(NullFingerprintAuthBlockServiceTest, NullStartFails) {
 class FingerprintAuthBlockServiceTest : public BaseTestFixture {
  public:
   FingerprintAuthBlockServiceTest()
-      : service_(base::BindRepeating(
+      : service_(AsyncInitPtr<FingerprintManager>(base::BindRepeating(
                      &FingerprintAuthBlockServiceTest::GetFingerprintManager,
-                     base::Unretained(this)),
+                     base::Unretained(this))),
                  base::BindRepeating(
                      &FingerprintAuthBlockServiceTest::OnFingerprintScanResult,
                      base::Unretained(this))) {}

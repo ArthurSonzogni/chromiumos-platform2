@@ -15,6 +15,7 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/fingerprint_manager.h"
+#include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 namespace {
@@ -62,8 +63,7 @@ void FingerprintAuthBlockService::CheckSessionStartResult(
     return;
   }
 
-  FingerprintManager* fp_manager = fp_manager_getter_.Run();
-  if (!fp_manager) {
+  if (!fp_manager_) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceCheckSessionStartCouldNotGetFpManager),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -74,30 +74,29 @@ void FingerprintAuthBlockService::CheckSessionStartResult(
   }
 
   std::move(clear_active_token).Cancel();
-  fp_manager->SetSignalCallback(base::BindRepeating(
+  fp_manager_->SetSignalCallback(base::BindRepeating(
       &FingerprintAuthBlockService::Capture, base::Unretained(this)));
   token->AttachToService(this);
   std::move(on_done).Run(std::move(token));
 }
 
 FingerprintAuthBlockService::FingerprintAuthBlockService(
-    base::RepeatingCallback<FingerprintManager*()> fp_manager_getter,
+    AsyncInitPtr<FingerprintManager> fp_manager,
     base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
         signal_sender)
-    : fp_manager_getter_(fp_manager_getter), signal_sender_(signal_sender) {}
+    : fp_manager_(fp_manager), signal_sender_(signal_sender) {}
 
 std::unique_ptr<FingerprintAuthBlockService>
 FingerprintAuthBlockService::MakeNullService() {
   // Construct an instance of the service with a getter callbacks that always
   // return null and a signal sender that does nothing.
   return std::make_unique<FingerprintAuthBlockService>(
-      base::BindRepeating([]() -> FingerprintManager* { return nullptr; }),
+      AsyncInitPtr<FingerprintManager>(nullptr),
       base::BindRepeating([](user_data_auth::FingerprintScanResult) {}));
 }
 
 CryptohomeStatus FingerprintAuthBlockService::Verify() {
-  FingerprintManager* fp_manager = fp_manager_getter_.Run();
-  if (!fp_manager) {
+  if (!fp_manager_) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceVerifyCouldNotGetFpManager),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -137,8 +136,7 @@ CryptohomeStatus FingerprintAuthBlockService::Verify() {
 void FingerprintAuthBlockService::Start(
     ObfuscatedUsername obfuscated_username,
     PreparedAuthFactorToken::Consumer on_done) {
-  FingerprintManager* fp_manager = fp_manager_getter_.Run();
-  if (!fp_manager) {
+  if (!fp_manager_) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceStartScanCouldNotGetFpManager),
         ErrorActionSet({PossibleAction::kRetry}),
@@ -161,7 +159,7 @@ void FingerprintAuthBlockService::Start(
   // Set up a callback with the manager to check the start session result.
   auto token = std::make_unique<Token>();
   active_token_ = token.get();
-  fp_manager->StartAuthSessionAsyncForUser(
+  fp_manager_->StartAuthSessionAsyncForUser(
       obfuscated_username,
       base::BindOnce(&FingerprintAuthBlockService::CheckSessionStartResult,
                      base::Unretained(this), std::move(token),
@@ -198,9 +196,8 @@ void FingerprintAuthBlockService::Capture(FingerprintScanStatus status) {
 }
 
 void FingerprintAuthBlockService::EndAuthSession() {
-  FingerprintManager* fp_manager = fp_manager_getter_.Run();
-  if (fp_manager) {
-    fp_manager->EndAuthSession();
+  if (fp_manager_) {
+    fp_manager_->EndAuthSession();
   }
 }
 

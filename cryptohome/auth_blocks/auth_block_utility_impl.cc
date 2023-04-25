@@ -119,13 +119,13 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(
     Platform* platform,
     AsyncInitFeatures* features,
     std::unique_ptr<FingerprintAuthBlockService> fp_service,
-    base::RepeatingCallback<BiometricsAuthBlockService*()> bio_service_getter)
+    AsyncInitPtr<BiometricsAuthBlockService> bio_service)
     : keyset_management_(keyset_management),
       crypto_(crypto),
       platform_(platform),
       features_(features),
       fp_service_(std::move(fp_service)),
-      bio_service_getter_(bio_service_getter) {
+      bio_service_(std::move(bio_service)) {
   DCHECK(keyset_management);
   DCHECK(crypto_);
   DCHECK(platform_);
@@ -169,10 +169,9 @@ bool AuthBlockUtilityImpl::IsAuthFactorSupported(
     case AuthFactorType::kLegacyFingerprint:
       return false;
     case AuthFactorType::kFingerprint: {
-      auto getter_copy = bio_service_getter_;
       return (auth_factor_storage_type ==
               AuthFactorStorageType::kUserSecretStash) &&
-             FingerprintAuthBlock::IsSupported(*crypto_, getter_copy).ok();
+             FingerprintAuthBlock::IsSupported(*crypto_, bio_service_).ok();
     }
     case AuthFactorType::kUnspecified:
       return false;
@@ -251,8 +250,7 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(
       return;
     }
     case AuthFactorType::kFingerprint: {
-      BiometricsAuthBlockService* bio_service = bio_service_getter_.Run();
-      if (!bio_service) {
+      if (!bio_service_) {
         CryptohomeStatus status = MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthBlockUtilPrepareForAuthFingerprintNoService),
@@ -263,8 +261,8 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(
         std::move(callback).Run(std::move(status));
         return;
       }
-      bio_service->StartAuthenticateSession(AuthFactorType::kFingerprint,
-                                            username, std::move(callback));
+      bio_service_->StartAuthenticateSession(AuthFactorType::kFingerprint,
+                                             username, std::move(callback));
       return;
     }
     case AuthFactorType::kPassword:
@@ -292,8 +290,7 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAdd(
     PreparedAuthFactorToken::Consumer callback) {
   switch (auth_factor_type) {
     case AuthFactorType::kFingerprint: {
-      BiometricsAuthBlockService* bio_service = bio_service_getter_.Run();
-      if (!bio_service) {
+      if (!bio_service_) {
         CryptohomeStatus status = MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthBlockUtilPrepareForAddFingerprintNoService),
@@ -304,8 +301,8 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAdd(
         std::move(callback).Run(std::move(status));
         return;
       }
-      bio_service->StartEnrollSession(AuthFactorType::kFingerprint, username,
-                                      std::move(callback));
+      bio_service_->StartEnrollSession(AuthFactorType::kFingerprint, username,
+                                       std::move(callback));
       return;
     }
     case AuthFactorType::kLegacyFingerprint:
@@ -461,7 +458,7 @@ CryptoStatus AuthBlockUtilityImpl::IsAuthBlockSupported(
     AuthBlockType auth_block_type) const {
   GenericAuthBlockFunctions generic(
       platform_, features_, challenge_credentials_helper_,
-      key_challenge_service_factory_, bio_service_getter_, crypto_);
+      key_challenge_service_factory_, bio_service_, crypto_);
   return generic.IsSupported(auth_block_type);
 }
 
@@ -476,7 +473,7 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(AuthBlockType auth_block_type,
   }
   GenericAuthBlockFunctions generic(
       platform_, features_, challenge_credentials_helper_,
-      key_challenge_service_factory_, bio_service_getter_, crypto_);
+      key_challenge_service_factory_, bio_service_, crypto_);
   auto auth_block = generic.GetAuthBlockWithType(auth_block_type, auth_input);
   if (!auth_block) {
     return MakeStatus<CryptohomeCryptoError>(
@@ -563,7 +560,7 @@ std::optional<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
     const AuthBlockState& auth_block_state) const {
   GenericAuthBlockFunctions generic(
       platform_, features_, challenge_credentials_helper_,
-      key_challenge_service_factory_, bio_service_getter_, crypto_);
+      key_challenge_service_factory_, bio_service_, crypto_);
   return generic.GetAuthBlockTypeFromState(auth_block_state);
 }
 
