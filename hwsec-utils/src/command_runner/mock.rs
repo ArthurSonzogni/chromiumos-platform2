@@ -118,6 +118,20 @@ impl MockCommandRunner {
             MockCommandOutput::new(exit_status, out, err),
         );
     }
+    pub fn add_metrics_client_expectation(&mut self, event_id: u64) {
+        use crate::cr50::GSC_METRICS_PREFIX;
+        self.add_expectation(
+            MockCommandInput::new(
+                "metrics_client",
+                vec![
+                    "-s",
+                    &format!("{}.FlashLog", GSC_METRICS_PREFIX),
+                    &format!("0x{:02x}", event_id),
+                ],
+            ),
+            MockCommandOutput::new(0, "", ""),
+        );
+    }
     pub fn add_successful_generic_read_board_id_interaction(&mut self, board_id: BoardID) {
         self.add_tpm_interaction(
             "trunks_send",

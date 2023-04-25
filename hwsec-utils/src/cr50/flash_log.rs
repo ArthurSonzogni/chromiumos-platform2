@@ -155,3 +155,95 @@ pub fn cr50_flash_log(ctx: &mut impl Context, prev_stamp: u64) -> Result<u64, (H
     }
     Ok(new_stamp)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::parse_timestamp_and_event_id_from_log_entry;
+    use crate::context::mock::MockContext;
+    use crate::context::Context;
+    use crate::cr50::cr50_flash_log;
+    use crate::error::HwsecError;
+
+    const PREV_STAMP: u64 = 0;
+
+    #[test]
+    fn test_parse_timestamp_and_event_id_from_log_entry_ok() {
+        let line: &str = &format!("{:>10}:00", 1);
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        assert_eq!(result, Ok((1, 0)));
+    }
+
+    #[test]
+    fn test_parse_timestamp_and_event_id_from_log_entry_event_id_is_fe_log_nvmem() {
+        use super::FE_LOG_NVMEM;
+        use super::NVMEM_MALLOC;
+
+        let line: &str = &format!("{:>10}:{:02x} 00", 1, FE_LOG_NVMEM);
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        assert_eq!(result, Ok((1, NVMEM_MALLOC)));
+    }
+
+    #[test]
+    fn test_parse_timestamp_and_event_id_from_log_entry_not_integer() {
+        let line: &str = "TEST";
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        assert_eq!(result, Err(HwsecError::InternalError));
+    }
+
+    #[test]
+    fn test_parse_timestamp_and_event_id_from_log_entry_missing_event_id() {
+        let line: &str = &format!("{:>10}", 1);
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        assert_eq!(result, Err(HwsecError::InternalError));
+    }
+
+    #[test]
+    fn test_parse_timestamp_and_event_id_from_log_entry_missing_payload_0() {
+        use super::FE_LOG_NVMEM;
+
+        let line: &str = &format!("{:>10}:{:02x}", 1, FE_LOG_NVMEM);
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        assert_eq!(result, Err(HwsecError::InternalError));
+    }
+
+    #[test]
+    fn test_cr50_flash_log_empty_flash_log() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx
+            .cmd_runner()
+            .add_gsctool_interaction(vec!["-a", "-M", "-L", "0"], 0, "", "");
+
+        let result = cr50_flash_log(&mut mock_ctx, PREV_STAMP);
+        assert_eq!(result, Ok(0));
+    }
+
+    #[test]
+    fn test_cr50_flash_log_multiple_lines_flash_log() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["-a", "-M", "-L", "0"],
+            0,
+            &format!("{:>10}:00\n{:>10}:09 02\n{:>10}:09 02", 1, 2, 3),
+            "",
+        );
+
+        mock_ctx.cmd_runner().add_metrics_client_expectation(0);
+        for _ in 0..2 {
+            mock_ctx.cmd_runner().add_metrics_client_expectation(9);
+        }
+
+        let result = cr50_flash_log(&mut mock_ctx, PREV_STAMP);
+        assert_eq!(result, Ok(3));
+    }
+
+    #[test]
+    fn test_cr50_flash_log_event_gsctool_error() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx
+            .cmd_runner()
+            .add_gsctool_interaction(vec!["-a", "-M", "-L", "0"], 1, "", "");
+
+        let result = cr50_flash_log(&mut mock_ctx, PREV_STAMP);
+        assert_eq!(result, Err((HwsecError::GsctoolError(1), 0)));
+    }
+}
