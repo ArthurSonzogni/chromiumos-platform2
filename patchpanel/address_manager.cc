@@ -30,8 +30,8 @@ namespace {
 
 AddressManager::AddressManager() {
   for (auto g :
-       {GuestType::kArc0, GuestType::kArcNet, GuestType::kVmTermina,
-        GuestType::kVmPlugin, GuestType::kLxdContainer, GuestType::kNetns}) {
+       {GuestType::kArc0, GuestType::kArcNet, GuestType::kTerminaVM,
+        GuestType::kPluginVM, GuestType::kLXDContainer, GuestType::kNetns}) {
     uint32_t base_addr;
     uint32_t prefix_length = 30;
     uint32_t subnets = 1;
@@ -43,7 +43,7 @@ AddressManager::AddressManager() {
         base_addr = Ipv4Addr(100, 115, 92, 4);
         subnets = 5;
         break;
-      case GuestType::kVmTermina:
+      case GuestType::kTerminaVM:
         base_addr = Ipv4Addr(100, 115, 92, 24);
         subnets = 26;
         break;
@@ -52,12 +52,12 @@ AddressManager::AddressManager() {
         prefix_length = 30;
         subnets = 16;
         break;
-      case GuestType::kLxdContainer:
+      case GuestType::kLXDContainer:
         base_addr = Ipv4Addr(100, 115, 92, 192);
         prefix_length = 28;
         subnets = 4;
         break;
-      case GuestType::kVmPlugin:
+      case GuestType::kPluginVM:
         base_addr = Ipv4Addr(100, 115, 93, 0);
         prefix_length = 29;
         subnets = 32;
@@ -74,7 +74,7 @@ MacAddress AddressManager::GenerateMacAddress(uint32_t index) {
 
 std::unique_ptr<Subnet> AddressManager::AllocateIPv4Subnet(GuestType guest,
                                                            uint32_t index) {
-  if (index > 0 && guest != GuestType::kVmPlugin) {
+  if (index > 0 && guest != GuestType::kPluginVM) {
     LOG(ERROR) << "Subnet indexing not supported for guest";
     return nullptr;
   }

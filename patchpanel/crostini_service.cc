@@ -149,7 +149,7 @@ std::vector<const Device*> CrostiniService::GetDevices() const {
 
 std::unique_ptr<Device> CrostiniService::AddTAP(bool is_termina,
                                                 uint32_t subnet_index) {
-  auto guest_type = is_termina ? GuestType::kVmTermina : GuestType::kVmPlugin;
+  auto guest_type = is_termina ? GuestType::kTerminaVM : GuestType::kPluginVM;
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(guest_type, subnet_index);
   if (!ipv4_subnet) {
     LOG(ERROR) << "Subnet already in use or unavailable.";
@@ -167,7 +167,7 @@ std::unique_ptr<Device> CrostiniService::AddTAP(bool is_termina,
   }
   std::unique_ptr<Subnet> lxd_subnet;
   if (is_termina) {
-    lxd_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::kLxdContainer);
+    lxd_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::kLXDContainer);
     if (!lxd_subnet) {
       LOG(ERROR) << "lxd subnet already in use or unavailable.";
       return nullptr;

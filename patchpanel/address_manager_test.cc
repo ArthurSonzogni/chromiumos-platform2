@@ -21,9 +21,9 @@ TEST(AddressManager, BaseAddresses) {
   std::map<GuestType, size_t> addrs = {
       {GuestType::kArc0, Ipv4Addr(100, 115, 92, 0)},
       {GuestType::kArcNet, Ipv4Addr(100, 115, 92, 4)},
-      {GuestType::kVmTermina, Ipv4Addr(100, 115, 92, 24)},
-      {GuestType::kVmPlugin, Ipv4Addr(100, 115, 93, 0)},
-      {GuestType::kLxdContainer, Ipv4Addr(100, 115, 92, 192)},
+      {GuestType::kTerminaVM, Ipv4Addr(100, 115, 92, 24)},
+      {GuestType::kPluginVM, Ipv4Addr(100, 115, 93, 0)},
+      {GuestType::kLXDContainer, Ipv4Addr(100, 115, 92, 192)},
       {GuestType::kNetns, Ipv4Addr(100, 115, 92, 128)},
   };
   AddressManager mgr;
@@ -39,8 +39,8 @@ TEST(AddressManager, BaseAddresses) {
 TEST(AddressManager, AddressesPerSubnet) {
   std::map<GuestType, size_t> addrs = {
       {GuestType::kArc0, 2},          {GuestType::kArcNet, 2},
-      {GuestType::kVmTermina, 2},     {GuestType::kVmPlugin, 6},
-      {GuestType::kLxdContainer, 14}, {GuestType::kNetns, 2},
+      {GuestType::kTerminaVM, 2},     {GuestType::kPluginVM, 6},
+      {GuestType::kLXDContainer, 14}, {GuestType::kNetns, 2},
   };
   AddressManager mgr;
   for (const auto a : addrs) {
@@ -53,8 +53,8 @@ TEST(AddressManager, AddressesPerSubnet) {
 TEST(AddressManager, SubnetsPerPool) {
   std::map<GuestType, size_t> addrs = {
       {GuestType::kArc0, 1},         {GuestType::kArcNet, 5},
-      {GuestType::kVmTermina, 26},   {GuestType::kVmPlugin, 32},
-      {GuestType::kLxdContainer, 4}, {GuestType::kNetns, 16},
+      {GuestType::kTerminaVM, 26},   {GuestType::kPluginVM, 32},
+      {GuestType::kLXDContainer, 4}, {GuestType::kNetns, 16},
   };
   AddressManager mgr;
   for (const auto a : addrs) {
@@ -73,9 +73,9 @@ TEST(AddressManager, SubnetIndexing) {
   AddressManager mgr;
   EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kArc0, 1));
   EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kArcNet, 1));
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kVmTermina, 1));
-  EXPECT_TRUE(mgr.AllocateIPv4Subnet(GuestType::kVmPlugin, 1));
-  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kLxdContainer, 1));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kTerminaVM, 1));
+  EXPECT_TRUE(mgr.AllocateIPv4Subnet(GuestType::kPluginVM, 1));
+  EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kLXDContainer, 1));
   EXPECT_FALSE(mgr.AllocateIPv4Subnet(GuestType::kNetns, 1));
 }
 

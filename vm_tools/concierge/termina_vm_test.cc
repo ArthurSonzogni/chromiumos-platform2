@@ -393,7 +393,7 @@ void TerminaVmTest::SetUp() {
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
   std::unique_ptr<patchpanel::Subnet> subnet =
       network_address_manager_->AllocateIPv4Subnet(
-          patchpanel::GuestType::kVmTermina);
+          patchpanel::GuestType::kTerminaVM);
 
   ASSERT_TRUE(subnet);
 

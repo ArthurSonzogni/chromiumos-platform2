@@ -12,11 +12,11 @@ std::ostream& operator<<(std::ostream& stream, const GuestType guest_type) {
       return stream << "ARC0";
     case GuestType::kArcNet:
       return stream << "ARC_NET";
-    case GuestType::kVmTermina:
+    case GuestType::kTerminaVM:
       return stream << "VM_TERMINA";
-    case GuestType::kVmPlugin:
+    case GuestType::kPluginVM:
       return stream << "VM_PLUGIN";
-    case GuestType::kLxdContainer:
+    case GuestType::kLXDContainer:
       return stream << "LXD_CONTAINER";
     case GuestType::kNetns:
       return stream << "MINIJAIL_NETNS";

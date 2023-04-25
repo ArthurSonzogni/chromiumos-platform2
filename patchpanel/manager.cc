@@ -653,10 +653,10 @@ std::unique_ptr<dbus::Response> Manager::OnGetDevices(
     auto* dev = response.add_devices();
     FillDeviceProto(*crosvm_device, dev);
     switch (crosvm_device->type()) {
-      case GuestType::kVmTermina:
+      case GuestType::kTerminaVM:
         dev->set_guest_type(NetworkDevice::TERMINA_VM);
         break;
-      case GuestType::kVmPlugin:
+      case GuestType::kPluginVM:
         dev->set_guest_type(NetworkDevice::PLUGIN_VM);
         break;
       default:

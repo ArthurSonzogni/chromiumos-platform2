@@ -21,11 +21,11 @@ enum class GuestType {
   // ARC++ or ARCVM virtual networks connected to shill Devices.
   kArcNet,
   /// Crostini VM root namespace.
-  kVmTermina,
+  kTerminaVM,
   // Crostini plugin VMs.
-  kVmPlugin,
+  kPluginVM,
   // Crostini VM user containers.
-  kLxdContainer,
+  kLXDContainer,
   // Other network namespaces hosting minijailed host processes.
   kNetns,
 };
