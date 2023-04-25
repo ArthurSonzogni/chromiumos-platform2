@@ -268,7 +268,7 @@ int dm_bht_initialize_entries(struct dm_bht* bht) {
    * independently from the bht data structures.  Logically, the root is
    * depth=-1 and the block layer level is depth=bht->depth
    */
-  unsigned int last_index =
+  uint64_t last_index =
       base::bits::AlignUp(bht->block_count, bht->node_count) - 1;
   struct dm_bht_level* level = NULL;
   int depth;
@@ -277,8 +277,8 @@ int dm_bht_initialize_entries(struct dm_bht* bht) {
    * on allocation or sector calculation.
    */
   if (((last_index >> bht->node_count_shift) + 1) >
-      UINT_MAX / std::max((unsigned int)sizeof(struct dm_bht_entry),
-                          (unsigned int)to_sector(PAGE_SIZE))) {
+      UINT_MAX / std::max((uint64_t)sizeof(struct dm_bht_entry),
+                          (uint64_t)to_sector(PAGE_SIZE))) {
     LOG(ERROR) << "required entries " << last_index + 1 << " is too large.";
     return -EINVAL;
   }

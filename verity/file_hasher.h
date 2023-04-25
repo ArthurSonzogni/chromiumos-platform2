@@ -26,7 +26,7 @@ class BRILLO_EXPORT FileHasher {
  public:
   FileHasher(std::unique_ptr<base::File> source,
              std::unique_ptr<base::File> destination,
-             unsigned int blocks,
+             uint64_t blocks,
              const char* alg)
       : source_(std::move(source)),
         destination_(std::move(destination)),
@@ -50,7 +50,7 @@ class BRILLO_EXPORT FileHasher {
  private:
   std::unique_ptr<base::File> source_;
   std::unique_ptr<base::File> destination_;
-  unsigned int block_limit_;
+  uint64_t block_limit_;
   const char* alg_;
   const char* salt_;
   char random_salt_[DM_BHT_SALT_SIZE * 2 + 1];

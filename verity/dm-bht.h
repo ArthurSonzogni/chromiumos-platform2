@@ -34,13 +34,13 @@
 /* Additional possible return codes */
 #define DM_BHT_ENTRY_ERROR_MISMATCH -3 /* Digest mismatch */
 
-#define PAGE_SIZE 4096
-#define PAGE_SHIFT 12
+#define PAGE_SIZE 4096ul
+#define PAGE_SHIFT 12ul
 
 typedef uint64_t sector_t;
 
 /* The value is 9 because the sector size is 512 bytes. */
-#define SECTOR_SHIFT 9
+#define SECTOR_SHIFT 9ul
 #define to_sector(x) ((x) >> SECTOR_SHIFT)
 #define verity_to_bytes(x) ((x) << SECTOR_SHIFT)
 

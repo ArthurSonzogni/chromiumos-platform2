@@ -155,9 +155,8 @@ std::string FileHasher::GetTable(bool colocated) {
   dm_bht_root_hexdigest(&tree_, digest, sizeof(digest));
   have_salt = dm_bht_salt(&tree_, hexsalt) == 0;
 
-  // TODO(wad) later support sizes that need 64-bit sectors.
-  unsigned int hash_start = 0;
-  unsigned int root_end = to_sector(block_limit_ << PAGE_SHIFT);
+  uint64_t hash_start = 0;
+  uint64_t root_end = to_sector(block_limit_ << PAGE_SHIFT);
   if (colocated)
     hash_start = root_end;
 
