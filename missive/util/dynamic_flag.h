@@ -22,11 +22,22 @@ class DynamicFlag {
   DynamicFlag& operator=(const DynamicFlag&) = delete;
   virtual ~DynamicFlag();
 
+  // Returns current value of the flag.
   bool is_enabled() const;
 
-  void OnEnableUpdate(bool is_enabled);
+  // Sets flag's value.
+  void SetValue(bool is_enabled);
 
  private:
+  // Called when the flag's value changes, getting the new value.
+  // Does nothing by default, can be overridden by the subclass.
+  // Note that an attempt to read the current value by calling `is_enabled()`
+  // instead of the `is_enabled` argument creates a race condition: they may
+  // return different values, if `SetValue` happened to be called in a meantime.
+  // For this reason it is recommended to either use `is_enabled()` or
+  // `OnValueUpdate` but not both in the same class.
+  virtual void OnValueUpdate(bool is_enabled) const;
+
   const std::string name_;
   std::atomic<bool> is_enabled_;
 };

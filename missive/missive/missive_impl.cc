@@ -375,10 +375,10 @@ void MissiveImpl::UpdateEncryptionKey(
 
 void MissiveImpl::OnStorageParametersUpdate(
     MissiveArgs::StorageParameters storage_parameters) {
-  queues_container_->OnEnableUpdate(storage_parameters.controlled_degradation);
-  compression_module_->OnEnableUpdate(storage_parameters.compression_enabled);
-  encryption_module_->OnEnableUpdate(storage_parameters.encryption_enabled);
-  storage_module_->OnEnableUpdate(storage_parameters.legacy_storage_enabled);
+  queues_container_->SetValue(storage_parameters.controlled_degradation);
+  compression_module_->SetValue(storage_parameters.compression_enabled);
+  encryption_module_->SetValue(storage_parameters.encryption_enabled);
+  storage_module_->SetValue(storage_parameters.legacy_storage_enabled);
 }
 
 base::WeakPtr<MissiveImpl> MissiveImpl::GetWeakPtr() {

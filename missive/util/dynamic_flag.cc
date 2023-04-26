@@ -23,10 +23,16 @@ bool DynamicFlag::is_enabled() const {
   return is_enabled_.load();
 }
 
-void DynamicFlag::OnEnableUpdate(bool is_enabled) {
+void DynamicFlag::OnValueUpdate(bool is_enabled) const {
+  // Do nothing.
+}
+
+void DynamicFlag::SetValue(bool is_enabled) {
   const bool was_enabled = is_enabled_.exchange(is_enabled);
-  LOG_IF(WARNING, was_enabled != is_enabled)
-      << "Flag `" << name_ << "` flipped to "
-      << (is_enabled ? "enabled" : "disabled");
+  if (was_enabled != is_enabled) {
+    LOG(WARNING) << "Flag `" << name_ << "` flipped to "
+                 << (is_enabled ? "enabled" : "disabled");
+    OnValueUpdate(is_enabled);
+  }
 }
 }  // namespace reporting

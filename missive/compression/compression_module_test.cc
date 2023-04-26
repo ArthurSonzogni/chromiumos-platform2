@@ -220,9 +220,9 @@ TEST_F(CompressionModuleTest, DynamicEnableDisable) {
       CompressionModule::Create(/*is_enabled=*/true, 0,
                                 CompressionInformation::COMPRESSION_NONE);
   EXPECT_TRUE(test_compression_module->is_enabled());
-  test_compression_module->OnEnableUpdate(/*is_enabled=*/false);
+  test_compression_module->SetValue(/*is_enabled=*/false);
   EXPECT_FALSE(test_compression_module->is_enabled());
-  test_compression_module->OnEnableUpdate(/*is_enabled=*/true);
+  test_compression_module->SetValue(/*is_enabled=*/true);
   EXPECT_TRUE(test_compression_module->is_enabled());
 }
 }  // namespace

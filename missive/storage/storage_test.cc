@@ -899,7 +899,7 @@ class LegacyStorageTest
           EncryptionModule::Create(
               /*is_enabled=*/true,
               /*renew_encryption_key_period=*/base::Minutes(30))) {
-    encryption_module->OnEnableUpdate(is_encryption_enabled());
+    encryption_module->SetValue(is_encryption_enabled());
     if (expect_to_need_key_) {
       // Set uploader expectations for any queue; expect no records and need
       // key. Make sure no uploads happen, and key is requested.

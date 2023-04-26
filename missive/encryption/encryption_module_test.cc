@@ -159,7 +159,7 @@ TEST_F(EncryptionModuleTest, EncryptionDisabled) {
   constexpr char kTestString[] = "ABCDEF";
 
   // Disable encryption for this test.
-  encryption_module_->OnEnableUpdate(/*is_enabled=*/false);
+  encryption_module_->SetValue(/*is_enabled=*/false);
 
   // Encrypt the test string.
   const auto encrypted_result = EncryptSync(kTestString);
@@ -555,9 +555,9 @@ TEST_F(EncryptionModuleTest, EncryptAndDecryptMultipleParallel) {
 
 TEST_F(EncryptionModuleTest, DynamicEnableDisable) {
   EXPECT_TRUE(encryption_module_->is_enabled());
-  encryption_module_->OnEnableUpdate(/*is_enabled=*/false);
+  encryption_module_->SetValue(/*is_enabled=*/false);
   EXPECT_FALSE(encryption_module_->is_enabled());
-  encryption_module_->OnEnableUpdate(/*is_enabled=*/true);
+  encryption_module_->SetValue(/*is_enabled=*/true);
   EXPECT_TRUE(encryption_module_->is_enabled());
 }
 }  // namespace
