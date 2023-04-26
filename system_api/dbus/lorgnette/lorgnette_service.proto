@@ -259,3 +259,16 @@ message ScanStatusChangedSignal {
   // The failure mode of the scan job.
   ScanFailureMode scan_failure_mode = 7;
 }
+
+message SetDebugConfigRequest {
+  // True if debugging should be enabled, or false if it should be disabled.
+  bool enabled = 1;
+}
+
+message SetDebugConfigResponse {
+  // True if changing the debug setup succeeded.
+  bool success = 1;
+
+  // The previous value of debugging.
+  bool old_enabled = 2;
+}
