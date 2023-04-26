@@ -49,7 +49,7 @@ class InstallAttributes {
   };
 
   // The provided pointers must outlive this instance.
-  InstallAttributes(Platform* platform, hwsec::CryptohomeFrontend* hwsec);
+  InstallAttributes(Platform* platform, const hwsec::CryptohomeFrontend* hwsec);
 
   InstallAttributes(const InstallAttributes&) = delete;
   InstallAttributes& operator=(const InstallAttributes&) = delete;
@@ -152,7 +152,7 @@ class InstallAttributes {
 
  private:
   Platform* const platform_ = nullptr;
-  hwsec::CryptohomeFrontend* const hwsec_ = nullptr;
+  const hwsec::CryptohomeFrontend* const hwsec_ = nullptr;
   Status status_ = Status::kUnknown;
   base::FilePath data_file_;   // Location data is persisted to.
   base::FilePath cache_file_;  // World-readable data cache file.

@@ -57,10 +57,10 @@ const char kSignInHashTreeDir[] = "/home/.shadow/low_entropy_creds";
 
 }  // namespace
 
-Crypto::Crypto(hwsec::CryptohomeFrontend* hwsec,
-               hwsec::PinWeaverFrontend* pinweaver,
+Crypto::Crypto(const hwsec::CryptohomeFrontend* hwsec,
+               const hwsec::PinWeaverFrontend* pinweaver,
                CryptohomeKeysManager* cryptohome_keys_manager,
-               hwsec::RecoveryCryptoFrontend* recovery_hwsec)
+               const hwsec::RecoveryCryptoFrontend* recovery_hwsec)
     : hwsec_(hwsec),
       pinweaver_(pinweaver),
       cryptohome_keys_manager_(cryptohome_keys_manager),

@@ -95,14 +95,14 @@ CryptoStatus TpmBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
 }
 
 std::unique_ptr<AuthBlock> TpmBoundToPcrAuthBlock::New(
-    hwsec::CryptohomeFrontend& hwsec,
+    const hwsec::CryptohomeFrontend& hwsec,
     CryptohomeKeysManager& cryptohome_keys_manager) {
   return std::make_unique<TpmBoundToPcrAuthBlock>(&hwsec,
                                                   &cryptohome_keys_manager);
 }
 
 TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
-    hwsec::CryptohomeFrontend* hwsec,
+    const hwsec::CryptohomeFrontend* hwsec,
     CryptohomeKeysManager* cryptohome_keys_manager)
     : AuthBlock(kTpmBackedPcrBound),
       hwsec_(hwsec),

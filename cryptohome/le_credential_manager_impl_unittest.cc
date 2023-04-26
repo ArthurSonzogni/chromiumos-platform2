@@ -219,7 +219,7 @@ class LECredentialManagerImplUnitTest : public testing::Test {
   base::test::TaskEnvironment task_environment_;
   base::ScopedTempDir temp_dir_;
   hwsec::Tpm2SimulatorFactoryForTest factory_;
-  std::unique_ptr<hwsec::PinWeaverFrontend> pinweaver_{
+  std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver_{
       factory_.GetPinWeaverFrontend()};
   std::unique_ptr<LECredentialManager> le_mgr_;
   const brillo::SecureBlob kLeSecret1;

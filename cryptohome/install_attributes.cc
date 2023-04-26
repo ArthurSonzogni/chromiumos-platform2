@@ -33,7 +33,7 @@ const char InstallAttributes::kDefaultCacheFile[] =
 const mode_t InstallAttributes::kCacheFilePermissions = 0644;
 
 InstallAttributes::InstallAttributes(Platform* platform,
-                                     hwsec::CryptohomeFrontend* hwsec)
+                                     const hwsec::CryptohomeFrontend* hwsec)
     : platform_(platform),
       hwsec_(hwsec),
       data_file_(kDefaultDataFile),

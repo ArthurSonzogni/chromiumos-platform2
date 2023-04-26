@@ -30,7 +30,7 @@ using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
-TpmAuthBlockUtils::TpmAuthBlockUtils(hwsec::CryptohomeFrontend* hwsec,
+TpmAuthBlockUtils::TpmAuthBlockUtils(const hwsec::CryptohomeFrontend* hwsec,
                                      CryptohomeKeyLoader* cryptohome_key_loader)
     : hwsec_(hwsec), cryptohome_key_loader_(cryptohome_key_loader) {}
 

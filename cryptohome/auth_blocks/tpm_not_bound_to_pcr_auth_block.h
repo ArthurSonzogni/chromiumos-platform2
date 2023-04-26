@@ -30,10 +30,10 @@ class TpmNotBoundToPcrAuthBlock : public AuthBlock {
   using StateType = TpmNotBoundToPcrAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
   static std::unique_ptr<AuthBlock> New(
-      hwsec::CryptohomeFrontend& hwsec,
+      const hwsec::CryptohomeFrontend& hwsec,
       CryptohomeKeysManager& cryptohome_keys_manager);
 
-  TpmNotBoundToPcrAuthBlock(hwsec::CryptohomeFrontend* hwsec,
+  TpmNotBoundToPcrAuthBlock(const hwsec::CryptohomeFrontend* hwsec,
                             CryptohomeKeysManager* cryptohome_keys_manager);
 
   TpmNotBoundToPcrAuthBlock(const TpmNotBoundToPcrAuthBlock&) = delete;
@@ -47,7 +47,7 @@ class TpmNotBoundToPcrAuthBlock : public AuthBlock {
               DeriveCallback callback) override;
 
  private:
-  hwsec::CryptohomeFrontend* hwsec_;
+  const hwsec::CryptohomeFrontend* hwsec_;
   CryptohomeKeyLoader* cryptohome_key_loader_;
   TpmAuthBlockUtils utils_;
 

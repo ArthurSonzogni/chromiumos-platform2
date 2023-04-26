@@ -24,13 +24,14 @@ enum class CryptohomeKeyType {
 
 class CryptohomeKeysManager {
  public:
-  CryptohomeKeysManager(hwsec::CryptohomeFrontend* hwsec, Platform* platform);
+  CryptohomeKeysManager(const hwsec::CryptohomeFrontend* hwsec,
+                        Platform* platform);
   CryptohomeKeysManager(const CryptohomeKeysManager&) = delete;
   CryptohomeKeysManager& operator=(const CryptohomeKeysManager&) = delete;
 
   // constructor for testing purpose.
   CryptohomeKeysManager(
-      hwsec::CryptohomeFrontend* hwsec,
+      const hwsec::CryptohomeFrontend* hwsec,
       std::vector<std::pair<CryptohomeKeyType,
                             std::unique_ptr<CryptohomeKeyLoader>>> init_list)
       : hwsec_(hwsec) {
@@ -58,7 +59,7 @@ class CryptohomeKeysManager {
   CryptohomeKeysManager() : hwsec_(nullptr) {}
 
  private:
-  hwsec::CryptohomeFrontend* const hwsec_;
+  const hwsec::CryptohomeFrontend* const hwsec_;
   std::map<CryptohomeKeyType, std::unique_ptr<CryptohomeKeyLoader>>
       key_loaders_;
 };

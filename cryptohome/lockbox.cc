@@ -43,7 +43,7 @@ std::ostream& operator<<(std::ostream& out, LockboxError error) {
   return out << static_cast<int>(error);
 }
 
-Lockbox::Lockbox(hwsec::CryptohomeFrontend* hwsec, hwsec::Space space)
+Lockbox::Lockbox(const hwsec::CryptohomeFrontend* hwsec, hwsec::Space space)
     : hwsec_(hwsec), space_(space) {
   CHECK(hwsec_);
 }

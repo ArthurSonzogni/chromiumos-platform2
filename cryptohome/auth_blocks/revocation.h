@@ -17,7 +17,7 @@
 namespace cryptohome {
 namespace revocation {
 
-bool IsRevocationSupported(hwsec::CryptohomeFrontend* hwsec);
+bool IsRevocationSupported(const hwsec::CryptohomeFrontend* hwsec);
 
 // Derives a new key from `in_out_key_blobs.vkk_key` and saves it back to
 // `in_out_key_blobs.vkk_key`. Saves information that is required for key

@@ -55,8 +55,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Prepare Recovery_Id's dependencies.
   FuzzedPlatform platform(provider);
   hwsec::FuzzedFactory hwsec_factory(provider);
-  std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto_fake_backend =
-      hwsec_factory.GetRecoveryCryptoFrontend();
+  std::unique_ptr<const hwsec::RecoveryCryptoFrontend>
+      recovery_crypto_fake_backend = hwsec_factory.GetRecoveryCryptoFrontend();
   std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
       cryptorecovery::RecoveryCryptoImpl::Create(
           recovery_crypto_fake_backend.get(), &platform);

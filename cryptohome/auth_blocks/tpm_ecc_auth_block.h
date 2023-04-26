@@ -32,10 +32,10 @@ class TpmEccAuthBlock : public AuthBlock {
   using StateType = TpmEccAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
   static std::unique_ptr<AuthBlock> New(
-      hwsec::CryptohomeFrontend& hwsec,
+      const hwsec::CryptohomeFrontend& hwsec,
       CryptohomeKeysManager& cryptohome_keys_manager);
 
-  TpmEccAuthBlock(hwsec::CryptohomeFrontend* hwsec,
+  TpmEccAuthBlock(const hwsec::CryptohomeFrontend* hwsec,
                   CryptohomeKeysManager* cryptohome_keys_manager);
 
   TpmEccAuthBlock(const TpmEccAuthBlock&) = delete;
@@ -68,7 +68,7 @@ class TpmEccAuthBlock : public AuthBlock {
                            uint32_t auth_value_rounds,
                            brillo::SecureBlob* vkk);
 
-  hwsec::CryptohomeFrontend* hwsec_;
+  const hwsec::CryptohomeFrontend* hwsec_;
   CryptohomeKeyLoader* cryptohome_key_loader_;
   TpmAuthBlockUtils utils_;
 

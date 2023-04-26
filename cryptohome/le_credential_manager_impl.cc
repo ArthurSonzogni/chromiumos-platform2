@@ -47,7 +47,7 @@ using ReplayLogOperationResult =
 namespace cryptohome {
 
 LECredentialManagerImpl::LECredentialManagerImpl(
-    hwsec::PinWeaverFrontend* pinweaver, const base::FilePath& le_basedir)
+    const hwsec::PinWeaverFrontend* pinweaver, const base::FilePath& le_basedir)
     : is_locked_(false), pinweaver_(pinweaver), basedir_(le_basedir) {
   CHECK(pinweaver_);
 

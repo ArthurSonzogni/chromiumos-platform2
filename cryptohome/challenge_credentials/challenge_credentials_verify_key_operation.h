@@ -42,7 +42,7 @@ class ChallengeCredentialsVerifyKeyOperation final
   // The result is reported via |completion_callback|.
   ChallengeCredentialsVerifyKeyOperation(
       KeyChallengeService* key_challenge_service,
-      hwsec::CryptohomeFrontend* hwsec,
+      const hwsec::CryptohomeFrontend* hwsec,
       const Username& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       CompletionCallback completion_callback);
@@ -60,7 +60,7 @@ class ChallengeCredentialsVerifyKeyOperation final
       const brillo::Blob& challenge,
       CryptoStatusOr<std::unique_ptr<brillo::Blob>> challenge_signature);
 
-  hwsec::CryptohomeFrontend* const hwsec_;
+  const hwsec::CryptohomeFrontend* const hwsec_;
   const Username account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;
   CompletionCallback completion_callback_;

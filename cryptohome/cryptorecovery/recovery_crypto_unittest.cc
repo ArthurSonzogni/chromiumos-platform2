@@ -191,7 +191,8 @@ class RecoveryCryptoTest : public testing::Test {
 
   FakePlatform platform_;
   hwsec::Tpm2SimulatorFactoryForTest hwsec_factory_;
-  std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto_fake_backend_;
+  std::unique_ptr<const hwsec::RecoveryCryptoFrontend>
+      recovery_crypto_fake_backend_;
 
   SecureBlob mediator_pub_key_;
   SecureBlob mediator_priv_key_;

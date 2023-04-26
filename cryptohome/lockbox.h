@@ -54,7 +54,7 @@ class Lockbox {
   // Parameters
   // - hwsec: a required pointer to hwsec object.
   // - space: the space for lockbox.
-  Lockbox(hwsec::CryptohomeFrontend* hwsec, hwsec::Space space);
+  Lockbox(const hwsec::CryptohomeFrontend* hwsec, hwsec::Space space);
 
   Lockbox(const Lockbox&) = delete;
   Lockbox& operator=(const Lockbox&) = delete;
@@ -90,7 +90,7 @@ class Lockbox {
   Lockbox() {}
 
  private:
-  hwsec::CryptohomeFrontend* hwsec_;
+  const hwsec::CryptohomeFrontend* hwsec_;
   hwsec::Space space_;
 };
 

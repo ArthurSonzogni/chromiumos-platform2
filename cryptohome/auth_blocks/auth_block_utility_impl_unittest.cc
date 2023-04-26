@@ -182,7 +182,8 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   hwsec::Tpm2SimulatorFactoryForTest hwsec_factory_;
-  std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto_fake_backend_;
+  std::unique_ptr<const hwsec::RecoveryCryptoFrontend>
+      recovery_crypto_fake_backend_;
   Crypto crypto_;
   std::unique_ptr<KeysetManagement> keyset_management_;
   NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;

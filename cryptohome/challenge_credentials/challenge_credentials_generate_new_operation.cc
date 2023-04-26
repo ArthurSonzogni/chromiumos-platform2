@@ -81,7 +81,7 @@ HwsecAlgorithm ConvertAlgorithm(
 ChallengeCredentialsGenerateNewOperation::
     ChallengeCredentialsGenerateNewOperation(
         KeyChallengeService* key_challenge_service,
-        hwsec::CryptohomeFrontend* hwsec,
+        const hwsec::CryptohomeFrontend* hwsec,
         const Username& account_id,
         const structure::ChallengePublicKeyInfo& public_key_info,
         const ObfuscatedUsername& obfuscated_username,

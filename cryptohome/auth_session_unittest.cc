@@ -3142,7 +3142,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
                    const cryptorecovery::RequestMetadata& request_metadata,
                    const brillo::Blob& epoch_response,
                    const CryptohomeRecoveryAuthBlockState& state,
-                   hwsec::RecoveryCryptoFrontend* recovery_hwsec,
+                   const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
                    brillo::SecureBlob* out_recovery_request,
                    brillo::SecureBlob* out_ephemeral_pub_key) {
         *out_ephemeral_pub_key = brillo::SecureBlob("test");

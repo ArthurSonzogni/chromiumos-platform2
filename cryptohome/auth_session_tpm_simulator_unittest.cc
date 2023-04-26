@@ -296,11 +296,11 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
 
   // TPM simulator objects.
   hwsec::Tpm2SimulatorFactoryForTest hwsec_simulator_factory_;
-  std::unique_ptr<hwsec::CryptohomeFrontend> hwsec_cryptohome_frontend_ =
+  std::unique_ptr<const hwsec::CryptohomeFrontend> hwsec_cryptohome_frontend_ =
       hwsec_simulator_factory_.GetCryptohomeFrontend();
-  std::unique_ptr<hwsec::PinWeaverFrontend> hwsec_pinweaver_frontend_ =
+  std::unique_ptr<const hwsec::PinWeaverFrontend> hwsec_pinweaver_frontend_ =
       hwsec_simulator_factory_.GetPinWeaverFrontend();
-  std::unique_ptr<hwsec::RecoveryCryptoFrontend>
+  std::unique_ptr<const hwsec::RecoveryCryptoFrontend>
       hwsec_recovery_crypto_frontend_ =
           hwsec_simulator_factory_.GetRecoveryCryptoFrontend();
 

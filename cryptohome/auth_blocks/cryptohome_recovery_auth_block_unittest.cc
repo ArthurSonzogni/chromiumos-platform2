@@ -83,7 +83,7 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
   }
 
   void PerformRecovery(
-      hwsec::RecoveryCryptoFrontend* recovery_crypto,
+      const hwsec::RecoveryCryptoFrontend* recovery_crypto,
       const CryptohomeRecoveryAuthBlockState& cryptohome_recovery_state,
       cryptorecovery::CryptoRecoveryRpcResponse* response_proto,
       brillo::SecureBlob* ephemeral_pub_key) {
@@ -155,7 +155,8 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
   base::test::TaskEnvironment task_environment_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   hwsec::Tpm2SimulatorFactoryForTest factory_;
-  std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto_fake_backend_;
+  std::unique_ptr<const hwsec::RecoveryCryptoFrontend>
+      recovery_crypto_fake_backend_;
   NiceMock<MockLECredentialManager> le_cred_manager_;
 };
 

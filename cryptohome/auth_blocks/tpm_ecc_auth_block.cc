@@ -88,7 +88,7 @@ constexpr VendorAuthValueRounds kVendorAuthValueRoundsList[] = {
     },
 };
 
-int CalcEccAuthValueRounds(hwsec::CryptohomeFrontend* hwsec) {
+int CalcEccAuthValueRounds(const hwsec::CryptohomeFrontend* hwsec) {
   hwsec::StatusOr<uint32_t> manufacturer = hwsec->GetManufacturer();
   if (!manufacturer.ok()) {
     LOG(ERROR) << "Failed to get the TPM version info: "
@@ -146,7 +146,7 @@ CryptoStatus TpmEccAuthBlock::IsSupported(Crypto& crypto) {
   return OkStatus<CryptohomeCryptoError>();
 }
 
-TpmEccAuthBlock::TpmEccAuthBlock(hwsec::CryptohomeFrontend* hwsec,
+TpmEccAuthBlock::TpmEccAuthBlock(const hwsec::CryptohomeFrontend* hwsec,
                                  CryptohomeKeysManager* cryptohome_keys_manager)
     : AuthBlock(kTpmBackedEcc),
       hwsec_(hwsec),
@@ -166,7 +166,7 @@ TpmEccAuthBlock::TpmEccAuthBlock(hwsec::CryptohomeFrontend* hwsec,
 }
 
 std::unique_ptr<AuthBlock> TpmEccAuthBlock::New(
-    hwsec::CryptohomeFrontend& hwsec,
+    const hwsec::CryptohomeFrontend& hwsec,
     CryptohomeKeysManager& cryptohome_keys_manager) {
   return std::make_unique<TpmEccAuthBlock>(&hwsec, &cryptohome_keys_manager);
 }

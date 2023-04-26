@@ -19,7 +19,7 @@ namespace cryptohome {
 
 class TpmAuthBlockUtils {
  public:
-  TpmAuthBlockUtils(hwsec::CryptohomeFrontend* hwsec,
+  TpmAuthBlockUtils(const hwsec::CryptohomeFrontend* hwsec,
                     CryptohomeKeyLoader* cryptohome_key_loader);
   TpmAuthBlockUtils(const TpmAuthBlockUtils&) = delete;
   TpmAuthBlockUtils& operator=(const TpmAuthBlockUtils&) = delete;
@@ -45,7 +45,7 @@ class TpmAuthBlockUtils {
                                  const brillo::SecureBlob& tpm_public_key_hash);
 
  private:
-  hwsec::CryptohomeFrontend* hwsec_;
+  const hwsec::CryptohomeFrontend* hwsec_;
   CryptohomeKeyLoader* cryptohome_key_loader_;
 };
 

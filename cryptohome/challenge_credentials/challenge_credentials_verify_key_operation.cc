@@ -124,7 +124,7 @@ bool IsValidSignature(const Blob& public_key_spki_der,
 
 ChallengeCredentialsVerifyKeyOperation::ChallengeCredentialsVerifyKeyOperation(
     KeyChallengeService* key_challenge_service,
-    hwsec::CryptohomeFrontend* hwsec,
+    const hwsec::CryptohomeFrontend* hwsec,
     const Username& account_id,
     const structure::ChallengePublicKeyInfo& public_key_info,
     CompletionCallback completion_callback)

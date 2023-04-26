@@ -93,7 +93,7 @@ bool DeriveSecret(const brillo::SecureBlob& key,
 
 }  // namespace
 
-bool IsRevocationSupported(hwsec::CryptohomeFrontend* hwsec) {
+bool IsRevocationSupported(const hwsec::CryptohomeFrontend* hwsec) {
   hwsec::StatusOr<bool> enabled = hwsec->IsPinWeaverEnabled();
   return enabled.ok() && *enabled;
 }

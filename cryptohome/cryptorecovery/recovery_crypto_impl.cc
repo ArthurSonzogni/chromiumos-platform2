@@ -193,7 +193,7 @@ ErrorActionSet ErrorActionSetFromRecoveryResponseError(
 }  // namespace
 
 std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
-    hwsec::RecoveryCryptoFrontend* hwsec_backend, Platform* platform) {
+    const hwsec::RecoveryCryptoFrontend* hwsec_backend, Platform* platform) {
   DCHECK(hwsec_backend);
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
@@ -214,7 +214,7 @@ std::unique_ptr<RecoveryCryptoImpl> RecoveryCryptoImpl::Create(
 
 RecoveryCryptoImpl::RecoveryCryptoImpl(
     EllipticCurve ec,
-    hwsec::RecoveryCryptoFrontend* hwsec_backend,
+    const hwsec::RecoveryCryptoFrontend* hwsec_backend,
     Platform* platform)
     : ec_(std::move(ec)), hwsec_backend_(hwsec_backend), platform_(platform) {
   DCHECK(hwsec_backend_);

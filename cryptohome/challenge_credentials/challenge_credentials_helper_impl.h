@@ -35,7 +35,8 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
 
   // |hwsec| is a non-owned pointer that must stay valid for the whole lifetime
   // of the created object.
-  explicit ChallengeCredentialsHelperImpl(hwsec::CryptohomeFrontend* hwsec);
+  explicit ChallengeCredentialsHelperImpl(
+      const hwsec::CryptohomeFrontend* hwsec);
   ChallengeCredentialsHelperImpl(const ChallengeCredentialsHelperImpl&) =
       delete;
   ChallengeCredentialsHelperImpl& operator=(
@@ -115,7 +116,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   std::optional<bool> roca_vulnerable_;
 
   // Non-owned.
-  hwsec::CryptohomeFrontend* const hwsec_;
+  const hwsec::CryptohomeFrontend* const hwsec_;
   // The key challenge service used for the currently running operation, if any.
   std::unique_ptr<KeyChallengeService> key_challenge_service_;
   // The state of the currently running operation, if any.

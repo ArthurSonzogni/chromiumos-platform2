@@ -31,7 +31,7 @@ namespace cryptohome {
 // necessary commands on the TPM side, for verification.
 class LECredentialManagerImpl : public LECredentialManager {
  public:
-  explicit LECredentialManagerImpl(hwsec::PinWeaverFrontend* pinweaver,
+  explicit LECredentialManagerImpl(const hwsec::PinWeaverFrontend* pinweaver,
                                    const base::FilePath& le_basedir);
 
   virtual ~LECredentialManagerImpl() {}
@@ -251,7 +251,7 @@ class LECredentialManagerImpl : public LECredentialManager {
   // as required.
   bool is_locked_;
   // Pointer to an implementation of the pinweaver operations.
-  hwsec::PinWeaverFrontend* pinweaver_;
+  const hwsec::PinWeaverFrontend* pinweaver_;
   // In-memory copy of LEBackend's root hash value.
   brillo::Blob root_hash_;
   // Directory where all LE Credential related data is stored.

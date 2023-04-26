@@ -110,7 +110,7 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
 
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   hwsec::Tpm2SimulatorFactoryForTest tpm2_factory_;
-  std::unique_ptr<hwsec::PinWeaverFrontend> pinweaver_;
+  std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_;
   FileSystemKeyset file_system_keyset_;

@@ -27,7 +27,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
  public:
   // Creates instance. Returns nullptr if error occurred.
   static std::unique_ptr<RecoveryCryptoImpl> Create(
-      hwsec::RecoveryCryptoFrontend* hwsec_backend, Platform* platform);
+      const hwsec::RecoveryCryptoFrontend* hwsec_backend, Platform* platform);
 
   RecoveryCryptoImpl(const RecoveryCryptoImpl&) = delete;
   RecoveryCryptoImpl& operator=(const RecoveryCryptoImpl&) = delete;
@@ -76,7 +76,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
 
  private:
   RecoveryCryptoImpl(hwsec_foundation::EllipticCurve ec,
-                     hwsec::RecoveryCryptoFrontend* hwsec_backend,
+                     const hwsec::RecoveryCryptoFrontend* hwsec_backend,
                      Platform* platform);
   [[nodiscard]] bool GenerateRecoveryKey(
       const crypto::ScopedEC_POINT& recovery_pub_point,
@@ -109,7 +109,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       const base::FilePath& recovery_id_path, int max_depth) const;
 
   hwsec_foundation::EllipticCurve ec_;
-  hwsec::RecoveryCryptoFrontend* const hwsec_backend_;
+  const hwsec::RecoveryCryptoFrontend* const hwsec_backend_;
   Platform* const platform_;
 };
 

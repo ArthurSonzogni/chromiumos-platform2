@@ -336,7 +336,7 @@ using HwsecAlgorithm = hwsec::CryptohomeFrontend::SignatureSealingAlgorithm;
 struct SignatureSealedSecretTestCaseParam {
   SignatureSealedSecretTestCaseParam(
       const std::string& test_case_description,
-      hwsec::CryptohomeFrontend* hwsec,
+      const hwsec::CryptohomeFrontend* hwsec,
       int key_size_bits,
       const std::vector<HwsecAlgorithm>& supported_algorithms,
       std::optional<HwsecAlgorithm> expected_algorithm,
@@ -353,7 +353,7 @@ struct SignatureSealedSecretTestCaseParam {
 
   static SignatureSealedSecretTestCaseParam MakeSuccessful(
       const std::string& test_case_description,
-      hwsec::CryptohomeFrontend* hwsec,
+      const hwsec::CryptohomeFrontend* hwsec,
       int key_size_bits,
       const std::vector<HwsecAlgorithm>& supported_algorithms,
       HwsecAlgorithm expected_algorithm,
@@ -365,7 +365,7 @@ struct SignatureSealedSecretTestCaseParam {
 
   static SignatureSealedSecretTestCaseParam MakeFailing(
       const std::string& test_case_description,
-      hwsec::CryptohomeFrontend* hwsec,
+      const hwsec::CryptohomeFrontend* hwsec,
       int key_size_bits,
       const std::vector<HwsecAlgorithm>& supported_algorithms) {
     return SignatureSealedSecretTestCaseParam(test_case_description, hwsec,
@@ -376,7 +376,7 @@ struct SignatureSealedSecretTestCaseParam {
   bool expect_success() const { return expected_algorithm.has_value(); }
 
   std::string test_case_description;
-  hwsec::CryptohomeFrontend* hwsec_;
+  const hwsec::CryptohomeFrontend* hwsec_;
   int key_size_bits;
   std::vector<HwsecAlgorithm> supported_algorithms;
   std::optional<HwsecAlgorithm> expected_algorithm;
@@ -509,7 +509,7 @@ class SignatureSealedSecretTestCase final {
  private:
   const std::string kObfuscatedUsername = "obfuscated_username";
 
-  hwsec::CryptohomeFrontend* hwsec() { return param_.hwsec_; }
+  const hwsec::CryptohomeFrontend* hwsec() { return param_.hwsec_; }
 
   static bool GenerateRsaKey(int key_size_bits,
                              crypto::ScopedEVP_PKEY* pkey,

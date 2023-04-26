@@ -205,8 +205,8 @@ class GenericAuthBlockFunctions {
              AsyncInitPtr<BiometricsAuthBlockService>,
              Crypto&,
              LECredentialManager*,
-             hwsec::CryptohomeFrontend&,
-             hwsec::RecoveryCryptoFrontend&,
+             const hwsec::CryptohomeFrontend&,
+             const hwsec::RecoveryCryptoFrontend&,
              CryptohomeKeysManager&>
       parameters_;
 };

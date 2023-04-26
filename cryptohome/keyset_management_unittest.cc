@@ -493,7 +493,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabels) {
 TEST_F(KeysetManagementTest, GetNonLEVaultKeysetLabels) {
   // SETUP
   hwsec::Tpm2SimulatorFactoryForTest factory;
-  std::unique_ptr<hwsec::PinWeaverFrontend> pinweaver =
+  std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver =
       factory.GetPinWeaverFrontend();
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(pinweaver.get(), CredDirPath());
@@ -677,7 +677,7 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestRegularCreds) {
 TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
   // SETUP
   hwsec::Tpm2SimulatorFactoryForTest factory;
-  std::unique_ptr<hwsec::PinWeaverFrontend> pinweaver =
+  std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver =
       factory.GetPinWeaverFrontend();
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(pinweaver.get(), CredDirPath());
@@ -705,7 +705,7 @@ TEST_F(KeysetManagementTest, ReSaveOnLoadTestLeCreds) {
 TEST_F(KeysetManagementTest, RemoveLECredentials) {
   // SETUP
   hwsec::Tpm2SimulatorFactoryForTest factory;
-  std::unique_ptr<hwsec::PinWeaverFrontend> pinweaver =
+  std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver =
       factory.GetPinWeaverFrontend();
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(pinweaver.get(), CredDirPath());

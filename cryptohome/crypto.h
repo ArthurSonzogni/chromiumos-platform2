@@ -32,10 +32,10 @@ class VaultKeyset;
 
 class Crypto final {
  public:
-  explicit Crypto(hwsec::CryptohomeFrontend* hwsec,
-                  hwsec::PinWeaverFrontend* pinweaver,
+  explicit Crypto(const hwsec::CryptohomeFrontend* hwsec,
+                  const hwsec::PinWeaverFrontend* pinweaver,
                   CryptohomeKeysManager* cryptohome_keys_manager,
-                  hwsec::RecoveryCryptoFrontend* recovery_hwsec);
+                  const hwsec::RecoveryCryptoFrontend* recovery_hwsec);
   Crypto(const Crypto&) = delete;
   Crypto& operator=(const Crypto&) = delete;
 
@@ -88,7 +88,7 @@ class Crypto final {
   int GetWrongAuthAttempts(uint64_t le_label) const;
 
   // Gets the HWSec implementation
-  hwsec::CryptohomeFrontend* GetHwsec() { return hwsec_; }
+  const hwsec::CryptohomeFrontend* GetHwsec() { return hwsec_; }
 
   // Gets the CryptohomeKeysManager object.
   CryptohomeKeysManager* cryptohome_keys_manager() {
@@ -96,7 +96,9 @@ class Crypto final {
   }
 
   // Gets the hwsec::RecoveryCryptoFrontend object.
-  hwsec::RecoveryCryptoFrontend* GetRecoveryCrypto() { return recovery_hwsec_; }
+  const hwsec::RecoveryCryptoFrontend* GetRecoveryCrypto() {
+    return recovery_hwsec_;
+  }
 
   // Gets an instance of the LECredentialManagerImpl object.
   LECredentialManager* le_manager() { return le_manager_.get(); }
@@ -111,16 +113,16 @@ class Crypto final {
 
  private:
   // The HWSec implementation.
-  hwsec::CryptohomeFrontend* const hwsec_;
+  const hwsec::CryptohomeFrontend* const hwsec_;
 
   // The pinweaver implementation.
-  hwsec::PinWeaverFrontend* const pinweaver_;
+  const hwsec::PinWeaverFrontend* const pinweaver_;
 
   // The CryptohomeKeysManager object used to reload Cryptohome keys.
   CryptohomeKeysManager* const cryptohome_keys_manager_;
 
   // The cryptohome recovery backend.
-  hwsec::RecoveryCryptoFrontend* const recovery_hwsec_;
+  const hwsec::RecoveryCryptoFrontend* const recovery_hwsec_;
 
   // Handler for Low Entropy credentials.
   std::unique_ptr<LECredentialManager> le_manager_;

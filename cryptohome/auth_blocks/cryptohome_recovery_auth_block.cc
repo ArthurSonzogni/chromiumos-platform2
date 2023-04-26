@@ -92,22 +92,22 @@ CryptoStatus CryptohomeRecoveryAuthBlock::IsSupported(Crypto& crypto) {
 
 std::unique_ptr<AuthBlock> CryptohomeRecoveryAuthBlock::New(
     Platform& platform,
-    hwsec::CryptohomeFrontend& hwsec,
-    hwsec::RecoveryCryptoFrontend& recovery_hwsec,
+    const hwsec::CryptohomeFrontend& hwsec,
+    const hwsec::RecoveryCryptoFrontend& recovery_hwsec,
     LECredentialManager* le_manager) {
   return std::make_unique<CryptohomeRecoveryAuthBlock>(&hwsec, &recovery_hwsec,
                                                        le_manager, &platform);
 }
 
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
-    hwsec::CryptohomeFrontend* hwsec,
-    hwsec::RecoveryCryptoFrontend* recovery_hwsec,
+    const hwsec::CryptohomeFrontend* hwsec,
+    const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
     Platform* platform)
     : CryptohomeRecoveryAuthBlock(hwsec, recovery_hwsec, nullptr, platform) {}
 
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
-    hwsec::CryptohomeFrontend* hwsec,
-    hwsec::RecoveryCryptoFrontend* recovery_hwsec,
+    const hwsec::CryptohomeFrontend* hwsec,
+    const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
     LECredentialManager* le_manager,
     Platform* platform)
     : AuthBlock(/*derivation_type=*/kCryptohomeRecovery),

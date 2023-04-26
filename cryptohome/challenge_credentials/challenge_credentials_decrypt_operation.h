@@ -50,7 +50,7 @@ class ChallengeCredentialsDecryptOperation final
   // The result is reported via |completion_callback|.
   ChallengeCredentialsDecryptOperation(
       KeyChallengeService* key_challenge_service,
-      hwsec::CryptohomeFrontend* hwsec,
+      const hwsec::CryptohomeFrontend* hwsec,
       const Username& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
@@ -99,7 +99,7 @@ class ChallengeCredentialsDecryptOperation final
   const structure::SignatureChallengeInfo keyset_challenge_info_;
   std::unique_ptr<brillo::Blob> salt_signature_;
   CompletionCallback completion_callback_;
-  hwsec::CryptohomeFrontend* const hwsec_;
+  const hwsec::CryptohomeFrontend* const hwsec_;
   std::optional<hwsec::CryptohomeFrontend::ChallengeID> challenge_id_;
   std::unique_ptr<brillo::SecureBlob> unsealed_secret_;
   base::WeakPtrFactory<ChallengeCredentialsDecryptOperation> weak_ptr_factory_{

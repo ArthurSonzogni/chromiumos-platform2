@@ -500,15 +500,16 @@ class UserDataAuth {
   }
 
   // Override |hwsec_| for testing purpose
-  void set_hwsec(hwsec::CryptohomeFrontend* hwsec) { hwsec_ = hwsec; }
+  void set_hwsec(const hwsec::CryptohomeFrontend* hwsec) { hwsec_ = hwsec; }
 
   // Override |pinweaver_| for testing purpose
-  void set_pinweaver(hwsec::PinWeaverFrontend* pinweaver) {
+  void set_pinweaver(const hwsec::PinWeaverFrontend* pinweaver) {
     pinweaver_ = pinweaver;
   }
 
   // Override |recovery_crypto| for testing purpose
-  void set_recovery_crypto(hwsec::RecoveryCryptoFrontend* recovery_crypto) {
+  void set_recovery_crypto(
+      const hwsec::RecoveryCryptoFrontend* recovery_crypto) {
     recovery_crypto_ = recovery_crypto;
   }
 
@@ -931,22 +932,22 @@ class UserDataAuth {
   hwsec::Factory* hwsec_factory_;
 
   // The default object for accessing the HWSec related functions.
-  std::unique_ptr<hwsec::CryptohomeFrontend> default_hwsec_;
+  std::unique_ptr<const hwsec::CryptohomeFrontend> default_hwsec_;
 
   // The object for accessing the HWSec related functions.
-  hwsec::CryptohomeFrontend* hwsec_;
+  const hwsec::CryptohomeFrontend* hwsec_;
 
   // The default object for accessing the pinweaver related functions.
-  std::unique_ptr<hwsec::PinWeaverFrontend> default_pinweaver_;
+  std::unique_ptr<const hwsec::PinWeaverFrontend> default_pinweaver_;
 
   // The object for accessing the pinweaver related functions.
-  hwsec::PinWeaverFrontend* pinweaver_;
+  const hwsec::PinWeaverFrontend* pinweaver_;
 
   // The default object for accessing the recovery crypto related functions.
-  std::unique_ptr<hwsec::RecoveryCryptoFrontend> default_recovery_crypto_;
+  std::unique_ptr<const hwsec::RecoveryCryptoFrontend> default_recovery_crypto_;
 
   // The object for accessing the recovery crypto related functions.
-  hwsec::RecoveryCryptoFrontend* recovery_crypto_;
+  const hwsec::RecoveryCryptoFrontend* recovery_crypto_;
 
   // The default cryptohome key loader object
   std::unique_ptr<CryptohomeKeysManager> default_cryptohome_keys_manager_;

@@ -59,8 +59,8 @@ class TpmLiveTest {
 
   FakePlatform platform_;
   std::unique_ptr<hwsec::Factory> hwsec_factory_;
-  std::unique_ptr<hwsec::CryptohomeFrontend> hwsec_;
-  std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto_;
+  std::unique_ptr<const hwsec::CryptohomeFrontend> hwsec_;
+  std::unique_ptr<const hwsec::RecoveryCryptoFrontend> recovery_crypto_;
   CryptohomeKeysManager cryptohome_keys_manager_;
 };
 

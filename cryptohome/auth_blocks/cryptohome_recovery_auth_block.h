@@ -30,18 +30,18 @@ class CryptohomeRecoveryAuthBlock : public AuthBlock {
   static CryptoStatus IsSupported(Crypto& crypto);
   static std::unique_ptr<AuthBlock> New(
       Platform& platform,
-      hwsec::CryptohomeFrontend& hwsec,
-      hwsec::RecoveryCryptoFrontend& recovery_hwsec,
+      const hwsec::CryptohomeFrontend& hwsec,
+      const hwsec::RecoveryCryptoFrontend& recovery_hwsec,
       LECredentialManager* le_manager);
 
   // the `tpm` pointer must outlive `this`
   explicit CryptohomeRecoveryAuthBlock(
-      hwsec::CryptohomeFrontend* hwsec,
-      hwsec::RecoveryCryptoFrontend* recovery_hwsec,
+      const hwsec::CryptohomeFrontend* hwsec,
+      const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
       Platform* platform);
   explicit CryptohomeRecoveryAuthBlock(
-      hwsec::CryptohomeFrontend* hwsec,
-      hwsec::RecoveryCryptoFrontend* recovery_hwsec,
+      const hwsec::CryptohomeFrontend* hwsec,
+      const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
       LECredentialManager* le_manager,
       Platform* platform);
 
@@ -66,8 +66,8 @@ class CryptohomeRecoveryAuthBlock : public AuthBlock {
  private:
   CryptoStatus PrepareForRemovalInternal(const AuthBlockState& state);
 
-  hwsec::CryptohomeFrontend* const hwsec_;
-  hwsec::RecoveryCryptoFrontend* const recovery_hwsec_;
+  const hwsec::CryptohomeFrontend* const hwsec_;
+  const hwsec::RecoveryCryptoFrontend* const recovery_hwsec_;
   // Low Entropy credentials manager, needed for revocation support.
   LECredentialManager* const le_manager_;
   Platform* const platform_;

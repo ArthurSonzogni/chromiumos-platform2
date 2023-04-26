@@ -45,14 +45,14 @@ CryptoStatus DoubleWrappedCompatAuthBlock::IsSupported(Crypto& crypto) {
 }
 
 std::unique_ptr<AuthBlock> DoubleWrappedCompatAuthBlock::New(
-    hwsec::CryptohomeFrontend& hwsec,
+    const hwsec::CryptohomeFrontend& hwsec,
     CryptohomeKeysManager& cryptohome_keys_manager) {
   return std::make_unique<DoubleWrappedCompatAuthBlock>(
       &hwsec, &cryptohome_keys_manager);
 }
 
 DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(
-    hwsec::CryptohomeFrontend* hwsec,
+    const hwsec::CryptohomeFrontend* hwsec,
     CryptohomeKeysManager* cryptohome_keys_manager)
     : AuthBlock(kDoubleWrapped),
       tpm_auth_block_(hwsec, cryptohome_keys_manager) {}

@@ -656,7 +656,7 @@ CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
     const cryptorecovery::RequestMetadata& request_metadata,
     const brillo::Blob& epoch_response,
     const CryptohomeRecoveryAuthBlockState& state,
-    hwsec::RecoveryCryptoFrontend* recovery_hwsec,
+    const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
     brillo::SecureBlob* out_recovery_request,
     brillo::SecureBlob* out_ephemeral_pub_key) const {
   // Check if the required fields are set on CryptohomeRecoveryAuthBlockState.

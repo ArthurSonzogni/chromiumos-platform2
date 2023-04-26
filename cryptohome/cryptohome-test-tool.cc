@@ -88,9 +88,9 @@ bool GenerateOnboardingMetadata(const FilePath& file_path,
 }
 
 // Note: This function is not thread safe.
-hwsec::RecoveryCryptoFrontend* GetRecoveryCryptoFrontend() {
+const hwsec::RecoveryCryptoFrontend* GetRecoveryCryptoFrontend() {
   static std::unique_ptr<hwsec::Factory> hwsec_factory;
-  static std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto;
+  static std::unique_ptr<const hwsec::RecoveryCryptoFrontend> recovery_crypto;
   if (!hwsec_factory) {
     hwsec_factory = std::make_unique<hwsec::FactoryImpl>();
     recovery_crypto = hwsec_factory->GetRecoveryCryptoFrontend();

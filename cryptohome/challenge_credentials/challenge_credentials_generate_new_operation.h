@@ -53,7 +53,7 @@ class ChallengeCredentialsGenerateNewOperation final
   // The result is reported via |completion_callback|.
   ChallengeCredentialsGenerateNewOperation(
       KeyChallengeService* key_challenge_service,
-      hwsec::CryptohomeFrontend* hwsec,
+      const hwsec::CryptohomeFrontend* hwsec,
       const Username& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const ObfuscatedUsername& obfuscated_username,
@@ -94,7 +94,7 @@ class ChallengeCredentialsGenerateNewOperation final
   const structure::ChallengePublicKeyInfo public_key_info_;
   const ObfuscatedUsername obfuscated_username_;
   CompletionCallback completion_callback_;
-  hwsec::CryptohomeFrontend* const hwsec_;
+  const hwsec::CryptohomeFrontend* const hwsec_;
   brillo::Blob salt_;
   structure::ChallengeSignatureAlgorithm salt_signature_algorithm_ =
       structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;

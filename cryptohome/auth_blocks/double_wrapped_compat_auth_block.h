@@ -30,10 +30,10 @@ class DoubleWrappedCompatAuthBlock : public AuthBlock {
   using StateType = DoubleWrappedCompatAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
   static std::unique_ptr<AuthBlock> New(
-      hwsec::CryptohomeFrontend& hwsec,
+      const hwsec::CryptohomeFrontend& hwsec,
       CryptohomeKeysManager& cryptohome_keys_manager);
 
-  DoubleWrappedCompatAuthBlock(hwsec::CryptohomeFrontend* hwsec,
+  DoubleWrappedCompatAuthBlock(const hwsec::CryptohomeFrontend* hwsec,
                                CryptohomeKeysManager* cryptohome_keys_manager);
 
   DoubleWrappedCompatAuthBlock(const DoubleWrappedCompatAuthBlock&) = delete;

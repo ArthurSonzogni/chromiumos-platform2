@@ -50,7 +50,8 @@ const uint32_t FirmwareManagementParameters::kCrcDataOffset = 2;
 
 // static
 std::unique_ptr<FirmwareManagementParameters>
-FirmwareManagementParameters::CreateInstance(hwsec::CryptohomeFrontend* hwsec) {
+FirmwareManagementParameters::CreateInstance(
+    const hwsec::CryptohomeFrontend* hwsec) {
   CHECK(hwsec);
 
   if (PLATFORM_FWMP_INDEX) {
@@ -71,7 +72,7 @@ FirmwareManagementParameters::CreateInstance(hwsec::CryptohomeFrontend* hwsec) {
 }
 
 FirmwareManagementParameters::FirmwareManagementParameters(
-    hwsec::Space fwmp_type, hwsec::CryptohomeFrontend* hwsec)
+    hwsec::Space fwmp_type, const hwsec::CryptohomeFrontend* hwsec)
     : fwmp_type_(fwmp_type),
       hwsec_(hwsec),
       raw_(new FirmwareManagementParametersRawV1_0()) {

@@ -18,7 +18,7 @@ namespace cryptohome {
 
 class CryptohomeKeyLoader {
  public:
-  CryptohomeKeyLoader(hwsec::CryptohomeFrontend* frontend,
+  CryptohomeKeyLoader(const hwsec::CryptohomeFrontend* frontend,
                       Platform* platform,
                       hwsec::KeyAlgoType key_algo,
                       const base::FilePath& path);
@@ -51,7 +51,7 @@ class CryptohomeKeyLoader {
 
   hwsec::StatusOr<hwsec::ScopedKey> LoadOrCreateCryptohomeKey();
 
-  hwsec::CryptohomeFrontend* const hwsec_;
+  const hwsec::CryptohomeFrontend* const hwsec_;
   Platform* const platform_;
   const hwsec::KeyAlgoType key_algo_;
   const base::FilePath cryptohome_key_path_;
