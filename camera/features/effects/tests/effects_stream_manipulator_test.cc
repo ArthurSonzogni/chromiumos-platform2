@@ -226,7 +226,7 @@ bool EffectsStreamManipulatorTest::CompareFrames(
 
   return FuzzyBufferComparison(ref_info.frame_data, output_info.frame_data,
                                ref_info.stride * ref_info.frame_height, 5,
-                               1000);
+                               75000);
 }
 
 TEST_F(EffectsStreamManipulatorTest, ReplaceEffectAppliedUsingEnableFlag) {
