@@ -99,6 +99,12 @@ InUseAuthSession AuthSessionManager::AddAuthSession(
   in_use->SetOnTimeoutCallback(base::BindOnce(
       &AuthSessionManager::ExpireAuthSession, base::Unretained(this)));
 
+  // Set the AuthFactorStatusUpdate signal handler to the auth session.
+  if (auth_factor_status_update_callback_) {
+    in_use->SetAuthFactorStatusUpdateCallback(
+        base::BindRepeating(auth_factor_status_update_callback_));
+  }
+
   return in_use;
 }
 

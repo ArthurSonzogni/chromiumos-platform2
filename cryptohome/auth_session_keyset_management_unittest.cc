@@ -279,6 +279,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         .is_ephemeral_user = false,
         .intent = AuthIntent::kDecrypt,
         .timeout_timer = std::make_unique<base::WallClockTimer>(),
+        .auth_factor_status_update_timer =
+            std::make_unique<base::WallClockTimer>(),
         .user_exists = true,
         .auth_factor_map = std::move(auth_factor_map),
         .migrate_to_user_secret_stash = enable_uss_migration};
@@ -297,6 +299,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         .is_ephemeral_user = false,
         .intent = AuthIntent::kDecrypt,
         .timeout_timer = std::make_unique<base::WallClockTimer>(),
+        .auth_factor_status_update_timer =
+            std::make_unique<base::WallClockTimer>(),
         .user_exists = true,
         .auth_factor_map = std::move(auth_factor_map),
         .migrate_to_user_secret_stash = enable_uss_migration};

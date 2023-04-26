@@ -128,6 +128,7 @@ constexpr char kFakeResetSecret[] = "fake_reset_secret";
 // Set to match the 5 minute timer and a 1 minute extension in AuthSession.
 constexpr int kAuthSessionExtensionDuration = 60;
 constexpr auto kAuthSessionTimeout = base::Minutes(5);
+constexpr base::TimeDelta kAuthFactorStatusUpdateDelay = base::Seconds(30);
 constexpr auto kAuthSessionExtension =
     base::Seconds(kAuthSessionExtensionDuration);
 
@@ -372,6 +373,8 @@ TEST_F(AuthSessionTest, TokensAreValid) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -393,6 +396,8 @@ TEST_F(AuthSessionTest, InitiallyNotAuthenticated) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -409,6 +414,8 @@ TEST_F(AuthSessionTest, InitiallyNotAuthenticatedForExistingUser) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -425,6 +432,8 @@ TEST_F(AuthSessionTest, Username) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -441,6 +450,8 @@ TEST_F(AuthSessionTest, DecryptionIntent) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -455,6 +466,8 @@ TEST_F(AuthSessionTest, VerfyIntent) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kVerifyOnly,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -469,6 +482,8 @@ TEST_F(AuthSessionTest, WebAuthnIntent) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kWebAuthn,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -555,6 +570,8 @@ TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            AfMapBuilder().AddPassword<void>(kFakeLabel).Consume(),
@@ -650,6 +667,8 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            AfMapBuilder()
@@ -686,6 +705,8 @@ TEST_F(AuthSessionTest,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = AfMapBuilder()
                               .AddPassword<ScryptAuthBlockState>(kFakeLabel)
@@ -779,6 +800,8 @@ TEST_F(AuthSessionTest,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = AfMapBuilder()
                               .AddPassword<ScryptAuthBlockState>(kFakeLabel)
@@ -874,6 +897,8 @@ TEST_F(AuthSessionTest,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = AfMapBuilder().AddPin(kFakePinLabel).Consume(),
        .migrate_to_user_secret_stash = false},
@@ -949,6 +974,8 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = AfMapBuilder().AddPin(kFakePinLabel).Consume(),
        .migrate_to_user_secret_stash = false},
@@ -991,6 +1018,8 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -1052,6 +1081,8 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -1149,6 +1180,8 @@ TEST_F(AuthSessionTest, AddPasswordFactorToEphemeral) {
        .is_ephemeral_user = true,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -1187,6 +1220,8 @@ TEST_F(AuthSessionTest, AddPinFactorToEphemeralFails) {
        .is_ephemeral_user = true,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -1224,6 +1259,8 @@ TEST_F(AuthSessionTest, AddSecondPasswordFactorToEphemeral) {
        .is_ephemeral_user = true,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -1270,6 +1307,8 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            AfMapBuilder()
@@ -1344,6 +1383,8 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            AfMapBuilder()
@@ -1388,6 +1429,8 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            AfMapBuilder()
@@ -1430,6 +1473,8 @@ TEST_F(AuthSessionTest, TimeoutTest) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -1459,6 +1504,8 @@ TEST_F(AuthSessionTest, TimeoutTestCallbackAfterTimeout) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -1497,6 +1544,8 @@ TEST_F(AuthSessionTest, TimeoutTestAfterPowerSuspend) {
                             .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
                             .timeout_timer = std::move(wall_clock_timer),
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
                             .user_exists = false,
                             .auth_factor_map = AuthFactorMap(),
                             .migrate_to_user_secret_stash = false},
@@ -1532,6 +1581,8 @@ TEST_F(AuthSessionTest, ExtensionTest) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -1572,6 +1623,8 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorWebAuthnIntent) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kWebAuthn,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            AfMapBuilder().AddPassword<void>(kFakeLabel).Consume(),
@@ -1641,6 +1694,8 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = false},
@@ -2069,6 +2124,8 @@ TEST_F(AuthSessionWithUssExperimentTest, UssCreation) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -2092,6 +2149,8 @@ TEST_F(AuthSessionWithUssExperimentTest, NoUssForEphemeral) {
        .is_ephemeral_user = true,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -2113,6 +2172,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -2174,6 +2235,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -2239,6 +2302,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -2302,6 +2367,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorUnAuthenticated) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -2336,6 +2403,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -2471,6 +2540,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = false},
@@ -2568,6 +2639,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = false},
@@ -2666,6 +2739,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = false},
@@ -2763,6 +2838,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = false},
@@ -2855,6 +2932,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = false},
@@ -2965,6 +3044,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = false},
@@ -3016,6 +3097,113 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_TRUE(auth_session.has_user_secret_stash());
 }
 
+// Test that if a user gets locked out, the AuthFactorStatusUpdate timer is set
+// and called periodically.
+TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
+  // Setup.
+  const ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(kFakeUsername);
+  const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
+  // Setting the expectation that the user exists.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Generating the USS.
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
+      UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
+  ASSERT_TRUE(uss_status.ok());
+  std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
+  std::optional<brillo::SecureBlob> uss_main_key =
+      UserSecretStash::CreateRandomMainKey();
+  ASSERT_TRUE(uss_main_key.has_value());
+  // Creating the auth factor. An arbitrary auth block state is used in this
+  // test.
+  auto auth_factor = std::make_unique<AuthFactor>(
+      AuthFactorType::kPin, kFakePinLabel,
+      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthBlockState{.state = PinWeaverAuthBlockState{.le_label = 0xbaadf00d}});
+  EXPECT_TRUE(
+      auth_factor_manager_.SaveAuthFactor(obfuscated_username, *auth_factor)
+          .ok());
+  AuthFactorMap auth_factor_map;
+  auth_factor_map.Add(std::move(auth_factor),
+                      AuthFactorStorageType::kUserSecretStash);
+  // Adding the auth factor into the USS and persisting the latter.
+  const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
+  std::optional<brillo::SecureBlob> wrapping_key =
+      key_blobs.DeriveUssCredentialSecret();
+  ASSERT_TRUE(wrapping_key.has_value());
+  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakePinLabel,
+                                     wrapping_key.value(),
+                                     OverwriteExistingKeyBlock::kDisabled)
+                  .ok());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
+      uss->GetEncryptedContainer(uss_main_key.value());
+  ASSERT_TRUE(encrypted_uss.ok());
+  EXPECT_TRUE(user_secret_stash_storage_
+                  .Persist(encrypted_uss.value(), obfuscated_username)
+                  .ok());
+  // Creating the auth session.
+  AuthSession auth_session(
+      {.username = kFakeUsername,
+       .is_ephemeral_user = false,
+       .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
+       .user_exists = true,
+       .auth_factor_map = std::move(auth_factor_map),
+       .migrate_to_user_secret_stash = false},
+      backing_apis_);
+  EXPECT_TRUE(auth_session.user_exists());
+
+  auto mock_le_manager = std::make_unique<MockLECredentialManager>();
+  MockLECredentialManager* mock_le_manager_ptr = mock_le_manager.get();
+  crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
+  auth_session.SetAuthFactorStatusUpdateCallback(base::BindRepeating(
+      [](user_data_auth::AuthFactorWithStatus, const std::string&) {}));
+  // Test.
+  // Setting the expectation that the auth block utility will derive key blobs.
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeFromState(
+                  AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
+      .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
+  EXPECT_CALL(auth_block_utility_,
+              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _, _))
+      .WillOnce([&kFakePerCredentialSecret](
+                    AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthBlockState& auth_state,
+                    AuthBlock::DeriveCallback derive_callback) {
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key = kFakePerCredentialSecret;
+        std::move(derive_callback)
+            .Run(MakeStatus<error::CryptohomeCryptoError>(
+                     kErrorLocationForTestingAuthSession,
+                     error::ErrorActionSet(
+                         {error::PrimaryAction::kIncorrectAuth}),
+                     CryptoError::CE_CREDENTIAL_LOCKED),
+                 nullptr, std::nullopt);
+      });
+  // Calling AuthenticateAuthFactor.
+  std::string auth_factor_labels[] = {kFakePinLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  // The wrong pin needs to be sent multiple times. |wrong_pin| is set to be
+  // different than |kFakePin|.
+  std::string wrong_pin = "232323";
+  auth_input_proto.mutable_pin_input()->set_secret(wrong_pin);
+  EXPECT_CALL(*mock_le_manager_ptr, GetDelayInSeconds(_))
+      .WillRepeatedly([](auto) { return UINT32_MAX; });
+  TestFuture<CryptohomeStatus> authenticate_future;
+  auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
+                                      authenticate_future.GetCallback());
+  EXPECT_THAT(authenticate_future.Get(), NotOk());
+  EXPECT_CALL(auth_block_utility_, GetSupportedIntentsFromState(_))
+      .WillRepeatedly(Return(base::flat_set<AuthIntent>(
+          {AuthIntent::kVerifyOnly, AuthIntent::kDecrypt})));
+  // As currently the user is locked out until they log in via password, the
+  // delay policy does not matter, but once the passwordless policy is set, this
+  // timing should change to reflect that.
+  task_environment_.FastForwardBy(kAuthFactorStatusUpdateDelay);
+}
+
 TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
   // Setup.
   AuthSession auth_session(
@@ -3023,6 +3211,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -3123,6 +3313,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = false},
@@ -3259,6 +3451,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = false},
@@ -3323,6 +3517,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kVerifyOnly,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = std::move(verify_auth_factor_map),
        .migrate_to_user_secret_stash = false},
@@ -3362,6 +3558,8 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kVerifyOnly,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            AfMapBuilder().AddPassword<void>(kFakeLabel).Consume(),
@@ -3403,6 +3601,8 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightFingerprintAuthentication) {
           .is_ephemeral_user = false,
           .intent = AuthIntent::kVerifyOnly,
           .timeout_timer = std::make_unique<base::WallClockTimer>(),
+          .auth_factor_status_update_timer =
+              std::make_unique<base::WallClockTimer>(),
           .user_exists = true,
           .auth_factor_map = AuthFactorMap(),
           .migrate_to_user_secret_stash = false},
@@ -3433,6 +3633,8 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth) {
           .is_ephemeral_user = false,
           .intent = AuthIntent::kVerifyOnly,
           .timeout_timer = std::make_unique<base::WallClockTimer>(),
+          .auth_factor_status_update_timer =
+              std::make_unique<base::WallClockTimer>(),
           .user_exists = true,
           .auth_factor_map = AuthFactorMap(),
           .migrate_to_user_secret_stash = false},
@@ -3475,6 +3677,8 @@ TEST_F(AuthSessionWithUssExperimentTest, PreparePasswordFailure) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kVerifyOnly,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -3502,6 +3706,8 @@ TEST_F(AuthSessionWithUssExperimentTest, TerminateAuthFactorBadTypeFailure) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kVerifyOnly,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -3529,6 +3735,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kVerifyOnly,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -3557,6 +3765,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kVerifyOnly,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -3602,6 +3812,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -3680,6 +3892,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -3765,6 +3979,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -3810,6 +4026,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -3854,6 +4072,8 @@ TEST_F(AuthSessionTest, RemoveAuthFactorFailsForUnauthenticatedAuthSession) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -3881,6 +4101,8 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
          .is_ephemeral_user = false,
          .intent = AuthIntent::kDecrypt,
          .timeout_timer = std::make_unique<base::WallClockTimer>(),
+         .auth_factor_status_update_timer =
+             std::make_unique<base::WallClockTimer>(),
          .user_exists = false,
          .auth_factor_map = AuthFactorMap(),
          .migrate_to_user_secret_stash = false},
@@ -3914,6 +4136,8 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            AfMapBuilder()
@@ -3953,6 +4177,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPinAfterRecoveryAuth) {
          .is_ephemeral_user = false,
          .intent = AuthIntent::kDecrypt,
          .timeout_timer = std::make_unique<base::WallClockTimer>(),
+         .auth_factor_status_update_timer =
+             std::make_unique<base::WallClockTimer>(),
          .user_exists = false,
          .auth_factor_map = AuthFactorMap(),
          .migrate_to_user_secret_stash = false},
@@ -3973,6 +4199,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPinAfterRecoveryAuth) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            AfMapBuilder()
@@ -4021,6 +4249,8 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
          .is_ephemeral_user = false,
          .intent = AuthIntent::kDecrypt,
          .timeout_timer = std::make_unique<base::WallClockTimer>(),
+         .auth_factor_status_update_timer =
+             std::make_unique<base::WallClockTimer>(),
          .user_exists = false,
          .auth_factor_map = AuthFactorMap(),
          .migrate_to_user_secret_stash = false},
@@ -4046,6 +4276,8 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map =
            AfMapBuilder()
@@ -4084,6 +4316,8 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongLabel) {
           .is_ephemeral_user = false,
           .intent = AuthIntent::kVerifyOnly,
           .timeout_timer = std::make_unique<base::WallClockTimer>(),
+          .auth_factor_status_update_timer =
+              std::make_unique<base::WallClockTimer>(),
           .user_exists = false,
           .auth_factor_map = AuthFactorMap(),
           .migrate_to_user_secret_stash = false},
@@ -4135,6 +4369,8 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongType) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -4184,6 +4420,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -4235,6 +4473,8 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -4328,6 +4568,8 @@ TEST_F(AuthSessionWithUssExperimentTest, FingerprintAuthenticationForWebAuthn) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kWebAuthn,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -4366,6 +4608,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = true},
@@ -4445,6 +4689,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprint) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
@@ -4476,6 +4722,8 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareFingerprintAdd) {
           .is_ephemeral_user = false,
           .intent = AuthIntent::kVerifyOnly,
           .timeout_timer = std::make_unique<base::WallClockTimer>(),
+          .auth_factor_status_update_timer =
+              std::make_unique<base::WallClockTimer>(),
           .user_exists = true,
           .auth_factor_map = AuthFactorMap(),
           .migrate_to_user_secret_stash = false},
@@ -4518,6 +4766,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprintAndAuth) {
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
        .user_exists = false,
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},

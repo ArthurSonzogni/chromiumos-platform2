@@ -35,6 +35,7 @@
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session_proto_utils.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
@@ -92,6 +93,7 @@ class AuthSession final {
     hwsec::ExplicitInit<bool> is_ephemeral_user;
     hwsec::ExplicitInit<AuthIntent> intent;
     std::unique_ptr<base::WallClockTimer> timeout_timer;
+    std::unique_ptr<base::WallClockTimer> auth_factor_status_update_timer;
     hwsec::ExplicitInit<bool> user_exists;
     AuthFactorMap auth_factor_map;
     hwsec::ExplicitInit<bool> migrate_to_user_secret_stash;
@@ -280,6 +282,10 @@ class AuthSession final {
   void SetOnTimeoutCallback(
       base::OnceCallback<void(const base::UnguessableToken&)> on_timeout);
 
+  // Set the auth factor status update callback.
+  void SetAuthFactorStatusUpdateCallback(
+      const AuthFactorStatusUpdateCallback& callback);
+
  private:
   // AuthSessionTimedOut is called when the session times out and cleans up
   // credentials that may be in memory. Be aware that this may destroy the
@@ -346,6 +352,10 @@ class AuthSession final {
 
   // Set the timeout timer to now + delay
   void SetTimeoutTimer(const base::TimeDelta& delay);
+
+  // Send the auth factor status update signal and also set the timer for the
+  // next signal based on |kAuthFactorStatusUpdateDelay|.
+  void AuthFactorStatusUpdateTimer();
 
   // Helper function to update a keyset on disk on KeyBlobs generated. If update
   // succeeds |vault_keyset_| is also updated. Failure doesn't return error and
@@ -637,10 +647,14 @@ class AuthSession final {
 
   // The wall clock timer object for recording AuthSession lifetime.
   std::unique_ptr<base::WallClockTimer> timeout_timer_;
+  // The wall clock timer object to send AuthFactor status update periodically.
+  std::unique_ptr<base::WallClockTimer> auth_factor_status_update_timer_;
 
   base::TimeTicks auth_session_creation_time_;
   base::TimeTicks authenticated_time_;
   base::OnceCallback<void(const base::UnguessableToken&)> on_timeout_;
+  // The repeating callback to send AuthFactorStatusUpdateSignal.
+  AuthFactorStatusUpdateCallback auth_factor_status_update_callback_;
 
   std::unique_ptr<AuthFactor> auth_factor_;
   // The decrypted UserSecretStash. Only populated for users who have it (legacy

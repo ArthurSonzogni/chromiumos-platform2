@@ -1273,6 +1273,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthBlockUtilNoTpmInGetAuthBlockWithType = 723,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilEmptyListInGetAuthBlockWithType = 724,
+  /* =Obsolete= */
+  kGetDelayInSecondsFailedInPinDriverGetDelayInMilliseconds = 725,
+  /* =Obsolete= */
+  kGetDelayInSecondsFailedInPinDriverGetNextSignalDelayInSeconds = 726,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.

@@ -187,6 +187,8 @@ TEST_F(AuthSessionManagerTest, AddFindRemove) {
             .is_ephemeral_user = false,
             .intent = AuthIntent::kDecrypt,
             .timeout_timer = std::make_unique<base::WallClockTimer>(),
+            .auth_factor_status_update_timer =
+                std::make_unique<base::WallClockTimer>(),
             .user_exists = false,
             .auth_factor_map = AuthFactorMap(),
             .migrate_to_user_secret_stash = false},
@@ -223,6 +225,8 @@ TEST_F(AuthSessionManagerTest, AddFindRemove) {
             .is_ephemeral_user = false,
             .intent = AuthIntent::kDecrypt,
             .timeout_timer = std::make_unique<base::WallClockTimer>(),
+            .auth_factor_status_update_timer =
+                std::make_unique<base::WallClockTimer>(),
             .user_exists = false,
             .auth_factor_map = AuthFactorMap(),
             .migrate_to_user_secret_stash = false},
@@ -302,6 +306,8 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
             .is_ephemeral_user = false,
             .intent = AuthIntent::kDecrypt,
             .timeout_timer = std::make_unique<base::WallClockTimer>(),
+            .auth_factor_status_update_timer =
+                std::make_unique<base::WallClockTimer>(),
             .user_exists = false,
             .auth_factor_map = AuthFactorMap(),
             .migrate_to_user_secret_stash = false},
@@ -338,6 +344,8 @@ TEST_F(AuthSessionManagerTest, AddFindUnMount) {
             .is_ephemeral_user = false,
             .intent = AuthIntent::kDecrypt,
             .timeout_timer = std::make_unique<base::WallClockTimer>(),
+            .auth_factor_status_update_timer =
+                std::make_unique<base::WallClockTimer>(),
             .user_exists = false,
             .auth_factor_map = AuthFactorMap(),
             .migrate_to_user_secret_stash = false},

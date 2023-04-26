@@ -40,6 +40,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_factor/types/interface.h"
+#include "cryptohome/auth_factor/types/pin.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_input_utils.h"
 #include "cryptohome/credential_verifier.h"
@@ -97,6 +98,9 @@ constexpr int kLowTokenOffset = kSizeOfSerializedValueInToken;
 constexpr base::TimeDelta kAuthSessionTimeout = base::Minutes(5);
 // Message to use when generating a secret for hibernate.
 constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
+// This is the frequency with which a signal is sent for a locked out user,
+// unless the lockout time is less than this.
+const base::TimeDelta kAuthFactorStatusUpdateDelay = base::Seconds(30);
 
 // Check if a given type of AuthFactor supports Vault Keysets.
 constexpr bool IsFactorTypeSupportedByVk(AuthFactorType auth_factor_type) {
@@ -311,13 +315,14 @@ std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
       }
     }
   }
-
   // Assumption here is that keyset_management_ will outlive this AuthSession.
   AuthSession::Params params = {
       .username = std::move(account_id),
       .is_ephemeral_user = flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER,
       .intent = intent,
       .timeout_timer = std::make_unique<base::WallClockTimer>(),
+      .auth_factor_status_update_timer =
+          std::make_unique<base::WallClockTimer>(),
       .user_exists = user_exists,
       .auth_factor_map = std::move(auth_factor_map),
       .migrate_to_user_secret_stash = migrate_to_user_secret_stash};
@@ -330,6 +335,8 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       is_ephemeral_user_(*params.is_ephemeral_user),
       auth_intent_(*params.intent),
       timeout_timer_(std::move(params.timeout_timer)),
+      auth_factor_status_update_timer_(
+          std::move(params.auth_factor_status_update_timer)),
       auth_session_creation_time_(base::TimeTicks::Now()),
       on_timeout_(base::DoNothing()),
       crypto_(backing_apis.crypto),
@@ -354,6 +361,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
   // Preconditions.
   DCHECK(!serialized_token_.empty());
   DCHECK(timeout_timer_);
+  DCHECK(auth_factor_status_update_timer_);
   DCHECK(crypto_);
   DCHECK(platform_);
   DCHECK(user_session_map_);
@@ -413,6 +421,82 @@ void AuthSession::SetTimeoutTimer(const base::TimeDelta& delay) {
   timeout_timer_->Start(FROM_HERE, base::Time::Now() + delay,
                         base::BindOnce(&AuthSession::AuthSessionTimedOut,
                                        base::Unretained(this)));
+}
+
+void AuthSession::AuthFactorStatusUpdateTimer() {
+  // If the auth session is timed out we won't need to send another signal.
+  if (status_ == AuthStatus::kAuthStatusTimedOut) {
+    return;
+  }
+  // If the auth factor status update callback is not set (testing purposes),
+  // then we won't need to send a signal.
+  if (!auth_factor_status_update_callback_) {
+    LOG(ERROR) << "Auth factor status update callback has not been set.";
+    return;
+  }
+  for (AuthFactorMap::ValueView item : auth_factor_map_) {
+    AuthFactor auth_factor = item.auth_factor();
+    // Currently only pins have time based lock outs.
+    if (auth_factor.type() != AuthFactorType::kPin) {
+      continue;
+    }
+    const AuthFactorDriver& driver =
+        auth_factor_driver_manager_->GetDriver(auth_factor.type());
+    auto auth_factor_proto =
+        driver.ConvertToProto(auth_factor.label(), auth_factor.metadata());
+    if (!auth_factor_proto) {
+      continue;
+    }
+    user_data_auth::AuthFactorWithStatus auth_factor_with_status;
+    user_data_auth::StatusInfo status_info;
+    *auth_factor_with_status.mutable_auth_factor() =
+        std::move(*auth_factor_proto);
+    auto supported_intents = auth_block_utility_->GetSupportedIntentsFromState(
+        auth_factor.auth_block_state());
+    for (const auto& auth_intent : supported_intents) {
+      auth_factor_with_status.add_available_for_intents(
+          AuthIntentToProto(auth_intent));
+    }
+
+    auto* state = std::get_if<::cryptohome::PinWeaverAuthBlockState>(
+        &(auth_factor.auth_block_state().state));
+    if (!state || !state->le_label) {
+      LOG(ERROR) << "AuthFactor state not available in auth factor status "
+                    "update timer";
+      continue;
+    }
+    auto delay_in_seconds_status =
+        crypto_->le_manager()->GetDelayInSeconds(state->le_label.value());
+    uint64_t delay_in_milliseconds;
+    // Lockout delay should be converted to milliseconds.
+    if (delay_in_seconds_status.ok()) {
+      uint64_t delay_in_seconds = delay_in_seconds_status.value();
+      DCHECK(delay_in_seconds < UINT64_MAX / 1000);
+      if (delay_in_seconds == UINT32_MAX) {
+        delay_in_milliseconds = UINT64_MAX;
+      } else {
+        delay_in_milliseconds = delay_in_seconds * 1000;
+      }
+      status_info.set_time_available_in(delay_in_milliseconds);
+      *auth_factor_with_status.mutable_status_info() = status_info;
+      auth_factor_status_update_callback_.Run(auth_factor_with_status,
+                                              serialized_public_token_);
+      if (delay_in_seconds_status.value() <= 0) {
+        continue;
+      }
+      base::TimeDelta next_signal_delay;
+      if (base::Seconds(delay_in_seconds_status.value()) <
+          kAuthFactorStatusUpdateDelay) {
+        next_signal_delay = base::Seconds(delay_in_seconds);
+      } else {
+        next_signal_delay = kAuthFactorStatusUpdateDelay;
+      }
+      auth_factor_status_update_timer_->Start(
+          FROM_HERE, base::Time::Now() + next_signal_delay,
+          base::BindOnce(&AuthSession::AuthFactorStatusUpdateTimer,
+                         base::Unretained(this)));
+    }
+  }
 }
 
 CryptohomeStatus AuthSession::ExtendTimeoutTimer(
@@ -2852,6 +2936,13 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
     }
+    // The user is locked out. So prepare an AuthFactorStatusUpdateSignal to be
+    // sent periodically until the user is not locked out anymore or until the
+    // auth session is timed out.
+    if (callback_error->local_legacy_error() ==
+        user_data_auth::CRYPTOHOME_ERROR_CREDENTIAL_LOCKED) {
+      AuthFactorStatusUpdateTimer();
+    }
     LOG(ERROR) << "KeyBlob derivation failed before loading USS";
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
@@ -3227,6 +3318,13 @@ void AuthSession::SetOnTimeoutCallback(
   // If the session is already timed out, trigger the callback immediately.
   if (status_ == AuthStatus::kAuthStatusTimedOut) {
     std::move(on_timeout_).Run(token_);
+  }
+}
+
+void AuthSession::SetAuthFactorStatusUpdateCallback(
+    const AuthFactorStatusUpdateCallback& callback) {
+  if (status_ != AuthStatus::kAuthStatusTimedOut) {
+    auth_factor_status_update_callback_ = callback;
   }
 }
 
