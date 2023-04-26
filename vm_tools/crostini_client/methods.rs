@@ -1280,7 +1280,7 @@ impl Methods {
             }
 
             match bios_dlc_id.as_ref() {
-                "bruschetta-bios-dlc" => (),
+                "edk2-ovmf-dlc" => (),
                 _ => return Err(BiosDlcNotAllowed(bios_dlc_id.to_owned()).into()),
             }
             self.install_dlc(&bios_dlc_id)?;
