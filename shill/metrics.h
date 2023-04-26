@@ -1063,6 +1063,21 @@ class Metrics : public DefaultServiceObserver {
       .max = kPasspointProvisioningMax,
   };
 
+  // Metric recorded when removing Passpoint credentaisl with the
+  // Manager RemovePasspointCredentials() DBus API.
+  enum PasspointRemovalResult {
+    kPasspointRemovalSuccess = 0,
+    kPasspointRemovalNotFound = 1,
+    kPasspointRemovalNoActiveUserProfile = 2,
+    kPasspointRemovalFailure = 3,
+
+    kPasspointRemovalMax,
+  };
+  static constexpr EnumMetric<FixedName> kMetricPasspointRemovalResult = {
+      .n = FixedName{"Network.Shill.WiFi.Passpoint.RemovalResult"},
+      .max = kPasspointRemovalMax,
+  };
+
   // Metric indicating the provisioning origin of Passpoint credentials.
   // This metric is recorded once for any successful Passpoint provisioning
   // event.

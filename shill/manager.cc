@@ -3013,21 +3013,30 @@ bool Manager::RemovePasspointCredentials(const std::string& profile_rpcid,
 
   ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
   if (!profile) {
+    metrics()->SendEnumToUMA(Metrics::kMetricPasspointRemovalResult,
+                             Metrics::kPasspointRemovalNotFound);
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
                           "Profile " + profile_rpcid + " not found");
     return false;
   }
   if (profile->IsDefault()) {
+    metrics()->SendEnumToUMA(Metrics::kMetricPasspointRemovalResult,
+                             Metrics::kPasspointRemovalNoActiveUserProfile);
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Can't remove credentials from default profile");
     return false;
   }
 
   if (!wifi_provider_->ForgetCredentials(properties)) {
+    metrics()->SendEnumToUMA(Metrics::kMetricPasspointRemovalResult,
+                             Metrics::kPasspointRemovalFailure);
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to remove Passpoint credentials");
     return false;
   }
+
+  metrics()->SendEnumToUMA(Metrics::kMetricPasspointRemovalResult,
+                           Metrics::kPasspointRemovalSuccess);
   return true;
 }
 
