@@ -176,5 +176,29 @@ TEST(IPv6CIDR, ToString) {
   LOG(INFO) << "cidr = " << cidr;
 }
 
+TEST(IPv6CIDR, GetNetmask) {
+  EXPECT_EQ(*IPv6CIDR::GetNetmask(0), *IPv6Address::CreateFromString("::"));
+  EXPECT_EQ(*IPv6CIDR::GetNetmask(4), *IPv6Address::CreateFromString("f000::"));
+  EXPECT_EQ(*IPv6CIDR::GetNetmask(23),
+            *IPv6Address::CreateFromString("ffff:fe00::"));
+  EXPECT_EQ(*IPv6CIDR::GetNetmask(128),
+            *IPv6Address::CreateFromString(
+                "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"));
+
+  EXPECT_FALSE(IPv6CIDR::GetNetmask(-1));
+  EXPECT_FALSE(IPv6CIDR::GetNetmask(129));
+}
+
+TEST(IPv6CIDR, ToNetmask) {
+  const auto cidr1 = *IPv6CIDR::CreateFromCIDRString("2401:fa00::1/0");
+  EXPECT_EQ(cidr1.ToNetmask(), *IPv6Address::CreateFromString("::"));
+
+  const auto cidr2 = *IPv6CIDR::CreateFromCIDRString("2401:fa00::1/8");
+  EXPECT_EQ(cidr2.ToNetmask(), *IPv6Address::CreateFromString("ff00::"));
+
+  const auto cidr3 = *IPv6CIDR::CreateFromCIDRString("2401:fa00::1/24");
+  EXPECT_EQ(cidr3.ToNetmask(), *IPv6Address::CreateFromString("ffff:ff00::"));
+}
+
 }  // namespace
 }  // namespace shill

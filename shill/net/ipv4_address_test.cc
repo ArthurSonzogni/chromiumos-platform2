@@ -165,5 +165,33 @@ TEST(IPv4CIDR, ToString) {
   LOG(INFO) << "cidr = " << cidr;
 }
 
+TEST(IPv4CIDR, GetNetmask) {
+  EXPECT_EQ(*IPv4CIDR::GetNetmask(0), IPv4Address(0, 0, 0, 0));
+  EXPECT_EQ(*IPv4CIDR::GetNetmask(1), IPv4Address(128, 0, 0, 0));
+  EXPECT_EQ(*IPv4CIDR::GetNetmask(4), IPv4Address(240, 0, 0, 0));
+  EXPECT_EQ(*IPv4CIDR::GetNetmask(8), IPv4Address(255, 0, 0, 0));
+  EXPECT_EQ(*IPv4CIDR::GetNetmask(16), IPv4Address(255, 255, 0, 0));
+  EXPECT_EQ(*IPv4CIDR::GetNetmask(24), IPv4Address(255, 255, 255, 0));
+  EXPECT_EQ(*IPv4CIDR::GetNetmask(31), IPv4Address(255, 255, 255, 254));
+  EXPECT_EQ(*IPv4CIDR::GetNetmask(32), IPv4Address(255, 255, 255, 255));
+
+  EXPECT_FALSE(IPv4CIDR::GetNetmask(-1));
+  EXPECT_FALSE(IPv4CIDR::GetNetmask(33));
+}
+
+TEST(IPv4CIDR, ToNetmask) {
+  const auto cidr1 = *IPv4CIDR::CreateFromCIDRString("192.168.2.1/0");
+  EXPECT_EQ(cidr1.ToNetmask(), IPv4Address(0, 0, 0, 0));
+
+  const auto cidr2 = *IPv4CIDR::CreateFromCIDRString("192.168.2.1/8");
+  EXPECT_EQ(cidr2.ToNetmask(), IPv4Address(255, 0, 0, 0));
+
+  const auto cidr3 = *IPv4CIDR::CreateFromCIDRString("192.168.2.1/24");
+  EXPECT_EQ(cidr3.ToNetmask(), IPv4Address(255, 255, 255, 0));
+
+  const auto cidr4 = *IPv4CIDR::CreateFromCIDRString("192.168.2.1/32");
+  EXPECT_EQ(cidr4.ToNetmask(), IPv4Address(255, 255, 255, 255));
+}
+
 }  // namespace
 }  // namespace shill

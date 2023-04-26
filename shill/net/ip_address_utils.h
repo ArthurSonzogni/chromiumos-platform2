@@ -44,7 +44,7 @@ class SHILL_EXPORT CIDR {
     // We are guaranteed to be before the end of the address data since even
     // if the prefix length is the maximum, the loop above will end before we
     // assign and increment past the last byte.
-    data[idx] = ~((1 << (kBitsPerByte - bits)) - 1);
+    data[idx] = static_cast<uint8_t>(~((1 << (kBitsPerByte - bits)) - 1));
 
     return Address(data);
   }
@@ -96,17 +96,20 @@ class SHILL_EXPORT CIDR {
   }
   bool operator!=(const CIDR<Address>& b) const { return !(*this == b); }
 
+  // Creates the Address that has all the high-order |prefix_length_| bits set.
+  Address ToNetmask() const {
+    // It's safe to dereference because |prefix_length_| is always valid.
+    return *GetNetmask(prefix_length_);
+  }
+
   // Returns an address that represents the network-part of the address,
   // i.e, the address with all but the prefix bits masked out.
-  Address GetPrefixAddress() const {
-    const Address subnet_mask = *GetNetmask(prefix_length_);
-    return BitwiseAnd(address_, subnet_mask);
-  }
+  Address GetPrefixAddress() const { return BitwiseAnd(address_, ToNetmask()); }
 
   // Returns the broadcast address for the IP address, by setting all of the
   // host-part bits to 1.
   Address GetBroadcast() const {
-    const Address broadcast_mask = BitwiseNot(*GetNetmask(prefix_length_));
+    const Address broadcast_mask = BitwiseNot(ToNetmask());
     return BitwiseOr(address_, broadcast_mask);
   }
 
