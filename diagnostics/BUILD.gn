@@ -28,7 +28,10 @@ group("all") {
     ]
   }
   if (use.fuzzer) {
-    deps += [ "//diagnostics/cros_healthd/fetchers:fetch_system_info_fuzzer" ]
+    deps += [
+      "//diagnostics/cros_healthd/events:crash_events_uploads_log_parser_fuzzer",
+      "//diagnostics/cros_healthd/fetchers:fetch_system_info_fuzzer",
+    ]
   }
 }
 
