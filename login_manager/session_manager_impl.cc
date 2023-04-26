@@ -557,6 +557,28 @@ bool SessionManagerImpl::Initialize() {
       base::BindOnce(&SessionManagerImpl::OnSystemClockServiceAvailable,
                      weak_ptr_factory_.GetWeakPtr()));
 
+  // AD management (Chromad) is no longer supported, so devices in this mode
+  // should fail to boot. Therefore, we request a device reboot, then
+  // intentionally crash the chromeos-login service. By failing to boot the new
+  // OS version, we force the automatic update to fail, making the device stay
+  // in the previous version. Reference:
+  // https://www.chromium.org/chromium-os/chromiumos-design-docs/boot-design/#rollback-protection-after-update
+  // Note: We don't want to return `false` in this `Initialize()` method,
+  // because that would trigger a device wipe.
+  //
+  // TODO(b/263367348): Fully remove the "enterprise_ad" device mode from
+  // install attributes, when all supported devices are guaranteed to not have
+  // this mode.
+  if (install_attributes_reader_->GetAttribute(
+          InstallAttributesReader::kAttrMode) ==
+      InstallAttributesReader::kDeviceModeEnterpriseAD) {
+    RestartDevice(
+        "Device is in an unsupported management mode (Active Directory)");
+    NOTREACHED_NORETURN() << "Device is in an unsupported management mode "
+                             "(Active Directory) - crashing this service to "
+                             "force ChromeOS boot to fail.";
+  }
+
   // Note: If SetPolicyServicesForTesting has been called, all services have
   // already been set and initialized.
   if (!device_policy_) {
