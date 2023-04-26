@@ -322,7 +322,7 @@ To use this tool:
 
 2) Add the following to `.gitignore`:
     ```.gitignore
-    src/bindings
+    /src/bindings
     ```
 
 3) Create the `Cargo.toml` file (system_api is a good examples). Be sure to
