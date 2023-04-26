@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "features/portrait_mode/portrait_mode_stream_manipulator.h"
+#include "features/portrait_mode/portrait_mode_stream_manipulator_legacy.h"
 
 #include <cstdint>
 #include <iterator>
@@ -16,7 +16,7 @@
 #include "features/portrait_mode/tracing.h"
 
 //
-// PortraitModeStreamManipulator implementations.
+// PortraitModeStreamManipulatorLegacy implementations.
 //
 
 namespace cros {
@@ -36,14 +36,14 @@ bool CanEnablePortraitMode(const camera_metadata_t* metadata) {
 
 }  // namespace
 
-PortraitModeStreamManipulator::PortraitModeStreamManipulator(
+PortraitModeStreamManipulatorLegacy::PortraitModeStreamManipulatorLegacy(
     CameraMojoChannelManagerToken* mojo_manager_token)
     : mojo_manager_token_(mojo_manager_token) {}
 
-PortraitModeStreamManipulator::~PortraitModeStreamManipulator() {}
+PortraitModeStreamManipulatorLegacy::~PortraitModeStreamManipulatorLegacy() {}
 
 // static
-bool PortraitModeStreamManipulator::UpdateVendorTags(
+bool PortraitModeStreamManipulatorLegacy::UpdateVendorTags(
     VendorTagManager& vendor_tag_manager) {
   if (!vendor_tag_manager.Add(kPortraitModeVendorKey,
                               kPortraitModeVendorTagSectionName,
@@ -58,11 +58,11 @@ bool PortraitModeStreamManipulator::UpdateVendorTags(
 }
 
 // static
-bool PortraitModeStreamManipulator::UpdateStaticMetadata(
+bool PortraitModeStreamManipulatorLegacy::UpdateStaticMetadata(
     android::CameraMetadata* static_info) {
   // TODO(julianachang): We don't need to set Portrait Mode tags to static
   // metadata, but CCA won't enable Portrait Mode if we remove this part. Will
-  // modify this after adding PortraitModeStreamManipulator.
+  // modify this after adding PortraitModeStreamManipulatorLegacy.
   const camera_metadata_t* locked_metadata = static_info->getAndLock();
   if (!CanEnablePortraitMode(locked_metadata)) {
     static_info->unlock(locked_metadata);
@@ -78,7 +78,7 @@ bool PortraitModeStreamManipulator::UpdateStaticMetadata(
   return true;
 }
 
-bool PortraitModeStreamManipulator::Initialize(
+bool PortraitModeStreamManipulatorLegacy::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
   TRACE_PORTRAIT_MODE();
@@ -97,23 +97,23 @@ bool PortraitModeStreamManipulator::Initialize(
   return true;
 }
 
-bool PortraitModeStreamManipulator::ConfigureStreams(
+bool PortraitModeStreamManipulatorLegacy::ConfigureStreams(
     Camera3StreamConfiguration* stream_config,
     const StreamEffectMap* stream_effect_map) {
   return true;
 }
 
-bool PortraitModeStreamManipulator::OnConfiguredStreams(
+bool PortraitModeStreamManipulatorLegacy::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
   return true;
 }
 
-bool PortraitModeStreamManipulator::ConstructDefaultRequestSettings(
+bool PortraitModeStreamManipulatorLegacy::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
   return true;
 }
 
-bool PortraitModeStreamManipulator::ProcessCaptureRequest(
+bool PortraitModeStreamManipulatorLegacy::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
   TRACE_PORTRAIT_MODE("frame_number", request->frame_number());
 
@@ -206,7 +206,7 @@ bool PortraitModeStreamManipulator::ProcessCaptureRequest(
   return true;
 }
 
-bool PortraitModeStreamManipulator::ProcessCaptureResult(
+bool PortraitModeStreamManipulatorLegacy::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   TRACE_PORTRAIT_MODE("frame_number", result.frame_number());
 
@@ -248,11 +248,11 @@ bool PortraitModeStreamManipulator::ProcessCaptureResult(
   return true;
 }
 
-void PortraitModeStreamManipulator::Notify(camera3_notify_msg_t msg) {
+void PortraitModeStreamManipulatorLegacy::Notify(camera3_notify_msg_t msg) {
   callbacks_.notify_callback.Run(std::move(msg));
 }
 
-bool PortraitModeStreamManipulator::Flush() {
+bool PortraitModeStreamManipulatorLegacy::Flush() {
   return true;
 }
 

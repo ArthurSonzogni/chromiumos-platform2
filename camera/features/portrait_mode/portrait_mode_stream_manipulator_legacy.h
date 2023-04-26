@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_PORTRAIT_MODE_PORTRAIT_MODE_STREAM_MANIPULATOR_H_
-#define CAMERA_FEATURES_PORTRAIT_MODE_PORTRAIT_MODE_STREAM_MANIPULATOR_H_
+#ifndef CAMERA_FEATURES_PORTRAIT_MODE_PORTRAIT_MODE_STREAM_MANIPULATOR_LEGACY_H_
+#define CAMERA_FEATURES_PORTRAIT_MODE_PORTRAIT_MODE_STREAM_MANIPULATOR_LEGACY_H_
 
 #include "common/stream_manipulator.h"
 
@@ -21,11 +21,11 @@
 
 namespace cros {
 
-class PortraitModeStreamManipulator : public StreamManipulator {
+class PortraitModeStreamManipulatorLegacy : public StreamManipulator {
  public:
-  PortraitModeStreamManipulator(
+  PortraitModeStreamManipulatorLegacy(
       CameraMojoChannelManagerToken* mojo_manager_token);
-  ~PortraitModeStreamManipulator() override;
+  ~PortraitModeStreamManipulatorLegacy() override;
 
   static bool UpdateVendorTags(VendorTagManager& vendor_tag_manager);
   static bool UpdateStaticMetadata(android::CameraMetadata* static_info);
@@ -73,4 +73,4 @@ class PortraitModeStreamManipulator : public StreamManipulator {
 
 }  // namespace cros
 
-#endif  // CAMERA_FEATURES_PORTRAIT_MODE_PORTRAIT_MODE_STREAM_MANIPULATOR_H_
+#endif  // CAMERA_FEATURES_PORTRAIT_MODE_PORTRAIT_MODE_STREAM_MANIPULATOR_LEGACY_H_

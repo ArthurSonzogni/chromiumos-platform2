@@ -53,7 +53,7 @@
 #endif
 
 #if USE_CAMERA_FEATURE_PORTRAIT_MODE
-#include "features/portrait_mode/portrait_mode_stream_manipulator.h"
+#include "features/portrait_mode/portrait_mode_stream_manipulator_legacy.h"
 #endif
 
 namespace cros {
@@ -165,8 +165,9 @@ StreamManipulatorManager::StreamManipulatorManager(
 
 #if USE_CAMERA_FEATURE_PORTRAIT_MODE
   stream_manipulators_.emplace_back(
-      std::make_unique<PortraitModeStreamManipulator>(mojo_manager_token));
-  LOGF(INFO) << "PortraitModeStreamManipulator enabled";
+      std::make_unique<PortraitModeStreamManipulatorLegacy>(
+          mojo_manager_token));
+  LOGF(INFO) << "PortraitModeStreamManipulatorLegacy enabled";
 #endif
 
   stream_manipulators_.emplace_back(

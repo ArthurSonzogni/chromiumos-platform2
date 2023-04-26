@@ -42,7 +42,7 @@
 #endif
 
 #if USE_CAMERA_FEATURE_PORTRAIT_MODE
-#include "features/portrait_mode/portrait_mode_stream_manipulator.h"
+#include "features/portrait_mode/portrait_mode_stream_manipulator_legacy.h"
 #endif
 
 namespace cros {
@@ -105,7 +105,8 @@ bool StreamManipulator::UpdateVendorTags(VendorTagManager& vendor_tag_manager) {
     return false;
   }
 #if USE_CAMERA_FEATURE_PORTRAIT_MODE
-  if (!PortraitModeStreamManipulator::UpdateVendorTags(vendor_tag_manager)) {
+  if (!PortraitModeStreamManipulatorLegacy::UpdateVendorTags(
+          vendor_tag_manager)) {
     return false;
   }
 #endif
@@ -120,7 +121,7 @@ bool StreamManipulator::UpdateStaticMetadata(
     return false;
   }
 #if USE_CAMERA_FEATURE_PORTRAIT_MODE
-  if (!PortraitModeStreamManipulator::UpdateStaticMetadata(static_info)) {
+  if (!PortraitModeStreamManipulatorLegacy::UpdateStaticMetadata(static_info)) {
     return false;
   }
 #endif
