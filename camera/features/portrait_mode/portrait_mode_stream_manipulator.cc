@@ -189,15 +189,18 @@ bool PortraitModeStreamManipulator::ProcessCaptureRequest(
     std::optional<Camera3StreamBuffer> in_buf = request->AcquireInputBuffer();
     DCHECK_NE(scoped_output_handle, nullptr);
     DCHECK_NE(*in_buf->buffer(), nullptr);
-    reprocess_context_ = ReprocessContext{
-        .frame_number = request->frame_number(),
-        .original_input_buffer = std::move(*in_buf->buffer()),
-        .replaced_input_buffer = std::move(scoped_output_handle),
-        .segmentation_result = seg_result,
-    };
-    in_buf->mutable_raw_buffer().buffer =
-        reprocess_context_->replaced_input_buffer.get();
-    request->SetInputBuffer(std::move(in_buf.value()));
+    {
+      base::AutoLock lock(reprocess_context_lock_);
+      reprocess_context_ = ReprocessContext{
+          .frame_number = request->frame_number(),
+          .original_input_buffer = std::move(*in_buf->buffer()),
+          .replaced_input_buffer = std::move(scoped_output_handle),
+          .segmentation_result = seg_result,
+      };
+      in_buf->mutable_raw_buffer().buffer =
+          reprocess_context_->replaced_input_buffer.get();
+      request->SetInputBuffer(std::move(in_buf.value()));
+    }
   }
   return true;
 }
@@ -206,6 +209,7 @@ bool PortraitModeStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   TRACE_PORTRAIT_MODE("frame_number", result.frame_number());
 
+  base::AutoLock lock(reprocess_context_lock_);
   if (reprocess_context_ &&
       reprocess_context_->frame_number == result.frame_number()) {
     const Camera3StreamBuffer* input_buffer = result.GetInputBuffer();

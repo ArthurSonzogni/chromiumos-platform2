@@ -65,7 +65,9 @@ class PortraitModeStreamManipulator : public StreamManipulator {
   // PortraitModeEffect instance.
   std::unique_ptr<PortraitModeEffect> portrait_mode_;
 
-  std::optional<ReprocessContext> reprocess_context_;
+  std::optional<ReprocessContext> reprocess_context_
+      GUARDED_BY(reprocess_context_lock_);
+  base::Lock reprocess_context_lock_;
 };
 
 }  // namespace cros
