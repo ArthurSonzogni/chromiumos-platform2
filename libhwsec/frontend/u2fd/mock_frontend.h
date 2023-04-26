@@ -18,22 +18,25 @@ class MockU2fFrontend : public MockFrontend, public U2fFrontend {
   MockU2fFrontend() = default;
   ~MockU2fFrontend() override = default;
 
-  MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (override));
-  MOCK_METHOD(StatusOr<bool>, IsReady, (), (override));
+  MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (const override));
+  MOCK_METHOD(StatusOr<bool>, IsReady, (), (const override));
   MOCK_METHOD(StatusOr<CreateKeyResult>,
               GenerateRSASigningKey,
               (const brillo::SecureBlob& auth_value),
-              (override));
-  MOCK_METHOD(StatusOr<RSAPublicInfo>, GetRSAPublicKey, (Key key), (override));
+              (const override));
+  MOCK_METHOD(StatusOr<RSAPublicInfo>,
+              GetRSAPublicKey,
+              (Key key),
+              (const override));
   MOCK_METHOD(StatusOr<ScopedKey>,
               LoadKey,
               (const brillo::Blob& key_blob,
                const brillo::SecureBlob& auth_value),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<brillo::Blob>,
               RSASign,
               (Key key, const brillo::Blob& data),
-              (override));
+              (const override));
 };
 
 }  // namespace hwsec

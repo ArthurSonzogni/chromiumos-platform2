@@ -25,24 +25,24 @@ class MockRecoveryCryptoFrontend : public MockFrontend,
   MOCK_METHOD(StatusOr<std::optional<brillo::SecureBlob>>,
               GenerateKeyAuthValue,
               (),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<EncryptEccPrivateKeyResponse>,
               EncryptEccPrivateKey,
               (EncryptEccPrivateKeyRequest request),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<crypto::ScopedEC_POINT>,
               GenerateDiffieHellmanSharedSecret,
               (GenerateDhSharedSecretRequest request),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<std::optional<RecoveryCryptoRsaKeyPair>>,
               GenerateRsaKeyPair,
               (),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<std::optional<brillo::Blob>>,
               SignRequestPayload,
               (const brillo::Blob& encrypted_rsa_private_key,
                const brillo::Blob& request_payload),
-              (override));
+              (const override));
 };
 
 }  // namespace hwsec

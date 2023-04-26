@@ -22,15 +22,15 @@ class MockBootLockboxFrontend : public MockFrontend,
   MockBootLockboxFrontend() = default;
   ~MockBootLockboxFrontend() override = default;
 
-  MOCK_METHOD(StatusOr<StorageState>, GetSpaceState, (), (override));
-  MOCK_METHOD(Status, PrepareSpace, (uint32_t size), (override));
-  MOCK_METHOD(StatusOr<brillo::Blob>, LoadSpace, (), (override));
-  MOCK_METHOD(Status, StoreSpace, (const brillo::Blob& blob), (override));
-  MOCK_METHOD(Status, LockSpace, (), (override));
+  MOCK_METHOD(StatusOr<StorageState>, GetSpaceState, (), (const override));
+  MOCK_METHOD(Status, PrepareSpace, (uint32_t size), (const override));
+  MOCK_METHOD(StatusOr<brillo::Blob>, LoadSpace, (), (const override));
+  MOCK_METHOD(Status, StoreSpace, (const brillo::Blob& blob), (const override));
+  MOCK_METHOD(Status, LockSpace, (), (const override));
   MOCK_METHOD(void,
               WaitUntilReady,
               (base::OnceCallback<void(Status)> callback),
-              (override));
+              (const override));
 };
 
 }  // namespace hwsec

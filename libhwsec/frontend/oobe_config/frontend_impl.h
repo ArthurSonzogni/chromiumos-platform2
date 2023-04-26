@@ -22,11 +22,12 @@ class OobeConfigFrontendImpl : public OobeConfigFrontend, public FrontendImpl {
   using FrontendImpl::FrontendImpl;
   ~OobeConfigFrontendImpl() override = default;
 
-  Status IsRollbackSpaceReady() override;
-  Status ResetRollbackSpace() override;
-  StatusOr<brillo::Blob> Encrypt(const brillo::SecureBlob& plain_data) override;
+  Status IsRollbackSpaceReady() const override;
+  Status ResetRollbackSpace() const override;
+  StatusOr<brillo::Blob> Encrypt(
+      const brillo::SecureBlob& plain_data) const override;
   StatusOr<brillo::SecureBlob> Decrypt(
-      const brillo::Blob& encrypted_data) override;
+      const brillo::Blob& encrypted_data) const override;
 };
 
 }  // namespace hwsec

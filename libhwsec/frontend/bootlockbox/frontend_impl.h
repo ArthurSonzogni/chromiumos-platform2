@@ -22,12 +22,12 @@ class BootLockboxFrontendImpl : public BootLockboxFrontend,
   using FrontendImpl::FrontendImpl;
   ~BootLockboxFrontendImpl() override = default;
 
-  StatusOr<StorageState> GetSpaceState() override;
-  Status PrepareSpace(uint32_t size) override;
-  StatusOr<brillo::Blob> LoadSpace() override;
-  Status StoreSpace(const brillo::Blob& blob) override;
-  Status LockSpace() override;
-  void WaitUntilReady(base::OnceCallback<void(Status)> callback) override;
+  StatusOr<StorageState> GetSpaceState() const override;
+  Status PrepareSpace(uint32_t size) const override;
+  StatusOr<brillo::Blob> LoadSpace() const override;
+  Status StoreSpace(const brillo::Blob& blob) const override;
+  Status LockSpace() const override;
+  void WaitUntilReady(base::OnceCallback<void(Status)> callback) const override;
 };
 
 }  // namespace hwsec

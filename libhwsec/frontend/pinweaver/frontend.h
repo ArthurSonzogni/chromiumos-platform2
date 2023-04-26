@@ -28,10 +28,10 @@ class PinWeaverFrontend : public Frontend {
   ~PinWeaverFrontend() override = default;
 
   // Is the pinweaver enabled or not.
-  virtual StatusOr<bool> IsEnabled() = 0;
+  virtual StatusOr<bool> IsEnabled() const = 0;
 
   // Gets the version of pinweaver.
-  virtual StatusOr<uint8_t> GetVersion() = 0;
+  virtual StatusOr<uint8_t> GetVersion() const = 0;
 
   // Resets the PinWeaver Hash Tree root hash with its initial known value,
   // which assumes all MACs are all-zero.
@@ -44,8 +44,8 @@ class PinWeaverFrontend : public Frontend {
   // |length_labels| is the length of the leaf bit string.
   //
   // In all cases, the resulting root hash is returned in |new_root|.
-  virtual StatusOr<CredentialTreeResult> Reset(uint32_t bits_per_level,
-                                               uint32_t length_labels) = 0;
+  virtual StatusOr<CredentialTreeResult> Reset(
+      uint32_t bits_per_level, uint32_t length_labels) const = 0;
 
   // Tries to insert a credential into the TPM.
   //
@@ -75,7 +75,7 @@ class PinWeaverFrontend : public Frontend {
       const brillo::SecureBlob& he_secret,
       const brillo::SecureBlob& reset_secret,
       const DelaySchedule& delay_schedule,
-      std::optional<uint32_t> expiration_delay) = 0;
+      std::optional<uint32_t> expiration_delay) const = 0;
 
   // Tries to verify/authenticate a credential.
   //
@@ -94,7 +94,7 @@ class PinWeaverFrontend : public Frontend {
       const uint64_t label,
       const std::vector<brillo::Blob>& h_aux,
       const brillo::Blob& orig_cred_metadata,
-      const brillo::SecureBlob& le_secret) = 0;
+      const brillo::SecureBlob& le_secret) const = 0;
 
   // Removes the credential which has label |label|.
   //
@@ -105,7 +105,7 @@ class PinWeaverFrontend : public Frontend {
   virtual StatusOr<CredentialTreeResult> RemoveCredential(
       const uint64_t label,
       const std::vector<std::vector<uint8_t>>& h_aux,
-      const std::vector<uint8_t>& mac) = 0;
+      const std::vector<uint8_t>& mac) const = 0;
 
   // Tries to reset a (potentially locked out) credential.
   //
@@ -122,13 +122,13 @@ class PinWeaverFrontend : public Frontend {
       const std::vector<std::vector<uint8_t>>& h_aux,
       const std::vector<uint8_t>& orig_cred_metadata,
       const brillo::SecureBlob& reset_secret,
-      bool strong_reset) = 0;
+      bool strong_reset) const = 0;
 
   // Retrieves the replay log.
   //
   // The current on-disk root hash is supplied via |cur_disk_root_hash|.
   virtual StatusOr<GetLogResult> GetLog(
-      const std::vector<uint8_t>& cur_disk_root_hash) = 0;
+      const std::vector<uint8_t>& cur_disk_root_hash) const = 0;
 
   // Replays the log operation referenced by |log_entry_root|, where
   // |log_entry_root| is the resulting root hash after the operation, and is
@@ -140,25 +140,25 @@ class PinWeaverFrontend : public Frontend {
   virtual StatusOr<ReplayLogOperationResult> ReplayLogOperation(
       const brillo::Blob& log_entry_root,
       const std::vector<brillo::Blob>& h_aux,
-      const brillo::Blob& orig_cred_metadata) = 0;
+      const brillo::Blob& orig_cred_metadata) const = 0;
 
   // Looks into the metadata and retrieves the number of wrong authentication
   // attempts.
   virtual StatusOr<int> GetWrongAuthAttempts(
-      const brillo::Blob& cred_metadata) = 0;
+      const brillo::Blob& cred_metadata) const = 0;
 
   // Looks into the metadata and retrieves the delay schedule.
   virtual StatusOr<DelaySchedule> GetDelaySchedule(
-      const brillo::Blob& cred_metadata) = 0;
+      const brillo::Blob& cred_metadata) const = 0;
 
   // Get the remaining delay in seconds.
   virtual StatusOr<uint32_t> GetDelayInSeconds(
-      const brillo::Blob& cred_metadata) = 0;
+      const brillo::Blob& cred_metadata) const = 0;
 
   // Get the remaining time until the credential expires, in seconds. Nullopt
   // means the credential won't expire. 0 means the credential already expired.
   virtual StatusOr<std::optional<uint32_t>> GetExpirationInSeconds(
-      const brillo::Blob& cred_metadata) = 0;
+      const brillo::Blob& cred_metadata) const = 0;
 
   // Tries to establish the pairing secret of the |auth_channel| auth channel.
   //
@@ -168,7 +168,8 @@ class PinWeaverFrontend : public Frontend {
   // If successful, the secret is established and the server's public key is
   // returned.
   virtual StatusOr<PinWeaverEccPoint> GeneratePk(
-      uint8_t auth_channel, const PinWeaverEccPoint& client_public_key) = 0;
+      uint8_t auth_channel,
+      const PinWeaverEccPoint& client_public_key) const = 0;
 
   // Tries to insert a rate-limiter credential into the TPM, bound to the
   // |auth_channel| auth channel.
@@ -197,7 +198,7 @@ class PinWeaverFrontend : public Frontend {
       const std::vector<brillo::Blob>& h_aux,
       const brillo::SecureBlob& reset_secret,
       const DelaySchedule& delay_schedule,
-      std::optional<uint32_t> expiration_delay) = 0;
+      std::optional<uint32_t> expiration_delay) const = 0;
 
   // Tries to start an authentication attempt with a rate-limiter bound to the
   // |auth_channel| auth channel.
@@ -221,13 +222,13 @@ class PinWeaverFrontend : public Frontend {
       const uint64_t label,
       const std::vector<brillo::Blob>& h_aux,
       const brillo::Blob& orig_cred_metadata,
-      const brillo::Blob& client_nonce) = 0;
+      const brillo::Blob& client_nonce) const = 0;
 
   // Blocks future establishments of the pairing secrets until the server
   // restarts.
   //
   // If successful, future secret establishments are blocked.
-  virtual Status BlockGeneratePk() = 0;
+  virtual Status BlockGeneratePk() const = 0;
 };
 
 }  // namespace hwsec

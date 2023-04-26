@@ -24,8 +24,8 @@ class RecoveryCryptoFrontend : public Frontend {
   // Generate key_auth_value. key auth value is required for sealing/
   // unsealing in TPM1.2 only and the required length is 32 bytes. The
   // implementation for TPM2 backend will return std::nullopt.
-  virtual StatusOr<std::optional<brillo::SecureBlob>>
-  GenerateKeyAuthValue() = 0;
+  virtual StatusOr<std::optional<brillo::SecureBlob>> GenerateKeyAuthValue()
+      const = 0;
 
   // Encrypts the provided ECC private key using TPM, and returns it via
   // `encrypted_own_priv_key`, which is one's own private key. (the format of
@@ -36,7 +36,7 @@ class RecoveryCryptoFrontend : public Frontend {
   // Note: Because the request containing a crypto::ScopedEC_POINT, the request
   // cannot be copied, and must be moved into the function.
   virtual StatusOr<EncryptEccPrivateKeyResponse> EncryptEccPrivateKey(
-      EncryptEccPrivateKeyRequest request) = 0;
+      EncryptEccPrivateKeyRequest request) const = 0;
 
   // Multiplies the private key, provided in encrypted form, with the given
   // the other party's public EC point. Returns the multiplication, or nullptr
@@ -47,15 +47,15 @@ class RecoveryCryptoFrontend : public Frontend {
   // Note: Because the request containing a crypto::ScopedEC_KEY, the request
   // cannot be copied, and must be moved into the function.
   virtual StatusOr<crypto::ScopedEC_POINT> GenerateDiffieHellmanSharedSecret(
-      GenerateDhSharedSecretRequest request) = 0;
+      GenerateDhSharedSecretRequest request) const = 0;
 
   // Generate a TPM-backed RSA key pair.
   // Generated RSA private key would be used to sign recovery request payload
   // when channel private key cannot be restored in a secure manner.
   // Therefore, it will only be implemented in TPM1 backend. For TPM2, a dummy
   // std::nullopt would be returned.
-  virtual StatusOr<std::optional<RecoveryCryptoRsaKeyPair>>
-  GenerateRsaKeyPair() = 0;
+  virtual StatusOr<std::optional<RecoveryCryptoRsaKeyPair>> GenerateRsaKeyPair()
+      const = 0;
 
   // Sign the request payload with the provided RSA private key. The RSA
   // private key would be loaded from the TPM modules first and used to sign
@@ -63,7 +63,7 @@ class RecoveryCryptoFrontend : public Frontend {
   // the implementation of TPM2 would return a dummy std::nullopt.
   virtual StatusOr<std::optional<brillo::Blob>> SignRequestPayload(
       const brillo::Blob& encrypted_rsa_private_key,
-      const brillo::Blob& request_payload) = 0;
+      const brillo::Blob& request_payload) const = 0;
 };
 
 }  // namespace hwsec

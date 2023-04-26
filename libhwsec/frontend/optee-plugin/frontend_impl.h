@@ -23,7 +23,8 @@ class OpteePluginFrontendImpl : public OpteePluginFrontend,
   using FrontendImpl::FrontendImpl;
   ~OpteePluginFrontendImpl() override = default;
 
-  StatusOr<brillo::Blob> SendRawCommand(const brillo::Blob& command) override;
+  StatusOr<brillo::Blob> SendRawCommand(
+      const brillo::Blob& command) const override;
 };
 
 }  // namespace hwsec

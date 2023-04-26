@@ -53,11 +53,11 @@ class Middleware {
   explicit Middleware(MiddlewareDerivative middleware_derivative)
       : middleware_derivative_(middleware_derivative) {}
 
-  MiddlewareDerivative Derive() { return middleware_derivative_; }
+  MiddlewareDerivative Derive() const { return middleware_derivative_; }
 
   // Call the backend function synchronously.
   template <auto Func, typename... Args>
-  auto CallSync(Args&&... args) {
+  auto CallSync(Args&&... args) const {
     if constexpr (SubClassHelper<decltype(Func)>::type == CallType::kSync) {
       // Calling sync backend function.
       auto task = base::BindOnce(
@@ -102,7 +102,7 @@ class Middleware {
 
   // Call the backend function asynchronously.
   template <auto Func, typename Callback, typename... Args>
-  void CallAsync(Callback callback, Args&&... args) {
+  void CallAsync(Callback callback, Args&&... args) const {
     CHECK(middleware_derivative_.task_runner);
 
     SubClassCallback<decltype(Func)> reply = std::move(callback);
@@ -117,7 +117,7 @@ class Middleware {
 
   // Run a blocking task in the middleware.
   template <typename Result>
-  Result RunBlockingTask(base::OnceCallback<Result()> task) {
+  Result RunBlockingTask(base::OnceCallback<Result()> task) const {
     if (middleware_derivative_.thread_id == base::PlatformThread::CurrentId()) {
       return std::move(task).Run();
     }

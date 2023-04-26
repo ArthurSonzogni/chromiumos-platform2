@@ -21,18 +21,21 @@ class MockClientFrontend : public MockFrontend, public ClientFrontend {
   MockClientFrontend() = default;
   ~MockClientFrontend() override = default;
 
-  MOCK_METHOD(StatusOr<brillo::Blob>, GetRandomBlob, (size_t size), (override));
-  MOCK_METHOD(StatusOr<bool>, IsSrkRocaVulnerable, (), (override));
-  MOCK_METHOD(StatusOr<uint32_t>, GetFamily, (), (override));
-  MOCK_METHOD(StatusOr<uint64_t>, GetSpecLevel, (), (override));
-  MOCK_METHOD(StatusOr<uint32_t>, GetManufacturer, (), (override));
-  MOCK_METHOD(StatusOr<uint32_t>, GetTpmModel, (), (override));
-  MOCK_METHOD(StatusOr<uint64_t>, GetFirmwareVersion, (), (override));
-  MOCK_METHOD(StatusOr<brillo::Blob>, GetVendorSpecific, (), (override));
+  MOCK_METHOD(StatusOr<brillo::Blob>,
+              GetRandomBlob,
+              (size_t size),
+              (const override));
+  MOCK_METHOD(StatusOr<bool>, IsSrkRocaVulnerable, (), (const override));
+  MOCK_METHOD(StatusOr<uint32_t>, GetFamily, (), (const override));
+  MOCK_METHOD(StatusOr<uint64_t>, GetSpecLevel, (), (const override));
+  MOCK_METHOD(StatusOr<uint32_t>, GetManufacturer, (), (const override));
+  MOCK_METHOD(StatusOr<uint32_t>, GetTpmModel, (), (const override));
+  MOCK_METHOD(StatusOr<uint64_t>, GetFirmwareVersion, (), (const override));
+  MOCK_METHOD(StatusOr<brillo::Blob>, GetVendorSpecific, (), (const override));
   MOCK_METHOD(StatusOr<IFXFieldUpgradeInfo>,
               GetIFXFieldUpgradeInfo,
               (),
-              (override));
+              (const override));
 };
 
 }  // namespace hwsec

@@ -29,23 +29,23 @@ class OobeConfigFrontend : public Frontend {
   ~OobeConfigFrontend() override = default;
 
   // Is the rollback space is ready to use or not.
-  virtual Status IsRollbackSpaceReady() = 0;
+  virtual Status IsRollbackSpaceReady() const = 0;
 
   // Reset the rollback space and making any previously encrypted data
   // undecryptable.
-  virtual Status ResetRollbackSpace() = 0;
+  virtual Status ResetRollbackSpace() const = 0;
 
   // Encrypts given data and ties it to the current boot mode configuration and
   // a secret it generates and stores in Space::kEnterpriseRollback.
   virtual StatusOr<brillo::Blob> Encrypt(
-      const brillo::SecureBlob& plain_data) = 0;
+      const brillo::SecureBlob& plain_data) const = 0;
 
   // Attempts to decrypt data with the current content of
   // Space::kEnterpriseRollback. Note that this does NOT clear the content in
   // Space::kEnterpriseRollback. This needs to be done with
   // `ResetRollbackSpace`.
   virtual StatusOr<brillo::SecureBlob> Decrypt(
-      const brillo::Blob& encrypted_data) = 0;
+      const brillo::Blob& encrypted_data) const = 0;
 };
 
 }  // namespace hwsec

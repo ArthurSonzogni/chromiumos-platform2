@@ -22,7 +22,7 @@ class MockLocalDataMigrationFrontend : public MockFrontend,
   MOCK_METHOD(StatusOr<brillo::SecureBlob>,
               Unseal,
               (const brillo::Blob& sealed_data),
-              (override));
+              (const override));
 };
 
 }  // namespace hwsec

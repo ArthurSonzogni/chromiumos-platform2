@@ -51,7 +51,7 @@ OperationPolicySetting GetPolicy(const brillo::SecureBlob& secret) {
 
 }  // namespace
 
-Status OobeConfigFrontendImpl::IsRollbackSpaceReady() {
+Status OobeConfigFrontendImpl::IsRollbackSpaceReady() const {
   ASSIGN_OR_RETURN(
       Storage::ReadyState state,
       middleware_.CallSync<&Backend::Storage::IsReady>(
@@ -65,14 +65,14 @@ Status OobeConfigFrontendImpl::IsRollbackSpaceReady() {
   return OkStatus();
 }
 
-Status OobeConfigFrontendImpl::ResetRollbackSpace() {
+Status OobeConfigFrontendImpl::ResetRollbackSpace() const {
   brillo::Blob zero(kRollbackSpaceSize);
   return middleware_.CallSync<&Backend::Storage::Store>(
       Space::kEnterpriseRollback, zero);
 }
 
 StatusOr<brillo::Blob> OobeConfigFrontendImpl::Encrypt(
-    const brillo::SecureBlob& plain_data) {
+    const brillo::SecureBlob& plain_data) const {
   ASSIGN_OR_RETURN(const brillo::SecureBlob& secret,
                    middleware_.CallSync<&Backend::Random::RandomSecureBlob>(
                        kRollbackSpaceSize),
@@ -112,7 +112,7 @@ StatusOr<brillo::Blob> OobeConfigFrontendImpl::Encrypt(
 }
 
 StatusOr<brillo::SecureBlob> OobeConfigFrontendImpl::Decrypt(
-    const brillo::Blob& encrypted_data) {
+    const brillo::Blob& encrypted_data) const {
   OobeConfigEncryptedData encrypted;
   if (!encrypted.ParseFromString(brillo::BlobToString(encrypted_data))) {
     return MakeStatus<TPMError>("Failed to parse the encrypted data",

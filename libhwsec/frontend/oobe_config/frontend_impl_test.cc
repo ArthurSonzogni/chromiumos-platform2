@@ -62,7 +62,7 @@ class OobeConfigFrontendImplTpm2SimTest : public testing::Test {
 
  protected:
   hwsec::Tpm2SimulatorFactoryForTest hwsec_factory_;
-  std::unique_ptr<OobeConfigFrontend> hwsec_oobe_config_;
+  std::unique_ptr<const OobeConfigFrontend> hwsec_oobe_config_;
 };
 
 TEST_F(OobeConfigFrontendImplTpm2SimTest, RollbackSpaceNotReady) {

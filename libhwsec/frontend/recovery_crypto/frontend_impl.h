@@ -23,16 +23,17 @@ class RecoveryCryptoFrontendImpl : public RecoveryCryptoFrontend,
   using FrontendImpl::FrontendImpl;
   ~RecoveryCryptoFrontendImpl() override = default;
 
-  StatusOr<std::optional<brillo::SecureBlob>> GenerateKeyAuthValue() override;
+  StatusOr<std::optional<brillo::SecureBlob>> GenerateKeyAuthValue()
+      const override;
   StatusOr<EncryptEccPrivateKeyResponse> EncryptEccPrivateKey(
-      EncryptEccPrivateKeyRequest request) override;
+      EncryptEccPrivateKeyRequest request) const override;
   StatusOr<crypto::ScopedEC_POINT> GenerateDiffieHellmanSharedSecret(
-      GenerateDhSharedSecretRequest request) override;
+      GenerateDhSharedSecretRequest request) const override;
   StatusOr<std::optional<RecoveryCryptoRsaKeyPair>> GenerateRsaKeyPair()
-      override;
+      const override;
   StatusOr<std::optional<brillo::Blob>> SignRequestPayload(
       const brillo::Blob& encrypted_rsa_private_key,
-      const brillo::Blob& request_payload) override;
+      const brillo::Blob& request_payload) const override;
 };
 
 }  // namespace hwsec

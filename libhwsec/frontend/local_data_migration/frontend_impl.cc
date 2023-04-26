@@ -13,7 +13,7 @@
 namespace hwsec {
 
 StatusOr<brillo::SecureBlob> LocalDataMigrationFrontendImpl::Unseal(
-    const brillo::Blob& sealed_data) {
+    const brillo::Blob& sealed_data) const {
   return middleware_.CallSync<&Backend::Sealing::Unseal>(
       OperationPolicy{
           .permission =

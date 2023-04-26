@@ -22,15 +22,15 @@ class ClientFrontendImpl : public ClientFrontend, public FrontendImpl {
   using FrontendImpl::FrontendImpl;
   ~ClientFrontendImpl() override = default;
 
-  StatusOr<brillo::Blob> GetRandomBlob(size_t size) override;
-  StatusOr<bool> IsSrkRocaVulnerable() override;
-  StatusOr<uint32_t> GetFamily() override;
-  StatusOr<uint64_t> GetSpecLevel() override;
-  StatusOr<uint32_t> GetManufacturer() override;
-  StatusOr<uint32_t> GetTpmModel() override;
-  StatusOr<uint64_t> GetFirmwareVersion() override;
-  StatusOr<brillo::Blob> GetVendorSpecific() override;
-  StatusOr<IFXFieldUpgradeInfo> GetIFXFieldUpgradeInfo() override;
+  StatusOr<brillo::Blob> GetRandomBlob(size_t size) const override;
+  StatusOr<bool> IsSrkRocaVulnerable() const override;
+  StatusOr<uint32_t> GetFamily() const override;
+  StatusOr<uint64_t> GetSpecLevel() const override;
+  StatusOr<uint32_t> GetManufacturer() const override;
+  StatusOr<uint32_t> GetTpmModel() const override;
+  StatusOr<uint64_t> GetFirmwareVersion() const override;
+  StatusOr<brillo::Blob> GetVendorSpecific() const override;
+  StatusOr<IFXFieldUpgradeInfo> GetIFXFieldUpgradeInfo() const override;
 };
 
 }  // namespace hwsec

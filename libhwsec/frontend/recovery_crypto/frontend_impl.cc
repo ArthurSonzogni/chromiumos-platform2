@@ -19,34 +19,34 @@ using hwsec_foundation::status::MakeStatus;
 namespace hwsec {
 
 StatusOr<std::optional<brillo::SecureBlob>>
-RecoveryCryptoFrontendImpl::GenerateKeyAuthValue() {
+RecoveryCryptoFrontendImpl::GenerateKeyAuthValue() const {
   return middleware_.CallSync<&Backend::RecoveryCrypto::GenerateKeyAuthValue>();
 }
 
 StatusOr<EncryptEccPrivateKeyResponse>
 RecoveryCryptoFrontendImpl::EncryptEccPrivateKey(
-    EncryptEccPrivateKeyRequest request) {
+    EncryptEccPrivateKeyRequest request) const {
   return middleware_.CallSync<&Backend::RecoveryCrypto::EncryptEccPrivateKey>(
       std::move(request));
 }
 
 StatusOr<crypto::ScopedEC_POINT>
 RecoveryCryptoFrontendImpl::GenerateDiffieHellmanSharedSecret(
-    GenerateDhSharedSecretRequest request) {
+    GenerateDhSharedSecretRequest request) const {
   return middleware_
       .CallSync<&Backend::RecoveryCrypto::GenerateDiffieHellmanSharedSecret>(
           std::move(request));
 }
 
 StatusOr<std::optional<RecoveryCryptoRsaKeyPair>>
-RecoveryCryptoFrontendImpl::GenerateRsaKeyPair() {
+RecoveryCryptoFrontendImpl::GenerateRsaKeyPair() const {
   return middleware_.CallSync<&Backend::RecoveryCrypto::GenerateRsaKeyPair>();
 }
 
 StatusOr<std::optional<brillo::Blob>>
 RecoveryCryptoFrontendImpl::SignRequestPayload(
     const brillo::Blob& encrypted_rsa_private_key,
-    const brillo::Blob& request_payload) {
+    const brillo::Blob& request_payload) const {
   return middleware_.CallSync<&Backend::RecoveryCrypto::SignRequestPayload>(
       encrypted_rsa_private_key, request_payload);
 }

@@ -22,19 +22,22 @@ class MockChapsFrontend : public MockFrontend, public ChapsFrontend {
   MockChapsFrontend() = default;
   ~MockChapsFrontend() override = default;
 
-  MOCK_METHOD(StatusOr<uint32_t>, GetFamily, (), (override));
-  MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (override));
-  MOCK_METHOD(StatusOr<bool>, IsReady, (), (override));
-  MOCK_METHOD(StatusOr<brillo::Blob>, GetRandomBlob, (size_t size), (override));
+  MOCK_METHOD(StatusOr<uint32_t>, GetFamily, (), (const override));
+  MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (const override));
+  MOCK_METHOD(StatusOr<bool>, IsReady, (), (const override));
+  MOCK_METHOD(StatusOr<brillo::Blob>,
+              GetRandomBlob,
+              (size_t size),
+              (const override));
   MOCK_METHOD(StatusOr<brillo::SecureBlob>,
               GetRandomSecureBlob,
               (size_t),
-              (override));
+              (const override));
   MOCK_METHOD(Status,
               IsRSAModulusSupported,
               (uint32_t modulus_bits),
-              (override));
-  MOCK_METHOD(Status, IsECCurveSupported, (int nid), (override));
+              (const override));
+  MOCK_METHOD(Status, IsECCurveSupported, (int nid), (const override));
   MOCK_METHOD(StatusOr<CreateKeyResult>,
               GenerateRSAKey,
               (int modulus_bits,
@@ -43,16 +46,22 @@ class MockChapsFrontend : public MockFrontend, public ChapsFrontend {
                AllowSoftwareGen allow_soft_gen,
                AllowDecrypt allow_decrypt,
                AllowSign allow_sign),
-              (override));
-  MOCK_METHOD(StatusOr<RSAPublicInfo>, GetRSAPublicKey, (Key key), (override));
+              (const override));
+  MOCK_METHOD(StatusOr<RSAPublicInfo>,
+              GetRSAPublicKey,
+              (Key key),
+              (const override));
   MOCK_METHOD(StatusOr<CreateKeyResult>,
               GenerateECCKey,
               (int nid,
                const brillo::SecureBlob& auth_value,
                AllowDecrypt allow_decrypt,
                AllowSign allow_sign),
-              (override));
-  MOCK_METHOD(StatusOr<ECCPublicInfo>, GetECCPublicKey, (Key key), (override));
+              (const override));
+  MOCK_METHOD(StatusOr<ECCPublicInfo>,
+              GetECCPublicKey,
+              (Key key),
+              (const override));
   MOCK_METHOD(StatusOr<CreateKeyResult>,
               WrapRSAKey,
               (const brillo::Blob& exponent,
@@ -61,7 +70,7 @@ class MockChapsFrontend : public MockFrontend, public ChapsFrontend {
                const brillo::SecureBlob& auth_value,
                AllowDecrypt allow_decrypt,
                AllowSign allow_sign),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<CreateKeyResult>,
               WrapECCKey,
               (int curve_nid,
@@ -71,48 +80,48 @@ class MockChapsFrontend : public MockFrontend, public ChapsFrontend {
                const brillo::SecureBlob& auth_value,
                AllowDecrypt allow_decrypt,
                AllowSign allow_sign),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<ScopedKey>,
               LoadKey,
               (const brillo::Blob& key_blob,
                const brillo::SecureBlob& auth_value),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<brillo::SecureBlob>,
               Unbind,
               (Key key, const brillo::Blob& ciphertext),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<brillo::Blob>,
               Sign,
               (Key key,
                const brillo::Blob& data,
                const SigningOptions& options),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<ChapsSealedData>,
               SealData,
               (const brillo::SecureBlob& unsealed_data,
                const brillo::SecureBlob& auth_value),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<brillo::SecureBlob>,
               UnsealData,
               (const ChapsSealedData& sealed_data,
                const brillo::SecureBlob& auth_value),
-              (override));
+              (const override));
   MOCK_METHOD(void,
               GetRandomSecureBlobAsync,
               (size_t size, GetRandomSecureBlobCallback callback),
-              (override));
+              (const override));
   MOCK_METHOD(void,
               SealDataAsync,
               (const brillo::SecureBlob& unsealed_data,
                const brillo::SecureBlob& auth_value,
                SealDataCallback callback),
-              (override));
+              (const override));
   MOCK_METHOD(void,
               UnsealDataAsync,
               (const ChapsSealedData& sealed_data,
                const brillo::SecureBlob& auth_value,
                UnsealDataCallback callback),
-              (override));
+              (const override));
 };
 
 }  // namespace hwsec

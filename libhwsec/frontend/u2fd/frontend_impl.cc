@@ -17,16 +17,16 @@
 
 namespace hwsec {
 
-StatusOr<bool> U2fFrontendImpl::IsEnabled() {
+StatusOr<bool> U2fFrontendImpl::IsEnabled() const {
   return middleware_.CallSync<&Backend::State::IsEnabled>();
 }
 
-StatusOr<bool> U2fFrontendImpl::IsReady() {
+StatusOr<bool> U2fFrontendImpl::IsReady() const {
   return middleware_.CallSync<&Backend::State::IsReady>();
 }
 
 StatusOr<U2fFrontend::CreateKeyResult> U2fFrontendImpl::GenerateRSASigningKey(
-    const brillo::SecureBlob& auth_value) {
+    const brillo::SecureBlob& auth_value) const {
   return middleware_.CallSync<&Backend::KeyManagement::CreateKey>(
       OperationPolicySetting{
           .permission =
@@ -42,12 +42,12 @@ StatusOr<U2fFrontend::CreateKeyResult> U2fFrontendImpl::GenerateRSASigningKey(
       });
 }
 
-StatusOr<RSAPublicInfo> U2fFrontendImpl::GetRSAPublicKey(Key key) {
+StatusOr<RSAPublicInfo> U2fFrontendImpl::GetRSAPublicKey(Key key) const {
   return middleware_.CallSync<&Backend::KeyManagement::GetRSAPublicInfo>(key);
 }
 
 StatusOr<ScopedKey> U2fFrontendImpl::LoadKey(
-    const brillo::Blob& key_blob, const brillo::SecureBlob& auth_value) {
+    const brillo::Blob& key_blob, const brillo::SecureBlob& auth_value) const {
   return middleware_.CallSync<&Backend::KeyManagement::LoadKey>(
       OperationPolicy{
           .permission =
@@ -58,8 +58,8 @@ StatusOr<ScopedKey> U2fFrontendImpl::LoadKey(
       key_blob, KeyManagement::LoadKeyOptions{.auto_reload = true});
 }
 
-StatusOr<brillo::Blob> U2fFrontendImpl::RSASign(Key key,
-                                                const brillo::Blob& data) {
+StatusOr<brillo::Blob> U2fFrontendImpl::RSASign(
+    Key key, const brillo::Blob& data) const {
   return middleware_.CallSync<&Backend::Signing::RawSign>(key, data,
                                                           SigningOptions{});
 }

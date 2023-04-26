@@ -20,31 +20,31 @@ using hwsec_foundation::status::MakeStatus;
 namespace hwsec {
 
 StatusOr<BootLockboxFrontend::StorageState>
-BootLockboxFrontendImpl::GetSpaceState() {
+BootLockboxFrontendImpl::GetSpaceState() const {
   return middleware_.CallSync<&Backend::Storage::IsReady>(Space::kBootlockbox);
 }
 
-Status BootLockboxFrontendImpl::PrepareSpace(uint32_t size) {
+Status BootLockboxFrontendImpl::PrepareSpace(uint32_t size) const {
   return middleware_.CallSync<&Backend::Storage::Prepare>(Space::kBootlockbox,
                                                           size);
 }
 
-StatusOr<brillo::Blob> BootLockboxFrontendImpl::LoadSpace() {
+StatusOr<brillo::Blob> BootLockboxFrontendImpl::LoadSpace() const {
   return middleware_.CallSync<&Backend::Storage::Load>(Space::kBootlockbox);
 }
 
-Status BootLockboxFrontendImpl::StoreSpace(const brillo::Blob& blob) {
+Status BootLockboxFrontendImpl::StoreSpace(const brillo::Blob& blob) const {
   return middleware_.CallSync<&Backend::Storage::Store>(Space::kBootlockbox,
                                                         blob);
 }
 
-Status BootLockboxFrontendImpl::LockSpace() {
+Status BootLockboxFrontendImpl::LockSpace() const {
   return middleware_.CallSync<&Backend::Storage::Lock>(
       Space::kBootlockbox, Storage::LockOptions{.write_lock = true});
 }
 
 void BootLockboxFrontendImpl::WaitUntilReady(
-    base::OnceCallback<void(Status)> callback) {
+    base::OnceCallback<void(Status)> callback) const {
   middleware_.CallAsync<&Backend::State::WaitUntilReady>(std::move(callback));
 }
 

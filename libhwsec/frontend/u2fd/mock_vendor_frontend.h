@@ -18,14 +18,14 @@ class MockU2fVendorFrontend : public MockFrontend, public U2fVendorFrontend {
   MockU2fVendorFrontend() = default;
   ~MockU2fVendorFrontend() override = default;
 
-  MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (override));
+  MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (const override));
   MOCK_METHOD(StatusOr<u2f::GenerateResult>,
               GenerateUserPresenceOnly,
               (const brillo::Blob&,
                const brillo::SecureBlob&,
                u2f::ConsumeMode,
                u2f::UserPresenceMode),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<u2f::GenerateResult>,
               Generate,
               (const brillo::Blob&,
@@ -33,7 +33,7 @@ class MockU2fVendorFrontend : public MockFrontend, public U2fVendorFrontend {
                u2f::ConsumeMode,
                u2f::UserPresenceMode,
                const brillo::Blob&),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<u2f::Signature>,
               SignUserPresenceOnly,
               (const brillo::Blob&,
@@ -42,7 +42,7 @@ class MockU2fVendorFrontend : public MockFrontend, public U2fVendorFrontend {
                u2f::ConsumeMode,
                u2f::UserPresenceMode,
                const brillo::Blob&),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<u2f::Signature>,
               Sign,
               (const brillo::Blob&,
@@ -52,19 +52,19 @@ class MockU2fVendorFrontend : public MockFrontend, public U2fVendorFrontend {
                u2f::ConsumeMode,
                u2f::UserPresenceMode,
                const brillo::Blob&),
-              (override));
+              (const override));
   MOCK_METHOD(Status,
               CheckUserPresenceOnly,
               (const brillo::Blob&,
                const brillo::SecureBlob&,
                const brillo::Blob&),
-              (override));
+              (const override));
   MOCK_METHOD(Status,
               Check,
               (const brillo::Blob&,
                const brillo::SecureBlob&,
                const brillo::Blob&),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<u2f::Signature>,
               G2fAttest,
               (const brillo::Blob&,
@@ -72,14 +72,14 @@ class MockU2fVendorFrontend : public MockFrontend, public U2fVendorFrontend {
                const brillo::Blob&,
                const brillo::Blob&,
                const brillo::Blob&),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<brillo::Blob>,
               GetG2fAttestData,
               (const brillo::Blob& app_id,
                const brillo::Blob& challenge,
                const brillo::Blob& key_handle,
                const brillo::Blob& public_key),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<u2f::Signature>,
               CorpAttest,
               (const brillo::Blob&,
@@ -88,10 +88,10 @@ class MockU2fVendorFrontend : public MockFrontend, public U2fVendorFrontend {
                const brillo::Blob&,
                const brillo::Blob&,
                const brillo::Blob&),
-              (override));
-  MOCK_METHOD(StatusOr<RwVersion>, GetRwVersion, (), (override));
-  MOCK_METHOD(StatusOr<brillo::Blob>, GetG2fCert, (), (override));
-  MOCK_METHOD(StatusOr<u2f::Config>, GetConfig, (), (override));
+              (const override));
+  MOCK_METHOD(StatusOr<RwVersion>, GetRwVersion, (), (const override));
+  MOCK_METHOD(StatusOr<brillo::Blob>, GetG2fCert, (), (const override));
+  MOCK_METHOD(StatusOr<u2f::Config>, GetConfig, (), (const override));
 };
 
 }  // namespace hwsec

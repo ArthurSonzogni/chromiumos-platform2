@@ -21,12 +21,12 @@ class MockPinWeaverFrontend : public MockFrontend, public PinWeaverFrontend {
   MockPinWeaverFrontend() = default;
   ~MockPinWeaverFrontend() override = default;
 
-  MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (override));
-  MOCK_METHOD(StatusOr<uint8_t>, GetVersion, (), (override));
+  MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (const override));
+  MOCK_METHOD(StatusOr<uint8_t>, GetVersion, (), (const override));
   MOCK_METHOD(StatusOr<CredentialTreeResult>,
               Reset,
               (uint32_t bits_per_level, uint32_t length_labels),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<CredentialTreeResult>,
               InsertCredential,
               (const std::vector<OperationPolicySetting>& policies,
@@ -37,20 +37,20 @@ class MockPinWeaverFrontend : public MockFrontend, public PinWeaverFrontend {
                const brillo::SecureBlob& reset_secret,
                const DelaySchedule& delay_schedule,
                std::optional<uint32_t> expiration_delay),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<CredentialTreeResult>,
               CheckCredential,
               (const uint64_t label,
                const std::vector<brillo::Blob>& h_aux,
                const brillo::Blob& orig_cred_metadata,
                const brillo::SecureBlob& le_secret),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<CredentialTreeResult>,
               RemoveCredential,
               (const uint64_t label,
                const std::vector<std::vector<uint8_t>>& h_aux,
                const std::vector<uint8_t>& mac),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<CredentialTreeResult>,
               ResetCredential,
               (const uint64_t label,
@@ -58,38 +58,38 @@ class MockPinWeaverFrontend : public MockFrontend, public PinWeaverFrontend {
                const std::vector<uint8_t>& orig_cred_metadata,
                const brillo::SecureBlob& reset_secret,
                bool strong_reset),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<GetLogResult>,
               GetLog,
               (const std::vector<uint8_t>& cur_disk_root_hash),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<ReplayLogOperationResult>,
               ReplayLogOperation,
               (const brillo::Blob& log_entry_root,
                const std::vector<brillo::Blob>& h_aux,
                const brillo::Blob& orig_cred_metadata),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<int>,
               GetWrongAuthAttempts,
               (const brillo::Blob& cred_metadata),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<DelaySchedule>,
               GetDelaySchedule,
               (const brillo::Blob& cred_metadata),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<uint32_t>,
               GetDelayInSeconds,
               (const brillo::Blob& cred_metadata),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<std::optional<uint32_t>>,
               GetExpirationInSeconds,
               (const brillo::Blob& cred_metadata),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<PinWeaverEccPoint>,
               GeneratePk,
               (uint8_t auth_channel,
                const PinWeaverEccPoint& client_public_key),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<CredentialTreeResult>,
               InsertRateLimiter,
               (uint8_t auth_channel,
@@ -99,7 +99,7 @@ class MockPinWeaverFrontend : public MockFrontend, public PinWeaverFrontend {
                const brillo::SecureBlob& reset_secret,
                const DelaySchedule& delay_schedule,
                std::optional<uint32_t> expiration_delay),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<CredentialTreeResult>,
               StartBiometricsAuth,
               (uint8_t auth_channel,
@@ -107,8 +107,8 @@ class MockPinWeaverFrontend : public MockFrontend, public PinWeaverFrontend {
                const std::vector<brillo::Blob>& h_aux,
                const brillo::Blob& orig_cred_metadata,
                const brillo::Blob& client_nonce),
-              (override));
-  MOCK_METHOD(Status, BlockGeneratePk, (), (override));
+              (const override));
+  MOCK_METHOD(Status, BlockGeneratePk, (), (const override));
 };
 
 }  // namespace hwsec

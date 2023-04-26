@@ -21,31 +21,33 @@ class U2fFrontend : public Frontend {
   ~U2fFrontend() override = default;
 
   // Is the security module enabled or not.
-  virtual StatusOr<bool> IsEnabled() = 0;
+  virtual StatusOr<bool> IsEnabled() const = 0;
 
   // Is the security module ready to use or not.
-  virtual StatusOr<bool> IsReady() = 0;
+  virtual StatusOr<bool> IsReady() const = 0;
 
   // Generates an RSA signing key pair in the hardware backed security module.
   //   auth_value - Authorization data which will be associated with the key.
   virtual StatusOr<CreateKeyResult> GenerateRSASigningKey(
-      const brillo::SecureBlob& auth_value) = 0;
+      const brillo::SecureBlob& auth_value) const = 0;
 
   // Retrieves the public components of an RSA key pair.
-  virtual StatusOr<RSAPublicInfo> GetRSAPublicKey(Key key) = 0;
+  virtual StatusOr<RSAPublicInfo> GetRSAPublicKey(Key key) const = 0;
 
   // Loads a key by blob into the hardware backed security module.
   //   key_blob - The key blob as provided by GenerateKey or WrapRSAKey.
   //   auth_value - Authorization data for the key.
   // Returns true on success.
-  virtual StatusOr<ScopedKey> LoadKey(const brillo::Blob& key_blob,
-                                      const brillo::SecureBlob& auth_value) = 0;
+  virtual StatusOr<ScopedKey> LoadKey(
+      const brillo::Blob& key_blob,
+      const brillo::SecureBlob& auth_value) const = 0;
 
   // Generates a RSA digital signature.
   //   key - The key handle that derived from ScopedKey.
   //   data - The data to sign.
   // Returns true on success.
-  virtual StatusOr<brillo::Blob> RSASign(Key key, const brillo::Blob& data) = 0;
+  virtual StatusOr<brillo::Blob> RSASign(Key key,
+                                         const brillo::Blob& data) const = 0;
 };
 
 }  // namespace hwsec

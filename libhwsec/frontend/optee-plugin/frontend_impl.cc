@@ -19,7 +19,7 @@ using hwsec_foundation::status::MakeStatus;
 namespace hwsec {
 
 StatusOr<brillo::Blob> OpteePluginFrontendImpl::SendRawCommand(
-    const brillo::Blob& command) {
+    const brillo::Blob& command) const {
   return middleware_.CallSync<&Backend::Vendor::SendRawCommand>(command);
 }
 

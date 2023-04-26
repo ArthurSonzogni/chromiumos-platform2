@@ -25,7 +25,7 @@ class MockOpteePluginFrontend : public MockFrontend,
   MOCK_METHOD(StatusOr<brillo::Blob>,
               SendRawCommand,
               (const brillo::Blob& command),
-              (override));
+              (const override));
 };
 
 }  // namespace hwsec

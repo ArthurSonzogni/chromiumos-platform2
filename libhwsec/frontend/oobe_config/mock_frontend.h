@@ -22,16 +22,16 @@ class MockOobeConfigFrontend : public MockFrontend, public OobeConfigFrontend {
   MockOobeConfigFrontend() = default;
   ~MockOobeConfigFrontend() override = default;
 
-  MOCK_METHOD(Status, IsRollbackSpaceReady, (), (override));
-  MOCK_METHOD(Status, ResetRollbackSpace, (), (override));
+  MOCK_METHOD(Status, IsRollbackSpaceReady, (), (const override));
+  MOCK_METHOD(Status, ResetRollbackSpace, (), (const override));
   MOCK_METHOD(StatusOr<brillo::Blob>,
               Encrypt,
               (const brillo::SecureBlob& plain_data),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<brillo::SecureBlob>,
               Decrypt,
               (const brillo::Blob& encrypted_data),
-              (override));
+              (const override));
 };
 
 }  // namespace hwsec

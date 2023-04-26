@@ -24,22 +24,23 @@ class BootLockboxFrontend : public Frontend {
   ~BootLockboxFrontend() override = default;
 
   // Add a callback to wait until the space related functions are ready to use.
-  virtual void WaitUntilReady(base::OnceCallback<void(Status)> callback) = 0;
+  virtual void WaitUntilReady(
+      base::OnceCallback<void(Status)> callback) const = 0;
 
   // Gets the state of bootlockbox space.
-  virtual StatusOr<StorageState> GetSpaceState() = 0;
+  virtual StatusOr<StorageState> GetSpaceState() const = 0;
 
   // Prepares the bootlockbox space.
-  virtual Status PrepareSpace(uint32_t size) = 0;
+  virtual Status PrepareSpace(uint32_t size) const = 0;
 
   // Reads the data of bootlockbox space.
-  virtual StatusOr<brillo::Blob> LoadSpace() = 0;
+  virtual StatusOr<brillo::Blob> LoadSpace() const = 0;
 
   // Writes the data to bootlockbox space.
-  virtual Status StoreSpace(const brillo::Blob& blob) = 0;
+  virtual Status StoreSpace(const brillo::Blob& blob) const = 0;
 
   // Locks the bootlockbox space.
-  virtual Status LockSpace() = 0;
+  virtual Status LockSpace() const = 0;
 };
 
 }  // namespace hwsec

@@ -22,89 +22,101 @@ class MockCryptohomeFrontend : public MockFrontend, public CryptohomeFrontend {
   MockCryptohomeFrontend() = default;
   ~MockCryptohomeFrontend() override = default;
 
-  MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (override));
-  MOCK_METHOD(StatusOr<bool>, IsReady, (), (override));
-  MOCK_METHOD(StatusOr<bool>, IsSrkRocaVulnerable, (), (override));
-  MOCK_METHOD(StatusOr<brillo::Blob>, GetRsuDeviceId, (), (override));
+  MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (const override));
+  MOCK_METHOD(StatusOr<bool>, IsReady, (), (const override));
+  MOCK_METHOD(StatusOr<bool>, IsSrkRocaVulnerable, (), (const override));
+  MOCK_METHOD(StatusOr<brillo::Blob>, GetRsuDeviceId, (), (const override));
   MOCK_METHOD(StatusOr<absl::flat_hash_set<KeyAlgoType>>,
               GetSupportedAlgo,
               (),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<CreateKeyResult>,
               CreateCryptohomeKey,
               (KeyAlgoType),
-              (override));
-  MOCK_METHOD(StatusOr<ScopedKey>, LoadKey, (const brillo::Blob&), (override));
-  MOCK_METHOD(StatusOr<brillo::Blob>, GetPubkeyHash, (Key), (override));
-  MOCK_METHOD(StatusOr<ScopedKey>, SideLoadKey, (uint32_t), (override));
-  MOCK_METHOD(StatusOr<uint32_t>, GetKeyHandle, (Key), (override));
-  MOCK_METHOD(Status, SetCurrentUser, (const std::string&), (override));
-  MOCK_METHOD(StatusOr<bool>, IsCurrentUserSet, (), (override));
-  MOCK_METHOD(StatusOr<bool>, IsSealingSupported, (), (override));
+              (const override));
+  MOCK_METHOD(StatusOr<ScopedKey>,
+              LoadKey,
+              (const brillo::Blob&),
+              (const override));
+  MOCK_METHOD(StatusOr<brillo::Blob>, GetPubkeyHash, (Key), (const override));
+  MOCK_METHOD(StatusOr<ScopedKey>, SideLoadKey, (uint32_t), (const override));
+  MOCK_METHOD(StatusOr<uint32_t>, GetKeyHandle, (Key), (const override));
+  MOCK_METHOD(Status, SetCurrentUser, (const std::string&), (const override));
+  MOCK_METHOD(StatusOr<bool>, IsCurrentUserSet, (), (const override));
+  MOCK_METHOD(StatusOr<bool>, IsSealingSupported, (), (const override));
   MOCK_METHOD(StatusOr<brillo::Blob>,
               SealWithCurrentUser,
               (const std::optional<std::string>&,
                const brillo::SecureBlob&,
                const brillo::SecureBlob&),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<std::optional<ScopedKey>>,
               PreloadSealedData,
               (const brillo::Blob&),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<brillo::SecureBlob>,
               UnsealWithCurrentUser,
               (std::optional<Key>,
                const brillo::SecureBlob&,
                const brillo::Blob&),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<brillo::Blob>,
               Encrypt,
               (Key, const brillo::SecureBlob&),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<brillo::SecureBlob>,
               Decrypt,
               (Key, const brillo::Blob&),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<brillo::SecureBlob>,
               GetAuthValue,
               (Key, const brillo::SecureBlob&),
-              (override));
-  MOCK_METHOD(StatusOr<brillo::Blob>, GetRandomBlob, (size_t), (override));
+              (const override));
+  MOCK_METHOD(StatusOr<brillo::Blob>,
+              GetRandomBlob,
+              (size_t),
+              (const override));
   MOCK_METHOD(StatusOr<brillo::SecureBlob>,
               GetRandomSecureBlob,
               (size_t),
-              (override));
-  MOCK_METHOD(StatusOr<uint32_t>, GetManufacturer, (), (override));
-  MOCK_METHOD(StatusOr<bool>, IsPinWeaverEnabled, (), (override));
-  MOCK_METHOD(StatusOr<bool>, IsBiometricsPinWeaverEnabled, (), (override));
-  MOCK_METHOD(StatusOr<StorageState>, GetSpaceState, (Space), (override));
-  MOCK_METHOD(Status, PrepareSpace, (Space, uint32_t), (override));
-  MOCK_METHOD(StatusOr<brillo::Blob>, LoadSpace, (Space), (override));
-  MOCK_METHOD(Status, StoreSpace, (Space, const brillo::Blob&), (override));
-  MOCK_METHOD(Status, DestroySpace, (Space), (override));
-  MOCK_METHOD(Status, DeclareTpmFirmwareStable, (), (override));
+              (const override));
+  MOCK_METHOD(StatusOr<uint32_t>, GetManufacturer, (), (const override));
+  MOCK_METHOD(StatusOr<bool>, IsPinWeaverEnabled, (), (const override));
+  MOCK_METHOD(StatusOr<bool>,
+              IsBiometricsPinWeaverEnabled,
+              (),
+              (const override));
+  MOCK_METHOD(StatusOr<StorageState>, GetSpaceState, (Space), (const override));
+  MOCK_METHOD(Status, PrepareSpace, (Space, uint32_t), (const override));
+  MOCK_METHOD(StatusOr<brillo::Blob>, LoadSpace, (Space), (const override));
+  MOCK_METHOD(Status,
+              StoreSpace,
+              (Space, const brillo::Blob&),
+              (const override));
+  MOCK_METHOD(Status, DestroySpace, (Space), (const override));
+  MOCK_METHOD(Status, DeclareTpmFirmwareStable, (), (const override));
   MOCK_METHOD(StatusOr<SignatureSealedData>,
               SealWithSignatureAndCurrentUser,
               (const std::string& current_user,
                const brillo::SecureBlob&,
                const brillo::Blob&,
                const std::vector<SignatureSealingAlgorithm>&),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<ChallengeResult>,
               ChallengeWithSignatureAndCurrentUser,
               (const SignatureSealedData& sealed_data,
                const brillo::Blob& public_key_spki_der,
                const std::vector<SignatureSealingAlgorithm>& key_algorithms),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<brillo::SecureBlob>,
               UnsealWithChallenge,
               (ChallengeID challenge, const brillo::Blob& challenge_response),
-              (override));
-  MOCK_METHOD(StatusOr<uint32_t>, GetFamily, (), (override));
+              (const override));
+  MOCK_METHOD(StatusOr<uint32_t>, GetFamily, (), (const override));
   MOCK_METHOD(void,
               RegisterOnReadyCallback,
               (base::OnceCallback<void(Status)> callback),
-              (override));
+              (const override));
 };
 
 }  // namespace hwsec

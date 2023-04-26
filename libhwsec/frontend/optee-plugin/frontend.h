@@ -21,7 +21,7 @@ class OpteePluginFrontend : public Frontend {
 
   // Send the raw command.
   virtual StatusOr<brillo::Blob> SendRawCommand(
-      const brillo::Blob& command) = 0;
+      const brillo::Blob& command) const = 0;
 };
 
 }  // namespace hwsec

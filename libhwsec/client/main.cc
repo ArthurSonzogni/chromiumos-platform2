@@ -115,7 +115,8 @@ struct GetVersionInfo {
     }
 
     hwsec::FactoryImpl factory;
-    std::unique_ptr<hwsec::ClientFrontend> hwsec = factory.GetClientFrontend();
+    std::unique_ptr<const hwsec::ClientFrontend> hwsec =
+        factory.GetClientFrontend();
 
     ASSIGN_OR_RETURN(uint32_t family, hwsec->GetFamily(),
                      _.LogError().As(EXIT_FAILURE));

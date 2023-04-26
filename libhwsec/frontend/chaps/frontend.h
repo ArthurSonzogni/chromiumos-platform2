@@ -57,28 +57,29 @@ class ChapsFrontend : public Frontend {
   // Gets the TPM family of GSC/TPM.
   // 0x312E3200 = TPM1.2
   // 0x322E3000 = TPM2.0
-  virtual StatusOr<uint32_t> GetFamily() = 0;
+  virtual StatusOr<uint32_t> GetFamily() const = 0;
 
   // Is the security module enabled or not.
-  virtual StatusOr<bool> IsEnabled() = 0;
+  virtual StatusOr<bool> IsEnabled() const = 0;
 
   // Is the security module ready to use or not.
-  virtual StatusOr<bool> IsReady() = 0;
+  virtual StatusOr<bool> IsReady() const = 0;
 
   // Generates random blob with |size|.
-  virtual StatusOr<brillo::Blob> GetRandomBlob(size_t size) = 0;
+  virtual StatusOr<brillo::Blob> GetRandomBlob(size_t size) const = 0;
 
   // Generates random secure blob with |size|.
-  virtual StatusOr<brillo::SecureBlob> GetRandomSecureBlob(size_t size) = 0;
+  virtual StatusOr<brillo::SecureBlob> GetRandomSecureBlob(
+      size_t size) const = 0;
 
   // Return supports |modulus_bits| or not. |modulus_bits| is the RSA
   // key/modulus size.
-  virtual Status IsRSAModulusSupported(uint32_t modulus_bits) = 0;
+  virtual Status IsRSAModulusSupported(uint32_t modulus_bits) const = 0;
 
   // Return supports |curve_nid| or not. |curve_nid| is the NID of OpenSSL.
   // TPM 1.2 doesn't support ECC.
   // TPM 2.0 current only support P-256 curve (NID_X9_62_prime256v1).
-  virtual Status IsECCurveSupported(int nid) = 0;
+  virtual Status IsECCurveSupported(int nid) const = 0;
 
   // Generates an RSA key pair and stores it in the hardware backed security
   // module.
@@ -93,10 +94,10 @@ class ChapsFrontend : public Frontend {
       const brillo::SecureBlob& auth_value,
       AllowSoftwareGen allow_soft_gen,
       AllowDecrypt allow_decrypt,
-      AllowSign allow_sign) = 0;
+      AllowSign allow_sign) const = 0;
 
   // Retrieves the public components of an RSA key pair.
-  virtual StatusOr<RSAPublicInfo> GetRSAPublicKey(Key key) = 0;
+  virtual StatusOr<RSAPublicInfo> GetRSAPublicKey(Key key) const = 0;
 
   // Generates an ECC key pair in the hardware backed security module.
   //   nid - the OpenSSL NID for the curve.
@@ -105,10 +106,10 @@ class ChapsFrontend : public Frontend {
       int nid,
       const brillo::SecureBlob& auth_value,
       AllowDecrypt allow_decrypt,
-      AllowSign allow_sign) = 0;
+      AllowSign allow_sign) const = 0;
 
   // Retrieves the public point of ECC key pair.
-  virtual StatusOr<ECCPublicInfo> GetECCPublicKey(Key key) = 0;
+  virtual StatusOr<ECCPublicInfo> GetECCPublicKey(Key key) const = 0;
 
   // Wraps an RSA key pair with the hardware backed security module.
   //   exponent - The RSA public exponent (e).
@@ -121,7 +122,7 @@ class ChapsFrontend : public Frontend {
       const brillo::SecureBlob& prime_factor,
       const brillo::SecureBlob& auth_value,
       AllowDecrypt allow_decrypt,
-      AllowSign allow_sign) = 0;
+      AllowSign allow_sign) const = 0;
 
   // Wraps an ECC key pair with the hardware backed security module.
   //   curve_nid - The OpenSSL NID of the ECC curve.
@@ -137,14 +138,15 @@ class ChapsFrontend : public Frontend {
       const brillo::SecureBlob& private_value,
       const brillo::SecureBlob& auth_value,
       AllowDecrypt allow_decrypt,
-      AllowSign allow_sign) = 0;
+      AllowSign allow_sign) const = 0;
 
   // Loads a key by blob into the hardware backed security module.
   //   key_blob - The key blob as provided by GenerateKey or WrapRSAKey.
   //   auth_value - Authorization data for the key.
   // Returns true on success.
-  virtual StatusOr<ScopedKey> LoadKey(const brillo::Blob& key_blob,
-                                      const brillo::SecureBlob& auth_value) = 0;
+  virtual StatusOr<ScopedKey> LoadKey(
+      const brillo::Blob& key_blob,
+      const brillo::SecureBlob& auth_value) const = 0;
 
   // Performs a 'unbind' operation using the TSS_ES_RSAESPKCSV15 scheme. This
   // effectively performs PKCS #1 v1.5 RSA decryption (using PKCS #1 'type 2'
@@ -152,7 +154,7 @@ class ChapsFrontend : public Frontend {
   //   key - The key handle that derived from ScopedKey.
   //   ciphertext - Data to be decrypted.
   virtual StatusOr<brillo::SecureBlob> Unbind(
-      Key key, const brillo::Blob& ciphertext) = 0;
+      Key key, const brillo::Blob& ciphertext) const = 0;
 
   // Generates a digital signature.
   //   key - The key handle that derived from ScopedKey.
@@ -161,7 +163,7 @@ class ChapsFrontend : public Frontend {
   // Returns true on success.
   virtual StatusOr<brillo::Blob> Sign(Key key,
                                       const brillo::Blob& data,
-                                      const SigningOptions& options) = 0;
+                                      const SigningOptions& options) const = 0;
 
   // Seals the data to hardware backed security module.
   //   unsealed_data - The data that needs to be sealed.
@@ -169,28 +171,28 @@ class ChapsFrontend : public Frontend {
   //                data.
   virtual StatusOr<ChapsSealedData> SealData(
       const brillo::SecureBlob& unsealed_data,
-      const brillo::SecureBlob& auth_value) = 0;
+      const brillo::SecureBlob& auth_value) const = 0;
 
   // Unseals the data from hardware backed security module.
   //   sealed_data - The data returned by SealData.
   //   auth_value - Authorization data that associated with the sealed data.
   virtual StatusOr<brillo::SecureBlob> UnsealData(
       const ChapsSealedData& sealed_data,
-      const brillo::SecureBlob& auth_value) = 0;
+      const brillo::SecureBlob& auth_value) const = 0;
 
   // Asynchronous version of GetRandomSecureBlob.
   virtual void GetRandomSecureBlobAsync(
-      size_t size, GetRandomSecureBlobCallback callback) = 0;
+      size_t size, GetRandomSecureBlobCallback callback) const = 0;
 
   // Asynchronous version of SealData.
   virtual void SealDataAsync(const brillo::SecureBlob& unsealed_data,
                              const brillo::SecureBlob& auth_value,
-                             SealDataCallback callback) = 0;
+                             SealDataCallback callback) const = 0;
 
   // Asynchronous version of UnsealData.
   virtual void UnsealDataAsync(const ChapsSealedData& sealed_data,
                                const brillo::SecureBlob& auth_value,
-                               UnsealDataCallback callback) = 0;
+                               UnsealDataCallback callback) const = 0;
 };
 
 }  // namespace hwsec

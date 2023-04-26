@@ -19,7 +19,8 @@ class LocalDataMigrationFrontendImpl : public LocalDataMigrationFrontend,
   using FrontendImpl::FrontendImpl;
   ~LocalDataMigrationFrontendImpl() override = default;
 
-  StatusOr<brillo::SecureBlob> Unseal(const brillo::Blob& sealed_data) override;
+  StatusOr<brillo::SecureBlob> Unseal(
+      const brillo::Blob& sealed_data) const override;
 };
 
 }  // namespace hwsec

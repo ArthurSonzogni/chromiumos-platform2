@@ -18,39 +18,40 @@ using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
 
-StatusOr<brillo::Blob> ClientFrontendImpl::GetRandomBlob(size_t size) {
+StatusOr<brillo::Blob> ClientFrontendImpl::GetRandomBlob(size_t size) const {
   return middleware_.CallSync<&Backend::Random::RandomBlob>(size);
 }
 
-StatusOr<bool> ClientFrontendImpl::IsSrkRocaVulnerable() {
+StatusOr<bool> ClientFrontendImpl::IsSrkRocaVulnerable() const {
   return middleware_.CallSync<&Backend::Vendor::IsSrkRocaVulnerable>();
 }
 
-StatusOr<uint32_t> ClientFrontendImpl::GetFamily() {
+StatusOr<uint32_t> ClientFrontendImpl::GetFamily() const {
   return middleware_.CallSync<&Backend::Vendor::GetFamily>();
 }
 
-StatusOr<uint64_t> ClientFrontendImpl::GetSpecLevel() {
+StatusOr<uint64_t> ClientFrontendImpl::GetSpecLevel() const {
   return middleware_.CallSync<&Backend::Vendor::GetSpecLevel>();
 }
 
-StatusOr<uint32_t> ClientFrontendImpl::GetManufacturer() {
+StatusOr<uint32_t> ClientFrontendImpl::GetManufacturer() const {
   return middleware_.CallSync<&Backend::Vendor::GetManufacturer>();
 }
 
-StatusOr<uint32_t> ClientFrontendImpl::GetTpmModel() {
+StatusOr<uint32_t> ClientFrontendImpl::GetTpmModel() const {
   return middleware_.CallSync<&Backend::Vendor::GetTpmModel>();
 }
 
-StatusOr<uint64_t> ClientFrontendImpl::GetFirmwareVersion() {
+StatusOr<uint64_t> ClientFrontendImpl::GetFirmwareVersion() const {
   return middleware_.CallSync<&Backend::Vendor::GetFirmwareVersion>();
 }
 
-StatusOr<brillo::Blob> ClientFrontendImpl::GetVendorSpecific() {
+StatusOr<brillo::Blob> ClientFrontendImpl::GetVendorSpecific() const {
   return middleware_.CallSync<&Backend::Vendor::GetVendorSpecific>();
 }
 
-StatusOr<IFXFieldUpgradeInfo> ClientFrontendImpl::GetIFXFieldUpgradeInfo() {
+StatusOr<IFXFieldUpgradeInfo> ClientFrontendImpl::GetIFXFieldUpgradeInfo()
+    const {
   return middleware_.CallSync<&Backend::Vendor::GetIFXFieldUpgradeInfo>();
 }
 

@@ -29,7 +29,7 @@ class ChapsFrontendImplTpm2SimTest : public testing::Test {
 
  protected:
   hwsec::Tpm2SimulatorFactoryForTest hwsec_factory_;
-  std::unique_ptr<ChapsFrontend> hwsec_chaps_;
+  std::unique_ptr<const ChapsFrontend> hwsec_chaps_;
 };
 
 TEST_F(ChapsFrontendImplTpm2SimTest, SignRsaCombinations) {

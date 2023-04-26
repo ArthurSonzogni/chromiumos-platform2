@@ -25,28 +25,28 @@ constexpr base::TimeDelta kDefaultLazyExpirationTime = base::Seconds(10);
 
 namespace hwsec {
 
-StatusOr<uint32_t> ChapsFrontendImpl::GetFamily() {
+StatusOr<uint32_t> ChapsFrontendImpl::GetFamily() const {
   return middleware_.CallSync<&Backend::Vendor::GetFamily>();
 }
 
-StatusOr<bool> ChapsFrontendImpl::IsEnabled() {
+StatusOr<bool> ChapsFrontendImpl::IsEnabled() const {
   return middleware_.CallSync<&Backend::State::IsEnabled>();
 }
 
-StatusOr<bool> ChapsFrontendImpl::IsReady() {
+StatusOr<bool> ChapsFrontendImpl::IsReady() const {
   return middleware_.CallSync<&Backend::State::IsReady>();
 }
 
-StatusOr<brillo::Blob> ChapsFrontendImpl::GetRandomBlob(size_t size) {
+StatusOr<brillo::Blob> ChapsFrontendImpl::GetRandomBlob(size_t size) const {
   return middleware_.CallSync<&Backend::Random::RandomBlob>(size);
 }
 
 StatusOr<brillo::SecureBlob> ChapsFrontendImpl::GetRandomSecureBlob(
-    size_t size) {
+    size_t size) const {
   return middleware_.CallSync<&Backend::Random::RandomSecureBlob>(size);
 }
 
-Status ChapsFrontendImpl::IsRSAModulusSupported(uint32_t modulus_bits) {
+Status ChapsFrontendImpl::IsRSAModulusSupported(uint32_t modulus_bits) const {
   return middleware_.CallSync<&Backend::KeyManagement::IsSupported>(
       KeyAlgoType::kRsa, Backend::KeyManagement::CreateKeyOptions{
                              .allow_software_gen = false,
@@ -56,7 +56,7 @@ Status ChapsFrontendImpl::IsRSAModulusSupported(uint32_t modulus_bits) {
                          });
 }
 
-Status ChapsFrontendImpl::IsECCurveSupported(int nid) {
+Status ChapsFrontendImpl::IsECCurveSupported(int nid) const {
   return middleware_.CallSync<&Backend::KeyManagement::IsSupported>(
       KeyAlgoType::kEcc, Backend::KeyManagement::CreateKeyOptions{
                              .allow_software_gen = false,
@@ -72,7 +72,7 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateRSAKey(
     const brillo::SecureBlob& auth_value,
     AllowSoftwareGen allow_soft_gen,
     AllowDecrypt allow_decrypt,
-    AllowSign allow_sign) {
+    AllowSign allow_sign) const {
   return middleware_.CallSync<&Backend::KeyManagement::CreateKey>(
       OperationPolicySetting{
           .permission =
@@ -94,7 +94,7 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateRSAKey(
       });
 }
 
-StatusOr<RSAPublicInfo> ChapsFrontendImpl::GetRSAPublicKey(Key key) {
+StatusOr<RSAPublicInfo> ChapsFrontendImpl::GetRSAPublicKey(Key key) const {
   return middleware_.CallSync<&Backend::KeyManagement::GetRSAPublicInfo>(key);
 }
 
@@ -102,7 +102,7 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateECCKey(
     int nid,
     const brillo::SecureBlob& auth_value,
     AllowDecrypt allow_decrypt,
-    AllowSign allow_sign) {
+    AllowSign allow_sign) const {
   return middleware_.CallSync<&Backend::KeyManagement::CreateKey>(
       OperationPolicySetting{
           .permission =
@@ -123,7 +123,7 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateECCKey(
       });
 }
 
-StatusOr<ECCPublicInfo> ChapsFrontendImpl::GetECCPublicKey(Key key) {
+StatusOr<ECCPublicInfo> ChapsFrontendImpl::GetECCPublicKey(Key key) const {
   return middleware_.CallSync<&Backend::KeyManagement::GetECCPublicInfo>(key);
 }
 
@@ -133,7 +133,7 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::WrapRSAKey(
     const brillo::SecureBlob& prime_factor,
     const brillo::SecureBlob& auth_value,
     AllowDecrypt allow_decrypt,
-    AllowSign allow_sign) {
+    AllowSign allow_sign) const {
   return middleware_.CallSync<&Backend::KeyManagement::WrapRSAKey>(
       OperationPolicySetting{
           .permission =
@@ -162,7 +162,7 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::WrapECCKey(
     const brillo::SecureBlob& private_value,
     const brillo::SecureBlob& auth_value,
     AllowDecrypt allow_decrypt,
-    AllowSign allow_sign) {
+    AllowSign allow_sign) const {
   return middleware_.CallSync<&Backend::KeyManagement::WrapECCKey>(
       OperationPolicySetting{
           .permission =
@@ -184,7 +184,7 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::WrapECCKey(
 }
 
 StatusOr<ScopedKey> ChapsFrontendImpl::LoadKey(
-    const brillo::Blob& key_blob, const brillo::SecureBlob& auth_value) {
+    const brillo::Blob& key_blob, const brillo::SecureBlob& auth_value) const {
   return middleware_.CallSync<&Backend::KeyManagement::LoadKey>(
       OperationPolicy{
           .permission =
@@ -200,7 +200,7 @@ StatusOr<ScopedKey> ChapsFrontendImpl::LoadKey(
 }
 
 StatusOr<brillo::SecureBlob> ChapsFrontendImpl::Unbind(
-    Key key, const brillo::Blob& ciphertext) {
+    Key key, const brillo::Blob& ciphertext) const {
   return middleware_.CallSync<&Backend::Encryption::Decrypt>(
       key, ciphertext,
       Encryption::EncryptionOptions{
@@ -208,15 +208,14 @@ StatusOr<brillo::SecureBlob> ChapsFrontendImpl::Unbind(
       });
 }
 
-StatusOr<brillo::Blob> ChapsFrontendImpl::Sign(Key key,
-                                               const brillo::Blob& data,
-                                               const SigningOptions& options) {
+StatusOr<brillo::Blob> ChapsFrontendImpl::Sign(
+    Key key, const brillo::Blob& data, const SigningOptions& options) const {
   return middleware_.CallSync<&Backend::Signing::RawSign>(key, data, options);
 }
 
 StatusOr<ChapsSealedData> ChapsFrontendImpl::SealData(
     const brillo::SecureBlob& unsealed_data,
-    const brillo::SecureBlob& auth_value) {
+    const brillo::SecureBlob& auth_value) const {
   ASSIGN_OR_RETURN(brillo::Blob sealed_data,
                    middleware_.CallSync<&Backend::Sealing::Seal>(
                        OperationPolicySetting{
@@ -233,7 +232,8 @@ StatusOr<ChapsSealedData> ChapsFrontendImpl::SealData(
 }
 
 StatusOr<brillo::SecureBlob> ChapsFrontendImpl::UnsealData(
-    const ChapsSealedData& sealed_data, const brillo::SecureBlob& auth_value) {
+    const ChapsSealedData& sealed_data,
+    const brillo::SecureBlob& auth_value) const {
   // Backward compatible check.
   if (!sealed_data.encrypted_data.empty()) {
     ASSIGN_OR_RETURN(ScopedKey key,
@@ -268,14 +268,14 @@ StatusOr<brillo::SecureBlob> ChapsFrontendImpl::UnsealData(
 }
 
 void ChapsFrontendImpl::GetRandomSecureBlobAsync(
-    size_t size, GetRandomSecureBlobCallback callback) {
+    size_t size, GetRandomSecureBlobCallback callback) const {
   middleware_.CallAsync<&Backend::Random::RandomSecureBlob>(std::move(callback),
                                                             size);
 }
 
 void ChapsFrontendImpl::SealDataAsync(const brillo::SecureBlob& unsealed_data,
                                       const brillo::SecureBlob& auth_value,
-                                      SealDataCallback callback) {
+                                      SealDataCallback callback) const {
   base::OnceCallback<void(StatusOr<brillo::Blob>)> on_seal_done =
       base::BindOnce(
           [](SealDataCallback callback, StatusOr<brillo::Blob> sealed_data) {
@@ -302,7 +302,7 @@ void ChapsFrontendImpl::SealDataAsync(const brillo::SecureBlob& unsealed_data,
 
 void ChapsFrontendImpl::UnsealDataAsync(const ChapsSealedData& sealed_data,
                                         const brillo::SecureBlob& auth_value,
-                                        UnsealDataCallback callback) {
+                                        UnsealDataCallback callback) const {
   // Backward compatible check.
   if (!sealed_data.encrypted_data.empty()) {
     base::OnceCallback<void(StatusOr<ScopedKey>)> on_load_done = base::BindOnce(

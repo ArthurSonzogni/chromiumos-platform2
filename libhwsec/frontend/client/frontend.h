@@ -21,31 +21,31 @@ class ClientFrontend : public Frontend {
   ~ClientFrontend() override = default;
 
   // Generates random blob with |size|.
-  virtual StatusOr<brillo::Blob> GetRandomBlob(size_t size) = 0;
+  virtual StatusOr<brillo::Blob> GetRandomBlob(size_t size) const = 0;
 
   // Is the SRK ROCA vulnerable or not.
-  virtual StatusOr<bool> IsSrkRocaVulnerable() = 0;
+  virtual StatusOr<bool> IsSrkRocaVulnerable() const = 0;
 
   // Gets the family.
-  virtual StatusOr<uint32_t> GetFamily() = 0;
+  virtual StatusOr<uint32_t> GetFamily() const = 0;
 
   // Gets the spec level.
-  virtual StatusOr<uint64_t> GetSpecLevel() = 0;
+  virtual StatusOr<uint64_t> GetSpecLevel() const = 0;
 
   // Gets the manufacturer.
-  virtual StatusOr<uint32_t> GetManufacturer() = 0;
+  virtual StatusOr<uint32_t> GetManufacturer() const = 0;
 
   // Gets the TPM model.
-  virtual StatusOr<uint32_t> GetTpmModel() = 0;
+  virtual StatusOr<uint32_t> GetTpmModel() const = 0;
 
   // Gets the TPM firmware version.
-  virtual StatusOr<uint64_t> GetFirmwareVersion() = 0;
+  virtual StatusOr<uint64_t> GetFirmwareVersion() const = 0;
 
   // Gets the vendor specific string.
-  virtual StatusOr<brillo::Blob> GetVendorSpecific() = 0;
+  virtual StatusOr<brillo::Blob> GetVendorSpecific() const = 0;
 
   // Gets the IFX upgrade information.
-  virtual StatusOr<IFXFieldUpgradeInfo> GetIFXFieldUpgradeInfo() = 0;
+  virtual StatusOr<IFXFieldUpgradeInfo> GetIFXFieldUpgradeInfo() const = 0;
 };
 
 }  // namespace hwsec

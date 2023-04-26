@@ -19,14 +19,16 @@ class U2fFrontendImpl : public U2fFrontend, public FrontendImpl {
   using FrontendImpl::FrontendImpl;
   ~U2fFrontendImpl() override = default;
 
-  StatusOr<bool> IsEnabled() override;
-  StatusOr<bool> IsReady() override;
+  StatusOr<bool> IsEnabled() const override;
+  StatusOr<bool> IsReady() const override;
   StatusOr<CreateKeyResult> GenerateRSASigningKey(
-      const brillo::SecureBlob& auth_value) override;
-  StatusOr<RSAPublicInfo> GetRSAPublicKey(Key key) override;
-  StatusOr<ScopedKey> LoadKey(const brillo::Blob& key_blob,
-                              const brillo::SecureBlob& auth_value) override;
-  StatusOr<brillo::Blob> RSASign(Key key, const brillo::Blob& data) override;
+      const brillo::SecureBlob& auth_value) const override;
+  StatusOr<RSAPublicInfo> GetRSAPublicKey(Key key) const override;
+  StatusOr<ScopedKey> LoadKey(
+      const brillo::Blob& key_blob,
+      const brillo::SecureBlob& auth_value) const override;
+  StatusOr<brillo::Blob> RSASign(Key key,
+                                 const brillo::Blob& data) const override;
 };
 
 }  // namespace hwsec

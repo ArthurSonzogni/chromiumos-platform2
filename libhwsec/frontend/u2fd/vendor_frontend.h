@@ -22,7 +22,7 @@ class U2fVendorFrontend : public Frontend {
   ~U2fVendorFrontend() override = default;
 
   // Is the U2F commands enabled or not.
-  virtual StatusOr<bool> IsEnabled() = 0;
+  virtual StatusOr<bool> IsEnabled() const = 0;
 
   // Generates a user-presence-only U2F credential.
   //
@@ -44,7 +44,7 @@ class U2fVendorFrontend : public Frontend {
       const brillo::Blob& app_id,
       const brillo::SecureBlob& user_secret,
       u2f::ConsumeMode consume_mode,
-      u2f::UserPresenceMode up_mode) = 0;
+      u2f::UserPresenceMode up_mode) const = 0;
 
   // Generates a U2F credential.
   //
@@ -69,7 +69,7 @@ class U2fVendorFrontend : public Frontend {
       const brillo::SecureBlob& user_secret,
       u2f::ConsumeMode consume_mode,
       u2f::UserPresenceMode up_mode,
-      const brillo::Blob& auth_time_secret_hash) = 0;
+      const brillo::Blob& auth_time_secret_hash) const = 0;
 
   // Signs the hash using a user-presence-only U2F credential.
   //
@@ -94,7 +94,7 @@ class U2fVendorFrontend : public Frontend {
       const brillo::Blob& hash_to_sign,
       u2f::ConsumeMode consume_mode,
       u2f::UserPresenceMode up_mode,
-      const brillo::Blob& key_handle) = 0;
+      const brillo::Blob& key_handle) const = 0;
 
   // Signs the hash using a U2F credential.
   //
@@ -124,7 +124,7 @@ class U2fVendorFrontend : public Frontend {
       const brillo::Blob& hash_to_sign,
       u2f::ConsumeMode consume_mode,
       u2f::UserPresenceMode up_mode,
-      const brillo::Blob& key_handle) = 0;
+      const brillo::Blob& key_handle) const = 0;
 
   // Checks whether a user-presence-only U2F credential is valid.
   //
@@ -138,14 +138,15 @@ class U2fVendorFrontend : public Frontend {
   // |key_handle| is the key handle of the credential to sign the hash with.
   //
   // On success, returns the OK status.
-  virtual Status CheckUserPresenceOnly(const brillo::Blob& app_id,
-                                       const brillo::SecureBlob& user_secret,
-                                       const brillo::Blob& key_handle) = 0;
+  virtual Status CheckUserPresenceOnly(
+      const brillo::Blob& app_id,
+      const brillo::SecureBlob& user_secret,
+      const brillo::Blob& key_handle) const = 0;
 
   // Like `CheckUserPresenceOnly`, but checks a normal U2F credential.
   virtual Status Check(const brillo::Blob& app_id,
                        const brillo::SecureBlob& user_secret,
-                       const brillo::Blob& key_handle) = 0;
+                       const brillo::Blob& key_handle) const = 0;
 
   // Attests a G2F format message using the TPM's G2F key.
   //
@@ -163,7 +164,7 @@ class U2fVendorFrontend : public Frontend {
       const brillo::SecureBlob& user_secret,
       const brillo::Blob& challenge,
       const brillo::Blob& key_handle,
-      const brillo::Blob& public_key) = 0;
+      const brillo::Blob& public_key) const = 0;
 
   // Gets a G2F format attestation data.
   //
@@ -182,7 +183,7 @@ class U2fVendorFrontend : public Frontend {
       const brillo::Blob& app_id,
       const brillo::Blob& challenge,
       const brillo::Blob& key_handle,
-      const brillo::Blob& public_key) = 0;
+      const brillo::Blob& public_key) const = 0;
 
   // Attests a corp format message using the TPM's G2F key.
   //
@@ -202,13 +203,13 @@ class U2fVendorFrontend : public Frontend {
       const brillo::Blob& challenge,
       const brillo::Blob& key_handle,
       const brillo::Blob& public_key,
-      const brillo::Blob& salt) = 0;
+      const brillo::Blob& salt) const = 0;
 
-  virtual StatusOr<brillo::Blob> GetG2fCert() = 0;
+  virtual StatusOr<brillo::Blob> GetG2fCert() const = 0;
 
-  virtual StatusOr<RwVersion> GetRwVersion() = 0;
+  virtual StatusOr<RwVersion> GetRwVersion() const = 0;
 
-  virtual StatusOr<u2f::Config> GetConfig() = 0;
+  virtual StatusOr<u2f::Config> GetConfig() const = 0;
 };
 
 }  // namespace hwsec

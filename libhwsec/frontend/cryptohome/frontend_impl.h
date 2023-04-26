@@ -23,59 +23,63 @@ class CryptohomeFrontendImpl : public CryptohomeFrontend, public FrontendImpl {
   ~CryptohomeFrontendImpl() override = default;
 
   void RegisterOnReadyCallback(
-      base::OnceCallback<void(Status)> callback) override;
-  StatusOr<bool> IsEnabled() override;
-  StatusOr<bool> IsReady() override;
-  StatusOr<bool> IsSrkRocaVulnerable() override;
-  StatusOr<brillo::Blob> GetRsuDeviceId() override;
-  StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() override;
-  StatusOr<CreateKeyResult> CreateCryptohomeKey(KeyAlgoType key_algo) override;
-  StatusOr<ScopedKey> LoadKey(const brillo::Blob& key_blob) override;
-  StatusOr<brillo::Blob> GetPubkeyHash(Key key) override;
-  StatusOr<ScopedKey> SideLoadKey(uint32_t key_handle) override;
-  StatusOr<uint32_t> GetKeyHandle(Key key) override;
-  Status SetCurrentUser(const std::string& current_user) override;
-  StatusOr<bool> IsCurrentUserSet() override;
-  StatusOr<bool> IsSealingSupported() override;
+      base::OnceCallback<void(Status)> callback) const override;
+  StatusOr<bool> IsEnabled() const override;
+  StatusOr<bool> IsReady() const override;
+  StatusOr<bool> IsSrkRocaVulnerable() const override;
+  StatusOr<brillo::Blob> GetRsuDeviceId() const override;
+  StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() const override;
+  StatusOr<CreateKeyResult> CreateCryptohomeKey(
+      KeyAlgoType key_algo) const override;
+  StatusOr<ScopedKey> LoadKey(const brillo::Blob& key_blob) const override;
+  StatusOr<brillo::Blob> GetPubkeyHash(Key key) const override;
+  StatusOr<ScopedKey> SideLoadKey(uint32_t key_handle) const override;
+  StatusOr<uint32_t> GetKeyHandle(Key key) const override;
+  Status SetCurrentUser(const std::string& current_user) const override;
+  StatusOr<bool> IsCurrentUserSet() const override;
+  StatusOr<bool> IsSealingSupported() const override;
   StatusOr<brillo::Blob> SealWithCurrentUser(
       const std::optional<std::string>& current_user,
       const brillo::SecureBlob& auth_value,
-      const brillo::SecureBlob& unsealed_data) override;
+      const brillo::SecureBlob& unsealed_data) const override;
   StatusOr<std::optional<ScopedKey>> PreloadSealedData(
-      const brillo::Blob& sealed_data) override;
+      const brillo::Blob& sealed_data) const override;
   StatusOr<brillo::SecureBlob> UnsealWithCurrentUser(
       std::optional<Key> preload_data,
       const brillo::SecureBlob& auth_value,
-      const brillo::Blob& sealed_data) override;
-  StatusOr<brillo::Blob> Encrypt(Key key,
-                                 const brillo::SecureBlob& plaintext) override;
-  StatusOr<brillo::SecureBlob> Decrypt(Key key,
-                                       const brillo::Blob& ciphertext) override;
+      const brillo::Blob& sealed_data) const override;
+  StatusOr<brillo::Blob> Encrypt(
+      Key key, const brillo::SecureBlob& plaintext) const override;
+  StatusOr<brillo::SecureBlob> Decrypt(
+      Key key, const brillo::Blob& ciphertext) const override;
   StatusOr<brillo::SecureBlob> GetAuthValue(
-      Key key, const brillo::SecureBlob& pass_blob) override;
-  StatusOr<brillo::Blob> GetRandomBlob(size_t size) override;
-  StatusOr<brillo::SecureBlob> GetRandomSecureBlob(size_t size) override;
-  StatusOr<uint32_t> GetManufacturer() override;
-  StatusOr<bool> IsPinWeaverEnabled() override;
-  StatusOr<bool> IsBiometricsPinWeaverEnabled() override;
-  StatusOr<StorageState> GetSpaceState(Space space) override;
-  Status PrepareSpace(Space space, uint32_t size) override;
-  StatusOr<brillo::Blob> LoadSpace(Space space) override;
-  Status StoreSpace(Space space, const brillo::Blob& blob) override;
-  Status DestroySpace(Space space) override;
-  Status DeclareTpmFirmwareStable() override;
+      Key key, const brillo::SecureBlob& pass_blob) const override;
+  StatusOr<brillo::Blob> GetRandomBlob(size_t size) const override;
+  StatusOr<brillo::SecureBlob> GetRandomSecureBlob(size_t size) const override;
+  StatusOr<uint32_t> GetManufacturer() const override;
+  StatusOr<bool> IsPinWeaverEnabled() const override;
+  StatusOr<bool> IsBiometricsPinWeaverEnabled() const override;
+  StatusOr<StorageState> GetSpaceState(Space space) const override;
+  Status PrepareSpace(Space space, uint32_t size) const override;
+  StatusOr<brillo::Blob> LoadSpace(Space space) const override;
+  Status StoreSpace(Space space, const brillo::Blob& blob) const override;
+  Status DestroySpace(Space space) const override;
+  Status DeclareTpmFirmwareStable() const override;
   StatusOr<SignatureSealedData> SealWithSignatureAndCurrentUser(
       const std::string& current_user,
       const brillo::SecureBlob& unsealed_data,
       const brillo::Blob& public_key_spki_der,
-      const std::vector<SignatureSealingAlgorithm>& key_algorithms) override;
+      const std::vector<SignatureSealingAlgorithm>& key_algorithms)
+      const override;
   StatusOr<ChallengeResult> ChallengeWithSignatureAndCurrentUser(
       const SignatureSealedData& sealed_data,
       const brillo::Blob& public_key_spki_der,
-      const std::vector<SignatureSealingAlgorithm>& key_algorithms) override;
+      const std::vector<SignatureSealingAlgorithm>& key_algorithms)
+      const override;
   StatusOr<brillo::SecureBlob> UnsealWithChallenge(
-      ChallengeID challenge, const brillo::Blob& challenge_response) override;
-  StatusOr<uint32_t> GetFamily() override;
+      ChallengeID challenge,
+      const brillo::Blob& challenge_response) const override;
+  StatusOr<uint32_t> GetFamily() const override;
 };
 
 }  // namespace hwsec

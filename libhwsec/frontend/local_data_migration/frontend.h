@@ -16,7 +16,7 @@ class LocalDataMigrationFrontend : public Frontend {
  public:
   ~LocalDataMigrationFrontend() override = default;
   virtual StatusOr<brillo::SecureBlob> Unseal(
-      const brillo::Blob& sealed_data) = 0;
+      const brillo::Blob& sealed_data) const = 0;
 };
 
 }  // namespace hwsec

@@ -25,33 +25,33 @@ constexpr uint8_t kBiometricsPinWeaverProtocolVersion = 2;
 }  // namespace
 
 void CryptohomeFrontendImpl::RegisterOnReadyCallback(
-    base::OnceCallback<void(Status)> callback) {
+    base::OnceCallback<void(Status)> callback) const {
   middleware_.CallAsync<&Backend::State::WaitUntilReady>(std::move(callback));
 }
 
-StatusOr<bool> CryptohomeFrontendImpl::IsEnabled() {
+StatusOr<bool> CryptohomeFrontendImpl::IsEnabled() const {
   return middleware_.CallSync<&Backend::State::IsEnabled>();
 }
 
-StatusOr<bool> CryptohomeFrontendImpl::IsReady() {
+StatusOr<bool> CryptohomeFrontendImpl::IsReady() const {
   return middleware_.CallSync<&Backend::State::IsReady>();
 }
 
-StatusOr<bool> CryptohomeFrontendImpl::IsSrkRocaVulnerable() {
+StatusOr<bool> CryptohomeFrontendImpl::IsSrkRocaVulnerable() const {
   return middleware_.CallSync<&Backend::Vendor::IsSrkRocaVulnerable>();
 }
 
-StatusOr<brillo::Blob> CryptohomeFrontendImpl::GetRsuDeviceId() {
+StatusOr<brillo::Blob> CryptohomeFrontendImpl::GetRsuDeviceId() const {
   return middleware_.CallSync<&Backend::Vendor::GetRsuDeviceId>();
 }
 
 StatusOr<absl::flat_hash_set<KeyAlgoType>>
-CryptohomeFrontendImpl::GetSupportedAlgo() {
+CryptohomeFrontendImpl::GetSupportedAlgo() const {
   return middleware_.CallSync<&Backend::KeyManagement::GetSupportedAlgo>();
 }
 
 StatusOr<CryptohomeFrontend::CreateKeyResult>
-CryptohomeFrontendImpl::CreateCryptohomeKey(KeyAlgoType key_algo) {
+CryptohomeFrontendImpl::CreateCryptohomeKey(KeyAlgoType key_algo) const {
   return middleware_.CallSync<&Backend::KeyManagement::CreateKey>(
       OperationPolicySetting{}, key_algo,
       Backend::KeyManagement::LoadKeyOptions{.auto_reload = true},
@@ -63,40 +63,42 @@ CryptohomeFrontendImpl::CreateCryptohomeKey(KeyAlgoType key_algo) {
 }
 
 StatusOr<ScopedKey> CryptohomeFrontendImpl::LoadKey(
-    const brillo::Blob& key_blob) {
+    const brillo::Blob& key_blob) const {
   return middleware_.CallSync<&Backend::KeyManagement::LoadKey>(
       OperationPolicy{}, key_blob,
       Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
 }
 
-StatusOr<brillo::Blob> CryptohomeFrontendImpl::GetPubkeyHash(Key key) {
+StatusOr<brillo::Blob> CryptohomeFrontendImpl::GetPubkeyHash(Key key) const {
   return middleware_.CallSync<&Backend::KeyManagement::GetPubkeyHash>(key);
 }
 
-StatusOr<ScopedKey> CryptohomeFrontendImpl::SideLoadKey(uint32_t key_handle) {
+StatusOr<ScopedKey> CryptohomeFrontendImpl::SideLoadKey(
+    uint32_t key_handle) const {
   return middleware_.CallSync<&Backend::KeyManagement::SideLoadKey>(key_handle);
 }
 
-StatusOr<uint32_t> CryptohomeFrontendImpl::GetKeyHandle(Key key) {
+StatusOr<uint32_t> CryptohomeFrontendImpl::GetKeyHandle(Key key) const {
   return middleware_.CallSync<&Backend::KeyManagement::GetKeyHandle>(key);
 }
 
-Status CryptohomeFrontendImpl::SetCurrentUser(const std::string& current_user) {
+Status CryptohomeFrontendImpl::SetCurrentUser(
+    const std::string& current_user) const {
   return middleware_.CallSync<&Backend::Config::SetCurrentUser>(current_user);
 }
 
-StatusOr<bool> CryptohomeFrontendImpl::IsCurrentUserSet() {
+StatusOr<bool> CryptohomeFrontendImpl::IsCurrentUserSet() const {
   return middleware_.CallSync<&Backend::Config::IsCurrentUserSet>();
 }
 
-StatusOr<bool> CryptohomeFrontendImpl::IsSealingSupported() {
+StatusOr<bool> CryptohomeFrontendImpl::IsSealingSupported() const {
   return middleware_.CallSync<&Backend::Sealing::IsSupported>();
 }
 
 StatusOr<brillo::Blob> CryptohomeFrontendImpl::SealWithCurrentUser(
     const std::optional<std::string>& current_user,
     const brillo::SecureBlob& auth_value,
-    const brillo::SecureBlob& unsealed_data) {
+    const brillo::SecureBlob& unsealed_data) const {
   if (auth_value.empty()) {
     return MakeStatus<TPMError>("Empty auth value", TPMRetryAction::kNoRetry);
   }
@@ -119,7 +121,7 @@ StatusOr<brillo::Blob> CryptohomeFrontendImpl::SealWithCurrentUser(
 }
 
 StatusOr<std::optional<ScopedKey>> CryptohomeFrontendImpl::PreloadSealedData(
-    const brillo::Blob& sealed_data) {
+    const brillo::Blob& sealed_data) const {
   return middleware_.CallSync<&Backend::Sealing::PreloadSealedData>(
       OperationPolicy{}, sealed_data);
 }
@@ -127,7 +129,7 @@ StatusOr<std::optional<ScopedKey>> CryptohomeFrontendImpl::PreloadSealedData(
 StatusOr<brillo::SecureBlob> CryptohomeFrontendImpl::UnsealWithCurrentUser(
     std::optional<Key> preload_data,
     const brillo::SecureBlob& auth_value,
-    const brillo::Blob& sealed_data) {
+    const brillo::Blob& sealed_data) const {
   if (auth_value.empty()) {
     return MakeStatus<TPMError>("Empty auth value", TPMRetryAction::kNoRetry);
   }
@@ -150,7 +152,7 @@ StatusOr<brillo::SecureBlob> CryptohomeFrontendImpl::UnsealWithCurrentUser(
 }
 
 StatusOr<brillo::Blob> CryptohomeFrontendImpl::Encrypt(
-    Key key, const brillo::SecureBlob& plaintext) {
+    Key key, const brillo::SecureBlob& plaintext) const {
   return middleware_.CallSync<&Backend::Encryption::Encrypt>(
       key, plaintext,
       Backend::Encryption::EncryptionOptions{
@@ -159,7 +161,7 @@ StatusOr<brillo::Blob> CryptohomeFrontendImpl::Encrypt(
 }
 
 StatusOr<brillo::SecureBlob> CryptohomeFrontendImpl::Decrypt(
-    Key key, const brillo::Blob& ciphertext) {
+    Key key, const brillo::Blob& ciphertext) const {
   return middleware_.CallSync<&Backend::Encryption::Decrypt>(
       key, ciphertext,
       Backend::Encryption::EncryptionOptions{
@@ -168,56 +170,57 @@ StatusOr<brillo::SecureBlob> CryptohomeFrontendImpl::Decrypt(
 }
 
 StatusOr<brillo::SecureBlob> CryptohomeFrontendImpl::GetAuthValue(
-    Key key, const brillo::SecureBlob& pass_blob) {
+    Key key, const brillo::SecureBlob& pass_blob) const {
   return middleware_.CallSync<&Backend::Deriving::SecureDerive>(key, pass_blob);
 }
 
-StatusOr<brillo::Blob> CryptohomeFrontendImpl::GetRandomBlob(size_t size) {
+StatusOr<brillo::Blob> CryptohomeFrontendImpl::GetRandomBlob(
+    size_t size) const {
   return middleware_.CallSync<&Backend::Random::RandomBlob>(size);
 }
 
 StatusOr<brillo::SecureBlob> CryptohomeFrontendImpl::GetRandomSecureBlob(
-    size_t size) {
+    size_t size) const {
   return middleware_.CallSync<&Backend::Random::RandomSecureBlob>(size);
 }
 
-StatusOr<uint32_t> CryptohomeFrontendImpl::GetManufacturer() {
+StatusOr<uint32_t> CryptohomeFrontendImpl::GetManufacturer() const {
   return middleware_.CallSync<&Backend::Vendor::GetManufacturer>();
 }
 
-StatusOr<bool> CryptohomeFrontendImpl::IsPinWeaverEnabled() {
+StatusOr<bool> CryptohomeFrontendImpl::IsPinWeaverEnabled() const {
   return middleware_.CallSync<&Backend::PinWeaver::IsEnabled>();
 }
 
-StatusOr<bool> CryptohomeFrontendImpl::IsBiometricsPinWeaverEnabled() {
+StatusOr<bool> CryptohomeFrontendImpl::IsBiometricsPinWeaverEnabled() const {
   ASSIGN_OR_RETURN(uint8_t version,
                    middleware_.CallSync<&Backend::PinWeaver::GetVersion>());
   return version >= kBiometricsPinWeaverProtocolVersion;
 }
 
 StatusOr<CryptohomeFrontend::StorageState>
-CryptohomeFrontendImpl::GetSpaceState(Space space) {
+CryptohomeFrontendImpl::GetSpaceState(Space space) const {
   return middleware_.CallSync<&Backend::Storage::IsReady>(space);
 }
 
-Status CryptohomeFrontendImpl::PrepareSpace(Space space, uint32_t size) {
+Status CryptohomeFrontendImpl::PrepareSpace(Space space, uint32_t size) const {
   return middleware_.CallSync<&Backend::Storage::Prepare>(space, size);
 }
 
-StatusOr<brillo::Blob> CryptohomeFrontendImpl::LoadSpace(Space space) {
+StatusOr<brillo::Blob> CryptohomeFrontendImpl::LoadSpace(Space space) const {
   return middleware_.CallSync<&Backend::Storage::Load>(space);
 }
 
 Status CryptohomeFrontendImpl::StoreSpace(Space space,
-                                          const brillo::Blob& blob) {
+                                          const brillo::Blob& blob) const {
   return middleware_.CallSync<&Backend::Storage::Store>(space, blob);
 }
 
-Status CryptohomeFrontendImpl::DestroySpace(Space space) {
+Status CryptohomeFrontendImpl::DestroySpace(Space space) const {
   return middleware_.CallSync<&Backend::Storage::Destroy>(space);
 }
 
-Status CryptohomeFrontendImpl::DeclareTpmFirmwareStable() {
+Status CryptohomeFrontendImpl::DeclareTpmFirmwareStable() const {
   return middleware_.CallSync<&Backend::Vendor::DeclareTpmFirmwareStable>();
 }
 
@@ -226,7 +229,7 @@ CryptohomeFrontendImpl::SealWithSignatureAndCurrentUser(
     const std::string& current_user,
     const brillo::SecureBlob& unsealed_data,
     const brillo::Blob& public_key_spki_der,
-    const std::vector<SignatureSealingAlgorithm>& key_algorithms) {
+    const std::vector<SignatureSealingAlgorithm>& key_algorithms) const {
   OperationPolicySetting prior_login_setting{
       .device_config_settings = DeviceConfigSettings{
           .current_user = DeviceConfigSettings::CurrentUserSetting{
@@ -247,7 +250,7 @@ StatusOr<CryptohomeFrontend::ChallengeResult>
 CryptohomeFrontendImpl::ChallengeWithSignatureAndCurrentUser(
     const SignatureSealedData& sealed_data,
     const brillo::Blob& public_key_spki_der,
-    const std::vector<SignatureSealingAlgorithm>& key_algorithms) {
+    const std::vector<SignatureSealingAlgorithm>& key_algorithms) const {
   OperationPolicy current_user_policy{
       .device_configs = DeviceConfigs{DeviceConfig::kCurrentUser}};
 
@@ -256,12 +259,12 @@ CryptohomeFrontendImpl::ChallengeWithSignatureAndCurrentUser(
 }
 
 StatusOr<brillo::SecureBlob> CryptohomeFrontendImpl::UnsealWithChallenge(
-    ChallengeID challenge, const brillo::Blob& challenge_response) {
+    ChallengeID challenge, const brillo::Blob& challenge_response) const {
   return middleware_.CallSync<&Backend::SignatureSealing::Unseal>(
       challenge, challenge_response);
 }
 
-StatusOr<uint32_t> CryptohomeFrontendImpl::GetFamily() {
+StatusOr<uint32_t> CryptohomeFrontendImpl::GetFamily() const {
   return middleware_.CallSync<&Backend::Vendor::GetFamily>();
 }
 
