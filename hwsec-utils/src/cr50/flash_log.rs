@@ -242,4 +242,50 @@ mod tests {
         let result = cr50_flash_log(&mut mock_ctx, PREV_STAMP);
         assert_eq!(result, Err((HwsecError::GsctoolError(1), 0)));
     }
+
+    #[test]
+    fn test_read_prev_timestamp_from_file_ok() {
+        use super::read_prev_timestamp_from_file;
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.create_path("mock_file_path");
+        assert_eq!(
+            mock_ctx.write_contents_to_file("mock_file_path", b"1"),
+            Ok(())
+        );
+        let result = read_prev_timestamp_from_file(&mut mock_ctx, "mock_file_path");
+        assert_eq!(result, Ok(1));
+    }
+
+    #[test]
+    fn test_read_prev_timestamp_from_file_not_exist() {
+        use super::read_prev_timestamp_from_file;
+        let mut mock_ctx = MockContext::new();
+        let result = read_prev_timestamp_from_file(&mut mock_ctx, "mock_file_path");
+        assert_eq!(result, Ok(0));
+    }
+
+    #[test]
+    fn test_read_prev_timestamp_from_file_multiple_lines() {
+        use super::read_prev_timestamp_from_file;
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.create_path("mock_file_path");
+        assert_eq!(
+            mock_ctx.write_contents_to_file("mock_file_path", b"1\n2"),
+            Ok(())
+        );
+        let result = read_prev_timestamp_from_file(&mut mock_ctx, "mock_file_path");
+        assert_eq!(result, Err(HwsecError::InternalError));
+    }
+    #[test]
+    fn test_read_prev_timestamp_from_file_not_u64() {
+        use super::read_prev_timestamp_from_file;
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.create_path("mock_file_path");
+        assert_eq!(
+            mock_ctx.write_contents_to_file("mock_file_path", b"test"),
+            Ok(())
+        );
+        let result = read_prev_timestamp_from_file(&mut mock_ctx, "mock_file_path");
+        assert_eq!(result, Err(HwsecError::InternalError));
+    }
 }
