@@ -8,6 +8,8 @@ use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Read;
+use std::time::Duration;
+use std::time::UNIX_EPOCH;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -32,6 +34,7 @@ use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateStage;
 use crate::hiberutil::ResumeOptions;
+use crate::hiberutil::TimestampFile;
 use crate::lvm::activate_physical_lv;
 use crate::metrics::read_and_send_metrics;
 use crate::metrics::MetricsFile;
@@ -55,6 +58,7 @@ pub struct ResumeConductor {
     options: ResumeOptions,
     metrics_logger: MetricsLogger,
     stateful_block_path: String,
+    timestamp_start: Duration,
 }
 
 impl ResumeConductor {
@@ -64,6 +68,7 @@ impl ResumeConductor {
             options: Default::default(),
             metrics_logger: MetricsLogger::new()?,
             stateful_block_path: path_to_stateful_block()?,
+            timestamp_start: Duration::ZERO,
         })
     }
 
@@ -234,6 +239,16 @@ impl ResumeConductor {
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
 
+        TimestampFile::record_timestamp("resume_start.ts", &self.timestamp_start)?;
+
+        let prep_time = UNIX_EPOCH.elapsed()? - self.timestamp_start;
+        debug!(
+            "Preparation for resume from hibernate took {}.{}.s",
+            prep_time.as_secs(),
+            prep_time.subsec_millis()
+        );
+        // TODO: log metric?
+
         // Close the metrics file before unmounting 'hibermeta'.
         self.metrics_logger.flush()?;
         self.metrics_logger.file = None;
@@ -263,7 +278,7 @@ impl ResumeConductor {
     ///                      use an existing one (for resuming).
     /// * `completion_receiver` - Used to wait for resume completion.
     fn setup_snapshot_device(
-        &self,
+        &mut self,
         new_hiberimage: bool,
         completion_receiver: crossbeam_channel::Receiver<()>,
     ) -> Result<()> {
@@ -281,6 +296,8 @@ impl ResumeConductor {
                 return Ok(());
             }
         };
+
+        self.timestamp_start = UNIX_EPOCH.elapsed().unwrap();
 
         VolumeManager::new()?.setup_hiberimage(
             tpm_key.as_ref(),

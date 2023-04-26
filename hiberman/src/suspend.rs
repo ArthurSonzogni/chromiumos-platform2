@@ -4,7 +4,9 @@
 
 //! Implements hibernate suspend functionality.
 
+use std::time::Duration;
 use std::time::Instant;
+use std::time::UNIX_EPOCH;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -30,6 +32,7 @@ use crate::hiberutil::prealloc_mem;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateOptions;
 use crate::hiberutil::HibernateStage;
+use crate::hiberutil::TimestampFile;
 use crate::lvm::is_lvm_system;
 use crate::metrics::log_hibernate_attempt;
 use crate::metrics::read_and_send_metrics;
@@ -47,6 +50,7 @@ pub struct SuspendConductor {
     options: HibernateOptions,
     metrics: MetricsLogger,
     volume_manager: VolumeManager,
+    timestamp_resumed: Option<Duration>,
 }
 
 impl SuspendConductor {
@@ -56,6 +60,7 @@ impl SuspendConductor {
             options: Default::default(),
             metrics: MetricsLogger::new()?,
             volume_manager: VolumeManager::new()?,
+            timestamp_resumed: None,
         })
     }
 
@@ -125,6 +130,9 @@ impl SuspendConductor {
             result.is_ok() && !self.options.dry_run,
             !self.options.dry_run,
         );
+
+        self.record_total_resume_time();
+
         // Read the metrics files and send out the samples.
         read_and_send_metrics();
 
@@ -197,6 +205,8 @@ impl SuspendConductor {
                 }
             }
         } else {
+            self.timestamp_resumed = Some(UNIX_EPOCH.elapsed().unwrap());
+
             // This is the resume path. First, forcefully reset the logger, which is some
             // stale partial state that the suspend path ultimately flushed and closed.
             // Keep logs in memory for now.
@@ -210,6 +220,29 @@ impl SuspendConductor {
         info!("Clearing hibernate cookie at {}", block_path);
         set_hibernate_cookie(Some(&block_path), HibernateCookieValue::NoResume)
             .context("Failed to clear hibernate cookie")
+    }
+
+    /// Record the total resume time.
+    fn record_total_resume_time(&self) {
+        if self.timestamp_resumed.is_none() {
+            return;
+        }
+
+        let res = TimestampFile::read_timestamp("resume_start.ts");
+        if let Err(e) = res {
+            warn!("Failed to read resume start timestap: {e}");
+            return;
+        }
+
+        let resume_start = res.unwrap();
+        let resume_time = self.timestamp_resumed.unwrap() - resume_start;
+
+        debug!(
+            "Resume from hibernate took {}.{}.s",
+            resume_time.as_secs(),
+            resume_time.subsec_millis()
+        );
+        // TODO: log metric
     }
 
     /// Utility function to power the system down immediately.
