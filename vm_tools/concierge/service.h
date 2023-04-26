@@ -35,7 +35,6 @@
 #include <dbus/message.h>
 #include <featured/feature_library.h>
 #include <grpcpp/grpcpp.h>
-#include <shadercached/proto_bindings/shadercached.pb.h>
 #include <spaced/disk_usage_proxy.h>
 #include <vm_concierge/concierge_service.pb.h>
 
@@ -466,7 +465,6 @@ class Service final : public org::chromium::VmConciergeInterface {
   dbus::ObjectProxy* vmplugin_service_proxy_;          // Owned by |bus_|.
   dbus::ObjectProxy* resource_manager_service_proxy_;  // Owned by |bus_|.
   dbus::ObjectProxy* chrome_features_service_proxy_;   // Owned by |bus_|.
-  dbus::ObjectProxy* shadercached_proxy_;              // Owned by |bus_|.
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   org::chromium::VmConciergeAdaptor concierge_adaptor_{this};

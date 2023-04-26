@@ -5,10 +5,6 @@
 #include "vm_tools/concierge/shadercached_helper.h"
 
 #include "base/strings/strcat.h"
-#include "base/strings/stringprintf.h"
-#include "brillo/dbus/dbus_proxy_util.h"
-#include "dbus/message.h"
-#include "dbus/scoped_dbus_error.h"
 
 namespace vm_tools::concierge {
 
@@ -34,39 +30,6 @@ std::string CreateShaderSharedDataParam(base::FilePath data_dir) {
                        ":type=fs", ":cache=never", ":timeout=1",
                        ":rewrite-security-xattrs=false", ":writeback=false",
                        ":ascii_casefold=false"});
-}
-
-base::expected<shadercached::PrepareShaderCacheResponse, std::string>
-PrepareShaderCache(const std::string& owner_id,
-                   const std::string& vm_name,
-                   scoped_refptr<dbus::Bus> bus_,
-                   dbus::ObjectProxy* shadercached_proxy_) {
-  dbus::MethodCall method_call(shadercached::kShaderCacheInterface,
-                               shadercached::kPrepareShaderCache);
-  dbus::MessageWriter shadercached_writer(&method_call);
-  shadercached::PrepareShaderCacheRequest prepare_request;
-  prepare_request.set_vm_name(vm_name);
-  prepare_request.set_vm_owner_id(owner_id);
-  shadercached_writer.AppendProtoAsArrayOfBytes(prepare_request);
-
-  dbus::ScopedDBusError error;
-  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
-      bus_, shadercached_proxy_, &method_call,
-      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-
-  if (!dbus_response) {
-    return base::unexpected(
-        base::StringPrintf("%s %s: %s", shadercached::kShaderCacheInterface,
-                           error.name(), error.message()));
-  }
-
-  shadercached::PrepareShaderCacheResponse response;
-  auto reader = dbus::MessageReader(dbus_response.get());
-  if (!reader.PopArrayOfBytesAsProto(&response)) {
-    return base::unexpected("Failed to parse PrepareShaderCacheResponse");
-  }
-
-  return base::ok(response);
 }
 
 }  // namespace vm_tools::concierge

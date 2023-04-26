@@ -8,21 +8,11 @@
 #include <string>
 
 #include "base/files/file_path.h"
-#include "base/types/expected.h"
-#include "dbus/object_proxy.h"
-#include "dbus/shadercached/dbus-constants.h"
-#include "shadercached/proto_bindings/shadercached.pb.h"
 
 namespace vm_tools::concierge {
 
 // Creates the shader-cache-specific shared data parameter for crosvm.
 std::string CreateShaderSharedDataParam(base::FilePath data_dir);
-
-base::expected<shadercached::PrepareShaderCacheResponse, std::string>
-PrepareShaderCache(const std::string& owner_id,
-                   const std::string& vm_name,
-                   scoped_refptr<dbus::Bus> bus_,
-                   dbus::ObjectProxy* shadercached_proxy_);
 
 }  // namespace vm_tools::concierge
 
