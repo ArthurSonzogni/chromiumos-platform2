@@ -52,7 +52,8 @@ class Features {
   };
 
   // Platform feature library can only initialized with a bus instance.
-  explicit Features(scoped_refptr<dbus::Bus> bus, bool test_instance = false);
+  explicit Features(scoped_refptr<dbus::Bus> bus,
+                    feature::PlatformFeaturesInterface*);
 
   Features(const Features&) = delete;
   Features& operator=(const Features&) = delete;
@@ -61,18 +62,8 @@ class Features {
   // Fetches the value from the finch server using the feature library.
   bool IsFeatureEnabled(ActiveFeature active_feature) const;
 
-  // SetDefaultForFeature will set the default value for test for the feature.
-  // This will be passed down to the feature library which inturn returns the
-  // defaults.
-  void SetDefaultForFeature(ActiveFeature active_feature, bool enabled);
-
  private:
-  // fake_platform_features_ptr_ is used for testing instances. The pointer is
-  // owned by this class.
-  feature::FakePlatformFeatures* fake_platform_features_ptr_ = nullptr;
-  // Default feature library used to fetch features values from finch.
-  std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib_;
-  bool test_instance_ = false;
+  feature::PlatformFeaturesInterface* feature_lib_;
 };
 
 // Thin wrapper around a Features object that is asynchronously initialized.
@@ -103,6 +94,10 @@ class AsyncInitFeatures {
  private:
   base::RepeatingCallback<Features*()> getter_;
 };
+
+// Helper function used by production and fake code.
+const VariationsFeature& GetVariationFeatureFor(
+    Features::ActiveFeature active_feature);
 
 }  // namespace cryptohome
 

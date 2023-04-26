@@ -238,7 +238,9 @@ class UserDataAuthTestBase : public ::testing::Test {
     }
     userdataauth_->set_biometrics_service(bio_service_.get());
 
-    features_ = std::make_unique<Features>(mount_bus_, true /*testing*/);
+    fake_feature_lib_ =
+        std::make_unique<feature::FakePlatformFeatures>(mount_bus_);
+    features_ = std::make_unique<Features>(mount_bus_, fake_feature_lib_.get());
     userdataauth_->set_features(features_.get());
     // Empty token list by default.  The effect is that there are no
     // attempts to unload tokens unless a test explicitly sets up the token
@@ -387,6 +389,10 @@ class UserDataAuthTestBase : public ::testing::Test {
 
   // Unowned pointer to the session object.
   NiceMock<MockUserSession>* session_ = nullptr;
+
+  // Fake PlatformFeatures object, will be passed to Features for its internal
+  // use.
+  std::unique_ptr<feature::FakePlatformFeatures> fake_feature_lib_;
 
   std::unique_ptr<Features> features_;
 

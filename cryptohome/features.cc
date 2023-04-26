@@ -14,34 +14,10 @@
 #include <featured/feature_library.h>
 
 namespace cryptohome {
-namespace {
 
-const VariationsFeature& GetVariationFeatureFor(
-    Features::ActiveFeature active_feature) {
-  switch (active_feature) {
-    case Features::kUSSMigration:
-      return kCrOSLateBootMigrateToUserSecretStash;
-    case Features::kModernPin:
-      return kCrOSLateBootEnableModernPin;
-    case Features::kMigratePin:
-      return kCrOSLateBootMigrateToModernPin;
-  }
-}
-
-}  // namespace
-
-Features::Features(scoped_refptr<dbus::Bus> bus, bool test_instance)
-    : test_instance_(test_instance) {
-  if (test_instance) {
-    auto fake_feature_lib =
-        std::make_unique<feature::FakePlatformFeatures>(bus);
-    fake_platform_features_ptr_ = fake_feature_lib.get();
-    feature_lib_ = std::move(fake_feature_lib);
-  } else {
-    fake_platform_features_ptr_ = nullptr;
-    feature_lib_ = feature::PlatformFeatures::New(bus);
-  }
-}
+Features::Features(scoped_refptr<dbus::Bus> bus,
+                   feature::PlatformFeaturesInterface* feature_lib)
+    : feature_lib_(feature_lib) {}
 
 bool Features::IsFeatureEnabled(ActiveFeature active_feature) const {
   const auto& variations_feature = GetVariationFeatureFor(active_feature);
@@ -49,13 +25,6 @@ bool Features::IsFeatureEnabled(ActiveFeature active_feature) const {
     return feature_lib_->IsEnabledBlocking(variations_feature);
   }
   return variations_feature.default_state == FEATURE_ENABLED_BY_DEFAULT;
-}
-
-void Features::SetDefaultForFeature(ActiveFeature active_feature,
-                                    bool enabled) {
-  CHECK(test_instance_);
-  fake_platform_features_ptr_->SetEnabled(
-      GetVariationFeatureFor(active_feature).name, enabled);
 }
 
 AsyncInitFeatures::AsyncInitFeatures(
@@ -73,6 +42,18 @@ bool AsyncInitFeatures::IsFeatureEnabled(
   }
   const auto& variations_feature = GetVariationFeatureFor(active_feature);
   return variations_feature.default_state == FEATURE_ENABLED_BY_DEFAULT;
+}
+
+const VariationsFeature& GetVariationFeatureFor(
+    Features::ActiveFeature active_feature) {
+  switch (active_feature) {
+    case Features::kUSSMigration:
+      return kCrOSLateBootMigrateToUserSecretStash;
+    case Features::kModernPin:
+      return kCrOSLateBootEnableModernPin;
+    case Features::kMigratePin:
+      return kCrOSLateBootMigrateToModernPin;
+  }
 }
 
 }  // namespace cryptohome

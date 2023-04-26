@@ -232,7 +232,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
         task_environment.GetMainThreadTaskRunner());
     userdataauth_.set_pinweaver(&pinweaver_);
     // TODO(hardikgoyal): Rewrite tests to work with USS.
-    features_.object.SetDefaultForFeature(Features::kUSSMigration, false);
+    features_.SetDefaultForFeature(Features::kUSSMigration, false);
   }
 
   void SetUpHWSecExpectations() {

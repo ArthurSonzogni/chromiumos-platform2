@@ -10,6 +10,8 @@
 #ifndef CRYPTOHOME_FAKE_FEATURES_H_
 #define CRYPTOHOME_FAKE_FEATURES_H_
 
+#include <memory>
+
 #include <base/memory/scoped_refptr.h>
 #include <dbus/mock_bus.h>
 #include <gmock/gmock.h>
@@ -23,9 +25,22 @@ namespace cryptohome {
 // also pair the Features object with an AsyncInitFeatures object, for testing
 // objects that require the latter.
 struct FakeFeaturesForTesting {
-  Features object{base::MakeRefCounted<::testing::NiceMock<dbus::MockBus>>(
-                      dbus::Bus::Options()),
-                  /*test_instance=*/true};
+ public:
+  // SetDefaultForFeature will set the default value for test for the feature.
+  // This will be passed down to the feature library which inturn returns the
+  // defaults.
+  void SetDefaultForFeature(Features::ActiveFeature active_feature,
+                            bool enabled) {
+    fake_feature_lib->SetEnabled(GetVariationFeatureFor(active_feature).name,
+                                 enabled);
+  }
+
+  scoped_refptr<::testing::NiceMock<dbus::MockBus>> mock_bus =
+      base::MakeRefCounted<::testing::NiceMock<dbus::MockBus>>(
+          dbus::Bus::Options());
+  std::unique_ptr<feature::FakePlatformFeatures> fake_feature_lib =
+      std::make_unique<feature::FakePlatformFeatures>(mock_bus);
+  Features object{mock_bus, fake_feature_lib.get()};
   AsyncInitFeatures async{object};
 };
 

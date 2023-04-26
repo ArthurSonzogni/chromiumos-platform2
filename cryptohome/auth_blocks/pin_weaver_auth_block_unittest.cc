@@ -107,7 +107,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTest) {
                           reset_secret};
   KeyBlobs vkk_data;
 
-  features_.object.SetDefaultForFeature(Features::kModernPin, true);
+  features_.SetDefaultForFeature(Features::kModernPin, true);
 
   CreateTestFuture result;
   auth_block_->Create(user_input, result.GetCallback());
@@ -145,7 +145,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithoutMigratePin) {
                           /*locked_to_single_user=*/std::nullopt, Username(),
                           ObfuscatedUsername(kObfuscatedUsername),
                           reset_secret};
-  features_.object.SetDefaultForFeature(Features::kMigratePin, false);
+  features_.SetDefaultForFeature(Features::kMigratePin, false);
   CreateTestFuture result;
   auth_block_->Create(user_input, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
@@ -336,7 +336,7 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTest) {
       .Times(Exactly(1));
   EXPECT_CALL(le_cred_manager_, GetDelaySchedule(_))
       .WillOnce(Return(PinDelaySchedule()));
-  features_.object.SetDefaultForFeature(Features::kMigratePin, true);
+  features_.SetDefaultForFeature(Features::kMigratePin, true);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;
@@ -386,7 +386,7 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTestWithLockoutPin) {
       .Times(Exactly(1));
   EXPECT_CALL(le_cred_manager_, GetDelaySchedule(_))
       .WillOnce(Return(LockoutDelaySchedule()));
-  features_.object.SetDefaultForFeature(Features::kMigratePin, true);
+  features_.SetDefaultForFeature(Features::kMigratePin, true);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;
@@ -432,7 +432,7 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTestWithoutMigratePin) {
       .WillByDefault(ReturnError<CryptohomeLECredError>());
   EXPECT_CALL(le_cred_manager_, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
-  features_.object.SetDefaultForFeature(Features::kMigratePin, false);
+  features_.SetDefaultForFeature(Features::kMigratePin, false);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;

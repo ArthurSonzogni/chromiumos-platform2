@@ -695,7 +695,9 @@ void UserDataAuth::ShutdownTask() {
 void UserDataAuth::InitializeFeatureLibrary() {
   AssertOnMountThread();
   if (!features_) {
-    default_features_ = std::make_unique<Features>(mount_thread_bus_);
+    CHECK(feature::PlatformFeatures::Initialize(mount_thread_bus_));
+    default_features_ = std::make_unique<Features>(
+        mount_thread_bus_, feature::PlatformFeatures::Get());
     features_ = default_features_.get();
     if (!features_) {
       LOG(WARNING) << "Failed to determine USS migration experiment flag";

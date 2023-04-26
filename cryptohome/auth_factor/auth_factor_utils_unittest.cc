@@ -403,7 +403,7 @@ TEST(AuthFactorUtilsTest,
   AuthFactorType auth_factor_type;
   std::string auth_factor_label;
   FakeFeaturesForTesting features;
-  features.object.SetDefaultForFeature(Features::kModernPin, /*enabled=*/true);
+  features.SetDefaultForFeature(Features::kModernPin, /*enabled=*/true);
   EXPECT_TRUE(GetAuthFactorMetadata(auth_factor_proto, features.async,
                                     auth_factor_metadata, auth_factor_type,
                                     auth_factor_label));
@@ -439,7 +439,7 @@ TEST(AuthFactorUtilsTest,
   AuthFactorType auth_factor_type;
   std::string auth_factor_label;
   FakeFeaturesForTesting features;
-  features.object.SetDefaultForFeature(Features::kModernPin, /*enabled=*/true);
+  features.SetDefaultForFeature(Features::kModernPin, /*enabled=*/true);
   EXPECT_FALSE(GetAuthFactorMetadata(auth_factor_proto, features.async,
                                      auth_factor_metadata, auth_factor_type,
                                      auth_factor_label));
