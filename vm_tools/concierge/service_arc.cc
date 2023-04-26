@@ -427,7 +427,7 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
                       .tag = "_data_media",
                       .uid_map = kAndroidUidMap,
                       .gid_map = kAndroidGidMap,
-                      .enable_caches = false,
+                      .enable_caches = true,
                       .ascii_casefold = true,
                       .posix_acl = true,
                       .privileged_quota_uids = privileged_quota_uids}
