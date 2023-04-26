@@ -248,7 +248,8 @@ const std::array kCommandLogs {
   Log{kGlob, "framebuffer", "/sys/kernel/debug/dri/?/framebuffer",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kCommand, "fwupd_state",
-    "/usr/bin/fwupdmgr get-devices --json | sed '/\"Serial\" :/d'",
+    "/usr/bin/fwupdmgr get-devices --json | sed -e '/\"Serial\" :/d' "
+    "-e '/\"Version\" :/s/\\./:/g'",
     kRoot, kRoot},
   Log{kCommand, "fwupd_version", "/usr/bin/fwupdmgr --version", kRoot, kRoot},
   Log{kCommand, "hardware_class", "/usr/bin/crossystem hwid"},
