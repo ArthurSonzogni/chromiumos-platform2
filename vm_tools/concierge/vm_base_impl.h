@@ -67,6 +67,12 @@ class VmBaseImpl : public VmInterface {
 
   std::string GetVmSocketPath() const;
 
+  // Inflate balloon until perceptible processes are tried to kill.
+  void InflateAggressiveBalloon(AggressiveBalloonCallback callback) override;
+
+  // Stop inflating aggressive balloon.
+  void StopAggressiveBalloon(AggressiveBalloonResponse& response) override;
+
  protected:
   // Adjusts the amount of CPU the VM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,

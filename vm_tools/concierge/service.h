@@ -258,6 +258,12 @@ class Service final : public org::chromium::VmConciergeInterface {
   void ReclaimVmMemory(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender);
 
+  // Inflate balloon in a vm until perceptible processes in the guest are tried
+  // to kill.
+  void AggressiveBalloon(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                             AggressiveBalloonResponse>> response,
+                         const AggressiveBalloonRequest& request) override;
+
   // Writes DnsConfigResponse protobuf into DBus message.
   void ComposeDnsResponse(dbus::MessageWriter* writer);
 

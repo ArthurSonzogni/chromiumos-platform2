@@ -72,6 +72,7 @@
 #include <base/version.h>
 #include <blkid/blkid.h>
 #include <brillo/dbus/dbus_proxy_util.h>
+#include <brillo/dbus/dbus_method_response.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/osrelease_reader.h>
 #include <brillo/process/process.h>
@@ -4032,6 +4033,42 @@ void Service::ReclaimVmMemory(
       FROM_HERE, base::BindOnce(&ReclaimVmMemoryInternal, pid, page_limit),
       base::BindOnce(&SendDbusResponse, std::move(response_sender),
                      method_call));
+}
+
+void Service::AggressiveBalloon(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        AggressiveBalloonResponse>> response_sender,
+    const AggressiveBalloonRequest& request) {
+  LOG(INFO) << "Received request: " << __func__;
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+
+  AggressiveBalloonResponse response;
+
+  if (!ValidateVmNameAndOwner(request, response)) {
+    response_sender->Return(response);
+    return;
+  }
+
+  auto iter = FindVm(request.owner_id(), request.name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM does not exist";
+    response.set_failure_reason("Requested VM does not exist");
+    response_sender->Return(response);
+    return;
+  }
+
+  if (request.enable()) {
+    iter->second->InflateAggressiveBalloon(base::BindOnce(
+        [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+               AggressiveBalloonResponse>> response_sender,
+           AggressiveBalloonResponse response) {
+          std::move(response_sender)->Return(response);
+        },
+        std::move(response_sender)));
+  } else {
+    iter->second->StopAggressiveBalloon(response);
+    response_sender->Return(response);
+  }
 }
 
 void Service::OnResolvConfigChanged(std::vector<string> nameservers,

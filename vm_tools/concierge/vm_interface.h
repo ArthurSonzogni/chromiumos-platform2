@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include <base/functional/callback.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 
@@ -79,6 +80,9 @@ class VmInterface {
     // Whether the VM is using storage ballooning.
     bool storage_ballooning;
   };
+
+  using AggressiveBalloonCallback =
+      base::OnceCallback<void(AggressiveBalloonResponse response)>;
 
   // Classes that implement this interface *MUST* exit as quickly as possible
   // once their destructor is called.
@@ -192,6 +196,12 @@ class VmInterface {
 
   // Makes RT vCPU for the VM.
   virtual void MakeRtVcpu() = 0;
+
+  // Inflate balloon until perceptible processes are tried to kill.
+  virtual void InflateAggressiveBalloon(AggressiveBalloonCallback callback) = 0;
+
+  // Stop inflating aggressive balloon.
+  virtual void StopAggressiveBalloon(AggressiveBalloonResponse& response) = 0;
 
  private:
   // Handle the device going to suspend.

@@ -160,6 +160,18 @@ void VmBaseImpl::MakeRtVcpu() {
   CrosvmControl::Get()->MakeRtVm(GetVmSocketPath().c_str());
 }
 
+void VmBaseImpl::InflateAggressiveBalloon(AggressiveBalloonCallback callback) {
+  AggressiveBalloonResponse response;
+  response.set_success(false);
+  response.set_failure_reason("Unsupported by target VM");
+  std::move(callback).Run(response);
+}
+
+void VmBaseImpl::StopAggressiveBalloon(AggressiveBalloonResponse& response) {
+  response.set_success(false);
+  response.set_failure_reason("Unsupported by target VM");
+}
+
 bool VmBaseImpl::HandleVmmSwapStateChange(SwapState state) {
   if (state == SwapState::ENABLED) {
     return crosvm_client_swap_enable_vm(GetVmSocketPath().c_str());
