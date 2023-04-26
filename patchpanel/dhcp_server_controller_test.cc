@@ -10,7 +10,7 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
-#include <shill/net/ip_address.h>
+#include <shill/net/ipv4_address.h>
 #include <shill/net/mock_process_manager.h>
 
 using testing::_;
@@ -22,15 +22,8 @@ namespace patchpanel {
 namespace {
 
 using Config = DHCPServerController::Config;
-
-// Returns a IPv4 IPAddress, or crashes if the arguments are not valid.
-shill::IPAddress CreateAndUnwrapIPAddress(const std::string& ip,
-                                          unsigned int prefix = 0) {
-  const auto ret = shill::IPAddress::CreateFromStringAndPrefix(
-      ip, prefix, shill::IPAddress::kFamilyIPv4);
-  CHECK(ret.has_value()) << ip << "/" << prefix << " is not a valid IP";
-  return *ret;
-}
+using shill::IPv4Address;
+using shill::IPv4CIDR;
 
 class MockCallback {
  public:
@@ -46,12 +39,12 @@ class DHCPServerControllerTest : public ::testing::Test {
   }
 
   Config CreateValidConfig() {
-    const auto host_ip = CreateAndUnwrapIPAddress("192.168.1.1", 24);
-    const auto start_ip = CreateAndUnwrapIPAddress("192.168.1.50");
-    const auto end_ip = CreateAndUnwrapIPAddress("192.168.1.100");
+    const auto host_ip = *IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
+    const auto start_ip = *IPv4Address::CreateFromString("192.168.1.50");
+    const auto end_ip = *IPv4Address::CreateFromString("192.168.1.100");
     const auto dns_servers = {
-        CreateAndUnwrapIPAddress("1.2.3.4"),
-        CreateAndUnwrapIPAddress("5.6.7.8"),
+        *IPv4Address::CreateFromString("1.2.3.4"),
+        *IPv4Address::CreateFromString("5.6.7.8"),
     };
     const std::vector<std::string> domain_searches = {
         "domain.local0",
@@ -68,29 +61,29 @@ class DHCPServerControllerTest : public ::testing::Test {
 
 TEST_F(DHCPServerControllerTest, ConfigWithWrongSubnet) {
   // start_ip and end_ip are not in 192.168.1.0 subnet.
-  const auto host_ip = CreateAndUnwrapIPAddress("192.168.1.1", 24);
-  const auto start_ip = CreateAndUnwrapIPAddress("192.168.5.50");
-  const auto end_ip = CreateAndUnwrapIPAddress("192.168.5.100");
+  const auto host_ip = *IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
+  const auto start_ip = *IPv4Address::CreateFromString("192.168.5.50");
+  const auto end_ip = *IPv4Address::CreateFromString("192.168.5.100");
 
   EXPECT_EQ(Config::Create(host_ip, start_ip, end_ip, {}, {}), std::nullopt);
 }
 
 TEST_F(DHCPServerControllerTest, ConfigWithWrongRange) {
   // end_ip is smaller than start_ip.
-  const auto host_ip = CreateAndUnwrapIPAddress("192.168.1.1", 24);
-  const auto start_ip = CreateAndUnwrapIPAddress("192.168.1.100");
-  const auto end_ip = CreateAndUnwrapIPAddress("192.168.1.50");
+  const auto host_ip = *IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
+  const auto start_ip = *IPv4Address::CreateFromString("192.168.1.100");
+  const auto end_ip = *IPv4Address::CreateFromString("192.168.1.50");
 
   EXPECT_EQ(Config::Create(host_ip, start_ip, end_ip, {}, {}), std::nullopt);
 }
 
 TEST_F(DHCPServerControllerTest, ValidConfig) {
-  const auto host_ip = CreateAndUnwrapIPAddress("192.168.1.1", 24);
-  const auto start_ip = CreateAndUnwrapIPAddress("192.168.1.50");
-  const auto end_ip = CreateAndUnwrapIPAddress("192.168.1.100");
+  const auto host_ip = *IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
+  const auto start_ip = *IPv4Address::CreateFromString("192.168.1.50");
+  const auto end_ip = *IPv4Address::CreateFromString("192.168.1.100");
   const auto dns_servers = {
-      CreateAndUnwrapIPAddress("1.2.3.4"),
-      CreateAndUnwrapIPAddress("5.6.7.8"),
+      *IPv4Address::CreateFromString("1.2.3.4"),
+      *IPv4Address::CreateFromString("5.6.7.8"),
   };
   const std::vector<std::string> domain_searches = {
       "domain.local0",
@@ -108,9 +101,9 @@ TEST_F(DHCPServerControllerTest, ValidConfig) {
 }
 
 TEST_F(DHCPServerControllerTest, ValidConfigWithoutOptionalArgument) {
-  const auto host_ip = CreateAndUnwrapIPAddress("192.168.1.1", 24);
-  const auto start_ip = CreateAndUnwrapIPAddress("192.168.1.50");
-  const auto end_ip = CreateAndUnwrapIPAddress("192.168.1.100");
+  const auto host_ip = *IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
+  const auto start_ip = *IPv4Address::CreateFromString("192.168.1.50");
+  const auto end_ip = *IPv4Address::CreateFromString("192.168.1.100");
   const auto config = Config::Create(host_ip, start_ip, end_ip, {}, {});
 
   ASSERT_NE(config, std::nullopt);

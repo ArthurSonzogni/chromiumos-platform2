@@ -28,6 +28,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
+#include <shill/net/ipv4_address.h>
 
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/arc_service.h"
@@ -2298,26 +2299,33 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
 
 std::optional<DHCPServerController::Config>
 DownstreamNetworkInfo::ToDHCPServerConfig() const {
-  using shill::IPAddress;
+  using shill::IPv4Address;
+  using shill::IPv4CIDR;
 
   if (!enable_ipv4_dhcp) {
     return std::nullopt;
   }
 
-  const auto host_ip = IPAddress::CreateFromStringAndPrefix(
-      IPv4AddressToString(ipv4_addr),
-      static_cast<unsigned int>(ipv4_prefix_length), IPAddress::kFamilyIPv4);
-  const auto start_ip = IPAddress::CreateFromStringAndPrefix(
-      IPv4AddressToString(ipv4_dhcp_start_addr),
-      static_cast<unsigned int>(ipv4_prefix_length), IPAddress::kFamilyIPv4);
-  const auto end_ip = IPAddress::CreateFromStringAndPrefix(
-      IPv4AddressToString(ipv4_dhcp_end_addr),
-      static_cast<unsigned int>(ipv4_prefix_length), IPAddress::kFamilyIPv4);
+  const auto host_ip = IPv4CIDR::CreateFromStringAndPrefix(
+      IPv4AddressToString(ipv4_addr), ipv4_prefix_length);
+  const auto start_ip =
+      IPv4Address::CreateFromString(IPv4AddressToString(ipv4_dhcp_start_addr));
+  const auto end_ip =
+      IPv4Address::CreateFromString(IPv4AddressToString(ipv4_dhcp_end_addr));
   if (!host_ip || !start_ip || !end_ip) {
     return std::nullopt;
   }
+  std::vector<IPv4Address> dns_servers;
+  for (const auto& dns_server : dhcp_dns_servers) {
+    if (const auto ipv4 = dns_server.ToIPv4Address()) {
+      dns_servers.push_back(*ipv4);
+    } else {
+      LOG(WARNING) << "Invalid DNS server: " << dns_server;
+    }
+  }
+
   return DHCPServerController::Config::Create(
-      *host_ip, *start_ip, *end_ip, dhcp_dns_servers, dhcp_domain_searches);
+      *host_ip, *start_ip, *end_ip, dns_servers, dhcp_domain_searches);
 }
 
 std::ostream& operator<<(std::ostream& stream,

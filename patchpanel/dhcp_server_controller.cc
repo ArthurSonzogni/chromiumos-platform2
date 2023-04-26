@@ -26,24 +26,14 @@ using Config = DHCPServerController::Config;
 
 // static
 std::optional<Config> Config::Create(
-    const shill::IPAddress& host_ip,
-    const shill::IPAddress& start_ip,
-    const shill::IPAddress& end_ip,
-    const std::vector<shill::IPAddress>& dns_servers,
+    const shill::IPv4CIDR& host_cidr,
+    const shill::IPv4Address& start_ip,
+    const shill::IPv4Address& end_ip,
+    const std::vector<shill::IPv4Address>& dns_servers,
     const std::vector<std::string>& domain_searches) {
-  DCHECK(host_ip.IsValid());
-  DCHECK(start_ip.IsValid());
-  DCHECK(end_ip.IsValid());
-
-  // All the fields should be IPv4 IP.
-  constexpr auto kValidFamily = shill::IPAddress::kFamilyIPv4;
-  if (!(host_ip.family() == kValidFamily && start_ip.family() == kValidFamily &&
-        end_ip.family() == kValidFamily)) {
-    return std::nullopt;
-  }
-
-  // The start_ip and end_ip should be in the same subnet as host_ip.
-  if (!(host_ip.CanReachAddress(start_ip) && host_ip.CanReachAddress(end_ip))) {
+  // The start_ip and end_ip should be in the same subnet as host_cidr.
+  if (!(host_cidr.ContainsAddress(start_ip) &&
+        host_cidr.ContainsAddress(end_ip))) {
     return std::nullopt;
   }
 
@@ -52,16 +42,14 @@ std::optional<Config> Config::Create(
     return std::nullopt;
   }
 
-  // Transform std::vector<IPAddress> to std::vector<std::string>.
+  // Transform std::vector<IPv4Address> to std::vector<std::string>.
   std::vector<std::string> dns_server_strs;
   for (const auto& ip : dns_servers) {
-    DCHECK(ip.IsValid());
     dns_server_strs.push_back(ip.ToString());
   }
 
-  const auto netmask = shill::IPAddress::GetAddressMaskFromPrefix(
-      kValidFamily, host_ip.prefix());
-  return Config(host_ip.ToString(), netmask.ToString(), start_ip.ToString(),
+  return Config(host_cidr.address().ToString(),
+                host_cidr.ToNetmask().ToString(), start_ip.ToString(),
                 end_ip.ToString(), base::JoinString(dns_server_strs, ","),
                 base::JoinString(domain_searches, ","));
 }

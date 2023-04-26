@@ -10,12 +10,12 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <shill/net/ip_address.h>
+#include <shill/net/ipv4_address.h>
 #include <shill/net/process_manager.h>
 
 namespace patchpanel {
 
-// This class manages the one DHCP server on a certain network interface.
+// This class manages the one IPv4 DHCP server on a certain network interface.
 class DHCPServerController {
  public:
   using ExitCallback = shill::ProcessManager::ExitCallback;
@@ -25,17 +25,17 @@ class DHCPServerController {
   class Config {
    public:
     // Creates the Config instance if the arguments are valid.
-    // |host_ip| is IP of the DHCP server. Its prefix() determines the
-    // subnet that the DHCP server serves.
+    // |host_cidr| is CIDR of the DHCP server. Its prefix_length() determines
+    // the subnet that the DHCP server serves.
     // |start_ip| and |end_ip| defines the DHCP IP range, which should be under
     // the same subnet as the DHCP server serves.
     // |dns_servers| is the list of DNS servers.
     // |domain_searches| is the list of the domain search.
     static std::optional<Config> Create(
-        const shill::IPAddress& host_ip,
-        const shill::IPAddress& start_ip,
-        const shill::IPAddress& end_ip,
-        const std::vector<shill::IPAddress>& dns_servers,
+        const shill::IPv4CIDR& host_cidr,
+        const shill::IPv4Address& start_ip,
+        const shill::IPv4Address& end_ip,
+        const std::vector<shill::IPv4Address>& dns_servers,
         const std::vector<std::string>& domain_searches);
 
     // Getter methods of each field.
