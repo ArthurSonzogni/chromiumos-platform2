@@ -10,5 +10,5 @@ KERNEL=="vhost-vsock", GROUP="virtaccess", MODE="0660"
 KERNEL=="userfaultfd", GROUP="virtaccess", MODE="0440"
 
 # Make sure that crosvm virtio vhost-user backend processes can access
-# the virtio vhost-user pci devices via VFIO.
+# the dGPU pci devices via VFIO.
 SUBSYSTEM=="vfio", GROUP="virtaccess", MODE="0660"
