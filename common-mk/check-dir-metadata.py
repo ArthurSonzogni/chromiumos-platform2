@@ -94,7 +94,6 @@ LEGACYLIST = {
     "metrics",
     "midis",
     "minios",
-    "missive",
     "mist",
     "ml_benchmark",
     "modem-utilities",
