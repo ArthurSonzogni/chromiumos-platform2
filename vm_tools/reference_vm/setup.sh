@@ -52,11 +52,15 @@ EOF
     "${DATA_ROOT}/etc/default/grub.d/50-reference-vm.cfg"
   update-grub
 
+  install -m 0755 -t /usr/local/bin \
+    "${DATA_ROOT}/usr/local/bin/update-cros-list"
+
   install -D -m 0644 -t /usr/local/lib/systemd/system \
     "${DATA_ROOT}/usr/local/lib/systemd/system/maitred.service" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/opt-google-cros\\x2dcontainers.mount" \
+    "${DATA_ROOT}/usr/local/lib/systemd/system/update-cros-list.service" \
     "${DATA_ROOT}/usr/local/lib/systemd/system/vshd.service"
-  systemctl enable maitred.service vshd.service \
+  systemctl enable maitred.service update-cros-list.service vshd.service \
     'opt-google-cros\x2dcontainers.mount'
 
   install -D -m 0644 -t /usr/src/virtio-wayland-0 \

@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 from typing import Dict, List, Optional, Tuple
 
+import requests
 import yaml
 
 
@@ -45,7 +46,7 @@ def main():
     ap.add_argument("--cache-dir", help="directory for debootstrap caches")
     ap.add_argument(
         "--cros-version",
-        required=True,
+        type=int,
         help="install VM tools for this CrOS version",
     )
     ap.add_argument(
@@ -62,12 +63,15 @@ def main():
     args = ap.parse_args()
 
     cache_dir = pathlib.Path(args.cache_dir) if args.cache_dir else None
-    # TODO(jamesye): auto-detect the latest version
-    cros_version = args.cros_version
+    cros_bucket_name = {
+        "release": "cros-packages",
+        "staging": "cros-packages-staging",
+    }[args.cros_tools]
+    cros_version = args.cros_version or get_latest_cros_version(
+        cros_bucket_name
+    )
     cros_packages_url = (
-        f"https://storage.googleapis.com/cros-packages/{cros_version}/"
-        if args.cros_tools == "release"
-        else f"https://storage.googleapis.com/cros-packages-staging/{cros_version}/"
+        f"https://storage.googleapis.com/{cros_bucket_name}/{cros_version}/"
     )
 
     image_path = pathlib.Path(args.out)
@@ -110,6 +114,19 @@ def main():
 
                     print("Install complete, syncing")
                     subprocess.run(["sync"])
+
+
+def get_latest_cros_version(bucket: str) -> int:
+    res = requests.get(
+        f"https://storage.googleapis.com/storage/v1/b/{bucket}/o?delimiter=/&matchGlob=**/"
+    )
+    res.raise_for_status()
+    # The returned prefixes include a trailing /, remove it.
+    prefixes = [p[:-1] for p in res.json()["prefixes"]]
+    # And find the latest version among valid version numbers.
+    version = max([int(p) for p in prefixes if p.isnumeric()])
+    print(f"Detected latest CrOS version for {bucket} is {version}")
+    return version
 
 
 @contextlib.contextmanager
