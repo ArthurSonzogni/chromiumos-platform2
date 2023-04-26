@@ -253,9 +253,7 @@ class Service final : public org::chromium::VmConciergeInterface {
   void NotifyVmSwapping(const VmId& vm_id);
 
   // Handles a request to install the Pflash image associated with a VM.
-  InstallPflashResponse InstallPflash(
-      const InstallPflashRequest& request,
-      const base::ScopedFD& pflash_src_fd) override;
+  std::unique_ptr<dbus::Response> InstallPflash(dbus::MethodCall* method_call);
 
   // Asynchronously handles a request to reclaim memory of a given VM.
   void ReclaimVmMemory(dbus::MethodCall* method_call,

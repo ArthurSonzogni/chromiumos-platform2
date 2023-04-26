@@ -440,6 +440,21 @@ void SetVmCpuArgs(int32_t cpus, VmBuilder& vm_builder) {
   }
 }
 
+// Passes |method_call| to |handler| and passes the response to
+// |response_sender|. If |handler| returns NULL, an empty response is created
+// and sent.
+void HandleSynchronousDBusMethodCall(
+    base::OnceCallback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>
+        handler,
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  std::unique_ptr<dbus::Response> response =
+      std::move(handler).Run(method_call);
+  if (!response)
+    response = dbus::Response::FromMethodCall(method_call);
+  std::move(response_sender).Run(std::move(response));
+}
+
 void HandleAsynchronousDBusMethodCall(
     base::OnceCallback<void(dbus::MethodCall*,
                             dbus::ExportedObject::ResponseSender)> handler,
@@ -1496,6 +1511,13 @@ bool Service::Init() {
 
   dlcservice_client_ = std::make_unique<DlcHelper>(bus_);
 
+  // Synchronously returns dbus::Response.
+  using ServiceMethod =
+      std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
+  static const std::map<const char*, ServiceMethod> kServiceMethods = {
+      {kInstallPflashMethod, &Service::InstallPflash},
+  };
+
   // Asynchronously calls the callback ResponseSender.
   using AsyncServiceMethod = void (Service::*)(
       dbus::MethodCall*, dbus::ExportedObject::ResponseSender);
@@ -1524,6 +1546,18 @@ bool Service::Init() {
            base::BindOnce(
                [](Service* service, dbus::ExportedObject* exported_object_,
                   scoped_refptr<dbus::Bus> bus) {
+                 for (const auto& iter : kServiceMethods) {
+                   bool ret = exported_object_->ExportMethodAndBlock(
+                       kVmConciergeInterface, iter.first,
+                       base::BindRepeating(
+                           &HandleSynchronousDBusMethodCall,
+                           base::BindRepeating(iter.second,
+                                               base::Unretained(service))));
+                   if (!ret) {
+                     LOG(ERROR) << "Failed to export method " << iter.first;
+                     return false;
+                   }
+                 }
                  for (const auto& iter : kAsyncServiceMethods) {
                    bool ret = exported_object_->ExportMethodAndBlock(
                        kVmConciergeInterface, iter.first,
@@ -4842,25 +4876,49 @@ void Service::NotifyVmSwapping(const VmId& vm_id) {
   exported_object_->SendSignal(&signal);
 }
 
-InstallPflashResponse Service::InstallPflash(
-    const InstallPflashRequest& request, const base::ScopedFD& pflash_src_fd) {
+std::unique_ptr<dbus::Response> Service::InstallPflash(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  InstallPflashRequest request;
   InstallPflashResponse response;
 
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    response.set_failure_reason(
+        "Unable to parse InstallPflashRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   if (!ValidateVmNameAndOwner(request, response)) {
-    return response;
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::ScopedFD pflash_src_fd;
+  if (!reader.PopFileDescriptor(&pflash_src_fd)) {
+    response.set_failure_reason("Failed to pop Pflash image fd");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
   }
 
   std::optional<PflashMetadata> pflash_metadata =
       GetPflashMetadata(request.owner_id(), request.vm_name());
   if (!pflash_metadata) {
     response.set_failure_reason("Failed to get pflash install path");
-    return response;
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
   }
 
   // We only allow one Pflash file to be allowed during the lifetime of a VM.
   if (pflash_metadata->is_installed) {
     response.set_failure_reason("Pflash already installed");
-    return response;
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
   }
 
   // No Pflash is installed that means we can associate the given file with the
@@ -4873,11 +4931,13 @@ InstallPflashResponse Service::InstallPflash(
             << " to: " << pflash_metadata->path;
   if (!base::CopyFile(pflash_src_path, pflash_metadata->path)) {
     response.set_failure_reason("Failed to copy pflash image");
-    return response;
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
   }
 
   response.set_success(true);
-  return response;
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
 }
 
 // TODO(b/244486983): separate out GPU VM cache methods out of service.cc file
