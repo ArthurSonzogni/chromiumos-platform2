@@ -1466,3 +1466,25 @@ message InstallPflashResponse {
   // valid when |success| is false.
   string failure_reason = 2;
 }
+
+// Request sent to vm_concierge to inflate balloon in a vm until perceptible
+// processes are tried to kill.
+message AggressiveBalloonRequest {
+  // The name of the VM.
+  string name = 1;
+
+  // The owner of the VM.
+  string owner_id = 2;
+
+  // Whether enable inflating aggressive balloon or not.
+  bool enable = 3;
+}
+
+// Response to an AggressiveBalloonRequest.
+message AggressiveBalloonResponse {
+  // Whether inflating balloon succeeds or not.
+  bool success = 1;
+
+  // The reason for failure.
+  string failure_reason = 2;
+}

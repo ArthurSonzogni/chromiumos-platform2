@@ -47,6 +47,7 @@ const char kGetVmLaunchAllowedMethod[] = "GetVmLaunchAllowed";
 const char kGetVmLogsMethod[] = "GetVmLogs";
 const char kSwapVmMethod[] = "SwapVm";
 const char kInstallPflashMethod[] = "InstallPflash";
+const char kAggressiveBalloonMethod[] = "AggressiveBalloon";
 
 const char kDiskImageProgressSignal[] = "DiskImageProgress";
 const char kDnsSettingsChangedSignal[] = "DnsSettingsChanged";
