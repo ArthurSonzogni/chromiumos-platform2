@@ -1248,6 +1248,10 @@ message AddAuthFactorReply {
   // which field to use and the process on the migration, see comment in
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 2;
+
+  // When successful, the field will be set and AuthFactor with status returns
+  // newly added authfactors along with their status information.
+  AuthFactorWithStatus added_auth_factor = 3;
 }
 
 // AuthenticateAuthFactorRequest is built when a user is trying to
@@ -1326,6 +1330,10 @@ message UpdateAuthFactorReply {
   // which field to use and the process on the migration, see comment in
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 2;
+
+  // When successful, the field will be set and AuthFactor with status returns
+  // newly added authfactors along with their status information.
+  AuthFactorWithStatus updated_auth_factor = 3;
 }
 
 message UpdateAuthFactorMetadataRequest {
