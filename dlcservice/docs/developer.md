@@ -182,6 +182,32 @@ A DLC is updated at the same time the device itself is updated.
 
 Note: in the case of scaled DLCs, it will not update with the OS at the moment.
 
+### How to install from production servers from a test image when my DLC is preloaded?
+
+If you are using a developer-built image, you cannot easily install DLC from
+production servers.
+Instead, you should use preloading or deploy the DLC package.
+
+The DLC that has preloading enabled must first be uninstalled.
+Uninstall the DLC using the utility binary:
+`dlcservice_util --uninstall --id=<DLC_ID>`.
+
+Next step is to wipe the preloaded DLC on your test image device.
+You can remove the preloaded directory for your DLC at
+`/var/cache/dlc-images/<DLC_ID>`.
+
+If your DLC is a scaled DLC, you can proceed with the DLC installation and be
+on your way.
+
+If your DLC is a legacy DLC, you must modify your ChromeOS lsb-release to fake
+being a signed device. This must be done by disabling rootfs verification and
+adding a `-signed` suffix to the key `CHROMEOS_RELEASE_BOARD`.
+
+e.g. the key should look like `CHROMEOS_RELEASE_BOARD=<BOARD>-signed`.
+
+Also, for legacy DLCs, this will only work for "live" images
+(ChromeOS builds that were pushed).
+
 [Development Steps]: #Development-Steps
 [Create a DLC]: #Create-a-DLC
 [Building a DLC locally]: #Building-a-DLC-locally
