@@ -31,13 +31,14 @@ constexpr char kSeccompFilterPath[] =
 // Checks to see if |file_path| exists on the device. If it does, it will be
 // bind-mounted inside |jail| at the same path it exists outside the minijail,
 // and it will not be writeable from inside |jail|.
-void BindMountIfPathExists(struct minijail* jail,
-                           const base::FilePath& file_path) {
+// Returns 0 on success or when the file doesn't exist, non-zero for failure.
+int BindMountIfPathExists(struct minijail* jail,
+                          const base::FilePath& file_path) {
   if (!base::PathExists(file_path))
-    return;
+    return 0;
 
   const char* path_string = file_path.value().c_str();
-  minijail_bind(jail, path_string, path_string, 0);
+  return minijail_bind(jail, path_string, path_string, 0);
 }
 
 }  // namespace
@@ -193,6 +194,11 @@ void EnterExecutorMinijail() {
   PCHECK(0 == minijail_mount(j.get(), "tmpfs", "/run", "tmpfs", /*flags=*/0));
   PCHECK(0 == minijail_mount(j.get(), "/dev", "/dev", "bind",
                              /*flags=*/MS_BIND | MS_REC));
+
+  // Also bind efivars, which is a separate filesystem mounted under sys.
+  // It is only present on some systems.
+  PCHECK(0 == BindMountIfPathExists(
+                  j.get(), base::FilePath("/sys/firmware/efi/efivars")));
 
   minijail_enter(j.get());
 }
