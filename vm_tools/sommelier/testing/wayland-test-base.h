@@ -84,12 +84,15 @@ class FakeWaylandClient {
     Flush();
   }
 
-  // Create a surface and return its ID
-  uint32_t CreateSurface() {
+  // Create a surface.
+  struct wl_surface* CreateSurface() {
     struct wl_surface* surface = wl_compositor_create_surface(compositor);
     Flush();
-    return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(surface));
+    return surface;
   }
+
+  // Returns the xdg_wm_base object.
+  struct xdg_wm_base* GetXdgWmBase() { return xdg_wm_base; }
 
   // Create an xdg_positioner object.
   struct xdg_positioner* CreatePositioner() {
@@ -97,6 +100,14 @@ class FakeWaylandClient {
         xdg_wm_base_create_positioner(xdg_wm_base);
     Flush();
     return positioner;
+  }
+
+  // Create an xdg_surface object.
+  struct xdg_surface* CreateXdgSurface() {
+    struct xdg_surface* surface =
+        xdg_wm_base_get_xdg_surface(xdg_wm_base, CreateSurface());
+    Flush();
+    return surface;
   }
 
   void Flush() { wl_display_flush(client_display); }

@@ -76,7 +76,7 @@ class X11TestBase : public WaylandTestBase {
     // Pretend we created a frame window too
     window->frame_id = GenerateId();
 
-    window->host_surface_id = xwayland->CreateSurface();
+    window->host_surface_id = SurfaceId(xwayland->CreateSurface());
     sl_window_update(window);
     Pump();
     // Default to the first output if any exist.

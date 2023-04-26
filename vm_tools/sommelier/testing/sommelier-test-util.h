@@ -24,6 +24,7 @@ struct WlToListener;
     using type = Listener;                       \
   };
 
+MAP_STRUCT_TO_LISTENER(xdg_wm_base*, xdg_wm_base_listener);
 MAP_STRUCT_TO_LISTENER(xdg_surface*, xdg_surface_listener);
 MAP_STRUCT_TO_LISTENER(xdg_toplevel*, xdg_toplevel_listener);
 MAP_STRUCT_TO_LISTENER(wl_output*, wl_output_listener);
@@ -52,6 +53,7 @@ const typename WlToListener<T>::type* HostEventHandler(T proxy) {
 uint32_t XdgToplevelId(sl_window* window);
 uint32_t AuraSurfaceId(sl_window* window);
 uint32_t AuraToplevelId(sl_window* window);
+uint32_t SurfaceId(wl_surface* wl_surface);
 
 }  // namespace sommelier
 }  // namespace vm_tools

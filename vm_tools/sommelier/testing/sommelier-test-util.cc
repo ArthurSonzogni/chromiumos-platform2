@@ -24,5 +24,10 @@ uint32_t AuraToplevelId(sl_window* window) {
   return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->aura_toplevel));
 }
 
+uint32_t SurfaceId(wl_surface* wl_surface) {
+  assert(wl_surface);
+  return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(wl_surface));
+}
+
 }  // namespace sommelier
 }  // namespace vm_tools
