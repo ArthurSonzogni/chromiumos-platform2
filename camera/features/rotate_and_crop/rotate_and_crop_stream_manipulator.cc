@@ -290,7 +290,7 @@ bool RotateAndCropStreamManipulator::InitializeOnThread(
     std::transform(
         hal_available_rc_modes_.begin(), hal_available_rc_modes_.end(),
         std::back_inserter(mode_strs),
-        [](uint8_t x) { return base::ToString(base::strict_cast<int>(x)); });
+        [](uint8_t x) { return std::to_string(base::strict_cast<int>(x)); });
     VLOGF(1) << "HAL available rotate-and-crop modes: ["
              << base::JoinString(mode_strs, ", ") << "]";
   }
