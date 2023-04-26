@@ -115,6 +115,7 @@ class Converter {
                        &dbus_wrapper_, LidState::NOT_PRESENT,
                        TabletMode::UNSUPPORTED);
       controller->HandleHoverStateChange(true /* hovering */);
+      controller->HandleUserActivity(power_manager::USER_ACTIVITY_OTHER);
       controller_ = std::move(controller);
     } else {
       auto controller = std::make_unique<InternalBacklightController>();
