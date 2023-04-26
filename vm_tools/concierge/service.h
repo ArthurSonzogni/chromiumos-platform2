@@ -216,7 +216,7 @@ class Service final : public org::chromium::VmConciergeInterface {
   ListUsbDeviceResponse ListUsbDevices(
       const ListUsbDeviceRequest& request) override;
 
-  DnsSettings GetDnsSettings() override;
+  std::unique_ptr<dbus::Response> GetDnsSettings(dbus::MethodCall* method_call);
 
   SetVmCpuRestrictionResponse SetVmCpuRestriction(
       const SetVmCpuRestrictionRequest& request) override;
@@ -259,8 +259,8 @@ class Service final : public org::chromium::VmConciergeInterface {
   void ReclaimVmMemory(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender);
 
-  // Creates DnsSettings from current configuration.
-  DnsSettings ComposeDnsResponse();
+  // Writes DnsConfigResponse protobuf into DBus message.
+  void ComposeDnsResponse(dbus::MessageWriter* writer);
 
   // Handles DNS changes from shill.
   void OnResolvConfigChanged(std::vector<std::string> nameservers,
