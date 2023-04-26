@@ -26,11 +26,11 @@ using feature::PlatformFeaturesInterface;
 
 PoliciesFeaturesBroker::PoliciesFeaturesBroker(
     std::unique_ptr<policy::PolicyProvider> policy_provider,
-    std::unique_ptr<PlatformFeaturesInterface> features,
+    feature::PlatformFeaturesInterface* features,
     base::RepeatingClosure poll_done_cb)
     : weak_ptr_factory_(this),
       policy_provider_(std::move(policy_provider)),
-      features_(std::move(features)),
+      features_(features),
       poll_done_cb_(std::move(poll_done_cb)),
       feature_values_{
           {Feature::kCrOSLateBootSecagentdXDRReporting,

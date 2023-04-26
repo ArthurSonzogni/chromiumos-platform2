@@ -42,7 +42,7 @@ class SecAgent {
            std::unique_ptr<PluginFactoryInterface>,
            std::unique_ptr<org::chromium::AttestationProxyInterface>,
            std::unique_ptr<org::chromium::TpmManagerProxyInterface>,
-           std::unique_ptr<feature::PlatformFeaturesInterface>,
+           feature::PlatformFeaturesInterface*,
            bool bypass_policy_for_testing,
            bool bypass_enq_ok_wait_for_testing,
            uint32_t heartbeat_period_s,
@@ -77,7 +77,7 @@ class SecAgent {
   std::unique_ptr<PluginInterface> agent_plugin_;
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_proxy_;
-  std::unique_ptr<feature::PlatformFeaturesInterface> platform_features_;
+  feature::PlatformFeaturesInterface* platform_features_;
   bool bypass_policy_for_testing_ = false;
   bool bypass_enq_ok_wait_for_testing_ = false;
   bool reporting_events_ = false;

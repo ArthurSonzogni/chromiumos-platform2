@@ -53,7 +53,7 @@ class PoliciesFeaturesBroker : public PoliciesFeaturesBrokerInterface {
  public:
   PoliciesFeaturesBroker(
       std::unique_ptr<policy::PolicyProvider> policy_provider,
-      std::unique_ptr<feature::PlatformFeaturesInterface> features,
+      feature::PlatformFeaturesInterface* features,
       base::RepeatingClosure poll_done_cb);
 
   void StartAndBlockForSync(
@@ -83,7 +83,7 @@ class PoliciesFeaturesBroker : public PoliciesFeaturesBrokerInterface {
 
   base::WeakPtrFactory<PoliciesFeaturesBroker> weak_ptr_factory_;
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
-  std::unique_ptr<feature::PlatformFeaturesInterface> features_;
+  feature::PlatformFeaturesInterface* features_;
   base::RepeatingClosure poll_done_cb_;
   mutable base::Lock values_lock_;
   std::map<Feature, VariationAndValue> feature_values_;

@@ -44,11 +44,10 @@ class PoliciesFeaturesBrokerTestFixture : public ::testing::Test {
     ON_CALL(*dbus_bus_, GetOriginTaskRunner())
         .WillByDefault(
             Return(task_environment_.GetMainThreadTaskRunner().get()));
-    auto features = std::make_unique<feature::FakePlatformFeatures>(dbus_bus_);
-    fake_features_ = features.get();
+    fake_features_ = std::make_unique<feature::FakePlatformFeatures>(dbus_bus_);
 
     broker_ = base::MakeRefCounted<PoliciesFeaturesBroker>(
-        std::move(policy_provider), std::move(features),
+        std::move(policy_provider), fake_features_.get(),
         base::BindLambdaForTesting([this]() { VerifyExpectations(); }));
   }
 
@@ -104,7 +103,7 @@ class PoliciesFeaturesBrokerTestFixture : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
   StrictMock<policy::MockPolicyProvider>* mock_policy_provider_ = nullptr;
   StrictMock<policy::MockDevicePolicy> mock_device_policy_;
-  feature::FakePlatformFeatures* fake_features_ = nullptr;
+  std::unique_ptr<feature::FakePlatformFeatures> fake_features_;
   scoped_refptr<PoliciesFeaturesBroker> broker_;
   int num_poll_done_cb_calls_ = 0;
   bool expected_xdr_events_policy_;

@@ -47,6 +47,7 @@ int Daemon::OnInit() {
   if (rv != EX_OK) {
     return rv;
   }
+  CHECK(feature::PlatformFeatures::Initialize(bus_));
 
   secagent_ = std::make_unique<SecAgent>(
       base::BindOnce(&Daemon::QuitDaemon, weak_ptr_factory_.GetWeakPtr()),
@@ -57,7 +58,7 @@ int Daemon::OnInit() {
       std::make_unique<PluginFactory>(),
       std::make_unique<org::chromium::AttestationProxy>(bus_),
       std::make_unique<org::chromium::TpmManagerProxy>(bus_),
-      feature::PlatformFeatures::New(bus_), bypass_policy_for_testing_,
+      feature::PlatformFeatures::Get(), bypass_policy_for_testing_,
       bypass_enq_ok_wait_for_testing_, heartbeat_period_s_,
       plugin_batch_interval_s_);
 

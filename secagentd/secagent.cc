@@ -41,7 +41,7 @@ SecAgent::SecAgent(
     std::unique_ptr<PluginFactoryInterface> plugin_factory,
     std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy,
     std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_proxy,
-    std::unique_ptr<feature::PlatformFeaturesInterface> platform_features,
+    feature::PlatformFeaturesInterface* platform_features,
     bool bypass_policy_for_testing,
     bool bypass_enq_ok_wait_for_testing,
     uint32_t heartbeat_period_s,
@@ -52,7 +52,7 @@ SecAgent::SecAgent(
       plugin_factory_(std::move(plugin_factory)),
       attestation_proxy_(std::move(attestation_proxy)),
       tpm_proxy_(std::move(tpm_proxy)),
-      platform_features_(std::move(platform_features)),
+      platform_features_(platform_features),
       bypass_policy_for_testing_(bypass_policy_for_testing),
       bypass_enq_ok_wait_for_testing_(bypass_enq_ok_wait_for_testing),
       heartbeat_period_s_(heartbeat_period_s),
@@ -60,7 +60,7 @@ SecAgent::SecAgent(
       quit_daemon_cb_(std::move(quit_daemon_cb)),
       weak_ptr_factory_(this) {
   policies_features_broker_ = base::MakeRefCounted<PoliciesFeaturesBroker>(
-      std::make_unique<policy::PolicyProvider>(), std::move(platform_features_),
+      std::make_unique<policy::PolicyProvider>(), platform_features_,
       base::BindRepeating(&SecAgent::CheckPolicyAndFeature,
                           weak_ptr_factory_.GetWeakPtr()));
 }
