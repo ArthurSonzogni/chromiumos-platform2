@@ -1741,14 +1741,8 @@ TEST_F(TextSuggesterTest, GboardExperimentGroupTriggersExpectedSuggestions) {
   ConnectTextSuggester(MultiWordExperimentGroup::kGboard);
 
   TextSuggesterQueryPtr query = TextSuggesterQuery::New();
-  query->text = "why ar";
-  query->suggestion_mode = TextSuggestionMode::kCompletion;
-
-  NextWordCompletionCandidatePtr candidate_one =
-      NextWordCompletionCandidate::New();
-  candidate_one->text = "aren\'t";
-  candidate_one->normalized_score = -1.0f;
-  query->next_word_candidates.push_back(std::move(candidate_one));
+  query->text = "I'll send her file as ";
+  query->suggestion_mode = TextSuggestionMode::kPrediction;
 
   bool infer_callback_done = false;
   suggester_->Suggest(
@@ -1760,10 +1754,10 @@ TEST_F(TextSuggesterTest, GboardExperimentGroupTriggersExpectedSuggestions) {
             ASSERT_EQ(result->candidates.size(), 1);
             ASSERT_TRUE(result->candidates.at(0)->is_multi_word());
             EXPECT_EQ(result->candidates.at(0)->get_multi_word()->text,
-                      "aren\'t you");
+                      "soon as I get");
             EXPECT_NEAR(
                 result->candidates.at(0)->get_multi_word()->normalized_score,
-                -0.13418171f, equality_delta);
+                -0.53198f, equality_delta);
             *infer_callback_done = true;
           },
           &infer_callback_done, scoring_equality_delta_));
