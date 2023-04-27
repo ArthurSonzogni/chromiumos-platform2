@@ -42,7 +42,7 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
   LOG(INFO) << "Chrome requested OOBE config.";
 
   hwsec::FactoryImpl hwsec_factory(hwsec::ThreadingMode::kCurrentThread);
-  std::unique_ptr<hwsec::OobeConfigFrontend> hwsec_oobe_config =
+  std::unique_ptr<const hwsec::OobeConfigFrontend> hwsec_oobe_config =
       hwsec_factory.GetOobeConfigFrontend();
   OobeConfig oobe_config(hwsec_oobe_config.get());
   LoadOobeConfigRollback load_oobe_config_rollback(&oobe_config);

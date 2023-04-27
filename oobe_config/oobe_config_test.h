@@ -37,7 +37,7 @@ class OobeConfigTest : public ::testing::Test {
   void CreateRollbackSpace();
 
   hwsec::Tpm2SimulatorFactoryForTest hwsec_factory_;
-  std::unique_ptr<hwsec::OobeConfigFrontend> hwsec_oobe_config_;
+  std::unique_ptr<const hwsec::OobeConfigFrontend> hwsec_oobe_config_;
 
   FileHandlerForTesting file_handler_;
   std::unique_ptr<OobeConfig> oobe_config_;

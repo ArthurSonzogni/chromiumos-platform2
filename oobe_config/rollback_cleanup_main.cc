@@ -23,7 +23,7 @@ void InitLog() {
 
 void ZeroTpmSpaceIfExists() {
   auto hwsec_factory_ = std::make_unique<hwsec::FactoryImpl>();
-  std::unique_ptr<hwsec::OobeConfigFrontend> hwsec_ =
+  std::unique_ptr<const hwsec::OobeConfigFrontend> hwsec_ =
       hwsec_factory_->GetOobeConfigFrontend();
 
   hwsec::Status space_ready = hwsec_->IsRollbackSpaceReady();

@@ -24,7 +24,7 @@
 namespace oobe_config {
 
 namespace {
-void ResetRollbackSpace(hwsec::OobeConfigFrontend* hwsec_oobe_config) {
+void ResetRollbackSpace(const hwsec::OobeConfigFrontend* hwsec_oobe_config) {
   hwsec::Status space_reset = hwsec_oobe_config->ResetRollbackSpace();
   if (!space_reset.ok()) {
     LOG(ERROR) << "Resetting rollback space failed: " << space_reset.status();
@@ -33,7 +33,7 @@ void ResetRollbackSpace(hwsec::OobeConfigFrontend* hwsec_oobe_config) {
 }
 }  // namespace
 
-OobeConfig::OobeConfig(hwsec::OobeConfigFrontend* hwsec_oobe_config,
+OobeConfig::OobeConfig(const hwsec::OobeConfigFrontend* hwsec_oobe_config,
                        FileHandler file_handler)
     : hwsec_oobe_config_(hwsec_oobe_config),
       file_handler_(std::move(file_handler)) {}

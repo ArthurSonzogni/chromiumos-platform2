@@ -20,7 +20,7 @@ class RollbackData;
 // Helper class for saving and restoring rollback data.
 class OobeConfig {
  public:
-  explicit OobeConfig(hwsec::OobeConfigFrontend* hwsec_oobe_config,
+  explicit OobeConfig(const hwsec::OobeConfigFrontend* hwsec_oobe_config,
                       FileHandler file_handler = FileHandler());
   OobeConfig(const OobeConfig&) = delete;
   OobeConfig& operator=(const OobeConfig&) = delete;
@@ -71,7 +71,7 @@ class OobeConfig {
   void GetRollbackData(RollbackData* rollback_data) const;
 
   // Object for accessing the HWSec related functions.
-  hwsec::OobeConfigFrontend* hwsec_oobe_config_;
+  const hwsec::OobeConfigFrontend* hwsec_oobe_config_;
   // Object for managing files.
   FileHandler file_handler_;
 

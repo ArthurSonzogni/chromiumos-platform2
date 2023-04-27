@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
   LOG(INFO) << "Starting oobe_config_save";
   hwsec::FactoryImpl hwsec_factory(hwsec::ThreadingMode::kCurrentThread);
-  std::unique_ptr<hwsec::OobeConfigFrontend> hwsec_oobe_config =
+  std::unique_ptr<const hwsec::OobeConfigFrontend> hwsec_oobe_config =
       hwsec_factory.GetOobeConfigFrontend();
   oobe_config::OobeConfig oobe_config(hwsec_oobe_config.get());
 
