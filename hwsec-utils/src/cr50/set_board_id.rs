@@ -57,10 +57,11 @@ pub fn cr50_check_board_id_and_flag(
     new_flag: u16,
 ) -> Result<(), Cr50SetBoardIDVerdict> {
     let board_id_output = {
-        let gsctool_raw_response = run_gsctool_cmd(ctx, vec!["-a", "-i"]).map_err(|_| {
-            eprintln!("Failed to run gsctool.");
-            Cr50SetBoardIDVerdict::GeneralError
-        })?;
+        let gsctool_raw_response =
+            run_gsctool_cmd(ctx, vec!["--any", "--board_id"]).map_err(|_| {
+                eprintln!("Failed to run gsctool.");
+                Cr50SetBoardIDVerdict::GeneralError
+            })?;
         let board_id_output = std::str::from_utf8(&gsctool_raw_response.stdout).unwrap();
         extract_board_id_from_gsctool_response(board_id_output)
     };
@@ -99,10 +100,11 @@ pub fn cr50_set_board_id_and_flag(
     flag: u16,
 ) -> Result<(), Cr50SetBoardIDVerdict> {
     let updater_arg = &format!("{:08x}:{:08x}", board_id, flag);
-    let update_output = run_gsctool_cmd(ctx, vec!["-a", "-i", updater_arg]).map_err(|_| {
-        eprintln!("Failed to run gsctool.");
-        Cr50SetBoardIDVerdict::GeneralError
-    })?;
+    let update_output =
+        run_gsctool_cmd(ctx, vec!["--any", "--board_id", updater_arg]).map_err(|_| {
+            eprintln!("Failed to run gsctool.");
+            Cr50SetBoardIDVerdict::GeneralError
+        })?;
     if !update_output.status.success() {
         eprintln!("Failed to update with {}.", updater_arg);
         Err(Cr50SetBoardIDVerdict::GeneralError)
@@ -121,7 +123,7 @@ pub fn check_cr50_support(
     target_prepvt: Version,
     desc: &str,
 ) -> Result<(), Cr50SetBoardIDVerdict> {
-    let output = run_gsctool_cmd(ctx, vec!["-a", "-f", "-M"]).map_err(|_| {
+    let output = run_gsctool_cmd(ctx, vec!["--any", "--fwver", "--machine"]).map_err(|_| {
         eprintln!("Failed to run gsctool.");
         Cr50SetBoardIDVerdict::GeneralError
     })?;
@@ -248,7 +250,7 @@ mod tests {
     fn test_cr50_check_board_id_and_flag_ok() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-i"],
+            vec!["--any", "--board_id"],
             0,
             "Board ID space: ffffffff:ffffffff:ffffffff",
             "",
@@ -262,7 +264,7 @@ mod tests {
     fn test_cr50_check_board_id_and_flag_part_1_neq_new_board_id() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-i"],
+            vec!["--any", "--board_id"],
             0,
             "Board ID space: 12345678:23456789:34567890",
             "",
@@ -279,7 +281,7 @@ mod tests {
     fn test_cr50_check_board_id_and_flag_flag_xor_new_flag_eq_whitelabel() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-i"],
+            vec!["--any", "--board_id"],
             0,
             "Board ID space: 12345678:23456789:00000087",
             "",
@@ -293,7 +295,7 @@ mod tests {
     fn test_cr50_check_board_id_and_flag_board_id_flag_neq_new_flag() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-i"],
+            vec!["--any", "--board_id"],
             0,
             "Board ID space: 12345678:23456789:00001234",
             "",
@@ -310,7 +312,7 @@ mod tests {
     fn test_cr50_check_board_id_and_flag_else_case() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-i"],
+            vec!["--any", "--board_id"],
             0,
             "Board ID space: 12345678:23456789:00001234",
             "",
@@ -324,7 +326,7 @@ mod tests {
     fn test_cr50_set_board_id_and_flag_ok() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-i", "12345678:0000abcd"],
+            vec!["--any", "--board_id", "12345678:0000abcd"],
             0,
             "",
             "",
@@ -338,7 +340,7 @@ mod tests {
     fn test_cr50_set_board_id_and_flag_failed() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-i", "12345678:0000abcd"],
+            vec!["--any", "--board_id", "12345678:0000abcd"],
             1,
             "",
             "",
@@ -354,7 +356,7 @@ mod tests {
     fn test_check_cr50_support_ok() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-f", "-M"],
+            vec!["--any", "--fwver", "--machine"],
             0,
             "RW_FW_VER=1.0.0",
             "",
@@ -367,9 +369,12 @@ mod tests {
     #[test]
     fn test_check_cr50_support_failed_to_get_version() {
         let mut mock_ctx = MockContext::new();
-        mock_ctx
-            .cmd_runner()
-            .add_gsctool_interaction(vec!["-a", "-f", "-M"], 0, "", "");
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--any", "--fwver", "--machine"],
+            0,
+            "",
+            "",
+        );
 
         let result = check_cr50_support_partial_board_id(&mut mock_ctx);
         assert_eq!(result, Err(Cr50SetBoardIDVerdict::GeneralError));
@@ -379,7 +384,7 @@ mod tests {
     fn test_check_cr50_support_prod_version_too_old() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-f", "-M"],
+            vec!["--any", "--fwver", "--machine"],
             0,
             "RW_FW_VER=0.3.23",
             "",
@@ -393,7 +398,7 @@ mod tests {
     fn test_check_cr50_support_prepvt_version_too_old() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-f", "-M"],
+            vec!["--any", "--fwver", "--machine"],
             0,
             "RW_FW_VER=0.4.23",
             "",

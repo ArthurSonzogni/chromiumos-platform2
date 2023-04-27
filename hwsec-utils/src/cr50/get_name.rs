@@ -20,7 +20,7 @@ pub fn cr50_get_name(
 
     info!("updater is {}", GSCTOOL_CMD_NAME);
 
-    let exe_result = run_gsctool_cmd(ctx, [gsctool_command_options, &["-i"]].concat())?;
+    let exe_result = run_gsctool_cmd(ctx, [gsctool_command_options, &["--board_id"]].concat())?;
     let exit_status = exe_result.status.code().unwrap();
     let output = format!(
         "{}{}",
@@ -62,7 +62,7 @@ mod tests {
         let mut mock_ctx = MockContext::new();
 
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-i"],
+            vec!["--any", "--board_id"],
             0,
             "finding_device 18d1:5014\n\
             Found device.\n\
@@ -73,7 +73,7 @@ mod tests {
             "",
         );
 
-        let name = cr50_get_name(&mut mock_ctx, &["-a"]);
+        let name = cr50_get_name(&mut mock_ctx, &["--any"]);
 
         assert_eq!(name, Ok(String::from(GSC_IMAGE_BASE_NAME) + ".prod"));
     }
@@ -83,7 +83,7 @@ mod tests {
         let mut mock_ctx = MockContext::new();
 
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-i"],
+            vec!["--any", "--board_id"],
             0,
             "finding_device 18d1:5014\n\
             Found device.\n\
@@ -94,7 +94,7 @@ mod tests {
             "",
         );
 
-        let name = cr50_get_name(&mut mock_ctx, &["-a"]);
+        let name = cr50_get_name(&mut mock_ctx, &["--any"]);
         assert_eq!(name, Err(HwsecError::GsctoolResponseBadFormatError));
     }
 
@@ -103,7 +103,7 @@ mod tests {
         let mut mock_ctx = MockContext::new();
 
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-i"],
+            vec!["--any", "--board_id"],
             0,
             "finding_device 18d1:5014\n\
             Found device.\n\
@@ -114,7 +114,7 @@ mod tests {
             "",
         );
 
-        let name = cr50_get_name(&mut mock_ctx, &["-a"]);
+        let name = cr50_get_name(&mut mock_ctx, &["--any"]);
 
         assert_eq!(name, Ok(String::from(GSC_IMAGE_BASE_NAME) + ".prepvt"));
     }

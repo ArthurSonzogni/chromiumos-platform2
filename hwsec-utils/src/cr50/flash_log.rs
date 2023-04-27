@@ -50,7 +50,7 @@ pub fn set_cr50_log_file_time_base(ctx: &mut impl Context) -> Result<(), HwsecEr
         Err(_) => return Err(HwsecError::SystemTimeError),
     };
 
-    let gsctool_result = run_gsctool_cmd(ctx, vec!["-a", "-T", &epoch_secs.to_string()])?;
+    let gsctool_result = run_gsctool_cmd(ctx, vec!["--any", "--tstamp", &epoch_secs.to_string()])?;
     if !gsctool_result.status.success() {
         error!("Failed to set Cr50 flash log time base to {}", epoch_secs);
         return Err(HwsecError::GsctoolError(
@@ -105,7 +105,7 @@ fn parse_timestamp_and_event_id_from_log_entry(line: &str) -> Result<(u64, u64),
 pub fn cr50_flash_log(ctx: &mut impl Context, prev_stamp: u64) -> Result<u64, (HwsecError, u64)> {
     let Ok(gsctool_result) = run_gsctool_cmd(
         ctx,
-        vec!["-a", "-M", "-L", &prev_stamp.to_string()]
+        vec!["--any", "--machine", "--flog", &prev_stamp.to_string()]
     ) else {
         return Err((HwsecError::GsctoolError(1), 0))
     };
@@ -205,9 +205,12 @@ mod tests {
     #[test]
     fn test_cr50_flash_log_empty_flash_log() {
         let mut mock_ctx = MockContext::new();
-        mock_ctx
-            .cmd_runner()
-            .add_gsctool_interaction(vec!["-a", "-M", "-L", "0"], 0, "", "");
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--any", "--machine", "--flog", "0"],
+            0,
+            "",
+            "",
+        );
 
         let result = cr50_flash_log(&mut mock_ctx, PREV_STAMP);
         assert_eq!(result, Ok(0));
@@ -217,7 +220,7 @@ mod tests {
     fn test_cr50_flash_log_multiple_lines_flash_log() {
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-M", "-L", "0"],
+            vec!["--any", "--machine", "--flog", "0"],
             0,
             &format!("{:>10}:00\n{:>10}:09 02\n{:>10}:09 02", 1, 2, 3),
             "",
@@ -235,9 +238,12 @@ mod tests {
     #[test]
     fn test_cr50_flash_log_event_gsctool_error() {
         let mut mock_ctx = MockContext::new();
-        mock_ctx
-            .cmd_runner()
-            .add_gsctool_interaction(vec!["-a", "-M", "-L", "0"], 1, "", "");
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--any", "--machine", "--flog", "0"],
+            1,
+            "",
+            "",
+        );
 
         let result = cr50_flash_log(&mut mock_ctx, PREV_STAMP);
         assert_eq!(result, Err((HwsecError::GsctoolError(1), 0)));

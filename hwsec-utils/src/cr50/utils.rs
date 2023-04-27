@@ -19,7 +19,7 @@ pub fn run_gsctool_cmd(
     mut options: Vec<&str>,
 ) -> Result<HwsecOutput, HwsecError> {
     if cfg!(feature = "ti50_onboard") {
-        options.push("-D");
+        options.push("--dauntless");
     }
 
     ctx.cmd_runner()
@@ -95,7 +95,7 @@ pub fn extract_board_id_from_gsctool_response(raw_response: &str) -> Result<Boar
 }
 
 pub fn get_board_id_with_gsctool(ctx: &mut impl Context) -> Result<BoardID, HwsecError> {
-    let gsctool_raw_response = run_gsctool_cmd(ctx, vec!["-a", "-i"])?;
+    let gsctool_raw_response = run_gsctool_cmd(ctx, vec!["--any", "--board_id"])?;
     let board_id_output = std::str::from_utf8(&gsctool_raw_response.stdout)
         .map_err(|_| HwsecError::GsctoolResponseBadFormatError)?;
     extract_board_id_from_gsctool_response(board_id_output)
@@ -182,7 +182,7 @@ pub fn get_hwid(ctx: &mut impl Context) -> Result<String, HwsecError> {
 
 pub fn get_challenge_string(ctx: &mut impl Context) -> Result<String, HwsecError> {
     // containing whitespace and newline characters
-    Ok(get_gsctool_output(ctx, vec!["-t", "-r"])
+    Ok(get_gsctool_output(ctx, vec!["--trunks_send", "--rma_auth"])
         .map_err(|_| HwsecError::GsctoolResponseBadFormatError)?
         .replace("Challange:", ""))
 }

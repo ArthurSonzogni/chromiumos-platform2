@@ -114,11 +114,14 @@ fn set_sn_bits_with_gsctool(
     ctx: &mut impl Context,
     sn_bits: SnBits,
 ) -> Result<i32, Cr50SetSnBitsVerdict> {
-    let gsctool_output = run_gsctool_cmd(ctx, vec!["-a", "-S", &u8_slice_to_hex_string(&sn_bits)])
-        .map_err(|_| {
-            eprintln!("ERROR: Failed to run gsctool.");
-            Cr50SetSnBitsVerdict::GeneralError
-        })?;
+    let gsctool_output = run_gsctool_cmd(
+        ctx,
+        vec!["--any", "--sn_bits", &u8_slice_to_hex_string(&sn_bits)],
+    )
+    .map_err(|_| {
+        eprintln!("ERROR: Failed to run gsctool.");
+        Cr50SetSnBitsVerdict::GeneralError
+    })?;
     Ok(gsctool_output.status.code().unwrap())
 }
 
@@ -342,7 +345,7 @@ mod tests {
 
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-S", "112233445566778899aabbcc"],
+            vec!["--any", "--sn_bits", "112233445566778899aabbcc"],
             0,
             "",
             "",
@@ -363,7 +366,7 @@ mod tests {
 
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-S", "112233445566778899aabbcc"],
+            vec!["--any", "--sn_bits", "112233445566778899aabbcc"],
             7,
             "",
             "",
@@ -387,7 +390,7 @@ mod tests {
 
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-a", "-S", "112233445566778899aabbcc"],
+            vec!["--any", "--sn_bits", "112233445566778899aabbcc"],
             1,
             "",
             "",

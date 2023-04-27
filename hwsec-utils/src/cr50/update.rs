@@ -21,12 +21,12 @@ pub fn cr50_update(ctx: &mut impl Context) -> Result<(), HwsecError> {
 
     let options: Vec<&str>;
     // determine the best way to communicate with the Cr50.
-    if gsctool_cmd_successful(ctx, vec!["-f", "-s"]) {
+    if gsctool_cmd_successful(ctx, vec!["--fwver", "--systemdev"]) {
         info!("Will use /dev/tpm0");
-        options = vec!["-s"];
-    } else if gsctool_cmd_successful(ctx, vec!["-f", "-t"]) {
+        options = vec!["--systemdev"];
+    } else if gsctool_cmd_successful(ctx, vec!["--fwver", "--trunks_send"]) {
         info!("Will use trunks_send");
-        options = vec!["-t"];
+        options = vec!["--trunks_send"];
     } else {
         error!("Could not communicate with Cr50");
         return Err(HwsecError::GsctoolError(1));
@@ -48,7 +48,8 @@ pub fn cr50_update(ctx: &mut impl Context) -> Result<(), HwsecError> {
             ctx.sleep(SLEEP_DURATION);
         }
 
-        let exe_result = run_gsctool_cmd(ctx, [&options[..], &["-u", &cr50_image]].concat())?;
+        let exe_result =
+            run_gsctool_cmd(ctx, [&options[..], &["--upstart", &cr50_image]].concat())?;
         exit_status = exe_result.status.code().unwrap();
 
         // Exit status values 2 or below indicate successful update, nonzero
@@ -104,10 +105,10 @@ mod tests {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()
-            .add_gsctool_interaction(vec!["-f", "-s"], 1, "", "");
+            .add_gsctool_interaction(vec!["--fwver", "--systemdev"], 1, "", "");
         mock_ctx
             .cmd_runner()
-            .add_gsctool_interaction(vec!["-f", "-t"], 1, "", "");
+            .add_gsctool_interaction(vec!["--fwver", "--trunks_send"], 1, "", "");
         let result = cr50_update(&mut mock_ctx);
         assert_eq!(result, Err(HwsecError::GsctoolError(1)));
     }
@@ -117,9 +118,9 @@ mod tests {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()
-            .add_gsctool_interaction(vec!["-f", "-s"], 0, "", "");
+            .add_gsctool_interaction(vec!["--fwver", "--systemdev"], 0, "", "");
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-s", "-i"],
+            vec!["--systemdev", "--board_id"],
             0,
             "Board ID space: 43425559:bcbdaaa6:00007f10",
             "",
@@ -133,9 +134,9 @@ mod tests {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()
-            .add_gsctool_interaction(vec!["-f", "-s"], 0, "", "");
+            .add_gsctool_interaction(vec!["--fwver", "--systemdev"], 0, "", "");
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-s", "-i"],
+            vec!["--systemdev", "--board_id"],
             0,
             "Board ID space: 43425559:bcbdaaa6:00007f10",
             "",
@@ -144,9 +145,12 @@ mod tests {
         let path = String::from(GSC_IMAGE_BASE_NAME) + ".prepvt";
         mock_ctx.create_path(path.as_str());
 
-        mock_ctx
-            .cmd_runner()
-            .add_gsctool_interaction(vec!["-s", "-u", path.as_str()], 0, "", "");
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--systemdev", "--upstart", path.as_str()],
+            0,
+            "",
+            "",
+        );
 
         let result = cr50_update(&mut mock_ctx);
         assert_eq!(result, Ok(()));
@@ -157,9 +161,9 @@ mod tests {
         let mut mock_ctx = MockContext::new();
         mock_ctx
             .cmd_runner()
-            .add_gsctool_interaction(vec!["-f", "-s"], 0, "", "");
+            .add_gsctool_interaction(vec!["--fwver", "--systemdev"], 0, "", "");
         mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-s", "-i"],
+            vec!["--systemdev", "--board_id"],
             0,
             "Board ID space: 43425559:bcbdaaa6:00007f10",
             "",
@@ -170,7 +174,7 @@ mod tests {
 
         for _ in 0..MAX_RETRIES {
             mock_ctx.cmd_runner().add_gsctool_interaction(
-                vec!["-s", "-u", path.as_str()],
+                vec!["--systemdev", "--upstart", path.as_str()],
                 3,
                 "",
                 "",

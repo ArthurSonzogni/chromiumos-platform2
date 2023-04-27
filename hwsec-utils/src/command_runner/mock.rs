@@ -110,7 +110,7 @@ impl MockCommandRunner {
         err: &str,
     ) {
         if cfg!(feature = "ti50_onboard") {
-            flag.push("-D");
+            flag.push("--dauntless");
         }
 
         self.add_expectation(
@@ -170,7 +170,7 @@ impl MockCommandRunner {
     }
     pub fn add_successful_gsctool_read_board_id_interaction(&mut self, board_id: BoardID) {
         self.add_gsctool_interaction(
-            vec!["-a", "-i"],
+            vec!["--any", "--board_id"],
             0,
             &format!(
                 "finding_device 18d1:5014\n\

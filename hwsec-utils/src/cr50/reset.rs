@@ -121,7 +121,7 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
         }
         let auth_code = auth_code.to_uppercase();
 
-        if gsctool_cmd_successful(ctx, vec!["-t", "-r", &auth_code]) {
+        if gsctool_cmd_successful(ctx, vec!["--trunks_send", "--rma_auth", &auth_code]) {
             println!("The system will reboot shortly.");
             thread::sleep(time::Duration::from_secs(WAIT_TO_ENTER_RMA_SECS));
             gbb_force_dev_mode(ctx).map_err(|e| {
