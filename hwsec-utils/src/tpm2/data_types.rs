@@ -163,3 +163,26 @@ impl TpmCmdResponse {
         &self.body
     }
 }
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub struct FactoryConfig(pub u64);
+
+impl FactoryConfig {
+    pub fn new(x_branded: bool, compliance_version: u8) -> Option<Self> {
+        if compliance_version & !0xF == 0 {
+            let branded = if x_branded { 1 << 4 } else { 0 };
+            Some(Self((branded | compliance_version).into()))
+        } else {
+            None
+        }
+    }
+    pub fn is_set(&self) -> bool {
+        self.0 != 0
+    }
+    pub fn x_branded(&self) -> bool {
+        ((self.0 >> 4) & 1) != 0
+    }
+    pub fn compliance_version(&self) -> u8 {
+        (self.0 & 0xF) as u8
+    }
+}

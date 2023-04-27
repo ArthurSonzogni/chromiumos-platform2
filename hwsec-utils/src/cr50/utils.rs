@@ -13,6 +13,7 @@ use crate::context::Context;
 use crate::error::HwsecError;
 use crate::output::HwsecOutput;
 use crate::tpm2::BoardID;
+use crate::tpm2::FactoryConfig;
 
 pub fn run_gsctool_cmd(
     ctx: &mut impl Context,
@@ -185,6 +186,32 @@ pub fn get_challenge_string(ctx: &mut impl Context) -> Result<String, HwsecError
     Ok(get_gsctool_output(ctx, vec!["--trunks_send", "--rma_auth"])
         .map_err(|_| HwsecError::GsctoolResponseBadFormatError)?
         .replace("Challange:", ""))
+}
+
+pub fn extract_factory_config_from_gsctool_response(
+    raw_response: &str,
+) -> Result<FactoryConfig, HwsecError> {
+    let re: regex::Regex = Regex::new(r"[0-9a-fA-F]{16}").unwrap();
+    if let Some(factory_config_keyword_pos) = raw_response.find("raw value:") {
+        let factory_config_str = re
+            .find(&raw_response[factory_config_keyword_pos..])
+            .ok_or(HwsecError::GsctoolResponseBadFormatError)?
+            .as_str();
+        let raw = u64::from_str_radix(&factory_config_str[0..16], 16)
+            .map_err(|_| HwsecError::InternalError)?;
+        Ok(FactoryConfig(raw))
+    } else {
+        Err(HwsecError::GsctoolResponseBadFormatError)
+    }
+}
+
+pub fn get_factory_config_with_gsctool(
+    ctx: &mut impl Context,
+) -> Result<FactoryConfig, HwsecError> {
+    let gsctool_raw_response = run_gsctool_cmd(ctx, vec!["-a", "--factory_config"])?;
+    let factory_config_output = std::str::from_utf8(&gsctool_raw_response.stdout)
+        .map_err(|_| HwsecError::GsctoolResponseBadFormatError)?;
+    extract_factory_config_from_gsctool_response(factory_config_output)
 }
 
 #[cfg(test)]
