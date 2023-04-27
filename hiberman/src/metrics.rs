@@ -123,7 +123,7 @@ impl MetricsLogger {
         }
     }
 
-    pub fn metrics_send_io_sample(&mut self, histogram: &str, io_bytes: i64, duration: Duration) {
+    pub fn metrics_send_io_sample(&mut self, histogram: &str, io_bytes: u64, duration: Duration) {
         let rate = ((io_bytes as f64) / duration.as_secs_f64()) / BYTES_PER_MB_F64;
         let base_name = "Platform.Hibernate.IO.";
         // Convert the bytes to KiB for more manageable metric values.
