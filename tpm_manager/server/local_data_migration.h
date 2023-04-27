@@ -35,7 +35,7 @@ namespace tpm_manager {
 // Returns |true| iff the operation succeeds. Requires non-null |hwsec| to
 // unseal |sealed_database| and non-null |delegate| to store the output.
 bool MigrateAuthDelegate(const brillo::SecureBlob& sealed_database,
-                         hwsec::LocalDataMigrationFrontend* hwsec,
+                         const hwsec::LocalDataMigrationFrontend* hwsec,
                          AuthDelegate* delegate);
 
 // Parses a |LegacyTpmStatus| from |serialized_tpm_status| and then stores owner
@@ -44,7 +44,7 @@ bool MigrateAuthDelegate(const brillo::SecureBlob& sealed_database,
 // |hwsec| to unseal the owner password.
 bool UnsealOwnerPasswordFromSerializedTpmStatus(
     const brillo::SecureBlob& serialized_tpm_status,
-    hwsec::LocalDataMigrationFrontend* hwsec,
+    const hwsec::LocalDataMigrationFrontend* hwsec,
     brillo::SecureBlob* owner_password);
 
 // |LocalDataMigrator| performs the high-level operations with virtualized file
@@ -62,10 +62,11 @@ class LocalDataMigrator {
   // exists, or |local_data| has the auth delegate already. Upon returning
   // |true|, |has_migrated| indicates if the legacy data has been migrated to
   // |local_data|.
-  bool MigrateAuthDelegateIfNeeded(const base::FilePath& database_path,
-                                   hwsec::LocalDataMigrationFrontend* hwsec,
-                                   LocalData* local_data,
-                                   bool* has_migrated);
+  bool MigrateAuthDelegateIfNeeded(
+      const base::FilePath& database_path,
+      const hwsec::LocalDataMigrationFrontend* hwsec,
+      LocalData* local_data,
+      bool* has_migrated);
 
   // Reads the tpm status from |tpm_status_path| and migrates the owner password
   // into |local_data|. Failure of reading content from |tpm_status_path| or any
@@ -74,10 +75,11 @@ class LocalDataMigrator {
   // |tpm_status_path| doesn't exists, or |local_data| has owner password
   // already. Upon returning |true|, |has_migrated| indicates if the legacy data
   // has been migrated to |local_data|.
-  bool MigrateOwnerPasswordIfNeeded(const base::FilePath& tpm_status_path,
-                                    hwsec::LocalDataMigrationFrontend* hwsec,
-                                    LocalData* local_data,
-                                    bool* has_migrated);
+  bool MigrateOwnerPasswordIfNeeded(
+      const base::FilePath& tpm_status_path,
+      const hwsec::LocalDataMigrationFrontend* hwsec,
+      LocalData* local_data,
+      bool* has_migrated);
 
  protected:
   // The set of functions below performs file-related operations. They are

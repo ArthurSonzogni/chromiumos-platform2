@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
   tpm_manager::LocalDataMigrator migrator;
   bool has_migrated;
   hwsec::FactoryImpl factory;
-  std::unique_ptr<hwsec::LocalDataMigrationFrontend> hwsec =
+  std::unique_ptr<const hwsec::LocalDataMigrationFrontend> hwsec =
       factory.GetLocalDataMigrationFrontend();
   if (!migrator.MigrateOwnerPasswordIfNeeded(tpm_status_path, hwsec.get(),
                                              &local_data, &has_migrated)) {

@@ -143,7 +143,7 @@ bool Decrypt(const attestation::EncryptedData& input,
 // |hwsec| is used to unseal the wrapped key in the |encrypted_database|.
 bool DecryptAttestationDatabase(
     const brillo::SecureBlob& encrypted_database,
-    hwsec::LocalDataMigrationFrontend* hwsec,
+    const hwsec::LocalDataMigrationFrontend* hwsec,
     tpm_manager::LegacyAttestationDatabase* database) {
   attestation::EncryptedData encrypted_data;
   if (!encrypted_data.ParseFromString(encrypted_database.to_string())) {
@@ -186,7 +186,7 @@ tpm_manager::AuthDelegate LegacyDelegationToAuthDelegate(
 namespace tpm_manager {
 
 bool MigrateAuthDelegate(const brillo::SecureBlob& sealed_database,
-                         hwsec::LocalDataMigrationFrontend* hwsec,
+                         const hwsec::LocalDataMigrationFrontend* hwsec,
                          tpm_manager::AuthDelegate* delegate) {
   CHECK(delegate != nullptr);
   CHECK(hwsec != nullptr);
@@ -202,7 +202,7 @@ bool MigrateAuthDelegate(const brillo::SecureBlob& sealed_database,
 
 bool UnsealOwnerPasswordFromSerializedTpmStatus(
     const brillo::SecureBlob& serialized_tpm_status,
-    hwsec::LocalDataMigrationFrontend* hwsec,
+    const hwsec::LocalDataMigrationFrontend* hwsec,
     brillo::SecureBlob* owner_password) {
   CHECK(owner_password != nullptr);
   CHECK(hwsec != nullptr);
@@ -226,7 +226,7 @@ bool UnsealOwnerPasswordFromSerializedTpmStatus(
 
 bool LocalDataMigrator::MigrateAuthDelegateIfNeeded(
     const base::FilePath& database_path,
-    hwsec::LocalDataMigrationFrontend* hwsec,
+    const hwsec::LocalDataMigrationFrontend* hwsec,
     LocalData* local_data,
     bool* has_migrated) {
   CHECK(hwsec != nullptr);
@@ -258,7 +258,7 @@ bool LocalDataMigrator::MigrateAuthDelegateIfNeeded(
 
 bool LocalDataMigrator::MigrateOwnerPasswordIfNeeded(
     const base::FilePath& tpm_status_path,
-    hwsec::LocalDataMigrationFrontend* hwsec,
+    const hwsec::LocalDataMigrationFrontend* hwsec,
     LocalData* local_data,
     bool* has_migrated) {
   CHECK(local_data != nullptr);
