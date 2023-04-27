@@ -51,7 +51,7 @@ class VmBaseImpl : public VmInterface {
 
   // VmInterface overrides.
   std::optional<BalloonStats> GetBalloonStats() override;
-  void SetBalloonSize(int64_t byte_size) override;
+  bool SetBalloonSize(int64_t byte_size) override;
   const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(
       const MemoryMargins& margins, const std::string& vm) override;
 
@@ -77,6 +77,9 @@ class VmBaseImpl : public VmInterface {
   // Adjusts the amount of CPU the VM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
                                   const char* cpu_cgroup);
+
+  static void RunFailureAggressiveBalloonCallback(
+      AggressiveBalloonCallback callback, std::string failure_reason);
 
   // Starts |process_| with |args|. Returns true iff started successfully.
   bool StartProcess(base::StringPairs args);

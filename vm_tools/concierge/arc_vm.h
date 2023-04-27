@@ -19,11 +19,13 @@
 #include <base/notreached.h>
 #include <base/sequence_checker.h>
 #include <base/threading/thread.h>
+#include <base/timer/timer.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <chromeos/patchpanel/mac_address_generator.h>
 #include <libcrossystem/crossystem.h>
 #include <vm_concierge/concierge_service.pb.h>
 
+#include "base/functional/callback_forward.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
@@ -81,6 +83,12 @@ class ArcVm final : public VmBaseImpl {
       VmBuilder vm_builder);
   ~ArcVm() override;
 
+  // TODO(b/256052459): ArcVmTest access the constructor of ArcVm directly
+  // because SetupLmkdVsock() and Start() which are called from ArcVm::Create()
+  // don't have tests. Add tests for them and use ArcVm::Create() directly for
+  // tests.
+  friend class ArcVmTest;
+
   // The VM's cid.
   uint32_t cid() const { return vsock_cid_; }
 
@@ -135,6 +143,11 @@ class ArcVm final : public VmBaseImpl {
   vm_tools::concierge::DiskImageStatus GetDiskResizeStatus(
       std::string* failure_reason) override;
 
+  void InflateAggressiveBalloon(AggressiveBalloonCallback callback) override;
+  void StopAggressiveBalloon(AggressiveBalloonResponse& response) override;
+  // Public for testing purpose.
+  uint64_t DeflateBalloonOnLmkd(int oom_score_adj, uint64_t proc_size);
+
   // Returns the kernel parameters for the VM
   static std::vector<std::string> GetKernelParams(
       const crossystem::Crossystem& cros_system,
@@ -154,7 +167,9 @@ class ArcVm final : public VmBaseImpl {
         base::FilePath runtime_dir,
         base::FilePath data_disk_path,
         VmMemoryId vm_memory_id,
-        ArcVmFeatures features);
+        ArcVmFeatures features,
+        base::RepeatingTimer* aggressive_balloon_timer =
+            new base::RepeatingTimer());
   ArcVm(const ArcVm&) = delete;
   ArcVm& operator=(const ArcVm&) = delete;
 
@@ -173,6 +188,9 @@ class ArcVm final : public VmBaseImpl {
   bool SetupLmkdVsock();
   void HandleLmkdVsockAccept();
   void HandleLmkdVsockRead();
+
+  // Handlers for aggressive balloon
+  void InflateAggressiveBalloonOnTimer();
 
   std::vector<patchpanel::Client::VirtualDevice> network_devices_;
 
@@ -204,6 +222,11 @@ class ArcVm final : public VmBaseImpl {
   // arc_lmkd_hooks.h in Android
   static constexpr int32_t kLmkProcKillCandidate = 0;
 
+  // When aggressively inflates the balloon, it should stop when LMKD tries to
+  // kill perceptible processes. The incremental diff should be 10 MiB since
+  // perceptible processes usually have 30 ~ 100 MiB size.
+  static constexpr int32_t kAggressiveBalloonIncrementSize = 10 * MIB;
+
   base::ScopedFD arcvm_lmkd_vsock_fd_;
   base::ScopedFD lmkd_client_fd_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
@@ -213,6 +236,11 @@ class ArcVm final : public VmBaseImpl {
 
   // Ensure calls are made on the right thread.
   base::SequenceChecker sequence_checker_;
+
+  bool is_aggressive_balloon_enabled_ = false;
+  uint64_t aggressive_balloon_target_ = 0;
+  AggressiveBalloonCallback aggressive_balloon_callback_;
+  std::unique_ptr<base::RepeatingTimer> aggressive_balloon_timer_;
 };
 
 }  // namespace concierge

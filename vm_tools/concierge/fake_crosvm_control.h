@@ -58,6 +58,12 @@ class FakeCrosvmControl : public CrosvmControl {
 
   std::string target_socket_path_ = "";
 
+  int count_set_balloon_size_ = 0;
+
+  bool result_set_balloon_size_ = true;
+  bool result_balloon_stats_ = true;
+
+  uint64_t target_balloon_size_ = 0;
   uint64_t actual_balloon_size_ = 0;
   struct BalloonStatsFfi balloon_stats_;
 };

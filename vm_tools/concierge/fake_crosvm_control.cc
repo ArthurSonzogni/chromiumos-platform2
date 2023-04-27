@@ -38,7 +38,9 @@ bool FakeCrosvmControl::MakeRtVm(const char* socket_path) {
 bool FakeCrosvmControl::SetBalloonSize(const char* socket_path,
                                        size_t num_bytes) {
   target_socket_path_ = socket_path;
-  return true;
+  target_balloon_size_ = num_bytes;
+  count_set_balloon_size_ += 1;
+  return result_set_balloon_size_;
 }
 
 uintptr_t FakeCrosvmControl::MaxUsbDevices() {
@@ -89,7 +91,7 @@ bool FakeCrosvmControl::BalloonStats(const char* socket_path,
   target_socket_path_ = socket_path;
   *actual = actual_balloon_size_;
   *stats = balloon_stats_;
-  return true;
+  return result_balloon_stats_;
 }
 
 }  // namespace vm_tools::concierge

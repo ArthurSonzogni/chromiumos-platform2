@@ -46,6 +46,10 @@ static constexpr int32_t kAppAdjForegroundMax = 0;
 static constexpr int32_t kAppAdjPerceptibleMax = 900 - 1;
 static constexpr int32_t kAppAdjCachedMax = 999;
 
+// The max oom score for perceptible processes. This is from Android
+// ProcessList.java.
+static constexpr int32_t kPlatformPerceptibleMaxOmmScoreAdjValue = 250;
+
 class BalloonPolicyInterface {
  public:
   virtual ~BalloonPolicyInterface() {}

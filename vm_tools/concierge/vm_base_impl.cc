@@ -51,11 +51,12 @@ std::optional<BalloonStats> VmBaseImpl::GetBalloonStats() {
   return vm_tools::concierge::GetBalloonStats(GetVmSocketPath());
 }
 
-void VmBaseImpl::SetBalloonSize(int64_t byte_size) {
+bool VmBaseImpl::SetBalloonSize(int64_t byte_size) {
   if (byte_size < 0) {
     LOG(ERROR) << "Skipping setting a negative balloon size: " << byte_size;
   }
-  CrosvmControl::Get()->SetBalloonSize(GetVmSocketPath().c_str(), byte_size);
+  return CrosvmControl::Get()->SetBalloonSize(GetVmSocketPath().c_str(),
+                                              byte_size);
 }
 
 const std::unique_ptr<BalloonPolicyInterface>& VmBaseImpl::GetBalloonPolicy(
@@ -100,6 +101,15 @@ bool VmBaseImpl::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
       NOTREACHED();
   }
   return UpdateCpuShares(base::FilePath(cpu_cgroup), cpu_shares);
+}
+
+// static
+void VmBaseImpl::RunFailureAggressiveBalloonCallback(
+    AggressiveBalloonCallback callback, std::string failure_reason) {
+  AggressiveBalloonResponse response;
+  response.set_success(false);
+  response.set_failure_reason(failure_reason);
+  std::move(callback).Run(response);
 }
 
 bool VmBaseImpl::StartProcess(base::StringPairs args) {
@@ -161,10 +171,8 @@ void VmBaseImpl::MakeRtVcpu() {
 }
 
 void VmBaseImpl::InflateAggressiveBalloon(AggressiveBalloonCallback callback) {
-  AggressiveBalloonResponse response;
-  response.set_success(false);
-  response.set_failure_reason("Unsupported by target VM");
-  std::move(callback).Run(response);
+  RunFailureAggressiveBalloonCallback(std::move(callback),
+                                      "Unsupported by target VM");
 }
 
 void VmBaseImpl::StopAggressiveBalloon(AggressiveBalloonResponse& response) {

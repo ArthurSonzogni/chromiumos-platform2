@@ -124,7 +124,7 @@ class VmInterface {
   virtual std::optional<BalloonStats> GetBalloonStats() = 0;
 
   // Resize the balloon size.
-  virtual void SetBalloonSize(int64_t byte_size) = 0;
+  virtual bool SetBalloonSize(int64_t byte_size) = 0;
 
   // Get the virtio_balloon sizing policy for this VM.
   virtual const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(
