@@ -40,7 +40,7 @@ constexpr uint8_t kU2fVer2Prefix = 5;
 constexpr char kU2fCommand[] = "Platform.U2F.Command";
 
 std::optional<std::vector<uint8_t>> GetG2fCert(
-    hwsec::U2fVendorFrontend* u2f_frontend) {
+    const hwsec::U2fVendorFrontend* u2f_frontend) {
   ASSIGN_OR_RETURN(std::vector<uint8_t> cert, u2f_frontend->GetG2fCert(),
                    _.WithStatus<TPMError>("Failed to get G2F cert")
                        .LogError()
@@ -60,7 +60,7 @@ U2fMessageHandler::U2fMessageHandler(
     std::unique_ptr<AllowlistingUtil> allowlisting_util,
     std::function<void()> request_user_presence,
     UserState* user_state,
-    hwsec::U2fVendorFrontend* u2f_frontend,
+    const hwsec::U2fVendorFrontend* u2f_frontend,
     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
     MetricsLibraryInterface* metrics,
     bool allow_g2f_attestation,

@@ -23,7 +23,7 @@ class U2fCorpProcessor {
 
   virtual void Initialize(U2fCorpFirmwareVersion fw_version,
                           org::chromium::SessionManagerInterfaceProxy* sm_proxy,
-                          hwsec::U2fVendorFrontend* u2f_frontend,
+                          const hwsec::U2fVendorFrontend* u2f_frontend,
                           MetricsLibraryInterface* metrics,
                           std::function<void()> request_presence) = 0;
 

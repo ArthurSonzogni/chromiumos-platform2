@@ -94,7 +94,7 @@ U2fCommandProcessorGeneric::U2fCommandProcessorGeneric(
     UserState* user_state,
     std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
         cryptohome_proxy,
-    std::unique_ptr<hwsec::U2fFrontend> u2f_frontend)
+    std::unique_ptr<const hwsec::U2fFrontend> u2f_frontend)
     : user_state_(user_state),
       cryptohome_proxy_(std::move(cryptohome_proxy)),
       u2f_frontend_(std::move(u2f_frontend)) {

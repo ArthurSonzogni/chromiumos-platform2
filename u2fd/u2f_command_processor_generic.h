@@ -30,7 +30,7 @@ class U2fCommandProcessorGeneric : public U2fCommandProcessor {
       UserState* user_state,
       std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
           cryptohome_proxy,
-      std::unique_ptr<hwsec::U2fFrontend> u2f_frontend);
+      std::unique_ptr<const hwsec::U2fFrontend> u2f_frontend);
 
   U2fCommandProcessorGeneric(const U2fCommandProcessorGeneric&) = delete;
   U2fCommandProcessorGeneric& operator=(const U2fCommandProcessorGeneric&) =
@@ -96,7 +96,7 @@ class U2fCommandProcessorGeneric : public U2fCommandProcessor {
   UserState* user_state_;
   std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
       cryptohome_proxy_;
-  std::unique_ptr<hwsec::U2fFrontend> u2f_frontend_;
+  std::unique_ptr<const hwsec::U2fFrontend> u2f_frontend_;
 };
 
 }  // namespace u2f

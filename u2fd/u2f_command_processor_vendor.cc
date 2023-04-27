@@ -56,7 +56,7 @@ constexpr base::TimeDelta kVerificationTimeout = base::Seconds(10);
 }  // namespace
 
 U2fCommandProcessorVendor::U2fCommandProcessorVendor(
-    std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend,
+    std::unique_ptr<const hwsec::U2fVendorFrontend> u2f_frontend,
     std::function<void()> request_presence)
     : u2f_frontend_(std::move(u2f_frontend)),
       request_presence_(request_presence) {

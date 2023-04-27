@@ -59,7 +59,7 @@ U2fCorpProcessorInterface::~U2fCorpProcessorInterface() {
 void U2fCorpProcessorInterface::Initialize(
     U2fCorpFirmwareVersion fw_version,
     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
-    hwsec::U2fVendorFrontend* u2f_frontend,
+    const hwsec::U2fVendorFrontend* u2f_frontend,
     MetricsLibraryInterface* metrics,
     std::function<void()> request_presence) {
   if (processor_) {

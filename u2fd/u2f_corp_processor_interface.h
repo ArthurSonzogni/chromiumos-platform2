@@ -31,7 +31,7 @@ class U2fCorpProcessorInterface {
   // commands through the tpm proxy.
   void Initialize(U2fCorpFirmwareVersion fw_version,
                   org::chromium::SessionManagerInterfaceProxy* sm_proxy,
-                  hwsec::U2fVendorFrontend* u2f_frontend,
+                  const hwsec::U2fVendorFrontend* u2f_frontend,
                   MetricsLibraryInterface* metrics,
                   std::function<void()> request_presence);
   U2fResponseApdu ProcessApdu(const U2fCommandApdu& apdu);

@@ -30,7 +30,7 @@ class U2fMessageHandler : public U2fMessageHandlerInterface {
   U2fMessageHandler(std::unique_ptr<AllowlistingUtil> allowlisting_util,
                     std::function<void()> request_user_presence,
                     UserState* user_state,
-                    hwsec::U2fVendorFrontend* u2f_frontend,
+                    const hwsec::U2fVendorFrontend* u2f_frontend,
                     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
                     MetricsLibraryInterface* metrics,
                     bool allow_g2f_attestation,
@@ -53,7 +53,7 @@ class U2fMessageHandler : public U2fMessageHandlerInterface {
   std::unique_ptr<AllowlistingUtil> allowlisting_util_;
   std::function<void()> request_user_presence_;
   UserState* user_state_;
-  hwsec::U2fVendorFrontend* u2f_frontend_;
+  const hwsec::U2fVendorFrontend* u2f_frontend_;
   MetricsLibraryInterface* metrics_;
 
   const bool allow_g2f_attestation_;

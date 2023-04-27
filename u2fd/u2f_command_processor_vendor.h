@@ -28,7 +28,7 @@ class U2fCommandProcessorVendor : public U2fCommandProcessor {
   // |request_presence| - callback for performing other platform tasks when
   // expecting the user to press the power button.
   U2fCommandProcessorVendor(
-      std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend,
+      std::unique_ptr<const hwsec::U2fVendorFrontend> u2f_frontend,
       std::function<void()> request_presence);
 
   U2fCommandProcessorVendor(const U2fCommandProcessorVendor&) = delete;
@@ -132,7 +132,7 @@ class U2fCommandProcessorVendor : public U2fCommandProcessor {
   hwsec::StatusOr<hwsec::u2f::Config> GetConfig();
 
   std::optional<hwsec::u2f::Config> config_ = std::nullopt;
-  std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend_;
+  std::unique_ptr<const hwsec::U2fVendorFrontend> u2f_frontend_;
   std::function<void()> request_presence_;
 };
 

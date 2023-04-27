@@ -37,7 +37,7 @@ constexpr uint32_t kCorpProductId = 0x5212;
 }  // namespace
 
 U2fHidServiceImpl::U2fHidServiceImpl(
-    std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend)
+    std::unique_ptr<const hwsec::U2fVendorFrontend> u2f_frontend)
     : u2f_frontend_(std::move(u2f_frontend)) {
   CHECK(u2f_frontend_);
 }

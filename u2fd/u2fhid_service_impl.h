@@ -28,7 +28,7 @@ namespace u2f {
 class U2fHidServiceImpl : public U2fHidService {
  public:
   explicit U2fHidServiceImpl(
-      std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend);
+      std::unique_ptr<const hwsec::U2fVendorFrontend> u2f_frontend);
   U2fHidServiceImpl(const U2fHidServiceImpl&) = delete;
   U2fHidServiceImpl& operator=(const U2fHidServiceImpl&) = delete;
 
@@ -51,7 +51,7 @@ class U2fHidServiceImpl : public U2fHidService {
       int g2f_cert_size) override;
 
  private:
-  std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend_;
+  std::unique_ptr<const hwsec::U2fVendorFrontend> u2f_frontend_;
   dbus::ObjectProxy* attestation_proxy_;  // Not Owned.
 
   // Virtual USB Device
