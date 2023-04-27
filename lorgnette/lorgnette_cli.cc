@@ -15,6 +15,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/json/json_writer.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
@@ -626,6 +627,18 @@ std::string ScannerCapabilitiesToJson(
   return json;
 }
 
+lorgnette::SetDebugConfigResponse SetLorgnetteDebug(ManagerProxy* manager,
+                                                    bool enabled) {
+  lorgnette::SetDebugConfigRequest request;
+  request.set_enabled(enabled);
+  lorgnette::SetDebugConfigResponse response;
+  brillo::ErrorPtr error;
+  if (!manager->SetDebugConfig(request, &response, &error)) {
+    LOG(ERROR) << "Failed to call SetDebugConfig: " << error->GetMessage();
+  }
+  return response;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -658,6 +671,10 @@ int main(int argc, char** argv) {
                 "the selected image format.");
   DEFINE_string(image_format, "PNG",
                 "Image format for the output file (PNG or JPG)");
+  DEFINE_bool(debug, false,
+              "Enable lorgnette debug logging for this operation.  The "
+              "previous debug value will be restored when lorgnette_cli "
+              "exits.");
 
   // Cancel Scan options
   DEFINE_string(uuid, "", "UUID of the scan job to cancel.");
@@ -695,6 +712,20 @@ int main(int argc, char** argv) {
   scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
   auto manager =
       std::make_unique<ManagerProxy>(bus, lorgnette::kManagerServiceName);
+
+  base::ScopedClosureRunner debug_cleanup;
+  if (FLAGS_debug) {
+    lorgnette::SetDebugConfigResponse response =
+        SetLorgnetteDebug(manager.get(), true);
+    if (!response.old_enabled()) {
+      debug_cleanup.ReplaceClosure(base::BindOnce(
+          [](ManagerProxy* manager) { SetLorgnetteDebug(manager, false); },
+          manager.get()));
+    }
+    if (!response.success()) {
+      LOG(WARNING) << "Failed to enable lorgnette debugging.";
+    }
+  }
 
   if (command == "scan") {
     if (!FLAGS_uuid.empty()) {
