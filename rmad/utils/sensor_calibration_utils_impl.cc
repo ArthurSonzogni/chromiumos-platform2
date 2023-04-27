@@ -22,9 +22,10 @@ constexpr int kSamples = 100;
 constexpr double kGravity = 9.80665;
 constexpr double kDegree2Radian = M_PI / 180.0;
 
-// Both thresholds are used in m/s^2 units.
-// The offset is indicating the tolerance in m/s^2 for
-// the digital output of sensors under 0 and 1G.
+// Both thresholds are used in m/s^2 units. The offset is indicating the
+// tolerance in m/s^2 for the digital output of sensors under 0 and 1G.
+// TODO(jeffulin): This threshold seems too relaxed for gyroscope. We should
+// find the reliable sources to set the thresholds for different sensors.
 constexpr double kOffsetThreshold = 2.0;
 // The variance of capture data can not be larger than the threshold.
 constexpr double kVarianceThreshold = 5.0;
@@ -167,9 +168,8 @@ void SensorCalibrationUtilsImpl::HandleGetAvgDataResult(
   // For each axis, we calculate the difference between the ideal values.
   for (int i = 0; i < avg_data.size(); i++) {
     double offset =
-        ideal_values_.at(i) -
-        (avg_data.at(i) +
-         original_calibbias.at(i) * kCalibbias2SensorReading.at(GetName()));
+        ideal_values_.at(i) - avg_data.at(i) +
+        original_calibbias.at(i) * kCalibbias2SensorReading.at(GetName());
     if (GetName() == SensorCalibrationUtilsImpl::kAccelSensorName &&
         std::fabs(offset) > kOffsetThreshold) {
       LOG(ERROR) << GetLocation() << ":" << GetName()
