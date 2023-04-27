@@ -399,6 +399,8 @@ class WiFiProviderTest : public testing::Test {
     EXPECT_CALL(metrics_,
                 SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, _))
         .Times(AnyNumber());
+    EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, _))
+        .Times(AnyNumber());
     EXPECT_CALL(
         metrics_,
         SendToUMA(
@@ -756,6 +758,7 @@ TEST_F(WiFiProviderTest, Stop) {
 TEST_F(WiFiProviderTest, CreateServicesFromProfileWithNoGroups) {
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
@@ -765,6 +768,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingSSID) {
                              kSecurityClassNone, false, true);
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
@@ -774,6 +778,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileEmptySSID) {
                              kSecurityClassNone, false, true);
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
@@ -783,6 +788,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingMode) {
                              kSecurityClassNone, false, true);
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
@@ -792,6 +798,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileEmptyMode) {
                              kSecurityClassNone, false, true);
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
@@ -801,6 +808,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingSecurity) {
                              nullptr, false, true);
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
@@ -810,6 +818,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileEmptySecurity) {
                              false, true);
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
@@ -819,6 +828,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileMissingHidden) {
                              kSecurityClassNone, false, false);
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 0));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0));
   CreateServicesFromProfile(default_profile_.get());
   EXPECT_TRUE(GetServices().empty());
 }
@@ -832,6 +842,8 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileSingle) {
   EXPECT_CALL(manager_, IsServiceEphemeral(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 1))
+      .Times(2);
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0))
       .Times(2);
   CreateServicesFromProfile(default_profile_.get());
   Mock::VerifyAndClearExpectations(&manager_);
@@ -863,6 +875,8 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenButConnected) {
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 1))
       .Times(2);
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0))
+      .Times(2);
   CreateServicesFromProfile(default_profile_.get());
   Mock::VerifyAndClearExpectations(&manager_);
 
@@ -884,6 +898,8 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenNotConnected) {
   EXPECT_CALL(manager_, RequestScan(kTypeWifi, _)).Times(1);
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 1))
+      .Times(2);
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0))
       .Times(2);
   CreateServicesFromProfile(default_profile_.get());
   Mock::VerifyAndClearExpectations(&manager_);
@@ -977,6 +993,7 @@ TEST_F(WiFiProviderTest, CreateTwoServices) {
   EXPECT_CALL(manager_, RequestScan(kTypeWifi, _)).Times(0);
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 2));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0));
   CreateServicesFromProfile(default_profile_.get());
   Mock::VerifyAndClearExpectations(&manager_);
 
@@ -1062,6 +1079,7 @@ TEST_F(WiFiProviderTest, ServiceSourceStats) {
           "802_1x", 0));
   EXPECT_CALL(metrics_,
               SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 2));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0));
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricHiddenSSIDNetworkCount, 0));
   EXPECT_CALL(metrics_,
               SendBoolToUMA(Metrics::kMetricHiddenSSIDEverConnected, _))
@@ -1120,6 +1138,9 @@ TEST_F(WiFiProviderTest, ServiceSourceStatsHiddenSSID) {
       SendToUMA(
           Metrics::kMetricRememberedUserWiFiNetworkCountBySecurityModeFormat,
           "802_1x", 0));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kMetricRememberedWiFiNetworkCount, 1));
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricPasspointNetworkCount, 0));
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricHiddenSSIDNetworkCount, 1));
   EXPECT_CALL(metrics_,
               SendBoolToUMA(Metrics::kMetricHiddenSSIDEverConnected, false));

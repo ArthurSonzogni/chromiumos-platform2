@@ -644,6 +644,12 @@ void WiFiProvider::ReportRememberedNetworkCount() {
       Metrics::kMetricRememberedWiFiNetworkCount,
       std::count_if(services_.begin(), services_.end(),
                     [](ServiceRefPtr s) { return s->IsRemembered(); }));
+  metrics()->SendToUMA(Metrics::kMetricPasspointNetworkCount,
+                       std::count_if(services_.begin(), services_.end(),
+                                     [](WiFiServiceRefPtr s) {
+                                       return s->parent_credentials() !=
+                                              nullptr;
+                                     }));
 }
 
 void WiFiProvider::ReportServiceSourceMetrics() {

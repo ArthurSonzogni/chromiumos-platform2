@@ -1257,6 +1257,12 @@ class Metrics : public DefaultServiceObserver {
           .max = kMetricRememberedWiFiNetworkCountMax,
           .num_buckets = kMetricRememberedWiFiNetworkCountNumBuckets,
       };
+  static constexpr HistogramMetric<FixedName> kMetricPasspointNetworkCount = {
+      .n = FixedName{"Network.Shill.WiFi.PasspointNetworkCount"},
+      .min = kMetricRememberedWiFiNetworkCountMin,
+      .max = kMetricRememberedWiFiNetworkCountMax,
+      .num_buckets = kMetricRememberedWiFiNetworkCountNumBuckets,
+  };
   static constexpr HistogramMetric<FixedName> kMetricHiddenSSIDNetworkCount = {
       .n = FixedName{"Network.Shill.WiFi.HiddenSSIDNetworkCount"},
       .min = kMetricRememberedWiFiNetworkCountMin,
