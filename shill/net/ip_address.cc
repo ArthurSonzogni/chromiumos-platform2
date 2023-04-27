@@ -39,6 +39,26 @@ IPAddress::IPAddress(Family family,
                      unsigned int prefix)
     : family_(family), address_(address), prefix_(prefix) {}
 
+IPAddress::IPAddress(const IPv4Address& address)
+    : family_(kFamilyIPv4),
+      address_({address.data().data(), address.data().size()}),
+      prefix_(0) {}
+
+IPAddress::IPAddress(const IPv6Address& address)
+    : family_(kFamilyIPv6),
+      address_({address.data().data(), address.data().size()}),
+      prefix_(0) {}
+
+IPAddress::IPAddress(const IPv4CIDR& cidr)
+    : family_(kFamilyIPv4),
+      address_({cidr.address().data().data(), cidr.address().data().size()}),
+      prefix_(cidr.prefix_length()) {}
+
+IPAddress::IPAddress(const IPv6CIDR& cidr)
+    : family_(kFamilyIPv6),
+      address_({cidr.address().data().data(), cidr.address().data().size()}),
+      prefix_(cidr.prefix_length()) {}
+
 IPAddress::~IPAddress() = default;
 
 // static
@@ -162,6 +182,40 @@ std::optional<IPAddress> IPAddress::CreateFromPrefixString(
     }
   }
   return std::nullopt;
+}
+
+std::optional<IPv4Address> IPAddress::ToIPv4Address() const {
+  if (!IsValid() || family_ != kFamilyIPv4) {
+    return std::nullopt;
+  }
+
+  return IPv4Address::CreateFromBytes(GetConstData(), GetLength());
+}
+
+std::optional<IPv6Address> IPAddress::ToIPv6Address() const {
+  if (!IsValid() || family_ != kFamilyIPv6) {
+    return std::nullopt;
+  }
+
+  return IPv6Address::CreateFromBytes(GetConstData(), GetLength());
+}
+
+std::optional<IPv4CIDR> IPAddress::ToIPv4CIDR() const {
+  const auto ipv4_address = ToIPv4Address();
+  if (!ipv4_address) {
+    return std::nullopt;
+  }
+
+  return IPv4CIDR::CreateFromAddressAndPrefix(*ipv4_address, prefix_);
+}
+
+std::optional<IPv6CIDR> IPAddress::ToIPv6CIDR() const {
+  const auto ipv6_address = ToIPv6Address();
+  if (!ipv6_address) {
+    return std::nullopt;
+  }
+
+  return IPv6CIDR::CreateFromAddressAndPrefix(*ipv6_address, prefix_);
 }
 
 bool IPAddress::SetAddressFromString(const std::string& address_string) {

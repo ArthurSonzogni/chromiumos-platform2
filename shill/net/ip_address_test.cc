@@ -536,4 +536,52 @@ TEST(IPAddressMoveTest, MoveAssignmentOperator) {
   EXPECT_EQ(const_address, dest_address);
 }
 
+TEST(IPAddressConversionTest, IPv4Address) {
+  const auto ipv4 = IPv4Address(192, 168, 2, 1);
+  const auto ip = IPAddress(ipv4);
+  EXPECT_TRUE(ip.IsValid());
+  EXPECT_EQ(ip.prefix(), 0);
+  EXPECT_EQ(ip.ToString(), "192.168.2.1");
+
+  EXPECT_EQ(*ip.ToIPv4Address(), ipv4);
+  EXPECT_FALSE(ip.ToIPv6Address());
+  EXPECT_FALSE(ip.ToIPv6CIDR());
+}
+
+TEST(IPAddressConversionTest, IPv6Address) {
+  const auto ipv6 = *IPv6Address::CreateFromString("::1");
+  const auto ip = IPAddress(ipv6);
+  EXPECT_TRUE(ip.IsValid());
+  EXPECT_EQ(ip.prefix(), 0);
+  EXPECT_EQ(ip.ToString(), "::1");
+
+  EXPECT_EQ(*ip.ToIPv6Address(), ipv6);
+  EXPECT_FALSE(ip.ToIPv4Address());
+  EXPECT_FALSE(ip.ToIPv4CIDR());
+}
+
+TEST(IPAddressConversionTest, IPv4CIDR) {
+  const auto cidr = *IPv4CIDR::CreateFromCIDRString("192.168.2.1/24");
+  const auto ip = IPAddress(cidr);
+  EXPECT_TRUE(ip.IsValid());
+  EXPECT_EQ(ip.prefix(), 24);
+  EXPECT_EQ(ip.ToString(), "192.168.2.1");
+
+  EXPECT_EQ(*ip.ToIPv4CIDR(), cidr);
+  EXPECT_FALSE(ip.ToIPv6Address());
+  EXPECT_FALSE(ip.ToIPv6CIDR());
+}
+
+TEST(IPAddressConversionTest, IPv6CIDR) {
+  const auto cidr = *IPv6CIDR::CreateFromCIDRString("::1/26");
+  const auto ip = IPAddress(cidr);
+  EXPECT_TRUE(ip.IsValid());
+  EXPECT_EQ(ip.prefix(), 26);
+  EXPECT_EQ(ip.ToString(), "::1");
+
+  EXPECT_EQ(*ip.ToIPv6CIDR(), cidr);
+  EXPECT_FALSE(ip.ToIPv4Address());
+  EXPECT_FALSE(ip.ToIPv4CIDR());
+}
+
 }  // namespace shill

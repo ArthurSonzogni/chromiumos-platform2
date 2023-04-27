@@ -12,12 +12,16 @@
 #include <utility>
 
 #include "shill/net/byte_string.h"
+#include "shill/net/ipv4_address.h"
+#include "shill/net/ipv6_address.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
 
 // Class to represent an IP address, whether v4 or v6.
 // Is both copyable and movable.
+// Note: Please prefer to use IPv4Address, IPv6Address, IPv4CIDR, or IPv6CIDR
+// if you're sure whether the address is IPv4 or IPv6 specific.
 class SHILL_EXPORT IPAddress {
  public:
   using Family = unsigned char;
@@ -29,6 +33,13 @@ class SHILL_EXPORT IPAddress {
   static const char kFamilyNameIPv6[];
 
   explicit IPAddress(Family family);
+
+  // Creates from the family-specific classes. The created instance is already
+  // initialized (i.e. IsValid() is true).
+  explicit IPAddress(const IPv4Address& address);
+  explicit IPAddress(const IPv6Address& address);
+  explicit IPAddress(const IPv4CIDR& cidr);
+  explicit IPAddress(const IPv6CIDR& cidr);
 
   ~IPAddress();
 
@@ -116,6 +127,13 @@ class SHILL_EXPORT IPAddress {
     return family_ != kFamilyUnknown &&
            GetLength() == GetAddressLength(family_);
   }
+
+  // Converts to the family-specific classes. Returns std::nullopt if the IP
+  // family is not the same.
+  std::optional<IPv4Address> ToIPv4Address() const;
+  std::optional<IPv6Address> ToIPv6Address() const;
+  std::optional<IPv4CIDR> ToIPv4CIDR() const;
+  std::optional<IPv6CIDR> ToIPv6CIDR() const;
 
   // An uninitialized IPAddress is empty and invalid when constructed.
   // Use SetAddressToDefault() to set it to the default or "all-zeroes" address.
