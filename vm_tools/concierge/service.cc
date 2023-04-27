@@ -1484,7 +1484,6 @@ bool Service::Init() {
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   static const std::map<const char*, ServiceMethod> kServiceMethods = {
       {kGetDnsSettingsMethod, &Service::GetDnsSettings},
-      {kInstallPflashMethod, &Service::InstallPflash},
   };
 
   // Asynchronously calls the callback ResponseSender.
@@ -4780,49 +4779,25 @@ void Service::NotifyVmSwapping(const VmId& vm_id) {
   exported_object_->SendSignal(&signal);
 }
 
-std::unique_ptr<dbus::Response> Service::InstallPflash(
-    dbus::MethodCall* method_call) {
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  InstallPflashRequest request;
+InstallPflashResponse Service::InstallPflash(
+    const InstallPflashRequest& request, const base::ScopedFD& pflash_src_fd) {
   InstallPflashResponse response;
 
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    response.set_failure_reason(
-        "Unable to parse InstallPflashRequest from message");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   if (!ValidateVmNameAndOwner(request, response)) {
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  base::ScopedFD pflash_src_fd;
-  if (!reader.PopFileDescriptor(&pflash_src_fd)) {
-    response.set_failure_reason("Failed to pop Pflash image fd");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   std::optional<PflashMetadata> pflash_metadata =
       GetPflashMetadata(request.owner_id(), request.vm_name());
   if (!pflash_metadata) {
     response.set_failure_reason("Failed to get pflash install path");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // We only allow one Pflash file to be allowed during the lifetime of a VM.
   if (pflash_metadata->is_installed) {
     response.set_failure_reason("Pflash already installed");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   // No Pflash is installed that means we can associate the given file with the
@@ -4835,13 +4810,11 @@ std::unique_ptr<dbus::Response> Service::InstallPflash(
             << " to: " << pflash_metadata->path;
   if (!base::CopyFile(pflash_src_path, pflash_metadata->path)) {
     response.set_failure_reason("Failed to copy pflash image");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   response.set_success(true);
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
+  return response;
 }
 
 // TODO(b/244486983): separate out GPU VM cache methods out of service.cc file

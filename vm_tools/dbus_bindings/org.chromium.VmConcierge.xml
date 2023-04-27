@@ -268,6 +268,25 @@
                     value="vm_tools::concierge::ImportDiskImageResponse"/>
       </arg>
     </method>
+    <method name="InstallPflash">
+      <tp:docstring>
+        Installs the Pflash image associated with a VM.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::InstallPflashRequest"/>
+      </arg>
+      <arg type="h" name="plash_src_fd" direction="in">
+        <tp:docstring>
+          fd for Pflash image.
+        </tp:docstring>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::InstallPflashResponse"/>
+      </arg>
+    </method>
     <method name="ListUsbDevices">
       <tp:docstring>
         Lists USB devices.
