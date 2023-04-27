@@ -461,12 +461,24 @@
       </arg>
     </signal>
     <signal name="VmGuestUserlandReadySignal">
+      <tp:docstring>
+        Indicates VM started up and guest user space system application is ready
+        for communication. Useful for detecting when to stop boosting guest OS
+        for short-term boot performance.
+      </tp:docstring>
       <arg name="signal" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::VmGuestUserlandReadySignal"/>
+        <tp:docstring>
+          Specifies the context of what level of guest userland is up and running.
+        </tp:docstring>
       </arg>
     </signal>
     <signal name="VmStartedSignal">
+      <tp:docstring>
+        Indicates that the concierge successfully launched crosvm as its child
+        process. If you want guest userland state use VmGuestUserlandReadySignal.
+      </tp:docstring>
       <arg name="signal" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::VmStartedSignal"/>
@@ -483,12 +495,18 @@
       </arg>
     </signal>
     <signal name="VmStoppedSignal">
+      <tp:docstring>
+        Indicates VM is stopped.
+      </tp:docstring>
       <arg name="signal" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::VmStoppedSignal"/>
       </arg>
     </signal>
     <signal name="VmStoppingSignal">
+      <tp:docstring>
+        Indicates VM is stopping.
+      </tp:docstring>
       <arg name="signal" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::VmStoppingSignal"/>
