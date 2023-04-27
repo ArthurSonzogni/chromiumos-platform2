@@ -82,10 +82,7 @@ class SHILL_EXPORT CIDR {
     return CIDR(address, prefix_length);
   }
 
-  CIDR(const Address& address, int prefix_length)
-      : address_(address), prefix_length_(prefix_length) {
-    DCHECK(IsValidPrefixLength(prefix_length_));
-  }
+  explicit CIDR(const Address& address = {}) : CIDR(address, 0) {}
 
   // Getter methods for the internal data.
   const Address& address() const { return address_; }
@@ -161,6 +158,11 @@ class SHILL_EXPORT CIDR {
       byte = ~byte;
     }
     return Address(data);
+  }
+
+  CIDR(const Address& address, int prefix_length)
+      : address_(address), prefix_length_(prefix_length) {
+    DCHECK(IsValidPrefixLength(prefix_length_));
   }
 
   Address address_;

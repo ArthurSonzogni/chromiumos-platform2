@@ -132,6 +132,17 @@ TEST(IPv4CIDR, CreateFromAddressAndPrefix) {
   ASSERT_FALSE(IPv4CIDR::CreateFromAddressAndPrefix(address, -1));
 }
 
+TEST(IPv4CIDR, DefaultConstructor) {
+  const IPv4CIDR default_cidr;
+  EXPECT_EQ(default_cidr.address(), IPv4Address());
+  EXPECT_EQ(default_cidr.prefix_length(), 0);
+
+  const IPv4Address address(192, 168, 10, 1);
+  const auto cidr = IPv4CIDR(address);
+  EXPECT_EQ(cidr.address(), address);
+  EXPECT_EQ(cidr.prefix_length(), 0);
+}
+
 TEST(IPv4CIDR, GetPrefixAddress) {
   const auto cidr1 = *IPv4CIDR::CreateFromCIDRString("192.168.10.123/24");
   EXPECT_EQ(cidr1.GetPrefixAddress().ToString(), "192.168.10.0");

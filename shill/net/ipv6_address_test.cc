@@ -140,6 +140,17 @@ TEST(IPv6CIDR, CreateFromAddressAndPrefix) {
   EXPECT_FALSE(IPv6CIDR::CreateFromAddressAndPrefix(address, -1));
 }
 
+TEST(IPv6CIDR, DefaultConstructor) {
+  const IPv6CIDR default_cidr;
+  EXPECT_EQ(default_cidr.address(), IPv6Address());
+  EXPECT_EQ(default_cidr.prefix_length(), 0);
+
+  const auto address = *IPv6Address::CreateFromString("::1");
+  const auto cidr = IPv6CIDR(address);
+  EXPECT_EQ(cidr.address(), address);
+  EXPECT_EQ(cidr.prefix_length(), 0);
+}
+
 TEST(IPv6CIDR, GetPrefixAddress) {
   const auto cidr1 = *IPv6CIDR::CreateFromCIDRString("2401:fa00:480:f6::6/16");
   EXPECT_EQ(cidr1.GetPrefixAddress(), *IPv6Address::CreateFromString("2401::"));
