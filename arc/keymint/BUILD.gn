@@ -14,6 +14,9 @@ libcutils_src = "../../../aosp/system/core/libcutils"
 
 group("all") {
   deps = [ ":arc-keymintd" ]
+  if (use.test) {
+    deps += [ ":arc-keymintd_testrunner" ]
+  }
 }
 
 # Binary
@@ -227,4 +230,30 @@ config("boringssl_config") {
     "boringcrypto",
     "pthread",
   ]
+}
+
+# Test target
+if (use.test) {
+  pkg_config("arc-keymintd_testrunner_config") {
+    pkg_deps = [
+      "libbrillo",
+      "libchrome",
+      "libchrome-test",
+    ]
+  }
+  executable("arc-keymintd_testrunner") {
+    sources = [
+      "conversion_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":arc-keymintd_testrunner_config",
+      ":boringssl_config",
+    ]
+    deps = [
+      ":keymint_mojo_bindings",
+      ":libkeymint",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
 }
