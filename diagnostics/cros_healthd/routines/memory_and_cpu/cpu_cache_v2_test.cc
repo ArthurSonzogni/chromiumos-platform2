@@ -115,6 +115,49 @@ class CpuCacheRoutineV2Test : public CpuCacheRoutineV2TestBase {
   std::unique_ptr<CpuCacheRoutineV2> routine_;
 };
 
+class CpuCacheRoutineV2AdapterTest : public CpuCacheRoutineV2TestBase {
+ protected:
+  CpuCacheRoutineV2AdapterTest() = default;
+  CpuCacheRoutineV2AdapterTest(const CpuCacheRoutineV2AdapterTest&) = delete;
+  CpuCacheRoutineV2AdapterTest& operator=(const CpuCacheRoutineV2AdapterTest&) =
+      delete;
+
+  void SetUp() {
+    CpuCacheRoutineV2TestBase::SetUp();
+    routine_adapter_ = std::make_unique<RoutineAdapter>(
+        mojom::RoutineArgument::Tag::kCpuCache);
+    routine_service_.CreateRoutine(
+        mojom::RoutineArgument::NewCpuCache(
+            mojom::CpuCacheRoutineArgument::New(std::nullopt)),
+        routine_adapter_->BindNewPipeAndPassReceiver());
+  }
+
+  // A utility function to flush the routine control and process control.
+  void FlushAdapter() {
+    // Flush the routine for all request to executor through process
+    // control.
+    routine_adapter_->FlushRoutineControlForTesting();
+    // No need to continue if there is an error and the receiver has
+    // disconnected already.
+    if (fake_process_control_.IsConnected()) {
+      // Flush the process control to return all request to routine.
+      fake_process_control_.receiver().FlushForTesting();
+      // Flush the routine control once more to run any callbacks called by
+      // fake_process_control.
+      routine_adapter_->FlushRoutineControlForTesting();
+    }
+  }
+
+  mojom::RoutineUpdatePtr GetUpdate() {
+    mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
+    routine_adapter_->PopulateStatusUpdate(update.get(), true);
+    return update;
+  }
+
+  RoutineService routine_service_{&mock_context_};
+  std::unique_ptr<RoutineAdapter> routine_adapter_;
+};
+
 // Test that the CPU cache routine can run successfully.
 TEST_F(CpuCacheRoutineV2Test, RoutineSuccess) {
   SetExecutorReturnCode(EXIT_SUCCESS);
@@ -125,10 +168,37 @@ TEST_F(CpuCacheRoutineV2Test, RoutineSuccess) {
   EXPECT_TRUE(result->state_union->get_finished()->has_passed);
 }
 
+// Test that we can run a routine successfully.
+TEST_F(CpuCacheRoutineV2AdapterTest, RoutineSuccess) {
+  mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
+  SetExecutorReturnCode(EXIT_SUCCESS);
+
+  routine_adapter_->Start();
+  FlushAdapter();
+  update = GetUpdate();
+  EXPECT_EQ(update->progress_percent, 100);
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kPassed);
+}
+
 // Test that the CPU cache routine handles the parsing error.
 TEST_F(CpuCacheRoutineV2Test, RoutineParseError) {
   SetMockMemoryInfo("Incorrectly formatted meminfo contents.\n");
   RunRoutineAndWaitForException();
+}
+
+// Test that the CPU cache routine handles the parsing error.
+TEST_F(CpuCacheRoutineV2AdapterTest, RoutineParseError) {
+  mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
+  SetMockMemoryInfo("Incorrectly formatted meminfo contents.\n");
+
+  routine_adapter_->Start();
+  FlushAdapter();
+  update = GetUpdate();
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kError);
 }
 
 // Test that the CPU cache routine handles when there is less than 628MB memory
@@ -139,6 +209,23 @@ TEST_F(CpuCacheRoutineV2Test, RoutineNotEnoughMemory) {
       "MemFree:         2873180 kB\n"
       "MemAvailable:    500000 kB\n");
   RunRoutineAndWaitForException();
+}
+
+// Test that the CPU cache routine handles when there is less than 628MB memory
+TEST_F(CpuCacheRoutineV2AdapterTest, RoutineNotEnoughMemory) {
+  mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
+  // MemAvailable less than 628 MB.
+  SetMockMemoryInfo(
+      "MemTotal:        3906320 kB\n"
+      "MemFree:         2873180 kB\n"
+      "MemAvailable:    500000 kB\n");
+
+  routine_adapter_->Start();
+  FlushAdapter();
+  update = GetUpdate();
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kError);
 }
 
 TEST_F(CpuCacheRoutineV2Test, DefaultTestSeconds) {
@@ -195,6 +282,43 @@ TEST_F(CpuCacheRoutineV2Test, IncrementalProgress) {
   EXPECT_TRUE(observer->state_->state_union->is_finished());
 }
 
+TEST_F(CpuCacheRoutineV2AdapterTest, IncrementalProgress) {
+  mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
+  routine_adapter_ =
+      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kCpuCache);
+  routine_service_.CreateRoutine(
+      mojom::RoutineArgument::NewCpuCache(mojom::CpuCacheRoutineArgument::New(
+          /*exec_duration=*/base::Seconds(60))),
+      routine_adapter_->BindNewPipeAndPassReceiver());
+
+  routine_adapter_->Start();
+  FlushAdapter();
+  update = GetUpdate();
+  EXPECT_EQ(update->progress_percent, 0);
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
+
+  // Fast forward for adapter to update percentage.
+  task_environment_.FastForwardBy(base::Seconds(30));
+  FlushAdapter();
+  update = GetUpdate();
+  EXPECT_EQ(update->progress_percent, 50);
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
+
+  // Fast forward for routine to finish running.
+  task_environment_.FastForwardBy(base::Seconds(30));
+  SetExecutorReturnCode(EXIT_SUCCESS);
+  FlushAdapter();
+  update = GetUpdate();
+  EXPECT_EQ(update->progress_percent, 100);
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kPassed);
+}
+
 // Test that the CPU cache routine will raise error if the executor
 // disconnects.
 TEST_F(CpuCacheRoutineV2Test, ExecutorDisconnectBeforeFinishedError) {
@@ -204,6 +328,20 @@ TEST_F(CpuCacheRoutineV2Test, ExecutorDisconnectBeforeFinishedError) {
   routine_->Start();
   fake_process_control_.receiver().reset();
   run_loop.Run();
+}
+
+// Test that the CPU cache routine will raise error if the executor
+// disconnects.
+TEST_F(CpuCacheRoutineV2AdapterTest, ExecutorDisconnectBeforeFinishedError) {
+  mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
+  routine_adapter_->Start();
+  FlushAdapter();
+  fake_process_control_.receiver().reset();
+  routine_adapter_->FlushRoutineControlForTesting();
+  update = GetUpdate();
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kError);
 }
 
 }  // namespace
