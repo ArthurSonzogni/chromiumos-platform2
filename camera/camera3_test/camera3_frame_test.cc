@@ -1408,6 +1408,13 @@ class Camera3FrameContentTest
         width_(std::get<2>(GetParam())),
         height_(std::get<3>(GetParam())) {}
 
+  ~Camera3FrameContentTest() override {
+    if (GetCrosCameraHal() != nullptr &&
+        GetCrosCameraHal()->set_privacy_switch_state != nullptr) {
+      GetCrosCameraHal()->set_privacy_switch_state(false);
+    }
+  }
+
  protected:
   void ProcessResultMetadataOutputBuffers(
       uint32_t frame_number,
@@ -1503,7 +1510,7 @@ TEST_P(Camera3FrameContentTest, DetectGreenLine) {
   ASSERT_NE(nullptr, i420_image);
   ASSERT_EQ(3, i420_image->planes.size());
 
-  auto IsBottomLineGreen = [&](const ScopedImage& i420_image) {
+  auto IsBottomLineGreen = [](const ScopedImage& i420_image) {
     uint32_t plane_width = i420_image->width / 2;
     uint32_t plane_height = i420_image->height / 2;
     for (int plane = 1; plane < i420_image->planes.size(); plane++) {
@@ -1518,7 +1525,7 @@ TEST_P(Camera3FrameContentTest, DetectGreenLine) {
   };
   EXPECT_FALSE(IsBottomLineGreen(i420_image))
       << "Green line at the bottom of captured frame";
-  auto IsRightMostLineGreen = [&](const ScopedImage& i420_image) {
+  auto IsRightMostLineGreen = [](const ScopedImage& i420_image) {
     uint32_t plane_width = i420_image->width / 2;
     uint32_t plane_height = i420_image->height / 2;
     for (int plane = 1; plane < i420_image->planes.size(); plane++) {
@@ -1533,6 +1540,58 @@ TEST_P(Camera3FrameContentTest, DetectGreenLine) {
   };
   EXPECT_FALSE(IsRightMostLineGreen(i420_image))
       << "Green line at the rightmost of captured frame";
+}
+
+TEST_P(Camera3FrameContentTest, SWPrivacySwitch) {
+  if (GetCrosCameraHal() == nullptr) {
+    GTEST_SKIP() << "--camera_hal_path is not specified";
+  }
+  if (GetCrosCameraHal()->set_privacy_switch_state == nullptr) {
+    GTEST_SKIP()
+        << "cros_camera_hal::set_privacy_switch_state is not implemented";
+  }
+
+  GetCrosCameraHal()->set_privacy_switch_state(true);
+
+  cam_device_.AddOutputStream(format_, width_, height_,
+                              CAMERA3_STREAM_ROTATION_0);
+  ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
+      << "Configuring stream fails";
+  ScopedCameraMetadata metadata(clone_camera_metadata(
+      cam_device_.ConstructDefaultRequestSettings(CAMERA3_TEMPLATE_PREVIEW)));
+  ASSERT_EQ(0, CreateCaptureRequestByMetadata(metadata, nullptr))
+      << "Creating capture request fails";
+
+  struct timespec timeout;
+  GetTimeOfTimeout(kDefaultTimeoutMs, &timeout);
+  WaitShutterAndCaptureResult(timeout);
+  ASSERT_NE(nullptr, buffer_handle_) << "Failed to get frame buffer";
+  auto i420_image = ConvertToImage(std::move(buffer_handle_), width_, height_,
+                                   ImageFormat::IMAGE_FORMAT_I420);
+  ASSERT_NE(nullptr, i420_image);
+  ASSERT_EQ(3, i420_image->planes.size());
+
+  auto IsBlack = [](const ScopedImage& i420_image) {
+    for (size_t h = 0; h < i420_image->height; ++h) {
+      for (size_t w = 0; w < i420_image->width; ++w) {
+        uint8_t y = i420_image->planes[0].addr[h * i420_image->width + w];
+        if (y != 0 && y != 16) {
+          return false;
+        }
+      }
+    }
+    for (size_t h = 0; h < i420_image->height / 2; ++h) {
+      for (size_t w = 0; w < i420_image->width / 2; ++w) {
+        if (i420_image->planes[1].addr[h * i420_image->width / 2 + w] != 128 ||
+            i420_image->planes[2].addr[h * i420_image->width / 2 + w] != 128) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+  EXPECT_TRUE(IsBlack(i420_image))
+      << "Non black frame when the SW privacy switch is ON";
 }
 
 // Test parameters:

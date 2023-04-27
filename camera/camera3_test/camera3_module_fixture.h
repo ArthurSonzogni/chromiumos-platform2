@@ -20,6 +20,7 @@
 #include "camera3_test/camera3_device_connector.h"
 #include "camera3_test/camera3_module_connector.h"
 #include "camera3_test/common_types.h"
+#include "cros-camera/cros_camera_hal.h"
 
 namespace camera3_test {
 
@@ -33,6 +34,8 @@ enum {
   STREAM_CONFIG_STALL_DURATION_INDEX = STREAM_CONFIG_DIRECTION_INDEX,
   STREAM_CONFIG_MIN_DURATION_INDEX = STREAM_CONFIG_DIRECTION_INDEX
 };
+
+cros::cros_camera_hal_t* GetCrosCameraHal();
 
 // Returns true if the |actual_level| is equal to or beyond the
 // |required_level|.

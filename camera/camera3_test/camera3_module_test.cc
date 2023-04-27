@@ -36,11 +36,16 @@ namespace camera3_test {
 
 #define IGNORE_HARDWARE_LEVEL UINT8_MAX
 
-static camera_module_t* g_cam_module = NULL;
+static camera_module_t* g_cam_module = nullptr;
+static cros::cros_camera_hal_t* g_cros_camera_hal = nullptr;
 
 static cros::CameraThread& GetModuleThread() {
   static base::NoDestructor<cros::CameraThread> t("Camera3TestModuleThread");
   return *t;
+}
+
+cros::cros_camera_hal_t* GetCrosCameraHal() {
+  return g_cros_camera_hal;
 }
 
 bool isHardwareLevelSupported(uint8_t actual_level, uint8_t required_level) {
@@ -311,6 +316,7 @@ static void InitCameraModule(const base::FilePath& camera_hal_path,
   // symbol once all camera HALs have implemented the interface.
   if (*cros_camera_hal != nullptr) {
     (*cros_camera_hal)->set_up(token);
+    g_cros_camera_hal = *cros_camera_hal;
   }
 
   camera_module_t* module = static_cast<camera_module_t*>(
