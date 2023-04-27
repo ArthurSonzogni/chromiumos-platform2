@@ -93,6 +93,7 @@ const PROTOS_TO_GENERATE: &[(&str, &str)] = &[
         "shadercached",
         "system_api/dbus/shadercached/shadercached.proto",
     ),
+    ("spaced", "system_api/dbus/spaced/spaced.proto"),
     (
         "UserDataAuth",
         "system_api/dbus/cryptohome/UserDataAuth.proto",
