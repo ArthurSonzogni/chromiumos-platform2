@@ -31,10 +31,10 @@ extern "C" {
 
 namespace {
 
-static hwsec::OpteePluginFrontend& GetHwsec() {
+static const hwsec::OpteePluginFrontend& GetHwsec() {
   static thread_local hwsec::FactoryImpl hwsec_factory(
       hwsec::ThreadingMode::kCurrentThread);
-  static thread_local std::unique_ptr<hwsec::OpteePluginFrontend> hwsec =
+  static thread_local std::unique_ptr<const hwsec::OpteePluginFrontend> hwsec =
       hwsec_factory.GetOpteePluginFrontend();
   return *hwsec;
 }
