@@ -263,6 +263,15 @@ int diag_main(int argc, char** argv) {
                               mojo_ipc::UfsLifetimeRoutineArgument::New()),
                           FLAGS_single_line_json);
     }
+    if (FLAGS_routine == "cpu_cache_v2") {
+      auto argument = mojo_ipc::CpuCacheRoutineArgument::New();
+      if (command_line->HasSwitch("length_seconds")) {
+        argument->exec_duration = base::Seconds(FLAGS_length_seconds);
+      }
+      return RunV2Routine(
+          mojo_ipc::RoutineArgument::NewCpuCache(std::move(argument)),
+          FLAGS_single_line_json);
+    }
 
     std::map<std::string, mojo_ipc::DiagnosticRoutineEnum>
         switch_to_diagnostic_routine;
