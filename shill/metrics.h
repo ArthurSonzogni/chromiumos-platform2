@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/strings/string_piece_forward.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
@@ -99,6 +100,18 @@ class Metrics : public DefaultServiceObserver {
     // Necessary for testing.
     bool operator==(const NameByVPNType& that) const {
       return strncmp(name, that.name, kMaxMetricNameLen) == 0;
+    }
+  };
+
+  // Represents a UMA metric name with a fixed prefix. Callers provide the
+  // suffix for every call sites. This is convenient for group of metrics
+  // like "Network.Shill.WiFi.RememberedSystemNetworkCount.*" that share a
+  // common prefix.
+  struct PrefixName {
+    const char* prefix;
+    // Necessary for testing.
+    bool operator==(const PrefixName& that) const {
+      return strncmp(prefix, that.prefix, kMaxMetricNameLen) == 0;
     }
   };
 
@@ -1220,22 +1233,37 @@ class Metrics : public DefaultServiceObserver {
   static constexpr char kMetricPasspointSavedCredentials[] =
       "Network.Shill.WiFi.Passpoint.SavedCredentials";
 
-  // Histogram parameters for next two are the same as for
-  // kMetricRememberedWiFiNetworkCount. Must be constexpr, for static
-  // checking of format string. Must be defined inline, for constexpr.
-  static constexpr char
-      kMetricRememberedSystemWiFiNetworkCountBySecurityModeFormat[] =
-          "Network.Shill.WiFi.RememberedSystemNetworkCount.%s";
-  static constexpr char
-      kMetricRememberedUserWiFiNetworkCountBySecurityModeFormat[] =
-          "Network.Shill.WiFi.RememberedUserNetworkCount.%s";
-  static constexpr char kMetricRememberedWiFiNetworkCount[] =
-      "Network.Shill.WiFi.RememberedNetworkCount";
   static constexpr int kMetricRememberedWiFiNetworkCountMax = 1024;
   static constexpr int kMetricRememberedWiFiNetworkCountMin = 1;
   static constexpr int kMetricRememberedWiFiNetworkCountNumBuckets = 32;
-  static constexpr char kMetricHiddenSSIDNetworkCount[] =
-      "Network.Shill.WiFi.HiddenSSIDNetworkCount";
+  static constexpr HistogramMetric<PrefixName>
+      kMetricRememberedSystemWiFiNetworkCountBySecurityModeFormat = {
+          .n = PrefixName{"Network.Shill.WiFi.RememberedSystemNetworkCount."},
+          .min = kMetricRememberedWiFiNetworkCountMin,
+          .max = kMetricRememberedWiFiNetworkCountMax,
+          .num_buckets = kMetricRememberedWiFiNetworkCountNumBuckets,
+      };
+  static constexpr HistogramMetric<PrefixName>
+      kMetricRememberedUserWiFiNetworkCountBySecurityModeFormat = {
+          .n = PrefixName{"Network.Shill.WiFi.RememberedUserNetworkCount."},
+          .min = kMetricRememberedWiFiNetworkCountMin,
+          .max = kMetricRememberedWiFiNetworkCountMax,
+          .num_buckets = kMetricRememberedWiFiNetworkCountNumBuckets,
+      };
+  static constexpr HistogramMetric<FixedName>
+      kMetricRememberedWiFiNetworkCount = {
+          .n = FixedName{"Network.Shill.WiFi.RememberedNetworkCount"},
+          .min = kMetricRememberedWiFiNetworkCountMin,
+          .max = kMetricRememberedWiFiNetworkCountMax,
+          .num_buckets = kMetricRememberedWiFiNetworkCountNumBuckets,
+      };
+  static constexpr HistogramMetric<FixedName> kMetricHiddenSSIDNetworkCount = {
+      .n = FixedName{"Network.Shill.WiFi.HiddenSSIDNetworkCount"},
+      .min = kMetricRememberedWiFiNetworkCountMin,
+      .max = kMetricRememberedWiFiNetworkCountMax,
+      .num_buckets = kMetricRememberedWiFiNetworkCountNumBuckets,
+  };
+
   static constexpr char kMetricHiddenSSIDEverConnected[] =
       "Network.Shill.WiFi.HiddenSSIDEverConnected";
   static constexpr char kMetricWiFiCQMNotification[] =
@@ -2110,6 +2138,11 @@ class Metrics : public DefaultServiceObserver {
                              VPNType type,
                              int sample);
 
+  // Sends linear histogram data to UMA for a metric with a prefix name.
+  virtual void SendEnumToUMA(const EnumMetric<PrefixName>& metric,
+                             const std::string& suffix,
+                             int sample);
+
   // Sends logarithmic histogram data to UMA for a metric with a fixed name.
   virtual void SendToUMA(const HistogramMetric<FixedName>& metric, int sample);
 
@@ -2117,6 +2150,11 @@ class Metrics : public DefaultServiceObserver {
   // Technology.
   virtual void SendToUMA(const HistogramMetric<NameByTechnology>& metric,
                          Technology tech,
+                         int sample);
+
+  // Sends logarithmic histogram data to UMA for a metric with a prefix name.
+  virtual void SendToUMA(const HistogramMetric<PrefixName>& metric,
+                         const std::string& suffix,
                          int sample);
 
   void SetLibraryForTesting(MetricsLibraryInterface* library);

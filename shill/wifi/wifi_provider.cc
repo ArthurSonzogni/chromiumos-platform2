@@ -643,42 +643,30 @@ void WiFiProvider::ReportRememberedNetworkCount() {
   metrics()->SendToUMA(
       Metrics::kMetricRememberedWiFiNetworkCount,
       std::count_if(services_.begin(), services_.end(),
-                    [](ServiceRefPtr s) { return s->IsRemembered(); }),
-      Metrics::kMetricRememberedWiFiNetworkCountMin,
-      Metrics::kMetricRememberedWiFiNetworkCountMax,
-      Metrics::kMetricRememberedWiFiNetworkCountNumBuckets);
+                    [](ServiceRefPtr s) { return s->IsRemembered(); }));
 }
 
 void WiFiProvider::ReportServiceSourceMetrics() {
   for (const auto& security_class : {kSecurityClassNone, kSecurityClassWep,
                                      kSecurityClassPsk, kSecurityClass8021x}) {
     metrics()->SendToUMA(
-        base::StringPrintf(
-            Metrics::
-                kMetricRememberedSystemWiFiNetworkCountBySecurityModeFormat,
-            security_class),
+        Metrics::kMetricRememberedSystemWiFiNetworkCountBySecurityModeFormat,
+        security_class,
         std::count_if(services_.begin(), services_.end(),
                       [security_class](WiFiServiceRefPtr s) {
                         return s->IsRemembered() &&
                                s->IsSecurityMatch(security_class) &&
                                s->profile()->IsDefault();
-                      }),
-        Metrics::kMetricRememberedWiFiNetworkCountMin,
-        Metrics::kMetricRememberedWiFiNetworkCountMax,
-        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets);
+                      }));
     metrics()->SendToUMA(
-        base::StringPrintf(
-            Metrics::kMetricRememberedUserWiFiNetworkCountBySecurityModeFormat,
-            security_class),
+        Metrics::kMetricRememberedUserWiFiNetworkCountBySecurityModeFormat,
+        security_class,
         std::count_if(services_.begin(), services_.end(),
                       [security_class](WiFiServiceRefPtr s) {
                         return s->IsRemembered() &&
                                s->IsSecurityMatch(security_class) &&
                                !s->profile()->IsDefault();
-                      }),
-        Metrics::kMetricRememberedWiFiNetworkCountMin,
-        Metrics::kMetricRememberedWiFiNetworkCountMax,
-        Metrics::kMetricRememberedWiFiNetworkCountNumBuckets);
+                      }));
   }
 
   metrics()->SendToUMA(Metrics::kMetricHiddenSSIDNetworkCount,
@@ -686,10 +674,7 @@ void WiFiProvider::ReportServiceSourceMetrics() {
                                      [](WiFiServiceRefPtr s) {
                                        return s->IsRemembered() &&
                                               s->hidden_ssid();
-                                     }),
-                       Metrics::kMetricRememberedWiFiNetworkCountMin,
-                       Metrics::kMetricRememberedWiFiNetworkCountMax,
-                       Metrics::kMetricRememberedWiFiNetworkCountNumBuckets);
+                                     }));
 
   for (const auto& service : services_) {
     if (service->IsRemembered() && service->hidden_ssid()) {

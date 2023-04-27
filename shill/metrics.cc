@@ -154,6 +154,12 @@ void Metrics::SendEnumToUMA(const EnumMetric<NameByVPNType>& metric,
   library_->SendEnumToUMA(name, sample, metric.max);
 }
 
+void Metrics::SendEnumToUMA(const EnumMetric<PrefixName>& metric,
+                            const std::string& suffix,
+                            int sample) {
+  library_->SendEnumToUMA(metric.n.prefix + suffix, sample, metric.max);
+}
+
 void Metrics::SendToUMA(const Metrics::HistogramMetric<FixedName>& metric,
                         int sample) {
   library_->SendToUMA(metric.n.name, sample, metric.min, metric.max,
@@ -166,6 +172,13 @@ void Metrics::SendToUMA(
     int sample) {
   library_->SendToUMA(GetFullMetricName(metric.n.name, tech, metric.n.location),
                       sample, metric.min, metric.max, metric.num_buckets);
+}
+
+void Metrics::SendToUMA(const Metrics::HistogramMetric<PrefixName>& metric,
+                        const std::string& suffix,
+                        int sample) {
+  library_->SendToUMA(metric.n.prefix + suffix, sample, metric.min, metric.max,
+                      metric.num_buckets);
 }
 
 // static

@@ -101,6 +101,12 @@ class MockMetrics : public Metrics {
                int),
               (override));
   MOCK_METHOD(void,
+              SendEnumToUMA,
+              (const Metrics::EnumMetric<Metrics::PrefixName>& metric,
+               const std::string&,
+               int),
+              (override));
+  MOCK_METHOD(void,
               SendToUMA,
               (const Metrics::HistogramMetric<Metrics::FixedName>& metric, int),
               (override));
@@ -111,6 +117,12 @@ class MockMetrics : public Metrics {
        Technology,
        int),
       (override));
+  MOCK_METHOD(void,
+              SendToUMA,
+              (const Metrics::HistogramMetric<Metrics::PrefixName>& metric,
+               const std::string&,
+               int),
+              (override));
   MOCK_METHOD(bool, SendBoolToUMA, (const std::string&, bool), (override));
   MOCK_METHOD(bool,
               SendToUMA,
