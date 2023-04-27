@@ -164,6 +164,9 @@ When a Connect request fails:
 *   Any *Pending ICCID* is cleared.
 
 
+### Entitlement Check
+[cellular_carrier_entitlement.md](cellular_carrier_entitlement.md)
+
 ### Connection State Details
 
 *   **TODO(stevenjb):** Provide details for Cellular state variables.
