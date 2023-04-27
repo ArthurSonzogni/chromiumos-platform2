@@ -204,10 +204,6 @@ class Service final : public org::chromium::VmConciergeInterface {
   // Handles a request to list existing disk images.
   ListVmDisksResponse ListVmDisks(const ListVmDisksRequest& request) override;
 
-  // Handles a request to get the SSH keys for a container.
-  ContainerSshKeysResponse GetContainerSshKeys(
-      const ContainerSshKeysRequest& request) override;
-
   AttachUsbDeviceResponse AttachUsbDevice(const AttachUsbDeviceRequest& request,
                                           const base::ScopedFD& fd) override;
   DetachUsbDeviceResponse DetachUsbDevice(

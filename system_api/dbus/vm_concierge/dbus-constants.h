@@ -28,7 +28,6 @@ const char kImportDiskImageMethod[] = "ImportDiskImage";
 const char kCancelDiskImageMethod[] = "CancelDiskImageOperation";
 const char kDiskImageStatusMethod[] = "DiskImageStatus";
 const char kListVmDisksMethod[] = "ListVmDisks";
-const char kGetContainerSshKeysMethod[] = "GetContainerSshKeys";
 const char kSyncVmTimesMethod[] = "SyncVmTimes";
 const char kAttachUsbDeviceMethod[] = "AttachUsbDevice";
 const char kDetachUsbDeviceMethod[] = "DetachUsbDevice";

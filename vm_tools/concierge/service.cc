@@ -170,9 +170,6 @@ constexpr const char* kDiskImageExtensions[] = {kRawImageExtension,
 constexpr const char* kPluginVmImageExtensions[] = {kPluginVmImageExtension,
                                                     nullptr};
 
-// Default name to use for a container.
-constexpr char kDefaultContainerName[] = "penguin";
-
 // The Id of the DLC that supplies the Bios for the Bruschetta VM.
 constexpr char kBruschettaBiosDlcId[] = "edk2-ovmf-dlc";
 
@@ -3758,37 +3755,6 @@ ListVmDisksResponse Service::ListVmDisks(const ListVmDisksRequest& request) {
     }
   }
 
-  return response;
-}
-
-ContainerSshKeysResponse Service::GetContainerSshKeys(
-    const ContainerSshKeysRequest& request) {
-  LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-
-  ContainerSshKeysResponse response;
-
-  if (!ValidateVmNameAndOwner(request, response)) {
-    return response;
-  }
-
-  auto iter = FindVm(request.cryptohome_id(), request.vm_name());
-  if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
-    return response;
-  }
-
-  std::string container_name = request.container_name().empty()
-                                   ? kDefaultContainerName
-                                   : request.container_name();
-  response.set_container_public_key(GetGuestSshPublicKey(
-      request.cryptohome_id(), request.vm_name(), container_name));
-  response.set_container_private_key(GetGuestSshPrivateKey(
-      request.cryptohome_id(), request.vm_name(), container_name));
-  response.set_host_public_key(GetHostSshPublicKey(request.cryptohome_id()));
-  response.set_host_private_key(GetHostSshPrivateKey(request.cryptohome_id()));
-  response.set_hostname(base::StringPrintf(
-      "%s.%s.linux.test", container_name.c_str(), request.vm_name().c_str()));
   return response;
 }
 
