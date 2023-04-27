@@ -173,13 +173,13 @@ TEST(IPv4CIDR, GetBroadcast) {
   EXPECT_EQ(cidr2.GetBroadcast().ToString(), "192.168.15.255");
 }
 
-TEST(IPv4CIDR, ContainsAddress) {
+TEST(IPv4CIDR, InSameSubnetWith) {
   const auto cidr = *IPv4CIDR::CreateFromCIDRString("192.168.10.123/24");
-  EXPECT_TRUE(cidr.ContainsAddress(IPv4Address(192, 168, 10, 1)));
-  EXPECT_TRUE(cidr.ContainsAddress(IPv4Address(192, 168, 10, 123)));
-  EXPECT_TRUE(cidr.ContainsAddress(IPv4Address(192, 168, 10, 255)));
-  EXPECT_FALSE(cidr.ContainsAddress(IPv4Address(192, 168, 11, 123)));
-  EXPECT_FALSE(cidr.ContainsAddress(IPv4Address(193, 168, 10, 123)));
+  EXPECT_TRUE(cidr.InSameSubnetWith(IPv4Address(192, 168, 10, 1)));
+  EXPECT_TRUE(cidr.InSameSubnetWith(IPv4Address(192, 168, 10, 123)));
+  EXPECT_TRUE(cidr.InSameSubnetWith(IPv4Address(192, 168, 10, 255)));
+  EXPECT_FALSE(cidr.InSameSubnetWith(IPv4Address(192, 168, 11, 123)));
+  EXPECT_FALSE(cidr.InSameSubnetWith(IPv4Address(193, 168, 10, 123)));
 }
 
 TEST(IPv4CIDR, ToString) {

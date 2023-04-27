@@ -173,16 +173,17 @@ TEST(IPv6CIDR, GetPrefixAddress) {
             *IPv6Address::CreateFromString("2401:fa00:480:f6::6"));
 }
 
-TEST(IPv6CIDR, ContainsAddress) {
+TEST(IPv6CIDR, InSameSubnetWith) {
   const auto cidr = *IPv6CIDR::CreateFromCIDRString("2401:fa00:480:f6::6/16");
 
-  EXPECT_TRUE(cidr.ContainsAddress(*IPv6Address::CreateFromString("2401::")));
+  EXPECT_TRUE(cidr.InSameSubnetWith(*IPv6Address::CreateFromString("2401::")));
   EXPECT_TRUE(
-      cidr.ContainsAddress(*IPv6Address::CreateFromString("2401:abc::")));
-  EXPECT_TRUE(cidr.ContainsAddress(*IPv6Address::CreateFromString("2401::1")));
+      cidr.InSameSubnetWith(*IPv6Address::CreateFromString("2401:abc::")));
+  EXPECT_TRUE(cidr.InSameSubnetWith(*IPv6Address::CreateFromString("2401::1")));
 
-  EXPECT_FALSE(cidr.ContainsAddress(*IPv6Address::CreateFromString("2402::6")));
-  EXPECT_FALSE(cidr.ContainsAddress(*IPv6Address::CreateFromString("::6")));
+  EXPECT_FALSE(
+      cidr.InSameSubnetWith(*IPv6Address::CreateFromString("2402::6")));
+  EXPECT_FALSE(cidr.InSameSubnetWith(*IPv6Address::CreateFromString("::6")));
 }
 
 TEST(IPv6CIDR, ToString) {

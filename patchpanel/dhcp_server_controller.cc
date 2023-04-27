@@ -32,8 +32,8 @@ std::optional<Config> Config::Create(
     const std::vector<shill::IPv4Address>& dns_servers,
     const std::vector<std::string>& domain_searches) {
   // The start_ip and end_ip should be in the same subnet as host_cidr.
-  if (!(host_cidr.ContainsAddress(start_ip) &&
-        host_cidr.ContainsAddress(end_ip))) {
+  if (!(host_cidr.InSameSubnetWith(start_ip) &&
+        host_cidr.InSameSubnetWith(end_ip))) {
     return std::nullopt;
   }
 

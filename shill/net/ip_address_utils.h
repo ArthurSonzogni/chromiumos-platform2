@@ -123,8 +123,8 @@ class SHILL_EXPORT CIDR {
     return BitwiseOr(address_, broadcast_mask);
   }
 
-  // Returns true is the address |b| is contained in |*this| CIDR.
-  bool ContainsAddress(const Address& b) const {
+  // Returns true is the address |b| is in the same subnet with |*this| CIDR.
+  bool InSameSubnetWith(const Address& b) const {
     return GetPrefixAddress() == CIDR(b, prefix_length_).GetPrefixAddress();
   }
 
