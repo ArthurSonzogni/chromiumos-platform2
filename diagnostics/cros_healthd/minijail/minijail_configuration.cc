@@ -181,6 +181,9 @@ void EnterExecutorMinijail() {
   ScopedMinijail j(minijail_new());
 
   minijail_namespace_vfs(j.get());
+  // MS_SLAVE is the default mount propagation to run inside a new VFS namespace
+  // in the minijail command-line tool (-v). Set it explicitly for DLC.
+  minijail_remount_mode(j.get(), MS_SLAVE);
   PCHECK(0 == minijail_enter_pivot_root(j.get(), "/mnt/empty"));
   PCHECK(0 == minijail_bind(j.get(), "/", "/", /*writeable=*/0));
   PCHECK(0 == minijail_bind(j.get(), "/sys", "/sys", /*writeable=*/0));
@@ -197,6 +200,9 @@ void EnterExecutorMinijail() {
   // Shared socket file for talking to the D-Bus daemon.
   PCHECK(0 ==
          minijail_bind(j.get(), "/run/dbus", "/run/dbus", /*writeable=*/0));
+  // Used by DLC.
+  PCHECK(0 == minijail_mount(j.get(), "/run/imageloader", "/run/imageloader",
+                             "none", /*flags=*/MS_BIND | MS_REC));
 
   // Also bind efivars, which is a separate filesystem mounted under sys.
   // It is only present on some systems.

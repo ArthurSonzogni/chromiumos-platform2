@@ -37,6 +37,7 @@ install_and_check_seccomp_policy("diagnostics_seccomp") {
   sources = [
     "${_arch}/ectool_i2cread-seccomp.policy",
     "${_arch}/ectool_pwmgetfanrpm-seccomp.policy",
+    "${_arch}/fio-seccomp.policy",
     "${_arch}/hciconfig-seccomp.policy",
     "${_arch}/iw-seccomp.policy",
     "${_arch}/memtester-seccomp.policy",

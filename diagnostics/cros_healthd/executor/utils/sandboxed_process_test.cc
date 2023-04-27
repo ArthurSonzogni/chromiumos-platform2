@@ -120,6 +120,7 @@ TEST_F(SandboxedProcessTest, Default) {
             (std::set<std::vector<std::string>>{
                 {"-P", "/mnt/empty"},
                 {"-v"},
+                {"-Kslave"},
                 {"-r"},
                 {"-l"},
                 {"-e"},
@@ -164,6 +165,29 @@ TEST_F(SandboxedProcessTest, NoNetworkNamespace) {
   EXPECT_EQ(cmd_, expected_cmd);
   EXPECT_THAT(minijail_args_set_,
               Not(Contains(std::vector<std::string>{"-e"})));
+}
+
+TEST_F(SandboxedProcessTest, MOUNT_DLC) {
+  std::vector<std::string> expected_cmd{"ls", "-al"};
+  MockSandboxedProcess process{
+      /*command=*/expected_cmd,
+      /*seccomp_filename=*/kTestSeccompName,
+      /*user=*/kTestUser,
+      /*capabilities_mask=*/kTestCapabilitiesMask,
+      /*readonly_mount_points=*/
+      {base::FilePath{kTestReadOnlyFile},
+       base::FilePath{kTestReadOnlyFileNotExist}},
+      /*writable_mount_points=*/{base::FilePath{kTestWritableFile}},
+      /*sandbox_option=*/MOUNT_DLC};
+
+  SetUpExpectCallForMinijailParsing(process);
+
+  EXPECT_TRUE(process.Start());
+  EXPECT_EQ(cmd_, expected_cmd);
+  EXPECT_THAT(
+      minijail_args_set_,
+      Contains(std::vector<std::string>{
+          "-k", "/run/imageloader,/run/imageloader,none,MS_BIND|MS_REC"}));
 }
 
 }  // namespace

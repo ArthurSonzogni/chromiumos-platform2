@@ -17,6 +17,7 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -60,6 +61,7 @@ constexpr char kMemtesterBinary[] = "/usr/sbin/memtester";
 constexpr char kHciconfigBinary[] = "/usr/bin/hciconfig";
 constexpr char kCrosEcDevice[] = "/dev/cros_ec";
 constexpr char kStressAppTestBinary[] = "/usr/bin/stressapptest";
+constexpr char kFioCacheFile[] = "/var/cache/diagnostics/fio-test-file";
 
 }  // namespace
 }  // namespace path
@@ -92,6 +94,8 @@ constexpr char kReadOnlyFetchers[] = "readonly-fetchers-seccomp.policy";
 constexpr char kPsr[] = "psr-seccomp.policy";
 // SECCOMP policy for stressapptest.
 constexpr char kStressAppTest[] = "stressapptest-seccomp.policy";
+// SECCOMP policy for fio.
+constexpr char kFio[] = "fio-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -107,6 +111,13 @@ constexpr char kEc[] = "healthd_ec";
 constexpr char kPsr[] = "healthd_psr";
 
 }  // namespace user
+
+namespace dlc {
+
+// The DLC ID for fio.
+constexpr char kFio[] = "fio-dlc";
+
+}  // namespace dlc
 
 // Amount of time we wait for a process to respond to SIGTERM before killing it.
 constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
@@ -167,6 +178,36 @@ Callback CreateOnceDelegateCallback(std::unique_ptr<DelegateProcess> delegate,
   base::OnceClosure deleter = base::DoNothingWithBoundArgs(std::move(delegate));
   return mojo::WrapCallbackWithDefaultInvokeIfNotRun(
       std::move(callback).Then(std::move(deleter)), std::move(default_args)...);
+}
+
+std::vector<std::string> GenerateFioCommand(
+    const std::string& fio_path,
+    ash::cros_healthd::mojom::FioJobArgumentPtr argument) {
+  switch (argument->which()) {
+    case mojom::FioJobArgument::Tag::kPrepare:
+      return {fio_path,
+              "--filename=" + std::string(path::kFioCacheFile),
+              "--name=prepare",
+              "--size=" +
+                  base::NumberToString(argument->get_prepare()->file_size_mb) +
+                  "MB",
+              "--verify=md5",
+              "--rw=write",
+              "--end_fsync=1",
+              "--verify_state_save=0",
+              "--output-format=json"};
+    case mojom::FioJobArgument::Tag::kRead:
+      return {
+          fio_path,
+          "--filename=" + std::string(path::kFioCacheFile),
+          "--name=run",
+          "--time_based=1",
+          "--runtime=" + base::NumberToString(
+                             argument->get_read()->exec_duration.InSeconds()),
+          "--direct=1",
+          "--rw=read",
+          "--output-format=json"};
+  }
 }
 
 }  // namespace
@@ -634,6 +675,44 @@ void Executor::MonitorStylus(
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),
                      std::move(process_control_receiver)));
+}
+
+void Executor::RunFio(mojom::FioJobArgumentPtr argument,
+                      mojo::PendingReceiver<mojom::ProcessControl> receiver) {
+  dlc_manager_->GetBinaryRootPath(
+      dlc::kFio,
+      base::BindOnce(&Executor::RunFioWithDlcRoot, weak_factory_.GetWeakPtr(),
+                     std::move(argument), std::move(receiver)));
+}
+
+void Executor::RunFioWithDlcRoot(
+    ash::cros_healthd::mojom::FioJobArgumentPtr argument,
+    mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver,
+    std::optional<std::string> dlc_root_path) {
+  if (!dlc_root_path.has_value()) {
+    receiver.reset();
+    return;
+  }
+
+  std::vector<base::FilePath> readonly_mount_points, writable_mount_points;
+  switch (argument->which()) {
+    case mojom::FioJobArgument::Tag::kPrepare:
+      writable_mount_points.push_back(
+          base::FilePath(path::kFioCacheFile).DirName());
+      break;
+    case mojom::FioJobArgument::Tag::kRead:
+      readonly_mount_points.emplace_back(path::kFioCacheFile);
+      break;
+  }
+
+  auto command = GenerateFioCommand(
+      base::FilePath(dlc_root_path.value()).Append("bin/fio").value(),
+      std::move(argument));
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kFio, kCrosHealthdSandboxUser, kNullCapability,
+      readonly_mount_points, writable_mount_points, MOUNT_DLC);
+  RunLongRunningProcess(std::move(process), std::move(receiver),
+                        /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::RunAndWaitProcess(

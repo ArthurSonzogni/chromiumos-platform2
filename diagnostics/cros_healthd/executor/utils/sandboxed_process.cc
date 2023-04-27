@@ -86,6 +86,8 @@ SandboxedProcess::SandboxedProcess(
       "-P", "/mnt/empty",
       // Enter a new VFS mount namespace.
       "-v",
+      // Slvae is the default mount mode for "-v". Set it explicitly for DLC.
+      "-Kslave",
       // Remount /proc readonly.
       "-r",
       // Run inside a new IPC namespace.
@@ -134,6 +136,13 @@ SandboxedProcess::SandboxedProcess(
   if ((sandbox_option & NO_ENTER_NETWORK_NAMESPACE) == 0) {
     // Enter a new network namespace.
     sandbox_arguments_.push_back("-e");
+  }
+  if (sandbox_option & MOUNT_DLC) {
+    // The arguments "-v -Kslave" could allow propagation of mounted DLC image.
+    // Recursively bind mount "/run/imageloader" to access DLC.
+    sandbox_arguments_.push_back("-k");
+    sandbox_arguments_.push_back(
+        "/run/imageloader,/run/imageloader,none,MS_BIND|MS_REC");
   }
   for (const base::FilePath& f : writable_mount_points) {
     sandbox_arguments_.push_back("-b");

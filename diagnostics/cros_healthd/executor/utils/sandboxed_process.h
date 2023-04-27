@@ -23,6 +23,8 @@ inline constexpr char kSeccompPolicyDirectory[] = "/usr/share/policy/";
 enum SandboxOption {
   // Do not enter a new network namespace for minijail.
   NO_ENTER_NETWORK_NAMESPACE = 1 << 0,
+  // Mount /run/imageloader for accessing DLC.
+  MOUNT_DLC = 1 << 1,
 };
 
 // Runs a command under minijail.

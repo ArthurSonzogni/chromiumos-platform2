@@ -121,6 +121,28 @@ struct FileInfo {
   ash.cros_healthd.external.mojo_base.mojom.Time creation_time;
 };
 
+// Argument for fio prepare job.
+struct PrepareJobArgument {
+  // Test file size in megabytes.
+  uint32 file_size_mb;
+};
+
+// Argument for fio read job.
+struct ReadJobArgument {
+  // Dedicated duration for reading test files, which will be rounded towards
+  // zero to the nearest second.
+  ash.cros_healthd.external.mojo_base.mojom.TimeDelta exec_duration;
+};
+
+union FioJobArgument {
+  // Create a test file with md5 checksum and validate the md5 checksum of read
+  // back.
+  PrepareJobArgument prepare@0;
+  // Read the test file either randomly or linearly, repeatedly for the
+  // dedicated duration.
+  ReadJobArgument read@1;
+};
+
 // Root-level executor interface exposed to the cros_healthd daemon. In
 // production, this is implemented by the Executor daemon.
 interface Executor {
@@ -303,4 +325,13 @@ interface Executor {
   // * |result| - PSR information result.
   // * |err| - Error message if existed.
   GetPsr() => (PsrInfo result, string? err);
+
+  // Run fio and return the result.
+  //
+  // The request:
+  // * |argument| - Argument for fio prepare job and read job.
+  // * |receiver| - The receiver which will be ound to a Process Control class
+  //                that will manage the memtester binary's lifetime.
+  RunFio(FioJobArgument argument,
+         pending_receiver<ProcessControl> receiver);
 };

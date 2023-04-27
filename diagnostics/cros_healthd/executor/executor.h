@@ -110,6 +110,9 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       ash::cros_healthd::mojom::StressAppTestType test_type,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver)
       override;
+  void RunFio(ash::cros_healthd::mojom::FioJobArgumentPtr argument,
+              mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+                  receiver) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process
@@ -150,6 +153,12 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       std::unique_ptr<SandboxedProcess> process,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver,
       bool combine_stdout_and_stderr);
+
+  // Run fio after getting the DLC root path.
+  void RunFioWithDlcRoot(
+      ash::cros_healthd::mojom::FioJobArgumentPtr argument,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver,
+      std::optional<std::string> dlc_root_path);
 
   // Task runner for all Mojo callbacks.
   const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner_;
