@@ -26,6 +26,7 @@
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
@@ -112,6 +113,17 @@ void SendResultToUMA(mojo_ipc::DiagnosticRoutineEnum routine,
                      mojo_ipc::DiagnosticRoutineStatusEnum status) {
   MetricsLibrary metrics;
   SendDiagnosticResultToUMA(&metrics, routine, status);
+}
+
+mojo_ipc::DiskReadTypeEnum Convert(mojo_ipc::DiskReadRoutineTypeEnum type) {
+  switch (type) {
+    case mojo_ipc::DiskReadRoutineTypeEnum::kLinearRead:
+      return mojo_ipc::DiskReadTypeEnum::kLinearRead;
+    case mojo_ipc::DiskReadRoutineTypeEnum::kRandomRead:
+      return mojo_ipc::DiskReadTypeEnum::kRandomRead;
+    case mojo_ipc::DiskReadRoutineTypeEnum::kUnmappedEnumField:
+      return mojo_ipc::DiskReadTypeEnum::kUnmappedEnumField;
+  }
 }
 
 }  // namespace
@@ -267,8 +279,23 @@ void CrosHealthdDiagnosticsService::RunDiskReadRoutine(
     uint32_t length_seconds,
     uint32_t file_size_mb,
     RunDiskReadRoutineCallback callback) {
-  RunRoutine(routine_factory_->MakeDiskReadRoutine(
-                 type, base::Seconds(length_seconds), file_size_mb),
+  // TODO(b/280384708): Deprecate disk read routine to remove fio on rootfs
+  // after the v2 routine is stable.
+  if (context_->system_config()->FioSupported()) {
+    RunRoutine(routine_factory_->MakeDiskReadRoutine(
+                   type, base::Seconds(length_seconds), file_size_mb),
+               mojo_ipc::DiagnosticRoutineEnum::kDiskRead, std::move(callback));
+    return;
+  }
+
+  auto disk_read_routine_v2 = std::make_unique<RoutineAdapter>(
+      mojo_ipc::RoutineArgument::Tag::kDiskRead);
+  routine_service_->CreateRoutine(
+      mojo_ipc::RoutineArgument::NewDiskRead(
+          mojo_ipc::DiskReadRoutineArgument::New(
+              Convert(type), base::Seconds(length_seconds), file_size_mb)),
+      disk_read_routine_v2->BindNewPipeAndPassReceiver());
+  RunRoutine(std::move(disk_read_routine_v2),
              mojo_ipc::DiagnosticRoutineEnum::kDiskRead, std::move(callback));
 }
 
@@ -607,6 +634,7 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
       mojo_ipc::DiagnosticRoutineEnum::kCpuStress,
       mojo_ipc::DiagnosticRoutineEnum::kFloatingPointAccuracy,
       mojo_ipc::DiagnosticRoutineEnum::kPrimeSearch,
+      mojo_ipc::DiagnosticRoutineEnum::kDiskRead,
       mojo_ipc::DiagnosticRoutineEnum::kMemory,
       mojo_ipc::DiagnosticRoutineEnum::kLanConnectivity,
       mojo_ipc::DiagnosticRoutineEnum::kSignalStrength,
@@ -657,10 +685,6 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
     available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck);
     available_routines_.insert(
         mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed);
-  }
-
-  if (context_->system_config()->FioSupported()) {
-    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kDiskRead);
   }
 
   if (context_->system_config()->FingerprintDiagnosticSupported()) {

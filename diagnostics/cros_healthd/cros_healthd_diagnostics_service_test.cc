@@ -117,11 +117,6 @@ std::set<mojo_ipc::DiagnosticRoutineEnum> GetSmartCtlRoutines() {
       mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed};
 }
 
-std::set<mojo_ipc::DiagnosticRoutineEnum> GetFioRoutines() {
-  return std::set<mojo_ipc::DiagnosticRoutineEnum>{
-      mojo_ipc::DiagnosticRoutineEnum::kDiskRead};
-}
-
 std::set<mojo_ipc::DiagnosticRoutineEnum> GetMmcRoutines() {
   return std::set<mojo_ipc::DiagnosticRoutineEnum>{
       mojo_ipc::DiagnosticRoutineEnum::kEmmcLifetime};
@@ -132,7 +127,6 @@ class CrosHealthdDiagnosticsServiceTest : public testing::Test {
  protected:
   void SetUp() override {
     mock_context_.fake_mojo_service()->InitializeFakeMojoService();
-    mock_context_.fake_system_config()->SetFioSupported(true);
     mock_context_.fake_system_config()->SetHasBattery(true);
     mock_context_.fake_system_config()->SetHasPrivacyScreen(true);
     mock_context_.fake_system_config()->SetNvmeSupported(true);
@@ -295,22 +289,6 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoMmc) {
 
   auto expected_routines = GetAllAvailableRoutines();
   for (const auto r : GetMmcRoutines())
-    expected_routines.erase(r);
-
-  EXPECT_EQ(reply_set, expected_routines);
-}
-
-// Test that GetAvailableRoutines returns the expected list of routines when
-// fio routines are not supported.
-TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoFio) {
-  mock_context()->fake_system_config()->SetFioSupported(false);
-  CreateService();
-  auto reply = ExecuteGetAvailableRoutines();
-  std::set<mojo_ipc::DiagnosticRoutineEnum> reply_set(reply.begin(),
-                                                      reply.end());
-
-  auto expected_routines = GetAllAvailableRoutines();
-  for (const auto r : GetFioRoutines())
     expected_routines.erase(r);
 
   EXPECT_EQ(reply_set, expected_routines);
