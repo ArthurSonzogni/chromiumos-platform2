@@ -9,6 +9,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":feature-protos",
+    ":feature_check",
     ":install_libsegmentation_headers",
     ":internal_protos",
     ":libsegmentation",
@@ -122,6 +123,20 @@ generate_pkg_config("libsegmentation_pc") {
   requires_private = default_pkg_deps
   libs = [ "-lsegmentation" ]
   install = true
+}
+
+pkg_config("feature_check_pkg_deps") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+executable("feature_check") {
+  sources = [ "feature_check.cc" ]
+  configs += [ ":feature_check_pkg_deps" ]
+  deps = [ ":libsegmentation" ]
+  install_path = "sbin"
 }
 
 if (use.test) {
