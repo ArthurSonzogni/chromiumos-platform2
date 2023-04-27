@@ -2,11 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#[cfg(feature = "vm_grpc")]
-use crate::vm_grpc::vm_grpc_util::vm_grpc_init;
-#[cfg(feature = "vm_grpc")]
-use libchromeos::sys::warn;
-
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::Path;
@@ -473,25 +468,17 @@ pub async fn service_main() -> Result<()> {
 
     #[cfg(feature = "vm_grpc")]
     {
-        let vm_started_rule = MatchRule::new_signal(VMCONCIEGE_INTERFACE_NAME, "VmStartedSignal");
-
-        // Swallow any errors related to grpc dbus messages.  Failure to initialize
-        // VM_GRPC sohuld not bring down resourced.
-        match conn.add_match_no_cb(&vm_started_rule.match_str()).await {
-            Ok(_) => (),
-            Err(_) => warn!("Unable to set filtering of VmStarted dbus message."),
-        }
-
-        conn.start_receive(
-            vm_started_rule,
-            Box::new(|msg, _| {
-                match vm_grpc_init(&msg) {
-                    Ok(_) => (),
-                    Err(e) => warn!("Failed to initialize GRPC client/server pair. {}", e),
-                }
-                true
-            }),
-        );
+        // This block does a 1 time check at resourced startup to see if borealis vm
+        // is already running.  The `await` has a blocking timeout of 2 seconds
+        // (2 embedded dbus calls).  If there is no vm running (expected case), no grpc server
+        // will be started.  If resourced was respawned while a borealis session was
+        // active (corner case), this logic will start a vm_grpc server and re-establish the
+        // grpc link.
+        // Internal failures will be logged and ignored.  We don't interfere with resourced
+        // operations if grpc server/client fails.
+        let _ =
+            crate::vm_grpc::vm_grpc_util::handle_startup_borealis_state_async(conn.clone()).await;
+        let _ = crate::vm_grpc::vm_grpc_util::register_dbus_hooks_async(conn.clone()).await;
     }
 
     if common::is_vm_boot_mode_enabled() {

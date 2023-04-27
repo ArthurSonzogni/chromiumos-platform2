@@ -19,10 +19,10 @@ use crate::vm_grpc::proto::resourced_bridge::{CpuInfoCoreData, CpuInfoData, CpuR
 use crate::vm_grpc::proto::resourced_bridge_grpc::ResourcedCommClient;
 
 // Polling interval used when checking if connection is alive.
-const CONN_POLLING_INTERVAL_SEC: u64 = 15;
+const CONN_POLLING_INTERVAL_SEC: u64 = 1;
 
 // Total time to retry a dropped connection before aborting.
-const CONN_TIMEOUT_SEC: u64 = 5 * 60;
+const CONN_TIMEOUT_SEC: u64 = 1;
 
 // Default heartbeat message time delay in ms.
 const DEFAULT_MESSAGE_TIME_MS: i64 = 5000;
@@ -102,7 +102,11 @@ impl VmGrpcClient {
         thread::spawn(
             move || match grpc_client.grpc_client_main(pkt_tx_interval) {
                 Ok(_) => info!("GRPC client thread exit successfully"),
-                Err(e) => warn!("GRPC Client thread exit unexpectedly: {}", e),
+                Err(e) => {
+                    warn!("GRPC Client thread exit unexpectedly: {}", e);
+                    CLIENT_THREAD_RUNNING.store(false, Ordering::Relaxed);
+                    // TODO: If client drops, stop the server also.
+                }
             },
         );
 
@@ -123,7 +127,10 @@ impl VmGrpcClient {
             info!("Init payload sent!");
         } else {
             pkt_tx_interval.store(-1, Ordering::Relaxed);
-            bail!("Could not establish connection with guest Vm after 5 minutes");
+            bail!(
+                "Could not establish connection with guest Vm after {} seconds",
+                CONN_TIMEOUT_SEC
+            );
         }
 
         loop {
@@ -140,9 +147,12 @@ impl VmGrpcClient {
                     Err(_) => consecutive_fail += 1,
                 }
 
-                // ~5s of retries in AC mode before declaring connection dropped
-                if consecutive_fail > 5 * 1000 / packet_tx_interval_buf {
-                    warn!("Could not send CPU updates for 5 sec. Guest connection likely dropped");
+                // ~1s of retries in AC mode before declaring connection dropped
+                if consecutive_fail > CONN_TIMEOUT_SEC as i64 * 1000 / packet_tx_interval_buf {
+                    warn!(
+                        "Could not send CPU updates for {:?} sec. Guest connection likely dropped",
+                        CONN_TIMEOUT_SEC
+                    );
                     warn!("Stopping new updates and reseting CPU freq.");
 
                     pkt_tx_interval.store(-1, Ordering::Relaxed);
@@ -169,14 +179,13 @@ impl VmGrpcClient {
                         self.cpu_dev.reset_all_max_min_cpu_freq()?;
 
                         // Blocking wait on this thread until socket connection can be made.
-                        // TODO: reduce wait to 1 min.  5 minutes is really high, only for 3p
-                        // testing.
                         if self.wait_for_connection(CONN_POLLING_INTERVAL_SEC, CONN_TIMEOUT_SEC) {
                             self.send_vm_init()?;
                             info!("Init payload sent again!");
                         } else {
                             bail!(
-                                "Could not re-establish connection with guest Vm after 5 minutes"
+                                "Could not re-establish connection with guest Vm {} seconds",
+                                CONN_TIMEOUT_SEC
                             );
                         }
                     }
@@ -259,7 +268,7 @@ impl VmGrpcClient {
     fn send_vm_init(&self) -> Result<()> {
         let req = self.get_cpu_info_data()?;
 
-        info!("Core data: {:?}", req);
+        info!("Core data sent to Vm");
         // Propagate error up the stack to count multiple failures and retry if needed.
         let options = CallOption::default()
             .wait_for_ready(true)

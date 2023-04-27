@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
 
 use crate::cpu_scaling::DeviceCpuStatus;
 use crate::vm_grpc::proto::resourced_bridge::{
@@ -19,6 +20,10 @@ use crate::vm_grpc::proto::resourced_bridge::{
 use crate::vm_grpc::proto::resourced_bridge_grpc::{
     create_resourced_comm_listener, ResourcedCommListener,
 };
+use crate::vm_grpc::vm_grpc_util::{vm_server_stop_req_reset, vm_server_stop_requested};
+
+// Polling interval for grpc_server to check for a server stop request.
+const VM_GRPC_SERVER_STOP_POLLING_INTERVAL_SEC: u64 = 1;
 
 // Server side handler
 #[derive(Clone)]
@@ -105,11 +110,24 @@ impl VmGrpcServer {
                         info!("resourced grpc server started on {}:{}", host, port);
                     }
 
-                    info!("Parking Host Server thread");
+                    info!(
+                        "Sleeping grpc server thread, polling at {:?}s for stop request",
+                        VM_GRPC_SERVER_STOP_POLLING_INTERVAL_SEC
+                    );
 
-                    // TODO(shahadath@): change to channel block_on for cleanup on
-                    // vm_exit dbus signal
-                    thread::park();
+                    // TODO: @shahdath: Change to a background server thread that processes
+                    // dbus messages internally.
+                    while !vm_server_stop_requested() {
+                        thread::sleep(Duration::from_secs(
+                            VM_GRPC_SERVER_STOP_POLLING_INTERVAL_SEC,
+                        ));
+                    }
+
+                    info!("Grpc server stop request received.  cleaning up.");
+                    s.shutdown();
+                    SERVER_RUNNING.store(false, Ordering::Relaxed);
+                    vm_server_stop_req_reset();
+                    info!("Grpc server cleanup complete.");
                 }
                 Err(e) => {
                     warn!("Could not start server. Is vsock support missing?");
@@ -123,28 +141,6 @@ impl VmGrpcServer {
             _port: port,
             _running: true,
         })
-    }
-
-    //Print out server status (if already running).
-    pub fn _get_server_status(&self) -> bool {
-        if self._running {
-            info!(
-                "Server is running on cid={}, port={}",
-                self._cid, self._port
-            );
-        } else {
-            info!("Server is stopped");
-        }
-
-        self._running
-    }
-
-    // Exit internal server thread.
-    // TODO: implementation.
-    pub fn _stop(mut self) -> Result<()> {
-        self._running = false;
-        info!("TODO: vm_exit implementation");
-        Ok(())
     }
 }
 
