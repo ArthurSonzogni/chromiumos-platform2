@@ -80,5 +80,4 @@ void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
   else
     return error->Populate(type, "", name);
 }
-
 }  // namespace shill

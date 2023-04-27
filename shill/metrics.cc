@@ -1085,7 +1085,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
           << " scan_connect_time:" << scan_connect_time
           << " detailed_error:" << result.detailed_error
           << " connection_attempt_type:"
-          << static_cast<int>(result.connection_attempt_type);
+          << static_cast<int>(result.connection_attempt_type)
+          << " subscription_error_seen: " << result.subscription_error_seen;
 
   auto event =
       metrics::structured::events::cellular::CellularConnectionAttempt()
@@ -1107,7 +1108,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
           .Setdetailed_error(detailed_error_hash)
           .Setuse_apn_revamp_ui(result.use_apn_revamp_ui)
           .Setconnection_attempt_type(
-              static_cast<int>(result.connection_attempt_type));
+              static_cast<int>(result.connection_attempt_type))
+          .Setsubscription_error_seen(result.subscription_error_seen);
 
   std::optional<int64_t> gid1 = IntGid1(result.gid1);
   if (gid1.has_value()) {

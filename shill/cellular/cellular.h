@@ -760,6 +760,10 @@ class Cellular : public Device,
   std::unordered_map<std::string, Error::Type>
       last_cellular_connection_results_;
 
+  // A Map to maintain if subscription error was seen before. ICCID is used as
+  // the key.
+  std::unordered_map<std::string, bool> subscription_error_seen_;
+
   // The current step of the Stop process.
   std::optional<StopSteps> stop_step_;
 

@@ -1784,6 +1784,7 @@ class Metrics : public DefaultServiceObserver {
     int interface_index;
     uint32_t use_apn_revamp_ui;
     ConnectionAttemptType connection_attempt_type;
+    uint32_t subscription_error_seen;
   };
 
   // Notifies this object of the resulting status of a cellular connection

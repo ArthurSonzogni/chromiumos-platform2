@@ -652,6 +652,12 @@
         Options are Unknown == 0 , UserConnect == 1 , AutoConnect == 2.
       </summary>
     </metric>
+    <metric name="subscription_error_seen" type="int">
+      <summary>
+        Indicates if modem has earlier reported subscription error for
+        this card.
+      </summary>
+    </metric>
   </event>
   <event name="ModemFwdFwInstallResult">
     <summary>

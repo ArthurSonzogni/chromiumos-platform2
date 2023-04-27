@@ -39,6 +39,7 @@
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_capability_3gpp.h"
 #include "shill/cellular/cellular_consts.h"
+#include "shill/cellular/cellular_error.h"
 #include "shill/cellular/cellular_helpers.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/cellular_service_provider.h"
@@ -136,6 +137,14 @@ std::string GetFriendlyModelId(const std::string& model_id) {
     return "NL668";
   }
   return model_id;
+}
+
+// Returns if specified modem manager error can be classified as
+// subscription related error. This API should be enhanced if
+// better signals become available to detect subscription error.
+bool IsSubscriptionError(std::string mm_error) {
+  return mm_error == MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX
+         ".ServiceOptionNotSubscribed";
 }
 
 Metrics::DetailedCellularConnectionResult::ConnectionAttemptType
@@ -1153,6 +1162,7 @@ void Cellular::NotifyDetailedCellularConnectionResult(
     const Error& error,
     ApnList::ApnType apn_type,
     const shill::Stringmap& apn_info) {
+  CHECK(service_);
   SLOG(3) << LoggingTag() << ": " << __func__ << ": Result:" << error.type();
 
   auto ipv4 = CellularBearer::IPConfigMethod::kUnknown;
@@ -1163,6 +1173,7 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   brillo::ErrorPtr detailed_error;
   std::string cellular_error;
   bool use_apn_revamp_ui = false;
+  std::string iccid = service_->iccid();
 
   std::string roaming_state;
   if (service_) {
@@ -1191,6 +1202,10 @@ void Cellular::NotifyDetailedCellularConnectionResult(
 
   SLOG(3) << LoggingTag() << ": Cellular Error:" << cellular_error;
 
+  if (error.IsSuccess()) {
+    subscription_error_seen_[iccid] = false;
+  }
+
   Metrics::DetailedCellularConnectionResult result;
   result.error = error.type();
   result.detailed_error = cellular_error;
@@ -1207,9 +1222,20 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   result.sim_type = sim_type;
   result.gid1 = mobile_operator_info_->gid1();
   result.connection_attempt_type = ConnectionAttemptTypeToMetrics(service_);
+  result.subscription_error_seen = subscription_error_seen_[iccid];
   result.modem_state = modem_state_;
   result.interface_index = interface_index();
   metrics()->NotifyDetailedCellularConnectionResult(result);
+
+  // Update if we reported subscription error for this card so that
+  // subsequent errors report subscription_error_seen=true.
+  // This is needed because when connection attempt fail with
+  // serviceOptionNotSubscribed error which in most cases indicate issues
+  // related to user data plan, subsequent connection attempts fails with
+  // different error codes, making analysis of metrics difficult.
+  if (IsSubscriptionError(cellular_error)) {
+    subscription_error_seen_[iccid] = true;
+  }
 }
 
 void Cellular::Connect(CellularService* service, Error* error) {
