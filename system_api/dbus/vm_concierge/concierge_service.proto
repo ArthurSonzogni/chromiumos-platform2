@@ -1407,11 +1407,14 @@ enum SwapOperation {
   // Disable vmm swap.
   DISABLE = 0;
 
-  // Enable vmm swap and staging memory.
+  // Ask to enable vmm swap and staging memory if possible.
   ENABLE = 1;
 
-  // Swapout staged memory.
+  // Forcibly swap out guest memory to disk if there is pending swap out.
   SWAPOUT = 2;
+
+  // Enable vmm swap and staging memory regardless of vm conditions.
+  FORCE_ENABLE = 3;
 }
 
 // Request sent to vm_concierge for executing vmm swap operation on a VM.
