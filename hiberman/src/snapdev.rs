@@ -17,6 +17,7 @@ use anyhow::Context;
 use anyhow::Error;
 use anyhow::Result;
 use libc::c_int;
+use libc::c_long;
 use libc::c_ulong;
 use libc::c_void;
 use libc::{self};
@@ -118,6 +119,7 @@ ioctl_iowr_nr!(
 const FREEZE: u64 = SNAPSHOT_FREEZE();
 const UNFREEZE: u64 = SNAPSHOT_UNFREEZE();
 const ATOMIC_RESTORE: u64 = SNAPSHOT_ATOMIC_RESTORE();
+const GET_IMAGE_SIZE: u64 = SNAPSHOT_GET_IMAGE_SIZE();
 const CREATE_IMAGE: u64 = SNAPSHOT_CREATE_IMAGE();
 #[allow(dead_code)]
 const ENABLE_ENCRYPTION: u64 = SNAPSHOT_ENABLE_ENCRYPTION();
@@ -269,6 +271,22 @@ impl SnapshotDevice {
         // This is safe because either the entire world will stop executing,
         // or nothing happens, preserving Rust's guarantees.
         unsafe { self.simple_ioctl(ATOMIC_RESTORE, "ATOMIC_RESTORE") }
+    }
+
+    /// Get the size of the snapshot image.
+    pub fn get_image_size(&mut self) -> Result<u64> {
+        let mut image_size: c_long = 0;
+        // This is safe because the ioctl modifies a u64 sized integer, which
+        // we have preinitialized and passed in.
+        unsafe {
+            self.ioctl_with_mut_ptr(
+                GET_IMAGE_SIZE,
+                "GET_IMAGE_SIZE",
+                &mut image_size as *mut c_long as *mut c_void,
+            )?;
+        }
+
+        Ok(image_size.try_into().unwrap())
     }
 
     /// Hand the encryption key to the kernel. This is actually the same ioctl
