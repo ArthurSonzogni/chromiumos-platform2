@@ -30,6 +30,9 @@
 #include <base/task/thread_pool.h>
 #include <base/time/time.h>
 #include <brillo/process/process.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
+// NOLINTNEXTLINE(build/include_alpha) dbus-proxies.h needs dlcservice.pb.h
+#include <dlcservice/dbus-proxies.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <re2/re2.h>
@@ -37,6 +40,7 @@
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/executor/utils/delegate_process.h"
+#include "diagnostics/cros_healthd/executor/utils/dlc_manager.h"
 #include "diagnostics/cros_healthd/executor/utils/process_control.h"
 #include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
@@ -180,7 +184,18 @@ Executor::Executor(
       receiver_{this /* impl */, std::move(receiver)},
       process_reaper_(process_reaper) {
   receiver_.set_disconnect_handler(std::move(on_disconnect));
+
+  // Initialize the D-Bus connection.
+  auto dbus_bus = connection_.Connect();
+  CHECK(dbus_bus) << "Failed to connect to the D-Bus system bus.";
+
+  // Used to access DLC state and install DLC.
+  dlcservice_proxy_ =
+      std::make_unique<org::chromium::DlcServiceInterfaceProxy>(dbus_bus);
+  dlc_manager_ = std::make_unique<DlcManager>(dlcservice_proxy_.get());
 }
+
+Executor::~Executor() = default;
 
 void Executor::ReadFile(File file_enum, ReadFileCallback callback) {
   base::FilePath file = FileEnumToFilePath(file_enum);

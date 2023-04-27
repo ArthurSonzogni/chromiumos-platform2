@@ -16,6 +16,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/synchronization/lock.h>
 #include <base/task/single_thread_task_runner.h>
+#include <brillo/dbus/dbus_connection.h>
 #include <brillo/process/process.h>
 #include <brillo/process/process_reaper.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
@@ -28,7 +29,12 @@
 #include "diagnostics/cros_healthd/process/process_with_output.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
+namespace org::chromium {
+class DlcServiceInterfaceProxyInterface;
+}  // namespace org::chromium
+
 namespace diagnostics {
+class DlcManager;
 class ProcessControl;
 
 bool IsValidWirelessInterfaceName(const std::string& interface_name);
@@ -42,6 +48,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
            base::OnceClosure on_disconnect);
   Executor(const Executor&) = delete;
   Executor& operator=(const Executor&) = delete;
+  ~Executor() override;
 
   // ash::cros_healthd::mojom::Executor overrides:
   void ReadFile(File file_enum, ReadFileCallback callback) override;
@@ -164,6 +171,15 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
 
   // Used to monitor child process status.
   brillo::ProcessReaper* process_reaper_;
+
+  // This should be the only connection to D-Bus. Use |connection_| to get the
+  // |dbus_bus|.
+  brillo::DBusConnection connection_;
+
+  // Used to access DLC state and install DLC.
+  std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
+      dlcservice_proxy_;
+  std::unique_ptr<DlcManager> dlc_manager_;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<Executor> weak_factory_{this};

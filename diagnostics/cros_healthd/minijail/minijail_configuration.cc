@@ -194,6 +194,9 @@ void EnterExecutorMinijail() {
   PCHECK(0 == minijail_mount(j.get(), "tmpfs", "/run", "tmpfs", /*flags=*/0));
   PCHECK(0 == minijail_mount(j.get(), "/dev", "/dev", "bind",
                              /*flags=*/MS_BIND | MS_REC));
+  // Shared socket file for talking to the D-Bus daemon.
+  PCHECK(0 ==
+         minijail_bind(j.get(), "/run/dbus", "/run/dbus", /*writeable=*/0));
 
   // Also bind efivars, which is a separate filesystem mounted under sys.
   // It is only present on some systems.
