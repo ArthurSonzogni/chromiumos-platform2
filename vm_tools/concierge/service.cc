@@ -441,21 +441,6 @@ void SetVmCpuArgs(int32_t cpus, VmBuilder& vm_builder) {
   }
 }
 
-// Passes |method_call| to |handler| and passes the response to
-// |response_sender|. If |handler| returns NULL, an empty response is created
-// and sent.
-void HandleSynchronousDBusMethodCall(
-    base::OnceCallback<std::unique_ptr<dbus::Response>(dbus::MethodCall*)>
-        handler,
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  std::unique_ptr<dbus::Response> response =
-      std::move(handler).Run(method_call);
-  if (!response)
-    response = dbus::Response::FromMethodCall(method_call);
-  std::move(response_sender).Run(std::move(response));
-}
-
 void HandleAsynchronousDBusMethodCall(
     base::OnceCallback<void(dbus::MethodCall*,
                             dbus::ExportedObject::ResponseSender)> handler,
@@ -1487,13 +1472,6 @@ bool Service::Init() {
 
   dlcservice_client_ = std::make_unique<DlcHelper>(bus_);
 
-  // Synchronously returns dbus::Response.
-  using ServiceMethod =
-      std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
-  static const std::map<const char*, ServiceMethod> kServiceMethods = {
-      {kGetDnsSettingsMethod, &Service::GetDnsSettings},
-  };
-
   // Asynchronously calls the callback ResponseSender.
   using AsyncServiceMethod = void (Service::*)(
       dbus::MethodCall*, dbus::ExportedObject::ResponseSender);
@@ -1522,18 +1500,6 @@ bool Service::Init() {
            base::BindOnce(
                [](Service* service, dbus::ExportedObject* exported_object_,
                   scoped_refptr<dbus::Bus> bus) {
-                 for (const auto& iter : kServiceMethods) {
-                   bool ret = exported_object_->ExportMethodAndBlock(
-                       kVmConciergeInterface, iter.first,
-                       base::BindRepeating(
-                           &HandleSynchronousDBusMethodCall,
-                           base::BindRepeating(iter.second,
-                                               base::Unretained(service))));
-                   if (!ret) {
-                     LOG(ERROR) << "Failed to export method " << iter.first;
-                     return false;
-                   }
-                 }
                  for (const auto& iter : kAsyncServiceMethods) {
                    bool ret = exported_object_->ExportMethodAndBlock(
                        kVmConciergeInterface, iter.first,
@@ -3889,8 +3855,7 @@ ListUsbDeviceResponse Service::ListUsbDevices(
   response.set_success(true);
   return response;
 }
-
-void Service::ComposeDnsResponse(dbus::MessageWriter* writer) {
+DnsSettings Service::ComposeDnsResponse() {
   DnsSettings dns_settings;
   for (const auto& server : nameservers_) {
     dns_settings.add_nameservers(server);
@@ -3898,20 +3863,14 @@ void Service::ComposeDnsResponse(dbus::MessageWriter* writer) {
   for (const auto& domain : search_domains_) {
     dns_settings.add_search_domains(domain);
   }
-  writer->AppendProtoAsArrayOfBytes(dns_settings);
+  return dns_settings;
 }
 
-std::unique_ptr<dbus::Response> Service::GetDnsSettings(
-    dbus::MethodCall* method_call) {
+DnsSettings Service::GetDnsSettings() {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
 
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageWriter writer(dbus_response.get());
-  ComposeDnsResponse(&writer);
-  return dbus_response;
+  return ComposeDnsResponse();
 }
 
 SetVmCpuRestrictionResponse Service::SetVmCpuRestriction(
@@ -4094,7 +4053,7 @@ void Service::OnResolvConfigChanged(std::vector<string> nameservers,
   // well.
   dbus::Signal signal(kVmConciergeInterface, kDnsSettingsChangedSignal);
   dbus::MessageWriter writer(&signal);
-  ComposeDnsResponse(&writer);
+  writer.AppendProtoAsArrayOfBytes(ComposeDnsResponse());
   exported_object_->SendSignal(&signal);
 }
 
