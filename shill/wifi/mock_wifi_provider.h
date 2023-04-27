@@ -109,6 +109,7 @@ class MockWiFiProvider : public WiFiProvider {
   MOCK_METHOD(void, UpdateRegAndPhyInfo, (base::OnceClosure), (override));
   MOCK_METHOD(void, SetRegDomain, (RegulatorySource), (override));
   MOCK_METHOD(void, ResetRegDomain, (), (override));
+  MOCK_METHOD(void, RegionChanged, (const std::string&), (override));
 };
 
 }  // namespace shill

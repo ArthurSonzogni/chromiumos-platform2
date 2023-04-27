@@ -1350,12 +1350,6 @@ void WiFiProvider::PhyUpdateTimeout() {
 
 void WiFiProvider::RegionChanged(const std::string& country) {
   NotifyCountry(country, RegulatorySource::kCurrent);
-  // Update Phy info only when we have been asked directly to update region, we
-  // initiated its change and are waiting for the notification.
-  if (phy_update_timeout_cb_.IsCancelled()) {
-    return;
-  }
-
   GetPhyInfo(kAllPhys);
 }
 

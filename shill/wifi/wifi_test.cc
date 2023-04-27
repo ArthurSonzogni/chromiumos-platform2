@@ -1285,7 +1285,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   void SetWiFiEnabled(bool enabled) { wifi_->enabled_ = enabled; }
 
-  void OnRegChange(const Nl80211Message& msg) { wifi_->OnRegChange(msg); }
+  void OnRegChange(const Nl80211Message& msg) {
+    EXPECT_CALL(wifi_provider_, RegionChanged(_)).Times(AtLeast(0));
+    wifi_->OnRegChange(msg);
+  }
 
   void OnGetReg(const Nl80211Message& msg) { wifi_->OnGetReg(msg); }
 
