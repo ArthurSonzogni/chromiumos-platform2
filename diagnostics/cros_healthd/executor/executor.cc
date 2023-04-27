@@ -184,24 +184,43 @@ Callback CreateOnceDelegateCallback(std::unique_ptr<DelegateProcess> delegate,
       std::move(callback).Then(std::move(deleter)), std::move(default_args)...);
 }
 
-std::vector<std::string> GenerateFioCommand(
+// Convert enum to fio argument.
+std::optional<std::string> Convert(mojom::DiskReadTypeEnum disk_read_type) {
+  switch (disk_read_type) {
+    case mojom::DiskReadTypeEnum::kLinearRead:
+      return "read";
+    case mojom::DiskReadTypeEnum::kRandomRead:
+      return "randread";
+    case mojom::DiskReadTypeEnum::kUnmappedEnumField:
+      LOG(WARNING) << "DiskReadTypeEnum: UnmappedEnumField";
+      return std::nullopt;
+  }
+}
+
+std::optional<std::vector<std::string>> GenerateFioCommand(
     const std::string& fio_path,
     ash::cros_healthd::mojom::FioJobArgumentPtr argument) {
   switch (argument->which()) {
     case mojom::FioJobArgument::Tag::kPrepare:
-      return {fio_path,
-              "--filename=" + std::string(path::kFioCacheFile),
-              "--name=prepare",
-              "--size=" +
-                  base::NumberToString(argument->get_prepare()->file_size_mb) +
-                  "MB",
-              "--verify=md5",
-              "--rw=write",
-              "--end_fsync=1",
-              "--verify_state_save=0",
-              "--output-format=json"};
+      return std::vector<std::string>{
+          fio_path,
+          "--filename=" + std::string(path::kFioCacheFile),
+          "--name=prepare",
+          "--size=" +
+              base::NumberToString(argument->get_prepare()->file_size_mb) +
+              "MB",
+          "--verify=md5",
+          "--rw=write",
+          "--end_fsync=1",
+          "--verify_state_save=0",
+          "--output-format=json"};
     case mojom::FioJobArgument::Tag::kRead:
-      return {
+      const auto& type = Convert(argument->get_read()->disk_read_type);
+      if (!type.has_value()) {
+        // Return null command if the type is |kUnmappedEnumField|.
+        return std::nullopt;
+      }
+      return std::vector<std::string>{
           fio_path,
           "--filename=" + std::string(path::kFioCacheFile),
           "--name=run",
@@ -209,7 +228,7 @@ std::vector<std::string> GenerateFioCommand(
           "--runtime=" + base::NumberToString(
                              argument->get_read()->exec_duration.InSeconds()),
           "--direct=1",
-          "--rw=read",
+          "--rw=" + type.value(),
           "--output-format=json"};
   }
 }
@@ -712,9 +731,13 @@ void Executor::RunFioWithDlcRoot(
   auto command = GenerateFioCommand(
       base::FilePath(dlc_root_path.value()).Append("bin/fio").value(),
       std::move(argument));
+  if (!command.has_value()) {
+    receiver.reset();
+    return;
+  }
   auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kFio, kCrosHealthdSandboxUser, kNullCapability,
-      readonly_mount_points, writable_mount_points, MOUNT_DLC);
+      command.value(), seccomp_file::kFio, kCrosHealthdSandboxUser,
+      kNullCapability, readonly_mount_points, writable_mount_points, MOUNT_DLC);
   RunLongRunningProcess(std::move(process), std::move(receiver),
                         /*combine_stdout_and_stderr=*/false);
 }

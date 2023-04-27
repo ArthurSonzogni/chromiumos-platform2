@@ -34,7 +34,7 @@ interface CrosHealthdRoutinesService {
 
 // Possible routines the RoutineControl API can create.
 //
-// NextMinVersion: 5, NextIndex: 5
+// NextMinVersion: 6, NextIndex: 6
 [Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
@@ -48,6 +48,8 @@ union RoutineArgument {
   [MinVersion=3] CpuStressRoutineArgument cpu_stress@3;
   // Arguments to create a UFS lifetime routine.
   [MinVersion=4] UfsLifetimeRoutineArgument ufs_lifetime@4;
+  // Arguments to create a disk read routine.
+  [MinVersion=5] DiskReadRoutineArgument disk_read@5;
 };
 
 // This routine checks whether there is any memory problem by
@@ -86,6 +88,20 @@ struct CpuStressRoutineArgument {
 //
 // NextMinVersion: 1, NextIndex: 0
 struct UfsLifetimeRoutineArgument {};
+
+// The routine will create a test file with md5 checksum, read the test file
+// either randomly or linearly, repeatedly for a dedicated duration. If the md5
+// checksum of read back is validated, then the test will pass.
+struct DiskReadRoutineArgument {
+  // Type of how disk reading is performed, either linear or random.
+  DiskReadTypeEnum type@0;
+  // Expected duration to read the test file in the DiskRead routine, which will
+  // be rounded towards zero to the nearest second. This parameter should be
+  // strictly greater than zero.
+  ash.cros_healthd.external.mojo_base.mojom.TimeDelta disk_read_duration@1;
+  // Test file size, in megabytes (MiB), to test with DiskRead routine
+  uint32 file_size_mib@2;
+};
 
 // Interface exposed to clients for controlling a routine.
 //
@@ -175,6 +191,7 @@ union RoutineDetail {
   AudioDriverRoutineDetail audio_driver;
   CpuStressRoutineDetail cpu_stress;
   UfsLifetimeRoutineDetail ufs_lifetime;
+  DiskReadRoutineDetail disk_read;
 };
 
 // Details regarding memory routine.
@@ -213,6 +230,12 @@ struct UfsLifetimeRoutineDetail {
   uint8 device_life_time_est_a@1;
   // Device life time estimation (type B).
   uint8 device_life_time_est_b@2;
+};
+
+// Details regarding disk_read routine.
+//
+// NextMinVersion: 1, NextIndex: 0
+struct DiskReadRoutineDetail {
 };
 
 // Enumeration of each possible memtester test item.
@@ -298,4 +321,15 @@ enum RoutineControlExceptionEnum{
   // Any other exceptions happen after creating the routine. E.g. No resource to
   // run the routine / the required device is currently unavailable.
   kRuntimeError = 3,
+};
+
+// Enumeration of the possible DiskRead routine's command type.
+//
+// NextMinVersion: 1, NextIndex: 3
+[Extensible]
+enum DiskReadTypeEnum {
+  // This is required for backwards compatibility, should not be used.
+  [Default] kUnmappedEnumField = 0,
+  kLinearRead = 1,
+  kRandomRead = 2,
 };

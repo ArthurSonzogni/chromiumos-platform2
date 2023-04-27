@@ -9,6 +9,7 @@
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
+#include "diagnostics/cros_healthd/routines/storage/disk_read_v2.h"
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
 
 namespace diagnostics {
@@ -42,6 +43,18 @@ void RoutineService::CreateRoutine(
       AddRoutine(std::make_unique<UfsLifetimeRoutine>(
                      context_, routine_arg->get_ufs_lifetime()),
                  std::move(routine_receiver));
+      break;
+    case mojom::RoutineArgument::Tag::kDiskRead:
+      if (auto routine =
+              DiskReadRoutineV2::Create(context_, routine_arg->get_disk_read());
+          routine.has_value()) {
+        AddRoutine(std::move(routine.value()), std::move(routine_receiver));
+      } else {
+        routine_receiver.ResetWithReason(
+            static_cast<uint32_t>(
+                mojom::RoutineControlExceptionEnum::kNotSupported),
+            routine.error());
+      }
       break;
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
       LOG(ERROR) << "Routine Argument not recognized/supported";

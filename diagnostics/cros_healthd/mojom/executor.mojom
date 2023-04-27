@@ -12,6 +12,7 @@ import "diagnostics/mojom/external/time.mojom";
 import "diagnostics/mojom/public/cros_healthd_diagnostics.mojom";
 import "diagnostics/mojom/public/cros_healthd_events.mojom";
 import "diagnostics/mojom/public/cros_healthd_probe.mojom";
+import "diagnostics/mojom/public/cros_healthd_routines.mojom";
 import "diagnostics/mojom/public/nullable_primitives.mojom";
 
 // Provides the result of running a process.
@@ -132,6 +133,8 @@ struct ReadJobArgument {
   // Dedicated duration for reading test files, which will be rounded towards
   // zero to the nearest second.
   ash.cros_healthd.external.mojo_base.mojom.TimeDelta exec_duration;
+  // Type of disk read.
+  DiskReadTypeEnum disk_read_type;
 };
 
 union FioJobArgument {
