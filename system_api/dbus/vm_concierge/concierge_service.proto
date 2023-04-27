@@ -248,7 +248,8 @@ message StartVmRequest {
     USED_BY_TESTS = 1;
     START_LXD = 2 [deprecated = true];
     RESET_LXD_ON_LAUNCH = 3 [deprecated = true];
-    LXD_4_LTS = 4;
+    LXD_4_LTS = 4 [deprecated = true];
+    LXD_5_LTS = 5;
     // This list must stay in sync with the one in vm_guest.proto
   }
   // Experimental Termina features to enable. Like Chrome feature flags but for

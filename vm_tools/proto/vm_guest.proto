@@ -186,7 +186,8 @@ message StartTerminaRequest {
     USED_BY_TESTS = 1;
     START_LXD = 2 [deprecated = true];
     RESET_LXD_ON_LAUNCH = 3 [deprecated = true];
-    LXD_4_LTS = 4;
+    LXD_4_LTS = 4 [deprecated = true];
+    LXD_5_LTS = 5;
     // This list must stay in sync with the one in concierge_service.proto
   }
   // The address for tremplin to connect to.

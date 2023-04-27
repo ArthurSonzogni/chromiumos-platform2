@@ -714,18 +714,18 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
   }
 
   for (const auto feature : request->feature()) {
-    if (feature == StartTerminaRequest::LXD_4_LTS) {
+    if (feature == StartTerminaRequest::LXD_5_LTS) {
       // Create a marker file to record the LXD transition state so we won't go
       // backwards even if concierge stops passing us this flag later.
-      base::File(base::FilePath("/mnt/stateful/lxd-4.0-transition"),
+      base::File(base::FilePath("/mnt/stateful/lxd-5.0-transition"),
                  base::File::FLAG_CREATE | base::File::FLAG_READ);
       // Don't check if creating the file succeeded here, we check for path
       // existence below and if it failed we just ignore the feature flag.
     }
   }
 
-  if (base::PathExists(base::FilePath("/mnt/stateful/lxd-4.0-transition"))) {
-    LOG(INFO) << "This system has transitioned to LXD 4.0.x";
+  if (base::PathExists(base::FilePath("/mnt/stateful/lxd-5.0-transition"))) {
+    LOG(INFO) << "This system has transitioned to LXD 5.0.x";
     // Set PATH and LD_LIBRARY_PATH to prefer things in the lxd-next
     // directory. Note that we don't just want to affect our child processes,
     // we want to affect our own path resolution, since we call lxcfs by name
