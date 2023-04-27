@@ -28,7 +28,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
-#include <shill/net/ipv4_address.h>
 
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/arc_service.h"
@@ -146,6 +145,12 @@ std::string AutoDnatTargetChainName(AutoDnatTarget auto_dnat_target) {
     case AutoDnatTarget::kPluginVm:
       return kApplyAutoDnatToPluginvmChain;
   }
+}
+
+// TODO(b/279693340): Remove the function after all IPv4 address represented by
+// uint32_t are migrated to shill::IPv4Address.
+uint32_t ToUint32(const shill::IPv4Address& ip) {
+  return Ipv4Addr(ip.data()[0], ip.data()[1], ip.data()[2], ip.data()[3]);
 }
 
 }  // namespace
@@ -1800,7 +1805,8 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
   // TODO(b/239559602) Clarify which service, shill or networking, is in charge
   // of IFF_UP and MAC address configuration.
   if (!ConfigureInterface(info.downstream_ifname, /*mac_addr=*/std::nullopt,
-                          info.ipv4_addr, info.ipv4_prefix_length,
+                          ToUint32(info.ipv4_cidr.address()),
+                          info.ipv4_cidr.prefix_length(),
                           /*up=*/true, /*enable_multicast=*/true)) {
     LOG(ERROR) << __func__ << " " << info
                << ": Cannot configure downstream interface "
@@ -2277,7 +2283,9 @@ bool Datapath::ModifyPortRule(
 
 std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
     const TetheredNetworkRequest& request) {
-  using shill::IPAddress;
+  using shill::IPv4Address;
+  using shill::IPv4CIDR;
+
   auto info = std::make_optional<DownstreamNetworkInfo>();
 
   info->topology = DownstreamNetworkTopology::kTethering;
@@ -2292,10 +2300,21 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
     info->enable_ipv4_dhcp = true;
     if (ipv4_config.has_ipv4_subnet()) {
       // Fill the parameters from protobuf.
-      const auto ipv4_addr = Ipv4Addr(ipv4_config.gateway_addr());
-      const auto ipv4_dhcp_start_addr = Ipv4Addr(ipv4_config.dhcp_start_addr());
-      const auto ipv4_dhcp_end_addr = Ipv4Addr(ipv4_config.dhcp_end_addr());
-      if (!ipv4_addr || !ipv4_dhcp_start_addr || !ipv4_dhcp_end_addr) {
+      const auto ipv4_addr = IPv4Address::CreateFromBytes(
+          ipv4_config.gateway_addr().data(), ipv4_config.gateway_addr().size());
+      const auto ipv4_cidr =
+          (ipv4_addr)
+              ? IPv4CIDR::CreateFromAddressAndPrefix(
+                    *ipv4_addr,
+                    static_cast<int>(ipv4_config.ipv4_subnet().prefix_len()))
+              : std::nullopt;
+      const auto ipv4_dhcp_start_addr =
+          IPv4Address::CreateFromBytes(ipv4_config.dhcp_start_addr().data(),
+                                       ipv4_config.dhcp_start_addr().size());
+      const auto ipv4_dhcp_end_addr =
+          IPv4Address::CreateFromBytes(ipv4_config.dhcp_end_addr().data(),
+                                       ipv4_config.dhcp_end_addr().size());
+      if (!ipv4_cidr || !ipv4_dhcp_start_addr || !ipv4_dhcp_end_addr) {
         LOG(ERROR) << "Invalid arguments, gateway_addr: "
                    << ipv4_config.gateway_addr()
                    << ", dhcp_start_addr: " << ipv4_config.dhcp_start_addr()
@@ -2303,25 +2322,23 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
         return std::nullopt;
       }
 
-      info->ipv4_addr = *ipv4_addr;
-      info->ipv4_prefix_length =
-          static_cast<int>(ipv4_config.ipv4_subnet().prefix_len());
+      info->ipv4_cidr = *ipv4_cidr;
       info->ipv4_dhcp_start_addr = *ipv4_dhcp_start_addr;
       info->ipv4_dhcp_end_addr = *ipv4_dhcp_end_addr;
     } else {
       // Randomly pick a /24 subnet from 172.16.0.0/16 prefix, which is a subnet
       // of the Class B private prefix 172.16.0.0/12.
       const uint8_t x = static_cast<uint8_t>(base::RandInt(0, 255));
-      info->ipv4_addr = Ipv4Addr(172, 16, x, 1);
-      info->ipv4_prefix_length = 24;
-      info->ipv4_dhcp_start_addr = Ipv4Addr(172, 16, x, 50);
-      info->ipv4_dhcp_end_addr = Ipv4Addr(172, 16, x, 150);
+      info->ipv4_cidr =
+          *IPv4CIDR::CreateFromAddressAndPrefix(IPv4Address(172, 16, x, 1), 24);
+      info->ipv4_dhcp_start_addr = IPv4Address(172, 16, x, 50);
+      info->ipv4_dhcp_end_addr = IPv4Address(172, 16, x, 150);
     }
 
     // Fill the DNS server.
     for (const auto& ip_str : ipv4_config.dns_servers()) {
-      const auto ip = IPAddress::CreateFromByteString(
-          IPAddress::kFamilyIPv4, {ip_str.c_str(), ip_str.length()});
+      const auto ip =
+          IPv4Address::CreateFromBytes(ip_str.c_str(), ip_str.length());
       if (!ip) {
         LOG(WARNING) << "Invalid DNS server, length of IP: " << ip_str.length();
       } else {
@@ -2362,26 +2379,9 @@ DownstreamNetworkInfo::ToDHCPServerConfig() const {
     return std::nullopt;
   }
 
-  const auto host_ip = IPv4CIDR::CreateFromStringAndPrefix(
-      IPv4AddressToString(ipv4_addr), ipv4_prefix_length);
-  const auto start_ip =
-      IPv4Address::CreateFromString(IPv4AddressToString(ipv4_dhcp_start_addr));
-  const auto end_ip =
-      IPv4Address::CreateFromString(IPv4AddressToString(ipv4_dhcp_end_addr));
-  if (!host_ip || !start_ip || !end_ip) {
-    return std::nullopt;
-  }
-  std::vector<IPv4Address> dns_servers;
-  for (const auto& dns_server : dhcp_dns_servers) {
-    if (const auto ipv4 = dns_server.ToIPv4Address()) {
-      dns_servers.push_back(*ipv4);
-    } else {
-      LOG(WARNING) << "Invalid DNS server: " << dns_server;
-    }
-  }
-
   return DHCPServerController::Config::Create(
-      *host_ip, *start_ip, *end_ip, dns_servers, dhcp_domain_searches);
+      ipv4_cidr, ipv4_dhcp_start_addr, ipv4_dhcp_end_addr, dhcp_dns_servers,
+      dhcp_domain_searches);
 }
 
 std::ostream& operator<<(std::ostream& stream,
@@ -2427,11 +2427,9 @@ std::ostream& operator<<(std::ostream& stream,
       break;
   }
   stream << ", downstream: " << info.downstream_ifname;
-  stream << ", ipv4 subnet: ";
-  stream << IPv4AddressToCidrString(info.ipv4_base_addr,
-                                    info.ipv4_prefix_length);
-  stream << ", ipv4 addr: ";
-  stream << IPv4AddressToString(info.ipv4_addr);
+  stream << ", ipv4 subnet: " << info.ipv4_cidr.GetPrefixAddress() << "/"
+         << info.ipv4_cidr.prefix_length();
+  stream << ", ipv4 addr: " << info.ipv4_cidr.address();
   stream << ", enable_ipv6: " << std::boolalpha << info.enable_ipv6;
   return stream << "}";
 }

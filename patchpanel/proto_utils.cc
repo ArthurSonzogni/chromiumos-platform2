@@ -55,10 +55,11 @@ void FillDownstreamNetworkProto(
     const DownstreamNetworkInfo& downstream_network_info,
     patchpanel::DownstreamNetwork* output) {
   output->set_downstream_ifname(downstream_network_info.downstream_ifname);
-  output->set_ipv4_gateway_addr(&downstream_network_info.ipv4_addr,
-                                sizeof(downstream_network_info.ipv4_addr));
+  output->set_ipv4_gateway_addr(
+      downstream_network_info.ipv4_cidr.address().data().data(),
+      downstream_network_info.ipv4_cidr.address().kAddressLength);
   FillSubnetProto(downstream_network_info.ipv4_base_addr,
-                  downstream_network_info.ipv4_prefix_length,
+                  downstream_network_info.ipv4_cidr.prefix_length(),
                   output->mutable_ipv4_subnet());
 }
 

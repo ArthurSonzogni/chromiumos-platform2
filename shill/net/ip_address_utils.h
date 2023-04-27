@@ -95,7 +95,8 @@ class SHILL_EXPORT CIDR {
     return CIDR(address, prefix_length);
   }
 
-  explicit CIDR(const Address& address = {}) : CIDR(address, 0) {}
+  CIDR() : CIDR(Address(), 0) {}
+  explicit CIDR(const Address& address) : CIDR(address, 0) {}
 
   // Getter methods for the internal data.
   const Address& address() const { return address_; }

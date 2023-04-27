@@ -213,34 +213,38 @@ void Verify_ip_netns_delete(MockProcessRunner& runner,
 }  // namespace
 
 TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
-  using shill::IPAddress;
+  using shill::IPv4Address;
+  using shill::IPv4CIDR;
 
-  const uint32_t subnet_ip = Ipv4Addr(192, 168, 3, 0);
-  const uint32_t host_ip = Ipv4Addr(192, 168, 3, 1);
-  const uint32_t start_ip = Ipv4Addr(192, 168, 3, 50);
-  const uint32_t end_ip = Ipv4Addr(192, 168, 3, 150);
-  const uint32_t prefix_len = 24;
-  const std::vector<IPAddress> dns_servers = {
-      *IPAddress::CreateFromString("1.2.3.4"),
-      *IPAddress::CreateFromString("5.6.7.8"),
+  const auto ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("192.168.3.1/24");
+  const auto subnet_ip = ipv4_cidr.GetPrefixAddress();
+  const IPv4Address start_ip = IPv4Address(192, 168, 3, 50);
+  const IPv4Address end_ip = IPv4Address(192, 168, 3, 150);
+  const std::vector<IPv4Address> dns_servers = {
+      IPv4Address(1, 2, 3, 4),
+      IPv4Address(5, 6, 7, 8),
   };
   const std::vector<std::string> domain_searches = {"domain.local0",
                                                     "domain.local1"};
 
   IPv4Subnet* ipv4_subnet = new IPv4Subnet();
-  ipv4_subnet->set_addr(&subnet_ip, sizeof(subnet_ip));
-  ipv4_subnet->set_prefix_len(prefix_len);
+  ipv4_subnet->set_addr(subnet_ip.data().data(), subnet_ip.kAddressLength);
+  ipv4_subnet->set_prefix_len(
+      static_cast<unsigned int>(ipv4_cidr.prefix_length()));
 
   IPv4Configuration* ipv4_config = new IPv4Configuration();
   ipv4_config->set_allocated_ipv4_subnet(ipv4_subnet);
-  ipv4_config->set_gateway_addr(&host_ip, sizeof(host_ip));
+  ipv4_config->set_gateway_addr(ipv4_cidr.address().data().data(),
+                                ipv4_cidr.address().kAddressLength);
   ipv4_config->set_use_dhcp(true);
-  ipv4_config->set_dhcp_start_addr(&start_ip, sizeof(start_ip));
-  ipv4_config->set_dhcp_end_addr(&end_ip, sizeof(end_ip));
-  ipv4_config->add_dns_servers(dns_servers[0].GetConstData(),
-                               dns_servers[0].GetLength());
-  ipv4_config->add_dns_servers(dns_servers[1].GetConstData(),
-                               dns_servers[1].GetLength());
+  ipv4_config->set_dhcp_start_addr(start_ip.data().data(),
+                                   start_ip.kAddressLength);
+  ipv4_config->set_dhcp_end_addr(end_ip.data().data(),
+                                 IPv4Address::kAddressLength);
+  ipv4_config->add_dns_servers(dns_servers[0].data().data(),
+                               dns_servers[0].kAddressLength);
+  ipv4_config->add_dns_servers(dns_servers[1].data().data(),
+                               dns_servers[1].kAddressLength);
   ipv4_config->add_domain_searches(domain_searches[0]);
   ipv4_config->add_domain_searches(domain_searches[1]);
 
@@ -255,8 +259,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   EXPECT_EQ(info->topology, DownstreamNetworkTopology::kTethering);
   EXPECT_EQ(info->upstream_ifname, "wwan0");
   EXPECT_EQ(info->downstream_ifname, "wlan1");
-  EXPECT_EQ(info->ipv4_addr, host_ip);
-  EXPECT_EQ(info->ipv4_prefix_length, prefix_len);
+  EXPECT_EQ(info->ipv4_cidr, ipv4_cidr);
   EXPECT_EQ(info->ipv4_dhcp_start_addr, start_ip);
   EXPECT_EQ(info->ipv4_dhcp_end_addr, end_ip);
   EXPECT_EQ(info->dhcp_dns_servers, dns_servers);
@@ -266,26 +269,14 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
 
 TEST(DatapathTest,
      DownstreamNetworkInfo_CreateFromTetheredNetworkRequestRandom) {
-  using shill::IPAddress;
-
   TetheredNetworkRequest request;
   const auto info = DownstreamNetworkInfo::Create(request);
   ASSERT_NE(info, std::nullopt);
 
   // When the request doesn't have |ipv4_config|, the info should be randomly
   // assigned the valid host IP and DHCP range.
-  const auto host_ip = IPAddress::CreateFromStringAndPrefix(
-      IPv4AddressToString(info->ipv4_addr),
-      static_cast<unsigned int>(info->ipv4_prefix_length));
-  const auto dhcp_start_ip = IPAddress::CreateFromString(
-      IPv4AddressToString(info->ipv4_dhcp_start_addr));
-  const auto dhcp_end_ip = IPAddress::CreateFromString(
-      IPv4AddressToString(info->ipv4_dhcp_end_addr));
-  ASSERT_NE(host_ip, std::nullopt);
-  ASSERT_NE(dhcp_start_ip, std::nullopt);
-  ASSERT_NE(dhcp_end_ip, std::nullopt);
-  EXPECT_TRUE(host_ip->CanReachAddress(*dhcp_start_ip));
-  EXPECT_TRUE(host_ip->CanReachAddress(*dhcp_end_ip));
+  EXPECT_TRUE(info->ipv4_cidr.InSameSubnetWith(info->ipv4_dhcp_start_addr));
+  EXPECT_TRUE(info->ipv4_cidr.InSameSubnetWith(info->ipv4_dhcp_end_addr));
 }
 
 TEST(DatapathTest, DownstreamNetworkInfo_CreateFromLocalOnlyNetworkRequest) {
@@ -299,16 +290,16 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromLocalOnlyNetworkRequest) {
 }
 
 TEST(DatapathTest, DownstreamNetworkInfo_ToDHCPServerConfig) {
-  using shill::IPAddress;
+  using shill::IPv4Address;
+  using shill::IPv4CIDR;
 
   DownstreamNetworkInfo info = {};
-  info.ipv4_addr = Ipv4Addr(192, 168, 3, 1);
-  info.ipv4_prefix_length = 24;
+  info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("192.168.3.1/24");
   info.enable_ipv4_dhcp = true;
-  info.ipv4_dhcp_start_addr = Ipv4Addr(192, 168, 3, 50);
-  info.ipv4_dhcp_end_addr = Ipv4Addr(192, 168, 3, 100);
-  info.dhcp_dns_servers.push_back(*IPAddress::CreateFromString("1.2.3.4"));
-  info.dhcp_dns_servers.push_back(*IPAddress::CreateFromString("5.6.7.8"));
+  info.ipv4_dhcp_start_addr = IPv4Address(192, 168, 3, 50);
+  info.ipv4_dhcp_end_addr = IPv4Address(192, 168, 3, 100);
+  info.dhcp_dns_servers.push_back(IPv4Address(1, 2, 3, 4));
+  info.dhcp_dns_servers.push_back(IPv4Address(5, 6, 7, 8));
   info.dhcp_domain_searches.push_back("domain.local0");
   info.dhcp_domain_searches.push_back("domain.local1");
 
@@ -1000,8 +991,7 @@ TEST(DatapathTest, StartDownstreamTetheredNetwork) {
   info.topology = DownstreamNetworkTopology::kTethering;
   info.upstream_ifname = "wwan0";
   info.downstream_ifname = "ap0";
-  info.ipv4_addr = Ipv4Addr(172, 17, 49, 1);
-  info.ipv4_prefix_length = 24;
+  info.ipv4_cidr = *shill::IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
   Datapath datapath(runner, firewall, &system);
   datapath.StartDownstreamNetwork(info);
@@ -1020,8 +1010,7 @@ TEST(DatapathTest, StartDownstreamLocalOnlyNetwork) {
   info.topology = DownstreamNetworkTopology::kLocalOnly;
   info.upstream_ifname = "wwan0";
   info.downstream_ifname = "ap0";
-  info.ipv4_addr = Ipv4Addr(172, 17, 49, 1);
-  info.ipv4_prefix_length = 24;
+  info.ipv4_cidr = *shill::IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
   Datapath datapath(runner, firewall, &system);
   datapath.StartDownstreamNetwork(info);
@@ -1050,8 +1039,7 @@ TEST(DatapathTest, StopDownstreamTetheredNetwork) {
   info.topology = DownstreamNetworkTopology::kTethering;
   info.upstream_ifname = "wwan0";
   info.downstream_ifname = "ap0";
-  info.ipv4_addr = Ipv4Addr(172, 17, 49, 1);
-  info.ipv4_prefix_length = 24;
+  info.ipv4_cidr = *shill::IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
   Datapath datapath(runner, firewall, &system);
   datapath.StopDownstreamNetwork(info);
@@ -1070,8 +1058,7 @@ TEST(DatapathTest, StopDownstreamLocalOnlyNetwork) {
   info.topology = DownstreamNetworkTopology::kLocalOnly;
   info.upstream_ifname = "wwan0";
   info.downstream_ifname = "ap0";
-  info.ipv4_addr = Ipv4Addr(172, 17, 49, 1);
-  info.ipv4_prefix_length = 24;
+  info.ipv4_cidr = *shill::IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
   Datapath datapath(runner, firewall, &system);
   datapath.StopDownstreamNetwork(info);

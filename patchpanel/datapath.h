@@ -18,7 +18,7 @@
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
-#include <shill/net/ip_address.h>
+#include <shill/net/ipv4_address.h>
 
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/firewall.h"
@@ -105,24 +105,22 @@ struct DownstreamNetworkInfo {
   // LocalOnlyNetwork.
   std::string upstream_ifname;
   std::string downstream_ifname;
-  // TODO(b/239559602) Introduce better types for IPv4 addr and IPv4 CIDR.
-  // IPv4 address of the DUT on the downstream network in network order. This
-  // is the effective gateway address for clients connected on the network.
-  uint32_t ipv4_addr;
+  // IPv4 CIDR of the DUT on the downstream network. This is the effective
+  // gateway address for clients connected on the network.
+  shill::IPv4CIDR ipv4_cidr;
   // Base address of the IPv4 subnet assigned to the downstream network in
   // network order.
+  // TODO(b/279693340): Replace by ipv4_cidr.GetPrefixAddress().
   uint32_t ipv4_base_addr;
-  // Prefix length of the IPv4 subnet assigned to the downstream network.
-  int ipv4_prefix_length;
 
   // Set to true if IPv4 DHCP server is created at the downstream.
   bool enable_ipv4_dhcp;
-  // IPv4 DHCP IP range, only valid when |enable_ipv4_dhcp| is true.
-  uint32_t ipv4_dhcp_start_addr;
-  uint32_t ipv4_dhcp_end_addr;
-  // The DNS server of the DHCP option, only used when |enable_ipv4_dhcp| is
-  // true.
-  std::vector<shill::IPAddress> dhcp_dns_servers;
+  // IPv4 DHCP IP range, only used when |enable_ipv4_dhcp| is true.
+  shill::IPv4Address ipv4_dhcp_start_addr;
+  shill::IPv4Address ipv4_dhcp_end_addr;
+  //  The DNS server of the DHCP option, only used when |enable_ipv4_dhcp| is
+  //  true.
+  std::vector<shill::IPv4Address> dhcp_dns_servers;
   // The domain search of the DHCP option, only used when |enable_ipv4_dhcp| is
   // true.
   std::vector<std::string> dhcp_domain_searches;
@@ -467,6 +465,7 @@ class Datapath {
   // downstream network.
   bool ConfigureInterface(const std::string& ifname,
                           std::optional<MacAddress> mac_addr,
+                          // TODO(b/279693340): Replace with IPv4CIDR
                           uint32_t ipv4_addr,
                           int ipv4_prefix_len,
                           bool up,
