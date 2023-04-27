@@ -9,6 +9,7 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::time::Duration;
+use std::time::Instant;
 use std::time::UNIX_EPOCH;
 
 use anyhow::Context;
@@ -221,8 +222,12 @@ impl ResumeConductor {
 
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Write)?;
 
+        let start = Instant::now();
         // Load the snapshot image into the kernel
-        snap_dev.load_image(hiber_image_file)?;
+        let image_size = snap_dev.load_image(hiber_image_file)?;
+
+        self.metrics_logger
+            .metrics_send_io_sample("ReadMainImage", image_size, start.elapsed());
 
         // Let other daemons know it's the end of the world.
         let _powerd_resume = PowerdPendingResume::new(&mut self.metrics_logger)
