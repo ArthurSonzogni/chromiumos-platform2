@@ -68,6 +68,7 @@ static std::function<uint32_t(struct gbm_bo* bo, size_t plane)>
     _gbm_bo_get_offset;
 static std::function<uint32_t(struct gbm_bo* bo, size_t plane)>
     _gbm_bo_get_stride_for_plane;
+static std::function<uint64_t(struct gbm_bo* bo)> _gbm_bo_get_modifier;
 static std::function<void(struct gbm_bo* bo)> _gbm_bo_destroy;
 static std::function<void*(
     void* addr, size_t length, int prot, int flags, int fd, off_t offset)>
@@ -146,6 +147,11 @@ struct MockGbm {
       return GbmBoGetPlaneStride(bo, plane);
     };
 
+    EXPECT_EQ(_gbm_bo_get_modifier, nullptr);
+    _gbm_bo_get_modifier = [this](struct gbm_bo* bo) {
+      return GbmBoGetModifier(bo);
+    };
+
     EXPECT_EQ(_gbm_bo_destroy, nullptr);
     _gbm_bo_destroy = [this](struct gbm_bo* bo) { GbmBoDestroy(bo); };
 
@@ -180,6 +186,7 @@ struct MockGbm {
     _gbm_bo_get_plane_fd = nullptr;
     _gbm_bo_get_offset = nullptr;
     _gbm_bo_get_stride_for_plane = nullptr;
+    _gbm_bo_get_modifier = nullptr;
     _gbm_bo_destroy = nullptr;
     _mmap = nullptr;
     _munmap = nullptr;
@@ -215,6 +222,7 @@ struct MockGbm {
   MOCK_METHOD(int, GbmBoGetPlaneFd, (struct gbm_bo*, size_t));
   MOCK_METHOD(uint32_t, GbmBoGetPlaneOffset, (struct gbm_bo*, size_t));
   MOCK_METHOD(uint32_t, GbmBoGetPlaneStride, (struct gbm_bo*, size_t));
+  MOCK_METHOD(uint64_t, GbmBoGetModifier, (struct gbm_bo*));
   MOCK_METHOD(void, GbmBoDestroy, (struct gbm_bo*));
   MOCK_METHOD(void*, Mmap, (void*, size_t, int, int, int, off_t));
   MOCK_METHOD(int, Munmap, (void*, size_t));
@@ -303,6 +311,10 @@ uint32_t gbm_bo_get_offset(struct gbm_bo* bo, size_t plane) {
 
 uint32_t gbm_bo_get_stride_for_plane(struct gbm_bo* bo, size_t plane) {
   return _gbm_bo_get_stride_for_plane(bo, plane);
+}
+
+uint64_t gbm_bo_get_modifier(struct gbm_bo* bo) {
+  return _gbm_bo_get_modifier(bo);
 }
 
 off_t lseek(int fd, off_t offset, int whence) {
@@ -481,6 +493,10 @@ TEST_F(CameraBufferManagerImplTest, AllocateTest) {
         .Times(1)
         .WillOnce(Return(0));
   }
+  // Return DRM_FORMAT_MOD_INVALID by default for the mock.
+  EXPECT_CALL(gbm_, GbmBoGetModifier(&dummy_bo))
+      .Times(1)
+      .WillOnce(Return(DRM_FORMAT_MOD_INVALID));
   EXPECT_EQ(cbm_->Allocate(kBufferWidth, kBufferHeight,
                            HAL_PIXEL_FORMAT_YCbCr_420_888, usage,
                            &buffer_handle, &stride),
