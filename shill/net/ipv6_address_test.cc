@@ -54,6 +54,12 @@ TEST(IPv6AddressTest, CreateFromString_Fail) {
   EXPECT_FALSE(IPv6Address::CreateFromString("192.168.10.1"));
 }
 
+TEST(IPv4AddressTest, CreateFromBytes) {
+  const auto expected = IPv6Address(kGoodData);
+  EXPECT_EQ(*IPv6Address::CreateFromBytes(kGoodData.data(), kGoodData.size()),
+            expected);
+}
+
 TEST(IPv6AddressTest, IsZero) {
   const IPv6Address default_addr;
   EXPECT_TRUE(default_addr.IsZero());

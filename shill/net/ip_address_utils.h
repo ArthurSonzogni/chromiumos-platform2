@@ -5,6 +5,7 @@
 #ifndef SHILL_NET_IP_ADDRESS_UTILS_H_
 #define SHILL_NET_IP_ADDRESS_UTILS_H_
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
@@ -20,6 +21,18 @@ namespace shill {
 // length. Returns std::nullopt if the format is invalid.
 SHILL_EXPORT std::optional<std::pair<std::string, int>> SplitCIDRString(
     const std::string& address_string);
+
+template <typename Address>
+std::optional<Address> CreateAddressFromBytes(const uint8_t* bytes,
+                                              size_t byte_length) {
+  if (byte_length != Address::kAddressLength) {
+    return std::nullopt;
+  }
+
+  typename Address::DataType data;
+  std::copy_n(bytes, Address::kAddressLength, data.begin());
+  return Address(data);
+}
 
 // Represents the CIDR, that contains a IP address and a prefix length.
 template <typename Address>

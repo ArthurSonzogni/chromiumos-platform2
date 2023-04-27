@@ -31,6 +31,19 @@ class SHILL_EXPORT IPv4Address {
   static std::optional<IPv4Address> CreateFromString(
       const std::string& address_string);
 
+  // Creates the IPv4Address from the raw byte buffer. |bytes| points to the
+  // front of the byte buffer, and |bytes_length| is the length of the buffer.
+  // The caller should guarantee the data between [bytes, bytes + bytes_length)
+  // is valid memory.
+  // Returns std::nullopt if |bytes_length| is not the same as kAddressLength.
+  static std::optional<IPv4Address> CreateFromBytes(const char* bytes,
+                                                    size_t bytes_length) {
+    return CreateFromBytes(reinterpret_cast<const uint8_t*>(bytes),
+                           bytes_length);
+  }
+  static std::optional<IPv4Address> CreateFromBytes(const uint8_t* bytes,
+                                                    size_t bytes_length);
+
   // Constructs an instance with the "0.0.0.0" address.
   IPv4Address();
 

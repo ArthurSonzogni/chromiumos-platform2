@@ -22,6 +22,12 @@ std::optional<IPv6Address> IPv6Address::CreateFromString(
   return IPv6Address(data);
 }
 
+// static
+std::optional<IPv6Address> IPv6Address::CreateFromBytes(const uint8_t* bytes,
+                                                        size_t byte_length) {
+  return CreateAddressFromBytes<IPv6Address>(bytes, byte_length);
+}
+
 IPv6Address::IPv6Address() : data_(DataType{}) {}
 IPv6Address::IPv6Address(const DataType& data) : data_(data) {}
 

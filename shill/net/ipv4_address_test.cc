@@ -55,6 +55,20 @@ TEST(IPv4AddressTest, CreateFromString_Fail) {
   EXPECT_FALSE(IPv4Address::CreateFromString("fe80::1aa9:5ff:7ebf:14c5"));
 }
 
+TEST(IPv4AddressTest, CreateFromBytes) {
+  const auto expected = IPv4Address(192, 168, 10, 1);
+
+  const uint8_t bytes[4] = {192, 168, 10, 1};
+  EXPECT_EQ(*IPv4Address::CreateFromBytes(bytes, std::size(bytes)), expected);
+
+  const std::string byte_string = {static_cast<char>(192),
+                                   static_cast<char>(168),
+                                   static_cast<char>(10), static_cast<char>(1)};
+  EXPECT_EQ(
+      *IPv4Address::CreateFromBytes(byte_string.c_str(), byte_string.size()),
+      expected);
+}
+
 TEST(IPv4AddressTest, IsZero) {
   const IPv4Address default_addr;
   EXPECT_TRUE(default_addr.IsZero());
