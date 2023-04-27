@@ -38,3 +38,11 @@ pub mod vm_concierge {
 
     pub const VM_STOPPING_SIGNAL: &str = "VmStoppingSignal";
 }
+
+pub mod spaced {
+    // pub const SERVICE_NAME: &str = "org.chromium.Spaced";
+    // pub const PATH_NAME: &str = "/org/chromium/Spaced";
+    pub const INTERFACE_NAME: &str = "org.chromium.Spaced";
+
+    pub const STATEFUL_DISK_SPACE_UPDATE: &str = "StatefulDiskSpaceUpdate";
+}

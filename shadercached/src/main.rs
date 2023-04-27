@@ -37,11 +37,20 @@ pub async fn main() -> Result<()> {
     if *BOOT_ID == *OS_BUILD_ID {
         warn!("Failed to digest OS build id, falling back to boot id");
     }
+
     // Mount points are VM GPU cache mounting destinations. Each mount point has
     // metadata on what is last requested to be mounted there and current mount
     // status.
     // Note: MountPoints is Arc-ed (cloning returns pointer to the object,
     // thread safe).
+    // TODO(b/271776528): Query current sessions and pre-populate for logged in
+    // users.
+    // TODO(b/271776528): Listen to "SessionStateChanged:started" and
+    // pre-populate.
+    // TODO(b/271776528): Refactor shader cache mount to encapsulate cryptohome
+    // operation.
+    // Ex. user_id -> cryptohome
+    //     cryptohome.get(vm_id) -> ShaderCacheMount
     let mount_map = shader_cache_mount::new_mount_map();
 
     debug!(
@@ -263,6 +272,29 @@ pub async fn main() -> Result<()> {
         },
     );
 
+    // Listen to Spaced StatefulDiskSpaceUpdate
+    let mr_spaced_stateful_disk_space_update = MatchRule::new_signal(
+        dbus_constants::spaced::INTERFACE_NAME,
+        dbus_constants::spaced::STATEFUL_DISK_SPACE_UPDATE,
+    );
+    debug!(
+        "Matching Spaced signal: {}",
+        mr_spaced_stateful_disk_space_update.match_str()
+    );
+    let mount_spaced_listener = mount_map.clone();
+    let c_spaced_listener = c.clone();
+    let spaced_match = c_listen
+        .add_match(mr_spaced_stateful_disk_space_update)
+        .await?
+        .cb(move |_, (raw_bytes,): (Vec<u8>,)| {
+            tokio::spawn(service::handle_disk_space_update(
+                raw_bytes,
+                mount_spaced_listener.clone(),
+                c_spaced_listener.clone(),
+            ));
+            true
+        });
+
     // Start serving D-Bus methods
     let receive_token = c.start_receive(
         MatchRule::new_method_call(),
@@ -282,6 +314,7 @@ pub async fn main() -> Result<()> {
     // Delete |msg_match| to stop listening to DlcService signals
     drop(dlc_service_match);
     drop(concierge_match);
+    drop(spaced_match);
 
     attempt_unmount_all(mount_map).await;
 

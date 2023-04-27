@@ -27,8 +27,6 @@ use std::os::unix::prelude::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-const CRYPTO_HOME: &str = "/run/daemon-store/shadercached";
-const PRECOMPILED_CACHE_DIR: &str = "precompiled_cache";
 const UNINITIALIZED_ERROR: &str = "Mesa cache path not initialized";
 
 #[derive(Debug, Clone)]
@@ -53,13 +51,15 @@ pub struct ShaderCacheMount {
 }
 
 impl ShaderCacheMount {
-    pub fn new(vm_gpu_cache_path: PathBuf, owner_id: &str) -> Result<ShaderCacheMount> {
+    pub fn new(vm_gpu_cache_path: PathBuf, vm_id: &VmId) -> Result<ShaderCacheMount> {
         // Render server path is what mesa sees as its base path, so we don't
         // need to worry about paths before that.
         let render_server_path = vm_gpu_cache_path.join(GPU_RENDER_SERVER_PATH);
+        let vm_name_encoded = base64::encode_config(&vm_id.vm_name, base64::URL_SAFE);
         let precompiled_cache_path = Path::new(CRYPTO_HOME)
-            .join(owner_id)
-            .join(PRECOMPILED_CACHE_DIR);
+            .join(&vm_id.vm_owner_id)
+            .join(PRECOMPILED_CACHE_DIR)
+            .join(&vm_name_encoded);
         Ok(ShaderCacheMount {
             mount_queue: HashSet::new(),
             unmount_queue: HashSet::new(),

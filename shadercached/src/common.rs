@@ -14,6 +14,8 @@ use std::{
 pub type SteamAppId = u64;
 
 pub const UNMOUNTER_INTERVAL: Duration = Duration::from_millis(1000);
+pub const CRYPTO_HOME: &str = "/run/daemon-store/shadercached";
+pub const PRECOMPILED_CACHE_DIR: &str = "precompiled_cache";
 
 // GPU device id reported by the pcie ID
 lazy_static! {

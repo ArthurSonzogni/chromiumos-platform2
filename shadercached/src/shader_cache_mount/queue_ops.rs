@@ -238,6 +238,7 @@ impl ShaderCacheMountMap {
         }
 
         if failed_unmounts.is_empty() {
+            // TODO(b/271776528): Prevent further mounts
             return Ok(());
         }
         Err(anyhow!(

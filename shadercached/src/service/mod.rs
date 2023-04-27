@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors
+// Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,14 +9,17 @@
 
 mod concierge;
 mod dlc;
+pub mod helper;
 pub mod signal;
+mod spaced;
 
 use crate::common::*;
 use crate::shader_cache_mount::{ShaderCacheMount, ShaderCacheMountMapPtr, VmId};
+use helper::unsafe_quota::set_quota_normal;
 
 use anyhow::{anyhow, Result};
 use dbus::{nonblock::SyncConnection, MethodErr};
-use libchromeos::sys::debug;
+use libchromeos::sys::{debug, warn};
 use protobuf::Message;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -30,6 +33,7 @@ use system_api::shadercached::{
 pub use concierge::add_shader_cache_group_permission;
 pub use concierge::handle_vm_stopped;
 pub use dlc::handle_dlc_state_changed;
+pub use spaced::handle_disk_space_update;
 
 pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -61,7 +65,7 @@ pub async fn handle_install(
                     .to_path_buf();
             mut_mount_map.insert(
                 vm_id.clone(),
-                ShaderCacheMount::new(vm_gpu_cache_path, &vm_id.vm_owner_id)?,
+                ShaderCacheMount::new(vm_gpu_cache_path, &vm_id)?,
             );
         } else {
             debug!("Reusing mount information for {:?}", vm_id);
@@ -102,9 +106,7 @@ pub async fn handle_uninstall(
     Ok(())
 }
 
-// TODO(b/270617399): Make Purge accept VmId in the request proto once we
-// support non-DLC precompiled caches
-pub async fn handle_purge(
+pub async fn unmount_and_uninstall_all_shader_cache_dlcs(
     mount_map: ShaderCacheMountMapPtr,
     conn: Arc<SyncConnection>,
 ) -> Result<()> {
@@ -112,9 +114,22 @@ pub async fn handle_purge(
     mount_map
         .wait_unmount_completed(None, UNMOUNTER_INTERVAL * 2)
         .await?;
+
     // TODO(b/270262568): Queue DLC uninstallations instead of waiting for
-    // unmounts.
+    // unmounts. Ensure to disallow mounts during the period and allow mounts
+    // after completed.
     dlc::uninstall_all_shader_cache_dlcs(conn.clone()).await?;
+
+    Ok(())
+}
+
+// TODO(b/270617399): Make Purge accept VmId in the request proto
+pub async fn handle_purge(
+    mount_map: ShaderCacheMountMapPtr,
+    conn: Arc<SyncConnection>,
+) -> Result<()> {
+    unmount_and_uninstall_all_shader_cache_dlcs(mount_map.clone(), conn.clone()).await?;
+    spaced::delete_precompiled_cache(mount_map.clone()).await?;
     Ok(())
 }
 
@@ -136,10 +151,13 @@ pub async fn handle_prepare_shader_cache(
 
     // TODO(b/271776528): insert ShaderCacheMount here once we support local RW
     // shader cache in shadercached.
-    let shader_cache_mount = ShaderCacheMount::new(PathBuf::new(), &vm_id.vm_owner_id)?;
+    let shader_cache_mount = ShaderCacheMount::new(PathBuf::new(), &vm_id)?;
     let path = shader_cache_mount.local_precompiled_cache_path()?;
     if !Path::new(&path).exists() {
-        std::fs::create_dir(&path)?;
+        std::fs::create_dir_all(&path)?;
+    }
+    if let Err(e) = set_quota_normal(&path) {
+        warn!("Failed to set quota for {}: {}", path, e);
     }
     response.set_precompiled_cache_path(path);
 
