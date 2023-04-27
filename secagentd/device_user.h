@@ -69,7 +69,7 @@ class DeviceUser : public DeviceUserInterface {
   base::WeakPtrFactory<DeviceUser> weak_ptr_factory_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_;
-  std::string device_user_ = "None";
+  std::string device_user_ = "";
   std::string device_id_ = "";
 };
 
