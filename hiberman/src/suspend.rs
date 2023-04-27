@@ -5,7 +5,6 @@
 //! Implements hibernate suspend functionality.
 
 use std::time::Duration;
-use std::time::Instant;
 use std::time::UNIX_EPOCH;
 
 use anyhow::Context;
@@ -20,20 +19,17 @@ use log::warn;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
-use crate::files::does_hiberfile_exist;
 use crate::hiberlog;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::replay_logs;
 use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogOut;
-use crate::hiberutil::log_duration;
 use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::prealloc_mem;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateOptions;
 use crate::hiberutil::HibernateStage;
 use crate::hiberutil::TimestampFile;
-use crate::lvm::is_lvm_system;
 use crate::metrics::log_hibernate_attempt;
 use crate::metrics::read_and_send_metrics;
 use crate::metrics::MetricsFile;
@@ -69,7 +65,6 @@ impl SuspendConductor {
     /// hibernation.
     pub fn hibernate(&mut self, options: HibernateOptions) -> Result<()> {
         info!("Beginning hibernate");
-        let start = Instant::now();
 
         self.volume_manager.setup_hibermeta_lv(true)?;
 
@@ -77,22 +72,9 @@ impl SuspendConductor {
             warn!("Failed to log hibernate attempt: \n {}", e);
         }
 
-        let is_lvm = is_lvm_system()?;
-        let files_exist = does_hiberfile_exist();
-
         let metrics_file_path = MetricsFile::get_path(HibernateStage::Resume);
         let metrics_file = MetricsFile::create(metrics_file_path)?;
         self.metrics.file = Some(metrics_file);
-
-        let action_string = format!(
-            "Set up {}hibernate files on {}LVM system",
-            if files_exist { "" } else { "new " },
-            if is_lvm { "" } else { "non-" }
-        );
-        let duration = start.elapsed();
-        log_duration(&action_string, duration);
-        self.metrics
-            .metrics_send_duration_sample("SetupLVMFiles", duration, 30);
 
         self.options = options;
 

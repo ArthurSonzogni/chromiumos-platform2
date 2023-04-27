@@ -5,7 +5,6 @@
 //! High level support for creating and opening the files used by hibernate.
 
 use std::fs::create_dir;
-use std::fs::metadata;
 use std::fs::remove_file;
 use std::fs::File;
 use std::fs::OpenOptions;
@@ -27,20 +26,12 @@ pub const TMPFS_DIR: &str = "/run/hibernate/";
 /// Services outside of hiberman use this file, so don't change this name
 /// carelessly.
 const RESUME_IN_PROGRESS_FILE: &str = "resume_in_progress";
-/// Define the name of the main hibernate image data file.
-const HIBER_DATA_NAME: &str = "hiberfile";
 /// Define the attempts count file name.
 const HIBER_ATTEMPTS_FILE_NAME: &str = "attempts_count";
 /// Define the hibernate failures count file name.
 const HIBER_FAILURES_FILE_NAME: &str = "hibernate_failures";
 /// Define the resume failures count file name.
 const RESUME_FAILURES_FILE_NAME: &str = "resume_failures";
-
-/// Helper function to determine if the hiberfile already exists.
-pub fn does_hiberfile_exist() -> bool {
-    let hiberfile_path = Path::new(HIBERMETA_DIR).join(HIBER_DATA_NAME);
-    metadata(hiberfile_path).is_ok()
-}
 
 /// Open a metrics file.
 fn open_cumulative_metrics_file(path: &Path) -> Result<File> {

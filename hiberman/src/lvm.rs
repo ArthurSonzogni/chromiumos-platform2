@@ -4,10 +4,8 @@
 
 //! Implements LVM helper functions.
 
-use std::fs::File;
 use std::fs::OpenOptions;
 use std::fs::{self};
-use std::io::Read;
 use std::io::Seek;
 use std::io::SeekFrom;
 use std::io::Write;
@@ -25,30 +23,11 @@ use crate::hiberutil::checked_command;
 use crate::hiberutil::checked_command_output;
 use crate::hiberutil::is_snapshot_active;
 use crate::hiberutil::stateful_block_partition_one;
-use crate::mmapbuf::MmapBuffer;
 
 /// Define the minimum size of a block device sector.
 const SECTOR_SIZE: usize = 512;
 /// Define the size of an LVM extent.
 const LVM_EXTENT_SIZE: u64 = 64 * 1024;
-
-/// Helper function to determine if this is a system where the stateful
-/// partition is running on top of LVM.
-pub fn is_lvm_system() -> Result<bool> {
-    let partition1 = stateful_block_partition_one()?;
-    let mut file = File::open(&partition1)?;
-    let mut buffer = MmapBuffer::new(4096)?;
-    let buf = buffer.u8_slice_mut();
-    file.read_exact(buf)
-        .context(format!("Failed to read {}", partition1))?;
-    // LVM systems have a Physical Volume Label header that starts with
-    // "LABELONE" as its magic. If that's found, this is an LVM system.
-    // https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/4/html/cluster_logical_volume_manager/lvm_metadata
-    match str::from_utf8(&buf[512..520]) {
-        Ok(l) => Ok(l == "LABELONE"),
-        Err(_) => Ok(false),
-    }
-}
 
 /// Get the path to the given logical volume.
 pub fn lv_path(volume_group: &str, name: &str) -> PathBuf {
