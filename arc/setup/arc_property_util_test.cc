@@ -628,6 +628,11 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=Intel\n"
          "ro.soc.model=i7-1365U\n"},
 
+        // For a Brya board (skolas).
+        {"model name\t: 13th Gen Intel(R) CoreT i7-1370P\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=i7-1370P\n"},
+
         // For a Brya (anahera) board.
         {"model name\t: Intel(R) Celeron(R) 7305\n",
          "ro.soc.manufacturer=Intel\n"
