@@ -37,7 +37,8 @@ inline constexpr char kWellKnownPassword[] = "";
 //   space_utility.WriteSpace(...);
 class HwsecSpaceImpl : public HwsecSpace {
  public:
-  explicit HwsecSpaceImpl(std::unique_ptr<hwsec::BootLockboxFrontend> hwsec)
+  explicit HwsecSpaceImpl(
+      std::unique_ptr<const hwsec::BootLockboxFrontend> hwsec)
       : hwsec_(std::move(hwsec)) {}
 
   HwsecSpaceImpl(const HwsecSpaceImpl&) = delete;
@@ -62,7 +63,7 @@ class HwsecSpaceImpl : public HwsecSpace {
   void RegisterOwnershipTakenCallback(base::OnceClosure callback) override;
 
  private:
-  std::unique_ptr<hwsec::BootLockboxFrontend> hwsec_;
+  std::unique_ptr<const hwsec::BootLockboxFrontend> hwsec_;
 };
 
 }  // namespace bootlockbox
