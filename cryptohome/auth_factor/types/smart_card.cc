@@ -6,6 +6,7 @@
 
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
@@ -13,8 +14,14 @@
 
 namespace cryptohome {
 
-SmartCardAuthFactorDriver::SmartCardAuthFactorDriver()
-    : TypedAuthFactorDriver(AuthFactorType::kSmartCard) {}
+bool SmartCardAuthFactorDriver::IsSupported(
+    AuthFactorStorageType storage_type,
+    const std::set<AuthFactorType>& configured_factors) const {
+  if (configured_factors.count(AuthFactorType::kKiosk) > 0) {
+    return false;
+  }
+  return ChallengeCredentialAuthBlock::IsSupported(*crypto_).ok();
+}
 
 bool SmartCardAuthFactorDriver::IsPrepareRequired() const {
   return false;

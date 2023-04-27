@@ -56,11 +56,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   bool GetLockedToSingleUser() const override;
 
-  bool IsAuthFactorSupported(
-      AuthFactorType auth_factor_type,
-      AuthFactorStorageType auth_factor_storage_type,
-      const std::set<AuthFactorType>& configured_factors) const override;
-
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label,

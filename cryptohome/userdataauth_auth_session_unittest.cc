@@ -225,6 +225,8 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     userdataauth_.set_homedirs(&homedirs_);
     userdataauth_.set_user_session_factory(&user_session_factory_);
     userdataauth_.set_keyset_management(&keyset_management_);
+    userdataauth_.set_auth_factor_driver_manager_for_testing(
+        &auth_factor_driver_manager_);
     userdataauth_.set_auth_factor_manager_for_testing(&auth_factor_manager_);
     userdataauth_.set_user_secret_stash_storage_for_testing(
         &user_secret_stash_storage_);
@@ -284,7 +286,8 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver_;
   Crypto crypto_;
   NiceMock<MockUserSessionFactory> user_session_factory_;
-  AuthFactorDriverManager auth_factor_driver_manager_;
+  AuthFactorDriverManager auth_factor_driver_manager_{
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   NiceMock<MockKeysetManagement> keyset_management_;

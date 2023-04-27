@@ -4,6 +4,7 @@
 
 #include "cryptohome/auth_factor/types/pin.h"
 
+#include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
@@ -28,8 +29,14 @@ user_data_auth::LockoutPolicy LockoutPolicyToAuthFactor(
 
 }  // namespace
 
-PinAuthFactorDriver::PinAuthFactorDriver()
-    : TypedAuthFactorDriver(AuthFactorType::kPin) {}
+bool PinAuthFactorDriver::IsSupported(
+    AuthFactorStorageType storage_type,
+    const std::set<AuthFactorType>& configured_factors) const {
+  if (configured_factors.count(AuthFactorType::kKiosk) > 0) {
+    return false;
+  }
+  return PinWeaverAuthBlock::IsSupported(*crypto_).ok();
+}
 
 bool PinAuthFactorDriver::IsPrepareRequired() const {
   return false;

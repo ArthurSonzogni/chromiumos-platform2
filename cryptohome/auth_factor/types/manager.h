@@ -8,8 +8,11 @@
 #include <memory>
 #include <unordered_map>
 
+#include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 
@@ -19,7 +22,8 @@ namespace cryptohome {
 // all of them.
 class AuthFactorDriverManager {
  public:
-  AuthFactorDriverManager();
+  AuthFactorDriverManager(Crypto* crypto,
+                          AsyncInitPtr<BiometricsAuthBlockService> bio_service);
 
   AuthFactorDriverManager(const AuthFactorDriverManager&) = delete;
   AuthFactorDriverManager& operator=(const AuthFactorDriverManager&) = delete;

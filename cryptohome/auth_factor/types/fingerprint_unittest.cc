@@ -1,0 +1,153 @@
+// Copyright 2023 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Copyright 2023 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "cryptohome/auth_factor/types/fingerprint.h"
+
+#include <memory>
+#include <utility>
+
+#include <base/functional/callback.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
+
+#include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
+#include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
+#include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_storage_type.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/types/interface.h"
+#include "cryptohome/auth_factor/types/test_utils.h"
+#include "cryptohome/mock_le_credential_manager.h"
+#include "cryptohome/util/async_init.h"
+
+namespace cryptohome {
+namespace {
+
+using ::hwsec_foundation::error::testing::ReturnValue;
+using ::testing::_;
+using ::testing::Eq;
+using ::testing::IsFalse;
+using ::testing::IsTrue;
+using ::testing::Optional;
+using ::testing::Return;
+
+class FingerprintDriverTest : public AuthFactorDriverGenericTest {
+ protected:
+  FingerprintDriverTest() {
+    auto le_manager = std::make_unique<MockLECredentialManager>();
+    le_manager_ = le_manager.get();
+    crypto_.set_le_manager_for_testing(std::move(le_manager));
+
+    auto processor = std::make_unique<MockBiometricsCommandProcessor>();
+    bio_command_processor_ = processor.get();
+    EXPECT_CALL(*bio_command_processor_, SetEnrollScanDoneCallback(_));
+    EXPECT_CALL(*bio_command_processor_, SetAuthScanDoneCallback(_));
+    EXPECT_CALL(*bio_command_processor_, SetSessionFailedCallback);
+    bio_service_ = std::make_unique<BiometricsAuthBlockService>(
+        std::move(processor), /*enroll_signal_sender=*/base::DoNothing(),
+        /*auth_signal_sender=*/base::DoNothing());
+  }
+
+  MockLECredentialManager* le_manager_;
+  MockBiometricsCommandProcessor* bio_command_processor_;
+  std::unique_ptr<BiometricsAuthBlockService> bio_service_;
+};
+
+TEST_F(FingerprintDriverTest, ConvertToProto) {
+  // Setup
+  FingerprintAuthFactorDriver fp_driver(
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+  AuthFactorDriver& driver = fp_driver;
+  AuthFactorMetadata metadata =
+      CreateMetadataWithType<FingerprintAuthFactorMetadata>();
+
+  // Test
+  std::optional<user_data_auth::AuthFactor> proto =
+      driver.ConvertToProto(kLabel, metadata);
+
+  // Verify
+  ASSERT_THAT(proto, Optional(_));
+  EXPECT_THAT(proto.value().type(),
+              Eq(user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT));
+  EXPECT_THAT(proto.value().label(), Eq(kLabel));
+  EXPECT_THAT(proto->common_metadata().chromeos_version_last_updated(),
+              Eq(kChromeosVersion));
+  EXPECT_THAT(proto->common_metadata().chrome_version_last_updated(),
+              Eq(kChromeVersion));
+  EXPECT_THAT(proto->common_metadata().lockout_policy(),
+              Eq(user_data_auth::LOCKOUT_POLICY_NONE));
+  EXPECT_THAT(proto.value().has_fingerprint_metadata(), IsTrue());
+}
+
+TEST_F(FingerprintDriverTest, ConvertToProtoNullOpt) {
+  // Setup
+  FingerprintAuthFactorDriver fp_driver(
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+  AuthFactorDriver& driver = fp_driver;
+  AuthFactorMetadata metadata;
+
+  // Test
+  std::optional<user_data_auth::AuthFactor> proto =
+      driver.ConvertToProto(kLabel, metadata);
+
+  // Verify
+  EXPECT_THAT(proto, Eq(std::nullopt));
+}
+
+TEST_F(FingerprintDriverTest, UnsupportedWithVk) {
+  // Setup
+  FingerprintAuthFactorDriver fp_driver(
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+  AuthFactorDriver& driver = fp_driver;
+
+  // Test, Verify.
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset, {}),
+              IsFalse());
+}
+
+TEST_F(FingerprintDriverTest, UnsupportedWithKiosk) {
+  // Setup
+  FingerprintAuthFactorDriver fp_driver(
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
+  AuthFactorDriver& driver = fp_driver;
+
+  // Test, Verify.
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+                                 {AuthFactorType::kKiosk}),
+              IsFalse());
+}
+
+TEST_F(FingerprintDriverTest, UnsupportedByBlock) {
+  // Setup
+  FingerprintAuthFactorDriver fp_driver(
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
+  AuthFactorDriver& driver = fp_driver;
+
+  // Test, Verify
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+              IsFalse());
+}
+
+TEST_F(FingerprintDriverTest, SupportedByBlock) {
+  // Setup
+  EXPECT_CALL(*bio_command_processor_, IsReady()).WillOnce(Return(true));
+  EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
+      .WillOnce(ReturnValue(true));
+  FingerprintAuthFactorDriver fp_driver(
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+  AuthFactorDriver& driver = fp_driver;
+
+  // Test, Verify
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+              IsTrue());
+}
+
+}  // namespace
+}  // namespace cryptohome

@@ -138,46 +138,6 @@ bool AuthBlockUtilityImpl::GetLockedToSingleUser() const {
   return platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
 }
 
-bool AuthBlockUtilityImpl::IsAuthFactorSupported(
-    AuthFactorType auth_factor_type,
-    AuthFactorStorageType auth_factor_storage_type,
-    const std::set<AuthFactorType>& configured_factors) const {
-  // If a kiosk factor is in use, every other type of factor is disabled. For
-  // clarity, do this check up front.
-  bool user_has_kiosk = configured_factors.find(AuthFactorType::kKiosk) !=
-                        configured_factors.end();
-  if (user_has_kiosk && auth_factor_type != AuthFactorType::kKiosk) {
-    return false;
-  }
-  // Now do the type-specific checks. We deliberately use a complete switch
-  // statement here with no default and no post-switch return so that building
-  // this code will produce an error if you add a new AuthFactorType value
-  // without updating it.
-  switch (auth_factor_type) {
-    case AuthFactorType::kPassword:
-      return true;
-    case AuthFactorType::kPin:
-      return PinWeaverAuthBlock::IsSupported(*crypto_).ok();
-    case AuthFactorType::kCryptohomeRecovery:
-      return (auth_factor_storage_type ==
-              AuthFactorStorageType::kUserSecretStash) &&
-             CryptohomeRecoveryAuthBlock::IsSupported(*crypto_).ok();
-    case AuthFactorType::kKiosk:
-      return configured_factors.empty() || user_has_kiosk;
-    case AuthFactorType::kSmartCard:
-      return ChallengeCredentialAuthBlock::IsSupported(*crypto_).ok();
-    case AuthFactorType::kLegacyFingerprint:
-      return false;
-    case AuthFactorType::kFingerprint: {
-      return (auth_factor_storage_type ==
-              AuthFactorStorageType::kUserSecretStash) &&
-             FingerprintAuthBlock::IsSupported(*crypto_, bio_service_).ok();
-    }
-    case AuthFactorType::kUnspecified:
-      return false;
-  }
-}
-
 std::unique_ptr<CredentialVerifier>
 AuthBlockUtilityImpl::CreateCredentialVerifier(
     AuthFactorType auth_factor_type,

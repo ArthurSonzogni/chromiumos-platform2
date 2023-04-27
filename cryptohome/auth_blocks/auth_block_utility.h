@@ -49,16 +49,6 @@ class AuthBlockUtility {
   // user.
   virtual bool GetLockedToSingleUser() const = 0;
 
-  // Given an AuthFactorType, return a boolean indicating if this factor is
-  // supported on the current system for a particular user. In order to make
-  // this decision the function needs several additional pieces of information:
-  //   `auth_factor_storage_type`: the type of backing store being used
-  //   `configured_factors`: the currently configured factors for the user
-  virtual bool IsAuthFactorSupported(
-      AuthFactorType auth_factor_type,
-      AuthFactorStorageType auth_factor_storage_type,
-      const std::set<AuthFactorType>& configured_factors) const = 0;
-
   // Creates a credential verifier for the specified type and input.
   virtual std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       AuthFactorType auth_factor_type,

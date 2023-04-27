@@ -16,10 +16,13 @@ namespace {
 
 using ::testing::_;
 using ::testing::Eq;
+using ::testing::IsFalse;
 using ::testing::IsTrue;
 using ::testing::Optional;
 
-TEST_F(AuthFactorDriverMetadataTest, KioskConvertToProto) {
+class KioskDriverTest : public AuthFactorDriverGenericTest {};
+
+TEST_F(KioskDriverTest, KioskConvertToProto) {
   // Setup
   KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
@@ -43,7 +46,7 @@ TEST_F(AuthFactorDriverMetadataTest, KioskConvertToProto) {
   EXPECT_THAT(proto.value().has_kiosk_metadata(), IsTrue());
 }
 
-TEST_F(AuthFactorDriverMetadataTest, KioskConvertToProtoNullOpt) {
+TEST_F(KioskDriverTest, KioskConvertToProtoNullOpt) {
   // Setup
   KioskAuthFactorDriver kiosk_driver;
   AuthFactorDriver& driver = kiosk_driver;
@@ -55,6 +58,38 @@ TEST_F(AuthFactorDriverMetadataTest, KioskConvertToProtoNullOpt) {
 
   // Verify
   EXPECT_THAT(proto, Eq(std::nullopt));
+}
+
+TEST_F(KioskDriverTest, SupportedWithNoOtherFactors) {
+  // Setup
+  KioskAuthFactorDriver kiosk_driver;
+  AuthFactorDriver& driver = kiosk_driver;
+
+  // Test, Verify
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset, {}),
+              IsTrue());
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset,
+                                 {AuthFactorType::kKiosk}),
+              IsTrue());
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+              IsTrue());
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+                                 {AuthFactorType::kKiosk}),
+              IsTrue());
+}
+
+TEST_F(KioskDriverTest, UnsupportedWithOtherFactors) {
+  // Setup
+  KioskAuthFactorDriver kiosk_driver;
+  AuthFactorDriver& driver = kiosk_driver;
+
+  // Test, Verify
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset,
+                                 {AuthFactorType::kPassword}),
+              IsFalse());
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+                                 {AuthFactorType::kPassword}),
+              IsFalse());
 }
 
 }  // namespace

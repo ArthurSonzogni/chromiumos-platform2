@@ -340,7 +340,8 @@ class AuthSessionTest : public ::testing::Test {
   UserSessionMap user_session_map_;
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
-  AuthFactorDriverManager auth_factor_driver_manager_;
+  AuthFactorDriverManager auth_factor_driver_manager_{
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
   FakeFeaturesForTesting fake_features_;
   UserSecretStashStorage user_secret_stash_storage_{&platform_};

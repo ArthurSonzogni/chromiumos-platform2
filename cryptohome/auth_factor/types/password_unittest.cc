@@ -16,10 +16,13 @@ namespace {
 
 using ::testing::_;
 using ::testing::Eq;
+using ::testing::IsFalse;
 using ::testing::IsTrue;
 using ::testing::Optional;
 
-TEST_F(AuthFactorDriverMetadataTest, PasswordConvertToProto) {
+class PasswordDriverTest : public AuthFactorDriverGenericTest {};
+
+TEST_F(PasswordDriverTest, PasswordConvertToProto) {
   // Setup
   PasswordAuthFactorDriver password_driver;
   AuthFactorDriver& driver = password_driver;
@@ -44,7 +47,7 @@ TEST_F(AuthFactorDriverMetadataTest, PasswordConvertToProto) {
   EXPECT_THAT(proto.value().has_password_metadata(), IsTrue());
 }
 
-TEST_F(AuthFactorDriverMetadataTest, PasswordConvertToProtoErrorNoMetadata) {
+TEST_F(PasswordDriverTest, PasswordConvertToProtoErrorNoMetadata) {
   // Setup
   PasswordAuthFactorDriver password_driver;
   AuthFactorDriver& driver = password_driver;
@@ -56,6 +59,46 @@ TEST_F(AuthFactorDriverMetadataTest, PasswordConvertToProtoErrorNoMetadata) {
 
   // Verify
   EXPECT_THAT(proto, Eq(std::nullopt));
+}
+
+TEST_F(PasswordDriverTest, SupportedWithoutKiosk) {
+  // Setup
+  PasswordAuthFactorDriver password_driver;
+  AuthFactorDriver& driver = password_driver;
+
+  // Test, Verify
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset, {}),
+              IsTrue());
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset,
+                                 {AuthFactorType::kPin}),
+              IsTrue());
+  EXPECT_THAT(
+      driver.IsSupported(AuthFactorStorageType::kVaultKeyset,
+                         {AuthFactorType::kPassword, AuthFactorType::kPin}),
+      IsTrue());
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+              IsTrue());
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+                                 {AuthFactorType::kPin}),
+              IsTrue());
+  EXPECT_THAT(
+      driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+                         {AuthFactorType::kPassword, AuthFactorType::kPin}),
+      IsTrue());
+}
+
+TEST_F(PasswordDriverTest, UnsupportedWithKiosk) {
+  // Setup
+  PasswordAuthFactorDriver password_driver;
+  AuthFactorDriver& driver = password_driver;
+
+  // Test, Verify
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset,
+                                 {AuthFactorType::kKiosk}),
+              IsFalse());
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+                                 {AuthFactorType::kKiosk}),
+              IsFalse());
 }
 
 }  // namespace

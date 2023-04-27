@@ -461,6 +461,12 @@ class UserDataAuth {
     auth_block_utility_ = value;
   }
 
+  // Override |auth_factor_driver_manager_| for testing purpose
+  void set_auth_factor_driver_manager_for_testing(
+      AuthFactorDriverManager* value) {
+    auth_factor_driver_manager_ = value;
+  }
+
   // Override |auth_factor_manager_| for testing purpose
   void set_auth_factor_manager_for_testing(AuthFactorManager* value) {
     auth_factor_manager_ = value;
@@ -1097,7 +1103,10 @@ class UserDataAuth {
   AuthBlockUtility* auth_block_utility_;
 
   // Manager of the auth factor drivers.
-  AuthFactorDriverManager auth_factor_driver_manager_;
+  std::unique_ptr<AuthFactorDriverManager> default_auth_factor_driver_manager_;
+  // Usually set to |default_auth_factor_manager_|, but can be overridden for
+  // tests.
+  AuthFactorDriverManager* auth_factor_driver_manager_ = nullptr;
 
   // Manager of auth factor files.
   std::unique_ptr<AuthFactorManager> default_auth_factor_manager_;

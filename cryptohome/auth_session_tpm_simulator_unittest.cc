@@ -326,7 +326,8 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
       &features_.async,
       FingerprintAuthBlockService::MakeNullService(),
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
-  AuthFactorDriverManager auth_factor_driver_manager_;
+  AuthFactorDriverManager auth_factor_driver_manager_{
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
 

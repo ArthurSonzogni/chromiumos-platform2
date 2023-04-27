@@ -6,11 +6,15 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
+#include <libhwsec/frontend/pinweaver/mock_frontend.h>
 
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_intent.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/mock_cryptohome_keys_manager.h"
 
 namespace cryptohome {
 namespace {
@@ -19,13 +23,26 @@ using ::testing::Eq;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
 
+class AuthFactorDriverManagerTest : public ::testing::Test {
+ protected:
+  // Mocks for all of the manager dependencies.
+  hwsec::MockCryptohomeFrontend hwsec_;
+  hwsec::MockPinWeaverFrontend pinweaver_;
+  MockCryptohomeKeysManager cryptohome_keys_manager_;
+  Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_,
+                 /*recovery_hwsec=*/nullptr};
+
+  // A real version of the manager, using mock inputs.
+  AuthFactorDriverManager manager_{
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+};
+
 // Test AuthFactorDriver::IsPrepareRequired. We do this here instead of in a
 // per-driver test because the check is trivial enough that one test is simpler
 // to validate than N separate tests.
-TEST(AuthFactorDriverManagerTest, IsPrepareRequired) {
-  AuthFactorDriverManager manager;
-  auto prepare_req = [&manager](AuthFactorType type) {
-    return manager.GetDriver(type).IsPrepareRequired();
+TEST_F(AuthFactorDriverManagerTest, IsPrepareRequired) {
+  auto prepare_req = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsPrepareRequired();
   };
 
   EXPECT_THAT(prepare_req(AuthFactorType::kPassword), IsFalse());
@@ -44,16 +61,15 @@ TEST(AuthFactorDriverManagerTest, IsPrepareRequired) {
 // Test AuthFactorDriver::IsVerifySupported. We do this here instead of in a
 // per-driver test because the check is trivial enough that one test is simpler
 // to validate than N separate tests.
-TEST(AuthFactorDriverManagerTest, IsVerifySupported) {
-  AuthFactorDriverManager manager;
-  auto decrypt_verify = [&manager](AuthFactorType type) {
-    return manager.GetDriver(type).IsVerifySupported(AuthIntent::kDecrypt);
+TEST_F(AuthFactorDriverManagerTest, IsVerifySupported) {
+  auto decrypt_verify = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsVerifySupported(AuthIntent::kDecrypt);
   };
-  auto vonly_verify = [&manager](AuthFactorType type) {
-    return manager.GetDriver(type).IsVerifySupported(AuthIntent::kVerifyOnly);
+  auto vonly_verify = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsVerifySupported(AuthIntent::kVerifyOnly);
   };
-  auto webauthn_verify = [&manager](AuthFactorType type) {
-    return manager.GetDriver(type).IsVerifySupported(AuthIntent::kWebAuthn);
+  auto webauthn_verify = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsVerifySupported(AuthIntent::kWebAuthn);
   };
 
   EXPECT_THAT(decrypt_verify(AuthFactorType::kPassword), IsFalse());
@@ -90,10 +106,9 @@ TEST(AuthFactorDriverManagerTest, IsVerifySupported) {
 // Test AuthFactorDriver::NeedsResetSecret. We do this here instead of in a
 // per-driver test because the check is trivial enough that one test is simpler
 // to validate than N separate tests.
-TEST(AuthFactorDriverManagerTest, NeedsResetSecret) {
-  AuthFactorDriverManager manager;
-  auto needs_secret = [&manager](AuthFactorType type) {
-    return manager.GetDriver(type).NeedsResetSecret();
+TEST_F(AuthFactorDriverManagerTest, NeedsResetSecret) {
+  auto needs_secret = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).NeedsResetSecret();
   };
 
   EXPECT_THAT(needs_secret(AuthFactorType::kPassword), IsFalse());
@@ -112,10 +127,9 @@ TEST(AuthFactorDriverManagerTest, NeedsResetSecret) {
 // Test AuthFactorDriver::NeedsRateLimiter. We do this here instead of in a
 // per-driver test because the check is trivial enough that one test is simpler
 // to validate than N separate tests.
-TEST(AuthFactorDriverManagerTest, NeedsRateLimiter) {
-  AuthFactorDriverManager manager;
-  auto needs_limiter = [&manager](AuthFactorType type) {
-    return manager.GetDriver(type).NeedsRateLimiter();
+TEST_F(AuthFactorDriverManagerTest, NeedsRateLimiter) {
+  auto needs_limiter = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).NeedsRateLimiter();
   };
 
   EXPECT_THAT(needs_limiter(AuthFactorType::kPassword), IsFalse());
@@ -135,10 +149,9 @@ TEST(AuthFactorDriverManagerTest, NeedsRateLimiter) {
 // Test AuthFactorDriver::GetAuthFactorLabelArity. We do this here instead of in
 // a per-driver test because the check is trivial enough that one test is
 // simpler to validate than N separate tests.
-TEST(AuthFactorDriverManagerTest, GetAuthFactorLabelArity) {
-  AuthFactorDriverManager manager;
-  auto get_arity = [&manager](AuthFactorType type) {
-    return manager.GetDriver(type).GetAuthFactorLabelArity();
+TEST_F(AuthFactorDriverManagerTest, GetAuthFactorLabelArity) {
+  auto get_arity = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).GetAuthFactorLabelArity();
   };
 
   EXPECT_THAT(get_arity(AuthFactorType::kPassword),

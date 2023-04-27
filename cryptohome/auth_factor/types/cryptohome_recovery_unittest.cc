@@ -6,7 +6,9 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
+#include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/test_utils.h"
@@ -14,14 +16,18 @@
 namespace cryptohome {
 namespace {
 
+using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
 using ::testing::Eq;
+using ::testing::IsFalse;
 using ::testing::IsTrue;
 using ::testing::Optional;
 
-TEST_F(AuthFactorDriverMetadataTest, RecoveryConvertToProto) {
+class CryptohomeRecoveryDriverTest : public AuthFactorDriverGenericTest {};
+
+TEST_F(CryptohomeRecoveryDriverTest, ConvertToProto) {
   // Setup
-  CryptohomeRecoveryAuthFactorDriver recovery_driver;
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
   AuthFactorDriver& driver = recovery_driver;
   AuthFactorMetadata metadata =
       CreateMetadataWithType<CryptohomeRecoveryAuthFactorMetadata>();
@@ -44,9 +50,9 @@ TEST_F(AuthFactorDriverMetadataTest, RecoveryConvertToProto) {
   EXPECT_THAT(proto.value().has_cryptohome_recovery_metadata(), IsTrue());
 }
 
-TEST_F(AuthFactorDriverMetadataTest, RecoveryConvertToProtoNullOpt) {
+TEST_F(CryptohomeRecoveryDriverTest, ConvertToProtoNullOpt) {
   // Setup
-  CryptohomeRecoveryAuthFactorDriver recovery_driver;
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
   AuthFactorDriver& driver = recovery_driver;
   AuthFactorMetadata metadata;
 
@@ -56,6 +62,49 @@ TEST_F(AuthFactorDriverMetadataTest, RecoveryConvertToProtoNullOpt) {
 
   // Verify
   EXPECT_THAT(proto, Eq(std::nullopt));
+}
+
+TEST_F(CryptohomeRecoveryDriverTest, UnsupportedWithVk) {
+  // Setup
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  AuthFactorDriver& driver = recovery_driver;
+
+  // Test, Verify.
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset, {}),
+              IsFalse());
+}
+
+TEST_F(CryptohomeRecoveryDriverTest, UnsupportedWithKiosk) {
+  // Setup
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  AuthFactorDriver& driver = recovery_driver;
+
+  // Test, Verify.
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+                                 {AuthFactorType::kKiosk}),
+              IsFalse());
+}
+
+TEST_F(CryptohomeRecoveryDriverTest, UnsupportedByBlock) {
+  // Setup
+  EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(false));
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  AuthFactorDriver& driver = recovery_driver;
+
+  // Test, Verify
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+              IsFalse());
+}
+
+TEST_F(CryptohomeRecoveryDriverTest, SupportedByBlock) {
+  // Setup
+  EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  AuthFactorDriver& driver = recovery_driver;
+
+  // Test, Verify
+  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+              IsTrue());
 }
 
 }  // namespace

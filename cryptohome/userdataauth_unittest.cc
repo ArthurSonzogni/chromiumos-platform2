@@ -194,6 +194,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     mount_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
+    ON_CALL(hwsec_, IsPinWeaverEnabled()).WillByDefault(ReturnValue(false));
     ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(true));
     ON_CALL(pinweaver_, IsEnabled()).WillByDefault(ReturnValue(true));
     ON_CALL(pinweaver_, GetVersion()).WillByDefault(ReturnValue(2));
@@ -332,7 +333,8 @@ class UserDataAuthTestBase : public ::testing::Test {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
 
   // Fake Crypto object, will be passed to UserDataAuth for its internal use.
-  Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr};
+  Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_,
+                 &recovery_crypto_};
 
   // Mock ARC Disk Quota object, will be passed to UserDataAuth for its internal
   // use.
@@ -3195,14 +3197,6 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserDoesNotExist) {
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsPersistentButHasNoStorage) {
   SetupMount("foo@example.com");
   EXPECT_CALL(*session_, IsEphemeral()).WillRepeatedly(Return(false));
-  EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kPassword, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kKiosk, _, _))
-      .WillOnce(Return(true));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
@@ -3216,9 +3210,12 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsPersistentButHasNoStorage) {
 
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(list_reply.configured_auth_factors_with_status(), IsEmpty());
-  EXPECT_THAT(list_reply.supported_auth_factors(),
-              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
-                                   user_data_auth::AUTH_FACTOR_TYPE_KIOSK));
+  EXPECT_THAT(
+      list_reply.supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY,
+                           user_data_auth::AUTH_FACTOR_TYPE_KIOSK,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithoutVerifier) {
@@ -3293,14 +3290,6 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserIsEphemeralWithVerifier) {
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithoutPinweaver) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kPassword, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kKiosk, _, _))
-      .WillOnce(Return(true));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
@@ -3314,62 +3303,17 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithoutPinweaver) {
 
   EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(list_reply.configured_auth_factors_with_status(), IsEmpty());
-  EXPECT_THAT(list_reply.supported_auth_factors(),
-              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
-                                   user_data_auth::AUTH_FACTOR_TYPE_KIOSK));
+  EXPECT_THAT(
+      list_reply.supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY,
+                           user_data_auth::AUTH_FACTOR_TYPE_KIOSK,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithPinweaver) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kPassword, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kPin, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kKiosk, _, _))
-      .WillOnce(Return(true));
-
-  user_data_auth::ListAuthFactorsRequest list_request;
-  list_request.mutable_account_id()->set_account_id("foo@example.com");
-  TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future;
-  userdataauth_->ListAuthFactors(
-      list_request,
-      list_reply_future
-          .GetCallback<const user_data_auth::ListAuthFactorsReply&>());
-  const user_data_auth::ListAuthFactorsReply& list_reply =
-      list_reply_future.Get();
-
-  EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_THAT(list_reply.configured_auth_factors_with_status(), IsEmpty());
-  EXPECT_THAT(list_reply.supported_auth_factors(),
-              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
-                                   user_data_auth::AUTH_FACTOR_TYPE_PIN,
-                                   user_data_auth::AUTH_FACTOR_TYPE_KIOSK));
-}
-
-TEST_F(UserDataAuthExTest,
-       ListAuthFactorsUserExistsWithNoFactorsButUssEnabled) {
-  SetUserSecretStashExperimentForTesting(true);
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kPassword, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kPin, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kCryptohomeRecovery,
-                                    AuthFactorStorageType::kUserSecretStash, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kKiosk, _, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
 
   user_data_auth::ListAuthFactorsRequest list_request;
   list_request.mutable_account_id()->set_account_id("foo@example.com");
@@ -3388,7 +3332,35 @@ TEST_F(UserDataAuthExTest,
       UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
                            user_data_auth::AUTH_FACTOR_TYPE_PIN,
                            user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY,
-                           user_data_auth::AUTH_FACTOR_TYPE_KIOSK));
+                           user_data_auth::AUTH_FACTOR_TYPE_KIOSK,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
+}
+
+TEST_F(UserDataAuthExTest,
+       ListAuthFactorsUserExistsWithNoFactorsButUssEnabled) {
+  SetUserSecretStashExperimentForTesting(true);
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
+
+  user_data_auth::ListAuthFactorsRequest list_request;
+  list_request.mutable_account_id()->set_account_id("foo@example.com");
+  TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future;
+  userdataauth_->ListAuthFactors(
+      list_request,
+      list_reply_future
+          .GetCallback<const user_data_auth::ListAuthFactorsReply&>());
+  const user_data_auth::ListAuthFactorsReply& list_reply =
+      list_reply_future.Get();
+
+  EXPECT_EQ(list_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(list_reply.configured_auth_factors_with_status(), IsEmpty());
+  EXPECT_THAT(
+      list_reply.supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_PIN,
+                           user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY,
+                           user_data_auth::AUTH_FACTOR_TYPE_KIOSK,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
   SetUserSecretStashExperimentForTesting(std::nullopt);
 }
 
@@ -3396,11 +3368,6 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
   const Username kUser("foo@example.com");
   const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
   EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kPassword, _, _))
-      .WillOnce(Return(true));
 
   // Set up mocks for a few of VKs. We deliberately have the second not work to
   // test that the listing correctly skips it.
@@ -3509,8 +3476,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
                 .common_metadata()
                 .lockout_policy(),
             user_data_auth::LOCKOUT_POLICY_NONE);
-  EXPECT_THAT(list_reply.supported_auth_factors(),
-              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD));
+  EXPECT_THAT(
+      list_reply.supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
@@ -3519,20 +3488,9 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   AuthFactorManager manager(&platform_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
   SetUserSecretStashExperimentForTesting(false);
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kPassword, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kPin, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kCryptohomeRecovery,
-                                    AuthFactorStorageType::kUserSecretStash, _))
-      .WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.
@@ -3549,9 +3507,12 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(list_reply_future_1.Get().configured_auth_factors_with_status(),
               IsEmpty());
-  EXPECT_THAT(list_reply_future_1.Get().supported_auth_factors(),
-              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
-                                   user_data_auth::AUTH_FACTOR_TYPE_PIN));
+  EXPECT_THAT(
+      list_reply_future_1.Get().supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_PIN,
+                           user_data_auth::AUTH_FACTOR_TYPE_KIOSK,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
 
   // Add uss auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
@@ -3626,11 +3587,12 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
                 .common_metadata()
                 .lockout_policy(),
             user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED);
-  EXPECT_THAT(list_reply_2.supported_auth_factors(),
-              UnorderedElementsAre(
-                  user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
-                  user_data_auth::AUTH_FACTOR_TYPE_PIN,
-                  user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY));
+  EXPECT_THAT(
+      list_reply_2.supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_PIN,
+                           user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
 
   // Remove an auth factor, we should still be able to list the remaining one.
   ASSERT_THAT(manager.RemoveAuthFactor(kObfuscatedUser, *pin_factor,
@@ -3659,11 +3621,12 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
                 .common_metadata()
                 .lockout_policy(),
             user_data_auth::LOCKOUT_POLICY_NONE);
-  EXPECT_THAT(list_reply_3.supported_auth_factors(),
-              UnorderedElementsAre(
-                  user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
-                  user_data_auth::AUTH_FACTOR_TYPE_PIN,
-                  user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY));
+  EXPECT_THAT(
+      list_reply_3.supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_PIN,
+                           user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
   ResetUserSecretStashExperimentForTesting();
 }
 
@@ -3673,20 +3636,9 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   AuthFactorManager manager(&platform_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
   SetUserSecretStashExperimentForTesting(false);
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kPassword, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kPin, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(auth_block_utility_,
-              IsAuthFactorSupported(AuthFactorType::kCryptohomeRecovery,
-                                    AuthFactorStorageType::kUserSecretStash, _))
-      .WillRepeatedly(Return(true));
 
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.
@@ -3703,9 +3655,12 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(list_reply_future_1.Get().configured_auth_factors_with_status(),
               IsEmpty());
-  EXPECT_THAT(list_reply_future_1.Get().supported_auth_factors(),
-              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
-                                   user_data_auth::AUTH_FACTOR_TYPE_PIN));
+  EXPECT_THAT(
+      list_reply_future_1.Get().supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_PIN,
+                           user_data_auth::AUTH_FACTOR_TYPE_KIOSK,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
 
   // Set up mocks for a VK.
   std::vector<int> vk_indice = {0};
@@ -3784,9 +3739,11 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
                 .common_metadata()
                 .lockout_policy(),
             user_data_auth::LOCKOUT_POLICY_ATTEMPT_LIMITED);
-  EXPECT_THAT(list_reply_2.supported_auth_factors(),
-              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
-                                   user_data_auth::AUTH_FACTOR_TYPE_PIN));
+  EXPECT_THAT(
+      list_reply_2.supported_auth_factors(),
+      UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_PIN,
+                           user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
   ResetUserSecretStashExperimentForTesting();
 }
 

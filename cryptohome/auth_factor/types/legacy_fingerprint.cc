@@ -10,8 +10,11 @@
 
 namespace cryptohome {
 
-LegacyFingerprintAuthFactorDriver::LegacyFingerprintAuthFactorDriver()
-    : TypedAuthFactorDriver(AuthFactorType::kLegacyFingerprint) {}
+bool LegacyFingerprintAuthFactorDriver::IsSupported(
+    AuthFactorStorageType storage_type,
+    const std::set<AuthFactorType>& configured_factors) const {
+  return false;
+}
 
 bool LegacyFingerprintAuthFactorDriver::IsPrepareRequired() const {
   return true;

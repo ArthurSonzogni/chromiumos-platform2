@@ -6,11 +6,12 @@
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_LEGACY_FINGERPRINT_H_
 
 #include <optional>
+#include <set>
 #include <string>
-#include <variant>
 
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/common.h"
 #include "cryptohome/auth_factor/types/interface.h"
@@ -21,9 +22,13 @@ namespace cryptohome {
 class LegacyFingerprintAuthFactorDriver final
     : public TypedAuthFactorDriver<std::monostate> {
  public:
-  LegacyFingerprintAuthFactorDriver();
+  LegacyFingerprintAuthFactorDriver()
+      : TypedAuthFactorDriver(AuthFactorType::kLegacyFingerprint) {}
 
  private:
+  bool IsSupported(
+      AuthFactorStorageType storage_type,
+      const std::set<AuthFactorType>& configured_factors) const override;
   bool IsPrepareRequired() const override;
   bool IsVerifySupported(AuthIntent auth_intent) const override;
   bool NeedsResetSecret() const override;
