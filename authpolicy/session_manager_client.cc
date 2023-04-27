@@ -47,22 +47,6 @@ SessionManagerClient::SessionManagerClient(
 
 SessionManagerClient::~SessionManagerClient() = default;
 
-void SessionManagerClient::StoreUnsignedPolicyEx(
-    const std::vector<uint8_t>& descriptor_blob,
-    const std::vector<uint8_t>& policy_blob,
-    base::OnceCallback<void(bool success)> callback) {
-  // Only one of OnStorePolicySuccess and OnStorePolicyError will be called.
-  auto callbacks = base::SplitOnceCallback(std::move(callback));
-  proxy_->StoreUnsignedPolicyExAsync(
-      descriptor_blob, policy_blob,
-      base::BindOnce(&SessionManagerClient::OnStorePolicySuccess,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     std::move(callbacks.first)),
-      base::BindOnce(&SessionManagerClient::OnStorePolicyError,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     std::move(callbacks.second)));
-}
-
 bool SessionManagerClient::ListStoredComponentPolicies(
     const std::vector<uint8_t>& descriptor_blob,
     std::vector<std::string>* component_ids) {
@@ -95,17 +79,6 @@ std::string SessionManagerClient::RetrieveSessionState() {
     return std::string();
   }
   return state;
-}
-
-void SessionManagerClient::OnStorePolicySuccess(
-    base::OnceCallback<void(bool success)> callback) {
-  std::move(callback).Run(true /* success */);
-}
-
-void SessionManagerClient::OnStorePolicyError(
-    base::OnceCallback<void(bool success)> callback, brillo::Error* error) {
-  PrintError(login_manager::kSessionManagerStoreUnsignedPolicyEx, error);
-  std::move(callback).Run(false /* success */);
 }
 
 void SessionManagerClient::OnSessionStateChanged(

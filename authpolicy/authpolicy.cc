@@ -490,9 +490,6 @@ void AuthPolicy::StoreSinglePolicy(
     scoped_refptr<ResponseTracker> response_tracker) {
   // Sending an empty response_blob deletes the policy.
   if (!policy_blob) {
-    session_manager_client_->StoreUnsignedPolicyEx(
-        SerializeProto(descriptor), std::vector<uint8_t>() /* response_blob */,
-        base::BindOnce(&ResponseTracker::OnResponseFinished, response_tracker));
     return;
   }
   // Wrap up the policy in a PolicyFetchResponse.
@@ -529,10 +526,6 @@ void AuthPolicy::StoreSinglePolicy(
     response_tracker->OnResponseFinished(false);
     return;
   }
-
-  session_manager_client_->StoreUnsignedPolicyEx(
-      SerializeProto(descriptor), SerializeProto(policy_response),
-      base::BindOnce(&ResponseTracker::OnResponseFinished, response_tracker));
 }
 
 }  // namespace authpolicy

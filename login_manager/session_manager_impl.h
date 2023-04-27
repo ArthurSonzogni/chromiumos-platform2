@@ -265,10 +265,6 @@ class SessionManagerImpl
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
       const std::vector<uint8_t>& in_descriptor_blob,
       const std::vector<uint8_t>& in_policy_blob) override;
-  void StoreUnsignedPolicyEx(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      const std::vector<uint8_t>& in_descriptor_blob,
-      const std::vector<uint8_t>& in_policy_blob) override;
   bool RetrievePolicyEx(brillo::ErrorPtr* error,
                         const std::vector<uint8_t>& in_descriptor_blob,
                         std::vector<uint8_t>* out_policy_blob) override;
@@ -438,7 +434,7 @@ class SessionManagerImpl
   // |descriptor|.
   int GetKeyInstallFlags(const PolicyDescriptor& descriptor);
 
-  // Shared implementation of StorePolicyEx() and StoreUnsignedPolicyEx().
+  // Implementation of StorePolicyEx().
   // TODO(b/279725159): Remove the signature_check parameter, now that this
   // method is always called with value `kEnabled`.
   void StorePolicyInternalEx(

@@ -1512,27 +1512,6 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_SessionStarted) {
       MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
 }
 
-TEST_F(SessionManagerImplTest, StoreUnsignedPolicyEx_ConsumerDevice) {
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  ExpectNoStorePolicy(device_policy_service_);
-
-  ResponseCapturer capturer;
-  impl_->StoreUnsignedPolicyEx(
-      capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
-}
-
-TEST_F(SessionManagerImplTest, StoreUnsignedPolicyEx_EnterpriseDevice) {
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  SetDeviceMode("enterprise");
-  ExpectNoStorePolicy(device_policy_service_);
-
-  ResponseCapturer capturer;
-  impl_->StoreUnsignedPolicyEx(
-      capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId), policy_blob);
-}
-
 TEST_F(SessionManagerImplTest, RetrievePolicyEx) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   EXPECT_CALL(*device_policy_service_, Retrieve(MakeChromePolicyNamespace(), _))
@@ -1711,31 +1690,6 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
                          policy_blob);
   }
   Mock::VerifyAndClearExpectations(user_policy_services_[kEmail2]);
-}
-
-TEST_F(SessionManagerImplTest, StoreUnsignedPolicyEx_ConsumerUser) {
-  ExpectAndRunStartSession(kSaneEmail);
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _, _))
-      .Times(0);
-
-  ResponseCapturer capturer;
-  impl_->StoreUnsignedPolicyEx(
-      capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), policy_blob);
-}
-
-TEST_F(SessionManagerImplTest, StoreUnsignedPolicyEx_EnterpriseUser) {
-  ExpectAndRunStartSession(kSaneEmail);
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  SetDeviceMode("enterprise");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail], Store(_, _, _, _, _))
-      .Times(0);
-
-  ResponseCapturer capturer;
-  impl_->StoreUnsignedPolicyEx(
-      capturer.CreateMethodResponse<>(),
-      MakePolicyDescriptor(ACCOUNT_TYPE_USER, kSaneEmail), policy_blob);
 }
 
 TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_NoSession) {

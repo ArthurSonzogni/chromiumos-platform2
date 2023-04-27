@@ -271,25 +271,6 @@
     </method>
 
     <!--
-        StoreUnsignedPolicyEx:
-        @descriptor_blob: Serialized PolicyDescriptor protobuf containing
-            metadata about the policy (user, device or component policy).
-        @policy_blob: Serialized PolicyFetchResponse protobuf containing user,
-            device or component policy, but no signature. If empty and
-            |descriptor_blob| specifies component policy, the policy is deleted.
-
-        Similar to StorePolicyEx, but stores policy without signature
-        verification for AD managed devices. Locked down through busconfig to be
-        only callable by authpolicyd and exits with an error if install
-        attributes are not locked to enterprise_ad device mode.
-    -->
-    <method name="StoreUnsignedPolicyEx">
-      <arg type="ay" name="descriptor_blob" direction="in" />
-      <arg type="ay" name="policy_blob" direction="in" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
-    </method>
-
-    <!--
         ListStoredComponentPolicies:
         @descriptor_blob: Serialized PolicyDescriptor protobuf specifying the
             account (e.g. user, device) and the policy domain for which stored

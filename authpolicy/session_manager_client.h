@@ -39,11 +39,6 @@ class SessionManagerClient {
   // Exposed Session Manager methods.
   // See Session Manager for a description of the arguments.
 
-  // Asynchronous to achieve higher IO queue depth when writing many policies.
-  void StoreUnsignedPolicyEx(const std::vector<uint8_t>& descriptor_blob,
-                             const std::vector<uint8_t>& policy_blob,
-                             base::OnceCallback<void(bool success)> callback);
-
   // Blocking for convenience / code simplicity.
   bool ListStoredComponentPolicies(const std::vector<uint8_t>& descriptor_blob,
                                    std::vector<std::string>* component_ids);
@@ -57,16 +52,6 @@ class SessionManagerClient {
   std::string RetrieveSessionState();
 
  private:
-  // Callback called when StoreUnsignedPolicyEx() succeeds. Prints errors and
-  // calls |callback|.
-  void OnStorePolicySuccess(
-      const base::OnceCallback<void(bool success)> callback);
-
-  // Callback called when StoreUnsignedPolicyEx() fails. Prints errors and calls
-  // |callback|.
-  void OnStorePolicyError(const base::OnceCallback<void(bool success)> callback,
-                          brillo::Error* error);
-
   // Callback called on SessionStateChanged signal. Calls callback with the new
   // session state.
   void OnSessionStateChanged(

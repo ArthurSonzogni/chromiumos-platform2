@@ -874,18 +874,6 @@ void SessionManagerImpl::StorePolicyEx(
                         SignatureCheck::kEnabled, std::move(response));
 }
 
-void SessionManagerImpl::StoreUnsignedPolicyEx(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    const std::vector<uint8_t>& in_descriptor_blob,
-    const std::vector<uint8_t>& in_policy_blob) {
-  // TODO(b/274758883): Remove this method, the corresponding DBus declaration,
-  // and it's usage in Authpolicy. For now, it's safe to always return error.
-  brillo::ErrorPtr error =
-      CREATE_ERROR_AND_LOG(dbus_error::kPolicySignatureRequired,
-                           "Device mode doesn't permit unsigned policy.");
-  response->ReplyWithError(error.get());
-}
-
 bool SessionManagerImpl::RetrievePolicyEx(
     brillo::ErrorPtr* error,
     const std::vector<uint8_t>& in_descriptor_blob,
