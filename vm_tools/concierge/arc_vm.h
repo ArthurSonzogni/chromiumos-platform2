@@ -143,6 +143,8 @@ class ArcVm final : public VmBaseImpl {
   vm_tools::concierge::DiskImageStatus GetDiskResizeStatus(
       std::string* failure_reason) override;
 
+  void HandleSwapVmRequest(const SwapVmRequest& request,
+                           SwapVmResponse& response) override;
   void InflateAggressiveBalloon(AggressiveBalloonCallback callback) override;
   void StopAggressiveBalloon(AggressiveBalloonResponse& response) override;
   // Public for testing purpose.
@@ -168,6 +170,7 @@ class ArcVm final : public VmBaseImpl {
         base::FilePath data_disk_path,
         VmMemoryId vm_memory_id,
         ArcVmFeatures features,
+        base::OneShotTimer* swap_policy_timer = new base::OneShotTimer(),
         base::RepeatingTimer* aggressive_balloon_timer =
             new base::RepeatingTimer());
   ArcVm(const ArcVm&) = delete;
@@ -191,6 +194,7 @@ class ArcVm final : public VmBaseImpl {
 
   // Handlers for aggressive balloon
   void InflateAggressiveBalloonOnTimer();
+  void RunVmmSwapOut();
 
   std::vector<patchpanel::Client::VirtualDevice> network_devices_;
 
@@ -236,6 +240,10 @@ class ArcVm final : public VmBaseImpl {
 
   // Ensure calls are made on the right thread.
   base::SequenceChecker sequence_checker_;
+
+  // Timer used to run vmm-swap policy. All operations for vmm-swap policy runs
+  // on the main thread.
+  std::unique_ptr<base::OneShotTimer> swap_policy_timer_;
 
   bool is_aggressive_balloon_enabled_ = false;
   uint64_t aggressive_balloon_target_ = 0;

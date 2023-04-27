@@ -94,4 +94,22 @@ bool FakeCrosvmControl::BalloonStats(const char* socket_path,
   return result_balloon_stats_;
 }
 
+bool FakeCrosvmControl::EnableVmmSwap(const char* socket_path) {
+  target_socket_path_ = socket_path;
+  count_enable_vmm_swap_ += 1;
+  return result_enable_vmm_swap_;
+}
+
+bool FakeCrosvmControl::VmmSwapOut(const char* socket_path) {
+  target_socket_path_ = socket_path;
+  count_vmm_swap_out_ += 1;
+  return result_vmm_swap_out_;
+}
+
+bool FakeCrosvmControl::DisableVmmSwap(const char* socket_path) {
+  target_socket_path_ = socket_path;
+  count_disable_vmm_swap_ += 1;
+  return result_disable_vmm_swap_;
+}
+
 }  // namespace vm_tools::concierge

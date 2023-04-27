@@ -135,6 +135,25 @@ class CrosvmControl {
                             struct BalloonStatsFfi* stats,
                             uint64_t* actual) = 0;
 
+  // Enable vmm-swap of crosvm and move all the guest memory to the staging
+  // memory.
+  //
+  // This affects the crosvm instance whose control socket is listening on
+  // `socket_path`.
+  virtual bool EnableVmmSwap(const char* socket_path) = 0;
+
+  // Swap out the staging memory to the swap file.
+  //
+  // This affects the crosvm instance whose control socket is listening on
+  // `socket_path`.
+  virtual bool VmmSwapOut(const char* socket_path) = 0;
+
+  // Disable vmm-swap of crosvm.
+  //
+  // This affects the crosvm instance whose control socket is listening on
+  // `socket_path`.
+  virtual bool DisableVmmSwap(const char* socket_path) = 0;
+
   virtual ~CrosvmControl() = default;
 
  protected:

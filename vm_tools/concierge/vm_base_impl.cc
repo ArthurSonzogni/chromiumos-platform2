@@ -170,6 +170,12 @@ void VmBaseImpl::MakeRtVcpu() {
   CrosvmControl::Get()->MakeRtVm(GetVmSocketPath().c_str());
 }
 
+void VmBaseImpl::HandleSwapVmRequest(const SwapVmRequest& request,
+                                     SwapVmResponse& response) {
+  response.set_success(false);
+  response.set_failure_reason("vmm-swap is not supported on this vm");
+}
+
 void VmBaseImpl::InflateAggressiveBalloon(AggressiveBalloonCallback callback) {
   RunFailureAggressiveBalloonCallback(std::move(callback),
                                       "Unsupported by target VM");
@@ -178,18 +184,6 @@ void VmBaseImpl::InflateAggressiveBalloon(AggressiveBalloonCallback callback) {
 void VmBaseImpl::StopAggressiveBalloon(AggressiveBalloonResponse& response) {
   response.set_success(false);
   response.set_failure_reason("Unsupported by target VM");
-}
-
-bool VmBaseImpl::HandleVmmSwapStateChange(SwapState state) {
-  if (state == SwapState::ENABLED) {
-    return crosvm_client_swap_enable_vm(GetVmSocketPath().c_str());
-  } else if (state == SwapState::SWAPPED_OUT) {
-    return crosvm_client_swap_swapout_vm(GetVmSocketPath().c_str());
-  } else if (state == SwapState::DISABLED) {
-    return crosvm_client_swap_disable_vm(GetVmSocketPath().c_str());
-  }
-  LOG(ERROR) << "Unknown vmm swap state: " << static_cast<int>(state);
-  return false;
 }
 
 }  // namespace concierge

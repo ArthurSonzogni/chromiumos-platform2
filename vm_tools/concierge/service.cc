@@ -4715,16 +4715,7 @@ SwapVmResponse Service::SwapVm(const SwapVmRequest& request) {
     return response;
   }
 
-  const auto& vm = iter->second;
-  if (request.operation() == SwapOperation::ENABLE) {
-    response.set_success(vm->VmmSwap(VmInterface::SwapState::ENABLED));
-  } else if (request.operation() == SwapOperation::SWAPOUT) {
-    response.set_success(vm->VmmSwap(VmInterface::SwapState::SWAPPED_OUT));
-  } else if (request.operation() == SwapOperation::DISABLE) {
-    response.set_success(vm->VmmSwap(VmInterface::SwapState::DISABLED));
-  } else {
-    response.set_failure_reason("Unknown operation");
-  }
+  iter->second->HandleSwapVmRequest(request, response);
 
   return response;
 }

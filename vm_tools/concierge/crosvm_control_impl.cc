@@ -78,4 +78,16 @@ bool CrosvmControlImpl::BalloonStats(const char* socket_path,
   return crosvm_client_balloon_stats(socket_path, stats, actual);
 }
 
+bool CrosvmControlImpl::EnableVmmSwap(const char* socket_path) {
+  return crosvm_client_swap_enable_vm(socket_path);
+}
+
+bool CrosvmControlImpl::VmmSwapOut(const char* socket_path) {
+  return crosvm_client_swap_swapout_vm(socket_path);
+}
+
+bool CrosvmControlImpl::DisableVmmSwap(const char* socket_path) {
+  return crosvm_client_swap_disable_vm(socket_path);
+}
+
 }  // namespace vm_tools::concierge

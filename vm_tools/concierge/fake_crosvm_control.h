@@ -56,12 +56,24 @@ class FakeCrosvmControl : public CrosvmControl {
                     struct BalloonStatsFfi* stats,
                     uint64_t* actual) override;
 
+  bool EnableVmmSwap(const char* socket_path) override;
+
+  bool VmmSwapOut(const char* socket_path) override;
+
+  bool DisableVmmSwap(const char* socket_path) override;
+
   std::string target_socket_path_ = "";
 
   int count_set_balloon_size_ = 0;
+  int count_enable_vmm_swap_ = 0;
+  int count_vmm_swap_out_ = 0;
+  int count_disable_vmm_swap_ = 0;
 
   bool result_set_balloon_size_ = true;
   bool result_balloon_stats_ = true;
+  bool result_enable_vmm_swap_ = true;
+  bool result_vmm_swap_out_ = true;
+  bool result_disable_vmm_swap_ = true;
 
   uint64_t target_balloon_size_ = 0;
   uint64_t actual_balloon_size_ = 0;

@@ -64,6 +64,8 @@ class VmBaseImpl : public VmInterface {
   bool DetachUsbDevice(uint8_t port) override;
   bool ListUsbDevice(std::vector<UsbDeviceEntry>* devices) override;
   void MakeRtVcpu() override;
+  void HandleSwapVmRequest(const SwapVmRequest& request,
+                           SwapVmResponse& response) override;
 
   std::string GetVmSocketPath() const;
 
@@ -126,7 +128,6 @@ class VmBaseImpl : public VmInterface {
  private:
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
-  bool HandleVmmSwapStateChange(SwapState state) override;
 
   // Name of the socket to communicate to the crosvm binary.
   const std::string cros_vm_socket_;

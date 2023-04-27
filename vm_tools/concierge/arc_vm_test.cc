@@ -828,12 +828,13 @@ class ArcVmTest : public ::testing::Test {
     // Allocate resources for the VM.
     uint32_t vsock_cid = vsock_cid_pool_.Allocate();
 
+    swap_policy_timer_ = new base::MockOneShotTimer();
     aggressive_balloon_timer_ = new base::MockRepeatingTimer();
 
     vm_ = std::unique_ptr<ArcVm>(
         new ArcVm(vsock_cid, std::make_unique<patchpanel::FakeClient>(),
                   nullptr, temp_dir_.GetPath(), base::FilePath("dummy"), 0, {},
-                  aggressive_balloon_timer_));
+                  swap_policy_timer_, aggressive_balloon_timer_));
 
     SetBalloonStats(0, 1024 * MIB);
   }
@@ -853,10 +854,29 @@ class ArcVmTest : public ::testing::Test {
     vm_->InitializeBalloonPolicy(margins, "arcvm");
   }
 
+  bool HandleSwapVmRequest(SwapOperation operation) {
+    SwapVmRequest request;
+    SwapVmResponse response;
+    request.set_operation(operation);
+    vm_->HandleSwapVmRequest(request, response);
+    return response.success();
+  }
+
+  bool EnableVmmSwap() { return HandleSwapVmRequest(SwapOperation::ENABLE); }
+
+  bool ForceEnableVmmSwap() {
+    return HandleSwapVmRequest(SwapOperation::FORCE_ENABLE);
+  }
+
+  bool ForceVmmSwapOut() { return HandleSwapVmRequest(SwapOperation::SWAPOUT); }
+
+  bool DisableVmmSwap() { return HandleSwapVmRequest(SwapOperation::DISABLE); }
+
  protected:
   // Actual virtual machine being tested.
   std::unique_ptr<ArcVm> vm_;
 
+  raw_ptr<base::MockOneShotTimer> swap_policy_timer_;
   raw_ptr<base::MockRepeatingTimer> aggressive_balloon_timer_;
 
  private:
@@ -1040,6 +1060,72 @@ TEST_F(ArcVmTest, StopAggressiveBalloonReenableBalloonPolicy) {
   ASSERT_TRUE(response.success());
   MemoryMargins margins;
   ASSERT_TRUE(vm_->GetBalloonPolicy(margins, "arcvm"));
+}
+
+TEST_F(ArcVmTest, EnableVmmSwap) {
+  ASSERT_TRUE(EnableVmmSwap());
+  ASSERT_TRUE(swap_policy_timer_->IsRunning());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 1);
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+}
+
+TEST_F(ArcVmTest, EnableVmmSwapFail) {
+  FakeCrosvmControl::Get()->result_enable_vmm_swap_ = false;
+  ASSERT_FALSE(EnableVmmSwap());
+  ASSERT_FALSE(swap_policy_timer_->IsRunning());
+}
+
+TEST_F(ArcVmTest, VmmSwapOutAfterEnable) {
+  ASSERT_TRUE(EnableVmmSwap());
+  swap_policy_timer_->Fire();
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 1);
+}
+
+TEST_F(ArcVmTest, ForceEnableVmmSwap) {
+  ASSERT_TRUE(ForceEnableVmmSwap());
+  ASSERT_TRUE(swap_policy_timer_->IsRunning());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 1);
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+}
+
+TEST_F(ArcVmTest, ForceEnableVmmSwapFail) {
+  FakeCrosvmControl::Get()->result_enable_vmm_swap_ = false;
+  ASSERT_FALSE(ForceEnableVmmSwap());
+  ASSERT_FALSE(swap_policy_timer_->IsRunning());
+}
+
+TEST_F(ArcVmTest, ForceVmmSwapOut) {
+  ASSERT_TRUE(EnableVmmSwap());
+  ASSERT_TRUE(ForceVmmSwapOut());
+  ASSERT_FALSE(swap_policy_timer_->IsRunning());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 1);
+}
+
+TEST_F(ArcVmTest, ForceVmmSwapOutWhenNoPendingSwapOut) {
+  ASSERT_FALSE(ForceVmmSwapOut());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+}
+
+TEST_F(ArcVmTest, DisableVmmSwap) {
+  ASSERT_TRUE(EnableVmmSwap());
+  ASSERT_TRUE(DisableVmmSwap());
+  ASSERT_FALSE(swap_policy_timer_->IsRunning());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 1);
+}
+
+TEST_F(ArcVmTest, DisableVmmSwapWithoutEnable) {
+  ASSERT_TRUE(DisableVmmSwap());
+  ASSERT_FALSE(swap_policy_timer_->IsRunning());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 1);
+}
+
+TEST_F(ArcVmTest, DisableVmmSwapFail) {
+  FakeCrosvmControl::Get()->result_disable_vmm_swap_ = false;
+  ASSERT_TRUE(EnableVmmSwap());
+  ASSERT_FALSE(DisableVmmSwap());
+  ASSERT_FALSE(swap_policy_timer_->IsRunning());
 }
 
 }  // namespace concierge

@@ -36,13 +36,6 @@ class VmInterface {
     STOPPED,
   };
 
-  // The vmm swap state of the VM.
-  enum class SwapState {
-    DISABLED,
-    ENABLED,
-    SWAPPED_OUT,
-  };
-
   // Information about a virtual machine.
   struct Info {
     // The IPv4 address in network-byte order.
@@ -101,17 +94,6 @@ class VmInterface {
   }
 
   bool IsSuspended() { return suspended_; }
-
-  // Vmm swap.
-  bool VmmSwap(SwapState state) {
-    bool result = HandleVmmSwapStateChange(state);
-    if (result) {
-      swap_state_ = state;
-    }
-    return result;
-  }
-
-  SwapState GetSwapState() const { return swap_state_; }
 
   // Shuts down the VM. Returns true if the VM was successfully shut down and
   // false otherwise.
@@ -197,6 +179,9 @@ class VmInterface {
   // Makes RT vCPU for the VM.
   virtual void MakeRtVcpu() = 0;
 
+  virtual void HandleSwapVmRequest(const SwapVmRequest& request,
+                                   SwapVmResponse& response) = 0;
+
   // Inflate balloon until perceptible processes are tried to kill.
   virtual void InflateAggressiveBalloon(AggressiveBalloonCallback callback) = 0;
 
@@ -210,14 +195,8 @@ class VmInterface {
   // Handle the device resuming from a suspend.
   virtual void HandleSuspendDone() = 0;
 
-  // Handle the vmm swap state change.
-  virtual bool HandleVmmSwapStateChange(SwapState state) = 0;
-
   // Whether the VM is currently suspended.
   bool suspended_ = false;
-
-  // The vmm swap state of the VM.
-  SwapState swap_state_ = SwapState::DISABLED;
 };
 
 }  // namespace concierge
