@@ -47,7 +47,7 @@ interface CrosHealthdRoutinesService {
 
 // Possible routines the RoutineControl API can create.
 //
-// NextMinVersion: 6, NextIndex: 6
+// NextMinVersion: 7, NextIndex: 7
 [Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
@@ -63,6 +63,8 @@ union RoutineArgument {
   [MinVersion=4] UfsLifetimeRoutineArgument ufs_lifetime@4;
   // Arguments to create a disk read routine.
   [MinVersion=5] DiskReadRoutineArgument disk_read@5;
+  // Arguments to create a cpu cache routine.
+  [MinVersion=6] CpuCacheRoutineArgument cpu_cache@6;
 };
 
 // This routine checks whether there is any memory problem by
@@ -114,6 +116,18 @@ struct DiskReadRoutineArgument {
   ash.cros_healthd.external.mojo_base.mojom.TimeDelta disk_read_duration@1;
   // Test file size, in megabytes (MiB), to test with DiskRead routine
   uint32 file_size_mib@2;
+};
+
+// This routine checks whether there is any CPU cache problem by running a CPU
+// cache coherency test.
+//
+// NextMinVersion: 1, NextIndex: 1
+struct CpuCacheRoutineArgument {
+  // |exec_duration| determines how long the stressapptest binary will run. If
+  // the provided value is null, default to running for 1 minute. The duration
+  // is rounded to the nearest seconds towards zero (see behaviour of
+  // std::trunc()).
+  ash.cros_healthd.external.mojo_base.mojom.TimeDelta? exec_duration@0;
 };
 
 // Interface exposed to clients for controlling a routine.
@@ -205,6 +219,7 @@ union RoutineDetail {
   CpuStressRoutineDetail cpu_stress;
   UfsLifetimeRoutineDetail ufs_lifetime;
   DiskReadRoutineDetail disk_read;
+  CpuCacheRoutineDetail cpu_cache;
 };
 
 // Details regarding memory routine.
@@ -249,6 +264,12 @@ struct UfsLifetimeRoutineDetail {
 //
 // NextMinVersion: 1, NextIndex: 0
 struct DiskReadRoutineDetail {
+};
+
+// Details regarding cpu cache routine.
+//
+// NextMinVersion: 1, NextIndex: 0
+struct CpuCacheRoutineDetail {
 };
 
 // Enumeration of each possible memtester test item.

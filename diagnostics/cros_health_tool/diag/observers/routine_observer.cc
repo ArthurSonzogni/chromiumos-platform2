@@ -92,10 +92,11 @@ void RoutineObserver::OnRoutineStateChange(
           finished_state->has_passed ? "Passed" : "Failed";
       std::cout << ("Status: ") << passed_status << std::endl;
       switch (finished_state->detail->which()) {
-        // These routines does not produce printable output. Printing passed or
+        // These routines do not produce printable output. Printing passed or
         // failed is enough.
         case mojom::RoutineDetail::Tag::kCpuStress:
         case mojom::RoutineDetail::Tag::kDiskRead:
+        case mojom::RoutineDetail::Tag::kCpuCache:
           break;
         case mojom::RoutineDetail::Tag::kMemory:
           PrintOutput(ParseMemoryDetail(finished_state->detail->get_memory()));

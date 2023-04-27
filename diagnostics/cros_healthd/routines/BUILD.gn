@@ -81,6 +81,7 @@ source_set("libdiag_routine") {
     "fingerprint_alive/fingerprint_alive.cc",
     "led_lit_up/led_lit_up.cc",
     "memory_and_cpu/cpu_cache.cc",
+    "memory_and_cpu/cpu_cache_v2.cc",
     "memory_and_cpu/cpu_stress.cc",
     "memory_and_cpu/cpu_stress_v2.cc",
     "memory_and_cpu/floating_point_accuracy.cc",

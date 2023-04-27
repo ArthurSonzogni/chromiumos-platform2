@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read_v2.h"
@@ -56,6 +57,11 @@ void RoutineService::CreateRoutine(
                 mojom::RoutineControlExceptionEnum::kNotSupported),
             routine.error());
       }
+      break;
+    case mojom::RoutineArgument::Tag::kCpuCache:
+      AddRoutine(std::make_unique<CpuCacheRoutineV2>(
+                     context_, routine_arg->get_cpu_cache()),
+                 std::move(routine_receiver));
       break;
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
       LOG(ERROR) << "Routine Argument not recognized/supported";
