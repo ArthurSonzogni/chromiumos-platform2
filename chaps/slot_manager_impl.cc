@@ -213,7 +213,7 @@ void LogTokenReinitializedFromFlagFile() {
 }  // namespace
 
 SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory,
-                                 hwsec::ChapsFrontend* hwsec,
+                                 const hwsec::ChapsFrontend* hwsec,
                                  bool auto_load_system_token,
                                  SystemShutdownBlocker* system_shutdown_blocker,
                                  ChapsMetrics* chaps_metrics)

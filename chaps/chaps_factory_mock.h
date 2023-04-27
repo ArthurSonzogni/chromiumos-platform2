@@ -22,7 +22,7 @@ class ChapsFactoryMock : public ChapsFactory {
   MOCK_METHOD5(CreateSession,
                Session*(int,
                         ObjectPool*,
-                        hwsec::ChapsFrontend*,
+                        const hwsec::ChapsFrontend*,
                         HandleGenerator*,
                         bool));
   MOCK_METHOD3(CreateObjectPool,

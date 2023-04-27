@@ -889,7 +889,7 @@ class ChapsServiceFuzzer {
   std::unique_ptr<chaps::ChapsMetrics> chaps_metrics_;
   std::unique_ptr<chaps::ChapsFactoryImpl> factory_;
   std::unique_ptr<hwsec::FuzzedFactory> hwsec_factory_;
-  std::unique_ptr<hwsec::ChapsFrontend> hwsec_;
+  std::unique_ptr<const hwsec::ChapsFrontend> hwsec_;
   std::unique_ptr<chaps::SlotManagerImpl> slot_manager_;
   std::unique_ptr<chaps::ChapsServiceImpl> chaps_service_;
   base::test::TaskEnvironment task_environment_{

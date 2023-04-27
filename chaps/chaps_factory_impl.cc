@@ -37,7 +37,7 @@ ChapsFactoryImpl::ChapsFactoryImpl(ChapsMetrics* chaps_metrics)
 
 Session* ChapsFactoryImpl::CreateSession(int slot_id,
                                          ObjectPool* token_object_pool,
-                                         hwsec::ChapsFrontend* hwsec,
+                                         const hwsec::ChapsFrontend* hwsec,
                                          HandleGenerator* handle_generator,
                                          bool is_read_only) {
   return new SessionImpl(slot_id, token_object_pool, hwsec, this,

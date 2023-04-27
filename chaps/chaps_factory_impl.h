@@ -22,7 +22,7 @@ class ChapsFactoryImpl : public ChapsFactory {
 
   Session* CreateSession(int slot_id,
                          ObjectPool* token_object_pool,
-                         hwsec::ChapsFrontend* chaps,
+                         const hwsec::ChapsFrontend* chaps,
                          HandleGenerator* handle_generator,
                          bool is_read_only) override;
   ObjectPool* CreateObjectPool(HandleGenerator* handle_generator,

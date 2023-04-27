@@ -40,7 +40,7 @@ class SlotManagerImpl : public SlotManager,
                         public HandleGenerator {
  public:
   SlotManagerImpl(ChapsFactory* factory,
-                  hwsec::ChapsFrontend* hwsec,
+                  const hwsec::ChapsFrontend* hwsec,
                   bool auto_load_system_token,
                   SystemShutdownBlocker* system_shutdown_blocker,
                   ChapsMetrics* chaps_metrics);
@@ -251,7 +251,7 @@ class SlotManagerImpl : public SlotManager,
   // Value: The identifier of the associated slot.
   std::map<int, int> session_slot_map_;
   std::map<brillo::SecureBlob, Isolate> isolate_map_;
-  hwsec::ChapsFrontend* hwsec_;
+  const hwsec::ChapsFrontend* hwsec_;
   bool auto_load_system_token_;
   bool is_initialized_;
   std::optional<bool> hwsec_enabled_;

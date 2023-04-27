@@ -752,7 +752,7 @@ hwsec::SigningOptions ToHwsecSigningOptions(
 
 SessionImpl::SessionImpl(int slot_id,
                          ObjectPool* token_object_pool,
-                         hwsec::ChapsFrontend* hwsec,
+                         const hwsec::ChapsFrontend* hwsec,
                          ChapsFactory* factory,
                          HandleGenerator* handle_generator,
                          bool is_read_only,

@@ -30,7 +30,7 @@ class ChapsFactory {
   virtual ~ChapsFactory() {}
   virtual Session* CreateSession(int slot_id,
                                  ObjectPool* token_object_pool,
-                                 hwsec::ChapsFrontend* hwsec,
+                                 const hwsec::ChapsFrontend* hwsec,
                                  HandleGenerator* handle_generator,
                                  bool is_read_only) = 0;
   virtual ObjectPool* CreateObjectPool(HandleGenerator* handle_generator,

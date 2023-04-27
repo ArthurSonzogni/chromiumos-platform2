@@ -66,7 +66,7 @@ class SessionImpl : public Session {
   // all sessions and slots.
   SessionImpl(int slot_id,
               ObjectPool* token_object_pool,
-              hwsec::ChapsFrontend* hwsec,
+              const hwsec::ChapsFrontend* hwsec,
               ChapsFactory* factory,
               HandleGenerator* handle_generator,
               bool is_read_only,
@@ -262,7 +262,7 @@ class SessionImpl : public Session {
   int slot_id_;
   std::unique_ptr<ObjectPool> session_object_pool_;
   ObjectPool* token_object_pool_;
-  hwsec::ChapsFrontend* hwsec_;
+  const hwsec::ChapsFrontend* hwsec_;
   ChapsMetrics* chaps_metrics_;
 };
 

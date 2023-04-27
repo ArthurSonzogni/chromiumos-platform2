@@ -170,7 +170,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   // The object to generate the other frontends.
   std::unique_ptr<hwsec::Factory> hwsec_factory_;
   // The object for accessing the HWSec related functions.
-  std::unique_ptr<hwsec::ChapsFrontend> hwsec_;
+  std::unique_ptr<const hwsec::ChapsFrontend> hwsec_;
 
   std::unique_ptr<ChapsMetrics> chaps_metrics_;
   std::unique_ptr<ChapsFactory> factory_;

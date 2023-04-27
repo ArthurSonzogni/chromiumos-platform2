@@ -257,7 +257,7 @@ class SlotManagerFuzzer {
   std::unique_ptr<chaps::ChapsMetrics> chaps_metrics_;
   std::unique_ptr<chaps::FuzzedChapsFactory> factory_;
   std::unique_ptr<hwsec::FuzzedFactory> hwsec_factory_;
-  std::unique_ptr<hwsec::ChapsFrontend> hwsec_;
+  std::unique_ptr<const hwsec::ChapsFrontend> hwsec_;
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   std::vector<std::string> generated_isolate_credentials_;
