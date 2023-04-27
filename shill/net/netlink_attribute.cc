@@ -35,6 +35,12 @@ std::unique_ptr<NetlinkAttribute> NetlinkAttribute::NewNl80211AttributeFromId(
   switch (id) {
     case NL80211_ATTR_BSS:
       return std::make_unique<Nl80211AttributeBss>();
+    case NL80211_ATTR_CENTER_FREQ1:
+      return std::make_unique<Nl80211AttributeCenterFreq1>();
+    case NL80211_ATTR_CENTER_FREQ2:
+      return std::make_unique<Nl80211AttributeCenterFreq2>();
+    case NL80211_ATTR_CHANNEL_WIDTH:
+      return std::make_unique<Nl80211AttributeChannelWidth>();
     case NL80211_ATTR_CIPHER_SUITES:
       return std::make_unique<Nl80211AttributeCipherSuites>();
     case NL80211_ATTR_CONTROL_PORT_ETHERTYPE:
@@ -63,6 +69,8 @@ std::unique_ptr<NetlinkAttribute> NetlinkAttribute::NewNl80211AttributeFromId(
       return std::make_unique<Nl80211AttributeIfindex>();
     case NL80211_ATTR_IFTYPE:
       return std::make_unique<Nl80211AttributeIftype>();
+    case NL80211_ATTR_INTERFACE_COMBINATIONS:
+      return std::make_unique<Nl80211AttributeInterfaceCombinations>();
     case NL80211_ATTR_KEY_IDX:
       return std::make_unique<Nl80211AttributeKeyIdx>();
     case NL80211_ATTR_KEY_SEQ:
@@ -119,14 +127,20 @@ std::unique_ptr<NetlinkAttribute> NetlinkAttribute::NewNl80211AttributeFromId(
       return std::make_unique<Nl80211AttributeSupportIbssRsn>();
     case NL80211_ATTR_SUPPORT_MESH_AUTH:
       return std::make_unique<Nl80211AttributeSupportMeshAuth>();
+    case NL80211_ATTR_SUPPORTED_COMMANDS:
+      return std::make_unique<Nl80211AttributeSupportedCommands>();
     case NL80211_ATTR_SUPPORTED_IFTYPES:
       return std::make_unique<Nl80211AttributeSupportedIftypes>();
+    case NL80211_ATTR_SURVEY_INFO:
+      return std::make_unique<Nl80211AttributeSurveyInfo>();
     case NL80211_ATTR_TDLS_EXTERNAL_SETUP:
       return std::make_unique<Nl80211AttributeTdlsExternalSetup>();
     case NL80211_ATTR_TDLS_SUPPORT:
       return std::make_unique<Nl80211AttributeTdlsSupport>();
     case NL80211_ATTR_TIMED_OUT:
       return std::make_unique<Nl80211AttributeTimedOut>();
+    case NL80211_ATTR_WIPHY:
+      return std::make_unique<Nl80211AttributeWiphy>();
     case NL80211_ATTR_WIPHY_ANTENNA_AVAIL_RX:
       return std::make_unique<Nl80211AttributeWiphyAntennaAvailRx>();
     case NL80211_ATTR_WIPHY_ANTENNA_AVAIL_TX:
@@ -137,24 +151,14 @@ std::unique_ptr<NetlinkAttribute> NetlinkAttribute::NewNl80211AttributeFromId(
       return std::make_unique<Nl80211AttributeWiphyAntennaTx>();
     case NL80211_ATTR_WIPHY_BANDS:
       return std::make_unique<Nl80211AttributeWiphyBands>();
-    case NL80211_ATTR_INTERFACE_COMBINATIONS:
-      return std::make_unique<Nl80211AttributeInterfaceCombinations>();
+    case NL80211_ATTR_WIPHY_CHANNEL_TYPE:
+      return std::make_unique<Nl80211AttributeChannelType>();
     case NL80211_ATTR_WIPHY_COVERAGE_CLASS:
       return std::make_unique<Nl80211AttributeWiphyCoverageClass>();
     case NL80211_ATTR_WIPHY_FRAG_THRESHOLD:
       return std::make_unique<Nl80211AttributeWiphyFragThreshold>();
     case NL80211_ATTR_WIPHY_FREQ:
       return std::make_unique<Nl80211AttributeWiphyFreq>();
-    case NL80211_ATTR_WIPHY_CHANNEL_TYPE:
-      return std::make_unique<Nl80211AttributeChannelType>();
-    case NL80211_ATTR_CHANNEL_WIDTH:
-      return std::make_unique<Nl80211AttributeChannelWidth>();
-    case NL80211_ATTR_CENTER_FREQ1:
-      return std::make_unique<Nl80211AttributeCenterFreq1>();
-    case NL80211_ATTR_CENTER_FREQ2:
-      return std::make_unique<Nl80211AttributeCenterFreq2>();
-    case NL80211_ATTR_WIPHY:
-      return std::make_unique<Nl80211AttributeWiphy>();
     case NL80211_ATTR_WIPHY_NAME:
       return std::make_unique<Nl80211AttributeWiphyName>();
     case NL80211_ATTR_WIPHY_RETRY_LONG:
@@ -163,14 +167,12 @@ std::unique_ptr<NetlinkAttribute> NetlinkAttribute::NewNl80211AttributeFromId(
       return std::make_unique<Nl80211AttributeWiphyRetryShort>();
     case NL80211_ATTR_WIPHY_RTS_THRESHOLD:
       return std::make_unique<Nl80211AttributeWiphyRtsThreshold>();
+    case NL80211_ATTR_WIPHY_SELF_MANAGED_REG:
+      return std::make_unique<Nl80211AttributeWiphySelfManagedReg>();
     case NL80211_ATTR_WOWLAN_TRIGGERS:
       return std::make_unique<Nl80211AttributeWowlanTriggers>(context);
     case NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED:
       return std::make_unique<Nl80211AttributeWowlanTriggersSupported>();
-    case NL80211_ATTR_SURVEY_INFO:
-      return std::make_unique<Nl80211AttributeSurveyInfo>();
-    case NL80211_ATTR_SUPPORTED_COMMANDS:
-      return std::make_unique<Nl80211AttributeSupportedCommands>();
     default:
       return std::make_unique<NetlinkAttributeGeneric>(id);
   }

@@ -786,6 +786,18 @@ class Nl80211AttributeSupportedCommands : public NetlinkNestedAttribute {
       const Nl80211AttributeSupportedCommands&) = delete;
 };
 
+class Nl80211AttributeWiphySelfManagedReg : public NetlinkFlagAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphySelfManagedReg()
+      : NetlinkFlagAttribute(kName, kNameString) {}
+  Nl80211AttributeWiphySelfManagedReg(
+      const Nl80211AttributeWiphySelfManagedReg&) = delete;
+  Nl80211AttributeWiphySelfManagedReg& operator=(
+      const Nl80211AttributeWiphySelfManagedReg&) = delete;
+};
+
 }  // namespace shill
 
 #endif  // SHILL_NET_NL80211_ATTRIBUTE_H_

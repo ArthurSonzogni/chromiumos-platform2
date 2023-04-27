@@ -1009,6 +1009,11 @@ const char Nl80211AttributeWiphyFragThreshold::kNameString[] =
 const int Nl80211AttributeWiphyFreq::kName = NL80211_ATTR_WIPHY_FREQ;
 const char Nl80211AttributeWiphyFreq::kNameString[] = "NL80211_ATTR_WIPHY_FREQ";
 
+const int Nl80211AttributeWiphySelfManagedReg::kName =
+    NL80211_ATTR_WIPHY_SELF_MANAGED_REG;
+const char Nl80211AttributeWiphySelfManagedReg::kNameString[] =
+    "NL80211_ATTR_WIPHY_SELF_MANAGED_REG";
+
 const int Nl80211AttributeChannelType::kName = NL80211_ATTR_WIPHY_CHANNEL_TYPE;
 const char Nl80211AttributeChannelType::kNameString[] =
     "NL80211_ATTR_WIPHY_CHANNEL_TYPE";
