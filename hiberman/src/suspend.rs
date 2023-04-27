@@ -5,6 +5,7 @@
 //! Implements hibernate suspend functionality.
 
 use std::time::Duration;
+use std::time::Instant;
 use std::time::UNIX_EPOCH;
 
 use anyhow::Context;
@@ -64,6 +65,8 @@ impl SuspendConductor {
     /// failure to hibernate or after the system has resumed from a successful
     /// hibernation.
     pub fn hibernate(&mut self, options: HibernateOptions) -> Result<()> {
+        self.options = options;
+
         info!("Beginning hibernate");
 
         self.volume_manager.setup_hibermeta_lv(true)?;
@@ -72,11 +75,7 @@ impl SuspendConductor {
             warn!("Failed to log hibernate attempt: \n {}", e);
         }
 
-        let metrics_file_path = MetricsFile::get_path(HibernateStage::Resume);
-        let metrics_file = MetricsFile::create(metrics_file_path)?;
-        self.metrics.file = Some(metrics_file);
-
-        self.options = options;
+        self.create_metrics_file()?;
 
         // Don't hibernate if the update engine is up to something, as we would
         // not want to hibernate if upon reboot the other slot gets booted.
@@ -159,10 +158,25 @@ impl SuspendConductor {
             let log_file = hiberlog::LogFile::open(log_file_path)?;
             redirect_log(HiberlogOut::File(Box::new(log_file)));
 
+            let start = Instant::now();
+
             if let Err(e) = snap_dev.transfer_block_device() {
                 snap_dev.unfreeze_userspace()?;
                 return Err(e);
             }
+
+            let io_duration = start.elapsed();
+            self.create_metrics_file()?;
+            self.metrics.metrics_send_io_sample(
+                "WriteHibernateImage",
+                snap_dev.get_image_size()?,
+                io_duration,
+            );
+
+            // Close the metrics file before unmounting hibermeta. The metrics will be
+            // sent on resume.
+            self.metrics.flush()?;
+            self.metrics.file = None;
 
             // Set the hibernate cookie so the next boot knows to start in RO mode.
             info!("Setting hibernate cookie at {}", block_path);
@@ -225,6 +239,16 @@ impl SuspendConductor {
             resume_time.subsec_millis()
         );
         // TODO: log metric
+    }
+
+    /// Create the file for the suspend metrics and configure the metrics logger
+    /// to use it.
+    fn create_metrics_file(&mut self) -> Result<()> {
+        let metrics_file_path = MetricsFile::get_path(HibernateStage::Suspend);
+        let metrics_file = MetricsFile::create(metrics_file_path)?;
+        self.metrics.file = Some(metrics_file);
+
+        Ok(())
     }
 
     /// Utility function to power the system down immediately.
