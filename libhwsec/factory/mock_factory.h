@@ -21,45 +21,51 @@ class MockFactory : public Factory {
  public:
   MockFactory() = default;
   ~MockFactory() override = default;
-  MOCK_METHOD(std::unique_ptr<CryptohomeFrontend>,
+  MOCK_METHOD(std::unique_ptr<const CryptohomeFrontend>,
               GetCryptohomeFrontend,
               (),
               (override));
-  MOCK_METHOD(std::unique_ptr<PinWeaverFrontend>,
+  MOCK_METHOD(std::unique_ptr<const PinWeaverFrontend>,
               GetPinWeaverFrontend,
               (),
               (override));
-  MOCK_METHOD(std::unique_ptr<RecoveryCryptoFrontend>,
+  MOCK_METHOD(std::unique_ptr<const RecoveryCryptoFrontend>,
               GetRecoveryCryptoFrontend,
               (),
               (override));
-  MOCK_METHOD(std::unique_ptr<ClientFrontend>,
+  MOCK_METHOD(std::unique_ptr<const ClientFrontend>,
               GetClientFrontend,
               (),
               (override));
-  MOCK_METHOD(std::unique_ptr<ChapsFrontend>, GetChapsFrontend, (), (override));
-  MOCK_METHOD(std::unique_ptr<U2fFrontend>, GetU2fFrontend, (), (override));
-  MOCK_METHOD(std::unique_ptr<U2fVendorFrontend>,
+  MOCK_METHOD(std::unique_ptr<const ChapsFrontend>,
+              GetChapsFrontend,
+              (),
+              (override));
+  MOCK_METHOD(std::unique_ptr<const U2fFrontend>,
+              GetU2fFrontend,
+              (),
+              (override));
+  MOCK_METHOD(std::unique_ptr<const U2fVendorFrontend>,
               GetU2fVendorFrontend,
               (),
               (override));
-  MOCK_METHOD(std::unique_ptr<OpteePluginFrontend>,
+  MOCK_METHOD(std::unique_ptr<const OpteePluginFrontend>,
               GetOpteePluginFrontend,
               (),
               (override));
-  MOCK_METHOD(std::unique_ptr<BootLockboxFrontend>,
+  MOCK_METHOD(std::unique_ptr<const BootLockboxFrontend>,
               GetBootLockboxFrontend,
               (),
               (override));
-  MOCK_METHOD(std::unique_ptr<OobeConfigFrontend>,
+  MOCK_METHOD(std::unique_ptr<const OobeConfigFrontend>,
               GetOobeConfigFrontend,
               (),
               (override));
-  MOCK_METHOD(std::unique_ptr<LocalDataMigrationFrontend>,
+  MOCK_METHOD(std::unique_ptr<const LocalDataMigrationFrontend>,
               GetLocalDataMigrationFrontend,
               (),
               (override));
-  MOCK_METHOD(std::unique_ptr<AttestationFrontend>,
+  MOCK_METHOD(std::unique_ptr<const AttestationFrontend>,
               GetAttestationFrontend,
               (),
               (override));

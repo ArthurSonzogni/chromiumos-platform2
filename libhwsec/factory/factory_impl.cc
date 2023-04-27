@@ -34,53 +34,56 @@ FactoryImpl::FactoryImpl(std::unique_ptr<MiddlewareOwner> middleware)
 
 FactoryImpl::~FactoryImpl() {}
 
-std::unique_ptr<CryptohomeFrontend> FactoryImpl::GetCryptohomeFrontend() {
+std::unique_ptr<const CryptohomeFrontend> FactoryImpl::GetCryptohomeFrontend() {
   return std::make_unique<CryptohomeFrontendImpl>(middleware_.Derive());
 }
 
-std::unique_ptr<PinWeaverFrontend> FactoryImpl::GetPinWeaverFrontend() {
+std::unique_ptr<const PinWeaverFrontend> FactoryImpl::GetPinWeaverFrontend() {
   return std::make_unique<PinWeaverFrontendImpl>(middleware_.Derive());
 }
 
-std::unique_ptr<RecoveryCryptoFrontend>
+std::unique_ptr<const RecoveryCryptoFrontend>
 FactoryImpl::GetRecoveryCryptoFrontend() {
   return std::make_unique<RecoveryCryptoFrontendImpl>(middleware_.Derive());
 }
 
-std::unique_ptr<ClientFrontend> FactoryImpl::GetClientFrontend() {
+std::unique_ptr<const ClientFrontend> FactoryImpl::GetClientFrontend() {
   return std::make_unique<ClientFrontendImpl>(middleware_.Derive());
 }
 
-std::unique_ptr<ChapsFrontend> FactoryImpl::GetChapsFrontend() {
+std::unique_ptr<const ChapsFrontend> FactoryImpl::GetChapsFrontend() {
   return std::make_unique<ChapsFrontendImpl>(middleware_.Derive());
 }
 
-std::unique_ptr<U2fFrontend> FactoryImpl::GetU2fFrontend() {
+std::unique_ptr<const U2fFrontend> FactoryImpl::GetU2fFrontend() {
   return std::make_unique<U2fFrontendImpl>(middleware_.Derive());
 }
 
-std::unique_ptr<U2fVendorFrontend> FactoryImpl::GetU2fVendorFrontend() {
+std::unique_ptr<const U2fVendorFrontend> FactoryImpl::GetU2fVendorFrontend() {
   return std::make_unique<U2fVendorFrontendImpl>(middleware_.Derive());
 }
 
-std::unique_ptr<OpteePluginFrontend> FactoryImpl::GetOpteePluginFrontend() {
+std::unique_ptr<const OpteePluginFrontend>
+FactoryImpl::GetOpteePluginFrontend() {
   return std::make_unique<OpteePluginFrontendImpl>(middleware_.Derive());
 }
 
-std::unique_ptr<BootLockboxFrontend> FactoryImpl::GetBootLockboxFrontend() {
+std::unique_ptr<const BootLockboxFrontend>
+FactoryImpl::GetBootLockboxFrontend() {
   return std::make_unique<BootLockboxFrontendImpl>(middleware_.Derive());
 }
 
-std::unique_ptr<OobeConfigFrontend> FactoryImpl::GetOobeConfigFrontend() {
+std::unique_ptr<const OobeConfigFrontend> FactoryImpl::GetOobeConfigFrontend() {
   return std::make_unique<OobeConfigFrontendImpl>(middleware_.Derive());
 }
 
-std::unique_ptr<LocalDataMigrationFrontend>
+std::unique_ptr<const LocalDataMigrationFrontend>
 FactoryImpl::GetLocalDataMigrationFrontend() {
   return std::make_unique<LocalDataMigrationFrontendImpl>(middleware_.Derive());
 }
 
-std::unique_ptr<AttestationFrontend> FactoryImpl::GetAttestationFrontend() {
+std::unique_ptr<const AttestationFrontend>
+FactoryImpl::GetAttestationFrontend() {
   return std::make_unique<AttestationFrontendImpl>(middleware_.Derive());
 }
 

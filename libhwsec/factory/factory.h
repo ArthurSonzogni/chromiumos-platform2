@@ -30,20 +30,23 @@ namespace hwsec {
 class Factory {
  public:
   virtual ~Factory() = default;
-  virtual std::unique_ptr<CryptohomeFrontend> GetCryptohomeFrontend() = 0;
-  virtual std::unique_ptr<PinWeaverFrontend> GetPinWeaverFrontend() = 0;
-  virtual std::unique_ptr<RecoveryCryptoFrontend>
+  virtual std::unique_ptr<const CryptohomeFrontend> GetCryptohomeFrontend() = 0;
+  virtual std::unique_ptr<const PinWeaverFrontend> GetPinWeaverFrontend() = 0;
+  virtual std::unique_ptr<const RecoveryCryptoFrontend>
   GetRecoveryCryptoFrontend() = 0;
-  virtual std::unique_ptr<ClientFrontend> GetClientFrontend() = 0;
-  virtual std::unique_ptr<ChapsFrontend> GetChapsFrontend() = 0;
-  virtual std::unique_ptr<U2fFrontend> GetU2fFrontend() = 0;
-  virtual std::unique_ptr<U2fVendorFrontend> GetU2fVendorFrontend() = 0;
-  virtual std::unique_ptr<OpteePluginFrontend> GetOpteePluginFrontend() = 0;
-  virtual std::unique_ptr<BootLockboxFrontend> GetBootLockboxFrontend() = 0;
-  virtual std::unique_ptr<OobeConfigFrontend> GetOobeConfigFrontend() = 0;
-  virtual std::unique_ptr<LocalDataMigrationFrontend>
+  virtual std::unique_ptr<const ClientFrontend> GetClientFrontend() = 0;
+  virtual std::unique_ptr<const ChapsFrontend> GetChapsFrontend() = 0;
+  virtual std::unique_ptr<const U2fFrontend> GetU2fFrontend() = 0;
+  virtual std::unique_ptr<const U2fVendorFrontend> GetU2fVendorFrontend() = 0;
+  virtual std::unique_ptr<const OpteePluginFrontend>
+  GetOpteePluginFrontend() = 0;
+  virtual std::unique_ptr<const BootLockboxFrontend>
+  GetBootLockboxFrontend() = 0;
+  virtual std::unique_ptr<const OobeConfigFrontend> GetOobeConfigFrontend() = 0;
+  virtual std::unique_ptr<const LocalDataMigrationFrontend>
   GetLocalDataMigrationFrontend() = 0;
-  virtual std::unique_ptr<AttestationFrontend> GetAttestationFrontend() = 0;
+  virtual std::unique_ptr<const AttestationFrontend>
+  GetAttestationFrontend() = 0;
 };
 
 }  // namespace hwsec

@@ -38,19 +38,20 @@ class HWSEC_EXPORT FactoryImpl : public Factory {
 
   ~FactoryImpl() override;
 
-  std::unique_ptr<CryptohomeFrontend> GetCryptohomeFrontend() override;
-  std::unique_ptr<PinWeaverFrontend> GetPinWeaverFrontend() override;
-  std::unique_ptr<RecoveryCryptoFrontend> GetRecoveryCryptoFrontend() override;
-  std::unique_ptr<ClientFrontend> GetClientFrontend() override;
-  std::unique_ptr<ChapsFrontend> GetChapsFrontend() override;
-  std::unique_ptr<U2fFrontend> GetU2fFrontend() override;
-  std::unique_ptr<U2fVendorFrontend> GetU2fVendorFrontend() override;
-  std::unique_ptr<OpteePluginFrontend> GetOpteePluginFrontend() override;
-  std::unique_ptr<BootLockboxFrontend> GetBootLockboxFrontend() override;
-  std::unique_ptr<OobeConfigFrontend> GetOobeConfigFrontend() override;
-  std::unique_ptr<LocalDataMigrationFrontend> GetLocalDataMigrationFrontend()
+  std::unique_ptr<const CryptohomeFrontend> GetCryptohomeFrontend() override;
+  std::unique_ptr<const PinWeaverFrontend> GetPinWeaverFrontend() override;
+  std::unique_ptr<const RecoveryCryptoFrontend> GetRecoveryCryptoFrontend()
       override;
-  std::unique_ptr<AttestationFrontend> GetAttestationFrontend() override;
+  std::unique_ptr<const ClientFrontend> GetClientFrontend() override;
+  std::unique_ptr<const ChapsFrontend> GetChapsFrontend() override;
+  std::unique_ptr<const U2fFrontend> GetU2fFrontend() override;
+  std::unique_ptr<const U2fVendorFrontend> GetU2fVendorFrontend() override;
+  std::unique_ptr<const OpteePluginFrontend> GetOpteePluginFrontend() override;
+  std::unique_ptr<const BootLockboxFrontend> GetBootLockboxFrontend() override;
+  std::unique_ptr<const OobeConfigFrontend> GetOobeConfigFrontend() override;
+  std::unique_ptr<const LocalDataMigrationFrontend>
+  GetLocalDataMigrationFrontend() override;
+  std::unique_ptr<const AttestationFrontend> GetAttestationFrontend() override;
 
  protected:
   std::unique_ptr<MiddlewareOwner> default_middleware_;

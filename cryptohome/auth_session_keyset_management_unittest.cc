@@ -701,7 +701,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath temp_path = temp_dir.GetPath().Append(kCredDirName);
   hwsec::Tpm2SimulatorFactoryForTest factory;
-  std::unique_ptr<hwsec::PinWeaverFrontend> pinweaver =
+  std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver =
       factory.GetPinWeaverFrontend();
   auto le_cred_manager =
       std::make_unique<LECredentialManagerImpl>(pinweaver.get(), temp_path);
