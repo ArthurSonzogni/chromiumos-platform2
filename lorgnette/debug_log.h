@@ -6,13 +6,30 @@
 #define LORGNETTE_DEBUG_LOG_H_
 
 #include <base/files/file_path.h>
+#include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 
 namespace lorgnette {
 
-// If the file at `flagPath` exists, set up environment variables to put
-// SANE backends into debug mode.  Returns true if debugging was enabled
-// or false if not.
-bool SetupDebugging(const base::FilePath& flagPath);
+class DebugLogManager {
+ public:
+  DebugLogManager();
+  DebugLogManager(const DebugLogManager&) = delete;
+  DebugLogManager operator=(const DebugLogManager&) = delete;
+
+  bool IsDebuggingEnabled() const;
+  SetDebugConfigResponse UpdateDebugConfig(
+      const SetDebugConfigRequest& request);
+
+  // If the file at `debug_flag_path_` exists, set up environment variables to
+  // put SANE backends into debug mode.  Returns true if debugging was enabled
+  // or false if not.
+  bool SetupDebugging();
+
+  void SetFlagPathForTesting(base::FilePath flagPath);
+
+ private:
+  base::FilePath debug_flag_path_;
+};
 
 }  // namespace lorgnette
 

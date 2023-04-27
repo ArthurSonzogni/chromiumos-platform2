@@ -94,6 +94,22 @@
                     value="::lorgnette::CancelScanResponse" />
       </arg>
     </method>
+    <method name="SetDebugConfig">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <tp:docstring>
+        Configure lorgnette debugging.  Lorgnette will exit automatically
+        after returning from this call if the requested config can't be
+        implemented without restarting the process.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::SetDebugConfigRequest" />
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::SetDebugConfigResponse" />
+      </arg>
+    </method>
     <signal name="ScanStatusChanged">
       <arg name="scan_status_changed_signal" type="ay" direction="out">
         <tp:docstring>

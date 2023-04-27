@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include <base/test/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -76,7 +77,7 @@ class MockManager : public Manager {
 
 TEST(DBusServiceAdaptorTest, ListScanners) {
   MockManager* manager = new MockManager();
-  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager));
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
   brillo::ErrorPtr error;
   ListScannersResponse response;
   EXPECT_CALL(*manager, ListScanners(&error, &response));
@@ -85,7 +86,7 @@ TEST(DBusServiceAdaptorTest, ListScanners) {
 
 TEST(DBusServiceAdaptorTest, GetScannerCapabilities) {
   MockManager* manager = new MockManager();
-  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager));
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
   brillo::ErrorPtr error;
   ScannerCapabilities response;
   EXPECT_CALL(*manager,
@@ -95,7 +96,7 @@ TEST(DBusServiceAdaptorTest, GetScannerCapabilities) {
 
 TEST(DBusServiceAdaptorTest, StartScan) {
   MockManager* manager = new MockManager();
-  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager));
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
   StartScanRequest request;
   EXPECT_CALL(*manager, StartScan(EqualsProto(request)));
   dbus_service.StartScan(request);
@@ -103,7 +104,7 @@ TEST(DBusServiceAdaptorTest, StartScan) {
 
 TEST(DBusServiceAdaptorTest, GetNextImage) {
   MockManager* manager = new MockManager();
-  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager));
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
   GetNextImageRequest request;
   std::unique_ptr<DBusMethodResponse<GetNextImageResponse>> response;
   base::ScopedFD out_fd;
@@ -113,10 +114,36 @@ TEST(DBusServiceAdaptorTest, GetNextImage) {
 
 TEST(DBusServiceAdaptorTest, CancelScan) {
   MockManager* manager = new MockManager();
-  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager));
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
   CancelScanRequest request;
   EXPECT_CALL(*manager, CancelScan(EqualsProto(request)));
   dbus_service.CancelScan(request);
+}
+
+TEST(DBusServiceAdaptorTest, ToggleDebugging) {
+  MockManager* manager = new MockManager();
+  bool callback_called = false;
+  base::RepeatingCallback<void()> callback = base::BindLambdaForTesting(
+      [&callback_called]() { callback_called = true; });
+  auto dbus_service =
+      DBusServiceAdaptor(std::unique_ptr<Manager>(manager), callback);
+  SetDebugConfigRequest request;
+  request.set_enabled(true);
+  SetDebugConfigResponse response = dbus_service.SetDebugConfig(request);
+  EXPECT_TRUE(callback_called);
+}
+
+TEST(DBusServiceAdaptorTest, UnchangedDebugging) {
+  MockManager* manager = new MockManager();
+  bool callback_called = false;
+  base::RepeatingCallback<void()> callback = base::BindLambdaForTesting(
+      [&callback_called]() { callback_called = true; });
+  auto dbus_service =
+      DBusServiceAdaptor(std::unique_ptr<Manager>(manager), callback);
+  SetDebugConfigRequest request;
+  request.set_enabled(false);
+  SetDebugConfigResponse response = dbus_service.SetDebugConfig(request);
+  EXPECT_FALSE(callback_called);
 }
 
 }  // namespace

@@ -26,9 +26,12 @@ class ScopeLogger {
 
 }  // namespace
 
-DBusServiceAdaptor::DBusServiceAdaptor(std::unique_ptr<Manager> manager)
+DBusServiceAdaptor::DBusServiceAdaptor(
+    std::unique_ptr<Manager> manager,
+    base::RepeatingCallback<void()> debug_change_callback)
     : org::chromium::lorgnette::ManagerAdaptor(this),
-      manager_(std::move(manager)) {
+      manager_(std::move(manager)),
+      debug_change_callback_(std::move(debug_change_callback)) {
   // Set signal sender to be the real D-Bus call by default.
   manager_->SetScanStatusChangedSignalSender(base::BindRepeating(
       [](base::WeakPtr<DBusServiceAdaptor> adaptor,
@@ -96,6 +99,18 @@ CancelScanResponse DBusServiceAdaptor::CancelScan(
   ScopeLogger scope("DBusServiceAdaptor::CancelScan");
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return manager_->CancelScan(request);
+}
+
+SetDebugConfigResponse DBusServiceAdaptor::SetDebugConfig(
+    const SetDebugConfigRequest& request) {
+  ScopeLogger scope("DBusServiceAdaptor::SetDebugConfig");
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DebugLogManager logman;
+  SetDebugConfigResponse response = logman.UpdateDebugConfig(request);
+  if (response.old_enabled() != request.enabled()) {
+    debug_change_callback_.Run();
+  }
+  return response;
 }
 
 }  // namespace lorgnette

@@ -46,6 +46,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   // Restarts a timer for the termination of the daemon process.
   void PostponeShutdown(base::TimeDelta delay);
   void OnTimeout();
+  void OnDebugChanged();
 
   std::unique_ptr<DBusServiceAdaptor> dbus_service_;
   base::OnceClosure startup_callback_;

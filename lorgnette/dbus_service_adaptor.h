@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/functional/callback.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/exported_object_manager.h>
@@ -15,6 +16,7 @@
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
+#include "lorgnette/debug_log.h"
 #include "lorgnette/manager.h"
 
 namespace lorgnette {
@@ -22,7 +24,9 @@ namespace lorgnette {
 class DBusServiceAdaptor : public org::chromium::lorgnette::ManagerAdaptor,
                            public org::chromium::lorgnette::ManagerInterface {
  public:
-  explicit DBusServiceAdaptor(std::unique_ptr<Manager> manager);
+  explicit DBusServiceAdaptor(
+      std::unique_ptr<Manager> manager,
+      base::RepeatingCallback<void()> debug_change_callback);
   DBusServiceAdaptor(const DBusServiceAdaptor&) = delete;
   DBusServiceAdaptor& operator=(const DBusServiceAdaptor&) = delete;
   virtual ~DBusServiceAdaptor();
@@ -43,6 +47,8 @@ class DBusServiceAdaptor : public org::chromium::lorgnette::ManagerAdaptor,
                     const GetNextImageRequest& request,
                     const base::ScopedFD& out_fd) override;
   CancelScanResponse CancelScan(const CancelScanRequest& request) override;
+  SetDebugConfigResponse SetDebugConfig(
+      const SetDebugConfigRequest& request) override;
 
  private:
   SEQUENCE_CHECKER(sequence_checker_);
@@ -50,6 +56,8 @@ class DBusServiceAdaptor : public org::chromium::lorgnette::ManagerAdaptor,
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<Manager> manager_ GUARDED_BY_CONTEXT(sequence_checker_);
+  base::RepeatingCallback<void()> debug_change_callback_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Keep as the last member variable.
   base::WeakPtrFactory<DBusServiceAdaptor> weak_factory_

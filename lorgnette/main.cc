@@ -12,10 +12,9 @@
 
 namespace {
 
-constexpr char kDebugFlagPath[] = "/run/lorgnette/debug/debug-flag";
-
 void OnStartup(const char* daemon_name) {
-  if (lorgnette::SetupDebugging(base::FilePath(kDebugFlagPath))) {
+  lorgnette::DebugLogManager logman;
+  if (logman.SetupDebugging()) {
     LOG(INFO) << "Enabled extra logging for " << daemon_name;
   }
 }

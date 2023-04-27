@@ -50,7 +50,9 @@ void Daemon::RegisterDBusObjectsAsync(
       std::make_unique<Manager>(base::BindRepeating(&Daemon::PostponeShutdown,
                                                     weak_factory_.GetWeakPtr()),
                                 SaneClientImpl::Create());
-  dbus_service_.reset(new DBusServiceAdaptor(std::move(manager)));
+  dbus_service_.reset(new DBusServiceAdaptor(
+      std::move(manager), base::BindRepeating(&Daemon::OnDebugChanged,
+                                              weak_factory_.GetWeakPtr())));
   dbus_service_->RegisterAsync(object_manager_.get(), sequencer);
 }
 
@@ -62,6 +64,11 @@ void Daemon::OnShutdown(int* return_code) {
 
 void Daemon::OnTimeout() {
   LOG(INFO) << "Exiting after timeout";
+  Quit();
+}
+
+void Daemon::OnDebugChanged() {
+  LOG(INFO) << "Exiting after debug config changed.";
   Quit();
 }
 
