@@ -5,6 +5,7 @@
 #include "featured/store_impl.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -12,6 +13,8 @@
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <brillo/secure_blob.h>
+#include <brillo/files/file_util.h>
 #include <featured/proto_bindings/featured.pb.h>
 #include <openssl/crypto.h>
 #include <sys/stat.h>
@@ -26,6 +29,10 @@ constexpr char kStoreHMACPath[] = "/var/lib/featured/store_hmac";
 constexpr char kLockboxKey[] = "featured_early_boot_key";
 
 constexpr mode_t kSystemFeaturedFilesMode = 0760;
+
+constexpr size_t kTpmSeedSize = 32;
+// File where the TPM seed is stored, that we have to read from.
+constexpr char kTpmSeedTmpFile[] = "/run/featured_seed/tpm_seed";
 
 namespace {
 
@@ -152,6 +159,33 @@ bool WriteDisk(const Store& store,
   }
   return true;
 }
+
+// Overwrite the file's contents before deleting, to ensure data is wiped.
+void SafeDeleteFile(const base::FilePath& seed_path) {
+  brillo::Blob all_zero(kTpmSeedSize);
+  if (!base::WriteFile(seed_path, all_zero)) {
+    PLOG(WARNING) << "Failed to write zeroes to the TPM seed file.";
+  }
+  if (!brillo::DeleteFile(seed_path)) {
+    PLOG(WARNING) << "Failed to delete the TPM seed file.";
+  }
+}
+
+std::optional<brillo::SecureBlob> GetTpmSeed(const base::FilePath& seed_path) {
+  brillo::SecureBlob tpm_seed(kTpmSeedSize);
+  int bytes_read = base::ReadFile(
+      seed_path, reinterpret_cast<char*>(tpm_seed.data()), tpm_seed.size());
+  SafeDeleteFile(seed_path);
+
+  if (bytes_read != kTpmSeedSize) {
+    LOG(ERROR) << "Failed to read TPM seed from tmpfile, size expected: "
+               << kTpmSeedSize << ", size got: " << bytes_read << ".";
+    return std::nullopt;
+  }
+
+  return tpm_seed;
+}
+
 }  // namespace
 
 StoreImpl::StoreImpl(const Store& store,
@@ -167,13 +201,22 @@ std::unique_ptr<StoreInterface> StoreImpl::Create() {
   std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client =
       bootlockbox::BootLockboxClient::CreateBootLockboxClient();
   return Create(base::FilePath(kStorePath), base::FilePath(kStoreHMACPath),
+                base::FilePath(kTpmSeedTmpFile),
                 std::move(boot_lockbox_client));
 }
 
 std::unique_ptr<StoreInterface> StoreImpl::Create(
     base::FilePath store_path,
     base::FilePath hmac_path,
+    base::FilePath tpm_seed_path,
     std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client) {
+  {
+    std::optional<brillo::SecureBlob> tpm_seed = GetTpmSeed(tpm_seed_path);
+    if (!tpm_seed.has_value()) {
+      LOG(WARNING) << "Failed to get TPM seed.";
+    }
+  }
+
   // Check validity of the boot lockbox.
   if (!boot_lockbox_client) {
     LOG(ERROR) << "Invalid bootlockbox client";

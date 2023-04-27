@@ -55,12 +55,17 @@ constexpr char kHibermanPath[] = "/usr/sbin/hiberman";
 constexpr char kHibermanTpmSeedSalt[] = "hiberman";
 constexpr char kHibermanTpmSeedTmpDir[] = "/run/hiberman";
 constexpr char kHibermanTpmSeedFile[] = "tpm_seed";
+constexpr char kFeaturedTpmSeedSalt[] = "featured";
+constexpr char kFeaturedTpmSeedTmpDir[] = "/run/featured_seed";
+constexpr char kFeaturedTpmSeedFile[] = "tpm_seed";
 constexpr char kOldTpmOwnershipStateFile[] =
     "mnt/stateful_partition/.tpm_owned";
 static const uid_t kBiodUid = 282;
 static const gid_t kBiodGid = 282;
 static const uid_t kHibermanUid = 20184;
 static const gid_t kHibermanGid = 20184;
+static const uid_t kRootUid = 0;
+static const gid_t kRootGid = 0;
 
 constexpr char kNvramExport[] = "/tmp/lockbox.nvram";
 constexpr char kMountEncryptedMetricsPath[] =
@@ -245,7 +250,8 @@ bool SendSecretToTmpFile(const mount_encrypted::EncryptionKey& key,
 }
 
 // Send a secret derived from the system key to the biometric managers, if
-// available, via a tmpfs file which will be read by bio_crypto_init.
+// available, via a tmpfs file which will be read by bio_crypto_init. The tmpfs
+// directory will be created if it doesn't exist.
 bool SendSecretToBiodTmpFile(const mount_encrypted::EncryptionKey& key,
                              cryptohome::Platform* platform) {
   // If there isn't a bio-sensor, don't bother.
@@ -260,8 +266,9 @@ bool SendSecretToBiodTmpFile(const mount_encrypted::EncryptionKey& key,
                              kBiodUid, kBiodGid, platform);
 }
 
-// Send a secret derived from the system key to hiberman, if available.
-// available, via a tmpfs file which will be read by hiberman.
+// Send a secret derived from the system key to hiberman, if available, via a
+// tmpfs file which will be read by hiberman. The tmpfs directory will be
+// created if it doesn't exist.
 bool SendSecretToHibermanTmpFile(const mount_encrypted::EncryptionKey& key,
                                  cryptohome::Platform* platform) {
   if (!base::PathExists(base::FilePath(kHibermanPath))) {
@@ -272,6 +279,17 @@ bool SendSecretToHibermanTmpFile(const mount_encrypted::EncryptionKey& key,
   return SendSecretToTmpFile(key, std::string(kHibermanTpmSeedSalt),
                              base::FilePath(kHibermanTpmSeedTmpDir),
                              kHibermanTpmSeedFile, kHibermanUid, kHibermanGid,
+                             platform);
+}
+
+// Send a secret derived from the system key to featured, if available, via a
+// tmpfs file which will be read by featured. The tmpfs directory will be
+// created if it doesn't exist.
+bool SendSecretToFeaturedTmpFile(const mount_encrypted::EncryptionKey& key,
+                                 cryptohome::Platform* platform) {
+  return SendSecretToTmpFile(key, std::string(kFeaturedTpmSeedSalt),
+                             base::FilePath(kFeaturedTpmSeedTmpDir),
+                             kFeaturedTpmSeedFile, kRootUid, kRootGid,
                              platform);
 }
 
@@ -350,9 +368,11 @@ static result_code mount_encrypted_partition(
         << "Failed to send TPM secret to biod.";
     LOG_IF(ERROR, !SendSecretToHibermanTmpFile(key, platform))
         << "Failed to send TPM secret to hiberman.";
+    LOG_IF(ERROR, !SendSecretToFeaturedTmpFile(key, platform))
+        << "Failed to send TPM secret to featured.";
   } else {
-    LOG(ERROR)
-        << "Failed to load system key, biod and hiberman won't get a TPM seed.";
+    LOG(ERROR) << "Failed to load system key, biod, hiberman, and featured "
+                  "won't get a TPM seed.";
   }
 
   cryptohome::FileSystemKey encryption_key;

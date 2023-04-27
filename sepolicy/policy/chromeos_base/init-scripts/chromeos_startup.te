@@ -35,6 +35,7 @@ filetrans_pattern(chromeos_startup, cros_var_log, chromeos_startup_mount_options
 filetrans_pattern(chromeos_startup, cros_var_log, cros_var_log_asan, dir, "asan")
 filetrans_pattern(chromeos_startup, cros_run_lock, cros_run_lock_power_override, dir, "power_override")
 filetrans_pattern(chromeos_startup, cros_run_lock_power_override, cros_power_override_lock_file, file)
+filetrans_pattern(chromeos_startup, cros_run, cros_run_featured_seed, dir, "featured_seed")
 filetrans_pattern(chromeos_startup, cros_run, cros_run_namespaces, dir, "namespaces")
 filetrans_pattern(chromeos_startup, cros_run_namespaces, cros_run_namespaces_mnt_chrome, file, "mnt_chrome")
 

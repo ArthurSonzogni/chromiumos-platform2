@@ -67,6 +67,7 @@ class StoreImplTest : public testing::Test {
         std::make_unique<StrictMock<MockBootLockboxClient>>(mock_bus_);
     store_path_ = get_dir().Append("store");
     hmac_path_ = get_dir().Append("store_hmac");
+    tpm_seed_path_ = get_dir().Append("tpm_seed");
   }
 
   const base::FilePath& get_dir() { return dir_.GetPath(); }
@@ -88,6 +89,7 @@ class StoreImplTest : public testing::Test {
   std::unique_ptr<MockBootLockboxClient> boot_lockbox_client_;
   base::FilePath store_path_;
   base::FilePath hmac_path_;
+  base::FilePath tpm_seed_path_;
   std::string store_content_;
   std::string hmac_content_;
 
@@ -114,7 +116,7 @@ TEST_F(StoreImplTest, LockboxReadKey_Failure) {
           }));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   EXPECT_NE(store_interface, nullptr);
 
   // Verify that the on-disk contents are valid.
@@ -137,7 +139,7 @@ TEST_F(StoreImplTest, LockboxStoreKey_Failure) {
   EXPECT_CALL(*boot_lockbox_client_, Store(_, _)).WillOnce(Return(false));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   EXPECT_EQ(store_interface, nullptr);
 }
 
@@ -145,7 +147,7 @@ TEST_F(StoreImplTest, LockboxStoreKey_Failure) {
 // nullptr).
 TEST_F(StoreImplTest, LockboxNull_Failure) {
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, /*boot_lockbox_client=*/nullptr);
+      store_path_, hmac_path_, tpm_seed_path_, /*boot_lockbox_client=*/nullptr);
   EXPECT_EQ(store_interface, nullptr);
 }
 
@@ -159,7 +161,7 @@ TEST_F(StoreImplTest, StoreRead_Failure) {
                                       base::FILE_PERMISSION_WRITE_BY_USER));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   EXPECT_EQ(store_interface, nullptr);
 }
 
@@ -173,7 +175,7 @@ TEST_F(StoreImplTest, HMACRead_Failure) {
       SetPosixFilePermissions(hmac_path_, base::FILE_PERMISSION_WRITE_BY_USER));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   EXPECT_EQ(store_interface, nullptr);
 }
 
@@ -185,7 +187,7 @@ TEST_F(StoreImplTest, StoreCreate_Failure_WrongPermissions) {
       SetPosixFilePermissions(get_dir(), base::FILE_PERMISSION_READ_BY_USER));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   EXPECT_EQ(store_interface, nullptr);
 
   // Add execute and write permissions back to more likely to clean up the
@@ -199,7 +201,7 @@ TEST_F(StoreImplTest, StoreCreate_Failure_WrongPermissions) {
 // empty path).
 TEST_F(StoreImplTest, StoreCreate_Failure_InvalidPath) {
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      /*store_path=*/base::FilePath(""), hmac_path_,
+      /*store_path=*/base::FilePath(""), hmac_path_, tpm_seed_path_,
       std::move(boot_lockbox_client_));
   EXPECT_EQ(store_interface, nullptr);
 }
@@ -214,7 +216,7 @@ TEST_F(StoreImplTest, StoreWrite_Failure) {
       SetPosixFilePermissions(store_path_, base::FILE_PERMISSION_READ_BY_USER));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   EXPECT_EQ(store_interface, nullptr);
 }
 
@@ -228,7 +230,7 @@ TEST_F(StoreImplTest, HMACWrite_Failure) {
       SetPosixFilePermissions(hmac_path_, base::FILE_PERMISSION_READ_BY_USER));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   EXPECT_EQ(store_interface, nullptr);
 }
 
@@ -278,7 +280,7 @@ TEST_F(StoreImplTest, StoreVerified_Success) {
 
   // Create StoreImpl object.
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   EXPECT_NE(store_interface, nullptr);
 
   // Verify that the on-disk contents are valid using the newly generated key.
@@ -340,7 +342,7 @@ TEST_F(StoreImplTest, StoreCorruption_Verification_Failure) {
 
   // Create StoreImpl object.
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   EXPECT_NE(store_interface, nullptr);
 
   // Verify that the on-disk contents are valid using the newly generated key.
@@ -388,7 +390,7 @@ TEST_F(StoreImplTest, HMACCorruption_Verification_Failure) {
 
   // Create StoreImpl object.
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   EXPECT_NE(store_interface, nullptr);
 
   // Verify that the on-disk contents are valid using the newly generated key.
@@ -441,7 +443,7 @@ TEST_F(StoreImplTest, StoreCorruption_Deserialize_Failure) {
 
   // Create StoreImpl object.
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   EXPECT_NE(store_interface, nullptr);
 
   // Verify that the on-disk contents are valid using the newly generated key.
@@ -468,7 +470,7 @@ TEST_F(StoreImplTest, IncrementBootAttempts_Success) {
           }));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   ASSERT_NE(store_interface, nullptr);
 
   // Check boot attempts field.
@@ -499,7 +501,7 @@ TEST_F(StoreImplTest, IncrementBootAttempts_Failure_StoreWrongPermissions) {
   EXPECT_CALL(*boot_lockbox_client_, Store(_, _)).WillOnce(Return(true));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   ASSERT_NE(store_interface, nullptr);
 
   // Remove write permissions for store file.
@@ -519,7 +521,7 @@ TEST_F(StoreImplTest, IncrementBootAttempts_Failure_HMACWrongPermissions) {
   EXPECT_CALL(*boot_lockbox_client_, Store(_, _)).WillOnce(Return(true));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   ASSERT_NE(store_interface, nullptr);
 
   // Remove write permissions for hmac file.
@@ -570,7 +572,7 @@ TEST_F(StoreImplTest, ClearBootAttempts_Success) {
   ASSERT_TRUE(base::WriteFile(hmac_path_, store_hmac_str));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   ASSERT_NE(store_interface, nullptr);
 
   // Check boot attempts field.
@@ -600,7 +602,7 @@ TEST_F(StoreImplTest, ClearBootAttempts_Failure_StoreWrongPermissions) {
   EXPECT_CALL(*boot_lockbox_client_, Store(_, _)).WillOnce(Return(true));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   ASSERT_NE(store_interface, nullptr);
 
   // Remove write permissions for store file.
@@ -624,7 +626,7 @@ TEST_F(StoreImplTest, UpdateSeed_Success) {
           }));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   ASSERT_NE(store_interface, nullptr);
 
   // Check seed field.
@@ -658,7 +660,7 @@ TEST_F(StoreImplTest, UpdateSeed_Failure_StoreWrongPermissions) {
   EXPECT_CALL(*boot_lockbox_client_, Store(_, _)).WillOnce(Return(true));
 
   std::unique_ptr<StoreInterface> store_interface = StoreImpl::Create(
-      store_path_, hmac_path_, std::move(boot_lockbox_client_));
+      store_path_, hmac_path_, tpm_seed_path_, std::move(boot_lockbox_client_));
   ASSERT_NE(store_interface, nullptr);
 
   // Remove write permissions for store file.

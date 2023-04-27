@@ -32,6 +32,7 @@ class FEATURE_EXPORT StoreImpl : public StoreInterface {
   static std::unique_ptr<StoreInterface> Create(
       base::FilePath store_path,
       base::FilePath hmac_path,
+      base::FilePath tpm_seed_path,
       std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client);
 
   // Returns the number of device boot attempts.
