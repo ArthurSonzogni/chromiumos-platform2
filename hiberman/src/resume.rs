@@ -221,7 +221,8 @@ impl ResumeConductor {
 
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Write)?;
 
-        snap_dev.write_image(hiber_image_file)?;
+        // Load the snapshot image into the kernel
+        snap_dev.load_image(hiber_image_file)?;
 
         // Let other daemons know it's the end of the world.
         let _powerd_resume = PowerdPendingResume::new(&mut self.metrics_logger)

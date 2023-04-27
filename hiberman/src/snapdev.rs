@@ -170,8 +170,8 @@ impl SnapshotDevice {
         Ok(SnapshotDevice { file })
     }
 
-    // Read the image from a file and write it to the snapshot device.
-    pub fn write_image(&mut self, mut image_file: File) -> Result<()> {
+    /// Load a snapshot image from a file into the kernel.
+    pub fn load_image(&mut self, mut image_file: File) -> Result<()> {
         loop {
             let mut buf = [0; HIBERIMAGE_BLOCK_SIZE];
 
