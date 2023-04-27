@@ -11,18 +11,17 @@ category: "functional"
 owners:
   - email: "andrewlamb@chromium.org"
   - email: "nednguyen@chromium.org"
-  - email: "shapiroc@chromium.org"
   - email: "sjg@chromium.org"
   - email: "jrosenth@chromium.org"
   - email: "jessemcguire@chromium.org"
-
+hw_agnostic: True
+criteria: |
+       Fails if any of the following conditions occur:
+       1) Initialization of cros config fails
+       2) Name of the system (/ name) cannot be read or is invalid
 
 cases:
   - id: "CheckName"
     tags: []
-    criteria: |
-           Fails if any of the following conditions occur:
-           1) Initialization of cros config fails
-           2) Name of the system (/ name) cannot be read or is invalid
 target_bin_location: "/usr/local/gtest/cros_config/cros_config_functional_test"
 ...
