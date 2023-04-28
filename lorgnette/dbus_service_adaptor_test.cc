@@ -146,5 +146,23 @@ TEST(DBusServiceAdaptorTest, UnchangedDebugging) {
   EXPECT_FALSE(callback_called);
 }
 
+TEST(DBusServiceAdaptorTest, StartScannerDiscovery) {
+  MockManager* manager = new MockManager();
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
+  StartScannerDiscoveryRequest request;
+  StartScannerDiscoveryResponse response =
+      dbus_service.StartScannerDiscovery(request);
+  EXPECT_THAT(response, EqualsProto(StartScannerDiscoveryResponse()));
+}
+
+TEST(DBusServiceAdaptorTest, StopScannerDiscovery) {
+  MockManager* manager = new MockManager();
+  auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
+  StopScannerDiscoveryRequest request;
+  StopScannerDiscoveryResponse response =
+      dbus_service.StopScannerDiscovery(request);
+  EXPECT_THAT(response, EqualsProto(StopScannerDiscoveryResponse()));
+}
+
 }  // namespace
 }  // namespace lorgnette

@@ -110,6 +110,49 @@
                     value="::lorgnette::SetDebugConfigResponse" />
       </arg>
     </method>
+    <method name="StartScannerDiscovery">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <tp:docstring>
+        Start monitoring for scanners and send ScannerListChanged signals
+        when devices that match the request are found.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::StartScannerDiscoveryRequest" />
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::StartScannerDiscoveryResponse" />
+      </arg>
+    </method>
+    <method name="StopScannerDiscovery">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <tp:docstring>
+        Stop a previously started discovery session. Note that
+        ScannerListChanged signals may continue to be sent if other
+        discovery sessions are still active.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::StopScannerDiscoveryRequest" />
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::StopScannerDiscoveryResponse" />
+      </arg>
+    </method>
+    <signal name="ScannerListChanged">
+      <arg name="signal" type="ay" direction="out">
+        <tp:docstring>
+          A serialized ScannerListChangedSignal proto, containing an event
+          type and information about the affected scanner.  Listeners should
+          check for a matching `session_id` to avoid responding to events
+          requested by other sessions.
+        </tp:docstring>
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="::lorgnette::ScannerListChangedSignal" />
+      </arg>
+    </signal>
     <signal name="ScanStatusChanged">
       <arg name="scan_status_changed_signal" type="ay" direction="out">
         <tp:docstring>

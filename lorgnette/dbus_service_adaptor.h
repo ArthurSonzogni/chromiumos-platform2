@@ -49,6 +49,10 @@ class DBusServiceAdaptor : public org::chromium::lorgnette::ManagerAdaptor,
   CancelScanResponse CancelScan(const CancelScanRequest& request) override;
   SetDebugConfigResponse SetDebugConfig(
       const SetDebugConfigRequest& request) override;
+  StartScannerDiscoveryResponse StartScannerDiscovery(
+      const StartScannerDiscoveryRequest& request) override;
+  StopScannerDiscoveryResponse StopScannerDiscovery(
+      const StopScannerDiscoveryRequest& request) override;
 
  private:
   SEQUENCE_CHECKER(sequence_checker_);

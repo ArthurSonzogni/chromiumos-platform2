@@ -113,4 +113,14 @@ SetDebugConfigResponse DBusServiceAdaptor::SetDebugConfig(
   return response;
 }
 
+StartScannerDiscoveryResponse DBusServiceAdaptor::StartScannerDiscovery(
+    const StartScannerDiscoveryRequest& request) {
+  return {};
+}
+
+StopScannerDiscoveryResponse DBusServiceAdaptor::StopScannerDiscovery(
+    const StopScannerDiscoveryRequest& request) {
+  return {};
+}
+
 }  // namespace lorgnette
