@@ -22,7 +22,6 @@ use dbus::{
 use protobuf::Message as ProtoMessage;
 
 use crate::disk::{DiskInfo, DiskOpType, VmDiskImageType};
-use crate::lsb_release::{LsbRelease, ReleaseChannel};
 use crate::proto::system_api::cicerone_service::*;
 use crate::proto::system_api::concierge_service::*;
 use crate::proto::system_api::dlcservice::*;
@@ -98,7 +97,6 @@ enum ChromeOSError {
     RetrieveActiveSessions,
     SourcePathDoesNotExist,
     ToolsDlcNotAllowed(String),
-    TpmOnStable,
 }
 
 use self::ChromeOSError::*;
@@ -227,7 +225,6 @@ impl fmt::Display for ChromeOSError {
             RetrieveActiveSessions => write!(f, "failed to retrieve active sessions"),
             SourcePathDoesNotExist => write!(f, "source media path does not exist"),
             ToolsDlcNotAllowed(dlc) => write!(f, "tools dlc `{}` is not allowed", dlc),
-            TpmOnStable => write!(f, "TPM device is not available on stable channel"),
         }
     }
 }
@@ -2151,15 +2148,6 @@ impl Methods {
         } else {
             self.ensure_crostini_available(user_id_hash)?;
 
-            let is_stable_channel = is_stable_channel();
-            if features.software_tpm && is_stable_channel {
-                return Err(TpmOnStable.into());
-            }
-
-            if features.vtpm_proxy && is_stable_channel {
-                return Err(TpmOnStable.into());
-            }
-
             let disk_image_path = self.create_disk_image(name, user_id_hash)?;
             self.notify_vm_starting()?;
             self.start_vm_with_disk(
@@ -2571,15 +2559,5 @@ impl Methods {
         )?;
 
         Ok(response.log)
-    }
-}
-
-fn is_stable_channel() -> bool {
-    match LsbRelease::gather() {
-        Ok(lsb) => lsb.release_channel() == Some(ReleaseChannel::Stable),
-        Err(_) => {
-            // Weird /etc/lsb-release, do not enforce stable restrictions.
-            false
-        }
     }
 }
