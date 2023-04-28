@@ -40,7 +40,9 @@ RoVerificationStatus TpmManagerRoStatusToRmadRoStatus(
     default:
       break;
   }
-  NOTREACHED();
+
+  // We don't care about reported statuses from Ti50 (V2) unless they're mapped
+  // to |RO_STATUS_PASS| with the RMA key combo.
   return RMAD_RO_VERIFICATION_UNSUPPORTED;
 }
 

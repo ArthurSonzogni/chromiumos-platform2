@@ -167,6 +167,92 @@ TEST_F(TpmManagerClientTest, RoVerificationUnsupportedTriggered) {
   EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_UNSUPPORTED_TRIGGERED);
 }
 
+TEST_F(TpmManagerClientTest, RoVerificationV2Success) {
+  tpm_manager::GetRoVerificationStatusReply reply;
+  reply.set_status(tpm_manager::STATUS_SUCCESS);
+
+  // Ti50 verify RO on every boot so this should not trigger Shimless RMA.
+  reply.set_ro_verification_status(tpm_manager::RO_STATUS_V2_SUCCESS);
+
+  auto mock_tpm_manager_proxy =
+      std::make_unique<StrictMock<org::chromium::TpmManagerProxyMock>>();
+  EXPECT_CALL(*mock_tpm_manager_proxy, GetRoVerificationStatus(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
+
+  auto tpm_manager_client =
+      std::make_unique<TpmManagerClientImpl>(std::move(mock_tpm_manager_proxy));
+
+  RoVerificationStatus ro_verification_status;
+  EXPECT_TRUE(
+      tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
+  EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_UNSUPPORTED);
+}
+
+TEST_F(TpmManagerClientTest, RoVerificationV2BoardIdMismatch) {
+  tpm_manager::GetRoVerificationStatusReply reply;
+  reply.set_status(tpm_manager::STATUS_SUCCESS);
+
+  // Ti50 verify RO on every boot so this should not trigger Shimless RMA.
+  reply.set_ro_verification_status(tpm_manager::RO_STATUS_V2_BOARD_ID_MISMATCH);
+
+  auto mock_tpm_manager_proxy =
+      std::make_unique<StrictMock<org::chromium::TpmManagerProxyMock>>();
+  EXPECT_CALL(*mock_tpm_manager_proxy, GetRoVerificationStatus(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
+
+  auto tpm_manager_client =
+      std::make_unique<TpmManagerClientImpl>(std::move(mock_tpm_manager_proxy));
+
+  RoVerificationStatus ro_verification_status;
+  EXPECT_TRUE(
+      tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
+  EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_UNSUPPORTED);
+}
+
+TEST_F(TpmManagerClientTest, RoVerificationV2NonZeroGbb) {
+  tpm_manager::GetRoVerificationStatusReply reply;
+  reply.set_status(tpm_manager::STATUS_SUCCESS);
+
+  // Ti50 verify RO on every boot so this should not trigger Shimless RMA.
+  reply.set_ro_verification_status(
+      tpm_manager::RO_STATUS_V2_NON_ZERO_GBB_FLAGS);
+
+  auto mock_tpm_manager_proxy =
+      std::make_unique<StrictMock<org::chromium::TpmManagerProxyMock>>();
+  EXPECT_CALL(*mock_tpm_manager_proxy, GetRoVerificationStatus(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
+
+  auto tpm_manager_client =
+      std::make_unique<TpmManagerClientImpl>(std::move(mock_tpm_manager_proxy));
+
+  RoVerificationStatus ro_verification_status;
+  EXPECT_TRUE(
+      tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
+  EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_UNSUPPORTED);
+}
+
+TEST_F(TpmManagerClientTest, RoVerificationV2NotProvisioned) {
+  tpm_manager::GetRoVerificationStatusReply reply;
+  reply.set_status(tpm_manager::STATUS_SUCCESS);
+
+  // Ti50 verify RO on every boot so this should not trigger Shimless RMA.
+  reply.set_ro_verification_status(
+      tpm_manager::RO_STATUS_V2_SETTING_NOT_PROVISIONED);
+
+  auto mock_tpm_manager_proxy =
+      std::make_unique<StrictMock<org::chromium::TpmManagerProxyMock>>();
+  EXPECT_CALL(*mock_tpm_manager_proxy, GetRoVerificationStatus(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
+
+  auto tpm_manager_client =
+      std::make_unique<TpmManagerClientImpl>(std::move(mock_tpm_manager_proxy));
+
+  RoVerificationStatus ro_verification_status;
+  EXPECT_TRUE(
+      tpm_manager_client->GetRoVerificationStatus(&ro_verification_status));
+  EXPECT_EQ(ro_verification_status, RMAD_RO_VERIFICATION_UNSUPPORTED);
+}
+
 TEST_F(TpmManagerClientTest, RoVerificationDBusError) {
   auto mock_tpm_manager_proxy =
       std::make_unique<StrictMock<org::chromium::TpmManagerProxyMock>>();
