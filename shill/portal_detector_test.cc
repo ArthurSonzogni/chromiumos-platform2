@@ -52,11 +52,12 @@ const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
 class MockHttpRequest : public HttpRequest {
  public:
   MockHttpRequest()
-      : HttpRequest(nullptr,
-                    kInterfaceName,
-                    IPAddress(IPAddress::kFamilyIPv4),
-                    {kDNSServer0, kDNSServer1},
-                    true) {}
+      : HttpRequest(
+            nullptr,
+            kInterfaceName,
+            IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4),
+            {kDNSServer0, kDNSServer1},
+            true) {}
   MockHttpRequest(const MockHttpRequest&) = delete;
   MockHttpRequest& operator=(const MockHttpRequest&) = delete;
   ~MockHttpRequest() = default;

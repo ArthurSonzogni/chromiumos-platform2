@@ -15,7 +15,9 @@ bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b) {
 namespace shill {
 
 RoutingPolicyEntry::RoutingPolicyEntry(IPAddress::Family family)
-    : family(family), dst(family), src(family) {}
+    : family(family),
+      dst(IPAddress::CreateFromFamily_Deprecated(family)),
+      src(IPAddress::CreateFromFamily_Deprecated(family)) {}
 
 // static
 RoutingPolicyEntry RoutingPolicyEntry::Create(IPAddress::Family family_in) {
@@ -77,10 +79,10 @@ RoutingPolicyEntry& RoutingPolicyEntry::FlipFamily() {
                                               : IPAddress::kFamilyIPv4;
   // We should not have src/dst whose family does not match |family|.
   if (src.family() != IPAddress::kFamilyUnknown) {
-    src = IPAddress(family);
+    src = IPAddress::CreateFromFamily_Deprecated(family);
   }
   if (dst.family() != IPAddress::kFamilyUnknown) {
-    dst = IPAddress(family);
+    dst = IPAddress::CreateFromFamily_Deprecated(family);
   }
 
   return *this;

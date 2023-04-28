@@ -132,8 +132,7 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
         << "Received RT_TABLE_COMPAT, but message has no RTA_TABLE attribute";
   }
 
-  IPAddress default_addr(message.family());
-  default_addr.SetAddressToDefault();
+  const auto default_addr = IPAddress::CreateFromFamily(message.family());
   if (auto addr = message.GetRtaDst(); addr.has_value()) {
     entry->dst = std::move(*addr);
   } else {
@@ -394,8 +393,8 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
     }
   }
 
-  IPAddress default_address(gateway_address.family());
-  default_address.SetAddressToDefault();
+  const auto default_address =
+      IPAddress::CreateFromFamily(gateway_address.family());
 
   return AddRoute(interface_index,
                   RoutingTableEntry::Create(default_address, default_address,
@@ -700,8 +699,8 @@ bool RoutingTable::CreateLinkRoute(int interface_index,
     return false;
   }
 
-  IPAddress default_address(local_address.family());
-  default_address.SetAddressToDefault();
+  IPAddress default_address =
+      IPAddress::CreateFromFamily(local_address.family());
   IPAddress destination_address(remote_address);
   destination_address.set_prefix(
       IPAddress::GetMaxPrefixLength(remote_address.family()));
@@ -778,8 +777,8 @@ bool RoutingTable::ParseRoutingPolicyMessage(const RTNLMessage& message,
   }
 
   entry->family = message.family();
-  entry->src = IPAddress(entry->family);
-  entry->dst = IPAddress(entry->family);
+  entry->src = IPAddress::CreateFromFamily_Deprecated(entry->family);
+  entry->dst = IPAddress::CreateFromFamily_Deprecated(entry->family);
 
   entry->invert_rule = !!(route_status.flags & FIB_RULE_INVERT);
 

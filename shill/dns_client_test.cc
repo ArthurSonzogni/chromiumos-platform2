@@ -59,7 +59,9 @@ const base::TimeDelta kAresWait =
 class DnsClientTest : public Test {
  public:
   DnsClientTest()
-      : ares_result_(ARES_SUCCESS), address_result_(IPAddress::kFamilyUnknown) {
+      : ares_result_(ARES_SUCCESS),
+        address_result_(
+            IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown)) {
     time_val_.tv_sec = 0;
     time_val_.tv_usec = 0;
     ares_timeout_.tv_sec = kAresWait.InSeconds();

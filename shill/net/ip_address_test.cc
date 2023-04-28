@@ -99,8 +99,7 @@ TEST_F(IPAddressTest, Statics) {
   EXPECT_EQ(32,
             IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4, "foo"));
 
-  IPAddress addr4(IPAddress::kFamilyIPv4);
-  addr4.SetAddressToDefault();
+  IPAddress addr4 = IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
 
   EXPECT_EQ(4, addr4.GetLength());
   EXPECT_EQ(IPAddress::kFamilyIPv4, addr4.family());
@@ -108,8 +107,7 @@ TEST_F(IPAddressTest, Statics) {
   EXPECT_TRUE(addr4.address().IsZero());
   EXPECT_TRUE(addr4.address().Equals(ByteString(4)));
 
-  IPAddress addr6(IPAddress::kFamilyIPv6);
-  addr6.SetAddressToDefault();
+  IPAddress addr6 = IPAddress::CreateFromFamily(IPAddress::kFamilyIPv6);
 
   EXPECT_EQ(16, addr6.GetLength());
   EXPECT_EQ(addr6.family(), IPAddress::kFamilyIPv6);
@@ -222,9 +220,13 @@ TEST_F(IPAddressTest, HasSameAddressAs) {
 }
 
 TEST_F(IPAddressTest, InvalidAddress) {
-  EXPECT_EQ("<unknown>", IPAddress(0).ToString());
-  EXPECT_EQ("<unknown>", IPAddress(IPAddress::kFamilyIPv4).ToString());
-  EXPECT_EQ("<unknown>", IPAddress(IPAddress::kFamilyIPv6).ToString());
+  EXPECT_EQ("<unknown>", IPAddress::CreateFromFamily_Deprecated(0).ToString());
+  EXPECT_EQ("<unknown>",
+            IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4)
+                .ToString());
+  EXPECT_EQ("<unknown>",
+            IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv6)
+                .ToString());
 }
 
 struct PrefixMapping {
@@ -525,7 +527,8 @@ TEST(IPAddressMoveTest, MoveConstructor) {
 TEST(IPAddressMoveTest, MoveAssignmentOperator) {
   const IPAddress const_address = CreateAndUnwrapIPAddress(kV4String1);
   IPAddress source_address = CreateAndUnwrapIPAddress(kV4String1);
-  IPAddress dest_address(IPAddress::kFamilyIPv4);
+  IPAddress dest_address =
+      IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4);
 
   EXPECT_EQ(const_address, source_address);
   EXPECT_FALSE(const_address.Equals(dest_address));
@@ -582,6 +585,23 @@ TEST(IPAddressConversionTest, IPv6CIDR) {
   EXPECT_EQ(*ip.ToIPv6CIDR(), cidr);
   EXPECT_FALSE(ip.ToIPv4Address());
   EXPECT_FALSE(ip.ToIPv4CIDR());
+}
+
+TEST(IPAddressCreationTest, CreateFromFamily) {
+  const auto ipv4 = IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
+  EXPECT_EQ(ipv4.family(), IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(ipv4.IsValid());
+  EXPECT_TRUE(ipv4.IsDefault());
+
+  const auto ipv6 = IPAddress::CreateFromFamily(IPAddress::kFamilyIPv6);
+  EXPECT_EQ(ipv6.family(), IPAddress::kFamilyIPv6);
+  EXPECT_TRUE(ipv6.IsValid());
+  EXPECT_TRUE(ipv6.IsDefault());
+
+  const auto unknown = IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown);
+  EXPECT_EQ(unknown.family(), IPAddress::kFamilyUnknown);
+  EXPECT_FALSE(unknown.IsValid());
+  EXPECT_TRUE(unknown.IsDefault());
 }
 
 }  // namespace shill

@@ -11,7 +11,9 @@
 namespace shill {
 
 RoutingTableEntry::RoutingTableEntry(IPAddress::Family family)
-    : dst(family), src(family), gateway(family) {}
+    : dst(IPAddress::CreateFromFamily_Deprecated(family)),
+      src(IPAddress::CreateFromFamily_Deprecated(family)),
+      gateway(IPAddress::CreateFromFamily_Deprecated(family)) {}
 
 RoutingTableEntry::RoutingTableEntry(const IPAddress& dst_in,
                                      const IPAddress& src_in,

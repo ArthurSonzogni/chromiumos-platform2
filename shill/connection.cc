@@ -82,8 +82,8 @@ Connection::Connection(int interface_index,
       use_if_addrs_(false),
       fixed_ip_params_(fixed_ip_params),
       table_id_(RoutingTable::GetInterfaceTableId(interface_index)),
-      local_(IPAddress::kFamilyUnknown),
-      gateway_(IPAddress::kFamilyUnknown),
+      local_(IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown)),
+      gateway_(IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown)),
       resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
@@ -158,7 +158,8 @@ bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties,
       gateway->SetAddressToDefault();
     }
 
-    IPAddress src(address_family);  // Left as default.
+    // Left as default.
+    const auto src = IPAddress::CreateFromFamily_Deprecated(address_family);
 
     if (!routing_table_->AddRoute(interface_index_,
                                   RoutingTableEntry::Create(*dst, src, *gateway)
@@ -176,7 +177,8 @@ bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties) {
   // is as simple as adding an RTN_THROW entry for each item on the list.
   // Traffic that matches the RTN_THROW entry will cause the kernel to
   // stop traversing our routing table and try the next rule in the list.
-  IPAddress empty_ip(properties.address_family);
+  IPAddress empty_ip =
+      IPAddress::CreateFromFamily_Deprecated(properties.address_family);
   auto entry = RoutingTableEntry::Create(empty_ip, empty_ip, empty_ip)
                    .SetScope(RT_SCOPE_LINK)
                    .SetTable(table_id_)
@@ -270,8 +272,7 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     is_p2p = true;
     // Reset |gateway| to default, so that the default route will be installed
     // by the code below.
-    gateway = IPAddress(properties.address_family);
-    gateway->SetAddressToDefault();
+    gateway = IPAddress::CreateFromFamily(properties.address_family);
   }
 
   // Skip address configuration if the address is from SLAAC. Note that IPv6 VPN
@@ -299,7 +300,9 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
 
     rtnl_handler_->AddInterfaceAddress(
         interface_index_, *local,
-        broadcast.has_value() ? *broadcast : IPAddress(local->family()));
+        broadcast.has_value()
+            ? *broadcast
+            : IPAddress::CreateFromFamily_Deprecated(local->family()));
     added_addresses_.insert_or_assign(local->family(), *local);
 
     SetMTU(properties.mtu);
@@ -354,7 +357,8 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
   if (gateway.has_value()) {
     gateway_ = *gateway;
   } else {
-    gateway_ = IPAddress(properties.address_family);
+    gateway_ =
+        IPAddress::CreateFromFamily_Deprecated(properties.address_family);
   }
 }
 
@@ -566,7 +570,8 @@ bool Connection::FixGatewayReachability(
   IPAddress gateway_with_max_prefix(*gateway);
   gateway_with_max_prefix.set_prefix(
       IPAddress::GetMaxPrefixLength(gateway_with_max_prefix.family()));
-  IPAddress default_address(gateway->family());
+  const auto default_address =
+      IPAddress::CreateFromFamily_Deprecated(gateway->family());
   auto entry = RoutingTableEntry::Create(gateway_with_max_prefix,
                                          default_address, default_address)
                    .SetScope(RT_SCOPE_LINK)

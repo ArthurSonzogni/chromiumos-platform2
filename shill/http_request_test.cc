@@ -105,9 +105,10 @@ class HttpRequestTest : public Test {
   };
 
   void SetUp() override {
-    request_.reset(new HttpRequest(&dispatcher_, interface_name_,
-                                   IPAddress(IPAddress::kFamilyIPv4),
-                                   {kDNSServer0, kDNSServer1}, true));
+    request_.reset(new HttpRequest(
+        &dispatcher_, interface_name_,
+        IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4),
+        {kDNSServer0, kDNSServer1}, true));
     // Passes ownership.
     request_->dns_client_.reset(dns_client_);
     request_->transport_ = transport_;
@@ -167,7 +168,8 @@ class HttpRequestTest : public Test {
   }
   void GetDNSResultFailure(const std::string& error_msg) {
     Error error(Error::kOperationFailed, error_msg);
-    IPAddress address(IPAddress::kFamilyUnknown);
+    IPAddress address =
+        IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyUnknown);
     request_->GetDNSResult(error, address);
   }
   void GetDNSResultSuccess(const IPAddress& address) {

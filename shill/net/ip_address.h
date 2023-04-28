@@ -32,7 +32,13 @@ class SHILL_EXPORT IPAddress {
   static const char kFamilyNameIPv4[];
   static const char kFamilyNameIPv6[];
 
-  explicit IPAddress(Family family);
+  // Creates a instance by family. The created instance is not initialized yet,
+  // the caller need to call SetAddressToDefault() before using it.
+  // Note: It's deprecated. Please use CreateFromFamily() instead.
+  static IPAddress CreateFromFamily_Deprecated(Family family);
+
+  // Creates a instance by family and initializes it.
+  static IPAddress CreateFromFamily(Family family);
 
   // Creates from the family-specific classes. The created instance is already
   // initialized (i.e. IsValid() is true).

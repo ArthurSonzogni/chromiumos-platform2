@@ -29,7 +29,22 @@ const char IPAddress::kFamilyNameIPv4[] = "IPv4";
 // static
 const char IPAddress::kFamilyNameIPv6[] = "IPv6";
 
-IPAddress::IPAddress(Family family) : family_(family), prefix_(0) {}
+// static
+IPAddress IPAddress::CreateFromFamily(Family family) {
+  switch (family) {
+    case kFamilyIPv4:
+      return IPAddress(IPv4Address());
+    case kFamilyIPv6:
+      return IPAddress(IPv6Address());
+    default:
+      return IPAddress(kFamilyUnknown, ByteString());
+  }
+}
+
+// static
+IPAddress IPAddress::CreateFromFamily_Deprecated(Family family) {
+  return IPAddress(family, ByteString(), 0);
+}
 
 IPAddress::IPAddress(Family family, const ByteString& address)
     : IPAddress(family, address, 0) {}
@@ -150,14 +165,16 @@ std::optional<IPAddress> IPAddress::CreateFromByteStringAndPrefix(
 std::optional<IPAddress> IPAddress::CreateFromStringAndPrefix(
     const std::string& address_string, unsigned int prefix, Family family) {
   if (family != kFamilyIPv6) {
-    IPAddress ipv4_address(IPAddress::kFamilyIPv4);
+    IPAddress ipv4_address =
+        IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
     if (ipv4_address.SetAddressFromString(address_string)) {
       ipv4_address.set_prefix(prefix);
       return ipv4_address;
     }
   }
   if (family != kFamilyIPv4) {
-    IPAddress ipv6_address(IPAddress::kFamilyIPv6);
+    IPAddress ipv6_address =
+        IPAddress::CreateFromFamily(IPAddress::kFamilyIPv6);
     if (ipv6_address.SetAddressFromString(address_string)) {
       ipv6_address.set_prefix(prefix);
       return ipv6_address;
@@ -170,13 +187,15 @@ std::optional<IPAddress> IPAddress::CreateFromStringAndPrefix(
 std::optional<IPAddress> IPAddress::CreateFromPrefixString(
     const std::string& address_string, Family family) {
   if (family != kFamilyIPv6) {
-    IPAddress ipv4_address(IPAddress::kFamilyIPv4);
+    IPAddress ipv4_address =
+        IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
     if (ipv4_address.SetAddressAndPrefixFromString(address_string)) {
       return ipv4_address;
     }
   }
   if (family != kFamilyIPv4) {
-    IPAddress ipv6_address(IPAddress::kFamilyIPv6);
+    IPAddress ipv6_address =
+        IPAddress::CreateFromFamily(IPAddress::kFamilyIPv6);
     if (ipv6_address.SetAddressAndPrefixFromString(address_string)) {
       return ipv6_address;
     }

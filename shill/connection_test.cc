@@ -124,7 +124,8 @@ class ConnectionTest : public Test {
         broadcast_address_(CreateAndUnwrapIPAddress(kBroadcastAddress0)),
         gateway_ipv4_address_(CreateAndUnwrapIPAddress(kGatewayAddress0)),
         gateway_ipv6_address_(CreateAndUnwrapIPAddress(kIPv6GatewayAddress)),
-        default_address_(IPAddress::kFamilyIPv4),
+        default_address_(
+            IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4)),
         local_ipv6_address_(CreateAndUnwrapIPAddress(kIPv6Address)) {}
 
   void SetUp() override {
@@ -188,7 +189,9 @@ class ConnectionTest : public Test {
       const auto destination_address =
           IPAddress::CreateFromPrefixString(prefix_cidr);
       CHECK(destination_address.has_value()) << prefix_cidr;
-      IPAddress source_address(address_family);  // Left as default.
+      // Left as default.
+      const auto source_address(
+          IPAddress::CreateFromFamily_Deprecated(address_family));
       EXPECT_CALL(routing_table_,
                   AddRoute(connection_->interface_index_,
                            RoutingTableEntry::Create(*destination_address,
@@ -212,7 +215,9 @@ class ConnectionTest : public Test {
       IPAddress destination_address = CreateAndUnwrapIPAddress(route.host);
       destination_address.set_prefix(route.prefix);
 
-      IPAddress source_address(address_family);  // Left as default.
+      // Left as default.
+      const auto source_address =
+          IPAddress::CreateFromFamily_Deprecated(address_family);
       IPAddress gateway_address = CreateAndUnwrapIPAddress(route.gateway);
 
       EXPECT_CALL(

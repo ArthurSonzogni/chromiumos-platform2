@@ -21,7 +21,7 @@ const int Icmp::kIcmpEchoCode = 0;  // value specified in RFC 792.
 Icmp::Icmp()
     : sockets_(new Sockets()),
       socket_(-1),
-      destination_(IPAddress::kFamilyUnknown),
+      destination_(IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown)),
       interface_index_(-1) {}
 
 Icmp::~Icmp() = default;

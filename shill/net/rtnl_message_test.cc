@@ -865,10 +865,8 @@ TEST_F(RTNLMessageTest, EncodeDelNeighbor) {
 TEST_F(RTNLMessageTest, EncodeRouteAdd) {
   RTNLMessage msg(RTNLMessage::kTypeRoute, RTNLMessage::kModeAdd, 0, 1, 2, 0,
                   IPAddress::kFamilyIPv4);
-  IPAddress dst(IPAddress::kFamilyIPv4);
-  IPAddress src(IPAddress::kFamilyIPv4);
-  dst.SetAddressToDefault();
-  src.SetAddressToDefault();
+  const auto dst = IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
+  const auto src = IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
 
   IPAddress gateway = CreateIPAddressUnwrap("192.168.0.1");
 

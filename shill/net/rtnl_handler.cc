@@ -433,7 +433,8 @@ bool RTNLHandler::AddInterfaceAddress(int interface_index,
 bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
                                          const IPAddress& local) {
   return AddressRequest(interface_index, RTNLMessage::kModeDelete, NLM_F_ECHO,
-                        local, IPAddress(local.family()));
+                        local,
+                        IPAddress::CreateFromFamily_Deprecated(local.family()));
 }
 
 bool RTNLHandler::RemoveInterface(int interface_index) {
