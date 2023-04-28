@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_FRONTEND_ATTESTATION_MOCK_FRONTEND_H_
 #define LIBHWSEC_FRONTEND_ATTESTATION_MOCK_FRONTEND_H_
 
+#include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
@@ -26,6 +27,14 @@ class MockAttestationFrontend : public MockFrontend,
   MOCK_METHOD(StatusOr<brillo::Blob>,
               Seal,
               (const brillo::SecureBlob& unsealed_data),
+              (override));
+  MOCK_METHOD(StatusOr<attestation::Quote>,
+              Quote,
+              (DeviceConfig device_config, const brillo::Blob& key_blob),
+              (override));
+  MOCK_METHOD(StatusOr<bool>,
+              IsQuoted,
+              (DeviceConfig device_config, const attestation::Quote& quote),
               (override));
 };
 

@@ -4,11 +4,15 @@
 
 #include "libhwsec/frontend/attestation/frontend_impl.h"
 
+#include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 
 #include "libhwsec/backend/backend.h"
 #include "libhwsec/middleware/middleware.h"
 #include "libhwsec/status.h"
+#include "libhwsec/structures/key.h"
+#include "libhwsec/structures/operation_policy.h"
 
 namespace hwsec {
 
@@ -27,6 +31,7 @@ StatusOr<brillo::SecureBlob> AttestationFrontendImpl::Unseal(
       },
       sealed_data, Sealing::UnsealOptions{});
 }
+
 StatusOr<brillo::Blob> AttestationFrontendImpl::Seal(
     const brillo::SecureBlob& unsealed_data) {
   return middleware_.CallSync<&Backend::Sealing::Seal>(
@@ -44,6 +49,24 @@ StatusOr<brillo::Blob> AttestationFrontendImpl::Seal(
               },
       },
       unsealed_data);
+}
+
+StatusOr<attestation::Quote> AttestationFrontendImpl::Quote(
+    DeviceConfig device_config, const brillo::Blob& key_blob) {
+  ASSIGN_OR_RETURN(
+      ScopedKey key,
+      middleware_.CallSync<&Backend::KeyManagement::LoadKey>(
+          OperationPolicy{}, key_blob,
+          Backend::KeyManagement::LoadKeyOptions{.auto_reload = true}));
+
+  return middleware_.CallSync<&Backend::Attestation::Quote>(
+      DeviceConfigs{device_config}, key.GetKey());
+}
+
+StatusOr<bool> AttestationFrontendImpl::IsQuoted(
+    DeviceConfig device_config, const attestation::Quote& quote) {
+  return middleware_.CallSync<&Backend::Attestation::IsQuoted>(
+      DeviceConfigs{device_config}, quote);
 }
 
 }  // namespace hwsec

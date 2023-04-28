@@ -5,10 +5,13 @@
 #ifndef LIBHWSEC_FRONTEND_ATTESTATION_FRONTEND_H_
 #define LIBHWSEC_FRONTEND_ATTESTATION_FRONTEND_H_
 
+#include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/frontend/frontend.h"
 #include "libhwsec/status.h"
+#include "libhwsec/structures/key.h"
+#include "libhwsec/structures/operation_policy.h"
 
 namespace hwsec {
 
@@ -19,6 +22,10 @@ class AttestationFrontend : public Frontend {
       const brillo::Blob& sealed_data) = 0;
   virtual StatusOr<brillo::Blob> Seal(
       const brillo::SecureBlob& unsealed_data) = 0;
+  virtual StatusOr<attestation::Quote> Quote(DeviceConfig device_config,
+                                             const brillo::Blob& key_blob) = 0;
+  virtual StatusOr<bool> IsQuoted(DeviceConfig device_config,
+                                  const attestation::Quote& quote) = 0;
 };
 
 }  // namespace hwsec
