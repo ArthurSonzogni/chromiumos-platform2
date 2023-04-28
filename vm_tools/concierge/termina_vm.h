@@ -30,7 +30,7 @@
 
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
-#include "vm_tools/concierge/vm_base.h"
+#include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
@@ -78,7 +78,7 @@ struct VmFeatures {
 };
 
 // Represents a single instance of a running termina VM.
-class TerminaVm final : public VmBase {
+class TerminaVm final : public VmBaseImpl {
  public:
   // Type of a disk image.
   enum class DiskImageType {
@@ -205,7 +205,7 @@ class TerminaVm final : public VmBase {
   // Whether a TremplinStartedSignal has been received for the VM.
   bool IsTremplinStarted() const { return is_tremplin_started_; }
 
-  // VmBase overrides.
+  // VmBaseImpl overrides.
   // Shuts down the VM.  First attempts a clean shutdown of the VM by sending
   // a Shutdown RPC to maitre'd.  If that fails, attempts to shut down the VM
   // using the control socket for the hypervisor.  If that fails, then sends a
@@ -213,7 +213,7 @@ class TerminaVm final : public VmBase {
   // by sending it a SIGKILL.  Returns true if the VM was shut down and false
   // otherwise.
   bool Shutdown() override;
-  VmBase::Info GetInfo() override;
+  VmBaseImpl::Info GetInfo() override;
   bool AttachUsbDevice(uint8_t bus,
                        uint8_t addr,
                        uint16_t vid,

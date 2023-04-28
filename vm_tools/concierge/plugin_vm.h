@@ -29,7 +29,7 @@
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/plugin_vm_usb.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
-#include "vm_tools/concierge/vm_base.h"
+#include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 
 namespace vm_tools {
@@ -41,7 +41,7 @@ constexpr char kPluginVmCpuCgroup[] = "/sys/fs/cgroup/cpu/plugin";
 // The CPU cgroup where all the PluginVm crosvm vcpu processes should belong to.
 constexpr char kPluginVmVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/plugin-vcpus";
 
-class PluginVm final : public VmBase {
+class PluginVm final : public VmBaseImpl {
  public:
   static std::unique_ptr<PluginVm> Create(
       const VmId id,
@@ -60,9 +60,9 @@ class PluginVm final : public VmBase {
       VmBuilder vm_builder);
   ~PluginVm() override;
 
-  // VmBase overrides.
+  // VmBaseImpl overrides.
   bool Shutdown() override;
-  VmBase::Info GetInfo() override;
+  VmBaseImpl::Info GetInfo() override;
   const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(
       const MemoryMargins& margins, const std::string& vm) override {
     // Never initialized, so a balloon policy will not run.

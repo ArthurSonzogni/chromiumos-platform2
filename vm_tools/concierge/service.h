@@ -355,7 +355,7 @@ class Service final : public org::chromium::VmConciergeInterface {
   // Get the host system time zone
   std::string GetHostTimeZone();
 
-  using VmMap = std::map<VmId, std::unique_ptr<VmBase>>;
+  using VmMap = std::map<VmId, std::unique_ptr<VmBaseImpl>>;
 
   // Returns an iterator to vm with key |vm_id|.
   VmMap::iterator FindVm(const VmId& vm_id);

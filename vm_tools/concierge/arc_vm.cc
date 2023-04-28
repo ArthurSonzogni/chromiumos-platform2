@@ -256,12 +256,12 @@ ArcVm::ArcVm(int32_t vsock_cid,
              base::FilePath data_disk_path,
              VmMemoryId vm_memory_id,
              ArcVmFeatures features)
-    : VmBase(std::move(network_client),
-             vsock_cid,
-             std::move(seneschal_server_proxy),
-             kCrosvmSocket,
-             std::move(runtime_dir),
-             vm_memory_id),
+    : VmBaseImpl(std::move(network_client),
+                 vsock_cid,
+                 std::move(seneschal_server_proxy),
+                 kCrosvmSocket,
+                 std::move(runtime_dir),
+                 vm_memory_id),
       data_disk_path_(data_disk_path),
       features_(features),
       balloon_refresh_time_(base::Time::Now() + kBalloonRefreshTime) {}
@@ -668,7 +668,7 @@ void ArcVm::InitializeBalloonPolicy(const MemoryMargins& margins,
   }
 
   // No balloon policy parameters, so fall back to older policy.
-  // NB: we override the VmBase method to provide the 48 MiB bias.
+  // NB: we override the VmBaseImpl method to provide the 48 MiB bias.
   balloon_policy_ = std::make_unique<BalanceAvailableBalloonPolicy>(
       margins.critical, 48 * MIB, vm);
 }
@@ -701,11 +701,12 @@ void ArcVm::HandleSuspendDone() {
 bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
                                 int quota) {
   bool ret = true;
-  if (!VmBase::SetVmCpuRestriction(cpu_restriction_state, kArcvmCpuCgroup)) {
+  if (!VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
+                                       kArcvmCpuCgroup)) {
     ret = false;
   }
-  if (!VmBase::SetVmCpuRestriction(cpu_restriction_state,
-                                   kArcvmVcpuCpuCgroup)) {
+  if (!VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
+                                       kArcvmVcpuCpuCgroup)) {
     ret = false;
   }
 
@@ -747,14 +748,14 @@ uint32_t ArcVm::IPv4Address() const {
   return 0;
 }
 
-VmBase::Info ArcVm::GetInfo() {
-  VmBase::Info info = {
+VmBaseImpl::Info ArcVm::GetInfo() {
+  VmBaseImpl::Info info = {
       .ipv4_address = IPv4Address(),
       .pid = pid(),
       .cid = cid(),
       .vm_memory_id = vm_memory_id_,
       .seneschal_server_handle = seneschal_server_handle(),
-      .status = VmBase::Status::RUNNING,
+      .status = VmBaseImpl::Status::RUNNING,
       .type = VmInfo::ARC_VM,
   };
 
