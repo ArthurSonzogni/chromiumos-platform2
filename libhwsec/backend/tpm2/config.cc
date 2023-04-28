@@ -131,11 +131,6 @@ StatusOr<bool> ConfigTpm2::IsCurrentUserSet() {
   return value != std::string(SHA256_DIGEST_LENGTH, 0);
 }
 
-StatusOr<ConfigTpm2::QuoteResult> ConfigTpm2::Quote(DeviceConfigs device_config,
-                                                    Key key) {
-  return MakeStatus<TPMError>("Unimplemented", TPMRetryAction::kNoRetry);
-}
-
 StatusOr<ConfigTpm2::PcrMap> ConfigTpm2::ToPcrMap(
     const DeviceConfigs& device_config) {
   PcrMap result;

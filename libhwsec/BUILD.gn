@@ -277,6 +277,7 @@ source_set("hardware_abstraction_internal_library") {
 
   if (use.tpm || use.test) {
     sources += [
+      "backend/tpm1/attestation.cc",
       "backend/tpm1/backend.cc",
       "backend/tpm1/config.cc",
       "backend/tpm1/da_mitigation.cc",
@@ -300,6 +301,7 @@ source_set("hardware_abstraction_internal_library") {
 
   if (use.tpm2 || use.test) {
     sources += [
+      "backend/tpm2/attestation.cc",
       "backend/tpm2/backend.cc",
       "backend/tpm2/config.cc",
       "backend/tpm2/da_mitigation.cc",

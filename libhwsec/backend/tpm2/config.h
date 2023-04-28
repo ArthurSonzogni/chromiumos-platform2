@@ -34,7 +34,6 @@ class ConfigTpm2 : public Config {
       const OperationPolicySetting& policy) override;
   Status SetCurrentUser(const std::string& current_user) override;
   StatusOr<bool> IsCurrentUserSet() override;
-  StatusOr<QuoteResult> Quote(DeviceConfigs device_config, Key key) override;
 
   using PcrMap = std::map<uint32_t, std::string>;
 

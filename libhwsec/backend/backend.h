@@ -9,6 +9,7 @@
 
 #include <base/notreached.h>
 
+#include "libhwsec/backend/attestation.h"
 #include "libhwsec/backend/config.h"
 #include "libhwsec/backend/da_mitigation.h"
 #include "libhwsec/backend/deriving.h"
@@ -59,6 +60,7 @@ class Backend {
   using Vendor = ::hwsec::Vendor;
   using RecoveryCrypto = ::hwsec::RecoveryCrypto;
   using U2f = ::hwsec::U2f;
+  using Attestation = ::hwsec::Attestation;
 
   virtual ~Backend() = default;
 
@@ -99,6 +101,8 @@ class Backend {
       return GetRecoveryCrypto();
     else if constexpr (std::is_same_v<SubClass, U2f>)
       return GetU2f();
+    else if constexpr (std::is_same_v<SubClass, Attestation>)
+      return GetAttestation();
     NOTREACHED() << "Should not reach here.";
   }
 
@@ -120,6 +124,7 @@ class Backend {
   virtual Vendor* GetVendor() = 0;
   virtual RecoveryCrypto* GetRecoveryCrypto() = 0;
   virtual U2f* GetU2f() = 0;
+  virtual Attestation* GetAttestation() = 0;
 };
 
 }  // namespace hwsec

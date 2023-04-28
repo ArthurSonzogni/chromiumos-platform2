@@ -31,7 +31,6 @@ class MockConfig : public Config {
         .WillByDefault(Invoke(default_, &Config::SetCurrentUser));
     ON_CALL(*this, IsCurrentUserSet)
         .WillByDefault(Invoke(default_, &Config::IsCurrentUserSet));
-    ON_CALL(*this, Quote).WillByDefault(Invoke(default_, &Config::Quote));
   }
 
   MOCK_METHOD(StatusOr<OperationPolicy>,
@@ -43,10 +42,6 @@ class MockConfig : public Config {
               (const std::string& current_user),
               (override));
   MOCK_METHOD(StatusOr<bool>, IsCurrentUserSet, (), (override));
-  MOCK_METHOD(StatusOr<QuoteResult>,
-              Quote,
-              (DeviceConfigs device_config, Key key),
-              (override));
 
  private:
   Config* default_;

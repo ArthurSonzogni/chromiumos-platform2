@@ -15,6 +15,7 @@
 #define LIBHWSEC_MOCK_BACKEND
 
 #include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/mock_attestation.h"
 #include "libhwsec/backend/mock_config.h"
 #include "libhwsec/backend/mock_da_mitigation.h"
 #include "libhwsec/backend/mock_deriving.h"
@@ -55,6 +56,7 @@ class MockBackend : public Backend {
     testing::NiceMock<MockVendor> vendor;
     testing::NiceMock<MockRecoveryCrypto> recovery_crypto;
     testing::NiceMock<MockU2f> u2f;
+    testing::NiceMock<MockAttestation> attestation;
   };
 
   MockBackend() = default;
@@ -94,6 +96,8 @@ class MockBackend : public Backend {
             .recovery_crypto = testing::NiceMock<MockRecoveryCrypto>(
                 default_backend_->Get<RecoveryCrypto>()),
             .u2f = testing::NiceMock<MockU2f>(default_backend_->Get<U2f>()),
+            .attestation = testing::NiceMock<MockAttestation>(
+                default_backend_->Get<Attestation>()),
         }) {}
 
   ~MockBackend() override = default;
@@ -126,6 +130,7 @@ class MockBackend : public Backend {
     return &mock_data_.recovery_crypto;
   }
   U2f* GetU2f() override { return &mock_data_.u2f; }
+  Attestation* GetAttestation() override { return &mock_data_.attestation; }
 
   std::unique_ptr<Backend> default_backend_;
   MockBackendData mock_data_;

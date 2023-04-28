@@ -10,6 +10,7 @@
 #include <trunks/trunks_factory.h>
 
 #include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/tpm2/attestation.h"
 #include "libhwsec/backend/tpm2/config.h"
 #include "libhwsec/backend/tpm2/da_mitigation.h"
 #include "libhwsec/backend/tpm2/deriving.h"
@@ -62,6 +63,7 @@ class BackendTpm2 : public Backend {
   VendorTpm2& GetVendorTpm2() { return vendor_; }
   RecoveryCryptoTpm2& GetRecoveryCryptoTpm2() { return recovery_crypto_; }
   U2fTpm2& GetU2fTpm2() { return u2f_; }
+  AttestationTpm2& GetAttestationTpm2() { return attestation_; }
 
   void set_middleware_derivative_for_test(
       MiddlewareDerivative middleware_derivative) {
@@ -90,6 +92,7 @@ class BackendTpm2 : public Backend {
   Vendor* GetVendor() override { return &vendor_; }
   RecoveryCrypto* GetRecoveryCrypto() override { return &recovery_crypto_; }
   U2f* GetU2f() override { return &u2f_; }
+  Attestation* GetAttestation() override { return &attestation_; }
 
   Proxy& proxy_;
   org::chromium::TpmManagerProxyInterface& tpm_manager_;
@@ -115,6 +118,7 @@ class BackendTpm2 : public Backend {
   VendorTpm2 vendor_;
   RecoveryCryptoTpm2 recovery_crypto_;
   U2fTpm2 u2f_;
+  AttestationTpm2 attestation_;
   RoDataTpm2 ro_data_;
 };
 

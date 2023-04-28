@@ -101,11 +101,6 @@ StatusOr<bool> ConfigTpm1::IsCurrentUserSet() {
   return value != brillo::Blob(SHA_DIGEST_LENGTH, 0);
 }
 
-StatusOr<ConfigTpm1::QuoteResult> ConfigTpm1::Quote(DeviceConfigs device_config,
-                                                    Key key) {
-  return MakeStatus<TPMError>("Unimplemented", TPMRetryAction::kNoRetry);
-}
-
 StatusOr<ConfigTpm1::PcrMap> ConfigTpm1::ToPcrMap(
     const DeviceConfigs& device_config) {
   PcrMap result;
