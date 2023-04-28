@@ -257,6 +257,7 @@ TEST_F(X11Test, NonExistentWindowDoesNotCrash) {
   // sl_handle_client_message
   xcb_client_message_event_t message_event;
   message_event.window = 123;
+  message_event.data.data32[0] = WM_STATE_ICONIC;
   message_event.type = ctx.atoms[ATOM_WL_SURFACE_ID].value;
   sl_handle_client_message(&ctx, &message_event);
   message_event.type = ctx.atoms[ATOM_NET_ACTIVE_WINDOW].value;
@@ -276,6 +277,7 @@ TEST_F(X11Test, NonExistentWindowDoesNotCrash) {
   // sl_handle_unmap_notify
   xcb_unmap_notify_event_t unmap_event;
   unmap_event.window = 123;
+  unmap_event.response_type = 0;
   sl_handle_unmap_notify(&ctx, &unmap_event);
 
   // sl_handle_configure_request
