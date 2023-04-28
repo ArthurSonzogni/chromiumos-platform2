@@ -23,6 +23,7 @@ class BRILLO_EXPORT InstallAttributesReader {
   // Constants for the possible device modes.
   // The consumer owned devices don't have the enterprise.mode attribute.
   static constexpr char kDeviceModeEnterprise[] = "enterprise";
+  // TODO(igorcov): Remove AD constant after all of its usages are removed.
   static constexpr char kDeviceModeEnterpriseAD[] = "enterprise_ad";
   static constexpr char kDeviceModeLegacyRetail[] = "kiosk";
   static constexpr char kDeviceModeConsumerKiosk[] = "consumer_kiosk";

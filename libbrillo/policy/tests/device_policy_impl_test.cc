@@ -135,19 +135,6 @@ TEST_F(DevicePolicyImplTest, GetRollbackAllowedMilestones_Set) {
   EXPECT_EQ(3, value);
 }
 
-// RollbackAllowedMilestones is set to a valid value, using AD.
-TEST_F(DevicePolicyImplTest, GetRollbackAllowedMilestones_SetAD) {
-  em::ChromeDeviceSettingsProto device_policy_proto;
-  em::AutoUpdateSettingsProto* auto_update_settings =
-      device_policy_proto.mutable_auto_update_settings();
-  auto_update_settings->set_rollback_allowed_milestones(3);
-  InitializePolicy(InstallAttributesReader::kDeviceModeEnterpriseAD,
-                   device_policy_proto);
-  int value = -1;
-  ASSERT_TRUE(device_policy_.GetRollbackAllowedMilestones(&value));
-  EXPECT_EQ(3, value);
-}
-
 // RollbackAllowedMilestones is set to a valid value, but it's not an enterprise
 // device.
 TEST_F(DevicePolicyImplTest, GetRollbackAllowedMilestones_SetConsumer) {
@@ -212,23 +199,6 @@ TEST_F(DevicePolicyImplTest, GetDeviceUpdateStagingSchedule_Valid) {
       "[{\"days\": 4, \"percentage\": 40}, {\"days\": 10, \"percentage\": "
       "100}]");
   InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
-                   device_policy_proto);
-
-  std::vector<DayPercentagePair> staging_schedule;
-  ASSERT_TRUE(device_policy_.GetDeviceUpdateStagingSchedule(&staging_schedule));
-  EXPECT_THAT(staging_schedule, ElementsAre(DayPercentagePair{4, 40},
-                                            DayPercentagePair{10, 100}));
-}
-
-// Update staging schedule has valid values, set using AD.
-TEST_F(DevicePolicyImplTest, GetDeviceUpdateStagingSchedule_Valid_AD) {
-  em::ChromeDeviceSettingsProto device_policy_proto;
-  em::AutoUpdateSettingsProto* auto_update_settings =
-      device_policy_proto.mutable_auto_update_settings();
-  auto_update_settings->set_staging_schedule(
-      "[{\"days\": 4, \"percentage\": 40}, {\"days\": 10, \"percentage\": "
-      "100}]");
-  InitializePolicy(InstallAttributesReader::kDeviceModeEnterpriseAD,
                    device_policy_proto);
 
   std::vector<DayPercentagePair> staging_schedule;

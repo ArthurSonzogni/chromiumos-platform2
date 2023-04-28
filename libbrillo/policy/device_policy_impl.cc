@@ -237,8 +237,7 @@ bool DevicePolicyImpl::IsEnterpriseEnrolled() const {
 
   const std::string& device_mode = install_attributes_reader_->GetAttribute(
       InstallAttributesReader::kAttrMode);
-  return device_mode == InstallAttributesReader::kDeviceModeEnterprise ||
-         device_mode == InstallAttributesReader::kDeviceModeEnterpriseAD;
+  return device_mode == InstallAttributesReader::kDeviceModeEnterprise;
 }
 
 bool DevicePolicyImpl::GetPolicyRefreshRate(int* rate) const {
@@ -1038,21 +1037,16 @@ bool DevicePolicyImpl::LoadPolicyFromFile(const base::FilePath& policy_path) {
     return false;
   }
 
-  bool verify_policy = verify_policy_;
   if (!install_attributes_reader_) {
     install_attributes_reader_ = std::make_unique<InstallAttributesReader>();
   }
-  const std::string& mode = install_attributes_reader_->GetAttribute(
-      InstallAttributesReader::kAttrMode);
-  if (mode == InstallAttributesReader::kDeviceModeEnterpriseAD) {
-    verify_policy = false;
-  }
-  if (verify_policy && !VerifyPolicyFile(policy_path)) {
+
+  if (verify_policy_ && !VerifyPolicyFile(policy_path)) {
     return false;
   }
 
   // Make sure the signature is still valid.
-  if (verify_policy && !VerifyPolicySignature()) {
+  if (verify_policy_ && !VerifyPolicySignature()) {
     LOG(ERROR) << "Policy signature verification failed!";
     return false;
   }

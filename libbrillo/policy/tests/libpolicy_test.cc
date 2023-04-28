@@ -314,22 +314,6 @@ TEST(PolicyTest, DevicePolicyFailure) {
   EXPECT_FALSE(provider.device_policy_is_loaded());
 }
 
-// Verify that signature verification is waived for a device in enterprise_ad
-// mode.
-TEST(PolicyTest, SkipSignatureForEnterpriseAD) {
-  base::FilePath policy_file(kPolicyFileAllSet);
-  base::FilePath key_file(kNonExistingFile);
-  PolicyProvider provider;
-  provider.SetDevicePolicyForTesting(CreateDevicePolicyImpl(
-      std::make_unique<MockInstallAttributesReader>(
-          InstallAttributesReader::kDeviceModeEnterpriseAD, true),
-      policy_file, key_file, false));
-  provider.Reload();
-
-  // Ensure we successfully loaded the device policy file.
-  EXPECT_TRUE(provider.device_policy_is_loaded());
-}
-
 // Ensure that signature verification is enforced for a device in vanilla
 // enterprise mode.
 TEST(PolicyTest, DontSkipSignatureForEnterprise) {
@@ -385,15 +369,6 @@ TEST(PolicyTest, IsConsumerDeviceEnterprise) {
   provider.SetInstallAttributesReaderForTesting(
       std::make_unique<MockInstallAttributesReader>(
           InstallAttributesReader::kDeviceModeEnterprise, true));
-  EXPECT_FALSE(provider.IsConsumerDevice());
-}
-
-// Checks return value of IsConsumerDevice when it's an enterprise AD device.
-TEST(PolicyTest, IsConsumerDeviceEnterpriseAd) {
-  PolicyProvider provider;
-  provider.SetInstallAttributesReaderForTesting(
-      std::make_unique<MockInstallAttributesReader>(
-          InstallAttributesReader::kDeviceModeEnterpriseAD, true));
   EXPECT_FALSE(provider.IsConsumerDevice());
 }
 

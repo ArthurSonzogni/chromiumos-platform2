@@ -58,8 +58,7 @@ bool PolicyProvider::IsConsumerDevice() const {
 
   const std::string& device_mode = install_attributes_reader_->GetAttribute(
       InstallAttributesReader::kAttrMode);
-  return device_mode != InstallAttributesReader::kDeviceModeEnterprise &&
-         device_mode != InstallAttributesReader::kDeviceModeEnterpriseAD;
+  return device_mode != InstallAttributesReader::kDeviceModeEnterprise;
 }
 
 bool PolicyProvider::IsEnterpriseEnrolledDevice() const {
@@ -68,8 +67,7 @@ bool PolicyProvider::IsEnterpriseEnrolledDevice() const {
 
   const std::string& device_mode = install_attributes_reader_->GetAttribute(
       InstallAttributesReader::kAttrMode);
-  return device_mode == InstallAttributesReader::kDeviceModeEnterprise ||
-         device_mode == InstallAttributesReader::kDeviceModeEnterpriseAD;
+  return device_mode == InstallAttributesReader::kDeviceModeEnterprise;
 }
 
 void PolicyProvider::SetDevicePolicyForTesting(
