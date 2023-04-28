@@ -59,6 +59,7 @@
 #include "arc/arc.pb.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "dbus/login_manager/dbus-constants.h"
 #include "libpasswordprovider/fake_password_provider.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/dbus_test_util.h"
@@ -2235,136 +2236,78 @@ class StartRemoteDeviceWipeTest : public SessionManagerImplTest,
   }
 };
 
-TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_NoArgument) {
+TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_NoParameterShouldFail) {
   ExpectDeviceRestart(0);
-
   std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
   TestFuture<std::unique_ptr<dbus::Response>> sender;
-
-  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
-
-  EXPECT_EQ(dbus_error::kInvalidArgs, sender.Get()->GetErrorName());
-}
-
-TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_ArgumentEmptyArray) {
-  ExpectDeviceRestart(0);
-
-  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
-  dbus::MessageWriter writer(method_call.get());
-  std::vector<uint8_t> in_signed_command;
-  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
-
-  TestFuture<std::unique_ptr<dbus::Response>> sender;
-
-  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
-
-  EXPECT_EQ(dbus_error::kInvalidArgs, sender.Get()->GetErrorName());
-}
-
-TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_ArgumentNotArray) {
-  ExpectDeviceRestart(0);
-
-  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
-  dbus::MessageWriter writer(method_call.get());
-  writer.AppendByte(1);
-
-  TestFuture<std::unique_ptr<dbus::Response>> sender;
-
-  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
-
-  EXPECT_EQ(dbus_error::kInvalidArgs, sender.Get()->GetErrorName());
-}
-
-TEST_F(StartRemoteDeviceWipeTest,
-       StartRemoteDeviceWipe_EnterpriseNoSignatureType) {
-  SetDeviceMode("enterprise");
-  ExpectDeviceRestart(1);
-
-  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
-  dbus::MessageWriter writer(method_call.get());
-  std::vector<uint8_t> in_signed_command;
-  in_signed_command.push_back(1);
-  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
-
-  TestFuture<std::unique_ptr<dbus::Response>> sender;
-
-  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(
-                                           _, em::PolicyFetchRequest::SHA1_RSA))
-      .WillOnce(Return(true));
-
-  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
-}
-
-TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_BadSignatureType) {
-  ExpectDeviceRestart(0);
-
-  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
-  dbus::MessageWriter writer(method_call.get());
-  std::vector<uint8_t> in_signed_command;
-  in_signed_command.push_back(1);
-  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
-  writer.AppendByte(em::PolicyFetchRequest::NONE);
-
-  TestFuture<std::unique_ptr<dbus::Response>> sender;
-
-  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(_, _))
-      .Times(0);
-
-  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
-}
-
-// Signed commands should start a powerwash in cloud managed devices.
-TEST_P(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_Enterprise) {
-  SetDeviceMode("enterprise");
-  ExpectDeviceRestart(1);
-
-  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
-  dbus::MessageWriter writer(method_call.get());
-  std::vector<uint8_t> in_signed_command;
-  in_signed_command.push_back(1);
-  const em::PolicyFetchRequest::SignatureType signature_type = GetParam();
-  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
-  writer.AppendByte(signature_type);
-
-  TestFuture<std::unique_ptr<dbus::Response>> sender;
-
-  EXPECT_CALL(*device_policy_service_,
-              ValidateRemoteDeviceWipeCommand(_, signature_type))
-      .WillOnce(Return(true));
-
-  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
-}
-
-// Unsigned commands should fail on cloud managed devices.
-TEST_F(StartRemoteDeviceWipeTest,
-       StartRemoteDeviceWipe_EnterpriseBadSignature) {
-  SetDeviceMode("enterprise");
-  ExpectDeviceRestart(0);
-
-  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
-  dbus::MessageWriter writer(method_call.get());
-  std::vector<uint8_t> in_signed_command;
-  in_signed_command.push_back(1);
-  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
-  writer.AppendByte(em::PolicyFetchRequest::SHA1_RSA);
-
-  TestFuture<std::unique_ptr<dbus::Response>> sender;
-
-  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(
-                                           _, em::PolicyFetchRequest::SHA1_RSA))
-      .WillOnce(Return(false));
 
   impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
 
   EXPECT_EQ(dbus_error::kInvalidParameter, sender.Get()->GetErrorName());
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    SignatureAlgorithm,
-    StartRemoteDeviceWipeTest,
-    ::testing::ValuesIn<em::PolicyFetchRequest::SignatureType>(
-        {em::PolicyFetchRequest::SHA1_RSA,
-         em::PolicyFetchRequest::SHA256_RSA}));
+TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_EmptyArrayShouldFail) {
+  ExpectDeviceRestart(0);
+  std::vector<uint8_t> in_signed_command;
+  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
+  dbus::MessageWriter writer(method_call.get());
+  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
+  TestFuture<std::unique_ptr<dbus::Response>> sender;
+
+  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
+
+  EXPECT_EQ(dbus_error::kInvalidParameter, sender.Get()->GetErrorName());
+}
+
+TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_NotArrayShouldFail) {
+  ExpectDeviceRestart(0);
+  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
+  dbus::MessageWriter writer(method_call.get());
+  writer.AppendByte(1);
+  TestFuture<std::unique_ptr<dbus::Response>> sender;
+
+  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
+
+  EXPECT_EQ(dbus_error::kInvalidParameter, sender.Get()->GetErrorName());
+}
+
+TEST_F(StartRemoteDeviceWipeTest,
+       StartRemoteDeviceWipe_CorrectlySignedShouldPowerwash) {
+  ExpectDeviceRestart(1);
+  std::vector<uint8_t> in_signed_command;
+  in_signed_command.push_back(1);
+  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
+  dbus::MessageWriter writer(method_call.get());
+  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
+  TestFuture<std::unique_ptr<dbus::Response>> sender;
+  EXPECT_CALL(
+      *device_policy_service_,
+      ValidateRemoteDeviceWipeCommand(_, em::PolicyFetchRequest::SHA256_RSA))
+      .WillOnce(Return(true));
+
+  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
+
+  EXPECT_TRUE(sender.Get()->GetErrorName().empty());
+}
+
+TEST_F(StartRemoteDeviceWipeTest,
+       StartRemoteDeviceWipe_IncorrectlySignedShouldFail) {
+  ExpectDeviceRestart(0);
+  std::vector<uint8_t> in_signed_command;
+  in_signed_command.push_back(1);
+  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
+  dbus::MessageWriter writer(method_call.get());
+  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
+  TestFuture<std::unique_ptr<dbus::Response>> sender;
+  EXPECT_CALL(
+      *device_policy_service_,
+      ValidateRemoteDeviceWipeCommand(_, em::PolicyFetchRequest::SHA256_RSA))
+      .WillOnce(Return(false));
+
+  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
+
+  EXPECT_EQ(dbus_error::kInvalidArgs, sender.Get()->GetErrorName());
+}
 
 TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
   ASSERT_TRUE(

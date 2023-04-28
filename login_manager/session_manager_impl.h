@@ -294,14 +294,13 @@ class SessionManagerImpl
 
   bool StartDeviceWipe(brillo::ErrorPtr* error) override;
 
-  // TODO(b/226330226, b/263367348): Taking |method_call|
-  // to ensure backwards compatibility. Once the signature algorithm
-  // for the remote commands is migrated from SHA1_RSA to SHA256_RSA,
-  // and remote device wipe calls are removed from Chromad,
-  // revert the method to <arg /> instead of raw.
+  // TODO(b/226330226): Taking |method_call| to ensure backwards compatibility.
+  // Revert the method to <arg /> instead of raw, once the clients are
+  // migrated back to a single argument call.
   void StartRemoteDeviceWipe(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender sender) override;
+
   void ClearForcedReEnrollmentVpd(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
       override;
@@ -433,15 +432,6 @@ class SessionManagerImpl
   // Returns the appropriate PolicyService::KeyInstallFlags for the given
   // |descriptor|.
   int GetKeyInstallFlags(const PolicyDescriptor& descriptor);
-
-  // TODO(b/226330226, b/263367348): Once the signature algorithm
-  // for the remote commands is migrated from SHA1_RSA to SHA256_RSA,
-  // and remote device wipe calls are removed from Chromad,
-  // replace StartRemoteDeviceWipe() with this method.
-  bool StartRemoteDeviceWipeInternal(
-      brillo::ErrorPtr* error,
-      const std::vector<uint8_t>& in_signed_command,
-      uint8_t signature_type);
 
   // Requests a reboot. Formats the actual reason string to name session_manager
   // as the source of the request.

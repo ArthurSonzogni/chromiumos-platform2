@@ -54,6 +54,7 @@
 #include "arc/arc.pb.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "dbus/login_manager/dbus-constants.h"
 #include "login_manager/arc_sideload_status_interface.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/browser_job.h"
@@ -1183,85 +1184,32 @@ void SessionManagerImpl::StartRemoteDeviceWipe(
       !reader.PopArrayOfBytes(&output_bytes, &length) || length <= 0) {
     std::unique_ptr<dbus::ErrorResponse> error_response =
         dbus::ErrorResponse::FromMethodCall(
-            method_call, dbus_error::kInvalidArgs,
-            "First argument is required and should be a serialized remote "
+            method_call, dbus_error::kInvalidParameter,
+            "First parameter is required and should be a serialized remote "
             "command.");
     std::move(sender).Run(std::move(error_response));
     return;
   }
 
-  std::vector<uint8_t> in_signed_command(&output_bytes[0],
-                                         &output_bytes[length]);
+  std::vector<uint8_t> signed_command(&output_bytes[0], &output_bytes[length]);
 
-  uint8_t in_signature_type =
-      enterprise_management::PolicyFetchRequest::SHA1_RSA;
-
-  if (reader.HasMoreData()) {
-    if (reader.GetDataSignature() != "y") {
-      std::unique_ptr<dbus::ErrorResponse> error_response =
-          dbus::ErrorResponse::FromMethodCall(
-              method_call, dbus_error::kInvalidArgs,
-              "Signature type should be a byte type.");
-      std::move(sender).Run(std::move(error_response));
-      return;
-    }
-    if (!reader.PopByte(&in_signature_type)) {
-      std::unique_ptr<dbus::ErrorResponse> error_response =
-          dbus::ErrorResponse::FromMethodCall(
-              method_call, dbus_error::kInvalidArgs,
-              "Failed to parse a signature type.");
-      std::move(sender).Run(std::move(error_response));
-      return;
-    }
-  }
-
-  brillo::ErrorPtr error;
-  if (!StartRemoteDeviceWipeInternal(&error, in_signed_command,
-                                     in_signature_type)) {
+  if (!device_policy_->ValidateRemoteDeviceWipeCommand(
+          signed_command,
+          enterprise_management::PolicyFetchRequest_SignatureType_SHA256_RSA)) {
+    brillo::ErrorPtr error =
+        CreateError(dbus_error::kInvalidArgs,
+                    "Remote wipe command validation failed, aborting.");
     std::unique_ptr<dbus::Response> response =
         brillo::dbus_utils::GetDBusError(method_call, error.get());
     std::move(sender).Run(std::move(response));
     return;
   }
 
+  InitiateDeviceWipe("remote_wipe_request");
+
   std::unique_ptr<dbus::Response> response =
       dbus::Response::FromMethodCall(method_call);
   std::move(sender).Run(std::move(response));
-}
-
-bool SessionManagerImpl::StartRemoteDeviceWipeInternal(
-    brillo::ErrorPtr* error,
-    const std::vector<uint8_t>& in_signed_command,
-    uint8_t in_signature_type) {
-  if (!enterprise_management::PolicyFetchRequest::SignatureType_IsValid(
-          in_signature_type)) {
-    *error = CreateError(dbus_error::kInvalidParameter,
-                         "Invalid remote device wipe command signature type.");
-
-    return false;
-  }
-
-  auto signature_type =
-      static_cast<enterprise_management::PolicyFetchRequest::SignatureType>(
-          in_signature_type);
-
-  if (signature_type == enterprise_management::PolicyFetchRequest::NONE) {
-    *error = CreateError(dbus_error::kInvalidParameter,
-                         "Invalid remote device wipe command signature type.");
-
-    return false;
-  }
-
-  if (!device_policy_->ValidateRemoteDeviceWipeCommand(in_signed_command,
-                                                       signature_type)) {
-    *error = CreateError(dbus_error::kInvalidParameter,
-                         "Remote wipe command validation failed, aborting.");
-    return false;
-  }
-
-  InitiateDeviceWipe("remote_wipe_request");
-
-  return true;
 }
 
 void SessionManagerImpl::ClearForcedReEnrollmentVpd(

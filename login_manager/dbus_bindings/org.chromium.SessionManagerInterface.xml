@@ -476,22 +476,15 @@
     <!--
         StartRemoteDeviceWipe:
         @signed_command: serialized remote command SignedData
-        @signature_type: optional
-                         enum em::PolicyFetchRequest::SignatureType
 
         Same as StartDeviceWipe (sets the device up to "Powerwash" on reboot,
-        and triggers a reboot), except it also verifies the remote command,
-        assuming it is signed with |signature_type| algorithm.
+        and triggers a reboot), except it is called due to
+        the powerwash remote command. Verifies the remote command,
+        assuming it is signed with the SHA256_RSA algorithm.
 
-        If no |signature_type| is passed, expects that commands are
-        signed with SHA1_RSA. Does not expect em::PolicyFetchRequest::NONE.
-
-        |signature_type| is ignored and no validation happens if managed by AD.
-
-        TODO(b/226330226, b/263367348): Once the signature algorithm
-        for the remote commands is migrated from SHA1_RSA to SHA256_RSA,
-        and remote device wipe calls are removed from Chromad,
-        revert the method to <arg /> instead of raw.
+        TODO(b/226330226): Taking |method_call| to ensure
+        backwards compatibility. Revert the method to <arg /> instead of raw,
+        once the clients are migrated back to a single argument call.
     -->
     <method name="StartRemoteDeviceWipe">
       <annotation name="org.chromium.DBus.Method.Kind" value="raw" />
