@@ -15,6 +15,7 @@ group("all") {
     ":process_killer",
     ":static_node_tool",
     ":usermode-helper",
+    ":usr_share_cros_init_scripts",
   ]
   if (use.test) {
     deps += [
@@ -178,6 +179,14 @@ executable("usermode-helper") {
   sources = [ "usermode-helper.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":usermode-helper_lib" ]
+}
+
+install_config("usr_share_cros_init_scripts") {
+  sources = [
+    "send-boot-metrics.sh",
+  ]
+  install_path = "/usr/share/cros/init"
+  type = "executable"
 }
 
 if (use.test) {
