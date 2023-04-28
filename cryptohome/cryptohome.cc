@@ -3661,8 +3661,12 @@ int main(int argc, char** argv) {
     if (!GetPreparePurpose(printer, cl, &prepare_purpose))
       return 1;
 
+    auto normal_exit = [](base::RunLoop* run_loop, int* ret_code) {
+      *ret_code = 0;
+      run_loop->Quit();
+    };
     return DoPrepareAuthFactor(printer, cl, userdataauth_proxy, prepare_purpose,
-                               base::DoNothingAs<void(base::RunLoop*, int*)>());
+                               base::BindRepeating(normal_exit));
   } else if (!strcmp(switches::kActions[switches::ACTION_TERMINATE_AUTH_FACTOR],
                      action.c_str())) {
     return DoTerminateAuthFactor(printer, cl, userdataauth_proxy);
