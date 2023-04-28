@@ -14,7 +14,6 @@
 #include <brillo/syslog_logging.h>
 #include <install_attributes/libinstallattributes.h>
 
-#include "smbprovider/authpolicy_kerberos_artifact_client.h"
 #include "smbprovider/constants.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/kerberos_kerberos_artifact_client.h"
@@ -155,28 +154,16 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
     auto dbus_object = std::make_unique<brillo::dbus_utils::DBusObject>(
         nullptr, bus_, org::chromium::SmbProviderAdaptor::GetObjectPath());
 
-    // Check if this is Active Directory managed devices.
-    const bool is_active_directory =
-        InstallAttributesReader().GetAttribute(
-            InstallAttributesReader::kAttrMode) ==
-        InstallAttributesReader::kDeviceModeEnterpriseAD;
-
-    // If this is Active Directory managed devices, Kerberos artifact
-    // synchronizing happens between SmbProvider and AuthPolicy daemeon using
-    // AuthPolicyKerberosArtifactClient, otherwise with Kerberos daemon using
-    // KerberosKerberosArtifactClient.
-    // Note that, we allow to update credentials for Kerberos daemon if
-    // !is_active_directory.
+    // Kerberos daemon is using KerberosKerberosArtifactClient.
+    // Note that, we allow to update credentials for Kerberos daemon.
     auto kerberos_artifact_client =
-        is_active_directory
-            ? std::unique_ptr<KerberosArtifactClientInterface>(
-                  std::make_unique<AuthPolicyKerberosArtifactClient>(bus_))
-            : std::unique_ptr<KerberosArtifactClientInterface>(
-                  std::make_unique<KerberosKerberosArtifactClient>(bus_));
+        std::unique_ptr<KerberosArtifactClientInterface>(
+            std::make_unique<KerberosKerberosArtifactClient>(bus_));
     auto kerberos_artifact_synchronizer =
         std::make_unique<KerberosArtifactSynchronizer>(
             GetKrb5ConfPath(), GetCCachePath(),
-            std::move(kerberos_artifact_client), !is_active_directory);
+            std::move(kerberos_artifact_client),
+            /*allow_credentials_update=*/true);
 
     auto tick_clock = std::make_unique<base::DefaultTickClock>();
 

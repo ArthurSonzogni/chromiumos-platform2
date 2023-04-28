@@ -49,8 +49,6 @@ generate_dbus_adaptors("smbproviderd_adaptors") {
 
 static_library("libsmbprovider") {
   sources = [
-    "authpolicy_kerberos_artifact_client.cc",
-    "authpolicy_kerberos_artifact_client.h",
     "constants.cc",
     "constants.h",
     "copy_progress_interface.h",
