@@ -33,6 +33,7 @@ using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::IsFalse;
+using ::testing::IsNull;
 using ::testing::IsTrue;
 using ::testing::Optional;
 using ::testing::Return;
@@ -147,6 +148,15 @@ TEST_F(FingerprintDriverTest, SupportedByBlock) {
   // Test, Verify
   EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
               IsTrue());
+}
+
+TEST_F(FingerprintDriverTest, CreateCredentialVerifierFails) {
+  FingerprintAuthFactorDriver fp_driver(
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
+  AuthFactorDriver& driver = fp_driver;
+
+  auto verifier = driver.CreateCredentialVerifier(kLabel, {});
+  EXPECT_THAT(verifier, IsNull());
 }
 
 }  // namespace

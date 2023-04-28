@@ -241,17 +241,6 @@ class AuthSessionTest : public ::testing::Test {
         .WillRepeatedly(ReturnValue(brillo::Blob()));
     EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(true));
     crypto_.Init();
-
-    EXPECT_CALL(auth_block_utility_, CreateCredentialVerifier(_, _, _))
-        .WillRepeatedly(
-            [](AuthFactorType type, const std::string& label,
-               const AuthInput& input) -> std::unique_ptr<CredentialVerifier> {
-              if (type == AuthFactorType::kPassword) {
-                return ScryptVerifier::Create(
-                    label, brillo::SecureBlob(*input.user_input));
-              }
-              return nullptr;
-            });
   }
 
  protected:
@@ -340,8 +329,15 @@ class AuthSessionTest : public ::testing::Test {
   UserSessionMap user_session_map_;
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
+  std::unique_ptr<FingerprintAuthBlockService> fp_service_{
+      FingerprintAuthBlockService::MakeNullService()};
+  NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
+  NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
   AuthFactorDriverManager auth_factor_driver_manager_{
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &crypto_,
+      AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
+      &key_challenge_service_factory_, fp_service_.get(),
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
   FakeFeaturesForTesting fake_features_;
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
@@ -354,10 +350,6 @@ class AuthSessionTest : public ::testing::Test {
                                          &auth_factor_manager_,
                                          &user_secret_stash_storage_,
                                          &fake_features_.async};
-
-  // Mocks needed for challenge credential tests.
-  NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
-  NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
 
   // Mocks and fakes for UserSession to use.
   HomeDirs homedirs_{&platform_,
@@ -987,10 +979,10 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
 TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
   // We need to use a real AuthBlockUtilityImpl for this test.
   FakeFeaturesForTesting features;
+  auto fp_service = FingerprintAuthBlockService::MakeNullService();
   AuthBlockUtilityImpl real_auth_block_utility(
       &keyset_management_, &crypto_, &platform_, &features.async,
-      FingerprintAuthBlockService::MakeNullService(),
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
+      fp_service.get(), AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
   auto test_backing_apis = backing_apis_;
   test_backing_apis.auth_block_utility = &real_auth_block_utility;
 
@@ -3299,16 +3291,13 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
                  std::nullopt);
       });
 
-  EXPECT_CALL(auth_block_utility_, CreateCredentialVerifier(_, kFakeLabel, _))
-      .WillOnce(Return(ByMove(SmartCardVerifier::Create(
-          kFakeLabel, public_key_spki_der, &challenge_credentials_helper_,
-          &key_challenge_service_factory_))));
-
   // Calling AuthenticateAuthFactor.
   std::string auth_factor_labels[] = {kFakeLabel};
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_smart_card_input()->add_signature_algorithms(
       user_data_auth::CHALLENGE_RSASSA_PKCS1_V1_5_SHA256);
+  auth_input_proto.mutable_smart_card_input()
+      ->set_key_delegate_dbus_service_name("test_cc_dbus");
   TestFuture<CryptohomeStatus> authenticate_future;
   auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                       authenticate_future.GetCallback());

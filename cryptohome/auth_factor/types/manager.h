@@ -9,9 +9,12 @@
 #include <unordered_map>
 
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
+#include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
+#include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
@@ -22,8 +25,12 @@ namespace cryptohome {
 // all of them.
 class AuthFactorDriverManager {
  public:
-  AuthFactorDriverManager(Crypto* crypto,
-                          AsyncInitPtr<BiometricsAuthBlockService> bio_service);
+  AuthFactorDriverManager(
+      Crypto* crypto,
+      AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
+      KeyChallengeServiceFactory* key_challenge_service_factory,
+      FingerprintAuthBlockService* fp_service,
+      AsyncInitPtr<BiometricsAuthBlockService> bio_service);
 
   AuthFactorDriverManager(const AuthFactorDriverManager&) = delete;
   AuthFactorDriverManager& operator=(const AuthFactorDriverManager&) = delete;

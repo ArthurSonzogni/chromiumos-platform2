@@ -25,6 +25,12 @@ bool KioskAuthFactorDriver::IsVerifySupported(AuthIntent auth_intent) const {
   return false;
 }
 
+std::unique_ptr<CredentialVerifier>
+KioskAuthFactorDriver::CreateCredentialVerifier(
+    const std::string& auth_factor_label, const AuthInput& auth_input) const {
+  return nullptr;
+}
+
 bool KioskAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }

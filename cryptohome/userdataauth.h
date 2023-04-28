@@ -31,6 +31,7 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
+#include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_session.h"
@@ -1016,6 +1017,10 @@ class UserDataAuth {
   // The actual Fingerprint Manager object that is used by this class, but
   // can be overridden for testing.
   FingerprintManager* fingerprint_manager_;
+
+  // The fingerprint service object that wraps the fingerprint manager for auth
+  // block usage.
+  std::unique_ptr<FingerprintAuthBlockService> fingerprint_service_;
 
   // The default Biometrics Service object for biometrics authentication.
   std::unique_ptr<BiometricsAuthBlockService> default_biometrics_service_;

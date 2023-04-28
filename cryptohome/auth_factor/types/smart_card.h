@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_TYPES_SMART_CARD_H_
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_SMART_CARD_H_
 
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
@@ -16,15 +17,26 @@
 #include "cryptohome/auth_factor/types/common.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_intent.h"
+#include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
+#include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/key_challenge_service_factory.h"
+#include "cryptohome/key_objects.h"
+#include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 
 class SmartCardAuthFactorDriver final
     : public TypedAuthFactorDriver<SmartCardAuthFactorMetadata> {
  public:
-  explicit SmartCardAuthFactorDriver(Crypto* crypto)
-      : TypedAuthFactorDriver(AuthFactorType::kSmartCard), crypto_(crypto) {}
+  SmartCardAuthFactorDriver(
+      Crypto* crypto,
+      AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
+      KeyChallengeServiceFactory* key_challenge_service_factory)
+      : TypedAuthFactorDriver(AuthFactorType::kSmartCard),
+        crypto_(crypto),
+        challenge_credentials_helper_(challenge_credentials_helper),
+        key_challenge_service_factory_(key_challenge_service_factory) {}
 
  private:
   bool IsSupported(
@@ -32,6 +44,9 @@ class SmartCardAuthFactorDriver final
       const std::set<AuthFactorType>& configured_factors) const override;
   bool IsPrepareRequired() const override;
   bool IsVerifySupported(AuthIntent auth_intent) const override;
+  std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
+      const std::string& auth_factor_label,
+      const AuthInput& auth_input) const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
@@ -41,6 +56,8 @@ class SmartCardAuthFactorDriver final
       const SmartCardAuthFactorMetadata& typed_metadata) const override;
 
   Crypto* crypto_;
+  AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper_;
+  KeyChallengeServiceFactory* key_challenge_service_factory_;
 };
 
 }  // namespace cryptohome

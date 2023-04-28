@@ -60,8 +60,11 @@ class AuthSessionManagerTest : public ::testing::Test {
   UserSessionMap user_session_map_;
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
+  std::unique_ptr<FingerprintAuthBlockService> fp_service_{
+      FingerprintAuthBlockService::MakeNullService()};
   AuthFactorDriverManager auth_factor_driver_manager_{
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &crypto_, AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
+      fp_service_.get(), AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   FakeFeaturesForTesting features_;

@@ -23,6 +23,7 @@ using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::IsFalse;
+using ::testing::IsNull;
 using ::testing::IsTrue;
 using ::testing::Optional;
 
@@ -119,6 +120,14 @@ TEST_F(PinDriverTest, SupportedByBlockWithUss) {
   // Test, Verify
   EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
               IsTrue());
+}
+
+TEST_F(PinDriverTest, CreateCredentialVerifierFails) {
+  PinAuthFactorDriver pin_driver(&crypto_);
+  AuthFactorDriver& driver = pin_driver;
+
+  auto verifier = driver.CreateCredentialVerifier(kLabel, {});
+  EXPECT_THAT(verifier, IsNull());
 }
 
 }  // namespace

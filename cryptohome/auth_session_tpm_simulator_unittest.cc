@@ -319,15 +319,15 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
   KeysetManagement keyset_management_{&platform_, &crypto_,
                                       std::make_unique<VaultKeysetFactory>()};
   FakeFeaturesForTesting features_;
+  std::unique_ptr<FingerprintAuthBlockService> fp_service_{
+      FingerprintAuthBlockService::MakeNullService()};
   AuthBlockUtilityImpl auth_block_utility_{
-      &keyset_management_,
-      &crypto_,
-      &platform_,
-      &features_.async,
-      FingerprintAuthBlockService::MakeNullService(),
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &keyset_management_, &crypto_,
+      &platform_,          &features_.async,
+      fp_service_.get(),   AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorDriverManager auth_factor_driver_manager_{
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &crypto_, AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
+      fp_service_.get(), AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
 

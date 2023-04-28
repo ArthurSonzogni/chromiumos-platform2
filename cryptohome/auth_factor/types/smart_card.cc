@@ -11,8 +11,25 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_intent.h"
+#include "cryptohome/smart_card_verifier.h"
 
 namespace cryptohome {
+namespace {
+
+// Helper function that will check the basic preconditions necessary for a
+// challenge credential check to work.
+bool IsChallengeCredentialReady(
+    const AuthInput& auth_input,
+    AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
+    KeyChallengeServiceFactory* key_challenge_service_factory) {
+  return (
+      challenge_credentials_helper.get() != nullptr &&
+      key_challenge_service_factory != nullptr &&
+      auth_input.challenge_credential_auth_input &&
+      !auth_input.challenge_credential_auth_input->dbus_service_name.empty());
+}
+
+}  // namespace
 
 bool SmartCardAuthFactorDriver::IsSupported(
     AuthFactorStorageType storage_type,
@@ -30,6 +47,24 @@ bool SmartCardAuthFactorDriver::IsPrepareRequired() const {
 bool SmartCardAuthFactorDriver::IsVerifySupported(
     AuthIntent auth_intent) const {
   return auth_intent == AuthIntent::kVerifyOnly;
+}
+
+std::unique_ptr<CredentialVerifier>
+SmartCardAuthFactorDriver::CreateCredentialVerifier(
+    const std::string& auth_factor_label, const AuthInput& auth_input) const {
+  if (!IsChallengeCredentialReady(auth_input, challenge_credentials_helper_,
+                                  key_challenge_service_factory_)) {
+    return nullptr;
+  }
+  std::unique_ptr<CredentialVerifier> verifier = SmartCardVerifier::Create(
+      auth_factor_label,
+      auth_input.challenge_credential_auth_input->public_key_spki_der,
+      challenge_credentials_helper_.get(), key_challenge_service_factory_);
+  if (!verifier) {
+    LOG(ERROR) << "Credential verifier initialization failed.";
+    return nullptr;
+  }
+  return verifier;
 }
 
 bool SmartCardAuthFactorDriver::NeedsResetSecret() const {

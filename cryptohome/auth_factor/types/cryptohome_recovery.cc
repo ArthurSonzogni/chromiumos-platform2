@@ -31,6 +31,12 @@ bool CryptohomeRecoveryAuthFactorDriver::IsVerifySupported(
   return false;
 }
 
+std::unique_ptr<CredentialVerifier>
+CryptohomeRecoveryAuthFactorDriver::CreateCredentialVerifier(
+    const std::string& auth_factor_label, const AuthInput& auth_input) const {
+  return nullptr;
+}
+
 bool CryptohomeRecoveryAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }

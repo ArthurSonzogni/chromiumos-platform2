@@ -118,14 +118,14 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(
     Crypto* crypto,
     Platform* platform,
     AsyncInitFeatures* features,
-    std::unique_ptr<FingerprintAuthBlockService> fp_service,
+    FingerprintAuthBlockService* fp_service,
     AsyncInitPtr<BiometricsAuthBlockService> bio_service)
     : keyset_management_(keyset_management),
       crypto_(crypto),
       platform_(platform),
       features_(features),
-      fp_service_(std::move(fp_service)),
-      bio_service_(std::move(bio_service)) {
+      fp_service_(fp_service),
+      bio_service_(bio_service) {
   DCHECK(keyset_management);
   DCHECK(crypto_);
   DCHECK(platform_);
@@ -136,68 +136,6 @@ AuthBlockUtilityImpl::~AuthBlockUtilityImpl() = default;
 
 bool AuthBlockUtilityImpl::GetLockedToSingleUser() const {
   return platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
-}
-
-std::unique_ptr<CredentialVerifier>
-AuthBlockUtilityImpl::CreateCredentialVerifier(
-    AuthFactorType auth_factor_type,
-    const std::string& auth_factor_label,
-    const AuthInput& auth_input) const {
-  std::unique_ptr<CredentialVerifier> verifier;
-  switch (auth_factor_type) {
-    case AuthFactorType::kPassword: {
-      if (!auth_input.user_input.has_value()) {
-        LOG(ERROR) << "Cannot construct a password verifier without a password";
-        return nullptr;
-      }
-      verifier =
-          ScryptVerifier::Create(auth_factor_label, *auth_input.user_input);
-      if (!verifier) {
-        LOG(ERROR) << "Credential verifier initialization failed.";
-        return nullptr;
-      }
-      break;
-    }
-    case AuthFactorType::kLegacyFingerprint:
-      if (!auth_factor_label.empty()) {
-        LOG(ERROR) << "Legacy fingerprint verifiers cannot use labels";
-        return nullptr;
-      }
-      if (!fp_service_) {
-        LOG(ERROR) << "Cannot construct a legacy fingerprint verifier, "
-                      "FP service not available";
-        return nullptr;
-      }
-      verifier = std::make_unique<FingerprintVerifier>(fp_service_.get());
-      break;
-    case AuthFactorType::kSmartCard: {
-      if (!IsChallengeCredentialReady(auth_input)) {
-        return nullptr;
-      }
-      auto key_challenge_service = key_challenge_service_factory_->New(
-          auth_input.challenge_credential_auth_input->dbus_service_name);
-      verifier = SmartCardVerifier::Create(
-          auth_factor_label,
-          auth_input.challenge_credential_auth_input->public_key_spki_der,
-          challenge_credentials_helper_, key_challenge_service_factory_);
-      if (!verifier) {
-        LOG(ERROR) << "Credential verifier initialization failed.";
-        return nullptr;
-      }
-      break;
-    }
-    case AuthFactorType::kPin:
-    case AuthFactorType::kCryptohomeRecovery:
-    case AuthFactorType::kKiosk:
-    case AuthFactorType::kFingerprint:
-    case AuthFactorType::kUnspecified: {
-      return nullptr;
-    }
-  }
-
-  DCHECK_EQ(verifier->auth_factor_label(), auth_factor_label);
-  DCHECK_EQ(verifier->auth_factor_type(), auth_factor_type);
-  return verifier;
 }
 
 void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(

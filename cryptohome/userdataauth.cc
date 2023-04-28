@@ -332,6 +332,16 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     keyset_management_ = default_keyset_management_.get();
   }
 
+  fingerprint_service_ = std::make_unique<FingerprintAuthBlockService>(
+      AsyncInitPtr<FingerprintManager>(base::BindRepeating(
+          [](UserDataAuth* uda) {
+            uda->AssertOnMountThread();
+            return uda->fingerprint_manager_;
+          },
+          base::Unretained(this))),
+      base::BindRepeating(&UserDataAuth::OnFingerprintScanResult,
+                          base::Unretained(this)));
+
   AsyncInitPtr<BiometricsAuthBlockService> async_biometrics_service(
       base::BindRepeating(
           [](UserDataAuth* uda) {
@@ -342,16 +352,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   if (!auth_block_utility_) {
     default_auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_, crypto_, platform_, &async_init_features_,
-        std::make_unique<FingerprintAuthBlockService>(
-            AsyncInitPtr<FingerprintManager>(base::BindRepeating(
-                [](UserDataAuth* uda) {
-                  uda->AssertOnMountThread();
-                  return uda->fingerprint_manager_;
-                },
-                base::Unretained(this))),
-            base::BindRepeating(&UserDataAuth::OnFingerprintScanResult,
-                                base::Unretained(this))),
-        async_biometrics_service);
+        fingerprint_service_.get(), async_biometrics_service);
     auth_block_utility_ = default_auth_block_utility_.get();
   }
 
@@ -363,8 +364,19 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
 
   if (!auth_factor_driver_manager_) {
     default_auth_factor_driver_manager_ =
-        std::make_unique<AuthFactorDriverManager>(crypto_,
-                                                  async_biometrics_service);
+        std::make_unique<AuthFactorDriverManager>(
+            crypto_,
+            AsyncInitPtr<ChallengeCredentialsHelper>(base::BindRepeating(
+                [](UserDataAuth* uda) -> ChallengeCredentialsHelper* {
+                  uda->AssertOnMountThread();
+                  if (uda->challenge_credentials_helper_initialized_) {
+                    return uda->challenge_credentials_helper_;
+                  }
+                  return nullptr;
+                },
+                base::Unretained(this))),
+            key_challenge_service_factory_, fingerprint_service_.get(),
+            async_biometrics_service);
     auth_factor_driver_manager_ = default_auth_factor_driver_manager_.get();
   }
 

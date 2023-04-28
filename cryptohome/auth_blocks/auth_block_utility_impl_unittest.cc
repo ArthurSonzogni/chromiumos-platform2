@@ -111,7 +111,11 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
         crypto_(&hwsec_,
                 &pinweaver_,
                 &cryptohome_keys_manager_,
-                recovery_crypto_fake_backend_.get()) {}
+                recovery_crypto_fake_backend_.get()),
+        fp_service_(AsyncInitPtr<FingerprintManager>(&fp_manager_),
+                    base::BindRepeating(
+                        &AuthBlockUtilityImplTest::OnFingerprintScanResult,
+                        base::Unretained(this))) {}
   AuthBlockUtilityImplTest(const AuthBlockUtilityImplTest&) = delete;
   AuthBlockUtilityImplTest& operator=(const AuthBlockUtilityImplTest&) = delete;
 
@@ -129,30 +133,17 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
     ON_CALL(pinweaver_, IsEnabled()).WillByDefault(ReturnValue(true));
   }
 
-  // Helper function to construct a fingerprint auth block service using the
-  // mocks built into this test fixture.
-  std::unique_ptr<FingerprintAuthBlockService>
-  MakeFingerprintAuthBlockService() {
-    return std::make_unique<FingerprintAuthBlockService>(
-        AsyncInitPtr<FingerprintManager>(base::BindRepeating(
-            &AuthBlockUtilityImplTest::GetFingerprintManager,
-            base::Unretained(this))),
-        base::BindRepeating(&AuthBlockUtilityImplTest::OnFingerprintScanResult,
-                            base::Unretained(this)));
-  }
-
   // Helper function to construct a "standard" auth block utility impl using the
   // mocks built into this test fixture.
   void MakeAuthBlockUtilityImpl() {
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_.get(), &crypto_, &platform_, &features_.async,
-        MakeFingerprintAuthBlockService(),
+        &fp_service_,
         AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
             &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this))));
   }
 
  protected:
-  FingerprintManager* GetFingerprintManager() { return &fp_manager_; }
   void OnFingerprintScanResult(user_data_auth::FingerprintScanResult result) {
     result_ = result;
   }
@@ -189,6 +180,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
   user_data_auth::FingerprintScanResult result_;
+  FingerprintAuthBlockService fp_service_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
   NiceMock<MockBiometricsCommandProcessor>* bio_processor_;
 
@@ -351,108 +343,6 @@ TEST_F(AuthBlockUtilityImplTest, PrepareFingerprintAuthFailure) {
   // Verify.
   EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
-}
-
-TEST_F(AuthBlockUtilityImplTest, CreatePasswordCredentialVerifier) {
-  MakeAuthBlockUtilityImpl();
-
-  AuthInput auth_input = {.user_input = brillo::SecureBlob("fake-passkey")};
-  auto verifier = auth_block_utility_impl_->CreateCredentialVerifier(
-      AuthFactorType::kPassword, "password", auth_input);
-  ASSERT_THAT(verifier, NotNull());
-  EXPECT_THAT(verifier->auth_factor_type(), Eq(AuthFactorType::kPassword));
-
-  TestFuture<CryptohomeStatus> status_result;
-  verifier->Verify(auth_input, status_result.GetCallback());
-  EXPECT_THAT(status_result.Get(), IsOk());
-}
-
-TEST_F(AuthBlockUtilityImplTest, CreateFingerprintVerifierWithLabelFails) {
-  MakeAuthBlockUtilityImpl();
-
-  auto verifier = auth_block_utility_impl_->CreateCredentialVerifier(
-      AuthFactorType::kLegacyFingerprint, "legacy-fp", {});
-  EXPECT_THAT(verifier, IsNull());
-}
-
-TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintSuccess) {
-  MakeAuthBlockUtilityImpl();
-
-  auto verifier = auth_block_utility_impl_->CreateCredentialVerifier(
-      AuthFactorType::kLegacyFingerprint, "", {});
-  ASSERT_THAT(verifier, NotNull());
-  EXPECT_THAT(verifier->auth_factor_type(),
-              Eq(AuthFactorType::kLegacyFingerprint));
-
-  // Signal a successful auth scan.
-  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kObfuscated, _))
-      .WillOnce([](ObfuscatedUsername username,
-                   FingerprintManager::StartSessionCallback callback) {
-        std::move(callback).Run(true);
-      });
-  EXPECT_CALL(fp_manager_, SetSignalCallback(_))
-      .WillOnce([](FingerprintManager::SignalCallback callback) {
-        std::move(callback).Run(FingerprintScanStatus::SUCCESS);
-      });
-
-  // legacy fingerprint auth factor needs to kicks off the prepare.
-  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
-      prepare_result;
-  auth_block_utility_impl_->PrepareAuthFactorForAuth(
-      AuthFactorType::kLegacyFingerprint, kObfuscated,
-      prepare_result.GetCallback());
-  ASSERT_THAT(prepare_result.Get(), IsOk());
-  auto token = std::move(*prepare_result.Take());
-
-  // Run the Verify and check the result.
-  TestFuture<CryptohomeStatus> verify_result;
-  verifier->Verify({}, verify_result.GetCallback());
-  EXPECT_THAT(verify_result.Get(), IsOk());
-
-  EXPECT_CALL(fp_manager_, EndAuthSession());
-  CryptohomeStatus status = token->Terminate();
-  EXPECT_THAT(status, IsOk());
-}
-
-TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintFailure) {
-  MakeAuthBlockUtilityImpl();
-
-  auto verifier = auth_block_utility_impl_->CreateCredentialVerifier(
-      AuthFactorType::kLegacyFingerprint, "", {});
-  ASSERT_THAT(verifier, NotNull());
-  EXPECT_THAT(verifier->auth_factor_type(),
-              Eq(AuthFactorType::kLegacyFingerprint));
-
-  // Signal a failed and not retry-able auth scan.
-  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kObfuscated, _))
-      .WillOnce([](ObfuscatedUsername username,
-                   FingerprintManager::StartSessionCallback callback) {
-        std::move(callback).Run(true);
-      });
-  EXPECT_CALL(fp_manager_, SetSignalCallback(_))
-      .WillOnce([](FingerprintManager::SignalCallback callback) {
-        std::move(callback).Run(
-            FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
-      });
-
-  // legacy fingerprint auth factor needs to kicks off the prepare.
-  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
-      prepare_result;
-  auth_block_utility_impl_->PrepareAuthFactorForAuth(
-      AuthFactorType::kLegacyFingerprint, kObfuscated,
-      prepare_result.GetCallback());
-  ASSERT_THAT(prepare_result.Get(), IsOk());
-  auto token = std::move(*prepare_result.Take());
-
-  // Run the Verify and check the result.
-  TestFuture<CryptohomeStatus> verify_result;
-  verifier->Verify({}, verify_result.GetCallback());
-  EXPECT_THAT(verify_result.Get()->local_legacy_error(),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED));
-
-  EXPECT_CALL(fp_manager_, EndAuthSession());
-  CryptohomeStatus status = token->Terminate();
-  EXPECT_THAT(status, IsOk());
 }
 
 // Test that CreateKeyBlobsWithAuthBlock creates AuthBlockState and KeyBlobs
@@ -1284,8 +1174,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   KeyBlobs out_key_blobs;
   // Insert MockKeysetManagement into AuthBlockUtility
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      &keyset_management, &crypto_, &platform_, &features_.async,
-      MakeFingerprintAuthBlockService(),
+      &keyset_management, &crypto_, &platform_, &features_.async, &fp_service_,
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
   // Test
   AuthBlockState out_state;

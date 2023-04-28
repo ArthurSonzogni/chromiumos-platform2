@@ -26,6 +26,9 @@ namespace {
 std::unique_ptr<AuthFactorDriver> CreateDriver(
     AuthFactorType auth_factor_type,
     Crypto* crypto,
+    AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
+    KeyChallengeServiceFactory* key_challenge_service_factory,
+    FingerprintAuthBlockService* fp_service,
     AsyncInitPtr<BiometricsAuthBlockService> bio_service) {
   // This is written using a switch to force full enum coverage.
   switch (auth_factor_type) {
@@ -38,9 +41,10 @@ std::unique_ptr<AuthFactorDriver> CreateDriver(
     case AuthFactorType::kKiosk:
       return std::make_unique<KioskAuthFactorDriver>();
     case AuthFactorType::kSmartCard:
-      return std::make_unique<SmartCardAuthFactorDriver>(crypto);
+      return std::make_unique<SmartCardAuthFactorDriver>(
+          crypto, challenge_credentials_helper, key_challenge_service_factory);
     case AuthFactorType::kLegacyFingerprint:
-      return std::make_unique<LegacyFingerprintAuthFactorDriver>();
+      return std::make_unique<LegacyFingerprintAuthFactorDriver>(fp_service);
     case AuthFactorType::kFingerprint:
       return std::make_unique<FingerprintAuthFactorDriver>(crypto, bio_service);
     case AuthFactorType::kUnspecified:
@@ -50,8 +54,12 @@ std::unique_ptr<AuthFactorDriver> CreateDriver(
 
 // Construct a map of drivers for all types.
 std::unordered_map<AuthFactorType, std::unique_ptr<AuthFactorDriver>>
-CreateDriverMap(Crypto* crypto,
-                AsyncInitPtr<BiometricsAuthBlockService> bio_service) {
+CreateDriverMap(
+    Crypto* crypto,
+    AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
+    KeyChallengeServiceFactory* key_challenge_service_factory,
+    FingerprintAuthBlockService* fp_service,
+    AsyncInitPtr<BiometricsAuthBlockService> bio_service) {
   std::unordered_map<AuthFactorType, std::unique_ptr<AuthFactorDriver>>
       driver_map;
   for (AuthFactorType auth_factor_type : {
@@ -63,7 +71,9 @@ CreateDriverMap(Crypto* crypto,
            AuthFactorType::kLegacyFingerprint,
            AuthFactorType::kFingerprint,
        }) {
-    auto driver = CreateDriver(auth_factor_type, crypto, bio_service);
+    auto driver =
+        CreateDriver(auth_factor_type, crypto, challenge_credentials_helper,
+                     key_challenge_service_factory, fp_service, bio_service);
     CHECK_NE(driver.get(), nullptr);
     driver_map[auth_factor_type] = std::move(driver);
   }
@@ -73,9 +83,17 @@ CreateDriverMap(Crypto* crypto,
 }  // namespace
 
 AuthFactorDriverManager::AuthFactorDriverManager(
-    Crypto* crypto, AsyncInitPtr<BiometricsAuthBlockService> bio_service)
+    Crypto* crypto,
+    AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
+    KeyChallengeServiceFactory* key_challenge_service_factory,
+    FingerprintAuthBlockService* fp_service,
+    AsyncInitPtr<BiometricsAuthBlockService> bio_service)
     : null_driver_(std::make_unique<NullAuthFactorDriver>()),
-      driver_map_(CreateDriverMap(crypto, bio_service)) {}
+      driver_map_(CreateDriverMap(crypto,
+                                  challenge_credentials_helper,
+                                  key_challenge_service_factory,
+                                  fp_service,
+                                  bio_service)) {}
 
 const AuthFactorDriver& AuthFactorDriverManager::GetDriver(
     AuthFactorType auth_factor_type) const {

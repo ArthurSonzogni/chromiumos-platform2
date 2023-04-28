@@ -1694,8 +1694,7 @@ void AuthSession::PrepareAuthFactor(
     }
 
     // If this type of factor supports label-less verifiers, then create one.
-    if (auto verifier = auth_block_utility_->CreateCredentialVerifier(
-            *auth_factor_type, {}, {})) {
+    if (auto verifier = factor_driver.CreateCredentialVerifier({}, {})) {
       verifier_forwarder_.AddVerifier(std::move(verifier));
     }
   } else {
@@ -2113,8 +2112,10 @@ CredentialVerifier* AuthSession::AddCredentialVerifier(
     AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
     const AuthInput& auth_input) {
-  if (auto new_verifier = auth_block_utility_->CreateCredentialVerifier(
-          auth_factor_type, auth_factor_label, auth_input)) {
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor_type);
+  if (auto new_verifier = factor_driver.CreateCredentialVerifier(
+          auth_factor_label, auth_input)) {
     auto* return_ptr = new_verifier.get();
     verifier_forwarder_.AddVerifier(std::move(new_verifier));
     return return_ptr;

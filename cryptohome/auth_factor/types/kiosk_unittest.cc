@@ -17,6 +17,7 @@ namespace {
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::IsFalse;
+using ::testing::IsNull;
 using ::testing::IsTrue;
 using ::testing::Optional;
 
@@ -90,6 +91,14 @@ TEST_F(KioskDriverTest, UnsupportedWithOtherFactors) {
   EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
                                  {AuthFactorType::kPassword}),
               IsFalse());
+}
+
+TEST_F(KioskDriverTest, CreateCredentialVerifierFails) {
+  KioskAuthFactorDriver kiosk_driver;
+  AuthFactorDriver& driver = kiosk_driver;
+
+  auto verifier = driver.CreateCredentialVerifier(kLabel, {});
+  EXPECT_THAT(verifier, IsNull());
 }
 
 }  // namespace

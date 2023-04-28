@@ -47,7 +47,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
                        Crypto* crypto,
                        Platform* platform,
                        AsyncInitFeatures* features,
-                       std::unique_ptr<FingerprintAuthBlockService> fp_service,
+                       FingerprintAuthBlockService* fp_service,
                        AsyncInitPtr<BiometricsAuthBlockService> bio_service);
 
   AuthBlockUtilityImpl(const AuthBlockUtilityImpl&) = delete;
@@ -55,11 +55,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   ~AuthBlockUtilityImpl() override;
 
   bool GetLockedToSingleUser() const override;
-
-  std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
-      AuthFactorType auth_factor_type,
-      const std::string& auth_factor_label,
-      const AuthInput& auth_input) const override;
 
   void PrepareAuthFactorForAuth(
       AuthFactorType auth_factor_type,
@@ -159,7 +154,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   // Fingerprint service, used by operations that need to interact with
   // fingerprint sensors.
-  std::unique_ptr<FingerprintAuthBlockService> fp_service_;
+  FingerprintAuthBlockService* fp_service_;
 
   // Biometrics service, used by operations that need to interact with biod.
   // TODO(b/276453357): Replace with BiometricsAuthBlockService* once that

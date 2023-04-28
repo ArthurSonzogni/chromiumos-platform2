@@ -4,6 +4,7 @@
 
 #include "cryptohome/auth_factor/types/manager.h"
 
+#include <base/functional/callback.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
@@ -15,6 +16,7 @@
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
+#include "cryptohome/mock_fingerprint_manager.h"
 
 namespace cryptohome {
 namespace {
@@ -31,10 +33,14 @@ class AuthFactorDriverManagerTest : public ::testing::Test {
   MockCryptohomeKeysManager cryptohome_keys_manager_;
   Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_,
                  /*recovery_hwsec=*/nullptr};
+  MockFingerprintManager fp_manager_;
+  FingerprintAuthBlockService fp_service_{
+      AsyncInitPtr<FingerprintManager>(&fp_manager_), base::DoNothing()};
 
   // A real version of the manager, using mock inputs.
   AuthFactorDriverManager manager_{
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &crypto_, AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
+      &fp_service_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
 };
 
 // Test AuthFactorDriver::IsPrepareRequired. We do this here instead of in a

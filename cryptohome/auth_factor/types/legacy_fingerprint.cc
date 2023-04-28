@@ -4,6 +4,7 @@
 
 #include "cryptohome/auth_factor/types/legacy_fingerprint.h"
 
+#include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_intent.h"
@@ -24,6 +25,21 @@ bool LegacyFingerprintAuthFactorDriver::IsVerifySupported(
     AuthIntent auth_intent) const {
   return auth_intent == AuthIntent::kWebAuthn ||
          auth_intent == AuthIntent::kVerifyOnly;
+}
+
+std::unique_ptr<CredentialVerifier>
+LegacyFingerprintAuthFactorDriver::CreateCredentialVerifier(
+    const std::string& auth_factor_label, const AuthInput& auth_input) const {
+  if (!auth_factor_label.empty()) {
+    LOG(ERROR) << "Legacy fingerprint verifiers cannot use labels";
+    return nullptr;
+  }
+  if (!fp_service_) {
+    LOG(ERROR) << "Cannot construct a legacy fingerprint verifier, "
+                  "FP service not available";
+    return nullptr;
+  }
+  return std::make_unique<FingerprintVerifier>(fp_service_);
 }
 
 bool LegacyFingerprintAuthFactorDriver::NeedsResetSecret() const {

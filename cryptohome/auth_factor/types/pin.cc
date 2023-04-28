@@ -46,6 +46,12 @@ bool PinAuthFactorDriver::IsVerifySupported(AuthIntent auth_intent) const {
   return false;
 }
 
+std::unique_ptr<CredentialVerifier>
+PinAuthFactorDriver::CreateCredentialVerifier(
+    const std::string& auth_factor_label, const AuthInput& auth_input) const {
+  return nullptr;
+}
+
 bool PinAuthFactorDriver::NeedsResetSecret() const {
   return true;
 }

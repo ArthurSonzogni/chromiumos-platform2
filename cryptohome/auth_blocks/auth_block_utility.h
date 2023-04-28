@@ -23,7 +23,6 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
-#include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/cryptohome_error.h"
@@ -48,12 +47,6 @@ class AuthBlockUtility {
   // Returns whether the system is locked to only allow authenticating a single
   // user.
   virtual bool GetLockedToSingleUser() const = 0;
-
-  // Creates a credential verifier for the specified type and input.
-  virtual std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
-      AuthFactorType auth_factor_type,
-      const std::string& auth_factor_label,
-      const AuthInput& auth_input) const = 0;
 
   // If the verify/prepare succeeds, |error| will be ok. Otherwise it will
   // contain an error describing the nature of the failure.

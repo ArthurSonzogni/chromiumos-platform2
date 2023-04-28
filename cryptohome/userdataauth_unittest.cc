@@ -244,17 +244,6 @@ class UserDataAuthTestBase : public ::testing::Test {
 
     // Make sure FreeDiskSpaceDuringLogin is not called unexpectedly.
     EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_)).Times(0);
-
-    EXPECT_CALL(auth_block_utility_, CreateCredentialVerifier(_, _, _))
-        .WillRepeatedly(
-            [](AuthFactorType type, const std::string& label,
-               const AuthInput& input) -> std::unique_ptr<CredentialVerifier> {
-              if (type == AuthFactorType::kPassword) {
-                return ScryptVerifier::Create(
-                    label, brillo::SecureBlob(*input.user_input));
-              }
-              return nullptr;
-            });
   }
 
   // Create a new session and store an unowned pointer to it in |session_|.

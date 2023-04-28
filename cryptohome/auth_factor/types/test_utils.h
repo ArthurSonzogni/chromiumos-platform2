@@ -7,6 +7,9 @@
 
 #include <utility>
 
+#include <base/memory/scoped_refptr.h>
+#include <base/task/sequenced_task_runner.h>
+#include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
@@ -46,6 +49,13 @@ class AuthFactorDriverGenericTest : public ::testing::Test {
         .metadata = std::move(type_specific),
     };
   }
+
+  // Set up a task environment and test runner to make things easier for tests
+  // which need to do async stuff (e.g. they can use TestFuture).
+  base::test::SingleThreadTaskEnvironment task_environment_ = {
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  scoped_refptr<base::SequencedTaskRunner> task_runner_ =
+      base::SequencedTaskRunner::GetCurrentDefault();
 
   // A mock-based Crypto object, a common dependency for a lot of drivers.
   hwsec::MockCryptohomeFrontend hwsec_;
