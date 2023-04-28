@@ -553,6 +553,7 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
                   .height = s->height,
                   .format = HAL_PIXEL_FORMAT_YCbCr_420_888,
                   .usage = GRALLOC_USAGE_SW_READ_OFTEN,
+                  .crop_rotate_scale_degrees = s->crop_rotate_scale_degrees,
               });
           context->yuv_stream_for_blob =
               context->yuv_stream_for_blob_owned.get();
