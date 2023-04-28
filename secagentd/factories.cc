@@ -38,6 +38,7 @@ std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
       } else {
         SkeletonCallbacks<process_bpf> skel_cbs;
         skel_cbs.destroy = base::BindRepeating(process_bpf__destroy);
+        skel_cbs.open = base::BindRepeating(process_bpf__open);
         skel_cbs.open_opts = base::BindRepeating(process_bpf__open_opts);
         rv = std::make_unique<BpfSkeleton<process_bpf>>(
             "process", skel_cbs,
