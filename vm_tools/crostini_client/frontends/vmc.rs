@@ -16,6 +16,7 @@ use crate::disk::DiskOpType;
 use crate::methods::{ContainerSource, Methods, UserDisks, VmFeatures};
 use crate::proto::system_api::cicerone_service::start_lxd_container_request::PrivilegeLevel;
 use crate::proto::system_api::cicerone_service::VmDeviceAction;
+use crate::proto::system_api::concierge_service::SwapOperation;
 
 use crate::EnvMap;
 
@@ -1029,6 +1030,24 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             .aggressive_balloon(vm_name, &user_id_hash, enable,));
         Ok(())
     }
+
+    fn vmm_swap(&mut self) -> VmcResult {
+        if self.args.len() != 2 {
+            return Err(ExpectedVm.into());
+        }
+        let vm_name = self.args[1];
+        let user_id_hash = get_user_hash(self.environ)?;
+        let operation = match self.args[0] {
+            "enable" => SwapOperation::ENABLE,
+            "force-enable" => SwapOperation::FORCE_ENABLE,
+            "out" => SwapOperation::SWAPOUT,
+            "disable" => SwapOperation::DISABLE,
+            command => return Err(InvalidCommand(command.to_string()).into()),
+        };
+
+        try_command!(self.methods.vmm_swap(vm_name, &user_id_hash, operation));
+        Ok(())
+    }
 }
 
 const USAGE: &str = r#"
@@ -1054,6 +1073,7 @@ const USAGE: &str = r#"
      usb-list <vm name> |
      pvm.send-problem-report [-n <vm name>] [-e <reporter's email>] <description of the problem> |
      aggressive-balloon <enable/disable> <vm name> |
+     vmm-swap <enable/force-enable/out/disable> <vm name> |
      --help | -h ]
 "#;
 
@@ -1117,6 +1137,7 @@ impl Frontend for Vmc {
             "usb-list" => command.usb_list(),
             "pvm.send-problem-report" => command.pvm_send_problem_report(),
             "aggressive-balloon" => command.aggressive_balloon(),
+            "vmm-swap" => command.vmm_swap(),
             _ => Err(UnknownSubcommand(command_name.to_owned()).into()),
         }
     }
@@ -1420,6 +1441,10 @@ mod tests {
             ],
             &["vmc", "aggressive-balloon", "enable", "termina"],
             &["vmc", "aggressive-balloon", "disable", "termina"],
+            &["vmc", "vmm-swap", "enable", "termina"],
+            &["vmc", "vmm-swap", "force-enable", "termina"],
+            &["vmc", "vmm-swap", "out", "termina"],
+            &["vmc", "vmm-swap", "disable", "termina"],
             &["vmc", "--help"],
             &["vmc", "-h"],
         ];
@@ -1522,7 +1547,7 @@ mod tests {
             &["vmc", "pvm.send-problem-report", "-e"],
             &["vmc", "pvm.send-problem-report", "-n"],
             &["vmc", "aggressive-balloon", "enable"],
-            &["vmc", "aggressive-balloon", "invalid", "termina"],
+            &["vmc", "aggressive-balloon", "invalid_subcommand", "termina"],
             &[
                 "vmc",
                 "aggressive-balloon",
@@ -1530,6 +1555,9 @@ mod tests {
                 "termina",
                 "too_many_args",
             ],
+            &["vmc", "vmm-swap", "enable"],
+            &["vmc", "vmm-swap", "invalid_subcommand", "termina"],
+            &["vmc", "vmm-swap", "enable", "termina", "too_many_args"],
         ];
 
         let mut methods = mocked_methods();
