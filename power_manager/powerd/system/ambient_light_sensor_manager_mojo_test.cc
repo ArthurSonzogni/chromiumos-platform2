@@ -53,6 +53,7 @@ class AmbientLightSensorManagerMojoTest : public MojoTestEnvironment {
   }
 
   void ResetMojoChannel() {
+    ResetLoops();
     sensor_service_.ClearReceivers();
 
     mojo::PendingRemote<cros::mojom::SensorService> pending_remote;
@@ -69,6 +70,14 @@ class AmbientLightSensorManagerMojoTest : public MojoTestEnvironment {
         base::BindOnce(&SensorServiceHandler::SetUpChannel,
                        base::Unretained(&sensor_service_handler_),
                        std::move(pending_remote), base::DoNothing()));
+  }
+
+  void ResetLoops() {
+    loop_lid_ = std::make_unique<base::RunLoop>();
+    loop_base_ = std::make_unique<base::RunLoop>();
+
+    manager_->SetClosureForTesting(loop_lid_->QuitClosure(),
+                                   loop_base_->QuitClosure());
   }
 
   void SetSensor(int32_t iio_device_id,
@@ -100,6 +109,9 @@ class AmbientLightSensorManagerMojoTest : public MojoTestEnvironment {
   SensorServiceHandler sensor_service_handler_;
 
   std::unique_ptr<AmbientLightSensorManagerMojo> manager_;
+
+  std::unique_ptr<base::RunLoop> loop_lid_;
+  std::unique_ptr<base::RunLoop> loop_base_;
 };
 
 TEST_F(AmbientLightSensorManagerMojoTest, ZeroSensors) {
@@ -121,8 +133,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, OneColorSensor) {
   SetManager();
   EXPECT_FALSE(manager_->HasColorSensor());
 
-  // Wait until all initialization tasks are done.
-  base::RunLoop().RunUntilIdle();
+  loop_lid_->Run();
 
   auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
   auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
@@ -137,8 +148,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, OneColorSensor) {
   // Simulate a disconnection between |manager_| and IIO Service.
   ResetMojoChannel();
 
-  // Wait until all reconnection tasks are done.
-  base::RunLoop().RunUntilIdle();
+  loop_lid_->Run();
 
   EXPECT_TRUE(manager_->HasColorSensor());
 
@@ -159,8 +169,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, TwoSensorsNoColor) {
   SetManager();
   EXPECT_FALSE(manager_->HasColorSensor());
 
-  // Wait until all initialization tasks are done.
-  base::RunLoop().RunUntilIdle();
+  loop_lid_->Run();
 
   auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
   auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
@@ -175,8 +184,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, TwoSensorsNoColor) {
 
   ResetMojoChannel();
 
-  // Wait until all reconnection tasks are done.
-  base::RunLoop().RunUntilIdle();
+  loop_lid_->Run();
 
   EXPECT_FALSE(manager_->HasColorSensor());
 
@@ -193,8 +201,8 @@ TEST_F(AmbientLightSensorManagerMojoTest, AeqWithNoColorSensor) {
 
   SetManager();
 
-  // Wait until all initialization tasks are done.
-  base::RunLoop().RunUntilIdle();
+  loop_lid_->Run();
+  loop_base_->Run();
 
   auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
   auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
@@ -207,8 +215,8 @@ TEST_F(AmbientLightSensorManagerMojoTest, AeqWithNoColorSensor) {
 
   ResetMojoChannel();
 
-  // Wait until all reconnection tasks are done.
-  base::RunLoop().RunUntilIdle();
+  loop_lid_->Run();
+  loop_base_->Run();
 
   EXPECT_FALSE(manager_->HasColorSensor());
 
@@ -225,8 +233,8 @@ TEST_F(AmbientLightSensorManagerMojoTest, AeqWithColorSensor) {
 
   SetManager();
 
-  // Wait until all initialization tasks are done.
-  base::RunLoop().RunUntilIdle();
+  loop_lid_->Run();
+  loop_base_->Run();
 
   auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
   auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
@@ -241,8 +249,8 @@ TEST_F(AmbientLightSensorManagerMojoTest, AeqWithColorSensor) {
 
   ResetMojoChannel();
 
-  // Wait until all reconnection tasks are done.
-  base::RunLoop().RunUntilIdle();
+  loop_lid_->Run();
+  loop_base_->Run();
 
   EXPECT_TRUE(manager_->HasColorSensor());
 
@@ -259,8 +267,8 @@ TEST_F(AmbientLightSensorManagerMojoTest, OneLateColorSensor) {
   SetManager();
   EXPECT_FALSE(manager_->HasColorSensor());
 
-  // Wait until all initialization tasks are done.
-  base::RunLoop().RunUntilIdle();
+  // |kHasAmbientLightSensorPref| == 1, assuming there's only one lid sensor.
+  loop_lid_->Run();
 
   auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
   auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
@@ -273,8 +281,8 @@ TEST_F(AmbientLightSensorManagerMojoTest, OneLateColorSensor) {
 
   SetLidSensor(/*is_color_sensor=*/true, kCrosECLightName);
 
-  // Wait until all initialization tasks are done.
-  base::RunLoop().RunUntilIdle();
+  ResetLoops();
+  loop_lid_->Run();
 
   EXPECT_TRUE(manager_->HasColorSensor());
 
@@ -290,8 +298,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, AeqWithLateColorSensor) {
 
   SetManager();
 
-  // Wait until all initialization tasks are done.
-  base::RunLoop().RunUntilIdle();
+  loop_base_->Run();
 
   auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
   auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
@@ -304,8 +311,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, AeqWithLateColorSensor) {
 
   SetLidSensor(/*is_color_sensor=*/true, kCrosECLightName);
 
-  // Wait until all initialization tasks are done.
-  base::RunLoop().RunUntilIdle();
+  loop_lid_->Run();
 
   EXPECT_TRUE(manager_->HasColorSensor());
   EXPECT_TRUE(internal_backlight_sensor->IsColorSensor());
@@ -327,8 +333,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithOneColorSensor) {
   SetManager();
   EXPECT_FALSE(manager_->HasColorSensor());
 
-  // Wait until all initialization tasks are done.
-  base::RunLoop().RunUntilIdle();
+  loop_lid_->Run();
 
   auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
   auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
@@ -339,17 +344,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithOneColorSensor) {
 
   EXPECT_TRUE(fake_lights_[kFakeLidId]->HasReceivers());
   EXPECT_FALSE(fake_lights_[kFakeBaseId]->HasReceivers());
-
-  fake_lights_[kFakeAcpiAlsId]->ClearReceiverWithReason(
-      cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
-      "Device was removed");
-
-  // Wait until all reconnection tasks are done.
-  base::RunLoop().RunUntilIdle();
-
-  // The sensor service and other mojo pipes are not reset with the reason:
-  // DEVICE_REMOVED.
-  EXPECT_TRUE(fake_lights_[kFakeLidId]->HasReceivers());
+  EXPECT_FALSE(fake_lights_[kFakeAcpiAlsId]->HasReceivers());
 
   fake_lights_[kFakeLidId]->ClearReceiverWithReason(
       cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
@@ -358,8 +353,9 @@ TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithOneColorSensor) {
   SetLidSensor(/*is_color_sensor=*/true, /*name=*/std::nullopt);
   SetBaseSensor(kCrosECLightName);
 
-  // Wait until all reconnection tasks are done.
-  base::RunLoop().RunUntilIdle();
+  ResetLoops();
+  // |kHasAmbientLightSensorPref| == 1, assuming there's only one lid sensor.
+  loop_lid_->Run();
 
   // Choose the base light sensor as it has the name attribute: cros-ec-light.
   internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
@@ -386,8 +382,8 @@ TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithTwoSensors) {
   SetManager();
   EXPECT_FALSE(manager_->HasColorSensor());
 
-  // Wait until all initialization tasks are done.
-  base::RunLoop().RunUntilIdle();
+  loop_lid_->Run();
+  loop_base_->Run();
 
   auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
   auto keyboard_backlight_sensor = manager_->GetSensorForKeyboardBacklight();
@@ -398,18 +394,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithTwoSensors) {
 
   EXPECT_TRUE(fake_lights_[kFakeLidId]->HasReceivers());
   EXPECT_TRUE(fake_lights_[kFakeBaseId]->HasReceivers());
-
-  fake_lights_[kFakeAcpiAlsId]->ClearReceiverWithReason(
-      cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
-      "Device was removed");
-
-  // Wait until all reconnection tasks are done.
-  base::RunLoop().RunUntilIdle();
-
-  // The sensor service and other mojo pipes are not reset with the reason:
-  // DEVICE_REMOVED.
-  EXPECT_TRUE(fake_lights_[kFakeLidId]->HasReceivers());
-  EXPECT_TRUE(fake_lights_[kFakeBaseId]->HasReceivers());
+  EXPECT_FALSE(fake_lights_[kFakeAcpiAlsId]->HasReceivers());
 
   fake_lights_[kFakeLidId]->ClearReceiverWithReason(
       cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
@@ -417,8 +402,8 @@ TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithTwoSensors) {
   // Overwrite the lid and base light sensors in the iioservice.
   SetLidSensor(/*is_color_sensor=*/true, /*name=*/std::nullopt);
 
-  // Wait until all reconnection tasks are done.
-  base::RunLoop().RunUntilIdle();
+  ResetLoops();
+  loop_base_->Run();
 
   // Choose the base light sensor as it has the name attribute: cros-ec-light.
   internal_backlight_sensor = manager_->GetSensorForInternalBacklight();

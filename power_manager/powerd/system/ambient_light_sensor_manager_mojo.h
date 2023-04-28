@@ -50,10 +50,18 @@ class AmbientLightSensorManagerMojo : public AmbientLightSensorManagerInterface,
   void SensorServiceConnected() override;
   void SensorServiceDisconnected() override;
 
+  void SetClosureForTesting(base::RepeatingClosure closure_for_testing_lid,
+                            base::RepeatingClosure closure_for_testing_base) {
+    lid_sensor_.closure_for_testing = closure_for_testing_lid;
+    base_sensor_.closure_for_testing = closure_for_testing_base;
+  }
+
  private:
   struct Sensor {
     std::optional<int> iio_device_id;
     system::AmbientLightSensor* sensor = nullptr;
+
+    base::RepeatingClosure closure_for_testing;
   };
 
   struct LightData {

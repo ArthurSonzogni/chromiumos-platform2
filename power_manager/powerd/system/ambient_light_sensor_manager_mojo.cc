@@ -217,7 +217,8 @@ void AmbientLightSensorManagerMojo::GetNameCallback(
 
     lid_sensor_.iio_device_id = base_sensor_.iio_device_id = id;
     auto delegate = AmbientLightSensorDelegateMojo::Create(
-        id, std::move(light.remote), allow_ambient_eq_);
+        id, std::move(light.remote), allow_ambient_eq_,
+        lid_sensor_.closure_for_testing);
     lid_sensor_.sensor->SetDelegate(std::move(delegate));
 
     // Found cros-ec-light. Other devices are not needed.
@@ -246,7 +247,8 @@ void AmbientLightSensorManagerMojo::GetNameCallback(
 
   lid_sensor_.iio_device_id = id;
   auto delegate = AmbientLightSensorDelegateMojo::Create(
-      id, std::move(light.remote), allow_ambient_eq_);
+      id, std::move(light.remote), allow_ambient_eq_,
+      lid_sensor_.closure_for_testing);
   lid_sensor_.sensor->SetDelegate(std::move(delegate));
 }
 
@@ -315,7 +317,8 @@ void AmbientLightSensorManagerMojo::SetSensorDeviceAtLocation(
     lid_sensor_.iio_device_id = id;
 
     auto delegate = AmbientLightSensorDelegateMojo::Create(
-        id, std::move(light.remote), allow_ambient_eq_);
+        id, std::move(light.remote), allow_ambient_eq_,
+        lid_sensor_.closure_for_testing);
     lid_sensor_.sensor->SetDelegate(std::move(delegate));
   } else if (location == SensorLocation::BASE &&
              (!base_sensor_.iio_device_id.has_value() ||
@@ -326,8 +329,9 @@ void AmbientLightSensorManagerMojo::SetSensorDeviceAtLocation(
 
     auto delegate = AmbientLightSensorDelegateMojo::Create(
         id, std::move(light.remote),
-        /*enable_color_support=*/false);  // BASE sensor is not expected to be
-                                          // used for AEQ.
+        /*enable_color_support=*/false,  // BASE sensor is not expected to be
+                                         // used for AEQ.
+        base_sensor_.closure_for_testing);
     base_sensor_.sensor->SetDelegate(std::move(delegate));
   }
 
@@ -368,9 +372,9 @@ void AmbientLightSensorManagerMojo::SetSensorDeviceMojo(Sensor* sensor,
                      base::Unretained(this), sensor->iio_device_id.value()));
 
   std::unique_ptr<AmbientLightSensorDelegateMojo> delegate =
-      AmbientLightSensorDelegateMojo::Create(sensor->iio_device_id.value(),
-                                             std::move(sensor_device_remote),
-                                             allow_ambient_eq);
+      AmbientLightSensorDelegateMojo::Create(
+          sensor->iio_device_id.value(), std::move(sensor_device_remote),
+          allow_ambient_eq, sensor->closure_for_testing);
   sensor->sensor->SetDelegate(std::move(delegate));
 }
 
