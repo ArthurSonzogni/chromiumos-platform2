@@ -7,10 +7,10 @@
 
 #include <optional>
 
+#include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/status.h"
-#include "libhwsec/structures/attestation.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/operation_policy.h"
 
@@ -20,12 +20,13 @@ class Attestation {
  public:
   // Quotes the |device_configs| with |key|. The |key| must be a restricted
   // signing key.
-  virtual StatusOr<Quotation> Quote(DeviceConfigs device_configs, Key key) = 0;
+  virtual StatusOr<attestation::Quote> Quote(DeviceConfigs device_configs,
+                                             Key key) = 0;
 
   // Checks if |quote| is valid for a single device config specified by
   // |device_configs|.
   virtual StatusOr<bool> IsQuoted(DeviceConfigs device_configs,
-                                  const Quotation& quotation) = 0;
+                                  const attestation::Quote& quote) = 0;
 
  protected:
   Attestation() = default;

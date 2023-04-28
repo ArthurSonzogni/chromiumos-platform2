@@ -27,12 +27,13 @@ BackendTpm1::BackendTpm1(Proxy& proxy,
       tpm_manager_(proxy_.GetTpmManager()),
       tpm_nvram_(proxy_.GetTpmNvram()),
       overalls_(proxy_.GetOveralls()),
+      crossystem_(proxy_.GetCrossystem()),
       middleware_derivative_(middleware_derivative),
       tss_helper_(tpm_manager_, overalls_),
       state_(tpm_manager_),
       da_mitigation_(tpm_manager_),
       storage_(tpm_manager_, tpm_nvram_),
-      config_(overalls_, tss_helper_),
+      config_(overalls_, tss_helper_, crossystem_),
       random_(overalls_, tss_helper_),
       key_management_(overalls_, tss_helper_, config_, middleware_derivative_),
       sealing_(
@@ -45,7 +46,8 @@ BackendTpm1::BackendTpm1(Proxy& proxy,
       pinweaver_(),
       vendor_(overalls_, tss_helper_, proxy_.GetTpmManager(), key_management_),
       recovery_crypto_(overalls_, config_, key_management_, sealing_, signing_),
-      u2f_() {}
+      u2f_(),
+      attestation_(overalls_, tss_helper_, config_, key_management_) {}
 
 BackendTpm1::~BackendTpm1() = default;
 

@@ -97,6 +97,7 @@ class BackendTpm2 : public Backend {
   Proxy& proxy_;
   org::chromium::TpmManagerProxyInterface& tpm_manager_;
   org::chromium::TpmNvramProxyInterface& tpm_nvram_;
+  crossystem::Crossystem& crossystem_;
 
   MiddlewareDerivative middleware_derivative_;
 

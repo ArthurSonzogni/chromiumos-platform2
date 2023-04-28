@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
+#include <libcrossystem/crossystem.h>
 #include <trunks/command_transceiver.h>
 #include <trunks/trunks_factory.h>
 
@@ -27,8 +28,12 @@ namespace hwsec {
 
 class ConfigTpm2 : public Config {
  public:
-  ConfigTpm2(TrunksContext& context, SessionManagementTpm2& session_management)
-      : context_(context), session_management_(session_management) {}
+  ConfigTpm2(TrunksContext& context,
+             SessionManagementTpm2& session_management,
+             crossystem::Crossystem& crossystem)
+      : context_(context),
+        session_management_(session_management),
+        crossystem_(crossystem) {}
 
   StatusOr<OperationPolicy> ToOperationPolicy(
       const OperationPolicySetting& policy) override;
@@ -78,15 +83,24 @@ class ConfigTpm2 : public Config {
   // Creates the PCR value for PinWeaver digest.
   StatusOr<PcrValue> ToPcrValue(const DeviceConfigSettings& settings);
 
+  // Creates the PCR selection from |device_configs|.
+  StatusOr<trunks::TPMS_PCR_SELECTION> ToPcrSelection(
+      const DeviceConfigs& device_configs);
+
   // Gets the policy digest from operation policy setting. Returns empty string
   // if the the policy can be satisfied by HMAC session.
   StatusOr<std::string> GetPolicyDigest(const OperationPolicySetting& policy);
 
- private:
+  // Reads the PCR value in |pcr_index|.
   StatusOr<std::string> ReadPcr(uint32_t pcr_index);
 
+  // Gets Hardware ID.
+  StatusOr<std::string> GetHardwareID();
+
+ private:
   TrunksContext& context_;
   SessionManagementTpm2& session_management_;
+  crossystem::Crossystem& crossystem_;
 };
 
 }  // namespace hwsec

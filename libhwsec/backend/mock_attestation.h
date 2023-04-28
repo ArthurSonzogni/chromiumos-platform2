@@ -7,13 +7,13 @@
 
 #include <string>
 
+#include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "libhwsec/backend/attestation.h"
 #include "libhwsec/status.h"
-#include "libhwsec/structures/attestation.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/operation_policy.h"
 
@@ -31,13 +31,13 @@ class MockAttestation : public Attestation {
         .WillByDefault(Invoke(default_, &Attestation::IsQuoted));
   }
 
-  MOCK_METHOD(StatusOr<Quotation>,
+  MOCK_METHOD(StatusOr<attestation::Quote>,
               Quote,
               (DeviceConfigs device_configs, Key key),
               (override));
   MOCK_METHOD(StatusOr<bool>,
               IsQuoted,
-              (DeviceConfigs device_configs, const Quotation& quotation),
+              (DeviceConfigs device_configs, const attestation::Quote& quote),
               (override));
 
  private:

@@ -291,6 +291,21 @@ StatusOr<ConfigTpm2::PcrValue> ConfigTpm2::ToPcrValue(
   return pcr_value;
 }
 
+StatusOr<trunks::TPMS_PCR_SELECTION> ConfigTpm2::ToPcrSelection(
+    const DeviceConfigs& device_configs) {
+  ASSIGN_OR_RETURN(const PcrMap& pcr_map, ToPcrMap(device_configs));
+
+  trunks::TPMS_PCR_SELECTION pcr_selection;
+  pcr_selection.hash = trunks::TPM_ALG_SHA256;
+  pcr_selection.sizeof_select = PCR_SELECT_MIN;
+  memset(pcr_selection.pcr_select, 0, PCR_SELECT_MIN);
+  for (const PcrMap::value_type& pcr : pcr_map) {
+    pcr_selection.pcr_select[pcr.first / 8] |= 1u << (pcr.first % 8);
+  }
+
+  return pcr_selection;
+}
+
 StatusOr<std::string> ConfigTpm2::GetPolicyDigest(
     const OperationPolicySetting& policy) {
   ASSIGN_OR_RETURN(const PcrMap& pcr_map,
@@ -320,6 +335,15 @@ StatusOr<std::string> ConfigTpm2::GetPolicyDigest(
       .WithStatus<TPMError>("Failed to get policy digest");
 
   return policy_digest;
+}
+
+StatusOr<std::string> ConfigTpm2::GetHardwareID() {
+  auto property = crossystem_.VbGetSystemPropertyString("hwid");
+  if (!property.has_value()) {
+    return MakeStatus<TPMError>("Failed to read hwid property",
+                                TPMRetryAction::kNoRetry);
+  }
+  return *property;
 }
 
 }  // namespace hwsec

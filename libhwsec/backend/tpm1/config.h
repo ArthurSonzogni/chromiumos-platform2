@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
+#include <libcrossystem/crossystem.h>
 
 #include "libhwsec/backend/config.h"
 #include "libhwsec/backend/tpm1/tss_helper.h"
@@ -27,8 +28,10 @@ extern const int kCurrentUserPcrTpm1;
 
 class ConfigTpm1 : public Config {
  public:
-  ConfigTpm1(overalls::Overalls& overalls, TssHelper& tss_helper)
-      : overalls_(overalls), tss_helper_(tss_helper) {}
+  ConfigTpm1(overalls::Overalls& overalls,
+             TssHelper& tss_helper,
+             crossystem::Crossystem& crossystem)
+      : overalls_(overalls), tss_helper_(tss_helper), crossystem_(crossystem) {}
 
   StatusOr<OperationPolicy> ToOperationPolicy(
       const OperationPolicySetting& policy) override;
@@ -47,11 +50,19 @@ class ConfigTpm1 : public Config {
   // Converts a device config setting into a PCR map.
   StatusOr<PcrMap> ToSettingsPcrMap(const DeviceConfigSettings& settings);
 
- private:
+  // Creates the PCR selection from |device_configs|.
+  StatusOr<ScopedTssPcrs> ToPcrSelection(const DeviceConfigs& device_configs);
+
+  // Reads the PCR value in |pcr_index|.
   StatusOr<brillo::Blob> ReadPcr(uint32_t pcr_index);
 
+  // Gets Hardware ID.
+  StatusOr<std::string> GetHardwareID();
+
+ private:
   overalls::Overalls& overalls_;
   TssHelper& tss_helper_;
+  crossystem::Crossystem& crossystem_;
 };
 
 }  // namespace hwsec

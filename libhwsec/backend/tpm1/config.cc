@@ -187,4 +187,34 @@ StatusOr<ConfigTpm1::PcrMap> ConfigTpm1::ToSettingsPcrMap(
   return result;
 }
 
+StatusOr<ScopedTssPcrs> ConfigTpm1::ToPcrSelection(
+    const DeviceConfigs& device_configs) {
+  ASSIGN_OR_RETURN(const PcrMap& pcr_map, ToPcrMap(device_configs));
+
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
+  ScopedTssPcrs pcrs(overalls_, context);
+  RETURN_IF_ERROR(
+      MakeStatus<TPM1Error>(overalls_.Ospi_Context_CreateObject(
+          context, TSS_OBJECT_TYPE_PCRS, TSS_PCRS_STRUCT_INFO, pcrs.ptr())))
+      .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
+
+  for (const PcrMap::value_type& pcr : pcr_map) {
+    RETURN_IF_ERROR(
+        MakeStatus<TPM1Error>(
+            overalls_.Ospi_PcrComposite_SelectPcrIndex(pcrs, pcr.first)))
+        .WithStatus<TPMError>(
+            "Failed to call Ospi_PcrComposite_SelectPcrIndex");
+  }
+  return pcrs;
+}
+
+StatusOr<std::string> ConfigTpm1::GetHardwareID() {
+  auto property = crossystem_.VbGetSystemPropertyString("hwid");
+  if (!property.has_value()) {
+    return MakeStatus<TPMError>("Failed to read hwid property",
+                                TPMRetryAction::kNoRetry);
+  }
+  return *property;
+}
+
 }  // namespace hwsec
