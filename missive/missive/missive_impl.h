@@ -9,13 +9,14 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/gtest_prod_util.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/bind_post_task.h>
 #include <base/threading/thread.h>
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
 
-#include "base/memory/scoped_refptr.h"
 #include "missive/analytics/registry.h"
 #include "missive/compression/compression_module.h"
 #include "missive/dbus/upload_client.h"
@@ -97,6 +98,8 @@ class MissiveImpl : public MissiveService {
   base::WeakPtr<MissiveImpl> GetWeakPtr();
 
  private:
+  FRIEND_TEST_ALL_PREFIXES(MissiveImplTest, DisabledReportingTest);
+
   void CreateStorage(
       StorageOptions storage_options,
       MissiveArgs::StorageParameters parameters,
@@ -129,6 +132,11 @@ class MissiveImpl : public MissiveService {
   void AsyncStartUploadInternal(
       UploaderInterface::UploadReason reason,
       UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
+
+  void HandleUploadResponse(
+      StatusOr<UploadEncryptedRecordResponse> upload_response);
+
+  void SetEnabled(bool is_enabled);
 
   void OnStorageParametersUpdate(
       MissiveArgs::StorageParameters storage_parameters);
@@ -178,6 +186,8 @@ class MissiveImpl : public MissiveService {
       GUARDED_BY_CONTEXT(sequence_checker_);
   scoped_refptr<EncryptionModuleInterface> encryption_module_
       GUARDED_BY_CONTEXT(sequence_checker_);
+
+  bool is_enabled_ GUARDED_BY_CONTEXT(sequence_checker_) = true;
 
   base::WeakPtrFactory<MissiveImpl> weak_ptr_factory_{this};
 };

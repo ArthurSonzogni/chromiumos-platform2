@@ -37,7 +37,8 @@ class UploadJob : public Scheduler::Job {
     UploadDelegate(scoped_refptr<UploadClient> upload_client,
                    bool need_encryption_key,
                    uint64_t remaining_storage_capacity,
-                   std::optional<uint64_t> new_events_rate);
+                   std::optional<uint64_t> new_events_rate,
+                   UploadClient::HandleUploadResponseCallback response_cb);
     UploadDelegate(const UploadDelegate& other) = delete;
     UploadDelegate& operator=(const UploadDelegate& other) = delete;
     ~UploadDelegate() override;
@@ -57,6 +58,8 @@ class UploadJob : public Scheduler::Job {
 
     uint64_t remaining_storage_capacity_;
     std::optional<uint64_t> new_events_rate_;
+
+    UploadClient::HandleUploadResponseCallback response_cb_;
   };
 
   class RecordProcessor : public UploaderInterface {
@@ -95,7 +98,8 @@ class UploadJob : public Scheduler::Job {
       bool need_encryption_key,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
-      UploaderInterface::UploaderInterfaceResultCb start_cb);
+      UploaderInterface::UploaderInterfaceResultCb start_cb,
+      UploadClient::HandleUploadResponseCallback response_cb);
 
  protected:
   void StartImpl() override;

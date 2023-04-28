@@ -32,11 +32,13 @@
 using ::brillo::dbus_utils::AsyncEventSequencer;
 
 using ::testing::_;
+using ::testing::AllOf;
 using ::testing::AnyNumber;
 using ::testing::Eq;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::NotNull;
+using ::testing::Property;
 using ::testing::Return;
 using ::testing::StrEq;
 using ::testing::StrictMock;
@@ -132,8 +134,8 @@ class MissiveDaemonTest : public ::testing::Test {
           std::move(cb).Run(status);
         }));
 
-    missive_daemon_.reset(
-        new DBusAdaptor(mock_bus_, std::move(missive), std::move(failure_cb)));
+    missive_daemon_ = std::make_unique<DBusAdaptor>(
+        mock_bus_, std::move(missive), std::move(failure_cb));
   }
 
   void WaitForReady() {
@@ -279,9 +281,10 @@ TEST_F(MissiveDaemonTest, ResponseWithErrorTest) {
   response->set_return_callback(response_event.cb());
   missive_daemon_->FlushPriority(std::move(response), request);
   const auto& response_result = response_event.ref_result();
-  EXPECT_THAT(response_result.status().code(), Eq(error.error_code()));
-  EXPECT_THAT(response_result.status().error_message(),
-              StrEq(std::string(error.error_message())));
+  EXPECT_THAT(response_result.status(),
+              AllOf(Property(&StatusProto::code, Eq(error.error_code())),
+                    Property(&StatusProto::error_message,
+                             StrEq(std::string(error.error_message())))));
 }
 
 TEST_F(MissiveDaemonTest, UnavailableTest) {
@@ -290,9 +293,11 @@ TEST_F(MissiveDaemonTest, UnavailableTest) {
   test::TestEvent<Status> failure_event;
   StartUp(failure_status, failure_event.cb());
   const auto result = failure_event.result();
-  ASSERT_THAT(result.error_code(), Eq(failure_status.error_code())) << result;
-  ASSERT_THAT(result.error_message(),
-              StrEq(std::string(failure_status.error_message())))
+  ASSERT_THAT(
+      result,
+      AllOf(Property(&Status::error_code, Eq(error::UNAVAILABLE)),
+            Property(&Status::error_message,
+                     StrEq(std::string(failure_status.error_message())))))
       << result;
 
   FlushPriorityRequest request;
@@ -306,7 +311,10 @@ TEST_F(MissiveDaemonTest, UnavailableTest) {
   response->set_return_callback(response_event.cb());
   missive_daemon_->FlushPriority(std::move(response), request);
   const auto& response_result = response_event.ref_result();
-  EXPECT_THAT(response_result.status().code(), Eq(error::UNAVAILABLE));
+  EXPECT_THAT(response_result.status(),
+              AllOf(Property(&StatusProto::code, Eq(error::UNAVAILABLE)),
+                    Property(&StatusProto::error_message,
+                             StrEq("The daemon is still starting."))));
 }
 }  // namespace
 }  // namespace reporting

@@ -5,11 +5,11 @@
 #include "missive/daemon/missive_daemon.h"
 
 #include <cstdlib>
+#include <memory>
 #include <string>
 #include <utility>
 
 #include <base/logging.h>
-#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "missive/missive/missive_service.h"
@@ -27,7 +27,7 @@ MissiveDaemon::~MissiveDaemon() = default;
 
 void MissiveDaemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
-  adaptor_.reset(new DBusAdaptor(bus_, std::move(missive_)));
+  adaptor_ = std::make_unique<DBusAdaptor>(bus_, std::move(missive_));
   adaptor_->RegisterAsync(
       sequencer->GetHandler(/*descriptive_message=*/"RegisterAsync() failed",
                             /*failure_is_fatal=*/true));

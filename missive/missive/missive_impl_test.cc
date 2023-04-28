@@ -28,18 +28,19 @@
 #include "missive/dbus/mock_upload_client.h"
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/storage/storage_module.h"
+#include "missive/util/status.h"
 #include "missive/util/test_support_callbacks.h"
 #include "missive/util/test_util.h"
 
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::NiceMock;
+using ::testing::Property;
 using ::testing::Return;
 using ::testing::StrEq;
 using ::testing::WithArg;
 
 namespace reporting {
-namespace {
 
 class MockStorageModule : public StorageModule {
  public:
@@ -171,7 +172,9 @@ TEST_F(MissiveImplTest, AsyncNoStartUploadTest) {
       weak_ptr, UploaderInterface::UploadReason::IMMEDIATE_FLUSH,
       uploader_event.cb());
   auto response_result = uploader_event.result();
-  EXPECT_THAT(response_result.status().code(), Eq(error::UNAVAILABLE))
+  EXPECT_THAT(response_result,
+              Property(&StatusOr<std::unique_ptr<UploaderInterface>>::status,
+                       Property(&Status::code, Eq(error::UNAVAILABLE))))
       << response_result.status();
 }
 
@@ -194,7 +197,9 @@ TEST_F(MissiveImplTest, EnqueueRecordTest) {
   response->set_return_callback(response_event.cb());
   missive_->EnqueueRecord(request, std::move(response));
   const auto& response_result = response_event.ref_result();
-  EXPECT_THAT(response_result.status().code(), Eq(error::OK));
+  EXPECT_THAT(response_result,
+              Property(&EnqueueRecordResponse::status,
+                       Property(&StatusProto::code, Eq(error::OK))));
 }
 
 TEST_F(MissiveImplTest, FlushPriorityTest) {
@@ -212,7 +217,9 @@ TEST_F(MissiveImplTest, FlushPriorityTest) {
   response->set_return_callback(response_event.cb());
   missive_->FlushPriority(request, std::move(response));
   const auto& response_result = response_event.ref_result();
-  EXPECT_THAT(response_result.status().code(), Eq(error::OK));
+  EXPECT_THAT(response_result,
+              Property(&FlushPriorityResponse::status,
+                       Property(&StatusProto::code, Eq(error::OK))));
 }
 
 TEST_F(MissiveImplTest, ConfirmRecordUploadTest) {
@@ -233,7 +240,9 @@ TEST_F(MissiveImplTest, ConfirmRecordUploadTest) {
   response->set_return_callback(response_event.cb());
   missive_->ConfirmRecordUpload(request, std::move(response));
   const auto& response_result = response_event.ref_result();
-  EXPECT_THAT(response_result.status().code(), Eq(error::OK));
+  EXPECT_THAT(response_result,
+              Property(&ConfirmRecordUploadResponse::status,
+                       Property(&StatusProto::code, Eq(error::OK))));
 }
 
 TEST_F(MissiveImplTest, UpdateEncryptionKeyTest) {
@@ -254,7 +263,9 @@ TEST_F(MissiveImplTest, UpdateEncryptionKeyTest) {
   response->set_return_callback(response_event.cb());
   missive_->UpdateEncryptionKey(request, std::move(response));
   const auto& response_result = response_event.ref_result();
-  EXPECT_THAT(response_result.status().code(), Eq(error::OK));
+  EXPECT_THAT(response_result,
+              Property(&UpdateEncryptionKeyResponse::status,
+                       Property(&StatusProto::code, Eq(error::OK))));
 }
 
 TEST_F(MissiveImplTest, ResponseWithErrorTest) {
@@ -275,9 +286,120 @@ TEST_F(MissiveImplTest, ResponseWithErrorTest) {
   response->set_return_callback(response_event.cb());
   missive_->FlushPriority(request, std::move(response));
   const auto& response_result = response_event.ref_result();
-  EXPECT_THAT(response_result.status().code(), Eq(error.error_code()));
-  EXPECT_THAT(response_result.status().error_message(),
-              StrEq(std::string(error.error_message())));
+  EXPECT_THAT(
+      response_result,
+      Property(&FlushPriorityResponse::status,
+               AllOf(Property(&StatusProto::code, Eq(error.error_code())),
+                     Property(&StatusProto::error_message,
+                              StrEq(error.error_message())))));
+}
+
+TEST_F(MissiveImplTest, DisabledReportingTest) {
+  // Simulate upload with FAILURE_PRECONDITION response to disable reporting.
+  missive_->SetEnabled(/*is_enabled=*/false);
+
+  {
+    EnqueueRecordRequest request;
+    request.mutable_record()->set_data("DATA");
+    request.mutable_record()->set_destination(HEARTBEAT_EVENTS);
+    request.set_priority(FAST_BATCH);
+
+    EXPECT_CALL(*storage_module_, AddRecord).Times(0);
+
+    auto response = std::make_unique<
+        brillo::dbus_utils::MockDBusMethodResponse<EnqueueRecordResponse>>();
+    test::TestEvent<const EnqueueRecordResponse&> response_event;
+    response->set_return_callback(response_event.cb());
+    missive_->EnqueueRecord(request, std::move(response));
+    const auto& response_result = response_event.ref_result();
+    EXPECT_THAT(response_result,
+                Property(&EnqueueRecordResponse::status,
+                         AllOf(Property(&StatusProto::code,
+                                        Eq(error::FAILED_PRECONDITION)),
+                               Property(&StatusProto::error_message,
+                                        StrEq("Reporting is disabled")))));
+  }
+
+  {
+    FlushPriorityRequest request;
+    request.set_priority(MANUAL_BATCH);
+
+    EXPECT_CALL(*storage_module_, Flush).Times(0);
+
+    auto response = std::make_unique<
+        brillo::dbus_utils::MockDBusMethodResponse<FlushPriorityResponse>>();
+    test::TestEvent<const FlushPriorityResponse&> response_event;
+    response->set_return_callback(response_event.cb());
+    missive_->FlushPriority(request, std::move(response));
+    const auto& response_result = response_event.ref_result();
+    EXPECT_THAT(response_result,
+                Property(&FlushPriorityResponse::status,
+                         AllOf(Property(&StatusProto::code,
+                                        Eq(error::FAILED_PRECONDITION)),
+                               Property(&StatusProto::error_message,
+                                        StrEq("Reporting is disabled")))));
+  }
+
+  {
+    ConfirmRecordUploadRequest request;
+    request.mutable_sequence_information()->set_sequencing_id(1234L);
+    request.mutable_sequence_information()->set_generation_id(9876L);
+    request.mutable_sequence_information()->set_priority(IMMEDIATE);
+    request.set_force_confirm(true);
+
+    EXPECT_CALL(*storage_module_, ReportSuccess).Times(0);
+
+    auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+        ConfirmRecordUploadResponse>>();
+    test::TestEvent<const ConfirmRecordUploadResponse&> response_event;
+    response->set_return_callback(response_event.cb());
+    missive_->ConfirmRecordUpload(request, std::move(response));
+    const auto& response_result = response_event.ref_result();
+    EXPECT_THAT(response_result,
+                Property(&ConfirmRecordUploadResponse::status,
+                         AllOf(Property(&StatusProto::code,
+                                        Eq(error::FAILED_PRECONDITION)),
+                               Property(&StatusProto::error_message,
+                                        StrEq("Reporting is disabled")))));
+  }
+
+  {
+    UpdateEncryptionKeyRequest request;
+    request.mutable_signed_encryption_info()->set_public_asymmetric_key(
+        "PUBLIC_KEY");
+    request.mutable_signed_encryption_info()->set_public_key_id(555666);
+    request.mutable_signed_encryption_info()->set_signature("SIGNATURE");
+
+    EXPECT_CALL(*storage_module_, UpdateEncryptionKey).Times(0);
+
+    auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+        UpdateEncryptionKeyResponse>>();
+    test::TestEvent<const UpdateEncryptionKeyResponse&> response_event;
+    response->set_return_callback(response_event.cb());
+    missive_->UpdateEncryptionKey(request, std::move(response));
+    const auto& response_result = response_event.ref_result();
+    EXPECT_THAT(response_result,
+                Property(&UpdateEncryptionKeyResponse::status,
+                         AllOf(Property(&StatusProto::code,
+                                        Eq(error::FAILED_PRECONDITION)),
+                               Property(&StatusProto::error_message,
+                                        StrEq("Reporting is disabled")))));
+  }
+
+  {
+    test::TestEvent<StatusOr<std::unique_ptr<UploaderInterface>>>
+        uploader_event;
+    MissiveImpl::AsyncStartUpload(
+        missive_->GetWeakPtr(),
+        UploaderInterface::UploadReason::IMMEDIATE_FLUSH, uploader_event.cb());
+    const auto& response_result = uploader_event.result();
+    EXPECT_THAT(response_result,
+                Property(&StatusOr<std::unique_ptr<UploaderInterface>>::status,
+                         AllOf(Property(&Status::error_code,
+                                        Eq(error::FAILED_PRECONDITION)),
+                               Property(&Status::error_message,
+                                        StrEq("Reporting is disabled")))));
+  }
 }
 
 TEST_F(MissiveImplTest, DynamicParametersUpdateTest) {
@@ -296,5 +418,4 @@ TEST_F(MissiveImplTest, DynamicParametersUpdateTest) {
   EXPECT_FALSE(compression_module_->is_enabled());
   EXPECT_FALSE(encryption_module_->is_enabled());
 }
-}  // namespace
 }  // namespace reporting

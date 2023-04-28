@@ -54,6 +54,15 @@ void HandleFlushResponse(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
   status.SaveTo(response_body.mutable_status());
   out_response->Return(response_body);
 }
+
+template <typename ResponseType>
+ResponseType RespondMissiveDisabled() {
+  ResponseType response_body;
+  auto* status = response_body.mutable_status();
+  status->set_code(error::FAILED_PRECONDITION);
+  status->set_error_message("Reporting is disabled");
+  return response_body;
+}
 }  // namespace
 
 MissiveImpl::MissiveImpl(
@@ -262,6 +271,11 @@ void MissiveImpl::AsyncStartUploadInternal(
     UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(uploader_result_cb);
+  if (!is_enabled_) {
+    std::move(uploader_result_cb)
+        .Run(Status(error::FAILED_PRECONDITION, "Reporting is disabled"));
+    return;
+  }
   if (!storage_module_) {
     // This is a precaution for a rare case - usually `storage_module_` is
     // already set by the time `AsyncStartUpload`.
@@ -278,7 +292,9 @@ void MissiveImpl::AsyncStartUploadInternal(
       /*remaining_storage_capacity=*/disk_space_resource_->GetTotal() -
           disk_space_resource_->GetUsed(),
       /*new_events_rate=*/enqueuing_record_tallier_->GetAverage(),
-      std::move(uploader_result_cb));
+      std::move(uploader_result_cb),
+      base::BindPostTaskToCurrentDefault(
+          base::BindOnce(&MissiveImpl::HandleUploadResponse, GetWeakPtr())));
   if (!upload_job_result.ok()) {
     // In the event that UploadJob::Create fails, it will call
     // |uploader_result_cb| with a failure status.
@@ -295,6 +311,10 @@ void MissiveImpl::EnqueueRecord(
         brillo::dbus_utils::DBusMethodResponse<EnqueueRecordResponse>>
         out_response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!is_enabled_) {
+    out_response->Return(RespondMissiveDisabled<EnqueueRecordResponse>());
+    return;
+  }
   if (!in_request.has_record()) {
     EnqueueRecordResponse response_body;
     auto* status = response_body.mutable_status();
@@ -329,6 +349,10 @@ void MissiveImpl::FlushPriority(
         brillo::dbus_utils::DBusMethodResponse<FlushPriorityResponse>>
         out_response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!is_enabled_) {
+    out_response->Return(RespondMissiveDisabled<FlushPriorityResponse>());
+    return;
+  }
   storage_module_->Flush(in_request.priority(),
                          base::BindPostTaskToCurrentDefault(base::BindOnce(
                              &HandleFlushResponse, std::move(out_response))));
@@ -340,6 +364,10 @@ void MissiveImpl::ConfirmRecordUpload(
         brillo::dbus_utils::DBusMethodResponse<ConfirmRecordUploadResponse>>
         out_response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!is_enabled_) {
+    out_response->Return(RespondMissiveDisabled<ConfirmRecordUploadResponse>());
+    return;
+  }
   ConfirmRecordUploadResponse response_body;
   if (!in_request.has_sequence_information()) {
     auto* status = response_body.mutable_status();
@@ -360,6 +388,10 @@ void MissiveImpl::UpdateEncryptionKey(
         brillo::dbus_utils::DBusMethodResponse<UpdateEncryptionKeyResponse>>
         out_response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!is_enabled_) {
+    out_response->Return(RespondMissiveDisabled<UpdateEncryptionKeyResponse>());
+    return;
+  }
   UpdateEncryptionKeyResponse response_body;
   if (!in_request.has_signed_encryption_info()) {
     auto status = response_body.mutable_status();
@@ -371,6 +403,40 @@ void MissiveImpl::UpdateEncryptionKey(
 
   storage_module_->UpdateEncryptionKey(in_request.signed_encryption_info());
   out_response->Return(response_body);
+}
+
+void MissiveImpl::HandleUploadResponse(
+    StatusOr<UploadEncryptedRecordResponse> upload_response) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!upload_response.ok()) {
+    return;  // No response received.
+  }
+  const auto& upload_response_value = upload_response.ValueOrDie();
+  if (!upload_response_value.has_status()) {
+    DCHECK(!upload_response_value.disable())
+        << "Cannot disable reporting, no error status";
+    return;
+  }
+  if (upload_response_value.disable()) {
+    // Disable reporting based on the response from Chrome.
+    // Note: there is no way to re-enable it after that, because we do not talk
+    // to it anymore.
+    DCHECK(upload_response_value.has_status())
+        << "Disable signal should be accompanied by status";
+    Status upload_status;
+    upload_status.RestoreFrom(upload_response.ValueOrDie().status());
+    LOG(ERROR) << "Disable reporting, status=" << upload_status;
+    SetEnabled(/*is_enabled=*/false);
+  }
+}
+
+void MissiveImpl::SetEnabled(bool is_enabled) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (is_enabled_ == is_enabled) {
+    return;  // No change.
+  }
+  is_enabled_ = is_enabled;
+  LOG(WARNING) << "Reporting is " << (is_enabled_ ? "enabled" : "disabled");
 }
 
 void MissiveImpl::OnStorageParametersUpdate(
