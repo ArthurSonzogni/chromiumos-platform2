@@ -22,6 +22,7 @@
 #include "secagentd/bpf_skeletons/skeleton_network_bpf.h"
 #include "secagentd/common.h"
 #include "secagentd/metrics_sender.h"
+
 namespace secagentd {
 
 // Directory with min_core_btf payloads. Must match the ebuild.
@@ -55,7 +56,8 @@ class BpfSkeletonInterface {
   friend class NetworkBpfSkeleton;
   BpfSkeletonInterface() = default;
 
-  virtual absl::Status LoadAndAttach() = 0;
+  virtual std::pair<absl::Status, metrics::BpfAttachResult> LoadAndAttach() = 0;
+
   // Register callbacks to handle:
   // 1 - When a security event from a ring buffer has been consumed and is
   // available for further processing.
@@ -71,17 +73,12 @@ struct SkeletonCallbacks {
       open_opts;
 };
 
-struct SkeletonMetrics {
-  const metrics::EnumMetric<metrics::BpfAttachResult> attach_result;
-};
-
 template <typename SkeletonType>
 class BpfSkeleton : public BpfSkeletonInterface {
  public:
   BpfSkeleton(std::string_view plugin_name,
-              const SkeletonCallbacks<SkeletonType>& skel_cb,
-              const SkeletonMetrics& metrics)
-      : name_(plugin_name), skel_cbs_(skel_cb), metrics_(metrics) {}
+              const SkeletonCallbacks<SkeletonType>& skel_cb)
+      : name_(plugin_name), skel_cbs_(skel_cb) {}
   ~BpfSkeleton() override {
     // The file descriptor being watched must outlive the controller.
     // Force rb_watch_readable_ destruction before closing fd.
@@ -104,13 +101,15 @@ class BpfSkeleton : public BpfSkeletonInterface {
  protected:
   friend class BpfSkeletonFactory;
   friend class NetworkBpfSkeleton;
-  absl::Status LoadAndAttach() override {
+  std::pair<absl::Status, metrics::BpfAttachResult> LoadAndAttach() override {
     if (callbacks_.ring_buffer_event_callback.is_null() ||
         callbacks_.ring_buffer_read_ready_callback.is_null()) {
-      return absl::InternalError(base::StrCat(
-          {name_,
-           ": LoadAndAttach failed, one or more provided callbacks "
-           "are null."}));
+      return std::make_pair(
+          absl::InternalError(base::StrCat(
+              {name_,
+               ": LoadAndAttach failed, one or more provided callbacks "
+               "are null."})),
+          metrics::BpfAttachResult(-1));
     }
     libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
 #if defined(USE_MIN_CORE_BTF) && USE_MIN_CORE_BTF == 1
@@ -128,23 +127,21 @@ class BpfSkeleton : public BpfSkeletonInterface {
 #endif  // USE_MIN_CORE_BTF
 
     if (!skel_) {
-      MetricsSender::GetInstance().SendEnumMetricToUMA(
-          metrics_.attach_result, metrics::BpfAttachResult::kErrorOpen);
-      return absl::InternalError(
-          base::StrCat({name_, "BPF skeleton failed to open."}));
+      return std::make_pair(absl::InternalError(base::StrCat(
+                                {name_, "BPF skeleton failed to open."})),
+                            metrics::BpfAttachResult::kErrorOpen);
     }
     if (bpf_object__load_skeleton(skel_->skeleton)) {
-      MetricsSender::GetInstance().SendEnumMetricToUMA(
-          metrics_.attach_result, metrics::BpfAttachResult::kErrorLoad);
-      return absl::InternalError(base::StrCat(
-          {name_, ": application failed loading and verification."}));
+      return std::make_pair(
+          absl::InternalError(base::StrCat(
+              {name_, ": application failed loading and verification."})),
+          metrics::BpfAttachResult::kErrorLoad);
     }
 
     if (bpf_object__attach_skeleton(skel_->skeleton)) {
-      MetricsSender::GetInstance().SendEnumMetricToUMA(
-          metrics_.attach_result, metrics::BpfAttachResult::kErrorLoad);
-      return absl::InternalError(
-          base::StrCat({name_, ": program failed to attach."}));
+      return std::make_pair(absl::InternalError(base::StrCat(
+                                {name_, ": program failed to attach."})),
+                            metrics::BpfAttachResult::kErrorAttach);
     }
 
     int map_fd = bpf_map__fd(skel_->maps.rb);
@@ -160,17 +157,14 @@ class BpfSkeleton : public BpfSkeletonInterface {
     }
 
     if (map_fd < 0 || !rb_ || epoll_fd < 0) {
-      MetricsSender::GetInstance().SendEnumMetricToUMA(
-          metrics_.attach_result, metrics::BpfAttachResult::kErrorRingBuffer);
-      return absl::InternalError(
-          base::StrCat({name_, ": Ring buffer creation failed."}));
+      return std::make_pair(absl::InternalError(base::StrCat(
+                                {name_, ": Ring buffer creation failed."})),
+                            metrics::BpfAttachResult::kErrorRingBuffer);
     }
 
     rb_watch_readable_ = base::FileDescriptorWatcher::WatchReadable(
         epoll_fd, callbacks_.ring_buffer_read_ready_callback);
-    MetricsSender::GetInstance().SendEnumMetricToUMA(
-        metrics_.attach_result, metrics::BpfAttachResult::kSuccess);
-    return absl::OkStatus();
+    return std::make_pair(absl::OkStatus(), metrics::BpfAttachResult::kSuccess);
   }
   void RegisterCallbacks(BpfCallbacks cbs) override { callbacks_ = cbs; }
 
@@ -180,7 +174,6 @@ class BpfSkeleton : public BpfSkeletonInterface {
   BpfCallbacks callbacks_;
   std::string name_;
   const SkeletonCallbacks<SkeletonType> skel_cbs_;
-  const SkeletonMetrics metrics_;
   struct ring_buffer* rb_{nullptr};
   std::unique_ptr<base::FileDescriptorWatcher::Controller> rb_watch_readable_;
 };

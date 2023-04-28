@@ -47,7 +47,7 @@ void MetricsSender::SendBatchedMetricsToUMA(metrics::MetricsMap map_copy) {
 
     // If sample is success value divide by 100.
     int count = val;
-    if (sample == 0) {
+    if (sample == success_value_map_.find(metric_name)->second) {
       count = (count + 100 - 1) / 100;
     }
 

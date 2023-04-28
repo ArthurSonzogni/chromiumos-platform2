@@ -352,18 +352,18 @@ void ProcessCache::EraseProcess(uint64_t pid, bpf::time_ns_t start_time_ns) {
   }
 }
 
-ProcessCache::InternalProcessCacheType::iterator
+std::pair<ProcessCache::InternalProcessCacheType::iterator, metrics::Cache>
 ProcessCache::InclusiveGetProcess(const InternalProcessKeyType& key) {
   process_cache_lock_.AssertAcquired();
   // PID 0 doesn't exist and is also used to signify the end of the process
   // "linked list".
   if (key.pid == 0) {
-    return process_cache_->end();
+    // Metric will not be logged.
+    return std::make_pair(process_cache_->end(), metrics::Cache(-1));
   }
   auto it = process_cache_->Get(key);
   if (it != process_cache_->end()) {
-    cache_metric_ = metrics::Cache::kCacheHit;
-    return it;
+    return std::make_pair(it, metrics::Cache::kCacheHit);
   }
 
   absl::StatusOr<InternalProcessValueType> statusor;
@@ -372,14 +372,12 @@ ProcessCache::InclusiveGetProcess(const InternalProcessKeyType& key) {
     statusor = MakeFromProcfs(key);
     if (!statusor.ok()) {
       LOG(ERROR) << statusor.status();
-      cache_metric_ = metrics::Cache::kCacheMiss;
-      return process_cache_->end();
+      return std::make_pair(process_cache_->end(), metrics::Cache::kCacheMiss);
     }
   }
 
   it = process_cache_->Put(key, std::move(*statusor));
-  cache_metric_ = metrics::Cache::kProcfsFilled;
-  return it;
+  return std::make_pair(it, metrics::Cache::kProcfsFilled);
 }
 
 ProcessCache::InternalImageCacheType::const_iterator
@@ -440,10 +438,11 @@ std::vector<std::unique_ptr<pb::Process>> ProcessCache::GetProcessHierarchy(
   InternalProcessKeyType lookup_key{LossyNsecToClockT(start_time_ns), pid};
   base::AutoLock lock(process_cache_lock_);
   for (int i = 0; i < num_generations; ++i) {
-    auto it = InclusiveGetProcess(lookup_key);
+    auto pair = InclusiveGetProcess(lookup_key);
+    auto it = pair.first;
     if (lookup_key.pid != 0) {
       MetricsSender::GetInstance().IncrementBatchedMetric(metrics::kCache,
-                                                          cache_metric_);
+                                                          pair.second);
     }
     if (it != process_cache_->end()) {
       auto process_proto = std::make_unique<pb::Process>();

@@ -282,15 +282,22 @@ class AgentPlugin : public PluginInterface {
   // are ready GetCrosSecureBootInformation() and GetTpmInformation()
   // will be called to fill remaining fields.
   void StartInitializingAgentProto();
+  // Callback that is used when the attestation service is ready that calls
+  // GetCrosSecureBootInformation and sends metrics.
+  void AttestationCb(bool available);
   // Delayed function that will be called when attestation is ready. Fills the
   // boot information in the agent proto if Cros Secure boot is used.
-  void GetCrosSecureBootInformation(bool available);
+  metrics::CrosBootmode GetCrosSecureBootInformation(bool available);
+  // Callback that is used when the tpm service is ready that calls
+  // GetTpmInformation and sends metrics.
+  void TpmCb(bool available);
   // Delayed function that will be called when tpm_manager is ready. Fills the
   // tpm information in the agent proto.
-  void GetTpmInformation(bool available);
+  metrics::Tpm GetTpmInformation(bool available);
   // Fills the boot information in the agent proto if Uefi Secure boot is used.
   // Note: Only for flex machines.
-  void GetUefiSecureBootInformation(const base::FilePath& boot_params_filepath);
+  metrics::UefiBootmode GetUefiSecureBootInformation(
+      const base::FilePath& boot_params_filepath);
   // Sends the agent start event. Uses the StartEventStatusCallback() to handle
   // the status of the message.
   void SendAgentStartEvent();
@@ -312,10 +319,6 @@ class AgentPlugin : public PluginInterface {
   base::OnceCallback<void()> daemon_cb_;
   base::Lock tcb_attributes_lock_;
   base::TimeDelta heartbeat_timer_ = base::Minutes(5);
-  metrics::CrosBootmode cros_bootmode_metric_ =
-      metrics::CrosBootmode::kValueNotSet;
-  metrics::UefiBootmode uefi_bootmode_metric_ = metrics::UefiBootmode::kSuccess;
-  metrics::Tpm tpm_metric_ = metrics::Tpm::kValueNotSet;
   bool is_active_{false};
 };
 

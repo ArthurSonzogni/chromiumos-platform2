@@ -6,6 +6,7 @@
 #define SECAGENTD_TEST_MOCK_BPF_SKELETON_H_
 
 #include <memory>
+#include <utility>
 
 #include "gmock/gmock.h"  // IWYU pragma: keep
 #include "secagentd/bpf_skeleton_wrappers.h"
@@ -23,7 +24,10 @@ MATCHER_P(BPF_CBS_EQ, cbs, "BpfCallbacks are equal.") {
 
 class MockBpfSkeleton : public BpfSkeletonInterface {
  public:
-  MOCK_METHOD(absl::Status, LoadAndAttach, (), (override));
+  MOCK_METHOD((std::pair<absl::Status, metrics::BpfAttachResult>),
+              LoadAndAttach,
+              (),
+              (override));
   MOCK_METHOD(void, RegisterCallbacks, (BpfCallbacks cbs), (override));
   MOCK_METHOD(int, ConsumeEvent, (), (override));
 };

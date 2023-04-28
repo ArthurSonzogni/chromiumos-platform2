@@ -2,12 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
 #include "base/memory/scoped_refptr.h"
 #include "gtest/gtest.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/common.h"
+#include "secagentd/metrics_sender.h"
 #include "secagentd/test/mock_bpf_skeleton.h"
 
 namespace secagentd {
@@ -52,7 +55,8 @@ TEST_P(BpfSkeletonFactoryTestFixture, TestSuccessfulBPFAttach) {
     InSequence seq;
     EXPECT_CALL(*active_skeleton, RegisterCallbacks(BPF_CBS_EQ(cbs))).Times(1);
     EXPECT_CALL(*active_skeleton, LoadAndAttach())
-        .WillOnce(Return(absl::OkStatus()));
+        .WillOnce(Return(std::make_pair(absl::OkStatus(),
+                                        metrics::BpfAttachResult::kSuccess)));
   }
   EXPECT_TRUE(skel_factory->Create(type, cbs));
 }
@@ -62,7 +66,9 @@ TEST_P(BpfSkeletonFactoryTestFixture, TestFailedBPFAttach) {
     InSequence seq;
     EXPECT_CALL(*active_skeleton, RegisterCallbacks(BPF_CBS_EQ(cbs))).Times(1);
     EXPECT_CALL(*active_skeleton, LoadAndAttach())
-        .WillOnce(Return(absl::InternalError("Load and Attach Failed")));
+        .WillOnce(
+            Return(std::make_pair(absl::InternalError("Load and Attach Failed"),
+                                  metrics::BpfAttachResult::kErrorAttach)));
   }
   EXPECT_EQ(skel_factory->Create(type, cbs), nullptr);
 }

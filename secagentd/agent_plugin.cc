@@ -104,11 +104,10 @@ absl::Status AgentPlugin::Deactivate() {
 
 void AgentPlugin::StartInitializingAgentProto() {
   attestation_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
-      base::BindOnce(&AgentPlugin::GetCrosSecureBootInformation,
+      base::BindOnce(&AgentPlugin::AttestationCb,
                      weak_ptr_factory_.GetWeakPtr()));
   tpm_manager_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
-      base::BindOnce(&AgentPlugin::GetTpmInformation,
-                     weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&AgentPlugin::TpmCb, weak_ptr_factory_.GetWeakPtr()));
 
   char buffer[VB_MAX_STRING_PROPERTY];
   auto get_fwid_rv =
@@ -118,7 +117,10 @@ void AgentPlugin::StartInitializingAgentProto() {
   struct utsname buf;
   int get_uname_rv = uname(&buf);
 
-  GetUefiSecureBootInformation(base::FilePath(kBootDataFilepath));
+  auto uefi_metric =
+      GetUefiSecureBootInformation(base::FilePath(kBootDataFilepath));
+  MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kUefiBootmode,
+                                                   uefi_metric);
 
   base::AutoLock lock(tcb_attributes_lock_);
   if (get_fwid_rv == 0) {
@@ -133,7 +135,7 @@ void AgentPlugin::StartInitializingAgentProto() {
   }
 }
 
-void AgentPlugin::GetUefiSecureBootInformation(
+metrics::UefiBootmode AgentPlugin::GetUefiSecureBootInformation(
     const base::FilePath& boot_params_filepath) {
 #ifdef HAVE_BOOTPARAM
   std::string content;
@@ -141,14 +143,12 @@ void AgentPlugin::GetUefiSecureBootInformation(
   if (!base::ReadFileToStringWithMaxSize(boot_params_filepath, &content,
                                          sizeof(boot_params))) {
     LOG(ERROR) << "Failed to read file: " << boot_params_filepath.value();
-    uefi_bootmode_metric_ = metrics::UefiBootmode::kFailedToReadBootParams;
-    return;
+    return metrics::UefiBootmode::kFailedToReadBootParams;
   }
   if (content.size() != sizeof(boot_params)) {
     LOG(ERROR) << boot_params_filepath.value()
                << " boot params invalid file size";
-    uefi_bootmode_metric_ = metrics::UefiBootmode::kBootParamInvalidSize;
-    return;
+    return metrics::UefiBootmode::kBootParamInvalidSize;
   }
   const boot_params* boot =
       reinterpret_cast<const boot_params*>(content.c_str());
@@ -160,18 +160,25 @@ void AgentPlugin::GetUefiSecureBootInformation(
     tcb_attributes_.set_firmware_secure_boot(
         pb::TcbAttributes_FirmwareSecureBoot_CROS_FLEX_UEFI_SECURE_BOOT);
   }
+  return metrics::UefiBootmode::kSuccess;
 #else
   LOG(WARNING)
       << "Header bootparam.h is not present. Assuming not uefi secure boot.";
-  uefi_bootmode_metric_ = metrics::UefiBootmode::kFileNotFound;
+  return metrics::UefiBootmode::kFileNotFound;
 #endif
 }
 
-void AgentPlugin::GetCrosSecureBootInformation(bool available) {
+void AgentPlugin::AttestationCb(bool available) {
+  auto metric = GetCrosSecureBootInformation(available);
+  MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kCrosBootmode,
+                                                   metric);
+}
+
+metrics::CrosBootmode AgentPlugin::GetCrosSecureBootInformation(
+    bool available) {
   if (!available) {
     LOG(ERROR) << "Failed waiting for attestation to become available";
-    cros_bootmode_metric_ = metrics::CrosBootmode::kUnavailable;
-    return;
+    return metrics::CrosBootmode::kUnavailable;
   }
 
   // Get boot information.
@@ -182,12 +189,10 @@ void AgentPlugin::GetCrosSecureBootInformation(bool available) {
   if (!attestation_proxy_->GetStatus(request, &out_reply, &error,
                                      kWaitForServicesTimeoutMs) ||
       error.get()) {
-    cros_bootmode_metric_ = metrics::CrosBootmode::kFailedRetrieval;
     LOG(ERROR) << "Failed to get boot information " << error->GetMessage();
-    return;
+    return metrics::CrosBootmode::kFailedRetrieval;
   }
 
-  cros_bootmode_metric_ = metrics::CrosBootmode::kSuccess;
   base::AutoLock lock(tcb_attributes_lock_);
   if (out_reply.verified_boot()) {
     tcb_attributes_.set_firmware_secure_boot(
@@ -198,13 +203,19 @@ void AgentPlugin::GetCrosSecureBootInformation(bool available) {
           pb::TcbAttributes_FirmwareSecureBoot_NONE);
     }
   }
+
+  return metrics::CrosBootmode::kSuccess;
 }
 
-void AgentPlugin::GetTpmInformation(bool available) {
+void AgentPlugin::TpmCb(bool available) {
+  auto metric = GetTpmInformation(available);
+  MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kTpm, metric);
+}
+
+metrics::Tpm AgentPlugin::GetTpmInformation(bool available) {
   if (!available) {
     LOG(ERROR) << "Failed waiting for tpm_manager to become available";
-    tpm_metric_ = metrics::Tpm::kUnavailable;
-    return;
+    return metrics::Tpm::kUnavailable;
   }
 
   // Check if TPM is enabled.
@@ -216,12 +227,11 @@ void AgentPlugin::GetTpmInformation(bool available) {
                                         kWaitForServicesTimeoutMs) ||
       error.get()) {
     LOG(ERROR) << "Failed to get TPM status " << error->GetMessage();
-    tpm_metric_ = metrics::Tpm::kFailedRetrieval;
-    return;
+    return metrics::Tpm::kFailedRetrieval;
   }
   if (status_reply.has_enabled() && !status_reply.enabled()) {
     LOG(INFO) << "TPM is disabled on device";
-    return;
+    return metrics::Tpm::kSuccess;
   }
 
   // Get TPM information.
@@ -231,11 +241,9 @@ void AgentPlugin::GetTpmInformation(bool available) {
   if (!tpm_manager_proxy_->GetVersionInfo(version_request, &version_reply,
                                           &error, kWaitForServicesTimeoutMs) ||
       error.get()) {
-    tpm_metric_ = metrics::Tpm::kFailedRetrieval;
     LOG(ERROR) << "Failed to get TPM information " << error->GetMessage();
-    return;
+    return metrics::Tpm::kFailedRetrieval;
   }
-  tpm_metric_ = metrics::Tpm::kSuccess;
 
   base::AutoLock lock(tcb_attributes_lock_);
   auto security_chip = tcb_attributes_.mutable_security_chip();
@@ -270,6 +278,8 @@ void AgentPlugin::GetTpmInformation(bool available) {
     security_chip->set_kind(pb::TcbAttributes_SecurityChip::Kind::
                                 TcbAttributes_SecurityChip_Kind_NONE);
   }
+
+  return metrics::Tpm::kSuccess;
 }
 
 void AgentPlugin::SendAgentStartEvent() {
@@ -322,18 +332,6 @@ void AgentPlugin::StartEventStatusCallback(reporting::Status status) {
         base::BindOnce(&AgentPlugin::SendAgentStartEvent,
                        weak_ptr_factory_.GetWeakPtr()),
         base::Seconds(3));
-  }
-
-  static bool sent_metrics = false;
-  // Should be sent once per daemon lifetime.
-  if (!sent_metrics) {
-    MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kCrosBootmode,
-                                                     cros_bootmode_metric_);
-    MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kUefiBootmode,
-                                                     uefi_bootmode_metric_);
-    MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kTpm,
-                                                     tpm_metric_);
-    sent_metrics = true;
   }
 }
 

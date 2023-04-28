@@ -37,9 +37,7 @@ std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
         skel_cbs.destroy = base::BindRepeating(process_bpf__destroy);
         skel_cbs.open = base::BindRepeating(process_bpf__open);
         skel_cbs.open_opts = base::BindRepeating(process_bpf__open_opts);
-        rv = std::make_unique<BpfSkeleton<process_bpf>>(
-            "process", skel_cbs,
-            SkeletonMetrics{.attach_result = metrics::kProcessBpfAttach});
+        rv = std::make_unique<BpfSkeleton<process_bpf>>("process", skel_cbs);
       }
       break;
     case Types::BpfSkeleton::kNetwork:
@@ -50,9 +48,7 @@ std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
         skel_cbs.destroy = base::BindRepeating(network_bpf__destroy);
         skel_cbs.open = base::BindRepeating(network_bpf__open);
         skel_cbs.open_opts = base::BindRepeating(network_bpf__open_opts);
-        rv = std::make_unique<BpfSkeleton<network_bpf>>(
-            "network", skel_cbs,
-            SkeletonMetrics{.attach_result = metrics::kNetworkBpfAttach});
+        rv = std::make_unique<BpfSkeleton<network_bpf>>("network", skel_cbs);
       }
       break;
     default:
@@ -61,7 +57,12 @@ std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
   }
 
   rv->RegisterCallbacks(std::move(cbs));
-  absl::Status status = rv->LoadAndAttach();
+  auto pair = rv->LoadAndAttach();
+  if (static_cast<int>(pair.second) != -1) {
+    MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kProcessBpfAttach,
+                                                     pair.second);
+  }
+  auto status = pair.first;
   if (!status.ok()) {
     LOG(ERROR) << "Failed to create skeleton of type " << type << ":"
                << status.message();
