@@ -10,13 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/logging.h>
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-using ::testing::_;
-using ::testing::Invoke;
-using ::testing::Return;
 
 namespace vm_tools {
 namespace concierge {
