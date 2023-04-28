@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use crate::vm_grpc::proto::concierge_service::{
+    GetVmInfoRequest, GetVmInfoResponse, VmStartedSignal, VmStoppedSignal,
+};
 use crate::vm_grpc::vm_grpc_client::VmGrpcClient;
 use crate::vm_grpc::vm_grpc_server::VmGrpcServer;
 
@@ -20,9 +23,6 @@ use std::sync::atomic::AtomicI64;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
-
-mod arc;
-mod concierge_service;
 
 // VSOCK port to use for accepting GRPC socket connections.
 const RESOURCED_GRPC_SERVER_PORT: u16 = 5551;
@@ -98,7 +98,7 @@ fn vm_grpc_init(borealis_cid: i16) -> Result<VmGrpcServer> {
 fn get_borealis_cid_from_vm_started_signal(msg: &Message) -> Result<i16> {
     let raw_buffer: Vec<u8> = msg.read1()?;
     let input = &mut CodedInputStream::from_bytes(&raw_buffer);
-    let mut borealis_vm = concierge_service::VmStartedSignal::new();
+    let mut borealis_vm = VmStartedSignal::new();
     borealis_vm.merge_from(input)?;
     let name_vm = borealis_vm.get_name();
     if name_vm != BOREALIS_VM_NAME {
@@ -110,7 +110,7 @@ fn get_borealis_cid_from_vm_started_signal(msg: &Message) -> Result<i16> {
 
 fn vm_stopped_signal_is_for_borealis(msg: &Message) -> Result<bool> {
     let byte_array: Vec<u8> = msg.read1()?;
-    let mut vm_stopped_payload = concierge_service::VmStoppedSignal::new();
+    let mut vm_stopped_payload = VmStoppedSignal::new();
     vm_stopped_payload.merge_from_bytes(&byte_array)?;
     Ok(vm_stopped_payload.get_name() == BOREALIS_VM_NAME)
 }
@@ -150,7 +150,7 @@ async fn retrieve_primary_session(conn: Arc<SyncConnection>) -> Result<String> {
 ///
 /// # Return: Result object with borealis CID embedded.
 async fn get_borealis_cid_from_concierge_async(conn: Arc<SyncConnection>) -> Result<i16> {
-    let mut vm_info_request = concierge_service::GetVmInfoRequest::default();
+    let mut vm_info_request = GetVmInfoRequest::default();
     vm_info_request.set_name(BOREALIS_VM_NAME.to_string());
     vm_info_request.set_owner_id(retrieve_primary_session(conn.clone()).await?);
 
@@ -171,7 +171,7 @@ async fn get_borealis_cid_from_concierge_async(conn: Arc<SyncConnection>) -> Res
 
     let dbus_resp_bytes = &mut CodedInputStream::from_bytes(&(concierge_resp.0));
 
-    let mut get_vm_info_resp = concierge_service::GetVmInfoResponse::new();
+    let mut get_vm_info_resp = GetVmInfoResponse::new();
     get_vm_info_resp.merge_from(dbus_resp_bytes)?;
 
     let cid = get_vm_info_resp.get_vm_info().get_cid() as i16;

@@ -5,36 +5,36 @@
 #[cfg(feature = "vm_grpc")]
 use anyhow::Result;
 #[cfg(feature = "vm_grpc")]
-use std::env;
-#[cfg(feature = "vm_grpc")]
-use std::fs::{self, File};
-#[cfg(feature = "vm_grpc")]
-use std::io::Write;
-#[cfg(feature = "vm_grpc")]
 use std::path::{Path, PathBuf};
+#[cfg(feature = "vm_grpc")]
+use std::{env, fs};
 #[cfg(feature = "vm_grpc")]
 extern crate protoc_grpcio;
 
 // TODO(b:277383885): Share proto building code with crostini_client
 #[cfg(feature = "vm_grpc")]
-const PROTOS_TO_GENERATE: &[(&str, &str)] = &[
-    ("arc", "dbus/arc/arc.proto"),
-    ("vm_concierge", "dbus/vm_concierge/concierge_service.proto"),
+const PROTOS_TO_GENERATE: &[&str] = &[
+    ("dbus/arc/arc.proto"),
+    ("dbus/vm_concierge/concierge_service.proto"),
 ];
 
 #[cfg(feature = "vm_grpc")]
-fn generate_protos(source_dir: &Path, protos: &[(&str, &str)]) -> Result<()> {
-    let out_dir = PathBuf::from("src/vm_grpc/vm_grpc_util/");
+fn generate_protos(source_dir: &Path, protos: &[&str]) -> Result<()> {
+    let out_dir = PathBuf::from("src/vm_grpc/proto");
     if out_dir.exists() {
         // If CROS_RUST is set, skip generation.
         if env::var("CROS_RUST") == Ok(String::from("1")) {
             return Ok(());
         }
-        fs::remove_dir_all(&out_dir)?;
+        // Remove only the protos generated from system api
+        let _: Vec<_> = PROTOS_TO_GENERATE
+            .iter()
+            .map(|f| fs::remove_file(out_dir.join(format!("{:?}.rs", f))))
+            .collect();
     }
     fs::create_dir_all(&out_dir)?;
-    let mut out = File::create(out_dir.join("include_protos.rs"))?;
-    for (module, input_path) in protos {
+
+    for input_path in protos {
         let input_path = source_dir.join(input_path);
         let input_dir = input_path.parent().unwrap();
         let parent_input_dir = source_dir.join("dbus");
@@ -46,9 +46,6 @@ fn generate_protos(source_dir: &Path, protos: &[(&str, &str)]) -> Result<()> {
             .out_dir(&out_dir)
             .run()
             .expect("protoc could not compile concierge_service proto");
-
-        // Write out a `mod` that refers to the generated module.
-        writeln!(out, "pub mod {};", module)?;
     }
     Ok(())
 }
