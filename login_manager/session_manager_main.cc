@@ -37,6 +37,7 @@
 #include <brillo/syslog_logging.h>
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <libsegmentation/feature_management.h>
 #include <linux/limits.h>
 #include <rootdev/rootdev.h>
 
@@ -147,8 +148,10 @@ int main(int argc, char* argv[]) {
   map<string, string> env_var_map;
   vector<string> args, env_vars;
   uid_t uid = 0;
-  PerformChromeSetup(cros_config.get(), &is_developer_end_user, &env_var_map,
-                     &args, &uid);
+  segmentation::FeatureManagement feature_management;
+
+  PerformChromeSetup(cros_config.get(), &feature_management,
+                     &is_developer_end_user, &env_var_map, &args, &uid);
   command.insert(command.end(), args.begin(), args.end());
   for (const auto& it : env_var_map)
     env_vars.push_back(it.first + "=" + it.second);

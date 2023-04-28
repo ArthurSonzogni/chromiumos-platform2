@@ -36,6 +36,7 @@ pkg_config("target_defaults") {
     "libmetrics",
     "libminijail",
     "libpasswordprovider",
+    "libsegmentation",
     "nss",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
@@ -162,6 +163,7 @@ if (use.test) {
       "libbrillo-test",
       "libchrome-test",
       "libcros_config",
+      "libsegmentation-test",
     ]
   }
   executable("session_manager_test") {

@@ -4,6 +4,7 @@
 
 #include "login_manager/chrome_setup.h"
 
+#include <memory>
 #include <optional>
 #include <set>
 #include <utility>
@@ -17,6 +18,7 @@
 #include <base/functional/bind.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -24,6 +26,8 @@
 #include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <chromeos/ui/chromium_command_builder.h>
 #include <chromeos/ui/util.h>
+#include <libsegmentation/feature_management.h>
+#include <libsegmentation/feature_management_fake.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -50,6 +54,13 @@ class ChromeSetupTest : public ::testing::Test {
   const base::RepeatingCallback<bool(const base::FilePath&)>
       kPathInSetCallback = base::BindRepeating(&ChromeSetupTest::PathInSet,
                                                base::Unretained(this));
+
+  void SetUp() override {
+    auto fake = std::make_unique<segmentation::fake::FeatureManagementFake>();
+    fake_feature_management_ = fake.get();
+    feature_management_ =
+        std::make_unique<segmentation::FeatureManagement>(std::move(fake));
+  }
 
   // This returns true if the path is found in the paths_ set.
   bool PathInSet(const base::FilePath& path) {
@@ -92,6 +103,9 @@ class ChromeSetupTest : public ::testing::Test {
       GetPath("guest", "small"),   GetPath("guest", "large"),
   };
   brillo::FakeCrosConfig cros_config_;
+
+  std::unique_ptr<segmentation::FeatureManagement> feature_management_;
+  segmentation::fake::FeatureManagementFake* fake_feature_management_;
 };
 
 TEST_F(ChromeSetupTest, TestSerializedAshSwitches) {
@@ -303,6 +317,29 @@ TEST_F(ChromeSetupTest, TestSchedulerFlags) {
   login_manager::SetUpSchedulerFlags(&builder_, &cros_config_);
   argv = builder_.arguments();
   EXPECT_EQ(kBoostUrgentVal, GetFlag(argv, "--scheduler-boost-urgent"));
+}
+
+TEST_F(ChromeSetupTest, TestAddFeatureManagementFlag) {
+  std::string feat1 =
+      base::StrCat({segmentation::FeatureManagement::kPrefix, "Feat1"});
+  std::string feat2 =
+      base::StrCat({segmentation::FeatureManagement::kPrefix, "Feat2"});
+
+  login_manager::AddFeatureManagementFlags(&builder_,
+                                           feature_management_.get());
+  std::vector<std::string> argv = builder_.arguments();
+  ASSERT_EQ(0, argv.size());
+
+  fake_feature_management_->SetFeature(feat1, segmentation::USAGE_CHROME);
+  fake_feature_management_->SetFeature(feat2, segmentation::USAGE_CHROME);
+  login_manager::AddFeatureManagementFlags(&builder_,
+                                           feature_management_.get());
+  argv = builder_.arguments();
+  ASSERT_EQ(1, argv.size());
+  std::vector<std::string> result =
+      base::SplitString(GetFlag(argv, kFeatureFlag), ",", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
+  EXPECT_THAT(result, testing::UnorderedElementsAre(feat1, feat2));
 }
 
 void InitWithUseFlag(std::optional<std::string> flag,

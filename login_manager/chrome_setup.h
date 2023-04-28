@@ -27,6 +27,10 @@ class ChromiumCommandBuilder;
 }  // namespace ui
 }  // namespace chromeos
 
+namespace segmentation {
+class FeatureManagement;
+}  // namespace segmentation
+
 namespace login_manager {
 
 // Property name of the wallpaper setting in CrosConfig.
@@ -98,7 +102,10 @@ extern const char kBoostUrgentProperty[];
 //
 // |cros_config| (if non-null) provides the device model configuration (used to
 // look up the default wallpaper filename).
+// |feature_management| provides interface to list the features enabled for
+// the device.
 void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
+                        segmentation::FeatureManagement* feature_management,
                         bool* is_developer_end_user_out,
                         std::map<std::string, std::string>* env_vars_out,
                         std::vector<std::string>* args_out,
@@ -201,6 +208,11 @@ void AddCrashHandlerFlag(chromeos::ui::ChromiumCommandBuilder* builder);
 // Add appropriate patterns to the --vmodule argument.
 void AddVmodulePatterns(chromeos::ui::ChromiumCommandBuilder* builder);
 
+// Adds flags related to feature management that must be enabled for this
+// device.
+void AddFeatureManagementFlags(
+    chromeos::ui::ChromiumCommandBuilder* builder,
+    segmentation::FeatureManagement* FeatureManagement);
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_CHROME_SETUP_H_

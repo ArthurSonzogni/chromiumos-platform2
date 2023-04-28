@@ -35,6 +35,7 @@
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/ui/chromium_command_builder.h>
 #include <chromeos/ui/util.h>
+#include <libsegmentation/feature_management.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
@@ -1059,7 +1060,20 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
   SetUpHasHpsFlag(builder, cros_config);
 }
 
+// Adds flags related to feature management that must be enabled for this
+// device.
+void AddFeatureManagementFlags(
+    ChromiumCommandBuilder* builder,
+    segmentation::FeatureManagement* feature_management) {
+  std::set<std::string> features =
+      feature_management->ListFeatures(segmentation::USAGE_CHROME);
+  for (auto feature : features) {
+    builder->AddFeatureEnableOverride(feature);
+  }
+}
+
 void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
+                        segmentation::FeatureManagement* feature_management,
                         bool* is_developer_end_user_out,
                         std::map<std::string, std::string>* env_vars_out,
                         std::vector<std::string>* args_out,
@@ -1089,6 +1103,7 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   AddEnterpriseFlags(&builder);
   AddCrashHandlerFlag(&builder);
   AddMlFlags(&builder, cros_config);
+  AddFeatureManagementFlags(&builder, feature_management);
 
   // Apply any modifications requested by the developer.
   if (builder.is_developer_end_user()) {
