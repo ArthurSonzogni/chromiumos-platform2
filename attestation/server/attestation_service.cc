@@ -47,6 +47,11 @@ extern "C" {
 #include "attestation/server/database_impl.h"
 #include "attestation/server/google_keys.h"
 
+using brillo::BlobFromString;
+using brillo::BlobToString;
+using hwsec::DeviceConfig;
+using hwsec::TPMError;
+
 namespace {
 
 const size_t kNonceSize = 20;  // As per TPM_NONCE definition.
@@ -380,8 +385,10 @@ namespace attestation {
 
 namespace {
 
-// Last PCR index to quote (we start at 0).
-constexpr int kLastPcrToQuote = 1;
+DeviceConfig kDeviceConfigsToQuote[] = {
+    DeviceConfig::kBootMode,
+    DeviceConfig::kDeviceModel,
+};
 
 pca_agent::EnrollRequest ToPcaAgentEnrollRequest(
     const AttestationFlowData& data) {
@@ -1816,30 +1823,32 @@ bool AttestationService::CreateIdentity(int identity_features) {
   // will not change unless the TPM owner is cleared.
   auto* pcr_quote_map = new_identity_pb.mutable_pcr_quotes();
 
-  for (int pcr = 0; pcr <= kLastPcrToQuote; ++pcr) {
-    std::string quoted_pcr_value;
-    std::string quoted_data;
-    std::string quote;
-    if (tpm_utility_->QuotePCR(pcr, identity_key_blob_for_quote,
-                               &quoted_pcr_value, &quoted_data, &quote)) {
-      Quote quote_pb;
-      quote_pb.set_quote(quote);
-      quote_pb.set_quoted_data(quoted_data);
-      quote_pb.set_quoted_pcr_value(quoted_pcr_value);
-      switch (pcr) {
-        case 1:
-          quote_pb.set_pcr_source_hint(hwid_);
-          break;
-      }
-      auto in = pcr_quote_map->insert(QuoteMap::value_type(pcr, quote_pb));
-      if (!in.second) {
-        LOG(ERROR) << "Attestation: Failed to store PCR" << pcr
-                   << " quote for identity " << identity << ".";
+  for (DeviceConfig device_config : kDeviceConfigsToQuote) {
+    ASSIGN_OR_RETURN(
+        const Quote& quote_pb,
+        hwsec_->Quote(device_config,
+                      brillo::BlobFromString(identity_key_blob_for_quote)),
+        _.WithStatus<TPMError>("Failed to quote").LogError().As(false));
+
+    // TODO(b/278988714): refactor the PCR-related function/protobuf so that we
+    // don't need this conversion.
+    // Converts device config to corresponding index in Identity::pcr_quotes.
+    int pcr = 0;
+    switch (device_config) {
+      case DeviceConfig::kBootMode:
+        pcr = 0;
+        break;
+      case DeviceConfig::kDeviceModel:
+        pcr = 1;
+        break;
+      default:
+        LOG(ERROR) << __func__ << ": Unsupported Device Config";
         return false;
-      }
-    } else {
-      LOG(ERROR) << "Attestation: Failed to generate quote for PCR" << pcr
-                 << ".";
+    }
+    auto in = pcr_quote_map->insert(QuoteMap::value_type(pcr, quote_pb));
+    if (!in.second) {
+      LOG(ERROR) << "Attestation: Failed to store PCR" << pcr
+                 << " quote for identity " << identity << ".";
       return false;
     }
   }
@@ -2159,9 +2168,25 @@ bool AttestationService::VerifyQuoteSignature(
     LOG(ERROR) << __func__ << ": Signature mismatch.";
     return false;
   }
-  if (!tpm_utility_->IsQuoteForPCR(quote.quoted_pcr_value(),
-                                   quote.quoted_data(), quote.quote(),
-                                   pcr_index)) {
+  // TODO(b/278988714): refactor the PCR-related function so that we don't need
+  // this conversion.
+  DeviceConfig device_config;
+  switch (pcr_index) {
+    case 0:
+      device_config = DeviceConfig::kBootMode;
+      break;
+    case 1:
+      device_config = DeviceConfig::kDeviceModel;
+      break;
+    default:
+      LOG(ERROR) << __func__ << ": Unknown device config for pcr " << pcr_index;
+      return false;
+  }
+
+  ASSIGN_OR_RETURN(
+      bool is_quoted, hwsec_->IsQuoted(device_config, quote),
+      _.WithStatus<TPMError>("Failed to verify quote").LogError().As(false));
+  if (!is_quoted) {
     LOG(ERROR) << __func__ << ": Invalid quote.";
     return false;
   }

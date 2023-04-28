@@ -19,11 +19,13 @@
 #include <base/test/task_environment.h>
 #include <brillo/data_encoding.h>
 #include <brillo/errors/error.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/attestation/mock_frontend.h>
 #include <libhwsec/factory/mock_factory.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <policy/mock_device_policy.h>
 #include <policy/mock_libpolicy.h>
 
@@ -36,6 +38,10 @@
 #include "attestation/server/mock_database.h"
 #include "attestation/server/mock_key_store.h"
 
+using hwsec::TPMError;
+using hwsec::TPMRetryAction;
+using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
 using testing::AtMost;
 using testing::DoAll;
@@ -229,6 +235,9 @@ class AttestationServiceBaseTest : public testing::Test {
           ->mutable_encrypted_endorsement_credentials())[TEST_ACA]
         .set_wrapping_key_id("test");
     EXPECT_CALL(mock_tpm_utility_, IsPCR0Valid()).WillRepeatedly(Return(true));
+    Quote fake_quote;
+    fake_quote.set_quoted_pcr_value("");
+    EXPECT_CALL(mock_hwsec_, Quote).WillRepeatedly(ReturnValue(fake_quote));
     // Run out initialize task(s) to avoid any race conditions with tests that
     // need to change the default setup.
     CHECK(
@@ -2485,8 +2494,8 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentFailAIK) {
 TEST_P(AttestationServiceTest, PrepareForEnrollmentFailQuote) {
   // Start with an empty database.
   mock_database_.GetMutableProtobuf()->Clear();
-  EXPECT_CALL(mock_tpm_utility_, QuotePCR(_, _, _, _, _))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_hwsec_, Quote)
+      .WillRepeatedly(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   // Schedule initialization again to make sure it runs after this point.
   CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
                                    base::Unretained(service_.get()))));
