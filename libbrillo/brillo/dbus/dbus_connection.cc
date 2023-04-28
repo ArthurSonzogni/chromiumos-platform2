@@ -6,6 +6,10 @@
 
 #include <base/logging.h>
 
+namespace {
+constexpr base::TimeDelta kDbusConnectWaitTime = base::Milliseconds(100);
+}  // namespace
+
 namespace brillo {
 
 DBusConnection::DBusConnection() {}
@@ -36,10 +40,10 @@ scoped_refptr<dbus::Bus> DBusConnection::ConnectWithTimeout(
       bus_ = bus;
       return bus_;
     }
-    LOG(WARNING) << "Failed to get system bus.";
-    // Wait 1 second to prevent trashing the device while waiting for the
-    // dbus-daemon to start.
-    sleep(1);
+    // Wait a bit to prevent trashing the device while waiting for the
+    // dbus-daemon to start. Balance this with making sure we don't wait too
+    // long and introduce unnecessary latency to the caller.
+    base::PlatformThread::Sleep(kDbusConnectWaitTime);
   } while (base::TimeTicks::Now() < deadline);
 
   LOG(ERROR) << "Failed to get system bus after " << timeout.InSeconds()

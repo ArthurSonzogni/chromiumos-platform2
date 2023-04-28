@@ -14,6 +14,10 @@
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::ExportedObjectManager;
 
+namespace {
+constexpr base::TimeDelta kDbusConnectTimeout = base::Seconds(10);
+}  // namespace
+
 namespace brillo {
 
 DBusDaemon::DBusDaemon() {}
@@ -23,7 +27,7 @@ int DBusDaemon::OnInit() {
   if (exit_code != EX_OK)
     return exit_code;
 
-  bus_ = dbus_connection_.Connect();
+  bus_ = dbus_connection_.ConnectWithTimeout(kDbusConnectTimeout);
   CHECK(bus_);
 
   return exit_code;
