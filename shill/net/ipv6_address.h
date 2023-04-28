@@ -60,6 +60,9 @@ class SHILL_EXPORT IPv6Address {
   // Returns the internal data.
   const DataType& data() const { return data_; }
 
+  // Returns the address in byte, stored in network order (i.e. big endian).
+  std::string ToByteString() const;
+
   // Returns the address in the IPv6 network address format.
   std::string ToString() const;
 

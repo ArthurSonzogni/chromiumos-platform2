@@ -48,6 +48,10 @@ bool IPv6Address::operator<(const IPv6Address& rhs) const {
   return data_ < rhs.data_;
 }
 
+std::string IPv6Address::ToByteString() const {
+  return {reinterpret_cast<const char*>(data_.data()), kAddressLength};
+}
+
 std::string IPv6Address::ToString() const {
   char address_buf[INET6_ADDRSTRLEN];
   const char* res =

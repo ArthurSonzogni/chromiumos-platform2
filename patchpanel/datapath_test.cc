@@ -228,23 +228,18 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
                                                     "domain.local1"};
 
   IPv4Subnet* ipv4_subnet = new IPv4Subnet();
-  ipv4_subnet->set_addr(subnet_ip.data().data(), subnet_ip.kAddressLength);
+  ipv4_subnet->set_addr(subnet_ip.ToByteString());
   ipv4_subnet->set_prefix_len(
       static_cast<unsigned int>(ipv4_cidr.prefix_length()));
 
   IPv4Configuration* ipv4_config = new IPv4Configuration();
   ipv4_config->set_allocated_ipv4_subnet(ipv4_subnet);
-  ipv4_config->set_gateway_addr(ipv4_cidr.address().data().data(),
-                                ipv4_cidr.address().kAddressLength);
+  ipv4_config->set_gateway_addr(ipv4_cidr.address().ToByteString());
   ipv4_config->set_use_dhcp(true);
-  ipv4_config->set_dhcp_start_addr(start_ip.data().data(),
-                                   start_ip.kAddressLength);
-  ipv4_config->set_dhcp_end_addr(end_ip.data().data(),
-                                 IPv4Address::kAddressLength);
-  ipv4_config->add_dns_servers(dns_servers[0].data().data(),
-                               dns_servers[0].kAddressLength);
-  ipv4_config->add_dns_servers(dns_servers[1].data().data(),
-                               dns_servers[1].kAddressLength);
+  ipv4_config->set_dhcp_start_addr(start_ip.ToByteString());
+  ipv4_config->set_dhcp_end_addr(end_ip.ToByteString());
+  ipv4_config->add_dns_servers(dns_servers[0].ToByteString());
+  ipv4_config->add_dns_servers(dns_servers[1].ToByteString());
   ipv4_config->add_domain_searches(domain_searches[0]);
   ipv4_config->add_domain_searches(domain_searches[1]);
 

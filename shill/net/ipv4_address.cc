@@ -50,6 +50,10 @@ bool IPv4Address::operator<(const IPv4Address& rhs) const {
   return data_ < rhs.data_;
 }
 
+std::string IPv4Address::ToByteString() const {
+  return {reinterpret_cast<const char*>(data_.data()), kAddressLength};
+}
+
 std::string IPv4Address::ToString() const {
   char address_buf[INET_ADDRSTRLEN];
   const char* res =

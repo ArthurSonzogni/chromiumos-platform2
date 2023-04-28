@@ -56,8 +56,7 @@ void FillDownstreamNetworkProto(
     patchpanel::DownstreamNetwork* output) {
   output->set_downstream_ifname(downstream_network_info.downstream_ifname);
   output->set_ipv4_gateway_addr(
-      downstream_network_info.ipv4_cidr.address().data().data(),
-      downstream_network_info.ipv4_cidr.address().kAddressLength);
+      downstream_network_info.ipv4_cidr.address().ToByteString());
   FillSubnetProto(downstream_network_info.ipv4_base_addr,
                   downstream_network_info.ipv4_cidr.prefix_length(),
                   output->mutable_ipv4_subnet());

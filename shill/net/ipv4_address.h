@@ -63,6 +63,9 @@ class SHILL_EXPORT IPv4Address {
   // Returns the internal data.
   const DataType& data() const { return data_; }
 
+  // Returns the address in byte, stored in network order (i.e. big endian).
+  std::string ToByteString() const;
+
   // Returns the address in the IPv4 dotted-decimal notation.
   std::string ToString() const;
 

@@ -56,22 +56,22 @@ IPAddress::IPAddress(Family family,
 
 IPAddress::IPAddress(const IPv4Address& address)
     : family_(kFamilyIPv4),
-      address_({address.data().data(), address.data().size()}),
+      address_({address.ToByteString(), false}),
       prefix_(0) {}
 
 IPAddress::IPAddress(const IPv6Address& address)
     : family_(kFamilyIPv6),
-      address_({address.data().data(), address.data().size()}),
+      address_({address.ToByteString(), false}),
       prefix_(0) {}
 
 IPAddress::IPAddress(const IPv4CIDR& cidr)
     : family_(kFamilyIPv4),
-      address_({cidr.address().data().data(), cidr.address().data().size()}),
+      address_({cidr.address().ToByteString(), false}),
       prefix_(cidr.prefix_length()) {}
 
 IPAddress::IPAddress(const IPv6CIDR& cidr)
     : family_(kFamilyIPv6),
-      address_({cidr.address().data().data(), cidr.address().data().size()}),
+      address_({cidr.address().ToByteString(), false}),
       prefix_(cidr.prefix_length()) {}
 
 IPAddress::~IPAddress() = default;
