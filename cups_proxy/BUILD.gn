@@ -6,7 +6,14 @@ import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":cups_proxy" ]
+  deps = [
+    ":cups_proxy",
+    ":install_dbus_config",
+    ":install_dbus_service",
+    ":install_init",
+    ":install_policy",
+    ":install_tmpfiles_config",
+  ]
   if (use.test) {
     deps += [ ":cups_proxy_unittest" ]
   }
@@ -38,12 +45,14 @@ static_library("cups_proxy_common") {
 }
 
 executable("cups_proxy") {
+  install_path = "bin"
   sources = [ "main.cc" ]
   deps = [ ":cups_proxy_common" ]
 }
 
 if (use.test) {
   executable("cups_proxy_unittest") {
+    run_test = true
     sources = [ "mhd_http_request_test.cc" ]
     configs += [ "//common-mk:test" ]
     deps = [
@@ -51,4 +60,32 @@ if (use.test) {
       "//common-mk/testrunner:testrunner",
     ]
   }
+}
+
+install_config("install_init") {
+  sources = [ "init/cups_proxy.conf" ]
+  install_path = "/etc/init"
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/cups_proxy.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
+}
+
+install_config("install_policy") {
+  _arch = getenv("ARCH")
+  sources = [ "seccomp/cups_proxy-seccomp-${_arch}.policy" ]
+  install_path = "/usr/share/policy"
+
+  outputs = [ "cups_proxy-seccomp.policy" ]
+}
+
+install_config("install_dbus_config") {
+  sources = [ "dbus/org.chromium.CupsProxyDaemon.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+install_config("install_dbus_service") {
+  sources = [ "dbus/org.chromium.CupsProxyDaemon.service" ]
+  install_path = "/usr/share/dbus-1/system-services"
 }
