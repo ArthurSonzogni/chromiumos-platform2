@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/probe_function_argument.h"
 
 namespace runtime_probe {
 
@@ -88,11 +89,13 @@ class SysfsFunction : public ProbeFunction {
   // Declare function arguments
 
   // The path of target sysfs folder, the last component can contain '*'.
-  std::string dir_path_;
+  PROBE_FUNCTION_ARG_DEF(std::string, dir_path);
   // Required file names in the sysfs folder.
-  std::vector<std::string> keys_;
-  // Optional fils names in the sysfs folder.
-  std::vector<std::string> optional_keys_;
+  PROBE_FUNCTION_ARG_DEF(std::vector<std::string>, keys);
+  // Optional file names in the sysfs folder.
+  PROBE_FUNCTION_ARG_DEF(std::vector<std::string>,
+                         optional_keys,
+                         (std::vector<std::string>{}));
 
   // A mocked sysfs path that we allow to read while testing.
   base::FilePath sysfs_path_for_testing_;

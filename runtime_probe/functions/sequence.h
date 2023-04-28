@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/probe_function_argument.h"
 
 namespace runtime_probe {
 
@@ -44,7 +45,8 @@ class SequenceFunction : public ProbeFunction {
  private:
   DataType EvalImpl() const override;
 
-  std::vector<std::unique_ptr<ProbeFunction>> functions_;
+  PROBE_FUNCTION_ARG_DEF(std::vector<std::unique_ptr<ProbeFunction>>,
+                         functions);
 
   FRIEND_TEST(SequenceFunctionTest, TestEvalFailTooManyResults);
   FRIEND_TEST(SequenceFunctionTest, TestEvalSuccess);

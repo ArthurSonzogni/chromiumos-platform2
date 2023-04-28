@@ -77,6 +77,15 @@ bool IsValidNetworkType(const std::string& type) {
 
 }  // namespace internal
 
+bool NetworkFunction::PostParseArguments() {
+  if (!base::Contains(kValidNetworkTypes, device_type_)) {
+    LOG(ERROR) << "function " << GetFunctionName()
+               << " got an unexpected network type " << device_type_;
+    return false;
+  }
+  return true;
+}
+
 NetworkFunction::DataType NetworkFunction::EvalImpl() const {
   DataType results;
   base::FilePath net_dev_pattern =

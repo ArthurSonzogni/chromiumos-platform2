@@ -9,6 +9,7 @@
 #include <string>
 
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/probe_function_argument.h"
 
 namespace runtime_probe {
 
@@ -38,7 +39,7 @@ class InputDeviceFunction : public PrivilegedProbeFunction {
  private:
   DataType EvalImpl() const override;
 
-  std::string device_type_;
+  PROBE_FUNCTION_ARG_DEF(std::string, device_type, (std::string("")));
 };
 
 }  // namespace runtime_probe

@@ -34,6 +34,8 @@ class GenericCameraFunction : public ProbeFunction {
   }
 
  private:
+  // ProbeFunction overrides.
+  bool PostParseArguments() override;
   DataType EvalImpl() const override;
 
   std::unique_ptr<UsbCameraFunction> usb_prober_;

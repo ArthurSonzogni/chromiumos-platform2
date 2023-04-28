@@ -30,6 +30,15 @@ base::ScopedFD EcI2cFunction::GetEcDevice() const {
   return base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
 }
 
+bool EcI2cFunction::PostParseArguments() {
+  if (size_ != 8 && size_ != 16) {
+    LOG(ERROR) << "function " << GetFunctionName()
+               << " argument \"size\" should be 8 or 16.";
+    return false;
+  }
+  return true;
+}
+
 EcI2cFunction::DataType EcI2cFunction::EvalImpl() const {
   base::ScopedFD ec_dev = GetEcDevice();
   auto cmd = GetI2cReadCommand();

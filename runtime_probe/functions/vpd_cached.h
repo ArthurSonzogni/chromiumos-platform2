@@ -11,6 +11,7 @@
 #include <base/values.h>
 
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/probe_function_argument.h"
 
 namespace runtime_probe {
 
@@ -44,7 +45,7 @@ class VPDCached : public PrivilegedProbeFunction {
  private:
   DataType EvalImpl() const override;
 
-  std::string vpd_name_;
+  PROBE_FUNCTION_ARG_DEF(std::string, vpd_name);
 };
 
 }  // namespace runtime_probe

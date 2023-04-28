@@ -13,6 +13,7 @@
 #include <base/values.h>
 
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/probe_function_argument.h"
 
 namespace ec {
 class I2cReadCommand;
@@ -55,16 +56,18 @@ class EcI2cFunction : public PrivilegedProbeFunction {
   }
 
  private:
+  // PrivilegedProbeFunction overrides.
+  bool PostParseArguments() final;
   DataType EvalImpl() const override;
 
   virtual std::unique_ptr<ec::I2cReadCommand> GetI2cReadCommand() const;
 
   virtual base::ScopedFD GetEcDevice() const;
 
-  int i2c_bus_;
-  int chip_addr_;
-  int data_addr_;
-  int size_;
+  PROBE_FUNCTION_ARG_DEF(int, i2c_bus);
+  PROBE_FUNCTION_ARG_DEF(int, chip_addr);
+  PROBE_FUNCTION_ARG_DEF(int, data_addr);
+  PROBE_FUNCTION_ARG_DEF(int, size, (8));
 };
 
 }  // namespace runtime_probe

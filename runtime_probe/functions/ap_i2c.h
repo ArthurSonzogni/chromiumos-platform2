@@ -6,6 +6,7 @@
 #define RUNTIME_PROBE_FUNCTIONS_AP_I2C_H_
 
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/probe_function_argument.h"
 
 namespace runtime_probe {
 
@@ -32,9 +33,9 @@ class ApI2cFunction : public PrivilegedProbeFunction {
  private:
   DataType EvalImpl() const override;
 
-  int i2c_bus_;
-  int chip_addr_;
-  int data_addr_;
+  PROBE_FUNCTION_ARG_DEF(int, i2c_bus);
+  PROBE_FUNCTION_ARG_DEF(int, chip_addr);
+  PROBE_FUNCTION_ARG_DEF(int, data_addr);
 };
 
 }  // namespace runtime_probe

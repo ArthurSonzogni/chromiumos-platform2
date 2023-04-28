@@ -9,6 +9,7 @@
 #include <string>
 
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/probe_function_argument.h"
 
 #include <base/logging.h>
 
@@ -54,9 +55,9 @@ class ShellFunction : public ProbeFunction {
   }
 
   // Declare function arguments
-  std::string command_;
-  std::string key_;
-  bool split_line_;
+  PROBE_FUNCTION_ARG_DEF(std::string, command);
+  PROBE_FUNCTION_ARG_DEF(std::string, key, (std::string{"shell_raw"}));
+  PROBE_FUNCTION_ARG_DEF(bool, split_line, (false));
 };
 
 }  // namespace runtime_probe

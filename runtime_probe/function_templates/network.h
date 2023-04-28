@@ -10,6 +10,7 @@
 #include <string>
 
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/probe_function_argument.h"
 
 namespace runtime_probe {
 namespace internal {
@@ -42,11 +43,12 @@ class NetworkFunction : public PrivilegedProbeFunction {
 
  private:
   // PrivilegedProbeFunction overrides.
+  bool PostParseArguments() final;
   DataType EvalImpl() const final;
   void PostHelperEvalImpl(DataType* helper_results) const final;
 
   // Type of the network device. Accepts all types if it is omitted.
-  std::string device_type_;
+  PROBE_FUNCTION_ARG_DEF(std::string, device_type, (std::string("")));
 };
 
 }  // namespace runtime_probe
