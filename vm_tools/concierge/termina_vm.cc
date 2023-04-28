@@ -41,7 +41,6 @@
 
 #include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/tap_device_builder.h"
-#include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
 #include "vm_tools/concierge/vm_util.h"
@@ -1116,16 +1115,16 @@ std::string TerminaVm::PermissionToken() const {
   return permission_token_;
 }
 
-VmBaseImpl::Info TerminaVm::GetInfo() {
-  VmBaseImpl::Info info = {
+VmInterface::Info TerminaVm::GetInfo() {
+  VmInterface::Info info = {
       .ipv4_address = IPv4Address(),
       .pid = pid(),
       .cid = cid(),
       .vm_memory_id = vm_memory_id_,
       .seneschal_server_handle = seneschal_server_handle(),
       .permission_token = permission_token_,
-      .status = IsTremplinStarted() ? VmBaseImpl::Status::RUNNING
-                                    : VmBaseImpl::Status::STARTING,
+      .status = IsTremplinStarted() ? VmInterface::Status::RUNNING
+                                    : VmInterface::Status::STARTING,
       .type = classification_,
   };
 

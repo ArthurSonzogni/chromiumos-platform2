@@ -146,7 +146,7 @@ void Service::StartVmHelper(
   if (iter != vms_.end()) {
     LOG(INFO) << "VM with requested name is already running";
 
-    VmBaseImpl::Info vm = iter->second->GetInfo();
+    VmInterface::Info vm = iter->second->GetInfo();
 
     VmInfo* vm_info = response.mutable_vm_info();
     vm_info->set_ipv4_address(vm.ipv4_address);
@@ -155,11 +155,11 @@ void Service::StartVmHelper(
     vm_info->set_seneschal_server_handle(vm.seneschal_server_handle);
     vm_info->set_vm_type(vm.type);
     switch (vm.status) {
-      case VmBaseImpl::Status::STARTING: {
+      case VmInterface::Status::STARTING: {
         response.set_status(VM_STATUS_STARTING);
         break;
       }
-      case VmBaseImpl::Status::RUNNING: {
+      case VmInterface::Status::RUNNING: {
         response.set_status(VM_STATUS_RUNNING);
         break;
       }

@@ -194,15 +194,15 @@ bool PluginVm::Shutdown() {
              pvm::dispatcher::VmOpResult::SUCCESS;
 }
 
-VmBaseImpl::Info PluginVm::GetInfo() {
-  VmBaseImpl::Info info = {
+VmInterface::Info PluginVm::GetInfo() {
+  VmInterface::Info info = {
       .ipv4_address = subnet_->AddressAtOffset(kGuestAddressOffset),
       .pid = process_.pid(),
       .cid = 0,
       .vm_memory_id = vm_memory_id_,
       .seneschal_server_handle = seneschal_server_handle(),
       .permission_token = permission_token_,
-      .status = VmBaseImpl::Status::RUNNING,
+      .status = VmInterface::Status::RUNNING,
       .type = VmInfo::PLUGIN_VM,
   };
 

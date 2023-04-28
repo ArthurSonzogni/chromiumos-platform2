@@ -48,6 +48,7 @@
 #include "vm_tools/concierge/termina_vm.h"
 #include "vm_tools/concierge/untrusted_vm_utils.h"
 #include "vm_tools/concierge/vm_builder.h"
+#include "vm_tools/concierge/vm_interface.h"
 #include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
@@ -355,7 +356,7 @@ class Service final : public org::chromium::VmConciergeInterface {
   // Get the host system time zone
   std::string GetHostTimeZone();
 
-  using VmMap = std::map<VmId, std::unique_ptr<VmBaseImpl>>;
+  using VmMap = std::map<VmId, std::unique_ptr<VmInterface>>;
 
   // Returns an iterator to vm with key |vm_id|.
   VmMap::iterator FindVm(const VmId& vm_id);

@@ -205,7 +205,7 @@ class TerminaVm final : public VmBaseImpl {
   // Whether a TremplinStartedSignal has been received for the VM.
   bool IsTremplinStarted() const { return is_tremplin_started_; }
 
-  // VmBaseImpl overrides.
+  // VmInterface overrides.
   // Shuts down the VM.  First attempts a clean shutdown of the VM by sending
   // a Shutdown RPC to maitre'd.  If that fails, attempts to shut down the VM
   // using the control socket for the hypervisor.  If that fails, then sends a
@@ -213,7 +213,7 @@ class TerminaVm final : public VmBaseImpl {
   // by sending it a SIGKILL.  Returns true if the VM was shut down and false
   // otherwise.
   bool Shutdown() override;
-  VmBaseImpl::Info GetInfo() override;
+  VmInterface::Info GetInfo() override;
   bool AttachUsbDevice(uint8_t bus,
                        uint8_t addr,
                        uint16_t vid,

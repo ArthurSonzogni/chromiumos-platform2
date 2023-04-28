@@ -748,14 +748,14 @@ uint32_t ArcVm::IPv4Address() const {
   return 0;
 }
 
-VmBaseImpl::Info ArcVm::GetInfo() {
-  VmBaseImpl::Info info = {
+VmInterface::Info ArcVm::GetInfo() {
+  VmInterface::Info info = {
       .ipv4_address = IPv4Address(),
       .pid = pid(),
       .cid = cid(),
       .vm_memory_id = vm_memory_id_,
       .seneschal_server_handle = seneschal_server_handle(),
-      .status = VmBaseImpl::Status::RUNNING,
+      .status = VmInterface::Status::RUNNING,
       .type = VmInfo::ARC_VM,
   };
 
