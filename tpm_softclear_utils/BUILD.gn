@@ -12,6 +12,8 @@ group("all") {
 }
 
 executable("tpm_softclear") {
+  # installed to /usr/local/bin since it's on test/dev images only.
+  install_path = "/usr/local/bin"
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":utility_library" ]
@@ -54,6 +56,7 @@ if (use.test) {
   }
 
   executable("tpm_softclear_utils_testrunner") {
+    run_test = true
     configs += [
       ":target_defaults",
       ":tpm_softclear_utils_testrunner_config",
