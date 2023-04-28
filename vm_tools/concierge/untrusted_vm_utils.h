@@ -5,10 +5,13 @@
 #ifndef VM_TOOLS_CONCIERGE_UNTRUSTED_VM_UTILS_H_
 #define VM_TOOLS_CONCIERGE_UNTRUSTED_VM_UTILS_H_
 
+#include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <dbus/object_proxy.h>
+
+#include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools {
 namespace concierge {
@@ -23,6 +26,7 @@ class UntrustedVMUtils {
                    const base::FilePath& mds_status_path);
   UntrustedVMUtils(const UntrustedVMUtils&) = delete;
   UntrustedVMUtils& operator=(const UntrustedVMUtils&) = delete;
+  virtual ~UntrustedVMUtils() = default;
 
   // Mitigation status for L1TF and MDS vulnerabilities.
   enum class MitigationStatus {
@@ -41,7 +45,18 @@ class UntrustedVMUtils {
   // - Check if kernel version >= |min_needed_version_|.
   // - Check if L1TF is mitigated.
   // - Check if MDS is mitigated.
-  MitigationStatus CheckUntrustedVMMitigationStatus();
+  //
+  // virtual for testing.
+  virtual MitigationStatus CheckUntrustedVMMitigationStatus() const;
+
+  // Returns whether an untrusted VM is allowed on the host depending on the
+  // kernel version and whether security patches are applied.
+  bool IsUntrustedVMAllowed(KernelVersionAndMajorRevision host_kernel_version,
+                            std::string* reason) const;
+
+ protected:
+  // Default constructor for testing.
+  UntrustedVMUtils();
 
  private:
   // Path to read L1TF vulnerability status from.

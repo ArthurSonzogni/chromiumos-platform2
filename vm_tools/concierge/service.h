@@ -59,9 +59,6 @@ namespace concierge {
 
 class DlcHelper;
 
-// Used to represent kernel version.
-using KernelVersionAndMajorRevision = std::pair<int, int>;
-
 // VM Launcher Service responsible for responding to DBus method calls for
 // starting, stopping, and otherwise managing VMs.
 class Service final : public org::chromium::VmConciergeInterface {
@@ -452,11 +449,6 @@ class Service final : public org::chromium::VmConciergeInterface {
   // Callback called by a |TerminaVm| instance (running as a sibling VM) when a
   // sibling VM process has died on the hypervisor.
   void OnSiblingVmDead(VmId vm_id);
-
-  // Returns whether an untrusted VM is allowed on the host depending on the
-  // kernel version and whether security patches are applied.
-  bool IsUntrustedVMAllowed(KernelVersionAndMajorRevision host_kernel_version,
-                            std::string* reason);
 
   // Resource allocators for VMs.
   VsockCidPool vsock_cid_pool_;

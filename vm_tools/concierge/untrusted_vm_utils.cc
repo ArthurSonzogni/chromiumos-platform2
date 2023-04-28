@@ -19,6 +19,9 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <dbus/scoped_dbus_error.h>
+#include <vboot/crossystem.h>
+
+#include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools {
 namespace concierge {
@@ -115,6 +118,10 @@ UntrustedVMUtils::MitigationStatus GetMDSMitigationStatus(
   return UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE;
 }
 
+bool IsDevModeEnabled() {
+  return VbGetSystemPropertyInt("cros_debug") == 1;
+}
+
 }  // namespace
 
 UntrustedVMUtils::UntrustedVMUtils(const base::FilePath& l1tf_status_path,
@@ -125,12 +132,58 @@ UntrustedVMUtils::UntrustedVMUtils(const base::FilePath& l1tf_status_path,
 }
 
 UntrustedVMUtils::MitigationStatus
-UntrustedVMUtils::CheckUntrustedVMMitigationStatus() {
+UntrustedVMUtils::CheckUntrustedVMMitigationStatus() const {
   MitigationStatus status = GetL1TFMitigationStatus(l1tf_status_path_);
   if (status != MitigationStatus::NOT_VULNERABLE)
     return status;
 
   return GetMDSMitigationStatus(mds_status_path_);
+}
+
+bool UntrustedVMUtils::IsUntrustedVMAllowed(
+    KernelVersionAndMajorRevision host_kernel_version,
+    std::string* reason) const {
+  DCHECK(reason);
+
+  // For host >= |kMinKernelVersionForUntrustedAndNestedVM| untrusted VMs are
+  // always allowed. But the host still needs to be checked for vulnerabilities,
+  // even in developer mode. This is done because it'd be a huge error to not
+  // have required security patches on these kernels regardless of dev or
+  // production mode.
+  if (host_kernel_version >= kMinKernelVersionForUntrustedAndNestedVM) {
+    // Check if l1tf and mds mitigations are present on the host.
+    switch (CheckUntrustedVMMitigationStatus()) {
+      // If the host kernel version isn't supported or the host doesn't have
+      // l1tf and mds mitigations then fail to start an untrusted VM.
+      case UntrustedVMUtils::MitigationStatus::VULNERABLE:
+        *reason = "Host vulnerable against untrusted VM";
+        return false;
+
+      // At this point SMT should not be a security issue. As
+      // |kMinKernelVersionForUntrustedAndNestedVM| has security patches to
+      // make nested VMs co-exist securely with SMT.
+      case UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED:
+      case UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE:
+        return true;
+    }
+  }
+
+  // On lower kernel versions in developer mode, allow untrusted VMs without
+  // any restrictions on the host having security mitigations.
+  if (IsDevModeEnabled()) {
+    return true;
+  }
+
+  // Lower kernel version are deemed insecure to handle untrusted VMs.
+  std::stringstream ss;
+  ss << "Untrusted VMs are not allowed: "
+     << "the host kernel version (" << host_kernel_version.first << "."
+     << host_kernel_version.second << ") must be newer than or equal to "
+     << kMinKernelVersionForUntrustedAndNestedVM.first << "."
+     << kMinKernelVersionForUntrustedAndNestedVM.second
+     << ", or the device must be in the developer mode";
+  *reason = ss.str();
+  return false;
 }
 
 }  // namespace concierge

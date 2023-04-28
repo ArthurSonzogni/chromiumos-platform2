@@ -13,6 +13,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -350,6 +351,14 @@ class VmStartChecker {
   // Epoll fd that will wait on both |event_fd_| and |signal_fd_|.
   base::ScopedFD epoll_fd_;
 };
+
+// Used to represent kernel version.
+using KernelVersionAndMajorRevision = std::pair<int, int>;
+
+// The minimum kernel version of the host which supports untrusted VMs or a
+// trusted VM with nested VM support.
+constexpr KernelVersionAndMajorRevision
+    kMinKernelVersionForUntrustedAndNestedVM = std::make_pair(4, 19);
 
 }  // namespace concierge
 }  // namespace vm_tools

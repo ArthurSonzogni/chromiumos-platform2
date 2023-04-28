@@ -12,6 +12,8 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
+#include "vm_tools/concierge/vm_util.h"
+
 namespace vm_tools {
 namespace concierge {
 
@@ -137,6 +139,47 @@ TEST_F(UntrustedVMUtilsTest, CheckMDSStatus) {
   CheckMDSStatus(
       "Mitigation: Clear CPU buffers; SMT Host state unknown",
       UntrustedVMUtils::MitigationStatus::VULNERABLE_DUE_TO_SMT_ENABLED);
+}
+
+UntrustedVMUtils::UntrustedVMUtils() {}
+
+namespace {
+
+class FakeUntrustedVMUtils : public UntrustedVMUtils {
+ public:
+  explicit FakeUntrustedVMUtils(
+      UntrustedVMUtils::MitigationStatus mitigation_status)
+      : mitigation_status_(mitigation_status) {}
+  virtual ~FakeUntrustedVMUtils() {}
+
+  virtual MitigationStatus CheckUntrustedVMMitigationStatus() const {
+    return mitigation_status_;
+  }
+
+ private:
+  UntrustedVMUtils::MitigationStatus mitigation_status_;
+};
+}  // anonymous namespace
+
+TEST(ServiceTest, IsUntrustedVMAllowed) {
+  auto failing_untrusted_vm_utils = std::make_unique<FakeUntrustedVMUtils>(
+      UntrustedVMUtils::MitigationStatus::VULNERABLE);
+  auto succeeding_untrusted_vm_utils = std::make_unique<FakeUntrustedVMUtils>(
+      UntrustedVMUtils::MitigationStatus::NOT_VULNERABLE);
+
+  KernelVersionAndMajorRevision old_kernel_version{4, 4};
+  KernelVersionAndMajorRevision new_kernel_version{5, 15};
+  std::string reason;
+
+  EXPECT_FALSE(succeeding_untrusted_vm_utils->IsUntrustedVMAllowed(
+      old_kernel_version, &reason))
+      << "Old kernel version not trusted.";
+  EXPECT_FALSE(failing_untrusted_vm_utils->IsUntrustedVMAllowed(
+      new_kernel_version, &reason))
+      << "New enough kernel version trusted but CPU is not";
+  EXPECT_TRUE(succeeding_untrusted_vm_utils->IsUntrustedVMAllowed(
+      new_kernel_version, &reason))
+      << "New enough kernel version trusted and CPU is great";
 }
 
 }  // namespace concierge
