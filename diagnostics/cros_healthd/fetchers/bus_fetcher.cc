@@ -15,7 +15,6 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
-#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/udev/udev.h>
 #include <brillo/udev/udev_device.h>
@@ -244,7 +243,17 @@ mojom::BusDevicePtr FetchUsbDevice(
 }
 
 mojom::ThunderboltBusInterfaceInfoPtr FetchThunderboltBusInterfaceInfo(
-    const base::FilePath& path) {
+    const base::FilePath& path, const std::string& domain_id) {
+  // Check sysfs directory for interface attached to same domain.
+  std::vector<std::string> components = path.GetComponents();
+  // Get interface directory name which is the last component in path.
+  auto interface_dir_name = components.back();
+  // Check interface directory name starting with same domain number.
+  auto interface_domain_id = interface_dir_name.substr(0, domain_id.length());
+
+  if (interface_domain_id != domain_id)
+    return nullptr;
+
   auto info = mojom::ThunderboltBusInterfaceInfo::New();
   std::string rx_speed, tx_speed;
   if (!ReadInteger(path, kFileThunderboltAuthorized, &HexToU8,
@@ -292,17 +301,30 @@ mojom::ThunderboltSecurityLevel StrToEnumThunderboltSecurity(
 }
 
 mojom::ThunderboltBusInfoPtr FetchThunderboltBusInfo(
-    const base::FilePath& dev_path) {
+    const base::FilePath& thunderbolt_path, const base::FilePath& dev_path) {
   auto info = mojom::ThunderboltBusInfo::New();
   std::string security;
-  if (!ReadAndTrimString(dev_path.Append(kFileThunderboltSecurity),
-                         &security)) {
-    return nullptr;
-  }
-  info->security_level = StrToEnumThunderboltSecurity(security);
 
-  for (const auto& if_path : ListDirectory(dev_path)) {
-    auto if_info = FetchThunderboltBusInterfaceInfo(if_path);
+  // Since thunderbolt sysfs has controller and connected interfaces in same
+  // directory level, it is required to iterate interface directories which
+  // are connected to same controller only. e.g. domain0 is directory for
+  // controller 0 and connected interface directory is 0-0:1:0.
+  std::vector<std::string> components = dev_path.GetComponents();
+  auto domain_dir = components.back();
+  std::string domain_id;
+
+  if (domain_dir.find("domain") == 0)
+    domain_id = domain_dir.substr(strlen("domain"));
+  else
+    return nullptr;
+
+  if (ReadAndTrimString(dev_path.Append(kFileThunderboltSecurity), &security))
+    info->security_level = StrToEnumThunderboltSecurity(security);
+  else
+    return nullptr;
+
+  for (const auto& if_path : ListDirectory(thunderbolt_path)) {
+    auto if_info = FetchThunderboltBusInterfaceInfo(if_path, domain_id);
     if (if_info) {
       info->thunderbolt_interfaces.push_back(std::move(if_info));
     }
@@ -311,20 +333,26 @@ mojom::ThunderboltBusInfoPtr FetchThunderboltBusInfo(
   return info;
 }
 
-mojom::BusDevicePtr FetchThunderboltDevice(const base::FilePath& dev_path) {
-  auto thunderbolt_bus_info = FetchThunderboltBusInfo(dev_path);
+mojom::BusDevicePtr FetchThunderboltDevice(
+    const base::FilePath& thunderbolt_path, const base::FilePath& dev_path) {
+  auto thunderbolt_bus_info =
+      FetchThunderboltBusInfo(thunderbolt_path, dev_path);
   if (thunderbolt_bus_info.is_null())
     return nullptr;
   auto device = mojom::BusDevice::New();
   device->device_class = mojom::BusDeviceClass::kThunderboltController;
-  if (!thunderbolt_bus_info->thunderbolt_interfaces.empty()) {
-    // Use names from an interface of this device.
-    const auto& dev_if = thunderbolt_bus_info->thunderbolt_interfaces[0];
-    device->vendor_name = dev_if->vendor_name;
-    device->product_name = dev_if->device_name;
-  }
   device->bus_info =
       mojom::BusInfo::NewThunderboltBusInfo(std::move(thunderbolt_bus_info));
+  for (const auto& path : ListDirectory(dev_path)) {
+    if (base::PathExists(path.Append(kFileThunderboltDeviceName))) {
+      ReadAndTrimString(path.Append(kFileThunderboltDeviceName),
+                        &device->product_name);
+    }
+    if (base::PathExists(path.Append(kFileThunderboltVendorName))) {
+      ReadAndTrimString(path.Append(kFileThunderboltVendorName),
+                        &device->vendor_name);
+    }
+  }
 
   return device;
 }
@@ -363,11 +391,9 @@ void FetchBusDevicesWithFwupdInfo(
           std::make_pair(base::MakeAbsoluteFilePath(path), std::move(device)));
     }
   }
-  for (const auto& dev_path : ListDirectory(root.Append(kPathSysThunderbolt))) {
-    if (!base::StartsWith(dev_path.BaseName().value(), "domain")) {
-      continue;
-    }
-    auto device = FetchThunderboltDevice(dev_path);
+  auto thunderbolt_path = root.Append(kPathSysThunderbolt);
+  for (const auto& dev_path : ListDirectory(thunderbolt_path)) {
+    auto device = FetchThunderboltDevice(thunderbolt_path, dev_path);
     if (device) {
       res.push_back(std::make_pair(base::MakeAbsoluteFilePath(dev_path),
                                    std::move(device)));
