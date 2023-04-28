@@ -119,6 +119,7 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
   // if available.  Ideally mesa/gbm should have the correct stride. Remove
   // after crbug.com/892242 is resolved in mesa.
   int is_gpu_buffer = 0;
+  uint64_t format_modifier = DRM_FORMAT_MOD_INVALID;
   if (host->ctx->gbm) {
     int drm_fd = gbm_device_get_fd(host->ctx->gbm);
     struct drm_prime_handle prime_handle;
@@ -142,8 +143,10 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
       ret = drmIoctl(drm_fd, DRM_IOCTL_VIRTGPU_RESOURCE_INFO_CROS, &info_arg);
       // Correct stride0 if we are able to get proper resource info.
       if (!ret) {
-        if (info_arg.stride)
+        if (info_arg.stride) {
           stride0 = info_arg.stride;
+          format_modifier = info_arg.format_modifier;
+        }
         is_gpu_buffer = 1;
       }
 
@@ -157,8 +160,8 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
   buffer_params =
       zwp_linux_dmabuf_v1_create_params(host->ctx->linux_dmabuf->internal);
   zwp_linux_buffer_params_v1_add(buffer_params, name, 0, offset0, stride0,
-                                 DRM_FORMAT_MOD_INVALID >> 32,
-                                 DRM_FORMAT_MOD_INVALID & 0xffffffff);
+                                 format_modifier >> 32,
+                                 format_modifier & 0xffffffff);
 
   struct sl_host_buffer* host_buffer =
       sl_create_host_buffer(host->ctx, client, id,
