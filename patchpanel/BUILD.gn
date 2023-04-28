@@ -262,6 +262,7 @@ if (use.test) {
       "address_manager_test.cc",
       "arc_service_test.cc",
       "counters_service_test.cc",
+      "crostini_service_test.cc",
       "datapath_test.cc",
       "dhcp_server_controller_test.cc",
       "dns/dns_query_test.cc",
