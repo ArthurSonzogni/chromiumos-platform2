@@ -13,6 +13,8 @@
 #include <keymaster/android_keymaster_messages.h>
 #include <mojo/keymint.mojom.h>
 
+#include "arc/keymint/conversion.h"
+
 // The implementations of |arc::mojom::KeyMintServer| methods below have the
 // following overall pattern:
 //
@@ -114,7 +116,27 @@ void KeyMintServer::AddRngEntropy(const std::vector<uint8_t>& data,
 void KeyMintServer::GetKeyCharacteristics(
     arc::mojom::keymint::GetKeyCharacteristicsRequestPtr request,
     GetKeyCharacteristicsCallback callback) {
-  // TODO(b/274723521): Finish this.
+  // Convert input |request| into |km_request|. All data is deep copied to avoid
+  // use-after-free.
+  auto km_request = MakeGetKeyCharacteristicsRequest(
+      request, backend_.keymint()->message_version());
+
+  auto task_lambda = base::BindOnce(
+      [](GetKeyCharacteristicsCallback callback,
+         std::unique_ptr<::keymaster::GetKeyCharacteristicsResponse>
+             km_response) {
+        // Prepare mojo response.
+        uint32_t error;
+        auto response = MakeGetKeyCharacteristicsResult(*km_response, error);
+        // Run callback.
+        std::move(callback).Run(error, std::move(response));
+      },
+      std::move(callback));
+
+  // Call keymint.
+  RunKeyMintRequest(FROM_HERE,
+                    &::keymaster::AndroidKeymaster::GetKeyCharacteristics,
+                    std::move(km_request), std::move(task_lambda));
 }
 
 void KeyMintServer::GenerateKey(

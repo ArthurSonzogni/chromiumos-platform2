@@ -17,6 +17,8 @@ namespace {
 
 constexpr std::array<uint8_t, 3> kBlob1{{3, 23, 59}};
 constexpr std::array<uint8_t, 4> kBlob2{{23, 46, 69, 92}};
+constexpr std::array<uint8_t, 5> kBlob3{{1, 2, 3, 4, 5}};
+constexpr int32_t kKeyMintMessageVersion = 4;
 
 ::testing::AssertionResult VerifyVectorUint8(const uint8_t* a,
                                              const size_t a_size,
@@ -144,6 +146,29 @@ TEST(ConvertToKeymasterMessage, ClientIdAndAppData) {
                                 clientId));
   EXPECT_TRUE(VerifyVectorUint8(output[1].blob.data, output[1].blob.data_length,
                                 appData));
+}
+
+TEST(ConvertToKeymasterMessage, GetKeyCharacteristicsRequest) {
+  // Prepare.
+  auto input = ::arc::mojom::keymint::GetKeyCharacteristicsRequest::New(
+      std::vector<uint8_t>(kBlob1.begin(), kBlob1.end()),
+      std::vector<uint8_t>(kBlob2.begin(), kBlob2.end()),
+      std::vector<uint8_t>(kBlob3.begin(), kBlob3.end()));
+
+  // Convert.
+  auto output = MakeGetKeyCharacteristicsRequest(input, kKeyMintMessageVersion);
+
+  // Verify.
+  EXPECT_TRUE(VerifyVectorUint8(output->key_blob.key_material,
+                                output->key_blob.key_material_size,
+                                input->key_blob));
+  ASSERT_EQ(output->additional_params.size(), 2);
+  EXPECT_TRUE(VerifyVectorUint8(output->additional_params[0].blob.data,
+                                output->additional_params[0].blob.data_length,
+                                input->app_id));
+  EXPECT_TRUE(VerifyVectorUint8(output->additional_params[1].blob.data,
+                                output->additional_params[1].blob.data_length,
+                                input->app_data));
 }
 
 }  // namespace arc::keymint

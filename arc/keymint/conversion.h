@@ -34,6 +34,16 @@ void ConvertToKeymasterMessage(
     const std::vector<arc::mojom::keymint::KeyParameterPtr>& data,
     ::keymaster::AuthorizationSet* out);
 
+std::unique_ptr<::keymaster::GetKeyCharacteristicsRequest>
+MakeGetKeyCharacteristicsRequest(
+    const ::arc::mojom::keymint::GetKeyCharacteristicsRequestPtr& request,
+    const int32_t keymint_message_version);
+
+std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
+MakeGetKeyCharacteristicsResult(
+    const ::keymaster::GetKeyCharacteristicsResponse& km_response,
+    uint32_t& error);
+
 }  // namespace arc::keymint
 
 #endif  // ARC_KEYMINT_CONVERSION_H_

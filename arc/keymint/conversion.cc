@@ -204,4 +204,40 @@ void ConvertToKeymasterMessage(
   out->Reinitialize(param_set.param_set());
 }
 
+std::unique_ptr<::keymaster::GetKeyCharacteristicsRequest>
+MakeGetKeyCharacteristicsRequest(
+    const ::arc::mojom::keymint::GetKeyCharacteristicsRequestPtr& value,
+    const int32_t keymint_message_version) {
+  auto out = std::make_unique<::keymaster::GetKeyCharacteristicsRequest>(
+      keymint_message_version);
+  out->SetKeyMaterial(value->key_blob.data(), value->key_blob.size());
+  ConvertToKeymasterMessage(value->app_id, value->app_data,
+                            &out->additional_params);
+  return out;
+}
+
+std::optional<std::vector<arc::mojom::keymint::KeyCharacteristicsPtr>>
+MakeGetKeyCharacteristicsResult(
+    const ::keymaster::GetKeyCharacteristicsResponse& km_response,
+    uint32_t& error) {
+  error = km_response.error;
+  if (km_response.error == KM_ERROR_OK) {
+    // Enforced response corresponds to Trusted Execution
+    // Environment(TEE) security level.
+    auto teeChars = arc::mojom::keymint::KeyCharacteristics::New(
+        arc::mojom::keymint::SecurityLevel::TRUSTED_ENVIRONMENT,
+        ConvertFromKeymasterMessage(km_response.enforced));
+    // Unenforced response corresponds to Software security level.
+    auto softwareChars = arc::mojom::keymint::KeyCharacteristics::New(
+        arc::mojom::keymint::SecurityLevel::SOFTWARE,
+        ConvertFromKeymasterMessage(km_response.unenforced));
+
+    std::vector<arc::mojom::keymint::KeyCharacteristicsPtr> output;
+    output.push_back(std::move(teeChars));
+    output.push_back(std::move(softwareChars));
+    return output;
+  }
+  return std::nullopt;
+}
+
 }  // namespace arc::keymint
