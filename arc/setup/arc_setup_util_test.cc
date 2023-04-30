@@ -19,6 +19,8 @@
 
 #include <limits>
 #include <optional>
+#include <set>
+#include <utility>
 
 #include <base/base64.h>
 #include <base/environment.h>
@@ -36,6 +38,8 @@
 #include <brillo/file_utils.h>
 #include <brillo/files/safe_fd.h>
 #include <gtest/gtest.h>
+#include <libsegmentation/feature_management.h>
+#include <libsegmentation/feature_management_fake.h>
 
 namespace arc {
 
@@ -318,6 +322,53 @@ const FilterMediaProfileParam kFilterMediaProfileParam[] = {
      TestMediaProfile(/* has_front_camera */ true, /* has_back_camera */ true),
      TestMediaProfile(/* has_front_camera */ true,
                       /* has_back_camera */ false)},
+};
+
+struct AppendFeatureManagementParam {
+  std::set<std::string> test_features;
+  std::string hardware_property_content;
+  std::string result_content;
+};
+
+const char BasicHardwareFeatureContent[] =
+    R"(<?xml version="1.0" encoding="utf-8"?>
+<permissions>
+  <unavailable-feature name="android.hardware.camera"/>
+  <unavailable-feature name="android.hardware.camera.capability.manual_sensor"/>
+  <feature name="android.hardware.sensor.light"/>
+</permissions>
+)";
+
+const char OneFeatureHardwareFeatureContent[] =
+    R"(<?xml version="1.0" encoding="utf-8"?>
+<permissions>
+  <unavailable-feature name="android.hardware.camera"/>
+  <unavailable-feature name="android.hardware.camera.capability.manual_sensor"/>
+  <feature name="android.hardware.sensor.light"/>
+  <feature name="org.chromium.arc.feature_management.Feat1"/>
+</permissions>
+)";
+
+const char TwoFeatureHardwareFeatureContent[] =
+    R"(<?xml version="1.0" encoding="utf-8"?>
+<permissions>
+  <unavailable-feature name="android.hardware.camera"/>
+  <unavailable-feature name="android.hardware.camera.capability.manual_sensor"/>
+  <feature name="android.hardware.sensor.light"/>
+  <feature name="org.chromium.arc.feature_management.Feat1"/>
+  <feature name="org.chromium.arc.feature_management.Feat2"/>
+</permissions>
+)";
+
+class AppendFeatureManagementTest
+    : public ::testing::TestWithParam<AppendFeatureManagementParam> {};
+
+const AppendFeatureManagementParam kAppendFeatureManagementParam[] = {
+    {{}, BasicHardwareFeatureContent, BasicHardwareFeatureContent},
+    {{"Feat1"}, BasicHardwareFeatureContent, OneFeatureHardwareFeatureContent},
+    {{"Feat1", "Feat2"},
+     BasicHardwareFeatureContent,
+     TwoFeatureHardwareFeatureContent},
 };
 
 }  // namespace
@@ -1240,5 +1291,39 @@ TEST_P(FilterMediaProfileTest, All) {
 INSTANTIATE_TEST_SUITE_P(All,
                          FilterMediaProfileTest,
                          testing::ValuesIn(kFilterMediaProfileParam));
+
+TEST_P(AppendFeatureManagementTest, All) {
+  base::ScopedTempDir temp_directory;
+  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+
+  const base::FilePath hardware_property_file =
+      temp_directory.GetPath().Append("hw.xml");
+  ASSERT_TRUE(WriteToFile(hardware_property_file, 0755,
+                          GetParam().hardware_property_content));
+
+  auto fake = std::make_unique<segmentation::fake::FeatureManagementFake>();
+  segmentation::fake::FeatureManagementFake* fake_feature_management_ =
+      fake.get();
+  segmentation::FeatureManagement feature_management(std::move(fake));
+  for (auto feature = GetParam().test_features.begin();
+       feature != GetParam().test_features.end(); feature++) {
+    fake_feature_management_->SetFeature(*feature, segmentation::USAGE_ANDROID);
+  }
+  auto result =
+      AppendFeatureManagement(hardware_property_file, feature_management);
+  ASSERT_TRUE(result);
+  auto remove_space = [](const std::string& s) {
+    return base::JoinString(
+        base::SplitStringPiece(s, " \t\n", base::TRIM_WHITESPACE,
+                               base::SPLIT_WANT_NONEMPTY),
+        "");
+  };
+
+  ASSERT_EQ(remove_space(GetParam().result_content), remove_space(*result));
+}
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         AppendFeatureManagementTest,
+                         testing::ValuesIn(kAppendFeatureManagementParam));
 
 }  // namespace arc

@@ -934,15 +934,22 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
   const base::FilePath platform_xml_file =
       base::FilePath(oem_mount_directory)
           .Append(arc_paths_->platform_xml_file_relative);
+
+  segmentation::FeatureManagement feature_management;
+  std::optional<std::string> content =
+      AppendFeatureManagement(hardware_features_xml, feature_management);
+  EXIT_IF(!content);
+
   brillo::SafeFD dest_parent(
       brillo::SafeFD::Root()
           .first.OpenExistingDir(platform_xml_file.DirName())
           .first);
   (void)dest_parent.Unlink(platform_xml_file.BaseName().value());
-  EXIT_IF(!SafeCopyFile(hardware_features_xml,
-                        brillo::SafeFD::Root().first /*src_parent*/,
-                        platform_xml_file.BaseName(), std::move(dest_parent),
-                        0644 /*permissions*/));
+  brillo::SafeFD dest_fd(dest_parent
+                             .MakeFile(platform_xml_file.BaseName(),
+                                       0644 /*permissions*/, kRootUid, kRootGid)
+                             .first);
+  EXIT_IF(!base::WriteFileDescriptor(dest_fd.get(), *content));
 
   // TODO(chromium:1083652) Remove dynamic shell scripts once all overlays
   // are migrated to static XML config.

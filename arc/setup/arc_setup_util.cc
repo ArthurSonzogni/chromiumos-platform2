@@ -46,6 +46,7 @@
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -56,6 +57,7 @@
 #include <brillo/file_utils.h>
 #include <brillo/files/safe_fd.h>
 #include <crypto/sha2.h>
+#include <libsegmentation/feature_management.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
@@ -1231,4 +1233,90 @@ std::optional<std::string> FilterMediaProfile(
   return result;
 }
 
+std::optional<std::string> AppendFeatureManagement(
+    const base::FilePath& hardware_profile_xml,
+    segmentation::FeatureManagement& feature_management) {
+  // Open the file
+  std::string content;
+  if (!base::ReadFileToString(hardware_profile_xml, &content)) {
+    LOG(ERROR) << "Failed to read media profile from "
+               << hardware_profile_xml.value();
+    return std::nullopt;
+  }
+
+  // Get the list of features to enable.
+  std::set<std::string> features =
+      feature_management.ListFeatures(segmentation::USAGE_ANDROID);
+  if (features.size() == 0) {
+    // Nothing to add.
+    return content;
+  }
+
+  // Interpret the XML file
+  LIBXML_TEST_VERSION
+  xmlDocPtr doc;
+
+  auto result = [&doc, &content, &features]() -> std::optional<std::string> {
+    doc = xmlReadMemory(content.c_str(), content.size(), nullptr, nullptr, 0);
+    if (doc == nullptr) {
+      LOG(ERROR) << "Failed to parse hardware profile content:\n" << content;
+      return std::nullopt;
+    }
+    // For keeping indent.
+    xmlKeepBlanksDefault(0);
+
+    xmlNodePtr permissions = xmlDocGetRootElement(doc);
+    if (permissions == nullptr) {
+      LOG(ERROR) << "No root element node found in hardware profile content:\n"
+                 << content;
+      return std::nullopt;
+    }
+    if (std::string(reinterpret_cast<const char*>(permissions->name)) !=
+        "permissions") {
+      LOG(ERROR) << "Failed to find permissions settings in hardware profile "
+                    "content:\n"
+                 << content;
+      return std::nullopt;
+    }
+
+    for (auto feature : features) {
+      xmlNodePtr feature_node = xmlNewDocNode(
+          doc, nullptr, reinterpret_cast<const xmlChar*>("feature"), nullptr);
+      if (!feature_node) {
+        LOG(ERROR) << "Unable to allocate a node to hardware profile content:\n"
+                   << content;
+        return std::nullopt;
+      }
+      if (xmlAddChild(permissions, feature_node) == nullptr) {
+        LOG(ERROR) << "Unable to add a node to hardware profile content:\n"
+                   << content;
+        xmlFreeNode(feature_node);
+        return std::nullopt;
+      }
+      if (xmlNewProp(feature_node, reinterpret_cast<const xmlChar*>("name"),
+                     reinterpret_cast<const xmlChar*>(
+                         base::StrCat(
+                             {"org.chromium.arc.feature_management.", feature})
+                             .c_str())) == nullptr) {
+        LOG(ERROR) << "Unable to add feature " << feature
+                   << "hardware profile content:\n"
+                   << content;
+        return std::nullopt;
+      }
+    }
+
+    // Dump results.
+    xmlChar* buf = nullptr;
+    int size = 0;
+    xmlDocDumpFormatMemory(doc, &buf, &size, /* format */ 1);
+    CHECK(buf != nullptr) << "Failed to dump filtered xml result";
+    std::string xml_result(reinterpret_cast<const char*>(buf), size);
+    xmlFree(buf);
+    return xml_result;
+  }();
+  xmlFreeDoc(doc);
+  xmlCleanupParser();
+
+  return result;
+}
 }  // namespace arc

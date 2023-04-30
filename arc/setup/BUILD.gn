@@ -46,6 +46,7 @@ pkg_config("target_defaults_pkg_deps") {
     "libmetrics",
     "libminijail",
     "libpatchpanel-client",
+    "libsegmentation",
     "libselinux",
     "libuser_data_auth-client",
     "libxml-2.0",
@@ -223,6 +224,7 @@ if (use.test) {
     pkg_deps = [
       "libbrillo-test",
       "libchrome-test",
+      "libsegmentation-test",
     ]
   }
   executable("arc-setup_testrunner") {

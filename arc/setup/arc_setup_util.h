@@ -19,6 +19,7 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <brillo/files/safe_fd.h>
+#include <libsegmentation/feature_management.h>
 
 #include "arc/setup/android_sdk_version.h"
 
@@ -279,6 +280,11 @@ std::optional<std::string> FilterMediaProfile(
     const base::FilePath& media_profile_xml,
     const base::FilePath& camera_test_config);
 
+// Append Features coming from the libsegmentation library that Android must be
+// aware of.
+std::optional<std::string> AppendFeatureManagement(
+    const base::FilePath& hardware_profile_xml,
+    segmentation::FeatureManagement& feature_management);
 }  // namespace arc
 
 #endif  // ARC_SETUP_ARC_SETUP_UTIL_H_
