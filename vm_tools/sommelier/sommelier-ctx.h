@@ -90,6 +90,7 @@ struct sl_context {
   struct sl_gaming_input_manager* gaming_input_manager;
   struct zcr_gaming_seat_v2* gaming_seat;
 #endif
+  struct sl_stylus_input_manager* stylus_input_manager;
   struct sl_relative_pointer_manager* relative_pointer_manager;
   struct sl_pointer_constraints* pointer_constraints;
   struct wl_list outputs;

@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"             // NOLINT(build/include_directory)
-#include "sommelier-transform.h"   // NOLINT(build/include_directory)
-#include "sommelier-inpututils.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"                // NOLINT(build/include_directory)
+#include "sommelier-transform.h"      // NOLINT(build/include_directory)
+#include "sommelier-inpututils.h"     // NOLINT(build/include_directory)
+#include "sommelier-stylus-tablet.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <math.h>
@@ -632,6 +633,12 @@ static const struct wl_touch_listener sl_touch_listener = {
 
 static void sl_host_touch_recorder_frame(void* data,
                                          struct sl_touchrecorder* recorder) {
+  struct sl_host_touch* host = static_cast<sl_host_touch*>(data);
+
+  if (host->seat->stylus_tablet) {
+    sl_host_stylus_tablet_handle_touch(host->seat->stylus_tablet, recorder);
+  }
+
   sl_touchrecorder_replay_to_listener(recorder, &sl_touch_listener, data);
 }
 

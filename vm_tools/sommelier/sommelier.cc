@@ -43,6 +43,7 @@
 #ifdef GAMEPAD_SUPPORT
 #include "gaming-input-unstable-v2-client-protocol.h"  // NOLINT(build/include_directory)
 #endif
+#include "stylus-unstable-v2-client-protocol.h"  // NOLINT(build/include_directory)
 #include "keyboard-extension-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "linux-dmabuf-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "linux-explicit-synchronization-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
@@ -588,6 +589,7 @@ void sl_registry_handler(void* data,
     seat->id = id;
     seat->version = MIN(5, version);
     seat->last_serial = 0;
+    seat->stylus_tablet = nullptr;
     seat->host_global = sl_seat_global_create(seat);
     wl_list_insert(&ctx->seats, &seat->link);
   } else if (strcmp(interface, "zwp_relative_pointer_manager_v1") == 0) {
@@ -751,6 +753,24 @@ void sl_registry_handler(void* data,
     assert(!ctx->gaming_input_manager);
     ctx->gaming_input_manager = gaming_input_manager;
 #endif
+  } else if (strcmp(interface, "zcr_stylus_v2") == 0) {
+    struct sl_stylus_input_manager* stylus_input_manager =
+        static_cast<sl_stylus_input_manager*>(
+            malloc(sizeof(struct sl_stylus_input_manager)));
+    assert(stylus_input_manager);
+    stylus_input_manager->ctx = ctx;
+    stylus_input_manager->id = id;
+    stylus_input_manager->internal = static_cast<zcr_stylus_v2*>(
+        wl_registry_bind(registry, id, &zcr_stylus_v2_interface, 1));
+
+    // Note: This does not forward the stylus-unstable-v2 protcol to the
+    // clients. Instead, it exposes tablet-unstable-v2 protocol to the clients.
+    // Note: This is the only user of ctx->stylus_input_manager
+    stylus_input_manager->tablet_host_global =
+        sl_stylus_to_tablet_manager_global_create(ctx);
+
+    assert(!ctx->stylus_input_manager);
+    ctx->stylus_input_manager = stylus_input_manager;
   } else if (strcmp(interface, "zxdg_output_manager_v1") == 0 &&
              ctx->use_direct_scale) {
     // This protocol cannot be bound unconditionally as doing so
@@ -881,6 +901,11 @@ void sl_registry_remover(void* data,
     return;
   }
 #endif
+  if (ctx->stylus_input_manager && ctx->stylus_input_manager->id == id) {
+    sl_global_destroy(ctx->stylus_input_manager->tablet_host_global);
+    free(ctx->stylus_input_manager);
+    ctx->stylus_input_manager = NULL;
+  }
   if (ctx->relative_pointer_manager &&
       ctx->relative_pointer_manager->id == id) {
     sl_global_destroy(ctx->relative_pointer_manager->host_global);

@@ -33,7 +33,6 @@
 #define ALT_MASK (1 << 1)
 #define SHIFT_MASK (1 << 2)
 
-
 struct sl_global;
 struct sl_compositor;
 struct sl_shm;
@@ -100,6 +99,11 @@ struct sl_seat {
   uint32_t version;
   struct sl_global* host_global;
   uint32_t last_serial;
+  // Stylus events are received on both wl_touch and stylus interfaces.
+  // This is is used to coordinate between the two.
+  //
+  // TODO(b/281760854): exo should provide this protocol natively
+  struct sl_host_stylus_tablet* stylus_tablet;
   struct wl_list link;
 };
 
@@ -347,6 +351,13 @@ struct sl_gaming_input_manager {
 };
 #endif
 
+struct sl_stylus_input_manager {
+  struct sl_context* ctx;
+  uint32_t id;
+  struct zcr_stylus_v2* internal;
+  struct sl_global* tablet_host_global;
+};
+
 struct sl_pointer_constraints {
   struct sl_context* ctx;
   uint32_t id;
@@ -405,7 +416,6 @@ struct sl_host_registry {
   struct wl_list link;
 };
 
-
 typedef void (*sl_sync_func_t)(struct sl_context* ctx,
                                struct sl_sync_point* sync_point);
 
@@ -454,6 +464,9 @@ struct sl_global* sl_shm_global_create(struct sl_context* ctx);
 struct sl_global* sl_subcompositor_global_create(struct sl_context* ctx);
 
 struct sl_global* sl_shell_global_create(struct sl_context* ctx);
+
+struct sl_global* sl_stylus_to_tablet_manager_global_create(
+    struct sl_context* ctx);
 
 double sl_output_aura_scale_factor_to_double(int scale_factor);
 
@@ -509,7 +522,6 @@ void sl_host_seat_removed(struct sl_host_seat* host);
 void sl_restack_windows(struct sl_context* ctx, uint32_t focus_resource_id);
 
 void sl_roundtrip(struct sl_context* ctx);
-
 
 struct sl_window* sl_lookup_window(struct sl_context* ctx, xcb_window_t id);
 int sl_is_our_window(struct sl_context* ctx, xcb_window_t id);
