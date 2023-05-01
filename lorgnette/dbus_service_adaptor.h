@@ -17,6 +17,7 @@
 
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
 #include "lorgnette/debug_log.h"
+#include "lorgnette/device_tracker.h"
 #include "lorgnette/manager.h"
 
 namespace lorgnette {
@@ -28,6 +29,7 @@ class DBusServiceAdaptor : public org::chromium::lorgnette::ManagerAdaptor,
  public:
   explicit DBusServiceAdaptor(
       std::unique_ptr<Manager> manager,
+      DeviceTracker* device_tracker,
       base::RepeatingCallback<void()> debug_change_callback);
   DBusServiceAdaptor(const DBusServiceAdaptor&) = delete;
   DBusServiceAdaptor& operator=(const DBusServiceAdaptor&) = delete;
@@ -64,6 +66,9 @@ class DBusServiceAdaptor : public org::chromium::lorgnette::ManagerAdaptor,
   std::unique_ptr<Manager> manager_ GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<FirewallManager> firewall_manager_
       GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Not owned.
+  DeviceTracker* device_tracker_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   base::RepeatingCallback<void()> debug_change_callback_
       GUARDED_BY_CONTEXT(sequence_checker_);

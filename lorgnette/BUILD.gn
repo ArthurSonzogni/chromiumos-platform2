@@ -65,6 +65,7 @@ static_library("liblorgnette") {
     "daemon.cc",
     "dbus_service_adaptor.cc",
     "debug_log.cc",
+    "device_tracker.cc",
     "enums.cc",
     "epson_probe.cc",
     "firewall_manager.cc",
@@ -77,6 +78,7 @@ static_library("liblorgnette") {
     "sane_client.cc",
     "sane_client_fake.cc",
     "sane_client_impl.cc",
+    "uuid_util.cc",
   ]
   all_dependent_configs = [ ":liblorgnette_config" ]
   configs += [ ":target_defaults" ]
@@ -128,6 +130,7 @@ if (use.test) {
     sources = [
       "dbus_service_adaptor_test.cc",
       "debug_log_test.cc",
+      "device_tracker_test.cc",
       "firewall_manager_test.cc",
       "image_readers/jpeg_reader_test.cc",
       "image_readers/png_reader_test.cc",

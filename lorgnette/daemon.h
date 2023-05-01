@@ -13,6 +13,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 
 #include "lorgnette/dbus_service_adaptor.h"
+#include "lorgnette/device_tracker.h"
 #include "lorgnette/manager.h"
 
 namespace lorgnette {
@@ -55,6 +56,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   base::CancelableOnceClosure shutdown_callback_;
 
   std::unique_ptr<SaneClient> sane_client_;
+  std::unique_ptr<DeviceTracker> device_tracker_;
 
   // Keep as the last member variable.
   base::WeakPtrFactory<Daemon> weak_factory_{this};

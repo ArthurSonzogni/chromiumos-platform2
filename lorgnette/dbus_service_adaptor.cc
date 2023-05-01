@@ -30,9 +30,11 @@ class ScopeLogger {
 
 DBusServiceAdaptor::DBusServiceAdaptor(
     std::unique_ptr<Manager> manager,
+    DeviceTracker* device_tracker,
     base::RepeatingCallback<void()> debug_change_callback)
     : org::chromium::lorgnette::ManagerAdaptor(this),
       manager_(std::move(manager)),
+      device_tracker_(device_tracker),
       debug_change_callback_(std::move(debug_change_callback)) {
   // Set signal sender to be the real D-Bus call by default.
   manager_->SetScanStatusChangedSignalSender(base::BindRepeating(
@@ -40,6 +42,16 @@ DBusServiceAdaptor::DBusServiceAdaptor(
          const ScanStatusChangedSignal& signal) {
         if (adaptor) {
           adaptor->SendScanStatusChangedSignal(signal);
+        }
+      },
+      weak_factory_.GetWeakPtr()));
+
+  DCHECK(device_tracker_);
+  device_tracker_->SetScannerListChangedSignalSender(base::BindRepeating(
+      [](base::WeakPtr<DBusServiceAdaptor> adaptor,
+         const ScannerListChangedSignal& signal) {
+        if (adaptor) {
+          adaptor->SendScannerListChangedSignal(signal);
         }
       },
       weak_factory_.GetWeakPtr()));
@@ -66,6 +78,7 @@ void DBusServiceAdaptor::RegisterAsync(
   firewall_manager_->Init(
       std::make_unique<org::chromium::PermissionBrokerProxy>(bus));
   manager_->SetFirewallManager(firewall_manager_.get());
+  device_tracker_->SetFirewallManager(firewall_manager_.get());
 }
 
 bool DBusServiceAdaptor::ListScanners(brillo::ErrorPtr* error,
@@ -121,12 +134,16 @@ SetDebugConfigResponse DBusServiceAdaptor::SetDebugConfig(
 
 StartScannerDiscoveryResponse DBusServiceAdaptor::StartScannerDiscovery(
     const StartScannerDiscoveryRequest& request) {
-  return {};
+  ScopeLogger scope("DBusServiceAdaptor::StartScannerDiscovery");
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return device_tracker_->StartScannerDiscovery(request);
 }
 
 StopScannerDiscoveryResponse DBusServiceAdaptor::StopScannerDiscovery(
     const StopScannerDiscoveryRequest& request) {
-  return {};
+  ScopeLogger scope("DBusServiceAdaptor::StopScannerDiscovery");
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return device_tracker_->StopScannerDiscovery(request);
 }
 
 }  // namespace lorgnette

@@ -54,9 +54,11 @@ void Daemon::RegisterDBusObjectsAsync(
       std::make_unique<Manager>(base::BindRepeating(&Daemon::PostponeShutdown,
                                                     weak_factory_.GetWeakPtr()),
                                 sane_client_.get());
-  dbus_service_.reset(new DBusServiceAdaptor(
-      std::move(manager), base::BindRepeating(&Daemon::OnDebugChanged,
-                                              weak_factory_.GetWeakPtr())));
+  device_tracker_.reset(new DeviceTracker(sane_client_.get()));
+  dbus_service_.reset(
+      new DBusServiceAdaptor(std::move(manager), device_tracker_.get(),
+                             base::BindRepeating(&Daemon::OnDebugChanged,
+                                                 weak_factory_.GetWeakPtr())));
   dbus_service_->RegisterAsync(object_manager_.get(), sequencer);
 }
 

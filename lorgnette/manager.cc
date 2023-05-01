@@ -24,7 +24,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <libusb.h>
 #include <re2/re2.h>
-#include <uuid/uuid.h>
 
 #include "lorgnette/constants.h"
 #include "lorgnette/daemon.h"
@@ -36,6 +35,7 @@
 #include "lorgnette/image_readers/jpeg_reader.h"
 #include "lorgnette/image_readers/png_reader.h"
 #include "lorgnette/ippusb_device.h"
+#include "lorgnette/uuid_util.h"
 #include "permission_broker/dbus-proxies.h"
 
 using std::string;
@@ -46,7 +46,6 @@ namespace {
 
 constexpr base::TimeDelta kDefaultProgressSignalInterval =
     base::Milliseconds(20);
-constexpr size_t kUUIDStringLength = 37;
 
 std::string SerializeError(const brillo::ErrorPtr& error_ptr) {
   std::string message;
@@ -95,16 +94,6 @@ std::optional<PortToken> RequestPortAccessIfNeeded(
     return std::nullopt;
 
   return firewall_manager->RequestPixmaPortAccess();
-}
-
-std::string GenerateUUID() {
-  uuid_t uuid_bytes;
-  uuid_generate_random(uuid_bytes);
-  std::string uuid(kUUIDStringLength, '\0');
-  uuid_unparse(uuid_bytes, &uuid[0]);
-  // Remove the null terminator from the string.
-  uuid.resize(kUUIDStringLength - 1);
-  return uuid;
 }
 
 // Converts the |status| to a ScanFailureMode.
