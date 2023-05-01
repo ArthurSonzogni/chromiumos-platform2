@@ -60,23 +60,23 @@ CrostiniService::~CrostiniService() {
     bus_->ShutdownAndBlock();
 }
 
-bool CrostiniService::Start(uint64_t vm_id,
-                            CrostiniService::VMType vm_type,
-                            uint32_t subnet_index) {
+const Device* CrostiniService::Start(uint64_t vm_id,
+                                     CrostiniService::VMType vm_type,
+                                     uint32_t subnet_index) {
   if (vm_id == kInvalidID) {
     LOG(ERROR) << "Invalid VM id";
-    return false;
+    return nullptr;
   }
 
   if (taps_.find(vm_id) != taps_.end()) {
     LOG(WARNING) << "Already started for {id: " << vm_id << "}";
-    return false;
+    return nullptr;
   }
 
   auto tap = AddTAP(vm_type, subnet_index);
   if (!tap) {
     LOG(ERROR) << "Cannot start for {id: " << vm_id << "}";
-    return false;
+    return nullptr;
   }
 
   LOG(INFO) << "Crostini network service started for {id: " << vm_id << "}";
@@ -90,8 +90,8 @@ bool CrostiniService::Start(uint64_t vm_id,
   }
   device_changed_handler_.Run(*tap, Device::ChangeEvent::kAdded,
                               GuestMessageTypeFromVMType(vm_type));
-  taps_.emplace(vm_id, std::move(tap));
-  return true;
+  auto [it, _] = taps_.emplace(vm_id, std::move(tap));
+  return it->second.get();
 }
 
 void CrostiniService::Stop(uint64_t vm_id) {

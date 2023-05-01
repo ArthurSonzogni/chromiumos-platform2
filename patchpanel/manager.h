@@ -103,9 +103,9 @@ class Manager final : public brillo::DBusDaemon {
   void StopArc();
   bool StartArcVm(uint32_t cid);
   void StopArcVm(uint32_t cid);
-  bool StartCrosVm(uint64_t vm_id,
-                   CrostiniService::VMType vm_type,
-                   uint32_t subnet_index = kAnySubnetIndex);
+  const Device* StartCrosVm(uint64_t vm_id,
+                            CrostiniService::VMType vm_type,
+                            uint32_t subnet_index = kAnySubnetIndex);
   void StopCrosVm(uint64_t vm_id, GuestMessage::GuestType vm_type);
 
   // Callback from Daemon to notify that the message loop exits and before

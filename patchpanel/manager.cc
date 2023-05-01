@@ -592,17 +592,18 @@ void Manager::StopArcVm(uint32_t cid) {
   arc_svc_->Stop(cid);
 }
 
-bool Manager::StartCrosVm(uint64_t vm_id,
-                          CrostiniService::VMType vm_type,
-                          uint32_t subnet_index) {
-  if (!cros_svc_->Start(vm_id, vm_type, subnet_index)) {
-    return false;
+const Device* Manager::StartCrosVm(uint64_t vm_id,
+                                   CrostiniService::VMType vm_type,
+                                   uint32_t subnet_index) {
+  const auto* guest_device = cros_svc_->Start(vm_id, vm_type, subnet_index);
+  if (!guest_device) {
+    return nullptr;
   }
   GuestMessage msg;
   msg.set_event(GuestMessage::START);
   msg.set_type(CrostiniService::GuestMessageTypeFromVMType(vm_type));
   SendGuestMessage(msg);
-  return true;
+  return guest_device;
 }
 
 void Manager::StopCrosVm(uint64_t vm_id, GuestMessage::GuestType vm_type) {
@@ -815,27 +816,22 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
   }
 
   const uint32_t cid = request.cid();
-  if (!StartCrosVm(cid, CrostiniService::VMType::kTermina)) {
+  const auto* guest_device =
+      StartCrosVm(cid, CrostiniService::VMType::kTermina);
+  if (!guest_device) {
     LOG(ERROR) << "Failed to start Termina VM network service";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
-  const auto* const tap = cros_svc_->GetDevice(cid);
-  if (!tap) {
-    LOG(DFATAL) << "Termina TAP Device missing";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  const auto* termina_subnet = tap->config().ipv4_subnet();
+  const auto* termina_subnet = guest_device->config().ipv4_subnet();
   if (!termina_subnet) {
     LOG(DFATAL) << "Missing required Termina IPv4 subnet for {cid: " << cid
                 << "}";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
-  const auto* lxd_subnet = tap->config().lxd_ipv4_subnet();
+  const auto* lxd_subnet = guest_device->config().lxd_ipv4_subnet();
   if (!lxd_subnet) {
     LOG(DFATAL) << "Missing required lxd container IPv4 subnet for {cid: "
                 << cid << "}";
@@ -844,7 +840,7 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
   }
   auto* dev = response.mutable_device();
   dev->set_guest_type(NetworkDevice::TERMINA_VM);
-  FillDeviceProto(*tap, dev);
+  FillDeviceProto(*guest_device, dev);
   FillSubnetProto(*termina_subnet, dev->mutable_ipv4_subnet());
   FillSubnetProto(*lxd_subnet, response.mutable_container_subnet());
 
@@ -907,20 +903,15 @@ std::unique_ptr<dbus::Response> Manager::OnPluginVmStartup(
   }
   const uint32_t subnet_index = static_cast<uint32_t>(request.subnet_index());
   const uint64_t vm_id = request.id();
-  if (!StartCrosVm(vm_id, CrostiniService::VMType::kParallel, subnet_index)) {
+  const auto* guest_device =
+      StartCrosVm(vm_id, CrostiniService::VMType::kParallel, subnet_index);
+  if (!guest_device) {
     LOG(ERROR) << "Failed to start Plugin VM network service";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
-  const auto* const tap = cros_svc_->GetDevice(vm_id);
-  if (!tap) {
-    LOG(DFATAL) << "Plugin VM TAP Device missing";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  const auto* subnet = tap->config().ipv4_subnet();
+  const auto* subnet = guest_device->config().ipv4_subnet();
   if (!subnet) {
     LOG(DFATAL) << "Missing required subnet for {cid: " << vm_id << "}";
     writer.AppendProtoAsArrayOfBytes(response);
@@ -928,7 +919,7 @@ std::unique_ptr<dbus::Response> Manager::OnPluginVmStartup(
   }
   auto* dev = response.mutable_device();
   dev->set_guest_type(NetworkDevice::PLUGIN_VM);
-  FillDeviceProto(*tap, dev);
+  FillDeviceProto(*guest_device, dev);
   FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
 
   RecordDbusEvent(metrics_, DbusUmaEvent::kPluginVmStartupSuccess);

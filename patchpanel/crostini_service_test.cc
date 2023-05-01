@@ -82,21 +82,21 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
   ASSERT_TRUE(crostini->GetDevices().empty());
 
   // The virtual datapath for the Crostini VM can successfully start.
-  ASSERT_TRUE(crostini->Start(vm_id, CrostiniService::VMType::kTermina,
-                              /*subnet_index=*/0));
+  auto* device = crostini->Start(vm_id, CrostiniService::VMType::kTermina,
+                                 /*subnet_index=*/0);
   Mock::VerifyAndClearExpectations(datapath_.get());
+  ASSERT_NE(nullptr, device);
+  ASSERT_EQ("vmtap0", device->host_ifname());
   auto it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
   ASSERT_EQ(Device::ChangeEvent::kAdded, it->second);
   guest_devices_.clear();
 
   // After starting, there should be a virtual device.
-  auto* device = crostini->GetDevice(vm_id);
+  ASSERT_EQ(device, crostini->GetDevice(vm_id));
   auto devices = crostini->GetDevices();
-  ASSERT_NE(nullptr, device);
   ASSERT_FALSE(devices.empty());
   ASSERT_EQ(device, devices[0]);
-  ASSERT_EQ("vmtap0", device->host_ifname());
 
   // The virtual datapath for the Crostini VM can successfully stop.
   crostini->Stop(vm_id);
@@ -125,8 +125,10 @@ TEST_F(CrostiniServiceTest, StartStopParallelVM) {
   ASSERT_TRUE(crostini->GetDevices().empty());
 
   // The virtual datapath for the Parallel VM can successfully start.
-  ASSERT_TRUE(crostini->Start(vm_id, CrostiniService::VMType::kParallel,
-                              /*subnet_index=*/1));
+  auto* device = crostini->Start(vm_id, CrostiniService::VMType::kParallel,
+                                 /*subnet_index=*/1);
+  ASSERT_NE(nullptr, device);
+  ASSERT_EQ("vmtap0", device->host_ifname());
   Mock::VerifyAndClearExpectations(datapath_.get());
   auto it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
@@ -134,12 +136,11 @@ TEST_F(CrostiniServiceTest, StartStopParallelVM) {
   guest_devices_.clear();
 
   // After starting, there should be a virtual device.
-  auto* device = crostini->GetDevice(vm_id);
+  ASSERT_EQ(device, crostini->GetDevice(vm_id));
   auto devices = crostini->GetDevices();
   ASSERT_NE(nullptr, device);
   ASSERT_FALSE(devices.empty());
   ASSERT_EQ(device, devices[0]);
-  ASSERT_EQ("vmtap0", device->host_ifname());
 
   // The virtual datapath for the Parallel VM can successfully stop.
   crostini->Stop(vm_id);
@@ -178,43 +179,43 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   ASSERT_TRUE(crostini->GetDevices().empty());
 
   // Start first Crostini VM.
-  ASSERT_TRUE(crostini->Start(vm_id1, CrostiniService::VMType::kTermina,
-                              /*subnet_index=*/0));
+  auto* device = crostini->Start(vm_id1, CrostiniService::VMType::kTermina,
+                                 /*subnet_index=*/0);
+  ASSERT_NE(nullptr, device);
+  ASSERT_EQ("vmtap0", device->host_ifname());
   auto it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
   ASSERT_EQ(Device::ChangeEvent::kAdded, it->second);
   guest_devices_.clear();
 
   // After starting, there should be a virtual device for that VM.
-  auto* device = crostini->GetDevice(vm_id1);
-  ASSERT_NE(nullptr, device);
-  ASSERT_EQ("vmtap0", device->host_ifname());
+  ASSERT_EQ(device, crostini->GetDevice(vm_id1));
 
   // Start Parallel VM.
-  ASSERT_TRUE(crostini->Start(vm_id2, CrostiniService::VMType::kParallel,
-                              /*subnet_index=*/0));
+  device = crostini->Start(vm_id2, CrostiniService::VMType::kParallel,
+                           /*subnet_index=*/0);
+  ASSERT_NE(nullptr, device);
+  ASSERT_EQ("vmtap1", device->host_ifname());
   it = guest_devices_.find("vmtap1");
   ASSERT_NE(guest_devices_.end(), it);
   ASSERT_EQ(Device::ChangeEvent::kAdded, it->second);
   guest_devices_.clear();
 
   // After starting that second VM, there should be another virtual device.
-  device = crostini->GetDevice(vm_id2);
-  ASSERT_NE(nullptr, device);
-  ASSERT_EQ("vmtap1", device->host_ifname());
+  ASSERT_EQ(device, crostini->GetDevice(vm_id2));
 
   // Start second Crostini VM.
-  ASSERT_TRUE(crostini->Start(vm_id3, CrostiniService::VMType::kTermina,
-                              /*subnet_index=*/0));
+  device = crostini->Start(vm_id3, CrostiniService::VMType::kTermina,
+                           /*subnet_index=*/0);
+  ASSERT_NE(nullptr, device);
+  ASSERT_EQ("vmtap2", device->host_ifname());
   it = guest_devices_.find("vmtap2");
   ASSERT_NE(guest_devices_.end(), it);
   ASSERT_EQ(Device::ChangeEvent::kAdded, it->second);
   guest_devices_.clear();
 
   // After starting that third VM, there should be another virtual device.
-  device = crostini->GetDevice(vm_id3);
-  ASSERT_NE(nullptr, device);
-  ASSERT_EQ("vmtap2", device->host_ifname());
+  ASSERT_EQ(device, crostini->GetDevice(vm_id3));
 
   // There are three virtual devices owned by CrostiniService.
   auto devices = crostini->GetDevices();
