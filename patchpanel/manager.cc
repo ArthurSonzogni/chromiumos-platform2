@@ -827,7 +827,7 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
     return dbus_response;
   }
 
-  const auto* const tap = cros_svc_->TAP(cid, /*is_termina=*/true);
+  const auto* const tap = cros_svc_->GetDevice(cid);
   if (!tap) {
     LOG(DFATAL) << "Termina TAP Device missing";
     writer.AppendProtoAsArrayOfBytes(response);
@@ -919,7 +919,7 @@ std::unique_ptr<dbus::Response> Manager::OnPluginVmStartup(
     return dbus_response;
   }
 
-  const auto* const tap = cros_svc_->TAP(vm_id, /*is_termina=*/false);
+  const auto* const tap = cros_svc_->GetDevice(vm_id);
   if (!tap) {
     LOG(DFATAL) << "Plugin VM TAP Device missing";
     writer.AppendProtoAsArrayOfBytes(response);

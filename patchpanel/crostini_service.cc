@@ -10,10 +10,6 @@
 #include "base/task/single_thread_task_runner.h"
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_split.h>
-#include <base/strings/string_util.h>
-#include <base/strings/stringprintf.h>
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
 // Ignore Wconversion warnings in dbus headers.
@@ -34,11 +30,6 @@ constexpr int kDbusTimeoutMs = 200;
 // The maximum number of ADB sideloading query failures before stopping.
 constexpr int kAdbSideloadMaxTry = 5;
 constexpr base::TimeDelta kAdbSideloadUpdateDelay = base::Milliseconds(5000);
-
-std::string MakeKey(uint64_t vm_id, bool is_termina) {
-  return base::StringPrintf("%s:%s", is_termina ? "t" : "p",
-                            base::NumberToString(vm_id).c_str());
-}
 }  // namespace
 
 CrostiniService::CrostiniService(
@@ -76,8 +67,7 @@ bool CrostiniService::Start(uint64_t vm_id,
     return false;
   }
 
-  const auto key = MakeKey(vm_id, is_termina);
-  if (taps_.find(key) != taps_.end()) {
+  if (taps_.find(vm_id) != taps_.end()) {
     LOG(WARNING) << "Already started for {id: " << vm_id << "}";
     return false;
   }
@@ -101,13 +91,12 @@ bool CrostiniService::Start(uint64_t vm_id,
       *tap, Device::ChangeEvent::kAdded,
       is_termina ? GuestMessage::TERMINA_VM : GuestMessage::PLUGIN_VM);
 
-  taps_.emplace(key, std::move(tap));
+  taps_.emplace(vm_id, std::move(tap));
   return true;
 }
 
 void CrostiniService::Stop(uint64_t vm_id, bool is_termina) {
-  const auto key = MakeKey(vm_id, is_termina);
-  const auto it = taps_.find(key);
+  const auto it = taps_.find(vm_id);
   if (it == taps_.end()) {
     LOG(WARNING) << "Unknown {id: " << vm_id << "}";
     return;
@@ -125,14 +114,13 @@ void CrostiniService::Stop(uint64_t vm_id, bool is_termina) {
   if (adb_sideloading_enabled_)
     StopAdbPortForwarding(ifname);
   datapath_->RemoveInterface(ifname);
-  taps_.erase(key);
+  taps_.erase(vm_id);
 
   LOG(INFO) << "Crostini network service stopped for {id: " << vm_id << "}";
 }
 
-const Device* const CrostiniService::TAP(uint64_t vm_id,
-                                         bool is_termina) const {
-  const auto it = taps_.find(MakeKey(vm_id, is_termina));
+const Device* const CrostiniService::GetDevice(uint64_t vm_id) const {
+  const auto it = taps_.find(vm_id);
   if (it == taps_.end()) {
     return nullptr;
   }

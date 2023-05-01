@@ -20,6 +20,7 @@ namespace patchpanel {
 
 // Crostini networking service handling address allocation, TAP device creation,
 // and patchpanel Device management for Crostini VMs (Termina VMs, Plugin VMs).
+// CrostiniService currently only supports one TAP device per VM instance.
 class CrostiniService {
  public:
   // All pointers are required and must not be null, and are owned by the
@@ -35,7 +36,8 @@ class CrostiniService {
   bool Start(uint64_t vm_id, bool is_termina, uint32_t subnet_index);
   void Stop(uint64_t vm_id, bool is_termina);
 
-  const Device* const TAP(uint64_t vm_id, bool is_termina) const;
+  // Returns a single Device pointer created for the VM with id |vm_id|.
+  const Device* const GetDevice(uint64_t vm_id) const;
 
   // Returns a list of all tap Devices currently managed by this service.
   std::vector<const Device*> GetDevices() const;
@@ -60,7 +62,7 @@ class CrostiniService {
   Device::ChangeEventHandler device_changed_handler_;
 
   // Mapping of VM IDs to TAP devices
-  std::map<std::string, std::unique_ptr<Device>> taps_;
+  std::map<uint64_t, std::unique_ptr<Device>> taps_;
 
   bool adb_sideloading_enabled_;
   scoped_refptr<dbus::Bus> bus_;
