@@ -41,6 +41,7 @@
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/executor/utils/delegate_process.h"
 #include "diagnostics/cros_healthd/executor/utils/dlc_manager.h"
+#include "diagnostics/cros_healthd/executor/utils/file.h"
 #include "diagnostics/cros_healthd/executor/utils/process_control.h"
 #include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
@@ -206,6 +207,22 @@ void Executor::ReadFile(File file_enum, ReadFileCallback callback) {
     return;
   }
   std::move(callback).Run(content);
+}
+
+void Executor::GetFileInfo(File file_enum, GetFileInfoCallback callback) {
+  base::FilePath file = FileEnumToFilePath(file_enum);
+  base::Time result;
+  // We do not use `base::File::GetInfo` here because it doesn't return the real
+  // file creation time. See the document of `GetCreationTime`.
+  // TODO(crbug/1442014): Migrate to base::File::GetInfo() once this issue is
+  // solved.
+  if (!GetCreationTime(file, result)) {
+    PLOG(ERROR) << "Failed to get file info " << file;
+    std::move(callback).Run(nullptr);
+    return;
+  }
+  std::move(callback).Run(mojom::FileInfo::New(
+      /*creation_time=*/result));
 }
 
 void Executor::GetFanSpeed(GetFanSpeedCallback callback) {

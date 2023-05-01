@@ -8,6 +8,7 @@
 
 module ash.cros_healthd.mojom;
 
+import "diagnostics/mojom/external/time.mojom";
 import "diagnostics/mojom/public/cros_healthd_diagnostics.mojom";
 import "diagnostics/mojom/public/cros_healthd_events.mojom";
 import "diagnostics/mojom/public/cros_healthd_probe.mojom";
@@ -107,16 +108,31 @@ interface StylusObserver {
   OnConnected(StylusConnectedEvent connected_event);
 };
 
+// File stat as returned by `Executor::GetFileInfo`. This is not a full list of
+// file stat; new fields are added as needed.
+struct FileInfo {
+  // File creation time. Corresponding to struct statx::stx_btime.
+  //
+  // This is not supported on all filesystems. See inode manpage:
+  // https://man7.org/linux/man-pages/man7/inode.7.html
+  //
+  // This is known to work on ext4:
+  // https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=99652ea56a4186bc5bf8a3721c5353f41b35ebcb
+  ash.cros_healthd.external.mojo_base.mojom.Time creation_time;
+};
+
 // Root-level executor interface exposed to the cros_healthd daemon. In
 // production, this is implemented by the Executor daemon.
 interface Executor {
-  // Reads file. Returns the content or null if failed.
   enum File {
     kUEFISecureBootVariable,
     kUEFIPlatformSize,
     kWirelessPowerScheme,
   };
+  // Reads file. Returns the content or null if failed.
   ReadFile(File file_enum) => (string? content);
+  // Gets file info. Returns the file info or null if failed.
+  GetFileInfo(File file_enum) => (FileInfo? info);
 
   // Obtains fan speed by running ectool and returns the result.
   //

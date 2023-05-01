@@ -27,6 +27,7 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
 
   // ash::cros_healthd::mojom::Executor overrides:
   MOCK_METHOD(void, ReadFile, (File, ReadFileCallback), (override));
+  MOCK_METHOD(void, GetFileInfo, (File, GetFileInfoCallback), (override));
   MOCK_METHOD(void, GetFanSpeed, (GetFanSpeedCallback), (override));
   MOCK_METHOD(void,
               RunIw,
