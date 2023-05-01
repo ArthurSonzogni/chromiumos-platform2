@@ -19,12 +19,9 @@
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/process_cache.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
+#include "secagentd/secagent.h"
 
 namespace secagentd {
-
-namespace testing {
-class DaemonTestFixture;
-}
 
 // The secagentd main daemon.
 // On startup the device policy is fetched. Based on the security collection
@@ -32,16 +29,6 @@ class DaemonTestFixture;
 // These BPFs will produce security events that are collected by this daemon,
 // which are packaged into protobuffs and sent to missived for delivery
 // to an off-machine service.
-
-struct Inject {
-  std::unique_ptr<PluginFactoryInterface> plugin_factory_;
-  std::unique_ptr<MetricsLibraryInterface> metrics_library_;
-  scoped_refptr<MessageSenderInterface> message_sender_;
-  scoped_refptr<ProcessCacheInterface> process_cache_;
-  scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
-  scoped_refptr<DeviceUserInterface> device_user_;
-  scoped_refptr<::dbus::Bus> dbus_;
-};
 
 class Daemon : public brillo::DBusDaemon {
  public:
@@ -58,34 +45,15 @@ class Daemon : public brillo::DBusDaemon {
   ~Daemon() override = default;
 
  protected:
+  void QuitDaemon(int);
   int OnInit() override;
   int OnEventLoopStarted() override;
   void OnShutdown(int*) override;
-  // Runs all of the plugin within the plugins_ vector.
-  void RunPlugins();
-  // Creates plugin of the given type.
-  int CreatePlugin(Types::Plugin);
-  // Checks the status of the XDR feature flag and policy flag. Starts/stops
-  // reporting as necessary.
-  void CheckPolicyAndFeature();
-  // Starts the plugin loading process. First creates the agent plugin and
-  // waits for a successfully sent heartbeat before creating and running
-  // the remaining plugins.
-  void StartXDRReporting();
 
  private:
-  friend class testing::DaemonTestFixture;
-
-  scoped_refptr<MessageSenderInterface> message_sender_;
-  scoped_refptr<ProcessCacheInterface> process_cache_;
-  scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
-  scoped_refptr<DeviceUserInterface> device_user_;
-  std::unique_ptr<PluginFactoryInterface> plugin_factory_;
-  std::vector<std::unique_ptr<PluginInterface>> plugins_;
-  std::unique_ptr<PluginInterface> agent_plugin_;
+  std::unique_ptr<SecAgent> secagent_;
   bool bypass_policy_for_testing_ = false;
   bool bypass_enq_ok_wait_for_testing_ = false;
-  bool reporting_events_ = false;
   uint32_t heartbeat_period_s_ = kDefaultHeartbeatPeriodS;
   uint32_t plugin_batch_interval_s_ = kDefaultPluginBatchIntervalS;
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;
