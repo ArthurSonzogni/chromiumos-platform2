@@ -13,13 +13,6 @@
 
 namespace shill {
 
-void SetErrorAndReturn(base::RepeatingClosure quit_closure,
-                       Error* to_return,
-                       const Error& error) {
-  *to_return = error;
-  quit_closure.Run();
-}
-
 base::OnceCallback<void(const Error&)> GetResultCallback(
     base::test::TestFuture<Error>* e) {
   return base::BindOnce([](base::OnceCallback<void(Error)> future_cb,
@@ -31,11 +24,9 @@ void SetEnabledSync(Device* device, bool enable, bool persist, Error* error) {
   CHECK(device);
   CHECK(error);
 
-  base::RunLoop run_loop;
-  device->SetEnabledChecked(
-      enable, persist,
-      base::BindOnce(&SetErrorAndReturn, run_loop.QuitClosure(), error));
-  run_loop.Run();
+  base::test::TestFuture<Error> e;
+  device->SetEnabledChecked(enable, persist, GetResultCallback(&e));
+  *error = e.Get();
 }
 
 template <>

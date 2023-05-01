@@ -76,10 +76,6 @@ class SetErrorTypeInArgumentAction {
   bool warn_default_;
 };
 
-void SetErrorAndReturn(base::RepeatingClosure quit_closure,
-                       Error* to_return,
-                       const Error& error);
-
 base::OnceCallback<void(const Error&)> GetResultCallback(
     base::test::TestFuture<Error>* e);
 
