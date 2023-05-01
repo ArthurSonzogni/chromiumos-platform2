@@ -61,7 +61,7 @@ CrostiniService::~CrostiniService() {
 }
 
 bool CrostiniService::Start(uint64_t vm_id,
-                            bool is_termina,
+                            CrostiniService::VMType vm_type,
                             uint32_t subnet_index) {
   if (vm_id == kInvalidID) {
     LOG(ERROR) << "Invalid VM id";
@@ -73,25 +73,23 @@ bool CrostiniService::Start(uint64_t vm_id,
     return false;
   }
 
-  auto tap = AddTAP(is_termina, subnet_index);
+  auto tap = AddTAP(vm_type, subnet_index);
   if (!tap) {
     LOG(ERROR) << "Cannot start for {id: " << vm_id << "}";
     return false;
   }
 
   LOG(INFO) << "Crostini network service started for {id: " << vm_id << "}";
-  auto source = is_termina ? TrafficSource::kCrosVM : TrafficSource::kPluginVM;
   datapath_->StartRoutingDevice("", tap->host_ifname(),
-                                tap->config().host_ipv4_addr(), source,
+                                tap->config().host_ipv4_addr(),
+                                TrafficSourceFromVMType(vm_type),
                                 /*route_on_vpn=*/true);
 
-  if (adb_sideloading_enabled_)
+  if (adb_sideloading_enabled_) {
     StartAdbPortForwarding(tap->phys_ifname());
-
-  device_changed_handler_.Run(
-      *tap, Device::ChangeEvent::kAdded,
-      is_termina ? GuestMessage::TERMINA_VM : GuestMessage::PLUGIN_VM);
-
+  }
+  device_changed_handler_.Run(*tap, Device::ChangeEvent::kAdded,
+                              GuestMessageTypeFromVMType(vm_type));
   taps_.emplace(vm_id, std::move(tap));
   return true;
 }
@@ -142,9 +140,9 @@ std::vector<const Device*> CrostiniService::GetDevices() const {
   return devices;
 }
 
-std::unique_ptr<Device> CrostiniService::AddTAP(bool is_termina,
+std::unique_ptr<Device> CrostiniService::AddTAP(CrostiniService::VMType vm_type,
                                                 uint32_t subnet_index) {
-  auto guest_type = is_termina ? GuestType::kTerminaVM : GuestType::kPluginVM;
+  auto guest_type = GuestTypeFromVMType(vm_type);
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(guest_type, subnet_index);
   if (!ipv4_subnet) {
     LOG(ERROR) << "Subnet already in use or unavailable.";
@@ -161,7 +159,7 @@ std::unique_ptr<Device> CrostiniService::AddTAP(bool is_termina,
     return nullptr;
   }
   std::unique_ptr<Subnet> lxd_subnet;
-  if (is_termina) {
+  if (vm_type == VMType::kTermina) {
     lxd_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::kLXDContainer);
     if (!lxd_subnet) {
       LOG(ERROR) << "lxd subnet already in use or unavailable.";

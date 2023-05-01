@@ -28,6 +28,7 @@
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/file_descriptor_watcher_posix.h"
 #include "patchpanel/guest_ipv6_service.h"
+#include "patchpanel/guest_type.h"
 #include "patchpanel/network_monitor_service.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
@@ -103,7 +104,7 @@ class Manager final : public brillo::DBusDaemon {
   bool StartArcVm(uint32_t cid);
   void StopArcVm(uint32_t cid);
   bool StartCrosVm(uint64_t vm_id,
-                   GuestMessage::GuestType vm_type,
+                   CrostiniService::VMType vm_type,
                    uint32_t subnet_index = kAnySubnetIndex);
   void StopCrosVm(uint64_t vm_id, GuestMessage::GuestType vm_type);
 

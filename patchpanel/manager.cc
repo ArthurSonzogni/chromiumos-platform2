@@ -593,20 +593,15 @@ void Manager::StopArcVm(uint32_t cid) {
 }
 
 bool Manager::StartCrosVm(uint64_t vm_id,
-                          GuestMessage::GuestType vm_type,
+                          CrostiniService::VMType vm_type,
                           uint32_t subnet_index) {
-  DCHECK(vm_type == GuestMessage::TERMINA_VM ||
-         vm_type == GuestMessage::PLUGIN_VM);
-
-  if (!cros_svc_->Start(vm_id, vm_type == GuestMessage::TERMINA_VM,
-                        subnet_index))
+  if (!cros_svc_->Start(vm_id, vm_type, subnet_index)) {
     return false;
-
+  }
   GuestMessage msg;
   msg.set_event(GuestMessage::START);
-  msg.set_type(vm_type);
+  msg.set_type(CrostiniService::GuestMessageTypeFromVMType(vm_type));
   SendGuestMessage(msg);
-
   return true;
 }
 
@@ -615,7 +610,6 @@ void Manager::StopCrosVm(uint64_t vm_id, GuestMessage::GuestType vm_type) {
   msg.set_event(GuestMessage::STOP);
   msg.set_type(vm_type);
   SendGuestMessage(msg);
-
   cros_svc_->Stop(vm_id);
 }
 
@@ -821,7 +815,7 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
   }
 
   const uint32_t cid = request.cid();
-  if (!StartCrosVm(cid, GuestMessage::TERMINA_VM)) {
+  if (!StartCrosVm(cid, CrostiniService::VMType::kTermina)) {
     LOG(ERROR) << "Failed to start Termina VM network service";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
@@ -913,7 +907,7 @@ std::unique_ptr<dbus::Response> Manager::OnPluginVmStartup(
   }
   const uint32_t subnet_index = static_cast<uint32_t>(request.subnet_index());
   const uint64_t vm_id = request.id();
-  if (!StartCrosVm(vm_id, GuestMessage::PLUGIN_VM, subnet_index)) {
+  if (!StartCrosVm(vm_id, CrostiniService::VMType::kParallel, subnet_index)) {
     LOG(ERROR) << "Failed to start Plugin VM network service";
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
