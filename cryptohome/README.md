@@ -4,6 +4,7 @@ This directory contains source code and documentation for the cryptohome
 daemon.
 
 *   [Architecture]: Architecture of auth stack and USS.
+*   [Auth Factors]: The security tiers of different factors.
 *   [Challenge Response Key]: Challenge response auth scheme.
 *   [New Crypthome API]: Explanation of upcoming cryptohome APIs.
 *   [D-Bus]: cryptohome provides all functionality via a D-Bus interface.
@@ -18,6 +19,7 @@ daemon.
 *   [TPM Owner Initialization]
 
 [Architecture]: ./docs/architecture.md
+[Auth Factors]: ./docs/factors.md
 [Challenge Response Key]: ./docs/challenge_response_key.md
 [New Crypthome API]: ./docs/cryptohome_modernization_apis.md
 [D-Bus]: ./docs/dbus.md
