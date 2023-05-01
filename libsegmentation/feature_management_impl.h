@@ -6,6 +6,9 @@
 #define LIBSEGMENTATION_FEATURE_MANAGEMENT_IMPL_H_
 
 #include <string>
+#include <base/files/file.h>
+#include <base/files/file_path.h>
+#include <libsegmentation/device_info.pb.h>
 
 #include <brillo/brillo_export.h>
 #include <libsegmentation/feature_management_interface.h>
@@ -16,9 +19,34 @@ namespace segmentation {
 // in feature_management_interface.h.
 class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
  public:
+  // Default implementation that use the database created by package
+  // feature-management-data.
+  FeatureManagementImpl();
+
+  explicit FeatureManagementImpl(const base::FilePath& device_info_file_path)
+      : device_info_file_path_(device_info_file_path) {}
+
   bool IsFeatureEnabled(const std::string& name) const override;
 
-  int GetFeatureLevel() const override;
+  FeatureLevel GetFeatureLevel() override;
+
+ private:
+  // Represents the file on the stateful partition that houses the device info.
+  // This will be read to populate |cached_device_info|.
+  base::FilePath device_info_file_path_;
+
+#if USE_FEATURE_MANAGEMENT
+  // Reads device info from the stateful partition, if not present reads it from
+  // the hardware and then writes it to the stateful partition. After this it
+  // tries to cache it to |cached_device_info_|.
+  //
+  // If we fail to write it to the stateful partition then this function will
+  // return false and not set |cached_device_info_|.
+  bool CacheDeviceInfo();
+
+  // Cache valid device information read from the stateful partition.
+  std::optional<libsegmentation::DeviceInfo> cached_device_info_;
+#endif
 };
 
 }  // namespace segmentation

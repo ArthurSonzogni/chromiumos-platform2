@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <libsegmentation/feature_management_fake.h>
+#include "libsegmentation/feature_management_interface.h"
 
 namespace segmentation {
 
@@ -12,11 +13,12 @@ bool FeatureManagementFake::IsFeatureEnabled(const std::string& name) const {
   return system_features_properties_.count(name) > 0;
 }
 
-int FeatureManagementFake::GetFeatureLevel() const {
+FeatureManagementInterface::FeatureLevel
+FeatureManagementFake::GetFeatureLevel() {
   return system_features_level_;
 }
 
-void FeatureManagementFake::SetFeatureLevel(int level) {
+void FeatureManagementFake::SetFeatureLevel(FeatureLevel level) {
   system_features_level_ = level;
 }
 

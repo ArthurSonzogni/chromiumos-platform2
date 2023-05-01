@@ -35,8 +35,9 @@ TEST_F(FeatureManagementTest, GetFeatureDoesNotExist) {
 
 TEST_F(FeatureManagementTest, GetFeatureLevel) {
   EXPECT_EQ(feature_management_->GetFeatureLevel(), 0);
-  fake_->SetFeatureLevel(2);
-  EXPECT_EQ(feature_management_->GetFeatureLevel(), 2);
+  fake_->SetFeatureLevel(
+      FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_1);
+  EXPECT_EQ(feature_management_->GetFeatureLevel(), 1);
 }
 
 }  // namespace segmentation

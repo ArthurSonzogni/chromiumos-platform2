@@ -4,6 +4,7 @@
 
 #include <libsegmentation/feature_management.h>
 #include <libsegmentation/feature_management_impl.h>
+#include "base/files/file_path.h"
 
 namespace segmentation {
 
@@ -19,7 +20,11 @@ bool FeatureManagement::IsFeatureEnabled(const std::string& name) const {
 }
 
 int FeatureManagement::GetFeatureLevel() const {
-  return impl_->GetFeatureLevel();
+  auto level = impl_->GetFeatureLevel();
+  if (level == FeatureManagementInterface::FEATURE_LEVEL_UNKNOWN) {
+    level = FeatureManagementInterface::FEATURE_LEVEL_0;
+  }
+  return level - FeatureManagementInterface::FEATURE_LEVEL_VALID_OFFSET;
 }
 
 }  // namespace segmentation

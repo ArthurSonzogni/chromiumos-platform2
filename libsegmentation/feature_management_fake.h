@@ -24,12 +24,12 @@ class BRILLO_EXPORT FeatureManagementFake : public FeatureManagementInterface {
 
   bool IsFeatureEnabled(const std::string& name) const override;
 
-  int GetFeatureLevel() const override;
+  FeatureLevel GetFeatureLevel() override;
 
   // Set the feature level for the device.
   //
   // @param level: the feature level.
-  void SetFeatureLevel(int level);
+  void SetFeatureLevel(FeatureLevel level);
 
   // Set the value of the specific feature.
   //
@@ -47,7 +47,7 @@ class BRILLO_EXPORT FeatureManagementFake : public FeatureManagementInterface {
 
  private:
   std::set<std::string> system_features_properties_;
-  int system_features_level_;
+  FeatureLevel system_features_level_;
 };
 
 }  // namespace fake

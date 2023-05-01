@@ -4,10 +4,12 @@
 
 import("//common-mk/deps.gni")
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
     ":install_libsegmentation_headers",
+    ":internal_protos",
     ":libsegmentation",
     ":libsegmentation-test",
     ":libsegmentation-test_pc",
@@ -22,25 +24,51 @@ group("all") {
 default_pkg_deps = [
   "libbrillo",
   "libchrome",
+  "protobuf",
 ]
 pkg_config("target_defaults_pkg_deps") {
   pkg_deps = default_pkg_deps
 }
 
-libsegmentation_sources = [
-  "feature_management.cc",
-  "feature_management_impl.cc",
-]
+config("target_defaults") {
+  configs = [ ":target_defaults_pkg_deps" ]
+  defines = [ "USE_FEATURE_MANAGEMENT=${use.feature_management}" ]
+}
+
+proto_library("internal_protos") {
+  proto_in_dir = "./protos/"
+  proto_out_dir = "include/libsegmentation"
+  sources = [ "${proto_in_dir}/device_info.proto" ]
+  standalone = true
+  use_pic = true
+}
+
+source_set("libsegmentation_sources") {
+  sources = [
+    "feature_management.cc",
+    "feature_management_impl.cc",
+  ]
+  deps = []
+  if (use.feature_management) {
+    sources += [
+      "feature_management_backend.cc",
+      "feature_management_util.cc",
+    ]
+    deps = [ ":internal_protos" ]
+  }
+  configs += [
+    ":target_defaults",
+    "//common-mk:pic",
+  ]
+  include_dirs = [ "./protos/" ]
+}
 
 static_library("libsegmentation_static") {
-  sources = libsegmentation_sources
-  configs += [ ":target_defaults_pkg_deps" ]
-  install_path = "lib"
+  deps = [ ":libsegmentation_sources" ]
 }
 
 shared_library("libsegmentation") {
-  sources = libsegmentation_sources
-  configs += [ ":target_defaults_pkg_deps" ]
+  deps = [ ":libsegmentation_sources" ]
   install_path = "lib"
 }
 
@@ -63,7 +91,7 @@ generate_pkg_config("libsegmentation-test_pc") {
 
 shared_library("libsegmentation-test") {
   sources = [ "feature_management_fake.cc" ]
-  configs += [ ":target_defaults_pkg_deps" ]
+  configs += [ ":target_defaults" ]
   deps = [ ":libsegmentation-test_pc" ]
   install_path = "lib"
 }
@@ -82,10 +110,13 @@ generate_pkg_config("libsegmentation_pc") {
 
 if (use.test) {
   executable("libsegmentation_tests") {
-    sources = [ "feature_management_test.cc" ]
+    sources = [
+      "feature_management_impl_test.cc",
+      "feature_management_test.cc",
+    ]
     configs += [
       "//common-mk:test",
-      ":target_defaults_pkg_deps",
+      ":target_defaults",
     ]
     run_test = true
     deps = [

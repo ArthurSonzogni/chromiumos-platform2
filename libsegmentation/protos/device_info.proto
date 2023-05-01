@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package libsegmentation;
+
+message DeviceInfo {
+  enum FeatureLevel {
+    FEATURE_LEVEL_UNKNOWN = 0;
+    FEATURE_LEVEL_0 = 1;
+    FEATURE_LEVEL_1 = 2;
+  }
+  FeatureLevel feature_level = 1;
+}

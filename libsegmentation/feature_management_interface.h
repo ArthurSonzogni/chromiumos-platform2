@@ -23,7 +23,13 @@ class FeatureManagementInterface {
   //
   // @return 0 when no additional features can be used,
   //         >0 when some feature can be used.
-  virtual int GetFeatureLevel() const = 0;
+  enum FeatureLevel {
+    FEATURE_LEVEL_UNKNOWN = 0,
+    FEATURE_LEVEL_VALID_OFFSET = 1,
+    FEATURE_LEVEL_0 = 1,
+    FEATURE_LEVEL_1 = 2,
+  };
+  virtual FeatureLevel GetFeatureLevel() = 0;
 };
 
 }  // namespace segmentation
