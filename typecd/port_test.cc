@@ -459,6 +459,40 @@ TEST_F(PortTest, USB4EntryTrueGatkexAppleTBT3ProCable) {
   EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
 }
 
+// Check that USB4 mode checks work as expected for the following
+// non-working case:
+// - Targus DV4K AMA dock.
+// - Targus USB 3.2 Gen2 Cable.
+//
+// This is an interesting case because if AMA VDO is incorrectly interpreted as
+// UFP VDO, we may incorrectly consider this dock as USB4 dock while AMA dock
+// does not actually support USB4.
+TEST_F(PortTest, USB4EntryFalseTargusDV4KTargus3p2Gen2Cable) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddTargusDV4KDock(*port);
+  AddTargusUSB3p2Gen2Cable(*port);
+
+  EXPECT_EQ(ModeEntryResult::kPartnerError, port->CanEnterUSB4());
+}
+
+// Check that USB4 mode checks work as expected for the following
+// non-working case:
+// - Targus 180 AMA dock.
+// - Targus USB 3.1 Gen1 Cable.
+//
+// This is an interesting case because if AMA VDO is incorrectly interpreted as
+// UFP VDO, we may incorrectly consider this dock as USB4 dock while AMA dock
+// does not actually support USB4.
+TEST_F(PortTest, USB4EntryFalseTargus180Targus3p1Gen1Cable) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddTargus180Dock(*port);
+  AddTargusUSB3p1Gen1Cable(*port);
+
+  EXPECT_EQ(ModeEntryResult::kPartnerError, port->CanEnterUSB4());
+}
+
 // Check that USB4 device will enter TBT3 mode if the  cable does not support
 // USB4.
 // Case: Thunderbolt 4 OWC dock connected with Belkin active TBT3 cable.

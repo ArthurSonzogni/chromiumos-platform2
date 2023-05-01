@@ -212,6 +212,8 @@ class Port {
   FRIEND_TEST(PortTest, USB4EntryFalseGatkexActiveTBT3Cable);
   FRIEND_TEST(PortTest, USB4EntryTrueOWCAnker3p2Gen2Cable);
   FRIEND_TEST(PortTest, USB4EntryTrueGatkexAppleTBT3ProCable);
+  FRIEND_TEST(PortTest, USB4EntryFalseTargusDV4KTargus3p2Gen2Cable);
+  FRIEND_TEST(PortTest, USB4EntryFalseTargus180Targus3p1Gen1Cable);
   FRIEND_TEST(PortTest, USB4ToTBT);
   FRIEND_TEST(PortTest, USB4ToDPAltMode);
   FRIEND_TEST(PortTest, USB4LimitedByCableFalse);
@@ -238,6 +240,8 @@ class Port {
   friend void AddCalDigitTBT4Cable(Port& port);
   friend void AddCableMattersTBT4LRDCable(Port& port);
   friend void AddStartech40GbpsCable(Port& port);
+  friend void AddTargusUSB3p2Gen2Cable(Port& port);
+  friend void AddTargusUSB3p1Gen1Cable(Port& port);
   friend void AddCableMattersDock(Port& port);
   friend void AddDellWD19TBDock(Port& port);
   friend void AddStartechDock(Port& port);
@@ -246,6 +250,8 @@ class Port {
   friend void AddIntelUSB4GatkexCreekDock(Port& port);
   friend void AddOWCTBT4Dock(Port& port);
   friend void AddWimaxitDisplay(Port& port);
+  friend void AddTargusDV4KDock(Port& port);
+  friend void AddTargus180Dock(Port& port);
 
   bool IsPartnerAltModePresent(uint16_t altmode_sid);
 

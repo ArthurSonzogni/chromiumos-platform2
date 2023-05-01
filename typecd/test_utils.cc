@@ -341,6 +341,32 @@ void AddStartech40GbpsCable(Port& port) {
   port.cable_->SetProductTypeVDO3(0x0);
 }
 
+void AddTargusUSB3p1Gen1Cable(Port& port) {
+  port.AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // Targus USB 3.1 Gen 1 passive cable
+  port.cable_->SetPDRevision(PDRevision::k20);
+  port.cable_->SetIdHeaderVDO(0x18000000);
+  port.cable_->SetCertStatVDO(0x00002074);
+  port.cable_->SetProductVDO(0x000000a0);
+  port.cable_->SetProductTypeVDO1(0x000827b1);
+  port.cable_->SetProductTypeVDO2(0x0);
+  port.cable_->SetProductTypeVDO3(0x0);
+}
+
+void AddTargusUSB3p2Gen2Cable(Port& port) {
+  port.AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // Targus USB 3.2 Gen 2 passive cable
+  port.cable_->SetPDRevision(PDRevision::k30);
+  port.cable_->SetIdHeaderVDO(0x18001048);
+  port.cable_->SetCertStatVDO(0x0000232e);
+  port.cable_->SetProductVDO(0x138b0310);
+  port.cable_->SetProductTypeVDO1(0x11082842);
+  port.cable_->SetProductTypeVDO2(0x0);
+  port.cable_->SetProductTypeVDO3(0x0);
+}
+
 void AddCableMattersDock(Port& port) {
   base::ScopedTempDir scoped_temp_dir_;
   if (!scoped_temp_dir_.CreateUniqueTempDir())
@@ -607,6 +633,63 @@ void AddWimaxitDisplay(Port& port) {
   std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
   auto mode1_path = temp_dir_.Append(mode1_dirname);
   if (!CreateFakeAltMode(mode1_path, 0x04e8, 0x40045, 0))
+    return;
+  port.AddRemovePartnerAltMode(mode1_path, true);
+}
+
+void AddTargusDV4KDock(Port& port) {
+  base::ScopedTempDir scoped_temp_dir_;
+  if (!scoped_temp_dir_.CreateUniqueTempDir())
+    return;
+  base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
+
+  port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the Targus DV4K dock
+  port.partner_->SetPDRevision(PDRevision::k30);
+  port.partner_->SetIdHeaderVDO(0x6c000835);
+  port.partner_->SetCertStatVDO(0x00000451);
+  port.partner_->SetProductVDO(0x2a080010);
+  port.partner_->SetProductTypeVDO1(0xff00003a);
+  port.partner_->SetProductTypeVDO2(0x0);
+  port.partner_->SetProductTypeVDO3(0x0);
+
+  // Add alternate modes.
+  port.partner_->SetNumAltModes(1);
+  std::string mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode_path = temp_dir_.Append(mode_dirname);
+  if (!CreateFakeAltMode(mode_path, kDPAltModeSID, 0xc0045, 1))
+    return;
+  port.AddRemovePartnerAltMode(mode_path, true);
+}
+
+void AddTargus180Dock(Port& port) {
+  base::ScopedTempDir scoped_temp_dir_;
+  if (!scoped_temp_dir_.CreateUniqueTempDir())
+    return;
+  base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
+
+  port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the Targus 180 dock
+  port.partner_->SetPDRevision(PDRevision::k20);
+  port.partner_->SetIdHeaderVDO(0x6c000000);
+  port.partner_->SetCertStatVDO(0x00000451);
+  port.partner_->SetProductVDO(0x00000010);
+  port.partner_->SetProductTypeVDO1(0xff00003a);
+  port.partner_->SetProductTypeVDO2(0x0);
+  port.partner_->SetProductTypeVDO3(0x0);
+
+  // Add alternate modes.
+  port.partner_->SetNumAltModes(2);
+  std::string mode0_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  if (!CreateFakeAltMode(mode0_path, kDPAltModeSID, 0xc0045, 1))
+    return;
+  port.AddRemovePartnerAltMode(mode0_path, true);
+  std::string mode1_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  auto mode1_path = temp_dir_.Append(mode1_dirname);
+  if (!CreateFakeAltMode(mode1_path, 0x0451, 0x1, 1))
     return;
   port.AddRemovePartnerAltMode(mode1_path, true);
 }
