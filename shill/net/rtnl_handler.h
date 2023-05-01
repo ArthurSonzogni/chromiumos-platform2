@@ -178,7 +178,7 @@ class SHILL_EXPORT RTNLHandler {
                       RTNLMessage::Mode mode,
                       int flags,
                       const IPAddress& local,
-                      const IPAddress& broadcast);
+                      const std::optional<IPAddress>& broadcast);
 
   // Send a formatted RTNL message.  Associates an error mask -- a list
   // of errors that are expected and should not trigger log messages by

@@ -405,9 +405,7 @@ bool RTNLHandler::AddressRequest(int interface_index,
                                  RTNLMessage::Mode mode,
                                  int flags,
                                  const IPAddress& local,
-                                 const IPAddress& broadcast) {
-  CHECK(local.family() == broadcast.family());
-
+                                 const std::optional<IPAddress>& broadcast) {
   auto msg = std::make_unique<RTNLMessage>(RTNLMessage::kTypeAddress, mode,
                                            NLM_F_REQUEST | flags, 0, 0,
                                            interface_index, local.family());
@@ -415,8 +413,9 @@ bool RTNLHandler::AddressRequest(int interface_index,
   msg->set_address_status(RTNLMessage::AddressStatus(local.prefix(), 0, 0));
 
   msg->SetAttribute(IFA_LOCAL, local.address());
-  if (!broadcast.IsDefault()) {
-    msg->SetAttribute(IFA_BROADCAST, broadcast.address());
+  if (broadcast && !broadcast->IsDefault()) {
+    CHECK_EQ(broadcast->family(), local.family());
+    msg->SetAttribute(IFA_BROADCAST, broadcast->address());
   }
 
   return SendMessage(std::move(msg), nullptr);
@@ -433,8 +432,7 @@ bool RTNLHandler::AddInterfaceAddress(int interface_index,
 bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
                                          const IPAddress& local) {
   return AddressRequest(interface_index, RTNLMessage::kModeDelete, NLM_F_ECHO,
-                        local,
-                        IPAddress::CreateFromFamily_Deprecated(local.family()));
+                        local, std::nullopt);
 }
 
 bool RTNLHandler::RemoveInterface(int interface_index) {
