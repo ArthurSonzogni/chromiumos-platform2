@@ -34,6 +34,20 @@ void DeviceTracker::SetFirewallManager(FirewallManager* firewall_manager) {
   firewall_manager_ = firewall_manager;
 }
 
+size_t DeviceTracker::NumActiveDiscoverySessions() const {
+  return discovery_sessions_.size();
+}
+
+base::Time DeviceTracker::LastDiscoverySessionActivity() const {
+  base::Time activity = base::Time::UnixEpoch();
+  for (const auto& session : discovery_sessions_) {
+    if (session.second.start_time > activity) {
+      activity = session.second.start_time;
+    }
+  }
+  return activity;
+}
+
 StartScannerDiscoveryResponse DeviceTracker::StartScannerDiscovery(
     const StartScannerDiscoveryRequest& request) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);

@@ -28,6 +28,13 @@ namespace lorgnette {
 const char Daemon::kScanGroupName[] = "scanner";
 const char Daemon::kScanUserName[] = "saned";
 
+namespace {
+
+constexpr base::TimeDelta kMaxDiscoverySessionTime = base::Minutes(60);
+constexpr base::TimeDelta kTimeoutCheckInterval = base::Seconds(2);
+
+}  // namespace
+
 Daemon::Daemon(base::OnceClosure startup_callback)
     : DBusServiceDaemon(kManagerServiceName, "/ObjectManager"),
       startup_callback_(std::move(startup_callback)) {}
@@ -69,6 +76,15 @@ void Daemon::OnShutdown(int* return_code) {
 }
 
 void Daemon::OnTimeout() {
+  if (device_tracker_->NumActiveDiscoverySessions() > 0) {
+    base::TimeDelta idle_time =
+        base::Time::Now() - device_tracker_->LastDiscoverySessionActivity();
+    if (idle_time < kMaxDiscoverySessionTime) {
+      PostponeShutdown(kTimeoutCheckInterval);
+      return;
+    }
+  }
+
   LOG(INFO) << "Exiting after timeout";
   Quit();
 }

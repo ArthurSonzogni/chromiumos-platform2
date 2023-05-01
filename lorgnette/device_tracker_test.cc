@@ -39,12 +39,15 @@ TEST(DeviceTrackerTest, CreateMultipleSessions) {
   auto tracker = std::make_unique<DeviceTracker>(sane_client.get());
   tracker->SetScannerListChangedSignalSender(signal_handler);
 
+  EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 0);
+
   StartScannerDiscoveryRequest start_request;
   start_request.set_client_id("client_1");
   StartScannerDiscoveryResponse response1 =
       tracker->StartScannerDiscovery(start_request);
   EXPECT_TRUE(response1.started());
   EXPECT_FALSE(response1.session_id().empty());
+  EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 1);
 
   start_request.set_client_id("client_2");
   StartScannerDiscoveryResponse response2 =
@@ -52,17 +55,20 @@ TEST(DeviceTrackerTest, CreateMultipleSessions) {
   EXPECT_TRUE(response2.started());
   EXPECT_FALSE(response2.session_id().empty());
   EXPECT_NE(response1.session_id(), response2.session_id());
+  EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 2);
 
   StopScannerDiscoveryRequest stop_request;
   stop_request.set_session_id(response1.session_id());
   StopScannerDiscoveryResponse stop1 =
       tracker->StopScannerDiscovery(stop_request);
   EXPECT_TRUE(stop1.stopped());
+  EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 1);
 
   stop_request.set_session_id(response2.session_id());
   StopScannerDiscoveryResponse stop2 =
       tracker->StopScannerDiscovery(stop_request);
   EXPECT_TRUE(stop2.stopped());
+  EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 0);
 
   EXPECT_THAT(closed_sessions,
               ElementsAre(response1.session_id(), response2.session_id()));
@@ -84,12 +90,15 @@ TEST(DeviceTrackerTest, CreateDuplicateSessions) {
   auto tracker = std::make_unique<DeviceTracker>(sane_client.get());
   tracker->SetScannerListChangedSignalSender(signal_handler);
 
+  EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 0);
+
   StartScannerDiscoveryRequest start_request;
   start_request.set_client_id("client_1");
   StartScannerDiscoveryResponse response1 =
       tracker->StartScannerDiscovery(start_request);
   EXPECT_TRUE(response1.started());
   EXPECT_FALSE(response1.session_id().empty());
+  EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 1);
 
   start_request.set_client_id("client_1");
   StartScannerDiscoveryResponse response2 =
@@ -97,17 +106,20 @@ TEST(DeviceTrackerTest, CreateDuplicateSessions) {
   EXPECT_TRUE(response2.started());
   EXPECT_FALSE(response2.session_id().empty());
   EXPECT_EQ(response1.session_id(), response2.session_id());
+  EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 1);
 
   StopScannerDiscoveryRequest stop_request;
   stop_request.set_session_id(response1.session_id());
   StopScannerDiscoveryResponse stop1 =
       tracker->StopScannerDiscovery(stop_request);
   EXPECT_TRUE(stop1.stopped());
+  EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 0);
 
   stop_request.set_session_id(response2.session_id());
   StopScannerDiscoveryResponse stop2 =
       tracker->StopScannerDiscovery(stop_request);
   EXPECT_TRUE(stop2.stopped());
+  EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 0);
 
   // Session ID should get closed twice even though it doesn't exist the second
   // time.
@@ -128,6 +140,7 @@ TEST(DeviceTrackerTest, StartSessionMissingClient) {
       tracker->StartScannerDiscovery(start_request);
   EXPECT_FALSE(response.started());
   EXPECT_TRUE(response.session_id().empty());
+  EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 0);
 }
 
 TEST(DeviceTrackerTest, StopSessionMissingID) {
@@ -152,6 +165,7 @@ TEST(DeviceTrackerTest, StopSessionMissingID) {
       tracker->StopScannerDiscovery(stop_request);
   EXPECT_FALSE(response.stopped());
   EXPECT_TRUE(closed_sessions.empty());
+  EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 0);
 }
 
 }  // namespace
