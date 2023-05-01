@@ -96,6 +96,9 @@ constexpr char kUMAAttemptedCrashRemoval[] =
 constexpr char kCrashSenderRemoveHistName[] =
     "Platform.CrOS.CrashSenderRemoveReason";
 
+// Receipt ID that indicates the crash report was rejected due to throttling.
+constexpr char kCrashSenderDroppedDueToThrottlingId[] = "0000000000000001";
+
 }  // namespace
 
 void ParseCommandLine(int argc,
@@ -1048,7 +1051,11 @@ SenderBase::CrashRemoveReason Sender::WriteUploadLog(
                  << " normalized: " << normalized_path.value();
     }
   }
-  LOG(INFO) << "Crash report receipt ID " << report_id;
+  LOG(INFO) << "Crash report receipt ID " << report_id
+            << ((report_id == kCrashSenderDroppedDueToThrottlingId)
+                    ? " (dropped due to crash report upload throttling)"
+                    : "");
+
   return CrashRemoveReason::kFinishedUploading;
 }
 

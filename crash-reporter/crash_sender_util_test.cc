@@ -2457,6 +2457,84 @@ TEST_F(CrashSenderUtilTest, SendCrashes_TooManyRequests) {
   EXPECT_FALSE(base::PathExists(user_processing));
 }
 
+TEST_F(CrashSenderUtilTest, SendCrashes_DroppedDueToThrottling) {
+  // Set up the mock session manager client.
+  auto mock =
+      std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
+  test_util::SetActiveSessions(mock.get(), {{"user", "hash"}});
+  std::vector<MetaFile> crashes_to_send;
+
+  // Establish the client ID.
+  ASSERT_TRUE(CreateClientIdFile());
+
+  // Create a user crash directory, and crash files in it.
+  const base::FilePath user_dir = paths::Get("/home/user/hash/crash");
+  ASSERT_TRUE(base::CreateDirectory(user_dir));
+  const base::FilePath user_meta_file = user_dir.Append("0.0.0.0.0.meta");
+  const base::FilePath user_log = user_dir.Append("0.0.0.0.0.log");
+  const base::FilePath user_processing =
+      user_dir.Append("0.0.0.0.0.processing");
+  const char user_meta[] =
+      "payload=0.0.0.0.0.log\n"
+      "exec_name=exec_bar\n"
+      "fake_report_id=456\n"
+      "upload_var_prod=bar\n"
+      "done=1\n"
+      "upload_var_reportTimeMillis=2000000\n";
+  ASSERT_TRUE(test_util::CreateFile(user_meta_file, user_meta));
+  ASSERT_TRUE(test_util::CreateFile(user_log, ""));
+  CrashInfo user_info;
+  EXPECT_TRUE(user_info.metadata.LoadFromString(user_meta));
+  user_info.payload_file = user_log;
+  user_info.payload_kind = "log";
+  EXPECT_TRUE(base::Time::FromString("25 Apr 2018 1:24:01 GMT",
+                                     &user_info.last_modified));
+  crashes_to_send.emplace_back(user_meta_file, std::move(user_info));
+
+  // Set up the conditions to emulate a device with metrics enabled.
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
+  // Keep the raw pointer, that's needed to exit from guest mode later.
+  MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
+
+  // Set up the crash sender so that it succeeds.
+  SetMockCrashSending(true);
+
+  // Set up the sender.
+  std::vector<base::TimeDelta> sleep_times;
+  Sender::Options options;
+  options.session_manager_proxy = mock.release();
+  options.max_crash_rate = 2;
+  // Setting max_crash_bytes to 0 will limit to the uploader to
+  // max_crash_rate.
+  options.max_crash_bytes = 0;
+  options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
+  options.always_write_uploads_log = true;
+  MockSender sender(true,                // success=false
+                    "0000000000000001",  // Response
+                    std::move(metrics_lib_),
+                    std::make_unique<test_util::AdvancingClock>(), options);
+
+  // Send crashes.
+  EXPECT_CALL(
+      *raw_metrics_lib,
+      SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason",
+                    Sender::kFinishedUploading, Sender::kSendReasonCount))
+      .Times(1);
+  EXPECT_CALL(*raw_metrics_lib,
+              SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason",
+                            Sender::kTotalRemoval, Sender::kSendReasonCount))
+      .Times(1);
+
+  sender.SendCrashes(crashes_to_send);
+  testing::Mock::VerifyAndClearExpectations(raw_metrics_lib);
+
+  // We shouldn't be processing any crashes still.
+  EXPECT_FALSE(base::PathExists(user_processing));
+  EXPECT_FALSE(base::PathExists(user_meta_file));
+  // Verify we recognized the crash report was dropped due to throttling.
+  ASSERT_TRUE(brillo::FindLog("dropped due to crash report upload throttling"));
+}
+
 TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
   // Set up the mock session manager client.
   auto mock =

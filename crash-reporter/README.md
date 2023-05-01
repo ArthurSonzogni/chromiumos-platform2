@@ -326,6 +326,15 @@ This info can then be exported or passed to tools like `curl`.
 
 For Chromeless devices, this presents a bit of a challenge.
 
+### Throttling
+
+The crash report server has quotas on the number of crash reports it will accept
+for a particular product/version combination. When this quota is exceeded, it
+will return good status to the device (HTTP 200) along with a special crash
+report receipt ID of "0000000000000001". This prevents the device from
+re-attempting the crash report upload due to bad status (i.e., HTTP 429:
+"Too Many Requests").
+
 ## Filesystem Paths
 
 We won't cover (in depth) files covered by these topics:
