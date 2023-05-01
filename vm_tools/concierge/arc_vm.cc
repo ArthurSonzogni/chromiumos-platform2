@@ -16,6 +16,7 @@
 
 #include <csignal>
 #include <cstring>
+#include <memory>
 #include <optional>
 #include <tuple>
 #include <utility>
@@ -26,6 +27,7 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/page_size.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -260,6 +262,7 @@ std::string GetOemEtcSharedDataParam(uid_t euid, gid_t egid) {
 ArcVm::ArcVm(int32_t vsock_cid,
              std::unique_ptr<patchpanel::Client> network_client,
              std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+             std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy,
              base::FilePath runtime_dir,
              base::FilePath data_disk_path,
              ArcVmFeatures features,
@@ -276,6 +279,7 @@ ArcVm::ArcVm(int32_t vsock_cid,
       balloon_refresh_time_(base::Time::Now() + kBalloonRefreshTime),
       swap_policy_timer_(swap_policy_timer),
       swap_state_monitor_timer_(swap_state_monitor_timer),
+      vmm_swap_tbw_policy_(vmm_swap_tbw_policy),
       aggressive_balloon_timer_(aggressive_balloon_timer) {}
 
 ArcVm::~ArcVm() {
@@ -287,13 +291,15 @@ std::unique_ptr<ArcVm> ArcVm::Create(
     uint32_t vsock_cid,
     std::unique_ptr<patchpanel::Client> network_client,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+    std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy,
     base::FilePath runtime_dir,
     base::FilePath data_image_path,
     ArcVmFeatures features,
     VmBuilder vm_builder) {
   auto vm = std::unique_ptr<ArcVm>(new ArcVm(
       vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
-      std::move(runtime_dir), std::move(data_image_path), features));
+      std::move(vmm_swap_tbw_policy), std::move(runtime_dir),
+      std::move(data_image_path), features));
 
   if (!vm->SetupLmkdVsock()) {
     vm.reset();
@@ -841,7 +847,6 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   switch (request.operation()) {
     case SwapOperation::ENABLE:
-      // TODO(b/265386291): Check TBW (total bytes written).
       LOG(INFO) << "Enable vmm-swap";
       if (is_vmm_swap_enabled_ && (base::Time::Now() - last_vmm_swap_out_at_) <
                                       kVmmSwapOutCoolingDownPeriod) {
@@ -850,6 +855,12 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
         response.set_success(false);
         response.set_failure_reason(
             "Requires cooling down period after last vmm-swap out");
+        return;
+      }
+      if (!vmm_swap_tbw_policy_->CanSwapOut()) {
+        LOG(WARNING) << "Enabling vmm-swap is rejected by TBW limit";
+        response.set_success(false);
+        response.set_failure_reason("TBW (total bytes written) reached target");
         return;
       }
       if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
@@ -1156,6 +1167,15 @@ void ArcVm::RunVmmSwapOutAfterTrim() {
     case SwapState::PENDING:
       LOG(INFO) << "Vmm-swap out";
       swap_state_monitor_timer_->Stop();
+
+      // The actual bytes written into the swap file is less than or equal to
+      // (and in most cases similar to) the staging memory size. This may be a
+      // little pessimistic as to how many bytes are actually written, but it's
+      // simpler than dealing with the rare cases where the swap out operation
+      // fails or needs to be aborted.
+      vmm_swap_tbw_policy_->Record(status.metrics.staging_pages *
+                                   base::GetPageSize());
+
       CrosvmControl::Get()->VmmSwapOut(GetVmSocketPath().c_str());
       last_vmm_swap_out_at_ = base::Time::Now();
       return;

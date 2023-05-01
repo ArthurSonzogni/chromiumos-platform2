@@ -246,6 +246,11 @@ const std::vector<std::string> kExtMkfsOpts = {
     "-Elazy_itable_init=0,lazy_journal_init=0,discard", "-Ocasefold",
     "-i" + std::to_string(kExt4BytesPerInode)};
 
+// TODO(b/280391260): Use dynamic target based on device's disk size.
+// A TBW limit that is unlikely to impact disk health over the lifetime of a
+// given device
+constexpr uint64_t kTbwTargetForVmmSwapPerDay = 550 * 1024 * 1024;  // 550 MiB
+
 // Fds to all the images required while starting a VM.
 struct VmStartImageFds {
   std::optional<base::ScopedFD> kernel_fd;
@@ -1327,6 +1332,7 @@ void Service::OnSignalReadable() {
 }
 
 bool Service::Init() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // It's not possible to ask minijail to set up a user namespace and switch to
   // a non-0 uid/gid, or to set up supplemental groups. Concierge needs both
   // supplemental groups and to run as a user whose id is unchanged from the
@@ -1594,6 +1600,8 @@ bool Service::Init() {
                               weak_ptr_factory_.GetWeakPtr()))) {
     LOG(WARNING) << "Failed to initialize file watcher for timezone change";
   }
+
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(kTbwTargetForVmmSwapPerDay);
 
   return true;
 }

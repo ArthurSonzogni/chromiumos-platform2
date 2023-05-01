@@ -31,6 +31,7 @@
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_util.h"
+#include "vm_tools/concierge/vmm_swap_tbw_policy.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
 namespace vm_tools {
@@ -74,6 +75,7 @@ class ArcVm final : public VmBaseImpl {
       uint32_t vsock_cid,
       std::unique_ptr<patchpanel::Client> network_client,
       std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+      std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy,
       base::FilePath runtime_dir,
       base::FilePath data_disk_path,
       ArcVmFeatures features,
@@ -163,6 +165,7 @@ class ArcVm final : public VmBaseImpl {
   ArcVm(int32_t vsock_cid,
         std::unique_ptr<patchpanel::Client> network_client,
         std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+        std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy,
         base::FilePath runtime_dir,
         base::FilePath data_disk_path,
         ArcVmFeatures features,
@@ -250,6 +253,8 @@ class ArcVm final : public VmBaseImpl {
   std::unique_ptr<base::OneShotTimer> swap_policy_timer_
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   uint64_t aggressive_balloon_target_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;

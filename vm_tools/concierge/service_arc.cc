@@ -574,10 +574,10 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     vm_builder.SetVmmSwapDir(GetCryptohomePath(request.owner_id()));
   }
 
-  auto vm = ArcVm::Create(base::FilePath(kKernelPath), vsock_cid,
-                          std::move(network_client), std::move(server_proxy),
-                          std::move(runtime_dir), std::move(data_disk_path),
-                          features, std::move(vm_builder));
+  auto vm = ArcVm::Create(
+      base::FilePath(kKernelPath), vsock_cid, std::move(network_client),
+      std::move(server_proxy), vmm_swap_tbw_policy_, std::move(runtime_dir),
+      std::move(data_disk_path), features, std::move(vm_builder));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 

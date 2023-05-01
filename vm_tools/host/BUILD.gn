@@ -171,6 +171,7 @@ static_library("libconcierge") {
     "../concierge/vm_permission_interface.cc",
     "../concierge/vm_util.cc",
     "../concierge/vm_wl_interface.cc",
+    "../concierge/vmm_swap_tbw_policy.cc",
     "../concierge/vmplugin_dispatcher_interface.cc",
     "../concierge/vsock_cid_pool.cc",
   ]
@@ -361,6 +362,7 @@ if (use.test) {
       "../concierge/vm_builder_test.cc",
       "../concierge/vm_util_test.cc",
       "../concierge/vm_wl_interface_test.cc",
+      "../concierge/vmm_swap_tbw_policy_test.cc",
     ]
     configs += [
       "//common-mk:test",

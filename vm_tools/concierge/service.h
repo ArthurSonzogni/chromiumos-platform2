@@ -52,6 +52,7 @@
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_interface.h"
 #include "vm_tools/concierge/vm_util.h"
+#include "vm_tools/concierge/vmm_swap_tbw_policy.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
 namespace vm_tools {
@@ -551,6 +552,11 @@ class Service final : public org::chromium::VmConciergeInterface {
 
   // Watcher to monitor changes to the system timezone file.
   base::FilePathWatcher localtime_watcher_;
+
+  // The vmm swap TBW (total bytes written) policy managing TBW from each VM on
+  // vmm-swap. This is instantiated by Service and shared with each VM.
+  std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_ GUARDED_BY_CONTEXT(
+      sequence_checker_) = std::make_shared<VmmSwapTbwPolicy>();
 
   // This should be the last member of the class.
   base::WeakPtrFactory<Service> weak_ptr_factory_;

@@ -4,9 +4,11 @@
 
 #include "vm_tools/concierge/arc_vm.h"
 
+#include <memory>
 #include <string>
 
 #include <base/containers/contains.h>
+#include <base/memory/page_size.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/scoped_chromeos_version_info.h>
@@ -22,6 +24,7 @@
 
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/fake_crosvm_control.h"
+#include "vm_tools/concierge/vmm_swap_tbw_policy.h"
 
 namespace vm_tools {
 namespace concierge {
@@ -828,14 +831,17 @@ class ArcVmTest : public ::testing::Test {
     // Allocate resources for the VM.
     uint32_t vsock_cid = vsock_cid_pool_.Allocate();
 
+    vmm_swap_tbw_policy_->SetTargetTbwPerDay(4096);
+
     swap_policy_timer_ = new base::MockOneShotTimer();
     swap_state_monitor_timer_ = new base::MockRepeatingTimer();
     aggressive_balloon_timer_ = new base::MockRepeatingTimer();
 
-    vm_ = std::unique_ptr<ArcVm>(new ArcVm(
-        vsock_cid, std::make_unique<patchpanel::FakeClient>(), nullptr,
-        temp_dir_.GetPath(), base::FilePath("dummy"), {}, swap_policy_timer_,
-        swap_state_monitor_timer_, aggressive_balloon_timer_));
+    vm_ = std::unique_ptr<ArcVm>(
+        new ArcVm(vsock_cid, std::make_unique<patchpanel::FakeClient>(),
+                  nullptr, vmm_swap_tbw_policy_, temp_dir_.GetPath(),
+                  base::FilePath("dummy"), {}, swap_policy_timer_,
+                  swap_state_monitor_timer_, aggressive_balloon_timer_));
 
     SetBalloonStats(0, 1024 * MIB);
   }
@@ -882,6 +888,9 @@ class ArcVmTest : public ::testing::Test {
   raw_ptr<base::MockOneShotTimer> swap_policy_timer_;
   raw_ptr<base::MockRepeatingTimer> swap_state_monitor_timer_;
   raw_ptr<base::MockRepeatingTimer> aggressive_balloon_timer_;
+
+  std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_ =
+      std::make_shared<VmmSwapTbwPolicy>();
 
  private:
   // Temporary directory where we will store our socket.
@@ -1106,6 +1115,17 @@ TEST_F(ArcVmTest, EnableVmmSwapAgain24HoursAfterVmmSwapOut) {
   ASSERT_TRUE(EnableVmmSwap());
 }
 
+TEST_F(ArcVmTest, EnableVmmSwapAgainExceedsTbwTarget) {
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(base::GetPageSize());
+  ASSERT_TRUE(EnableVmmSwap());
+  swap_policy_timer_->Fire();
+  FakeCrosvmControl::Get()->vmm_swap_status_.metrics.staging_pages = 4;
+  FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
+  swap_state_monitor_timer_->Fire();
+  ProceedTimeAfterSwapOut(base::Hours(24));
+  ASSERT_FALSE(EnableVmmSwap());
+}
+
 TEST_F(ArcVmTest, MonitorSwapStateChangeStillTrimInProgress) {
   ASSERT_TRUE(EnableVmmSwap());
   swap_policy_timer_->Fire();
@@ -1145,6 +1165,16 @@ TEST_F(ArcVmTest, ForceEnableVmmSwapFail) {
   FakeCrosvmControl::Get()->result_enable_vmm_swap_ = false;
   ASSERT_FALSE(ForceEnableVmmSwap());
   ASSERT_FALSE(swap_policy_timer_->IsRunning());
+}
+
+TEST_F(ArcVmTest, ForceEnableVmmSwapAgainExceedsTbwTarget) {
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(base::GetPageSize());
+  ASSERT_TRUE(EnableVmmSwap());
+  swap_policy_timer_->Fire();
+  FakeCrosvmControl::Get()->vmm_swap_status_.metrics.staging_pages = 4;
+  FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
+  swap_state_monitor_timer_->Fire();
+  ASSERT_TRUE(ForceEnableVmmSwap());
 }
 
 TEST_F(ArcVmTest, DisableVmmSwap) {
