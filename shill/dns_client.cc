@@ -79,7 +79,7 @@ DnsClient::DnsClient(IPAddress::Family family,
                      int timeout_ms,
                      EventDispatcher* dispatcher,
                      const ClientCallback& callback)
-    : address_(IPAddress::CreateFromFamily_Deprecated(family)),
+    : address_(IPAddress::CreateFromFamily(family)),
       interface_name_(interface_name),
       dispatcher_(dispatcher),
       io_handler_factory_(IOHandlerFactory::GetInstance()),
