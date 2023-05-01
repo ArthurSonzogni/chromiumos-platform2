@@ -37,8 +37,7 @@ CarrierEntitlement::CarrierEntitlement(
       check_cb_(check_cb),
       transport_(brillo::http::Transport::CreateDefault()),
       request_in_progress_(false),
-      last_src_address_(
-          IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4)),
+      last_src_address_(IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4)),
       weak_ptr_factory_(this) {}
 
 CarrierEntitlement::~CarrierEntitlement() {
