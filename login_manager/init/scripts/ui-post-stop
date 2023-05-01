@@ -84,6 +84,10 @@ for device in /dev/mapper/dmcrypt-* ; do
   dmsetup remove --deferred "${device}"
 done
 
+# Clears chrome oobe storage files. Chrome could leave files behind for
+# the sign-in storage partition. See http://b/277632606.
+rm -rf  /home/chronos/Default/Storage/ext/oobe
+
 # Post unmount, attempt to kill any left over processes from the session
 # that could have leaked user mounts. This is intentionally done post
 # unmount: lazy unmount cleans up mounts from the root namespace and
