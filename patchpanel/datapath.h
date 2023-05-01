@@ -468,9 +468,7 @@ class Datapath {
   // downstream network.
   bool ConfigureInterface(const std::string& ifname,
                           std::optional<MacAddress> mac_addr,
-                          // TODO(b/279693340): Replace with IPv4CIDR
-                          uint32_t ipv4_addr,
-                          int ipv4_prefix_len,
+                          const shill::IPv4CIDR& ipv4_cidr,
                           bool up,
                           bool enable_multicast);
   // Sets the link status.

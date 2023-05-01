@@ -149,8 +149,11 @@ std::string AutoDnatTargetChainName(AutoDnatTarget auto_dnat_target) {
 
 // TODO(b/279693340): Remove the function after all IPv4 address represented by
 // uint32_t are migrated to shill::IPv4Address.
-uint32_t ToUint32(const shill::IPv4Address& ip) {
-  return Ipv4Addr(ip.data()[0], ip.data()[1], ip.data()[2], ip.data()[3]);
+shill::IPv4Address ConvertUint32ToIPv4Address(uint32_t addr) {
+  return shill::IPv4Address(static_cast<uint8_t>(addr & 0xff),
+                            static_cast<uint8_t>((addr >> 8) & 0xff),
+                            static_cast<uint8_t>((addr >> 16) & 0xff),
+                            static_cast<uint8_t>((addr >> 24) & 0xff));
 }
 
 }  // namespace
@@ -810,9 +813,15 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
       return false;
     }
 
-    if (!ConfigureInterface(peer_ifname, remote_mac_addr, remote_ipv4_addr,
-                            remote_ipv4_prefix_len, /*up=*/true,
-                            remote_multicast_flag)) {
+    const auto remote_ipv4_cidr = shill::IPv4CIDR::CreateFromAddressAndPrefix(
+        ConvertUint32ToIPv4Address(remote_ipv4_addr), remote_ipv4_prefix_len);
+    if (!remote_ipv4_cidr) {
+      LOG(ERROR) << "Cannot create IPv4CIDR: prefix length="
+                 << remote_ipv4_prefix_len;
+      return false;
+    }
+    if (!ConfigureInterface(peer_ifname, remote_mac_addr, *remote_ipv4_cidr,
+                            /*up=*/true, remote_multicast_flag)) {
       LOG(ERROR) << "Failed to configure interface " << peer_ifname;
       RemoveInterface(peer_ifname);
       return false;
@@ -852,14 +861,12 @@ bool Datapath::ToggleInterface(const std::string& ifname, bool up) {
 
 bool Datapath::ConfigureInterface(const std::string& ifname,
                                   std::optional<MacAddress> mac_addr,
-                                  uint32_t ipv4_addr,
-                                  int ipv4_prefix_len,
+                                  const shill::IPv4CIDR& ipv4_cidr,
                                   bool up,
                                   bool enable_multicast) {
   if (process_runner_->ip(
           "addr", "add",
-          {IPv4AddressToCidrString(ipv4_addr, ipv4_prefix_len), "brd",
-           IPv4AddressToString(Ipv4BroadcastAddr(ipv4_addr, ipv4_prefix_len)),
+          {ipv4_cidr.ToString(), "brd", ipv4_cidr.GetBroadcast().ToString(),
            "dev", ifname}) != 0) {
     return false;
   }
@@ -914,9 +921,15 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  if (!ConfigureInterface(nsinfo.host_ifname, nsinfo.host_mac_addr,
-                          nsinfo.peer_subnet->AddressAtOffset(0),
-                          nsinfo.peer_subnet->PrefixLength(),
+  const auto peer_cidr = shill::IPv4CIDR::CreateFromAddressAndPrefix(
+      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(0)),
+      nsinfo.peer_subnet->PrefixLength());
+  if (!peer_cidr) {
+    LOG(ERROR) << "Cannot create IPv4CIDR: prefix length="
+               << nsinfo.peer_subnet->PrefixLength();
+    return false;
+  }
+  if (!ConfigureInterface(nsinfo.host_ifname, nsinfo.host_mac_addr, *peer_cidr,
                           /*up=*/true, /*enable_multicast=*/false)) {
     LOG(ERROR) << "Cannot configure host interface " << nsinfo.host_ifname;
     RemoveInterface(nsinfo.host_ifname);
@@ -1805,9 +1818,8 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
   // TODO(b/239559602) Clarify which service, shill or networking, is in charge
   // of IFF_UP and MAC address configuration.
   if (!ConfigureInterface(info.downstream_ifname, /*mac_addr=*/std::nullopt,
-                          ToUint32(info.ipv4_cidr.address()),
-                          info.ipv4_cidr.prefix_length(),
-                          /*up=*/true, /*enable_multicast=*/true)) {
+                          info.ipv4_cidr, /*up=*/true,
+                          /*enable_multicast=*/true)) {
     LOG(ERROR) << __func__ << " " << info
                << ": Cannot configure downstream interface "
                << info.downstream_ifname;

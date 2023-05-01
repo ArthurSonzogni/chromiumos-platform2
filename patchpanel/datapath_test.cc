@@ -850,13 +850,15 @@ TEST(DatapathTest, ConfigureInterface) {
             "link set dev test0 up addr 02:02:02:02:02:03 multicast on");
   MacAddress mac_addr = {2, 2, 2, 2, 2, 3};
   EXPECT_TRUE(datapath.ConfigureInterface(
-      "test0", mac_addr, Ipv4Addr(100, 115, 92, 2), 30, true, true));
+      "test0", mac_addr,
+      *shill::IPv4CIDR::CreateFromCIDRString("100.115.92.2/30"), true, true));
   Mock::VerifyAndClearExpectations(runner);
 
   Verify_ip(*runner, "addr add 192.168.1.37/24 brd 192.168.1.255 dev test1");
   Verify_ip(*runner, "link set dev test1 up multicast off");
   EXPECT_TRUE(datapath.ConfigureInterface(
-      "test1", std::nullopt, Ipv4Addr(192, 168, 1, 37), 24, true, false));
+      "test1", std::nullopt,
+      *shill::IPv4CIDR::CreateFromCIDRString("192.168.1.37/24"), true, false));
 }
 
 TEST(DatapathTest, RemoveInterface) {
