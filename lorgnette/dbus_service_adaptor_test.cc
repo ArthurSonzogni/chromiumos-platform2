@@ -36,11 +36,8 @@ MATCHER_P(EqualsProto,
 class MockManager : public Manager {
  public:
   MockManager(base::RepeatingCallback<void(base::TimeDelta)> callback,
-              std::unique_ptr<SaneClient> sane_client)
-      : Manager(callback, std::move(sane_client)) {}
-  MockManager()
-      : Manager(base::RepeatingCallback<void(base::TimeDelta)>(),
-                std::make_unique<SaneClientFake>()) {}
+              SaneClient* sane_client)
+      : Manager(callback, sane_client) {}
 
   MOCK_METHOD(bool,
               ListScanners,
@@ -76,7 +73,8 @@ class MockManager : public Manager {
 // each d-bus entry point.
 
 TEST(DBusServiceAdaptorTest, ListScanners) {
-  MockManager* manager = new MockManager();
+  auto sane_client = std::make_unique<SaneClientFake>();
+  MockManager* manager = new MockManager({}, sane_client.get());
   auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
   brillo::ErrorPtr error;
   ListScannersResponse response;
@@ -85,7 +83,8 @@ TEST(DBusServiceAdaptorTest, ListScanners) {
 }
 
 TEST(DBusServiceAdaptorTest, GetScannerCapabilities) {
-  MockManager* manager = new MockManager();
+  auto sane_client = std::make_unique<SaneClientFake>();
+  MockManager* manager = new MockManager({}, sane_client.get());
   auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
   brillo::ErrorPtr error;
   ScannerCapabilities response;
@@ -95,7 +94,8 @@ TEST(DBusServiceAdaptorTest, GetScannerCapabilities) {
 }
 
 TEST(DBusServiceAdaptorTest, StartScan) {
-  MockManager* manager = new MockManager();
+  auto sane_client = std::make_unique<SaneClientFake>();
+  MockManager* manager = new MockManager({}, sane_client.get());
   auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
   StartScanRequest request;
   EXPECT_CALL(*manager, StartScan(EqualsProto(request)));
@@ -103,7 +103,8 @@ TEST(DBusServiceAdaptorTest, StartScan) {
 }
 
 TEST(DBusServiceAdaptorTest, GetNextImage) {
-  MockManager* manager = new MockManager();
+  auto sane_client = std::make_unique<SaneClientFake>();
+  MockManager* manager = new MockManager({}, sane_client.get());
   auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
   GetNextImageRequest request;
   std::unique_ptr<DBusMethodResponse<GetNextImageResponse>> response;
@@ -113,7 +114,8 @@ TEST(DBusServiceAdaptorTest, GetNextImage) {
 }
 
 TEST(DBusServiceAdaptorTest, CancelScan) {
-  MockManager* manager = new MockManager();
+  auto sane_client = std::make_unique<SaneClientFake>();
+  MockManager* manager = new MockManager({}, sane_client.get());
   auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
   CancelScanRequest request;
   EXPECT_CALL(*manager, CancelScan(EqualsProto(request)));
@@ -121,7 +123,8 @@ TEST(DBusServiceAdaptorTest, CancelScan) {
 }
 
 TEST(DBusServiceAdaptorTest, ToggleDebugging) {
-  MockManager* manager = new MockManager();
+  auto sane_client = std::make_unique<SaneClientFake>();
+  MockManager* manager = new MockManager({}, sane_client.get());
   bool callback_called = false;
   base::RepeatingCallback<void()> callback = base::BindLambdaForTesting(
       [&callback_called]() { callback_called = true; });
@@ -134,7 +137,8 @@ TEST(DBusServiceAdaptorTest, ToggleDebugging) {
 }
 
 TEST(DBusServiceAdaptorTest, UnchangedDebugging) {
-  MockManager* manager = new MockManager();
+  auto sane_client = std::make_unique<SaneClientFake>();
+  MockManager* manager = new MockManager({}, sane_client.get());
   bool callback_called = false;
   base::RepeatingCallback<void()> callback = base::BindLambdaForTesting(
       [&callback_called]() { callback_called = true; });
@@ -147,7 +151,8 @@ TEST(DBusServiceAdaptorTest, UnchangedDebugging) {
 }
 
 TEST(DBusServiceAdaptorTest, StartScannerDiscovery) {
-  MockManager* manager = new MockManager();
+  auto sane_client = std::make_unique<SaneClientFake>();
+  MockManager* manager = new MockManager({}, sane_client.get());
   auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
   StartScannerDiscoveryRequest request;
   StartScannerDiscoveryResponse response =
@@ -156,7 +161,8 @@ TEST(DBusServiceAdaptorTest, StartScannerDiscovery) {
 }
 
 TEST(DBusServiceAdaptorTest, StopScannerDiscovery) {
-  MockManager* manager = new MockManager();
+  auto sane_client = std::make_unique<SaneClientFake>();
+  MockManager* manager = new MockManager({}, sane_client.get());
   auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager), {});
   StopScannerDiscoveryRequest request;
   StopScannerDiscoveryResponse response =

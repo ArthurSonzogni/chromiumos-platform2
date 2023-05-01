@@ -81,12 +81,12 @@ class FirewallManager;
 class Manager {
  public:
   Manager(base::RepeatingCallback<void(base::TimeDelta)> activity_callback,
-          std::unique_ptr<SaneClient> sane_client);
+          SaneClient* sane_client);
   Manager(const Manager&) = delete;
   Manager& operator=(const Manager&) = delete;
   virtual ~Manager();
 
-  void ConnectDBusObjects(const scoped_refptr<dbus::Bus>& bus);
+  void SetFirewallManager(FirewallManager* firewall_manager);
 
   // Implementation of MethodInterface.
   virtual bool ListScanners(brillo::ErrorPtr* error,
@@ -176,12 +176,12 @@ class Manager {
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Manages port access for receiving replies from network scanners.
-  std::unique_ptr<FirewallManager> firewall_manager_
-      GUARDED_BY_CONTEXT(sequence_checker_);
+  // Not owned.
+  FirewallManager* firewall_manager_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Manages connection to SANE for listing and connecting to scanners.
-  std::unique_ptr<SaneClient> sane_client_
-      GUARDED_BY_CONTEXT(sequence_checker_);
+  // Not owned.
+  SaneClient* sane_client_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   // A callback to call when we attempt to send a D-Bus signal. This is used
   // for testing in order to track the signals sent from StartScan.

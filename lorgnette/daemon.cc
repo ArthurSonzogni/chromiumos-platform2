@@ -17,6 +17,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "lorgnette/dbus_service_adaptor.h"
+#include "lorgnette/sane_client.h"
 #include "lorgnette/sane_client_impl.h"
 
 using std::string;
@@ -30,6 +31,8 @@ const char Daemon::kScanUserName[] = "saned";
 Daemon::Daemon(base::OnceClosure startup_callback)
     : DBusServiceDaemon(kManagerServiceName, "/ObjectManager"),
       startup_callback_(std::move(startup_callback)) {}
+
+Daemon::~Daemon() {}
 
 int Daemon::OnInit() {
   int return_code = brillo::DBusServiceDaemon::OnInit();
@@ -46,10 +49,11 @@ int Daemon::OnInit() {
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
+  sane_client_ = SaneClientImpl::Create();
   auto manager =
       std::make_unique<Manager>(base::BindRepeating(&Daemon::PostponeShutdown,
                                                     weak_factory_.GetWeakPtr()),
-                                SaneClientImpl::Create());
+                                sane_client_.get());
   dbus_service_.reset(new DBusServiceAdaptor(
       std::move(manager), base::BindRepeating(&Daemon::OnDebugChanged,
                                               weak_factory_.GetWeakPtr())));

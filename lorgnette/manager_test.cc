@@ -87,7 +87,7 @@ class ManagerTest : public testing::Test {
   ManagerTest()
       : sane_client_(new SaneClientFake()),
         manager_(base::RepeatingCallback<void(base::TimeDelta)>(),
-                 std::unique_ptr<SaneClient>(sane_client_)),
+                 sane_client_.get()),
         metrics_library_(new MetricsLibraryMock) {
     manager_.metrics_library_.reset(metrics_library_);
     manager_.SetProgressSignalInterval(base::Seconds(0));
@@ -222,7 +222,7 @@ class ManagerTest : public testing::Test {
 
   std::vector<ScanStatusChangedSignal> signals_;
 
-  SaneClientFake* sane_client_;
+  std::unique_ptr<SaneClientFake> sane_client_;
   Manager manager_;
   MetricsLibraryMock* metrics_library_;  // Owned by manager_.
   base::ScopedTempDir temp_dir_;

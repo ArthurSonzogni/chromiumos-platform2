@@ -179,20 +179,18 @@ const char Manager::kMetricScanFailedFailureReason[] =
 
 Manager::Manager(
     base::RepeatingCallback<void(base::TimeDelta)> activity_callback,
-    std::unique_ptr<SaneClient> sane_client)
+    SaneClient* sane_client)
     : activity_callback_(activity_callback),
       metrics_library_(new MetricsLibrary()),
-      sane_client_(std::move(sane_client)),
+      sane_client_(sane_client),
       progress_signal_interval_(kDefaultProgressSignalInterval) {}
 
 Manager::~Manager() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 }
 
-void Manager::ConnectDBusObjects(const scoped_refptr<dbus::Bus>& bus) {
-  firewall_manager_.reset(new FirewallManager(""));
-  firewall_manager_->Init(
-      std::make_unique<org::chromium::PermissionBrokerProxy>(bus));
+void Manager::SetFirewallManager(FirewallManager* firewall_manager) {
+  firewall_manager_ = firewall_manager;
 }
 
 bool Manager::ListScanners(brillo::ErrorPtr* error,
@@ -293,7 +291,7 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
 
   LOG(INFO) << "Probing for network scanners";
   std::vector<ScannerInfo> probed_scanners =
-      epson_probe::ProbeForScanners(firewall_manager_.get());
+      epson_probe::ProbeForScanners(firewall_manager_);
   activity_callback_.Run(Daemon::kNormalShutdownTimeout);
   for (ScannerInfo& scanner : probed_scanners) {
     // Generate an 'epsonds:net:IP_ADDRESS' version of the device name.
@@ -359,7 +357,7 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
   }
 
   std::optional<PortToken> token =
-      RequestPortAccessIfNeeded(device_name, firewall_manager_.get());
+      RequestPortAccessIfNeeded(device_name, firewall_manager_);
   std::unique_ptr<SaneDevice> device =
       sane_client_->ConnectToDevice(error, nullptr, device_name);
   if (!device)
@@ -651,7 +649,7 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
   }
 
   std::optional<PortToken> token =
-      RequestPortAccessIfNeeded(request.device_name(), firewall_manager_.get());
+      RequestPortAccessIfNeeded(request.device_name(), firewall_manager_);
 
   // If ConnectToDevice() fails without updating |status|, |status| will be
   // converted to an unknown failure mode.

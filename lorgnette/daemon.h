@@ -17,6 +17,8 @@
 
 namespace lorgnette {
 
+class SaneClient;
+
 class Daemon : public brillo::DBusServiceDaemon {
  public:
   // User and group to run the lorgnette process.
@@ -26,7 +28,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   explicit Daemon(base::OnceClosure startup_callback);
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
-  ~Daemon() = default;
+  ~Daemon() override;
 
   // Daemon will automatically shutdown after this length of idle time.
   static constexpr base::TimeDelta kNormalShutdownTimeout = base::Seconds(2);
@@ -51,6 +53,8 @@ class Daemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<DBusServiceAdaptor> dbus_service_;
   base::OnceClosure startup_callback_;
   base::CancelableOnceClosure shutdown_callback_;
+
+  std::unique_ptr<SaneClient> sane_client_;
 
   // Keep as the last member variable.
   base::WeakPtrFactory<Daemon> weak_factory_{this};

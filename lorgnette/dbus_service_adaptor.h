@@ -21,6 +21,8 @@
 
 namespace lorgnette {
 
+class FirewallManager;
+
 class DBusServiceAdaptor : public org::chromium::lorgnette::ManagerAdaptor,
                            public org::chromium::lorgnette::ManagerInterface {
  public:
@@ -60,6 +62,9 @@ class DBusServiceAdaptor : public org::chromium::lorgnette::ManagerAdaptor,
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<Manager> manager_ GUARDED_BY_CONTEXT(sequence_checker_);
+  std::unique_ptr<FirewallManager> firewall_manager_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
   base::RepeatingCallback<void()> debug_change_callback_
       GUARDED_BY_CONTEXT(sequence_checker_);
 

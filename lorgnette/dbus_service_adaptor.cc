@@ -9,6 +9,8 @@
 
 #include <chromeos/dbus/service_constants.h>
 
+#include "lorgnette/firewall_manager.h"
+
 namespace lorgnette {
 
 namespace {
@@ -59,7 +61,11 @@ void DBusServiceAdaptor::RegisterAsync(
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(sequencer->GetHandler(
       "DBusServiceAdaptor.RegisterAsync() failed.", true));
-  manager_->ConnectDBusObjects(bus);
+
+  firewall_manager_.reset(new FirewallManager(""));
+  firewall_manager_->Init(
+      std::make_unique<org::chromium::PermissionBrokerProxy>(bus));
+  manager_->SetFirewallManager(firewall_manager_.get());
 }
 
 bool DBusServiceAdaptor::ListScanners(brillo::ErrorPtr* error,
