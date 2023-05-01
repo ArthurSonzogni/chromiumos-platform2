@@ -540,7 +540,7 @@ TEST(IPAddressMoveTest, MoveAssignmentOperator) {
 }
 
 TEST(IPAddressConversionTest, IPv4Address) {
-  const auto ipv4 = IPv4Address(192, 168, 2, 1);
+  const auto ipv4 = net_base::IPv4Address(192, 168, 2, 1);
   const auto ip = IPAddress(ipv4);
   EXPECT_TRUE(ip.IsValid());
   EXPECT_EQ(ip.prefix(), 0);
@@ -552,7 +552,7 @@ TEST(IPAddressConversionTest, IPv4Address) {
 }
 
 TEST(IPAddressConversionTest, IPv6Address) {
-  const auto ipv6 = *IPv6Address::CreateFromString("::1");
+  const auto ipv6 = *net_base::IPv6Address::CreateFromString("::1");
   const auto ip = IPAddress(ipv6);
   EXPECT_TRUE(ip.IsValid());
   EXPECT_EQ(ip.prefix(), 0);
@@ -564,7 +564,7 @@ TEST(IPAddressConversionTest, IPv6Address) {
 }
 
 TEST(IPAddressConversionTest, IPv4CIDR) {
-  const auto cidr = *IPv4CIDR::CreateFromCIDRString("192.168.2.1/24");
+  const auto cidr = *net_base::IPv4CIDR::CreateFromCIDRString("192.168.2.1/24");
   const auto ip = IPAddress(cidr);
   EXPECT_TRUE(ip.IsValid());
   EXPECT_EQ(ip.prefix(), 24);
@@ -576,7 +576,7 @@ TEST(IPAddressConversionTest, IPv4CIDR) {
 }
 
 TEST(IPAddressConversionTest, IPv6CIDR) {
-  const auto cidr = *IPv6CIDR::CreateFromCIDRString("::1/26");
+  const auto cidr = *net_base::IPv6CIDR::CreateFromCIDRString("::1/26");
   const auto ip = IPAddress(cidr);
   EXPECT_TRUE(ip.IsValid());
   EXPECT_EQ(ip.prefix(), 26);

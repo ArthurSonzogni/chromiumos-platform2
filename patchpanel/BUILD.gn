@@ -50,6 +50,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libmetrics",
+    "libnet-base",
     "libshill-client",
     "libshill-net",
     "re2",

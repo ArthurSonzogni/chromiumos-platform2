@@ -29,6 +29,9 @@
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
 
+using net_base::IPv4Address;
+using net_base::IPv4CIDR;
+
 using testing::_;
 using testing::DoAll;
 using testing::ElementsAre;
@@ -213,9 +216,6 @@ void Verify_ip_netns_delete(MockProcessRunner& runner,
 }  // namespace
 
 TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
-  using shill::IPv4Address;
-  using shill::IPv4CIDR;
-
   const auto ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("192.168.3.1/24");
   const auto subnet_ip = ipv4_cidr.GetPrefixAddress();
   const IPv4Address start_ip = IPv4Address(192, 168, 3, 50);
@@ -294,9 +294,6 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromLocalOnlyNetworkRequest) {
 }
 
 TEST(DatapathTest, DownstreamNetworkInfo_ToDHCPServerConfig) {
-  using shill::IPv4Address;
-  using shill::IPv4CIDR;
-
   DownstreamNetworkInfo info = {};
   info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("192.168.3.1/24");
   info.enable_ipv4_dhcp = true;
@@ -856,15 +853,15 @@ TEST(DatapathTest, ConfigureInterface) {
             "link set dev test0 up addr 02:02:02:02:02:03 multicast on");
   MacAddress mac_addr = {2, 2, 2, 2, 2, 3};
   EXPECT_TRUE(datapath.ConfigureInterface(
-      "test0", mac_addr,
-      *shill::IPv4CIDR::CreateFromCIDRString("100.115.92.2/30"), true, true));
+      "test0", mac_addr, *IPv4CIDR::CreateFromCIDRString("100.115.92.2/30"),
+      true, true));
   Mock::VerifyAndClearExpectations(runner);
 
   Verify_ip(*runner, "addr add 192.168.1.37/24 brd 192.168.1.255 dev test1");
   Verify_ip(*runner, "link set dev test1 up multicast off");
   EXPECT_TRUE(datapath.ConfigureInterface(
-      "test1", std::nullopt,
-      *shill::IPv4CIDR::CreateFromCIDRString("192.168.1.37/24"), true, false));
+      "test1", std::nullopt, *IPv4CIDR::CreateFromCIDRString("192.168.1.37/24"),
+      true, false));
 }
 
 TEST(DatapathTest, RemoveInterface) {
@@ -999,7 +996,7 @@ TEST(DatapathTest, StartDownstreamTetheredNetwork) {
   info.topology = DownstreamNetworkTopology::kTethering;
   info.upstream_ifname = "wwan0";
   info.downstream_ifname = "ap0";
-  info.ipv4_cidr = *shill::IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
+  info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
   Datapath datapath(runner, firewall, &system);
   datapath.StartDownstreamNetwork(info);
@@ -1018,7 +1015,7 @@ TEST(DatapathTest, StartDownstreamLocalOnlyNetwork) {
   info.topology = DownstreamNetworkTopology::kLocalOnly;
   info.upstream_ifname = "wwan0";
   info.downstream_ifname = "ap0";
-  info.ipv4_cidr = *shill::IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
+  info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
   Datapath datapath(runner, firewall, &system);
   datapath.StartDownstreamNetwork(info);
@@ -1047,7 +1044,7 @@ TEST(DatapathTest, StopDownstreamTetheredNetwork) {
   info.topology = DownstreamNetworkTopology::kTethering;
   info.upstream_ifname = "wwan0";
   info.downstream_ifname = "ap0";
-  info.ipv4_cidr = *shill::IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
+  info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
   Datapath datapath(runner, firewall, &system);
   datapath.StopDownstreamNetwork(info);
@@ -1066,7 +1063,7 @@ TEST(DatapathTest, StopDownstreamLocalOnlyNetwork) {
   info.topology = DownstreamNetworkTopology::kLocalOnly;
   info.upstream_ifname = "wwan0";
   info.downstream_ifname = "ap0";
-  info.ipv4_cidr = *shill::IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
+  info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
   Datapath datapath(runner, firewall, &system);
   datapath.StopDownstreamNetwork(info);

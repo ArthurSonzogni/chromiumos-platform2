@@ -10,7 +10,7 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
-#include <shill/net/ipv4_address.h>
+#include <net-base/ipv4_address.h>
 #include <shill/net/mock_process_manager.h>
 
 using testing::_;
@@ -22,8 +22,8 @@ namespace patchpanel {
 namespace {
 
 using Config = DHCPServerController::Config;
-using shill::IPv4Address;
-using shill::IPv4CIDR;
+using net_base::IPv4Address;
+using net_base::IPv4CIDR;
 
 class MockCallback {
  public:

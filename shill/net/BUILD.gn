@@ -37,8 +37,6 @@ install_config("install_headers") {
     "io_input_handler.h",
     "io_ready_handler.h",
     "ip_address.h",
-    "ipv4_address.h",
-    "ipv6_address.h",
     "mock_io_handler_factory.h",
     "mock_netlink_manager.h",
     "mock_netlink_socket.h",
@@ -84,6 +82,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libminijail",
+    "libnet-base",
   ]
 }
 
@@ -106,9 +105,6 @@ net_sources = [
   "io_input_handler.cc",
   "io_ready_handler.cc",
   "ip_address.cc",
-  "ip_address_utils.cc",
-  "ipv4_address.cc",
-  "ipv6_address.cc",
   "netlink_attribute.cc",
   "netlink_fd.cc",
   "netlink_manager.cc",
@@ -204,8 +200,6 @@ if (use.test) {
       "byte_string_test.cc",
       "event_history_test.cc",
       "ip_address_test.cc",
-      "ipv4_address_test.cc",
-      "ipv6_address_test.cc",
       "netlink_attribute_test.cc",
       "netlink_manager_test.cc",
       "netlink_message_test.cc",

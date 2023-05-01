@@ -17,8 +17,8 @@
 #include <vector>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/ipv4_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
-#include <shill/net/ipv4_address.h>
 
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/firewall.h"
@@ -107,7 +107,7 @@ struct DownstreamNetworkInfo {
   std::string downstream_ifname;
   // IPv4 CIDR of the DUT on the downstream network. This is the effective
   // gateway address for clients connected on the network.
-  shill::IPv4CIDR ipv4_cidr;
+  net_base::IPv4CIDR ipv4_cidr;
   // Base address of the IPv4 subnet assigned to the downstream network in
   // network order.
   // TODO(b/279693340): Replace by ipv4_cidr.GetPrefixAddress().
@@ -119,11 +119,11 @@ struct DownstreamNetworkInfo {
   // Set to true if IPv4 DHCP server is created at the downstream.
   bool enable_ipv4_dhcp;
   // IPv4 DHCP IP range, only used when |enable_ipv4_dhcp| is true.
-  shill::IPv4Address ipv4_dhcp_start_addr;
-  shill::IPv4Address ipv4_dhcp_end_addr;
+  net_base::IPv4Address ipv4_dhcp_start_addr;
+  net_base::IPv4Address ipv4_dhcp_end_addr;
   //  The DNS server of the DHCP option, only used when |enable_ipv4_dhcp| is
   //  true.
-  std::vector<shill::IPv4Address> dhcp_dns_servers;
+  std::vector<net_base::IPv4Address> dhcp_dns_servers;
   // The domain search of the DHCP option, only used when |enable_ipv4_dhcp| is
   // true.
   std::vector<std::string> dhcp_domain_searches;
@@ -470,7 +470,7 @@ class Datapath {
   // downstream network.
   bool ConfigureInterface(const std::string& ifname,
                           std::optional<MacAddress> mac_addr,
-                          const shill::IPv4CIDR& ipv4_cidr,
+                          const net_base::IPv4CIDR& ipv4_cidr,
                           bool up,
                           bool enable_multicast);
   // Sets the link status.

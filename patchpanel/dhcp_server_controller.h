@@ -11,7 +11,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <shill/net/ipv4_address.h>
+#include <net-base/ipv4_address.h>
 #include <shill/net/process_manager.h>
 
 namespace patchpanel {
@@ -38,10 +38,10 @@ class DHCPServerController {
     // |mtu| is the MTU of the downstream. std::nullopt means the default value.
     // |dhcp_options| is the list of the DHCP options.
     static std::optional<Config> Create(
-        const shill::IPv4CIDR& host_cidr,
-        const shill::IPv4Address& start_ip,
-        const shill::IPv4Address& end_ip,
-        const std::vector<shill::IPv4Address>& dns_servers,
+        const net_base::IPv4CIDR& host_cidr,
+        const net_base::IPv4Address& start_ip,
+        const net_base::IPv4Address& end_ip,
+        const std::vector<net_base::IPv4Address>& dns_servers,
         const std::vector<std::string>& domain_searches,
         const std::optional<int>& mtu,
         const DHCPOptions& dhcp_options);

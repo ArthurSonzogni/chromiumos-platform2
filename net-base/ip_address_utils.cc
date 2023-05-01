@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/ip_address_utils.h"
+#include "net-base/ip_address_utils.h"
 
 #include <optional>
 #include <string>
@@ -11,7 +11,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
-namespace shill {
+namespace net_base {
 
 std::optional<std::pair<std::string, int>> SplitCIDRString(
     const std::string& address_string) {
@@ -28,4 +28,4 @@ std::optional<std::pair<std::string, int>> SplitCIDRString(
   return std::make_pair(address_parts[0], prefix_length);
 }
 
-}  // namespace shill
+}  // namespace net_base

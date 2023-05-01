@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/ipv4_address.h"
+#include "net-base/ipv4_address.h"
 
 #include <arpa/inet.h>
 
@@ -11,7 +11,7 @@
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
-namespace shill {
+namespace net_base {
 namespace {
 
 TEST(IPv4AddressTest, DefaultConstructor) {
@@ -231,4 +231,4 @@ TEST(IPv4CIDR, ToNetmask) {
 }
 
 }  // namespace
-}  // namespace shill
+}  // namespace net_base

@@ -11,9 +11,10 @@
 #include <string>
 #include <utility>
 
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
+
 #include "shill/net/byte_string.h"
-#include "shill/net/ipv4_address.h"
-#include "shill/net/ipv6_address.h"
 #include "shill/net/shill_export.h"
 
 namespace shill {
@@ -42,10 +43,10 @@ class SHILL_EXPORT IPAddress {
 
   // Creates from the family-specific classes. The created instance is already
   // initialized (i.e. IsValid() is true).
-  explicit IPAddress(const IPv4Address& address);
-  explicit IPAddress(const IPv6Address& address);
-  explicit IPAddress(const IPv4CIDR& cidr);
-  explicit IPAddress(const IPv6CIDR& cidr);
+  explicit IPAddress(const net_base::IPv4Address& address);
+  explicit IPAddress(const net_base::IPv6Address& address);
+  explicit IPAddress(const net_base::IPv4CIDR& cidr);
+  explicit IPAddress(const net_base::IPv6CIDR& cidr);
 
   ~IPAddress();
 
@@ -136,10 +137,10 @@ class SHILL_EXPORT IPAddress {
 
   // Converts to the family-specific classes. Returns std::nullopt if the IP
   // family is not the same.
-  std::optional<IPv4Address> ToIPv4Address() const;
-  std::optional<IPv6Address> ToIPv6Address() const;
-  std::optional<IPv4CIDR> ToIPv4CIDR() const;
-  std::optional<IPv6CIDR> ToIPv6CIDR() const;
+  std::optional<net_base::IPv4Address> ToIPv4Address() const;
+  std::optional<net_base::IPv6Address> ToIPv6Address() const;
+  std::optional<net_base::IPv4CIDR> ToIPv4CIDR() const;
+  std::optional<net_base::IPv6CIDR> ToIPv6CIDR() const;
 
   // An uninitialized IPAddress is empty and invalid when constructed.
   // Use SetAddressToDefault() to set it to the default or "all-zeroes" address.

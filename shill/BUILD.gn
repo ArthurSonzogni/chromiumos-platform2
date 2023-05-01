@@ -103,6 +103,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libmojo",
+    "libnet-base",
     "libpatchpanel-client",
     "libshill-net",
     "libtirpc",

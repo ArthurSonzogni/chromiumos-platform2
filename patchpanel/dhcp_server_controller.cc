@@ -26,10 +26,10 @@ using Config = DHCPServerController::Config;
 
 // static
 std::optional<Config> Config::Create(
-    const shill::IPv4CIDR& host_cidr,
-    const shill::IPv4Address& start_ip,
-    const shill::IPv4Address& end_ip,
-    const std::vector<shill::IPv4Address>& dns_servers,
+    const net_base::IPv4CIDR& host_cidr,
+    const net_base::IPv4Address& start_ip,
+    const net_base::IPv4Address& end_ip,
+    const std::vector<net_base::IPv4Address>& dns_servers,
     const std::vector<std::string>& domain_searches,
     const std::optional<int>& mtu,
     const DHCPOptions& dhcp_options) {

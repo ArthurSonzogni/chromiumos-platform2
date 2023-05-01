@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/ipv6_address.h"
+#include "net-base/ipv6_address.h"
 
 #include <arpa/inet.h>
 
@@ -11,7 +11,7 @@
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
-namespace shill {
+namespace net_base {
 namespace {
 const char kGoodString[] = "fe80::1aa9:5ff:7ebf:14c5";
 const IPv6Address::DataType kGoodData = {0xfe, 0x80, 0x00, 0x00, 0x00, 0x00,
@@ -232,4 +232,4 @@ TEST(IPv6CIDR, ToNetmask) {
 }
 
 }  // namespace
-}  // namespace shill
+}  // namespace net_base

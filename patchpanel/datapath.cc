@@ -35,8 +35,11 @@
 #include "patchpanel/net_util.h"
 
 namespace patchpanel {
-
 namespace {
+
+using net_base::IPv4Address;
+using net_base::IPv4CIDR;
+
 // TODO(hugobenichi) Consolidate this constant definition in a single place.
 constexpr pid_t kTestPID = -2;
 constexpr char kDefaultIfname[] = "vmtap%d";
@@ -148,13 +151,13 @@ std::string AutoDnatTargetChainName(AutoDnatTarget auto_dnat_target) {
 }
 
 // TODO(b/279693340): Remove the function after all IPv4 address represented by
-// uint32_t are migrated to shill::IPv4Address.
-shill::IPv4Address ConvertUint32ToIPv4Address(uint32_t addr) {
+// uint32_t are migrated to net_base::IPv4Address.
+IPv4Address ConvertUint32ToIPv4Address(uint32_t addr) {
   const uint32_t host_endian = ntohl(addr);
-  return shill::IPv4Address(static_cast<uint8_t>((host_endian >> 24) & 0xff),
-                            static_cast<uint8_t>((host_endian >> 16) & 0xff),
-                            static_cast<uint8_t>((host_endian >> 8) & 0xff),
-                            static_cast<uint8_t>(host_endian & 0xff));
+  return IPv4Address(static_cast<uint8_t>((host_endian >> 24) & 0xff),
+                     static_cast<uint8_t>((host_endian >> 16) & 0xff),
+                     static_cast<uint8_t>((host_endian >> 8) & 0xff),
+                     static_cast<uint8_t>(host_endian & 0xff));
 }
 
 }  // namespace
@@ -814,7 +817,7 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
       return false;
     }
 
-    const auto remote_ipv4_cidr = shill::IPv4CIDR::CreateFromAddressAndPrefix(
+    const auto remote_ipv4_cidr = IPv4CIDR::CreateFromAddressAndPrefix(
         ConvertUint32ToIPv4Address(remote_ipv4_addr), remote_ipv4_prefix_len);
     if (!remote_ipv4_cidr) {
       LOG(ERROR) << "Cannot create IPv4CIDR: prefix length="
@@ -862,7 +865,7 @@ bool Datapath::ToggleInterface(const std::string& ifname, bool up) {
 
 bool Datapath::ConfigureInterface(const std::string& ifname,
                                   std::optional<MacAddress> mac_addr,
-                                  const shill::IPv4CIDR& ipv4_cidr,
+                                  const IPv4CIDR& ipv4_cidr,
                                   bool up,
                                   bool enable_multicast) {
   if (process_runner_->ip(
@@ -922,7 +925,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  const auto peer_cidr = shill::IPv4CIDR::CreateFromAddressAndPrefix(
+  const auto peer_cidr = IPv4CIDR::CreateFromAddressAndPrefix(
       ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(0)),
       nsinfo.peer_subnet->PrefixLength());
   if (!peer_cidr) {
@@ -2296,9 +2299,6 @@ bool Datapath::ModifyPortRule(
 
 std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
     const TetheredNetworkRequest& request) {
-  using shill::IPv4Address;
-  using shill::IPv4CIDR;
-
   auto info = std::make_optional<DownstreamNetworkInfo>();
 
   info->topology = DownstreamNetworkTopology::kTethering;
@@ -2393,9 +2393,6 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
 
 std::optional<DHCPServerController::Config>
 DownstreamNetworkInfo::ToDHCPServerConfig() const {
-  using shill::IPv4Address;
-  using shill::IPv4CIDR;
-
   if (!enable_ipv4_dhcp) {
     return std::nullopt;
   }

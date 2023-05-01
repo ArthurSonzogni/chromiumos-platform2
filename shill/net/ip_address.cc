@@ -19,6 +19,11 @@
 namespace shill {
 
 namespace {
+using net_base::IPv4Address;
+using net_base::IPv4CIDR;
+using net_base::IPv6Address;
+using net_base::IPv6CIDR;
+
 const size_t kBitsPerByte = 8;
 }  // namespace
 

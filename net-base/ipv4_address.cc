@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/net/ipv4_address.h"
+#include "net-base/ipv4_address.h"
 
 #include <algorithm>
 
@@ -10,7 +10,7 @@
 
 #include <base/check.h>
 
-namespace shill {
+namespace net_base {
 
 // static
 std::optional<IPv4Address> IPv4Address::CreateFromString(
@@ -67,4 +67,4 @@ std::ostream& operator<<(std::ostream& os, const IPv4Address& address) {
   return os;
 }
 
-}  // namespace shill
+}  // namespace net_base

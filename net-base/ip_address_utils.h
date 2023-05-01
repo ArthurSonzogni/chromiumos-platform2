@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NET_IP_ADDRESS_UTILS_H_
-#define SHILL_NET_IP_ADDRESS_UTILS_H_
+#ifndef NET_BASE_IP_ADDRESS_UTILS_H_
+#define NET_BASE_IP_ADDRESS_UTILS_H_
 
 #include <algorithm>
 #include <memory>
@@ -13,13 +13,13 @@
 
 #include <base/check.h>
 
-#include "shill/net/shill_export.h"
+#include "net-base/export.h"
 
-namespace shill {
+namespace net_base {
 
 // Splits the CIDR-notation string into the pair of the address and the prefix
 // length. Returns std::nullopt if the format is invalid.
-SHILL_EXPORT std::optional<std::pair<std::string, int>> SplitCIDRString(
+NET_BASE_EXPORT std::optional<std::pair<std::string, int>> SplitCIDRString(
     const std::string& address_string);
 
 template <typename Address>
@@ -36,7 +36,7 @@ std::optional<Address> CreateAddressFromBytes(const uint8_t* bytes,
 
 // Represents the CIDR, that contains a IP address and a prefix length.
 template <typename Address>
-class SHILL_EXPORT CIDR {
+class NET_BASE_EXPORT CIDR {
  public:
   // Creates the Address that has all the high-order |prefix_length| bits set.
   // Returns std::nullopt if the prefix_length is invalid.
@@ -183,5 +183,5 @@ class SHILL_EXPORT CIDR {
   int prefix_length_;
 };
 
-}  // namespace shill
-#endif  // SHILL_NET_IP_ADDRESS_UTILS_H_
+}  // namespace net_base
+#endif  // NET_BASE_IP_ADDRESS_UTILS_H_
