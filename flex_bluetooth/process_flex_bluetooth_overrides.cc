@@ -27,13 +27,15 @@ const base::FilePath kSyspropOverridePath = base::FilePath(
 const std::map<flex_bluetooth::BluetoothAdapter,
                std::unordered_set<flex_bluetooth::SyspropOverride>>
     kAdapterSyspropOverrides = {
+        {flex_bluetooth::BluetoothAdapter{0x0489, 0xe0a2},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
+        {flex_bluetooth::BluetoothAdapter{0x04ca, 0x3015},
+         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
         {flex_bluetooth::BluetoothAdapter{0x0cf3, 0xe007},
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
         {flex_bluetooth::BluetoothAdapter{0x0cf3, 0xe009},
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
         {flex_bluetooth::BluetoothAdapter{0x13d3, 0x3491},
-         {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
-        {flex_bluetooth::BluetoothAdapter{0x0489, 0xe0a2},
          {flex_bluetooth::SyspropOverride::kDisableLEGetVendorCapabilities}},
 };
 
