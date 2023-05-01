@@ -77,6 +77,24 @@ enum class FailedPathType {
   kMaxValue = kUserDe,
 };
 
+// The possible causes of failures for which the error code is
+// base::File::FILE_ERROR_ACCESS_DENIED and the error type is
+// cryptohome::data_migrator::kMigrationFailedAtOpen*File.
+// Keep in sync with ArcVmDataMigrationAccessDeniedAtOpenFileFailureType in
+// Chromium's tools/metrics/histograms/enums.xml.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class AccessDeniedAtOpenFileFailureType {
+  kOther = 0,
+  kReferencesParent = 1,
+  kReferencesParentFalsePositive = 2,
+  kPermissionDenied = 3,
+  kIsADirectory = 4,
+  kReadOnlyFileSystem = 5,
+  kOperationNotPermitted = 6,
+  kMaxValue = kOperationNotPermitted,
+};
+
 // A class that sends UMA metrics using MetricsLibrary. There is no D-Bus call
 // because MetricsLibrary writes the UMA data to /var/lib/metrics/uma-events.
 class ArcVmDataMigratorMetrics {
@@ -119,6 +137,10 @@ class ArcVmDataMigratorMetrics {
 
   // Reports the total bytes of xattr assigned to a file.
   void ReportNoSpaceXattrSize(int total_xattr_size_bytes);
+
+  // Reports the detailed cause of b/280247852.
+  void ReportAccessDeniedAtOpenSourceFileFailureType(
+      AccessDeniedAtOpenFileFailureType failure_type);
 
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_library_;

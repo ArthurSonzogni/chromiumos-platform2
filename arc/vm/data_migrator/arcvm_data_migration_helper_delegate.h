@@ -10,6 +10,7 @@
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <cryptohome/data_migrator/metrics.h>
 #include <cryptohome/data_migrator/migration_helper_delegate.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -58,10 +59,18 @@ class ArcVmDataMigrationHelperDelegate
 
  private:
   FRIEND_TEST(ArcVmDataMigrationHelperDelegateTest, MapPathToPathType);
+  FRIEND_TEST(ArcVmDataMigrationHelperDelegateTest,
+              GetAccessDeniedAtOpenFileFailureType);
 
   FailedPathType MapPathToPathType(
       const base::FilePath& path,
       cryptohome::data_migrator::FailureLocationType location_type);
+
+  // Returns the detailed cause of a failure for which the error code is
+  // base::File::FILE_ERROR_ACCESS_DENIED and the error type is
+  // cryptohome::data_migrator::kMigrationFailedAtOpen*File.
+  AccessDeniedAtOpenFileFailureType GetAccessDeniedAtOpenFileFailureType(
+      const base::FilePath& path, int saved_errno);
 
   // Migration source.
   const base::FilePath source_;

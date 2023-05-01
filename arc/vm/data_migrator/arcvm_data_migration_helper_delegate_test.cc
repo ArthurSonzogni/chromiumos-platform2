@@ -4,6 +4,8 @@
 
 #include "arc/vm/data_migrator/arcvm_data_migration_helper_delegate.h"
 
+#include <errno.h>
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -210,6 +212,39 @@ TEST_F(ArcVmDataMigrationHelperDelegateTest, MapPathToPathType) {
       delegate.MapPathToPathType(base::FilePath("/data/media/0/Android/data"),
                                  FailureLocationType::kSource),
       FailedPathType::kUnknownAbsolutePath);
+}
+
+TEST_F(ArcVmDataMigrationHelperDelegateTest,
+       GetAccessDeniedAtOpenFileFailureType) {
+  ArcVmDataMigrationHelperDelegate delegate(source_, nullptr /* metrics */);
+
+  const base::FilePath references_parent(
+      source_.Append("data/com.example.app/files/../cache"));
+  const base::FilePath references_parent_false_positive(
+      source_.Append("data/com.example.app/files/.../cache"));
+  const base::FilePath valid_path(source_.Append("data/com.example.app/cache"));
+
+  EXPECT_EQ(
+      delegate.GetAccessDeniedAtOpenFileFailureType(references_parent, EACCES),
+      AccessDeniedAtOpenFileFailureType::kReferencesParent);
+  // Check a false positive case introduced by crbug/181617 if it has not been
+  // fixed yet.
+  if (references_parent_false_positive.ReferencesParent()) {
+    EXPECT_EQ(
+        delegate.GetAccessDeniedAtOpenFileFailureType(
+            references_parent_false_positive, EACCES),
+        AccessDeniedAtOpenFileFailureType::kReferencesParentFalsePositive);
+  }
+  EXPECT_EQ(delegate.GetAccessDeniedAtOpenFileFailureType(valid_path, EACCES),
+            AccessDeniedAtOpenFileFailureType::kPermissionDenied);
+  EXPECT_EQ(delegate.GetAccessDeniedAtOpenFileFailureType(valid_path, EISDIR),
+            AccessDeniedAtOpenFileFailureType::kIsADirectory);
+  EXPECT_EQ(delegate.GetAccessDeniedAtOpenFileFailureType(valid_path, EROFS),
+            AccessDeniedAtOpenFileFailureType::kReadOnlyFileSystem);
+  EXPECT_EQ(delegate.GetAccessDeniedAtOpenFileFailureType(valid_path, EPERM),
+            AccessDeniedAtOpenFileFailureType::kOperationNotPermitted);
+  EXPECT_EQ(delegate.GetAccessDeniedAtOpenFileFailureType(valid_path, ENOENT),
+            AccessDeniedAtOpenFileFailureType::kOther);
 }
 
 }  // namespace arc::data_migrator

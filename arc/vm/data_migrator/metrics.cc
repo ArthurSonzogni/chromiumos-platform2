@@ -29,6 +29,8 @@ constexpr char kNoSpaceFailureFreeSpace[] =
     "Arc.VmDataMigration.NoSpaceFailureFreeSpace";
 constexpr char kNoSpaceFailureXattrSize[] =
     "Arc.VmDataMigration.NoSpaceFailureXattrSize";
+constexpr char kAccessDeniedAtOpenSourceFileFailureType[] =
+    "Arc.VmDataMigration.AccessDeniedAtOpenSourceFileFailureType";
 
 constexpr int kNumBuckets = 50;
 
@@ -110,6 +112,12 @@ void ArcVmDataMigratorMetrics::ReportNoSpaceXattrSize(
   constexpr int kMin = 1, kMax = 16 * 1024 /* 16 KiB */;
   metrics_library_->SendToUMA(kNoSpaceFailureXattrSize, total_xattr_size_bytes,
                               kMin, kMax, kNumBuckets);
+}
+
+void ArcVmDataMigratorMetrics::ReportAccessDeniedAtOpenSourceFileFailureType(
+    AccessDeniedAtOpenFileFailureType failure_type) {
+  metrics_library_->SendEnumToUMA(kAccessDeniedAtOpenSourceFileFailureType,
+                                  failure_type);
 }
 
 }  // namespace arc::data_migrator

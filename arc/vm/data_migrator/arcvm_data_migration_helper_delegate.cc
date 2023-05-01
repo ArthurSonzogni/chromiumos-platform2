@@ -4,16 +4,19 @@
 
 #include "arc/vm/data_migrator/arcvm_data_migration_helper_delegate.h"
 
+#include <errno.h>
 #include <sys/stat.h>
 
 #include <array>
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/posix/safe_strerror.h>
 #include <base/strings/string_util.h>
 
 using cryptohome::data_migrator::FailureLocationType;
@@ -184,6 +187,14 @@ void ArcVmDataMigrationHelperDelegate::ReportFailure(
     cryptohome::data_migrator::MigrationFailedOperationType type,
     const base::FilePath& path,
     FailureLocationType location_type) {
+  if (error_code == base::File::FILE_ERROR_ACCESS_DENIED &&
+      type == cryptohome::data_migrator::kMigrationFailedAtOpenSourceFile) {
+    // Inspect and report the detailed cause of b/280247852.
+    // Note that we assume that errno here indicates the cause of the failure
+    // unless it is due to base::FilePath::ReferencesParent().
+    metrics_->ReportAccessDeniedAtOpenSourceFileFailureType(
+        GetAccessDeniedAtOpenFileFailureType(path, errno));
+  }
   metrics_->ReportFailedErrorCode(error_code);
   metrics_->ReportFailedOperationType(type);
   metrics_->ReportFailedPathType(MapPathToPathType(path, location_type));
@@ -237,6 +248,40 @@ FailedPathType ArcVmDataMigrationHelperDelegate::MapPathToPathType(
       return FailedPathType::kOtherDest;
     case FailureLocationType::kSourceOrDest:
       return FailedPathType::kOther;
+  }
+}
+
+AccessDeniedAtOpenFileFailureType
+ArcVmDataMigrationHelperDelegate::GetAccessDeniedAtOpenFileFailureType(
+    const base::FilePath& path, int saved_errno) {
+  if (path.ReferencesParent()) {
+    const std::vector<std::string> components = path.GetComponents();
+    for (const auto& component : components) {
+      if (component == base::FilePath::kParentDirectory) {
+        return AccessDeniedAtOpenFileFailureType::kReferencesParent;
+      }
+    }
+    // There can be cases where base::FilePath::ReferencesParent() returns true
+    // for valid (but unusual) file names like "...". See crbug/181617.
+    return AccessDeniedAtOpenFileFailureType::kReferencesParentFalsePositive;
+  }
+
+  // Infer the cause based on errno. See base::File::OSErrorToFileError() for
+  // values corresponding to base::FileError::FILE_ERROR_ACCESS_DENIED.
+  switch (saved_errno) {
+    case EACCES:
+      return AccessDeniedAtOpenFileFailureType::kPermissionDenied;
+    case EISDIR:
+      return AccessDeniedAtOpenFileFailureType::kIsADirectory;
+    case EROFS:
+      return AccessDeniedAtOpenFileFailureType::kReadOnlyFileSystem;
+    case EPERM:
+      return AccessDeniedAtOpenFileFailureType::kOperationNotPermitted;
+    default:
+      LOG(WARNING) << "Unexpected errno for FILE_ERROR_ACCESS_DENIED: "
+                   << base::safe_strerror(saved_errno) << " (" << saved_errno
+                   << ")";
+      return AccessDeniedAtOpenFileFailureType::kOther;
   }
 }
 
