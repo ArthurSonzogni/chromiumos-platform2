@@ -5,6 +5,7 @@
 #include "patchpanel/crostini_service.h"
 
 #include <memory>
+#include <ostream>
 #include <utility>
 
 #include "base/task/single_thread_task_runner.h"
@@ -31,6 +32,13 @@ constexpr int kDbusTimeoutMs = 200;
 // The maximum number of ADB sideloading query failures before stopping.
 constexpr int kAdbSideloadMaxTry = 5;
 constexpr base::TimeDelta kAdbSideloadUpdateDelay = base::Milliseconds(5000);
+
+std::ostream& operator<<(
+    std::ostream& stream,
+    const std::pair<uint64_t, CrostiniService::VMType>& vm_info) {
+  return stream << "{id: " << vm_info.first << ", vm_type: " << vm_info.second
+                << "}";
+}
 }  // namespace
 
 CrostiniService::CrostiniService(
@@ -63,31 +71,32 @@ CrostiniService::~CrostiniService() {
 const Device* CrostiniService::Start(uint64_t vm_id,
                                      CrostiniService::VMType vm_type,
                                      uint32_t subnet_index) {
+  const auto vm_info = std::make_pair(vm_id, vm_type);
   if (vm_id == kInvalidID) {
-    LOG(ERROR) << "Invalid VM id";
+    LOG(ERROR) << __func__ << " " << vm_info << ": Invalid VM id";
     return nullptr;
   }
 
   if (taps_.find(vm_id) != taps_.end()) {
-    LOG(WARNING) << "Already started for {id: " << vm_id << "}";
+    LOG(WARNING) << __func__ << " " << vm_info << ": Datapath already started";
     return nullptr;
   }
 
   auto tap = AddTAP(vm_type, subnet_index);
   if (!tap) {
-    LOG(ERROR) << "Cannot start for {id: " << vm_id << "}";
+    LOG(ERROR) << __func__ << " " << vm_info << ": Failed to create TAP device";
     return nullptr;
   }
 
-  LOG(INFO) << "Crostini network service started for {id: " << vm_id << "}";
   datapath_->StartRoutingDevice("", tap->host_ifname(),
                                 tap->config().host_ipv4_addr(),
                                 TrafficSourceFromVMType(vm_type),
                                 /*route_on_vpn=*/true);
-
   if (adb_sideloading_enabled_) {
     StartAdbPortForwarding(tap->phys_ifname());
   }
+  LOG(INFO) << __func__ << " " << vm_info
+            << ": Crostini network service started on " << tap->host_ifname();
   device_changed_handler_.Run(*tap, Device::ChangeEvent::kAdded,
                               GuestMessageTypeFromVMType(vm_type));
   auto [it, _] = taps_.emplace(vm_id, std::move(tap));
@@ -97,7 +106,7 @@ const Device* CrostiniService::Start(uint64_t vm_id,
 void CrostiniService::Stop(uint64_t vm_id) {
   const auto it = taps_.find(vm_id);
   if (it == taps_.end()) {
-    LOG(WARNING) << "Unknown {id: " << vm_id << "}";
+    LOG(WARNING) << __func__ << " {id: " << vm_id << "}: Unknown VM";
     return;
   }
 
@@ -107,21 +116,23 @@ void CrostiniService::Stop(uint64_t vm_id) {
                << " for TAP Device of VM " << vm_id;
     return;
   }
+  const auto vm_info = std::make_pair(vm_id, *vm_type);
 
   device_changed_handler_.Run(*it->second, Device::ChangeEvent::kRemoved,
                               GuestMessageTypeFromVMType(*vm_type));
-  const auto& ifname = it->second->host_ifname();
-  datapath_->StopRoutingDevice("", ifname,
+  const std::string tap_ifname = it->second->host_ifname();
+  datapath_->StopRoutingDevice("", tap_ifname,
                                it->second->config().host_ipv4_addr(),
                                TrafficSourceFromVMType(*vm_type),
                                /*route_on_vpn=*/true);
   if (adb_sideloading_enabled_) {
-    StopAdbPortForwarding(ifname);
+    StopAdbPortForwarding(tap_ifname);
   }
-  datapath_->RemoveInterface(ifname);
+  datapath_->RemoveInterface(tap_ifname);
   taps_.erase(vm_id);
 
-  LOG(INFO) << "Crostini network service stopped for {id: " << vm_id << "}";
+  LOG(INFO) << __func__ << " " << vm_info
+            << ": Crostini network service stopped on " << tap_ifname;
 }
 
 const Device* const CrostiniService::GetDevice(uint64_t vm_id) const {
@@ -200,18 +211,21 @@ std::unique_ptr<Device> CrostiniService::AddTAP(CrostiniService::VMType vm_type,
 
 void CrostiniService::StartAdbPortForwarding(const std::string& ifname) {
   if (!datapath_->AddAdbPortForwardRule(ifname)) {
-    LOG(ERROR) << "Error adding ADB port forwarding rule for " << ifname;
+    LOG(ERROR) << __func__ << ": Error adding ADB port forwarding rule for "
+               << ifname;
     return;
   }
 
   if (!datapath_->AddAdbPortAccessRule(ifname)) {
     datapath_->DeleteAdbPortForwardRule(ifname);
-    LOG(ERROR) << "Error adding ADB port access rule for " << ifname;
+    LOG(ERROR) << __func__ << ": Error adding ADB port access rule for "
+               << ifname;
     return;
   }
 
   if (!datapath_->SetRouteLocalnet(ifname, true)) {
-    LOG(ERROR) << "Failed to set up route localnet for " << ifname;
+    LOG(ERROR) << __func__ << ": Failed to set up route localnet for "
+               << ifname;
     return;
   }
 }
@@ -225,8 +239,9 @@ void CrostiniService::StopAdbPortForwarding(const std::string& ifname) {
 void CrostiniService::CheckAdbSideloadingStatus() {
   static int num_try = 0;
   if (num_try >= kAdbSideloadMaxTry) {
-    LOG(WARNING) << "Failed to get ADB sideloading status after " << num_try
-                 << " tries. ADB sideloading will not work";
+    LOG(WARNING) << __func__
+                 << ": Failed getting feature enablement status after "
+                 << num_try << " tries.";
     return;
   }
 
