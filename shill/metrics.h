@@ -530,6 +530,32 @@ class Metrics : public DefaultServiceObserver {
       .max = kCellularDropTechnologyMax,
   };
 
+  // These metrics enum values should not be renumbered or overwritten.
+  enum CellularEntitlementCheck {
+    kCellularEntitlementCheckAllowed = 0,
+    kCellularEntitlementCheckInProgress = 1,
+    kCellularEntitlementCheckFailedToBuildPayload = 2,
+    kCellularEntitlementCheckFailedToParseIp = 3,
+    kCellularEntitlementCheckUnexpectedRequestId = 4,
+    kCellularEntitlementCheckUserNotAllowedToTether = 5,
+    kCellularEntitlementCheckHttpSyntaxErrorOnServer = 6,
+    kCellularEntitlementCheckUnrecognizedUser = 7,
+    kCellularEntitlementCheckInternalErrorOnServer = 8,
+    kCellularEntitlementCheckUnrecognizedErrorCode = 9,
+    kCellularEntitlementCheckUnrecognizedHttpStatusCode = 10,
+    kCellularEntitlementCheckHttpRequestError = 11,
+    kCellularEntitlementCheckIllegalInProgress = 12,
+    kCellularEntitlementCheckNotAllowedByModb = 13,
+    kCellularEntitlementCheckUnknownCarrier = 14,
+    kCellularEntitlementCheckNoIp = 15,
+    kCellularEntitlementCheckNoCellularDevice = 16,
+    kCellularEntitlementCheckMax
+  };
+  static constexpr EnumMetric<FixedName> kMetricCellularEntitlementCheck = {
+      .n = FixedName{"Network.Shill.Cellular.EntitlementCheck"},
+      .max = kCellularEntitlementCheckMax,
+  };
+
   // These values are persisted to logs for
   // Network.Shill.Cellular.ConnectResult. CellularConnectResult entries should
   // not be renumbered and numeric values should never be reused.
@@ -1753,6 +1779,10 @@ class Metrics : public DefaultServiceObserver {
 
   // Notifies this object of the resulting status of a cellular connection
   void NotifyCellularConnectionResult(Error::Type error);
+
+  // Notifies this object of the entitlement check result
+  virtual void NotifyCellularEntitlementCheckResult(
+      Metrics::CellularEntitlementCheck result);
 
   struct DetailedCellularConnectionResult {
     // The values are used in metrics and thus should not be changed.

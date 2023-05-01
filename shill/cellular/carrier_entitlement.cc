@@ -19,6 +19,7 @@
 
 #include "shill/http_url.h"
 #include "shill/logging.h"
+#include "shill/metrics.h"
 #include "shill/net/ip_address.h"
 
 namespace shill {
@@ -28,8 +29,11 @@ static auto kModuleLogScope = ScopeLogger::kCellular;
 }  // namespace Logging
 
 CarrierEntitlement::CarrierEntitlement(
-    EventDispatcher* dispatcher, base::RepeatingCallback<void(Result)> check_cb)
+    EventDispatcher* dispatcher,
+    Metrics* metrics,
+    base::RepeatingCallback<void(Result)> check_cb)
     : dispatcher_(dispatcher),
+      metrics_(metrics),
       check_cb_(check_cb),
       transport_(brillo::http::Transport::CreateDefault()),
       request_in_progress_(false),
@@ -59,6 +63,8 @@ void CarrierEntitlement::CheckInternal(const IPAddress& src_address,
   if (request_in_progress_) {
     LOG(WARNING)
         << "Entitlement check already in progress. New request ignored.";
+    metrics_->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckInProgress);
     // The new request is ignored, but the client will receive an update
     // when the previous request completes.
     return;
@@ -71,6 +77,8 @@ void CarrierEntitlement::CheckInternal(const IPAddress& src_address,
 
   if (config_.url.empty()) {
     SLOG(3) << "Carrier doesn't require an entitlement check.";
+    // Skip reporting metrics, since this result would dominate the results,
+    // and it's not a very useful value to know.
     SendResult(Result::kAllowed);
     return;
   }
@@ -79,6 +87,8 @@ void CarrierEntitlement::CheckInternal(const IPAddress& src_address,
   if (!content) {
     LOG(ERROR) << "Failed to build entitlement check message.";
     SendResult(Result::kGenericError);
+    metrics_->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckFailedToBuildPayload);
     return;
   }
   std::string addr_string;
@@ -86,6 +96,8 @@ void CarrierEntitlement::CheckInternal(const IPAddress& src_address,
     LOG(ERROR) << "Failed to parse source IP address for entitlement check: "
                << src_address.ToString();
     SendResult(Result::kGenericError);
+    metrics_->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckFailedToParseIp);
     return;
   }
   // TODO(b/275440439): configure the dns address
@@ -152,6 +164,8 @@ void CarrierEntitlement::HttpRequestSuccessCallback(
     LOG(ERROR) << "EntitlementCheck: Expected request ID " << request_id_
                << " but got " << request_id;
     SendResult(Result::kGenericError);
+    metrics_->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckUnexpectedRequestId);
     return;
   }
 
@@ -164,27 +178,41 @@ void CarrierEntitlement::HttpRequestSuccessCallback(
   switch (http_status_code) {
     case brillo::http::status_code::Ok:
       last_result_ = Result::kAllowed;
+      metrics_->NotifyCellularEntitlementCheckResult(
+          Metrics::kCellularEntitlementCheckAllowed);
       PostBackgroundCheck();
       break;
     case brillo::http::status_code::Forbidden:
       if (response_code == kServerCodeUserNotAllowedToTether) {
         last_result_ = Result::kUserNotAllowedToTether;
         LOG(INFO) << __func__ << ": User not allowed to tether.";
+        metrics_->NotifyCellularEntitlementCheckResult(
+            Metrics::kCellularEntitlementCheckUserNotAllowedToTether);
       } else if (response_code == kServerCodeHttpSyntaxError) {
         last_result_ = Result::kGenericError;
         LOG(INFO) << __func__ << ": Syntax error of HTTP Request.";
+        metrics_->NotifyCellularEntitlementCheckResult(
+            Metrics::kCellularEntitlementCheckHttpSyntaxErrorOnServer);
       } else if (response_code == kServerCodeUnrecognizedUser) {
         last_result_ = Result::kUnrecognizedUser;
         LOG(INFO) << __func__ << ": Unrecognized User.";
+        metrics_->NotifyCellularEntitlementCheckResult(
+            Metrics::kCellularEntitlementCheckUnrecognizedUser);
       } else if (response_code == kServerCodeInternalError) {
         LOG(INFO) << __func__ << ": Server error. Using cached value";
+        metrics_->NotifyCellularEntitlementCheckResult(
+            Metrics::kCellularEntitlementCheckInternalErrorOnServer);
       } else {
         last_result_ = Result::kGenericError;
         LOG(INFO) << __func__ << ": Unrecognized error:" << response_code;
+        metrics_->NotifyCellularEntitlementCheckResult(
+            Metrics::kCellularEntitlementCheckUnrecognizedErrorCode);
       }
       break;
     default:
       LOG(INFO) << __func__ << ": Unrecognized http status code.";
+      metrics_->NotifyCellularEntitlementCheckResult(
+          Metrics::kCellularEntitlementCheckUnrecognizedHttpStatusCode);
       last_result_ = Result::kGenericError;
       break;
   }
@@ -202,6 +230,8 @@ void CarrierEntitlement::HttpRequestErrorCallback(
                << error->GetCode() << ":" << error->GetMessage();
   }
   SendResult(last_result_);
+  metrics_->NotifyCellularEntitlementCheckResult(
+      Metrics::kCellularEntitlementCheckHttpRequestError);
 }
 
 }  // namespace shill

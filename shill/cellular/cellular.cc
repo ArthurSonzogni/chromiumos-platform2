@@ -288,8 +288,9 @@ Cellular::Cellular(Manager* manager,
   CreateCapability();
 
   carrier_entitlement_ = std::make_unique<CarrierEntitlement>(
-      dispatcher(), base::BindRepeating(&Cellular::OnEntitlementCheckUpdated,
-                                        weak_ptr_factory_.GetWeakPtr()));
+      dispatcher(), metrics(),
+      base::BindRepeating(&Cellular::OnEntitlementCheckUpdated,
+                          weak_ptr_factory_.GetWeakPtr()));
   SLOG(1) << LoggingTag() << ": Cellular()";
 }
 
@@ -3031,6 +3032,8 @@ void Cellular::EntitlementCheck(
   DCHECK(entitlement_check_callback_.is_null());
   if (!entitlement_check_callback_.is_null()) {
     LOG(ERROR) << "Entitlement check received while another one is in progress";
+    metrics()->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckIllegalInProgress);
     dispatcher()->PostTask(
         FROM_HERE,
         base::BindOnce(std::move(callback),
@@ -3041,6 +3044,8 @@ void Cellular::EntitlementCheck(
   if (!mobile_operator_info_->tethering_allowed()) {
     LOG(INFO) << "Entitlement check failed because tethering is not allowed by "
                  "database settings";
+    metrics()->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckNotAllowedByModb);
     dispatcher()->PostTask(
         FROM_HERE,
         base::BindOnce(std::move(callback),
@@ -3051,6 +3056,8 @@ void Cellular::EntitlementCheck(
   if (!mobile_operator_info_->IsMobileNetworkOperatorKnown() &&
       !mobile_operator_info_->IsServingMobileNetworkOperatorKnown()) {
     LOG(INFO) << "Entitlement check failed because the carrier is not known.";
+    metrics()->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckUnknownCarrier);
     dispatcher()->PostTask(
         FROM_HERE,
         base::BindOnce(std::move(callback),
@@ -3060,6 +3067,8 @@ void Cellular::EntitlementCheck(
 
   if (!network()->local()) {
     LOG(INFO) << "Entitlement check failed because there is no IP address.";
+    metrics()->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckNoIp);
     dispatcher()->PostTask(
         FROM_HERE,
         base::BindOnce(std::move(callback),

@@ -43,7 +43,10 @@ class MockMetrics : public Metrics {
               NotifyDetailedCellularConnectionResult,
               (const Metrics::DetailedCellularConnectionResult& result),
               (override));
-
+  MOCK_METHOD(void,
+              NotifyCellularEntitlementCheckResult,
+              (Metrics::CellularEntitlementCheck result),
+              (override));
   MOCK_METHOD(void,
               NotifyServiceStateChanged,
               (const Service&, Service::ConnectState),

@@ -22,6 +22,7 @@
 
 #include "shill/cellular/mobile_operator_mapper.h"
 #include "shill/logging.h"
+#include "shill/mock_metrics.h"
 #include "shill/net/ip_address.h"
 #include "shill/test_event_dispatcher.h"
 
@@ -67,8 +68,8 @@ class CarrierEntitlementTest : public testing::Test {
     config_.url = url;
     config_.method = method;
     config_.params = params;
-    carrier_entitlement_ =
-        std::make_unique<CarrierEntitlement>(&dispatcher_, check_cb_.Get());
+    carrier_entitlement_ = std::make_unique<CarrierEntitlement>(
+        &dispatcher_, &metrics_, check_cb_.Get());
   }
 
   void SetUp() override {
@@ -191,9 +192,11 @@ class CarrierEntitlementTest : public testing::Test {
     Mock::VerifyAndClearExpectations(&transport_);
     Mock::VerifyAndClearExpectations(&brillo_connection_);
     Mock::VerifyAndClearExpectations(&check_cb_);
+    Mock::VerifyAndClearExpectations(&metrics_);
   }
 
   EventDispatcherForTest dispatcher_;
+  testing::StrictMock<MockMetrics> metrics_;
   std::shared_ptr<brillo::http::MockTransport> transport_;
   std::shared_ptr<brillo::http::MockConnection> brillo_connection_;
   base::MockRepeatingCallback<void(CarrierEntitlement::Result)> check_cb_;
@@ -218,6 +221,8 @@ TEST_F(CarrierEntitlementTestNoParams, CheckAllowed) {
   ExpectCreateConnection(kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
+  EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
+                            Metrics::kCellularEntitlementCheckAllowed));
   carrier_entitlement_->Check(ip_address_, {}, config_);
 }
 
@@ -228,6 +233,9 @@ TEST_F(CarrierEntitlementTestNoParams, CheckUserNotAllowedToTether) {
       brillo::http::status_code::Forbidden);
   EXPECT_CALL(check_cb_,
               Run(CarrierEntitlement::Result::kUserNotAllowedToTether));
+  EXPECT_CALL(metrics_,
+              NotifyCellularEntitlementCheckResult(
+                  Metrics::kCellularEntitlementCheckUserNotAllowedToTether));
   carrier_entitlement_->Check(ip_address_, {}, config_);
 }
 
@@ -237,6 +245,9 @@ TEST_F(CarrierEntitlementTestNoParams, CheckUnrecognizedUser) {
       CarrierEntitlement::kServerCodeUnrecognizedUser,
       brillo::http::status_code::Forbidden);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kUnrecognizedUser));
+  EXPECT_CALL(metrics_,
+              NotifyCellularEntitlementCheckResult(
+                  Metrics::kCellularEntitlementCheckUnrecognizedUser));
   carrier_entitlement_->Check(ip_address_, {}, config_);
 }
 
@@ -246,6 +257,9 @@ TEST_F(CarrierEntitlementTestNoParams, CheckHttpSyntaxError) {
       CarrierEntitlement::kServerCodeHttpSyntaxError,
       brillo::http::status_code::Forbidden);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kGenericError));
+  EXPECT_CALL(metrics_,
+              NotifyCellularEntitlementCheckResult(
+                  Metrics::kCellularEntitlementCheckHttpSyntaxErrorOnServer));
   carrier_entitlement_->Check(ip_address_, {}, config_);
 }
 
@@ -253,6 +267,8 @@ TEST_F(CarrierEntitlementTestNoParams, CheckServerErrorUseCachedPassValue) {
   ExpectCreateConnection(kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
+  EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
+                            Metrics::kCellularEntitlementCheckAllowed));
   carrier_entitlement_->Check(ip_address_, {}, config_);
   VerifyAllExpectations();
 
@@ -260,6 +276,9 @@ TEST_F(CarrierEntitlementTestNoParams, CheckServerErrorUseCachedPassValue) {
   ExpectFinishRequestAsyncSuccess(CarrierEntitlement::kServerCodeInternalError,
                                   brillo::http::status_code::Forbidden);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
+  EXPECT_CALL(metrics_,
+              NotifyCellularEntitlementCheckResult(
+                  Metrics::kCellularEntitlementCheckInternalErrorOnServer));
   carrier_entitlement_->Check(ip_address_, {}, config_);
 }
 
@@ -269,6 +288,9 @@ TEST_F(CarrierEntitlementTestNoParams, CheckServerErrorUseCachedFailValue) {
       CarrierEntitlement::kServerCodeUnrecognizedUser,
       brillo::http::status_code::Forbidden);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kUnrecognizedUser));
+  EXPECT_CALL(metrics_,
+              NotifyCellularEntitlementCheckResult(
+                  Metrics::kCellularEntitlementCheckUnrecognizedUser));
   carrier_entitlement_->Check(ip_address_, {}, config_);
   VerifyAllExpectations();
 
@@ -276,6 +298,9 @@ TEST_F(CarrierEntitlementTestNoParams, CheckServerErrorUseCachedFailValue) {
   ExpectFinishRequestAsyncSuccess(CarrierEntitlement::kServerCodeInternalError,
                                   brillo::http::status_code::Forbidden);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kUnrecognizedUser));
+  EXPECT_CALL(metrics_,
+              NotifyCellularEntitlementCheckResult(
+                  Metrics::kCellularEntitlementCheckInternalErrorOnServer));
   carrier_entitlement_->Check(ip_address_, {}, config_);
 }
 
@@ -283,6 +308,10 @@ TEST_F(CarrierEntitlementTestNoParams, CheckUnrecognizedHttpStatusCode) {
   ExpectCreateConnection(kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Redirect);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kGenericError));
+  EXPECT_CALL(
+      metrics_,
+      NotifyCellularEntitlementCheckResult(
+          Metrics::kCellularEntitlementCheckUnrecognizedHttpStatusCode));
   carrier_entitlement_->Check(ip_address_, {}, config_);
 }
 
@@ -290,6 +319,9 @@ TEST_F(CarrierEntitlementTestNoParams, CheckErrorCallback) {
   ExpectCreateConnection(kPost, "{}");
   ExpectFinishRequestAsyncFail();
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kGenericError));
+  EXPECT_CALL(metrics_,
+              NotifyCellularEntitlementCheckResult(
+                  Metrics::kCellularEntitlementCheckHttpRequestError));
   carrier_entitlement_->Check(ip_address_, {}, config_);
 }
 
@@ -297,12 +329,16 @@ TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckAllowed) {
   ExpectCreateConnection(kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
+  EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
+                            Metrics::kCellularEntitlementCheckAllowed));
   carrier_entitlement_->Check(ip_address_, {}, config_);
   VerifyAllExpectations();
 
   ExpectCreateConnection(kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
+  EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
+                            Metrics::kCellularEntitlementCheckAllowed));
   dispatcher_.task_environment().FastForwardBy(
       CarrierEntitlement::kBackgroundCheckPeriod + base::Seconds(1));
   VerifyAllExpectations();
@@ -310,6 +346,8 @@ TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckAllowed) {
   ExpectCreateConnection(kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
+  EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
+                            Metrics::kCellularEntitlementCheckAllowed));
   dispatcher_.task_environment().FastForwardBy(
       CarrierEntitlement::kBackgroundCheckPeriod + base::Seconds(1));
 }
@@ -318,6 +356,8 @@ TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckReturnsNotAllowed) {
   ExpectCreateConnection(kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
+  EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
+                            Metrics::kCellularEntitlementCheckAllowed));
   carrier_entitlement_->Check(ip_address_, {}, config_);
   VerifyAllExpectations();
 
@@ -326,6 +366,9 @@ TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckReturnsNotAllowed) {
       CarrierEntitlement::kServerCodeUnrecognizedUser,
       brillo::http::status_code::Forbidden);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kUnrecognizedUser));
+  EXPECT_CALL(metrics_,
+              NotifyCellularEntitlementCheckResult(
+                  Metrics::kCellularEntitlementCheckUnrecognizedUser));
   dispatcher_.task_environment().FastForwardBy(
       CarrierEntitlement::kBackgroundCheckPeriod + base::Seconds(1));
   VerifyAllExpectations();
@@ -340,12 +383,17 @@ TEST_F(CarrierEntitlementTestNoParams, BackgroundCheckErrorCallback) {
   ExpectCreateConnection(kPost, "{}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
+  EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
+                            Metrics::kCellularEntitlementCheckAllowed));
   carrier_entitlement_->Check(ip_address_, {}, config_);
   VerifyAllExpectations();
 
   ExpectCreateConnection(kPost, "{}");
   ExpectFinishRequestAsyncFail();
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kGenericError));
+  EXPECT_CALL(metrics_,
+              NotifyCellularEntitlementCheckResult(
+                  Metrics::kCellularEntitlementCheckHttpRequestError));
   dispatcher_.task_environment().FastForwardBy(
       CarrierEntitlement::kBackgroundCheckPeriod + base::Seconds(1));
   VerifyAllExpectations();
@@ -367,6 +415,8 @@ TEST_F(CarrierEntitlementTestGet, CheckAllowed) {
   ExpectCreateConnection(kGet, "");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
+  EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
+                            Metrics::kCellularEntitlementCheckAllowed));
   carrier_entitlement_->Check(ip_address_, {}, config_);
 }
 
@@ -382,6 +432,8 @@ TEST_F(CarrierEntitlementTestWithImsi, CheckAllowed) {
   ExpectCreateConnection(kPost, "{\"imsi\":\"001010000000004\"}");
   ExpectFinishRequestAsyncSuccess("", brillo::http::status_code::Ok);
   EXPECT_CALL(check_cb_, Run(CarrierEntitlement::Result::kAllowed));
+  EXPECT_CALL(metrics_, NotifyCellularEntitlementCheckResult(
+                            Metrics::kCellularEntitlementCheckAllowed));
   carrier_entitlement_->Check(ip_address_, {}, config_);
 }
 

@@ -1119,6 +1119,11 @@ void Metrics::NotifyDetailedCellularConnectionResult(
   event.Record();
 }
 
+void Metrics::NotifyCellularEntitlementCheckResult(
+    Metrics::CellularEntitlementCheck result) {
+  SendEnumToUMA(kMetricCellularEntitlementCheck, result);
+}
+
 void Metrics::NotifyUserInitiatedConnectionFailureReason(
     const Service::ConnectFailure failure) {
   UserInitiatedConnectionFailureReason reason;

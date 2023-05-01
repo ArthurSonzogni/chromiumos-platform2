@@ -357,6 +357,8 @@ void CellularServiceProvider::TetheringEntitlementCheck(
   const auto cellular_service = GetActiveService();
   if (!cellular_service || !cellular_service->cellular()) {
     SLOG(3) << __func__ << " cellular device doesn't exist";
+    manager_->metrics()->NotifyCellularEntitlementCheckResult(
+        Metrics::kCellularEntitlementCheckNoCellularDevice);
     std::move(callback).Run(
         TetheringManager::EntitlementStatus::kUpstreamNetworkNotAvailable);
     return;

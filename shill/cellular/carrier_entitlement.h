@@ -25,6 +25,7 @@
 namespace shill {
 
 class EventDispatcher;
+class Metrics;
 
 // The CarrierEntitlement class implements the carrier entitlement check
 // functionality in shill, which is responsible for connecting to a remote
@@ -45,6 +46,7 @@ class CarrierEntitlement {
   };
 
   explicit CarrierEntitlement(EventDispatcher* dispatcher,
+                              Metrics* metrics,
                               base::RepeatingCallback<void(Result)> check_cb);
   CarrierEntitlement(const CarrierEntitlement&) = delete;
   CarrierEntitlement& operator=(const CarrierEntitlement&) = delete;
@@ -100,6 +102,7 @@ class CarrierEntitlement {
   void SendResult(Result result);
 
   EventDispatcher* dispatcher_;
+  Metrics* metrics_;
   base::RepeatingCallback<void(Result)> check_cb_;
   MobileOperatorMapper::EntitlementConfig config_;
   std::shared_ptr<brillo::http::Transport> transport_;
