@@ -38,7 +38,7 @@ ModemInfo::~ModemInfo() {
 }
 
 void ModemInfo::Start() {
-  SLOG(1) << __func__;
+  LOG(INFO) << __func__;
 
   pending_activation_store_.reset(new PendingActivationStore());
   pending_activation_store_->InitStorage(manager_->storage_path());
@@ -48,7 +48,7 @@ void ModemInfo::Start() {
 }
 
 void ModemInfo::Stop() {
-  SLOG(1) << __func__;
+  LOG(INFO) << __func__;
   pending_activation_store_.reset();
   proxy_.reset();
   Disconnect();
@@ -86,7 +86,7 @@ std::unique_ptr<Modem> ModemInfo::CreateModem(
 }
 
 void ModemInfo::Connect() {
-  SLOG(1) << __func__;
+  LOG(INFO) << __func__;
   service_connected_ = true;
   CHECK(proxy_);
   proxy_->GetManagedObjects(base::BindOnce(&ModemInfo::OnGetManagedObjectsReply,
@@ -94,6 +94,7 @@ void ModemInfo::Connect() {
 }
 
 void ModemInfo::Disconnect() {
+  LOG(INFO) << __func__;
   modems_.clear();
   service_connected_ = false;
 }
@@ -109,30 +110,30 @@ void ModemInfo::AddModem(const RpcIdentifier& path,
     LOG(WARNING) << "Modem " << path.value() << " already exists.";
     return;
   }
-  SLOG(1) << __func__ << ": " << path.value();
+  LOG(INFO) << __func__ << ": " << path.value();
   std::unique_ptr<Modem> modem = CreateModem(path, properties);
   modems_[modem->path()] = std::move(modem);
 }
 
 void ModemInfo::RemoveModem(const RpcIdentifier& path) {
-  SLOG(1) << __func__ << ": " << path.value();
+  LOG(INFO) << __func__ << ": " << path.value();
   CHECK(service_connected_);
   modems_.erase(path);
 }
 
 void ModemInfo::OnAppeared() {
-  SLOG(1) << __func__;
+  LOG(INFO) << __func__;
   Connect();
 }
 
 void ModemInfo::OnVanished() {
-  SLOG(1) << __func__;
+  LOG(INFO) << __func__;
   Disconnect();
 }
 
 void ModemInfo::OnInterfacesAddedSignal(
     const RpcIdentifier& object_path, const InterfaceToProperties& properties) {
-  SLOG(2) << __func__ << ": " << object_path.value();
+  LOG(INFO) << __func__ << ": " << object_path.value();
   if (!base::Contains(properties, MM_DBUS_INTERFACE_MODEM)) {
     LOG(ERROR) << "Interfaces added, but not modem interface.";
     return;
@@ -143,7 +144,7 @@ void ModemInfo::OnInterfacesAddedSignal(
 void ModemInfo::OnInterfacesRemovedSignal(
     const RpcIdentifier& object_path,
     const std::vector<std::string>& interfaces) {
-  SLOG(2) << __func__ << ": " << object_path.value();
+  LOG(INFO) << __func__ << ": " << object_path.value();
   if (!base::Contains(interfaces, MM_DBUS_INTERFACE_MODEM)) {
     // In theory, a modem could drop, say, 3GPP, but not CDMA.  In
     // practice, we don't expect this.
@@ -155,11 +156,11 @@ void ModemInfo::OnInterfacesRemovedSignal(
 
 void ModemInfo::OnGetManagedObjectsReply(const ObjectsWithProperties& objects,
                                          const Error& error) {
+  LOG(INFO) << __func__ << ": " << error.IsSuccess();
   if (!error.IsSuccess()) {
     error.Log();
     return;
   }
-  SLOG(2) << __func__;
   for (const auto& object_properties_pair : objects) {
     OnInterfacesAddedSignal(object_properties_pair.first,
                             object_properties_pair.second);
