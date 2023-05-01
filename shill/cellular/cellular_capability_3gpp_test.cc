@@ -399,17 +399,15 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   }
 
   void StartModem(Error* error) {
-    base::RunLoop run_loop;
-    capability_->StartModem(
-        base::BindRepeating(&SetErrorAndReturn, run_loop.QuitClosure(), error));
-    run_loop.Run();
+    base::test::TestFuture<Error> e;
+    capability_->StartModem(GetResultCallback(&e));
+    *error = e.Get();
   }
 
   void StopModem(Error* error) {
-    base::RunLoop run_loop;
-    capability_->StopModem(
-        base::BindOnce(&SetErrorAndReturn, run_loop.QuitClosure(), error));
-    run_loop.Run();
+    base::test::TestFuture<Error> e;
+    capability_->StopModem(GetResultCallback(&e));
+    *error = e.Get();
   }
 
   void InitProxies() { capability_->InitProxies(); }
@@ -1392,20 +1390,14 @@ TEST_F(CellularCapability3gppTest, Reset) {
   // is in progress.
   EXPECT_CALL(*modem_proxy, Reset(_, _))
       .WillOnce(WithArg<0>(Invoke([this](ResultCallback callback) {
-        // Error is not movable or copyable, making this weird.
-        auto return_success = [](ResultCallback callback) {
-          std::move(callback).Run(Error(Error::kSuccess));
-        };
-        dispatcher_.PostTask(
-            FROM_HERE, base::BindOnce(return_success, std::move(callback)));
+        dispatcher_.PostTask(FROM_HERE, base::BindOnce(std::move(callback),
+                                                       Error(Error::kSuccess)));
       })));
 
-  base::RunLoop run_loop;
-  Error error;
-  capability_->Reset(
-      base::BindRepeating(&SetErrorAndReturn, run_loop.QuitClosure(), &error));
+  base::test::TestFuture<Error> error;
+  capability_->Reset(GetResultCallback(&error));
   EXPECT_TRUE(capability_->resetting_);
-  run_loop.Run();
+  EXPECT_TRUE(error.Wait());
   EXPECT_FALSE(capability_->resetting_);
 }
 
