@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"            // NOLINT(build/include_directory)
-#include "sommelier-transform.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"             // NOLINT(build/include_directory)
+#include "sommelier-transform.h"   // NOLINT(build/include_directory)
+#include "sommelier-inpututils.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <math.h>
@@ -40,6 +41,8 @@ struct sl_host_touch {
   struct wl_resource* focus_resource;
   struct sl_host_surface* focus_surface;
   struct wl_listener focus_resource_listener;
+  // TODO(b/281760854): This is needed for translating stylus to tablet events.
+  struct sl_touchrecorder* recorder;
 };
 
 static void sl_host_pointer_set_cursor(struct wl_client* client,
@@ -541,8 +544,7 @@ static void sl_host_touch_down(void* data,
                                int32_t id,
                                wl_fixed_t x,
                                wl_fixed_t y) {
-  struct sl_host_touch* host =
-      static_cast<sl_host_touch*>(wl_touch_get_user_data(touch));
+  struct sl_host_touch* host = static_cast<sl_host_touch*>(data);
   struct sl_host_surface* host_surface =
       surface ? static_cast<sl_host_surface*>(wl_surface_get_user_data(surface))
               : NULL;
@@ -583,8 +585,7 @@ static void sl_host_touch_up(void* data,
                              uint32_t serial,
                              uint32_t time,
                              int32_t id) {
-  struct sl_host_touch* host =
-      static_cast<sl_host_touch*>(wl_touch_get_user_data(touch));
+  struct sl_host_touch* host = static_cast<sl_host_touch*>(data);
 
   wl_list_remove(&host->focus_resource_listener.link);
   wl_list_init(&host->focus_resource_listener.link);
@@ -604,8 +605,7 @@ static void sl_host_touch_motion(void* data,
                                  int32_t id,
                                  wl_fixed_t x,
                                  wl_fixed_t y) {
-  struct sl_host_touch* host =
-      static_cast<sl_host_touch*>(wl_touch_get_user_data(touch));
+  struct sl_host_touch* host = static_cast<sl_host_touch*>(data);
   wl_fixed_t ix = x;
   wl_fixed_t iy = y;
 
@@ -615,15 +615,13 @@ static void sl_host_touch_motion(void* data,
 }
 
 static void sl_host_touch_frame(void* data, struct wl_touch* touch) {
-  struct sl_host_touch* host =
-      static_cast<sl_host_touch*>(wl_touch_get_user_data(touch));
+  struct sl_host_touch* host = static_cast<sl_host_touch*>(data);
 
   wl_touch_send_frame(host->resource);
 }
 
 static void sl_host_touch_cancel(void* data, struct wl_touch* touch) {
-  struct sl_host_touch* host =
-      static_cast<sl_host_touch*>(wl_touch_get_user_data(touch));
+  struct sl_host_touch* host = static_cast<sl_host_touch*>(data);
 
   wl_touch_send_cancel(host->resource);
 }
@@ -631,6 +629,18 @@ static void sl_host_touch_cancel(void* data, struct wl_touch* touch) {
 static const struct wl_touch_listener sl_touch_listener = {
     sl_host_touch_down, sl_host_touch_up, sl_host_touch_motion,
     sl_host_touch_frame, sl_host_touch_cancel};
+
+static void sl_host_touch_recorder_frame(void* data,
+                                         struct sl_touchrecorder* recorder) {
+  sl_touchrecorder_replay_to_listener(recorder, &sl_touch_listener, data);
+}
+
+static void sl_host_touch_recorder_cancel(void* data,
+                                          struct sl_touchrecorder* recorder) {
+  struct sl_host_touch* host = static_cast<sl_host_touch*>(data);
+
+  wl_touch_send_cancel(host->resource);
+}
 
 static void sl_destroy_host_pointer(struct wl_resource* resource) {
   struct sl_host_pointer* host =
@@ -766,6 +776,9 @@ static void sl_destroy_host_touch(struct wl_resource* resource) {
   } else {
     wl_touch_destroy(host->proxy);
   }
+
+  sl_touchrecorder_destroy(host->recorder);
+
   wl_resource_set_user_data(resource, NULL);
   delete host;
 }
@@ -794,7 +807,9 @@ static void sl_host_seat_get_host_touch(struct wl_client* client,
   wl_resource_set_implementation(host_touch->resource, &sl_touch_implementation,
                                  host_touch, sl_destroy_host_touch);
   host_touch->proxy = wl_seat_get_touch(host->proxy);
-  wl_touch_add_listener(host_touch->proxy, &sl_touch_listener, host_touch);
+  host_touch->recorder =
+      sl_touchrecorder_attach(host_touch->proxy, sl_host_touch_recorder_frame,
+                              sl_host_touch_recorder_cancel, host_touch);
   wl_list_init(&host_touch->focus_resource_listener.link);
   host_touch->focus_resource_listener.notify =
       sl_touch_focus_resource_destroyed;

@@ -106,6 +106,7 @@ static_library("libsommelier") {
     "sommelier-display.cc",
     "sommelier-global.cc",
     "sommelier-gtk-shell.cc",
+    "sommelier-inpututils.cc",
     "sommelier-output.cc",
     "sommelier-pointer-constraints.cc",
     "sommelier-relative-pointer-manager.cc",
