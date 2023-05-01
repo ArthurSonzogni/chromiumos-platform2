@@ -59,7 +59,7 @@ class CrostiniService {
   ~CrostiniService();
 
   bool Start(uint64_t vm_id, bool is_termina, uint32_t subnet_index);
-  void Stop(uint64_t vm_id, bool is_termina);
+  void Stop(uint64_t vm_id);
 
   // Returns a single Device pointer created for the VM with id |vm_id|.
   const Device* const GetDevice(uint64_t vm_id) const;

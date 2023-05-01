@@ -616,7 +616,7 @@ void Manager::StopCrosVm(uint64_t vm_id, GuestMessage::GuestType vm_type) {
   msg.set_type(vm_type);
   SendGuestMessage(msg);
 
-  cros_svc_->Stop(vm_id, vm_type == GuestMessage::TERMINA_VM);
+  cros_svc_->Stop(vm_id);
 }
 
 std::unique_ptr<dbus::Response> Manager::OnGetDevices(

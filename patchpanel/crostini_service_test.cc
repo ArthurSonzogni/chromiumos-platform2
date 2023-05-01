@@ -98,7 +98,7 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
   ASSERT_EQ("vmtap0", device->host_ifname());
 
   // The virtual datapath for the Crostini VM can successfully stop.
-  crostini->Stop(vm_id, /*is_termina=*/true);
+  crostini->Stop(vm_id);
   it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
   ASSERT_EQ(Device::ChangeEvent::kRemoved, it->second);
@@ -140,7 +140,7 @@ TEST_F(CrostiniServiceTest, StartStopParallelVM) {
   ASSERT_EQ("vmtap0", device->host_ifname());
 
   // The virtual datapath for the Parallel VM can successfully stop.
-  crostini->Stop(vm_id, /*is_termina=*/false);
+  crostini->Stop(vm_id);
   it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
   ASSERT_EQ(Device::ChangeEvent::kRemoved, it->second);
@@ -230,7 +230,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   }
 
   // Stop first Crostini VM. Its virtual device is destroyed.
-  crostini->Stop(vm_id1, /*is_termina=*/true);
+  crostini->Stop(vm_id1);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id1));
   it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
@@ -238,7 +238,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   guest_devices_.clear();
 
   // Stop second Crostini VM. Its virtual device is destroyed.
-  crostini->Stop(vm_id3, /*is_termina=*/true);
+  crostini->Stop(vm_id3);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id3));
   it = guest_devices_.find("vmtap2");
   ASSERT_NE(guest_devices_.end(), it);
@@ -246,7 +246,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   guest_devices_.clear();
 
   // Stop Plugin VM. Its virtual device is destroyed.
-  crostini->Stop(vm_id2, /*is_termina=*/false);
+  crostini->Stop(vm_id2);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id2));
   it = guest_devices_.find("vmtap1");
   ASSERT_NE(guest_devices_.end(), it);

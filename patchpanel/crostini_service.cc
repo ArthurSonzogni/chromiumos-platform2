@@ -96,24 +96,30 @@ bool CrostiniService::Start(uint64_t vm_id,
   return true;
 }
 
-void CrostiniService::Stop(uint64_t vm_id, bool is_termina) {
+void CrostiniService::Stop(uint64_t vm_id) {
   const auto it = taps_.find(vm_id);
   if (it == taps_.end()) {
     LOG(WARNING) << "Unknown {id: " << vm_id << "}";
     return;
   }
 
-  device_changed_handler_.Run(
-      *it->second, Device::ChangeEvent::kRemoved,
-      is_termina ? GuestMessage::TERMINA_VM : GuestMessage::PLUGIN_VM);
+  auto vm_type = VMTypeFromGuestType(it->second->type());
+  if (!vm_type) {
+    LOG(ERROR) << "Unexpected GuestType " << it->second->type()
+               << " for TAP Device of VM " << vm_id;
+    return;
+  }
 
+  device_changed_handler_.Run(*it->second, Device::ChangeEvent::kRemoved,
+                              GuestMessageTypeFromVMType(*vm_type));
   const auto& ifname = it->second->host_ifname();
-  auto source = is_termina ? TrafficSource::kCrosVM : TrafficSource::kPluginVM;
   datapath_->StopRoutingDevice("", ifname,
-                               it->second->config().host_ipv4_addr(), source,
+                               it->second->config().host_ipv4_addr(),
+                               TrafficSourceFromVMType(*vm_type),
                                /*route_on_vpn=*/true);
-  if (adb_sideloading_enabled_)
+  if (adb_sideloading_enabled_) {
     StopAdbPortForwarding(ifname);
+  }
   datapath_->RemoveInterface(ifname);
   taps_.erase(vm_id);
 
