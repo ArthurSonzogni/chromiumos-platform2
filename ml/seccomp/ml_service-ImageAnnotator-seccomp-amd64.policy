@@ -8,6 +8,7 @@
 # rseq should be first due to frequency and purpose to decrease nptl latency
 rseq: 1
 
+access: 1
 brk: 1
 clock_gettime: 1
 clock_nanosleep: 1
@@ -62,6 +63,7 @@ sendmsg: 1
 sendto: 1
 set_robust_list: 1
 setresuid: 1
+shutdown: 1
 sysinfo: 1
 
 # for lazy evaluation of brillo::InitLog(), which is called in the control
