@@ -395,6 +395,26 @@ TEST_F(EffectsStreamManipulatorTest,
   EXPECT_TRUE(CompareFrames(ref_buffer, output_buffer_));
 }
 
+TEST_F(EffectsStreamManipulatorTest, OpenCLCacheStartup) {
+  mojom::EffectsConfigPtr config = mojom::EffectsConfig::New();
+  config->blur_enabled = true;
+  config->replace_enabled = true;
+
+  runtime_options_.SetEffectsConfig(std::move(config));
+
+  stream_manipulator_ = EffectsStreamManipulator::Create(
+      config_path_, &runtime_options_,
+      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
+  stream_manipulator_->Initialize(
+      nullptr,
+      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
+                                   .notify_callback = base::DoNothing()});
+  stream_manipulator_->ConfigureStreams(&stream_config_, &stream_effects_map_);
+
+  ConfigureStreams(&yuv_720_stream);
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
+  WaitForEffectSetAndReset();
+}
 }  // namespace cros::tests
 
 int main(int argc, char** argv) {
