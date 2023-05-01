@@ -80,9 +80,6 @@ class ChromeosStartup {
                               bool is_recursive,
                               bool set_digests));
 
-  // Mount efivarfs if it's supported.
-  void MaybeMountEfivarfs();
-
   // Run the chromeos startup routine.
   int Run();
 

@@ -39,6 +39,7 @@
 #include "init/startup/standard_mount_helper.h"
 #include "init/startup/stateful_mount.h"
 #include "init/startup/test_mode_mount_helper.h"
+#include "init/startup/uefi_startup.h"
 #include "init/utils.h"
 
 namespace {
@@ -67,11 +68,6 @@ constexpr char kKernelConfig[] = "kernel/config";
 constexpr char kKernelDebug[] = "kernel/debug";
 constexpr char kKernelSecurity[] = "kernel/security";
 constexpr char kKernelTracing[] = "kernel/tracing";
-
-// The name of the filesystem for accessing UEFI variables.
-constexpr char kEfivarfs[] = "efivarfs";
-// Where the filesystem for accessing UEFI variables is mounted.
-constexpr char kSysFirmwareEfiEfivars[] = "sys/firmware/efi/efivars";
 
 constexpr char kTpmSimulator[] = "etc/init/tpm2-simulator.conf";
 
@@ -540,20 +536,6 @@ void ChromeosStartup::MoveToLibDeviceSettings() {
   }
 }
 
-// Mount /sys/firmware/efi/efivarfs, if supported.
-void ChromeosStartup::MaybeMountEfivarfs() {
-  // If we're sure this is a supported filesystem (failure to check is
-  // interpreted as "unsupported").
-  if (IsSupportedFilesystem(kEfivarfs, root_)) {
-    const base::FilePath efivars = root_.Append(kSysFirmwareEfiEfivars);
-    if (!platform_->Mount(kEfivarfs, efivars, kEfivarfs, kCommonMountFlags,
-                          "")) {
-      // TODO(b/232901639): Improve failure reporting.
-      PLOG(WARNING) << "Unable to mount " << efivars.value();
-    }
-  }
-}
-
 // Create daemon store folders.
 // See
 // https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md#securely-mounting-daemon-store-folders.
@@ -792,7 +774,7 @@ int ChromeosStartup::Run() {
 
   MoveToLibDeviceSettings();
 
-  MaybeMountEfivarfs();
+  MaybeRunUefiStartup(*UefiDelegate::Create(*platform_, root_));
 
   // /run is tmpfs used for runtime data. Make sure /var/run and /var/lock
   // are bind-mounted to /run and /run/lock respectively for backwards
