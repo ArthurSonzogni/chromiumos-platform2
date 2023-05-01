@@ -16,6 +16,7 @@
 #include "shill/store/key_value_store.h"
 
 #include <base/logging.h>
+#include <base/test/test_future.h>
 
 namespace shill {
 
@@ -78,6 +79,9 @@ class SetErrorTypeInArgumentAction {
 void SetErrorAndReturn(base::RepeatingClosure quit_closure,
                        Error* to_return,
                        const Error& error);
+
+base::OnceCallback<void(const Error&)> GetResultCallback(
+    base::test::TestFuture<Error>* e);
 
 // Helper function to set the enabled state of devices synchronously.
 void SetEnabledSync(Device* device, bool enable, bool persist, Error* error);

@@ -20,6 +20,13 @@ void SetErrorAndReturn(base::RepeatingClosure quit_closure,
   quit_closure.Run();
 }
 
+base::OnceCallback<void(const Error&)> GetResultCallback(
+    base::test::TestFuture<Error>* e) {
+  return base::BindOnce([](base::OnceCallback<void(Error)> future_cb,
+                           const Error& e) { std::move(future_cb).Run(e); },
+                        e->GetCallback());
+}
+
 void SetEnabledSync(Device* device, bool enable, bool persist, Error* error) {
   CHECK(device);
   CHECK(error);

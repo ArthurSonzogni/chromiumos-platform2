@@ -17,7 +17,7 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
-#include <base/run_loop.h>
+#include <base/test/test_future.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
@@ -554,13 +554,10 @@ TEST_F(DeviceTest, StartProhibited) {
 }
 
 TEST_F(DeviceTest, Reset) {
-  base::RunLoop run_loop;
-  Error e;
-  device_->Reset(
-      base::BindRepeating(&SetErrorAndReturn, run_loop.QuitClosure(), &e));
-  run_loop.Run();
+  base::test::TestFuture<Error> e;
+  device_->Reset(GetResultCallback(&e));
 
-  EXPECT_EQ(Error::kNotImplemented, e.type());
+  EXPECT_EQ(Error::kNotImplemented, e.Get().type());
 }
 
 TEST_F(DeviceTest, Resume) {

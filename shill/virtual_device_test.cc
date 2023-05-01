@@ -8,8 +8,8 @@
 #include <linux/if.h>  // NOLINT - Needs typedefs from sys/socket.h.
 #include <utility>
 
-#include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/test/test_future.h>
 #include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"
@@ -75,26 +75,17 @@ TEST_F(VirtualDeviceTest, Save) {
 }
 
 TEST_F(VirtualDeviceTest, Start) {
-  Error error;
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, IFF_UP, IFF_UP));
 
-  base::RunLoop run_loop;
-  device_->Start(
-      base::BindOnce(&SetErrorAndReturn, run_loop.QuitClosure(), &error));
-  run_loop.Run();
-
-  EXPECT_TRUE(error.IsSuccess());
+  base::test::TestFuture<Error> error;
+  device_->Start(GetResultCallback(&error));
+  EXPECT_TRUE(error.Get().IsSuccess());
 }
 
 TEST_F(VirtualDeviceTest, Stop) {
-  Error error;
-
-  base::RunLoop run_loop;
-  device_->Stop(
-      base::BindOnce(&SetErrorAndReturn, run_loop.QuitClosure(), &error));
-  run_loop.Run();
-
-  EXPECT_TRUE(error.IsSuccess());
+  base::test::TestFuture<Error> error;
+  device_->Stop(GetResultCallback(&error));
+  EXPECT_TRUE(error.Get().IsSuccess());
 }
 
 }  // namespace shill
