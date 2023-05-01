@@ -40,6 +40,7 @@
 #include <base/task/task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/thread_annotations.h>
+#include <base/time/time.h>
 #include <crypto/random.h>
 #include <crypto/sha2.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
@@ -62,6 +63,10 @@
 namespace reporting {
 
 namespace {
+
+// Init retry parameters.
+constexpr size_t kRetries = 5u;
+constexpr base::TimeDelta kBackOff = base::Seconds(1);
 
 // Storage queue generation id reset UMA metric name.
 constexpr char kStorageQueueGenerationIdResetUma[] =
@@ -145,9 +150,10 @@ void StorageQueue::Create(
     std::string generation_guid,
     const QueueOptions& options,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-    DegradationCandidateCb degradation_candidates_cb,
+    DegradationCandidatesCb degradation_candidates_cb,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module,
+    InitRetryCb init_retry_cb,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageQueue>>)>
         completion_cb) {
   // Initialize StorageQueue object loading the data.
@@ -156,11 +162,13 @@ void StorageQueue::Create(
    public:
     StorageQueueInitContext(
         scoped_refptr<StorageQueue> storage_queue,
+        InitRetryCb init_retry_cb,
         base::OnceCallback<void(StatusOr<scoped_refptr<StorageQueue>>)>
             callback)
         : TaskRunnerContext<StatusOr<scoped_refptr<StorageQueue>>>(
               std::move(callback), storage_queue->sequenced_task_runner_),
-          storage_queue_(std::move(storage_queue)) {
+          storage_queue_(std::move(storage_queue)),
+          init_retry_cb_(init_retry_cb) {
       DCHECK(storage_queue_);
     }
 
@@ -168,16 +176,34 @@ void StorageQueue::Create(
     // Context can only be deleted by calling Response method.
     ~StorageQueueInitContext() override = default;
 
-    void OnStart() override {
+    void OnStart() override { Attempt(kRetries); }
+
+    void Attempt(size_t retries) {
       auto init_status = storage_queue_->Init();
       if (!init_status.ok()) {
-        Response(StatusOr<scoped_refptr<StorageQueue>>(init_status));
+        if (retries <= 0) {
+          // No more retry attempts.
+          Response(init_status);
+          return;
+        }
+        const auto backoff_result = init_retry_cb_.Run(init_status, retries);
+        if (!backoff_result.ok()) {
+          // Retry not allowed.
+          Response(backoff_result.status());
+          return;
+        }
+        // Back off and retry. Some of the errors could be transient.
+        ScheduleAfter(backoff_result.ValueOrDie(),
+                      &StorageQueueInitContext::Attempt, base::Unretained(this),
+                      retries - 1);
         return;
       }
+      // Success.
       Response(std::move(storage_queue_));
     }
 
     scoped_refptr<StorageQueue> storage_queue_;
+    const InitRetryCb init_retry_cb_;
   };
 
   auto sequenced_task_runner = base::ThreadPool::CreateSequencedTaskRunner(
@@ -194,7 +220,7 @@ void StorageQueue::Create(
           compression_module));
 
   // Asynchronously run initialization.
-  Start<StorageQueueInitContext>(std::move(storage_queue),
+  Start<StorageQueueInitContext>(std::move(storage_queue), init_retry_cb,
                                  std::move(completion_cb));
 }
 
@@ -203,7 +229,7 @@ StorageQueue::StorageQueue(
     scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
     const QueueOptions& options,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-    DegradationCandidateCb degradation_candidates_cb,
+    DegradationCandidatesCb degradation_candidates_cb,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module)
     : base::RefCountedDeleteOnSequence<StorageQueue>(sequenced_task_runner),
@@ -318,6 +344,15 @@ Status StorageQueue::Init() {
                        base::DoNothing(), this);
   }
   return Status::StatusOK();
+}
+
+// static
+StatusOr<base::TimeDelta> StorageQueue::MaybeBackoffAndReInit(
+    Status init_status, size_t retry_count) {
+  // For now we just back off and retry, regardless of the `init_status`.
+  // Later on we may add filter out certain cases and assign delay based on
+  // `retry_count`.
+  return kBackOff;
 }
 
 std::optional<std::string> StorageQueue::GetLastRecordDigest() const {

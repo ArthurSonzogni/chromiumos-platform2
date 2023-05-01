@@ -20,6 +20,7 @@
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
 #include <base/thread_annotations.h>
+#include <base/time/time.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -162,6 +163,10 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
             }),
         test_encryption_module,
         base::MakeRefCounted<test::TestCompressionModule>(),
+        base::BindRepeating([](Status init_status, size_t retry_count)
+                                -> StatusOr<base::TimeDelta> {
+          return init_status;  // Do not allow initialization retries.
+        }),
         storage_queue_create_event.cb());
     StatusOr<scoped_refptr<StorageQueue>> storage_queue_result =
         storage_queue_create_event.result();

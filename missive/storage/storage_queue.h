@@ -18,6 +18,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/ref_counted_delete_on_sequence.h>
 #include <base/memory/scoped_refptr.h>
@@ -26,6 +27,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/thread_annotations.h>
 #include <base/threading/thread.h>
+#include <base/time/time.h>
 #include <base/timer/timer.h>
 
 #include "missive/compression/compression_module.h"
@@ -84,10 +86,24 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     kMaxValue = 14
   };
 
-  using DegradationCandidateCb = base::RepeatingCallback<void(
+  // Declaration of a callback to be used under disk space stress, to get a
+  // queue of `StorageQueue`s that can be used by controlled degradation.
+  using DegradationCandidatesCb = base::RepeatingCallback<void(
       scoped_refptr<StorageQueue> queue,
       base::OnceCallback<void(std::queue<scoped_refptr<StorageQueue>>)>
           result_cb)>;
+
+  // Declaration of a callback to be invoked when `StorageQueue::Init` fails, to
+  // determine whether we should just accept a failure or to back off and retry.
+  // The callback returns delay value if `Init` can be retried, or Status
+  // otherwise. Made virtual to enable override in tests.
+  // Parameters:
+  // - `init_status` - status returned by `Init`
+  // - `retry_count` - number of retries we still have left
+  // `StorageQueue::MaybeBackoffAndRetryInit` is the prod implementation,
+  // which is used by `Storage`.
+  using InitRetryCb = base::RepeatingCallback<StatusOr<base::TimeDelta>(
+      Status init_status, size_t retry_count)>;
 
   // UMA name
   static constexpr char kResourceExhaustedCaseUmaName[] =
@@ -102,9 +118,10 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
       GenerationGuid generation_guid,
       const QueueOptions& options,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-      DegradationCandidateCb degradation_candidates_cb,
+      DegradationCandidatesCb degradation_candidates_cb,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
       scoped_refptr<CompressionModule> compression_module,
+      InitRetryCb init_retry_cb,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageQueue>>)>
           completion_cb);
 
@@ -177,6 +194,16 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // error status.
   static StatusOr<int64_t> GetFileSequenceIdFromPath(
       const base::FilePath& file_name);
+
+  // Determines whether failure to initialize the queue should result in retry.
+  // Prod implementation; tests could use other methods.
+  // Parameters:
+  // - `init_status` - status returned by `Init`
+  // - `retry_count` - number of retries we still have left
+  // `StorageQueue::MaybeBackoffAndRetryInit` is the prod implementation,
+  // which is used by `Storage`.
+  static StatusOr<base::TimeDelta> MaybeBackoffAndReInit(Status init_status,
+                                                         size_t retry_count);
 
   // Accessors.
   const QueueOptions& options() const { return options_; }
@@ -287,7 +314,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
                scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
                const QueueOptions& options,
                UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
-               DegradationCandidateCb degradation_candidates_cb,
+               DegradationCandidatesCb degradation_candidates_cb,
                scoped_refptr<EncryptionModuleInterface> encryption_module,
                scoped_refptr<CompressionModule> compression_module);
 
@@ -525,7 +552,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
 
   // Degradation queues request callback.
-  const DegradationCandidateCb degradation_candidates_cb_;
+  const DegradationCandidatesCb degradation_candidates_cb_;
 
   // Encryption module.
   scoped_refptr<EncryptionModuleInterface> encryption_module_;

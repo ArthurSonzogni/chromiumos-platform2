@@ -13,22 +13,25 @@
 #include <vector>
 
 #include <base/containers/flat_map.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
 #include <base/threading/sequence_bound.h>
+#include <base/time/time.h>
+#include <brillo/files/file_util.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "base/files/file_enumerator.h"
-#include "base/functional/bind.h"
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/metrics_test_util.h"
 #include "missive/compression/compression_module.h"
@@ -625,7 +628,12 @@ class StorageQueueTest
   // Tries to create a new storage queue by building the test encryption module
   // and returns the corresponding result of the operation.
   StatusOr<scoped_refptr<StorageQueue>> CreateTestStorageQueue(
-      const QueueOptions& options) {
+      const QueueOptions& options,
+      StorageQueue::InitRetryCb init_retry_cb = base::BindRepeating(
+          [](Status init_status,
+             size_t retry_count) -> StatusOr<base::TimeDelta> {
+            return init_status;  // Do not allow initialization retries.
+          })) {
     CreateTestEncryptionModuleOrDie();
     test::TestEvent<StatusOr<scoped_refptr<StorageQueue>>>
         storage_queue_create_event;
@@ -643,8 +651,7 @@ class StorageQueueTest
         test_encryption_module_,
         CompressionModule::Create(/*is_enabled=*/true, kCompressionThreshold,
                                   kCompressionType),
-        storage_queue_create_event.cb());
-
+        init_retry_cb, storage_queue_create_event.cb());
     return storage_queue_create_event.result();
   }
 
@@ -1107,7 +1114,7 @@ TEST_P(
     ASSERT_TRUE(dir_enum.Next().empty())
         << full_name << " is not the last metadata file in "
         << options.directory();
-    ASSERT_TRUE(base::DeleteFile(full_name))
+    ASSERT_TRUE(brillo::DeleteFile(full_name))
         << "Failed to delete " << full_name;
   }
 
@@ -2226,6 +2233,52 @@ TEST_P(StorageQueueTest, CreateStorageQueueInvalidOptionsPath) {
       CreateTestStorageQueue(BuildStorageQueueOptionsPeriodic());
   EXPECT_FALSE(queue_result.ok());
   EXPECT_EQ(queue_result.status().error_code(), error::UNAVAILABLE);
+}
+
+TEST_P(StorageQueueTest, CreateStorageQueueAllRetriesFail) {
+  options_.set_directory(base::FilePath(kInvalidDirectoryPath));
+  auto init_retry_cb = base::BindRepeating(
+      [](base::RepeatingCallback<void(base::TimeDelta)> forward_cb,
+         Status init_status, size_t retry_count) -> StatusOr<base::TimeDelta> {
+        forward_cb.Run(base::Seconds(1));
+        return base::Seconds(1);  // Retry allowed
+      },
+      base::BindPostTaskToCurrentDefault(
+          base::BindRepeating(&base::test::TaskEnvironment::FastForwardBy,
+                              base::Unretained(&task_environment_))));
+  StatusOr<scoped_refptr<StorageQueue>> queue_result =
+      CreateTestStorageQueue(BuildStorageQueueOptionsPeriodic(), init_retry_cb);
+  EXPECT_FALSE(queue_result.ok());
+  EXPECT_EQ(queue_result.status().error_code(), error::UNAVAILABLE);
+}
+
+TEST_P(StorageQueueTest, CreateStorageQueueRetry) {
+  // Create a file instead of directory, to make StorageQueue initialization
+  // fail.
+  base::FilePath bad_file;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(options_.directory(), &bad_file));
+  const QueueOptions queue_options =
+      BuildStorageQueueOptionsPeriodic().set_subdirectory(
+          bad_file.BaseName().MaybeAsASCII());
+  // Allow the retries with backoff several times, and the last time delete the
+  // file.
+  auto init_retry_cb = base::BindRepeating(
+      [](base::RepeatingCallback<void(base::TimeDelta)> forward_cb,
+         const base::FilePath& bad_file, Status init_status,
+         size_t retry_count) -> StatusOr<base::TimeDelta> {
+        if (retry_count == 1) {  // Last attempt.
+          EXPECT_TRUE(brillo::DeleteFile(bad_file));
+        }
+        forward_cb.Run(base::Seconds(1));
+        return base::Seconds(1);
+      },
+      base::BindPostTaskToCurrentDefault(
+          base::BindRepeating(&base::test::TaskEnvironment::FastForwardBy,
+                              base::Unretained(&task_environment_))),
+      bad_file);
+  StatusOr<scoped_refptr<StorageQueue>> queue_result =
+      CreateTestStorageQueue(queue_options, init_retry_cb);
+  EXPECT_OK(queue_result) << queue_result.status();
 }
 
 TEST_P(StorageQueueTest, WriteRecordDataWithInsufficientDiskSpaceFailure) {

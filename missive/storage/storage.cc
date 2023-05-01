@@ -163,6 +163,7 @@ void Storage::Create(
                                     storage_->queues_container_->GetWeakPtr(),
                                     /*priority=*/queue_options.first)),
             storage_->encryption_module_, storage_->compression_module_,
+            base::BindRepeating(&StorageQueue::MaybeBackoffAndReInit),
             base::BindPostTaskToCurrentDefault(base::BindOnce(
                 &StorageInitContext::AddQueue, base::Unretained(this),
                 /*priority=*/queue_options.first)));

@@ -116,6 +116,7 @@ class CreateQueueContext : public TaskRunnerContext<StatusOr<GenerationGuid>> {
                                 storage_->queues_container_->GetWeakPtr(),
                                 priority)),
         storage_->encryption_module_, storage_->compression_module_,
+        base::BindRepeating(&StorageQueue::MaybeBackoffAndReInit),
         base::BindPostTaskToCurrentDefault(base::BindOnce(
             &CreateQueueContext::AddQueue, base::Unretained(this),
             /*priority=*/priority)));
