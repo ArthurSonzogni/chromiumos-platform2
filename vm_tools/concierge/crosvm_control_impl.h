@@ -45,7 +45,10 @@ class CrosvmControlImpl : public CrosvmControl {
                     uint64_t* actual) override;
   bool EnableVmmSwap(const char* socket_path) override;
   bool VmmSwapOut(const char* socket_path) override;
+  bool VmmSwapTrim(const char* socket_path) override;
   bool DisableVmmSwap(const char* socket_path) override;
+  bool VmmSwapStatus(const char* socket_path,
+                     struct SwapStatus* status) override;
 
  private:
   CrosvmControlImpl() = default;

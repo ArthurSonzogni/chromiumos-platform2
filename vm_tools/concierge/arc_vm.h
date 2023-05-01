@@ -169,10 +169,15 @@ class ArcVm final : public VmBaseImpl {
         base::FilePath data_disk_path,
         ArcVmFeatures features,
         base::OneShotTimer* swap_policy_timer = new base::OneShotTimer(),
+        base::RepeatingTimer* swap_state_monitor_timer =
+            new base::RepeatingTimer(),
         base::RepeatingTimer* aggressive_balloon_timer =
             new base::RepeatingTimer());
   ArcVm(const ArcVm&) = delete;
   ArcVm& operator=(const ArcVm&) = delete;
+
+  using VmmSwapStateChangeCallback =
+      base::OnceCallback<void(SwapState new_state)>;
 
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
@@ -192,7 +197,8 @@ class ArcVm final : public VmBaseImpl {
 
   // Handlers for aggressive balloon
   void InflateAggressiveBalloonOnTimer();
-  void RunVmmSwapOut();
+  void StartVmmSwapOut();
+  void RunVmmSwapOutAfterTrim();
 
   std::vector<patchpanel::Client::VirtualDevice> network_devices_;
 
@@ -241,7 +247,10 @@ class ArcVm final : public VmBaseImpl {
 
   // Timer used to run vmm-swap policy. All operations for vmm-swap policy runs
   // on the main thread.
-  std::unique_ptr<base::OneShotTimer> swap_policy_timer_;
+  std::unique_ptr<base::OneShotTimer> swap_policy_timer_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   bool is_aggressive_balloon_enabled_ = false;
   uint64_t aggressive_balloon_target_ = 0;

@@ -829,12 +829,13 @@ class ArcVmTest : public ::testing::Test {
     uint32_t vsock_cid = vsock_cid_pool_.Allocate();
 
     swap_policy_timer_ = new base::MockOneShotTimer();
+    swap_state_monitor_timer_ = new base::MockRepeatingTimer();
     aggressive_balloon_timer_ = new base::MockRepeatingTimer();
 
-    vm_ = std::unique_ptr<ArcVm>(
-        new ArcVm(vsock_cid, std::make_unique<patchpanel::FakeClient>(),
-                  nullptr, temp_dir_.GetPath(), base::FilePath("dummy"), {},
-                  swap_policy_timer_, aggressive_balloon_timer_));
+    vm_ = std::unique_ptr<ArcVm>(new ArcVm(
+        vsock_cid, std::make_unique<patchpanel::FakeClient>(), nullptr,
+        temp_dir_.GetPath(), base::FilePath("dummy"), {}, swap_policy_timer_,
+        swap_state_monitor_timer_, aggressive_balloon_timer_));
 
     SetBalloonStats(0, 1024 * MIB);
   }
@@ -875,6 +876,7 @@ class ArcVmTest : public ::testing::Test {
   std::unique_ptr<ArcVm> vm_;
 
   raw_ptr<base::MockOneShotTimer> swap_policy_timer_;
+  raw_ptr<base::MockRepeatingTimer> swap_state_monitor_timer_;
   raw_ptr<base::MockRepeatingTimer> aggressive_balloon_timer_;
 
  private:
@@ -1064,7 +1066,7 @@ TEST_F(ArcVmTest, EnableVmmSwap) {
   ASSERT_TRUE(EnableVmmSwap());
   ASSERT_TRUE(swap_policy_timer_->IsRunning());
   ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 1);
-  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_trim_, 0);
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapFail) {
@@ -1073,17 +1075,64 @@ TEST_F(ArcVmTest, EnableVmmSwapFail) {
   ASSERT_FALSE(swap_policy_timer_->IsRunning());
 }
 
-TEST_F(ArcVmTest, VmmSwapOutAfterEnable) {
+TEST_F(ArcVmTest, VmmSwapTrimAfterEnable) {
   ASSERT_TRUE(EnableVmmSwap());
   swap_policy_timer_->Fire();
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_trim_, 1);
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+  ASSERT_TRUE(swap_state_monitor_timer_->IsRunning());
+}
+
+TEST_F(ArcVmTest, VmmSwapTrimFailed) {
+  ASSERT_TRUE(EnableVmmSwap());
+  FakeCrosvmControl::Get()->result_vmm_swap_trim_ = false;
+  swap_policy_timer_->Fire();
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+  ASSERT_FALSE(swap_state_monitor_timer_->IsRunning());
+}
+
+TEST_F(ArcVmTest, VmmSwapOutAfterTrim) {
+  ASSERT_TRUE(EnableVmmSwap());
+  swap_policy_timer_->Fire();
+  FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
+  swap_state_monitor_timer_->Fire();
   ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 1);
+  ASSERT_FALSE(swap_state_monitor_timer_->IsRunning());
+}
+
+TEST_F(ArcVmTest, MonitorSwapStateChangeStillTrimInProgress) {
+  ASSERT_TRUE(EnableVmmSwap());
+  swap_policy_timer_->Fire();
+  FakeCrosvmControl::Get()->vmm_swap_status_.state =
+      SwapState::TRIM_IN_PROGRESS;
+  swap_state_monitor_timer_->Fire();
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+  ASSERT_TRUE(swap_state_monitor_timer_->IsRunning());
+}
+
+TEST_F(ArcVmTest, MonitorSwapStateChangeTrimFailed) {
+  ASSERT_TRUE(EnableVmmSwap());
+  swap_policy_timer_->Fire();
+  FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::FAILED;
+  swap_state_monitor_timer_->Fire();
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+  ASSERT_FALSE(swap_state_monitor_timer_->IsRunning());
+}
+
+TEST_F(ArcVmTest, MonitorSwapStateChangeFailedToGetSwapStatus) {
+  ASSERT_TRUE(EnableVmmSwap());
+  swap_policy_timer_->Fire();
+  FakeCrosvmControl::Get()->result_vmm_swap_status_ = false;
+  swap_state_monitor_timer_->Fire();
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+  ASSERT_FALSE(swap_state_monitor_timer_->IsRunning());
 }
 
 TEST_F(ArcVmTest, ForceEnableVmmSwap) {
   ASSERT_TRUE(ForceEnableVmmSwap());
   ASSERT_TRUE(swap_policy_timer_->IsRunning());
   ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 1);
-  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_trim_, 0);
 }
 
 TEST_F(ArcVmTest, ForceEnableVmmSwapFail) {
@@ -1096,6 +1145,17 @@ TEST_F(ArcVmTest, DisableVmmSwap) {
   ASSERT_TRUE(EnableVmmSwap());
   ASSERT_TRUE(DisableVmmSwap());
   ASSERT_FALSE(swap_policy_timer_->IsRunning());
+  ASSERT_FALSE(swap_state_monitor_timer_->IsRunning());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 1);
+}
+
+TEST_F(ArcVmTest, DisableVmmSwapWhileTrimming) {
+  ASSERT_TRUE(EnableVmmSwap());
+  swap_policy_timer_->Fire();
+  ASSERT_TRUE(DisableVmmSwap());
+  ASSERT_FALSE(swap_policy_timer_->IsRunning());
+  ASSERT_FALSE(swap_state_monitor_timer_->IsRunning());
   ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
   ASSERT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 1);
 }

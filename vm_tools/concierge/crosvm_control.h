@@ -148,11 +148,27 @@ class CrosvmControl {
   // `socket_path`.
   virtual bool VmmSwapOut(const char* socket_path) = 0;
 
+  // Trim static pages and zero pages in the staging memory.
+  //
+  // This affects the crosvm instance whose control socket is listening on
+  // `socket_path`.
+  virtual bool VmmSwapTrim(const char* socket_path) = 0;
+
   // Disable vmm-swap of crosvm.
   //
   // This affects the crosvm instance whose control socket is listening on
   // `socket_path`.
   virtual bool DisableVmmSwap(const char* socket_path) = 0;
+
+  // Returns vmm-swap status of the crosvm instance whose control socket is
+  // listening on `socket_path`.
+  //
+  // The parameters `status`is optional and will only be written to if they are
+  // non-null.
+  //
+  // The function returns true on success or false if an error occurred.
+  virtual bool VmmSwapStatus(const char* socket_path,
+                             struct SwapStatus* status) = 0;
 
   virtual ~CrosvmControl() = default;
 

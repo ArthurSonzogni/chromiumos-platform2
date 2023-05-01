@@ -106,10 +106,23 @@ bool FakeCrosvmControl::VmmSwapOut(const char* socket_path) {
   return result_vmm_swap_out_;
 }
 
+bool FakeCrosvmControl::VmmSwapTrim(const char* socket_path) {
+  target_socket_path_ = socket_path;
+  count_vmm_swap_trim_ += 1;
+  return result_vmm_swap_trim_;
+}
+
 bool FakeCrosvmControl::DisableVmmSwap(const char* socket_path) {
   target_socket_path_ = socket_path;
   count_disable_vmm_swap_ += 1;
   return result_disable_vmm_swap_;
+}
+
+bool FakeCrosvmControl::VmmSwapStatus(const char* socket_path,
+                                      struct SwapStatus* status) {
+  target_socket_path_ = socket_path;
+  *status = vmm_swap_status_;
+  return result_vmm_swap_status_;
 }
 
 }  // namespace vm_tools::concierge

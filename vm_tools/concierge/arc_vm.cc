@@ -261,6 +261,7 @@ ArcVm::ArcVm(int32_t vsock_cid,
              base::FilePath data_disk_path,
              ArcVmFeatures features,
              base::OneShotTimer* swap_policy_timer,
+             base::RepeatingTimer* swap_state_monitor_timer,
              base::RepeatingTimer* aggressive_balloon_timer)
     : VmBaseImpl(std::move(network_client),
                  vsock_cid,
@@ -271,6 +272,7 @@ ArcVm::ArcVm(int32_t vsock_cid,
       features_(features),
       balloon_refresh_time_(base::Time::Now() + kBalloonRefreshTime),
       swap_policy_timer_(swap_policy_timer),
+      swap_state_monitor_timer_(swap_state_monitor_timer),
       aggressive_balloon_timer_(aggressive_balloon_timer) {}
 
 ArcVm::~ArcVm() {
@@ -832,6 +834,7 @@ vm_tools::concierge::DiskImageStatus ArcVm::GetDiskResizeStatus(
 
 void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
                                 SwapVmResponse& response) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   switch (request.operation()) {
     case SwapOperation::ENABLE:
       // TODO(b/265386291): Check TBW (total bytes written).
@@ -839,7 +842,7 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
       if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
         response.set_success(true);
         swap_policy_timer_->Start(FROM_HERE, base::Minutes(10), this,
-                                  &ArcVm::RunVmmSwapOut);
+                                  &ArcVm::StartVmmSwapOut);
       } else {
         LOG(ERROR) << "Failed to enable vmm-swap";
         response.set_success(false);
@@ -851,7 +854,7 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
       if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
         response.set_success(true);
         swap_policy_timer_->Start(FROM_HERE, base::Seconds(10), this,
-                                  &ArcVm::RunVmmSwapOut);
+                                  &ArcVm::StartVmmSwapOut);
       } else {
         LOG(ERROR) << "Failed to enable vmm-swap";
         response.set_success(false);
@@ -863,6 +866,10 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
       if (swap_policy_timer_->IsRunning()) {
         LOG(INFO) << "Cancel pending swap out";
         swap_policy_timer_->Stop();
+      }
+      if (swap_state_monitor_timer_->IsRunning()) {
+        LOG(INFO) << "Cancel swap state monitor";
+        swap_state_monitor_timer_->Stop();
       }
       if (CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath().c_str())) {
         response.set_success(true);
@@ -1105,9 +1112,40 @@ void ArcVm::InflateAggressiveBalloonOnTimer() {
   }
 }
 
-void ArcVm::RunVmmSwapOut() {
-  LOG(INFO) << "Vmm-swap out";
-  CrosvmControl::Get()->VmmSwapOut(GetVmSocketPath().c_str());
+void ArcVm::StartVmmSwapOut() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  LOG(INFO) << "Start vmm-swap trim";
+  if (CrosvmControl::Get()->VmmSwapTrim(GetVmSocketPath().c_str())) {
+    swap_state_monitor_timer_->Start(FROM_HERE, base::Milliseconds(1000), this,
+                                     &ArcVm::RunVmmSwapOutAfterTrim);
+  } else {
+    LOG(ERROR) << "Failed to start vmm-swap trim";
+  }
+}
+
+void ArcVm::RunVmmSwapOutAfterTrim() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  struct SwapStatus status;
+  if (!CrosvmControl::Get()->VmmSwapStatus(GetVmSocketPath().c_str(),
+                                           &status)) {
+    LOG(INFO) << "Failed to get vmm-swap state";
+    swap_state_monitor_timer_->Stop();
+    return;
+  }
+  switch (status.state) {
+    case SwapState::TRIM_IN_PROGRESS:
+      // do nothing and wait next monitor
+      break;
+    case SwapState::PENDING:
+      LOG(INFO) << "Vmm-swap out";
+      swap_state_monitor_timer_->Stop();
+      CrosvmControl::Get()->VmmSwapOut(GetVmSocketPath().c_str());
+      return;
+    default:
+      LOG(INFO) << "Unexpected trim result" << status.state;
+      swap_state_monitor_timer_->Stop();
+      return;
+  }
 }
 
 // static
