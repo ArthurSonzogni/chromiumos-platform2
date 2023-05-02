@@ -24,6 +24,7 @@
 #include <vector>
 
 #include <base/strings/stringprintf.h>
+#include <base/sys_byteorder.h>
 #include <brillo/brillo_export.h>
 
 #include "patchpanel/mac_address_generator.h"
@@ -39,8 +40,10 @@ BRILLO_EXPORT constexpr uint32_t Ipv4Addr(uint8_t b0,
                                           uint8_t b1,
                                           uint8_t b2,
                                           uint8_t b3) {
-  return (static_cast<uint32_t>(b3) << 24) | (static_cast<uint32_t>(b2) << 16) |
-         (static_cast<uint32_t>(b1) << 8) | static_cast<uint32_t>(b0);
+  // Use base::HostToNet32() to keep the function constexpr.
+  return base::HostToNet32(
+      (static_cast<uint32_t>(b0) << 24) | (static_cast<uint32_t>(b1) << 16) |
+      (static_cast<uint32_t>(b2) << 8) | static_cast<uint32_t>(b3));
 }
 
 // Returns the network-byte order int32 representation of the IPv4 address.

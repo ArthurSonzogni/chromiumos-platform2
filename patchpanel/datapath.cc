@@ -150,10 +150,11 @@ std::string AutoDnatTargetChainName(AutoDnatTarget auto_dnat_target) {
 // TODO(b/279693340): Remove the function after all IPv4 address represented by
 // uint32_t are migrated to shill::IPv4Address.
 shill::IPv4Address ConvertUint32ToIPv4Address(uint32_t addr) {
-  return shill::IPv4Address(static_cast<uint8_t>(addr & 0xff),
-                            static_cast<uint8_t>((addr >> 8) & 0xff),
-                            static_cast<uint8_t>((addr >> 16) & 0xff),
-                            static_cast<uint8_t>((addr >> 24) & 0xff));
+  const uint32_t host_endian = ntohl(addr);
+  return shill::IPv4Address(static_cast<uint8_t>((host_endian >> 24) & 0xff),
+                            static_cast<uint8_t>((host_endian >> 16) & 0xff),
+                            static_cast<uint8_t>((host_endian >> 8) & 0xff),
+                            static_cast<uint8_t>(host_endian & 0xff));
 }
 
 }  // namespace
