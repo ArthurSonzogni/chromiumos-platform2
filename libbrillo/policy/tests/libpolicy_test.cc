@@ -348,7 +348,7 @@ TEST(PolicyTest, DontSkipSignatureForConsumer) {
 }
 
 // Checks return value of IsConsumerDevice when it's a still in OOBE.
-TEST(PolicyTest, IsConsumerDeviceOobe) {
+TEST(PolicyTest, DeviceInOobeIsNotConsumerOwned) {
   PolicyProvider provider;
   provider.SetInstallAttributesReaderForTesting(
       std::make_unique<MockInstallAttributesReader>("", false));
@@ -356,7 +356,7 @@ TEST(PolicyTest, IsConsumerDeviceOobe) {
 }
 
 // Checks return value of IsConsumerDevice when it's a consumer device.
-TEST(PolicyTest, IsConsumerDeviceConsumer) {
+TEST(PolicyTest, ConsumerDeviceIsConsumerOwned) {
   PolicyProvider provider;
   provider.SetInstallAttributesReaderForTesting(
       std::make_unique<MockInstallAttributesReader>("", true));
@@ -364,12 +364,28 @@ TEST(PolicyTest, IsConsumerDeviceConsumer) {
 }
 
 // Checks return value of IsConsumerDevice when it's an enterprise device.
-TEST(PolicyTest, IsConsumerDeviceEnterprise) {
+TEST(PolicyTest, EnterpriseDeviceIsNotConsumerOwned) {
   PolicyProvider provider;
   provider.SetInstallAttributesReaderForTesting(
       std::make_unique<MockInstallAttributesReader>(
           InstallAttributesReader::kDeviceModeEnterprise, true));
   EXPECT_FALSE(provider.IsConsumerDevice());
+}
+
+TEST(PolicyTest, LegacyKioskDeviceIsNotConsumerOwned) {
+  PolicyProvider provider;
+  provider.SetInstallAttributesReaderForTesting(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeLegacyRetail, true));
+  EXPECT_FALSE(provider.IsConsumerDevice());
+}
+
+TEST(PolicyTest, ConsumerKioskDeviceIsConsumerOwned) {
+  PolicyProvider provider;
+  provider.SetInstallAttributesReaderForTesting(
+      std::make_unique<MockInstallAttributesReader>(
+          InstallAttributesReader::kDeviceModeConsumerKiosk, true));
+  EXPECT_TRUE(provider.IsConsumerDevice());
 }
 
 }  // namespace policy
