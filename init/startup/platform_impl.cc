@@ -82,6 +82,10 @@ int Platform::Ioctl(int fd, unsigned long request, int* arg1) {
   return ioctl(fd, request, arg1);
 }
 
+bool Platform::Fchown(int fd, uid_t owner, gid_t group) {
+  return fchown(fd, owner, group) == 0;
+}
+
 int Platform::MountEncrypted(const std::vector<std::string>& args,
                              std::string* output) {
   brillo::ProcessImpl mount_enc;

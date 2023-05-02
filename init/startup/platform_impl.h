@@ -6,6 +6,7 @@
 #define INIT_STARTUP_PLATFORM_IMPL_H_
 
 #include <sys/statvfs.h>
+#include <sys/types.h>
 
 #include <string>
 #include <vector>
@@ -72,6 +73,11 @@ class Platform {
   // Can't create virtual templated methods, so define per use case.
   // NOLINTNEXTLINE(runtime/int)
   virtual int Ioctl(int fd, unsigned long request, int* arg1);
+
+  // Change ownership of a file. Wrapper around fchown(2).
+  //
+  // Returns true on success.
+  virtual bool Fchown(int fd, uid_t owner, gid_t group);
 
   // Runs mount-encrypted with the given arg.
   virtual int MountEncrypted(const std::vector<std::string>& args,
