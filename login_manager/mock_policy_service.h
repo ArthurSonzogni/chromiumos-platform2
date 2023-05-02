@@ -25,14 +25,11 @@ class MockPolicyService : public PolicyService {
  public:
   MockPolicyService();
   ~MockPolicyService() override;
-  MOCK_METHOD(bool,
-              Store,
-              (const PolicyNamespace&,
-               const std::vector<uint8_t>&,
-               int,
-               SignatureCheck,
-               Completion),
-              (override));
+  MOCK_METHOD(
+      bool,
+      Store,
+      (const PolicyNamespace&, const std::vector<uint8_t>&, int, Completion),
+      (override));
   MOCK_METHOD(bool,
               Retrieve,
               (const PolicyNamespace&, std::vector<uint8_t>*),

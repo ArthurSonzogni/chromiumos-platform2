@@ -870,8 +870,36 @@ void SessionManagerImpl::StorePolicyEx(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::vector<uint8_t>& in_descriptor_blob,
     const std::vector<uint8_t>& in_policy_blob) {
-  StorePolicyInternalEx(in_descriptor_blob, in_policy_blob,
-                        SignatureCheck::kEnabled, std::move(response));
+  brillo::ErrorPtr error;
+  PolicyDescriptor descriptor;
+  if (!ParseAndValidatePolicyDescriptor(in_descriptor_blob,
+                                        PolicyDescriptorUsage::kStore,
+                                        &descriptor, &error)) {
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  PolicyService* policy_service = GetPolicyService(descriptor, &error);
+  if (!policy_service) {
+    response->ReplyWithError(error.get());
+    return;
+  }
+
+  int key_flags = GetKeyInstallFlags(descriptor);
+  PolicyNamespace ns(descriptor.domain(), descriptor.component_id());
+
+  // If the blob is empty, return an error.
+  DCHECK(dbus_service_);
+  if (in_policy_blob.empty()) {
+    auto error =
+        CreateError(dbus_error::kInvalidParameter, "Empty policy provided");
+    response->ReplyWithError(error.get());
+    return;
+  } else {
+    policy_service->Store(ns, in_policy_blob, key_flags,
+                          dbus_service_->CreatePolicyServiceCompletionCallback(
+                              std::move(response)));
+  }
 }
 
 bool SessionManagerImpl::RetrievePolicyEx(
@@ -1998,46 +2026,6 @@ int SessionManagerImpl::GetKeyInstallFlags(const PolicyDescriptor& descriptor) {
       return PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE;
     case ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT:
       return PolicyService::KEY_NONE;
-  }
-}
-
-void SessionManagerImpl::StorePolicyInternalEx(
-    const std::vector<uint8_t>& descriptor_blob,
-    const std::vector<uint8_t>& policy_blob,
-    SignatureCheck signature_check,
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
-  brillo::ErrorPtr error;
-  PolicyDescriptor descriptor;
-  if (!ParseAndValidatePolicyDescriptor(descriptor_blob,
-                                        PolicyDescriptorUsage::kStore,
-                                        &descriptor, &error)) {
-    response->ReplyWithError(error.get());
-    return;
-  }
-
-  PolicyService* policy_service = GetPolicyService(descriptor, &error);
-  if (!policy_service) {
-    response->ReplyWithError(error.get());
-    return;
-  }
-
-  int key_flags = GetKeyInstallFlags(descriptor);
-  PolicyNamespace ns(descriptor.domain(), descriptor.component_id());
-
-  // If the blob is empty, delete the policy.
-  DCHECK(dbus_service_);
-  if (policy_blob.empty()) {
-    if (!policy_service->Delete(ns, signature_check)) {
-      auto error =
-          CreateError(dbus_error::kDeleteFail, "Failed to delete policy");
-      response->ReplyWithError(error.get());
-      return;
-    }
-    response->Return();
-  } else {
-    policy_service->Store(ns, policy_blob, key_flags, signature_check,
-                          dbus_service_->CreatePolicyServiceCompletionCallback(
-                              std::move(response)));
   }
 }
 

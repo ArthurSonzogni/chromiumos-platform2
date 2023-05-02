@@ -129,7 +129,6 @@ class DevicePolicyService : public PolicyService {
   bool Store(const PolicyNamespace& ns,
              const std::vector<uint8_t>& policy_blob,
              int key_flags,
-             SignatureCheck signature_check,
              Completion completion) override;
   void PersistPolicy(const PolicyNamespace& ns, Completion completion) override;
 

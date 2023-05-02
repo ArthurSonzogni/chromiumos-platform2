@@ -77,7 +77,6 @@ PolicyService::~PolicyService() = default;
 bool PolicyService::Store(const PolicyNamespace& ns,
                           const std::vector<uint8_t>& policy_blob,
                           int key_flags,
-                          SignatureCheck signature_check,
                           Completion completion) {
   em::PolicyFetchResponse policy;
   if (!policy.ParseFromArray(policy_blob.data(), policy_blob.size()) ||
@@ -88,39 +87,12 @@ bool PolicyService::Store(const PolicyNamespace& ns,
     return false;
   }
 
-  return StorePolicy(ns, policy, key_flags, signature_check,
-                     std::move(completion));
+  return StorePolicy(ns, policy, key_flags, std::move(completion));
 }
 
 bool PolicyService::Retrieve(const PolicyNamespace& ns,
                              std::vector<uint8_t>* policy_blob) {
   *policy_blob = SerializeAsBlob(GetOrCreateStore(ns)->Get());
-  return true;
-}
-
-bool PolicyService::Delete(const PolicyNamespace& ns,
-                           SignatureCheck signature_check) {
-  // Don't delete Chrome user or device policy.
-  if (!IsComponentDomain(ns.first)) {
-    LOG(ERROR) << "Deletion only allowed for component policy.";
-    return false;
-  }
-
-  // Don't delete signed policy.
-  if (signature_check != SignatureCheck::kDisabled) {
-    LOG(ERROR) << "Deletion of signed policy not allowed.";
-    return false;
-  }
-
-  // Delete file on disk if it exists.
-  if (!GetOrCreateStore(ns)->Delete()) {
-    LOG(ERROR) << "Failed to delete store.";
-    return false;
-  }
-
-  // Delete store.
-  policy_stores_.erase(ns);
-
   return true;
 }
 
@@ -193,14 +165,7 @@ void PolicyService::SetStoreForTesting(const PolicyNamespace& ns,
 bool PolicyService::StorePolicy(const PolicyNamespace& ns,
                                 const em::PolicyFetchResponse& policy,
                                 int key_flags,
-                                SignatureCheck signature_check,
                                 Completion completion) {
-  if (signature_check == SignatureCheck::kDisabled) {
-    GetOrCreateStore(ns)->Set(policy);
-    PersistPolicy(ns, std::move(completion));
-    return true;
-  }
-
   // Determine if the policy has pushed a new owner key and, if so, set it.
   if (policy.has_new_public_key() && !key()->Equals(policy.new_public_key())) {
     // The policy contains a new key, and it is different from |key_|.

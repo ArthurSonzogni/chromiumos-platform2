@@ -60,7 +60,6 @@ void UserPolicyService::PersistKeyCopy() {
 bool UserPolicyService::Store(const PolicyNamespace& ns,
                               const std::vector<uint8_t>& policy_blob,
                               int key_flags,
-                              SignatureCheck signature_check,
                               Completion completion) {
   em::PolicyFetchResponse policy;
   em::PolicyData policy_data;
@@ -87,7 +86,7 @@ bool UserPolicyService::Store(const PolicyNamespace& ns,
     return true;
   }
 
-  return PolicyService::StorePolicy(ns, policy, key_flags, signature_check,
+  return PolicyService::StorePolicy(ns, policy, key_flags,
                                     std::move(completion));
 }
 

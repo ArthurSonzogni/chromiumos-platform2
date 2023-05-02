@@ -245,7 +245,6 @@ bool DevicePolicyService::Initialize() {
 bool DevicePolicyService::Store(const PolicyNamespace& ns,
                                 const std::vector<uint8_t>& policy_blob,
                                 int key_flags,
-                                SignatureCheck signature_check,
                                 Completion completion) {
   if (ns == MakeChromePolicyNamespace()) {
     // Flush the settings cache, the next read will decode the new settings.
@@ -262,7 +261,7 @@ bool DevicePolicyService::Store(const PolicyNamespace& ns,
     // object so that its state change is cleaner.
     settings_.reset();
   }
-  return PolicyService::Store(ns, policy_blob, key_flags, signature_check,
+  return PolicyService::Store(ns, policy_blob, key_flags,
                               std::move(completion));
 }
 

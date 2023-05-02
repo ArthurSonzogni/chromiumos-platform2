@@ -31,9 +31,6 @@ class LoginMetrics;
 class PolicyKey;
 class PolicyStore;
 
-// Whether policy signature must be checked in PolicyService::Store().
-enum class SignatureCheck { kEnabled, kDisabled };
-
 // Policies are namespaced by domain and component ID.
 using PolicyNamespace = std::pair<PolicyDomain, std::string>;
 
@@ -91,30 +88,23 @@ class PolicyService {
 
   virtual ~PolicyService();
 
-  // Stores a new policy under the namespace |ns|. If mandated by
-  // |signature_check|, verifies the passed-in policy blob against the policy
-  // key (if it exists), takes care of key rotation if required and persists
-  // everything to disk. The |key_flags| parameter determines what to do with a
-  // new key present in the policy, see KeyInstallFlags for possible values.
+  // Stores a new policy under the namespace |ns|. Verifies the passed-in
+  // policy blob against the policy key (if it exists), takes care of key
+  // rotation if required and persists everything to disk. The |key_flags|
+  // parameter determines what to do with a new key present in the policy,
+  // see KeyInstallFlags for possible values.
   //
   // Returns false on immediate errors. Otherwise, returns true and reports the
   // status of the operation through |completion|.
   virtual bool Store(const PolicyNamespace& ns,
                      const std::vector<uint8_t>& policy_blob,
                      int key_flags,
-                     SignatureCheck signature_check,
                      Completion completion);
 
   // Retrieves the current policy blob (does not verify the signature) from the
   // namespace |ns|. Returns true on success.
   virtual bool Retrieve(const PolicyNamespace& ns,
                         std::vector<uint8_t>* policy_blob);
-
-  // Deletes the policy for the namespace |ns|. This operation is only allowed
-  // if |ns| specifies a component policy namespace (e.g. extensions) and if the
-  // |signature_check| is disabled. Returns true on success.
-  virtual bool Delete(const PolicyNamespace& ns,
-                      SignatureCheck signature_check);
 
   // Returns a list of all component IDs in the given |domain| for which policy
   // is stored. Returns an empty vector if |domain| does not support component
@@ -155,7 +145,6 @@ class PolicyService {
   bool StorePolicy(const PolicyNamespace& ns,
                    const enterprise_management::PolicyFetchResponse& policy,
                    int key_flags,
-                   SignatureCheck signature_check,
                    Completion completion);
 
   // Handles completion of a key storage operation, reporting the result to

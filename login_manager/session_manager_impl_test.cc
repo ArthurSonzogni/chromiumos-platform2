@@ -840,21 +840,14 @@ class SessionManagerImplTest : public ::testing::Test,
 
   void ExpectStorePolicy(MockDevicePolicyService* service,
                          const std::vector<uint8_t>& policy_blob,
-                         int flags,
-                         SignatureCheck signature_check) {
-    EXPECT_CALL(*service, Store(MakeChromePolicyNamespace(), policy_blob, flags,
-                                signature_check, _))
-        .WillOnce(Return(true));
-  }
-
-  void ExpectDeletePolicy(MockDevicePolicyService* service) {
+                         int flags) {
     EXPECT_CALL(*service,
-                Delete(IsComponentNamespace(), SignatureCheck::kDisabled))
+                Store(MakeChromePolicyNamespace(), policy_blob, flags, _))
         .WillOnce(Return(true));
   }
 
   void ExpectNoStorePolicy(MockDevicePolicyService* service) {
-    EXPECT_CALL(*service, Store(_, _, _, _, _)).Times(0);
+    EXPECT_CALL(*service, Store(_, _, _, _)).Times(0);
   }
 
   void ExpectAndRunStartSession(const string& email) {
@@ -1491,8 +1484,7 @@ TEST_F(SessionManagerImplTest,
 
 TEST_F(SessionManagerImplTest, StorePolicyEx_NoSession) {
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  ExpectStorePolicy(device_policy_service_, policy_blob, kAllKeyFlags,
-                    SignatureCheck::kEnabled);
+  ExpectStorePolicy(device_policy_service_, policy_blob, kAllKeyFlags);
   ResponseCapturer capturer;
   impl_->StorePolicyEx(
       capturer.CreateMethodResponse<>(),
@@ -1503,8 +1495,7 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   ExpectStorePolicy(device_policy_service_, policy_blob,
-                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
-                    SignatureCheck::kEnabled);
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW);
 
   ResponseCapturer capturer;
   impl_->StorePolicyEx(
@@ -1630,10 +1621,10 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_NoSession) {
 TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(MakeChromePolicyNamespace(), policy_blob,
-                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
-                    SignatureCheck::kEnabled, _))
+  EXPECT_CALL(
+      *user_policy_services_[kSaneEmail],
+      Store(MakeChromePolicyNamespace(), policy_blob,
+            PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW, _))
       .WillOnce(Return(true));
 
   ResponseCapturer capturer;
@@ -1648,10 +1639,10 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
 
   // Store policy for the signed-in user.
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-  EXPECT_CALL(*user_policy_services_[kSaneEmail],
-              Store(MakeChromePolicyNamespace(), policy_blob,
-                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
-                    SignatureCheck::kEnabled, _))
+  EXPECT_CALL(
+      *user_policy_services_[kSaneEmail],
+      Store(MakeChromePolicyNamespace(), policy_blob,
+            PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW, _))
       .WillOnce(Return(true));
 
   {
@@ -1678,10 +1669,10 @@ TEST_F(SessionManagerImplTest, StoreUserPolicyEx_SecondSession) {
   ASSERT_TRUE(user_policy_services_[kEmail2]);
 
   // Storing policy for that user now succeeds.
-  EXPECT_CALL(*user_policy_services_[kEmail2],
-              Store(MakeChromePolicyNamespace(), policy_blob,
-                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
-                    SignatureCheck::kEnabled, _))
+  EXPECT_CALL(
+      *user_policy_services_[kEmail2],
+      Store(MakeChromePolicyNamespace(), policy_blob,
+            PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW, _))
       .WillOnce(Return(true));
   {
     ResponseCapturer capturer;

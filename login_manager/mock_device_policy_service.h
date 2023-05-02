@@ -29,21 +29,14 @@ class MockDevicePolicyService : public DevicePolicyService {
   explicit MockDevicePolicyService(PolicyKey* policy_key);
   ~MockDevicePolicyService() override;
 
-  MOCK_METHOD(bool,
-              Store,
-              (const PolicyNamespace&,
-               const std::vector<uint8_t>&,
-               int,
-               SignatureCheck,
-               Completion),
-              (override));
+  MOCK_METHOD(
+      bool,
+      Store,
+      (const PolicyNamespace&, const std::vector<uint8_t>&, int, Completion),
+      (override));
   MOCK_METHOD(bool,
               Retrieve,
               (const PolicyNamespace&, std::vector<uint8_t>*),
-              (override));
-  MOCK_METHOD(bool,
-              Delete,
-              (const PolicyNamespace&, SignatureCheck),
               (override));
   MOCK_METHOD(std::vector<std::string>,
               ListComponentIds,

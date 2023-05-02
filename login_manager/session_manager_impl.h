@@ -434,15 +434,6 @@ class SessionManagerImpl
   // |descriptor|.
   int GetKeyInstallFlags(const PolicyDescriptor& descriptor);
 
-  // Implementation of StorePolicyEx().
-  // TODO(b/279725159): Remove the signature_check parameter, now that this
-  // method is always called with value `kEnabled`.
-  void StorePolicyInternalEx(
-      const std::vector<uint8_t>& descriptor_blob,
-      const std::vector<uint8_t>& policy_blob,
-      SignatureCheck signature_check,
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response);
-
   // TODO(b/226330226, b/263367348): Once the signature algorithm
   // for the remote commands is migrated from SHA1_RSA to SHA256_RSA,
   // and remote device wipe calls are removed from Chromad,

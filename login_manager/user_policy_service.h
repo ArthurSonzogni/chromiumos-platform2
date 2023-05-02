@@ -43,7 +43,6 @@ class UserPolicyService : public PolicyService {
   bool Store(const PolicyNamespace& ns,
              const std::vector<uint8_t>& policy_blob,
              int key_flags,
-             SignatureCheck signature_check,
              Completion completion) override;
 
   // Invoked after a new key has been persisted. This creates a copy of the key
