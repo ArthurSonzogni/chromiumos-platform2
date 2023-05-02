@@ -30,6 +30,7 @@ static_library("libureadahead_diff") {
 }
 
 executable("ureadahead-diff") {
+  install_path = "bin"
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libureadahead_diff" ]
@@ -43,6 +44,7 @@ if (use.test) {
     ]
   }
   executable("ureadahead-diff_testrunner") {
+    run_test = true
     sources = [ "ureadahead_diff_test.cc" ]
     configs += [
       "//common-mk:test",
