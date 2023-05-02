@@ -5,7 +5,13 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":pciguard" ]
+  deps = [
+    ":install_dbus_config",
+    ":install_init",
+    ":install_minijail_conf",
+    ":install_policy",
+    ":pciguard",
+  ]
   if (use.test) {
     deps += [ ":pciguard_testrunner" ]
   }
@@ -21,6 +27,7 @@ pkg_config("target_defaults") {
 }
 
 executable("pciguard") {
+  install_path = "sbin"
   sources = [
     "daemon.cc",
     "main.cc",
@@ -51,6 +58,7 @@ if (use.test) {
   }
 
   executable("pciguard_testrunner") {
+    run_test = true
     sources = [
       "event_handler_test.cc",
       "sysfs_utils_test.cc",
@@ -64,4 +72,30 @@ if (use.test) {
       "//common-mk/testrunner:testrunner",
     ]
   }
+}
+
+install_config("install_init") {
+  sources = [
+    "init/pciguard-watchdog.conf",
+    "init/pciguard.conf",
+  ]
+  install_path = "/etc/init"
+}
+
+install_config("install_policy") {
+  _arch = getenv("ARCH")
+  sources = [ "seccomp/pciguard-seccomp-${_arch}.policy" ]
+  install_path = "/usr/share/policy"
+
+  outputs = [ "pciguard-seccomp.policy" ]
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/pciguard.conf" ]
+  install_path = "/usr/share/minijail"
+}
+
+install_config("install_dbus_config") {
+  sources = [ "dbus/pciguard-dbus.conf" ]
+  install_path = "/etc/dbus-1/system.d"
 }
