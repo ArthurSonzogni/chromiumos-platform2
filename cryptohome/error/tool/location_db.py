@@ -492,32 +492,32 @@ class TPMErrorDecoder:
         # For the errors below, refer to platform2/libhwsec/error/tpm_error.h
         # for more info.
         if (
-            err >= TPMConsts.TPM_UNIFIED_TPM_MANAGER_BASE
-            and err <= TPMConsts.TPM_UNIFIED_TPM_MANAGER_MAX
+            TPMConsts.TPM_UNIFIED_TPM_MANAGER_BASE
+            <= err
+            <= TPMConsts.TPM_UNIFIED_TPM_MANAGER_MAX
         ):
             return True, "TPM Manager Error 0x%02x" % (
                 err - TPMConsts.TPM_UNIFIED_TPM_MANAGER_BASE
             )
 
         if (
-            err >= TPMConsts.TPM_UNIFIED_NVRAM_BASE
-            and err <= TPMConsts.TPM_UNIFIED_NVRAM_MAX
+            TPMConsts.TPM_UNIFIED_NVRAM_BASE
+            <= err
+            <= TPMConsts.TPM_UNIFIED_NVRAM_MAX
         ):
             return True, "TPM Manager NVRAM Error 0x%02x" % (
                 err - TPMConsts.TPM_UNIFIED_NVRAM_BASE
             )
 
-        if (
-            err >= TPMConsts.TPM_UNIFIED_EC_BASE
-            and err <= TPMConsts.TPM_UNIFIED_EC_MAX
-        ):
+        if TPMConsts.TPM_UNIFIED_EC_BASE <= err <= TPMConsts.TPM_UNIFIED_EC_MAX:
             return True, "Elliptic Curve Error 0x%02x" % (
                 err - TPMConsts.TPM_UNIFIED_EC_BASE
             )
 
         if (
-            err >= TPMConsts.TPM_UNIFIED_HASHED_BASE
-            and err <= TPMConsts.TPM_UNIFIED_HASHED_MAX
+            TPMConsts.TPM_UNIFIED_HASHED_BASE
+            <= err
+            <= TPMConsts.TPM_UNIFIED_HASHED_MAX
         ):
             return True, "Hashed Error 0x%04x" % (
                 err - TPMConsts.TPM_UNIFIED_HASHED_BASE
@@ -947,7 +947,7 @@ class AuthorManager:
         # worth it given the complexity and higher constant time.
         result = []
         for start, _ in AuthorManager.COMMITTERS:
-            if previous_value < start and next_value >= start:
+            if previous_value < start <= next_value:
                 result += self._generate_single_comment(start)
         return result
 
@@ -1092,7 +1092,7 @@ class LocationDB:
         return True
 
     def _generate_header_lines(self):
-        symbols_list = [s for s in self.symbols.values()]
+        symbols_list = list(self.symbols.values())
         symbols_list.sort(key=operator.attrgetter("value"))
         result = []
         previous_value = -1
