@@ -8,12 +8,33 @@
 #include <optional>
 #include <string>
 
+#include <base/containers/span.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
+#include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 
 namespace cryptohome {
+
+// Template that wraps a (possibly empty) list of auth block types. This
+// template should be used to specify the BlocksType parameter when subclassing
+// the typed driver implementation.
+//
+// Note that we have to define this a little bit weirdly because C++ does not
+// support zero-length arrays. So for cases where we specify 1 or more types we
+// use an array and wrap it in a span but for the 0 type case we omit the array
+// entirely and just use a default (empty) span.
+template <AuthBlockType... types>
+struct DriverBlockTypes {
+  static constexpr AuthBlockType kTypeArray[] = {types...};
+  static constexpr base::span<const AuthBlockType> kTypeSpan{kTypeArray};
+};
+template <>
+struct DriverBlockTypes<> {
+  static constexpr base::span<const AuthBlockType> kTypeSpan;
+};
 
 // Provides an implementation of the portions of the AuthFactorDriver interface
 // that are common or reusable by all of the individual driver implementations.
@@ -24,12 +45,19 @@ namespace cryptohome {
 // order to control how some of the type-specific interactions work. The
 // template arguments are:
 //   * MetadataType: the variant type from AuthFactorMetadata::metadata
-template <typename MetadataType>
+//   * kType: the auth factor type this driver supports
+//   * BlocksType: a DriverBlockTypes<> template specifying the auth block types
+//       that this factor can be used with, in highest to lowest priority
+template <typename MetadataType, AuthFactorType kType, typename BlocksType>
 class TypedAuthFactorDriver : public AuthFactorDriver {
- public:
-  using AuthFactorDriver::AuthFactorDriver;
+ protected:
+  TypedAuthFactorDriver() : AuthFactorDriver(kType) {}
 
  private:
+  base::span<const AuthBlockType> block_types() const override {
+    return BlocksType::kTypeSpan;
+  }
+
   std::optional<user_data_auth::AuthFactor> ConvertToProto(
       const std::string& label,
       const AuthFactorMetadata& metadata) const final {

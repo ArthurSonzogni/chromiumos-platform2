@@ -368,7 +368,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   void AddFactorWithMockAuthBlockUtility(AuthSession& auth_session,
                                          const std::string& label,
                                          const std::string& secret) {
-    EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_))
+    EXPECT_CALL(mock_auth_block_utility_, SelectAuthBlockTypeForCreation(_))
         .WillOnce(ReturnValue(AuthBlockType::kTpmEcc));
     auto key_blobs = std::make_unique<KeyBlobs>(kKeyBlobs);
     auto auth_block_state = std::make_unique<AuthBlockState>();
@@ -458,7 +458,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   void UpdateFactor(AuthSession& auth_session,
                     const std::string& label,
                     const std::string& secret) {
-    EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_))
+    EXPECT_CALL(mock_auth_block_utility_, SelectAuthBlockTypeForCreation(_))
         .WillOnce(ReturnValue(AuthBlockType::kTpmEcc));
     auto key_blobs = std::make_unique<KeyBlobs>(kKeyBlobs);
     auto auth_block_state = std::make_unique<AuthBlockState>();

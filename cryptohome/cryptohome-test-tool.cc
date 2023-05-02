@@ -29,6 +29,7 @@
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/types/password.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
@@ -543,9 +544,11 @@ void DeriveExistingVaultKeyset(
   // Copy Reset Seed field for PinWeaver based VaultKeysets.
   auth_input.reset_seed = old_vault_keyset->GetResetSeed();
 
+  PasswordAuthFactorDriver password_driver;
+  AuthFactorDriver& factor_driver = password_driver;
   CryptoStatusOr<AuthBlockType> auth_block_type =
-      auth_block_utility->GetAuthBlockTypeForCreation(
-          AuthFactorType::kPassword);
+      auth_block_utility->SelectAuthBlockTypeForCreation(
+          factor_driver.block_types());
   if (!auth_block_type.ok()) {
     LOG(ERROR) << "Cannot determinte AuthBlockType of requested VaultKeyset.";
     return;
@@ -635,9 +638,11 @@ bool DoCreateVaultKeyset(const Username& username,
   }
 
   if (!existing_vault_keyset) {  // Add Initial VaultKeyset case.
+    PasswordAuthFactorDriver password_driver;
+    AuthFactorDriver& factor_driver = password_driver;
     CryptoStatusOr<AuthBlockType> auth_block_type =
-        auth_block_utility.GetAuthBlockTypeForCreation(
-            AuthFactorType::kPassword);
+        auth_block_utility.SelectAuthBlockTypeForCreation(
+            factor_driver.block_types());
     if (!auth_block_type.ok()) {
       LOG(ERROR) << "Cannot determinte AuthBlockType of requested VaultKeyset.";
       return false;

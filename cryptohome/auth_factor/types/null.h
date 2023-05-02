@@ -29,6 +29,7 @@ class NullAuthFactorDriver : public AuthFactorDriver {
   NullAuthFactorDriver() : AuthFactorDriver(AuthFactorType::kUnspecified) {}
 
  private:
+  base::span<const AuthBlockType> block_types() const override { return {}; }
   bool IsSupported(
       AuthFactorStorageType storage_type,
       const std::set<AuthFactorType>& configured_factors) const override {

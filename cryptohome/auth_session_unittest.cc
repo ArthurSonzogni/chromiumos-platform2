@@ -743,7 +743,7 @@ TEST_F(AuthSessionTest,
       });
 
   EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_)).WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_))
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillOnce(ReturnValue(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(keyset_management_, ReSaveKeyset(_, _, _));
 
@@ -841,7 +841,7 @@ TEST_F(AuthSessionTest,
       .WillOnce(Return(false));
   EXPECT_CALL(keyset_management_, AddResetSeedIfMissing(_))
       .WillOnce(Return(true));
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_))
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillOnce(ReturnValue(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(keyset_management_, ReSaveKeyset(_, _, _));
 
@@ -1109,9 +1109,9 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
   request.mutable_auth_factor()->mutable_password_metadata();
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
-  // GetauthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlock() are
+  // SelectAuthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlock() are
   // called for each of the key addition operations below.
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_))
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillRepeatedly([](AuthBlockType auth_block_type,
@@ -1329,9 +1329,9 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
   EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_TRUE(auth_session.user_exists());
 
-  // GetAuthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlock() are
+  // SelectAuthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlock() are
   // called for the key update operations below.
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_))
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillRepeatedly([&](AuthBlockType auth_block_type,
@@ -1785,8 +1785,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
       const std::string& label,
       const std::string& secret,
       AuthSession& auth_session) {
-    EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(
-                                         AuthFactorType::kCryptohomeRecovery))
+    EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
         .WillRepeatedly(ReturnValue(AuthBlockType::kCryptohomeRecovery));
     EXPECT_CALL(
         auth_block_utility_,
@@ -1828,8 +1827,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
       const std::string& password,
       bool first_factor,
       AuthSession& auth_session) {
-    EXPECT_CALL(auth_block_utility_,
-                GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
+    EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
         .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
     EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(
                                          AuthBlockType::kTpmBoundToPcr, _, _))
@@ -1938,8 +1936,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
 
   user_data_auth::CryptohomeErrorCode UpdatePasswordAuthFactor(
       const std::string& new_password, AuthSession& auth_session) {
-    EXPECT_CALL(auth_block_utility_,
-                GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
+    EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
         .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
     EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(
                                          AuthBlockType::kTpmBoundToPcr, _, _))
@@ -1979,8 +1976,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
 
   user_data_auth::CryptohomeErrorCode AddPinAuthFactor(
       const std::string& pin, AuthSession& auth_session) {
-    EXPECT_CALL(auth_block_utility_,
-                GetAuthBlockTypeForCreation(AuthFactorType::kPin))
+    EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
         .WillRepeatedly(ReturnValue(AuthBlockType::kPinWeaver));
     EXPECT_CALL(auth_block_utility_,
                 CreateKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _))
@@ -2017,8 +2013,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
 
   user_data_auth::CryptohomeErrorCode AddFirstFingerprintAuthFactor(
       AuthSession& auth_session) {
-    EXPECT_CALL(auth_block_utility_,
-                GetAuthBlockTypeForCreation(AuthFactorType::kFingerprint))
+    EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
         .WillOnce(ReturnValue(AuthBlockType::kFingerprint));
     EXPECT_CALL(auth_block_utility_,
                 CreateKeyBlobsWithAuthBlock(AuthBlockType::kFingerprint, _, _))
@@ -2066,8 +2061,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
 
   user_data_auth::CryptohomeErrorCode AddSubsequentFingerprintAuthFactor(
       AuthSession& auth_session) {
-    EXPECT_CALL(auth_block_utility_,
-                GetAuthBlockTypeForCreation(AuthFactorType::kFingerprint))
+    EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
         .WillOnce(ReturnValue(AuthBlockType::kFingerprint));
     EXPECT_CALL(auth_block_utility_,
                 CreateKeyBlobsWithAuthBlock(AuthBlockType::kFingerprint, _, _))
@@ -2184,8 +2178,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
 
   // Test.
   // Setting the expectation that the auth block utility will create key blobs.
-  EXPECT_CALL(auth_block_utility_,
-              GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_,
               CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _))
@@ -2248,8 +2241,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
 
   // Test.
   // Setting the expectation that the auth block utility will create key blobs.
-  EXPECT_CALL(auth_block_utility_,
-              GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_,
               CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _))
@@ -2316,8 +2308,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   // Test.
   // Setting the expectation that the auth block utility will be called an that
   // key blob creation will fail.
-  EXPECT_CALL(auth_block_utility_,
-              GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_,
               CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _))
@@ -2415,8 +2406,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
   EXPECT_TRUE(auth_session.has_user_secret_stash());
   // Add a password first.
   // Setting the expectation that the auth block utility will create key blobs.
-  EXPECT_CALL(auth_block_utility_,
-              GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_,
               CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _))
@@ -2448,8 +2438,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
   EXPECT_THAT(add_future.Get(), IsOk());
 
   // Setting the expectation that the auth block utility will create key blobs.
-  EXPECT_CALL(auth_block_utility_,
-              GetAuthBlockTypeForCreation(AuthFactorType::kPin))
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kPinWeaver));
   EXPECT_CALL(auth_block_utility_,
               CreateKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _))
@@ -2959,8 +2948,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                  AuthBlock::SuggestedAction::kRecreate);
       });
-  EXPECT_CALL(auth_block_utility_,
-              GetAuthBlockTypeForCreation(AuthFactorType::kPin))
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kPinWeaver));
   EXPECT_CALL(auth_block_utility_,
               CreateKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _))
@@ -3071,8 +3059,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                  AuthBlock::SuggestedAction::kRecreate);
       });
-  EXPECT_CALL(auth_block_utility_,
-              GetAuthBlockTypeForCreation(AuthFactorType::kPin))
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly([](auto...) -> CryptoStatusOr<AuthBlockType> {
         return MakeStatus<CryptohomeCryptoError>(
             kErrorLocationForTestingAuthSession,
@@ -3221,8 +3208,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_TRUE(auth_session.has_user_secret_stash());
   // Setting the expectation that the auth block utility will create key blobs.
-  EXPECT_CALL(auth_block_utility_,
-              GetAuthBlockTypeForCreation(AuthFactorType::kCryptohomeRecovery))
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kCryptohomeRecovery));
   EXPECT_CALL(
       auth_block_utility_,
@@ -4482,8 +4468,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
   // Creating the user.
   EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
   // Adding the password VK.
-  EXPECT_CALL(auth_block_utility_,
-              GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillOnce([](auto, auto, AuthBlock::CreateCallback create_callback) {

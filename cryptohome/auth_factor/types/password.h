@@ -22,11 +22,36 @@
 
 namespace cryptohome {
 
+// The block types supported by password factors. The priority is defined based
+// on the following:
+//   1. Favor TPM ECC as the fastest and best choice.
+//   2. If ECC isn't available, prefer binding to PCR.
+//   3. If PCR isn't available either, unbound TPM is our last choice.
+// If cryptohome is built to allow insecure fallback then we have a fourth
+// last resort choice:
+//   4. Use the scrypt block, with no TPM
+// On boards where this isn't necessary we don't even allow this option. If the
+// TPM is not functioning on such a board we prefer to get the error rather than
+// falling back to the less secure mechanism.
+#if USE_TPM_INSECURE_FALLBACK
+using PasswordAuthBlockTypes =
+    DriverBlockTypes<AuthBlockType::kTpmEcc,
+                     AuthBlockType::kTpmBoundToPcr,
+                     AuthBlockType::kTpmNotBoundToPcr,
+                     AuthBlockType::kScrypt>;
+#else
+using PasswordAuthBlockTypes =
+    DriverBlockTypes<AuthBlockType::kTpmEcc,
+                     AuthBlockType::kTpmBoundToPcr,
+                     AuthBlockType::kTpmNotBoundToPcr>;
+#endif
+
 class PasswordAuthFactorDriver final
-    : public TypedAuthFactorDriver<PasswordAuthFactorMetadata> {
+    : public TypedAuthFactorDriver<PasswordAuthFactorMetadata,
+                                   AuthFactorType::kPassword,
+                                   PasswordAuthBlockTypes> {
  public:
-  PasswordAuthFactorDriver()
-      : TypedAuthFactorDriver(AuthFactorType::kPassword) {}
+  PasswordAuthFactorDriver() = default;
 
  private:
   bool IsSupported(

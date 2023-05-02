@@ -65,8 +65,8 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                AuthBlock::SelectFactorCallback select_callback),
               (override));
   MOCK_METHOD(CryptoStatusOr<AuthBlockType>,
-              GetAuthBlockTypeForCreation,
-              (const AuthFactorType&),
+              SelectAuthBlockTypeForCreation,
+              (base::span<const AuthBlockType>),
               (const, override));
   MOCK_METHOD(std::optional<AuthBlockType>,
               GetAuthBlockTypeFromState,

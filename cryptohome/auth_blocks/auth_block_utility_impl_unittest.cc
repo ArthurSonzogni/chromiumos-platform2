@@ -45,6 +45,7 @@
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
@@ -158,6 +159,12 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
         /*auth_signal_sender=*/base::DoNothing());
   }
 
+  base::span<const AuthBlockType> GetBlockTypes(
+      AuthFactorType auth_factor_type) {
+    return auth_factor_driver_manager_.GetDriver(auth_factor_type)
+        .block_types();
+  }
+
   const Username kUser{"Test User"};
   const ObfuscatedUsername kObfuscated{"ABCD1234"};
 
@@ -183,6 +190,13 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   FingerprintAuthBlockService fp_service_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
   NiceMock<MockBiometricsCommandProcessor>* bio_processor_;
+
+  AuthFactorDriverManager auth_factor_driver_manager_{
+      &crypto_,
+      AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
+      &key_challenge_service_factory_, &fp_service_,
+      AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
+          &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this)))};
 
   FakeFeaturesForTesting features_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
@@ -1393,7 +1407,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   EXPECT_EQ(tpm_ecc_state->auth_value_rounds.value(), 5);
 }
 
-TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationNoTPM) {
+TEST_F(AuthBlockUtilityImplTest, SelectAuthBlockTypeForCreationNoTPM) {
   crypto_.Init();
   MakeAuthBlockUtilityImpl();
 
@@ -1403,44 +1417,44 @@ TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationNoTPM) {
 
   // Password and Kiosk auth factor maps to Scrypt Auth Block.
   if (USE_TPM_INSECURE_FALLBACK) {
-    EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                    AuthFactorType::kPassword),
+    EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                    GetBlockTypes(AuthFactorType::kPassword)),
                 IsOkAndHolds(AuthBlockType::kScrypt));
-    EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                    AuthFactorType::kKiosk),
+    EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                    GetBlockTypes(AuthFactorType::kKiosk)),
                 IsOkAndHolds(AuthBlockType::kScrypt));
   } else {
-    EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                    AuthFactorType::kPassword),
+    EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                    GetBlockTypes(AuthFactorType::kPassword)),
                 NotOk());
-    EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                    AuthFactorType::kKiosk),
+    EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                    GetBlockTypes(AuthFactorType::kKiosk)),
                 NotOk());
   }
 
   // Auth factor that requires tpm to function will fail to get
   // the auth block.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kPin),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kPin)),
               NotOk());
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kSmartCard),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kSmartCard)),
               NotOk());
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kFingerprint),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kFingerprint)),
               NotOk());
 
   // legacy fingerprint never maps to any auth block.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kLegacyFingerprint),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kLegacyFingerprint)),
               NotOk());
 
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kUnspecified),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kUnspecified)),
               NotOk());
 }
 
-TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationWithTpm20) {
+TEST_F(AuthBlockUtilityImplTest, SelectAuthBlockTypeForCreationWithTpm20) {
   crypto_.Init();
   MakeAuthBlockUtilityImpl();
 
@@ -1454,38 +1468,38 @@ TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationWithTpm20) {
           Return(cryptohome_keys_manager_.get_mock_cryptohome_key_loader()));
 
   // Password and Kiosk auth factor maps to TpmEcc Auth Block.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kPassword),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kPassword)),
               IsOkAndHolds(AuthBlockType::kTpmEcc));
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kKiosk),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kKiosk)),
               IsOkAndHolds(AuthBlockType::kTpmEcc));
 
   // Other Tpm related auth block works as expected.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kPin),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kPin)),
               IsOkAndHolds(AuthBlockType::kPinWeaver));
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kSmartCard),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kSmartCard)),
               IsOkAndHolds(AuthBlockType::kChallengeCredential));
 
   // Fingerprint auth block needs additional biod service setup to gain
   // support.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kFingerprint),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kFingerprint)),
               NotOk());
 
   // legacy fingerprint never maps to any auth block.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kLegacyFingerprint),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kLegacyFingerprint)),
               NotOk());
 
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kUnspecified),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kUnspecified)),
               NotOk());
 }
 
-TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationWithTpm20NoEcc) {
+TEST_F(AuthBlockUtilityImplTest, SelectAuthBlockTypeForCreationWithTpm20NoEcc) {
   crypto_.Init();
   MakeAuthBlockUtilityImpl();
 
@@ -1501,38 +1515,38 @@ TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationWithTpm20NoEcc) {
           Return(cryptohome_keys_manager_.get_mock_cryptohome_key_loader()));
 
   // Password and Kiosk auth factor maps to TpmBoundToPcr Auth Block.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kPassword),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kPassword)),
               IsOkAndHolds(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kKiosk),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kKiosk)),
               IsOkAndHolds(AuthBlockType::kTpmBoundToPcr));
 
   // Other TPM related auth block works as expected.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kPin),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kPin)),
               IsOkAndHolds(AuthBlockType::kPinWeaver));
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kSmartCard),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kSmartCard)),
               IsOkAndHolds(AuthBlockType::kChallengeCredential));
 
   // Fingerprint auth block needs additional biod service setup to gain
   // support.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kFingerprint),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kFingerprint)),
               NotOk());
 
   // legacy fingerprint never maps to any auth block.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kLegacyFingerprint),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kLegacyFingerprint)),
               NotOk());
 
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kUnspecified),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kUnspecified)),
               NotOk());
 }
 
-TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationWithTpm11) {
+TEST_F(AuthBlockUtilityImplTest, SelectAuthBlockTypeForCreationWithTpm11) {
   crypto_.Init();
   MakeAuthBlockUtilityImpl();
 
@@ -1549,38 +1563,38 @@ TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationWithTpm11) {
           Return(cryptohome_keys_manager_.get_mock_cryptohome_key_loader()));
 
   // Password and Kiosk auth factor maps to TpmBoundToPcr Auth Block.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kPassword),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kPassword)),
               IsOkAndHolds(AuthBlockType::kTpmNotBoundToPcr));
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kKiosk),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kKiosk)),
               IsOkAndHolds(AuthBlockType::kTpmNotBoundToPcr));
 
   // Other tpm related auth block works as expected.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kPin),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kPin)),
               IsOkAndHolds(AuthBlockType::kPinWeaver));
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kSmartCard),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kSmartCard)),
               IsOkAndHolds(AuthBlockType::kChallengeCredential));
 
   // Fingerprint auth block needs additional biod service setup to gain
   // support.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kFingerprint),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kFingerprint)),
               NotOk());
 
   // legacy fingerprint never maps to any auth block.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kLegacyFingerprint),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kLegacyFingerprint)),
               NotOk());
 
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kUnspecified),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kUnspecified)),
               NotOk());
 }
 
-TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationFingerprint) {
+TEST_F(AuthBlockUtilityImplTest, SelectAuthBlockTypeForCreationFingerprint) {
   crypto_.Init();
   MakeAuthBlockUtilityImpl();
   ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
@@ -1589,16 +1603,16 @@ TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationFingerprint) {
       .WillByDefault(ReturnValue(true));
 
   // Should fail before the bid service is ready.
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kFingerprint),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kFingerprint)),
               NotOk());
 
   // Should succeed after setup the biod service
   SetupBiometricsService();
   EXPECT_CALL(*bio_processor_, IsReady).WillRepeatedly(Return(true));
 
-  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kFingerprint),
+  EXPECT_THAT(auth_block_utility_impl_->SelectAuthBlockTypeForCreation(
+                  GetBlockTypes(AuthFactorType::kFingerprint)),
               IsOkAndHolds(AuthBlockType::kFingerprint));
 }
 

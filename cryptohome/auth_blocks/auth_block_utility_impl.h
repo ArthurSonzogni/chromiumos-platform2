@@ -83,8 +83,8 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       std::vector<AuthFactor> auth_factors,
       AuthBlock::SelectFactorCallback select_callback) override;
 
-  CryptoStatusOr<AuthBlockType> GetAuthBlockTypeForCreation(
-      const AuthFactorType& auth_factor_type) const override;
+  CryptoStatusOr<AuthBlockType> SelectAuthBlockTypeForCreation(
+      base::span<const AuthBlockType> block_types) const override;
 
   std::optional<AuthBlockType> GetAuthBlockTypeFromState(
       const AuthBlockState& state) const override;

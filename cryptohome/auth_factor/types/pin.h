@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 
+#include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
@@ -24,10 +25,12 @@
 namespace cryptohome {
 
 class PinAuthFactorDriver final
-    : public TypedAuthFactorDriver<PinAuthFactorMetadata> {
+    : public TypedAuthFactorDriver<
+          PinAuthFactorMetadata,
+          AuthFactorType::kPin,
+          DriverBlockTypes<AuthBlockType::kPinWeaver>> {
  public:
-  explicit PinAuthFactorDriver(Crypto* crypto)
-      : TypedAuthFactorDriver(AuthFactorType::kPin), crypto_(crypto) {}
+  explicit PinAuthFactorDriver(Crypto* crypto) : crypto_(crypto) {}
 
  private:
   bool IsSupported(

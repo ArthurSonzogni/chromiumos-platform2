@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 
+#include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
@@ -27,13 +28,14 @@
 namespace cryptohome {
 
 class FingerprintAuthFactorDriver final
-    : public TypedAuthFactorDriver<FingerprintAuthFactorMetadata> {
+    : public TypedAuthFactorDriver<
+          FingerprintAuthFactorMetadata,
+          AuthFactorType::kFingerprint,
+          DriverBlockTypes<AuthBlockType::kFingerprint>> {
  public:
   FingerprintAuthFactorDriver(
       Crypto* crypto, AsyncInitPtr<BiometricsAuthBlockService> bio_service)
-      : TypedAuthFactorDriver(AuthFactorType::kFingerprint),
-        crypto_(crypto),
-        bio_service_(bio_service) {}
+      : crypto_(crypto), bio_service_(bio_service) {}
 
  private:
   bool IsSupported(

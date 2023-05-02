@@ -1673,8 +1673,11 @@ void AuthSession::UpdateAuthFactor(
   }
 
   // Determine the auth block type to use.
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor_type);
   CryptoStatusOr<AuthBlockType> auth_block_type =
-      auth_block_utility_->GetAuthBlockTypeForCreation(auth_factor_type);
+      auth_block_utility_->SelectAuthBlockTypeForCreation(
+          factor_driver.block_types());
   if (!auth_block_type.ok()) {
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
@@ -2110,9 +2113,11 @@ AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
                   "can't resave keyset.";
     return auth_block_type;
   }
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(AuthFactorType::kPassword);
   CryptoStatusOr<AuthBlockType> out_auth_block_type =
-      auth_block_utility_->GetAuthBlockTypeForCreation(
-          AuthFactorType::kPassword);
+      auth_block_utility_->SelectAuthBlockTypeForCreation(
+          factor_driver.block_types());
   if (!out_auth_block_type.ok()) {
     LOG(ERROR)
         << "Error in creating obtaining AuthBlockType, can't resave keyset: "
@@ -2792,9 +2797,11 @@ void AuthSession::AddAuthFactor(
                                kAuthSessionAddAuthFactorVKTimer);
 
   // Determine the auth block type to use.
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor_type);
   CryptoStatusOr<AuthBlockType> auth_block_type =
-      auth_block_utility_->GetAuthBlockTypeForCreation(auth_factor_type);
-
+      auth_block_utility_->SelectAuthBlockTypeForCreation(
+          factor_driver.block_types());
   if (!auth_block_type.ok()) {
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
@@ -3185,8 +3192,11 @@ void AuthSession::RecreateUssAuthFactor(
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     CryptohomeStatus original_status,
     StatusCallback on_done) {
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor_type);
   CryptoStatusOr<AuthBlockType> auth_block_type =
-      auth_block_utility_->GetAuthBlockTypeForCreation(auth_factor_type);
+      auth_block_utility_->SelectAuthBlockTypeForCreation(
+          factor_driver.block_types());
   if (!auth_block_type.ok()) {
     LOG(WARNING) << "Unable to update obsolete auth factor, cannot determine "
                     "new block type: "

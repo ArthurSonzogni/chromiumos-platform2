@@ -12,6 +12,8 @@
 
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
+#include "base/containers/span.h"
+#include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
@@ -34,7 +36,13 @@ class AuthFactorDriver {
 
   virtual ~AuthFactorDriver() = default;
 
+  // The type of factor the driver implements.
   AuthFactorType type() const { return type_; }
+
+  // The underlying auth block types that the factor uses. The span lists them
+  // in priority order, with the first element being the most preferred block
+  // type to use.
+  virtual base::span<const AuthBlockType> block_types() const = 0;
 
   // Indicates if the factor is supported based on a combination of the type of
   // auth factor storage being used, the currently configured factors, and the

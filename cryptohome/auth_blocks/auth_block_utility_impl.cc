@@ -64,55 +64,6 @@ using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
-namespace {
-
-// Returns candidate AuthBlock types that can be used for the specified factor.
-// The list is ordered from the most preferred options towards the least ones.
-// Historically, we have more than 1 auth blocks suitable for password.
-// But for more recent auth factors, there is either one exact dedicated auth
-// block, or no auth block at all.
-std::vector<AuthBlockType> GetAuthBlockPriorityListForCreation(
-    const AuthFactorType& auth_factor_type) {
-  switch (auth_factor_type) {
-    case AuthFactorType::kPassword:
-    case AuthFactorType::kKiosk: {
-      std::vector<AuthBlockType> password_types = {
-          // `kTpmEcc` comes first as the fastest auth block.
-          AuthBlockType::kTpmEcc,
-          // `kTpmBoundToPcr` and `kTpmNotBoundToPcr` are fallbacks when
-          // hardware
-          // doesn't support ECC. `kTpmBoundToPcr` comes first of the two, as
-          // binding to PCR is preferred (but it's unavailable on some old
-          // devices).
-          AuthBlockType::kTpmBoundToPcr,
-          AuthBlockType::kTpmNotBoundToPcr,
-      };
-      if (USE_TPM_INSECURE_FALLBACK) {
-        // On boards that allow this, use `kScrypt` as the last fallback option
-        // when TPM is unavailable. On other boards, we don't list it as a
-        // candidate, in order to let the error chain (that's taken from the
-        // last candidate on failure) contain relevant information about TPM
-        // error.
-        password_types.push_back(AuthBlockType::kScrypt);
-      }
-      return password_types;
-    }
-    case AuthFactorType::kPin:
-      return {AuthBlockType::kPinWeaver};
-    case AuthFactorType::kSmartCard:
-      return {AuthBlockType::kChallengeCredential};
-    case AuthFactorType::kCryptohomeRecovery:
-      return {AuthBlockType::kCryptohomeRecovery};
-    case AuthFactorType::kFingerprint:
-      return {AuthBlockType::kFingerprint};
-    case AuthFactorType::kLegacyFingerprint:
-    case AuthFactorType::kUnspecified:
-      return {};
-  }
-}
-
-}  // namespace
-
 AuthBlockUtilityImpl::AuthBlockUtilityImpl(
     KeysetManagement* keyset_management,
     Crypto* crypto,
@@ -328,15 +279,15 @@ void AuthBlockUtilityImpl::SelectAuthFactorWithAuthBlock(
                                std::move(managed_callback));
 }
 
-CryptoStatusOr<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
-    const AuthFactorType& auth_factor_type) const {
+CryptoStatusOr<AuthBlockType>
+AuthBlockUtilityImpl::SelectAuthBlockTypeForCreation(
+    base::span<const AuthBlockType> block_types) const {
   // Default status if there are no entries in the returned priority list.
   CryptoStatus status = MakeStatus<CryptohomeCryptoError>(
       CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilEmptyListInGetAuthBlockWithType),
       ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
       CryptoError::CE_OTHER_CRYPTO);
-  for (AuthBlockType candidate_type :
-       GetAuthBlockPriorityListForCreation(auth_factor_type)) {
+  for (AuthBlockType candidate_type : block_types) {
     status = IsAuthBlockSupported(candidate_type);
     if (status.ok()) {
       return candidate_type;

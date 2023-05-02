@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/containers/flat_set.h>
+#include <base/containers/span.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 
@@ -96,11 +97,11 @@ class AuthBlockUtility {
       std::vector<AuthFactor> auth_factors,
       AuthBlock::SelectFactorCallback select_callback) = 0;
 
-  // This function returns the AuthBlock type for
-  // AuthBlock::Create() based on the specified credential type, |tpm_| and
-  //  |crypto_| status. If there's no suitable AuthBlock, returns an error.
-  virtual CryptoStatusOr<AuthBlockType> GetAuthBlockTypeForCreation(
-      const AuthFactorType& auth_factor_type) const = 0;
+  // This function returns selects the AuthBlock type to use from the given
+  // list of types, based on what block type is actually supported. If there's
+  // no supported type in the list, returns an error.
+  virtual CryptoStatusOr<AuthBlockType> SelectAuthBlockTypeForCreation(
+      base::span<const AuthBlockType> block_types) const = 0;
 
   // This function returns the AuthBlock type based on AuthBlockState.
   virtual std::optional<AuthBlockType> GetAuthBlockTypeFromState(

@@ -16,6 +16,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/common.h"
 #include "cryptohome/auth_factor/types/interface.h"
+#include "cryptohome/auth_factor/types/password.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/key_objects.h"
@@ -23,9 +24,11 @@
 namespace cryptohome {
 
 class KioskAuthFactorDriver final
-    : public TypedAuthFactorDriver<KioskAuthFactorMetadata> {
+    : public TypedAuthFactorDriver<KioskAuthFactorMetadata,
+                                   AuthFactorType::kKiosk,
+                                   PasswordAuthBlockTypes> {
  public:
-  KioskAuthFactorDriver() : TypedAuthFactorDriver(AuthFactorType::kKiosk) {}
+  KioskAuthFactorDriver() = default;
 
  private:
   bool IsSupported(
