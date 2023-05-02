@@ -50,7 +50,6 @@
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-output-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"  // NOLINT(build/include_directory)
-#include "xdg-shell-shim.h"             // NOLINT(build/include_directory)
 
 // Check that required macro definitions exist.
 #ifndef XWAYLAND_PATH
@@ -2901,13 +2900,6 @@ static void sl_connect(struct sl_context* ctx) {
   unsigned i;
 
   set_xcb_shim(new XcbShim());
-
-  // xdg-shell shims.
-  set_xdg_positioner_shim(new XdgPositionerShim());
-  set_xdg_popup_shim(new XdgPopupShim());
-  set_xdg_toplevel_shim(new XdgToplevelShim());
-  set_xdg_surface_shim(new XdgSurfaceShim());
-  set_xdg_wm_base_shim(new XdgWmBaseShim());
 
   ctx->connection = xcb_connect_to_fd(ctx->wm_fd, NULL);
   assert(!xcb_connection_has_error(ctx->connection));

@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "sommelier.h"            // NOLINT(build/include_directory)
+#include "sommelier-transform.h"  // NOLINT(build/include_directory)
+
 #include <assert.h>
 #include <stdlib.h>
 
-#include "sommelier.h"                  // NOLINT(build/include_directory)
-#include "sommelier-transform.h"        // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-server-protocol.h"  // NOLINT(build/include_directory)
-#include "xdg-shell-shim.h"             // NOLINT(build/include_directory)
 
 struct sl_host_xdg_shell {
   struct sl_context* ctx;
@@ -65,8 +65,7 @@ static void sl_xdg_positioner_set_size(struct wl_client* client,
   int32_t iheight = height;
 
   sl_transform_guest_to_host(host->ctx, nullptr, &iwidth, &iheight);
-
-  xdg_positioner_shim()->set_size(host->proxy, iwidth, iheight);
+  xdg_positioner_set_size(host->proxy, iwidth, iheight);
 }
 
 static void sl_xdg_positioner_set_anchor_rect(struct wl_client* client,
@@ -85,7 +84,7 @@ static void sl_xdg_positioner_set_anchor_rect(struct wl_client* client,
   sl_transform_guest_to_host(host->ctx, nullptr, &x1, &y1);
   sl_transform_guest_to_host(host->ctx, nullptr, &x2, &y2);
 
-  xdg_positioner_shim()->set_anchor_rect(host->proxy, x1, y1, x2 - x1, y2 - y1);
+  xdg_positioner_set_anchor_rect(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
 
 static void sl_xdg_positioner_set_offset(struct wl_client* client,
@@ -97,31 +96,27 @@ static void sl_xdg_positioner_set_offset(struct wl_client* client,
   int32_t ix = x, iy = y;
 
   sl_transform_guest_to_host(host->ctx, nullptr, &ix, &iy);
-  xdg_positioner_shim()->set_offset(host->proxy, ix, iy);
+  xdg_positioner_set_offset(host->proxy, ix, iy);
 }
 
 static const struct xdg_positioner_interface sl_xdg_positioner_implementation =
     {sl_xdg_positioner_destroy,
      sl_xdg_positioner_set_size,
      sl_xdg_positioner_set_anchor_rect,
-     ForwardRequestToShim<xdg_positioner_shim, &XdgPositionerShim::set_anchor>,
-     ForwardRequestToShim<xdg_positioner_shim, &XdgPositionerShim::set_gravity>,
-     ForwardRequestToShim<xdg_positioner_shim,
-                          &XdgPositionerShim::set_constraint_adjustment>,
+     ForwardRequest<xdg_positioner_set_anchor>,
+     ForwardRequest<xdg_positioner_set_gravity>,
+     ForwardRequest<xdg_positioner_set_constraint_adjustment>,
      sl_xdg_positioner_set_offset,
-     ForwardRequestToShim<xdg_positioner_shim,
-                          &XdgPositionerShim::set_reactive>,
-     ForwardRequestToShim<xdg_positioner_shim,
-                          &XdgPositionerShim::set_parent_size>,
-     ForwardRequestToShim<xdg_positioner_shim,
-                          &XdgPositionerShim::set_parent_configure>};
+     ForwardRequest<xdg_positioner_set_reactive>,
+     ForwardRequest<xdg_positioner_set_parent_size>,
+     ForwardRequest<xdg_positioner_set_parent_configure>};
 
 static void sl_destroy_host_xdg_positioner(struct wl_resource* resource) {
   struct sl_host_xdg_positioner* host =
       static_cast<sl_host_xdg_positioner*>(wl_resource_get_user_data(resource));
 
-  xdg_positioner_shim()->destroy(host->proxy);
-  wl_resource_set_user_data(resource, nullptr);
+  xdg_positioner_destroy(host->proxy);
+  wl_resource_set_user_data(resource, NULL);
   delete host;
 }
 
@@ -131,9 +126,8 @@ static void sl_xdg_popup_destroy(struct wl_client* client,
 }
 
 static const struct xdg_popup_interface sl_xdg_popup_implementation = {
-    sl_xdg_popup_destroy,
-    ForwardRequestToShim<xdg_popup_shim, &XdgPopupShim::grab>,
-    ForwardRequestToShim<xdg_popup_shim, &XdgPopupShim::reposition>};
+    sl_xdg_popup_destroy, ForwardRequest<xdg_popup_grab>,
+    ForwardRequest<xdg_popup_reposition>};
 
 static struct sl_host_surface* get_host_surface(
     struct sl_host_xdg_surface* xdg) {
@@ -152,8 +146,8 @@ static void sl_xdg_popup_configure(void* data,
                                    int32_t y,
                                    int32_t width,
                                    int32_t height) {
-  struct sl_host_xdg_popup* host = static_cast<sl_host_xdg_popup*>(
-      xdg_popup_shim()->get_user_data(xdg_popup));
+  struct sl_host_xdg_popup* host =
+      static_cast<sl_host_xdg_popup*>(xdg_popup_get_user_data(xdg_popup));
   int32_t x1 = x;
   int32_t y1 = y;
   int32_t x2 = x + width;
@@ -164,22 +158,22 @@ static void sl_xdg_popup_configure(void* data,
   sl_transform_host_to_guest(host->ctx, get_host_surface(host->originator), &x2,
                              &y2);
 
-  xdg_popup_shim()->send_configure(host->resource, x1, y1, x2 - x1, y2 - y1);
+  xdg_popup_send_configure(host->resource, x1, y1, x2 - x1, y2 - y1);
 }
 
 static void sl_xdg_popup_popup_done(void* data, struct xdg_popup* xdg_popup) {
-  struct sl_host_xdg_popup* host = static_cast<sl_host_xdg_popup*>(
-      xdg_popup_shim()->get_user_data(xdg_popup));
+  struct sl_host_xdg_popup* host =
+      static_cast<sl_host_xdg_popup*>(xdg_popup_get_user_data(xdg_popup));
 
-  xdg_popup_shim()->send_popup_done(host->resource);
+  xdg_popup_send_popup_done(host->resource);
 }
 
 static void sl_xdg_popup_repositioned(void* data,
                                       struct xdg_popup* xdg_popup,
                                       uint32_t token) {
-  struct sl_host_xdg_popup* host = static_cast<sl_host_xdg_popup*>(
-      xdg_popup_shim()->get_user_data(xdg_popup));
-  xdg_popup_shim()->send_repositioned(host->resource, token);
+  struct sl_host_xdg_popup* host =
+      static_cast<sl_host_xdg_popup*>(xdg_popup_get_user_data(xdg_popup));
+  xdg_popup_send_repositioned(host->resource, token);
 }
 
 static const struct xdg_popup_listener sl_xdg_popup_listener = {
@@ -189,7 +183,7 @@ static void sl_destroy_host_xdg_popup(struct wl_resource* resource) {
   struct sl_host_xdg_popup* host =
       static_cast<sl_host_xdg_popup*>(wl_resource_get_user_data(resource));
 
-  xdg_popup_shim()->destroy(host->proxy);
+  xdg_popup_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   delete host;
 }
@@ -214,7 +208,7 @@ static void sl_xdg_toplevel_show_window_menu(struct wl_client* client,
 
   // TODO(mrisaacb): There was no scaling performed here in the original code.
   // Figure out why this was.
-  xdg_toplevel_shim()->show_window_menu(
+  xdg_toplevel_show_window_menu(
       host->proxy, host_seat ? host_seat->proxy : NULL, serial, x, y);
 }  // NOLINT(whitespace/indent)
 
@@ -225,32 +219,24 @@ static void sl_xdg_toplevel_set_app_id(struct wl_client* client,
       static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
   char* application_id_str = sl_xasprintf(NATIVE_WAYLAND_APPLICATION_ID_FORMAT,
                                           host->ctx->vm_id, app_id);
-  xdg_toplevel_shim()->set_app_id(host->proxy, application_id_str);
+  xdg_toplevel_set_app_id(host->proxy, application_id_str);
 }
 
 static const struct xdg_toplevel_interface sl_xdg_toplevel_implementation = {
     sl_xdg_toplevel_destroy,
-    ForwardRequestToShim<xdg_toplevel_shim,
-                         &XdgToplevelShim::set_parent,
-                         AllowNullResource::kYes>,
-    ForwardRequestToShim<xdg_toplevel_shim, &XdgToplevelShim::set_title>,
+    ForwardRequest<xdg_toplevel_set_parent, AllowNullResource::kYes>,
+    ForwardRequest<xdg_toplevel_set_title>,
     sl_xdg_toplevel_set_app_id,
     sl_xdg_toplevel_show_window_menu,
-    ForwardRequestToShim<xdg_toplevel_shim,
-                         &XdgToplevelShim::move,
-                         AllowNullResource::kYes>,
-    ForwardRequestToShim<xdg_toplevel_shim,
-                         &XdgToplevelShim::resize,
-                         AllowNullResource::kYes>,
-    ForwardRequestToShim<xdg_toplevel_shim, &XdgToplevelShim::set_max_size>,
-    ForwardRequestToShim<xdg_toplevel_shim, &XdgToplevelShim::set_min_size>,
-    ForwardRequestToShim<xdg_toplevel_shim, &XdgToplevelShim::set_maximized>,
-    ForwardRequestToShim<xdg_toplevel_shim, &XdgToplevelShim::unset_maximized>,
-    ForwardRequestToShim<xdg_toplevel_shim,
-                         &XdgToplevelShim::set_fullscreen,
-                         AllowNullResource::kYes>,
-    ForwardRequestToShim<xdg_toplevel_shim, &XdgToplevelShim::unset_fullscreen>,
-    ForwardRequestToShim<xdg_toplevel_shim, &XdgToplevelShim::set_minimized>,
+    ForwardRequest<xdg_toplevel_move, AllowNullResource::kYes>,
+    ForwardRequest<xdg_toplevel_resize, AllowNullResource::kYes>,
+    ForwardRequest<xdg_toplevel_set_max_size>,
+    ForwardRequest<xdg_toplevel_set_min_size>,
+    ForwardRequest<xdg_toplevel_set_maximized>,
+    ForwardRequest<xdg_toplevel_unset_maximized>,
+    ForwardRequest<xdg_toplevel_set_fullscreen, AllowNullResource::kYes>,
+    ForwardRequest<xdg_toplevel_unset_fullscreen>,
+    ForwardRequest<xdg_toplevel_set_minimized>,
 };
 
 static void sl_xdg_toplevel_configure(void* data,
@@ -259,7 +245,7 @@ static void sl_xdg_toplevel_configure(void* data,
                                       int32_t height,
                                       struct wl_array* states) {
   struct sl_host_xdg_toplevel* host = static_cast<sl_host_xdg_toplevel*>(
-      xdg_toplevel_shim()->get_user_data(xdg_toplevel));
+      xdg_toplevel_get_user_data(xdg_toplevel));
 
   int32_t iwidth = width;
   int32_t iheight = height;
@@ -267,15 +253,15 @@ static void sl_xdg_toplevel_configure(void* data,
   sl_transform_host_to_guest(host->ctx, get_host_surface(host->originator),
                              &iwidth, &iheight);
 
-  xdg_toplevel_shim()->send_configure(host->resource, iwidth, iheight, states);
+  xdg_toplevel_send_configure(host->resource, iwidth, iheight, states);
 }
 
 static void sl_xdg_toplevel_close(void* data,
                                   struct xdg_toplevel* xdg_toplevel) {
   struct sl_host_xdg_toplevel* host = static_cast<sl_host_xdg_toplevel*>(
-      xdg_toplevel_shim()->get_user_data(xdg_toplevel));
+      xdg_toplevel_get_user_data(xdg_toplevel));
 
-  xdg_toplevel_shim()->send_close(host->resource);
+  xdg_toplevel_send_close(host->resource);
 }
 
 static const struct xdg_toplevel_listener sl_xdg_toplevel_listener = {
@@ -285,7 +271,7 @@ static void sl_destroy_host_xdg_toplevel(struct wl_resource* resource) {
   struct sl_host_xdg_toplevel* host =
       static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
 
-  xdg_toplevel_shim()->destroy(host->proxy);
+  xdg_toplevel_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   delete host;
 }
@@ -308,7 +294,7 @@ static void sl_xdg_surface_get_toplevel(struct wl_client* client,
   wl_resource_set_implementation(
       host_xdg_toplevel->resource, &sl_xdg_toplevel_implementation,
       host_xdg_toplevel, sl_destroy_host_xdg_toplevel);
-  host_xdg_toplevel->proxy = xdg_surface_shim()->get_toplevel(host->proxy);
+  host_xdg_toplevel->proxy = xdg_surface_get_toplevel(host->proxy);
   host_xdg_toplevel->originator = host;
 
   xdg_toplevel_add_listener(host_xdg_toplevel->proxy, &sl_xdg_toplevel_listener,
@@ -337,7 +323,7 @@ static void sl_xdg_surface_get_popup(struct wl_client* client,
   wl_resource_set_implementation(host_xdg_popup->resource,
                                  &sl_xdg_popup_implementation, host_xdg_popup,
                                  sl_destroy_host_xdg_popup);
-  host_xdg_popup->proxy = xdg_surface_shim()->get_popup(
+  host_xdg_popup->proxy = xdg_surface_get_popup(
       host->proxy, host_parent ? host_parent->proxy : NULL,
       host_positioner->proxy);
   host_xdg_popup->originator = host_parent;
@@ -362,22 +348,21 @@ static void sl_xdg_surface_set_window_geometry(struct wl_client* client,
   sl_transform_guest_to_host(host->ctx, host->originator, &x1, &y1);
   sl_transform_guest_to_host(host->ctx, host->originator, &x2, &y2);
 
-  xdg_surface_shim()->set_window_geometry(host->proxy, x1, y1, x2 - x1,
-                                          y2 - y1);
+  xdg_surface_set_window_geometry(host->proxy, x1, y1, x2 - x1, y2 - y1);
 }
 
 static const struct xdg_surface_interface sl_xdg_surface_implementation = {
     sl_xdg_surface_destroy, sl_xdg_surface_get_toplevel,
     sl_xdg_surface_get_popup, sl_xdg_surface_set_window_geometry,
-    ForwardRequestToShim<xdg_surface_shim, &XdgSurfaceShim::ack_configure>};
+    ForwardRequest<xdg_surface_ack_configure>};
 
 static void sl_xdg_surface_configure(void* data,
                                      struct xdg_surface* xdg_surface,
                                      uint32_t serial) {
-  struct sl_host_xdg_surface* host = static_cast<sl_host_xdg_surface*>(
-      xdg_surface_shim()->get_user_data(xdg_surface));
+  struct sl_host_xdg_surface* host =
+      static_cast<sl_host_xdg_surface*>(xdg_surface_get_user_data(xdg_surface));
 
-  xdg_surface_shim()->send_configure(host->resource, serial);
+  xdg_surface_send_configure(host->resource, serial);
 }
 
 static const struct xdg_surface_listener sl_xdg_surface_listener = {
@@ -387,7 +372,7 @@ static void sl_destroy_host_xdg_surface(struct wl_resource* resource) {
   struct sl_host_xdg_surface* host =
       static_cast<sl_host_xdg_surface*>(wl_resource_get_user_data(resource));
 
-  xdg_surface_shim()->destroy(host->proxy);
+  xdg_surface_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   delete host;
 }
@@ -411,10 +396,8 @@ static void sl_xdg_shell_create_positioner(struct wl_client* client,
   wl_resource_set_implementation(
       host_xdg_positioner->resource, &sl_xdg_positioner_implementation,
       host_xdg_positioner, sl_destroy_host_xdg_positioner);
-  host_xdg_positioner->proxy =
-      xdg_wm_base_shim()->create_positioner(host->proxy);
-  xdg_positioner_shim()->set_user_data(host_xdg_positioner->proxy,
-                                       host_xdg_positioner);
+  host_xdg_positioner->proxy = xdg_wm_base_create_positioner(host->proxy);
+  xdg_positioner_set_user_data(host_xdg_positioner->proxy, host_xdg_positioner);
 }
 
 static void sl_xdg_shell_get_xdg_surface(struct wl_client* client,
@@ -434,7 +417,7 @@ static void sl_xdg_shell_get_xdg_surface(struct wl_client* client,
                                  &sl_xdg_surface_implementation,
                                  host_xdg_surface, sl_destroy_host_xdg_surface);
   host_xdg_surface->proxy =
-      xdg_wm_base_shim()->get_xdg_surface(host->proxy, host_surface->proxy);
+      xdg_wm_base_get_xdg_surface(host->proxy, host_surface->proxy);
   host_xdg_surface->originator = host_surface;
 
   xdg_surface_add_listener(host_xdg_surface->proxy, &sl_xdg_surface_listener,
@@ -444,16 +427,15 @@ static void sl_xdg_shell_get_xdg_surface(struct wl_client* client,
 
 static const struct xdg_wm_base_interface sl_xdg_shell_implementation = {
     sl_xdg_shell_destroy, sl_xdg_shell_create_positioner,
-    sl_xdg_shell_get_xdg_surface,
-    ForwardRequestToShim<xdg_wm_base_shim, &XdgWmBaseShim::pong>};
+    sl_xdg_shell_get_xdg_surface, ForwardRequest<xdg_wm_base_pong>};
 
 static void sl_xdg_shell_ping(void* data,
                               struct xdg_wm_base* xdg_shell,
                               uint32_t serial) {
-  struct sl_host_xdg_shell* host = static_cast<sl_host_xdg_shell*>(
-      xdg_wm_base_shim()->get_user_data(xdg_shell));
+  struct sl_host_xdg_shell* host =
+      static_cast<sl_host_xdg_shell*>(xdg_wm_base_get_user_data(xdg_shell));
 
-  xdg_wm_base_shim()->send_ping(host->resource, serial);
+  xdg_wm_base_send_ping(host->resource, serial);
 }
 
 static const struct xdg_wm_base_listener sl_xdg_shell_listener = {
@@ -463,7 +445,7 @@ static void sl_destroy_host_xdg_shell(struct wl_resource* resource) {
   struct sl_host_xdg_shell* host =
       static_cast<sl_host_xdg_shell*>(wl_resource_get_user_data(resource));
 
-  xdg_wm_base_shim()->destroy(host->proxy);
+  xdg_wm_base_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
   delete host;
 }

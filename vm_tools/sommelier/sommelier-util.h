@@ -115,28 +115,7 @@ struct ForwardRequestHelper<void (*)(OutArgs...)> {
   }
 };
 
-// Similar to the above template, however, it takes an extra class type so we
-// can access member functions.
-template <typename C, typename... OutArgs>
-struct ForwardRequestHelper<void (C::*)(OutArgs...)> {
-  template <auto shim_getter,
-            auto function,
-            AllowNullResource allow_null,
-            typename... InArgs>
-  static void Forward(struct wl_client* client, InArgs... args) {
-    if (allow_null == AllowNullResource::kNo) {
-      if ((IsNullWlResource<InArgs>(args) || ...)) {
-        fprintf(stderr, "error: received unexpected null resource in: %s\n",
-                __PRETTY_FUNCTION__);
-        return;
-      }
-    }
-    (shim_getter()->*function)(
-        ConvertRequestArg<InArgs, OutArgs>::Convert(args)...);
-  }
-};
-
-// Wraps the function which dispatches a request to the host for use as
+// Wraps the function which dispatches an request to the host for use as
 // implementation for sommelier's implementation as a host. If null Wayland
 // resources should be allowed, AllowNullResource::kYes should be set,
 // otherwise the request will be considered invalid and dropped.
@@ -154,21 +133,6 @@ void ForwardRequest(InArgs... args) {
   ForwardRequestHelper<decltype(wl_function)>::template Forward<wl_function,
                                                                 allow_null>(
       args...);
-}
-
-// Same as the above function, but it wraps around the shim functions that are
-// generated via gen-shim.py.
-// Usage:
-//  - ForwardRequestShim<xdg_positioner_shim, set_anchor>
-//  - ForwardRequestShim<xdg_positioner_shim, set_anchor,
-//                       AllowNullResource::kYes>
-template <auto shim_getter,
-          auto function,
-          AllowNullResource allow_null = AllowNullResource::kNo,
-          typename... InArgs>
-void ForwardRequestToShim(InArgs... args) {
-  ForwardRequestHelper<decltype(function)>::template Forward<
-      shim_getter, function, allow_null>(args...);
 }
 
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_UTIL_H_
