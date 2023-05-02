@@ -121,6 +121,7 @@ copies.
 | [modemfwd](./modemfwd/) | Daemon for managing modem firmware updaters |
 | [mojo_service_manager](./mojo_service_manager/) | Daemon for managing mojo services |
 | [mtpd](./mtpd/) | Daemon for handling Media Transfer Protocol (MTP) with devices (e.g. phones) |
+| [net-base](./net-base/) | library of networking primitive data structure and common utilities |
 | [nnapi](./nnapi/) | Implementation of the Android [Neural Networks API](https://developer.android.com/ndk/guides/neuralnetworks) |
 | [ocr](./ocr/) | Optical Character Recognition (OCR) service for ChromeOS |
 | [oobe_config](./oobe_config/) | Utilities for saving and restoring OOBE config state |
