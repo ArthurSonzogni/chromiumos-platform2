@@ -101,7 +101,7 @@ bool RmadInterfaceImpl::StoreStateHistory() {
 void RmadInterfaceImpl::InitializeExternalUtils(
     scoped_refptr<DaemonCallback> daemon_callback) {
   json_store_ = base::MakeRefCounted<JsonStore>(
-      base::FilePath(kDefaultJsonStoreFilePath));
+      base::FilePath(kDefaultJsonStoreFilePath), false);
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   state_handler_manager_->RegisterStateHandlers(daemon_callback);
   runtime_probe_client_ =
@@ -166,7 +166,7 @@ bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
   // Something's wrong with the state file. Try to clear it.
   if (json_store_->ReadOnly()) {
     LOG(WARNING) << "Corrupted RMA state file. Trying to fix it";
-    if (!json_store_->Clear() || !json_store_->InitFromFile()) {
+    if (!json_store_->Clear() || !json_store_->InitFromFile(false)) {
       LOG(ERROR) << "Failed to fix RMA state file";
       return false;
     }

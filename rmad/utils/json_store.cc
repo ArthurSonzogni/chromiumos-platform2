@@ -61,8 +61,9 @@ struct JsonStore::ReadResult {
   JsonStore::ReadError read_error;
 };
 
-JsonStore::JsonStore(const base::FilePath& file_path) : file_path_(file_path) {
-  InitFromFile();
+JsonStore::JsonStore(const base::FilePath& file_path, bool read_only)
+    : file_path_(file_path), initialized_(false) {
+  InitFromFile(read_only);
 }
 
 bool JsonStore::SetValue(const std::string& key, base::Value&& value) {
@@ -147,10 +148,11 @@ bool JsonStore::Sync() const {
   return brillo::SyncFileOrDirectory(file_path_, false, true);
 }
 
-bool JsonStore::InitFromFile() {
+bool JsonStore::InitFromFile(bool read_only) {
+  initialized_ = false;
   std::unique_ptr<JsonStore::ReadResult> read_result = ReadFromFile();
   data_ = base::Value::Dict();
-  read_only_ = false;
+  read_only_ = read_only;
   read_error_ = read_result->read_error;
   switch (read_error_) {
     case READ_ERROR_JSON_PARSE:
@@ -158,24 +160,28 @@ bool JsonStore::InitFromFile() {
     case READ_ERROR_FILE_ACCESS_DENIED:
     case READ_ERROR_FILE_LOCKED:
     case READ_ERROR_FILE_OTHER:
-      read_only_ = true;
       break;
     case READ_ERROR_NONE:
       // A result with non-dict-type value will have READ_ERROR_JSON_TYPE error.
       data_ = std::move(read_result->value->GetDict());
+      initialized_ = true;
       break;
     case READ_ERROR_NO_SUCH_FILE:
+      // If read_only is false, we allow the file to not exist because we can
+      // create it.
+      initialized_ = !read_only_;
       break;
     case READ_ERROR_MAX_ENUM:
       NOTREACHED();
       break;
   }
   // Check if we can write to the file.
-  if (!read_only_) {
-    read_only_ &= WriteToFile();
+  if (initialized_ && !read_only_ && !WriteToFile()) {
+    read_only_ = true;
+    initialized_ = false;
   }
   VLOG(2) << "JsonStore::InitFromFile complete.";
-  return !read_only_;
+  return initialized_;
 }
 
 std::unique_ptr<JsonStore::ReadResult> JsonStore::ReadFromFile() {

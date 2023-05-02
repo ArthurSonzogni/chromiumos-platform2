@@ -25,7 +25,7 @@ using testing::StrictMock;
 class StateHandlerManagerTest : public testing::Test {
  public:
   StateHandlerManagerTest() {
-    json_store_ = base::MakeRefCounted<JsonStore>(base::FilePath(""));
+    json_store_ = base::MakeRefCounted<JsonStore>(base::FilePath(""), false);
     daemon_callback_ = base::MakeRefCounted<DaemonCallback>();
     state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   }

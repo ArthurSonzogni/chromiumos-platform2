@@ -192,7 +192,7 @@ class LogsUtilsTest : public testing::Test {
 
   bool CreateInputFile(const char* str, int size) {
     if (base::WriteFile(file_path_, str, size) == size) {
-      json_store_ = base::MakeRefCounted<JsonStore>(file_path_);
+      json_store_ = base::MakeRefCounted<JsonStore>(file_path_, false);
       return true;
     }
     return false;

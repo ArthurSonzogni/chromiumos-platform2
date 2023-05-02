@@ -166,7 +166,7 @@ class MetricsUtilsTest : public testing::Test {
 
   bool CreateInputFile(const char* str, int size) {
     if (base::WriteFile(file_path_, str, size) == size) {
-      json_store_ = base::MakeRefCounted<JsonStore>(file_path_);
+      json_store_ = base::MakeRefCounted<JsonStore>(file_path_, false);
       return true;
     }
     return false;
@@ -596,7 +596,7 @@ class MetricsUtilsImplTest : public testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base::FilePath file_path =
         temp_dir_.GetPath().AppendASCII(kTestJsonStoreFilename);
-    json_store_ = base::MakeRefCounted<JsonStore>(file_path);
+    json_store_ = base::MakeRefCounted<JsonStore>(file_path, false);
   }
 
   base::ScopedTempDir temp_dir_;

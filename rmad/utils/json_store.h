@@ -33,10 +33,10 @@ class JsonStore : public base::RefCounted<JsonStore> {
     READ_ERROR_MAX_ENUM
   };
 
-  explicit JsonStore(const base::FilePath& file_path);
+  explicit JsonStore(const base::FilePath& file_path, bool read_only);
 
   // Initialize from the file.
-  bool InitFromFile();
+  bool InitFromFile(bool read_only);
 
   // Set a (key, value) pair to the dictionary. Return true if there's no
   // update or the updated data is successfully written to the file, false if
@@ -95,9 +95,12 @@ class JsonStore : public base::RefCounted<JsonStore> {
   // Return true if the file existed when read was attempted.
   bool Exists() const { return read_error_ != READ_ERROR_NO_SUCH_FILE; }
 
+  // Return true if the file exists and contains a valid JSON string.
+  bool Initialized() const { return initialized_; }
+
   // Return true if the file cannot be written, such as access denied, or the
   // file already exists but contains invalid JSON format.
-  bool ReadOnly() const { return read_only_; }
+  bool ReadOnly() const { return !initialized_ || read_only_; }
 
   // Sync the state file.
   bool Sync() const;
@@ -120,6 +123,7 @@ class JsonStore : public base::RefCounted<JsonStore> {
   base::Value::Dict data_;
   ReadError read_error_;
   bool read_only_;
+  bool initialized_;
 };
 
 }  // namespace rmad

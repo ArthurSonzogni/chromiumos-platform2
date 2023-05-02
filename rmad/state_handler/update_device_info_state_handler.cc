@@ -442,7 +442,7 @@ UpdateDeviceInfoStateHandler::CreateFakeSegmentationUtils() const {
   int feature_level = 0;
 
   auto fake_features =
-      base::MakeRefCounted<JsonStore>(GetFakeFeaturesInputFilePath());
+      base::MakeRefCounted<JsonStore>(GetFakeFeaturesInputFilePath(), false);
   if (!fake_features->ReadOnly()) {
     // Read JSON success.
     fake_features->GetValue("is_feature_enabled", &is_feature_enabled);

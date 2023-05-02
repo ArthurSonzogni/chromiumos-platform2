@@ -21,7 +21,7 @@ scoped_refptr<JsonStore> CreateTestEmptyJsonStore(
     const base::FilePath& file_path) {
   base::WriteFile(file_path, kTestEmptyJsonStore,
                   std::size(kTestEmptyJsonStore) - 1);
-  return base::MakeRefCounted<JsonStore>(file_path);
+  return base::MakeRefCounted<JsonStore>(file_path, false);
 }
 
 }  // namespace

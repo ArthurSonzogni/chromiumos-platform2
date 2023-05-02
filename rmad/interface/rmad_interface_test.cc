@@ -349,7 +349,8 @@ TEST_F(RmadInterfaceImplTest, Setup) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   bool cellular_disabled = false;
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
@@ -376,7 +377,8 @@ TEST_F(RmadInterfaceImplTest, Setup_WaitForServices_Timeout) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   bool cellular_disabled = false;
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
@@ -393,7 +395,8 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   bool cellular_disabled = false;
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
@@ -420,7 +423,8 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_NoCellular) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   bool cellular_disabled = false;
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
@@ -447,7 +451,8 @@ TEST_F(RmadInterfaceImplTest,
        GetCurrentState_NotInRma_RoVerificationNotTriggered) {
   base::FilePath json_store_file_path =
       temp_dir_.GetPath().AppendASCII("missing.json");
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   bool cellular_disabled = false;
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
@@ -471,7 +476,8 @@ TEST_F(RmadInterfaceImplTest,
 TEST_F(RmadInterfaceImplTest, GetCurrentState_NotInRma_RoVerificationPass) {
   base::FilePath json_store_file_path =
       temp_dir_.GetPath().AppendASCII("missing.json");
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -495,7 +501,8 @@ TEST_F(RmadInterfaceImplTest,
        GetCurrentState_NotInRma_RoVerificationUnsupportedTriggered) {
   base::FilePath json_store_file_path =
       temp_dir_.GetPath().AppendASCII("missing.json");
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -520,7 +527,8 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_CorruptedFile) {
       CreateInputFile(kJsonStoreFileName, "", 0);
   // Make the file read-only.
   base::SetPosixFilePermissions(json_store_file_path, 0444);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -534,7 +542,8 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_CorruptedFile) {
 TEST_F(RmadInterfaceImplTest, GetCurrentState_EmptyFile) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, "", 0);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -558,7 +567,8 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_NotSet) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateNotSetJson,
                       std::size(kCurrentStateNotSetJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -582,7 +592,8 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithHistory) {
   base::FilePath json_store_file_path = CreateInputFile(
       kJsonStoreFileName, kCurrentStateWithRepeatableHistoryJson,
       std::size(kCurrentStateWithRepeatableHistoryJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -606,7 +617,8 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_WithUnsupportedState) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateWithUnsupportedStateJson,
                       std::size(kCurrentStateWithUnsupportedStateJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -631,7 +643,8 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateInvalidStateJson,
                       std::size(kCurrentStateInvalidStateJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -654,7 +667,8 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidState) {
 TEST_F(RmadInterfaceImplTest, GetCurrentState_InvalidJson) {
   base::FilePath json_store_file_path = CreateInputFile(
       kJsonStoreFileName, kInvalidJson, std::size(kInvalidJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -678,7 +692,8 @@ TEST_F(RmadInterfaceImplTest, GetCurrentState_InitializeStateFail) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kInitializeCurrentStateFailJson,
                       std::size(kInitializeCurrentStateFailJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -700,7 +715,8 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -786,7 +802,8 @@ TEST_F(RmadInterfaceImplTest, TransitionNextStateAfterInterval) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateNotSetJson,
                       std::size(kCurrentStateNotSetJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -841,7 +858,8 @@ TEST_F(RmadInterfaceImplTest, TryTransitionNextState) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -864,7 +882,8 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerMissingHandler(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -885,7 +904,8 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kInitializeNextStateFailJson,
                       std::size(kInitializeNextStateFailJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -911,7 +931,8 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_GetNextStateCaseFail) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerGetNextStateCaseFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -937,7 +958,8 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -1008,7 +1030,8 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -1033,7 +1056,8 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState_MissingHandler) {
   base::FilePath json_store_file_path = CreateInputFile(
       kJsonStoreFileName, kCurrentStateWithRepeatableHistoryJson,
       std::size(kCurrentStateWithRepeatableHistoryJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerMissingHandler(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -1059,7 +1083,8 @@ TEST_F(RmadInterfaceImplTest,
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kInitializePreviousStateFailJson,
                       std::size(kInitializePreviousStateFailJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerInitializeStateFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -1084,7 +1109,8 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
   base::FilePath json_store_file_path = CreateInputFile(
       kJsonStoreFileName, kCurrentStateWithRepeatableHistoryJson,
       std::size(kCurrentStateWithRepeatableHistoryJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -1112,7 +1138,8 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -1140,7 +1167,8 @@ TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {
   base::FilePath json_store_file_path = CreateInputFile(
       kJsonStoreFileName, kCurrentStateWithUnrepeatableHistoryJson,
       std::size(kCurrentStateWithUnrepeatableHistoryJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -1170,7 +1198,8 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kStateHistoryWithMetricsJson,
                       std::size(kStateHistoryWithMetricsJson) - 1);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -1210,7 +1239,8 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
 TEST_F(RmadInterfaceImplTest, SaveLog_Success) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, "", 0);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -1243,7 +1273,8 @@ TEST_F(RmadInterfaceImplTest, SaveLog_Success) {
 TEST_F(RmadInterfaceImplTest, SaveLog_NoExternalDisk) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, "", 0);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -1270,7 +1301,8 @@ TEST_F(RmadInterfaceImplTest, SaveLog_NoExternalDisk) {
 TEST_F(RmadInterfaceImplTest, SaveLog_MountFail) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, "", 0);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -1301,7 +1333,8 @@ TEST_F(RmadInterfaceImplTest, SaveLog_MountFail) {
 TEST_F(RmadInterfaceImplTest, RecordBrowserActionMetric) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, "", 0);
-  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  auto json_store =
+      base::MakeRefCounted<JsonStore>(json_store_file_path, false);
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
