@@ -60,6 +60,8 @@ enum CameraAutoFramingState{
 enum SetEffectResult {
   [Default] kOk = 0,
   kError = 1,
+  kFeatureDisabled = 2,
+  kDlcUnavailable = 3
 };
 
 // The CrOS camera HAL v3 Mojo dispatcher.  The dispatcher acts as a proxy and

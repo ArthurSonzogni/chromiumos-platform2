@@ -351,6 +351,16 @@ mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
             << " relight: " << config->relight_enabled
             << " replace: " << config->replace_enabled
             << " blur_level: " << config->blur_level;
+
+  if (!FeatureProfile().IsEnabled(FeatureProfile::FeatureType::kEffects)) {
+    return mojom::SetEffectResult::kFeatureDisabled;
+  }
+
+  if (stream_manipulator_runtime_options_.GetDlcRootPath() ==
+      base::FilePath("")) {
+    return mojom::SetEffectResult::kDlcUnavailable;
+  }
+
   stream_manipulator_runtime_options_.SetEffectsConfig(std::move(config));
   return mojom::SetEffectResult::kOk;
 }
