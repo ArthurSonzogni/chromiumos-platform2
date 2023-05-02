@@ -250,6 +250,9 @@ const std::vector<std::string> kExtMkfsOpts = {
 // A TBW limit that is unlikely to impact disk health over the lifetime of a
 // given device
 constexpr uint64_t kTbwTargetForVmmSwapPerDay = 550 * 1024 * 1024;  // 550 MiB
+// The path to the history file for VmmSwapTbwPolicy.
+constexpr char kVmmSwapTbwHistoryFilePath[] =
+    "/var/lib/vm_concierge/vmm_swap_policy/tbw_history";
 
 // Fds to all the images required while starting a VM.
 struct VmStartImageFds {
@@ -1602,6 +1605,10 @@ bool Service::Init() {
   }
 
   vmm_swap_tbw_policy_->SetTargetTbwPerDay(kTbwTargetForVmmSwapPerDay);
+  base::FilePath tbw_history_file_path(kVmmSwapTbwHistoryFilePath);
+  // VmmSwapTbwPolicy repopulate pessimistic history if it fails to init. This
+  // is safe to continue using regardless of the result.
+  vmm_swap_tbw_policy_->Init(tbw_history_file_path);
 
   return true;
 }

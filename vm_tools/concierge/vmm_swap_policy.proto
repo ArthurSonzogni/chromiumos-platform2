@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+option cc_enable_arenas = true;
+
+package vm_tools.concierge;
+
+// A history entry for TbwTracker.
+message TbwHistoryEntry {
+  // The microseconds relative to Windows epoch (1601-01-01 00:00:00 UTC).
+  int64 time_us = 1;
+  // The written size in bytes.
+  uint64 size = 2;
+}
