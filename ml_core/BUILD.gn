@@ -8,7 +8,6 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":install_headers",
-    ":install_minijail_conf",
     ":install_tmpfiles",
     ":libcros_ml_core",
     ":maybe_install_dev_lib",
@@ -42,11 +41,6 @@ shared_library("libcros_ml_core") {
   }
   configs += [ ":target_defaults" ]
   install_path = "lib"
-}
-
-install_config("install_minijail_conf") {
-  sources = [ "opencl_caching/minijail/opencl-cacher.conf" ]
-  install_path = "/usr/share/minijail"
 }
 
 install_config("install_tmpfiles") {
