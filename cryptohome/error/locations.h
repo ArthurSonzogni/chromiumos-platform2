@@ -97,9 +97,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocTpmNotBoundToPcrAuthBlockNoScryptDerivedInDerive = 135,
   /* ./auth_blocks/tpm_not_bound_to_pcr_auth_block.cc */
   kLocTpmNotBoundToPcrAuthBlockTpmNotReadyInDerive = 136,
-  /* ./auth_blocks/tpm_not_bound_to_pcr_auth_block.cc */
+  /* =Obsolete= */
   kLocTpmNotBoundToPcrAuthBlockNoPubKeyHashInDerive = 137,
-  /* ./auth_blocks/tpm_not_bound_to_pcr_auth_block.cc */
+  /* =Obsolete= */
   kLocTpmNotBoundToPcrAuthBlockDecryptFailedInDerive = 138,
   /* ./auth_blocks/tpm_not_bound_to_pcr_auth_block.cc */
   kLocTpmNotBoundToPcrAuthBlockNoCryptohomeKeyInCreate = 139,
@@ -151,7 +151,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthBlockUtilCHRecoveryUnsupportedInGetAuthBlockWithType = 162,
   /* =Obsolete= */
   kLocAuthBlockUtilMaxValueUnsupportedInGetAuthBlockWithType = 163,
-  /* =Obsolete= */
+  /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilUnknownUnsupportedInGetAuthBlockWithType = 164,
   /* =Obsolete= */
   kLocAuthBlockUtilNoChalInGetAsyncAuthBlockWithType = 165,
@@ -211,7 +211,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocChalCredAuthBlockNoAlgorithmInfoInDerive = 192,
   /* ./auth_blocks/challenge_credential_auth_block.cc */
   kLocChalCredAuthBlockServiceDeriveFailedInDerive = 193,
-  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  /* =Obsolete= */
   kLocChalCredAuthBlockScryptDeriveFailedInDerive = 194,
   /* =Obsolete= */
   kLocTpmAuthBlockUtilsCryptohomeKeyLoadFailedInPubkeyHash = 195,
@@ -259,9 +259,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocTpmBoundToPcrAuthBlockNoExtendedTpmKeyInDerive = 216,
   /* ./auth_blocks/tpm_bound_to_pcr_auth_block.cc */
   kLocTpmBoundToPcrAuthBlockTpmNotReadyInDerive = 217,
-  /* ./auth_blocks/tpm_bound_to_pcr_auth_block.cc */
+  /* =Obsolete= */
   kLocTpmBoundToPcrAuthBlockNoPubKeyHashInDerive = 218,
-  /* ./auth_blocks/tpm_bound_to_pcr_auth_block.cc */
+  /* =Obsolete= */
   kLocTpmBoundToPcrAuthBlockDecryptFailedInDerive = 219,
   /* ./auth_blocks/tpm_bound_to_pcr_auth_block.cc */
   kLocTpmBoundToPcrAuthBlockScryptDeriveFailedInDecrypt = 220,
@@ -275,7 +275,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocDoubleWrappedAuthBlockInvalidBlockStateInDerive = 224,
   /* ./auth_blocks/double_wrapped_compat_auth_block.cc */
   kLocDoubleWrappedAuthBlockTpmDeriveFailedInDerive = 225,
-  /* =Obsolete= */
+  /* ./auth_blocks/double_wrapped_compat_auth_block.cc */
   kLocDoubleWrappedAuthBlockInvalidBlockStateInAfterScrypt = 226,
   /* =Obsolete= */
   kLocChalCredAuthBlockDerivationFailedInCreate = 227,
@@ -1639,7 +1639,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockCheckCredentialFailedInCreate = 3371,
   /* ./auth_blocks/auth_block.h */
   kLocAuthBlockSelectFactorNotSupported = 3372,
-  /* ./auth_blocks/auth_block.h */
+  /* =Obsolete= */
   kLocAuthBlockSyncSelectFactorNotSupported = 3373,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilNoAuthBlockInSelectAuthFactor = 3374,
