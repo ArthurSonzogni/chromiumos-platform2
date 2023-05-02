@@ -5,6 +5,8 @@
 #ifndef INIT_STARTUP_UEFI_STARTUP_IMPL_H_
 #define INIT_STARTUP_UEFI_STARTUP_IMPL_H_
 
+#include <string>
+
 #include <base/files/file_path.h>
 
 #include "init/startup/platform_impl.h"
@@ -23,12 +25,21 @@ constexpr char kEfivarsDir[] = "sys/firmware/efi/efivars";
 // File system name used for mounting efivarfs.
 constexpr char kFsTypeEfivarfs[] = "efivarfs";
 
+// Vendor GUID used for the dbx UEFI variable. This is defined in the
+// UEFI Specification under the "Device Signature Database Update" section.
+constexpr char kEfiImageSecurityDatabaseGuid[] =
+    "d719b2cb-3d3a-4596-a3bc-dad00e67656f";
+
 class UefiDelegateImpl : public UefiDelegate {
  public:
   UefiDelegateImpl(Platform& platform, const base::FilePath& root_dir);
 
   bool IsUefiEnabled() const override;
+  std::optional<UserAndGroup> GetFwupdUserAndGroup() const override;
   bool MountEfivarfs() override;
+  bool MakeUefiVarWritableByFwupd(const std::string& vendor,
+                                  const std::string& name,
+                                  const UserAndGroup& fwupd) override;
 
  private:
   Platform& platform_;
