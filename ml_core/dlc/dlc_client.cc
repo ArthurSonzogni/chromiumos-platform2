@@ -18,6 +18,7 @@
 namespace {
 constexpr char kDlcId[] = "ml-core-internal";
 constexpr uint8_t kMaxInstallAttempts = 5;
+constexpr uint16_t kDlcInstallTimeout = 50000;
 const base::TimeDelta kRetryDelays[kMaxInstallAttempts] = {
     base::Seconds(5), base::Seconds(10), base::Seconds(20), base::Seconds(40),
     base::Seconds(80)};
@@ -108,7 +109,8 @@ class DlcClientImpl : public cros::DlcClient {
     dlcservice::InstallRequest install_request;
     install_request.set_id(kDlcId);
 
-    if (!dlcservice_client_->Install(install_request, &error)) {
+    if (!dlcservice_client_->Install(install_request, &error,
+                                     kDlcInstallTimeout)) {
       LOG(ERROR) << "Error calling dlcservice_client_->Install for " << kDlcId;
       if (error == nullptr) {
         InvokeErrorCb("Error calling dlcservice: unknown");
