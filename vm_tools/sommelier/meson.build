@@ -205,10 +205,9 @@ if get_option('with_tests')
       'sommelier-test-main.cc',
       'sommelier-output-test.cc',
       'sommelier-window-test.cc',
-      'sommelier-xdg-shell-test.cc',
       'testing/mock-wayland-channel.cc',
       'testing/sommelier-test-util.cc',
-    ] + wl_outs + shim_outs,
+    ] + wl_outs,
     link_with: libsommelier,
     dependencies: [
       dependency('gtest'),

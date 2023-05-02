@@ -15,7 +15,7 @@
 #include "sommelier-test-util.h"         // NOLINT(build/include_directory)
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-output-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
-#include "xdg-shell-client-protocol.h"  // NOLINT(build/include_directory)
+#include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
 
 namespace vm_tools {
 namespace sommelier {
@@ -47,19 +47,10 @@ class FakeWaylandClient {
     compositor = static_cast<wl_compositor*>(wl_registry_bind(
         client_registry, GlobalName(ctx, &wl_compositor_interface),
         &wl_compositor_interface, WL_COMPOSITOR_CREATE_SURFACE_SINCE_VERSION));
-    if (!ctx->xwayland) {
-      xdg_wm_base = static_cast<struct xdg_wm_base*>(wl_registry_bind(
-          client_registry, GlobalName(ctx, &xdg_wm_base_interface),
-          &xdg_wm_base_interface, XDG_WM_BASE_GET_XDG_SURFACE_SINCE_VERSION));
-    }
-    Flush();
+    wl_display_flush(client_display);
   }
 
   ~FakeWaylandClient() {
-    if (xdg_wm_base != nullptr) {
-      xdg_wm_base_destroy(xdg_wm_base);
-      xdg_wm_base = nullptr;
-    }
     wl_display_disconnect(client_display);
     client_display = nullptr;
     wl_client_destroy(client);
@@ -81,25 +72,15 @@ class FakeWaylandClient {
       }
     }
     EXPECT_EQ(bound, ids.size());
-    Flush();
+    wl_display_flush(client_display);
   }
 
   // Create a surface and return its ID
   uint32_t CreateSurface() {
     struct wl_surface* surface = wl_compositor_create_surface(compositor);
-    Flush();
+    wl_display_flush(client_display);
     return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(surface));
   }
-
-  // Create an xdg_positioner object.
-  struct xdg_positioner* CreatePositioner() {
-    struct xdg_positioner* positioner =
-        xdg_wm_base_create_positioner(xdg_wm_base);
-    Flush();
-    return positioner;
-  }
-
-  void Flush() { wl_display_flush(client_display); }
 
   // Represents the client from the server's (Sommelier's) end.
   struct wl_client* client = nullptr;
@@ -129,7 +110,6 @@ class FakeWaylandClient {
   struct wl_display* client_display = nullptr;
   struct wl_registry* client_registry = nullptr;
   struct wl_compositor* compositor = nullptr;
-  struct xdg_wm_base* xdg_wm_base = nullptr;
 };
 
 // Properties of a fake output (monitor) to advertise.

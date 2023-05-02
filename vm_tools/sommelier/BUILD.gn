@@ -152,20 +152,15 @@ executable("sommelier") {
 }
 
 if (use.test) {
-  executable("sommelier_test") {
+  static_library("libsommelier-test") {
     sources = [
       "sommelier-output-test.cc",
-      "sommelier-test-main.cc",
       "sommelier-test.cc",
       "sommelier-window-test.cc",
-      "sommelier-xdg-shell-test.cc",
       "testing/mock-wayland-channel.cc",
       "testing/sommelier-test-util.cc",
     ]
     include_dirs = [ "testing" ]
-
-    defines = sommelier_defines
-
     pkg_deps = [ "pixman-1" ]
 
     # gnlint: disable=GnLintCommonTesting
@@ -174,12 +169,16 @@ if (use.test) {
       "gtest",
       "pixman-1",
     ]
+  }
 
+  executable("sommelier_test") {
+    sources = [ "sommelier-test-main.cc" ]
+
+    defines = sommelier_defines
     deps = [
-             ":libsommelier",
-             ":sommelier-protocol",
-             ":sommelier-shims",
-           ] + gaming_deps
+      ":libsommelier",
+      ":libsommelier-test",
+    ]
   }
 }
 
