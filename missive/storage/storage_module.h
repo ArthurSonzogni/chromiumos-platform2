@@ -12,6 +12,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 
+#include "base/functional/callback_forward.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
@@ -69,17 +70,20 @@ class StorageModule : public StorageModuleInterface, public DynamicFlag {
   // Declared virtual for testing purposes.
   virtual void UpdateEncryptionKey(SignedEncryptionInfo signed_encryption_key);
 
+  bool legacy_storage_enabled() const;
+
  protected:
   // Constructor can only be called by |Create| factory method.
   explicit StorageModule(bool legacy_storage_enabled);
-
-  bool legacy_storage_enabled() const;
 
   // Refcounted object must have destructor declared protected or private.
   ~StorageModule() override;
 
  private:
   friend base::RefCountedThreadSafe<StorageModule>;
+
+  // Called when DynamicFlag flips.
+  void OnValueUpdate(bool is_enabled) const override;
 
   scoped_refptr<StorageInterface> storage_;
 };

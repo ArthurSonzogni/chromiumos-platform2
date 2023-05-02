@@ -135,7 +135,7 @@ class TestEvent : public TestMultiEvent<ResType> {
 
   [[nodiscard]] const ResType& ref_result() {
     static_assert(!TestMultiEvent<ResType>::template IsMovable<ResType>(),
-                  "ResType is movable. Plesae use result().");
+                  "ResType is movable. Please use result().");
     return std::get<0>(TestMultiEvent<ResType>::ref_result());
   }
 

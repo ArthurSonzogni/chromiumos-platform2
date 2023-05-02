@@ -193,6 +193,7 @@ if (use.test) {
       "storage/new_storage_degradation_test.cc",
       "storage/new_storage_test.cc",
       "storage/storage_degradation_test.cc",
+      "storage/storage_module_test.cc",
       "storage/storage_queue_stress_test.cc",
       "storage/storage_queue_test.cc",
       "storage/storage_test.cc",

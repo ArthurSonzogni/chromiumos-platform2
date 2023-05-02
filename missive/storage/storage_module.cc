@@ -25,6 +25,7 @@
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/dynamic_flag.h"
 #include "missive/util/status.h"
+#include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
@@ -68,7 +69,7 @@ void StorageModule::Create(
     scoped_refptr<CompressionModule> compression_module,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
   scoped_refptr<StorageModule> instance =
-      // Cannot base::MakeRefCounted, since constructor is protected.
+      // Cannot use `base::MakeRefCounted`, since constructor is protected.
       base::WrapRefCounted(new StorageModule(legacy_storage_enabled));
 
   auto completion_cb = base::BindOnce(
@@ -76,17 +77,12 @@ void StorageModule::Create(
          base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
              callback,
          StatusOr<scoped_refptr<StorageInterface>> storage) {
-        if (!storage.ok()) {
-          std::move(callback).Run(storage.status());
-          return;
-        }
-        instance->storage_ = std::move(storage.ValueOrDie());
+        ASSIGN_OR_ONCE_CALLBACK_AND_RETURN(instance->storage_,
+                                           std::move(callback), storage);
         std::move(callback).Run(std::move(instance));
       },
       instance, std::move(callback));
 
-  // TOOD(b/279057326): dynamically update storage implementation when
-  // `legacy_storage_enabled` changes
   if (instance->legacy_storage_enabled()) {
     Storage::Create(options, async_start_upload_cb, queues_container,
                     encryption_module, compression_module,
@@ -100,5 +96,10 @@ void StorageModule::Create(
 
 bool StorageModule::legacy_storage_enabled() const {
   return is_enabled();
+}
+
+void StorageModule::OnValueUpdate(bool is_enabled) const {
+  // TOOD(b/279057326): dynamically update storage implementation when
+  // `legacy_storage_enabled` changes.
 }
 }  // namespace reporting
