@@ -4,6 +4,7 @@
 
 #include "rmad/state_handler/update_device_info_state_handler.h"
 
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <string>
@@ -46,9 +47,7 @@ constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
 constexpr char kDramPartNum[] = "TestDramPartNum";
 
 const std::vector<std::string> kRegionList = {"TestRegion", "TestRegion1"};
-// We get the value of type int from cros_config, but we set uint64_t in cbi.
-// This is used to mock the result of cros_config, so it is a vector<int>.
-const std::vector<int> kSkuList = {1234567890, 1234567891};
+const std::vector<uint64_t> kSkuList = {1234567890, 1234567891};
 const std::vector<std::string> kCustomLabelTagList = {
     "TestCustomLabelTag", "TestCustomLabelTag0", "TestCustomLabelTag1"};
 constexpr uint32_t kOriginalRegionSelection = 0;

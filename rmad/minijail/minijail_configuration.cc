@@ -67,6 +67,11 @@ void EnterMinijail(bool set_admin_caps) {
                 0);
   minijail_add_fs_restriction_ro(j.get(), "/run/chromeos-config/v1");
 
+  // Required to parse cros_config_fs.
+  minijail_bind(j.get(), "/run/chromeos-config/private",
+                "/run/chromeos-config/private", 0);
+  minijail_add_fs_restriction_ro(j.get(), "/run/chromeos-config/private");
+
   // Required for using D-Bus.
   minijail_bind(j.get(), "/run/dbus", "/run/dbus", 0);
   minijail_add_fs_restriction_ro(j.get(), "/run/dbus");

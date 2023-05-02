@@ -22,21 +22,22 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
  public:
   CrosConfigUtilsImpl();
   explicit CrosConfigUtilsImpl(
-      const std::string& config_file_path,
+      const std::string& configs_root_path,
       std::unique_ptr<brillo::CrosConfigInterface> cros_config);
   ~CrosConfigUtilsImpl() override = default;
 
   bool GetRmadConfig(RmadConfig* config) const override;
   bool GetModelName(std::string* model_name) const override;
-  bool GetSkuId(int* sku) const override;
+  bool GetSkuId(uint64_t* sku) const override;
   bool GetCustomLabelTag(std::string* custom_label_tag) const override;
-  bool GetSkuIdList(std::vector<int>* sku_list) const override;
+  bool GetSkuIdList(std::vector<uint64_t>* sku_list) const override;
   bool GetCustomLabelTagList(
       std::vector<std::string>* custom_label_tag_list) const override;
 
  private:
-  bool GetMatchedItemsFromIdentity(const std::string& key,
-                                   std::vector<base::Value>* list) const;
+  bool GetMatchedItemsFromCategory(const std::string& category,
+                                   const std::string& key,
+                                   std::vector<std::string>* list) const;
   std::string GetStringWithDefault(const std::string& path,
                                    const std::string& key,
                                    const std::string& default_value) const;
@@ -54,7 +55,7 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
   std::map<std::string, uint32_t> GetSsfcProbeableComponents(
       const std::string& path) const;
 
-  std::string config_file_path_;
+  std::string configs_root_path_;
   std::unique_ptr<brillo::CrosConfigInterface> cros_config_;
 };
 

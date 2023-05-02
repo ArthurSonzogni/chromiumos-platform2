@@ -5,6 +5,7 @@
 #include "rmad/utils/cros_config_utils_impl.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <fstream>
 #include <map>
 #include <set>
@@ -12,10 +13,13 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_path.h>
+#include <base/files/file_enumerator.h>
+#include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 
 #include "rmad/utils/json_store.h"
@@ -26,11 +30,8 @@ namespace {
 
 // TODO(genechang): We should build the configuration ourselves to
 // prevent possible changes to the configuration file in the future.
-const std::string kChromeosConfigPath(
-    "/usr/share/chromeos-config/yaml/config.yaml");
-
-constexpr char kChromeos[] = "chromeos";
-constexpr char kChromeosConfigs[] = "configs";
+const std::string kChromeosConfigsRootPath(
+    "/run/chromeos-config/private/v1/chromeos/configs");
 
 // cros_config root path.
 constexpr char kCrosRootPath[] = "/";
@@ -66,14 +67,14 @@ constexpr char kUndefinedComponentType[] = "undefined_component_type";
 }  // namespace
 
 CrosConfigUtilsImpl::CrosConfigUtilsImpl()
-    : config_file_path_(kChromeosConfigPath) {
+    : configs_root_path_(kChromeosConfigsRootPath) {
   cros_config_ = std::make_unique<brillo::CrosConfig>();
 }
 
 CrosConfigUtilsImpl::CrosConfigUtilsImpl(
-    const std::string& config_file_path,
+    const std::string& configs_root_path,
     std::unique_ptr<brillo::CrosConfigInterface> cros_config)
-    : config_file_path_(config_file_path),
+    : configs_root_path_(configs_root_path),
       cros_config_(std::move(cros_config)) {}
 
 bool CrosConfigUtilsImpl::GetRmadConfig(RmadConfig* config) const {
@@ -94,7 +95,7 @@ bool CrosConfigUtilsImpl::GetModelName(std::string* model_name) const {
   return cros_config_->GetString(kCrosRootPath, kCrosModelNameKey, model_name);
 }
 
-bool CrosConfigUtilsImpl::GetSkuId(int* sku_id) const {
+bool CrosConfigUtilsImpl::GetSkuId(uint64_t* sku_id) const {
   DCHECK(sku_id);
 
   std::string sku_id_str;
@@ -104,7 +105,7 @@ bool CrosConfigUtilsImpl::GetSkuId(int* sku_id) const {
     return false;
   }
 
-  return base::StringToInt(sku_id_str, sku_id);
+  return base::StringToUint64(sku_id_str, sku_id);
 }
 
 bool CrosConfigUtilsImpl::GetCustomLabelTag(
@@ -116,19 +117,25 @@ bool CrosConfigUtilsImpl::GetCustomLabelTag(
       kCrosIdentityCustomLabelTagKey, custom_label_tag);
 }
 
-bool CrosConfigUtilsImpl::GetSkuIdList(std::vector<int>* sku_id_list) const {
+bool CrosConfigUtilsImpl::GetSkuIdList(
+    std::vector<uint64_t>* sku_id_list) const {
   DCHECK(sku_id_list);
 
-  std::vector<base::Value> values;
-  if (!GetMatchedItemsFromIdentity(kCrosIdentitySkuKey, &values)) {
+  std::vector<std::string> values;
+  if (!GetMatchedItemsFromCategory(kCrosIdentityPath, kCrosIdentitySkuKey,
+                                   &values)) {
     return false;
   }
 
   sku_id_list->clear();
   for (auto& value : values) {
-    if (value.is_int()) {
-      sku_id_list->push_back(value.GetInt());
+    uint64_t sku_id;
+    if (!base::StringToUint64(value, &sku_id)) {
+      LOG(ERROR) << "Failed to convert " << value << " to uint64_t";
+      return false;
     }
+
+    sku_id_list->push_back(sku_id);
   }
 
   sort(sku_id_list->begin(), sku_id_list->end());
@@ -139,28 +146,26 @@ bool CrosConfigUtilsImpl::GetCustomLabelTagList(
     std::vector<std::string>* custom_label_tag_list) const {
   DCHECK(custom_label_tag_list);
 
-  std::vector<base::Value> values;
-  if (!GetMatchedItemsFromIdentity(kCrosIdentityCustomLabelTagKey, &values)) {
+  std::vector<std::string> values;
+  if (!GetMatchedItemsFromCategory(kCrosIdentityPath,
+                                   kCrosIdentityCustomLabelTagKey, &values)) {
     return false;
   }
 
   custom_label_tag_list->clear();
   for (auto& value : values) {
-    if (value.is_string()) {
-      custom_label_tag_list->push_back(value.GetString());
-    }
+    custom_label_tag_list->push_back(value);
   }
 
   sort(custom_label_tag_list->begin(), custom_label_tag_list->end());
   return true;
 }
 
-bool CrosConfigUtilsImpl::GetMatchedItemsFromIdentity(
-    const std::string& key, std::vector<base::Value>* list) const {
+bool CrosConfigUtilsImpl::GetMatchedItemsFromCategory(
+    const std::string& category,
+    const std::string& key,
+    std::vector<std::string>* list) const {
   DCHECK(list);
-
-  list->clear();
-  std::set<base::Value> items;
 
   std::string model_name;
   if (!GetModelName(&model_name)) {
@@ -168,46 +173,31 @@ bool CrosConfigUtilsImpl::GetMatchedItemsFromIdentity(
     return false;
   }
 
-  scoped_refptr<JsonStore> json_store =
-      base::MakeRefCounted<JsonStore>(base::FilePath(config_file_path_));
-
-  if (auto error = json_store->GetReadError();
-      error != JsonStore::READ_ERROR_NONE) {
-    LOG_STREAM(ERROR) << "Failed to parse file due to error code #" << error;
-    return false;
-  }
-
-  base::Value cros;
-  if (!json_store->GetValue(kChromeos, &cros)) {
-    LOG(ERROR) << "Failed to get the chromeos section from the file";
-    return false;
-  }
-  DCHECK(cros.is_dict());
-
-  base::Value::List* cros_configs = cros.GetDict().FindList(kChromeosConfigs);
-  if (!cros_configs) {
-    LOG(ERROR) << "Failed to get the configs section from the file";
-    return false;
-  }
-
-  for (const auto& config : *cros_configs) {
-    DCHECK(config.is_dict());
-    const std::string* name = config.GetDict().FindString(kCrosModelNameKey);
-    if (!name || *name != model_name) {
+  std::vector<std::string> items;
+  base::FileEnumerator directories(base::FilePath(configs_root_path_), false,
+                                   base::FileEnumerator::FileType::DIRECTORIES);
+  for (base::FilePath path = directories.Next(); !path.empty();
+       path = directories.Next()) {
+    base::FilePath model_name_path = path.Append(kCrosModelNameKey);
+    std::string model_name_str;
+    if (!base::ReadFileToString(model_name_path, &model_name_str)) {
+      LOG(WARNING) << "Failed to read model name from "
+                   << model_name_path.value();
+    }
+    if (model_name != model_name_str) {
       continue;
     }
 
-    const base::Value::Dict* identity =
-        config.GetDict().FindDict(kCrosIdentityPath);
-    const base::Value* item = identity->Find(key);
-    if (item) {
-      items.insert(item->Clone());
+    base::FilePath key_path = path.Append(category).Append(key);
+    std::string key_str;
+    if (!base::ReadFileToString(key_path, &key_str)) {
+      LOG(WARNING) << "Failed to read key from " << key_path.value();
+      continue;
     }
+    items.push_back(key_str);
   }
 
-  for (auto& item : items) {
-    list->push_back(item.Clone());
-  }
+  *list = std::move(items);
   return true;
 }
 

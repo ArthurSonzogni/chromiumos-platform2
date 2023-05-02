@@ -4,6 +4,7 @@
 
 #include "rmad/state_handler/update_device_info_state_handler.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -90,13 +91,13 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
 
   std::string serial_number;
   std::string region;
-  int sku_id;
+  uint64_t sku_id;
   bool is_custom_label_exist;
   std::string custom_label_tag;
   std::string dram_part_number;
 
   std::vector<std::string> region_list;
-  std::vector<int> sku_id_list;
+  std::vector<uint64_t> sku_id_list;
   std::vector<std::string> custom_label_tag_list;
 
   // We reserve -1 for unmatched indexes.
@@ -191,9 +192,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   }
 
   for (auto sku_option : sku_id_list) {
-    // We get a vector<int> from cros_config, but we set a uint64_t to cbi.
-    // Therefore, we should cast it to uint64_t here.
-    update_dev_info->add_sku_list(static_cast<uint64_t>(sku_option));
+    update_dev_info->add_sku_list(sku_option);
   }
 
   for (auto custom_label_option : custom_label_tag_list) {

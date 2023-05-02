@@ -4,8 +4,10 @@
 
 #include "rmad/utils/cros_config_utils_impl.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -28,14 +30,23 @@ constexpr char kCrosRootPath[] = "/";
 constexpr char kCrosModelNameKey[] = "name";
 
 constexpr char kModelName[] = "TestModelName";
+constexpr char kModelNameUnused[] = "TestModelNameUnused";
 
 // cros_config identity path.
 constexpr char kCrosIdentityPath[] = "/identity";
+constexpr char kCrosIdentityPathKey[] = "identity";
 constexpr char kCrosIdentitySkuKey[] = "sku-id";
 constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
 
-constexpr int kSkuId = 1234567890;
+constexpr uint64_t kSkuId = 1234567890;
+constexpr uint64_t kSkuIdUnused = 1111111110;
+constexpr uint64_t kSkuIdOther1 = 1111111111;
+constexpr uint64_t kSkuIdOther2 = 1111111112;
+
+constexpr char kCustomLabelTagEmpty[] = "";
 constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
+constexpr char kCustomLabelTagUnused[] = "TestCustomLabelTagUnused";
+constexpr char kCustomLabelTagOther[] = "TestCustomLabelTagOther";
 
 // cros_config rmad path.
 constexpr char kCrosRmadPath[] = "/rmad";
@@ -65,96 +76,49 @@ constexpr uint32_t kSsfcValue1 = 0x1;
 constexpr char kSsfcIdentifier2[] = "TestComponent_2";
 constexpr uint32_t kSsfcValue2 = 0x2;
 
-// cros_config config.json file.
-constexpr char kJsonStoreFileName[] = "json_store_file";
-
-// Model "TestModelName" has custom label.
-constexpr char kCrosConfigJsonWithCustomLabel[] =
-    R"({
-      "chromeos": {
-        "configs": [
-          {
-            "name": "TestModelName",
-            "identity": {
-              "sku-id": 1234567890
-            }
-          },
-          {
-            "name": "TestModelName-1",
-            "identity": {
-              "sku-id": 1111111111,
-              "custom-label-tag": "TestCustomLabelTag-1"
-            }
-          },
-          {
-            "name": "TestModelName",
-            "identity": {
-              "sku-id": 1111111112,
-              "custom-label-tag": "TestCustomLabelTag"
-            }
-          },
-          {
-            "name": "TestModelName",
-            "identity": {
-              "sku-id": 1111111113,
-              "custom-label-tag": "TestCustomLabelTag-2"
-            }
-          }
-        ]
-      }
-    })";
-
-// Model "TestModelName" doesn't have custom label.
-constexpr char kCrosConfigJsonWithoutCustomLabel[] =
-    R"({
-      "chromeos": {
-        "configs": [
-          {
-            "name": "TestModelName",
-            "identity": {
-              "sku-id": 1234567890
-            }
-          },
-          {
-            "name": "TestModelName-1",
-            "identity": {
-              "sku-id": 1111111111,
-              "custom-label-tag": "TestCustomLabelTag-1"
-            }
-          },
-          {
-            "name": "TestModelName-1",
-            "identity": {
-              "sku-id": 1111111112,
-              "custom-label-tag": "TestCustomLabelTag"
-            }
-          },
-          {
-            "name": "TestModelName-1",
-            "identity": {
-              "sku-id": 1111111113,
-              "custom-label-tag": "TestCustomLabelTag-2"
-            }
-          }
-        ]
-      }
-    })";
-
 // The first option of the WL list is always an empty string.
 const std::vector<std::string> kTargetCustomLabelTagList = {
-    "TestCustomLabelTag", "TestCustomLabelTag-2"};
-const std::vector<int> kTargetSkuIdList = {1111111112, 1111111113, 1234567890};
+    kCustomLabelTag, kCustomLabelTagOther};
+const std::vector<uint64_t> kTargetSkuIdList = {kSkuIdOther1, kSkuIdOther2,
+                                                kSkuId};
 
 class CrosConfigUtilsImplTest : public testing::Test {
  public:
   CrosConfigUtilsImplTest() {}
 
-  base::FilePath CreateInputFile(const std::string& filename,
-                                 const char* str,
-                                 int size) {
-    base::FilePath file_path = temp_dir_.GetPath().AppendASCII(filename);
-    base::WriteFile(file_path, str, size);
-    return file_path;
+  base::FilePath CreateCrosConfigFs(
+      const std::vector<std::string>& model_names,
+      const std::vector<uint64_t>& sku_ids,
+      const std::vector<std::string>& custom_label_tags) {
+    EXPECT_EQ(model_names.size(), sku_ids.size());
+    EXPECT_EQ(model_names.size(), custom_label_tags.size());
+
+    base::FilePath root_path = temp_dir_.GetPath();
+
+    for (size_t i = 0; i < model_names.size(); ++i) {
+      base::FilePath config_path =
+          root_path.AppendASCII(base::NumberToString(i));
+      EXPECT_TRUE(base::CreateDirectory(config_path));
+
+      base::FilePath model_path = config_path.AppendASCII(kCrosModelNameKey);
+      EXPECT_TRUE(base::WriteFile(model_path, model_names[i]));
+
+      base::FilePath identity_path =
+          config_path.AppendASCII(kCrosIdentityPathKey);
+      EXPECT_TRUE(base::CreateDirectory(identity_path));
+
+      base::FilePath sku_path = identity_path.AppendASCII(kCrosIdentitySkuKey);
+      EXPECT_TRUE(base::WriteFile(sku_path, base::NumberToString(sku_ids[i])));
+
+      if (!custom_label_tags[i].empty()) {
+        base::FilePath custom_label_tag_path =
+            identity_path.AppendASCII(kCrosIdentityCustomLabelTagKey);
+        EXPECT_TRUE(
+            base::WriteFile(custom_label_tag_path, custom_label_tags[i]));
+      }
+    }
+
+    return root_path;
   }
 
   std::unique_ptr<CrosConfigUtils> CreateCrosConfigUtils(
@@ -167,18 +131,22 @@ class CrosConfigUtilsImplTest : public testing::Test {
                                 kCrosIdentitySkuKey,
                                 base::NumberToString(kSkuId));
 
-    base::FilePath cros_config_path;
+    base::FilePath cros_config_root_path;
     if (custom_label) {
-      cros_config_path =
-          CreateInputFile(kJsonStoreFileName, kCrosConfigJsonWithCustomLabel,
-                          std::size(kCrosConfigJsonWithCustomLabel) - 1);
+      cros_config_root_path = CreateCrosConfigFs(
+          {kModelName, kModelName, kModelName, kModelNameUnused},
+          {kSkuId, kSkuIdOther1, kSkuIdOther2, kSkuIdUnused},
+          {kCustomLabelTagEmpty, kCustomLabelTag, kCustomLabelTagOther,
+           kCustomLabelTagUnused});
       fake_cros_config->SetString(std::string(kCrosIdentityPath),
                                   kCrosIdentityCustomLabelTagKey,
                                   kCustomLabelTag);
     } else {
-      cros_config_path =
-          CreateInputFile(kJsonStoreFileName, kCrosConfigJsonWithoutCustomLabel,
-                          std::size(kCrosConfigJsonWithoutCustomLabel) - 1);
+      cros_config_root_path = CreateCrosConfigFs(
+          {kModelName, kModelNameUnused, kModelNameUnused, kModelNameUnused},
+          {kSkuId, kSkuIdOther1, kSkuIdOther2, kSkuIdUnused},
+          {kCustomLabelTagEmpty, kCustomLabelTag, kCustomLabelTagOther,
+           kCustomLabelTagUnused});
     }
 
     if (enable_rmad) {
@@ -222,7 +190,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
     }
 
     return std::make_unique<CrosConfigUtilsImpl>(
-        cros_config_path.MaybeAsASCII(), std::move(fake_cros_config));
+        cros_config_root_path.MaybeAsASCII(), std::move(fake_cros_config));
   }
 
  protected:
@@ -303,7 +271,7 @@ TEST_F(CrosConfigUtilsImplTest, GetCustomLabelTag_Success) {
 TEST_F(CrosConfigUtilsImplTest, GetSkuId_Success) {
   auto cros_config_utils = CreateCrosConfigUtils();
 
-  int sku_id;
+  uint64_t sku_id;
   EXPECT_TRUE(cros_config_utils->GetSkuId(&sku_id));
   EXPECT_EQ(sku_id, kSkuId);
 }
@@ -311,7 +279,7 @@ TEST_F(CrosConfigUtilsImplTest, GetSkuId_Success) {
 TEST_F(CrosConfigUtilsImplTest, GetSkuIdList_Success) {
   auto cros_config_utils = CreateCrosConfigUtils();
 
-  std::vector<int> sku_id_list;
+  std::vector<uint64_t> sku_id_list;
   EXPECT_TRUE(cros_config_utils->GetSkuIdList(&sku_id_list));
   EXPECT_EQ(sku_id_list, kTargetSkuIdList);
 }
