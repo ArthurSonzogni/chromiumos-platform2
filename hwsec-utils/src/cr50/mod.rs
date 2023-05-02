@@ -34,3 +34,6 @@ pub use set_sn_bits::*;
 
 pub mod reset;
 pub use reset::*;
+
+pub mod verify_ro;
+pub use verify_ro::*;
