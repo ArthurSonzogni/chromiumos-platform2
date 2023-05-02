@@ -18,14 +18,18 @@
 #include <update_engine/proto_bindings/update_engine.pb.h>
 
 #include "dlcservice/dlc_base.h"
+#include "dlcservice/dlc_base_creator.h"
 #include "dlcservice/dlc_service.h"
-#include "dlcservice/mock_dlc_manager.h"
+#if USE_LVM_STATEFUL_PARTITION
+#include "dlcservice/lvm/dlc_lvm_creator.h"
+#endif  // USE_LVM_STATEFUL_PARTITION
+#include "dlcservice/mock_dlc.h"
+#include "dlcservice/mock_dlc_creator.h"
 #include "dlcservice/prefs.h"
 #include "dlcservice/proto_utils.h"
 #include "dlcservice/test_utils.h"
 #include "dlcservice/utils.h"
 
-using brillo::ErrorPtr;
 using dlcservice::metrics::InstallResult;
 using dlcservice::metrics::UninstallResult;
 using std::string;
@@ -37,6 +41,7 @@ using testing::DoAll;
 using testing::ElementsAre;
 using testing::HasSubstr;
 using testing::Invoke;
+using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
 using testing::SetArgPointee;
@@ -55,6 +60,614 @@ class DlcServiceTest : public BaseTest {
   void SetUp() override {
     BaseTest::SetUp();
 
+    auto mock_dlc_creator = std::make_unique<NiceMock<MockDlcCreator>>();
+    mock_dlc_creator_ptr_ = mock_dlc_creator.get();
+    dlc_service_ = std::make_unique<DlcService>(std::move(mock_dlc_creator));
+  }
+
+  void CheckDlcState(const DlcId& id,
+                     const DlcState::State& expected_state,
+                     const string& error_code = kErrorNone) {
+    const auto* dlc = dlc_service_->GetDlc(id, &err_);
+    EXPECT_NE(dlc, nullptr);
+    EXPECT_EQ(expected_state, dlc->GetState().state());
+    EXPECT_EQ(dlc->GetState().last_error_code(), error_code.c_str());
+  }
+
+ protected:
+  std::unique_ptr<DlcService> dlc_service_;
+  MockDlcCreator* mock_dlc_creator_ptr_ = nullptr;
+
+ private:
+  DlcServiceTest(const DlcServiceTest&) = delete;
+  DlcServiceTest& operator=(const DlcServiceTest&) = delete;
+};
+
+// Tests related to `Initialize`.
+
+TEST_F(DlcServiceTest, InitializeTest) {
+  // TODO(kimjae): Mock the scanning instead of depending on BaseTest setup.
+  // This should make it much easier to test with.
+
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              DoRegisterStatusUpdateAdvancedSignalHandler(_, _))
+      .Times(1);
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetObjectProxy())
+      .WillOnce(Return(mock_update_engine_object_proxy_.get()));
+  EXPECT_CALL(*mock_update_engine_object_proxy_,
+              DoWaitForServiceToBeAvailable(_))
+      .Times(1);
+
+  auto mock_dlc_1 = std::make_unique<StrictMock<MockDlc>>();
+  auto mock_dlc_2 = std::make_unique<StrictMock<MockDlc>>();
+  auto mock_dlc_3 = std::make_unique<StrictMock<MockDlc>>();
+  auto mock_dlc_4 = std::make_unique<StrictMock<MockDlc>>();
+  auto mock_dlc_scaled = std::make_unique<StrictMock<MockDlc>>();
+  EXPECT_CALL(*mock_dlc_1, Initialize()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_2, Initialize()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_3, Initialize()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_4, Initialize()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_scaled, Initialize()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_creator_ptr_, Create(_))
+      .WillOnce(Return(std::move(mock_dlc_1)))
+      .WillOnce(Return(std::move(mock_dlc_2)))
+      .WillOnce(Return(std::move(mock_dlc_3)))
+      .WillOnce(Return(std::move(mock_dlc_4)))
+      .WillOnce(Return(std::move(mock_dlc_scaled)));
+
+  dlc_service_->Initialize();
+}
+
+// Tests related to `Install`.
+// TODO(kimjae): Mock out between internal methods too.
+
+TEST_F(DlcServiceTest, InstallTestUnsupported) {
+  dlc_service_->SetSupportedForTesting({});
+
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kFailedInvalidDlc));
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+}
+
+TEST_F(DlcServiceTest, InstallTestAlreadyInstalling) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  brillo::ErrorPtr err;
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+}
+
+TEST_F(DlcServiceTest, InstallTestDlcInstallFailure) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(false));
+  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(false));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  EXPECT_CALL(*mock_metrics_, SendInstallResult(InstallResult::kUnknownError));
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+}
+
+TEST_F(DlcServiceTest, InstallTestNoExternalRequirement) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+      .WillOnce(Return(false))
+      // No external requirement.
+      .WillOnce(Return(false));
+  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  brillo::ErrorPtr err;
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+}
+
+TEST_F(DlcServiceTest, InstallTestExternalRequirementUpdaterDown) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+      .WillOnce(Return(false))
+      // External requirement.
+      .WillOnce(Return(true))
+      // For cancelling.
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  SystemState::Get()->set_update_engine_service_available(false);
+
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kFailedUpdateEngineBusy));
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+}
+
+TEST_F(DlcServiceTest, InstallTestExternalRequirementUpdaterDownCancelFailure) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+      .WillOnce(Return(false))
+      // External requirement.
+      .WillOnce(Return(true))
+      // For cancelling (fail).
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  SystemState::Get()->set_update_engine_service_available(false);
+
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kFailedUpdateEngineBusy));
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+}
+
+TEST_F(DlcServiceTest, InstallTestExternalRequirementPendingUpdate) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+      .WillOnce(Return(false))
+      // External requirement.
+      .WillOnce(Return(true))
+      // For cancelling.
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  SystemState::Get()->set_update_engine_service_available(true);
+  update_engine::StatusResult ue_status;
+  ue_status.set_current_operation(update_engine::UPDATED_NEED_REBOOT);
+  SystemState::Get()->set_update_engine_status(ue_status);
+
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kFailedNeedReboot));
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+}
+
+TEST_F(DlcServiceTest,
+       InstallTestExternalRequirementPendingUpdateCancelFailure) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+      .WillOnce(Return(false))
+      // External requirement.
+      .WillOnce(Return(true))
+      // For cancelling (fail).
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  SystemState::Get()->set_update_engine_service_available(true);
+  update_engine::StatusResult ue_status;
+  ue_status.set_current_operation(update_engine::UPDATED_NEED_REBOOT);
+  SystemState::Get()->set_update_engine_status(ue_status);
+
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kFailedNeedReboot));
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+}
+
+TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallFailure) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+      .WillOnce(Return(false))
+      // External requirement.
+      .WillOnce(Return(true))
+      // For cancelling.
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  SystemState::Get()->set_update_engine_service_available(true);
+
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kFailedUpdateEngineBusy));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
+      .WillOnce(Return(false));
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+}
+
+TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallSuccess) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+      .WillOnce(Return(false))
+      // External requirement.
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  SystemState::Get()->set_update_engine_service_available(true);
+
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
+      .WillOnce(Return(true));
+
+  brillo::ErrorPtr err;
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest("foo-dlc"), &err));
+}
+
+// Tests related to `Uninstall`.
+
+TEST_F(DlcServiceTest, UninstallTestUnsupported) {
+  DlcMap supported;
+  dlc_service_->SetSupportedForTesting({});
+
+  EXPECT_CALL(*mock_metrics_,
+              SendUninstallResult(UninstallResult::kFailedInvalidDlc));
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->Uninstall("foo-dlc", &err));
+}
+
+TEST_F(DlcServiceTest, UninstallTestDlcUninstallFailure) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, Uninstall(_))
+      .WillOnce(DoAll(WithArg<0>(Invoke([](brillo::ErrorPtr* err) {
+                        *err =
+                            Error::Create(FROM_HERE, kErrorBusy,
+                                          "Install or update is in progress.");
+                      })),
+                      Return(false)));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  EXPECT_CALL(*mock_metrics_,
+              SendUninstallResult(UninstallResult::kFailedUpdateEngineBusy));
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->Uninstall("foo-dlc", &err));
+}
+
+TEST_F(DlcServiceTest, UninstallTestDlcUninstallSuccess) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, Uninstall(_)).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  EXPECT_CALL(*mock_metrics_, SendUninstallResult(UninstallResult::kSuccess));
+
+  brillo::ErrorPtr err;
+  EXPECT_TRUE(dlc_service_->Uninstall("foo-dlc", &err));
+}
+
+// Tests related to `GetDlc`.
+
+TEST_F(DlcServiceTest, GetDlcTestUnsupported) {
+  dlc_service_->SetSupportedForTesting({});
+
+  brillo::ErrorPtr err;
+  EXPECT_EQ(dlc_service_->GetDlc("foo-dlc", &err), nullptr);
+  EXPECT_EQ(err->GetCode(), kErrorInvalidDlc);
+}
+
+TEST_F(DlcServiceTest, GetDlcTest) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  auto* mock_dlc_foo_ptr = mock_dlc_foo.get();
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  brillo::ErrorPtr err;
+  EXPECT_EQ(dlc_service_->GetDlc("foo-dlc", &err), mock_dlc_foo_ptr);
+}
+
+// Tests related to `GetInstalled`.
+
+TEST_F(DlcServiceTest, GetInstalledTest) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalled()).WillOnce(Return(true));
+
+  auto mock_dlc_bar = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_bar, IsInstalled()).WillOnce(Return(false));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace("bar-dlc", std::move(mock_dlc_bar));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  const auto& dlcs = dlc_service_->GetInstalled();
+  EXPECT_THAT(dlcs, ElementsAre("foo-dlc"));
+}
+
+// Tests related to `GetExistingDlcs`.
+
+TEST_F(DlcServiceTest, GetExistingDlcs) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, HasContent()).WillOnce(Return(true));
+
+  auto mock_dlc_bar = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_bar, HasContent()).WillOnce(Return(false));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace("bar-dlc", std::move(mock_dlc_bar));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  const auto& dlcs = dlc_service_->GetExistingDlcs();
+  EXPECT_THAT(dlcs, ElementsAre("foo-dlc"));
+}
+
+// Tests related to `GetDlcsToUpdate`.
+
+TEST_F(DlcServiceTest, GetDlcsToUpdateTest) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, MakeReadyForUpdate()).WillOnce(Return(true));
+
+  auto mock_dlc_bar = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_bar, MakeReadyForUpdate()).WillOnce(Return(false));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace("bar-dlc", std::move(mock_dlc_bar));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  const auto& dlcs = dlc_service_->GetDlcsToUpdate();
+  EXPECT_THAT(dlcs, ElementsAre("foo-dlc"));
+}
+
+// Tests related to `InstallCompleted`.
+
+TEST_F(DlcServiceTest, InstallCompletedTestForUnsupported) {
+  dlc_service_->SetSupportedForTesting({});
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->InstallCompleted({"foo-dlc"}, &err));
+}
+
+TEST_F(DlcServiceTest, InstallCompletedTestForDlcFailure) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, InstallCompleted(_)).WillOnce(Return(false));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->InstallCompleted({"foo-dlc"}, &err));
+}
+
+TEST_F(DlcServiceTest, InstallCompletedTestForDlcSuccess) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, InstallCompleted(_)).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  brillo::ErrorPtr err;
+  EXPECT_TRUE(dlc_service_->InstallCompleted({"foo-dlc"}, &err));
+}
+
+// Tests related to `UpdateCompleted`.
+
+TEST_F(DlcServiceTest, UpdateCompletedTestForUnsupported) {
+  dlc_service_->SetSupportedForTesting({});
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->UpdateCompleted({"foo-dlc"}, &err));
+}
+
+TEST_F(DlcServiceTest, UpdateCompletedTestForDlcFailure) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, UpdateCompleted(_)).WillOnce(Return(false));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->UpdateCompleted({"foo-dlc"}, &err));
+}
+
+TEST_F(DlcServiceTest, UpdateCompletedTestForDlcSuccess) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, UpdateCompleted(_)).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  brillo::ErrorPtr err;
+  EXPECT_TRUE(dlc_service_->UpdateCompleted({"foo-dlc"}, &err));
+}
+
+// Tests related to `FinishInstall`.
+
+TEST_F(DlcServiceTest, FinishInstallTestNothingInstalling) {
+  dlc_service_->installing_dlc_id_.reset();
+
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->FinishInstall(&err));
+}
+
+TEST_F(DlcServiceTest, FinishInstallTestUnsupported) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+
+  dlc_service_->SetSupportedForTesting({});
+
+  dlc_service_->installing_dlc_id_ = "foo-dlc";
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->FinishInstall(&err));
+  EXPECT_EQ(err->GetCode(), kErrorInvalidDlc);
+}
+
+TEST_F(DlcServiceTest, FinishInstallTestNotInstalling) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(false));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  dlc_service_->installing_dlc_id_ = "foo-dlc";
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->FinishInstall(&err));
+  EXPECT_EQ(err->GetCode(), kErrorInternal);
+}
+
+TEST_F(DlcServiceTest, FinishInstallTestSuccess) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+
+  dlc_service_->installing_dlc_id_ = "foo-dlc";
+  brillo::ErrorPtr err;
+  EXPECT_FALSE(dlc_service_->FinishInstall(&err));
+}
+
+// Tests related to `CancelInstall`.
+
+TEST_F(DlcServiceTest, CancelInstallNoOpTest) {
+  dlc_service_->installing_dlc_id_.reset();
+
+  brillo::ErrorPtr err;
+  dlc_service_->CancelInstall(err);
+}
+
+TEST_F(DlcServiceTest, CancelInstallNotInstallingResetsTest) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(false));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+  dlc_service_->installing_dlc_id_ = "foo-dlc";
+
+  brillo::ErrorPtr err;
+  dlc_service_->CancelInstall(err);
+
+  EXPECT_FALSE(dlc_service_->installing_dlc_id_.has_value());
+}
+
+TEST_F(DlcServiceTest, CancelInstallDlcCancelFailureResetsTest) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(false));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+  dlc_service_->installing_dlc_id_ = "foo-dlc";
+
+  brillo::ErrorPtr err;
+  dlc_service_->CancelInstall(err);
+
+  EXPECT_FALSE(dlc_service_->installing_dlc_id_.has_value());
+}
+
+TEST_F(DlcServiceTest, CancelInstallResetsTest) {
+  auto mock_dlc_foo = std::make_unique<MockDlc>();
+  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(true));
+
+  DlcMap supported;
+  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  dlc_service_->SetSupportedForTesting(std::move(supported));
+  dlc_service_->installing_dlc_id_ = "foo-dlc";
+
+  brillo::ErrorPtr err;
+  dlc_service_->CancelInstall(err);
+
+  EXPECT_FALSE(dlc_service_->installing_dlc_id_.has_value());
+}
+
+// Tests related to `CleanupUnsupported`.
+
+TEST_F(DlcServiceTest, CleanupUnsupportedTest) {
+  // TODO(kimjae): Mock the scanning instead of depending on BaseTest setup.
+  // This should make it much easier to test with.
+  dlc_service_->SetSupportedForTesting({});
+
+  SetUpDlcWithSlots(kThirdDlc);
+  EXPECT_TRUE(base::PathExists(
+      GetDlcImagePath(content_path_, kThirdDlc, kPackage, BootSlot::Slot::A)));
+  EXPECT_TRUE(base::PathExists(
+      GetDlcImagePath(content_path_, kThirdDlc, kPackage, BootSlot::Slot::B)));
+
+  SetUpDlcPreloadedImage(kThirdDlc);
+  EXPECT_TRUE(base::PathExists(JoinPaths(preloaded_content_path_, kThirdDlc)));
+
+  dlc_service_->CleanupUnsupported();
+
+  EXPECT_FALSE(base::PathExists(
+      GetDlcImagePath(content_path_, kThirdDlc, kPackage, BootSlot::Slot::A)));
+  EXPECT_FALSE(base::PathExists(
+      GetDlcImagePath(content_path_, kThirdDlc, kPackage, BootSlot::Slot::B)));
+  EXPECT_FALSE(base::PathExists(JoinPaths(preloaded_content_path_, kThirdDlc)));
+}
+
+// Tests related to `OnStatusUpdateAdvancedSignalConnected`.
+
+TEST_F(DlcServiceTest,
+       OnStatusUpdateAdvancedSignalConnectedTestVerifyFailureAlert) {
+  // Setup a mock logger to ensure alert is printed on a failed connect
+  base::test::MockLog mock_log;
+  mock_log.StartCapturingLogs();
+  // Logger expectation.
+  EXPECT_CALL(mock_log, Log(::logging::LOGGING_ERROR, _, _, _,
+                            HasSubstr(AlertLogTag(kCategoryInit).c_str())));
+
+  dlc_service_->OnStatusUpdateAdvancedSignalConnected("test_iface", "test_name",
+                                                      false);
+}
+
+// NOTE: Do not add new code below this line.
+//
+// Everything below is legacy method of testing.
+
+class DlcServiceTestLegacy : public BaseTest {
+ public:
+  DlcServiceTestLegacy() = default;
+
+  void SetUp() override {
+    BaseTest::SetUp();
+
     InitializeDlcService();
   }
 
@@ -68,7 +681,13 @@ class DlcServiceTest : public BaseTest {
                 DoWaitForServiceToBeAvailable(_))
         .Times(1);
 
-    dlc_service_ = std::make_unique<DlcService>();
+    auto dlc_creator =
+#if USE_LVM_STATEFUL_PARTITION
+        std::make_unique<DlcLvmCreator>();
+#else
+        std::make_unique<DlcBaseCreator>();
+#endif  // USE_LVM_STATEFUL_PARTITION
+    dlc_service_ = std::make_unique<DlcService>(std::move(dlc_creator));
     dlc_service_->Initialize();
   }
 
@@ -117,23 +736,11 @@ class DlcServiceTest : public BaseTest {
   std::unique_ptr<DlcService> dlc_service_;
 
  private:
-  DlcServiceTest(const DlcServiceTest&) = delete;
-  DlcServiceTest& operator=(const DlcServiceTest&) = delete;
+  DlcServiceTestLegacy(const DlcServiceTestLegacy&) = delete;
+  DlcServiceTestLegacy& operator=(const DlcServiceTestLegacy&) = delete;
 };
 
-TEST_F(DlcServiceTest, VerifySignalConnectFailureAlert) {
-  // Setup a mock logger to ensure alert is printed on a failed connect
-  base::test::MockLog mock_log;
-  mock_log.StartCapturingLogs();
-  // Logger expectation.
-  EXPECT_CALL(mock_log, Log(::logging::LOGGING_ERROR, _, _, _,
-                            HasSubstr(AlertLogTag(kCategoryInit).c_str())));
-
-  dlc_service_->OnStatusUpdateAdvancedSignalConnected("test_iface", "test_name",
-                                                      false);
-}
-
-TEST_F(DlcServiceTest, GetInstalledTest) {
+TEST_F(DlcServiceTestLegacy, GetInstalledTest) {
   Install(kFirstDlc);
 
   const auto& dlcs = dlc_service_->GetInstalled();
@@ -143,7 +750,7 @@ TEST_F(DlcServiceTest, GetInstalledTest) {
       dlc_service_->GetDlc(kFirstDlc, &err_)->GetRoot().value().empty());
 }
 
-TEST_F(DlcServiceTest, GetExistingDlcs) {
+TEST_F(DlcServiceTestLegacy, GetExistingDlcs) {
   Install(kFirstDlc);
 
   SetUpDlcWithSlots(kSecondDlc);
@@ -158,7 +765,7 @@ TEST_F(DlcServiceTest, GetExistingDlcs) {
   EXPECT_THAT(dlcs, ElementsAre(kFirstDlc, kSecondDlc));
 }
 
-TEST_F(DlcServiceTest, GetDlcsToUpdateTest) {
+TEST_F(DlcServiceTestLegacy, GetDlcsToUpdateTest) {
   Install(kFirstDlc);
 
   // Make second DLC marked as verified so we can get it in the list of DLCs
@@ -170,7 +777,7 @@ TEST_F(DlcServiceTest, GetDlcsToUpdateTest) {
 }
 
 #if USE_LVM_STATEFUL_PARTITION
-TEST_F(DlcServiceTest, GetDlcsToUpdateLogicalVolumeTest) {
+TEST_F(DlcServiceTestLegacy, GetDlcsToUpdateLogicalVolumeTest) {
   Install(kFirstDlc);
 
   // Make fourth DLC marked as verified so we can get it in the list of DLCs
@@ -185,7 +792,8 @@ TEST_F(DlcServiceTest, GetDlcsToUpdateLogicalVolumeTest) {
 }
 #endif  // USE_LVM_STATEFUL_PARTITION
 
-TEST_F(DlcServiceTest, GetInstalledMimicDlcserviceRebootWithoutVerifiedStamp) {
+TEST_F(DlcServiceTestLegacy,
+       GetInstalledMimicDlcserviceRebootWithoutVerifiedStamp) {
   Install(kFirstDlc);
   const auto& dlcs_before = dlc_service_->GetInstalled();
   EXPECT_THAT(dlcs_before, ElementsAre(kFirstDlc));
@@ -200,7 +808,7 @@ TEST_F(DlcServiceTest, GetInstalledMimicDlcserviceRebootWithoutVerifiedStamp) {
 }
 
 // TODO(kimjae): Deprecate DLC used by indicators.
-TEST_F(DlcServiceTest, UninstallTestForUserDlc) {
+TEST_F(DlcServiceTestLegacy, UninstallTestForUserDlc) {
   Install(kFirstDlc);
 
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
@@ -225,7 +833,7 @@ TEST_F(DlcServiceTest, UninstallTestForUserDlc) {
   EXPECT_FALSE(dlc_service_->GetDlc(kFirstDlc, &err_)->IsVerified());
 }
 
-TEST_F(DlcServiceTest, UninstallNotInstalledIsValid) {
+TEST_F(DlcServiceTestLegacy, UninstallNotInstalledIsValid) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
               SetDlcActiveValue(false, kSecondDlc, _, _))
       .WillOnce(Return(true));
@@ -239,7 +847,7 @@ TEST_F(DlcServiceTest, UninstallNotInstalledIsValid) {
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED);
 }
 
-TEST_F(DlcServiceTest, UninstallFailToSetDlcActiveValueFalse) {
+TEST_F(DlcServiceTestLegacy, UninstallFailToSetDlcActiveValueFalse) {
   Install(kFirstDlc);
 
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
@@ -255,7 +863,7 @@ TEST_F(DlcServiceTest, UninstallFailToSetDlcActiveValueFalse) {
   CheckDlcState(kFirstDlc, DlcState::NOT_INSTALLED);
 }
 
-TEST_F(DlcServiceTest, UninstallInvalidDlcTest) {
+TEST_F(DlcServiceTestLegacy, UninstallInvalidDlcTest) {
   // Setup a mock logger to ensure alert is printed on a failed uninstall
   base::test::MockLog mock_log;
   mock_log.StartCapturingLogs();
@@ -273,7 +881,7 @@ TEST_F(DlcServiceTest, UninstallInvalidDlcTest) {
   EXPECT_EQ(err_->GetCode(), kErrorInvalidDlc);
 }
 
-TEST_F(DlcServiceTest, UninstallImageLoaderFailureTest) {
+TEST_F(DlcServiceTestLegacy, UninstallImageLoaderFailureTest) {
   Install(kFirstDlc);
 
   // |ImageLoader| not available.
@@ -291,7 +899,7 @@ TEST_F(DlcServiceTest, UninstallImageLoaderFailureTest) {
   CheckDlcState(kFirstDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }
 
-TEST_F(DlcServiceTest, UninstallUpdateEngineBusyFailureTest) {
+TEST_F(DlcServiceTestLegacy, UninstallUpdateEngineBusyFailureTest) {
   Install(kFirstDlc);
 
   StatusResult status_result;
@@ -304,7 +912,7 @@ TEST_F(DlcServiceTest, UninstallUpdateEngineBusyFailureTest) {
   CheckDlcState(kFirstDlc, DlcState::INSTALLED);
 }
 
-TEST_F(DlcServiceTest, UninstallInstallingFails) {
+TEST_F(DlcServiceTestLegacy, UninstallInstallingFails) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
@@ -318,7 +926,7 @@ TEST_F(DlcServiceTest, UninstallInstallingFails) {
   EXPECT_EQ(err_->GetCode(), kErrorBusy);
 }
 
-TEST_F(DlcServiceTest, UninstallInstallingButInstalledFails) {
+TEST_F(DlcServiceTestLegacy, UninstallInstallingButInstalledFails) {
   Install(kFirstDlc);
 
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
@@ -341,7 +949,7 @@ TEST_F(DlcServiceTest, UninstallInstallingButInstalledFails) {
   CheckDlcState(kFirstDlc, DlcState::NOT_INSTALLED);
 }
 
-TEST_F(DlcServiceTest, InstallInvalidDlcTest) {
+TEST_F(DlcServiceTestLegacy, InstallInvalidDlcTest) {
   const string id = "bad-dlc-id";
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedInvalidDlc));
@@ -349,7 +957,7 @@ TEST_F(DlcServiceTest, InstallInvalidDlcTest) {
   EXPECT_EQ(err_->GetCode(), kErrorInvalidDlc);
 }
 
-TEST_F(DlcServiceTest, InstallTest) {
+TEST_F(DlcServiceTestLegacy, InstallTest) {
   Install(kFirstDlc);
 
   SetMountPath(mount_path_.value());
@@ -368,7 +976,7 @@ TEST_F(DlcServiceTest, InstallTest) {
   // TODO(ahassani): Add more install process liked |InstallCompleted|, etc.
 }
 
-TEST_F(DlcServiceTest, InstallAlreadyInstalledValid) {
+TEST_F(DlcServiceTestLegacy, InstallAlreadyInstalledValid) {
   Install(kFirstDlc);
 
   SetMountPath(mount_path_.value());
@@ -387,7 +995,7 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledValid) {
   CheckDlcState(kFirstDlc, DlcState::INSTALLED);
 }
 
-TEST_F(DlcServiceTest, InstallAlreadyInstalledWhileAnotherInstalling) {
+TEST_F(DlcServiceTestLegacy, InstallAlreadyInstalledWhileAnotherInstalling) {
   Install(kFirstDlc);
 
   // Keep |kSecondDlc| installing.
@@ -415,7 +1023,7 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledWhileAnotherInstalling) {
   CheckDlcState(kFirstDlc, DlcState::INSTALLED);
 }
 
-TEST_F(DlcServiceTest, InstallCannotSetDlcActiveValue) {
+TEST_F(DlcServiceTestLegacy, InstallCannotSetDlcActiveValue) {
   SetMountPath(mount_path_.value());
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
@@ -440,7 +1048,7 @@ TEST_F(DlcServiceTest, InstallCannotSetDlcActiveValue) {
   CheckDlcState(kSecondDlc, DlcState::INSTALLED);
 }
 
-TEST_F(DlcServiceTest, PeriodicInstallCheck) {
+TEST_F(DlcServiceTestLegacy, PeriodicInstallCheck) {
   vector<StatusResult> status_list;
   for (const auto& op :
        {Operation::CHECKING_FOR_UPDATE, Operation::DOWNLOADING}) {
@@ -489,7 +1097,7 @@ TEST_F(DlcServiceTest, PeriodicInstallCheck) {
             Operation::DOWNLOADING);
 }
 
-TEST_F(DlcServiceTest, InstallSchedulesPeriodicInstallCheck) {
+TEST_F(DlcServiceTestLegacy, InstallSchedulesPeriodicInstallCheck) {
   vector<StatusResult> status_list;
   for (const auto& op : {Operation::CHECKING_FOR_UPDATE, Operation::IDLE}) {
     StatusResult status;
@@ -522,7 +1130,7 @@ TEST_F(DlcServiceTest, InstallSchedulesPeriodicInstallCheck) {
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }
 
-TEST_F(DlcServiceTest, InstallFailureCleansUp) {
+TEST_F(DlcServiceTestLegacy, InstallFailureCleansUp) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(false));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -536,7 +1144,7 @@ TEST_F(DlcServiceTest, InstallFailureCleansUp) {
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorBusy);
 }
 
-TEST_F(DlcServiceTest, InstallUrlTest) {
+TEST_F(DlcServiceTestLegacy, InstallUrlTest) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(DoAll(WithArg<0>(Invoke([](const auto& arg) {
                         EXPECT_EQ(arg.omaha_url(), kDefaultOmahaUrl);
@@ -549,7 +1157,7 @@ TEST_F(DlcServiceTest, InstallUrlTest) {
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 }
 
-TEST_F(DlcServiceTest, InstallAlreadyInstalledThatGotUnmountedTest) {
+TEST_F(DlcServiceTestLegacy, InstallAlreadyInstalledThatGotUnmountedTest) {
   Install(kFirstDlc);
 
   // TOOD(ahassani): Move these checks to InstallTest.
@@ -571,7 +1179,7 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledThatGotUnmountedTest) {
   CheckDlcState(kFirstDlc, DlcState::INSTALLED);
 }
 
-TEST_F(DlcServiceTest, InstallFailsToCreateDirectory) {
+TEST_F(DlcServiceTestLegacy, InstallFailsToCreateDirectory) {
   base::SetPosixFilePermissions(content_path_, 0444);
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
   EXPECT_CALL(*mock_metrics_,
@@ -586,7 +1194,7 @@ TEST_F(DlcServiceTest, InstallFailsToCreateDirectory) {
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }
 
-TEST_F(DlcServiceTest, OnStatusUpdateSignalDlcRootTest) {
+TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalDlcRootTest) {
   Install(kFirstDlc);
 
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
@@ -624,7 +1232,7 @@ TEST_F(DlcServiceTest, OnStatusUpdateSignalDlcRootTest) {
       dlc_service_->GetDlc(kSecondDlc, &err_)->GetRoot().value().empty());
 }
 
-TEST_F(DlcServiceTest, OnStatusUpdateSignalNoRemountTest) {
+TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalNoRemountTest) {
   Install(kFirstDlc);
 
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
@@ -651,7 +1259,7 @@ TEST_F(DlcServiceTest, OnStatusUpdateSignalNoRemountTest) {
   dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
 }
 
-TEST_F(DlcServiceTest, OnStatusUpdateSignalTest) {
+TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalTest) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
@@ -679,7 +1287,7 @@ TEST_F(DlcServiceTest, OnStatusUpdateSignalTest) {
   CheckDlcState(kSecondDlc, DlcState::INSTALLED);
 }
 
-TEST_F(DlcServiceTest, MountFailureTest) {
+TEST_F(DlcServiceTestLegacy, MountFailureTest) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_image_loader_proxy_ptr_, LoadDlcImage(_, _, _, _, _, _))
@@ -704,7 +1312,7 @@ TEST_F(DlcServiceTest, MountFailureTest) {
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }
 
-TEST_F(DlcServiceTest, ReportingFailureCleanupTest) {
+TEST_F(DlcServiceTestLegacy, ReportingFailureCleanupTest) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -733,7 +1341,7 @@ TEST_F(DlcServiceTest, ReportingFailureCleanupTest) {
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }
 
-TEST_F(DlcServiceTest, ReportingFailureSignalTest) {
+TEST_F(DlcServiceTestLegacy, ReportingFailureSignalTest) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -761,7 +1369,7 @@ TEST_F(DlcServiceTest, ReportingFailureSignalTest) {
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }
 
-TEST_F(DlcServiceTest, SignalToleranceCapTest) {
+TEST_F(DlcServiceTestLegacy, SignalToleranceCapTest) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -787,7 +1395,7 @@ TEST_F(DlcServiceTest, SignalToleranceCapTest) {
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }
 
-TEST_F(DlcServiceTest, SignalToleranceCapResetTest) {
+TEST_F(DlcServiceTestLegacy, SignalToleranceCapResetTest) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -829,7 +1437,7 @@ TEST_F(DlcServiceTest, SignalToleranceCapResetTest) {
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }
 
-TEST_F(DlcServiceTest, OnStatusUpdateSignalDownloadProgressTest) {
+TEST_F(DlcServiceTestLegacy, OnStatusUpdateSignalDownloadProgressTest) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_,
@@ -868,7 +1476,7 @@ TEST_F(DlcServiceTest, OnStatusUpdateSignalDownloadProgressTest) {
   CheckDlcState(kSecondDlc, DlcState::INSTALLED);
 }
 
-TEST_F(DlcServiceTest,
+TEST_F(DlcServiceTestLegacy,
        OnStatusUpdateSignalSubsequentialBadOrNonInstalledDlcsNonBlocking) {
   for (int i = 0; i < 5; i++) {
     EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
@@ -893,12 +1501,12 @@ TEST_F(DlcServiceTest,
   }
 }
 
-TEST_F(DlcServiceTest, InstallCompleted) {
+TEST_F(DlcServiceTestLegacy, InstallCompleted) {
   EXPECT_TRUE(dlc_service_->InstallCompleted({kSecondDlc}, &err_));
   EXPECT_TRUE(dlc_service_->GetDlc(kSecondDlc, &err_)->IsVerified());
 }
 
-TEST_F(DlcServiceTest, UpdateCompleted) {
+TEST_F(DlcServiceTestLegacy, UpdateCompleted) {
   auto inactive_boot_slot = SystemState::Get()->inactive_boot_slot();
   EXPECT_FALSE(
       Prefs(DlcBase(kSecondDlc), inactive_boot_slot).Exists(kDlcPrefVerified));
@@ -907,78 +1515,7 @@ TEST_F(DlcServiceTest, UpdateCompleted) {
       Prefs(DlcBase(kSecondDlc), inactive_boot_slot).Exists(kDlcPrefVerified));
 }
 
-TEST_F(DlcServiceTest, UpdatedNeedRebootClearsInstalling) {
-  // TODO(kimjae): Eventually move all tests to use mocks instead of setup.
-  auto mock_dlc_manager = std::make_unique<StrictMock<MockDlcManager>>();
-  auto* mock_dlc_manager_ptr = mock_dlc_manager.get();
-
-  dlc_service_->SetDlcManagerForTest(std::move(mock_dlc_manager));
-
-  EXPECT_CALL(*mock_dlc_manager_ptr, Install(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(true), Return(true)));
-  EXPECT_CALL(*mock_dlc_manager_ptr, CancelInstall(kSecondDlc, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_metrics_, SendInstallResult(_));
-
-  StatusResult status;
-  status.set_current_operation(Operation::UPDATED_NEED_REBOOT);
-  SystemState::Get()->set_update_engine_status(status);
-
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
-}
-
-TEST_F(DlcServiceTest, UpdateEngineFailureClearsInstalling) {
-  // TODO(kimjae): Eventually move all tests to use mocks instead of setup.
-  auto mock_dlc_manager = std::make_unique<StrictMock<MockDlcManager>>();
-  auto* mock_dlc_manager_ptr = mock_dlc_manager.get();
-
-  // Setup a mock logger to ensure alert is printed on a failed install
-  base::test::MockLog mock_log;
-  mock_log.StartCapturingLogs();
-
-  dlc_service_->SetDlcManagerForTest(std::move(mock_dlc_manager));
-
-  EXPECT_CALL(*mock_dlc_manager_ptr, Install(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(true), Return(true)));
-  EXPECT_CALL(*mock_dlc_manager_ptr, CancelInstall(kSecondDlc, _, _))
-      .WillOnce(Return(true));
-  DlcBase dlc(kSecondDlc);
-  dlc.Initialize();
-  EXPECT_CALL(*mock_dlc_manager_ptr, GetDlc(_, _)).WillOnce(Return(&dlc));
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
-      .WillOnce(Return(false));
-  // Logger expectations.
-  EXPECT_CALL(mock_log, Log(_, _, _, _, _)).Times(AnyNumber());
-  EXPECT_CALL(mock_log, Log(::logging::LOGGING_ERROR, _, _, _,
-                            HasSubstr(AlertLogTag(kCategoryInstall).c_str())));
-  EXPECT_CALL(*mock_metrics_, SendInstallResult(_));
-
-  StatusResult status;
-  status.set_current_operation(Operation::IDLE);
-  SystemState::Get()->set_update_engine_status(status);
-
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
-}
-
-TEST_F(DlcServiceTest, UpdateEngineServiceIsNotAvailable) {
-  SystemState::Get()->set_update_engine_service_available(false);
-
-  auto mock_dlc_manager = std::make_unique<StrictMock<MockDlcManager>>();
-  auto* mock_dlc_manager_ptr = mock_dlc_manager.get();
-
-  dlc_service_->SetDlcManagerForTest(std::move(mock_dlc_manager));
-
-  EXPECT_CALL(*mock_dlc_manager_ptr, Install(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(true), Return(true)));
-  EXPECT_CALL(*mock_dlc_manager_ptr, CancelInstall(kFirstDlc, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_metrics_, SendInstallResult(_));
-
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(kFirstDlc), &err_));
-  EXPECT_EQ(err_->GetCode(), kErrorBusy);
-}
-
-TEST_F(DlcServiceTest, UpdateEngineBecomesAvailable) {
+TEST_F(DlcServiceTestLegacy, UpdateEngineBecomesAvailable) {
   auto* system_state = SystemState::Get();
   system_state->set_update_engine_service_available(false);
 
@@ -987,31 +1524,6 @@ TEST_F(DlcServiceTest, UpdateEngineBecomesAvailable) {
 
   dlc_service_->OnWaitForUpdateEngineServiceToBeAvailable(true);
   EXPECT_TRUE(system_state->IsUpdateEngineServiceAvailable());
-}
-
-TEST_F(DlcServiceTest, InstallRaceConditionCheck) {
-  auto mock_dlc_manager = std::make_unique<StrictMock<MockDlcManager>>();
-  auto* mock_dlc_manager_ptr = mock_dlc_manager.get();
-
-  dlc_service_->SetDlcManagerForTest(std::move(mock_dlc_manager));
-
-  EXPECT_CALL(*mock_dlc_manager_ptr, Install(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(true), Return(true)));
-  EXPECT_CALL(*mock_dlc_manager_ptr, CancelInstall(kSecondDlc, _, _))
-      .WillOnce(Return(true));
-
-  SetMountPath(mount_path_.value());
-  EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _)).Times(0);
-  EXPECT_CALL(*mock_metrics_,
-              SendInstallResult(InstallResult::kFailedUpdateEngineBusy));
-
-  constexpr char kFoobarDlc[] = "foobar-dlc";
-  dlc_service_->installing_dlc_id_ = kFoobarDlc;
-
-  // Mock another client call.
-  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
-
-  EXPECT_EQ(dlc_service_->installing_dlc_id_.value(), DlcId(kFoobarDlc));
 }
 
 }  // namespace dlcservice

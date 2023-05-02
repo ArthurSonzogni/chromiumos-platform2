@@ -70,7 +70,6 @@ void Metrics::SendInstallResult(InstallResult result) {
   metrics_library_->SendEnumToUMA(
       metrics::kMetricInstallResult, static_cast<int>(result),
       static_cast<int>(InstallResult::kNumConstants));
-  // TODO(andrewlassalle): Remove log after 2020-12-25
   LOG(INFO) << "InstallResult metric sent:" << static_cast<int>(result);
 }
 

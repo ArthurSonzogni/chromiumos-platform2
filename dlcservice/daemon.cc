@@ -16,8 +16,10 @@
 
 #include "dlcservice/boot/boot_device.h"
 #include "dlcservice/boot/boot_slot.h"
+#include "dlcservice/dlc_base_creator.h"
 #include "dlcservice/dlc_service.h"
 #if USE_LVM_STATEFUL_PARTITION
+#include "dlcservice/lvm/dlc_lvm_creator.h"
 #include "dlcservice/lvm/lvmd_proxy_wrapper.h"
 #endif  // USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/metrics.h"
@@ -65,7 +67,16 @@ void Daemon::RegisterDBusObjectsAsync(
   auto metrics = std::make_unique<Metrics>(std::move(metrics_library));
   metrics->Init();
 
-  dlc_service_ = std::make_unique<DlcService>();
+  {
+    auto dlc_creator =
+#if USE_LVM_STATEFUL_PARTITION
+        std::make_unique<DlcLvmCreator>();
+#else
+        std::make_unique<DlcBaseCreator>();
+#endif  // USE_LVM_STATEFUL_PARTITION
+    dlc_service_ = std::make_unique<DlcService>(std::move(dlc_creator));
+    // NOTE: `dlc_creator` should not be used beyond this line.
+  }
 
   auto dbus_service = std::make_unique<DBusService>(dlc_service_.get());
   dbus_adaptor_ = std::make_unique<DBusAdaptor>(std::move(dbus_service));

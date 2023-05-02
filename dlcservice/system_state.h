@@ -18,7 +18,6 @@
 #include <update_engine/dbus-proxies.h>
 
 #include "dlcservice/boot/boot_slot.h"
-#include "dlcservice/dlc_manager.h"
 #if USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/lvm/lvmd_proxy_wrapper.h"
 #endif  // USE_LVM_STATEFUL_PARTITION

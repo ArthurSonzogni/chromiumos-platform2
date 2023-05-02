@@ -27,7 +27,7 @@ class MockDlcService : public DlcServiceInterface {
   MOCK_METHOD(DlcIdList, GetInstalled, (), (override));
   MOCK_METHOD(DlcIdList, GetExistingDlcs, (), (override));
   MOCK_METHOD(DlcIdList, GetDlcsToUpdate, (), (override));
-  MOCK_METHOD((const DlcBase*),
+  MOCK_METHOD((DlcBase*),
               GetDlc,
               (const DlcId& id, brillo::ErrorPtr* err),
               (override));
