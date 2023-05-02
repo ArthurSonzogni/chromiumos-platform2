@@ -319,6 +319,9 @@ INSTANTIATE_TEST_SUITE_P(
                           {"pressure"}, {cros::mojom::DeviceType::BARO}),
                       std::pair<std::vector<std::string>,
                                 std::vector<cros::mojom::DeviceType>>(
+                          {"proximity0"}, {cros::mojom::DeviceType::PROXIMITY}),
+                      std::pair<std::vector<std::string>,
+                                std::vector<cros::mojom::DeviceType>>(
                           {"accel_x", "accel_y", "magn_z", "abc"},
                           {cros::mojom::DeviceType::ACCEL,
                            cros::mojom::DeviceType::MAGN}),
