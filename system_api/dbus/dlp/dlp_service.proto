@@ -133,9 +133,7 @@ message AddFileResponse {
 }
 
 message RequestFileAccessRequest {
-  // TODO(crbug.com/1352431): Remove when it's not used in Chrome.
-  repeated uint64 inodes = 1;
-
+  reserved 1;
   // Process id for which an access is requested.
   optional int32 process_id = 2;
 
@@ -175,8 +173,7 @@ message FileRestriction {
 }
 
 message IsDlpPolicyMatchedRequest {
-  // TODO(crbug.com/1352431): Remove when it's not used in Chrome.
-  optional string source_url = 1;
+  reserved 1;
   // File metadata.
   optional FileMetadata file_metadata = 2;
 }
@@ -217,8 +214,7 @@ message CheckFilesTransferResponse {
 }
 
 message IsFilesTransferRestrictedRequest {
-  // TODO(crbug.com/1352431): Remove when it's not used in Chrome.
-  repeated string files_sources = 1;
+  reserved 1;
   // Destination url where the file will be transferred.
   optional string destination_url = 2;
   // Files to be transferred.
@@ -230,10 +226,9 @@ message IsFilesTransferRestrictedRequest {
 }
 
 message IsFilesTransferRestrictedResponse {
+  reserved 2;
   // Error message, empty if no error occurred.
   optional string error_message = 1;
-  // TODO(crbug.com/1352431): Remove when it's not used in Chrome.
-  repeated string files_sources = 2;
   // Files restricted to be transferred.
   // TODO(b/259182892): Remove when it's not used in Chrome.
   repeated FileMetadata restricted_files = 3;

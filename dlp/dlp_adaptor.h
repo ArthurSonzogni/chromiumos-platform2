@@ -79,7 +79,6 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
       const std::vector<uint8_t>& request_blob) override;
 
   void SetFanotifyWatcherStartedForTesting(bool is_started);
-  void SetDownloadsPathForTesting(const base::FilePath& path);
   void CloseDatabaseForTesting();
 
  private:

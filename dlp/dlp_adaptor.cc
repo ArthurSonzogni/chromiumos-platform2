@@ -40,9 +40,6 @@ namespace dlp {
 
 namespace {
 
-// Override watched directory for tests.
-base::FilePath g_downloads_path_for_testing;
-
 // Serializes |proto| to a vector of bytes. CHECKs for success (should
 // never fail if there are no required proto fields).
 std::vector<uint8_t> SerializeProto(
@@ -427,10 +424,6 @@ void DlpAdaptor::SetFanotifyWatcherStartedForTesting(bool is_started) {
   is_fanotify_watcher_started_for_testing_ = is_started;
 }
 
-void DlpAdaptor::SetDownloadsPathForTesting(const base::FilePath& path) {
-  g_downloads_path_for_testing = path;
-}
-
 void DlpAdaptor::CloseDatabaseForTesting() {
   db_.reset();
 }
@@ -588,7 +581,6 @@ void DlpAdaptor::ProcessFileOpenRequestWithData(
 
   // If the file can be restricted by any DLP rule, do not allow access there.
   IsDlpPolicyMatchedRequest request;
-  request.set_source_url(file_entry.source_url);
   request.mutable_file_metadata()->set_inode(file_entry.inode);
   request.mutable_file_metadata()->set_source_url(file_entry.source_url);
   // TODO(crbug.com/1357967)
