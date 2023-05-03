@@ -73,6 +73,9 @@ EOF
   install -D -m 0644 -t /var/lib/dkms "${DATA_ROOT}/var/lib/dkms/mok.pub"
   install -D -m 0600 -t /var/lib/dkms "${DATA_ROOT}/var/lib/dkms/mok.key"
 
+  install -D -m 0440 -t /etc/sudoers.d \
+    "${DATA_ROOT}/etc/sudoers.d/10-no-password"
+
   # Find the installed, not running, kernel version.
   kernel="$(dpkg-query -Wf '${Package}\n' 'linux-image-*-amd64' | tail -n 1 | \
     sed -E -e 's/linux-image-//')"

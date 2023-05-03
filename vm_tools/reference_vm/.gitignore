@@ -1,1 +1,2 @@
 *.fd
+!data/etc/sudoers.d/
