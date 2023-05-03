@@ -65,6 +65,7 @@ void PopulateReplyWithError(
     *reply->mutable_error_info() = std::move(info);
     reply->set_error(legacy_ec);
   } else {
+    ReportCryptohomeOk(kErrorBucketName);
     reply->clear_error_info();
     reply->set_error(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET);
