@@ -15,9 +15,9 @@ group("all") {
   if (use.camera_feature_effects) {
     deps += [ "//ml_core/opencl_caching:all" ]
   }
-  if (use.test) {
-    deps += [ ":unittest_deps" ]
-  }
+
+  # Need to do always, as some deps are for clients.
+  deps += [ ":unittest_deps" ]
   if (use.fuzzer) {
     deps += []
   }
