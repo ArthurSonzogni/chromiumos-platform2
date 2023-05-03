@@ -334,4 +334,10 @@ interface Executor {
   //                that will manage the memtester binary's lifetime.
   RunFio(FioJobArgument argument,
          pending_receiver<ProcessControl> receiver);
+
+  // Remove the test file created by fio and return the result.
+  //
+  // The response:
+  // * |result| - contains information of removing test file by running rm.
+  RemoveFioTestFile() => (ExecutedProcessResult result);
 };

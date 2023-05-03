@@ -39,6 +39,7 @@ install_and_check_seccomp_policy("diagnostics_seccomp") {
     "${_arch}/ectool_pwmgetfanrpm-seccomp.policy",
     "${_arch}/fio-seccomp.policy",
     "${_arch}/hciconfig-seccomp.policy",
+    "${_arch}/healthd_rm-seccomp.policy",
     "${_arch}/iw-seccomp.policy",
     "${_arch}/memtester-seccomp.policy",
     "${_arch}/prime_search-seccomp.policy",

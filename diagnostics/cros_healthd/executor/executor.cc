@@ -96,6 +96,8 @@ constexpr char kPsr[] = "psr-seccomp.policy";
 constexpr char kStressAppTest[] = "stressapptest-seccomp.policy";
 // SECCOMP policy for fio.
 constexpr char kFio[] = "fio-seccomp.policy";
+// SECCOMP policy for rm.
+constexpr char kRm[] = "healthd_rm-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -713,6 +715,19 @@ void Executor::RunFioWithDlcRoot(
       readonly_mount_points, writable_mount_points, MOUNT_DLC);
   RunLongRunningProcess(std::move(process), std::move(receiver),
                         /*combine_stdout_and_stderr=*/false);
+}
+
+void Executor::RemoveFioTestFile(RemoveFioTestFileCallback callback) {
+  std::vector<std::string> command = {"/bin/rm", "-f", path::kFioCacheFile};
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kRm, kCrosHealthdSandboxUser, kNullCapability,
+      /*readonly_mount_points=*/std::vector<base::FilePath>{},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{
+          base::FilePath(path::kFioCacheFile).DirName()});
+
+  RunAndWaitProcess(std::move(process), std::move(callback),
+                    /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::RunAndWaitProcess(
