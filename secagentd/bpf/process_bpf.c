@@ -11,6 +11,7 @@
 // TODO(b/243453873): Workaround to get code completion working in CrosIDE.
 #undef __cplusplus
 #include "secagentd/bpf/bpf_types.h"
+#include "secagentd/bpf/bpf_utils.h"
 
 const char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
@@ -18,13 +19,6 @@ struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
   __uint(max_entries, CROS_MAX_STRUCT_SIZE * 1024);
 } rb SEC(".maps");
-
-static inline __attribute__((always_inline)) bool is_kthread(
-    const struct task_struct* t) {
-  // From sched.h:
-  // #define PF_KTHREAD  0x00200000
-  return (BPF_CORE_READ(t, flags) & 0x00200000);
-}
 
 static inline __attribute__((always_inline)) void fill_ns_info(
     struct cros_namespace_info* ns_info, const struct task_struct* t) {
@@ -37,7 +31,7 @@ static inline __attribute__((always_inline)) void fill_ns_info(
   ns_info->uts_ns = BPF_CORE_READ(t, nsproxy, uts_ns, ns.inum);
 }
 
-static inline __attribute__((always_inline)) struct task_struct*
+static inline __attribute__((always_inline)) const struct task_struct*
 normalize_to_last_newns(const struct task_struct* t) {
   const struct task_struct* ret = t;
   // Arbitrarily selected limit to convince the verifier that the BPF will
@@ -90,49 +84,6 @@ static inline __attribute__((always_inline)) void fill_image_info(
   image_info->pid_for_setns = BPF_CORE_READ(n, tgid);
 }
 
-static inline __attribute__((always_inline)) struct task_struct*
-normalize_to_last_exec(const struct task_struct* t) {
-  const struct task_struct* ret = t;
-  // Arbitrarily selected limit to convince the verifier that the BPF will
-  // always halt.
-  for (int i = 0; i < 64; ++i) {
-    struct task_struct* parent = BPF_CORE_READ(ret, real_parent, group_leader);
-    if ((!parent) || (BPF_CORE_READ(ret, self_exec_id) !=
-                      BPF_CORE_READ(parent, self_exec_id))) {
-      break;
-    }
-    ret = parent;
-  }
-  return ret;
-}
-
-static inline __attribute__((always_inline)) void fill_task_info(
-    struct cros_process_task_info* task_info, const struct task_struct* t) {
-  struct task_struct* parent =
-      normalize_to_last_exec(BPF_CORE_READ(t, real_parent, group_leader));
-  task_info->ppid = BPF_CORE_READ(parent, tgid);
-  task_info->parent_start_time = BPF_CORE_READ(parent, start_boottime);
-  task_info->start_time = BPF_CORE_READ(t, group_leader, start_boottime);
-  task_info->pid = BPF_CORE_READ(t, tgid);
-
-  task_info->uid = BPF_CORE_READ(t, real_cred, uid.val);
-  task_info->gid = BPF_CORE_READ(t, real_cred, gid.val);
-
-  // Read argv from user memory.
-  const uintptr_t arg_start = (uintptr_t)BPF_CORE_READ(t, mm, arg_start);
-  const uintptr_t arg_end = (uintptr_t)BPF_CORE_READ(t, mm, arg_end);
-  if ((arg_end - arg_start) > sizeof(task_info->commandline)) {
-    task_info->commandline_len = sizeof(task_info->commandline);
-  } else {
-    task_info->commandline_len = (uint32_t)(arg_end - arg_start);
-  }
-  bpf_probe_read_user(task_info->commandline, task_info->commandline_len,
-                      (const void*)arg_start);
-  if (task_info->commandline_len == sizeof(task_info->commandline)) {
-    task_info->commandline[task_info->commandline_len - 1] = '\0';
-  }
-}
-
 // trace_sched_process_exec is called by exec_binprm shortly after exec. It has
 // the distinct advantage (over arguably more stable and security focused
 // interfaces like bprm_committed_creds) of running in the context of the newly
@@ -163,7 +114,7 @@ int BPF_PROG(handle_sched_process_exec,
   struct cros_process_start* p =
       &(event->data.process_event.data.process_start);
 
-  fill_task_info(&p->task_info, current);
+  cros_fill_task_info(&p->task_info, current);
   fill_ns_info(&p->spawn_namespace, current);
   fill_image_info(&p->image_info, bprm, current);
 
@@ -182,7 +133,7 @@ int BPF_PROG(handle_sched_process_exit, struct task_struct* current) {
     return 0;
   }
   if ((BPF_CORE_READ(current, pid) != BPF_CORE_READ(current, tgid)) ||
-      (current != normalize_to_last_exec(current))) {
+      (current != cros_normalize_to_last_exec(current))) {
     // We didn't report an exec event for this task since it's either not a
     // thread group leader or it's a !CLONE_THREAD clone that hasn't exec'd
     // anything. So avoid reporting a terminate event for it.
@@ -197,7 +148,7 @@ int BPF_PROG(handle_sched_process_exit, struct task_struct* current) {
   event->data.process_event.type = kProcessExitEvent;
   struct cros_process_exit* p = &(event->data.process_event.data.process_exit);
 
-  fill_task_info(&p->task_info, current);
+  cros_fill_task_info(&p->task_info, current);
   // Similar to list_empty(&current->children). Though unsure how to get a
   // reliable pointer to current->children. So instead of:
   // (&current->children == current->children.next)

@@ -7,8 +7,25 @@
 
 #ifdef __cplusplus
 #include <stdint.h>
+#include <sys/socket.h>
 #define _Static_assert static_assert
 namespace secagentd::bpf {
+#else
+// Kernels 5.10,5.15 won't have support for fentry/fexit
+// hooks. Instead these kernels have downstream tracepoints
+// defined and added to areas of interest within the kernel.
+// NO_FUNCTION_HOOKS is defined by the BUILD file when a
+// 5.15 or 5.10 kernel is detected and when that is the case
+// then the NO substitution is used otherwise it is assumed the
+// kernel supports fentry/fexit and so the YES substitution is used.
+// In short, this allows different hooks to be used based on
+// whether the kernel is expected to support fentry/fexit hooks
+// or not.
+#if defined(NO_FUNCTION_HOOKS) && NO_FUNCTION_HOOKS == 1
+#define CROS_IF_FUNCTION_HOOK(YES, NO) SEC(NO)
+#else
+#define CROS_IF_FUNCTION_HOOK(YES, NO) SEC(YES)
+#endif
 #endif
 
 // The max arg size set by limits.h is ~128KB. To avoid consuming an absurd
@@ -121,14 +138,79 @@ struct cros_process_event {
   } data;
 };
 
-// The type of security event an event structure contains.
-enum cros_event_type { kProcessEvent };
+enum cros_network_protocol {
+  CROS_PROTOCOL_TCP,
+  CROS_PROTOCOL_UDP,
+  CROS_PROTOCOL_ICMP,
+  CROS_PROTOCOL_RAW,
+  CROS_PROTOCOL_UNKNOWN
+};
+
+// AF_INET, AF_INET6 are not found in vmlinux.h so use our own
+// definition here.
+// We only care about AF_INET and AF_INET6 (ipv4 and ipv6).
+enum cros_network_family { CROS_FAMILY_AF_INET = 2, CROS_FAMILY_AF_INET6 = 10 };
+
+#ifdef __cplusplus
+// make sure that the values used for our definition of families matches
+// the definition in the system header.
+static_assert(CROS_FAMILY_AF_INET == AF_INET);
+static_assert(CROS_FAMILY_AF_INET6 == AF_INET6);
+#endif
+
+enum cros_network_socket_direction {
+  CROS_SOCKET_DIRECTION_IN,      // socket is a result of an accept.
+  CROS_SOCKET_DIRECTION_OUT,     // socket had connect called on it.
+  CROS_SOCKET_DIRECTION_UNKNOWN  // non-connection based socket.
+};
+
+struct cros_network_common {
+  int dev_if;  // The device interface index that this socket is bound to.
+  enum cros_network_family family;
+  enum cros_network_protocol protocol;
+  struct cros_process_task_info process;
+};
+
+struct cros_network_flow {
+  struct cros_network_common common;
+  uint32_t destination_addr_ipv4;
+  uint8_t destination_addr_ipv6[16];
+  uint32_t destination_port;
+  // TODO(b/264550183): add remote_hostname
+  // TODO(b/264550183): add application protocol
+  // TODO(b/264550183): add http_host
+  // TODO(b/264550183): add sni_host
+  enum cros_network_socket_direction direction;
+  uint32_t tx_bytes;
+  uint32_t rx_bytes;
+};
+
+struct cros_network_socket_listen {
+  struct cros_network_common common;
+  uint8_t socket_type;  // SOCK_STREAM, SOCK_DGRAM etc..
+  uint32_t port;
+  uint32_t ipv4_addr;
+  uint8_t ipv6_addr[16];
+};
+
+enum cros_network_event_type { kNetworkFlow, kNetworkSocketListen };
+
+struct cros_network_event {
+  enum cros_network_event_type type;
+  union {
+    struct cros_network_socket_listen socket_listen;
+    struct cros_network_flow flow;
+  } data;
+};
+
+enum cros_event_type { kProcessEvent, kNetworkEvent };
 
 // The security event structure that contains security event information
 // provided by a BPF application.
 struct cros_event {
   union {
     struct cros_process_event process_event;
+    struct cros_network_event network_event;
   } data;
   enum cros_event_type type;
 };
