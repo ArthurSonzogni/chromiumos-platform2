@@ -22,8 +22,17 @@ constexpr char kSysEfiDir[] = "sys/firmware/efi";
 // is used to read and write UEFI variables.
 constexpr char kEfivarsDir[] = "sys/firmware/efi/efivars";
 
+// Mount point for EFI System Partition (relative to the root dir).
+constexpr char kEspDir[] = "efi";
+
+// Label of the EFI System Partition.
+constexpr char kEspLabel[] = "EFI-SYSTEM";
+
 // File system name used for mounting efivarfs.
 constexpr char kFsTypeEfivarfs[] = "efivarfs";
+
+// File system name used for mounting the EFI System Partition.
+constexpr char kFsTypeVfat[] = "vfat";
 
 // Vendor GUID used for the dbx UEFI variable. This is defined in the
 // UEFI Specification under the "Device Signature Database Update" section.
@@ -40,6 +49,7 @@ class UefiDelegateImpl : public UefiDelegate {
   bool MakeUefiVarWritableByFwupd(const std::string& vendor,
                                   const std::string& name,
                                   const UserAndGroup& fwupd) override;
+  bool MountEfiSystemPartition(const UserAndGroup& fwupd) override;
 
  private:
   Platform& platform_;

@@ -16,6 +16,7 @@
 
 #include "init/startup/constants.h"
 #include "init/startup/uefi_startup_impl.h"
+#include "init/utils.h"
 
 namespace startup {
 
@@ -95,6 +96,33 @@ bool UefiDelegateImpl::MakeUefiVarWritableByFwupd(const std::string& vendor,
   return true;
 }
 
+bool UefiDelegateImpl::MountEfiSystemPartition(const UserAndGroup& fwupd) {
+  const base::FilePath mount_point = root_dir_.Append(kEspDir);
+  const auto esp_dev = platform_.GetRootDevicePartitionPath(kEspLabel);
+  if (!esp_dev.has_value()) {
+    LOG(WARNING) << "Unable to find ESP label (" << kEspLabel
+                 << ") in root partition layout";
+    return false;
+  }
+
+  // This is a FAT filesystem, so it doesn't have owner info and
+  // defaults to the UID/GID of the current process. Set the user and
+  // group of all files to fwupd. Also set the umask so that other users
+  // can't access the files.
+  const std::string data = "uid=" + std::to_string(fwupd.uid) +
+                           ",gid=" + std::to_string(fwupd.gid) + ",umask=007";
+  if (!platform_.Mount(/*src=*/esp_dev.value(),
+                       /*dst=*/mount_point,
+                       /*type=*/kFsTypeVfat,
+                       /*flags=*/kCommonMountFlags,
+                       /*data=*/data)) {
+    PLOG(WARNING) << "Unable to mount " << mount_point;
+    return false;
+  }
+
+  return true;
+}
+
 void MaybeRunUefiStartup(UefiDelegate& uefi_delegate) {
   if (!uefi_delegate.IsUefiEnabled()) {
     return;
@@ -110,6 +138,8 @@ void MaybeRunUefiStartup(UefiDelegate& uefi_delegate) {
     uefi_delegate.MakeUefiVarWritableByFwupd(kEfiImageSecurityDatabaseGuid,
                                              "dbx", fwupd.value());
   }
+
+  uefi_delegate.MountEfiSystemPartition(fwupd.value());
 }
 
 }  // namespace startup
