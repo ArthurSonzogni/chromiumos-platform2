@@ -94,6 +94,8 @@ executable("lorgnette") {
 
 executable("lorgnette_cli") {
   sources = [
+    "cli/async_handler.cc",
+    "cli/scan_handler.cc",
     "guess_source.cc",
     "lorgnette_cli.cc",
   ]
