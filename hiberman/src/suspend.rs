@@ -4,7 +4,9 @@
 
 //! Implements hibernate suspend functionality.
 
+use std::fs::File;
 use std::io::BufRead;
+use std::io::Write;
 use std::mem;
 use std::process::Command;
 use std::sync::RwLockReadGuard;
@@ -56,6 +58,8 @@ use crate::update_engine::is_update_engine_idle;
 use crate::volume::ActiveMount;
 use crate::volume::VolumeManager;
 use crate::volume::VOLUME_MANAGER;
+
+const DROP_CACHES_ATTR_PATH: &str = "/proc/sys/vm/drop_caches";
 
 /// Reason why an attempt to suspend was aborted
 /// Values need to match CrosHibernateAbortReason in Chromium's enums.xml
@@ -214,6 +218,12 @@ impl SuspendConductor<'_> {
         // Make sure the thinpool has time to commit pending metadata changes
         // to disk. The thinpool workqueue does this every second.
         thread::sleep(Duration::from_millis(1100));
+
+        // Drop the page cache to reduce the size of the hibernate image. The
+        // pages can be loaded from storage as needed after resume.
+        if let Err(e) = drop_pagecache() {
+            error!("Failed to drop pagecache: {e}");
+        }
 
         if let Err(e) = self.snapshot_and_save(frozen_userspace) {
             if let Some(HibernateError::SnapshotIoctlError(_, err)) = e.downcast_ref() {
@@ -477,4 +487,15 @@ fn get_number_of_dropped_pages_with_zeroes() -> Result<u64> {
     Err(anyhow!(
         "Could not determine number of dropped pages with only zeroes"
     ))
+}
+
+/// Drop the pagecache.
+fn drop_pagecache() -> Result<()> {
+    let mut f = File::options()
+        .write(true)
+        .open(DROP_CACHES_ATTR_PATH)
+        .context("Failed to open {DROP_CACHES_ATTR_PATH}")?;
+    f.write_all("1".as_bytes())?;
+
+    Ok(())
 }
