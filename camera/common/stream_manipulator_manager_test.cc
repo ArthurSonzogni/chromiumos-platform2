@@ -29,6 +29,8 @@ namespace tests {
 
 namespace {
 
+constexpr int kCaptureRequestTimeoutMs = 1000;
+
 class FakeStreamManipulator : public StreamManipulator {
  public:
   explicit FakeStreamManipulator(bool use_thread,
@@ -145,12 +147,15 @@ StreamManipulator::Callbacks CreateCallbacks(
 }  // namespace
 
 TEST(StreamManipulatorManagerTest, NoStreamManipulatorTest) {
-  StreamManipulatorManager manager({});
-
+  // Construct these objects before StreamManipulatorManager so that they
+  // outlive StreamManipulatorManager.
   Camera3CaptureDescriptor returned_result;
   base::WaitableEvent capture_result_returned;
   camera3_notify_msg_t returned_msg;
   base::WaitableEvent notify_returned;
+
+  StreamManipulatorManager manager({});
+
   android::CameraMetadata metadata;
   manager.Initialize(metadata.getAndLock(),
                      CreateCallbacks(&returned_result, &capture_result_returned,
@@ -167,7 +172,8 @@ TEST(StreamManipulatorManagerTest, NoStreamManipulatorTest) {
   manager.ProcessCaptureRequest(&request);
 
   manager.ProcessCaptureResult(CreateFakeCaptureResult(/*frame_number=*/1));
-  ASSERT_TRUE(capture_result_returned.TimedWait(base::Milliseconds(100)));
+  ASSERT_TRUE(capture_result_returned.TimedWait(
+      base::Milliseconds(kCaptureRequestTimeoutMs)));
   EXPECT_EQ(returned_result.frame_number(), 1);
 
   manager.Notify(camera3_notify_msg_t{.type = CAMERA3_MSG_SHUTTER});
@@ -177,6 +183,13 @@ TEST(StreamManipulatorManagerTest, NoStreamManipulatorTest) {
 }
 
 TEST(StreamManipulatorManagerTest, SingleStreamManipulatorTest) {
+  // Construct these objects before StreamManipulatorManager so that they
+  // outlive StreamManipulatorManager.
+  Camera3CaptureDescriptor returned_result;
+  base::WaitableEvent capture_result_returned;
+  camera3_notify_msg_t returned_msg;
+  base::WaitableEvent notify_returned;
+
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators;
   stream_manipulators.emplace_back(
       std::make_unique<FakeStreamManipulator>(/*use_thread=*/true));
@@ -184,10 +197,6 @@ TEST(StreamManipulatorManagerTest, SingleStreamManipulatorTest) {
       static_cast<FakeStreamManipulator*>(stream_manipulators[0].get());
   StreamManipulatorManager manager(std::move(stream_manipulators));
 
-  Camera3CaptureDescriptor returned_result;
-  base::WaitableEvent capture_result_returned;
-  camera3_notify_msg_t returned_msg;
-  base::WaitableEvent notify_returned;
   android::CameraMetadata metadata;
   manager.Initialize(metadata.getAndLock(),
                      CreateCallbacks(&returned_result, &capture_result_returned,
@@ -204,18 +213,27 @@ TEST(StreamManipulatorManagerTest, SingleStreamManipulatorTest) {
   manager.ProcessCaptureRequest(&request);
 
   manager.ProcessCaptureResult(CreateFakeCaptureResult(/*frame_number=*/1));
-  ASSERT_TRUE(capture_result_returned.TimedWait(base::Milliseconds(100)));
+  ASSERT_TRUE(capture_result_returned.TimedWait(
+      base::Milliseconds(kCaptureRequestTimeoutMs)));
   EXPECT_EQ(returned_result.frame_number(), 1);
   EXPECT_EQ(stream_manipulator->process_capture_result_call_counts(), 1);
 
   manager.Notify(camera3_notify_msg_t{.type = CAMERA3_MSG_SHUTTER});
-  ASSERT_TRUE(notify_returned.TimedWait(base::Milliseconds(100)));
+  ASSERT_TRUE(
+      notify_returned.TimedWait(base::Milliseconds(kCaptureRequestTimeoutMs)));
   EXPECT_EQ(returned_msg.type, CAMERA3_MSG_SHUTTER);
 
   manager.Flush();
 }
 
 TEST(StreamManipulatorManagerTest, MultipleStreamManipulatorsTest) {
+  // Construct these objects before StreamManipulatorManager so that they
+  // outlive StreamManipulatorManager.
+  Camera3CaptureDescriptor returned_result;
+  base::WaitableEvent capture_result_returned;
+  camera3_notify_msg_t returned_msg;
+  base::WaitableEvent notify_returned;
+
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators;
   stream_manipulators.emplace_back(
       std::make_unique<FakeStreamManipulator>(/*use_thread=*/true));
@@ -227,10 +245,6 @@ TEST(StreamManipulatorManagerTest, MultipleStreamManipulatorsTest) {
       static_cast<FakeStreamManipulator*>(stream_manipulators[1].get());
   StreamManipulatorManager manager(std::move(stream_manipulators));
 
-  Camera3CaptureDescriptor returned_result;
-  base::WaitableEvent capture_result_returned;
-  camera3_notify_msg_t returned_msg;
-  base::WaitableEvent notify_returned;
   android::CameraMetadata metadata;
   manager.Initialize(metadata.getAndLock(),
                      CreateCallbacks(&returned_result, &capture_result_returned,
@@ -247,19 +261,28 @@ TEST(StreamManipulatorManagerTest, MultipleStreamManipulatorsTest) {
   manager.ProcessCaptureRequest(&request);
 
   manager.ProcessCaptureResult(CreateFakeCaptureResult(/*frame_number=*/1));
-  ASSERT_TRUE(capture_result_returned.TimedWait(base::Milliseconds(100)));
+  ASSERT_TRUE(capture_result_returned.TimedWait(
+      base::Milliseconds(kCaptureRequestTimeoutMs)));
   EXPECT_EQ(returned_result.frame_number(), 1);
   EXPECT_EQ(stream_manipulator_1->process_capture_result_call_counts(), 1);
   EXPECT_EQ(stream_manipulator_2->process_capture_result_call_counts(), 1);
 
   manager.Notify(camera3_notify_msg_t{.type = CAMERA3_MSG_SHUTTER});
-  ASSERT_TRUE(notify_returned.TimedWait(base::Milliseconds(100)));
+  ASSERT_TRUE(
+      notify_returned.TimedWait(base::Milliseconds(kCaptureRequestTimeoutMs)));
   EXPECT_EQ(returned_msg.type, CAMERA3_MSG_SHUTTER);
 
   manager.Flush();
 }
 
 TEST(StreamManipulatorManagerTest, SynchronizationTest) {
+  // Construct these objects before StreamManipulatorManager so that they
+  // outlive StreamManipulatorManager.
+  Camera3CaptureDescriptor returned_result;
+  base::WaitableEvent capture_result_returned;
+  camera3_notify_msg_t returned_msg;
+  base::WaitableEvent notify_returned;
+
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators;
   stream_manipulators.emplace_back(std::make_unique<FakeStreamManipulator>(
       /*use_thread=*/true, /*fake_processing_time_us_=*/1000));
@@ -279,10 +302,6 @@ TEST(StreamManipulatorManagerTest, SynchronizationTest) {
       static_cast<FakeStreamManipulator*>(stream_manipulators[3].get());
   StreamManipulatorManager manager(std::move(stream_manipulators));
 
-  Camera3CaptureDescriptor returned_result;
-  base::WaitableEvent capture_result_returned;
-  camera3_notify_msg_t returned_msg;
-  base::WaitableEvent notify_returned;
   android::CameraMetadata metadata;
   manager.Initialize(metadata.getAndLock(),
                      CreateCallbacks(&returned_result, &capture_result_returned,
@@ -302,7 +321,8 @@ TEST(StreamManipulatorManagerTest, SynchronizationTest) {
   manager.Notify(camera3_notify_msg_t{.type = CAMERA3_MSG_ERROR});
 
   // When Notify is returned, capture_result must already be returned
-  ASSERT_TRUE(notify_returned.TimedWait(base::Milliseconds(100)));
+  ASSERT_TRUE(
+      notify_returned.TimedWait(base::Milliseconds(kCaptureRequestTimeoutMs)));
   ASSERT_TRUE(capture_result_returned.IsSignaled());
   EXPECT_EQ(returned_result.frame_number(), 1);
   EXPECT_EQ(stream_manipulator_1->process_capture_result_call_counts(), 1);
