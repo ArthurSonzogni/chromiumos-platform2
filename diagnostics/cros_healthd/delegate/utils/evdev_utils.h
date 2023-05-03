@@ -24,6 +24,7 @@ class EvdevUtil {
  public:
   class Delegate {
    public:
+    virtual ~Delegate() = default;
     // Check if |dev| is the target device.
     virtual bool IsTarget(libevdev* dev) = 0;
     // Deal with the events and report to the caller through observer.
@@ -41,7 +42,7 @@ class EvdevUtil {
 
   using ScopedLibevdev = std::unique_ptr<libevdev, ScopedLibevdevDeleter>;
 
-  explicit EvdevUtil(Delegate* delegate);
+  explicit EvdevUtil(std::unique_ptr<Delegate> delegate);
   EvdevUtil(const EvdevUtil& oth) = delete;
   EvdevUtil(EvdevUtil&& oth) = delete;
   virtual ~EvdevUtil();
@@ -61,7 +62,7 @@ class EvdevUtil {
   // The libevdev device object.
   ScopedLibevdev dev_;
   // Delegate to implement dedicated behaviors for different evdev devices.
-  Delegate* const delegate_;
+  std::unique_ptr<Delegate> delegate_;
 };
 
 class EvdevAudioJackObserver final : public EvdevUtil::Delegate {
@@ -79,7 +80,6 @@ class EvdevAudioJackObserver final : public EvdevUtil::Delegate {
 
  private:
   mojo::Remote<ash::cros_healthd::mojom::AudioJackObserver> observer_;
-  EvdevUtil evdev_util_{this};
 };
 
 class EvdevTouchpadObserver final : public EvdevUtil::Delegate {
@@ -96,7 +96,6 @@ class EvdevTouchpadObserver final : public EvdevUtil::Delegate {
 
  private:
   mojo::Remote<ash::cros_healthd::mojom::TouchpadObserver> observer_;
-  EvdevUtil evdev_util_{this};
 };
 
 class EvdevTouchscreenObserver final : public EvdevUtil::Delegate {
@@ -114,7 +113,6 @@ class EvdevTouchscreenObserver final : public EvdevUtil::Delegate {
 
  private:
   mojo::Remote<ash::cros_healthd::mojom::TouchscreenObserver> observer_;
-  EvdevUtil evdev_util_{this};
 };
 
 class EvdevStylusGarageObserver final : public EvdevUtil::Delegate {
@@ -132,7 +130,6 @@ class EvdevStylusGarageObserver final : public EvdevUtil::Delegate {
 
  private:
   mojo::Remote<ash::cros_healthd::mojom::StylusGarageObserver> observer_;
-  EvdevUtil evdev_util_{this};
 };
 
 class EvdevStylusObserver final : public EvdevUtil::Delegate {
@@ -152,7 +149,6 @@ class EvdevStylusObserver final : public EvdevUtil::Delegate {
   // emit an event when the stylus is no longer in contact.
   bool last_event_has_touch_point_{false};
   mojo::Remote<ash::cros_healthd::mojom::StylusObserver> observer_;
-  EvdevUtil evdev_util_{this};
 };
 
 }  // namespace diagnostics

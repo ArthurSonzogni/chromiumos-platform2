@@ -265,16 +265,18 @@ void DelegateImpl::ResetLedColor(mojom::LedName name,
 
 void DelegateImpl::MonitorAudioJack(
     mojo::PendingRemote<mojom::AudioJackObserver> observer) {
+  auto delegate = std::make_unique<EvdevAudioJackObserver>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
-  new EvdevAudioJackObserver(std::move(observer));
+  new EvdevUtil(std::move(delegate));
 }
 
 void DelegateImpl::MonitorTouchpad(
     mojo::PendingRemote<mojom::TouchpadObserver> observer) {
+  auto delegate = std::make_unique<EvdevTouchpadObserver>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
-  new EvdevTouchpadObserver(std::move(observer));
+  new EvdevUtil(std::move(delegate));
 }
 
 void DelegateImpl::FetchBootPerformance(FetchBootPerformanceCallback callback) {
@@ -283,23 +285,28 @@ void DelegateImpl::FetchBootPerformance(FetchBootPerformanceCallback callback) {
 
 void DelegateImpl::MonitorTouchscreen(
     mojo::PendingRemote<mojom::TouchscreenObserver> observer) {
+  auto delegate =
+      std::make_unique<EvdevTouchscreenObserver>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
-  new EvdevTouchscreenObserver(std::move(observer));
+  new EvdevUtil(std::move(delegate));
 }
 
 void DelegateImpl::MonitorStylusGarage(
     mojo::PendingRemote<mojom::StylusGarageObserver> observer) {
+  auto delegate =
+      std::make_unique<EvdevStylusGarageObserver>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
-  new EvdevStylusGarageObserver(std::move(observer));
+  new EvdevUtil(std::move(delegate));
 }
 
 void DelegateImpl::MonitorStylus(
     mojo::PendingRemote<mojom::StylusObserver> observer) {
+  auto delegate = std::make_unique<EvdevStylusObserver>(std::move(observer));
   // Long-run method. The following object keeps alive until the process
   // terminates.
-  new EvdevStylusObserver(std::move(observer));
+  new EvdevUtil(std::move(delegate));
 }
 
 void DelegateImpl::GetLidAngle(GetLidAngleCallback callback) {

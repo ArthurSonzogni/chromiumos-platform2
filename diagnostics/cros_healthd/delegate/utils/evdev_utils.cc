@@ -83,7 +83,8 @@ std::vector<mojom::TouchPointInfoPtr> FetchTouchPoints(const libevdev* dev) {
 
 }  // namespace
 
-EvdevUtil::EvdevUtil(Delegate* delegate) : delegate_(delegate) {
+EvdevUtil::EvdevUtil(std::unique_ptr<Delegate> delegate)
+    : delegate_(std::move(delegate)) {
   Initialize();
 }
 
