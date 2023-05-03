@@ -236,7 +236,7 @@ int FirmwareUpdate(const InstallConfig& install_config, bool is_update) {
     mode = "recovery";
   }
 
-  LOG(INFO) << "Fimrware update with mode=" << mode;
+  LOG(INFO) << "Firmware update with mode=" << mode;
   int result = RunCommand({command.value(), "--mode=" + mode});
 
   // Next step after postinst may take a lot of time (eg, disk wiping)
