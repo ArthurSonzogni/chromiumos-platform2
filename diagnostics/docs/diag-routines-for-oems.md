@@ -706,6 +706,38 @@ Errors:
 - `smartctl-check status: ERROR, debugd returns error.`
 - `smartctl-check status: FAILED, one or more checks have failed.`
 
+### UFS Life Time
+
+Check the device's UFS storage life time by examining its Pre-End of Life
+Information in the health descriptor.
+
+From crosh:
+```bash
+crosh> diag ufs_lifetime
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag --action=run_routine --routine=ufs_lifetime
+```
+
+Sample output:
+```bash
+Running Progress: 100
+Status: Passed
+Output:
+{
+   "device_life_time_est_a": 9,
+   "device_life_time_est_b": 9,
+   "pre_eol_info": 1
+}
+```
+
+Errors:
+- `Unable to determine a bsg node path`
+- `Unable to deduce health descriptor path based on the bsg node path`
+- `Error reading content from UFS health descriptor`
+
 ## Network Routines
 
 ### LAN Connectivity
