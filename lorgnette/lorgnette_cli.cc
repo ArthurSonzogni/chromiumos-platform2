@@ -28,10 +28,12 @@
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 #include <re2/re2.h>
 
+#include "lorgnette/cli/discovery_handler.h"
 #include "lorgnette/cli/scan_handler.h"
 #include "lorgnette/dbus-proxies.h"
 #include "lorgnette/guess_source.h"
 
+using lorgnette::cli::DiscoveryHandler;
 using lorgnette::cli::ScanHandler;
 using org::chromium::lorgnette::ManagerProxy;
 
@@ -462,8 +464,9 @@ int main(int argc, char** argv) {
 
   const std::vector<std::string>& args =
       base::CommandLine::ForCurrentProcess()->GetArgs();
-  if (args.size() != 1 || (args[0] != "scan" && args[0] != "cancel_scan" &&
-                           args[0] != "list" && args[0] != "get_json_caps")) {
+  if (args.size() != 1 ||
+      (args[0] != "scan" && args[0] != "cancel_scan" && args[0] != "list" &&
+       args[0] != "get_json_caps" && args[0] != "discover")) {
     std::cerr << "usage: lorgnette_cli [list|scan|cancel_scan|get_json_caps] "
                  "[FLAGS...]"
               << std::endl;
@@ -562,6 +565,21 @@ int main(int argc, char** argv) {
     for (int i = 0; i < scanners.size(); i++) {
       std::cout << scanners[i] << std::endl;
     }
+
+  } else if (command == "discover") {
+    std::cout << "Discovering scanners: " << std::endl;
+    base::RunLoop run_loop;
+    DiscoveryHandler handler(run_loop.QuitClosure(), manager.get());
+    if (!handler.WaitUntilConnected()) {
+      LOG(ERROR) << "Failed to set up ScannerListChangedSignal handler";
+      return 1;
+    }
+    if (!handler.StartDiscovery()) {
+      LOG(ERROR) << "Failed to start discovery";
+      return 1;
+    }
+    run_loop.Run();
+    return 0;
 
   } else if (command == "cancel_scan") {
     if (FLAGS_uuid.empty()) {
