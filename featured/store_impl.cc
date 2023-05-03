@@ -15,18 +15,17 @@
 #include <base/files/file_util.h>
 #include <brillo/secure_blob.h>
 #include <brillo/files/file_util.h>
+#include <brillo/secure_string.h>
 #include <featured/proto_bindings/featured.pb.h>
-#include <openssl/crypto.h>
+#include <libhwsec-foundation/crypto/hmac.h>
 #include <sys/stat.h>
-
-#include "bootlockbox-client/bootlockbox/boot_lockbox_client.h"
-#include "featured/hmac.h"
 
 namespace featured {
 
 constexpr char kStorePath[] = "/var/lib/featured/store";
+// No longer used; this constant is only here to clean up older usage of this
+// file.
 constexpr char kStoreHMACPath[] = "/var/lib/featured/store_hmac";
-constexpr char kLockboxKey[] = "featured_early_boot_key";
 
 constexpr mode_t kSystemFeaturedFilesMode = 0760;
 
@@ -110,56 +109,6 @@ bool ValidatePathAndRead(const base::FilePath& file_path,
   return true;
 }
 
-// Writes store and hmac to disk.
-bool WriteDisk(const Store& store,
-               const HMAC& hmac_wrapper,
-               const base::FilePath& store_path,
-               const base::FilePath& hmac_path) {
-  std::string serialized_store;
-  bool serialized = store.SerializeToString(&serialized_store);
-  if (!serialized) {
-    LOG(ERROR) << "Could not serialize protobuf";
-    return false;
-  }
-
-  int store_fd;
-  if (!ValidatePathAndOpen(store_path, &store_fd, O_TRUNC)) {
-    PLOG(ERROR) << "Could not reopen " << store_path;
-    return false;
-  }
-
-  // Write store to disk.
-  base::File store_file(store_fd);
-  if (!store_file.WriteAtCurrentPosAndCheck(
-          base::as_bytes(base::make_span(serialized_store)))) {
-    PLOG(ERROR) << "Could not write new store to disk";
-    return false;
-  }
-
-  // Compute store HMAC.
-  std::optional<std::string> store_hmac = hmac_wrapper.Sign(serialized_store);
-  if (!store_hmac.has_value()) {
-    LOG(ERROR) << "Failed to sign store hmac";
-    return false;
-  }
-
-  int hmac_fd;
-  if (!ValidatePathAndOpen(hmac_path, &hmac_fd, O_TRUNC)) {
-    LOG(ERROR) << "Could not reopen " << hmac_path;
-    return false;
-  }
-
-  // Write store HMAC to disk.
-  std::string store_hmac_str = store_hmac.value();
-  base::File hmac_file(hmac_fd);
-  if (!hmac_file.WriteAtCurrentPosAndCheck(
-          base::as_bytes(base::make_span(store_hmac_str)))) {
-    PLOG(ERROR) << "Could not write new store HMAC to disk";
-    return false;
-  }
-  return true;
-}
-
 // Overwrite the file's contents before deleting, to ensure data is wiped.
 void SafeDeleteFile(const base::FilePath& seed_path) {
   brillo::Blob all_zero(kTpmSeedSize);
@@ -189,41 +138,70 @@ std::optional<brillo::SecureBlob> GetTpmSeed(const base::FilePath& seed_path) {
 }  // namespace
 
 StoreImpl::StoreImpl(const Store& store,
-                     std::unique_ptr<HMAC> hmac_wrapper,
                      const base::FilePath& store_path,
-                     const base::FilePath& hmac_path)
+                     std::optional<brillo::SecureBlob>&& tpm_seed,
+                     const OverridesSet& overrides)
     : store_(store),
-      hmac_wrapper_(std::move(hmac_wrapper)),
-      store_path_(std::move(store_path)),
-      hmac_path_(std::move(hmac_path)) {}
+      store_path_(store_path),
+      tpm_seed_(tpm_seed),
+      overrides_(overrides) {}
+
+void StoreImpl::ComputeHMACAndUpdate() {
+  if (!tpm_seed_.has_value()) {
+    LOG(WARNING) << "Couldn't compute HMAC because there's no key; continuing.";
+    return;
+  }
+  brillo::SecureBlob hash = hwsec_foundation::HmacSha256(
+      tpm_seed_.value(), brillo::BlobFromString(store_.overrides()));
+  store_.set_overrides_hmac(hash.to_string());
+}
+
+// Updates hmac, writes store and hmac to disk.
+bool StoreImpl::WriteDisk() {
+  ComputeHMACAndUpdate();
+
+  std::string serialized_store;
+  bool serialized = store_.SerializeToString(&serialized_store);
+  if (!serialized) {
+    LOG(ERROR) << "Could not serialize protobuf";
+    return false;
+  }
+
+  int store_fd;
+  if (!ValidatePathAndOpen(store_path_, &store_fd, O_TRUNC)) {
+    PLOG(ERROR) << "Could not reopen " << store_path_;
+    return false;
+  }
+
+  // Write store to disk.
+  base::File store_file(store_fd);
+  if (!store_file.WriteAtCurrentPosAndCheck(
+          base::as_bytes(base::make_span(serialized_store)))) {
+    PLOG(ERROR) << "Could not write new store to disk";
+    return false;
+  }
+  return true;
+}
 
 std::unique_ptr<StoreInterface> StoreImpl::Create() {
-  std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client =
-      bootlockbox::BootLockboxClient::CreateBootLockboxClient();
-  return Create(base::FilePath(kStorePath), base::FilePath(kStoreHMACPath),
-                base::FilePath(kTpmSeedTmpFile),
-                std::move(boot_lockbox_client));
+  if (base::PathExists(base::FilePath(kStoreHMACPath))) {
+    // Clean up after oureselves from prior implementation.
+    if (!brillo::DeleteFile(base::FilePath(kStoreHMACPath))) {
+      PLOG(ERROR) << "Failed to delete HMAC file";
+    }
+  }
+  return Create(base::FilePath(kStorePath), base::FilePath(kTpmSeedTmpFile));
 }
 
 std::unique_ptr<StoreInterface> StoreImpl::Create(
-    base::FilePath store_path,
-    base::FilePath hmac_path,
-    base::FilePath tpm_seed_path,
-    std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client) {
-  {
-    std::optional<brillo::SecureBlob> tpm_seed = GetTpmSeed(tpm_seed_path);
-    if (!tpm_seed.has_value()) {
-      LOG(WARNING) << "Failed to get TPM seed.";
-    }
+    base::FilePath store_path, base::FilePath tpm_seed_path) {
+  // Do this first so that we always clean up the seed.
+  std::optional<brillo::SecureBlob> tpm_seed = GetTpmSeed(tpm_seed_path);
+  if (!tpm_seed.has_value()) {
+    LOG(ERROR) << "Failed to get TPM seed. Overrides updates will fail.";
   }
 
-  // Check validity of the boot lockbox.
-  if (!boot_lockbox_client) {
-    LOG(ERROR) << "Invalid bootlockbox client";
-    return nullptr;
-  }
-
-  // Read the store and HMAC.
+  // Read the store.
   // Open store file or create if it does not exist.
   std::string store_content;
   if (!ValidatePathAndRead(store_path, store_content)) {
@@ -231,64 +209,75 @@ std::unique_ptr<StoreInterface> StoreImpl::Create(
     return nullptr;
   }
 
-  // Open hmac file or create if it does not exist.
-  std::string hmac_content;
-  if (!ValidatePathAndRead(hmac_path, hmac_content)) {
-    LOG(ERROR) << "Failed to validate and read from " << hmac_path;
-    return nullptr;
-  }
-
-  // Verify the HMAC, falling back to an empty proto if it fails to verify
-  // (or is missing).
-  std::unique_ptr<HMAC> hmac_wrapper;
-  std::string hmac_key;
-  bool key_exists = boot_lockbox_client->Read(kLockboxKey, &hmac_key);
-  bool verified = false;
-  if (key_exists) {
-    hmac_wrapper = std::make_unique<HMAC>(HMAC::SHA256);
-    if (!hmac_wrapper->Init(hmac_key)) {
-      LOG(ERROR) << "Failed to initialize HMAC instance";
-      return nullptr;
-    }
-    verified = hmac_wrapper->Verify(store_content, hmac_content);
-    // Zero out the hmac key after verifying store and hmac.
-    OPENSSL_cleanse(hmac_key.data(), hmac_key.size());
-  }
-
   // Deserialize the proto and store it in memory.
   Store store;
-  if (verified) {
-    bool deserialized_store = store.ParseFromString(store_content);
-    if (!deserialized_store) {
-      LOG(ERROR) << "Failed to deserialize store";
-      store.Clear();
+  bool deserialized_store = store.ParseFromString(store_content);
+  bool write_back = false;
+  if (!deserialized_store) {
+    LOG(ERROR) << "Failed to deserialize store";
+    store.Clear();
+    // Write the cleared store back to disk.
+    write_back = true;
+  }
+
+  // Verify the HMAC, falling back to no overrides if it fails to verify
+  // (or is missing).
+  brillo::SecureBlob hash;
+  if (tpm_seed.has_value()) {
+    // Only attempt to compute the hash if there is a seed. (The seed won't be
+    // available if featured crashes and restarts -- see GetTmpSeed().)
+    hash = hwsec_foundation::HmacSha256(
+        tpm_seed.value(), brillo::BlobFromString(store.overrides()));
+  }
+  // Mark as verified only if:
+  // 1) There is a tpm_seed
+  // 2) The stored HMAC in the proto has the right length
+  // 3) The HMAC match.
+  bool verified =
+      hash.size() == store.overrides_hmac().size() &&
+      (brillo::SecureMemcmp(hash.data(), store.overrides_hmac().data(),
+                            hash.size())) == 0;
+  if (!verified) {
+    if (!store.overrides().empty()) {
+      // If the hash fails *and* there were overrides, reset them so that we
+      // don't use them this run of featured.
+      LOG(ERROR)
+          << "HMAC verification failed; falling back to default overrides";
+      store.clear_overrides();
+      store.clear_overrides_hmac();
+      if (tpm_seed.has_value()) {
+        // Write cleared state back to disk to reset any corruption / reset any
+        // attacker-modified state.
+        // Even though we cleared overrides_hmac, WriteDisk will recompute it.
+        // *ONLY* do this if there was a seed; otherwise it's most likely that
+        // featured crashed and restarted, and we shouldn't make destructive
+        // changes.
+        // (featured deletes the seed immediately after reading it to prevent
+        // malicious processes from reading it; see GetTpmSeed above.)
+        write_back = true;
+      }
     }
-    // else: Use empty proto.
-  }  // else: Use empty proto.
-
-  // Generate a new key, attempt to store it in the boot lockbox, and only if
-  // that succeeds, re-generate an HMAC of the serialized proto and store it to
-  // disk.
-  std::unique_ptr<HMAC> new_hmac_wrapper = std::make_unique<HMAC>(HMAC::SHA256);
-  if (!new_hmac_wrapper->Init()) {
-    LOG(ERROR) << "HMAC wrapper failed to generate new key";
-    return nullptr;
-  }
-  std::string new_key = new_hmac_wrapper->GetKey();
-  if (!boot_lockbox_client->Store(kLockboxKey, new_key)) {
-    LOG(ERROR) << "Could not store new key";
-    return nullptr;
-  }
-  // Zero out the symmetric key after storing it.
-  OPENSSL_cleanse(new_key.data(), new_key.size());
-
-  if (!WriteDisk(store, *new_hmac_wrapper, store_path, hmac_path)) {
-    LOG(ERROR) << "Failed to write store and hmac to disk";
-    return nullptr;
   }
 
-  return std::unique_ptr<StoreInterface>(
-      new StoreImpl(store, std::move(new_hmac_wrapper), store_path, hmac_path));
+  OverridesSet overrides;
+  if (!overrides.ParseFromString(store.overrides())) {
+    LOG(ERROR) << "Overrides deserialization failed; falling back to default "
+                  "overrides";
+    store.clear_overrides();
+    store.clear_overrides_hmac();
+    write_back = true;
+  }
+
+  auto store_impl = std::unique_ptr<StoreImpl>(
+      new StoreImpl(store, store_path, std::move(tpm_seed), overrides));
+  if (write_back) {
+    if (!store_impl->WriteDisk()) {
+      // Fail more quickly, since, if writing fails, the class won't be able to
+      // provide any mutating functions.
+      return nullptr;
+    }
+  }
+  return store_impl;
 }
 
 uint32_t StoreImpl::GetBootAttemptsSinceLastUpdate() {
@@ -299,7 +288,7 @@ bool StoreImpl::IncrementBootAttemptsSinceLastUpdate() {
   uint32_t boot_attempts = GetBootAttemptsSinceLastUpdate();
   store_.set_boot_attempts_since_last_seed_update(boot_attempts + 1);
 
-  if (!WriteDisk(store_, *hmac_wrapper_, store_path_, hmac_path_)) {
+  if (!WriteDisk()) {
     LOG(ERROR) << "Failed to increment boot attempts to disk.";
     return false;
   }
@@ -309,7 +298,7 @@ bool StoreImpl::IncrementBootAttemptsSinceLastUpdate() {
 bool StoreImpl::ClearBootAttemptsSinceLastUpdate() {
   store_.set_boot_attempts_since_last_seed_update(0);
 
-  if (!WriteDisk(store_, *hmac_wrapper_, store_path_, hmac_path_)) {
+  if (!WriteDisk()) {
     LOG(ERROR) << "Failed to increment boot attempts to disk.";
     return false;
   }
@@ -322,7 +311,7 @@ SeedDetails StoreImpl::GetLastGoodSeed() {
 
 bool StoreImpl::SetLastGoodSeed(const SeedDetails& seed) {
   *store_.mutable_last_good_seed() = seed;
-  if (!WriteDisk(store_, *hmac_wrapper_, store_path_, hmac_path_)) {
+  if (!WriteDisk()) {
     LOG(ERROR) << "Failed to increment boot attempts to disk.";
     return false;
   }

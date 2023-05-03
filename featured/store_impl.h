@@ -6,16 +6,16 @@
 #define FEATURED_STORE_IMPL_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <brillo/files/safe_fd.h>
+#include <brillo/secure_blob.h>
 #include <featured/proto_bindings/featured.pb.h>
 
-#include "bootlockbox-client/bootlockbox/boot_lockbox_client.h"
 #include "featured/feature_export.h"
-#include "featured/hmac.h"
 #include "featured/store_interface.h"
 
 namespace featured {
@@ -23,17 +23,14 @@ namespace featured {
 class FEATURE_EXPORT StoreImpl : public StoreInterface {
  public:
   ~StoreImpl() = default;
-  // Attempts to instantiate and initialize a new StoreImpl, with store and hmac
-  // created in the default locations.
+  // Attempts to instantiate and initialize a new StoreImpl, with store
+  // created in the default location.
   static std::unique_ptr<StoreInterface> Create();
 
   // Attempts to instantiate and initialize a new StoreImpl, with the given
   // overrides. Used for tests.
-  static std::unique_ptr<StoreInterface> Create(
-      base::FilePath store_path,
-      base::FilePath hmac_path,
-      base::FilePath tpm_seed_path,
-      std::unique_ptr<bootlockbox::BootLockboxClient> boot_lockbox_client);
+  static std::unique_ptr<StoreInterface> Create(base::FilePath store_path,
+                                                base::FilePath tpm_seed_path);
 
   // Returns the number of device boot attempts.
   uint32_t GetBootAttemptsSinceLastUpdate() override;
@@ -64,13 +61,22 @@ class FEATURE_EXPORT StoreImpl : public StoreInterface {
 
  private:
   StoreImpl(const Store& store,
-            std::unique_ptr<HMAC> hmac_wrapper,
             const base::FilePath& store_path,
-            const base::FilePath& hmac_path);
+            std::optional<brillo::SecureBlob>&& hmac_key,
+            const OverridesSet& overrides);
+
+  // Write the store back to disk, updating HMAC if necessary.
+  // Return false if writing fails, but *not* if there is no |hmac_key_|.
+  bool WriteDisk();
+
+  // Compute the HMAC of the overrides field, and update the overrides_hmac
+  // field accordingly.
+  void ComputeHMACAndUpdate();
+
   Store store_;
-  std::unique_ptr<HMAC> hmac_wrapper_;
   base::FilePath store_path_;
-  base::FilePath hmac_path_;
+  std::optional<brillo::SecureBlob> tpm_seed_;
+  OverridesSet overrides_;
 };
 }  // namespace featured
 

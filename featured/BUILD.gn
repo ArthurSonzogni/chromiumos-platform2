@@ -9,7 +9,6 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":featured",
-    ":hmac",
     ":libc_fake_feature_library",
     ":libfake_platform_features",
     ":libfeatures",
@@ -22,7 +21,6 @@ group("all") {
       ":c_feature_check_example",
       ":cpp_feature_check_example",
       ":feature_library_test",
-      ":hmac_test",
       ":service_test",
       ":store_impl_test",
     ]
@@ -103,17 +101,11 @@ shared_library("libc_fake_feature_library") {
 static_library("libstore_impl") {
   sources = [ "store_impl.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":hmac" ]
+  libs = [ "hwsec-foundation" ]
 }
 
 static_library("libtmp_storage_impl") {
   sources = [ "tmp_storage_impl.cc" ]
-  configs += [ ":target_defaults" ]
-}
-
-static_library("hmac") {
-  visibility = [ ":*" ]  # Only targets in this BUILD file
-  sources = [ "hmac.cc" ]
   configs += [ ":target_defaults" ]
 }
 
@@ -132,19 +124,6 @@ if (use.test) {
       # order.
       "system_api",
       "protobuf",
-    ]
-  }
-
-  executable("hmac_test") {
-    sources = [ "hmac_test.cc" ]
-    configs += [
-      "//common-mk:test",
-      ":test_helper_config",
-      ":target_defaults",
-    ]
-    deps = [
-      ":hmac",
-      "//common-mk/testrunner:testrunner",
     ]
   }
 
@@ -181,8 +160,8 @@ if (use.test) {
       ":test_helper_config",
       ":target_defaults",
     ]
+    libs = [ "hwsec-foundation" ]
     deps = [
-      ":hmac",
       ":libstore_impl",
       "//common-mk/testrunner:testrunner",
     ]
