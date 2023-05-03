@@ -30,11 +30,15 @@ AudioDriverRoutine::~AudioDriverRoutine() = default;
 void AudioDriverRoutine::OnStart() {
   SetRunningState();
   auto detail = mojom::AudioDriverRoutineDetail::New();
+  detail->internal_card_detected = false;
+  detail->audio_devices_succeed_to_open = false;
 
-  detail->internal_card_detected = CheckInternalCardDetected();
+  if (!CheckInternalCardDetected(detail->internal_card_detected))
+    return;
   SetPercentage(50);
 
-  detail->audio_devices_succeed_to_open = CheckAudioDevicesSucceedToOpen();
+  if (!CheckAudioDevicesSucceedToOpen(detail->audio_devices_succeed_to_open))
+    return;
 
   bool result =
       detail->internal_card_detected && detail->audio_devices_succeed_to_open;
@@ -42,19 +46,21 @@ void AudioDriverRoutine::OnStart() {
                    mojom::RoutineDetail::NewAudioDriver(std::move(detail)));
 }
 
-bool AudioDriverRoutine::CheckInternalCardDetected() {
-  bool detected = false;
+bool AudioDriverRoutine::CheckInternalCardDetected(
+    bool& internal_card_detected) {
   brillo::ErrorPtr error;
-  if (!context_->cras_proxy()->IsInternalCardDetected(&detected, &error)) {
+  if (!context_->cras_proxy()->IsInternalCardDetected(&internal_card_detected,
+                                                      &error)) {
     RaiseException("Failed to get detected internal card from cras: " +
                    error->GetMessage());
     return false;
   }
 
-  return detected;
+  return true;
 }
 
-bool AudioDriverRoutine::CheckAudioDevicesSucceedToOpen() {
+bool AudioDriverRoutine::CheckAudioDevicesSucceedToOpen(
+    bool& audio_devices_succeed_to_open) {
   std::vector<brillo::VariantDictionary> nodes;
   brillo::ErrorPtr error;
   if (!context_->cras_proxy()->GetNodeInfos(&nodes, &error)) {
@@ -63,6 +69,7 @@ bool AudioDriverRoutine::CheckAudioDevicesSucceedToOpen() {
     return false;
   }
 
+  audio_devices_succeed_to_open = true;
   for (const auto& node : nodes) {
     auto open_result = brillo::GetVariantValueOrDefault<uint32_t>(
         node, cras::kDeviceLastOpenResultProperty);
@@ -73,7 +80,7 @@ bool AudioDriverRoutine::CheckAudioDevicesSucceedToOpen() {
     // 1 - Success
     // 2 - Failure
     if (open_result == 2) {
-      return false;
+      audio_devices_succeed_to_open = false;
     }
   }
 

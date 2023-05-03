@@ -133,7 +133,6 @@ TEST_F(AudioDriverRoutineTest, RoutineSuccess) {
 // Test that the routine raises an exception when CRAS API fail.
 TEST_F(AudioDriverRoutineTest, CrasIsInternalCardDetectedAPIFail) {
   SetIsInternalCardDetectedError();
-  SetExpectedNodeInfos({kSuccessDevice, kUnknownDevice});
 
   RunRoutineAndWaitForException();
 }

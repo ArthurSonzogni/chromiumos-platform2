@@ -27,11 +27,13 @@ class AudioDriverRoutine final : public BaseRoutineControl {
 
  private:
   // Check if CRAS can detect at least one internal audio card.
-  bool CheckInternalCardDetected();
+  // Return false when there is any error when calling the CRAS D-Bus API.
+  bool CheckInternalCardDetected(bool& internal_card_detected);
 
-  // Check if all audio devices succeed to open. It returns false as long as any
-  // of the audio device fails to open.
-  bool CheckAudioDevicesSucceedToOpen();
+  // Check if all audio devices succeed to open. As long as any of the audio
+  // device fails to open, |audio_devices_succeed_to_open| will be set to false.
+  // Return false when there is any error when calling the CRAS D-Bus API.
+  bool CheckAudioDevicesSucceedToOpen(bool& audio_devices_succeed_to_open);
 
   // Unowned. Should outlive this instance.
   Context* const context_ = nullptr;
