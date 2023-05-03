@@ -163,8 +163,12 @@ class MobileOperatorInfoCarriersTest : public Test {
   }
 
   std::string CreateRandomMccmnc(std::string prefix, int len) {
-    std::string value =
-        base::StrCat({prefix, base::NumberToString(base::RandInt(0, 999999))});
+    // Create a 7 digit number and remove the first digit to ensure the 6 digit
+    // number is padded on the left. Then add the prefix, and remove any extra
+    // digits on the right.
+    std::string value = base::StrCat(
+        {prefix,
+         base::NumberToString(base::RandInt(1000000, 1999999)).substr(1, 6)});
     return value.substr(0, len);
   }
 
