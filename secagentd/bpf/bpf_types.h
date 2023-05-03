@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SECAGENTD_BPF_PROCESS_H_
-#define SECAGENTD_BPF_PROCESS_H_
+#ifndef SECAGENTD_BPF_BPF_TYPES_H_
+#define SECAGENTD_BPF_BPF_TYPES_H_
 
 #ifdef __cplusplus
 #include <stdint.h>
@@ -141,4 +141,4 @@ _Static_assert(sizeof(struct cros_event) <= CROS_MAX_STRUCT_SIZE,
 }  //  namespace secagentd::bpf
 #endif
 
-#endif  // SECAGENTD_BPF_PROCESS_H_
+#endif  // SECAGENTD_BPF_BPF_TYPES_H_

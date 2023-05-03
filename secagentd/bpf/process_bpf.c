@@ -10,7 +10,7 @@
 
 // TODO(b/243453873): Workaround to get code completion working in CrosIDE.
 #undef __cplusplus
-#include "secagentd/bpf/process.h"
+#include "secagentd/bpf/bpf_types.h"
 
 const char LICENSE[] SEC("license") = "Dual BSD/GPL";
 

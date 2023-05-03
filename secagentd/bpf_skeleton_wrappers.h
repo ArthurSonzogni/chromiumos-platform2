@@ -18,7 +18,7 @@
 #include "base/functional/callback.h"
 #include "base/functional/callback_forward.h"
 #include "base/strings/strcat.h"
-#include "secagentd/bpf/process.h"
+#include "secagentd/bpf/bpf_types.h"
 #include "secagentd/common.h"
 #include "secagentd/metrics_sender.h"
 namespace secagentd {

@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 #include "absl/strings/str_format.h"
-#include "secagentd/bpf/process.h"
+#include "secagentd/bpf/bpf_types.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 
 namespace secagentd {

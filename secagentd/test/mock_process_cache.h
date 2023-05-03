@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "gmock/gmock.h"  // IWYU pragma: keep
-#include "secagentd/bpf/process.h"
+#include "secagentd/bpf/bpf_types.h"
 #include "secagentd/process_cache.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 

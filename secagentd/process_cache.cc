@@ -32,7 +32,7 @@
 #include "base/synchronization/lock.h"
 #include "openssl/sha.h"
 #include "re2/re2.h"
-#include "secagentd/bpf/process.h"
+#include "secagentd/bpf/bpf_types.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 

@@ -20,7 +20,7 @@
 #include "brillo/files/file_util.h"
 #include "gmock/gmock.h"  // IWYU pragma: keep
 #include "gtest/gtest.h"
-#include "secagentd/bpf/process.h"
+#include "secagentd/bpf/bpf_types.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace {

@@ -14,7 +14,7 @@
 #include "google/protobuf/stubs/casts.h"
 #include "gtest/gtest.h"
 #include "missive/proto/record_constants.pb.h"
-#include "secagentd/bpf/process.h"
+#include "secagentd/bpf/bpf_types.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
