@@ -183,9 +183,7 @@ executable("usermode-helper") {
 }
 
 install_config("usr_share_cros_init_scripts") {
-  sources = [
-    "send-boot-metrics.sh",
-  ]
+  sources = [ "send-boot-metrics.sh" ]
   install_path = "/usr/share/cros/init"
   type = "executable"
 }
