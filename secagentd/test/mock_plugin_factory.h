@@ -43,8 +43,20 @@ class MockPluginFactory : public PluginFactoryInterface {
 
 class MockPlugin : public PluginInterface {
  public:
-  MOCK_METHOD(absl::Status, Activate, (), (override));
+  absl::Status Activate() override {
+    is_active_ = true;
+    return MockActivate();
+  }
+
+  absl::Status Deactivate() override {
+    is_active_ = false;
+    return MockDeactivate();
+  }
+  MOCK_METHOD(absl::Status, MockActivate, ());
   MOCK_METHOD(std::string, GetName, (), (const override));
+  MOCK_METHOD(absl::Status, MockDeactivate, ());
+  MOCK_METHOD(bool, IsActive, (), (const override));
+  bool is_active_{false};
 };
 
 }  // namespace secagentd::testing

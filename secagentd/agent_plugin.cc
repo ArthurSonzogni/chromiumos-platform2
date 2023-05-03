@@ -81,8 +81,11 @@ std::string AgentPlugin::GetName() const {
 }
 
 absl::Status AgentPlugin::Activate() {
+  if (is_active_) {
+    // Calling activate on an activated plugin does nothing.
+    return absl::OkStatus();
+  }
   StartInitializingAgentProto();
-
   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&AgentPlugin::SendAgentStartEvent,
@@ -90,7 +93,13 @@ absl::Status AgentPlugin::Activate() {
       // Add delay for tpm_manager and attestation to initialize.
       base::Seconds(1));
 
+  is_active_ = true;
   return absl::OkStatus();
+}
+
+absl::Status AgentPlugin::Deactivate() {
+  return absl::UnimplementedError(
+      "Deactivate is not implemented for Agent Plugin");
 }
 
 void AgentPlugin::StartInitializingAgentProto() {

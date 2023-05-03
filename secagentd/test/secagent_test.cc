@@ -114,14 +114,14 @@ class SecAgentTestFixture : public ::testing::TestWithParam<FeaturedAndPolicy> {
           std::move(cb).Run();
           return std::move(agent_plugin_);
         })));
-    EXPECT_CALL(*agent_plugin_ref_, Activate)
+    EXPECT_CALL(*agent_plugin_ref_, MockActivate)
         .WillOnce(Return(absl::OkStatus()));
 
     // Check process plugin.
     EXPECT_CALL(*plugin_factory_ref,
                 Create(Types::Plugin::kProcess, _, _, _, _, _))
         .WillOnce(Return(ByMove(std::move(process_plugin_))));
-    EXPECT_CALL(*process_plugin_ref_, Activate)
+    EXPECT_CALL(*process_plugin_ref_, MockActivate)
         .WillOnce(Return(absl::OkStatus()));
   }
 
@@ -231,12 +231,13 @@ TEST_F(SecAgentTestFixture, TestFailedPluginActivation) {
         std::move(cb).Run();
         return std::move(agent_plugin_);
       })));
-  EXPECT_CALL(*agent_plugin_ref_, Activate).WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(*agent_plugin_ref_, MockActivate)
+      .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(*plugin_factory_ref,
               Create(Types::Plugin::kProcess, _, _, _, _, _))
       .WillOnce(Return(ByMove(std::move(process_plugin_))));
 
-  EXPECT_CALL(*process_plugin_ref_, Activate)
+  EXPECT_CALL(*process_plugin_ref_, MockActivate)
       .WillOnce(
           Return(absl::InternalError("Process BPF program loading error.")));
 

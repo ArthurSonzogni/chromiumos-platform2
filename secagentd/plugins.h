@@ -37,8 +37,12 @@ class ProcessPluginTestFixture;
 
 class PluginInterface {
  public:
-  // Activate the plugin.
+  // Activate the plugin, must be idempotent.
   virtual absl::Status Activate() = 0;
+  // Deactivate the plugin, must be idempotent.
+  virtual absl::Status Deactivate() = 0;
+  // Is the plugin currently activated?
+  virtual bool IsActive() const = 0;
   virtual std::string GetName() const = 0;
   virtual ~PluginInterface() = default;
 };
@@ -54,6 +58,8 @@ class ProcessPlugin : public PluginInterface {
       uint32_t batch_interval_s);
   // Load, verify and attach the process BPF applications.
   absl::Status Activate() override;
+  absl::Status Deactivate() override;
+  bool IsActive() const override;
   std::string GetName() const override;
 
   // Handles an individual incoming Process BPF event.
@@ -114,7 +120,9 @@ class AgentPlugin : public PluginInterface {
 
   // Initialize Agent proto and starts agent heartbeat events.
   absl::Status Activate() override;
+  absl::Status Deactivate() override;
   std::string GetName() const override;
+  bool IsActive() const override { return is_active_; }
 
  private:
   friend class testing::AgentPluginTestFixture;
@@ -158,6 +166,7 @@ class AgentPlugin : public PluginInterface {
       metrics::CrosBootmode::kValueNotSet;
   metrics::UefiBootmode uefi_bootmode_metric_ = metrics::UefiBootmode::kSuccess;
   metrics::Tpm tpm_metric_ = metrics::Tpm::kValueNotSet;
+  bool is_active_{false};
 };
 
 class PluginFactoryInterface {
