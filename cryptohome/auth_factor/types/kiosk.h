@@ -24,9 +24,10 @@
 namespace cryptohome {
 
 class KioskAuthFactorDriver final
-    : public TypedAuthFactorDriver<KioskAuthFactorMetadata,
-                                   AuthFactorType::kKiosk,
-                                   PasswordAuthBlockTypes> {
+    : public AfDriverWithType<AuthFactorType::kKiosk>,
+      public AfDriverWithPasswordBlockTypes,
+      public AfDriverWithMetadata<KioskAuthFactorMetadata>,
+      public AfDriverNoCredentialVerifier {
  public:
   KioskAuthFactorDriver() = default;
 
@@ -35,10 +36,6 @@ class KioskAuthFactorDriver final
       AuthFactorStorageType storage_type,
       const std::set<AuthFactorType>& configured_factors) const override;
   bool IsPrepareRequired() const override;
-  bool IsVerifySupported(AuthIntent auth_intent) const override;
-  std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
-      const std::string& auth_factor_label,
-      const AuthInput& auth_input) const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;

@@ -26,17 +26,6 @@ bool CryptohomeRecoveryAuthFactorDriver::IsPrepareRequired() const {
   return false;
 }
 
-bool CryptohomeRecoveryAuthFactorDriver::IsVerifySupported(
-    AuthIntent auth_intent) const {
-  return false;
-}
-
-std::unique_ptr<CredentialVerifier>
-CryptohomeRecoveryAuthFactorDriver::CreateCredentialVerifier(
-    const std::string& auth_factor_label, const AuthInput& auth_input) const {
-  return nullptr;
-}
-
 bool CryptohomeRecoveryAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }

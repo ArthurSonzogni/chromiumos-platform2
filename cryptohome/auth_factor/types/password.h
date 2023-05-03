@@ -34,22 +34,22 @@ namespace cryptohome {
 // TPM is not functioning on such a board we prefer to get the error rather than
 // falling back to the less secure mechanism.
 #if USE_TPM_INSECURE_FALLBACK
-using PasswordAuthBlockTypes =
-    DriverBlockTypes<AuthBlockType::kTpmEcc,
-                     AuthBlockType::kTpmBoundToPcr,
-                     AuthBlockType::kTpmNotBoundToPcr,
-                     AuthBlockType::kScrypt>;
+using AfDriverWithPasswordBlockTypes =
+    AfDriverWithBlockTypes<AuthBlockType::kTpmEcc,
+                           AuthBlockType::kTpmBoundToPcr,
+                           AuthBlockType::kTpmNotBoundToPcr,
+                           AuthBlockType::kScrypt>;
 #else
-using PasswordAuthBlockTypes =
-    DriverBlockTypes<AuthBlockType::kTpmEcc,
-                     AuthBlockType::kTpmBoundToPcr,
-                     AuthBlockType::kTpmNotBoundToPcr>;
+using AfDriverWithPasswordBlockTypes =
+    AfDriverWithBlockTypes<AuthBlockType::kTpmEcc,
+                           AuthBlockType::kTpmBoundToPcr,
+                           AuthBlockType::kTpmNotBoundToPcr>;
 #endif
 
 class PasswordAuthFactorDriver final
-    : public TypedAuthFactorDriver<PasswordAuthFactorMetadata,
-                                   AuthFactorType::kPassword,
-                                   PasswordAuthBlockTypes> {
+    : public AfDriverWithType<AuthFactorType::kPassword>,
+      public AfDriverWithPasswordBlockTypes,
+      public AfDriverWithMetadata<PasswordAuthFactorMetadata> {
  public:
   PasswordAuthFactorDriver() = default;
 

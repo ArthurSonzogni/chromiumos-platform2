@@ -2,9 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// This class contains common, reusable implementations of various subsets of
+// the AuthFactorDriver interface.
+//
+// Using these classes generally involves using multiple inheritance, since if
+// you want to use more than one (and you almost certainly do) you'll need to
+// derive from all of them. In order to keep things simple and straightforward,
+// we follow a few rules:
+//   * All of the classes virtually inherit directly from AuthFactorDriver.
+//   * The classes do final overrides of the functions they implement, to
+//     prevent you from mixing conflicting implementations.
+//   * If you choose to use these classes, you should subclass them and only
+//     them. Do not also directly inherit from AuthFactorDriver yourself and
+//     do not try to mix them in at multiple layers in a complex hierarchy.
+// This keeps the usage model simple: define your driver class, subclass from
+// all of the common classes you want to use, and then implement the rest of the
+// virtual functions yourself.
+
 #ifndef CRYPTOHOME_AUTH_FACTOR_TYPES_COMMON_H_
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_COMMON_H_
 
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -15,49 +33,53 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
+#include "cryptohome/auth_intent.h"
+#include "cryptohome/credential_verifier.h"
 
 namespace cryptohome {
 
-// Template that wraps a (possibly empty) list of auth block types. This
-// template should be used to specify the BlocksType parameter when subclassing
-// the typed driver implementation.
-//
-// Note that we have to define this a little bit weirdly because C++ does not
-// support zero-length arrays. So for cases where we specify 1 or more types we
-// use an array and wrap it in a span but for the 0 type case we omit the array
-// entirely and just use a default (empty) span.
-template <AuthBlockType... types>
-struct DriverBlockTypes {
-  static constexpr AuthBlockType kTypeArray[] = {types...};
-  static constexpr base::span<const AuthBlockType> kTypeSpan{kTypeArray};
-};
-template <>
-struct DriverBlockTypes<> {
-  static constexpr base::span<const AuthBlockType> kTypeSpan;
-};
-
-// Provides an implementation of the portions of the AuthFactorDriver interface
-// that are common or reusable by all of the individual driver implementations.
-// Most implementations should derive from this class, although it is not
-// strictly required.
-//
-// The class is defined as a template because it needs some type parameters in
-// order to control how some of the type-specific interactions work. The
-// template arguments are:
-//   * MetadataType: the variant type from AuthFactorMetadata::metadata
-//   * kType: the auth factor type this driver supports
-//   * BlocksType: a DriverBlockTypes<> template specifying the auth block types
-//       that this factor can be used with, in highest to lowest priority
-template <typename MetadataType, AuthFactorType kType, typename BlocksType>
-class TypedAuthFactorDriver : public AuthFactorDriver {
- protected:
-  TypedAuthFactorDriver() : AuthFactorDriver(kType) {}
-
+// Common implementation of type(). Takes the type as a template parameter.
+template <AuthFactorType kType>
+class AfDriverWithType : public virtual AuthFactorDriver {
  private:
-  base::span<const AuthBlockType> block_types() const override {
-    return BlocksType::kTypeSpan;
-  }
+  AuthFactorType type() const final { return kType; }
+};
 
+// Common implementation of block_type(). Takes the block types as a template
+// parameter pack. The types should be ordered from highest to lowest priority
+// the same way block_type() expects them to be listed.
+template <AuthBlockType... kTypes>
+class AfDriverWithBlockTypes : public virtual AuthFactorDriver {
+ private:
+  // Template that supplies the underlying storage for the auth block type list.
+  // We back all the block_types lookups with a singular static array, wrapped
+  // in a span to provide the nicer interface that block_types expects to
+  // return.
+  //
+  // We have to define this a little bit weirdly because C++ does not support
+  // zero-length arrays. So for cases where 1 or more types are specified the
+  // array+span is used, but for the 0 type case the array is omitted and just a
+  // default (empty) span is defined.
+  template <AuthBlockType... types>
+  struct Storage {
+    static constexpr AuthBlockType kTypeArray[] = {types...};
+    static constexpr base::span<const AuthBlockType> kTypeSpan{kTypeArray};
+  };
+  template <>
+  struct Storage<> {
+    static constexpr base::span<const AuthBlockType> kTypeSpan;
+  };
+
+  base::span<const AuthBlockType> block_types() const override {
+    return Storage<kTypes...>::kTypeSpan;
+  }
+};
+
+// Common implementation of ConvertToProto(). This implementation is templated
+// on the variant type from AuthFactorMetadata::metadata that the driver
+// requires.
+template <typename MetadataType>
+class AfDriverWithMetadata : public virtual AuthFactorDriver {
   std::optional<user_data_auth::AuthFactor> ConvertToProto(
       const std::string& label,
       const AuthFactorMetadata& metadata) const final {
@@ -97,6 +119,18 @@ class TypedAuthFactorDriver : public AuthFactorDriver {
   virtual std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
       const CommonAuthFactorMetadata& common,
       const MetadataType& typed_metadata) const = 0;
+};
+
+// Common implementation of the verifier functions for drivers which do not
+// support verifiers.
+class AfDriverNoCredentialVerifier : public virtual AuthFactorDriver {
+ private:
+  bool IsVerifySupported(AuthIntent auth_intent) const final { return false; }
+  std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
+      const std::string& auth_factor_label,
+      const AuthInput& auth_input) const final {
+    return nullptr;
+  }
 };
 
 }  // namespace cryptohome

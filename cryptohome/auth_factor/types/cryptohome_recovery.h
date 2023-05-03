@@ -25,10 +25,10 @@
 namespace cryptohome {
 
 class CryptohomeRecoveryAuthFactorDriver final
-    : public TypedAuthFactorDriver<
-          CryptohomeRecoveryAuthFactorMetadata,
-          AuthFactorType::kCryptohomeRecovery,
-          DriverBlockTypes<AuthBlockType::kCryptohomeRecovery>> {
+    : public AfDriverWithType<AuthFactorType::kCryptohomeRecovery>,
+      public AfDriverWithBlockTypes<AuthBlockType::kCryptohomeRecovery>,
+      public AfDriverWithMetadata<CryptohomeRecoveryAuthFactorMetadata>,
+      public AfDriverNoCredentialVerifier {
  public:
   explicit CryptohomeRecoveryAuthFactorDriver(Crypto* crypto)
       : crypto_(crypto) {}
@@ -38,10 +38,6 @@ class CryptohomeRecoveryAuthFactorDriver final
       AuthFactorStorageType storage_type,
       const std::set<AuthFactorType>& configured_factors) const override;
   bool IsPrepareRequired() const override;
-  bool IsVerifySupported(AuthIntent auth_intent) const override;
-  std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
-      const std::string& auth_factor_label,
-      const AuthInput& auth_input) const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;

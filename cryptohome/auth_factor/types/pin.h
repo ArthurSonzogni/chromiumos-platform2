@@ -25,10 +25,10 @@
 namespace cryptohome {
 
 class PinAuthFactorDriver final
-    : public TypedAuthFactorDriver<
-          PinAuthFactorMetadata,
-          AuthFactorType::kPin,
-          DriverBlockTypes<AuthBlockType::kPinWeaver>> {
+    : public AfDriverWithType<AuthFactorType::kPin>,
+      public AfDriverWithBlockTypes<AuthBlockType::kPinWeaver>,
+      public AfDriverWithMetadata<PinAuthFactorMetadata>,
+      public AfDriverNoCredentialVerifier {
  public:
   explicit PinAuthFactorDriver(Crypto* crypto) : crypto_(crypto) {}
 
@@ -37,10 +37,6 @@ class PinAuthFactorDriver final
       AuthFactorStorageType storage_type,
       const std::set<AuthFactorType>& configured_factors) const override;
   bool IsPrepareRequired() const override;
-  bool IsVerifySupported(AuthIntent auth_intent) const override;
-  std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
-      const std::string& auth_factor_label,
-      const AuthInput& auth_input) const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;

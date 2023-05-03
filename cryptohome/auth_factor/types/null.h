@@ -26,9 +26,10 @@ namespace cryptohome {
 // useful defaults for all functions implemented by a factor.
 class NullAuthFactorDriver : public AuthFactorDriver {
  public:
-  NullAuthFactorDriver() : AuthFactorDriver(AuthFactorType::kUnspecified) {}
+  NullAuthFactorDriver() = default;
 
  private:
+  AuthFactorType type() const override { return AuthFactorType::kUnspecified; }
   base::span<const AuthBlockType> block_types() const override { return {}; }
   bool IsSupported(
       AuthFactorStorageType storage_type,

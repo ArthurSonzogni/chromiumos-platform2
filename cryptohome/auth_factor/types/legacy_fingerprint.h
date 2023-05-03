@@ -24,9 +24,9 @@
 namespace cryptohome {
 
 class LegacyFingerprintAuthFactorDriver final
-    : public TypedAuthFactorDriver<std::monostate,
-                                   AuthFactorType::kLegacyFingerprint,
-                                   DriverBlockTypes<>> {
+    : public AfDriverWithType<AuthFactorType::kLegacyFingerprint>,
+      public AfDriverWithBlockTypes<>,
+      public AfDriverWithMetadata<std::monostate> {
  public:
   explicit LegacyFingerprintAuthFactorDriver(
       FingerprintAuthBlockService* fp_service)

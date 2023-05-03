@@ -29,7 +29,7 @@ namespace cryptohome {
 // implementation for each AuthFactorType.
 class AuthFactorDriver {
  public:
-  explicit AuthFactorDriver(AuthFactorType type) : type_(type) {}
+  AuthFactorDriver() = default;
 
   AuthFactorDriver(const AuthFactorDriver&) = delete;
   AuthFactorDriver& operator=(const AuthFactorDriver&) = delete;
@@ -37,7 +37,7 @@ class AuthFactorDriver {
   virtual ~AuthFactorDriver() = default;
 
   // The type of factor the driver implements.
-  AuthFactorType type() const { return type_; }
+  virtual AuthFactorType type() const = 0;
 
   // The underlying auth block types that the factor uses. The span lists them
   // in priority order, with the first element being the most preferred block
@@ -81,9 +81,6 @@ class AuthFactorDriver {
   // metadata and label. Returns null if the conversion fails.
   virtual std::optional<user_data_auth::AuthFactor> ConvertToProto(
       const std::string& label, const AuthFactorMetadata& metadata) const = 0;
-
- private:
-  const AuthFactorType type_;
 };
 
 }  // namespace cryptohome
