@@ -141,7 +141,7 @@ class IntegerFieldConverter : public FieldConverter {
       : operator_(op), operand_(operand) {}
 
   static bool StringToOperand(base::StringPiece s, OperandType* output) {
-    return StringToInt(s, output);
+    return runtime_probe::StringToInt(s, output);
   }
 
  private:
@@ -178,7 +178,7 @@ class HexFieldConverter : public FieldConverter {
       : operator_(op), operand_(operand) {}
 
   static bool StringToOperand(base::StringPiece s, OperandType* output) {
-    return HexStringToInt64(s, output);
+    return runtime_probe::HexStringToInt64(s, output);
   }
 
  private:
@@ -212,7 +212,7 @@ class DoubleFieldConverter : public FieldConverter {
       : operator_(op), operand_(operand) {}
 
   static bool StringToOperand(base::StringPiece s, OperandType* output) {
-    return StringToDouble(s, output);
+    return runtime_probe::StringToDouble(s, output);
   }
 
  private:
