@@ -42,7 +42,6 @@ using ::testing::Optional;
 
 class SmartCardDriverTest : public AuthFactorDriverGenericTest {
  protected:
-  const Username kUsername{"user"};
   const std::string kPublicKeyStr{"1a2b3c4d5e6f"};
   const brillo::Blob kPublicKey{brillo::BlobFromString(kPublicKeyStr)};
   const std::string kCcDbusServiceName{"cc_service"};
@@ -155,6 +154,34 @@ TEST_F(SmartCardDriverTest, SupportedByBlockWithUss) {
               IsTrue());
 }
 
+TEST_F(SmartCardDriverTest, PrepareForAddFails) {
+  SmartCardAuthFactorDriver sc_driver(
+      &crypto_,
+      AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
+      &key_challenge_service_factory_);
+  AuthFactorDriver& driver = sc_driver;
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAdd(kObfuscatedUser, prepare_result.GetCallback());
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+TEST_F(SmartCardDriverTest, PrepareForAuthFails) {
+  SmartCardAuthFactorDriver sc_driver(
+      &crypto_,
+      AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
+      &key_challenge_service_factory_);
+  AuthFactorDriver& driver = sc_driver;
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
 TEST_F(SmartCardDriverTest, CreateCredentialVerifierFailsWithoutDbus) {
   SmartCardAuthFactorDriver sc_driver(
       &crypto_,
@@ -167,7 +194,7 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifierFailsWithoutDbus) {
       .challenge_signature_algorithms =
           {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
   };
-  AuthInput auth_input = {.username = kUsername,
+  AuthInput auth_input = {.username = kUser,
                           .challenge_credential_auth_input = cc_input};
   auto verifier = driver.CreateCredentialVerifier(kLabel, auth_input);
   EXPECT_THAT(verifier, IsNull());
@@ -184,7 +211,7 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifierFailsWithoutHelper) {
       .challenge_signature_algorithms =
           {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
       .dbus_service_name = kCcDbusServiceName};
-  AuthInput auth_input = {.username = kUsername,
+  AuthInput auth_input = {.username = kUser,
                           .challenge_credential_auth_input = cc_input};
   auto verifier = driver.CreateCredentialVerifier(kLabel, auth_input);
   EXPECT_THAT(verifier, IsNull());
@@ -202,7 +229,7 @@ TEST_F(SmartCardDriverTest, CreateCredentialVerifier) {
       .challenge_signature_algorithms =
           {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1},
       .dbus_service_name = kCcDbusServiceName};
-  AuthInput auth_input = {.username = kUsername,
+  AuthInput auth_input = {.username = kUser,
                           .challenge_credential_auth_input = cc_input};
   EXPECT_CALL(key_challenge_service_factory_, New(kCcDbusServiceName))
       .WillOnce([](const std::string&) {

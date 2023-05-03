@@ -4,12 +4,29 @@
 
 #include "cryptohome/auth_factor/types/legacy_fingerprint.h"
 
+#include <utility>
+
+#include <libhwsec-foundation/status/status_chain.h>
+
 #include "cryptohome/auth_blocks/fp_service.h"
+#include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_intent.h"
+#include "cryptohome/error/action.h"
+#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
+namespace {
+
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::hwsec_foundation::status::MakeStatus;
+
+}  // namespace
 
 bool LegacyFingerprintAuthFactorDriver::IsSupported(
     AuthFactorStorageType storage_type,
@@ -19,6 +36,22 @@ bool LegacyFingerprintAuthFactorDriver::IsSupported(
 
 bool LegacyFingerprintAuthFactorDriver::IsPrepareRequired() const {
   return true;
+}
+
+void LegacyFingerprintAuthFactorDriver::PrepareForAdd(
+    const ObfuscatedUsername& username,
+    PreparedAuthFactorToken::Consumer callback) const {
+  std::move(callback).Run(MakeStatus<CryptohomeError>(
+      CRYPTOHOME_ERR_LOC(kLocAuthFactorLegacyFpPrepareForAddUnsupported),
+      ErrorActionSet(
+          {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+void LegacyFingerprintAuthFactorDriver::PrepareForAuthenticate(
+    const ObfuscatedUsername& username,
+    PreparedAuthFactorToken::Consumer callback) const {
+  fp_service_->Start(username, std::move(callback));
 }
 
 bool LegacyFingerprintAuthFactorDriver::IsVerifySupported(

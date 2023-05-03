@@ -10,10 +10,11 @@
 #include <set>
 #include <string>
 
+#include <base/containers/span.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
-#include "base/containers/span.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
+#include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
@@ -21,6 +22,7 @@
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -54,6 +56,18 @@ class AuthFactorDriver {
   // Indicates if the factor requires the use of a Prepare operation before it
   // can be added or authenticated.
   virtual bool IsPrepareRequired() const = 0;
+
+  // Prepare the factor type for the addition of a new instance of this factor.
+  // Returns through the asynchronous |callback|.
+  virtual void PrepareForAdd(
+      const ObfuscatedUsername& username,
+      PreparedAuthFactorToken::Consumer callback) const = 0;
+
+  // Prepare the factor type for authentication. Returns through the
+  // asynchronous |callback|.
+  virtual void PrepareForAuthenticate(
+      const ObfuscatedUsername& username,
+      PreparedAuthFactorToken::Consumer callback) const = 0;
 
   // Indicates if the factor supports creating credential verifiers for a given
   // intent. Note that this only indicates that the driver software support is

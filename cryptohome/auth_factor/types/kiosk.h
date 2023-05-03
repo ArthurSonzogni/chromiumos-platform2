@@ -27,6 +27,7 @@ class KioskAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kKiosk>,
       public AfDriverWithPasswordBlockTypes,
       public AfDriverWithMetadata<KioskAuthFactorMetadata>,
+      public AfDriverNoPrepare,
       public AfDriverNoCredentialVerifier {
  public:
   KioskAuthFactorDriver() = default;
@@ -35,7 +36,6 @@ class KioskAuthFactorDriver final
   bool IsSupported(
       AuthFactorStorageType storage_type,
       const std::set<AuthFactorType>& configured_factors) const override;
-  bool IsPrepareRequired() const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;

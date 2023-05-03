@@ -11,6 +11,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/test/test_future.h>
 #include <base/functional/callback.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -29,6 +30,9 @@
 namespace cryptohome {
 namespace {
 
+using ::base::test::TestFuture;
+using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
 using ::testing::Eq;
@@ -150,9 +154,84 @@ TEST_F(FingerprintDriverTest, SupportedByBlock) {
               IsTrue());
 }
 
+TEST_F(FingerprintDriverTest, PrepareForAddFailure) {
+  // Setup.
+  FingerprintAuthFactorDriver fp_driver(
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+  AuthFactorDriver& driver = fp_driver;
+  EXPECT_CALL(*bio_command_processor_, StartEnrollSession(_))
+      .WillOnce([](auto&& callback) { std::move(callback).Run(false); });
+
+  // Test.
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAdd(kObfuscatedUser, prepare_result.GetCallback());
+
+  // Verify.
+  EXPECT_THAT(prepare_result.Get(), NotOk());
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
+}
+
+TEST_F(FingerprintDriverTest, PrepareForAddSuccess) {
+  // Setup.
+  FingerprintAuthFactorDriver fp_driver(
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+  AuthFactorDriver& driver = fp_driver;
+  EXPECT_CALL(*bio_command_processor_, StartEnrollSession(_))
+      .WillOnce([](auto&& callback) { std::move(callback).Run(true); });
+
+  // Test.
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAdd(kObfuscatedUser, prepare_result.GetCallback());
+
+  // Verify.
+  EXPECT_THAT(prepare_result.Get(), IsOk());
+}
+
+TEST_F(FingerprintDriverTest, PrepareForAuthFailure) {
+  // Setup.
+  FingerprintAuthFactorDriver fp_driver(
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+  AuthFactorDriver& driver = fp_driver;
+  EXPECT_CALL(*bio_command_processor_,
+              StartAuthenticateSession(kObfuscatedUser, _))
+      .WillOnce(
+          [](auto&&, auto&& callback) { std::move(callback).Run(false); });
+
+  // Test.
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
+
+  // Verify.
+  EXPECT_THAT(prepare_result.Get(), NotOk());
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
+}
+
+TEST_F(FingerprintDriverTest, PrepareForAuthSuccess) {
+  // Setup.
+  FingerprintAuthFactorDriver fp_driver(
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+  AuthFactorDriver& driver = fp_driver;
+  EXPECT_CALL(*bio_command_processor_,
+              StartAuthenticateSession(kObfuscatedUser, _))
+      .WillOnce([](auto&&, auto&& callback) { std::move(callback).Run(true); });
+
+  // Test.
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
+
+  // Verify.
+  EXPECT_THAT(prepare_result.Get(), IsOk());
+}
+
 TEST_F(FingerprintDriverTest, CreateCredentialVerifierFails) {
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   auto verifier = driver.CreateCredentialVerifier(kLabel, {});

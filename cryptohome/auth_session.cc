@@ -1912,15 +1912,15 @@ void AuthSession::PrepareAuthFactor(
   if (factor_driver.IsPrepareRequired()) {
     switch (*purpose) {
       case AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor: {
-        auth_block_utility_->PrepareAuthFactorForAuth(
-            *auth_factor_type, obfuscated_username_,
+        factor_driver.PrepareForAuthenticate(
+            obfuscated_username_,
             base::BindOnce(&AuthSession::OnPrepareAuthFactorDone,
                            weak_factory_.GetWeakPtr(), std::move(on_done)));
         break;
       }
       case AuthFactorPreparePurpose::kPrepareAddAuthFactor: {
-        auth_block_utility_->PrepareAuthFactorForAdd(
-            *auth_factor_type, obfuscated_username_,
+        factor_driver.PrepareForAdd(
+            obfuscated_username_,
             base::BindOnce(&AuthSession::OnPrepareAuthFactorDone,
                            weak_factory_.GetWeakPtr(), std::move(on_done)));
         break;

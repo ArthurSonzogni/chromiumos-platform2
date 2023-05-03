@@ -21,10 +21,6 @@ bool PasswordAuthFactorDriver::IsSupported(
   return true;
 }
 
-bool PasswordAuthFactorDriver::IsPrepareRequired() const {
-  return false;
-}
-
 bool PasswordAuthFactorDriver::IsVerifySupported(AuthIntent auth_intent) const {
   return auth_intent == AuthIntent::kVerifyOnly;
 }

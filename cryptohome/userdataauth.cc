@@ -352,7 +352,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   if (!auth_block_utility_) {
     default_auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_, crypto_, platform_, &async_init_features_,
-        fingerprint_service_.get(), async_biometrics_service);
+        async_biometrics_service);
     auth_block_utility_ = default_auth_block_utility_.get();
   }
 

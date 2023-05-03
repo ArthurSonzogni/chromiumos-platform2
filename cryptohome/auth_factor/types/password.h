@@ -49,7 +49,8 @@ using AfDriverWithPasswordBlockTypes =
 class PasswordAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kPassword>,
       public AfDriverWithPasswordBlockTypes,
-      public AfDriverWithMetadata<PasswordAuthFactorMetadata> {
+      public AfDriverWithMetadata<PasswordAuthFactorMetadata>,
+      public AfDriverNoPrepare {
  public:
   PasswordAuthFactorDriver() = default;
 
@@ -57,7 +58,6 @@ class PasswordAuthFactorDriver final
   bool IsSupported(
       AuthFactorStorageType storage_type,
       const std::set<AuthFactorType>& configured_factors) const override;
-  bool IsPrepareRequired() const override;
   bool IsVerifySupported(AuthIntent auth_intent) const override;
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,

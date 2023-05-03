@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -19,6 +20,7 @@
 namespace cryptohome {
 namespace {
 
+using ::base::test::TestFuture;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
 using ::testing::Eq;
@@ -120,6 +122,28 @@ TEST_F(PinDriverTest, SupportedByBlockWithUss) {
   // Test, Verify
   EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
               IsTrue());
+}
+
+TEST_F(PinDriverTest, PrepareForAddFails) {
+  PinAuthFactorDriver pin_driver(&crypto_);
+  AuthFactorDriver& driver = pin_driver;
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAdd(kObfuscatedUser, prepare_result.GetCallback());
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+TEST_F(PinDriverTest, PrepareForAuthFails) {
+  PinAuthFactorDriver pin_driver(&crypto_);
+  AuthFactorDriver& driver = pin_driver;
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
 TEST_F(PinDriverTest, CreateCredentialVerifierFails) {

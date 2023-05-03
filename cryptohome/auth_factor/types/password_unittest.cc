@@ -112,6 +112,28 @@ TEST_F(PasswordDriverTest, UnsupportedWithKiosk) {
               IsFalse());
 }
 
+TEST_F(PasswordDriverTest, PrepareForAddFails) {
+  PasswordAuthFactorDriver password_driver;
+  AuthFactorDriver& driver = password_driver;
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAdd(kObfuscatedUser, prepare_result.GetCallback());
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+TEST_F(PasswordDriverTest, PrepareForAuthFails) {
+  PasswordAuthFactorDriver password_driver;
+  AuthFactorDriver& driver = password_driver;
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
 TEST_F(PasswordDriverTest, CreateCredentialVerifier) {
   PasswordAuthFactorDriver password_driver;
   AuthFactorDriver& driver = password_driver;

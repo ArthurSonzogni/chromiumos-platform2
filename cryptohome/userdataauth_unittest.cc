@@ -40,7 +40,10 @@
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
+#include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
+#include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
@@ -226,6 +229,17 @@ class UserDataAuthTestBase : public ::testing::Test {
         &key_challenge_service_factory_);
     userdataauth_->set_low_disk_space_handler(&low_disk_space_handler_);
 
+    {
+      auto mock_processor =
+          std::make_unique<NiceMock<MockBiometricsCommandProcessor>>();
+      bio_processor_ = mock_processor.get();
+      bio_service_ = std::make_unique<BiometricsAuthBlockService>(
+          std::move(mock_processor),
+          /*enroll_signal_sender=*/base::DoNothing(),
+          /*auth_signal_sender=*/base::DoNothing());
+    }
+    userdataauth_->set_biometrics_service(bio_service_.get());
+
     features_ = std::make_unique<Features>(mount_bus_, true /*testing*/);
     userdataauth_->set_features(features_.get());
     // Empty token list by default.  The effect is that there are no
@@ -348,6 +362,11 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock Fingerprint Manager object, will be passed to UserDataAuth for its
   // internal use.
   NiceMock<MockFingerprintManager> fingerprint_manager_;
+
+  // Biometrics service object and the mock biometrics command processor object
+  // that it is wrapping, the service object will be passed into UserDataAuth.
+  NiceMock<MockBiometricsCommandProcessor>* bio_processor_;
+  std::unique_ptr<BiometricsAuthBlockService> bio_service_;
 
   // Mock challenge credential helper utility object, will be passed to
   // UserDataAuth for its internal use.
@@ -3736,7 +3755,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   ResetUserSecretStashExperimentForTesting();
 }
 
-TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintSuccess) {
+TEST_F(UserDataAuthExTest, PrepareAuthFactorFingerprintSuccess) {
   // Setup.
   PrepareArguments();
   start_auth_session_req_->mutable_account_id()->set_account_id(
@@ -3757,20 +3776,11 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintSuccess) {
   user_data_auth::PrepareAuthFactorRequest prepare_auth_factor_req;
   prepare_auth_factor_req.set_auth_session_id(auth_session_id);
   prepare_auth_factor_req.set_auth_factor_type(
-      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
   prepare_auth_factor_req.set_purpose(
       user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
-  TrackedPreparedAuthFactorToken::WasCalled token_was_called;
-  auto token = std::make_unique<TrackedPreparedAuthFactorToken>(
-      AuthFactorType::kLegacyFingerprint, OkStatus<CryptohomeError>(),
-      &token_was_called);
-  EXPECT_CALL(
-      auth_block_utility_,
-      PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
-      .WillOnce([&](AuthFactorType, const ObfuscatedUsername&,
-                    PreparedAuthFactorToken::Consumer callback) {
-        std::move(callback).Run(std::move(token));
-      });
+  EXPECT_CALL(*bio_processor_, StartAuthenticateSession(_, _))
+      .WillOnce([](auto&&, auto&& callback) { std::move(callback).Run(true); });
 
   // Test.
   TestFuture<user_data_auth::PrepareAuthFactorReply>
@@ -3783,11 +3793,9 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintSuccess) {
   // Verify.
   EXPECT_EQ(prepare_auth_factor_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_FALSE(token_was_called.terminate);
-  EXPECT_FALSE(token_was_called.destructor);
 }
 
-TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintFailure) {
+TEST_F(UserDataAuthExTest, PrepareAuthFactorFingerprintFailure) {
   // Setup.
   PrepareArguments();
   start_auth_session_req_->mutable_account_id()->set_account_id(
@@ -3808,20 +3816,12 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintFailure) {
   user_data_auth::PrepareAuthFactorRequest prepare_auth_factor_req;
   prepare_auth_factor_req.set_auth_session_id(auth_session_id);
   prepare_auth_factor_req.set_auth_factor_type(
-      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
   prepare_auth_factor_req.set_purpose(
       user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
-  EXPECT_CALL(
-      auth_block_utility_,
-      PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
-      .WillOnce([&](AuthFactorType, const ObfuscatedUsername&,
-                    PreparedAuthFactorToken::Consumer callback) {
-        std::move(callback).Run(MakeStatus<CryptohomeError>(
-            kErrorLocationPlaceholder,
-            ErrorActionSet(PrimaryAction::kIncorrectAuth),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
-      });
+  EXPECT_CALL(*bio_processor_, StartAuthenticateSession(_, _))
+      .WillOnce(
+          [](auto&&, auto&& callback) { std::move(callback).Run(false); });
 
   // Test.
   TestFuture<user_data_auth::PrepareAuthFactorReply>
@@ -3842,7 +3842,7 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorNoAuthSessionIdFailure) {
   // Prepare the request and set up the mock components.
   user_data_auth::PrepareAuthFactorRequest prepare_auth_factor_req;
   prepare_auth_factor_req.set_auth_factor_type(
-      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
   prepare_auth_factor_req.set_purpose(
       user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
 
@@ -3897,7 +3897,7 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorPasswordFailure) {
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-TEST_F(UserDataAuthExTest, TerminateAuthFactorLegacyFingerprintSuccess) {
+TEST_F(UserDataAuthExTest, TerminateAuthFactorFingerprintSuccess) {
   // Setup.
   PrepareArguments();
   start_auth_session_req_->mutable_account_id()->set_account_id(
@@ -3918,20 +3918,11 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorLegacyFingerprintSuccess) {
   user_data_auth::PrepareAuthFactorRequest prepare_auth_factor_req;
   prepare_auth_factor_req.set_auth_session_id(auth_session_id);
   prepare_auth_factor_req.set_auth_factor_type(
-      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
   prepare_auth_factor_req.set_purpose(
       user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
-  TrackedPreparedAuthFactorToken::WasCalled token_was_called;
-  auto token = std::make_unique<TrackedPreparedAuthFactorToken>(
-      AuthFactorType::kLegacyFingerprint, OkStatus<CryptohomeError>(),
-      &token_was_called);
-  EXPECT_CALL(
-      auth_block_utility_,
-      PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
-      .WillOnce([&](AuthFactorType, const ObfuscatedUsername&,
-                    PreparedAuthFactorToken::Consumer callback) {
-        std::move(callback).Run(std::move(token));
-      });
+  EXPECT_CALL(*bio_processor_, StartAuthenticateSession(_, _))
+      .WillOnce([](auto&&, auto&& callback) { std::move(callback).Run(true); });
   TestFuture<user_data_auth::PrepareAuthFactorReply>
       prepare_auth_factor_reply_future;
   userdataauth_->PrepareAuthFactor(
@@ -3940,14 +3931,12 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorLegacyFingerprintSuccess) {
           .GetCallback<const user_data_auth::PrepareAuthFactorReply&>());
   EXPECT_EQ(prepare_auth_factor_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_FALSE(token_was_called.terminate);
-  EXPECT_FALSE(token_was_called.destructor);
 
   // Test.
   user_data_auth::TerminateAuthFactorRequest terminate_auth_factor_req;
   terminate_auth_factor_req.set_auth_session_id(auth_session_id);
   terminate_auth_factor_req.set_auth_factor_type(
-      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
   TestFuture<user_data_auth::TerminateAuthFactorReply>
       terminate_auth_factor_reply_future;
   userdataauth_->TerminateAuthFactor(
@@ -3958,8 +3947,6 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorLegacyFingerprintSuccess) {
   // Verify.
   EXPECT_EQ(terminate_auth_factor_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_TRUE(token_was_called.terminate);
-  EXPECT_TRUE(token_was_called.destructor);
 }
 
 TEST_F(UserDataAuthExTest, TerminateAuthFactorInactiveFactorFailure) {
@@ -3984,7 +3971,7 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorInactiveFactorFailure) {
   user_data_auth::TerminateAuthFactorRequest terminate_auth_factor_req;
   terminate_auth_factor_req.set_auth_session_id(auth_session_id);
   terminate_auth_factor_req.set_auth_factor_type(
-      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
   TestFuture<user_data_auth::TerminateAuthFactorReply>
       terminate_auth_factor_reply_future;
   userdataauth_->TerminateAuthFactor(

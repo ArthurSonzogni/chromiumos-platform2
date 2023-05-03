@@ -38,10 +38,6 @@ bool PinAuthFactorDriver::IsSupported(
   return PinWeaverAuthBlock::IsSupported(*crypto_).ok();
 }
 
-bool PinAuthFactorDriver::IsPrepareRequired() const {
-  return false;
-}
-
 bool PinAuthFactorDriver::NeedsResetSecret() const {
   return true;
 }

@@ -6,10 +6,12 @@
 
 #include <utility>
 #include <variant>
+#include <vector>
 
 #include <base/functional/callback.h>
 #include <base/test/test_future.h>
 #include <brillo/cryptohome.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -25,10 +27,10 @@ namespace cryptohome {
 namespace {
 
 using ::base::test::TestFuture;
-using ::brillo::cryptohome::home::SanitizeUserName;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::NotOk;
 using ::testing::_;
+using ::testing::ElementsAre;
 using ::testing::Eq;
 using ::testing::IsFalse;
 using ::testing::IsNull;
@@ -37,12 +39,17 @@ using ::testing::Optional;
 
 class LegacyFingerprintDriverTest : public AuthFactorDriverGenericTest {
  protected:
-  const Username kUser{"user"};
-  const ObfuscatedUsername kObfuscatedUser{SanitizeUserName(kUser)};
-
   MockFingerprintManager fp_manager_;
   FingerprintAuthBlockService fp_service_{
-      AsyncInitPtr<FingerprintManager>(&fp_manager_), base::DoNothing()};
+      AsyncInitPtr<FingerprintManager>(&fp_manager_),
+      base::BindRepeating(&LegacyFingerprintDriverTest::HandleSignal,
+                          base::Unretained(this))};
+
+  // Handle the signals sent by the auth block service, by capturing the result.
+  std::vector<user_data_auth::FingerprintScanResult> signal_results_;
+  void HandleSignal(user_data_auth::FingerprintScanResult result) {
+    signal_results_.push_back(std::move(result));
+  }
 };
 
 TEST_F(LegacyFingerprintDriverTest, ConvertToProto) {
@@ -86,6 +93,80 @@ TEST_F(LegacyFingerprintDriverTest, UnsupportedWithUss) {
   // Test, Verify.
   EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
               IsFalse());
+}
+
+TEST_F(LegacyFingerprintDriverTest, PrepareForAddFails) {
+  LegacyFingerprintAuthFactorDriver legacy_fp_driver(&fp_service_);
+  AuthFactorDriver& driver = legacy_fp_driver;
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAdd(kObfuscatedUser, prepare_result.GetCallback());
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+TEST_F(LegacyFingerprintDriverTest, PrepareForAuthCannotStart) {
+  LegacyFingerprintAuthFactorDriver legacy_fp_driver(&fp_service_);
+  AuthFactorDriver& driver = legacy_fp_driver;
+
+  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kObfuscatedUser, _))
+      .WillOnce([](ObfuscatedUsername username,
+                   FingerprintManager::StartSessionCallback callback) {
+        std::move(callback).Run(false);
+      });
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
+  EXPECT_THAT(prepare_result.Get(), NotOk());
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
+}
+
+TEST_F(LegacyFingerprintDriverTest, PrepareForAuthFailure) {
+  LegacyFingerprintAuthFactorDriver legacy_fp_driver(&fp_service_);
+  AuthFactorDriver& driver = legacy_fp_driver;
+
+  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kObfuscatedUser, _))
+      .WillOnce([](ObfuscatedUsername username,
+                   FingerprintManager::StartSessionCallback callback) {
+        std::move(callback).Run(true);
+      });
+  EXPECT_CALL(fp_manager_, SetSignalCallback(_))
+      .WillOnce([](FingerprintManager::SignalCallback callback) {
+        std::move(callback).Run(
+            FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
+      });
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
+  EXPECT_THAT(prepare_result.Get(), IsOk());
+  EXPECT_THAT(signal_results_,
+              ElementsAre(user_data_auth::FINGERPRINT_SCAN_RESULT_LOCKOUT));
+}
+
+TEST_F(LegacyFingerprintDriverTest, PrepareForAuthSuccess) {
+  LegacyFingerprintAuthFactorDriver legacy_fp_driver(&fp_service_);
+  AuthFactorDriver& driver = legacy_fp_driver;
+
+  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kObfuscatedUser, _))
+      .WillOnce([](ObfuscatedUsername username,
+                   FingerprintManager::StartSessionCallback callback) {
+        std::move(callback).Run(true);
+      });
+  EXPECT_CALL(fp_manager_, SetSignalCallback(_))
+      .WillOnce([](FingerprintManager::SignalCallback callback) {
+        std::move(callback).Run(FingerprintScanStatus::SUCCESS);
+      });
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
+  EXPECT_THAT(prepare_result.Get(), IsOk());
+  EXPECT_THAT(signal_results_,
+              ElementsAre(user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS));
 }
 
 // Verify that the legacy fingerprint verifier cannot be created with a label.

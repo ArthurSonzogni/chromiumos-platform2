@@ -11,6 +11,7 @@
 #include <string>
 
 #include "cryptohome/auth_blocks/fp_service.h"
+#include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
@@ -20,6 +21,7 @@
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -37,6 +39,11 @@ class LegacyFingerprintAuthFactorDriver final
       AuthFactorStorageType storage_type,
       const std::set<AuthFactorType>& configured_factors) const override;
   bool IsPrepareRequired() const override;
+  void PrepareForAdd(const ObfuscatedUsername& username,
+                     PreparedAuthFactorToken::Consumer callback) const override;
+  void PrepareForAuthenticate(
+      const ObfuscatedUsername& username,
+      PreparedAuthFactorToken::Consumer callback) const override;
   bool IsVerifySupported(AuthIntent auth_intent) const override;
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,

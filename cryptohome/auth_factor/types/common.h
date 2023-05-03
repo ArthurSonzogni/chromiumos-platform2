@@ -41,7 +41,7 @@ namespace cryptohome {
 // Common implementation of type(). Takes the type as a template parameter.
 template <AuthFactorType kType>
 class AfDriverWithType : public virtual AuthFactorDriver {
- private:
+ protected:
   AuthFactorType type() const final { return kType; }
 };
 
@@ -70,6 +70,7 @@ class AfDriverWithBlockTypes : public virtual AuthFactorDriver {
     static constexpr base::span<const AuthBlockType> kTypeSpan;
   };
 
+ protected:
   base::span<const AuthBlockType> block_types() const override {
     return Storage<kTypes...>::kTypeSpan;
   }
@@ -119,6 +120,18 @@ class AfDriverWithMetadata : public virtual AuthFactorDriver {
   virtual std::optional<user_data_auth::AuthFactor> TypedConvertToProto(
       const CommonAuthFactorMetadata& common,
       const MetadataType& typed_metadata) const = 0;
+};
+
+// Common implementation of the prepare functions for drivers which do not
+// support prepare.
+class AfDriverNoPrepare : public virtual AuthFactorDriver {
+ private:
+  bool IsPrepareRequired() const final { return false; }
+  void PrepareForAdd(const ObfuscatedUsername& username,
+                     PreparedAuthFactorToken::Consumer callback) const final;
+  void PrepareForAuthenticate(
+      const ObfuscatedUsername& username,
+      PreparedAuthFactorToken::Consumer callback) const final;
 };
 
 // Common implementation of the verifier functions for drivers which do not

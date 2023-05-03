@@ -22,10 +22,6 @@ bool CryptohomeRecoveryAuthFactorDriver::IsSupported(
          CryptohomeRecoveryAuthBlock::IsSupported(*crypto_).ok();
 }
 
-bool CryptohomeRecoveryAuthFactorDriver::IsPrepareRequired() const {
-  return false;
-}
-
 bool CryptohomeRecoveryAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }

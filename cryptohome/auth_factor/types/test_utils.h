@@ -18,12 +18,18 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
 // Helper methods and common constants for writing metadata-oriented tests.
 class AuthFactorDriverGenericTest : public ::testing::Test {
  protected:
+  // Useful generic constants to use for usernames.
+  const Username kUser{"user"};
+  const ObfuscatedUsername kObfuscatedUser{
+      brillo::cryptohome::home::SanitizeUserName(kUser)};
+
   // Useful generic constants to use for labels and version metadata.
   static constexpr char kLabel[] = "some-label";
   static constexpr char kChromeosVersion[] = "1.2.3_a_b_c";

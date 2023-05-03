@@ -23,27 +23,21 @@
 namespace cryptohome {
 
 // Implementation of the null object pattern for auth factor drivers. Provides
-// useful defaults for all functions implemented by a factor.
-class NullAuthFactorDriver : public AuthFactorDriver {
+// useful defaults (which fail or return something equivalent to nothing) for
+// all functions implemented by a factor.
+class NullAuthFactorDriver final
+    : public AfDriverWithType<AuthFactorType::kUnspecified>,
+      public AfDriverWithBlockTypes<>,
+      public AfDriverNoPrepare,
+      public AfDriverNoCredentialVerifier {
  public:
   NullAuthFactorDriver() = default;
 
  private:
-  AuthFactorType type() const override { return AuthFactorType::kUnspecified; }
-  base::span<const AuthBlockType> block_types() const override { return {}; }
   bool IsSupported(
       AuthFactorStorageType storage_type,
       const std::set<AuthFactorType>& configured_factors) const override {
     return false;
-  }
-  bool IsPrepareRequired() const override { return false; }
-  bool IsVerifySupported(AuthIntent auth_intent) const override {
-    return false;
-  }
-  std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
-      const std::string& auth_factor_label,
-      const AuthInput& auth_input) const override {
-    return nullptr;
   }
   bool NeedsResetSecret() const override { return false; }
   bool NeedsRateLimiter() const override { return false; }

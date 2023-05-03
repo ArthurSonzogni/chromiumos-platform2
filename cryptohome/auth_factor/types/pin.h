@@ -28,6 +28,7 @@ class PinAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kPin>,
       public AfDriverWithBlockTypes<AuthBlockType::kPinWeaver>,
       public AfDriverWithMetadata<PinAuthFactorMetadata>,
+      public AfDriverNoPrepare,
       public AfDriverNoCredentialVerifier {
  public:
   explicit PinAuthFactorDriver(Crypto* crypto) : crypto_(crypto) {}
@@ -36,7 +37,6 @@ class PinAuthFactorDriver final
   bool IsSupported(
       AuthFactorStorageType storage_type,
       const std::set<AuthFactorType>& configured_factors) const override;
-  bool IsPrepareRequired() const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;

@@ -17,10 +17,6 @@ bool KioskAuthFactorDriver::IsSupported(
          configured_factors.count(AuthFactorType::kKiosk) > 0;
 }
 
-bool KioskAuthFactorDriver::IsPrepareRequired() const {
-  return false;
-}
-
 bool KioskAuthFactorDriver::NeedsResetSecret() const {
   return false;
 }

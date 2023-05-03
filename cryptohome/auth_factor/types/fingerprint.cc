@@ -4,13 +4,30 @@
 
 #include "cryptohome/auth_factor/types/fingerprint.h"
 
+#include <utility>
+
+#include <libhwsec-foundation/status/status_chain.h>
+
 #include "cryptohome/auth_blocks/fingerprint_auth_block.h"
+#include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/error/action.h"
+#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
+namespace {
+
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::hwsec_foundation::status::MakeStatus;
+
+}  // namespace
 
 bool FingerprintAuthFactorDriver::IsSupported(
     AuthFactorStorageType storage_type,
@@ -24,6 +41,36 @@ bool FingerprintAuthFactorDriver::IsSupported(
 
 bool FingerprintAuthFactorDriver::IsPrepareRequired() const {
   return true;
+}
+
+void FingerprintAuthFactorDriver::PrepareForAdd(
+    const ObfuscatedUsername& username,
+    PreparedAuthFactorToken::Consumer callback) const {
+  if (!bio_service_) {
+    std::move(callback).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorFpPrepareForAddNoService),
+        ErrorActionSet(
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  bio_service_->StartEnrollSession(type(), username, std::move(callback));
+}
+
+void FingerprintAuthFactorDriver::PrepareForAuthenticate(
+    const ObfuscatedUsername& username,
+    PreparedAuthFactorToken::Consumer callback) const {
+  if (!bio_service_) {
+    std::move(callback).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorFpPrepareForAuthNoService),
+        ErrorActionSet(
+            {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  bio_service_->StartAuthenticateSession(type(), username, std::move(callback));
 }
 
 bool FingerprintAuthFactorDriver::NeedsResetSecret() const {

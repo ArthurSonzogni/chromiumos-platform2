@@ -54,20 +54,6 @@ class AuthBlockUtility {
   using CryptohomeStatusCallback =
       base::OnceCallback<void(CryptohomeStatus error)>;
 
-  // Given an AuthFactorType, attempt to prepare an auth factor for
-  // authentication. Returns through the asynchronous |callback|.
-  virtual void PrepareAuthFactorForAuth(
-      AuthFactorType auth_factor_type,
-      const ObfuscatedUsername& username,
-      PreparedAuthFactorToken::Consumer callback) = 0;
-
-  // Given an AuthFactorType, attempt to prepare an auth factor for add.
-  // Returns through the asynchronous |callback|.
-  virtual void PrepareAuthFactorForAdd(
-      AuthFactorType auth_factor_type,
-      const ObfuscatedUsername& username,
-      PreparedAuthFactorToken::Consumer callback) = 0;
-
   // Creates KeyBlobs and AuthBlockState with the given type of AuthBlock for
   // the given input. Creating KeyBlobs means generating the KeyBlobs from
   // user input when the credentials are entered first time. Thus, Create should

@@ -562,6 +562,11 @@ class UserDataAuth {
     fingerprint_manager_ = fingerprint_manager;
   }
 
+  // Override |biometrics_service_| for testing purpose
+  void set_biometrics_service(BiometricsAuthBlockService* biometrics_service) {
+    biometrics_service_ = biometrics_service;
+  }
+
   // Override |mount_factory_| for testing purpose
   void set_mount_factory_for_testing(MountFactory* mount_factory) {
     mount_factory_ = mount_factory;

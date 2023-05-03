@@ -337,9 +337,8 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{
       FingerprintAuthBlockService::MakeNullService()};
   AuthBlockUtilityImpl auth_block_utility_{
-      &keyset_management_, &crypto_,
-      &platform_,          &features_.async,
-      fp_service_.get(),   AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &keyset_management_, &crypto_, &platform_, &features_.async,
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorDriverManager auth_factor_driver_manager_{
       &crypto_, AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
       fp_service_.get(), AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};

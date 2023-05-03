@@ -33,18 +33,6 @@ class MockAuthBlockUtility : public AuthBlockUtility {
 
   MOCK_METHOD(bool, GetLockedToSingleUser, (), (const, override));
   MOCK_METHOD(void,
-              PrepareAuthFactorForAuth,
-              (AuthFactorType,
-               const ObfuscatedUsername&,
-               PreparedAuthFactorToken::Consumer),
-              (override));
-  MOCK_METHOD(void,
-              PrepareAuthFactorForAdd,
-              (AuthFactorType,
-               const ObfuscatedUsername&,
-               PreparedAuthFactorToken::Consumer),
-              (override));
-  MOCK_METHOD(void,
               CreateKeyBlobsWithAuthBlock,
               (AuthBlockType auth_block_type,
                const AuthInput& auth_input,

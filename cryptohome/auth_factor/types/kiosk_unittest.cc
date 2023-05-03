@@ -4,6 +4,7 @@
 
 #include "cryptohome/auth_factor/types/kiosk.h"
 
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -14,6 +15,7 @@
 namespace cryptohome {
 namespace {
 
+using ::base::test::TestFuture;
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::IsFalse;
@@ -91,6 +93,28 @@ TEST_F(KioskDriverTest, UnsupportedWithOtherFactors) {
   EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
                                  {AuthFactorType::kPassword}),
               IsFalse());
+}
+
+TEST_F(KioskDriverTest, PrepareForAddFails) {
+  KioskAuthFactorDriver kiosk_driver;
+  AuthFactorDriver& driver = kiosk_driver;
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAdd(kObfuscatedUser, prepare_result.GetCallback());
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+TEST_F(KioskDriverTest, PrepareForAuthFails) {
+  KioskAuthFactorDriver kiosk_driver;
+  AuthFactorDriver& driver = kiosk_driver;
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
 TEST_F(KioskDriverTest, CreateCredentialVerifierFails) {

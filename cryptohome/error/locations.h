@@ -1359,6 +1359,16 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionGetStoredFactorFailedInRecreate = 2106,
   /* =Obsolete= */
   kLocAuthSessionGetKeyDataFailedInRecreate = 2107,
+  /* ./auth_factor/types/common.cc */
+  kLocAuthFactorCommonPrepareForAddUnsupported = 2108,
+  /* ./auth_factor/types/common.cc */
+  kLocAuthFactorCommonPrepareForAuthUnsupported = 2109,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFpPrepareForAddNoService = 2110,
+  /* ./auth_factor/types/fingerprint.cc */
+  kLocAuthFactorFpPrepareForAuthNoService = 2111,
+  /* ./auth_factor/types/legacy_fingerprint.cc */
+  kLocAuthFactorLegacyFpPrepareForAddUnsupported = 2112,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.
@@ -1607,9 +1617,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockInsertCredentialFailedInCreate = 3353,
   /* ./auth_blocks/biometrics_command_processor_impl.cc */
   kLocBiometricsProcessorMatchCredentialUnexpectedScanResult = 3354,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilPrepareForAuthFingerprintNoService = 3355,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilPrepareForAddInvalidAuthFactorType = 3356,
   /* ./auth_session.cc */
   kLocRateLimiterNoResetSecretInAuthInputForAdd = 3357,
@@ -1671,7 +1681,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNullParamInAuthViaSelected = 3385,
   /* ./auth_session.cc */
   kLocAuthSessionSelectionFailed = 3386,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilPrepareForAddFingerprintNoService = 3387,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockServiceNotReadyIsSupported = 3388,
@@ -1683,7 +1693,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //// This is a separator block at value 3500
   //// See location_db.py for more info.
   //////////////////////////////////////////////////
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilPrepareInvalidAuthFactorType = 3500,
   /* ./auth_session.cc */
   kLocAuthSessionInvalidAuthFactorTypeInPrepareAuthFactor = 3501,

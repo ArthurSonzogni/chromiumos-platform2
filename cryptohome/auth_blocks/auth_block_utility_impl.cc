@@ -69,13 +69,11 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(
     Crypto* crypto,
     Platform* platform,
     AsyncInitFeatures* features,
-    FingerprintAuthBlockService* fp_service,
     AsyncInitPtr<BiometricsAuthBlockService> bio_service)
     : keyset_management_(keyset_management),
       crypto_(crypto),
       platform_(platform),
       features_(features),
-      fp_service_(fp_service),
       bio_service_(bio_service) {
   DCHECK(keyset_management);
   DCHECK(crypto_);
@@ -87,92 +85,6 @@ AuthBlockUtilityImpl::~AuthBlockUtilityImpl() = default;
 
 bool AuthBlockUtilityImpl::GetLockedToSingleUser() const {
   return platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
-}
-
-void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(
-    AuthFactorType auth_factor_type,
-    const ObfuscatedUsername& username,
-    PreparedAuthFactorToken::Consumer callback) {
-  switch (auth_factor_type) {
-    case AuthFactorType::kLegacyFingerprint: {
-      fp_service_->Start(username, std::move(callback));
-      return;
-    }
-    case AuthFactorType::kFingerprint: {
-      if (!bio_service_) {
-        CryptohomeStatus status = MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthBlockUtilPrepareForAuthFingerprintNoService),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                            PossibleAction::kAuth}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-        std::move(callback).Run(std::move(status));
-        return;
-      }
-      bio_service_->StartAuthenticateSession(AuthFactorType::kFingerprint,
-                                             username, std::move(callback));
-      return;
-    }
-    case AuthFactorType::kPassword:
-    case AuthFactorType::kPin:
-    case AuthFactorType::kCryptohomeRecovery:
-    case AuthFactorType::kKiosk:
-    case AuthFactorType::kSmartCard:
-    case AuthFactorType::kUnspecified: {
-      // These factors do not require Prepare.
-      CryptohomeStatus status = MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilPrepareInvalidAuthFactorType),
-          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                          PossibleAction::kAuth}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-      std::move(callback).Run(std::move(status));
-      return;
-    }
-  }
-}
-
-void AuthBlockUtilityImpl::PrepareAuthFactorForAdd(
-    AuthFactorType auth_factor_type,
-    const ObfuscatedUsername& username,
-    PreparedAuthFactorToken::Consumer callback) {
-  switch (auth_factor_type) {
-    case AuthFactorType::kFingerprint: {
-      if (!bio_service_) {
-        CryptohomeStatus status = MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthBlockUtilPrepareForAddFingerprintNoService),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                            PossibleAction::kAuth}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-        std::move(callback).Run(std::move(status));
-        return;
-      }
-      bio_service_->StartEnrollSession(AuthFactorType::kFingerprint, username,
-                                       std::move(callback));
-      return;
-    }
-    case AuthFactorType::kLegacyFingerprint:
-    case AuthFactorType::kPassword:
-    case AuthFactorType::kPin:
-    case AuthFactorType::kCryptohomeRecovery:
-    case AuthFactorType::kKiosk:
-    case AuthFactorType::kSmartCard:
-    case AuthFactorType::kUnspecified: {
-      // These factors do not require Prepare.
-      CryptohomeStatus status = MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocAuthBlockUtilPrepareForAddInvalidAuthFactorType),
-          ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
-                          PossibleAction::kAuth}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-      std::move(callback).Run(std::move(status));
-      return;
-    }
-  }
 }
 
 void AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
