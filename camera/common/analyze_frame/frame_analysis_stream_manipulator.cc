@@ -2,29 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cstdint>
-#include <cstring>
-#include <fstream>
-#include <memory>
-#include <string>
-#include <utility>
-#include <vector>
-
-#include <base/files/file_util.h>
-#include <drm_fourcc.h>
-#include <libyuv.h>
-#include <libyuv/convert_argb.h>
-#include <libyuv/scale.h>
-#include <linux/videodev2.h>
-#include <sync/sync.h>
-#include <system/graphics-base-v1.0.h>
-
 #include "common/analyze_frame/frame_analysis_stream_manipulator.h"
-#include "common/camera_hal3_helpers.h"
 
+#include <memory>
+#include <utility>
+
+#include <libyuv/scale.h>
+
+#include "camera/mojo/camera_diagnostics.mojom.h"
 #include "cros-camera/camera_buffer_manager.h"
-#include "cros-camera/camera_buffer_utils.h"
-#include "cutils/native_handle.h"
 
 namespace cros {
 
@@ -38,7 +24,8 @@ bool FrameAnalysisStreamManipulator::Initialize(
 }
 
 bool FrameAnalysisStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config) {
+    Camera3StreamConfiguration* stream_config,
+    const StreamEffectMap* stream_effects_map) {
   return true;
 }
 
@@ -121,7 +108,7 @@ void FrameAnalysisStreamManipulator::ProcessBuffer(ScopedMapping& mapping_src) {
     target_width = 640;
     target_height = 480;
   } else {
-    LOGF(WARNING) << "aspect ratio does not match";
+    LOGF(WARNING) << "Aspect ratio does not match";
     return;
   }
 
@@ -143,4 +130,5 @@ void FrameAnalysisStreamManipulator::ProcessBuffer(ScopedMapping& mapping_src) {
   }
   // TODO(rabbim): Dispatch |scaled_buffer|
 }
+
 }  // namespace cros

@@ -5,14 +5,10 @@
 #ifndef CAMERA_COMMON_ANALYZE_FRAME_FRAME_ANALYSIS_STREAM_MANIPULATOR_H_
 #define CAMERA_COMMON_ANALYZE_FRAME_FRAME_ANALYSIS_STREAM_MANIPULATOR_H_
 
-#include <cstdint>
 #include <memory>
 
-#include <base/bits.h>
 #include <cutils/native_handle.h>
 #include <drm_fourcc.h>
-#include <hardware/camera3.h>
-
 #include "common/stream_manipulator.h"
 
 namespace cros {
@@ -24,7 +20,8 @@ class FrameAnalysisStreamManipulator : public StreamManipulator {
   // Implementations of StreamManipulator.
   bool Initialize(const camera_metadata_t* static_info,
                   StreamManipulator::Callbacks callbacks) override;
-  bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
+  bool ConfigureStreams(Camera3StreamConfiguration* stream_config,
+                        const StreamEffectMap* stream_effects_map) override;
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;
   bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type) override;
@@ -34,7 +31,7 @@ class FrameAnalysisStreamManipulator : public StreamManipulator {
   bool Flush() override;
 
  private:
-  // used to copy a buffer and downsample it before dispatching it to
+  // Used to copy a buffer and downsample it before dispatching it to
   // diagnostics service.
   void ProcessBuffer(ScopedMapping& mapping_src);
 
