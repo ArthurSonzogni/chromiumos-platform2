@@ -287,7 +287,7 @@ StatusOr<ConfigTpm2::PcrValue> ConfigTpm2::ToPcrValue(
   std::string digest;
 
   for (const PcrMap::value_type& pcr : pcr_map) {
-    pcr_value.bitmask[pcr.first / 8] = 1u << (pcr.first % 8);
+    pcr_value.bitmask[pcr.first / 8] |= 1u << (pcr.first % 8);
     digest += pcr.second;
   }
 
