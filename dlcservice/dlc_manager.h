@@ -12,7 +12,8 @@
 #include <brillo/message_loops/message_loop.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "dlcservice/dlc.h"
+#include "dlcservice/dlc_base.h"
+#include "dlcservice/types.h"
 
 namespace dlcservice {
 
@@ -20,7 +21,7 @@ class DlcManagerInterface {
  public:
   virtual ~DlcManagerInterface() = default;
 
-  virtual DlcBase* GetDlc(const DlcId& id, brillo::ErrorPtr* err) = 0;
+  virtual DlcInterface* GetDlc(const DlcId& id, brillo::ErrorPtr* err) = 0;
   virtual void Initialize() = 0;
   virtual DlcIdList GetInstalled() = 0;
   virtual DlcIdList GetExistingDlcs() = 0;
@@ -47,7 +48,7 @@ class DlcManager : public DlcManagerInterface {
 
   // Returns a reference to a DLC object given a DLC ID. If the ID is not
   // supported, it will set the error and return |nullptr|.
-  DlcBase* GetDlc(const DlcId& id, brillo::ErrorPtr* err) override;
+  DlcInterface* GetDlc(const DlcId& id, brillo::ErrorPtr* err) override;
 
   // Initializes the state of DlcManager.
   void Initialize() override;

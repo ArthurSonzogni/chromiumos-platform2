@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "dlcservice/dlc.h"
+#include "dlcservice/dlc_base.h"
 #include "dlcservice/types.h"
 
 namespace dlcservice {

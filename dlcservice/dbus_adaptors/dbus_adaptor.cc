@@ -14,7 +14,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dlcservice/dbus-constants.h>
 
-#include "dlcservice/dlc.h"
+#include "dlcservice/dlc_base.h"
 #include "dlcservice/error.h"
 #include "dlcservice/proto_utils.h"
 #include "dlcservice/utils.h"

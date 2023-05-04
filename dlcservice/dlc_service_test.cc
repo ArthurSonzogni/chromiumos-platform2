@@ -17,7 +17,7 @@
 #include <gtest/gtest.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
 
-#include "dlcservice/dlc.h"
+#include "dlcservice/dlc_base.h"
 #include "dlcservice/dlc_service.h"
 #include "dlcservice/mock_dlc_manager.h"
 #include "dlcservice/prefs.h"

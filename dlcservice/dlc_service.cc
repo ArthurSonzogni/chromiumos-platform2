@@ -20,7 +20,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dlcservice/dbus-constants.h>
 
-#include "dlcservice/dlc.h"
+#include "dlcservice/dlc_base.h"
 #include "dlcservice/error.h"
 #include "dlcservice/utils.h"
 
@@ -228,7 +228,7 @@ bool DlcService::Uninstall(const string& id, brillo::ErrorPtr* err) {
   return result;
 }
 
-const DlcBase* DlcService::GetDlc(const DlcId& id, brillo::ErrorPtr* err) {
+const DlcInterface* DlcService::GetDlc(const DlcId& id, brillo::ErrorPtr* err) {
   return dlc_manager_->GetDlc(id, err);
 }
 

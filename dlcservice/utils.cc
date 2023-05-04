@@ -23,6 +23,8 @@
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
 
+#include "dlcservice/system_state.h"
+
 using base::FilePath;
 using crypto::SecureHash;
 using std::set;
@@ -366,6 +368,13 @@ set<string> ScanDirectory(const FilePath& dir) {
     result.emplace(dir_path.BaseName().value());
   }
   return result;
+}
+
+std::vector<base::FilePath> GetPathsToDelete(const DlcId& id) {
+  const auto* system_state = SystemState::Get();
+  return {JoinPaths(system_state->content_dir(), id),
+          JoinPaths(system_state->dlc_prefs_dir(), id),
+          JoinPaths(system_state->factory_install_dir(), id)};
 }
 
 }  // namespace dlcservice

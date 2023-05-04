@@ -9,7 +9,7 @@
 
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 
-#include "dlcservice/dlc.h"
+#include "dlcservice/dlc_base.h"
 
 namespace dlcservice {
 

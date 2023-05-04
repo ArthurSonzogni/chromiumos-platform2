@@ -10,7 +10,7 @@
 #include <base/files/file_path.h>
 
 #include "dlcservice/boot/boot_slot.h"
-#include "dlcservice/dlc.h"
+#include "dlcservice/dlc_base.h"
 
 namespace dlcservice {
 

@@ -28,7 +28,7 @@
 #include <update_engine/dbus-proxy-mocks.h>
 
 #include "dlcservice/boot/mock_boot_slot.h"
-#include "dlcservice/dlc.h"
+#include "dlcservice/dlc_base.h"
 #include "dlcservice/dlc_service.h"
 #include "dlcservice/mock_metrics.h"
 #include "dlcservice/mock_state_change_reporter.h"

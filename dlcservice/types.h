@@ -12,9 +12,9 @@
 
 namespace dlcservice {
 
-class DlcBase;
+class DlcInterface;
 using DlcId = std::string;
-using DlcType = std::unique_ptr<DlcBase>;
+using DlcType = std::unique_ptr<DlcInterface>;
 using DlcMap = std::map<DlcId, DlcType>;
 using DlcIdList = std::vector<DlcId>;
 

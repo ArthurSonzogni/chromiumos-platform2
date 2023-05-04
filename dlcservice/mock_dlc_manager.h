@@ -5,6 +5,7 @@
 #ifndef DLCSERVICE_MOCK_DLC_MANAGER_H_
 #define DLCSERVICE_MOCK_DLC_MANAGER_H_
 
+#include "dlcservice/dlc_interface.h"
 #include "dlcservice/dlc_manager.h"
 
 namespace dlcservice {
@@ -15,7 +16,7 @@ class MockDlcManager : public DlcManager {
   MockDlcManager(const MockDlcManager&) = delete;
   MockDlcManager& operator=(const MockDlcManager&) = delete;
 
-  MOCK_METHOD(DlcBase*,
+  MOCK_METHOD(DlcInterface*,
               GetDlc,
               (const DlcId& id, brillo::ErrorPtr* err),
               (override));

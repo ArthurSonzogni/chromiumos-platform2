@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DLCSERVICE_DLC_H_
-#define DLCSERVICE_DLC_H_
+#ifndef DLCSERVICE_DLC_BASE_H_
+#define DLCSERVICE_DLC_BASE_H_
 
 #include <map>
 #include <memory>
@@ -22,11 +22,14 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "dlcservice/boot/boot_slot.h"
+#include "dlcservice/dlc_interface.h"
 #include "dlcservice/types.h"
 
 namespace dlcservice {
 
-class DlcBase {
+// TODO(kimjae): Make `DlcBase` a true base class by only holding and
+// implementation truly common methods.
+class DlcBase : public DlcInterface {
  public:
   explicit DlcBase(DlcId id) : id_(std::move(id)) {}
   virtual ~DlcBase() = default;
@@ -34,97 +37,30 @@ class DlcBase {
   DlcBase(const DlcBase&) = delete;
   DlcBase& operator=(const DlcBase&) = delete;
 
-  // Returns the list of directories related to a DLC for deletion.
-  static std::vector<base::FilePath> GetPathsToDelete(const DlcId& id);
-
-  // Initializes the DLC. This should be called right after creating the DLC
-  // object.
-  bool Initialize();
-
-  // Returns the ID of the DLC.
-  const DlcId& GetId() const;
-
-  // Returns the human readable name of the DLC.
-  const std::string& GetName() const;
-
-  // Returns the description of the DLC.
-  const std::string& GetDescription() const;
-
-  // Returns the current state of the DLC.
-  DlcState GetState() const;
-
-  // Returns the root directory inside a mounted DLC module.
-  base::FilePath GetRoot() const;
-
-  // Returns true if the DLC is currently being installed.
-  bool IsInstalling() const;
-
-  // Returns true if the DLC is already installed and mounted.
-  bool IsInstalled() const;
-
-  // Returns true if the DLC is marked verified.
-  bool IsVerified() const;
-
-  // Returns true if the DLC is scaled.
-  bool IsScaled() const;
-
-  // Returns true if the DLC has any content on disk that is taking space. This
-  // means mainly if it has images on disk.
-  bool HasContent() const;
-
-  // Returns the amount of disk space this DLC is using right now.
-  uint64_t GetUsedBytesOnDisk() const;
-
-  // Returns true if the DLC has a boolean true for 'preload-allowed'
-  // attribute in the manifest for the given |id| and |package|.
-  bool IsPreloadAllowed() const;
-
-  // Returns true if the DLC has a boolean true for 'factory-install'
-  // attribute in the manifest for the given `id` and `package`.
-  bool IsFactoryInstall() const;
-
-  // Creates the DLC image based on the fields from the manifest if the DLC is
-  // not installed. If the DLC image exists or is installed already, some
-  // verifications are passed to validate that the DLC is mounted.
-  // Initializes the installation like creating the necessary files, etc.
-  bool Install(brillo::ErrorPtr* err);
-
-  // This is called after the update_engine finishes the installation of a
-  // DLC. This marks the DLC as installed and mounts the DLC image.
-  bool FinishInstall(bool installed_by_ue, brillo::ErrorPtr* err);
-
-  // Cancels the ongoing installation of this DLC. The state will be set to
-  // uninstalled after this call if successful.
-  // The |err_in| argument is the error that causes the install to be cancelled.
-  virtual bool CancelInstall(const brillo::ErrorPtr& err_in,
-                             brillo::ErrorPtr* err);
-
-  // Uninstalls the DLC.
-  // Deletes all files associated with the DLC.
-  bool Uninstall(brillo::ErrorPtr* err);
-
-  // Is called when the DLC image is finally installed on the disk and is
-  // verified.
-  bool InstallCompleted(brillo::ErrorPtr* err);
-
-  // Is called when the inactive DLC image is updated and verified.
-  bool UpdateCompleted(brillo::ErrorPtr* err);
-
-  // Makes the DLC ready to be updated (creates and resizes the inactive
-  // image). Returns false if anything goes wrong.
-  bool MakeReadyForUpdate() const;
-
- protected:
-  virtual bool MakeReadyForUpdateInternal() const;
-
- public:
-  // Changes the install progress on this DLC. Only changes if the |progress| is
-  // greater than the current progress value.
-  void ChangeProgress(double progress);
-
-  // Toggle for DLC to be reserved.
-  // Will return the value set, pass `nullptr` to use as getter.
-  bool SetReserve(std::optional<bool> reserve);
+  bool Initialize() override;
+  const DlcId& GetId() const override;
+  const std::string& GetName() const override;
+  const std::string& GetDescription() const override;
+  DlcState GetState() const override;
+  base::FilePath GetRoot() const override;
+  bool IsInstalling() const override;
+  bool IsInstalled() const override;
+  bool IsVerified() const override;
+  bool IsScaled() const override;
+  bool HasContent() const override;
+  uint64_t GetUsedBytesOnDisk() const override;
+  bool IsPreloadAllowed() const override;
+  bool IsFactoryInstall() const override;
+  bool Install(brillo::ErrorPtr* err) override;
+  bool FinishInstall(bool installed_by_ue, brillo::ErrorPtr* err) override;
+  bool CancelInstall(const brillo::ErrorPtr& err_in,
+                     brillo::ErrorPtr* err) override;
+  bool Uninstall(brillo::ErrorPtr* err) override;
+  bool InstallCompleted(brillo::ErrorPtr* err) override;
+  bool UpdateCompleted(brillo::ErrorPtr* err) override;
+  bool MakeReadyForUpdate() const override;
+  void ChangeProgress(double progress) override;
+  bool SetReserve(std::optional<bool> reserve) override;
 
  protected:
   friend class DBusServiceTest;
@@ -152,6 +88,8 @@ class DlcBase {
   FRIEND_TEST(DlcBaseTest, ReserveInstall);
   FRIEND_TEST(DlcBaseTest, UnReservedInstall);
   FRIEND_TEST(DlcBaseTest, IsInstalledButUnmounted);
+
+  virtual bool MakeReadyForUpdateInternal() const;
 
   // Returns the path to the DLC image given the slot.
   virtual base::FilePath GetImagePath(BootSlot::Slot slot) const;
@@ -230,4 +168,4 @@ class DlcBase {
 
 }  // namespace dlcservice
 
-#endif  // DLCSERVICE_DLC_H_
+#endif  // DLCSERVICE_DLC_BASE_H_

@@ -17,6 +17,7 @@
 #include <libimageloader/manifest.h>
 
 #include "dlcservice/boot/boot_slot.h"
+#include "dlcservice/types.h"
 
 namespace dlcservice {
 
@@ -117,6 +118,9 @@ std::shared_ptr<imageloader::Manifest> GetDlcManifest(
 
 // Scans a directory and returns all its subdirectory names in a list.
 std::set<std::string> ScanDirectory(const base::FilePath& dir);
+
+// Returns the list of directories related to a DLC for deletion.
+std::vector<base::FilePath> GetPathsToDelete(const DlcId& id);
 
 // Create a tag that can be added to an Error log message to allow easier
 // filtering from listnr logs. Expected to be used as the first field of a log

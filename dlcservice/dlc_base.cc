@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "dlcservice/dlc.h"
+#include "dlcservice/dlc_base.h"
 
 #include <algorithm>
 #include <cinttypes>
@@ -12,13 +12,13 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/errors/error.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/constants/imageloader.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dlcservice/dbus-constants.h>
@@ -34,14 +34,6 @@ using std::string;
 using std::vector;
 
 namespace dlcservice {
-
-// static
-vector<FilePath> DlcBase::GetPathsToDelete(const DlcId& id) {
-  const auto* system_state = SystemState::Get();
-  return {JoinPaths(system_state->content_dir(), id),
-          JoinPaths(system_state->dlc_prefs_dir(), id),
-          JoinPaths(system_state->factory_install_dir(), id)};
-}
 
 // TODO(ahassani): Instead of initialize function, create a factory method so
 // we can develop different types of DLC classes.
@@ -93,7 +85,7 @@ bool DlcBase::Initialize() {
 
   // If factory install isn't allowed, free up the space.
   if (!IsFactoryInstall()) {
-    base::DeleteFile(factory_install_image_path_);
+    brillo::DeleteFile(factory_install_image_path_);
   }
 
   // TODO(kimjae): Efficiently overlap factory images with cache.
@@ -441,7 +433,7 @@ bool DlcBase::FactoryInstallCopier() {
     LOG(WARNING) << "Factory installed DLC (" << id_ << ") is ("
                  << factory_install_image_size << ") different than the "
                  << "size (" << manifest_->size() << ") in the manifest.";
-    base::DeletePathRecursively(
+    brillo::DeletePathRecursively(
         JoinPaths(SystemState::Get()->factory_install_dir(), id_));
     return false;
   }
@@ -466,7 +458,7 @@ bool DlcBase::FactoryInstallCopier() {
                                     manifest_image_sha256.size())
                  << " Found="
                  << base::HexEncode(image_sha256.data(), image_sha256.size());
-    base::DeletePathRecursively(
+    brillo::DeletePathRecursively(
         JoinPaths(SystemState::Get()->factory_install_dir(), id_));
     return false;
   }
@@ -475,7 +467,7 @@ bool DlcBase::FactoryInstallCopier() {
     LOG(WARNING) << "Failed to mark the image verified for DLC=" << id_;
   }
 
-  if (!base::DeletePathRecursively(
+  if (!brillo::DeletePathRecursively(
           JoinPaths(SystemState::Get()->factory_install_dir(), id_))) {
     LOG(WARNING) << "Failed to delete the factory installed DLC=" << id_;
   }
@@ -752,7 +744,7 @@ bool DlcBase::DeleteInternal(ErrorPtr* err) {
   vector<string> undeleted_paths;
   for (const auto& path : GetPathsToDelete(id_)) {
     if (base::PathExists(path)) {
-      if (!base::DeletePathRecursively(path)) {
+      if (!brillo::DeletePathRecursively(path)) {
         PLOG(ERROR) << "Failed to delete path=" << path;
         undeleted_paths.push_back(path.value());
       } else {

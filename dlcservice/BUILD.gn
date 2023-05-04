@@ -78,7 +78,11 @@ static_library("libdlcservice_utils") {
   sources = [
     "boot/boot_device.cc",
     "boot/boot_slot.cc",
+    "error.cc",
+    "metrics.cc",
     "proto_utils.cc",
+    "system_properties.cc",
+    "system_state.cc",
     "utils.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -95,14 +99,12 @@ static_library("libdlcservice") {
   sources = [
     "daemon.cc",
     "dbus_adaptors/dbus_adaptor.cc",
-    "dlc.cc",
+    "dlc_base.cc",
+    "dlc_base_creator.cc",
     "dlc_manager.cc",
     "dlc_service.cc",
-    "error.cc",
-    "metrics.cc",
     "prefs.cc",
     "system_properties.cc",
-    "system_state.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [ "rootdev" ]
@@ -113,6 +115,7 @@ static_library("libdlcservice") {
   if (use.lvm_stateful_partition) {
     sources += [
       "lvm/dlc_lvm.cc",
+      "lvm/dlc_lvm_creator.cc",
       "lvm/lvm_utils.cc",
       "lvm/lvmd_proxy_wrapper.cc",
     ]

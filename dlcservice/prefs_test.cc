@@ -8,7 +8,7 @@
 #include <gtest/gtest.h>
 
 #include "dlcservice/boot/boot_slot.h"
-#include "dlcservice/dlc.h"
+#include "dlcservice/dlc_base.h"
 #include "dlcservice/prefs.h"
 #include "dlcservice/system_state.h"
 #include "dlcservice/test_utils.h"

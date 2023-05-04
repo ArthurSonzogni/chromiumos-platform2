@@ -16,11 +16,13 @@
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 
-#include "dlcservice/dlc.h"
+#include "dlcservice/dlc_base.h"
+#include "dlcservice/dlc_base_creator.h"
+#include "dlcservice/error.h"
 #if USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/lvm/dlc_lvm.h"
+#include "dlcservice/lvm/dlc_lvm_creator.h"
 #endif  // USE_LVM_STATEFUL_PARTITION
-#include "dlcservice/error.h"
 #include "dlcservice/system_state.h"
 #include "dlcservice/types.h"
 #include "dlcservice/utils.h"
@@ -47,14 +49,15 @@ DlcManager::~DlcManager() = default;
 void DlcManager::Initialize() {
   supported_.clear();
 
+  // TODO(kimjae): Properly inject the creator.
+#if USE_LVM_STATEFUL_PARTITION
+  auto dlc_creator = DlcLvmCreator();
+#else
+  auto dlc_creator = DlcBaseCreator();
+#endif  // USE_LVM_STATEFUL_PARTITION
   // Initialize supported DLC(s).
   for (const auto& id : ScanDirectory(SystemState::Get()->manifest_dir())) {
-    auto result =
-#if USE_LVM_STATEFUL_PARTITION
-        supported_.emplace(id, std::make_unique<DlcLvm>(id));
-#else
-        supported_.emplace(id, std::make_unique<DlcBase>(id));
-#endif  // USE_LVM_STATEFUL_PARTITION
+    auto result = supported_.emplace(id, dlc_creator.Create(id));
     if (!result.first->second->Initialize()) {
       LOG(ERROR) << "Failed to initialize DLC " << id;
       supported_.erase(id);
@@ -71,7 +74,7 @@ void DlcManager::CleanupUnsupportedDlcs() {
     brillo::ErrorPtr tmp_err;
     if (GetDlc(id, &tmp_err) != nullptr)
       continue;
-    for (const auto& path : DlcBase::GetPathsToDelete(id))
+    for (const auto& path : GetPathsToDelete(id))
       if (base::PathExists(path)) {
         if (!base::DeletePathRecursively(path))
           PLOG(ERROR) << "Failed to delete path=" << path;
@@ -99,7 +102,7 @@ void DlcManager::CleanupUnsupportedDlcs() {
   }
 }
 
-DlcBase* DlcManager::GetDlc(const DlcId& id, brillo::ErrorPtr* err) {
+DlcInterface* DlcManager::GetDlc(const DlcId& id, brillo::ErrorPtr* err) {
   const auto& iter = supported_.find(id);
   if (iter == supported_.end()) {
     *err = Error::Create(

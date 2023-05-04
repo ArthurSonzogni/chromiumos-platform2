@@ -22,7 +22,7 @@
 #include <update_engine/proto_bindings/update_engine.pb.h>
 #include <update_engine/dbus-proxies.h>
 
-#include "dlcservice/dlc.h"
+#include "dlcservice/dlc_base.h"
 #include "dlcservice/dlc_manager.h"
 #include "dlcservice/system_state.h"
 
@@ -37,7 +37,8 @@ class DlcServiceInterface {
   virtual bool Install(const InstallRequest& install_request,
                        brillo::ErrorPtr* err) = 0;
   virtual bool Uninstall(const std::string& id, brillo::ErrorPtr* err) = 0;
-  virtual const DlcBase* GetDlc(const DlcId& id, brillo::ErrorPtr* err) = 0;
+  virtual const DlcInterface* GetDlc(const DlcId& id,
+                                     brillo::ErrorPtr* err) = 0;
   virtual DlcIdList GetInstalled() = 0;
   virtual DlcIdList GetExistingDlcs() = 0;
   virtual DlcIdList GetDlcsToUpdate() = 0;
@@ -62,7 +63,7 @@ class DlcService : public DlcServiceInterface {
   bool Uninstall(const std::string& id, brillo::ErrorPtr* err) override;
   DlcIdList GetInstalled() override;
   DlcIdList GetExistingDlcs() override;
-  const DlcBase* GetDlc(const DlcId& id, brillo::ErrorPtr* err) override;
+  const DlcInterface* GetDlc(const DlcId& id, brillo::ErrorPtr* err) override;
   DlcIdList GetDlcsToUpdate() override;
   bool InstallCompleted(const DlcIdList& ids, brillo::ErrorPtr* err) override;
   bool UpdateCompleted(const DlcIdList& ids, brillo::ErrorPtr* err) override;
