@@ -274,6 +274,12 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "path to a custom rootfs image. Only valid on untrusted VMs.",
             "PATH",
         );
+        opts.optopt(
+            "",
+            "vm-type",
+            "type of VM (TERMINA / ARC_VM / PLUGIN_VM / BOREALIS / BRUSCHETTA)",
+            "TYPE",
+        );
         opts.optflag(
             "",
             "no-start-lxd",
@@ -350,6 +356,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             timeout,
             oem_strings: matches.opt_strs("oem-string"),
             bios_dlc_id: matches.opt_str("bios-dlc"),
+            vm_type: matches.opt_str("vm-type"),
         };
 
         let user_disks = UserDisks {

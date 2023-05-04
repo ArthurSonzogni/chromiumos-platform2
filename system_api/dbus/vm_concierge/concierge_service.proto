@@ -273,6 +273,11 @@ message StartVmRequest {
   // - When --enable-dgpu is used without --enable-gpu, it helps with
   // compute acceleration (example: OpenCL).
   bool enable_dgpu_passthrough = 27;
+
+  // Optional type of VM. If not sent by the client, concierge tries to deduce
+  // what the VM type is automatically.
+  // TODO(b/280214191): Update concierge clients to send vm_type.
+  VmInfo.VmType vm_type = 28;
 }
 
 // Information that must be included with every StartPluginVm request.

@@ -84,6 +84,7 @@ enum ChromeOSError {
     InvalidSourcePath,
     MissingActiveSession,
     NoSuchVm,
+    NoSuchVmType,
     NoVmTechnologyEnabled,
     NotAvailableForPluginVm,
     NotPluginVm,
@@ -199,6 +200,7 @@ impl fmt::Display for ChromeOSError {
                 "missing active session corresponding to $CROS_USER_ID_HASH"
             ),
             NoSuchVm => write!(f, "VM with such name does not exist"),
+            NoSuchVmType => write!(f, "Invalid VM type"),
             NoVmTechnologyEnabled => write!(f, "neither Crostini nor Parallels VMs are enabled"),
             NotAvailableForPluginVm => write!(f, "this command is not available for Parallels VM"),
             NotPluginVm => write!(f, "this VM is not a Parallels VM"),
@@ -261,6 +263,7 @@ pub struct VmFeatures {
     pub timeout: u32,
     pub oem_strings: Vec<String>,
     pub bios_dlc_id: Option<String>,
+    pub vm_type: Option<String>,
 }
 
 pub enum ContainerSource {
@@ -1282,6 +1285,16 @@ impl Methods {
             }
             self.install_dlc(&bios_dlc_id)?;
             request.mut_vm().bios_dlc_id = bios_dlc_id;
+        }
+
+        if let Some(vm_type) = features.vm_type {
+            request.vm_type = match vm_type.to_uppercase().as_ref() {
+                "TERMINA" => VmInfo_VmType::TERMINA,
+                "PLUGIN_VM" => VmInfo_VmType::PLUGIN_VM,
+                "BOREALIS" => VmInfo_VmType::BOREALIS,
+                "BRUSCHETTA" => VmInfo_VmType::BRUSCHETTA,
+                _ => return Err(NoSuchVmType.into()),
+            };
         }
 
         request.start_termina = start_termina;
