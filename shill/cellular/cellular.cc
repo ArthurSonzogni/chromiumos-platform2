@@ -84,6 +84,12 @@ namespace {
 // connect attempt.
 constexpr base::TimeDelta kPendingConnectCancel = base::Minutes(1);
 
+// Prefix used by entitlement check logging messages when the entitlement
+// check is not successful. This prefix is used by the anomaly detector to
+// identify these events.
+constexpr char kEntitlementCheckAnomalyDetectorPrefix[] =
+    "Entitlement check failed: ";
+
 bool IsEnabledModemState(Cellular::ModemState state) {
   switch (state) {
     case Cellular::kModemStateFailed:
@@ -3039,7 +3045,8 @@ void Cellular::EntitlementCheck(
   // Only one entitlement check request should exist at any point.
   DCHECK(entitlement_check_callback_.is_null());
   if (!entitlement_check_callback_.is_null()) {
-    LOG(ERROR) << "Entitlement check received while another one is in progress";
+    LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix
+               << "request received while another one is in progress";
     metrics()->NotifyCellularEntitlementCheckResult(
         Metrics::kCellularEntitlementCheckIllegalInProgress);
     dispatcher()->PostTask(
@@ -3050,8 +3057,8 @@ void Cellular::EntitlementCheck(
   }
 
   if (!mobile_operator_info_->tethering_allowed()) {
-    LOG(INFO) << "Entitlement check failed because tethering is not allowed by "
-                 "database settings";
+    LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix
+               << "tethering is not allowed by database settings";
     metrics()->NotifyCellularEntitlementCheckResult(
         Metrics::kCellularEntitlementCheckNotAllowedByModb);
     dispatcher()->PostTask(
@@ -3063,7 +3070,8 @@ void Cellular::EntitlementCheck(
   // TODO(b/270210498): remove this check when tethering is allowed by default.
   if (!mobile_operator_info_->IsMobileNetworkOperatorKnown() &&
       !mobile_operator_info_->IsServingMobileNetworkOperatorKnown()) {
-    LOG(INFO) << "Entitlement check failed because the carrier is not known.";
+    LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix
+               << "carrier is not known.";
     metrics()->NotifyCellularEntitlementCheckResult(
         Metrics::kCellularEntitlementCheckUnknownCarrier);
     dispatcher()->PostTask(
@@ -3074,7 +3082,7 @@ void Cellular::EntitlementCheck(
   }
 
   if (!network()->local()) {
-    LOG(INFO) << "Entitlement check failed because there is no IP address.";
+    LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix << "no IP address.";
     metrics()->NotifyCellularEntitlementCheckResult(
         Metrics::kCellularEntitlementCheckNoIp);
     dispatcher()->PostTask(
@@ -3098,9 +3106,11 @@ void Cellular::OnEntitlementCheckUpdated(CarrierEntitlement::Result result) {
             .Run(TetheringManager::EntitlementStatus::kReady);
       }
       break;
-    case shill::CarrierEntitlement::Result::kUnrecognizedUser:
-    case shill::CarrierEntitlement::Result::kUserNotAllowedToTether:
     case shill::CarrierEntitlement::Result::kGenericError:
+      LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix << "Generic error";
+      [[fallthrough]];
+    case shill::CarrierEntitlement::Result::kUnrecognizedUser:  // FALLTHROUGH
+    case shill::CarrierEntitlement::Result::kUserNotAllowedToTether:
       if (!entitlement_check_callback_.is_null()) {
         std::move(entitlement_check_callback_)
             .Run(TetheringManager::EntitlementStatus::kNotAllowed);

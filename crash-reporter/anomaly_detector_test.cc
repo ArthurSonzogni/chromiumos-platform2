@@ -735,6 +735,16 @@ TEST(AnomalyDetectorTest, CellularFailureBlocked) {
   ParserTest("TEST_CELLULAR_FAILURE_BLOCKED", {modem_failure}, &parser);
 }
 
+TEST(AnomalyDetectorTest, CellularFailureEntitlementCheck) {
+  ParserRun entitlement_failure = {
+      .expected_text = "EntitlementCheckFailure",
+      .expected_flags = {
+          {"--modem_failure", base::StringPrintf("--weight=%d", 50)}}};
+  ShillParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_CELLULAR_FAILURE_ENTITLEMENT_CHECK", {entitlement_failure},
+             &parser);
+}
+
 TEST(AnomalyDetectorTest, ESimInstallSendHttpsFailure) {
   ParserRun install_failure = {
       .expected_text = "SendHttpsFailure",

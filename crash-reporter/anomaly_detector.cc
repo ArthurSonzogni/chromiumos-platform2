@@ -691,6 +691,8 @@ constexpr LazyRE2 connect_failure = {
     R"((\S+) could not connect \(trigger=(\S+)\) to mccmnc=(\S+): (.*))"};
 constexpr LazyRE2 sim_not_inserted_failure = {
     R"(dbus.*org.freedesktop.ModemManager1.Error.Core.WrongState.*)"};
+// logged by shill/cellular.cc after an entitlement check fails
+constexpr LazyRE2 entitlement_check_failure = {R"(Entitlement check failed:)"};
 
 MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
   std::string error_code;
@@ -709,6 +711,9 @@ MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
     weight = 200;
   } else if (RE2::PartialMatch(line, *mm_failure, &error_code,
                                &error_message)) {
+    weight = 50;
+  } else if (RE2::PartialMatch(line, *entitlement_check_failure)) {
+    error_code = "EntitlementCheckFailure";
     weight = 50;
   }
   if (error_code.empty()) {
