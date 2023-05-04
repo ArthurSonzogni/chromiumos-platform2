@@ -24,6 +24,11 @@ PrepareShaderCache(const std::string& owner_id,
                    scoped_refptr<dbus::Bus> bus_,
                    dbus::ObjectProxy* shadercached_proxy_);
 
+std::string PurgeShaderCache(const std::string& owner_id,
+                             const std::string& vm_name,
+                             scoped_refptr<dbus::Bus> bus_,
+                             dbus::ObjectProxy* shadercached_proxy_);
+
 }  // namespace vm_tools::concierge
 
 #endif  // VM_TOOLS_CONCIERGE_SHADERCACHED_HELPER_H_

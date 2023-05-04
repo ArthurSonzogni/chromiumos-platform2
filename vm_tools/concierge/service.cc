@@ -3204,6 +3204,13 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
     }
   }
 
+  // Delete shader cache best-effort. Shadercached is only distributed to boards
+  // if borealis enabled. There is no way to check VM type easily unless we turn
+  // it up.
+  // TODO(endlesspring): Deal with errors once we distriute to all boards.
+  auto _ = PurgeShaderCache(request.cryptohome_id(), request.vm_name(), bus_,
+                            shadercached_proxy_);
+
   base::FilePath disk_path;
   StorageLocation location;
   if (!CheckVmExists(request.vm_name(), request.cryptohome_id(), &disk_path,
@@ -3284,7 +3291,6 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
   }
 
   response.set_status(DISK_STATUS_DESTROYED);
-
   return response;
 }
 

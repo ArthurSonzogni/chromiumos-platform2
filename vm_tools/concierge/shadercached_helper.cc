@@ -3,12 +3,14 @@
 // found in the LICENSE file.
 
 #include "vm_tools/concierge/shadercached_helper.h"
+#include <shadercached/proto_bindings/shadercached.pb.h>
 
 #include "base/strings/strcat.h"
 #include "base/strings/stringprintf.h"
 #include "brillo/dbus/dbus_proxy_util.h"
 #include "dbus/message.h"
 #include "dbus/scoped_dbus_error.h"
+#include "dbus/shadercached/dbus-constants.h"
 
 namespace vm_tools::concierge {
 
@@ -50,9 +52,9 @@ PrepareShaderCache(const std::string& owner_id,
   shadercached_writer.AppendProtoAsArrayOfBytes(prepare_request);
 
   dbus::ScopedDBusError error;
-  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
+  auto dbus_response = brillo::dbus_utils::CallDBusMethodWithErrorResponse(
       bus_, shadercached_proxy_, &method_call,
-      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
 
   if (!dbus_response) {
     return base::unexpected(
@@ -67,6 +69,31 @@ PrepareShaderCache(const std::string& owner_id,
   }
 
   return base::ok(response);
+}
+
+std::string PurgeShaderCache(const std::string& owner_id,
+                             const std::string& vm_name,
+                             scoped_refptr<dbus::Bus> bus_,
+                             dbus::ObjectProxy* shadercached_proxy_) {
+  dbus::MethodCall method_call(shadercached::kShaderCacheInterface,
+                               shadercached::kPurgeMethod);
+  dbus::MessageWriter shadercached_writer(&method_call);
+  shadercached::PurgeRequest purge_request;
+  purge_request.set_vm_name(vm_name);
+  purge_request.set_vm_owner_id(owner_id);
+  shadercached_writer.AppendProtoAsArrayOfBytes(purge_request);
+
+  dbus::ScopedDBusError error;
+  auto dbus_response = brillo::dbus_utils::CallDBusMethodWithErrorResponse(
+      bus_, shadercached_proxy_, &method_call,
+      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
+
+  if (!dbus_response) {
+    return base::StringPrintf("%s %s: %s", shadercached::kShaderCacheInterface,
+                              error.name(), error.message());
+  }
+
+  return "";
 }
 
 }  // namespace vm_tools::concierge
