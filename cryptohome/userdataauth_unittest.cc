@@ -3487,6 +3487,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
   EXPECT_THAT(
       list_reply.supported_auth_factors(),
       UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                           user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY,
                            user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
 }
 
@@ -3751,6 +3752,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
       list_reply_2.supported_auth_factors(),
       UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
                            user_data_auth::AUTH_FACTOR_TYPE_PIN,
+                           user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY,
                            user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
   ResetUserSecretStashExperimentForTesting();
 }

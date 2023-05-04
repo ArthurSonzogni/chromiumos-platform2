@@ -18,8 +18,7 @@ bool CryptohomeRecoveryAuthFactorDriver::IsSupported(
   if (configured_factors.count(AuthFactorType::kKiosk) > 0) {
     return false;
   }
-  return configured_storage_types.size() == 1 &&
-         configured_storage_types.count(
+  return configured_storage_types.count(
              AuthFactorStorageType::kUserSecretStash) &&
          CryptohomeRecoveryAuthBlock::IsSupported(*crypto_).ok();
 }
