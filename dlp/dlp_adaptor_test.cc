@@ -186,10 +186,6 @@ class DlpAdaptorTest : public ::testing::Test {
           response_proto.add_files_restrictions();
       *file_restriction->mutable_file_metadata() = file_metadata;
       file_restriction->set_restriction_level(restriction_level);
-      if (restriction_level == RestrictionLevel::LEVEL_BLOCK ||
-          restriction_level == RestrictionLevel::LEVEL_WARN_CANCEL) {
-        *response_proto.add_restricted_files() = file_metadata;
-      }
     }
 
     writer.AppendProtoAsArrayOfBytes(response_proto);

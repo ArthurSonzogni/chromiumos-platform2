@@ -657,14 +657,23 @@ void DlpAdaptor::OnRequestFileAccess(
   // Cache the response.
   std::move(cache_callback).Run(response);
 
-  if (response.restricted_files().empty()) {
+  bool allowed = true;
+  for (const auto& file : response.files_restrictions()) {
+    if (file.restriction_level() == ::dlp::RestrictionLevel::LEVEL_BLOCK ||
+        file.restriction_level() ==
+            ::dlp::RestrictionLevel::LEVEL_WARN_CANCEL) {
+      allowed = false;
+      break;
+    }
+  }
+
+  if (allowed) {
     int lifeline_fd = AddLifelineFd(local_fd.get());
     approved_requests_.insert_or_assign(lifeline_fd,
                                         std::make_pair(std::move(inodes), pid));
   }
 
-  std::move(callback).Run(response.restricted_files().empty(),
-                          /*error_message=*/std::string());
+  std::move(callback).Run(allowed, /*error_message=*/std::string());
 }
 
 void DlpAdaptor::OnRequestFileAccessError(RequestFileAccessCallback callback,
@@ -806,10 +815,13 @@ void DlpAdaptor::OnIsFilesTransferRestricted(
 
   // Cache the response.
   std::move(cache_callback).Run(response);
-
-  for (const auto& file : *response.mutable_restricted_files()) {
-    DCHECK(base::Contains(checked_files, file.path()));
-    restricted_files.push_back(file.path());
+  for (const auto& file : response.files_restrictions()) {
+    DCHECK(base::Contains(checked_files, file.file_metadata().path()));
+    if (file.restriction_level() == ::dlp::RestrictionLevel::LEVEL_BLOCK ||
+        file.restriction_level() ==
+            ::dlp::RestrictionLevel::LEVEL_WARN_CANCEL) {
+      restricted_files.push_back(file.file_metadata().path());
+    }
   }
 
   std::move(callback).Run(std::move(restricted_files),

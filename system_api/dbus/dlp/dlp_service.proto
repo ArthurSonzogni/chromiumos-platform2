@@ -226,12 +226,10 @@ message IsFilesTransferRestrictedRequest {
 }
 
 message IsFilesTransferRestrictedResponse {
-  reserved 2;
+  reserved 2, 3;
   // Error message, empty if no error occurred.
   optional string error_message = 1;
   // Files restricted to be transferred.
-  // TODO(b/259182892): Remove when it's not used in Chrome.
-  repeated FileMetadata restricted_files = 3;
   // Check results for the files to be transferred.
   repeated FileRestriction files_restrictions = 4;
 }
