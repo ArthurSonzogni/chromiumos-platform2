@@ -12,6 +12,7 @@
 #include <base/containers/fixed_flat_set.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <minigbm/minigbm_helpers.h>

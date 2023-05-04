@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <base/containers/span.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <base/values.h>
 
