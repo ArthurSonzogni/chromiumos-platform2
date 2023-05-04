@@ -22,6 +22,7 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_TYPES_COMMON_H_
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_COMMON_H_
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <string>
@@ -50,30 +51,16 @@ class AfDriverWithType : public virtual AuthFactorDriver {
 // the same way block_type() expects them to be listed.
 template <AuthBlockType... kTypes>
 class AfDriverWithBlockTypes : public virtual AuthFactorDriver {
- private:
-  // Template that supplies the underlying storage for the auth block type list.
-  // We back all the block_types lookups with a singular static array, wrapped
-  // in a span to provide the nicer interface that block_types expects to
-  // return.
-  //
-  // We have to define this a little bit weirdly because C++ does not support
-  // zero-length arrays. So for cases where 1 or more types are specified the
-  // array+span is used, but for the 0 type case the array is omitted and just a
-  // default (empty) span is defined.
-  template <AuthBlockType... types>
-  struct Storage {
-    static constexpr AuthBlockType kTypeArray[] = {types...};
-    static constexpr base::span<const AuthBlockType> kTypeSpan{kTypeArray};
-  };
-  template <>
-  struct Storage<> {
-    static constexpr base::span<const AuthBlockType> kTypeSpan;
-  };
-
  protected:
   base::span<const AuthBlockType> block_types() const override {
-    return Storage<kTypes...>::kTypeSpan;
+    return kTypeArray;
   }
+
+ private:
+  // The underlying storage for the auth block type list. We back all the
+  // block_types lookups with a singular static array.
+  static constexpr std::array<AuthBlockType, sizeof...(kTypes)> kTypeArray = {
+      kTypes...};
 };
 
 // Common implementation of ConvertToProto(). This implementation is templated
