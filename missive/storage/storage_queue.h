@@ -11,9 +11,9 @@
 #include <optional>
 #include <queue>
 #include <string>
+#include <unordered_set>
 
 #include <base/containers/flat_map.h>
-#include <base/containers/flat_set.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -343,7 +343,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Helper method for Init(): enumerates all data files in the directory.
   // Valid file names are <prefix>.<sequencing_id>, any other names are ignored.
   // Adds used data files to the set.
-  Status EnumerateDataFiles(base::flat_set<base::FilePath>* used_files_set);
+  Status EnumerateDataFiles(std::unordered_set<base::FilePath>* used_files_set);
 
   // Helper method for Init(): scans the last file in StorageQueue, if there are
   // files at all, and learns the latest sequencing id. Otherwise (if there
@@ -375,16 +375,16 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   Status ReadMetadata(const base::FilePath& meta_file_path,
                       size_t size,
                       int64_t sequencing_id,
-                      base::flat_set<base::FilePath>* used_files_set);
+                      std::unordered_set<base::FilePath>* used_files_set);
 
   // Helper method for Init(): locates file with metadata that matches the
   // last sequencing id and loads metadata from it.
   // Adds used metadata file to the set.
-  Status RestoreMetadata(base::flat_set<base::FilePath>* used_files_set);
+  Status RestoreMetadata(std::unordered_set<base::FilePath>* used_files_set);
 
   // Delete all files except those listed in |used_file_set|.
   void DeleteUnusedFiles(
-      const base::flat_set<base::FilePath>& used_files_set) const;
+      const std::unordered_set<base::FilePath>& used_files_set) const;
 
   // Helper method for Write(): deletes meta files up to, but not including
   // |sequencing_id_to_keep|. Any errors are ignored.

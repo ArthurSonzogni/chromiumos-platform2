@@ -2567,9 +2567,31 @@ TEST_P(StorageQueueTest, WriteIntoNewStorageQueueReopenWithCorruptData) {
 
   DeleteGenerationIdFromRecordFilePaths(options);
 
-  // All data files should be irreparably corrupt
-  auto storage_queue_result = CreateTestStorageQueue(options);
-  EXPECT_THAT(storage_queue_result.status(), Ne(Status::StatusOK()));
+  // All data files should be irreparably corrupt, but we still consider it a
+  // success: the queue regenerates.
+  CreateTestStorageQueueOrDie(options);
+
+  // Make sure the queue is OK, but old writes are lost.
+  WriteStringOrDie(kMoreData[0]);
+  WriteStringOrDie(kMoreData[1]);
+  WriteStringOrDie(kMoreData[2]);
+
+  // Set uploader expectations.
+  test::TestCallbackAutoWaiter waiter;
+  EXPECT_CALL(set_mock_uploader_expectations_,
+              Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
+      .WillOnce(Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+        return TestUploader::SetUp(&waiter, this)
+            .Required(0, kMoreData[0])
+            .Required(1, kMoreData[1])
+            .Required(2, kMoreData[2])
+            .Complete();
+      }))
+      .RetiresOnSaturation();
+
+  // Trigger upload.
+  SetExpectedUploadsCount();
+  task_environment_.FastForwardBy(base::Seconds(1));
 }
 
 TEST_P(StorageQueueTest, WriteWithUnencryptedCopy) {

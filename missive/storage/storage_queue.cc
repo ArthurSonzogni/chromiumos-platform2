@@ -14,10 +14,10 @@
 #include <optional>
 #include <queue>
 #include <string>
+#include <unordered_set>
 #include <utility>
 
 #include <base/containers/adapters.h>
-#include <base/containers/flat_set.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -273,7 +273,7 @@ Status StorageQueue::Init() {
              "' does not exist, error=", base::File::ErrorToString(error)}));
   }
   DCHECK_LE(generation_id_, 0);  // Not set yet - valid range [1, max_int64]
-  base::flat_set<base::FilePath> used_files_set;
+  std::unordered_set<base::FilePath> used_files_set;
   // Enumerate data files and scan the last one to determine what sequence
   // ids do we have (first and last).
   RETURN_IF_ERROR(EnumerateDataFiles(&used_files_set));
@@ -439,16 +439,18 @@ StatusOr<int64_t> StorageQueue::AddDataFile(
 }
 
 Status StorageQueue::EnumerateDataFiles(
-    base::flat_set<base::FilePath>* used_files_set) {
+    std::unordered_set<base::FilePath>* used_files_set) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
   // We need to set first_sequencing_id_ to 0 if this is the initialization
   // of an empty StorageQueue, and to the lowest sequencing id among all
   // existing files, if it was already used.
   std::optional<int64_t> first_sequencing_id;
-  base::FileEnumerator dir_enum(options_.directory(),
-                                /*recursive=*/false,
-                                base::FileEnumerator::FILES,
-                                base::StrCat({options_.file_prefix(), ".*"}));
+  base::FileEnumerator dir_enum(
+      options_.directory(),
+      /*recursive=*/false, base::FileEnumerator::FILES,
+      base::StrCat({options_.file_prefix(), ".*"}),
+      base::FileEnumerator::FolderSearchPolicy::ALL,  // Ignored: no recursion
+      base::FileEnumerator::ErrorPolicy::STOP_ENUMERATION);
 
   bool found_files_in_directory = false;
 
@@ -471,27 +473,40 @@ Status StorageQueue::EnumerateDataFiles(
                    << ", status=" << file_sequencing_id_result.status();
       continue;
     }
-    used_files_set->emplace(full_name);  // File is in use.
     if (!first_sequencing_id.has_value() ||
         first_sequencing_id.value() > file_sequencing_id_result.ValueOrDie()) {
       first_sequencing_id = file_sequencing_id_result.ValueOrDie();
     }
+  }
+  const auto enum_error = dir_enum.GetError();
+  if (enum_error != base::File::Error::FILE_OK) {
+    // This is a transient error, return status for Storage to back off and
+    // retry.
+    return Status(
+        error::DATA_LOSS,
+        base::StrCat({"Errors detected during directory enumeration ",
+                      base::File::ErrorToString(enum_error),
+                      ", path=", options_.directory().MaybeAsASCII()}));
   }
 
   // If there were files in the queue directory, but we haven't found a
   // generation id in any of the file paths, then the data is corrupt and we
   // shouldn't proceed.
   if (found_files_in_directory && generation_id_ <= 0) {
-    return Status(
-        error::DATA_LOSS,
-        base::StrCat({"All file paths missing generation id in directory",
-                      options_.directory().MaybeAsASCII()}));
+    LOG(WARNING) << "All file paths missing generation id in directory "
+                 << options_.directory().MaybeAsASCII();
+    files_.clear();
+    first_sequencing_id_ = 0;
+    return Status::StatusOK();  // Queue will regenerate, do not return error.
   }
   // first_sequencing_id.has_value() is true only if we found some files.
   // Otherwise it is false, the StorageQueue is being initialized for the
   // first time, and we need to set first_sequencing_id_ to 0.
   first_sequencing_id_ =
       first_sequencing_id.has_value() ? first_sequencing_id.value() : 0;
+  for (const auto& [_, file] : files_) {
+    used_files_set->emplace(file->name());  // File is in use.
+  }
   return Status::StatusOK();
 }
 
@@ -783,7 +798,7 @@ Status StorageQueue::ReadMetadata(
     const base::FilePath& meta_file_path,
     size_t size,
     int64_t sequencing_id,
-    base::flat_set<base::FilePath>* used_files_set) {
+    std::unordered_set<base::FilePath>* used_files_set) {
   ASSIGN_OR_RETURN(
       scoped_refptr<SingleFile> meta_file,
       SingleFile::Create(meta_file_path, size, options_.memory_resource(),
@@ -848,7 +863,7 @@ Status StorageQueue::ReadMetadata(
 }
 
 Status StorageQueue::RestoreMetadata(
-    base::flat_set<base::FilePath>* used_files_set) {
+    std::unordered_set<base::FilePath>* used_files_set) {
   // Enumerate all meta-files into a map sequencing_id->file_path.
   std::map<int64_t, std::pair<base::FilePath, size_t>> meta_files;
   base::FileEnumerator dir_enum(options_.directory(),
@@ -900,7 +915,7 @@ Status StorageQueue::RestoreMetadata(
 }  // namespace reporting
 
 void StorageQueue::DeleteUnusedFiles(
-    const base::flat_set<base::FilePath>& used_files_set) const {
+    const std::unordered_set<base::FilePath>& used_files_set) const {
   // Note, that these files were not reserved against disk allowance and do not
   // need to be discarded.
   // If the deletion of a file fails, the file will be naturally handled next
@@ -910,9 +925,10 @@ void StorageQueue::DeleteUnusedFiles(
                                 base::FileEnumerator::FILES);
   DeleteFilesWarnIfFailed(
       dir_enum, base::BindRepeating(
-                    [](const base::flat_set<base::FilePath>* used_files_set,
+                    [](const std::unordered_set<base::FilePath>* used_files_set,
                        const base::FilePath& full_name) {
-                      return !used_files_set->contains(full_name);
+                      return used_files_set->find(full_name) ==
+                             used_files_set->end();
                     },
                     &used_files_set));
 }
