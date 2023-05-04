@@ -21,7 +21,7 @@ main() {
     --debian-release=bookworm \
     -o "${image_path}"
 
-  zstd -16 "${image_path}"
+  zstd --no-progress -16 "${image_path}"
   sudo rm -f "${image_path}"
 }
 
