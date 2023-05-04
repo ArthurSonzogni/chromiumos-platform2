@@ -13,7 +13,7 @@
 namespace cryptohome {
 
 bool PasswordAuthFactorDriver::IsSupported(
-    AuthFactorStorageType storage_type,
+    const std::set<AuthFactorStorageType>& /*configured_storage_types*/,
     const std::set<AuthFactorType>& configured_factors) const {
   if (configured_factors.count(AuthFactorType::kKiosk) > 0) {
     return false;

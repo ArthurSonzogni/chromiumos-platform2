@@ -29,8 +29,8 @@ using ::hwsec_foundation::status::MakeStatus;
 }  // namespace
 
 bool LegacyFingerprintAuthFactorDriver::IsSupported(
-    AuthFactorStorageType storage_type,
-    const std::set<AuthFactorType>& configured_factors) const {
+    const std::set<AuthFactorStorageType>& /*configured_storage_types*/,
+    const std::set<AuthFactorType>& /*configured_factors*/) const {
   return false;
 }
 

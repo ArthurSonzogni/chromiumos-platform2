@@ -113,7 +113,20 @@ TEST_F(FingerprintDriverTest, UnsupportedWithVk) {
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset}, {}),
+              IsFalse());
+}
+
+TEST_F(FingerprintDriverTest, UnsupportedWithVkUssMix) {
+  // Setup
+  FingerprintAuthFactorDriver fp_driver(
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+  AuthFactorDriver& driver = fp_driver;
+
+  // Test, Verify.
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset,
+                                  AuthFactorStorageType::kUserSecretStash},
+                                 {}),
               IsFalse());
 }
 
@@ -124,7 +137,7 @@ TEST_F(FingerprintDriverTest, UnsupportedWithKiosk) {
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
                                  {AuthFactorType::kKiosk}),
               IsFalse());
 }
@@ -136,7 +149,7 @@ TEST_F(FingerprintDriverTest, UnsupportedByBlock) {
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
               IsFalse());
 }
 
@@ -151,7 +164,7 @@ TEST_F(FingerprintDriverTest, SupportedByBlock) {
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
               IsTrue());
 }
 

@@ -75,7 +75,7 @@ TEST_F(CryptohomeRecoveryDriverTest, UnsupportedWithVk) {
   AuthFactorDriver& driver = recovery_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset}, {}),
               IsFalse());
 }
 
@@ -85,7 +85,7 @@ TEST_F(CryptohomeRecoveryDriverTest, UnsupportedWithKiosk) {
   AuthFactorDriver& driver = recovery_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
                                  {AuthFactorType::kKiosk}),
               IsFalse());
 }
@@ -97,7 +97,7 @@ TEST_F(CryptohomeRecoveryDriverTest, UnsupportedByBlock) {
   AuthFactorDriver& driver = recovery_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
               IsFalse());
 }
 
@@ -108,7 +108,7 @@ TEST_F(CryptohomeRecoveryDriverTest, SupportedByBlock) {
   AuthFactorDriver& driver = recovery_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
               IsTrue());
 }
 

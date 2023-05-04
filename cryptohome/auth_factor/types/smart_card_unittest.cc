@@ -108,7 +108,7 @@ TEST_F(SmartCardDriverTest, UnsupportedWithKiosk) {
   AuthFactorDriver& driver = sc_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
                                  {AuthFactorType::kKiosk}),
               IsFalse());
 }
@@ -123,7 +123,7 @@ TEST_F(SmartCardDriverTest, UnsupportedByBlock) {
   AuthFactorDriver& driver = sc_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
               IsFalse());
 }
 
@@ -137,7 +137,7 @@ TEST_F(SmartCardDriverTest, SupportedByBlockWithVk) {
   AuthFactorDriver& driver = sc_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset}, {}),
               IsTrue());
 }
 
@@ -151,7 +151,7 @@ TEST_F(SmartCardDriverTest, SupportedByBlockWithUss) {
   AuthFactorDriver& driver = sc_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
               IsTrue());
 }
 

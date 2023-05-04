@@ -13,12 +13,14 @@
 namespace cryptohome {
 
 bool CryptohomeRecoveryAuthFactorDriver::IsSupported(
-    AuthFactorStorageType storage_type,
+    const std::set<AuthFactorStorageType>& configured_storage_types,
     const std::set<AuthFactorType>& configured_factors) const {
   if (configured_factors.count(AuthFactorType::kKiosk) > 0) {
     return false;
   }
-  return storage_type == AuthFactorStorageType::kUserSecretStash &&
+  return configured_storage_types.size() == 1 &&
+         configured_storage_types.count(
+             AuthFactorStorageType::kUserSecretStash) &&
          CryptohomeRecoveryAuthBlock::IsSupported(*crypto_).ok();
 }
 

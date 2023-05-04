@@ -2948,11 +2948,14 @@ void UserDataAuth::ListAuthFactors(
     // Determine what auth factors are supported by going through the entire set
     // of auth factor types and checking each one.
 
-    AuthFactorStorageType storage_type = AuthFactorStorageType::kVaultKeyset;
-    if (!auth_factor_map.HasFactorWithStorage(
-            AuthFactorStorageType::kVaultKeyset) &&
-        IsUserSecretStashExperimentEnabled(platform_)) {
-      storage_type = AuthFactorStorageType::kUserSecretStash;
+    std::set<AuthFactorStorageType> configured_storages;
+    if (IsUserSecretStashExperimentEnabled(platform_)) {
+      configured_storages.insert(AuthFactorStorageType::kUserSecretStash);
+    }
+    if (!IsUserSecretStashExperimentEnabled(platform_) ||
+        auth_factor_map.HasFactorWithStorage(
+            AuthFactorStorageType::kVaultKeyset)) {
+      configured_storages.insert(AuthFactorStorageType::kVaultKeyset);
     }
 
     for (auto proto_type :
@@ -2963,7 +2966,7 @@ void UserDataAuth::ListAuthFactors(
       }
       const AuthFactorDriver& factor_driver =
           auth_factor_driver_manager_->GetDriver(*type);
-      if (factor_driver.IsSupported(storage_type, configured_types)) {
+      if (factor_driver.IsSupported(configured_storages, configured_types)) {
         reply.add_supported_auth_factors(proto_type);
       }
     }

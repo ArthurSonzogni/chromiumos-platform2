@@ -80,22 +80,22 @@ TEST_F(PasswordDriverTest, SupportedWithoutKiosk) {
   AuthFactorDriver& driver = password_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset}, {}),
               IsTrue());
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset,
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset},
                                  {AuthFactorType::kPin}),
               IsTrue());
   EXPECT_THAT(
-      driver.IsSupported(AuthFactorStorageType::kVaultKeyset,
+      driver.IsSupported({AuthFactorStorageType::kVaultKeyset},
                          {AuthFactorType::kPassword, AuthFactorType::kPin}),
       IsTrue());
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
               IsTrue());
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
                                  {AuthFactorType::kPin}),
               IsTrue());
   EXPECT_THAT(
-      driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+      driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
                          {AuthFactorType::kPassword, AuthFactorType::kPin}),
       IsTrue());
 }
@@ -106,10 +106,10 @@ TEST_F(PasswordDriverTest, UnsupportedWithKiosk) {
   AuthFactorDriver& driver = password_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset,
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset},
                                  {AuthFactorType::kKiosk}),
               IsFalse());
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
                                  {AuthFactorType::kKiosk}),
               IsFalse());
 }

@@ -50,11 +50,11 @@ class AuthFactorDriver {
   // type to use.
   virtual base::span<const AuthBlockType> block_types() const = 0;
 
-  // Indicates if the factor is supported based on a combination of the type of
-  // auth factor storage being used, the currently configured factors, and the
+  // Indicates if the factor is supported based on a combination of the types of
+  // auth factor storages being used, the currently configured factors, and the
   // available underlying hardware.
   virtual bool IsSupported(
-      AuthFactorStorageType storage_type,
+      const std::set<AuthFactorStorageType>& configured_storage_types,
       const std::set<AuthFactorType>& configured_factors) const = 0;
 
   // Indicates if the factor requires the use of a Prepare operation before it

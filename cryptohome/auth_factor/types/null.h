@@ -36,8 +36,8 @@ class NullAuthFactorDriver final
 
  private:
   bool IsSupported(
-      AuthFactorStorageType storage_type,
-      const std::set<AuthFactorType>& configured_factors) const override {
+      const std::set<AuthFactorStorageType>& /*configured_storage_types*/,
+      const std::set<AuthFactorType>& /*configured_factors*/) const override {
     return false;
   }
   bool NeedsResetSecret() const override { return false; }

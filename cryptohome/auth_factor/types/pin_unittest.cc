@@ -92,7 +92,7 @@ TEST_F(PinDriverTest, UnsupportedWithKiosk) {
   AuthFactorDriver& driver = pin_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
                                  {AuthFactorType::kKiosk}),
               IsFalse());
 }
@@ -104,7 +104,7 @@ TEST_F(PinDriverTest, UnsupportedByBlock) {
   AuthFactorDriver& driver = pin_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
               IsFalse());
 }
 
@@ -116,7 +116,7 @@ TEST_F(PinDriverTest, SupportedByBlockWithVk) {
   AuthFactorDriver& driver = pin_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset}, {}),
               IsTrue());
 }
 
@@ -128,7 +128,7 @@ TEST_F(PinDriverTest, SupportedByBlockWithUss) {
   AuthFactorDriver& driver = pin_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
               IsTrue());
 }
 

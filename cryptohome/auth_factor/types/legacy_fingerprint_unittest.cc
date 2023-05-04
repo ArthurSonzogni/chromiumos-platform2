@@ -81,7 +81,7 @@ TEST_F(LegacyFingerprintDriverTest, UnsupportedWithVk) {
   AuthFactorDriver& driver = legacy_fp_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kVaultKeyset, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset}, {}),
               IsFalse());
 }
 
@@ -91,7 +91,7 @@ TEST_F(LegacyFingerprintDriverTest, UnsupportedWithUss) {
   AuthFactorDriver& driver = legacy_fp_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash, {}),
+  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
               IsFalse());
 }
 
