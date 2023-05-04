@@ -46,6 +46,7 @@ static std::string ObjectID(const CellularService* c) {
 const char CellularService::kAutoConnActivating[] = "activating";
 const char CellularService::kAutoConnBadPPPCredentials[] =
     "bad PPP credentials";
+const char CellularService::kAutoConnNoDevice[] = "no device";
 const char CellularService::kAutoConnDeviceDisabled[] = "device disabled";
 const char CellularService::kAutoConnNotRegistered[] =
     "cellular not registered";
@@ -753,7 +754,11 @@ void CellularService::AutoConnect() {
 }
 
 bool CellularService::IsAutoConnectable(const char** reason) const {
-  if (!cellular_ || !cellular_->enabled()) {
+  if (!cellular_) {
+    *reason = kAutoConnNoDevice;
+    return false;
+  }
+  if (!cellular_->enabled()) {
     *reason = kAutoConnDeviceDisabled;
     return false;
   }
