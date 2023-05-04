@@ -1489,10 +1489,12 @@ void AdaptiveChargingController::StopAdaptiveCharging() {
       state_ == AdaptiveChargingState::SLOWCHARGE) {
     state_ = AdaptiveChargingState::INACTIVE;
     LOG(INFO) << "Adaptive charging stopped.";
-    // Only set hold_percent_end_time if it hasn't been set when slow charging
-    // started.
-    if (hold_percent_end_time_ == base::TimeTicks())
-      hold_percent_end_time_ = now;
+  }
+
+  // Only set hold_percent_end_time if it hasn't been set when slow charging
+  // started.
+  if (hold_percent_end_time_ == base::TimeTicks()) {
+    hold_percent_end_time_ = now;
   }
 
   recheck_alarm_->Stop();
