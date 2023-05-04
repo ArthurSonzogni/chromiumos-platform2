@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RUNTIME_PROBE_PROBE_FUNCTION_ARGUMENT_H_
-#define RUNTIME_PROBE_PROBE_FUNCTION_ARGUMENT_H_
+#ifndef RUNTIME_PROBE_PROBE_FUNCTION_ARGUMENT_LEGACY_H_
+#define RUNTIME_PROBE_PROBE_FUNCTION_ARGUMENT_LEGACY_H_
 
 #include <memory>
 #include <set>
@@ -129,4 +129,4 @@ bool ParseArgument<std::vector<std::unique_ptr<ProbeFunction>>>(
 
 }  // namespace runtime_probe
 
-#endif  // RUNTIME_PROBE_PROBE_FUNCTION_ARGUMENT_H_
+#endif  // RUNTIME_PROBE_PROBE_FUNCTION_ARGUMENT_LEGACY_H_

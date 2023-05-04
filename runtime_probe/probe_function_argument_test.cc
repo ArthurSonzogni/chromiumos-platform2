@@ -8,7 +8,7 @@
 #include <gtest/gtest.h>
 
 #include "runtime_probe/probe_function.h"
-#include "runtime_probe/probe_function_argument.h"
+#include "runtime_probe/probe_function_argument_legacy.h"
 
 namespace runtime_probe {
 

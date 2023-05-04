@@ -19,7 +19,7 @@
 #include <base/values.h>
 #include <base/strings/string_util.h>
 
-#include "runtime_probe/probe_function_argument.h"
+#include "runtime_probe/probe_function_argument_legacy.h"
 
 namespace runtime_probe {
 
