@@ -132,11 +132,12 @@ pub async fn main() -> Result<()> {
         // Method Purge
         builder.method_with_cr_async(
             dbus_constants::PURGE_METHOD,
+            ("purge_request_proto",),
             (),
-            (),
-            move |mut ctx, _, ()| {
+            move |mut ctx, _, (raw_bytes,): (Vec<u8>,)| {
                 info!("Received purge request");
-                let handler = service::handle_purge(mount_map_clone3.clone(), c_clone3.clone());
+                let handler =
+                    service::handle_purge(raw_bytes, mount_map_clone3.clone(), c_clone3.clone());
                 async move {
                     match handler.await.map_err(to_method_err) {
                         Ok(result) => ctx.reply(Ok(result)),

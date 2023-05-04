@@ -11,7 +11,7 @@ use std::{
 use super::helper::unsafe_quota::{set_quota_limited, set_quota_normal};
 use crate::{
     common::{CRYPTO_HOME, PRECOMPILED_CACHE_DIR},
-    shader_cache_mount::ShaderCacheMountMapPtr,
+    shader_cache_mount::{ShaderCacheMountMapPtr, VmId},
 };
 use dbus::nonblock::SyncConnection;
 use libchromeos::sys::{debug, info, warn};
@@ -26,7 +26,6 @@ lazy_static! {
 }
 
 fn delete_all_files(path: &Path) -> Result<()> {
-    debug!("Cleaning up {}", path.display());
     for dir_entry in (std::fs::read_dir(path)?).flatten() {
         if dir_entry.path().is_dir() {
             std::fs::remove_dir_all(dir_entry.path())?;
@@ -46,19 +45,61 @@ fn get_all_precompiled_cache_dir() -> Result<Vec<PathBuf>> {
     Ok(dirs)
 }
 
-pub async fn delete_precompiled_cache(mount_map: ShaderCacheMountMapPtr) -> Result<()> {
+pub async fn delete_precompiled_cache_all(
+    mount_map: ShaderCacheMountMapPtr,
+) -> Result<Vec<PathBuf>> {
+    let mut dirs_to_clear: Vec<PathBuf> = vec![];
     // TODO(b/271776528): utilize ShaderCacheMount once it is reliable
-    // SoT for cryptohome and mounts. For now, just get the lock and
-    // call get_all_precompiled_cache_dir(). This has no runtime
-    // differences.
+    // SoT for cryptohome and mounts (even for VMs that are turned off).
+    // For now, just get the lock and call get_all_precompiled_cache_dir().
+    // This has no runtime differences.
     let _mount_map = mount_map.write().await;
+
     for local_cache_dir in get_all_precompiled_cache_dir()? {
         for dir_entry in (std::fs::read_dir(local_cache_dir)?).flatten() {
-            info!("Deleting all files at {}", dir_entry.path().display());
-            delete_all_files(&dir_entry.path())?;
+            // For each |local_cache_dir| (which is per user), there are
+            // cache directories per VM.
+            dirs_to_clear.push(dir_entry.path());
         }
     }
-    Ok(())
+
+    for local_cache_dir in &dirs_to_clear {
+        info!("Deleting all files at {}", local_cache_dir.display());
+        delete_all_files(local_cache_dir)?;
+    }
+
+    Ok(dirs_to_clear)
+}
+
+pub async fn delete_precompiled_cache(
+    mount_map: ShaderCacheMountMapPtr,
+    vm_id: VmId,
+) -> Result<Vec<PathBuf>> {
+    let mut dirs_to_clear: Vec<PathBuf> = vec![];
+    // TODO(b/271776528): utilize ShaderCacheMount once it is reliable
+    // SoT for cryptohome and mounts (even for VMs that are turned off).
+    // For now, just get the lock and call get_all_precompiled_cache_dir().
+    // This has no runtime differences.
+    let _mount_map = mount_map.write().await;
+
+    let encoded_vm_name = base64::encode_config(&vm_id.vm_name, base64::URL_SAFE);
+    let path = Path::new(CRYPTO_HOME)
+        .join(&vm_id.vm_owner_id)
+        .join(PRECOMPILED_CACHE_DIR)
+        .join(encoded_vm_name);
+    if path.exists() {
+        dirs_to_clear.push(path);
+    } else {
+        info!("No precompiled cache for {:?}", vm_id);
+        return Ok(vec![]);
+    }
+
+    for local_cache_dir in &dirs_to_clear {
+        info!("Deleting all files at {}", local_cache_dir.display());
+        delete_all_files(local_cache_dir)?;
+    }
+
+    Ok(dirs_to_clear)
 }
 
 pub async fn handle_disk_space_update(
@@ -71,8 +112,7 @@ pub async fn handle_disk_space_update(
 
     debug!(
         "Spaced status {:?}, free space bytes {}",
-        update_signal.state,
-        update_signal.free_space_bytes
+        update_signal.state, update_signal.free_space_bytes
     );
 
     let state = update_signal
@@ -99,7 +139,7 @@ pub async fn handle_disk_space_update(
         } else {
             // spaced will continue sending signals if the disk stays near full.
             // Clean up downloaded shader cache contents.
-            delete_precompiled_cache(mount_map.clone()).await?;
+            delete_precompiled_cache_all(mount_map.clone()).await?;
 
             // TODO(b/271776528): Ditto as above
             let _mount_map = mount_map.write().await;

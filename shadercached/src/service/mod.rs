@@ -25,8 +25,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use system_api::shadercached::{
-    InstallRequest, PrepareShaderCacheRequest, PrepareShaderCacheResponse, UninstallRequest,
-    UnmountRequest,
+    InstallRequest, PrepareShaderCacheRequest, PrepareShaderCacheResponse, PurgeRequest,
+    UninstallRequest, UnmountRequest,
 };
 
 // Selectively expose service methods
@@ -123,13 +123,30 @@ pub async fn unmount_and_uninstall_all_shader_cache_dlcs(
     Ok(())
 }
 
-// TODO(b/270617399): Make Purge accept VmId in the request proto
 pub async fn handle_purge(
+    raw_bytes: Vec<u8>,
     mount_map: ShaderCacheMountMapPtr,
     conn: Arc<SyncConnection>,
 ) -> Result<()> {
-    unmount_and_uninstall_all_shader_cache_dlcs(mount_map.clone(), conn.clone()).await?;
-    spaced::delete_precompiled_cache(mount_map.clone()).await?;
+    let request: PurgeRequest = protobuf::Message::parse_from_bytes(&raw_bytes)?;
+
+    let mount_map_size = { mount_map.clone().read().await.len() };
+    if mount_map_size <= 1 {
+        // If only one active user, unmount for all users and uninstall all
+        // DLCs. Shadercached does not keep state of users globally, hence
+        // it cannot know if Borealis is still in use for other users. This
+        // means another user may have to redownload the DLC, which is fine for
+        // now.
+        unmount_and_uninstall_all_shader_cache_dlcs(mount_map.clone(), conn.clone()).await?;
+    }
+    let vm_id = VmId {
+        vm_name: request.vm_name,
+        vm_owner_id: request.vm_owner_id,
+    };
+    let cleared_dirs = spaced::delete_precompiled_cache(mount_map.clone(), vm_id).await?;
+    for dir_path in cleared_dirs {
+        std::fs::remove_dir(dir_path)?;
+    }
     Ok(())
 }
 
