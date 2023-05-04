@@ -72,6 +72,21 @@ class ProbeFunction {
  public:
   using DataType = base::Value::List;
 
+  // Interface to parse a function argument. See RegisterArgumentParser().
+  class ArgumentParser {
+   public:
+    ArgumentParser() = default;
+    virtual ~ArgumentParser() = default;
+
+    // Implement this to parse the argument from a value. |value| set to
+    // |std::nullopt| means that the field is not found in the argument list.
+    // Returns true if parse succeeds. Set |err| to some error messages which
+    // will be logged with the function name and the field name (|err| will be
+    // ignored if returning true).
+    virtual bool Parse(const std::optional<base::Value>& value,
+                       std::string& err) = 0;
+  };
+
   // Returns the name of the probe function.  The returned value should always
   // identical to the static member |function_name| of the derived class.
   //
@@ -92,6 +107,17 @@ class ProbeFunction {
     PARSE_END();
   }
 
+  // TODO(b/279873258): Replace above with this.
+  template <typename T>
+  static std::unique_ptr<T> FromKwargsValueTmp(
+      const base::Value::Dict& dict_value) {
+    std::unique_ptr<T> fun{new T(base::Value(dict_value.Clone()))};
+    if (fun->ParseArguments(dict_value)) {
+      return fun;
+    }
+    return nullptr;
+  }
+
   // Evaluates this probe function. Returns a list of base::Value. For the probe
   // function that requests sandboxing, see |PrivilegedProbeFunction|.
   virtual DataType Eval() const { return EvalImpl(); }
@@ -104,6 +130,12 @@ class ProbeFunction {
   // purposely leaves to the caller because it might execute other binary
   // in sandbox environment and we might want to preserve the exit code.
   virtual int EvalInHelper(std::string* output) const;
+
+  // Registers an ArgumentParser. The callers need to guarantee the lifecycle of
+  // ArgumentParser object. It should be alive when calling
+  // |ParseArguments()|.
+  void RegisterArgumentParser(const std::string field_name,
+                              ArgumentParser* parser);
 
   using FactoryFunctionType =
       std::function<std::unique_ptr<ProbeFunction>(const base::Value&)>;
@@ -125,7 +157,23 @@ class ProbeFunction {
   // of base::Value.
   virtual DataType EvalImpl() const = 0;
 
-  // Each probe function must define their own args type.
+  // Implement this to verify the parsed arguments or do other set up which
+  // based on arguments (e.g. create other probe functions with the arguments).
+  // It is called after all ArgumentParser are executed. Returning false makes
+  // the |ParseArguments()| fail.
+  virtual bool PostParseArguments() { return true; }
+
+  // Gets the arguments. It is the raw arguments passed to this function.
+  const base::Value::Dict& arguments() const { return arguments_; }
+
+ private:
+  // Parses the probe function arguments. Returns false when error.
+  bool ParseArguments(const base::Value::Dict& arguments);
+
+  // A map of argument field names to argument parsers.
+  std::map<std::string, ArgumentParser*> argument_parsers_;
+  // The raw arguments.
+  base::Value::Dict arguments_;
 };
 
 class PrivilegedProbeFunction : public ProbeFunction {

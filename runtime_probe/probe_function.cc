@@ -73,6 +73,38 @@ int ProbeFunction::EvalInHelper(std::string* /*output*/) const {
   return -1;
 }
 
+void ProbeFunction::RegisterArgumentParser(const std::string field_name,
+                                           ArgumentParser* parser) {
+  CHECK(!argument_parsers_.count(field_name))
+      << "Register duplicated argument " << field_name;
+  argument_parsers_[field_name] = parser;
+}
+
+bool ProbeFunction::ParseArguments(const base::Value::Dict& arguments) {
+  arguments_ = arguments.Clone();
+  auto arguments_clone = arguments.Clone();
+  bool success = true;
+  for (const auto& [field_name, parser] : argument_parsers_) {
+    auto value = arguments_clone.Extract(field_name);
+    std::string err;
+    if (parser->Parse(value, err)) {
+      continue;
+    }
+    success = false;
+    LOG(ERROR) << "ProbeFunction \"" << GetFunctionName()
+               << "\" failed to parse argument \"" << field_name
+               << "\": " << err;
+  }
+  if (!arguments_clone.empty()) {
+    success = false;
+    for (const auto& [field_name, unused_value] : arguments_clone) {
+      LOG(ERROR) << "ProbeFunction \"" << GetFunctionName()
+                 << "\" got unexpected argument \"" << field_name << "\"";
+    }
+  }
+  return success ? PostParseArguments() : false;
+}
+
 PrivilegedProbeFunction::PrivilegedProbeFunction(base::Value&& raw_value)
     : raw_value_(std::move(raw_value)) {}
 
