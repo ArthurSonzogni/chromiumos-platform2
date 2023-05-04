@@ -1895,7 +1895,7 @@ void AuthSession::PrepareAuthFactor(
     std::move(on_done).Run(std::move(status));
     return;
   }
-  const AuthFactorDriver& factor_driver =
+  AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(*auth_factor_type);
 
   std::optional<AuthFactorPreparePurpose> purpose =

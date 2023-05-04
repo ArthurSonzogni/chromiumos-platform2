@@ -37,6 +37,7 @@ class AuthFactorDriverManager {
 
   // Return a reference to the driver for the given factor type. The references
   // returned are valid until the driver manager itself is destroyed.
+  AuthFactorDriver& GetDriver(AuthFactorType auth_factor_type);
   const AuthFactorDriver& GetDriver(AuthFactorType auth_factor_type) const;
 
  private:

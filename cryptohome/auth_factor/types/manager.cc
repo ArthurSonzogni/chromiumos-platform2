@@ -95,6 +95,15 @@ AuthFactorDriverManager::AuthFactorDriverManager(
                                   fp_service,
                                   bio_service)) {}
 
+AuthFactorDriver& AuthFactorDriverManager::GetDriver(
+    AuthFactorType auth_factor_type) {
+  auto iter = driver_map_.find(auth_factor_type);
+  if (iter != driver_map_.end()) {
+    return *iter->second;
+  }
+  return *null_driver_;
+}
+
 const AuthFactorDriver& AuthFactorDriverManager::GetDriver(
     AuthFactorType auth_factor_type) const {
   auto iter = driver_map_.find(auth_factor_type);

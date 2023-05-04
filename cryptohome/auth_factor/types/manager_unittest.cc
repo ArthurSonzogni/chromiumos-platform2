@@ -24,6 +24,7 @@ namespace {
 using ::testing::Eq;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
+using ::testing::Ref;
 
 class AuthFactorDriverManagerTest : public ::testing::Test {
  protected:
@@ -42,6 +43,29 @@ class AuthFactorDriverManagerTest : public ::testing::Test {
       &crypto_, AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
       &fp_service_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
 };
+
+TEST_F(AuthFactorDriverManagerTest, GetDriverIsSameForConstAndNonconst) {
+  const auto& const_manager = manager_;
+
+  EXPECT_THAT(manager_.GetDriver(AuthFactorType::kPassword),
+              Ref(const_manager.GetDriver(AuthFactorType::kPassword)));
+  EXPECT_THAT(manager_.GetDriver(AuthFactorType::kPin),
+              Ref(const_manager.GetDriver(AuthFactorType::kPin)));
+  EXPECT_THAT(
+      manager_.GetDriver(AuthFactorType::kCryptohomeRecovery),
+      Ref(const_manager.GetDriver(AuthFactorType::kCryptohomeRecovery)));
+  EXPECT_THAT(manager_.GetDriver(AuthFactorType::kKiosk),
+              Ref(const_manager.GetDriver(AuthFactorType::kKiosk)));
+  EXPECT_THAT(manager_.GetDriver(AuthFactorType::kSmartCard),
+              Ref(const_manager.GetDriver(AuthFactorType::kSmartCard)));
+  EXPECT_THAT(manager_.GetDriver(AuthFactorType::kLegacyFingerprint),
+              Ref(const_manager.GetDriver(AuthFactorType::kLegacyFingerprint)));
+  EXPECT_THAT(manager_.GetDriver(AuthFactorType::kFingerprint),
+              Ref(const_manager.GetDriver(AuthFactorType::kFingerprint)));
+
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
+                "All types of AuthFactorType are not all included here");
+}
 
 // Test AuthFactorDriver::IsPrepareRequired. We do this here instead of in a
 // per-driver test because the check is trivial enough that one test is simpler

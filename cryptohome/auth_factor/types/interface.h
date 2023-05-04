@@ -59,15 +59,14 @@ class AuthFactorDriver {
 
   // Prepare the factor type for the addition of a new instance of this factor.
   // Returns through the asynchronous |callback|.
-  virtual void PrepareForAdd(
-      const ObfuscatedUsername& username,
-      PreparedAuthFactorToken::Consumer callback) const = 0;
+  virtual void PrepareForAdd(const ObfuscatedUsername& username,
+                             PreparedAuthFactorToken::Consumer callback) = 0;
 
   // Prepare the factor type for authentication. Returns through the
   // asynchronous |callback|.
   virtual void PrepareForAuthenticate(
       const ObfuscatedUsername& username,
-      PreparedAuthFactorToken::Consumer callback) const = 0;
+      PreparedAuthFactorToken::Consumer callback) = 0;
 
   // Indicates if the factor supports creating credential verifiers for a given
   // intent. Note that this only indicates that the driver software support is

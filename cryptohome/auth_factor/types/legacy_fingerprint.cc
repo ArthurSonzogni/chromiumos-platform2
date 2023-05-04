@@ -40,7 +40,7 @@ bool LegacyFingerprintAuthFactorDriver::IsPrepareRequired() const {
 
 void LegacyFingerprintAuthFactorDriver::PrepareForAdd(
     const ObfuscatedUsername& username,
-    PreparedAuthFactorToken::Consumer callback) const {
+    PreparedAuthFactorToken::Consumer callback) {
   std::move(callback).Run(MakeStatus<CryptohomeError>(
       CRYPTOHOME_ERR_LOC(kLocAuthFactorLegacyFpPrepareForAddUnsupported),
       ErrorActionSet(
@@ -50,7 +50,7 @@ void LegacyFingerprintAuthFactorDriver::PrepareForAdd(
 
 void LegacyFingerprintAuthFactorDriver::PrepareForAuthenticate(
     const ObfuscatedUsername& username,
-    PreparedAuthFactorToken::Consumer callback) const {
+    PreparedAuthFactorToken::Consumer callback) {
   fp_service_->Start(username, std::move(callback));
 }
 

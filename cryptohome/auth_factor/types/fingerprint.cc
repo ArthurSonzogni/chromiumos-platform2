@@ -45,7 +45,7 @@ bool FingerprintAuthFactorDriver::IsPrepareRequired() const {
 
 void FingerprintAuthFactorDriver::PrepareForAdd(
     const ObfuscatedUsername& username,
-    PreparedAuthFactorToken::Consumer callback) const {
+    PreparedAuthFactorToken::Consumer callback) {
   if (!bio_service_) {
     std::move(callback).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorFpPrepareForAddNoService),
@@ -60,7 +60,7 @@ void FingerprintAuthFactorDriver::PrepareForAdd(
 
 void FingerprintAuthFactorDriver::PrepareForAuthenticate(
     const ObfuscatedUsername& username,
-    PreparedAuthFactorToken::Consumer callback) const {
+    PreparedAuthFactorToken::Consumer callback) {
   if (!bio_service_) {
     std::move(callback).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorFpPrepareForAuthNoService),

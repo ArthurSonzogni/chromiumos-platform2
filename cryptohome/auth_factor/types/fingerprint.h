@@ -45,10 +45,10 @@ class FingerprintAuthFactorDriver final
       const std::set<AuthFactorType>& configured_factors) const override;
   bool IsPrepareRequired() const override;
   void PrepareForAdd(const ObfuscatedUsername& username,
-                     PreparedAuthFactorToken::Consumer callback) const override;
+                     PreparedAuthFactorToken::Consumer callback) override;
   void PrepareForAuthenticate(
       const ObfuscatedUsername& username,
-      PreparedAuthFactorToken::Consumer callback) const override;
+      PreparedAuthFactorToken::Consumer callback) override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;

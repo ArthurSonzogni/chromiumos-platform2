@@ -128,10 +128,9 @@ class AfDriverNoPrepare : public virtual AuthFactorDriver {
  private:
   bool IsPrepareRequired() const final { return false; }
   void PrepareForAdd(const ObfuscatedUsername& username,
-                     PreparedAuthFactorToken::Consumer callback) const final;
-  void PrepareForAuthenticate(
-      const ObfuscatedUsername& username,
-      PreparedAuthFactorToken::Consumer callback) const final;
+                     PreparedAuthFactorToken::Consumer callback) final;
+  void PrepareForAuthenticate(const ObfuscatedUsername& username,
+                              PreparedAuthFactorToken::Consumer callback) final;
 };
 
 // Common implementation of the verifier functions for drivers which do not

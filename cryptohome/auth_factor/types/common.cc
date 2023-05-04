@@ -26,7 +26,7 @@ using ::hwsec_foundation::status::MakeStatus;
 
 void AfDriverNoPrepare::PrepareForAdd(
     const ObfuscatedUsername& username,
-    PreparedAuthFactorToken::Consumer callback) const {
+    PreparedAuthFactorToken::Consumer callback) {
   std::move(callback).Run(MakeStatus<CryptohomeError>(
       CRYPTOHOME_ERR_LOC(kLocAuthFactorCommonPrepareForAddUnsupported),
       ErrorActionSet(
@@ -36,7 +36,7 @@ void AfDriverNoPrepare::PrepareForAdd(
 
 void AfDriverNoPrepare::PrepareForAuthenticate(
     const ObfuscatedUsername& username,
-    PreparedAuthFactorToken::Consumer callback) const {
+    PreparedAuthFactorToken::Consumer callback) {
   std::move(callback).Run(MakeStatus<CryptohomeError>(
       CRYPTOHOME_ERR_LOC(kLocAuthFactorCommonPrepareForAuthUnsupported),
       ErrorActionSet(
