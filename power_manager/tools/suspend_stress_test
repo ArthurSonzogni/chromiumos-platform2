@@ -116,6 +116,10 @@ dump_stats_and_exit() {
   echo "Firmware log errors: ${firmware_errors}"
   echo "EC detected AP suspend errors: ${ec_suspend_errors}"
 
+  if [ "${s0ix_counter_support}" = 1 ]; then
+    counter=$(ectool s0ix_counter get | cut -f 2 -d' ')
+    echo "EC s0ix counter: ${counter}"
+  fi
   if [ "${check_s0ix_errors}" = 1 ]; then
     echo "s0ix errors: ${s0ix_errors}"
   elif
@@ -164,6 +168,15 @@ get_s2idle_count() {
 get_firmware_error_counts() {
   echo $(cbmem -1 | grep ERROR | wc -l)
 }
+
+has_ectool_s0ix_counter() {
+  if ectool s0ix_counter reset > /dev/null 2>&1; then
+    echo 1
+  else
+    echo 0
+  fi
+}
+
 
 FLAGS "$@" || exit 1
 
@@ -258,6 +271,7 @@ last_ignore_count=0
 premature_wake_count=0
 late_wake_count=0
 last_firmware_errors=$(get_firmware_error_counts)
+s0ix_counter_support=$(has_ectool_s0ix_counter)
 
 while true; do
   : $(( cur += 1 ))
