@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_BLUETOOTH_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_BLUETOOTH_CONTROLLER_H_
 
+#include <string>
+
 #include <base/containers/flat_map.h>
 #include <base/files/file_path.h>
 
@@ -50,6 +52,9 @@ class BluetoothController : public system::UdevSubsystemObserver {
 
   // Map of known Bluetooth devices and their power/control path.
   base::flat_map<base::FilePath, base::FilePath> bt_hosts_;
+
+  // Map of saved autosuspend states before applying quirks for suspend.
+  base::flat_map<base::FilePath, std::string> autosuspend_state_before_quirks_;
 };
 
 }  // namespace power_manager::policy

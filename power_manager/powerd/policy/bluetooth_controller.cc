@@ -10,6 +10,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
@@ -79,6 +80,17 @@ void BluetoothController::ApplyAutosuspendQuirk() {
     // If the host device has a power/control sysattr, disable autosuspend
     // before we enter suspend.
     if (device.second != base::FilePath()) {
+      std::string current_value;
+
+      // Save previous state.
+      if (base::ReadFileToString(device.second, &current_value)) {
+        autosuspend_state_before_quirks_[device.second] = current_value;
+      }
+
+      if (current_value == disable) {
+        return;
+      }
+
       bool success =
           base::WriteFile(device.second, disable.data(), disable.size());
       LOG(INFO) << "Writing \"" << disable << "\" to " << device.second << " "
@@ -88,16 +100,33 @@ void BluetoothController::ApplyAutosuspendQuirk() {
 }
 
 void BluetoothController::UnapplyAutosuspendQuirk() {
-  std::string enable(kAutosuspendEnabled);
+  // Default the restore action to enabling autosuspend.
+  std::string restore(kAutosuspendEnabled);
 
   for (const auto& device : bt_hosts_) {
     if (device.second != base::FilePath()) {
+      std::string current_value;
+
+      // Restore the state of autosuspend before quirks were applied.
+      if (base::Contains(autosuspend_state_before_quirks_, device.second)) {
+        restore = autosuspend_state_before_quirks_[device.second];
+      }
+
+      if (base::ReadFileToString(device.second, &current_value)) {
+        if (current_value == restore) {
+          return;
+        }
+      }
+
       bool success =
-          base::WriteFile(device.second, enable.data(), enable.size());
-      LOG(INFO) << "Writing \"" << enable << "\" to " << device.second << " "
+          base::WriteFile(device.second, restore.data(), restore.size());
+      LOG(INFO) << "Writing \"" << restore << "\" to " << device.second << " "
                 << (success ? "succeeded" : "failed");
     }
   }
+
+  // Clear previous autosuspend quirks state.
+  autosuspend_state_before_quirks_.clear();
 }
 
 void BluetoothController::OnUdevEvent(const system::UdevEvent& event) {

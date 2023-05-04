@@ -31,6 +31,7 @@ class BluetoothControllerTest : public TestEnvironment {
   static constexpr char kValidDirPrefix[] = "valid";
   static constexpr char kInvalidDirPrefix[] = "invalid";
   static constexpr char kErrorContents[] = "file-read-error";
+  static constexpr char kRestoreTestContents[] = "restore-to-this";
 
   void Init(bool with_existing_valid_device = false) {
     PrepareTestFiles();
@@ -104,6 +105,14 @@ class BluetoothControllerTest : public TestEnvironment {
     return out;
   }
 
+  bool WriteToControlPath(bool valid, const base::StringPiece& contents) {
+    base::FilePath filepath =
+        file_prefix_.Append(valid ? kValidDirPrefix : kInvalidDirPrefix)
+            .Append(kBtWakeDir)
+            .Append(BluetoothController::kAutosuspendSysattr);
+    return base::WriteFile(filepath, contents);
+  }
+
   base::FilePath file_prefix_;
   system::UdevStub udev_;
   std::unique_ptr<BluetoothController> controller_;
@@ -124,6 +133,26 @@ TEST_F(BluetoothControllerTest, AutosuspendQuirkApplied) {
   controller_->UnapplyAutosuspendQuirk();
   EXPECT_EQ(GetControlPathContents(true),
             BluetoothController::kAutosuspendEnabled);
+}
+
+TEST_F(BluetoothControllerTest, RestoresCorrectValue) {
+  Init();
+
+  base::StringPiece autosuspend_restore_to(
+      BluetoothControllerTest::kRestoreTestContents);
+  // Valid path should start with autosuspend enabled. Change it afterwards.
+  SendUdevEvent(system::UdevEvent::Action::ADD, true);
+  EXPECT_EQ(GetControlPathContents(true),
+            BluetoothController::kAutosuspendEnabled);
+  ASSERT_TRUE(WriteToControlPath(true, autosuspend_restore_to));
+
+  // Disable when applying quirk and restore when unapplying quirk.
+  controller_->ApplyAutosuspendQuirk();
+  EXPECT_EQ(GetControlPathContents(true),
+            BluetoothController::kAutosuspendDisabled);
+  controller_->UnapplyAutosuspendQuirk();
+  EXPECT_EQ(GetControlPathContents(true),
+            BluetoothControllerTest::kRestoreTestContents);
 }
 
 TEST_F(BluetoothControllerTest, RemoveEventHandled) {
