@@ -969,6 +969,7 @@ void AdaptiveChargingController::OnPredictionResponse(
   if (!inference_done) {
     LOG(ERROR) << "Adaptive Charging ML Proxy failed to finish inference";
     StopAdaptiveCharging();
+    started_ = false;
     return;
   }
 
@@ -1038,6 +1039,10 @@ void AdaptiveChargingController::OnPredictionResponse(
     return;
   }
 
+  // At this point, we will start (or started) Adaptive Charging in some
+  // capacity, whether that's by delaying charge, slow charging, or both.
+  started_ = true;
+
   // If the prediction determines there may be sufficient time to perform slow
   // charging and the hold period has been reached
   // (`status.display_battery_percentage` is in the hold range or above), stop
@@ -1103,6 +1108,7 @@ void AdaptiveChargingController::OnPredictionResponse(
       hold_percent_, static_cast<int64_t>(status.display_battery_percentage));
   if (!SetSustain(sustain_percent - hold_delta_percent_, sustain_percent)) {
     StopAdaptiveCharging();
+    started_ = false;
     LOG(ERROR) << "Battery Sustain command failed. Stopping Adaptive Charging";
   }
   is_sustain_set_ = true;
@@ -1111,6 +1117,7 @@ void AdaptiveChargingController::OnPredictionResponse(
 
 void AdaptiveChargingController::OnPredictionFail(brillo::Error* error) {
   StopAdaptiveCharging();
+  started_ = false;
   LOG(ERROR) << "Adaptive Charging ML Proxy failed call to "
              << "RequestAdaptiveChargingDecisionAsync with error: "
              << error->GetMessage();
@@ -1146,6 +1153,7 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
       hold_percent_end_time_ = base::TimeTicks();
       charge_finished_time_ = base::TimeTicks();
       time_spent_slow_charging_ = base::TimeDelta();
+      started_ = false;
       return;
     }
   }
@@ -1248,7 +1256,6 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
     return false;
   }
 
-  started_ = true;
   report_charge_time_ =
       status.display_battery_percentage <= static_cast<double>(hold_percent_);
   base::TimeDelta hold_time_on_ac = charge_history_.GetHoldTimeOnAC();
