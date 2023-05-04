@@ -13,7 +13,7 @@ main() {
   local result_dir="${src_root}/out"
 
   mkdir -p "${result_dir}"
-  cd "${src_root}"
+  cd "${result_dir}"
 
   timestamp="$(date --utc +%Y%m%d_%H%M%S)"
   image_path="refvm-${timestamp}.img"
@@ -30,6 +30,10 @@ install_deps() {
   sudo apt-get update
   sudo DEBIAN_FRONTEND=noninteractive apt-get -q -y install \
     eatmydata fai-setup-storage lvm2 python3-requests python3-yaml
+
+  # TODO(b/280695675): Remove this once the VM image has a newer OS.
+  # shellcheck disable=SC2154
+  sudo dpkg -i "${KOKORO_GFILE_DIR}/fai-setup-storage_5.10.3ubuntu1_all.deb"
 }
 
 main "$@"
