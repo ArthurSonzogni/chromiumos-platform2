@@ -79,49 +79,6 @@ class PreparedAuthFactorToken {
   const AuthFactorType auth_factor_type_;
 };
 
-// A traceable auth factor token implementation that can be used to track if
-// termination (and destruction) of the token has occurred. This is mostly
-// useful for testing.
-class TrackedPreparedAuthFactorToken : public PreparedAuthFactorToken {
- public:
-  // Type for tracking if TerminateAuthFactor() and/or the destructor were
-  // called. The test token will set these to true when the corresponding
-  // functions are called.
-  struct WasCalled {
-    bool terminate = false;
-    bool destructor = false;
-  };
-
-  // Construct a tracked token, that will return the given status the first time
-  // that TerminateAuthFactor is called and which will set the bits in the given
-  // WasCalled object when termination or destruction occurs.
-  //
-  // The WasCalled object has to be provided by the user of this class, rather
-  // than being in the class itself, because the token being destroyed would of
-  // course also destroy any tracking stored internally. The flip side of this
-  // is that the caller must ensure that the given WasCalled struct will outlive
-  // the token.
-  TrackedPreparedAuthFactorToken(AuthFactorType auth_factor_type,
-                                 CryptohomeStatus status_to_return,
-                                 WasCalled* was_called)
-      : PreparedAuthFactorToken(auth_factor_type),
-        status_to_return_(std::move(status_to_return)),
-        was_called_(was_called),
-        terminate_(*this) {}
-
-  ~TrackedPreparedAuthFactorToken() override { was_called_->destructor = true; }
-
- private:
-  CryptohomeStatus TerminateAuthFactor() override {
-    was_called_->terminate = true;
-    return std::move(status_to_return_);
-  }
-
-  CryptohomeStatus status_to_return_;
-  WasCalled* was_called_;
-  TerminateOnDestruction terminate_;
-};
-
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_AUTH_BLOCKS_PREPARE_TOKEN_H_
