@@ -4,6 +4,8 @@
 
 #include "cryptohome/auth_session.h"
 
+#include <algorithm>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -462,13 +464,14 @@ void AuthSession::AuthFactorStatusUpdateTimer() {
     return;
   }
   for (AuthFactorMap::ValueView item : auth_factor_map_) {
-    AuthFactor auth_factor = item.auth_factor();
-    // Currently only pins have time based lock outs.
-    if (auth_factor.type() != AuthFactorType::kPin) {
+    const AuthFactor& auth_factor = item.auth_factor();
+    AuthFactorDriver& driver =
+        auth_factor_driver_manager_->GetDriver(auth_factor.type());
+    // Skip this entire process for factors which don't support delays.
+    if (!driver.IsDelaySupported()) {
       continue;
     }
-    const AuthFactorDriver& driver =
-        auth_factor_driver_manager_->GetDriver(auth_factor.type());
+
     auto auth_factor_proto =
         driver.ConvertToProto(auth_factor.label(), auth_factor.metadata());
     if (!auth_factor_proto) {
@@ -485,39 +488,21 @@ void AuthSession::AuthFactorStatusUpdateTimer() {
           AuthIntentToProto(auth_intent));
     }
 
-    auto* state = std::get_if<::cryptohome::PinWeaverAuthBlockState>(
-        &(auth_factor.auth_block_state().state));
-    if (!state || !state->le_label) {
-      LOG(ERROR) << "AuthFactor state not available in auth factor status "
-                    "update timer";
-      continue;
-    }
-    auto delay_in_seconds_status =
-        crypto_->le_manager()->GetDelayInSeconds(state->le_label.value());
-    uint64_t delay_in_milliseconds;
-    // Lockout delay should be converted to milliseconds.
-    if (delay_in_seconds_status.ok()) {
-      uint64_t delay_in_seconds = delay_in_seconds_status.value();
-      DCHECK(delay_in_seconds < UINT64_MAX / 1000);
-      if (delay_in_seconds == UINT32_MAX) {
-        delay_in_milliseconds = UINT64_MAX;
+    auto delay = driver.GetFactorDelay(auth_factor);
+    if (delay.ok()) {
+      if (delay->is_max()) {
+        status_info.set_time_available_in(std::numeric_limits<uint64_t>::max());
       } else {
-        delay_in_milliseconds = delay_in_seconds * 1000;
+        status_info.set_time_available_in(delay->InMilliseconds());
       }
-      status_info.set_time_available_in(delay_in_milliseconds);
       *auth_factor_with_status.mutable_status_info() = status_info;
       auth_factor_status_update_callback_.Run(auth_factor_with_status,
                                               serialized_public_token_);
-      if (delay_in_seconds_status.value() <= 0) {
+      if (delay->is_zero()) {
         continue;
       }
-      base::TimeDelta next_signal_delay;
-      if (base::Seconds(delay_in_seconds_status.value()) <
-          kAuthFactorStatusUpdateDelay) {
-        next_signal_delay = base::Seconds(delay_in_seconds);
-      } else {
-        next_signal_delay = kAuthFactorStatusUpdateDelay;
-      }
+      base::TimeDelta next_signal_delay =
+          std::min(*delay, kAuthFactorStatusUpdateDelay);
       auth_factor_status_update_timer_->Start(
           FROM_HERE, base::Time::Now() + next_signal_delay,
           base::BindOnce(&AuthSession::AuthFactorStatusUpdateTimer,

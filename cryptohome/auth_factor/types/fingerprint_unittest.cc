@@ -24,6 +24,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/test_utils.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/util/async_init.h"
 
@@ -227,6 +228,21 @@ TEST_F(FingerprintDriverTest, PrepareForAuthSuccess) {
 
   // Verify.
   EXPECT_THAT(prepare_result.Get(), IsOk());
+}
+
+TEST_F(FingerprintDriverTest, GetDelayFails) {
+  FingerprintAuthFactorDriver fp_driver(
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+  AuthFactorDriver& driver = fp_driver;
+
+  AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
+                    CreateMetadataWithType<FingerprintAuthFactorMetadata>(),
+                    {.state = FingerprintAuthBlockState()});
+
+  auto delay_in_ms = driver.GetFactorDelay(factor);
+  ASSERT_THAT(delay_in_ms, NotOk());
+  EXPECT_THAT(delay_in_ms.status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
 TEST_F(FingerprintDriverTest, CreateCredentialVerifierFails) {

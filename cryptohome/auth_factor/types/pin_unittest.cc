@@ -4,6 +4,7 @@
 
 #include "cryptohome/auth_factor/types/pin.h"
 
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -12,15 +13,20 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
+#include "base/time/time.h"
+#include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/test_utils.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_le_credential_manager.h"
 
 namespace cryptohome {
 namespace {
 
 using ::base::test::TestFuture;
+using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
 using ::testing::Eq;
@@ -31,6 +37,8 @@ using ::testing::Optional;
 
 class PinDriverTest : public AuthFactorDriverGenericTest {
  protected:
+  static constexpr uint64_t kLeLabel = 0xdeadbeefbaadf00d;
+
   PinDriverTest() {
     auto le_manager = std::make_unique<MockLECredentialManager>();
     le_manager_ = le_manager.get();
@@ -144,6 +152,79 @@ TEST_F(PinDriverTest, PrepareForAuthFails) {
   driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
   EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+TEST_F(PinDriverTest, GetDelayFailsWithWrongFactorType) {
+  PinAuthFactorDriver pin_driver(&crypto_);
+  AuthFactorDriver& driver = pin_driver;
+
+  AuthFactor factor(AuthFactorType::kPassword, kLabel,
+                    CreateMetadataWithType<PasswordAuthFactorMetadata>(),
+                    {.state = TpmEccAuthBlockState()});
+
+  auto delay_in_ms = driver.GetFactorDelay(factor);
+  ASSERT_THAT(delay_in_ms, NotOk());
+  EXPECT_THAT(delay_in_ms.status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+TEST_F(PinDriverTest, GetDelayFailsWithoutLeLabel) {
+  PinAuthFactorDriver pin_driver(&crypto_);
+  AuthFactorDriver& driver = pin_driver;
+
+  AuthFactor factor(AuthFactorType::kPin, kLabel,
+                    CreateMetadataWithType<PinAuthFactorMetadata>(),
+                    {.state = PinWeaverAuthBlockState()});
+
+  auto delay_in_ms = driver.GetFactorDelay(factor);
+  ASSERT_THAT(delay_in_ms, NotOk());
+  EXPECT_THAT(delay_in_ms.status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+TEST_F(PinDriverTest, GetDelayInfinite) {
+  PinAuthFactorDriver pin_driver(&crypto_);
+  AuthFactorDriver& driver = pin_driver;
+
+  AuthFactor factor(AuthFactorType::kPin, kLabel,
+                    CreateMetadataWithType<PinAuthFactorMetadata>(),
+                    {.state = PinWeaverAuthBlockState({.le_label = kLeLabel})});
+  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+      .WillOnce(ReturnValue(std::numeric_limits<uint32_t>::max()));
+
+  auto delay_in_ms = driver.GetFactorDelay(factor);
+  ASSERT_THAT(delay_in_ms, IsOk());
+  EXPECT_THAT(delay_in_ms->is_max(), IsTrue());
+}
+
+TEST_F(PinDriverTest, GetDelayFinite) {
+  PinAuthFactorDriver pin_driver(&crypto_);
+  AuthFactorDriver& driver = pin_driver;
+
+  AuthFactor factor(AuthFactorType::kPin, kLabel,
+                    CreateMetadataWithType<PinAuthFactorMetadata>(),
+                    {.state = PinWeaverAuthBlockState({.le_label = kLeLabel})});
+  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+      .WillOnce(ReturnValue(10));
+
+  auto delay_in_ms = driver.GetFactorDelay(factor);
+  ASSERT_THAT(delay_in_ms, IsOk());
+  EXPECT_THAT(*delay_in_ms, Eq(base::Seconds(10)));
+}
+
+TEST_F(PinDriverTest, GetDelayZero) {
+  PinAuthFactorDriver pin_driver(&crypto_);
+  AuthFactorDriver& driver = pin_driver;
+
+  AuthFactor factor(AuthFactorType::kPin, kLabel,
+                    CreateMetadataWithType<PinAuthFactorMetadata>(),
+                    {.state = PinWeaverAuthBlockState({.le_label = kLeLabel})});
+  EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
+      .WillOnce(ReturnValue(0));
+
+  auto delay_in_ms = driver.GetFactorDelay(factor);
+  ASSERT_THAT(delay_in_ms, IsOk());
+  EXPECT_THAT(delay_in_ms->is_zero(), IsTrue());
 }
 
 TEST_F(PinDriverTest, CreateCredentialVerifierFails) {

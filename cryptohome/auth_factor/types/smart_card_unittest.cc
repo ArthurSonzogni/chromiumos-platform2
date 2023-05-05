@@ -29,6 +29,7 @@ namespace {
 
 using ::base::test::TestFuture;
 using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::hwsec_foundation::status::OkStatus;
 using ::testing::_;
@@ -179,6 +180,24 @@ TEST_F(SmartCardDriverTest, PrepareForAuthFails) {
       prepare_result;
   driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
   EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+TEST_F(SmartCardDriverTest, GetDelayFails) {
+  SmartCardAuthFactorDriver sc_driver(
+      &crypto_,
+      AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
+      &key_challenge_service_factory_);
+  AuthFactorDriver& driver = sc_driver;
+
+  AuthFactor factor(AuthFactorType::kSmartCard, kLabel,
+                    CreateMetadataWithType<SmartCardAuthFactorMetadata>(
+                        {.public_key_spki_der = kPublicKey}),
+                    {.state = ChallengeCredentialAuthBlockState()});
+
+  auto delay_in_ms = driver.GetFactorDelay(factor);
+  ASSERT_THAT(delay_in_ms, NotOk());
+  EXPECT_THAT(delay_in_ms.status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 

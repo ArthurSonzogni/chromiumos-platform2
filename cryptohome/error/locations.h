@@ -1369,6 +1369,16 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorFpPrepareForAuthNoService = 2111,
   /* ./auth_factor/types/legacy_fingerprint.cc */
   kLocAuthFactorLegacyFpPrepareForAddUnsupported = 2112,
+  /* ./auth_factor/types/common.cc */
+  kLocAuthFactorCommonGetFactorDelayUnsupported = 2113,
+  /* ./auth_factor/types/pin.cc */
+  kLocAuthFactorPinGetFactorDelayWrongFactorType = 2114,
+  /* ./auth_factor/types/pin.cc */
+  kLocAuthFactorPinGetFactorDelayInvalidBlockState = 2115,
+  /* ./auth_factor/types/pin.cc */
+  kLocAuthFactorPinGetFactorDelayMissingLabel = 2116,
+  /* ./auth_factor/types/pin.cc */
+  kLocAuthFactorPinGetFactorDelayReadFailed = 2117,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.

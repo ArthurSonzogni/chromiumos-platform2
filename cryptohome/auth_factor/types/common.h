@@ -28,6 +28,7 @@
 #include <string>
 
 #include <base/containers/span.h>
+#include <base/time/time.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -130,6 +131,15 @@ class AfDriverNoCredentialVerifier : public virtual AuthFactorDriver {
       const AuthInput& auth_input) const final {
     return nullptr;
   }
+};
+
+// Common implementation of the delay functions for drivers which do not
+// support delayed availability.
+class AfDriverNoDelay : public virtual AuthFactorDriver {
+ private:
+  bool IsDelaySupported() const final { return false; }
+  CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
+      const AuthFactor& factor) final;
 };
 
 }  // namespace cryptohome

@@ -10,9 +10,11 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
+#include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/test_utils.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 namespace cryptohome {
 namespace {
@@ -110,6 +112,20 @@ TEST_F(PasswordDriverTest, UnsupportedWithKiosk) {
   EXPECT_THAT(driver.IsSupported(AuthFactorStorageType::kUserSecretStash,
                                  {AuthFactorType::kKiosk}),
               IsFalse());
+}
+
+TEST_F(PasswordDriverTest, GetDelayFails) {
+  PasswordAuthFactorDriver password_driver;
+  AuthFactorDriver& driver = password_driver;
+
+  AuthFactor factor(AuthFactorType::kPassword, kLabel,
+                    CreateMetadataWithType<PasswordAuthFactorMetadata>(),
+                    {.state = TpmEccAuthBlockState()});
+
+  auto delay_in_ms = driver.GetFactorDelay(factor);
+  ASSERT_THAT(delay_in_ms, NotOk());
+  EXPECT_THAT(delay_in_ms.status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
 TEST_F(PasswordDriverTest, PrepareForAddFails) {

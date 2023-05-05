@@ -50,7 +50,8 @@ class PasswordAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kPassword>,
       public AfDriverWithPasswordBlockTypes,
       public AfDriverWithMetadata<PasswordAuthFactorMetadata>,
-      public AfDriverNoPrepare {
+      public AfDriverNoPrepare,
+      public AfDriverNoDelay {
  public:
   PasswordAuthFactorDriver() = default;
 

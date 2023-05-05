@@ -176,6 +176,28 @@ TEST_F(AuthFactorDriverManagerTest, NeedsRateLimiter) {
                 "All types of AuthFactorType are not all included here");
 }
 
+// Test AuthFactorDriver::IsDelaySupported. We do this here instead of in a
+// per-driver test because the check is trivial enough that one test is simpler
+// to validate than N separate tests.
+TEST_F(AuthFactorDriverManagerTest, IsDelaySupported) {
+  auto is_delayable = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsDelaySupported();
+  };
+
+  EXPECT_THAT(is_delayable(AuthFactorType::kPassword), IsFalse());
+  EXPECT_THAT(is_delayable(AuthFactorType::kPin), IsTrue());
+  EXPECT_THAT(is_delayable(AuthFactorType::kCryptohomeRecovery), IsFalse());
+  EXPECT_THAT(is_delayable(AuthFactorType::kKiosk), IsFalse());
+  EXPECT_THAT(is_delayable(AuthFactorType::kSmartCard), IsFalse());
+  EXPECT_THAT(is_delayable(AuthFactorType::kLegacyFingerprint), IsFalse());
+  EXPECT_THAT(is_delayable(AuthFactorType::kFingerprint), IsFalse());
+
+  EXPECT_THAT(is_delayable(AuthFactorType::kUnspecified), IsFalse());
+
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
+                "All types of AuthFactorType are not all included here");
+}
+
 // Test AuthFactorDriver::GetAuthFactorLabelArity. We do this here instead of in
 // a per-driver test because the check is trivial enough that one test is
 // simpler to validate than N separate tests.

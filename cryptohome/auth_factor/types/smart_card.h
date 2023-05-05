@@ -31,7 +31,8 @@ class SmartCardAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kSmartCard>,
       public AfDriverWithBlockTypes<AuthBlockType::kChallengeCredential>,
       public AfDriverWithMetadata<SmartCardAuthFactorMetadata>,
-      public AfDriverNoPrepare {
+      public AfDriverNoPrepare,
+      public AfDriverNoDelay {
  public:
   SmartCardAuthFactorDriver(
       Crypto* crypto,

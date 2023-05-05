@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/time/time.h>
 #include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/prepare_token.h"
@@ -42,6 +43,14 @@ void AfDriverNoPrepare::PrepareForAuthenticate(
       ErrorActionSet(
           {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+CryptohomeStatusOr<base::TimeDelta> AfDriverNoDelay::GetFactorDelay(
+    const AuthFactor& factor) {
+  return MakeStatus<CryptohomeError>(
+      CRYPTOHOME_ERR_LOC(kLocAuthFactorCommonGetFactorDelayUnsupported),
+      ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
 }  // namespace cryptohome

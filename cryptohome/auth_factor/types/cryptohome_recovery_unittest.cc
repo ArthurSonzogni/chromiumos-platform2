@@ -13,11 +13,13 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/test_utils.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 namespace cryptohome {
 namespace {
 
 using ::base::test::TestFuture;
+using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
 using ::testing::Eq;
@@ -129,6 +131,21 @@ TEST_F(CryptohomeRecoveryDriverTest, PrepareForAuthFails) {
       prepare_result;
   driver.PrepareForAuthenticate(kObfuscatedUser, prepare_result.GetCallback());
   EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+TEST_F(CryptohomeRecoveryDriverTest, GetDelayFails) {
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  AuthFactorDriver& driver = recovery_driver;
+
+  AuthFactor factor(
+      AuthFactorType::kCryptohomeRecovery, kLabel,
+      CreateMetadataWithType<CryptohomeRecoveryAuthFactorMetadata>(),
+      {.state = CryptohomeRecoveryAuthBlockState()});
+
+  auto delay_in_ms = driver.GetFactorDelay(factor);
+  ASSERT_THAT(delay_in_ms, NotOk());
+  EXPECT_THAT(delay_in_ms.status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 

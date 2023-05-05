@@ -33,7 +33,8 @@ class FingerprintAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kFingerprint>,
       public AfDriverWithBlockTypes<AuthBlockType::kFingerprint>,
       public AfDriverWithMetadata<FingerprintAuthFactorMetadata>,
-      public AfDriverNoCredentialVerifier {
+      public AfDriverNoCredentialVerifier,
+      public AfDriverNoDelay {
  public:
   FingerprintAuthFactorDriver(
       Crypto* crypto, AsyncInitPtr<BiometricsAuthBlockService> bio_service)
