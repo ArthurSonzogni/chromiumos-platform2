@@ -266,6 +266,11 @@ impl ResumeConductor {
         // Should it be a ref-counted singleton?
         VolumeManager::new()?.unmount_hibermeta()?;
 
+        // This is safe because sync() does not modify memory.
+        unsafe {
+            libc::sync();
+        }
+
         if self.options.dry_run {
             info!("Not launching resume image: in a dry run.");
 
