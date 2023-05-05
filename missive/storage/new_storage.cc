@@ -7,13 +7,13 @@
 #include <cstdint>
 #include <optional>
 #include <tuple>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include <base/barrier_closure.h>
 #include <base/check.h>
 #include <base/containers/adapters.h>
-#include <base/containers/flat_set.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -288,7 +288,7 @@ void NewStorage::Create(
         Status::StatusOK();
     // Stores necessary fields for creating queues. Populated by parsing queue
     // directory names.
-    base::flat_set<std::tuple<Priority, GenerationGuid>> queue_parameters_
+    StorageDirectory::Set queue_parameters_
         GUARDED_BY_CONTEXT(storage_->sequence_checker_);
   };
 
@@ -336,8 +336,8 @@ StatusOr<GenerationGuid> NewStorage::GetOrCreateGenerationGuid(
 StatusOr<GenerationGuid> NewStorage::GetGenerationGuid(const DMtoken& dm_token,
                                                        Priority priority) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!dmtoken_to_generation_guid_map_.contains(
-          std::make_tuple(dm_token, priority))) {
+  if (dmtoken_to_generation_guid_map_.find(std::make_tuple(
+          dm_token, priority)) == dmtoken_to_generation_guid_map_.end()) {
     return Status(
         error::NOT_FOUND,
         base::StrCat({"No generation guid exists for DM token: ", dm_token}));

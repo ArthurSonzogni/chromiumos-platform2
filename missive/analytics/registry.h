@@ -7,8 +7,8 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
-#include <base/containers/flat_map.h>
 #include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
@@ -40,7 +40,7 @@ class Registry {
   bool Remove(base::StringPiece name);
 
  private:
-  base::flat_map<std::string, std::unique_ptr<ResourceCollector>>
+  std::unordered_map<std::string, std::unique_ptr<ResourceCollector>>
       resource_collectors_;
 };
 

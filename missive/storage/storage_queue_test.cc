@@ -9,10 +9,10 @@
 #include <initializer_list>
 #include <optional>
 #include <queue>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include <base/containers/flat_map.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -269,9 +269,23 @@ class StorageQueueTest
     // should have that digest already recorded. Only the first record in a
     // generation is uploaded without last record digest. "Optional" is set to
     // no-value if there was a gap record instead of a real one.
-    using LastRecordDigestMap = base::flat_map<
-        std::pair<int64_t /*generation id */, int64_t /*sequencing id*/>,
-        std::optional<std::string /*digest*/>>;
+    struct LastRecordDigest {
+      struct Hash {
+        size_t operator()(
+            const std::pair<int64_t /*generation id */,
+                            int64_t /*sequencing id*/>& v) const noexcept {
+          const auto& [generation_id, sequencing_id] = v;
+          static constexpr std::hash<int64_t> generation_hasher;
+          static constexpr std::hash<int64_t> sequencing_hasher;
+          return generation_hasher(generation_id) ^
+                 sequencing_hasher(sequencing_id);
+        }
+      };
+      using Map = std::unordered_map<
+          std::pair<int64_t /*generation id */, int64_t /*sequencing id*/>,
+          std::optional<std::string /*digest*/>,
+          Hash>;
+    };
 
     // Helper class for setting up mock uploader expectations of a successful
     // completion.
@@ -597,7 +611,7 @@ class StorageQueueTest
 
     std::optional<int64_t> generation_id_;
     std::optional<int64_t>* const last_upload_generation_id_;
-    LastRecordDigestMap* const last_record_digest_map_;
+    LastRecordDigest::Map* const last_record_digest_map_;
 
     const MockUpload* const mock_upload_;
     const base::SequenceBound<SequenceBoundUpload> sequence_bound_upload_;
@@ -834,7 +848,7 @@ class StorageQueueTest
 
   // Test-wide global mapping of <generation id, sequencing id> to record
   // digest. Serves all TestUploaders created by test fixture.
-  TestUploader::LastRecordDigestMap last_record_digest_map_;
+  TestUploader::LastRecordDigest::Map last_record_digest_map_;
 
   size_t upload_count_ = 0uL;
 

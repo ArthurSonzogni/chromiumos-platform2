@@ -7,9 +7,9 @@
 #include <cstdint>
 #include <initializer_list>
 #include <optional>
+#include <unordered_map>
 #include <utility>
 
-#include <base/containers/flat_map.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -51,11 +51,25 @@ class TestUploadClient : public UploaderInterface {
   // Whenever a record is uploaded and includes last record digest, this map
   // should have that digest already recorded. Only the first record in a
   // generation is uploaded without last record digest.
-  using LastRecordDigestMap = base::flat_map<
-      std::pair<int64_t /*generation id */, int64_t /*sequencing id*/>,
-      std::optional<std::string /*digest*/>>;
+  struct LastRecordDigest {
+    struct Hash {
+      size_t operator()(
+          const std::pair<int64_t /*generation id */,
+                          int64_t /*sequencing id*/>& v) const noexcept {
+        const auto& [generation_id, sequencing_id] = v;
+        static constexpr std::hash<int64_t> generation_hasher;
+        static constexpr std::hash<int64_t> sequencing_hasher;
+        return generation_hasher(generation_id) ^
+               sequencing_hasher(sequencing_id);
+      }
+    };
+    using Map = std::unordered_map<
+        std::pair<int64_t /*generation id */, int64_t /*sequencing id*/>,
+        std::optional<std::string /*digest*/>,
+        Hash>;
+  };
 
-  explicit TestUploadClient(LastRecordDigestMap* last_record_digest_map)
+  explicit TestUploadClient(LastRecordDigest::Map* last_record_digest_map)
       : last_record_digest_map_(last_record_digest_map) {
     DETACH_FROM_SEQUENCE(test_uploader_checker_);
   }
@@ -127,7 +141,7 @@ class TestUploadClient : public UploaderInterface {
 
   std::optional<int64_t> generation_id_
       GUARDED_BY_CONTEXT(test_uploader_checker_);
-  LastRecordDigestMap* const last_record_digest_map_
+  LastRecordDigest::Map* const last_record_digest_map_
       GUARDED_BY_CONTEXT(test_uploader_checker_);
 };
 
@@ -237,7 +251,7 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
 
   // Test-wide global mapping of <generation id, sequencing id> to record
   // digest. Serves all TestUploadClients created by test fixture.
-  TestUploadClient::LastRecordDigestMap last_record_digest_map_;
+  TestUploadClient::LastRecordDigest::Map last_record_digest_map_;
 };
 
 TEST_P(StorageQueueStressTest,

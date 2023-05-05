@@ -5,16 +5,18 @@
 #ifndef MISSIVE_STORAGE_STORAGE_BASE_H_
 #define MISSIVE_STORAGE_STORAGE_BASE_H_
 
+#include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <queue>
 #include <string>
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
-#include <base/containers/flat_map.h>
-#include <base/containers/flat_set.h>
 #include <base/files/file.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
@@ -145,6 +147,20 @@ class QueuesContainer
   friend base::RefCountedDeleteOnSequence<QueuesContainer>;
   friend class base::DeleteHelper<QueuesContainer>;
 
+  // Map used to retrieve queues for writes, confirms, and flushes.
+  struct Hash {
+    size_t operator()(
+        const std::tuple<Priority, GenerationGuid>& v) const noexcept {
+      const auto& [priority, guid] = v;
+      static constexpr std::hash<Priority> priority_hasher;
+      static constexpr std::hash<GenerationGuid> guid_hasher;
+      return priority_hasher(priority) ^ guid_hasher(guid);
+    }
+  };
+  using QueuesMap = std::unordered_map<std::tuple<Priority, GenerationGuid>,
+                                       scoped_refptr<StorageQueue>,
+                                       Hash>;
+
   QueuesContainer(
       bool is_enabled,
       scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
@@ -152,10 +168,7 @@ class QueuesContainer
   const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
 
-  // Map used to retrieve queues for writes, confirms, and flushes.
-  base::flat_map<std::tuple<Priority, GenerationGuid>,
-                 scoped_refptr<StorageQueue>>
-      queues_ GUARDED_BY_CONTEXT(sequence_checker_);
+  QueuesMap queues_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Weak ptr factory.
   base::WeakPtrFactory<QueuesContainer> weak_ptr_factory_{this};
@@ -287,15 +300,16 @@ class KeyInStorage {
   // sets next_key_file_index_ to a value that is definitely not used.
   // Called once, during initialization.
   void EnumerateKeyFiles(
-      base::flat_set<base::FilePath>* all_key_files,
-      base::flat_map<uint64_t, base::FilePath>* found_key_files);
+      std::unordered_set<base::FilePath>* all_key_files,
+      std::map<uint64_t, base::FilePath, std::greater<>>* found_key_files);
 
   // Enumerates found key files and locates one with the highest index and
   // valid key. Returns pair of file name and loaded signed key proto.
   // Called once, during initialization.
   std::optional<std::pair<base::FilePath, SignedEncryptionInfo>>
   LocateValidKeyAndParse(
-      const base::flat_map<uint64_t, base::FilePath>& found_key_files);
+      const std::map<uint64_t, base::FilePath, std::greater<>>&
+          found_key_files);
 
   // Index of the file to serialize the signed key to.
   // Initialized to the next available number or 0, if none present.

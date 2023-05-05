@@ -6,8 +6,8 @@
 #define MISSIVE_ENCRYPTION_DECRYPTION_H_
 
 #include <string>
+#include <unordered_map>
 
-#include <base/containers/flat_map.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
@@ -104,7 +104,7 @@ class Decryptor : public base::RefCountedThreadSafe<Decryptor> {
     std::string private_key;
     base::Time time_stamp;
   };
-  base::flat_map<Encryptor::PublicKeyId, KeyInfo> keys_;
+  std::unordered_map<Encryptor::PublicKeyId, KeyInfo> keys_;
 
   // Sequential task runner for all keys_ activities:
   // recording, lookup, purge.

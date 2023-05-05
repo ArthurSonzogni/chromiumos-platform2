@@ -4,7 +4,6 @@
 
 #include "missive/storage/storage_configuration.h"
 
-#include <base/containers/flat_set.h>
 #include <base/containers/span.h>
 
 #include "missive/proto/record_constants.pb.h"

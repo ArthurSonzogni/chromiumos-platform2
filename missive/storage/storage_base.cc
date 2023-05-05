@@ -5,11 +5,13 @@
 #include "missive/storage/storage_base.h"
 
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
 #include <string>
 #include <tuple>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -19,8 +21,6 @@
 #include <base/memory/ref_counted.h>
 #include <base/task/thread_pool.h>
 #include <base/containers/adapters.h>
-#include <base/containers/flat_map.h>
-#include <base/containers/flat_set.h>
 #include <base/functional/callback_forward.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/strcat.h>
@@ -442,8 +442,8 @@ KeyInStorage::DownloadKeyFile() {
 
   // Enumerate possible key files, collect the ones that have valid name,
   // set next_key_file_index_ to a value that is definitely not used.
-  base::flat_set<base::FilePath> all_key_files;
-  base::flat_map<uint64_t, base::FilePath> found_key_files;
+  std::unordered_set<base::FilePath> all_key_files;
+  std::map<uint64_t, base::FilePath, std::greater<>> found_key_files;
   EnumerateKeyFiles(&all_key_files, &found_key_files);
 
   // Try to unserialize the key from each found file (latest first).
@@ -552,8 +552,8 @@ void KeyInStorage::RemoveKeyFilesWithLowerIndexes(uint64_t new_file_index) {
 // sets next_key_file_index_ to a value that is definitely not used.
 // Called once, during initialization.
 void KeyInStorage::EnumerateKeyFiles(
-    base::flat_set<base::FilePath>* all_key_files,
-    base::flat_map<uint64_t, base::FilePath>* found_key_files) {
+    std::unordered_set<base::FilePath>* all_key_files,
+    std::map<uint64_t, base::FilePath, std::greater<>>* found_key_files) {
   base::FileEnumerator dir_enum(directory_,
                                 /*recursive=*/false,
                                 base::FileEnumerator::FILES,
@@ -590,9 +590,10 @@ void KeyInStorage::EnumerateKeyFiles(
 // Called once, during initialization.
 std::optional<std::pair<base::FilePath, SignedEncryptionInfo>>
 KeyInStorage::LocateValidKeyAndParse(
-    const base::flat_map<uint64_t, base::FilePath>& found_key_files) {
-  // Try to unserialize the key from each found file (latest first).
-  for (const auto& [index, file_path] : base::Reversed(found_key_files)) {
+    const std::map<uint64_t, base::FilePath, std::greater<>>& found_key_files) {
+  // Try to unserialize the key from each found file (latest firs, since the map
+  // is reverse-ordered).
+  for (const auto& [index, file_path] : found_key_files) {
     base::File key_file(file_path,
                         base::File::FLAG_OPEN | base::File::FLAG_READ);
     if (!key_file.IsValid()) {

@@ -9,10 +9,10 @@
 #include <optional>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include <base/containers/flat_map.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback_helpers.h>
 #include <base/sequence_checker.h>
@@ -158,14 +158,29 @@ class LegacyStorageDegradationTest
   // Whenever a record is uploaded and includes last record digest, this map
   // should have that digest already recorded. Only the first record in a
   // generation is uploaded without last record digest.
-  using LastRecordDigestMap =
-      base::flat_map<std::tuple<Priority,
-                                int64_t /*generation id*/,
-                                int64_t /*sequencing id*/>,
-                     std::optional<std::string /*digest*/>>;
+  struct LastRecordDigest {
+    struct Hash {
+      size_t operator()(
+          const std::tuple<Priority,
+                           int64_t /*generation id*/,
+                           int64_t /*sequencing id*/>& v) const noexcept {
+        const auto& [priority, generation_id, sequencing_id] = v;
+        static constexpr std::hash<Priority> priority_hasher;
+        static constexpr std::hash<int64_t> generation_hasher;
+        static constexpr std::hash<int64_t> sequencing_hasher;
+        return priority_hasher(priority) ^ generation_hasher(generation_id) ^
+               sequencing_hasher(sequencing_id);
+      }
+    };
+    using Map = std::unordered_map<std::tuple<Priority,
+                                              int64_t /*generation id*/,
+                                              int64_t /*sequencing id*/>,
+                                   std::optional<std::string /*digest*/>,
+                                   Hash>;
+  };
 
   // Track the last uploaded generation id based on priority
-  using LastUploadedGenerationIdMap = base::flat_map<Priority, int64_t>;
+  using LastUploadedGenerationIdMap = std::unordered_map<Priority, int64_t>;
 
  protected:
   void SetUp() override {
@@ -225,7 +240,7 @@ class LegacyStorageDegradationTest
     explicit SequenceBoundUpload(
         std::unique_ptr<const MockUpload> mock_upload,
         LastUploadedGenerationIdMap* const last_upload_generation_id,
-        LastRecordDigestMap* const last_record_digest_map,
+        LastRecordDigest::Map* const last_record_digest_map,
         ExpectRecordGroupCallback callback)
         : mock_upload_(std::move(mock_upload)),
           last_upload_generation_id_(last_upload_generation_id),
@@ -442,7 +457,7 @@ class LegacyStorageDegradationTest
     const std::unique_ptr<const MockUpload> mock_upload_;
     std::optional<int64_t> generation_id_;
     LastUploadedGenerationIdMap* const last_upload_generation_id_;
-    LastRecordDigestMap* const last_record_digest_map_;
+    LastRecordDigest::Map* const last_record_digest_map_;
     ExpectRecordGroupCallback expect_record_group_callback_;
     std::vector<TestRecord> records_;
     SEQUENCE_CHECKER(scoped_checker_);
@@ -853,7 +868,7 @@ class LegacyStorageDegradationTest
 
   // Test-wide global mapping of <generation id, sequencing id> to record
   // digest. Serves all TestUploaders created by test fixture.
-  LastRecordDigestMap last_record_digest_map_
+  LastRecordDigest::Map last_record_digest_map_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   size_t upload_count_ = 0uL;

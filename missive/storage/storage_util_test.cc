@@ -2,15 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <tuple>
+#include <unordered_set>
+
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/guid.h>
 #include <base/location.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
-#include <tuple>
 
-#include "base/containers/flat_set.h"
 #include "base/files/file_util.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage.h"
@@ -40,8 +41,7 @@ TEST_F(StorageDirectoryTest, QueueDirectoriesAreFound) {
   // foo/bar/FastBatch.JsK32KLs
   const auto generation_guid =
       base::GUID::GenerateRandomV4().AsLowercaseString();
-  base::flat_set<std::tuple<Priority, GenerationGuid>>
-      expected_queue_directories;
+  StorageDirectory::Set expected_queue_directories;
   for (const auto& [priority, options] : queue_options) {
     // Remove any existing extension first so that we are certain what the
     // extension is and then add a generation guid as the extension
@@ -64,8 +64,7 @@ TEST_F(StorageDirectoryTest, LegacyQueueDirectoriesAreFound) {
   auto storage_options = StorageOptions();
   storage_options.set_directory(location_.GetPath());
   const auto queue_options = storage_options.ProduceQueuesOptionsList();
-  base::flat_set<std::tuple<Priority, GenerationGuid>>
-      expected_queue_directories;
+  StorageDirectory::Set expected_queue_directories;
   for (const auto& [priority, options] : queue_options) {
     // Legacy queue directories do not have generation guid extensions, e.g.
     // foo/bar/Security as opposed to foo/bar/Security.XHf45KT

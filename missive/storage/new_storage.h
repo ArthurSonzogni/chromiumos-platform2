@@ -10,9 +10,9 @@
 #include <optional>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 
-#include <base/containers/flat_map.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
@@ -114,6 +114,24 @@ class NewStorage : public StorageInterface {
   // Private helper class to flush all queues with a given priority
   friend class FlushContext;
 
+  // Map that associates <DM token, Priority> of users or the device with a
+  // unique GenerationGuid which is then associated to a queue in the `queues_`
+  // map. Only queues with their GenerationGuid in this map can be written to
+  // and are considered "active". Queues that are not accepting new events (i.e.
+  // queues that contained data before storage was shut down), will not have
+  // their GenerationGuid in this map, but will still exists in the `queues_`
+  // map so that they can send their remaining events.
+  struct Hash {
+    size_t operator()(const std::tuple<DMtoken, Priority>& v) const noexcept {
+      static constexpr std::hash<DMtoken> dm_token_hasher;
+      static constexpr std::hash<Priority> priority_hasher;
+      const auto& [token, priority] = v;
+      return dm_token_hasher(token) ^ priority_hasher(priority);
+    }
+  };
+  using GenerationGuidMap =
+      std::unordered_map<std::tuple<DMtoken, Priority>, GenerationGuid, Hash>;
+
   // Private constructor, to be called by Create factory method only.
   // Queues need to be added afterwards.
   NewStorage(const StorageOptions& options,
@@ -183,15 +201,9 @@ class NewStorage : public StorageInterface {
   // Upload provider callback.
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
 
-  // This map associates DM tokens of users or the device with a unique
-  // GenerationGuid which is then associated to a queue in the `queues_` map.
-  // Only queues with their GenerationGuid in this map can be written to and are
-  // considered "active". Queues that are not accepting new events (i.e. queues
-  // that contained data before storage was shut down), will not have their
-  // GenerationGuid in this map, but will still exists in the `queues_` map so
-  // that they can send their remaining events.
-  base::flat_map<std::tuple<DMtoken, Priority>, GenerationGuid>
-      dmtoken_to_generation_guid_map_ GUARDED_BY_CONTEXT(sequence_checker_);
+  // <DM token, Priority> -> Generation guid map
+  GenerationGuidMap dmtoken_to_generation_guid_map_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 };
 
 }  // namespace reporting

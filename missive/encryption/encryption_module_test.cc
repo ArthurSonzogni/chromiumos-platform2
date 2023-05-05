@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/flat_map.h>
 #include <base/functional/bind.h>
 #include <base/hash/hash.h>
 #include <base/rand_util.h>

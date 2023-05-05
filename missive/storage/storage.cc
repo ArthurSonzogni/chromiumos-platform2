@@ -12,7 +12,6 @@
 #include <base/barrier_closure.h>
 #include <base/check.h>
 #include <base/containers/adapters.h>
-#include <base/containers/flat_set.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>

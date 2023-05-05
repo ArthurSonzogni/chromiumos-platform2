@@ -6,8 +6,8 @@
 #define MISSIVE_UTIL_DISCONNECTABLE_CLIENT_H_
 
 #include <memory>
+#include <unordered_map>
 
-#include <base/containers/fixed_flat_map.h>
 #include <base/functional/callback.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
@@ -63,7 +63,7 @@ class DisconnectableClient {
   // Map of delegates indexed by unique ids (all delegates will fail with error
   // Status if service disconnects). last_id_ is used for generation of these
   // unique ids.
-  base::flat_map<uint64_t, std::unique_ptr<Delegate>> outstanding_delegates_
+  std::unordered_map<uint64_t, std::unique_ptr<Delegate>> outstanding_delegates_
       GUARDED_BY_CONTEXT(sequence_checker_);
   uint64_t last_id_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
 

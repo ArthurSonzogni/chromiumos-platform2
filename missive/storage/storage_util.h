@@ -5,9 +5,9 @@
 #ifndef MISSIVE_STORAGE_STORAGE_UTIL_H_
 #define MISSIVE_STORAGE_STORAGE_UTIL_H_
 
-#include <base/containers/flat_set.h>
 #include <string>
 #include <tuple>
+#include <unordered_set>
 
 #include "missive/storage/storage_configuration.h"
 
@@ -15,9 +15,18 @@ namespace reporting {
 
 class StorageDirectory {
  public:
+  struct Hash {
+    size_t operator()(
+        const std::tuple<Priority, GenerationGuid>& v) const noexcept {
+      const auto& [priority, guid] = v;
+      static constexpr std::hash<Priority> priority_hasher;
+      static constexpr std::hash<GenerationGuid> guid_hasher;
+      return priority_hasher(priority) ^ guid_hasher(guid);
+    }
+  };
+  using Set = std::unordered_set<std::tuple<Priority, GenerationGuid>, Hash>;
   static bool DeleteEmptySubdirectories(const base::FilePath directory);
-  static base::flat_set<std::tuple<Priority, GenerationGuid>>
-  FindQueueDirectories(const StorageOptions& options);
+  static Set FindQueueDirectories(const StorageOptions& options);
 
   static StatusOr<std::tuple<Priority, GenerationGuid>>
   GetPriorityAndGenerationGuid(const base::FilePath& full_name,

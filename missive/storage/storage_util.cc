@@ -4,6 +4,8 @@
 
 #include <string>
 #include <tuple>
+#include <unordered_set>
+
 #include <base/strings/strcat.h>
 #include <base/guid.h>
 
@@ -24,9 +26,9 @@ namespace reporting {
 // are legacy queue directories which may be named by priority with no
 // generation guid (e.g. foo/bar/Security,  foo/bar/FastBatch). In this case
 // we set the generation guid in the queue parameter to be an empty string.
-base::flat_set<std::tuple<Priority, GenerationGuid>>
-StorageDirectory::FindQueueDirectories(const StorageOptions& options) {
-  base::flat_set<std::tuple<Priority, GenerationGuid>> queue_params;
+StorageDirectory::Set StorageDirectory::FindQueueDirectories(
+    const StorageOptions& options) {
+  Set queue_params;
   base::FileEnumerator dir_enum(options.directory(),
                                 /*recursive=*/false,
                                 base::FileEnumerator::DIRECTORIES);

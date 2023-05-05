@@ -13,7 +13,6 @@
 #include <string>
 #include <unordered_set>
 
-#include <base/containers/flat_map.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
