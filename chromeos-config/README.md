@@ -1713,16 +1713,20 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | limit-2g | integer |  | False |  | False | 2G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | limit-5g | integer |  | False |  | False | 5G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g | integer |  | False |  | False | 6G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | offset-2g | integer |  | False |  | False | Value to be added to the 2.4GHz WiFi band. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | offset-5g | integer |  | False |  | False | Value to be added to all 5GHz WiFi bands. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| offset-6g | integer |  | False |  | False | Value to be added to all 6GHz WiFi bands. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 
 ### fcc-power-table-mtk
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | limit-2g | integer |  | False |  | False | 2G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | limit-5g | integer |  | False |  | False | 5G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g | integer |  | False |  | False | 6G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | offset-2g | integer |  | False |  | False | Value to be added to the 2.4GHz WiFi band. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | offset-5g | integer |  | False |  | False | Value to be added to all 5GHz WiFi bands. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| offset-6g | integer |  | False |  | False | Value to be added to all 6GHz WiFi bands. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 
 ### non-tablet-mode-power-table-mtk
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1732,14 +1736,22 @@ In the tables below,
 | limit-5g-2 | integer |  | False |  | False | 5G band 2 power limit: 5.35G-5.47G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | limit-5g-3 | integer |  | False |  | False | 5G band 3 power limit: 5.47G-5.725G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | limit-5g-4 | integer |  | False |  | False | 5G band 4 power limit: 5.725G-5.95G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-1 | integer |  | False |  | False | 6G band 1 power limit: 5.945G-6.165G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-2 | integer |  | False |  | False | 6G band 2 power limit: 6.165G-6.405G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-3 | integer |  | False |  | False | 6G band 3 power limit: 6.405G-6.525G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-4 | integer |  | False |  | False | 6G band 4 power limit: 6.525G-6.705G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-5 | integer |  | False |  | False | 6G band 5 power limit: 6.705G-6.865G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-6 | integer |  | False |  | False | 6G band 6 power limit: 6.865G-7.125G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 
 ### rest-of-world-power-table-mtk
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | limit-2g | integer |  | False |  | False | 2G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | limit-5g | integer |  | False |  | False | 5G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g | integer |  | False |  | False | 6G band geo power limit. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | offset-2g | integer |  | False |  | False | Value to be added to the 2.4GHz WiFi band. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | offset-5g | integer |  | False |  | False | Value to be added to all 5GHz WiFi bands. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| offset-6g | integer |  | False |  | False | Value to be added to all 6GHz WiFi bands. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 
 ### tablet-mode-power-table-mtk
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1749,6 +1761,12 @@ In the tables below,
 | limit-5g-2 | integer |  | False |  | False | 5G band 2 power limit: 5.35G-5.47G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | limit-5g-3 | integer |  | False |  | False | 5G band 3 power limit: 5.47G-5.725G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 | limit-5g-4 | integer |  | False |  | False | 5G band 4 power limit: 5.725G-5.95G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-1 | integer |  | False |  | False | 6G band 1 power limit: 5.945G-6.165G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-2 | integer |  | False |  | False | 6G band 2 power limit: 6.165G-6.405G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-3 | integer |  | False |  | False | 6G band 3 power limit: 6.405G-6.525G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-4 | integer |  | False |  | False | 6G band 4 power limit: 6.525G-6.705G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-5 | integer |  | False |  | False | 6G band 5 power limit: 6.705G-6.865G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
+| limit-6g-6 | integer |  | False |  | False | 6G band 6 power limit: 6.865G-7.125G frequency. (0.25 dBm) Minimum value: 0x0. Maximum value: 0xff. |
 
 ### sar-file
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

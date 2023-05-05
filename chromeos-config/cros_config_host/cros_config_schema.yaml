@@ -268,6 +268,36 @@ typeDefs:
         type: integer
         minimum: 0x0
         maximum: 0xFF
+      limit-6g-1:
+        description: "6G band 1 power limit: 5.945G-6.165G frequency. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-6g-2:
+        description: "6G band 2 power limit: 6.165G-6.405G frequency. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-6g-3:
+        description: "6G band 3 power limit: 6.405G-6.525G frequency. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-6g-4:
+        description: "6G band 4 power limit: 6.525G-6.705G frequency. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-6g-5:
+        description: "6G band 5 power limit: 6.705G-6.865G frequency. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      limit-6g-6:
+        description: "6G band 6 power limit: 6.865G-7.125G frequency. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
     additionalProperties: false
   mtk-wifi-geo-transmit-power-chain: &mtk-wifi-geo-transmit-power-chain
     description: "[mtk] WiFi power chain of regulatory domain for use with MediaTek mt7921 driver.
@@ -284,6 +314,11 @@ typeDefs:
         type: integer
         minimum: 0x0
         maximum: 0xFF
+      limit-6g:
+        description: "6G band geo power limit. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
       offset-2g:
         description: "Value to be added to the 2.4GHz WiFi band. (0.25 dBm)"
         type: integer
@@ -291,6 +326,11 @@ typeDefs:
         maximum: 0xFF
       offset-5g:
         description: "Value to be added to all 5GHz WiFi bands. (0.25 dBm)"
+        type: integer
+        minimum: 0x0
+        maximum: 0xFF
+      offset-6g:
+        description: "Value to be added to all 6GHz WiFi bands. (0.25 dBm)"
         type: integer
         minimum: 0x0
         maximum: 0xFF

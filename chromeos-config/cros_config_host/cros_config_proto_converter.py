@@ -1174,13 +1174,45 @@ def _build_mtk_config(mtk_config):
     result = {}
 
     def power_chain(power):
-        return {
-            "limit-2g": power.limit_2g,
-            "limit-5g-1": power.limit_5g_1,
-            "limit-5g-2": power.limit_5g_2,
-            "limit-5g-3": power.limit_5g_3,
-            "limit-5g-4": power.limit_5g_4,
-        }
+        chain = {}
+        chain["limit-2g"] = power.limit_2g
+        chain["limit-5g-1"] = power.limit_5g_1
+        chain["limit-5g-2"] = power.limit_5g_2
+        chain["limit-5g-3"] = power.limit_5g_3
+        chain["limit-5g-4"] = power.limit_5g_4
+        # Ignore 6 GHz parameters that are 0, which is the protobuf 3 default
+        # this is done to avoid inserting 0s where values should be unset.
+        if power.limit_6g_1 != 0:
+            # Don't allow partially configured 6GHz SAR tables.
+            if (
+                power.limit_6g_2 == 0
+                or power.limit_6g_3 == 0
+                or power.limit_6g_4 == 0
+                or power.limit_6g_5 == 0
+                or power.limit_6g_6 == 0
+            ):
+                raise Exception(
+                    "6GHz SAR table partially and improperly set up.  Please add values for limits in all bands (1-6)."
+                )
+            chain["limit-6g-1"] = power.limit_6g_1
+            chain["limit-6g-2"] = power.limit_6g_2
+            chain["limit-6g-3"] = power.limit_6g_3
+            chain["limit-6g-4"] = power.limit_6g_4
+            chain["limit-6g-5"] = power.limit_6g_5
+            chain["limit-6g-6"] = power.limit_6g_6
+        else:
+            # Don't allow partially configured 6GHz SAR tables.
+            if (
+                power.limit_6g_2 != 0
+                or power.limit_6g_3 != 0
+                or power.limit_6g_4 != 0
+                or power.limit_6g_5 != 0
+                or power.limit_6g_6 != 0
+            ):
+                raise Exception(
+                    "6GHz SAR table partially and improperly set up.  Please add values for limits in all bands (1-6)."
+                )
+        return chain
 
     if mtk_config.HasField("tablet_mode_power_table"):
         result["tablet-mode-power-table-mtk"] = power_chain(
@@ -1192,12 +1224,20 @@ def _build_mtk_config(mtk_config):
         )
 
     def geo_power_chain(power):
-        return {
-            "limit-2g": power.limit_2g,
-            "limit-5g": power.limit_5g,
-            "offset-2g": power.offset_2g,
-            "offset-5g": power.offset_5g,
-        }
+        chain = {}
+        chain["limit-2g"] = power.limit_2g
+        chain["limit-5g"] = power.limit_5g
+        # Ignore 6 GHz parameters that are 0, which is the protobuf 3 default
+        # this is done to avoid inserting 0s where values should be unset.
+        if power.limit_6g != 0:
+            chain["limit-6g"] = power.limit_6g
+        chain["offset-2g"] = power.offset_2g
+        chain["offset-5g"] = power.offset_5g
+        # Ignore 6 GHz parameters that are 0, which is the protobuf 3 default
+        # this is done to avoid inserting 0s where values should be unset.
+        if power.offset_6g != 0:
+            chain["offset-6g"] = power.offset_6g
+        return chain
 
     if mtk_config.HasField("fcc_power_table"):
         result["fcc-power-table-mtk"] = geo_power_chain(

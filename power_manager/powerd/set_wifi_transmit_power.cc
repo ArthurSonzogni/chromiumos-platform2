@@ -567,12 +567,20 @@ void FillMessageAth10k(struct nl_msg* msg, bool tablet) {
 // changes. Since the mt7921 driver already publishes its capabilities (see
 // crrev.com/c/3009850), this could use the driver capability to find the index
 // and frequency band mapping to avoid enums like these (b/172377638).
+// Note: Enum indices 5-10 were added for the 6GHz bands present in
+// crrev.com/c/3953998.
 enum MtkSARBand {
   kMtkSarBand2g = 0,
   kMtkSarBand5g1 = 1,
   kMtkSarBand5g2 = 2,
   kMtkSarBand5g3 = 3,
   kMtkSarBand5g4 = 4,
+  kMtkSarBand6g1 = 5,
+  kMtkSarBand6g2 = 6,
+  kMtkSarBand6g3 = 7,
+  kMtkSarBand6g4 = 8,
+  kMtkSarBand6g5 = 9,
+  kMtkSarBand6g6 = 10,
 };
 
 std::map<enum MtkSARBand, uint8_t> GetMtkChromeosConfigPowerTable(
@@ -597,7 +605,8 @@ std::map<enum MtkSARBand, uint8_t> GetMtkChromeosConfigPowerTable(
       break;
   }
 
-  int limit_2g = UINT8_MAX, limit_5g = UINT8_MAX, offset_2g = 0, offset_5g = 0;
+  int limit_2g = UINT8_MAX, limit_5g = UINT8_MAX, limit_6g = UINT8_MAX,
+      offset_2g = 0, offset_5g = 0, offset_6g = 0;
   if (domain != power_manager::WifiRegDomain::NONE) {
     std::string geo_string;
     if (config->GetString(wifi_geo_power_table_path, "limit-2g", &geo_string)) {
@@ -606,6 +615,9 @@ std::map<enum MtkSARBand, uint8_t> GetMtkChromeosConfigPowerTable(
     if (config->GetString(wifi_geo_power_table_path, "limit-5g", &geo_string)) {
       limit_5g = std::stoi(geo_string);
     }
+    if (config->GetString(wifi_geo_power_table_path, "limit-6g", &geo_string)) {
+      limit_6g = std::stoi(geo_string);
+    }
     if (config->GetString(wifi_geo_power_table_path, "offset-2g",
                           &geo_string)) {
       offset_2g = std::stoi(geo_string);
@@ -613,6 +625,10 @@ std::map<enum MtkSARBand, uint8_t> GetMtkChromeosConfigPowerTable(
     if (config->GetString(wifi_geo_power_table_path, "offset-5g",
                           &geo_string)) {
       offset_5g = std::stoi(geo_string);
+    }
+    if (config->GetString(wifi_geo_power_table_path, "offset-6g",
+                          &geo_string)) {
+      offset_6g = std::stoi(geo_string);
     }
   }
 
@@ -653,6 +669,53 @@ std::map<enum MtkSARBand, uint8_t> GetMtkChromeosConfigPowerTable(
   CHECK(power_limit >= 0 && power_limit <= UINT8_MAX)
       << "Invalid power limit configs. Limit value cannot exceed 255.";
   power_table[kMtkSarBand5g4] = std::min(power_limit, limit_5g);
+
+  // See if there's a 6GHz entry.  If so, assume that all 6GHz values will
+  // be populated.  Otherwise, assume no 6GHz values and don't touch the
+  // 6GHz config.
+  // This is largely done to be backwards compatible with MT7921, which doesn't
+  // require 6GHz config (as it is not 6GHz capable).
+  if (config->GetString(wifi_power_table_path, "limit-6g-1", &value)) {
+    power_limit = std::stoi(value) + offset_6g;
+    CHECK(power_limit >= 0 && power_limit <= UINT8_MAX)
+        << "Invalid power limit configs. Limit value cannot exceed 255.";
+    power_table[kMtkSarBand6g1] = std::min(power_limit, limit_6g);
+
+    CHECK(config->GetString(wifi_power_table_path, "limit-6g-2", &value))
+        << "Could not get ChromeosConfig power table.";
+    power_limit = std::stoi(value) + offset_6g;
+    CHECK(power_limit >= 0 && power_limit <= UINT8_MAX)
+        << "Invalid power limit configs. Limit value cannot exceed 255.";
+    power_table[kMtkSarBand6g2] = std::min(power_limit, limit_6g);
+
+    CHECK(config->GetString(wifi_power_table_path, "limit-6g-3", &value))
+        << "Could not get ChromeosConfig power table.";
+    power_limit = std::stoi(value) + offset_6g;
+    CHECK(power_limit >= 0 && power_limit <= UINT8_MAX)
+        << "Invalid power limit configs. Limit value cannot exceed 255.";
+    power_table[kMtkSarBand6g3] = std::min(power_limit, limit_6g);
+
+    CHECK(config->GetString(wifi_power_table_path, "limit-6g-4", &value))
+        << "Could not get ChromeosConfig power table.";
+    power_limit = std::stoi(value) + offset_6g;
+    CHECK(power_limit >= 0 && power_limit <= UINT8_MAX)
+        << "Invalid power limit configs. Limit value cannot exceed 255.";
+    power_table[kMtkSarBand6g4] = std::min(power_limit, limit_6g);
+
+    CHECK(config->GetString(wifi_power_table_path, "limit-6g-5", &value))
+        << "Could not get ChromeosConfig power table.";
+    power_limit = std::stoi(value) + offset_6g;
+    CHECK(power_limit >= 0 && power_limit <= UINT8_MAX)
+        << "Invalid power limit configs. Limit value cannot exceed 255.";
+    power_table[kMtkSarBand6g5] = std::min(power_limit, limit_6g);
+
+    CHECK(config->GetString(wifi_power_table_path, "limit-6g-6", &value))
+        << "Could not get ChromeosConfig power table.";
+    power_limit = std::stoi(value) + offset_6g;
+    CHECK(power_limit >= 0 && power_limit <= UINT8_MAX)
+        << "Invalid power limit configs. Limit value cannot exceed 255.";
+    power_table[kMtkSarBand6g6] = std::min(power_limit, limit_6g);
+  }
 
   return power_table;
 }
