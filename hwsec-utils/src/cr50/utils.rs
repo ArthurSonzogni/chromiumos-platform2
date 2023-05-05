@@ -147,40 +147,6 @@ pub fn get_board_id_with_gsctool(ctx: &mut impl Context) -> Result<BoardID, Hwse
     extract_board_id_from_gsctool_response(board_id_output)
 }
 
-/// This function finds the first occurrence of a version representation (e.g. 1.3.14)
-/// after the occurrence of the specific substring "RW_FW_VER".
-///
-/// If raw_response does not contain substring "RW_FW_VER"
-/// or there is no version representation occurring
-/// after the position of that of substring "RW_FW_VER",
-/// this function returns Err(HwsecError::GsctoolResponseBadFormatError).
-pub fn extract_rw_fw_version_from_gsctool_response(
-    raw_response: &str,
-) -> Result<Version, HwsecError> {
-    let re: regex::Regex = Regex::new(r"([0-9]+\.){2}[0-9]+").unwrap();
-    if let Some(keyword_pos) = raw_response.find("RW_FW_VER") {
-        let key_str: Vec<&str> = re
-            .find(&raw_response[keyword_pos..])
-            .ok_or(HwsecError::GsctoolResponseBadFormatError)?
-            .as_str()
-            .split('.')
-            .collect::<Vec<&str>>();
-        Ok(Version {
-            epoch: key_str[0]
-                .parse::<u8>()
-                .map_err(|_| HwsecError::GsctoolResponseBadFormatError)?,
-            major: key_str[1]
-                .parse::<u8>()
-                .map_err(|_| HwsecError::GsctoolResponseBadFormatError)?,
-            minor: key_str[2]
-                .parse::<u8>()
-                .map_err(|_| HwsecError::GsctoolResponseBadFormatError)?,
-        })
-    } else {
-        Err(HwsecError::GsctoolResponseBadFormatError)
-    }
-}
-
 pub fn clear_terminal() {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
 }
@@ -261,42 +227,10 @@ pub fn get_factory_config_with_gsctool(
 
 #[cfg(test)]
 mod tests {
-    use super::extract_rw_fw_version_from_gsctool_response;
     use super::get_value_from_gsctool_output;
     use super::parse_version;
     use crate::cr50::Version;
     use crate::error::HwsecError;
-
-    #[test]
-    fn test_extract_rw_fw_version_from_gsctool_response_ok() {
-        let result = extract_rw_fw_version_from_gsctool_response("RW_FW_VER=0.0.1");
-        assert_eq!(
-            result,
-            Ok(Version {
-                epoch: 0,
-                major: 0,
-                minor: 1
-            })
-        );
-    }
-
-    #[test]
-    fn test_extract_rw_fw_version_from_gsctool_response_no_version_after_rw_fw_substring() {
-        let result = extract_rw_fw_version_from_gsctool_response("RW_FW_VER=");
-        assert_eq!(result, Err(HwsecError::GsctoolResponseBadFormatError));
-    }
-
-    #[test]
-    fn test_extract_rw_fw_version_from_gsctool_response_no_rw_fw_substring() {
-        let result = extract_rw_fw_version_from_gsctool_response("0.0.1");
-        assert_eq!(result, Err(HwsecError::GsctoolResponseBadFormatError));
-    }
-
-    #[test]
-    fn test_extract_rw_fw_version_from_gsctool_response_not_valid_version() {
-        let result = extract_rw_fw_version_from_gsctool_response("RW_FW_VER=123");
-        assert_eq!(result, Err(HwsecError::GsctoolResponseBadFormatError));
-    }
 
     #[test]
     fn test_parse_version_ok() {

@@ -10,7 +10,8 @@ use super::run_gsctool_cmd;
 use super::Version;
 use crate::command_runner::CommandRunner;
 use crate::context::Context;
-use crate::cr50::extract_rw_fw_version_from_gsctool_response;
+use crate::cr50::get_value_from_gsctool_output;
+use crate::cr50::parse_version;
 use crate::tpm2::ERASED_BOARD_ID;
 
 pub const WHITELABEL: u32 = 0x4000;
@@ -123,29 +124,31 @@ pub fn check_cr50_support(
     target_prepvt: Version,
     desc: &str,
 ) -> Result<(), Cr50SetBoardIDVerdict> {
-    let output = run_gsctool_cmd(ctx, vec!["--any", "--fwver", "--machine"]).map_err(|_| {
-        eprintln!("Failed to run gsctool.");
-        Cr50SetBoardIDVerdict::GeneralError
-    })?;
-    if output.status.code().unwrap() != 0 {
+    let gsctool_output =
+        run_gsctool_cmd(ctx, vec!["--any", "--fwver", "--machine"]).map_err(|_| {
+            eprintln!("Failed to run gsctool.");
+            Cr50SetBoardIDVerdict::GeneralError
+        })?;
+    if !gsctool_output.status.success() {
         eprintln!("Failed to get the version");
         return Err(Cr50SetBoardIDVerdict::GeneralError);
     }
-    let rw_version = extract_rw_fw_version_from_gsctool_response(&format!(
-        "{}{}",
-        std::str::from_utf8(&output.stdout).map_err(|_| {
-            eprintln!("Internal error occurred.");
-            Cr50SetBoardIDVerdict::GeneralError
-        })?,
-        std::str::from_utf8(&output.stderr).map_err(|_| {
-            eprintln!("Internal error occurred.");
-            Cr50SetBoardIDVerdict::GeneralError
-        })?,
-    ))
-    .map_err(|_| {
+
+    let output = std::str::from_utf8(&gsctool_output.stdout).map_err(|_| {
+        eprintln!("Internal error occurred.");
+        Cr50SetBoardIDVerdict::GeneralError
+    })?;
+
+    let rw_version_str = get_value_from_gsctool_output(output, "RW_FW_VER").map_err(|_| {
         eprintln!("Failed to extract RW_FW_VERSION from gsctool response");
         Cr50SetBoardIDVerdict::GeneralError
     })?;
+    eprintln!("{}", rw_version_str);
+    let Some(rw_version) = parse_version(rw_version_str) else {
+        eprintln!("Failed to parse {} into version", rw_version_str);
+        return Err(Cr50SetBoardIDVerdict::GeneralError);
+    };
+
     let target = if rw_version.is_prod_image() {
         target_prod
     } else {
