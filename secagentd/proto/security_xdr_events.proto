@@ -159,7 +159,7 @@ message NetworkEventAtomicVariant {
   optional CommonEventVariantDataFields common = 1;
   oneof variant_type {
     NetworkFlowEvent network_flow = 2;
-    NetworkSocketListenEvent socket_listen = 3;
+    NetworkSocketListenEvent network_socket_listen = 3;
   }
 }
 
@@ -178,8 +178,16 @@ enum NetworkProtocol {
   RAW = 4;
 }
 
-// Acting process communicated externally over the network.
-message NetworkFlowEvent {
+enum SocketType {
+  SOCK_STREAM = 1;
+  SOCK_DGRAM = 2;
+  SOCK_SEQPACKET = 3;
+  SOCK_RAW = 4;
+  SOCK_RDM = 5;
+  SOCK_PACKET = 6;  // According to socket(2) is obsolete.
+}
+
+message NetworkFlow {
   enum Direction {
     DIRECTION_UNKNOWN = 0;
     INCOMING = 1;
@@ -191,34 +199,44 @@ message NetworkFlowEvent {
     HTTPS = 2;
     DNS = 3;
   }
+  optional string community_id_v1 = 1;
+  // ${COPYBARA_DATAPOL_ST_IP_ADDRESS}
+  optional string local_ip = 2;
+  optional uint64 local_port = 3;
+  // ${COPYBARA_DATAPOL_ST_IP_ADDRESS}
+  optional string remote_ip = 4;
+  optional uint64 remote_port = 5;
+  optional NetworkProtocol protocol = 6;
+  optional Direction direction = 7;
+  // ${COPYBARA_DATAPOL_ST_NETWORK_ENDPOINT}
+  optional string remote_hostname = 8;
+  optional uint64 rx_bytes = 9;
+  optional uint64 tx_bytes = 10;
+  optional ApplicationProtocol application_protocol = 11;
+  // ${COPYBARA_DATAPOL_ST_NETWORK_ENDPOINT}
+  optional string http_host = 12;
+  // ${COPYBARA_DATAPOL_ST_NETWORK_ENDPOINT}
+  optional string sni_host = 13;
+}
+
+// Acting process communicated externally over the network.
+message NetworkFlowEvent {
   optional Process parent_process = 1;
   optional Process process = 2;
-  optional string community_id_v1 = 3;
+  optional NetworkFlow network_flow = 3;
+}
+
+message Socket {
+  optional NetworkProtocol protocol = 1;
   // ${COPYBARA_DATAPOL_ST_IP_ADDRESS}
-  optional string local_ip = 4;
-  optional uint64 local_port = 5;
-  // ${COPYBARA_DATAPOL_ST_IP_ADDRESS}
-  optional string remote_ip = 6;
-  optional uint64 remote_port = 7;
-  optional NetworkProtocol protocol = 8;
-  optional Direction direction = 9;
-  // ${COPYBARA_DATAPOL_ST_NETWORK_ENDPOINT}
-  optional string remote_hostname = 10;
-  optional uint64 rx_bytes = 11;
-  optional uint64 tx_bytes = 12;
-  optional ApplicationProtocol application_protocol = 13;
-  // ${COPYBARA_DATAPOL_ST_NETWORK_ENDPOINT}
-  optional string http_host = 14;
-  // ${COPYBARA_DATAPOL_ST_NETWORK_ENDPOINT}
-  optional string sni_host = 15;
+  optional string bind_addr = 2;
+  optional uint64 bind_port = 3;
+  optional SocketType socket_type = 4;
 }
 
 // Acting process is listening for connections on a socket.
 message NetworkSocketListenEvent {
   optional Process parent_process = 1;
   optional Process process = 2;
-  optional NetworkProtocol protocol = 3;
-  // ${COPYBARA_DATAPOL_ST_IP_ADDRESS}
-  optional string bind_addr = 4;
-  optional uint64 bind_port = 5;
+  optional Socket socket = 3;
 }
