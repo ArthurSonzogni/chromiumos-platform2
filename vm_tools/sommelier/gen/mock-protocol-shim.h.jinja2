@@ -15,6 +15,9 @@ class Mock{{ interface.name }} : public {{ interface.name }} {
   public:
     MOCK_METHOD(void, set_user_data, (struct {{ interface.name_underscore }}* {{ interface.name_underscore }}, void* user_data), (override));
     MOCK_METHOD(void*, get_user_data, (struct {{ interface.name_underscore }}* {{ interface.name_underscore }}), (override));
+    {%- if interface.events|length > 0 %}
+    MOCK_METHOD(int, add_listener, (struct {{ interface.name_underscore }}* {{ interface.name_underscore }}, const struct {{ interface.name_underscore }}_listener* listener, void* data), (override));
+    {% endif %}
 
   {%- for method in interface.methods %}
     MOCK_METHOD({{ method.ret }}, {{ method.name }}, (struct {{ interface.name_underscore }}* {{ interface.name_underscore }}{% for arg in method.args %}, {{ arg.type }} {{ arg.name }}{% endfor %}), (override));

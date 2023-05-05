@@ -27,6 +27,10 @@ class {{ interface.name }} {
 
     virtual void* get_user_data(struct {{ interface.name_underscore }}* {{ interface.name_underscore }});
 
+    {%- if interface.events|length > 0 %}
+    virtual int add_listener(struct {{ interface.name_underscore }}* {{ interface.name_underscore }}, const struct {{ interface.name_underscore }}_listener* listener, void* data);
+    {% endif %}
+
     {%- for method in interface.methods %}
     virtual {{ method.ret }} {{ method.name }}(
         struct {{ interface.name_underscore }} *{{ interface.name_underscore }}{% for arg in method.args %},
