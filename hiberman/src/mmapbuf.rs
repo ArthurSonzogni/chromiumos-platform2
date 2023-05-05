@@ -44,12 +44,6 @@ impl MmapBuffer {
         }
     }
 
-    /// Return the effective length of the buffer, which may be more than what
-    /// the caller originally asked for.
-    pub fn len(&self) -> usize {
-        self.len
-    }
-
     /// Return the buffer contents as an immutable u8 slice.
     pub fn u8_slice(&self) -> &[u8] {
         // This is safe because the buffer is known to be this large.

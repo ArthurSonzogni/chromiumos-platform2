@@ -4,6 +4,7 @@
 
 //! Implements support for collecting and sending hibernate metrics.
 
+use std::collections::VecDeque;
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
@@ -32,7 +33,6 @@ use crate::files::open_resume_failures_file;
 use crate::files::HIBERMETA_DIR;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateStage;
-use crate::mmapbuf::MmapBuffer;
 
 /// Define the resume metrics file name.
 const RESUME_METRICS_FILE_NAME: &str = "resume_metrics";
@@ -43,8 +43,6 @@ const SUSPEND_METRICS_FILE_NAME: &str = "suspend_metrics";
 pub const BYTES_PER_MB_F64: f64 = 1048576.0;
 /// Max expected IO size for IO metrics.
 pub const MAX_IO_SIZE_KB: isize = 9437000;
-/// Size of the metrics buffer, 4k aligned to be compatible with BouncedDiskFile writes.
-pub const METRICS_BUFFER_SIZE: usize = 4096;
 
 /// A MetricSample represents a sample point for a Hibernate histogram in UMA.
 /// It requires the histogram name, the sample value, the minimum value,
@@ -61,61 +59,44 @@ pub struct MetricsSample<'a> {
 /// Define the hibernate metrics logger.
 pub struct MetricsLogger {
     pub file: Option<File>,
-    buf: MmapBuffer,
-    offset: usize,
+    buf: VecDeque<String>,
 }
 
 impl MetricsLogger {
     pub fn new() -> Result<Self> {
-        let buf = MmapBuffer::new(METRICS_BUFFER_SIZE)?;
         Ok(Self {
             file: None,
-            buf,
-            offset: 0,
+            buf: VecDeque::new(),
         })
     }
 
-    /// Log a metric to the MetricsLogger buffer, flush if full.
+    /// Log a metric to the MetricsLogger buffer.
     pub fn log_metric(&mut self, metric: MetricsSample) {
-        let log = match serde_json::to_string(&metric) {
+        let entry = match serde_json::to_string(&metric) {
             Ok(s) => s,
             Err(e) => {
                 warn!("Failed to make metric string, {}", e);
                 return;
             }
         };
-        let log_str = format!("{}\n", log);
 
-        let metric_bytes = log_str.as_bytes();
-        assert!(metric_bytes.len() < self.buf.len());
-        let remaining = self.buf.len() - self.offset;
-        let copy_size = std::cmp::min(remaining, metric_bytes.len());
-        let end = self.offset + copy_size;
-        self.buf.u8_slice_mut()[self.offset..end].copy_from_slice(&metric_bytes[0..copy_size]);
-        self.offset += copy_size;
-        if self.offset == self.buf.len() {
-            if let Err(e) = self.flush() {
-                warn!("Failed to flush metrics buf to file {:?}", e);
-            }
-            let remainder = metric_bytes.len() - copy_size;
-            self.buf.u8_slice_mut()[0..remainder].copy_from_slice(&metric_bytes[copy_size..]);
-            self.offset = remainder;
-        }
+        self.buf.push_back(entry);
     }
 
     /// Write the MetricsLogger buffer to the MetricsLogger file.
     pub fn flush(&mut self) -> Result<()> {
-        let remaining = self.buf.len() - self.offset;
-        if remaining > 0 {
-            let zero = [0u8; METRICS_BUFFER_SIZE];
-            self.buf.u8_slice_mut()[self.offset..].copy_from_slice(&zero[..remaining]);
-        }
-        self.offset = 0;
-
         match &mut self.file {
-            Some(f) => f
-                .write_all(self.buf.u8_slice())
-                .context("Failed to write metrics file"),
+            Some(f) => {
+                for entry in self.buf.drain(..) {
+                    f.write_all(entry.as_bytes())
+                        .context("Failed to write metrics file")?;
+                    f.write_all("\n".as_bytes())
+                        .context("Failed to write metrics file")?;
+                }
+
+                Ok(())
+            }
+
             None => Err(HibernateError::MetricsSendFailure(
                 "No metrics file set.".to_string(),
             ))
