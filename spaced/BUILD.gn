@@ -12,6 +12,7 @@ group("all") {
     ":install_dbus_config",
     ":install_headers",
     ":install_init",
+    ":install_minijail_conf",
     ":libspaced_pc",
     ":spaced",
     ":spaced_cli",
@@ -108,6 +109,11 @@ install_config("install_headers") {
     "disk_usage_proxy.h",
   ]
   install_path = "/usr/include/spaced"
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/spaced.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 if (use.test) {
