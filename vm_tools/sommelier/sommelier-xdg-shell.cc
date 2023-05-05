@@ -276,8 +276,8 @@ static void sl_xdg_surface_get_toplevel(struct wl_client* client,
   host_xdg_toplevel->proxy = xdg_surface_shim()->get_toplevel(host->proxy);
   host_xdg_toplevel->originator = host;
 
-  xdg_toplevel_add_listener(host_xdg_toplevel->proxy, &sl_xdg_toplevel_listener,
-                            host_xdg_toplevel);
+  xdg_toplevel_shim()->add_listener(
+      host_xdg_toplevel->proxy, &sl_xdg_toplevel_listener, host_xdg_toplevel);
 }
 
 static void sl_xdg_surface_get_popup(struct wl_client* client,
@@ -307,8 +307,8 @@ static void sl_xdg_surface_get_popup(struct wl_client* client,
       host_positioner->proxy);
   host_xdg_popup->originator = host_parent;
 
-  xdg_popup_add_listener(host_xdg_popup->proxy, &sl_xdg_popup_listener,
-                         host_xdg_popup);
+  xdg_popup_shim()->add_listener(host_xdg_popup->proxy, &sl_xdg_popup_listener,
+                                 host_xdg_popup);
 }  // NOLINT(whitespace/indent)
 
 static void sl_xdg_surface_set_window_geometry(struct wl_client* client,
@@ -402,8 +402,8 @@ static void sl_xdg_shell_get_xdg_surface(struct wl_client* client,
       xdg_wm_base_shim()->get_xdg_surface(host->proxy, host_surface->proxy);
   host_xdg_surface->originator = host_surface;
 
-  xdg_surface_add_listener(host_xdg_surface->proxy, &sl_xdg_surface_listener,
-                           host_xdg_surface);
+  xdg_surface_shim()->add_listener(host_xdg_surface->proxy,
+                                   &sl_xdg_surface_listener, host_xdg_surface);
   host_surface->has_role = 1;
 }
 
@@ -447,7 +447,7 @@ static void sl_bind_host_xdg_shell(struct wl_client* client,
   host->proxy = static_cast<xdg_wm_base*>(wl_registry_bind(
       wl_display_get_registry(ctx->display), ctx->xdg_shell->id,
       &xdg_wm_base_interface, std::min(version, XDG_SHELL_VERSION)));
-  xdg_wm_base_add_listener(host->proxy, &sl_xdg_shell_listener, host);
+  xdg_wm_base_shim()->add_listener(host->proxy, &sl_xdg_shell_listener, host);
 }
 
 struct sl_global* sl_xdg_shell_global_create(struct sl_context* ctx) {
