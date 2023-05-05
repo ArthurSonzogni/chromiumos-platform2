@@ -43,7 +43,7 @@ const char kUSBDevice[] = "usb_device";
 // Returns true iff `device` is tagged with `role` in its udev properties.
 // Powerd role tags are applied to devices by the udev rules which are installed
 // with powerd.
-bool HasPowerdRole(struct udev_device* device, const std::string& role) {
+bool DeviceHasPowerdRole(struct udev_device* device, const std::string& role) {
   const char* role_cstr =
       udev_device_get_property_value(device, kPowerdRoleVar);
   const std::string device_role = role_cstr ? role_cstr : "";
@@ -331,8 +331,8 @@ base::FilePath Udev::FindWakeCapableParent(const std::string& syspath) {
   // We assign powerd roles to the input device. In case |syspath| points to
   // a event device, look also at the parent device to see if it has
   // |kPowerdRoleCrosFP| role.
-  if (HasPowerdRole(device, kPowerdRoleCrosFP) ||
-      HasPowerdRole(parent, kPowerdRoleCrosFP)) {
+  if (DeviceHasPowerdRole(device, kPowerdRoleCrosFP) ||
+      DeviceHasPowerdRole(parent, kPowerdRoleCrosFP)) {
     base::FilePath actual_fp_path;
     if (!base::ReadSymbolicLink(base::FilePath(kFingerprintSysfsPath),
                                 &actual_fp_path)) {
@@ -344,7 +344,7 @@ base::FilePath Udev::FindWakeCapableParent(const std::string& syspath) {
       wakeup_device_path =
           FindParentWithSysattr(wakeup_path, kPowerWakeup, kUSBDevice);
     }
-  } else if (HasPowerdRole(device, kPowerdRoleCrosBT)) {
+  } else if (DeviceHasPowerdRole(device, kPowerdRoleCrosBT)) {
     // Check if the input device is assigned the |kPowerdRoleCrosBT| role. If it
     // has this role, then its wakeup path will be a parent of the hci sysfs
     // path and not the input device itself.
@@ -418,6 +418,15 @@ bool Udev::GetDevlinks(const std::string& syspath,
   }
 
   return true;
+}
+
+bool Udev::HasPowerdRole(const std::string& syspath, const std::string& role) {
+  DCHECK(udev_);
+
+  std::unique_ptr<udev_device, UdevDeviceDeleter> device(
+      udev_device_new_from_syspath(udev_, syspath.c_str()));
+
+  return DeviceHasPowerdRole(device.get(), role);
 }
 
 void Udev::OnFileCanReadWithoutBlocking() {

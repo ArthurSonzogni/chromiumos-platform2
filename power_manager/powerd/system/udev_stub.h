@@ -42,6 +42,9 @@ class UdevStub : public UdevInterface {
                            const std::string& tags);
   void TaggedDeviceRemoved(const std::string& syspath);
 
+  // Insert a powerd role to a certain path (used for lookup by HasPowerdRole).
+  void SetPowerdRole(const std::string& syspath, const std::string& role);
+
   // Makes SetSysattr() fail unless attribute is created with SetSysattr()
   // previously.
   void stop_accepting_sysattr_for_testing();
@@ -74,6 +77,8 @@ class UdevStub : public UdevInterface {
                   const std::string& value) override;
   bool GetDevlinks(const std::string& syspath,
                    std::vector<std::string>* out) override;
+  bool HasPowerdRole(const std::string& syspath,
+                     const std::string& role) override;
 
  private:
   // List of subsystem devices returned when GetSubsystemDevices is called.
@@ -90,6 +95,9 @@ class UdevStub : public UdevInterface {
 
   // Maps a syspath to the corresponding TaggedDevice.
   std::map<std::string, TaggedDevice> tagged_devices_;
+
+  // Maps a syspath to the corresponding powerd role.
+  std::map<std::string, std::string> powerd_roles_;
 
   // Maps a syspath to the corresponding devlinks.
   std::map<std::string, std::vector<std::string>> devlinks_;

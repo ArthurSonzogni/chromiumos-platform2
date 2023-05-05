@@ -8,6 +8,7 @@
 #include "power_manager/powerd/system/udev_tagged_device_observer.h"
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 
 namespace power_manager::system {
 
@@ -141,6 +142,17 @@ bool UdevStub::GetDevlinks(const std::string& syspath,
 
   *out = iter->second;
   return true;
+}
+
+void UdevStub::SetPowerdRole(const std::string& syspath,
+                             const std::string& role) {
+  powerd_roles_.emplace(std::make_pair(syspath, role));
+}
+
+bool UdevStub::HasPowerdRole(const std::string& syspath,
+                             const std::string& role) {
+  return base::Contains(powerd_roles_, syspath) &&
+         powerd_roles_[syspath] == role;
 }
 
 }  // namespace power_manager::system

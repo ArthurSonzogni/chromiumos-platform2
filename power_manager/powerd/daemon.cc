@@ -563,7 +563,8 @@ void Daemon::Init() {
     audio_client_->AddObserver(this);
   }
 
-  bluetooth_controller_->Init(udev_.get());
+  bluetooth_controller_->Init(udev_.get(), platform_features_.get(),
+                              dbus_wrapper_.get());
   wifi_controller_->Init(this, prefs_.get(), udev_.get(), tablet_mode);
   cellular_controller_->Init(this, prefs_.get(), dbus_wrapper_.get());
   peripheral_battery_watcher_ = delegate_->CreatePeripheralBatteryWatcher(

@@ -96,6 +96,11 @@ class UdevInterface {
   // udev configured, and stores their paths in |out|.
   virtual bool GetDevlinks(const std::string& syspath,
                            std::vector<std::string>* out) = 0;
+
+  // For the device specified by |syspath|, check if it has the specified powerd
+  // role.
+  virtual bool HasPowerdRole(const std::string& syspath,
+                             const std::string& role) = 0;
 };
 
 // Actual implementation of UdevInterface.
@@ -130,6 +135,8 @@ class Udev : public UdevInterface {
                   const std::string& value) override;
   bool GetDevlinks(const std::string& syspath,
                    std::vector<std::string>* out) override;
+  bool HasPowerdRole(const std::string& syspath,
+                     const std::string& role) override;
 
   void OnFileCanReadWithoutBlocking();
 
