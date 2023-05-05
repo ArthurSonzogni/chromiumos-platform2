@@ -1195,9 +1195,9 @@ TEST(ArcSetupUtil, GenerateFirstStageFstab_VendorImageType) {
       open(vendor_image_path.value().c_str(), O_CREAT | O_WRONLY, 0600));
   ASSERT_TRUE(fd.is_valid());
   ASSERT_EQ(lseek(fd.get(), 1024, SEEK_SET), 1024);
-  uint32_t data = kErofsMagicNumber;
-  ASSERT_TRUE(
-      base::WriteFileDescriptor(fd.get(), reinterpret_cast<char*>(&data)));
+  const std::string data(reinterpret_cast<const char*>(&kErofsMagicNumber),
+                         sizeof(kErofsMagicNumber));
+  ASSERT_TRUE(base::WriteFileDescriptor(fd.get(), data));
 
   // Pass the fake EROFS image as |vendor_image_path|.
   // "erofs" should be set as the vendor file system type.

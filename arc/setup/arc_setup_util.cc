@@ -1169,8 +1169,13 @@ std::optional<std::string> FilterMediaProfile(
     xmlNodePtr front_camera_profile = nullptr;
     xmlNodePtr back_camera_profile = nullptr;
     for (xmlNodePtr profile : camera_profiles) {
-      auto* cameraId = reinterpret_cast<const char*>(
-          xmlGetProp(profile, reinterpret_cast<const xmlChar*>("cameraId")));
+      auto* xml_camera_prop =
+          xmlGetProp(profile, reinterpret_cast<const xmlChar*>("cameraId"));
+      if (!xml_camera_prop) {
+        LOG(ERROR) << "Unable to get camera property.";
+        return std::nullopt;
+      }
+      auto* cameraId = reinterpret_cast<const char*>(xml_camera_prop);
       if (std::string("0") == cameraId) {
         CHECK(back_camera_profile == nullptr)
             << "Duplicate back facing profile";
@@ -1183,8 +1188,10 @@ std::optional<std::string> FilterMediaProfile(
         LOG(ERROR) << "Unknown cameraId \"" << cameraId
                    << "\" in media profile content:\n"
                    << content;
+        xmlFree(xml_camera_prop);
         return std::nullopt;
       }
+      xmlFree(xml_camera_prop);
     }
 
     if (enable_front_camera) {
