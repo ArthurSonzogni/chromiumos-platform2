@@ -15,9 +15,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/routine_adapter.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
+#include "diagnostics/cros_healthd/routines/routine_service.h"
+#include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read_v2.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -129,6 +133,70 @@ class DiskReadRoutineV2Test : public testing::Test {
   FakeProcessControl fake_process_control_read_;
 };
 
+class DiskReadRoutineV2AdapterTest : public DiskReadRoutineV2Test {
+ protected:
+  DiskReadRoutineV2AdapterTest() = default;
+  DiskReadRoutineV2AdapterTest(const DiskReadRoutineV2AdapterTest&) = delete;
+  DiskReadRoutineV2AdapterTest& operator=(const DiskReadRoutineV2AdapterTest&) =
+      delete;
+
+  void SetUp() override {
+    // Set sufficient free space.
+    SetGetFioTestDirectoryFreeSpaceResponse(
+        /*free_space_byte=*/static_cast<uint64_t>(10240 /*MiB*/) * 1024 * 1024);
+
+    routine_adapter_ = std::make_unique<RoutineAdapter>(
+        mojom::RoutineArgument::Tag::kDiskRead);
+    routine_service_.CreateRoutine(
+        mojom::RoutineArgument::NewDiskRead(mojom::DiskReadRoutineArgument::New(
+            mojom::DiskReadTypeEnum::kLinearRead,
+            /*disk_read_duration=*/base::Seconds(5), /*file_size_mib=*/64)),
+        routine_adapter_->BindNewPipeAndPassReceiver());
+  }
+
+  // Utility function to flush the routine control and process control prepare.
+  void FlushAdapterForPrepareJob() {
+    CHECK(fake_process_control_prepare_.IsConnected());
+
+    // Flush the process control to get return code.
+    fake_process_control_prepare_.receiver().FlushForTesting();
+    // Flush the process control to get stderr.
+    fake_process_control_prepare_.receiver().FlushForTesting();
+
+    // Flush the routine control to run any callbacks called by
+    // fake_process_control_prepare_.
+    routine_adapter_->FlushRoutineControlForTesting();
+  }
+
+  // Utility function to flush the routine control and process control read.
+  void FlushAdapterForReadJob() {
+    CHECK(fake_process_control_read_.IsConnected());
+
+    // Flush the process control to get return code.
+    fake_process_control_read_.receiver().FlushForTesting();
+    // Flush the process control to get stderr.
+    fake_process_control_read_.receiver().FlushForTesting();
+
+    // Flush the routine control to run any callbacks called by
+    // fake_process_control_read_.
+    routine_adapter_->FlushRoutineControlForTesting();
+  }
+
+  void CheckRoutineUpdate(uint32_t progress_percent,
+                          mojom::DiagnosticRoutineStatusEnum status,
+                          const std::string& status_message = "") {
+    routine_adapter_->PopulateStatusUpdate(&update_, true);
+    EXPECT_EQ(update_.progress_percent, progress_percent);
+    VerifyNonInteractiveUpdate(update_.routine_update_union, status,
+                               status_message);
+  }
+
+  RoutineService routine_service_{&mock_context_};
+  std::unique_ptr<RoutineAdapter> routine_adapter_;
+  mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
+                               mojom::RoutineUpdateUnionPtr()};
+};
+
 // Test that the disk read routine can run successfully.
 TEST_F(DiskReadRoutineV2Test, RoutineSuccess) {
   InSequence s;
@@ -149,6 +217,31 @@ TEST_F(DiskReadRoutineV2Test, RoutineSuccess) {
   EXPECT_TRUE(result->state_union->get_finished()->has_passed);
 }
 
+// Test that the disk read routine can run successfully with routine adapter.
+TEST_F(DiskReadRoutineV2AdapterTest, RoutineSuccess) {
+  InSequence s;
+  SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
+
+  SetRunFioPrepareResponse();
+  SetRunFioReadResponse();
+  SetPrepareJobProcessResult(EXIT_SUCCESS, /*err=*/"");
+  SetReadJobProcessResult(EXIT_SUCCESS, /*err=*/"");
+  SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
+
+  // Called in deconstructor to handle unexpected routine failures.
+  SetRemoveFioTestFileResponse();
+
+  routine_adapter_->Start();
+  // Flush the routine for all request to executor through process control.
+  routine_adapter_->FlushRoutineControlForTesting();
+
+  FlushAdapterForPrepareJob();
+  CheckRoutineUpdate(50, mojom::DiagnosticRoutineStatusEnum::kRunning);
+
+  FlushAdapterForReadJob();
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed);
+}
+
 // Test that the disk read routine handles the error of retrieving free space.
 TEST_F(DiskReadRoutineV2Test, RoutineRetrieveFreeSpaceError) {
   InSequence s;
@@ -159,6 +252,24 @@ TEST_F(DiskReadRoutineV2Test, RoutineRetrieveFreeSpaceError) {
   SetRemoveFioTestFileResponse();
 
   RunRoutineAndWaitForException("Failed to retrieve free storage space");
+}
+
+// Test that the disk read routine handles the error of retrieving free space
+// with routine adapter.
+TEST_F(DiskReadRoutineV2AdapterTest, RoutineRetrieveFreeSpaceError) {
+  InSequence s;
+  SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
+  SetGetFioTestDirectoryFreeSpaceResponse(/*free_space_byte=*/std::nullopt);
+
+  // Called in deconstructor to handle unexpected routine failures.
+  SetRemoveFioTestFileResponse();
+
+  routine_adapter_->Start();
+  // Flush the routine for all request to executor through process control.
+  routine_adapter_->FlushRoutineControlForTesting();
+
+  CheckRoutineUpdate(0, mojom::DiagnosticRoutineStatusEnum::kError,
+                     "Failed to retrieve free storage space");
 }
 
 // Test that the disk read routine handles insufficient free space error.
@@ -173,6 +284,24 @@ TEST_F(DiskReadRoutineV2Test, RoutineInsufficientFreeSpaceError) {
   RunRoutineAndWaitForException("Failed to reserve sufficient storage space");
 }
 
+// Test that the disk read routine handles insufficient free space error with
+// routine adapter.
+TEST_F(DiskReadRoutineV2AdapterTest, RoutineInsufficientFreeSpaceError) {
+  InSequence s;
+  SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
+  SetGetFioTestDirectoryFreeSpaceResponse(/*free_space_byte=*/0);
+
+  // Called in deconstructor to handle unexpected routine failures.
+  SetRemoveFioTestFileResponse();
+
+  routine_adapter_->Start();
+  // Flush the routine for all request to executor through process control.
+  routine_adapter_->FlushRoutineControlForTesting();
+
+  CheckRoutineUpdate(0, mojom::DiagnosticRoutineStatusEnum::kError,
+                     "Failed to reserve sufficient storage space");
+}
+
 // Test that the disk read routine handles the error of running fio prepare.
 TEST_F(DiskReadRoutineV2Test, RoutineRunFioPrepareError) {
   InSequence s;
@@ -185,6 +314,27 @@ TEST_F(DiskReadRoutineV2Test, RoutineRunFioPrepareError) {
   SetRemoveFioTestFileResponse();
 
   RunRoutineAndWaitForException("Failed to complete fio prepare job");
+}
+
+// Test that the disk read routine handles the error of running fio prepare with
+// routine adapter.
+TEST_F(DiskReadRoutineV2AdapterTest, RoutineRunFioPrepareError) {
+  InSequence s;
+  SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
+
+  SetRunFioPrepareResponse();
+  SetPrepareJobProcessResult(EXIT_FAILURE, /*err=*/"prepare job error");
+
+  // Called in deconstructor to handle unexpected routine failures.
+  SetRemoveFioTestFileResponse();
+
+  routine_adapter_->Start();
+  // Flush the routine for all request to executor through process control.
+  routine_adapter_->FlushRoutineControlForTesting();
+
+  FlushAdapterForPrepareJob();
+  CheckRoutineUpdate(0, mojom::DiagnosticRoutineStatusEnum::kError,
+                     "Failed to complete fio prepare job");
 }
 
 // Test that the disk read routine handles the error of running fio read.
@@ -203,6 +353,30 @@ TEST_F(DiskReadRoutineV2Test, RoutineRunFioReadError) {
   RunRoutineAndWaitForException("Failed to complete fio read job");
 }
 
+// Test that the disk read routine handles the error of running fio read with
+// routine adapter.
+TEST_F(DiskReadRoutineV2AdapterTest, RoutineRunFioReadError) {
+  InSequence s;
+  SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
+
+  SetRunFioPrepareResponse();
+  SetRunFioReadResponse();
+  SetPrepareJobProcessResult(EXIT_SUCCESS, /*err=*/"");
+  SetReadJobProcessResult(EXIT_FAILURE, /*err=*/"read job error");
+
+  // Called in deconstructor to handle unexpected routine failures.
+  SetRemoveFioTestFileResponse();
+
+  routine_adapter_->Start();
+  // Flush the routine for all request to executor through process control.
+  routine_adapter_->FlushRoutineControlForTesting();
+
+  FlushAdapterForPrepareJob();
+  FlushAdapterForReadJob();
+  CheckRoutineUpdate(0, mojom::DiagnosticRoutineStatusEnum::kError,
+                     "Failed to complete fio read job");
+}
+
 // Test that the disk read routine handles the error of cleaning fio test file
 // when routine starts.
 TEST_F(DiskReadRoutineV2Test, RoutineRemoveFioTestFileErrorOnStart) {
@@ -213,6 +387,22 @@ TEST_F(DiskReadRoutineV2Test, RoutineRemoveFioTestFileErrorOnStart) {
   SetRemoveFioTestFileResponse();
 
   RunRoutineAndWaitForException("Failed to clean up storage");
+}
+
+// Test that the disk read routine handles the error of cleaning fio test file
+// with routine adapter when routine starts.
+TEST_F(DiskReadRoutineV2AdapterTest, RoutineCleanFioTestFileErrorOnStart) {
+  InSequence s;
+  SetRemoveFioTestFileResponse(/*return_code=*/EXIT_FAILURE);
+
+  // Called in deconstructor to handle unexpected routine failures.
+  SetRemoveFioTestFileResponse();
+
+  routine_adapter_->Start();
+  // Flush the routine for all request to executor through process control.
+  routine_adapter_->FlushRoutineControlForTesting();
+  CheckRoutineUpdate(0, mojom::DiagnosticRoutineStatusEnum::kError,
+                     "Failed to clean up storage");
 }
 
 // Test that the disk read routine handles the error of cleaning fio test file
@@ -233,6 +423,31 @@ TEST_F(DiskReadRoutineV2Test, RoutineRemoveFioTestFileErrorOnComplete) {
   RunRoutineAndWaitForException("Failed to clean up storage");
 }
 
+// Test that the disk read routine handles the error of cleaning fio test file
+// with routine adapter when routine completes.
+TEST_F(DiskReadRoutineV2AdapterTest, RoutineCleanFioTestFileErrorOnComplete) {
+  InSequence s;
+  SetRemoveFioTestFileResponse(/*return_code=*/EXIT_SUCCESS);
+
+  SetRunFioPrepareResponse();
+  SetRunFioReadResponse();
+  SetPrepareJobProcessResult(EXIT_SUCCESS, /*err=*/"");
+  SetReadJobProcessResult(EXIT_SUCCESS, /*err=*/"");
+  SetRemoveFioTestFileResponse(/*return_code=*/EXIT_FAILURE);
+
+  // Called in deconstructor to handle unexpected routine failures.
+  SetRemoveFioTestFileResponse();
+
+  routine_adapter_->Start();
+  // Flush the routine for all request to executor through process control.
+  routine_adapter_->FlushRoutineControlForTesting();
+
+  FlushAdapterForPrepareJob();
+  FlushAdapterForReadJob();
+  CheckRoutineUpdate(0, mojom::DiagnosticRoutineStatusEnum::kError,
+                     "Failed to clean up storage");
+}
+
 // Test that the disk read routine can not be created with zero disk read
 // duration.
 TEST_F(DiskReadRoutineV2Test, RoutineCreateErrorZeroDiskReadDuration) {
@@ -242,6 +457,24 @@ TEST_F(DiskReadRoutineV2Test, RoutineCreateErrorZeroDiskReadDuration) {
           mojom::DiskReadTypeEnum::kLinearRead,
           /*disk_read_duration=*/base::Seconds(0), /*file_size_mib=*/64));
   EXPECT_FALSE(routine.has_value());
+}
+
+// Test that the disk read routine can not be created with zero disk read
+// duration with routine adapter.
+TEST_F(DiskReadRoutineV2AdapterTest, RoutineCreateErrorZeroDiskReadDuration) {
+  routine_adapter_ =
+      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kDiskRead);
+  routine_service_.CreateRoutine(
+      mojom::RoutineArgument::NewDiskRead(mojom::DiskReadRoutineArgument::New(
+          mojom::DiskReadTypeEnum::kLinearRead,
+          /*disk_read_duration=*/base::Seconds(0), /*file_size_mib=*/64)),
+      routine_adapter_->BindNewPipeAndPassReceiver());
+  routine_adapter_->Start();
+  // Flush the routine for all request through process control.
+  routine_adapter_->FlushRoutineControlForTesting();
+  CheckRoutineUpdate(0, mojom::DiagnosticRoutineStatusEnum::kError,
+                     "Disk read duration should not be zero after rounding "
+                     "towards zero to the nearest second");
 }
 
 // Test that the disk read routine can not be created with zero test file size.
@@ -254,6 +487,23 @@ TEST_F(DiskReadRoutineV2Test, RoutineCreateErrorZeroTestFileSize) {
   EXPECT_FALSE(routine.has_value());
 }
 
+// Test that the disk read routine can not be created with zero test file size
+// with routine adapter.
+TEST_F(DiskReadRoutineV2AdapterTest, RoutineCreateErrorZeroTestFileSize) {
+  routine_adapter_ =
+      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kDiskRead);
+  routine_service_.CreateRoutine(
+      mojom::RoutineArgument::NewDiskRead(mojom::DiskReadRoutineArgument::New(
+          mojom::DiskReadTypeEnum::kLinearRead,
+          /*disk_read_duration=*/base::Seconds(5), /*file_size_mib=*/0)),
+      routine_adapter_->BindNewPipeAndPassReceiver());
+  routine_adapter_->Start();
+  // Flush the routine for all request through process control.
+  routine_adapter_->FlushRoutineControlForTesting();
+  CheckRoutineUpdate(0, mojom::DiagnosticRoutineStatusEnum::kError,
+                     "Test file size should not be zero");
+}
+
 // Test that the disk read routine can not be created with unexpected disk read
 // type.
 TEST_F(DiskReadRoutineV2Test, RoutineCreateErrorUnexpectedDiskReadType) {
@@ -263,6 +513,23 @@ TEST_F(DiskReadRoutineV2Test, RoutineCreateErrorUnexpectedDiskReadType) {
           mojom::DiskReadTypeEnum::kUnmappedEnumField,
           /*disk_read_duration=*/base::Seconds(5), /*file_size_mib=*/64));
   EXPECT_FALSE(routine.has_value());
+}
+
+// Test that the disk read routine can not be created with unexpected disk read
+// type with routine adapter.
+TEST_F(DiskReadRoutineV2AdapterTest, RoutineCreateErrorUnexpectedDiskReadType) {
+  routine_adapter_ =
+      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kDiskRead);
+  routine_service_.CreateRoutine(
+      mojom::RoutineArgument::NewDiskRead(mojom::DiskReadRoutineArgument::New(
+          mojom::DiskReadTypeEnum::kUnmappedEnumField,
+          /*disk_read_duration=*/base::Seconds(5), /*file_size_mib=*/64)),
+      routine_adapter_->BindNewPipeAndPassReceiver());
+  routine_adapter_->Start();
+  // Flush the routine for all request through process control.
+  routine_adapter_->FlushRoutineControlForTesting();
+  CheckRoutineUpdate(0, mojom::DiagnosticRoutineStatusEnum::kError,
+                     "Unexpected disk read type");
 }
 
 }  // namespace
