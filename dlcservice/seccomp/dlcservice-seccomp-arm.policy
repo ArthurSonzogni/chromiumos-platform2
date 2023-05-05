@@ -18,6 +18,7 @@ clock_nanosleep_time64: 1
 clone: 1
 close: 1
 connect: 1
+dup: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
@@ -76,5 +77,6 @@ statfs64: 1
 statx: 1
 uname: 1
 unlink: 1
+unlinkat: 1
 wait4: 1
 write: 1
