@@ -22,6 +22,7 @@ struct dma_buf_export_sync_file {
 
 // return 0 for success or errno
 int sl_dmabuf_get_read_sync_file(int dmabuf_fd, int& sync_file_fd);
-bool sl_dmabuf_virtgpu_sync_needed(int sync_file_fd);
+bool sl_dmabuf_sync_is_virtgpu(int sync_file_fd);
+void sl_dmabuf_sync_wait(int sync_file_fd);
 
 #endif  // VM_TOOLS_SOMMELIER_COMPOSITOR_SOMMELIER_DMA_BUF_H_

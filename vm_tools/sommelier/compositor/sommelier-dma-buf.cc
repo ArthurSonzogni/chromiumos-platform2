@@ -55,23 +55,39 @@ static int sl_ioctl(int fd,
   return ret;
 }
 
-bool sl_dmabuf_virtgpu_sync_needed(int sync_file_fd) {
+static bool sl_dmabuf_sync_is_driver(int sync_file_fd, const char* name) {
   struct sync_file_info sfi = {};
   int ret = 0;
-
   ret = sl_ioctl(sync_file_fd, SYNC_IOC_FILE_INFO, &sfi);
 
-  if (ret != 0)
-    return false;
-
-  // "stub" means there was no real fence attached.
-  if (strncmp(sfi.name, "stub", 4) == 0)
-    return false;
-  if (strncmp(sfi.name, "virtio_gpu", 10) == 0)
+  if (ret == 0 && strncmp(sfi.name, name, strlen(name)) == 0)
     return true;
 
-  sync_wait(sync_file_fd, -1);
   return false;
+}
+
+bool sl_dmabuf_sync_is_virtgpu(int sync_file_fd) {
+  return sl_dmabuf_sync_is_driver(sync_file_fd, "virtio_gpu");
+}
+
+// Attempt to idle-wait on a sync_file that typically represents pending GPU
+// rendering work.
+void sl_dmabuf_sync_wait(int sync_file_fd) {
+  int ret;
+  // "stub" means there was no real fence attached.
+  if (sl_dmabuf_sync_is_driver(sync_file_fd, "stub"))
+    return;
+
+  // Wait at most for 1 second, otherwise all wayland event processing is
+  // blocked.
+  ret = sync_wait(sync_file_fd, 1000);
+  if (ret == -1 && errno == ETIME) {
+    struct sync_file_info sfi = {};
+
+    ret = sl_ioctl(sync_file_fd, SYNC_IOC_FILE_INFO, &sfi);
+    fprintf(stderr, "Fence wait timeout. Possible GPU hang! fd:%d name:%s\n",
+            sync_file_fd, ret < 0 ? "<unknown>" : sfi.name);
+  }
 }
 
 int sl_dmabuf_get_read_sync_file(int dmabuf_fd, int& sync_file_fd) {

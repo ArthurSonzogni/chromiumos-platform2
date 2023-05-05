@@ -68,22 +68,23 @@ static void sl_drm_sync(struct sl_context* ctx,
   int sync_file_fd;
   int ret;
 
+  // Attempt to export a sync_file from prime buffer and wait explicitly.
   ret = sl_dmabuf_get_read_sync_file(sync_point->fd, sync_file_fd);
   if (!ret) {
-    if (sl_dmabuf_virtgpu_sync_needed(sync_file_fd)) {
-      close(sync_file_fd);
-    } else {
-      close(sync_file_fd);
-      return;
-    }
+    TRACE_EVENT("drm", "sl_drm_sync: sync_wait", "prime_fd", sync_point->fd);
+    sl_dmabuf_sync_wait(sync_file_fd);
+    close(sync_file_fd);
+    return;
   }
 
+  // Fallback to waiting on a virtgpu buffer's implicit fence.
+  //
   // First imports the prime fd to a gem handle. This will fail if this
   // function was not passed a prime handle that can be imported by the drm
   // device given to sommelier.
   memset(&prime_handle, 0, sizeof(prime_handle));
   prime_handle.fd = sync_point->fd;
-  TRACE_EVENT("drm", "sl_drm_sync", "prime_fd", prime_handle.fd);
+  TRACE_EVENT("drm", "sl_drm_sync: virtgpu_wait", "prime_fd", prime_handle.fd);
   ret = drmIoctl(drm_fd, DRM_IOCTL_PRIME_FD_TO_HANDLE, &prime_handle);
   if (!ret) {
     struct drm_virtgpu_3d_wait wait_arg;

@@ -337,22 +337,24 @@ static void sl_host_surface_attach(struct wl_client* client,
                   strerror(ret));
         }
       } else {
-        if (sl_dmabuf_virtgpu_sync_needed(sync_file_fd)) {
+        if (sl_dmabuf_sync_is_virtgpu(sync_file_fd)) {
           // virtio_gpu fences can be translated and forwarded to host.
           zwp_linux_surface_synchronization_v1_set_acquire_fence(
               host->surface_sync, sync_file_fd);
+        } else {
+          // TODO(dbehr) b/237014660. Create a host proxy fence for this fence
+          // instead of waiting for rendering to finish here.
+          TRACE_EVENT("surface", "sl_host_surface_attach: sync_wait",
+                      "prime_fd", host_buffer->sync_point->fd);
+          sl_dmabuf_sync_wait(sync_file_fd);
         }
-        // TODO(dbehr) b/237014660. Create a host proxy fence for this fence
-        // instead of waiting for rendering to finish in
-        // sl_dmabuf_virtgpu_sync_needed().
         needs_sync = false;
         close(sync_file_fd);
       }
     }
 
-    if (needs_sync) {
+    if (needs_sync)
       host_buffer->sync_point->sync(host->ctx, host_buffer->sync_point);
-    }
   }
 
   if (host->current_buffer) {
