@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 # BLKPG = 0x1269
 # CDROM_GET_CAPABILITY = 0x5331
 # HDIO_GETGEO = 0x301
@@ -9,9 +12,6 @@
 # SCSI_IOCTL_GET_IDLUN = 0x5382
 # LOOP_CONFIGURE = 0x4c0a
 # CDROM_LAST_WRITTEN = 0x5395
-# rseq should be first due to frequency and purpose to decrease nptl latency
-rseq: 1
-
 ioctl: arg1 == BLKALIGNOFF || arg1 == BLKDISCARD || \
        arg1 == BLKDISCARDZEROES || arg1 == BLKGETSIZE64 || \
        arg1 == BLKIOMIN || arg1 == BLKIOOPT || arg1 == BLKPBSZGET || \
