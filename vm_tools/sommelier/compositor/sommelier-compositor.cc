@@ -7,6 +7,7 @@
 #include "../sommelier-tracing.h"    // NOLINT(build/include_directory)
 #include "../sommelier-transform.h"  // NOLINT(build/include_directory)
 #include "../sommelier-xshape.h"     // NOLINT(build/include_directory)
+#include "sommelier-dma-buf.h"       // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <errno.h>
@@ -24,24 +25,6 @@
 #include "linux-dmabuf-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "linux-explicit-synchronization-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
-
-#define DMA_BUF_SYNC_READ (1 << 0)
-#define DMA_BUF_SYNC_WRITE (2 << 0)
-#define DMA_BUF_SYNC_RW (DMA_BUF_SYNC_READ | DMA_BUF_SYNC_WRITE)
-#define DMA_BUF_SYNC_START (0 << 2)
-#define DMA_BUF_SYNC_END (1 << 2)
-
-struct dma_buf_sync_file {
-  __u32 flags;
-  __s32 fd;
-};
-
-#define DMA_BUF_BASE 'b'
-#define DMA_BUF_IOCTL_SYNC _IOW(DMA_BUF_BASE, 0, struct dma_buf_sync)
-// TODO(b/189505947): DMA_BUF_IOCTL_EXPORT_SYNC_FILE might not exist, and
-// hasn't been upstreamed. Remove this comment when the ioctl has landed.
-#define DMA_BUF_IOCTL_EXPORT_SYNC_FILE \
-  _IOWR(DMA_BUF_BASE, 2, struct dma_buf_sync_file)
 
 struct sl_host_compositor {
   struct sl_compositor* compositor;
@@ -330,35 +313,40 @@ static void sl_host_surface_attach(struct wl_client* client,
 
   if (host_buffer && host_buffer->sync_point) {
     TRACE_EVENT("surface", "sl_host_surface_attach: sync_point");
-    dma_buf_sync_file sync_file;
 
     bool needs_sync = true;
     if (host->surface_sync) {
-      int ret = 0;
-      sync_file.flags = DMA_BUF_SYNC_READ;
-      do {
-        ret = ioctl(host_buffer->sync_point->fd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE,
-                    &sync_file);
-      } while (ret == -1 && (errno == EAGAIN || errno == EINTR));
+      int ret;
+      int sync_file_fd;
 
-      if (!ret) {
-        zwp_linux_surface_synchronization_v1_set_acquire_fence(
-            host->surface_sync, sync_file.fd);
-        close(sync_file.fd);
-        needs_sync = false;
-      } else if (ret == -1 && errno == ENOTTY) {
-        // export sync file ioctl not implemented. Revert to previous method of
-        // guest side sync going forward.
-        zwp_linux_surface_synchronization_v1_destroy(host->surface_sync);
-        host->surface_sync = NULL;
-        fprintf(stderr,
-                "DMA_BUF_IOCTL_EXPORT_SYNC_FILE not implemented, defaulting "
-                "to implicit fence for synchronization.\n");
+      ret = sl_dmabuf_get_read_sync_file(host_buffer->sync_point->fd,
+                                         sync_file_fd);
+      if (ret) {
+        if (ret == ENOTTY) {
+          // export sync file ioctl not implemented. Revert to previous method
+          // of guest side sync going forward.
+          zwp_linux_surface_synchronization_v1_destroy(host->surface_sync);
+          host->surface_sync = NULL;
+          fprintf(stderr,
+                  "DMA_BUF_IOCTL_EXPORT_SYNC_FILE not implemented, defaulting "
+                  "to implicit fence for synchronization.\n");
+        } else {
+          fprintf(stderr,
+                  "Explicit synchronization failed with reason: %s. "
+                  "Will retry on next attach.\n",
+                  strerror(ret));
+        }
       } else {
-        fprintf(stderr,
-                "Explicit synchronization failed with reason: %s. "
-                "Will retry on next attach.\n",
-                strerror(errno));
+        if (sl_dmabuf_virtgpu_sync_needed(sync_file_fd)) {
+          // virtio_gpu fences can be translated and forwarded to host.
+          zwp_linux_surface_synchronization_v1_set_acquire_fence(
+              host->surface_sync, sync_file_fd);
+        }
+        // TODO(dbehr) b/237014660. Create a host proxy fence for this fence
+        // instead of waiting for rendering to finish in
+        // sl_dmabuf_virtgpu_sync_needed().
+        needs_sync = false;
+        close(sync_file_fd);
       }
     }
 

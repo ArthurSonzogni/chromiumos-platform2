@@ -4,6 +4,7 @@
 
 #include "../sommelier.h"          // NOLINT(build/include_directory)
 #include "../sommelier-tracing.h"  // NOLINT(build/include_directory)
+#include "sommelier-dma-buf.h"     // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <gbm.h>
@@ -64,7 +65,18 @@ static void sl_drm_sync(struct sl_context* ctx,
                         struct sl_sync_point* sync_point) {
   int drm_fd = gbm_device_get_fd(ctx->gbm);
   struct drm_prime_handle prime_handle;
+  int sync_file_fd;
   int ret;
+
+  ret = sl_dmabuf_get_read_sync_file(sync_point->fd, sync_file_fd);
+  if (!ret) {
+    if (sl_dmabuf_virtgpu_sync_needed(sync_file_fd)) {
+      close(sync_file_fd);
+    } else {
+      close(sync_file_fd);
+      return;
+    }
+  }
 
   // First imports the prime fd to a gem handle. This will fail if this
   // function was not passed a prime handle that can be imported by the drm

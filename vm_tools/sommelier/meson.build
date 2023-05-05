@@ -140,6 +140,7 @@ sommelier_defines = [
 libsommelier = static_library('sommelier',
   sources: [
     'compositor/sommelier-compositor.cc',
+    'compositor/sommelier-dma-buf.cc',
     'compositor/sommelier-drm.cc',
     'compositor/sommelier-mmap.cc',
     'compositor/sommelier-shm.cc',
