@@ -27,4 +27,13 @@ int FeatureManagement::GetFeatureLevel() const {
   return level - FeatureManagementInterface::FEATURE_LEVEL_VALID_OFFSET;
 }
 
+int FeatureManagement::GetScopeLevel() const {
+  auto level = impl_->GetScopeLevel();
+  if (level == FeatureManagementInterface::SCOPE_LEVEL_UNKNOWN) {
+    level = FeatureManagementInterface::SCOPE_LEVEL_0;
+  }
+  return level -
+         FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_VALID_OFFSET;
+}
+
 }  // namespace segmentation

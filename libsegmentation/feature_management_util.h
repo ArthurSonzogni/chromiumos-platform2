@@ -31,6 +31,10 @@ class BRILLO_EXPORT FeatureManagementUtil {
   // Converts feature level from the internal proto to the external API.
   static FeatureManagementInterface::FeatureLevel ConvertProtoFeatureLevel(
       libsegmentation::DeviceInfo_FeatureLevel feature_level);
+
+  // Converts scope level from the internal proto to the external API.
+  static FeatureManagementInterface::ScopeLevel ConvertProtoScopeLevel(
+      libsegmentation::DeviceInfo_ScopeLevel scope_level);
 };
 
 }  // namespace segmentation

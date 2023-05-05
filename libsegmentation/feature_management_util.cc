@@ -75,4 +75,22 @@ FeatureManagementUtil::ConvertProtoFeatureLevel(
   }
 }
 
+FeatureManagementInterface::ScopeLevel
+FeatureManagementUtil::ConvertProtoScopeLevel(
+    libsegmentation::DeviceInfo_ScopeLevel scope_level) {
+  switch (scope_level) {
+    case libsegmentation::DeviceInfo_ScopeLevel::
+        DeviceInfo_ScopeLevel_SCOPE_LEVEL_UNKNOWN:
+      return FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_UNKNOWN;
+    case libsegmentation::DeviceInfo_ScopeLevel::
+        DeviceInfo_ScopeLevel_SCOPE_LEVEL_0:
+      return FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_0;
+    case libsegmentation::DeviceInfo_ScopeLevel::
+        DeviceInfo_ScopeLevel_SCOPE_LEVEL_1:
+      return FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_1;
+    default:
+      return FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_UNKNOWN;
+  }
+}
+
 }  // namespace segmentation

@@ -30,6 +30,18 @@ class FeatureManagementInterface {
     FEATURE_LEVEL_1 = 2,
   };
   virtual FeatureLevel GetFeatureLevel() = 0;
+
+  // Return the scope level for the device
+  //
+  // @return 0 when its unknown.
+  //         > 0 otherwise.
+  enum ScopeLevel {
+    SCOPE_LEVEL_UNKNOWN = 0,
+    SCOPE_LEVEL_VALID_OFFSET = 1,
+    SCOPE_LEVEL_0 = 1,
+    SCOPE_LEVEL_1 = 2,
+  };
+  virtual ScopeLevel GetScopeLevel() = 0;
 };
 
 }  // namespace segmentation

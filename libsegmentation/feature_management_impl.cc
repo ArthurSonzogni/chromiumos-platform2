@@ -35,6 +35,11 @@ FeatureManagementInterface::FeatureLevel
 FeatureManagementImpl::GetFeatureLevel() {
   return FeatureLevel::FEATURE_LEVEL_0;
 }
+
+FeatureManagementInterface::ScopeLevel FeatureManagementImpl::GetScopeLevel() {
+  return ScopeLevel::SCOPE_LEVEL_0;
+}
+
 #endif
 
 FeatureManagementImpl::FeatureManagementImpl()

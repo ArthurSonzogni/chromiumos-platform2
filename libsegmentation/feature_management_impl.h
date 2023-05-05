@@ -30,6 +30,8 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
 
   FeatureLevel GetFeatureLevel() override;
 
+  ScopeLevel GetScopeLevel() override;
+
  private:
   // Represents the file on the stateful partition that houses the device info.
   // This will be read to populate |cached_device_info|.

@@ -9,4 +9,11 @@ message DeviceInfo {
     FEATURE_LEVEL_1 = 2;
   }
   FeatureLevel feature_level = 1;
+
+  enum ScopeLevel {
+    SCOPE_LEVEL_UNKNOWN = 0;
+    SCOPE_LEVEL_0 = 1;
+    SCOPE_LEVEL_1 = 2;
+  }
+  ScopeLevel scope_level = 2;
 }

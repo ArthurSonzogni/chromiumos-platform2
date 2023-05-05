@@ -48,6 +48,20 @@ FeatureManagementImpl::GetFeatureLevel() {
       cached_device_info_->feature_level());
 }
 
+FeatureManagementInterface::ScopeLevel FeatureManagementImpl::GetScopeLevel() {
+  if (cached_device_info_) {
+    return FeatureManagementUtil::ConvertProtoScopeLevel(
+        cached_device_info_->scope_level());
+  }
+
+  if (!CacheDeviceInfo()) {
+    return ScopeLevel::SCOPE_LEVEL_UNKNOWN;
+  }
+
+  return FeatureManagementUtil::ConvertProtoScopeLevel(
+      cached_device_info_->scope_level());
+}
+
 bool FeatureManagementImpl::CacheDeviceInfo() {
   base::FilePath device_info_file = base::FilePath(device_info_file_path_);
   // If the device info isn't cached, try to read it from the stateful partition

@@ -9,7 +9,9 @@
 #include <string>
 
 #include <brillo/brillo_export.h>
-#include <libsegmentation/feature_management.h>
+
+#include "libsegmentation/feature_management.h"
+#include "libsegmentation/feature_management_interface.h"
 
 namespace segmentation {
 
@@ -22,14 +24,20 @@ class BRILLO_EXPORT FeatureManagementFake : public FeatureManagementInterface {
  public:
   FeatureManagementFake() = default;
 
+  // FestureManagementInterface overrides.
   bool IsFeatureEnabled(const std::string& name) const override;
-
   FeatureLevel GetFeatureLevel() override;
+  ScopeLevel GetScopeLevel() override;
 
   // Set the feature level for the device.
   //
   // @param level: the feature level.
   void SetFeatureLevel(FeatureLevel level);
+
+  // Set the scope level for the device.
+  //
+  // @param level: the scope level.
+  void SetScopeLevel(ScopeLevel level);
 
   // Set the value of the specific feature.
   //
@@ -48,6 +56,7 @@ class BRILLO_EXPORT FeatureManagementFake : public FeatureManagementInterface {
  private:
   std::set<std::string> system_features_properties_;
   FeatureLevel system_features_level_;
+  ScopeLevel system_scope_level_;
 };
 
 }  // namespace fake

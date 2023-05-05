@@ -31,6 +31,9 @@ class BRILLO_EXPORT FeatureManagement {
   // Return the maximal feature level available on the device.
   int GetFeatureLevel() const;
 
+  // Return the maximal scope level available on the device.
+  int GetScopeLevel() const;
+
  private:
   std::unique_ptr<FeatureManagementInterface> impl_;
 };

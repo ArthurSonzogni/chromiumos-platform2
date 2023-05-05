@@ -45,7 +45,7 @@ class FeatureManagementImplTest : public ::testing::Test {
 };
 
 #if USE_FEATURE_MANAGEMENT
-// Use database produced by chromeos-base/feature-management-data
+// Use database produced by chromeos-base/feature-management-data.
 TEST_F(FeatureManagementImplTest, GetAndCacheStatefulFeatureLevelTest) {
   libsegmentation::DeviceInfo device_info;
   device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
@@ -67,6 +67,30 @@ TEST_F(FeatureManagementImplTest, GetAndCacheStatefulFeatureLevelTest) {
       feature_management_->GetFeatureLevel(),
       FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_1 -
           FeatureManagementInterface::FeatureLevel::FEATURE_LEVEL_VALID_OFFSET);
+}
+
+// Use database produced by chromeos-base/feature-management-data.
+TEST_F(FeatureManagementImplTest, GetAndCacheStatefulScopeLevelTest) {
+  libsegmentation::DeviceInfo device_info;
+  device_info.set_scope_level(libsegmentation::DeviceInfo_ScopeLevel::
+                                  DeviceInfo_ScopeLevel_SCOPE_LEVEL_1);
+  EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
+                                                           device_info_path_));
+  EXPECT_EQ(
+      feature_management_->GetScopeLevel(),
+      FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_1 -
+          FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_VALID_OFFSET);
+
+  // Even though the file is changed we should still get the cached value stored
+  // from the previous attempt.
+  device_info.set_scope_level(libsegmentation::DeviceInfo_ScopeLevel::
+                                  DeviceInfo_ScopeLevel_SCOPE_LEVEL_0);
+  EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
+                                                           device_info_path_));
+  EXPECT_EQ(
+      feature_management_->GetScopeLevel(),
+      FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_1 -
+          FeatureManagementInterface::ScopeLevel::SCOPE_LEVEL_VALID_OFFSET);
 }
 #endif
 
