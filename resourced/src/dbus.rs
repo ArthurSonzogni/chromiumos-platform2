@@ -39,7 +39,7 @@ const INTERFACE_NAME: &str = SERVICE_NAME;
 
 const VMCONCIEGE_INTERFACE_NAME: &str = "org.chromium.VmConcierge";
 
-const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(2);
+const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(5);
 
 // The timeout in second for VM boot mode. Currently this is
 // 60seconds which is long enough for booting a VM on low-end DUTs.
