@@ -68,19 +68,6 @@ bool SwapManagementDBusAdaptor::SwapRestart(brillo::ErrorPtr* error) {
   return SwapStop(error) && SwapStart(error);
 }
 
-bool SwapManagementDBusAdaptor::MGLRUSetEnable(brillo::ErrorPtr* error,
-                                               bool enable) {
-  ResetShutdownTimer();
-  absl::Status status = swap_tool_->MGLRUSetEnable(enable);
-  if (!status.ok()) {
-    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                         "org.chromium.SwapManagement.error.MGLRUSetEnable",
-                         status.ToString());
-    return false;
-  }
-  return true;
-}
-
 bool SwapManagementDBusAdaptor::SwapSetSize(brillo::ErrorPtr* error,
                                             uint32_t size) {
   ResetShutdownTimer();
@@ -92,6 +79,19 @@ bool SwapManagementDBusAdaptor::SwapSetSize(brillo::ErrorPtr* error,
     return false;
   }
 
+  return true;
+}
+
+bool SwapManagementDBusAdaptor::SwapSetSwappiness(brillo::ErrorPtr* error,
+                                                  uint32_t swappiness) {
+  ResetShutdownTimer();
+  absl::Status status = swap_tool_->SwapSetSwappiness(swappiness);
+  if (!status.ok()) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         "org.chromium.SwapManagement.error.SwapSetSwappiness",
+                         status.ToString());
+    return false;
+  }
   return true;
 }
 
@@ -150,6 +150,19 @@ bool SwapManagementDBusAdaptor::InitiateSwapZramWriteback(
         error, FROM_HERE, brillo::errors::dbus::kDomain,
         "org.chromium.SwapManagement.error.InitiateSwapZramWriteback",
         status.ToString());
+    return false;
+  }
+  return true;
+}
+
+bool SwapManagementDBusAdaptor::MGLRUSetEnable(brillo::ErrorPtr* error,
+                                               bool enable) {
+  ResetShutdownTimer();
+  absl::Status status = swap_tool_->MGLRUSetEnable(enable);
+  if (!status.ok()) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         "org.chromium.SwapManagement.error.MGLRUSetEnable",
+                         status.ToString());
     return false;
   }
   return true;

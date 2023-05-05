@@ -32,6 +32,17 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="SwapSetSwappiness">
+      <tp:docstring>
+        Set the /proc/sys/vm/swappiness to the provided |swappiness|.
+      </tp:docstring>
+      <arg name="swappiness" type="u" direction="in">
+        <tp:docstring>
+          The swappiness value with valid range: [0, 100].
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
     <method name="SwapStatus">
       <tp:docstring>
         Show current swap status.

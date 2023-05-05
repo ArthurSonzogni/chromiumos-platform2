@@ -577,6 +577,16 @@ absl::Status SwapTool::SwapSetSize(uint32_t size) {
                                         std::to_string(size));
 }
 
+absl::Status SwapTool::SwapSetSwappiness(uint32_t swappiness) {
+  // Only allow swappiness between 0 and 100.
+  if (swappiness > 100)
+    return absl::OutOfRangeError("Invalid swappiness " +
+                                 std::to_string(swappiness));
+
+  return SwapToolUtil::Get()->WriteFile(
+      base::FilePath("/proc/sys/vm/swappiness"), std::to_string(swappiness));
+}
+
 std::string SwapTool::SwapStatus() {
   std::stringstream output;
   std::string tmp;
@@ -676,7 +686,7 @@ absl::Status SwapTool::SwapZramMarkIdle(uint32_t age_seconds) {
 
   // Only allow marking pages as idle between 0 sec and 30 days.
   if (age > kMaxIdleAge)
-    return absl::OutOfRangeError("Invalid age" + std::to_string(age_seconds));
+    return absl::OutOfRangeError("Invalid age " + std::to_string(age_seconds));
 
   base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("idle");
   return SwapToolUtil::Get()->WriteFile(filepath,
