@@ -37,6 +37,8 @@ const ssize_t kLbaCountValIdx = 1;
 const ssize_t kDataAllocStatIdx = 5;
 const ssize_t kDataUsedBlocksStatIdx = 0;
 const ssize_t kDataTotalBlocksStatIdx = 1;
+const char kCheckThinpoolMappingsConfig[] =
+    R"('global/thin_check_options = [ "-q", "--clear-needs-check-flag"]')";
 
 void LogLvmError(int rc, const std::string& cmd) {
   switch (rc) {
@@ -193,10 +195,19 @@ bool Thinpool::Repair() {
   return lvm_->RunProcess({"lvconvert", "--repair", GetName()});
 }
 
-bool Thinpool::Activate() {
+bool Thinpool::Activate(bool check) {
   if (thinpool_name_.empty() || !lvm_)
     return false;
-  return lvm_->RunCommand({"lvchange", "-ay", GetName()});
+
+  std::vector<std::string> command = {"lvchange", "-ay"};
+
+  if (check) {
+    command.push_back("--config");
+    command.push_back(kCheckThinpoolMappingsConfig);
+  }
+  command.push_back(GetName());
+
+  return lvm_->RunCommand(command);
 }
 
 bool Thinpool::Deactivate() {

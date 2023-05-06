@@ -83,7 +83,7 @@ class BRILLO_EXPORT Thinpool {
            const std::string& volume_group_name,
            std::shared_ptr<LvmCommandRunner> lvm_);
   ~Thinpool() = default;
-  bool Activate();
+  bool Activate(bool check = false);
   bool Check();
   bool Repair();
   bool Deactivate();
