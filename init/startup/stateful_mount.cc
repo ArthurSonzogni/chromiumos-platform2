@@ -336,6 +336,16 @@ bool StatefulMount::HibernateResumeBoot() {
           platform_->RunHiberman(hiber_init_log));
 }
 
+void StatefulMount::ClobberStateful(
+    const std::vector<std::string>& clobber_args,
+    const std::string& clobber_message) {
+  platform_->BootAlert("self_repair");
+  platform_->ClobberLogRepair(state_dev_, clobber_message);
+  platform_->AddClobberCrashReport(
+      {"--mount_failure", "--mount_device=stateful"});
+  platform_->Clobber(clobber_args);
+}
+
 void StatefulMount::MountStateful() {
   base::FilePath root_dev;
   // Prepare to mount stateful partition.
@@ -397,7 +407,8 @@ void StatefulMount::MountStateful() {
     if (lvm_enable) {
       // Attempt to get a valid volume group name.
       bootstat_.LogEvent("pre-lvm-activation");
-      auto pv = lvm_->GetPhysicalVolume(state_dev_);
+      std::optional<brillo::PhysicalVolume> pv =
+          lvm_->GetPhysicalVolume(state_dev_);
       if (pv && pv->IsValid()) {
         volume_group_ = lvm_->GetVolumeGroup(*pv);
         if (volume_group_ && volume_group_->IsValid()) {
@@ -412,9 +423,36 @@ void StatefulMount::MountStateful() {
             state_dev_ = dev_mapper.Append(kUnencryptedRW);
             dev_image_ = dev_mapper.Append(kDevImageRW);
           } else {
-            auto lg =
-                lvm_->GetLogicalVolume(volume_group_.value(), "unencrypted");
-            lg->Activate();
+            // First attempt to activate the thinpool. If the activation of the
+            // thinpool fails, run thin_check to check all mappings.
+            std::optional<brillo::Thinpool> thinpool =
+                lvm_->GetThinpool(*volume_group_, "thinpool");
+
+            if (!thinpool) {
+              LOG(ERROR) << "Thinpool does not exist";
+              ClobberStateful({"fast", "keepimg"}, "'Invalid thinpool'");
+            }
+
+            if (!thinpool->Activate()) {
+              LOG(WARNING) << "Failed to activate thinpool, attempting repair";
+              if (!thinpool->Activate(/*check=*/true)) {
+                LOG(ERROR) << "Failed to repair and activate thinpool";
+                ClobberStateful({"fast", "keepimg"}, "'Corrupt thinpool'");
+              }
+            }
+
+            // Attempt to now activate the unencrypted stateful logical volume.
+            std::optional<brillo::LogicalVolume> unencrypted_lv =
+                lvm_->GetLogicalVolume(*volume_group_, "unencrypted");
+
+            if (!unencrypted_lv || !unencrypted_lv->Activate()) {
+              LOG(ERROR) << "Failed to activate unencrypted stateful logical "
+                         << "volume.";
+
+              ClobberStateful({"fast", "keepimg"},
+                              "'Invalid unencrypted logical volume'");
+            }
+
             state_dev_ = root_.Append("dev")
                              .Append(volume_group_->GetName())
                              .Append("unencrypted");
@@ -436,11 +474,6 @@ void StatefulMount::MountStateful() {
       // Try to rebuild the stateful partition by clobber-state. (Not using fast
       // mode out of security consideration: the device might have gotten into
       // this state through power loss during dev mode transition).
-      platform_->BootAlert("self_repair");
-
-      platform_->ClobberLogRepair(state_dev_,
-                                  "'Self-repair corrupted stateful partition'");
-
       std::vector<std::string> dump_args = {"-f"};
       std::string output;
       status = Dumpe2fs(state_dev_, dump_args, &output);
@@ -450,11 +483,8 @@ void StatefulMount::MountStateful() {
                     << kDumpe2fsStatefulLog;
       }
 
-      std::vector<std::string> crash_args{"--mount_failure",
-                                          "--mount_device=stateful"};
-      platform_->AddClobberCrashReport(crash_args);
-      std::vector<std::string> argv{"keepimg"};
-      platform_->Clobber(argv);
+      ClobberStateful({"keepimg"},
+                      "'Self-repair corrupted stateful partition'");
     }
 
     // Mount the OEM partition.

@@ -48,6 +48,9 @@ class StatefulMount {
   base::FilePath GetStateDev();
   base::FilePath GetDevImage();
 
+  void ClobberStateful(const std::vector<std::string>& clobber_args,
+                       const std::string& clobber_message);
+
   void MountStateful();
 
   bool DevUpdateStatefulPartition(const std::string& args);
