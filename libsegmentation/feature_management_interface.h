@@ -5,9 +5,18 @@
 #ifndef LIBSEGMENTATION_FEATURE_MANAGEMENT_INTERFACE_H_
 #define LIBSEGMENTATION_FEATURE_MANAGEMENT_INTERFACE_H_
 
+#include <set>
 #include <string>
 
 namespace segmentation {
+
+// Copy of protobuf usage interface to avoid including the autogenerate
+// protobuf
+enum FeatureUsage {
+  USAGE_LOCAL = 0,
+  USAGE_CHROME = 1,
+  USAGE_ANDROID = 2,
+};
 
 class FeatureManagementInterface {
  public:
@@ -42,6 +51,12 @@ class FeatureManagementInterface {
     SCOPE_LEVEL_1 = 2,
   };
   virtual ScopeLevel GetScopeLevel() = 0;
+
+  // List features supported on the device.
+  // |usage| narrows down the list to a specific subsystem (ChromeOS, Chrome
+  // or Android).
+  virtual const std::set<std::string> ListFeatures(
+      const FeatureUsage usage) = 0;
 };
 
 }  // namespace segmentation

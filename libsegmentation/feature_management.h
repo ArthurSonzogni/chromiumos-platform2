@@ -6,6 +6,7 @@
 #define LIBSEGMENTATION_FEATURE_MANAGEMENT_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -33,6 +34,11 @@ class BRILLO_EXPORT FeatureManagement {
 
   // Return the maximal scope level available on the device.
   int GetScopeLevel() const;
+
+  // List features supported on the device.
+  // |usage| narrows down the list to a specific subsystem (ChromeOS, Chrome
+  // or Android).
+  const std::set<std::string> ListFeatures(const FeatureUsage usage);
 
   // Prefix for naming features.
   static constexpr char kPrefix[] = "FeatureManagement";

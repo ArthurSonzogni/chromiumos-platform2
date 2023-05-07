@@ -22,18 +22,37 @@ void DumpIsFeatureEnabled(std::string feature) {
   std::cout << feature_management.IsFeatureEnabled(feature) << std::endl;
 }
 
+void DumpFeatureList(const FeatureUsage usage) {
+  FeatureManagement feature_management;
+  const std::set<std::string> features = feature_management.ListFeatures(usage);
+  for (auto feature : features) {
+    std::cout << feature << std::endl;
+  }
+}
+
 }  // namespace segmentation
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(feature_level, 0, "return the feature level for the device");
-  DEFINE_bool(feature_dump, 0, "list all supported features");
+  DEFINE_string(feature_list, "",
+                "list all supported features for a given subsystem: chrome, "
+                "chromeos, android");
   DEFINE_string(feature_name, "", "return true when the feature is supported");
   brillo::FlagHelper::Init(argc, argv, "Query the segmentation library");
 
-  if (FLAGS_feature_level)
+  if (FLAGS_feature_level) {
     segmentation::DumpFeatureLevel();
-  else if (FLAGS_feature_name != "")
+  } else if (FLAGS_feature_name != "") {
     segmentation::DumpIsFeatureEnabled(FLAGS_feature_name);
-
+  } else if (FLAGS_feature_list != "") {
+    if (!FLAGS_feature_list.compare("chrome"))
+      segmentation::DumpFeatureList(segmentation::USAGE_CHROME);
+    else if (!FLAGS_feature_list.compare("chromeos"))
+      segmentation::DumpFeatureList(segmentation::USAGE_LOCAL);
+    else if (!FLAGS_feature_list.compare("android"))
+      segmentation::DumpFeatureList(segmentation::USAGE_ANDROID);
+    else
+      std::cerr << "Invalid subsystem" << std::endl;
+  }
   return 0;
 }

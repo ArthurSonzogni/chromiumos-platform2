@@ -16,8 +16,11 @@
 #include "libsegmentation/feature_management_interface.h"
 #include "libsegmentation/feature_management_util.h"
 
+#include "proto/feature_management.pb.h"
+
 namespace segmentation {
 
+using chromiumos::feature_management::api::software::Feature;
 using ::testing::Return;
 
 // Use made up feature file:
@@ -125,6 +128,14 @@ TEST_F(FeatureManagementImplTest, GetBasicFeature) {
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementAPad"),
             false);
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementB"), false);
+
+  std::set<std::string> features =
+      feature_management_->ListFeatures(USAGE_ANDROID);
+  EXPECT_EQ(features.size(), 1);
+  EXPECT_NE(features.find("FeatureManagementA"), features.end());
+
+  features = feature_management_->ListFeatures(USAGE_CHROME);
+  EXPECT_EQ(features.size(), 0);
 }
 
 #if USE_FEATURE_MANAGEMENT

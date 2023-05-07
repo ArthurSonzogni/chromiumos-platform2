@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <set>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -12,6 +14,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <brillo/data_encoding.h>
 #include <google/protobuf/util/json_util.h>
 #include <rootdev/rootdev.h>
 #include <vboot/vboot_host.h>
@@ -21,7 +24,6 @@
 #include "libsegmentation/feature_management_impl.h"
 #include "libsegmentation/feature_management_interface.h"
 #include "libsegmentation/feature_management_util.h"
-#include <brillo/data_encoding.h>
 
 #include "proto/feature_management.pb.h"
 
@@ -87,4 +89,19 @@ bool FeatureManagementImpl::IsFeatureEnabled(const std::string& name) {
   return false;
 }
 
+const std::set<std::string> FeatureManagementImpl::ListFeatures(
+    const FeatureUsage usage) {
+  auto level = GetFeatureLevel();
+  if (level == FEATURE_LEVEL_UNKNOWN)
+    level = FEATURE_LEVEL_0;
+
+  std::set<std::string> features;
+  for (auto feature : bundle_.features()) {
+    if (std::find(feature.usages().begin(), feature.usages().end(), usage) !=
+            feature.usages().end() &&
+        level >= feature.feature_level() + FEATURE_LEVEL_VALID_OFFSET)
+      features.emplace(FeatureManagement::kPrefix + feature.name());
+  }
+  return features;
+}
 }  // namespace segmentation

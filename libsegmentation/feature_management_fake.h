@@ -5,6 +5,7 @@
 #ifndef LIBSEGMENTATION_FEATURE_MANAGEMENT_FAKE_H_
 #define LIBSEGMENTATION_FEATURE_MANAGEMENT_FAKE_H_
 
+#include <map>
 #include <set>
 #include <string>
 
@@ -12,6 +13,7 @@
 
 #include "libsegmentation/feature_management.h"
 #include "libsegmentation/feature_management_interface.h"
+#include "proto/feature_management.pb.h"
 
 namespace segmentation {
 
@@ -29,6 +31,8 @@ class BRILLO_EXPORT FeatureManagementFake : public FeatureManagementInterface {
   FeatureLevel GetFeatureLevel() override;
   ScopeLevel GetScopeLevel() override;
 
+  const std::set<std::string> ListFeatures(const FeatureUsage usage) override;
+
   // Set the feature level for the device.
   //
   // @param level: the feature level.
@@ -44,7 +48,7 @@ class BRILLO_EXPORT FeatureManagementFake : public FeatureManagementInterface {
   // After the feature is set, IsFeatureEnabled() returns |true|.
   //
   // @param name The name of feature.
-  void SetFeature(const std::string& name);
+  void SetFeature(const std::string& name, const FeatureUsage usage);
 
   // Unset the value of the specific feature.
   //
@@ -54,9 +58,10 @@ class BRILLO_EXPORT FeatureManagementFake : public FeatureManagementInterface {
   void UnsetFeature(const std::string& name);
 
  private:
-  std::set<std::string> system_features_properties_;
   FeatureLevel system_features_level_;
   ScopeLevel system_scope_level_;
+  std::map<const FeatureUsage, std::set<std::string>>
+      system_features_properties_;
 };
 
 }  // namespace fake

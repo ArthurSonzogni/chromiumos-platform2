@@ -5,6 +5,7 @@
 #ifndef LIBSEGMENTATION_FEATURE_MANAGEMENT_IMPL_H_
 #define LIBSEGMENTATION_FEATURE_MANAGEMENT_IMPL_H_
 
+#include <set>
 #include <string>
 
 #include <base/files/file.h>
@@ -34,6 +35,8 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
 
   FeatureLevel GetFeatureLevel() override;
   ScopeLevel GetScopeLevel() override;
+
+  const std::set<std::string> ListFeatures(const FeatureUsage usage) override;
 
  private:
   // Represents the file that houses the device info. This will be read to
