@@ -4,6 +4,7 @@
 
 #include "smbprovider/kerberos_artifact_synchronizer.h"
 
+#include <string>
 #include <utility>
 
 #include <base/check.h>
@@ -14,6 +15,8 @@
 #include <base/logging.h>
 #include <dbus/authpolicy/dbus-constants.h>
 #include <dbus/message.h>
+
+#include "smbprovider/kerberos_artifact_client_interface.h"
 
 namespace smbprovider {
 
@@ -31,7 +34,7 @@ void KerberosArtifactSynchronizer::SetupKerberos(
     const std::string& account_identifier, SetupKerberosCallback callback) {
   if (!allow_credentials_update_) {
     if (account_identifier.empty()) {
-      LOG(ERROR) << "Kerberos user account identifier is empty";
+      LOG(ERROR) << "Kerberos account identifier is empty";
       std::move(callback).Run(false /* success */);
       return;
     }
@@ -67,7 +70,7 @@ void KerberosArtifactSynchronizer::SetupKerberos(
 }
 
 void KerberosArtifactSynchronizer::GetFiles(SetupKerberosCallback callback) {
-  client_->GetUserKerberosFiles(
+  client_->GetKerberosFiles(
       account_identifier_,
       base::BindOnce(&KerberosArtifactSynchronizer::OnGetFilesResponse,
                      base::Unretained(this), std::move(callback)));

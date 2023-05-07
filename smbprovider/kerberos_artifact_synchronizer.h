@@ -20,11 +20,11 @@ class Signal;
 
 namespace smbprovider {
 
-// KerberosArtifactSynchronizer manages a Kerberos user's kr5conf and krb5ccache
-// files. It takes ownership of a KerberosArtifactClientInterface on
-// construction. SetupKerberos fetches a users Kerberos files from AuthPolicy or
-// Kerberos daemons and writes a copy to the tempfs. The Kerberos files are kept
-// up-to-date by connecting to AuthPolicy's or Kerberos's D-Bus signal.
+// `KerberosArtifactSynchronizer` manages kr5conf and krb5ccache files. It takes
+// ownership of a `KerberosArtifactClientInterface` on construction.
+// `SetupKerberos` fetches Kerberos files from kerberosd and writes a copy to
+// the tmpfs. The Kerberos files are kept up-to-date by connecting to
+// kerberosd's D-Bus signal.
 class KerberosArtifactSynchronizer {
  public:
   using SetupKerberosCallback = base::OnceCallback<void(bool setup_success)>;
@@ -38,26 +38,25 @@ class KerberosArtifactSynchronizer {
   KerberosArtifactSynchronizer& operator=(const KerberosArtifactSynchronizer&) =
       delete;
 
-  // Sets up Keberos for user with |account_identifier|.
-  // |account_identifier| is run with the result. If |allow_credentials_update|
-  // is false it may only be called once per instance.
-  // If |account_identifier| is empty, credential files will not be created
-  // or will be removed.
+  // Sets up Kerberos for user with |account_identifier|. |callback| is run with
+  // the result. If |allow_credentials_update| is false, it may only be called
+  // once per instance. If |account_identifier| is empty, credential files will
+  // not be created or will be removed.
   void SetupKerberos(const std::string& account_identifier,
                      SetupKerberosCallback callback);
 
  private:
-  // Calls GetUserKerberosFiles on |client_|.
+  // Calls GetKerberosFiles on |client_|.
   void GetFiles(SetupKerberosCallback callback);
 
-  // Response handler for GetUserKerberosFiles.
+  // Response handler for GetKerberosFiles.
   void OnGetFilesResponse(SetupKerberosCallback callback,
                           bool success,
                           const std::string& krb5_ccache,
                           const std::string& krb5_conf);
 
-  // Writes |kerberos_files| to |krb5_conf_path_| and |krb5_ccache_path_|
-  // respectively. If Kerberos is not yet fully setup, calls
+  // Writes |krb5_ccache| and |krb5_conf| to |krb5_ccache_path_| and
+  // |krb5_conf_path_|, respectively. If Kerberos is not yet fully set up, calls
   // ConnectToKerberosFilesChangedSignal.
   void WriteFiles(const std::string& krb5_ccache,
                   const std::string& krb5_conf,
@@ -68,15 +67,15 @@ class KerberosArtifactSynchronizer {
   // false if it fails. The parent directory of |path| must exist.
   bool WriteFile(const std::string& path, const std::string& kerberos_file);
 
-  // Connects to the 'UserKerberosFilesChanged' D-Bus signal. Called by
-  // WriteFiles() on initial setup.
+  // Connects to the 'KerberosFilesChanged' D-Bus signal. Called by
+  // `WriteFiles()` on initial setup.
   void ConnectToKerberosFilesChangedSignal(SetupKerberosCallback callback);
 
-  // Callback for 'UserKerberosFilesChanged' D-Bus signal.
+  // Callback for 'KerberosFilesChanged' D-Bus signal.
   void OnKerberosFilesChanged(dbus::Signal* signal);
 
-  // Called after connecting to 'UserKerberosFilesChanged' signal. Verifies that
-  // the signal connected successfully.
+  // Called after connecting to 'KerberosFilesChanged' signal. Verifies that the
+  // signal connected successfully.
   void OnKerberosFilesChangedSignalConnected(SetupKerberosCallback callback,
                                              const std::string& interface_name,
                                              const std::string& signal_name,
@@ -85,8 +84,8 @@ class KerberosArtifactSynchronizer {
   // Remove Kerberos credential files.
   void RemoveFiles(SetupKerberosCallback callback);
 
-  // Remove a file at a given |path|. Returns true if the remove succeeds,
-  // false if it fails.
+  // Remove a file at a given `path`. Returns `true` if the remove succeeds,
+  // and `false` if it fails.
   bool RemoveFile(const std::string& path);
 
   bool is_kerberos_setup_ = false;

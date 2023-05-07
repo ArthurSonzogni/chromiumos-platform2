@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <base/files/file_util.h>
+#include <kerberos/proto_bindings/kerberos_service.pb.h>
 
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/proto.h"
@@ -27,14 +27,14 @@ class TempFileManager;
 GetSharesOptionsProto CreateGetSharesOptionsProto(
     const std::string& server_url);
 
-// Writes the Credential Cache file contents |krb5cc| and the krb5.conf file
-// contents |krb5conf| into a authpolicy::KerberosFiles proto.
-authpolicy::KerberosFiles CreateKerberosFilesProto(const std::string& krb5cc,
-                                                   const std::string& krb5conf);
+// Writes the Credential Cache file contents `krb5cc` and the krb5.conf file
+// contents `krb5conf` into a kerberos::KerberosFiles proto.
+kerberos::KerberosFiles CreateKerberosFilesProto(const std::string& krb5cc,
+                                                 const std::string& krb5conf);
 
 ProtoBlob CreateGetSharesOptionsBlob(const std::string& server_url);
 
-// FakeSamba URL helper methods
+// FakeSamba URL helper methods.
 inline std::string GetDefaultServer() {
   return "smb://wdshare";
 }

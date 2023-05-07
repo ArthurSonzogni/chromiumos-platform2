@@ -13,6 +13,7 @@
 #include <dbus/object_path.h>
 #include <dbus/smbprovider/dbus-constants.h>
 #include <gtest/gtest.h>
+#include <kerberos/proto_bindings/kerberos_service.pb.h>
 
 #include "smbprovider/fake_kerberos_artifact_client.h"
 #include "smbprovider/fake_samba_interface.h"
@@ -34,7 +35,7 @@ namespace {
 
 using brillo::dbus_utils::DBusObject;
 
-// arbitary D-Bus
+// Arbitrary D-Bus serial.
 constexpr int32_t kDBusSerial = 123;
 
 ErrorType CastError(int error) {
@@ -345,7 +346,7 @@ TEST_F(SmbProviderTest, SetupKerberosWritesKerberosFilesSuccessfully) {
   const std::string krb5cc = "test creds";
   const std::string krb5conf = "test conf";
 
-  authpolicy::KerberosFiles kerberos_files =
+  kerberos::KerberosFiles kerberos_files =
       CreateKerberosFilesProto(krb5cc, krb5conf);
   kerberos_client_->AddKerberosFiles(user, kerberos_files);
 

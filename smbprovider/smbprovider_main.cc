@@ -15,9 +15,11 @@
 #include <install_attributes/libinstallattributes.h>
 
 #include "smbprovider/constants.h"
+#include "smbprovider/kerberos_artifact_client.h"
+#include "smbprovider/kerberos_artifact_client_interface.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
-#include "smbprovider/kerberos_kerberos_artifact_client.h"
 #include "smbprovider/mount_manager.h"
+#include "smbprovider/samba_interface.h"
 #include "smbprovider/samba_interface_impl.h"
 #include "smbprovider/smbprovider.h"
 
@@ -154,11 +156,10 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
     auto dbus_object = std::make_unique<brillo::dbus_utils::DBusObject>(
         nullptr, bus_, org::chromium::SmbProviderAdaptor::GetObjectPath());
 
-    // Kerberos daemon is using KerberosKerberosArtifactClient.
     // Note that, we allow to update credentials for Kerberos daemon.
     auto kerberos_artifact_client =
         std::unique_ptr<KerberosArtifactClientInterface>(
-            std::make_unique<KerberosKerberosArtifactClient>(bus_));
+            std::make_unique<KerberosArtifactClient>(bus_));
     auto kerberos_artifact_synchronizer =
         std::make_unique<KerberosArtifactSynchronizer>(
             GetKrb5ConfPath(), GetCCachePath(),
@@ -168,7 +169,7 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
     auto tick_clock = std::make_unique<base::DefaultTickClock>();
 
     auto mount_tracker = std::make_unique<MountTracker>(
-        std::move(tick_clock), true /* enable_metadata_cache*/);
+        std::move(tick_clock), /*enable_metadata_cache=*/true);
 
     auto samba_interface_factory =
         base::BindRepeating(&SambaInterfaceFactoryFunction);

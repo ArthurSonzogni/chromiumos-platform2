@@ -36,9 +36,9 @@ GetSharesOptionsProto CreateGetSharesOptionsProto(
   return options;
 }
 
-authpolicy::KerberosFiles CreateKerberosFilesProto(
-    const std::string& krb5cc, const std::string& krb5conf) {
-  authpolicy::KerberosFiles kerberos_files;
+kerberos::KerberosFiles CreateKerberosFilesProto(const std::string& krb5cc,
+                                                 const std::string& krb5conf) {
+  kerberos::KerberosFiles kerberos_files;
   kerberos_files.set_krb5cc(krb5cc);
   kerberos_files.set_krb5conf(krb5conf);
   return kerberos_files;
