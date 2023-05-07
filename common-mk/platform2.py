@@ -86,6 +86,7 @@ _IUSE = [
     "enterprise_rollback_reven",
     "factory_runtime_probe",
     "fake_drivefs_launcher",
+    "feature_management",
     "feedback",
     "floss",
     "force_breakpad",
