@@ -8,6 +8,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":feature-protos",
     ":install_libsegmentation_headers",
     ":internal_protos",
     ":libsegmentation",
@@ -40,6 +41,18 @@ proto_library("internal_protos") {
   proto_out_dir = "include/libsegmentation"
   sources = [ "${proto_in_dir}/device_info.proto" ]
   standalone = true
+
+  # Use -fPIC so this code can be linked into a shared library.
+  use_pic = true
+}
+
+# Feature configs protos.
+proto_library("feature-protos") {
+  proto_in_dir = "${sysroot}/build/share/libsegmentation/proto/"
+  proto_out_dir = "include/proto"
+  sources = [ "${proto_in_dir}/feature_management.proto" ]
+
+  # Use -fPIC so this code can be linked into a shared library.
   use_pic = true
 }
 
@@ -48,19 +61,22 @@ source_set("libsegmentation_sources") {
     "feature_management.cc",
     "feature_management_impl.cc",
   ]
-  deps = []
+  deps = [ ":feature-protos" ]
   if (use.feature_management) {
     sources += [
       "feature_management_backend.cc",
       "feature_management_util.cc",
     ]
-    deps = [ ":internal_protos" ]
+    deps += [ ":internal_protos" ]
   }
   configs += [
     ":target_defaults",
     "//common-mk:pic",
   ]
-  include_dirs = [ "./protos/" ]
+  include_dirs = [
+    "./protos/",
+    "${sysroot}/usr/include/chromeos/feature-management-data",
+  ]
 }
 
 static_library("libsegmentation_static") {

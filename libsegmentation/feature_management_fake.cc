@@ -9,7 +9,7 @@ namespace segmentation {
 
 namespace fake {
 
-bool FeatureManagementFake::IsFeatureEnabled(const std::string& name) const {
+bool FeatureManagementFake::IsFeatureEnabled(const std::string& name) {
   return system_features_properties_.count(name) > 0;
 }
 

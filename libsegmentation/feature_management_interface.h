@@ -17,7 +17,7 @@ class FeatureManagementInterface {
   //
   // @param name The name of the feature to check
   // @return |false| if the feature should not be used, |true| otherwise.
-  virtual bool IsFeatureEnabled(const std::string& name) const = 0;
+  virtual bool IsFeatureEnabled(const std::string& name) = 0;
 
   // Return the feature level for the device
   //

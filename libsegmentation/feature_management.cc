@@ -16,7 +16,7 @@ FeatureManagement::FeatureManagement(
     std::unique_ptr<FeatureManagementInterface> impl)
     : impl_(std::move(impl)) {}
 
-bool FeatureManagement::IsFeatureEnabled(const std::string& name) const {
+bool FeatureManagement::IsFeatureEnabled(const std::string& name) {
   return impl_->IsFeatureEnabled(name);
 }
 

@@ -24,8 +24,8 @@ class BRILLO_EXPORT FeatureManagementFake : public FeatureManagementInterface {
  public:
   FeatureManagementFake() = default;
 
-  // FestureManagementInterface overrides.
-  bool IsFeatureEnabled(const std::string& name) const override;
+  bool IsFeatureEnabled(const std::string& name) override;
+
   FeatureLevel GetFeatureLevel() override;
   ScopeLevel GetScopeLevel() override;
 

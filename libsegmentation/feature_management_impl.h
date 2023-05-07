@@ -13,6 +13,9 @@
 
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management_interface.h"
+#include "proto/feature_management.pb.h"
+
+using chromiumos::feature_management::api::software::FeatureBundle;
 
 namespace segmentation {
 
@@ -24,10 +27,11 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   // feature-management-data.
   FeatureManagementImpl();
 
-  explicit FeatureManagementImpl(const base::FilePath& device_info_file_path);
+  FeatureManagementImpl(const base::FilePath& device_info_file_path,
+                        const char* feature_db);
 
-  // FeatureManagementInterface overrides.
-  bool IsFeatureEnabled(const std::string& name) const override;
+  bool IsFeatureEnabled(const std::string& name) override;
+
   FeatureLevel GetFeatureLevel() override;
   ScopeLevel GetScopeLevel() override;
 
@@ -39,6 +43,9 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   // as a regular file. For testing, we read and write from a test file stored
   // in this variable.
   base::FilePath device_info_file_path_;
+
+  // Internal feature database
+  FeatureBundle bundle_;
 
   // Use the "vpd" binary to persist the state.
   bool persist_via_vpd_ = false;

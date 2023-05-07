@@ -26,13 +26,16 @@ class BRILLO_EXPORT FeatureManagement {
   explicit FeatureManagement(std::unique_ptr<FeatureManagementInterface> impl);
 
   // Return true when a named feature can be used on the device.
-  bool IsFeatureEnabled(const std::string& name) const;
+  bool IsFeatureEnabled(const std::string& name);
 
   // Return the maximal feature level available on the device.
   int GetFeatureLevel() const;
 
   // Return the maximal scope level available on the device.
   int GetScopeLevel() const;
+
+  // Prefix for naming features.
+  static constexpr char kPrefix[] = "FeatureManagement";
 
  private:
   std::unique_ptr<FeatureManagementInterface> impl_;
