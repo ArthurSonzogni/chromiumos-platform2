@@ -472,7 +472,7 @@ class Platform2(object):
             uses[flag] = True
         for x in self.use_flags:
             uses[x.replace("-", "_")] = True
-        use_args = ["%s=%s" % (x, str(uses[x]).lower()) for x in uses]
+        use_args = ["%s=%s" % (k, str(v).lower()) for k, v in uses.items()]
         gn_args_args += ["use={%s}" % (" ".join(use_args))]
 
         return gn_args_args
