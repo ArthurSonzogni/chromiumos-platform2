@@ -16,7 +16,7 @@ from typing import Optional, Set
 # forward some command line flags when restarting the process in guest mode.
 # TODO(shik): Login automatically.
 
-_CHROME_DEV_CONF_PATH = "/etc/chrome_dev.conf"
+_CHROME_DEV_CONF_PATH = pathlib.Path("/etc/chrome_dev.conf")
 
 _CHROME_FLAGS = [
     "--remote-debugging-port=0",
@@ -83,9 +83,10 @@ def setup_chrome_dev_conf():
         )
         return
 
-    with open(_CHROME_DEV_CONF_PATH, encoding="utf-8") as f:
-        if _CHROME_DEV_CONF_CONTENT in f.read():
-            return
+    if _CHROME_DEV_CONF_PATH.exists():
+        with open(_CHROME_DEV_CONF_PATH, encoding="utf-8") as f:
+            if _CHROME_DEV_CONF_CONTENT in f.read():
+                return
 
     logging.info("Updating %s", _CHROME_DEV_CONF_PATH)
     with open(_CHROME_DEV_CONF_PATH, "a", encoding="utf-8") as f:
