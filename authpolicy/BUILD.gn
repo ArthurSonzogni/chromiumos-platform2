@@ -16,6 +16,7 @@ group("all") {
     ":container-protos",
     ":dbus_code_generator",
     ":install_init",
+    ":install_minijail_conf",
     ":install_policy",
     ":install_process_management_policies",
     ":install_systemd",
@@ -200,6 +201,11 @@ executable("authpolicyd") {
 install_config("install_init") {
   sources = [ "etc/init/authpolicyd.conf" ]
   install_path = "/etc/init"
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/authpolicyd.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 install_config("install_policy") {
