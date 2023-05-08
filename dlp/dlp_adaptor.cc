@@ -285,7 +285,8 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
     base::ScopedFD remote_fd,
     std::map<ino64_t, FileEntry> file_entries) {
   IsFilesTransferRestrictedRequest matching_request;
-  std::vector<ino64_t> inodes;
+  std::vector<ino64_t> request_inodes;
+  std::vector<ino64_t> granted_inodes;
 
   for (const auto& file_path : request.files_paths()) {
     const ino_t inode_n = GetInodeValue(file_path);
@@ -308,10 +309,11 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
     }
     // Was previously allowed, no need to check again.
     if (!RequiresCheck(cached_level)) {
+      granted_inodes.emplace_back(inode_n);
       continue;
     }
 
-    inodes.push_back(inode_n);
+    request_inodes.push_back(inode_n);
 
     FileMetadata* file_metadata = matching_request.add_transferred_files();
     file_metadata->set_inode(inode_n);
@@ -319,7 +321,14 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
     file_metadata->set_path(file_path);
   }
   // If access to all requested files was allowed, return immediately.
-  if (inodes.empty()) {
+  if (request_inodes.empty()) {
+    if (!granted_inodes.empty()) {
+      int lifeline_fd = AddLifelineFd(local_fd.get());
+      approved_requests_.insert_or_assign(
+          lifeline_fd,
+          std::make_pair(std::move(granted_inodes), request.process_id()));
+    }
+
     ReplyOnRequestFileAccess(std::move(response), std::move(remote_fd),
                              /*allowed=*/true,
                              /*error_message=*/std::string());
@@ -345,9 +354,9 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
   dlp_files_policy_service_->IsFilesTransferRestrictedAsync(
       SerializeProto(matching_request),
       base::BindOnce(&DlpAdaptor::OnRequestFileAccess, base::Unretained(this),
-                     std::move(inodes), request.process_id(),
-                     std::move(local_fd), std::move(callbacks.first),
-                     std::move(cache_callback)),
+                     std::move(request_inodes), std::move(granted_inodes),
+                     request.process_id(), std::move(local_fd),
+                     std::move(callbacks.first), std::move(cache_callback)),
       base::BindOnce(&DlpAdaptor::OnRequestFileAccessError,
                      base::Unretained(this), std::move(callbacks.second)),
       /*timeout_ms=*/base::Minutes(5).InMilliseconds());
@@ -637,7 +646,8 @@ void DlpAdaptor::OnDlpPolicyMatchedError(
 }
 
 void DlpAdaptor::OnRequestFileAccess(
-    std::vector<uint64_t> inodes,
+    std::vector<uint64_t> request_inodes,
+    std::vector<uint64_t> granted_inodes,
     int pid,
     base::ScopedFD local_fd,
     RequestFileAccessCallback callback,
@@ -668,9 +678,11 @@ void DlpAdaptor::OnRequestFileAccess(
   }
 
   if (allowed) {
+    request_inodes.insert(request_inodes.end(), granted_inodes.begin(),
+                          granted_inodes.end());
     int lifeline_fd = AddLifelineFd(local_fd.get());
-    approved_requests_.insert_or_assign(lifeline_fd,
-                                        std::make_pair(std::move(inodes), pid));
+    approved_requests_.insert_or_assign(
+        lifeline_fd, std::make_pair(std::move(request_inodes), pid));
   }
 
   std::move(callback).Run(allowed, /*error_message=*/std::string());

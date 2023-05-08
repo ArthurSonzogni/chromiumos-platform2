@@ -102,6 +102,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight);
   FRIEND_TEST(DlpAdaptorTest, SetDlpFilesPolicy);
   FRIEND_TEST(DlpAdaptorTest, CheckFilesTransfer);
+  FRIEND_TEST(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedAllowed);
+  FRIEND_TEST(DlpAdaptorTest, RestrictedFileAddedAndRequestedCachedNotAllowed);
 
   // Callback on InitDatabase after initialization of the database.
   void OnDatabaseInitialized(base::OnceClosure init_callback,
@@ -149,6 +151,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   // Callbacks on IsFilesTransferRestricted D-Bus request for RequestFileAccess.
   void OnRequestFileAccess(
       std::vector<uint64_t> inodes,
+      std::vector<uint64_t> granted_inodes,
       int pid,
       base::ScopedFD local_fd,
       RequestFileAccessCallback callback,
