@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,12 +17,15 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/guest_type.h"
+#include "patchpanel/ipc.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/net_util.h"
+#include "patchpanel/routing_service.h"
 
 using testing::_;
 using testing::AnyNumber;
@@ -250,6 +254,51 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
 
   // There are no more virtual devices left.
   ASSERT_TRUE(crostini->GetDevices().empty());
+}
+
+TEST_F(CrostiniServiceTest, VMTypeConversions) {
+  EXPECT_EQ(CrostiniService::VMType::kTermina,
+            CrostiniService::VMTypeFromGuestType(GuestType::kTerminaVM));
+  EXPECT_EQ(CrostiniService::VMType::kParallel,
+            CrostiniService::VMTypeFromGuestType(GuestType::kPluginVM));
+  EXPECT_EQ(std::nullopt,
+            CrostiniService::VMTypeFromGuestType(GuestType::kArc0));
+  EXPECT_EQ(std::nullopt,
+            CrostiniService::VMTypeFromGuestType(GuestType::kArcNet));
+  EXPECT_EQ(std::nullopt,
+            CrostiniService::VMTypeFromGuestType(GuestType::kLXDContainer));
+  EXPECT_EQ(std::nullopt,
+            CrostiniService::VMTypeFromGuestType(GuestType::kNetns));
+
+  EXPECT_EQ(
+      CrostiniService::VMType::kTermina,
+      CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::TERMINA_VM));
+  EXPECT_EQ(
+      CrostiniService::VMType::kParallel,
+      CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::PLUGIN_VM));
+  EXPECT_EQ(std::nullopt,
+            CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::ARC));
+  EXPECT_EQ(std::nullopt,
+            CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::ARCVM));
+  EXPECT_EQ(std::nullopt,
+            CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::UNKNOWN));
+
+  EXPECT_EQ(TrafficSource::kCrosVM, CrostiniService::TrafficSourceFromVMType(
+                                        CrostiniService::VMType::kTermina));
+  EXPECT_EQ(TrafficSource::kPluginVM, CrostiniService::TrafficSourceFromVMType(
+                                          CrostiniService::VMType::kParallel));
+
+  EXPECT_EQ(GuestMessage::TERMINA_VM,
+            CrostiniService::GuestMessageTypeFromVMType(
+                CrostiniService::VMType::kTermina));
+  EXPECT_EQ(GuestMessage::PLUGIN_VM,
+            CrostiniService::GuestMessageTypeFromVMType(
+                CrostiniService::VMType::kParallel));
+
+  EXPECT_EQ(GuestType::kTerminaVM, CrostiniService::GuestTypeFromVMType(
+                                       CrostiniService::VMType::kTermina));
+  EXPECT_EQ(GuestType::kPluginVM, CrostiniService::GuestTypeFromVMType(
+                                      CrostiniService::VMType::kParallel));
 }
 
 }  // namespace

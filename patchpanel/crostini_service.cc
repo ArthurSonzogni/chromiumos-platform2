@@ -22,6 +22,7 @@
 
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/guest_type.h"
+#include "patchpanel/ipc.h"
 
 namespace patchpanel {
 namespace {
@@ -252,6 +253,75 @@ void CrostiniService::CheckAdbSideloadingStatus() {
   // Crostini's TAP interfaces.
   for (const auto& tap : taps_) {
     StartAdbPortForwarding(tap.second->phys_ifname());
+  }
+}
+
+// static
+std::optional<CrostiniService::VMType> CrostiniService::VMTypeFromGuestType(
+    GuestType guest_type) {
+  switch (guest_type) {
+    case GuestType::kTerminaVM:
+      return VMType::kTermina;
+    case GuestType::kPluginVM:
+      return VMType::kParallel;
+    default:
+      return std::nullopt;
+  }
+}
+
+// static
+std::optional<CrostiniService::VMType>
+CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::GuestType guest_type) {
+  switch (guest_type) {
+    case NetworkDevice::TERMINA_VM:
+      return VMType::kTermina;
+    case NetworkDevice::PLUGIN_VM:
+      return VMType::kParallel;
+    default:
+      return std::nullopt;
+  }
+}
+
+// static
+TrafficSource CrostiniService::TrafficSourceFromVMType(
+    CrostiniService::VMType vm_type) {
+  switch (vm_type) {
+    case VMType::kTermina:
+      return TrafficSource::kCrosVM;
+    case VMType::kParallel:
+      return TrafficSource::kPluginVM;
+  }
+}
+
+// static
+GuestMessage::GuestType CrostiniService::GuestMessageTypeFromVMType(
+    CrostiniService::VMType vm_type) {
+  switch (vm_type) {
+    case VMType::kTermina:
+      return GuestMessage::TERMINA_VM;
+    case VMType::kParallel:
+      return GuestMessage::PLUGIN_VM;
+  }
+}
+
+// static
+GuestType CrostiniService::GuestTypeFromVMType(
+    CrostiniService::VMType vm_type) {
+  switch (vm_type) {
+    case VMType::kTermina:
+      return GuestType::kTerminaVM;
+    case VMType::kParallel:
+      return GuestType::kPluginVM;
+  }
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         const CrostiniService::VMType vm_type) {
+  switch (vm_type) {
+    case CrostiniService::VMType::kTermina:
+      return stream << "Termina";
+    case CrostiniService::VMType::kParallel:
+      return stream << "Parallel";
   }
 }
 

@@ -7,14 +7,20 @@
 
 #include <map>
 #include <memory>
+#include <optional>
+#include <ostream>
 #include <string>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/device.h"
+#include "patchpanel/guest_type.h"
+#include "patchpanel/ipc.h"
+#include "patchpanel/routing_service.h"
 
 namespace patchpanel {
 
@@ -23,6 +29,25 @@ namespace patchpanel {
 // CrostiniService currently only supports one TAP device per VM instance.
 class CrostiniService {
  public:
+  // All types of VM supported by CrostiniService.
+  enum class VMType {
+    // Crostini Linux VM with a user LXD container.
+    kTermina,
+    // Parallel VM.
+    kParallel,
+  };
+
+  static std::optional<VMType> VMTypeFromGuestType(GuestType guest_type);
+  static std::optional<VMType> VMTypeFromProtoGuestType(
+      NetworkDevice::GuestType guest_type);
+  static TrafficSource TrafficSourceFromVMType(VMType vm_type);
+  // Converts VMType to an internal IPC GuestMessage::GuestType value. This type
+  // is needed for the Device::ChangeEventHandler callback.
+  static GuestMessage::GuestType GuestMessageTypeFromVMType(VMType vm_type);
+  // Converts VMType to an internal GuestType enum value. This type is needed
+  // for allocating static IPv4 subnets and for the internal Device class.
+  static GuestType GuestTypeFromVMType(VMType vm_type);
+
   // All pointers are required and must not be null, and are owned by the
   // caller.
   CrostiniService(AddressManager* addr_mgr,
@@ -69,6 +94,9 @@ class CrostiniService {
 
   base::WeakPtrFactory<CrostiniService> weak_factory_{this};
 };
+
+std::ostream& operator<<(std::ostream& stream,
+                         const CrostiniService::VMType vm_type);
 
 }  // namespace patchpanel
 
