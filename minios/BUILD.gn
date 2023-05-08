@@ -8,6 +8,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":install_minijail_conf",
     ":minios",
     ":minios_adaptors",
     ":minios_client",
@@ -16,6 +17,11 @@ group("all") {
   if (use.test) {
     deps += [ ":minios_test" ]
   }
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/syslog.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 generate_dbus_adaptors("minios_adaptors") {
