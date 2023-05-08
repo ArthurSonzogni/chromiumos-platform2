@@ -860,7 +860,17 @@ void Executor::GetConnectedHdmiConnectors(
 }
 
 void Executor::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
-  NOTIMPLEMENTED();
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kDrm, kCrosHealthdSandboxUser, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{path::kDrmDevice}},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{});
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->GetPrivacyScreenInfo(
+      CreateOnceDelegateCallback(std::move(delegate), std::move(callback),
+                                 false, false, kFailToLaunchDelegate));
+  delegate_ptr->StartAsync();
 }
 
 void Executor::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
