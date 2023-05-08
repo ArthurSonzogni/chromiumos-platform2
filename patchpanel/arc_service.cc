@@ -549,7 +549,7 @@ void ArcService::AddDevice(const std::string& ifname,
     LOG(ERROR) << "Failed to add ADB port access rule";
   }
 
-  device_changed_handler_.Run(*device, Device::ChangeEvent::kAdded, guest_);
+  device_changed_handler_.Run(*device, Device::ChangeEvent::kAdded);
   devices_.emplace(ifname, std::move(device));
   RecordEvent(metrics_, ArcServiceUmaEvent::kAddDeviceSuccess);
 }
@@ -569,7 +569,7 @@ void ArcService::RemoveDevice(const std::string& ifname) {
   const auto* device = it->second.get();
   LOG(INFO) << "Removing ARC Device " << *device;
 
-  device_changed_handler_.Run(*device, Device::ChangeEvent::kRemoved, guest_);
+  device_changed_handler_.Run(*device, Device::ChangeEvent::kRemoved);
 
   // ARCVM TAP devices are removed in VmImpl::Stop() when the service stops
   if (guest_ == GuestMessage::ARC)

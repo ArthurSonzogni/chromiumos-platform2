@@ -94,8 +94,7 @@ class Manager final : public brillo::DBusDaemon {
                             const std::string& ipv6_address);
 
   void OnGuestDeviceChanged(const Device& virtual_device,
-                            Device::ChangeEvent event,
-                            GuestMessage::GuestType guest_type);
+                            Device::ChangeEvent event);
 
   void InitialSetup();
 

@@ -19,7 +19,6 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "patchpanel/ipc.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/subnet.h"
 
@@ -62,8 +61,8 @@ class Device {
     kRemoved,
   };
 
-  using ChangeEventHandler = base::RepeatingCallback<void(
-      const Device&, ChangeEvent, GuestMessage::GuestType)>;
+  using ChangeEventHandler =
+      base::RepeatingCallback<void(const Device&, ChangeEvent)>;
 
   class Config {
    public:

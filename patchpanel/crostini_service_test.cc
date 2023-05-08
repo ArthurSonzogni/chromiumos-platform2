@@ -22,7 +22,6 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/guest_type.h"
-#include "patchpanel/ipc.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/routing_service.h"
@@ -56,9 +55,7 @@ class CrostiniServiceTest : public testing::Test {
                             base::Unretained(this)));
   }
 
-  void DeviceHandler(const Device& device,
-                     Device::ChangeEvent event,
-                     GuestMessage::GuestType guest_type) {
+  void DeviceHandler(const Device& device, Device::ChangeEvent event) {
     guest_devices_[device.host_ifname()] = event;
   }
 

@@ -98,8 +98,7 @@ const Device* CrostiniService::Start(uint64_t vm_id,
   }
   LOG(INFO) << __func__ << " " << vm_info
             << ": Crostini network service started on " << tap->host_ifname();
-  device_changed_handler_.Run(*tap, Device::ChangeEvent::kAdded,
-                              GuestMessageTypeFromVMType(vm_type));
+  device_changed_handler_.Run(*tap, Device::ChangeEvent::kAdded);
   auto [it, _] = taps_.emplace(vm_id, std::move(tap));
   return it->second.get();
 }
@@ -119,8 +118,7 @@ void CrostiniService::Stop(uint64_t vm_id) {
   }
   const auto vm_info = std::make_pair(vm_id, *vm_type);
 
-  device_changed_handler_.Run(*it->second, Device::ChangeEvent::kRemoved,
-                              GuestMessageTypeFromVMType(*vm_type));
+  device_changed_handler_.Run(*it->second, Device::ChangeEvent::kRemoved);
   const std::string tap_ifname = it->second->host_ifname();
   datapath_->StopRoutingDevice("", tap_ifname,
                                it->second->config().host_ipv4_addr(),

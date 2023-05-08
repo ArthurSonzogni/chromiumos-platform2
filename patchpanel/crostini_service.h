@@ -42,7 +42,7 @@ class CrostiniService {
       NetworkDevice::GuestType guest_type);
   static TrafficSource TrafficSourceFromVMType(VMType vm_type);
   // Converts VMType to an internal IPC GuestMessage::GuestType value. This type
-  // is needed for the Device::ChangeEventHandler callback.
+  // is needed by Manager for IPCs to patchpanel subprocesses.
   static GuestMessage::GuestType GuestMessageTypeFromVMType(VMType vm_type);
   // Converts VMType to an internal GuestType enum value. This type is needed
   // for allocating static IPv4 subnets.

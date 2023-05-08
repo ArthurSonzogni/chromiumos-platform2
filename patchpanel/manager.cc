@@ -492,8 +492,7 @@ void Manager::OnIPv6NetworkChanged(const std::string& ifname,
 }
 
 void Manager::OnGuestDeviceChanged(const Device& virtual_device,
-                                   Device::ChangeEvent event,
-                                   GuestMessage::GuestType guest_type) {
+                                   Device::ChangeEvent event) {
   // The legacy "arc0" Device is ignored for "NetworkDeviceChanged" signals
   // and is never included in multicast forwarding or GuestIPv6Service.
   if (virtual_device.type() == Device::Type::kARC0) {
@@ -509,19 +508,16 @@ void Manager::OnGuestDeviceChanged(const Device& virtual_device,
   if (const auto* subnet = virtual_device.config().ipv4_subnet()) {
     FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
   }
-  if (dev->guest_type() != NetworkDevice::UNKNOWN) {
-    const std::string& upstream_device =
-        (guest_type == GuestMessage::ARC || guest_type == GuestMessage::ARC_VM)
-            ? virtual_device.phys_ifname()
-            : shill_client_->default_logical_interface();
-
-    if (event == Device::ChangeEvent::kAdded) {
-      StartForwarding(upstream_device, virtual_device.host_ifname());
-    } else if (event == Device::ChangeEvent::kRemoved) {
-      StopForwarding(upstream_device, virtual_device.host_ifname());
-    }
+  const std::string& upstream_device =
+      (virtual_device.type() == Device::Type::kARCContainer ||
+       virtual_device.type() == Device::Type::kARCVM)
+          ? virtual_device.phys_ifname()
+          : shill_client_->default_logical_interface();
+  if (event == Device::ChangeEvent::kAdded) {
+    StartForwarding(upstream_device, virtual_device.host_ifname());
+  } else if (event == Device::ChangeEvent::kRemoved) {
+    StopForwarding(upstream_device, virtual_device.host_ifname());
   }
-
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   dbus_svc_path_->SendSignal(&signal);
 }
