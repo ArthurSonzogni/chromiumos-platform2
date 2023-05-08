@@ -405,12 +405,28 @@ static void sl_extended_text_input_set_autocorrect_range(
                                                         end);
 }
 
+static void sl_extended_text_input_set_virtual_keyboard_occluded_bounds(
+    void* data,
+    struct zcr_extended_text_input_v1* extended_text_input,
+    int32_t x,
+    int32_t y,
+    int32_t width,
+    int32_t height) {
+  struct sl_host_extended_text_input* host =
+      static_cast<sl_host_extended_text_input*>(
+          zcr_extended_text_input_v1_get_user_data(extended_text_input));
+
+  zcr_extended_text_input_v1_send_set_virtual_keyboard_occluded_bounds(
+      host->resource, x, y, width, height);
+}
+
 static const struct zcr_extended_text_input_v1_listener
     sl_extended_text_input_listener = {
         sl_extended_text_input_set_preedit_region,
         sl_extended_text_input_clear_grammar_fragments,
         sl_extended_text_input_add_grammar_fragment,
         sl_extended_text_input_set_autocorrect_range,
+        sl_extended_text_input_set_virtual_keyboard_occluded_bounds,
 };
 
 static void sl_destroy_host_extended_text_input(struct wl_resource* resource) {
