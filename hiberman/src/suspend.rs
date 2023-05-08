@@ -33,7 +33,7 @@ use crate::hiberutil::HibernateStage;
 use crate::hiberutil::TimestampFile;
 use crate::metrics::log_hibernate_attempt;
 use crate::metrics::read_and_send_metrics;
-use crate::metrics::MetricsLogger;
+use crate::metrics::METRICS_LOGGER;
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
@@ -44,7 +44,6 @@ use crate::volume::VolumeManager;
 /// symphony of hibernation.
 pub struct SuspendConductor {
     options: HibernateOptions,
-    metrics: MetricsLogger,
     volume_manager: VolumeManager,
     timestamp_resumed: Option<Duration>,
 }
@@ -54,7 +53,6 @@ impl SuspendConductor {
     pub fn new() -> Result<Self> {
         Ok(SuspendConductor {
             options: Default::default(),
-            metrics: MetricsLogger::new()?,
             volume_manager: VolumeManager::new()?,
             timestamp_resumed: None,
         })
@@ -95,7 +93,7 @@ impl SuspendConductor {
             libc::sync();
         }
 
-        prealloc_mem(&mut self.metrics).context("Failed to preallocate memory for hibernate")?;
+        prealloc_mem().context("Failed to preallocate memory for hibernate")?;
 
         let result = self.suspend_system();
 
@@ -127,7 +125,11 @@ impl SuspendConductor {
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
 
-        self.metrics.flush()?;
+        {
+            let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+            metrics_logger.flush()?;
+        }
+
         redirect_log(HiberlogOut::BufferInMemory);
         self.volume_manager.unmount_hibermeta()?;
 
@@ -163,15 +165,19 @@ impl SuspendConductor {
 
             let io_duration = start.elapsed();
 
-            self.metrics.metrics_send_io_sample(
-                "WriteHibernateImage",
-                snap_dev.get_image_size()?,
-                io_duration,
-            );
+            {
+                let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
 
-            // Flush the metrics file before unmounting hibermeta. The metrics will be
-            // sent on resume.
-            self.metrics.flush()?;
+                metrics_logger.metrics_send_io_sample(
+                    "WriteHibernateImage",
+                    snap_dev.get_image_size()?,
+                    io_duration,
+                );
+
+                // Flush the metrics file before unmounting hibermeta. The metrics will be
+                // sent on resume.
+                metrics_logger.flush()?;
+            }
 
             // Set the hibernate cookie so the next boot knows to start in RO mode.
             info!("Setting hibernate cookie at {}", block_path);

@@ -38,7 +38,7 @@ use crate::hiberutil::ResumeOptions;
 use crate::hiberutil::TimestampFile;
 use crate::lvm::activate_physical_lv;
 use crate::metrics::read_and_send_metrics;
-use crate::metrics::MetricsLogger;
+use crate::metrics::METRICS_LOGGER;
 use crate::powerd::PowerdPendingResume;
 use crate::resume_dbus::{get_user_key, wait_for_resume_dbus_event, ResumeRequest};
 use crate::snapdev::FrozenUserspaceTicket;
@@ -56,7 +56,6 @@ const TPM_SEED_FILE: &str = "/run/hiberman/tpm_seed";
 /// work in concert to resume the system from hibernation.
 pub struct ResumeConductor {
     options: ResumeOptions,
-    metrics_logger: MetricsLogger,
     stateful_block_path: String,
     timestamp_start: Duration,
 }
@@ -66,7 +65,6 @@ impl ResumeConductor {
     pub fn new() -> Result<Self> {
         Ok(ResumeConductor {
             options: Default::default(),
-            metrics_logger: MetricsLogger::new()?,
             stateful_block_path: path_to_stateful_block()?,
             timestamp_start: Duration::ZERO,
         })
@@ -221,12 +219,14 @@ impl ResumeConductor {
         // Load the snapshot image into the kernel
         let image_size = snap_dev.load_image(hiber_image_file)?;
 
-        self.metrics_logger
-            .metrics_send_io_sample("ReadMainImage", image_size, start.elapsed());
+        {
+            let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+            metrics_logger.metrics_send_io_sample("ReadMainImage", image_size, start.elapsed());
+        }
 
         // Let other daemons know it's the end of the world.
-        let _powerd_resume = PowerdPendingResume::new(&mut self.metrics_logger)
-            .context("Failed to call powerd for imminent resume")?;
+        let _powerd_resume =
+            PowerdPendingResume::new().context("Failed to call powerd for imminent resume")?;
         // Write a tombstone indicating we got basically all the way through to
         // attempting the resume. Both the current value (ResumeInProgress) and
         // this ResumeAborting value cause a reboot-after-crash to do the right
@@ -250,8 +250,11 @@ impl ResumeConductor {
         );
         // TODO: log metric?
 
-        // Close the metrics file before unmounting 'hibermeta'.
-        self.metrics_logger.flush()?;
+        {
+            let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+            // Flush the metrics file before unmounting 'hibermeta'.
+            metrics_logger.flush()?;
+        }
 
         // Keep logs in memory for now.
         redirect_log(HiberlogOut::BufferInMemory);

@@ -15,6 +15,7 @@ use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::Context;
@@ -32,6 +33,8 @@ use crate::files::HIBERMETA_DIR;
 use crate::hiberutil::HibernateError;
 
 lazy_static! {
+    pub static ref METRICS_LOGGER: Mutex<MetricsLogger> = Mutex::new(MetricsLogger::new());
+
     /// Path of the file with metric samples.
     static ref METRICS_FILE_PATH: PathBuf = Path::new(HIBERMETA_DIR).join("metrics");
 }
@@ -59,10 +62,10 @@ pub struct MetricsLogger {
 }
 
 impl MetricsLogger {
-    pub fn new() -> Result<Self> {
-        Ok(Self {
+    fn new() -> Self {
+        Self {
             buf: VecDeque::new(),
-        })
+        }
     }
 
     /// Log a metric to the MetricsLogger buffer.

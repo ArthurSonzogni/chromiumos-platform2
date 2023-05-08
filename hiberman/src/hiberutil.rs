@@ -35,8 +35,8 @@ use crate::cookie::HibernateCookieValue;
 use crate::files::HIBERMETA_DIR;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::HiberlogOut;
-use crate::metrics::MetricsLogger;
 use crate::metrics::MetricsSample;
+use crate::metrics::METRICS_LOGGER;
 use crate::mmapbuf::MmapBuffer;
 
 const KEYCTL_PATH: &str = "/bin/keyctl";
@@ -224,7 +224,7 @@ fn get_available_swap_mb() -> Result<u32> {
 // when allocating the memory needed for the hibernate snapshot. By
 // preallocating this memory, we force memory to be swapped into zram and
 // ensure that we have the free memory needed for the snapshot.
-pub fn prealloc_mem(metrics_logger: &mut MetricsLogger) -> Result<()> {
+pub fn prealloc_mem() -> Result<()> {
     let available_mb = get_available_memory_mb();
     let available_swap = get_available_swap_mb()?;
     let total_avail = available_mb + available_swap;
@@ -243,34 +243,39 @@ pub fn prealloc_mem(metrics_logger: &mut MetricsLogger) -> Result<()> {
         shortfall_mb = -extra_mb;
         extra_mb = 0;
     }
-    metrics_logger.log_metric(MetricsSample {
-        name: "Platform.Hibernate.MemoryAvailable",
-        value: available_mb as isize,
-        min: 0,
-        max: 16384,
-        buckets: 50,
-    });
-    metrics_logger.log_metric(MetricsSample {
-        name: "Platform.Hibernate.MemoryAndSwapAvailable",
-        value: total_avail as isize,
-        min: 0,
-        max: 32768,
-        buckets: 50,
-    });
-    metrics_logger.log_metric(MetricsSample {
-        name: "Platform.Hibernate.AdditionalMemoryNeeded",
-        value: shortfall_mb,
-        min: 0,
-        max: 16384,
-        buckets: 50,
-    });
-    metrics_logger.log_metric(MetricsSample {
-        name: "Platform.Hibernate.ExcessMemoryAvailable",
-        value: extra_mb,
-        min: 0,
-        max: 16384,
-        buckets: 50,
-    });
+
+    {
+        let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+
+        metrics_logger.log_metric(MetricsSample {
+            name: "Platform.Hibernate.MemoryAvailable",
+            value: available_mb as isize,
+            min: 0,
+            max: 16384,
+            buckets: 50,
+        });
+        metrics_logger.log_metric(MetricsSample {
+            name: "Platform.Hibernate.MemoryAndSwapAvailable",
+            value: total_avail as isize,
+            min: 0,
+            max: 32768,
+            buckets: 50,
+        });
+        metrics_logger.log_metric(MetricsSample {
+            name: "Platform.Hibernate.AdditionalMemoryNeeded",
+            value: shortfall_mb,
+            min: 0,
+            max: 16384,
+            buckets: 50,
+        });
+        metrics_logger.log_metric(MetricsSample {
+            name: "Platform.Hibernate.ExcessMemoryAvailable",
+            value: extra_mb,
+            min: 0,
+            max: 16384,
+            buckets: 50,
+        });
+    }
 
     if hiber_mb > (total_avail).try_into().unwrap() {
         return Err(HibernateError::InsufficientMemoryAvailableError())
