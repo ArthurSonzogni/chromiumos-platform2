@@ -14,6 +14,7 @@ group("all") {
     ":faced_cli",
     ":install_dbus_conf",
     ":install_init_conf",
+    ":install_minijail_conf",
     "camera:all",
     "faced_cli:all",
   ]
@@ -33,6 +34,11 @@ install_config("install_dbus_conf") {
 install_config("install_init_conf") {
   sources = [ "init/faced.conf" ]
   install_path = "/etc/init"
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/faced.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 generate_mojom_bindings("face_auth_mojo_bindings") {
