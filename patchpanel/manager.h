@@ -62,7 +62,7 @@ class Manager {
   virtual ~Manager();
 
   // Queries the list of virtual devices managed by patchpanel.
-  GetDevicesResponse GetDevices();
+  GetDevicesResponse GetDevices() const;
 
   // Handles notification indicating ARC++ is booting up.
   bool ArcStartup(pid_t pid);
@@ -90,17 +90,17 @@ class Manager {
 
   // Sets a VPN intent fwmark on a socket.
   bool SetVpnIntent(SetVpnIntentRequest::VpnRoutingPolicy policy,
-                    base::ScopedFD sockfd);
+                    const base::ScopedFD& sockfd);
 
   // Connects and routes an existing network namespace created via minijail or
   // through rtnetlink RTM_NEWNSID.
   ConnectNamespaceResponse ConnectNamespace(
       const patchpanel::ConnectNamespaceRequest& request,
-      base::ScopedFD client_fd);
+      const base::ScopedFD& client_fd);
 
   // Queries traffic counters.
   std::map<CountersService::CounterKey, CountersService::Counter>
-  GetTrafficCounters(const std::set<std::string>& shill_devices);
+  GetTrafficCounters(const std::set<std::string>& shill_devices) const;
 
   // Creates iptables rules requests from permission_broker.
   bool ModifyPortRule(const patchpanel::ModifyPortRuleRequest& request);
@@ -111,21 +111,21 @@ class Manager {
   // Creates iptables rules requests from dns-proxy.
   bool SetDnsRedirectionRule(
       const patchpanel::SetDnsRedirectionRuleRequest& request,
-      base::ScopedFD client_fd);
+      const base::ScopedFD& client_fd);
 
   // Creates an L3 network on a network interface and tethered to an upstream
   // network.
   DownstreamNetworkResult CreateTetheredNetwork(
-      const TetheredNetworkRequest& request, base::ScopedFD client_fd);
+      const TetheredNetworkRequest& request, const base::ScopedFD& client_fd);
 
   // Creates a local-only L3 network on a network interface.
   DownstreamNetworkResult CreateLocalOnlyNetwork(
-      const LocalOnlyNetworkRequest& request, base::ScopedFD client_fd);
+      const LocalOnlyNetworkRequest& request, const base::ScopedFD& client_fd);
 
   // Provides L3 and DHCP client information about clients connected to a
   // network created with CreateTetheredNetwork or CreateLocalOnlyNetwork.
   std::optional<DownstreamNetworkInfo> GetDownstreamNetworkInfo(
-      const std::string& downstream_ifname);
+      const std::string& downstream_ifname) const;
 
  private:
   // Struct to specify which forwarders to start and stop.
@@ -160,11 +160,10 @@ class Manager {
       NeighborReachabilityEventSignal::EventType event_type);
 
   // Helper functions for tracking DBus request lifetime with file descriptors
-  // provided by DBus clients. Consumes the file descriptor |dbus_fd| read from
-  // DBus and returns a duplicate wrapped in base::ScopedFD. The duplicate is
-  // added to the list of file descriptors watched for invalidation. Returns an
-  // invalid ScopedFD object if it fails. The original fd is closed.
-  base::ScopedFD AddLifelineFd(base::ScopedFD dbus_fd);
+  // provided by DBus clients. Returns a duplicate wrapped in base::ScopedFD of
+  // |dbus_fd|. The duplicate is added to the list of file descriptors watched
+  // for invalidation. Returns an invalid ScopedFD object if it fails.
+  base::ScopedFD AddLifelineFd(const base::ScopedFD& dbus_fd);
   bool DeleteLifelineFd(int dbus_fd);
 
   // Detects if any file descriptor committed in patchpanel's DBus API has been
@@ -193,7 +192,7 @@ class Manager {
   // |info|. If successful, |client_fd| is monitored and triggers the teardown
   // of the network setup when closed.
   DownstreamNetworkResult HandleDownstreamNetworkInfo(
-      base::ScopedFD client_fd, const DownstreamNetworkInfo& info);
+      const base::ScopedFD& client_fd, const DownstreamNetworkInfo& info);
 
   // Disable and re-enable IPv6 inside a namespace.
   void RestartIPv6(const std::string& netns_name);

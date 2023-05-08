@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
@@ -70,6 +71,13 @@ proto_library("patchpanel_ipc_protos") {
   sources = [ "${proto_in_dir}/ipc.proto" ]
 }
 
+# Generate the D-Bus C++ binding.
+generate_dbus_adaptors("patchpanel_dbus_adaptors") {
+  sources = [ "dbus_bindings/org.chromium.patchpanel.xml" ]
+  dbus_adaptors_out_dir = "include/patchpanel/dbus_adaptors"
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+}
+
 util_sources = [
   "address_manager.cc",
   "dns/big_endian.cc",
@@ -104,6 +112,7 @@ libpatchpanel_sources = [
   "multicast_proxy.cc",
   "ndproxy.cc",
   "network_monitor_service.cc",
+  "patchpanel_adaptor.cc",
   "patchpanel_daemon.cc",
   "proto_utils.cc",
   "routing_service.cc",
@@ -136,7 +145,10 @@ static_library("libpatchpanel") {
     "protobuf",
     "system_api",
   ]
-  deps = [ ":patchpanel_ipc_protos" ]
+  deps = [
+    ":patchpanel_dbus_adaptors",
+    ":patchpanel_ipc_protos",
+  ]
 }
 
 executable("patchpaneld") {

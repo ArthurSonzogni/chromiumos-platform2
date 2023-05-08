@@ -402,7 +402,7 @@ void Manager::StopCrosVm(uint64_t vm_id, GuestMessage::GuestType vm_type) {
   cros_svc_->Stop(vm_id);
 }
 
-GetDevicesResponse Manager::GetDevices() {
+GetDevicesResponse Manager::GetDevices() const {
   GetDevicesResponse response;
 
   for (const auto* arc_device : arc_svc_->GetDevices()) {
@@ -460,12 +460,12 @@ void Manager::PluginVmShutdown(uint64_t vm_id) {
 }
 
 bool Manager::SetVpnIntent(SetVpnIntentRequest::VpnRoutingPolicy policy,
-                           base::ScopedFD sockfd) {
+                           const base::ScopedFD& sockfd) {
   return routing_svc_->SetVpnFwmark(sockfd.get(), policy);
 }
 
 std::map<CountersService::CounterKey, CountersService::Counter>
-Manager::GetTrafficCounters(const std::set<std::string>& shill_devices) {
+Manager::GetTrafficCounters(const std::set<std::string>& shill_devices) const {
   return counters_svc_->GetCounters(shill_devices);
 }
 
@@ -478,7 +478,7 @@ void Manager::SetVpnLockdown(bool enable_vpn_lockdown) {
 }
 
 patchpanel::DownstreamNetworkResult Manager::CreateTetheredNetwork(
-    const TetheredNetworkRequest& request, base::ScopedFD client_fd) {
+    const TetheredNetworkRequest& request, const base::ScopedFD& client_fd) {
   using shill::IPAddress;
 
   const auto info = DownstreamNetworkInfo::Create(request);
@@ -487,11 +487,11 @@ patchpanel::DownstreamNetworkResult Manager::CreateTetheredNetwork(
     return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
   }
 
-  return HandleDownstreamNetworkInfo(std::move(client_fd), *info);
+  return HandleDownstreamNetworkInfo(client_fd, *info);
 }
 
 patchpanel::DownstreamNetworkResult Manager::CreateLocalOnlyNetwork(
-    const LocalOnlyNetworkRequest& request, base::ScopedFD client_fd) {
+    const LocalOnlyNetworkRequest& request, const base::ScopedFD& client_fd) {
   std::optional<DownstreamNetworkInfo> info =
       DownstreamNetworkInfo::Create(request);
   if (!info) {
@@ -499,11 +499,11 @@ patchpanel::DownstreamNetworkResult Manager::CreateLocalOnlyNetwork(
     return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
   }
 
-  return HandleDownstreamNetworkInfo(std::move(client_fd), *info);
+  return HandleDownstreamNetworkInfo(client_fd, *info);
 }
 
 std::optional<DownstreamNetworkInfo> Manager::GetDownstreamNetworkInfo(
-    const std::string& downstream_ifname) {
+    const std::string& downstream_ifname) const {
   auto match_by_downstream_ifname = [&downstream_ifname](const auto& kv) {
     return kv.second.downstream_ifname == downstream_ifname;
   };
@@ -527,7 +527,7 @@ void Manager::OnNeighborReachabilityEvent(
 }
 
 ConnectNamespaceResponse Manager::ConnectNamespace(
-    const ConnectNamespaceRequest& request, base::ScopedFD client_fd) {
+    const ConnectNamespaceRequest& request, const base::ScopedFD& client_fd) {
   ConnectNamespaceResponse response;
 
   const pid_t pid = request.pid();
@@ -557,7 +557,7 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     return response;
   }
 
-  base::ScopedFD local_client_fd = AddLifelineFd(std::move(client_fd));
+  base::ScopedFD local_client_fd = AddLifelineFd(client_fd);
   if (!local_client_fd.is_valid()) {
     LOG(ERROR) << "Failed to create lifeline fd";
     return response;
@@ -630,7 +630,7 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   return response;
 }
 
-base::ScopedFD Manager::AddLifelineFd(base::ScopedFD dbus_fd) {
+base::ScopedFD Manager::AddLifelineFd(const base::ScopedFD& dbus_fd) {
   if (!dbus_fd.is_valid()) {
     LOG(ERROR) << "Invalid client file descriptor";
     return base::ScopedFD();
@@ -738,8 +738,8 @@ void Manager::OnLifelineFdClosed(int client_fd) {
 }
 
 bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
-                                    base::ScopedFD client_fd) {
-  base::ScopedFD local_client_fd = AddLifelineFd(std::move(client_fd));
+                                    const base::ScopedFD& client_fd) {
+  base::ScopedFD local_client_fd = AddLifelineFd(client_fd);
   if (!local_client_fd.is_valid()) {
     LOG(ERROR) << "Failed to create lifeline fd";
     return false;
@@ -808,13 +808,13 @@ bool Manager::ValidateDownstreamNetworkRequest(
 }
 
 patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
-    base::ScopedFD client_fd, const DownstreamNetworkInfo& info) {
+    const base::ScopedFD& client_fd, const DownstreamNetworkInfo& info) {
   if (!ValidateDownstreamNetworkRequest(info)) {
     LOG(ERROR) << __func__ << " " << info << ": Invalid request";
     return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
   }
 
-  base::ScopedFD local_client_fd = AddLifelineFd(std::move(client_fd));
+  base::ScopedFD local_client_fd = AddLifelineFd(client_fd);
   if (!local_client_fd.is_valid()) {
     LOG(ERROR) << __func__ << " " << info << ": Failed to create lifeline fd";
     return patchpanel::DownstreamNetworkResult::ERROR;
