@@ -137,11 +137,10 @@ int main(int argc, char* argv[]) {
       base::SplitString(command_flag, base::kWhitespaceASCII,
                         base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
-  std::unique_ptr<brillo::CrosConfig> cros_config =
-      std::make_unique<brillo::CrosConfig>();
+  brillo::CrosConfig cros_config;
 
   // Detect small cores and restrict non-urgent tasks to small cores.
-  ConfigureNonUrgentCpuset(cros_config.get());
+  ConfigureNonUrgentCpuset(&cros_config);
 
   // Set things up for running Chrome.
   bool is_developer_end_user = false;
@@ -150,8 +149,8 @@ int main(int argc, char* argv[]) {
   uid_t uid = 0;
   segmentation::FeatureManagement feature_management;
 
-  PerformChromeSetup(cros_config.get(), &feature_management,
-                     &is_developer_end_user, &env_var_map, &args, &uid);
+  PerformChromeSetup(&cros_config, &feature_management, &is_developer_end_user,
+                     &env_var_map, &args, &uid);
   command.insert(command.end(), args.begin(), args.end());
   for (const auto& it : env_var_map)
     env_vars.push_back(it.first + "=" + it.second);
