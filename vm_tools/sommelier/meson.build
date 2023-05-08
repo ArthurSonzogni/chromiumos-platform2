@@ -197,7 +197,7 @@ executable('sommelier',
 )
 
 if get_option('with_tests')
-  testing_include_directory = include_directories('testing')
+  testing_includes = [include_directories('testing')]
 
   sommelier_test = executable('sommelier_test',
     install: true,
@@ -217,7 +217,7 @@ if get_option('with_tests')
       dependency('pixman-1')
     ],
     cpp_args: cpp_args + sommelier_defines,
-    include_directories: includes + testing_include_directory,
+    include_directories: includes + testing_includes,
   )
 
   test('sommelier_test', sommelier_test)
