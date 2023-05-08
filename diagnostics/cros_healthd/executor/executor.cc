@@ -38,7 +38,6 @@
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <re2/re2.h>
 
-#include "base/notreached.h"
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/executor/utils/delegate_process.h"
@@ -874,7 +873,18 @@ void Executor::RunLongRunningDelegate(
 
 void Executor::GetConnectedHdmiConnectors(
     GetConnectedHdmiConnectorsCallback callback) {
-  NOTIMPLEMENTED();
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kDrm, kCrosHealthdSandboxUser, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{path::kDrmDevice}},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{});
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->GetConnectedHdmiConnectors(CreateOnceDelegateCallback(
+      std::move(delegate), std::move(callback),
+      base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr>{},
+      kFailToLaunchDelegate));
+  delegate_ptr->StartAsync();
 }
 
 void Executor::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {

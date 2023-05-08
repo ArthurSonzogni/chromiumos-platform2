@@ -430,7 +430,25 @@ void DelegateImpl::GetAmountOfFreeDiskSpace(
 
 void DelegateImpl::GetConnectedHdmiConnectors(
     GetConnectedHdmiConnectorsCallback callback) {
-  NOTIMPLEMENTED();
+  base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr> hdmi_connectors;
+  DisplayUtil display_util;
+  if (!display_util.Initialize()) {
+    std::move(callback).Run(std::move(hdmi_connectors),
+                            "Failed to initialize DisplayUtil");
+    return;
+  }
+
+  std::vector<uint32_t> hdmi_connector_ids = display_util.GetHdmiConnectorIDs();
+
+  for (auto connector_id : hdmi_connector_ids) {
+    hdmi_connectors[connector_id] =
+        display_util.GetExternalDisplayInfo(connector_id);
+    auto name = hdmi_connectors[connector_id]->display_name.has_value()
+                    ? hdmi_connectors[connector_id]->display_name.value()
+                    : "unknown";
+  }
+
+  std::move(callback).Run(std::move(hdmi_connectors), std::nullopt);
 }
 
 void DelegateImpl::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
