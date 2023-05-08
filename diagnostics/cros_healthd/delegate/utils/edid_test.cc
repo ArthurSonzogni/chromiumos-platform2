@@ -1,17 +1,18 @@
-// Copyright 2022 The ChromiumOS Authors
+// Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/utils/edid.h"
+#include "diagnostics/cros_healthd/delegate/utils/edid.h"
 
-namespace diagnostics::deprecated {
+namespace diagnostics {
+
 namespace {
 
-class EdidTest : public ::testing::Test {
+class EdidTestDelegate : public ::testing::Test {
  protected:
-  EdidTest() = default;
+  EdidTestDelegate() = default;
 
   // The EDID raw data below was obtained by |modetest -c| and is the real data
   // from a DUT with an external monitor.
@@ -52,7 +53,7 @@ class EdidTest : public ::testing::Test {
       0x00, 0x00, 0x00, 0x06};
 };
 
-TEST_F(EdidTest, ParseEdpEdid) {
+TEST_F(EdidTestDelegate, ParseEdpEdid) {
   auto info = Edid::From(edp_blob_data);
   EXPECT_TRUE(info.has_value());
   EXPECT_EQ(info.value().manufacturer, "AUO");
@@ -65,7 +66,7 @@ TEST_F(EdidTest, ParseEdpEdid) {
   EXPECT_FALSE(info.value().display_name.has_value());
 }
 
-TEST_F(EdidTest, ParseDpEdid) {
+TEST_F(EdidTestDelegate, ParseDpEdid) {
   auto info = Edid::From(dp_blob_data);
   EXPECT_TRUE(info.has_value());
   EXPECT_EQ(info.value().manufacturer, "DEL");
@@ -79,4 +80,5 @@ TEST_F(EdidTest, ParseDpEdid) {
 }
 
 }  // namespace
-}  // namespace diagnostics::deprecated
+
+}  // namespace diagnostics

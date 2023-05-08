@@ -257,7 +257,8 @@ ScopedDrmPropertyBlobPtr LibdrmUtilImpl::GetDrmPropertyBlob(
   return nullptr;
 }
 
-bool LibdrmUtilImpl::FillEdidInfo(const uint32_t connector_id, EdidInfo* info) {
+bool LibdrmUtilImpl::FillEdidInfo(const uint32_t connector_id,
+                                  deprecated::EdidInfo* info) {
   auto blob = GetDrmPropertyBlob(connector_id, "EDID");
   if (!blob || !blob->length)
     return false;
@@ -265,7 +266,7 @@ bool LibdrmUtilImpl::FillEdidInfo(const uint32_t connector_id, EdidInfo* info) {
   std::vector<uint8_t> blob_data(
       reinterpret_cast<uint8_t*>(blob->data),
       reinterpret_cast<uint8_t*>(blob->data) + blob->length);
-  auto edid_info = Edid::From(blob_data);
+  auto edid_info = deprecated::Edid::From(blob_data);
   if (edid_info.has_value()) {
     *info = std::move(edid_info.value());
     return true;

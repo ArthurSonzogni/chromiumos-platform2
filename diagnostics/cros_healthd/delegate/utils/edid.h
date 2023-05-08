@@ -1,9 +1,9 @@
-// Copyright 2022 The ChromiumOS Authors
+// Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_UTILS_EDID_H_
-#define DIAGNOSTICS_CROS_HEALTHD_UTILS_EDID_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_EDID_H_
+#define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_EDID_H_
 
 #include <stdint.h>
 
@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-namespace diagnostics::deprecated {
+namespace diagnostics {
 
 struct EdidInfo {
   std::string manufacturer;
@@ -63,6 +63,6 @@ class Edid : public EdidInfo {
   explicit Edid(const EdidRaw& edid_raw);
 };
 
-}  // namespace diagnostics::deprecated
+}  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_UTILS_EDID_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_EDID_H_

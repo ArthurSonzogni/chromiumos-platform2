@@ -59,7 +59,7 @@ mojom::ExternalDisplayInfoPtr GetExternalDisplayInfo(
                         &info->resolution_vertical);
   FillDisplayRefreshRate(libdrm_util, connector_id, &info->refresh_rate);
 
-  EdidInfo edid_info;
+  deprecated::EdidInfo edid_info;
   if (libdrm_util->FillEdidInfo(connector_id, &edid_info)) {
     info->manufacturer = edid_info.manufacturer;
     info->model_id = mojom::NullableUint16::New(edid_info.model_id);

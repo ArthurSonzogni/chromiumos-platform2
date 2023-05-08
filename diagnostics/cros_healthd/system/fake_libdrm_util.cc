@@ -68,7 +68,8 @@ bool FakeLibdrmUtil::FillDisplayRefreshRate(const uint32_t connector_id,
   return true;
 }
 
-bool FakeLibdrmUtil::FillEdidInfo(const uint32_t connector_id, EdidInfo* info) {
+bool FakeLibdrmUtil::FillEdidInfo(const uint32_t connector_id,
+                                  deprecated::EdidInfo* info) {
   if (connector_id == 0) {
     info->manufacturer = "AUO";
     info->model_id = 0x323D;

@@ -18,6 +18,7 @@ pkg_config("pub_deps") {
 
 source_set("utils") {
   sources = [
+    "edid.cc",
     "evdev_utils.cc",
     "psr_cmd.cc",
   ]
@@ -34,10 +35,11 @@ if (use.test) {
 
   source_set("test") {
     deps = [
+      ":utils",
       "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
     ]
     sources = [
-      "psr_cmd.cc",
+      "edid_test.cc",
       "psr_cmd_test.cc",
     ]
     configs += [

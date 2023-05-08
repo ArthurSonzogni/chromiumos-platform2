@@ -1,8 +1,8 @@
-// Copyright 2022 The ChromiumOS Authors
+// Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/utils/edid.h"
+#include "diagnostics/cros_healthd/delegate/utils/edid.h"
 
 #include <stdint.h>
 
@@ -13,7 +13,7 @@
 
 #include <base/strings/stringprintf.h>
 
-namespace diagnostics::deprecated {
+namespace diagnostics {
 
 namespace {
 
@@ -146,4 +146,4 @@ Edid::Edid(const EdidRaw& edid_raw) {
   }
 }
 
-}  // namespace diagnostics::deprecated
+}  // namespace diagnostics
