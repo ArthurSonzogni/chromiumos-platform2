@@ -209,6 +209,7 @@ impl MetricsFile {
             OpenOptions::new()
                 .read(true)
                 .write(true)
+                .append(true)
                 .custom_flags(libc::O_SYNC),
         )
     }
