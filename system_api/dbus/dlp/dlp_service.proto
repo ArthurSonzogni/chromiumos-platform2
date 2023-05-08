@@ -43,6 +43,9 @@ enum DlpComponent {
 
   // Google drive for file storage.
   GOOGLE_DRIVE = 6;
+
+  // Microsoft OneDrive for file storage.
+  MICROSOFT_ONEDRIVE = 7;
 }
 
 // A representation of possible file actions.
