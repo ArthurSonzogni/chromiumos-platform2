@@ -459,6 +459,8 @@ base::StringPairs VmBuilder::BuildRunParams() const {
           base::StringPrintf("%s,iommu=viommu", dgpu_device.value().c_str());
       args.emplace_back("--vfio", std::move(dgpu_pt_arg));
     }
+
+    args.emplace_back("--s2idle", "");
   }
 
   if (enable_software_tpm_)
