@@ -297,8 +297,7 @@ string asn1integer2bin(ASN1_INTEGER* serial_number) {
   return bin;
 }
 
-template <typename OpenSSLType,
-          int (*openssl_func)(OpenSSLType*, unsigned char**)>
+template <typename OpenSSLType, auto openssl_func>
 string ConvertOpenSSLObjectToString(OpenSSLType* object) {
   string output;
 
@@ -589,7 +588,7 @@ crypto::ScopedRSA ParseRSAPrivateKey(const std::string& object_data) {
   if (pkey == nullptr || EVP_PKEY_base_id(pkey.get()) != EVP_PKEY_RSA)
     return nullptr;
 
-  rsa.reset(EVP_PKEY_get0_RSA(pkey.get()));
+  rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
   if (rsa == nullptr)
     return nullptr;
 

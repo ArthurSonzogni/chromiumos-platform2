@@ -36,8 +36,7 @@ using ScopedASN1_OCTET_STRING =
 
 namespace {
 
-template <typename OpenSSLType,
-          int (*openssl_func)(OpenSSLType*, unsigned char**)>
+template <typename OpenSSLType, auto openssl_func>
 string ConvertOpenSSLObjectToString(OpenSSLType* type) {
   string output;
 
