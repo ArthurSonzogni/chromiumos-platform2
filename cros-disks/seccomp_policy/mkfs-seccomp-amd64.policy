@@ -9,6 +9,7 @@ access: 1
 arch_prctl: 1
 brk: 1
 close: 1
+connect: 1
 dup2: 1
 dup: 1
 execve: 1
