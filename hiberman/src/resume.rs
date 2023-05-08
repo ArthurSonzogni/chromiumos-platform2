@@ -206,11 +206,11 @@ impl ResumeConductor {
             pending_merge.volume_manager.setup_hibermeta_lv(false)?;
         }
 
-        return Err(HibernateError::CookieError(format!(
+        Err(HibernateError::CookieError(format!(
             "Cookie was {}, abandoning resume",
             description
         )))
-        .context("Aborting resume due to cookie");
+        .context("Aborting resume due to cookie")
     }
 
     /// Inner helper function to read the resume image and launch it.
