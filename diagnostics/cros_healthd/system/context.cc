@@ -27,7 +27,6 @@
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
 #include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
 #include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
-#include "diagnostics/cros_healthd/system/libdrm_util_impl.h"
 #include "diagnostics/cros_healthd/system/mojo_service_impl.h"
 #include "diagnostics/cros_healthd/system/pci_util_impl.h"
 #include "diagnostics/cros_healthd/system/powerd_adapter_impl.h"
@@ -152,10 +151,6 @@ void Context::UpdateBluezProxy() {
   bluetooth_info_manager_ =
       std::make_unique<BluetoothInfoManager>(bluez_proxy_.get());
   bluetooth_event_hub_->UpdateProxy(bluez_proxy_.get());
-}
-
-std::unique_ptr<LibdrmUtil> Context::CreateLibdrmUtil() {
-  return std::unique_ptr<LibdrmUtil>(new LibdrmUtilImpl());
 }
 
 std::unique_ptr<PciUtil> Context::CreatePciUtil() {

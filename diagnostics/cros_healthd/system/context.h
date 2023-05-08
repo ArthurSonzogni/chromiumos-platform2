@@ -21,7 +21,6 @@
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/network/network_health_adapter.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
-#include "diagnostics/cros_healthd/system/libdrm_util.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/cros_healthd/system/pci_util.h"
 #include "diagnostics/cros_healthd/system/powerd_adapter.h"
@@ -68,19 +67,6 @@ class Context {
   Context(const Context&) = delete;
   Context& operator=(const Context&) = delete;
   virtual ~Context();
-
-  // Creates an object for accessing |LibdrmUtil| interface.
-  //
-  // Warning: The kernel assigns the "master" role to the first process that
-  // opens `/dev/dri/cardX`, If that process exits (e.g. via a crash) or closes
-  // the fd, the next process that opens `cardX` becomes the new master. And
-  // Chrome needs to have the "DRM master" role so that it can present buffers
-  // to the display.
-  //
-  // To prevent healthd process gains the master role and block Chrome to be up,
-  // we MUST only create the instance when needed, and release it immediately
-  // after use.
-  virtual std::unique_ptr<LibdrmUtil> CreateLibdrmUtil();
 
   // Creates an object for accessing |PciUtil| interface.
   virtual std::unique_ptr<PciUtil> CreatePciUtil();

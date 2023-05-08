@@ -22,11 +22,6 @@ void PrivacyScreenRoutine::Start() {
   DCHECK_EQ(GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
   UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
 
-  if (!Initialize()) {
-    // Routine status and failure message are already set. Directly exit.
-    return;
-  }
-
   // Send a request to browser to set privacy screen state.
   context_->mojo_service()->GetChromiumDataCollector()->SetPrivacyScreenState(
       target_state_, base::BindOnce(&PrivacyScreenRoutine::OnReceiveResponse,
@@ -34,7 +29,7 @@ void PrivacyScreenRoutine::Start() {
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&PrivacyScreenRoutine::ValidateState,
+      base::BindOnce(&PrivacyScreenRoutine::GatherState,
                      base::Unretained(this)),
       // This delay is working as a timeout. The timeout is concerning two
       // checks, failing either of which leads to the failure of routine.
@@ -70,42 +65,35 @@ void PrivacyScreenRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
   }
 }
 
-bool PrivacyScreenRoutine::Initialize() {
-  libdrm_util_ = context_->CreateLibdrmUtil();
-  if (!libdrm_util_->Initialize()) {
-    // Failing to initialize libdrm_util is an internal error. It is not related
-    // to privacy screen.
-    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
-                 kPrivacyScreenRoutineFailedToInitializeLibdrmUtilMessage);
-    return false;
-  }
-
-  connector_id_ = libdrm_util_->GetEmbeddedDisplayConnectorID();
-  return true;
-}
-
 void PrivacyScreenRoutine::OnReceiveResponse(bool success) {
   request_processed_ = success;
 }
 
-void PrivacyScreenRoutine::ValidateState() {
+void PrivacyScreenRoutine::GatherState() {
   if (request_processed_ == std::nullopt) {
     UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
                  kPrivacyScreenRoutineBrowserResponseTimeoutExceededMessage);
     return;
   }
 
-  if (!request_processed_) {
+  if (!request_processed_.value()) {
     UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
                  kPrivacyScreenRoutineRequestRejectedMessage);
     return;
   }
 
-  [[maybe_unused]] bool privacy_screen_supported;
-  bool current_state;
-  libdrm_util_->FillPrivacyScreenInfo(connector_id_, &privacy_screen_supported,
-                                      &current_state);
+  context_->executor()->GetPrivacyScreenInfo(base::BindOnce(
+      &PrivacyScreenRoutine::ValidateState, weak_factory_.GetWeakPtr()));
+}
 
+void PrivacyScreenRoutine::ValidateState(
+    bool privacy_screen_supported,
+    bool current_state,
+    const std::optional<std::string>& error) {
+  if (error.has_value()) {
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError, error.value());
+    return;
+  }
   if (current_state != target_state_) {
     UpdateStatus(
         mojom::DiagnosticRoutineStatusEnum::kFailed,

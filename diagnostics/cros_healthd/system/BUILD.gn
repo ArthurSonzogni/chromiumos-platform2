@@ -14,7 +14,6 @@ pkg_config("libcros_healthd_system_pkg_deps") {
     "libchrome",
     "libcros_config",
     "libdebugd-client",
-    "libdrm",
     "libmojo",
     "libpci",
     "libpower_manager-client",
@@ -54,7 +53,6 @@ source_set("libcros_healthd_system") {
     "bluetooth_info_manager.cc",
     "context.cc",
     "ground_truth.cc",
-    "libdrm_util_impl.cc",
     "mojo_service_impl.cc",
     "powerd_adapter_impl.cc",
     "system_config.cc",
@@ -105,7 +103,6 @@ if (use.test || use.fuzzer) {
     ]
     sources = [
       "fake_bluetooth_event_hub.cc",
-      "fake_libdrm_util.cc",
       "fake_mojo_service.cc",
       "fake_pci_util.cc",
       "fake_powerd_adapter.cc",

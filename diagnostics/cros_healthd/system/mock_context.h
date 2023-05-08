@@ -20,7 +20,6 @@
 #include "diagnostics/cros_healthd/network_diagnostics/mock_network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/fake_bluetooth_event_hub.h"
-#include "diagnostics/cros_healthd/system/fake_libdrm_util.h"
 #include "diagnostics/cros_healthd/system/fake_pci_util.h"
 #include "diagnostics/cros_healthd/system/fake_powerd_adapter.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
@@ -56,7 +55,6 @@ class MockContext final : public Context {
   MockContext& operator=(const MockContext&) = delete;
   ~MockContext() override = default;
 
-  std::unique_ptr<LibdrmUtil> CreateLibdrmUtil() override;
   std::unique_ptr<PciUtil> CreatePciUtil() override;
 
   ash::cros_healthd::mojom::Executor* executor() override;
@@ -75,7 +73,6 @@ class MockContext final : public Context {
   FakeSystemConfig* fake_system_config() const;
   FakeSystemUtilities* fake_system_utils() const;
   FakeBluetoothEventHub* fake_bluetooth_event_hub() const;
-  FakeLibdrmUtil* fake_libdrm_util();
   MockBluetoothInfoManager* mock_bluetooth_info_manager() const;
   MockExecutor* mock_executor();
   base::SimpleTestTickClock* mock_tick_clock() const;
@@ -88,8 +85,6 @@ class MockContext final : public Context {
  private:
   // Used to create a temporary root directory.
   base::ScopedTempDir temp_dir_;
-  // Used to create a fake libdrm util.
-  FakeLibdrmUtil fake_libdrm_util_;
   // Used to create a fake pci util.
   FakePciUtil fake_pci_util_;
   // Mock executor.

@@ -54,10 +54,6 @@ MockContext::MockContext() {
   memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();
 }
 
-std::unique_ptr<LibdrmUtil> MockContext::CreateLibdrmUtil() {
-  return std::unique_ptr<LibdrmUtil>(new FakeLibdrmUtil(fake_libdrm_util_));
-}
-
 std::unique_ptr<PciUtil> MockContext::CreatePciUtil() {
   return std::unique_ptr<PciUtil>(new FakePciUtil(fake_pci_util_));
 }
@@ -127,10 +123,6 @@ FakeSystemUtilities* MockContext::fake_system_utils() const {
 
 FakeBluetoothEventHub* MockContext::fake_bluetooth_event_hub() const {
   return static_cast<FakeBluetoothEventHub*>(bluetooth_event_hub_.get());
-}
-
-FakeLibdrmUtil* MockContext::fake_libdrm_util() {
-  return &fake_libdrm_util_;
 }
 
 MockBluetoothInfoManager* MockContext::mock_bluetooth_info_manager() const {

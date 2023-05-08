@@ -22,6 +22,12 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::WithArg;
+
+const char kDisplayUtilInitializationError[] =
+    "Failed to initialize DisplayUtil";
 
 class PrivacyScreenRoutineTest : public ::testing::Test {
  public:
@@ -39,18 +45,18 @@ class PrivacyScreenRoutineTest : public ::testing::Test {
     routine_ = std::make_unique<PrivacyScreenRoutine>(&context_, target_state);
   }
 
-  void SetRoutineDestiny(bool libdrm_util_init_success,
+  void SetRoutineDestiny(bool display_util_init_success,
                          bool privacy_screen_supported,
                          bool privacy_screen_enabled_before,
                          std::optional<bool> privacy_screen_request_processed,
                          bool privacy_screen_enabled_after) {
-    SetLibdrmUtilDestiny(libdrm_util_init_success, privacy_screen_supported,
-                         privacy_screen_enabled_before);
+    SetDelegateDestiny(display_util_init_success, privacy_screen_supported,
+                       privacy_screen_enabled_before);
     context_.fake_mojo_service()
         ->fake_chromium_data_collector()
         .SetPrivacyScreenRequestProcessedBehaviour(
-            base::BindOnce(&PrivacyScreenRoutineTest::SetLibdrmUtilDestiny,
-                           base::Unretained(this), libdrm_util_init_success,
+            base::BindOnce(&PrivacyScreenRoutineTest::SetDelegateDestiny,
+                           base::Unretained(this), display_util_init_success,
                            privacy_screen_supported,
                            privacy_screen_enabled_after),
             privacy_screen_request_processed);
@@ -76,13 +82,19 @@ class PrivacyScreenRoutineTest : public ::testing::Test {
   DiagnosticRoutine* routine() { return routine_.get(); }
 
  private:
-  void SetLibdrmUtilDestiny(bool initialization_success,
-                            bool privacy_screen_supported,
-                            bool privacy_screen_enabled) {
-    auto libdrm_util = context_.fake_libdrm_util();
-    libdrm_util->initialization_success() = initialization_success;
-    libdrm_util->privacy_screen_supported() = privacy_screen_supported;
-    libdrm_util->privacy_screen_enabled() = privacy_screen_enabled;
+  void SetDelegateDestiny(bool initialization_success,
+                          bool privacy_screen_supported,
+                          bool privacy_screen_enabled) {
+    std::optional<std::string> error_message =
+        initialization_success
+            ? std::nullopt
+            : std::make_optional(kDisplayUtilInitializationError);
+    EXPECT_CALL(*context_.mock_executor(), GetPrivacyScreenInfo(_))
+        .WillRepeatedly(WithArg<0>(
+            Invoke([=](MockExecutor::GetPrivacyScreenInfoCallback callback) {
+              std::move(callback).Run(privacy_screen_supported,
+                                      privacy_screen_enabled, error_message);
+            })));
   }
 
   MockContext context_;
@@ -90,27 +102,27 @@ class PrivacyScreenRoutineTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 };
 
-// Test that routine error occurs if libdrm_util fails to be initialized.
-TEST_F(PrivacyScreenRoutineTest, LibdrmUtilInitializationFailedError) {
+// Test that routine error occurs if display_util fails to be initialized.
+TEST_F(PrivacyScreenRoutineTest, DisplayUtilInitializationFailedError) {
   CreateRoutine(/*target_state=*/true);
-  SetRoutineDestiny(/*libdrm_util_init_success=*/false,
+  SetRoutineDestiny(/*display_util_init_success=*/false,
                     /*privacy_screen_supported=*/true,
                     /*privacy_screen_enabled_before=*/false,
                     /*privacy_screen_request_processed=*/true,
                     /*privacy_screen_enabled_after=*/true);
   routine()->Start();
-  // Since privacy screen routine fails by the time Start() returns, there is no
-  // need to wait.
-  auto update = GetUpdate();
-  VerifyNonInteractiveUpdate(
-      update->routine_update_union, mojom::DiagnosticRoutineStatusEnum::kError,
-      kPrivacyScreenRoutineFailedToInitializeLibdrmUtilMessage);
+  WaitUntilRoutineFinished(base::BindLambdaForTesting([this]() {
+    auto update = GetUpdate();
+    VerifyNonInteractiveUpdate(update->routine_update_union,
+                               mojom::DiagnosticRoutineStatusEnum::kError,
+                               kDisplayUtilInitializationError);
+  }));
 }
 
 // Test that routine fails if browser rejects request.
 TEST_F(PrivacyScreenRoutineTest, RequestRejected) {
   CreateRoutine(/*target_state=*/true);
-  SetRoutineDestiny(/*libdrm_util_init_success=*/true,
+  SetRoutineDestiny(/*display_util_init_success=*/true,
                     /*privacy_screen_supported=*/true,
                     /*privacy_screen_enabled_before=*/false,
                     /*privacy_screen_request_processed=*/false,
@@ -127,7 +139,7 @@ TEST_F(PrivacyScreenRoutineTest, RequestRejected) {
 // Test that routine fails if browser does not response.
 TEST_F(PrivacyScreenRoutineTest, BrowserResponseTimeoutExceeded) {
   CreateRoutine(/*target_state=*/true);
-  SetRoutineDestiny(/*libdrm_util_init_success=*/true,
+  SetRoutineDestiny(/*display_util_init_success=*/true,
                     /*privacy_screen_supported=*/true,
                     /*privacy_screen_enabled_before=*/false,
                     /*privacy_screen_request_processed=*/std::nullopt,
@@ -145,7 +157,7 @@ TEST_F(PrivacyScreenRoutineTest, BrowserResponseTimeoutExceeded) {
 // Test that routine fails if privacy screen is not turned on.
 TEST_F(PrivacyScreenRoutineTest, TurnOnFailed) {
   CreateRoutine(/*target_state=*/true);
-  SetRoutineDestiny(/*libdrm_util_init_success=*/true,
+  SetRoutineDestiny(/*display_util_init_success=*/true,
                     /*privacy_screen_supported=*/true,
                     /*privacy_screen_enabled_before=*/false,
                     /*privacy_screen_request_processed=*/true,
@@ -163,7 +175,7 @@ TEST_F(PrivacyScreenRoutineTest, TurnOnFailed) {
 // Test that routine fails if privacy screen is not turned off.
 TEST_F(PrivacyScreenRoutineTest, TurnOffFailed) {
   CreateRoutine(/*target_state=*/false);
-  SetRoutineDestiny(/*libdrm_util_init_success=*/true,
+  SetRoutineDestiny(/*display_util_init_success=*/true,
                     /*privacy_screen_supported=*/true,
                     /*privacy_screen_enabled_before=*/true,
                     /*privacy_screen_request_processed=*/true,
@@ -181,7 +193,7 @@ TEST_F(PrivacyScreenRoutineTest, TurnOffFailed) {
 // Test that we can turn privacy screen on.
 TEST_F(PrivacyScreenRoutineTest, TurnOnSuccess) {
   CreateRoutine(/*target_state=*/true);
-  SetRoutineDestiny(/*libdrm_util_init_success=*/true,
+  SetRoutineDestiny(/*display_util_init_success=*/true,
                     /*privacy_screen_supported=*/true,
                     /*privacy_screen_enabled_before=*/false,
                     /*privacy_screen_request_processed=*/true,
@@ -198,7 +210,7 @@ TEST_F(PrivacyScreenRoutineTest, TurnOnSuccess) {
 // Test that we can turn privacy screen off.
 TEST_F(PrivacyScreenRoutineTest, TurnOffSuccess) {
   CreateRoutine(/*target_state=*/false);
-  SetRoutineDestiny(/*libdrm_util_init_success=*/true,
+  SetRoutineDestiny(/*display_util_init_success=*/true,
                     /*privacy_screen_supported=*/true,
                     /*privacy_screen_enabled_before=*/true,
                     /*privacy_screen_request_processed=*/true,

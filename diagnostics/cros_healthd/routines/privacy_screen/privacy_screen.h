@@ -22,8 +22,6 @@ const char kPrivacyScreenRoutineFailedToTurnPrivacyScreenOnMessage[] =
     "Expected privacy screen state ON, found OFF.";
 const char kPrivacyScreenRoutineFailedToTurnPrivacyScreenOffMessage[] =
     "Expected privacy screen state OFF, found ON.";
-const char kPrivacyScreenRoutineFailedToInitializeLibdrmUtilMessage[] =
-    "Failed to initialize libdrm_util.";
 const char kPrivacyScreenRoutineRequestRejectedMessage[] =
     "Browser rejected to set privacy screen state.";
 const char kPrivacyScreenRoutineBrowserResponseTimeoutExceededMessage[] =
@@ -44,26 +42,21 @@ class PrivacyScreenRoutine final : public DiagnosticRoutineWithStatus {
                             bool include_output) override;
 
  private:
-  // Initializes |libdrm_util_| and |connector_id_|. Returns true if
-  // initialization succeeds.
-  bool Initialize();
-
   // Callback function for setting privacy screen state.
   void OnReceiveResponse(bool success);
 
+  // Gathers the current privacy state.
+  void GatherState();
+
   // Validates if the current privacy is set to expected and marks routine
   // status as passing or failed.
-  void ValidateState();
+  void ValidateState(bool privacy_screen_supported,
+                     bool current_state,
+                     const std::optional<std::string>& error);
 
-  // Context object used to communicate with the browser and to call libdrm
+  // Context object used to communicate with the browser and to call executor
   // functions.
   Context* context_;
-
-  // LibdrmUtil object used to query privacy screen state.
-  std::unique_ptr<LibdrmUtil> libdrm_util_;
-
-  // The connector ID referring to the monitor component.
-  uint32_t connector_id_;
 
   // Expected privacy screen target state.
   bool target_state_;
@@ -71,6 +64,9 @@ class PrivacyScreenRoutine final : public DiagnosticRoutineWithStatus {
   // Whether request is processed by browser. |std::nullopt| indicates browser
   // has not yet responded.
   std::optional<bool> request_processed_ = std::nullopt;
+
+  // Must be the last member of the class.
+  base::WeakPtrFactory<PrivacyScreenRoutine> weak_factory_{this};
 };
 
 }  // namespace diagnostics
