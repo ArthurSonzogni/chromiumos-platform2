@@ -12,7 +12,6 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/brillo_export.h>
 
-#include "patchpanel/guest_type.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/subnet.h"
 #include "patchpanel/subnet_pool.h"
@@ -22,6 +21,23 @@ namespace patchpanel {
 // Responsible for address provisioning for guest networks.
 class BRILLO_EXPORT AddressManager {
  public:
+  // Enum reprensenting the different types of downstream guests managed by
+  // patchpanel that requires assignment of IPv4 subnets.
+  enum class GuestType {
+    // ARC++ or ARCVM management interface.
+    kArc0,
+    // ARC++ or ARCVM virtual networks connected to shill Devices.
+    kArcNet,
+    /// Crostini VM root namespace.
+    kTerminaVM,
+    // Crostini plugin VMs.
+    kPluginVM,
+    // Crostini VM user containers.
+    kLXDContainer,
+    // Other network namespaces hosting minijailed host processes.
+    kNetns,
+  };
+
   AddressManager();
   AddressManager(const AddressManager&) = delete;
   AddressManager& operator=(const AddressManager&) = delete;
@@ -49,6 +65,9 @@ class BRILLO_EXPORT AddressManager {
 
   base::WeakPtrFactory<AddressManager> weak_ptr_factory_{this};
 };
+
+std::ostream& operator<<(std::ostream& stream,
+                         const AddressManager::GuestType guest_type);
 
 }  // namespace patchpanel
 

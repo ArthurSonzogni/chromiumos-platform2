@@ -28,7 +28,6 @@
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/file_descriptor_watcher_posix.h"
 #include "patchpanel/guest_ipv6_service.h"
-#include "patchpanel/guest_type.h"
 #include "patchpanel/network_monitor_service.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"

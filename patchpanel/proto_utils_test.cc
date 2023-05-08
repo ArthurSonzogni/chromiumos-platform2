@@ -29,11 +29,12 @@ class ProtoUtilsTest : public testing::Test {
 TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {
   const uint32_t subnet_index = 0;
   const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
-  auto ipv4_subnet =
-      addr_mgr_->AllocateIPv4Subnet(GuestType::kTerminaVM, subnet_index);
+  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
+      AddressManager::GuestType::kTerminaVM, subnet_index);
   auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto lxd_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::kLXDContainer);
+  auto lxd_subnet =
+      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kLXDContainer);
   auto expected_host_ipv4 = host_ipv4_addr->Address();
   auto expected_guest_ipv4 = guest_ipv4_addr->Address();
 
@@ -60,8 +61,8 @@ TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {
 TEST_F(ProtoUtilsTest, ConvertParallelDevice) {
   const uint32_t subnet_index = 1;
   const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
-  auto ipv4_subnet =
-      addr_mgr_->AllocateIPv4Subnet(GuestType::kPluginVM, subnet_index);
+  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
+      AddressManager::GuestType::kPluginVM, subnet_index);
   auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
   auto expected_host_ipv4 = host_ipv4_addr->Address();
@@ -88,7 +89,8 @@ TEST_F(ProtoUtilsTest, ConvertParallelDevice) {
 
 TEST_F(ProtoUtilsTest, ConvertARCContainerDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
-  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::kArcNet, 0);
+  auto ipv4_subnet =
+      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
   auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
   auto expected_host_ipv4 = host_ipv4_addr->Address();
@@ -117,7 +119,8 @@ TEST_F(ProtoUtilsTest, ConvertARCContainerDevice) {
 
 TEST_F(ProtoUtilsTest, ConvertARCVMDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(3);
-  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::kArcNet, 0);
+  auto ipv4_subnet =
+      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
   auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
   auto expected_host_ipv4 = host_ipv4_addr->Address();
@@ -144,7 +147,8 @@ TEST_F(ProtoUtilsTest, ConvertARCVMDevice) {
 
 TEST_F(ProtoUtilsTest, ConvertARC0ForARCContainer) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
-  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::kArc0, 0);
+  auto ipv4_subnet =
+      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArc0, 0);
   auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
   auto expected_host_ipv4 = host_ipv4_addr->Address();
@@ -175,7 +179,8 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCContainer) {
 
 TEST_F(ProtoUtilsTest, ConvertARC0ForARCVM) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
-  auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::kArc0, 0);
+  auto ipv4_subnet =
+      addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArc0, 0);
   auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
   auto expected_host_ipv4 = host_ipv4_addr->Address();

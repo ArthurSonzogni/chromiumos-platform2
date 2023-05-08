@@ -82,4 +82,22 @@ std::unique_ptr<Subnet> AddressManager::AllocateIPv4Subnet(GuestType guest,
   return (it != pools_.end()) ? it->second->Allocate(index) : nullptr;
 }
 
+std::ostream& operator<<(std::ostream& stream,
+                         const AddressManager::GuestType guest_type) {
+  switch (guest_type) {
+    case AddressManager::GuestType::kArc0:
+      return stream << "ARC0";
+    case AddressManager::GuestType::kArcNet:
+      return stream << "ARC_NET";
+    case AddressManager::GuestType::kTerminaVM:
+      return stream << "VM_TERMINA";
+    case AddressManager::GuestType::kPluginVM:
+      return stream << "VM_PLUGIN";
+    case AddressManager::GuestType::kLXDContainer:
+      return stream << "LXD_CONTAINER";
+    case AddressManager::GuestType::kNetns:
+      return stream << "MINIJAIL_NETNS";
+  }
+}
+
 }  // namespace patchpanel

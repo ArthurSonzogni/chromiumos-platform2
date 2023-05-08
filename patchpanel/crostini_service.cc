@@ -22,8 +22,8 @@
 #pragma GCC diagnostic pop
 
 #include "patchpanel/adb_proxy.h"
+#include "patchpanel/address_manager.h"
 #include "patchpanel/device.h"
-#include "patchpanel/guest_type.h"
 #include "patchpanel/ipc.h"
 
 namespace patchpanel {
@@ -170,7 +170,8 @@ std::unique_ptr<Device> CrostiniService::AddTAP(CrostiniService::VMType vm_type,
   }
   std::unique_ptr<Subnet> lxd_subnet;
   if (vm_type == VMType::kTermina) {
-    lxd_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::kLXDContainer);
+    lxd_subnet =
+        addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kLXDContainer);
     if (!lxd_subnet) {
       LOG(ERROR) << "lxd subnet already in use or unavailable.";
       return nullptr;
@@ -324,13 +325,13 @@ GuestMessage::GuestType CrostiniService::GuestMessageTypeFromVMType(
 }
 
 // static
-GuestType CrostiniService::GuestTypeFromVMType(
+AddressManager::GuestType CrostiniService::GuestTypeFromVMType(
     CrostiniService::VMType vm_type) {
   switch (vm_type) {
     case VMType::kTermina:
-      return GuestType::kTerminaVM;
+      return AddressManager::GuestType::kTerminaVM;
     case VMType::kParallel:
-      return GuestType::kPluginVM;
+      return AddressManager::GuestType::kPluginVM;
   }
 }
 

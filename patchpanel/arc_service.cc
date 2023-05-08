@@ -21,8 +21,8 @@
 #include <chromeos/constants/vm_tools.h>
 
 #include "patchpanel/adb_proxy.h"
+#include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
-#include "patchpanel/guest_type.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/manager.h"
 #include "patchpanel/metrics.h"
@@ -154,7 +154,8 @@ bool OneTimeContainerSetup(Datapath& datapath, pid_t pid) {
 // Creates the ARC management Device used for VPN forwarding, ADB-over-TCP.
 std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
                                        ArcService::ArcType arc_type) {
-  auto ipv4_subnet = addr_mgr->AllocateIPv4Subnet(GuestType::kArc0);
+  auto ipv4_subnet =
+      addr_mgr->AllocateIPv4Subnet(AddressManager::GuestType::kArc0);
   if (!ipv4_subnet) {
     LOG(ERROR) << "Subnet already in use or unavailable";
     return nullptr;
@@ -222,7 +223,8 @@ void ArcService::AllocateAddressConfigs() {
         ShillClient::Device::Type::kEthernet, ShillClient::Device::Type::kWifi,
         ShillClient::Device::Type::kWifi,
         ShillClient::Device::Type::kCellular}) {
-    auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(GuestType::kArcNet);
+    auto ipv4_subnet =
+        addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet);
     if (!ipv4_subnet) {
       LOG(ERROR) << "Subnet already in use or unavailable";
       continue;

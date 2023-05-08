@@ -21,7 +21,6 @@
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
-#include "patchpanel/guest_type.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/routing_service.h"
@@ -295,10 +294,12 @@ TEST_F(CrostiniServiceTest, VMTypeConversions) {
             CrostiniService::GuestMessageTypeFromVMType(
                 CrostiniService::VMType::kParallel));
 
-  EXPECT_EQ(GuestType::kTerminaVM, CrostiniService::GuestTypeFromVMType(
-                                       CrostiniService::VMType::kTermina));
-  EXPECT_EQ(GuestType::kPluginVM, CrostiniService::GuestTypeFromVMType(
-                                      CrostiniService::VMType::kParallel));
+  EXPECT_EQ(
+      AddressManager::GuestType::kTerminaVM,
+      CrostiniService::GuestTypeFromVMType(CrostiniService::VMType::kTermina));
+  EXPECT_EQ(
+      AddressManager::GuestType::kPluginVM,
+      CrostiniService::GuestTypeFromVMType(CrostiniService::VMType::kParallel));
 
   EXPECT_EQ(Device::Type::kTerminaVM,
             CrostiniService::VirtualDeviceTypeFromVMType(

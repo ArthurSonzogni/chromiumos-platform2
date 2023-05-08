@@ -31,8 +31,8 @@
 #include <metrics/metrics_library.h>
 #include <shill/net/process_manager.h>
 
+#include "patchpanel/address_manager.h"
 #include "patchpanel/guest_ipv6_service.h"
-#include "patchpanel/guest_type.h"
 #include "patchpanel/ipc.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/metrics.h"
@@ -1293,7 +1293,7 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   auto response = std::make_unique<patchpanel::ConnectNamespaceResponse>();
 
   std::unique_ptr<Subnet> subnet =
-      addr_mgr_.AllocateIPv4Subnet(GuestType::kNetns);
+      addr_mgr_.AllocateIPv4Subnet(AddressManager::GuestType::kNetns);
   if (!subnet) {
     LOG(ERROR) << "Exhausted IPv4 subnet space";
     return response;

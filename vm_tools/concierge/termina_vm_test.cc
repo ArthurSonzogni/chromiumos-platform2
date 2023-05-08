@@ -29,7 +29,6 @@
 #include <base/test/task_environment.h>
 #include <base/threading/thread.h>
 #include <chromeos/patchpanel/address_manager.h>
-#include <chromeos/patchpanel/guest_type.h>
 #include <chromeos/patchpanel/mac_address_generator.h>
 #include <chromeos/patchpanel/subnet.h>
 #include <google/protobuf/message.h>
@@ -393,7 +392,7 @@ void TerminaVmTest::SetUp() {
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
   std::unique_ptr<patchpanel::Subnet> subnet =
       network_address_manager_->AllocateIPv4Subnet(
-          patchpanel::GuestType::kTerminaVM);
+          patchpanel::AddressManager::GuestType::kTerminaVM);
 
   ASSERT_TRUE(subnet);
 

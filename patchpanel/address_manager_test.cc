@@ -17,6 +17,8 @@
 
 namespace patchpanel {
 
+using GuestType = AddressManager::GuestType;
+
 TEST(AddressManager, BaseAddresses) {
   std::map<GuestType, size_t> addrs = {
       {GuestType::kArc0, Ipv4Addr(100, 115, 92, 0)},

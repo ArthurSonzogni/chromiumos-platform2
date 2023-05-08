@@ -18,7 +18,6 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/device.h"
-#include "patchpanel/guest_type.h"
 #include "patchpanel/ipc.h"
 #include "patchpanel/routing_service.h"
 
@@ -46,7 +45,7 @@ class CrostiniService {
   static GuestMessage::GuestType GuestMessageTypeFromVMType(VMType vm_type);
   // Converts VMType to an internal GuestType enum value. This type is needed
   // for allocating static IPv4 subnets.
-  static GuestType GuestTypeFromVMType(VMType vm_type);
+  static AddressManager::GuestType GuestTypeFromVMType(VMType vm_type);
   // Converts VMType to an internal Device::Type enum value. This type is needed
   // for the internal Device class.
   static Device::Type VirtualDeviceTypeFromVMType(VMType vm_type);

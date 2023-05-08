@@ -21,7 +21,6 @@
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
-#include "patchpanel/guest_type.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/net_util.h"
 
