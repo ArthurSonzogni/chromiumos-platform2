@@ -2193,7 +2193,7 @@ TEST_F(CellularCapability3gppTest, SimLockStatusToProperty) {
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PUK2;
   store = capability_->SimLockStatusToProperty(&error);
-  EXPECT_EQ("sim-puk2", store.Get<std::string>(kSIMLockTypeProperty));
+  EXPECT_TRUE(store.Get<std::string>(kSIMLockTypeProperty).empty());
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_PH_SP_PIN;
   store = capability_->SimLockStatusToProperty(&error);
@@ -2244,6 +2244,8 @@ TEST_F(CellularCapability3gppTest, OnLockRetriesChanged) {
   data[MM_MODEM_LOCK_SIM_PIN] = 3;
   data[MM_MODEM_LOCK_SIM_PIN2] = 5;
   data[MM_MODEM_LOCK_SIM_PUK] = 10;
+  data[MM_MODEM_LOCK_SIM_PUK2] = 10;
+
   capability_->OnLockRetriesChanged(data);
   EXPECT_EQ(3, capability_->sim_lock_status_.retries_left);
 
@@ -2255,10 +2257,14 @@ TEST_F(CellularCapability3gppTest, OnLockRetriesChanged) {
   capability_->OnLockRetriesChanged(data);
   EXPECT_EQ(3, capability_->sim_lock_status_.retries_left);
 
+  // retries_left should indicate the number of SIM_PIN retries if the
+  // lock is SIM_PIN2 or SIM_PUK2
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN2;
   capability_->OnLockRetriesChanged(data);
-  // retries_left should indicate the number of SIM_PIN retries if the
-  // lock is SIM_PIN or SIM_PIN2
+  EXPECT_EQ(3, capability_->sim_lock_status_.retries_left);
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PUK2;
+  capability_->OnLockRetriesChanged(data);
   EXPECT_EQ(3, capability_->sim_lock_status_.retries_left);
 
   data.clear();

@@ -312,8 +312,10 @@ KeyValueStore CellularCapability3gpp::SimLockStatusToProperty(
     case MM_MODEM_LOCK_SIM_PUK:
       lock_type = "sim-puk";
       break;
+    case MM_MODEM_LOCK_SIM_PIN2:
     case MM_MODEM_LOCK_SIM_PUK2:
-      lock_type = "sim-puk2";
+      // Ignore these locks. SIM card can be used.
+      lock_type = "";
       break;
     case MM_MODEM_LOCK_PH_SP_PIN:
       lock_type = "service-provider-pin";
@@ -2096,10 +2098,11 @@ void CellularCapability3gpp::OnLockRetriesChanged(
   // UI uses lock_retries to indicate the number of attempts remaining
   // for enable pin/disable pin/change pin
   // By default, the UI operates on PIN1, thus lock_retries should return
-  // number of PIN1 retries when the PIN2 lock is active.
-  // For PUK, PUK2 and modem personalization locks, the UI should return
+  // number of PIN1 retries when the PIN2/PUK2 lock is active.
+  // For PUK1 and modem personalization locks, the UI should return
   // corresponding number of retries
-  auto retry_lock_type = (sim_lock_status_.lock_type <= MM_MODEM_LOCK_SIM_PIN2)
+  auto retry_lock_type = (sim_lock_status_.lock_type < MM_MODEM_LOCK_SIM_PUK ||
+                          sim_lock_status_.lock_type == MM_MODEM_LOCK_SIM_PUK2)
                              ? MM_MODEM_LOCK_SIM_PIN
                              : sim_lock_status_.lock_type;
   auto it = lock_retries.find(retry_lock_type);
