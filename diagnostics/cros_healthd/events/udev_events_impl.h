@@ -7,6 +7,8 @@
 
 #include <map>
 #include <memory>
+#include <set>
+#include <string>
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -64,13 +66,25 @@ class UdevEventsImpl final : public UdevEvents {
 
   void OnHdmiChange();
 
+  void HandleGetConnectedHdmiConnectors(
+      base::flat_map<uint32_t, ash::cros_healthd::mojom::ExternalDisplayInfoPtr>
+          connected_displays,
+      const std::optional<std::string>& error);
+  void InitializeConnectedHdmiConnectors();
+  void UpdateHdmiObservers();
+
   // Unowned pointer. Should outlive this instance.
   Context* const context_ = nullptr;
 
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
       udev_monitor_watcher_;
-  // Stores the last known connection status for HDMI connectors.
-  std::map<uint32_t, bool> hdmi_connector_status_;
+  // Stores the connector_id of the last known connected HDMI connectors.
+  std::set<uint32_t> last_known_hdmi_connectors_;
+  // Stores the connector_id of the current connected HDMI connectors.
+  std::set<uint32_t> current_hdmi_connectors_;
+  // Maps the connector_id to its display info.
+  std::map<uint32_t, ash::cros_healthd::mojom::ExternalDisplayInfoPtr>
+      connector_id_to_display_info_;
   // Each observer in |thunderbolt_observers_| will be notified of any
   // thunderbolt event in the
   // ash::cros_healthd::mojom::CrosHealthdThunderboltObserver interface.
@@ -101,6 +115,9 @@ class UdevEventsImpl final : public UdevEvents {
   // automatically destroyed and removed when the pipe they are bound to is
   // destroyed.
   mojo::RemoteSet<ash::cros_healthd::mojom::EventObserver> hdmi_observers_;
+
+  // Must be the last member of the class.
+  base::WeakPtrFactory<UdevEventsImpl> weak_factory_{this};
 };
 
 }  // namespace diagnostics
