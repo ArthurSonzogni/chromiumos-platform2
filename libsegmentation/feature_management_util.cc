@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <google/protobuf/util/json_util.h>
-#include <libsegmentation/device_info.pb.h>
 
-#include <optional>
-
+#include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management_interface.h"
 #include "libsegmentation/feature_management_util.h"
 

@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdint>
+#include <optional>
+#include <string>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
@@ -9,15 +13,11 @@
 #include <base/logging.h>
 #include <base/values.h>
 #include <google/protobuf/util/json_util.h>
-#include <libsegmentation/device_info.pb.h>
-#include <libsegmentation/feature_management_impl.h>
 #include <rootdev/rootdev.h>
 #include <vboot/vboot_host.h>
 
-#include <cstdint>
-#include <optional>
-#include <string>
-
+#include "libsegmentation/device_info.pb.h"
+#include "libsegmentation/feature_management_impl.h"
 #include "libsegmentation/feature_management_interface.h"
 #include "libsegmentation/feature_management_util.h"
 

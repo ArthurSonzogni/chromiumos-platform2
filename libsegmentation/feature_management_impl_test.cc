@@ -11,7 +11,7 @@
 #include <gtest/gtest.h>
 
 #include "libsegmentation/device_info.pb.h"
-#include <libsegmentation/feature_management.h>
+#include "libsegmentation/feature_management.h"
 #include "libsegmentation/feature_management_impl.h"
 #include "libsegmentation/feature_management_interface.h"
 #include "libsegmentation/feature_management_util.h"

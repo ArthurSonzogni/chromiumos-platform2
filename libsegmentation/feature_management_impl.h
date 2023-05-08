@@ -6,12 +6,13 @@
 #define LIBSEGMENTATION_FEATURE_MANAGEMENT_IMPL_H_
 
 #include <string>
+
 #include <base/files/file.h>
 #include <base/files/file_path.h>
-#include <libsegmentation/device_info.pb.h>
-
 #include <brillo/brillo_export.h>
-#include <libsegmentation/feature_management_interface.h>
+
+#include "libsegmentation/device_info.pb.h"
+#include "libsegmentation/feature_management_interface.h"
 
 namespace segmentation {
 
@@ -26,10 +27,9 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   explicit FeatureManagementImpl(const base::FilePath& device_info_file_path)
       : device_info_file_path_(device_info_file_path) {}
 
+  // FeatureManagementInterface overrides.
   bool IsFeatureEnabled(const std::string& name) const override;
-
   FeatureLevel GetFeatureLevel() override;
-
   ScopeLevel GetScopeLevel() override;
 
  private:

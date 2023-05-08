@@ -6,10 +6,12 @@
 #define LIBSEGMENTATION_FEATURE_MANAGEMENT_UTIL_H_
 
 #include <string>
-#include "libsegmentation/feature_management_interface.h"
+
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
-#include <libsegmentation/device_info.pb.h>
+
+#include "libsegmentation/device_info.pb.h"
+#include "libsegmentation/feature_management_interface.h"
 
 namespace segmentation {
 
