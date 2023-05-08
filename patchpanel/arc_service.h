@@ -19,7 +19,6 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/device.h"
-#include "patchpanel/ipc.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
@@ -28,10 +27,15 @@ constexpr char kArcBridge[] = "arcbr0";
 
 class ArcService {
  public:
+  enum class ArcType {
+    kContainer,
+    kVM,
+  };
+
   // All pointers are required, cannot be null, and are owned by the caller.
   ArcService(Datapath* datapath,
              AddressManager* addr_mgr,
-             GuestMessage::GuestType guest,
+             ArcType arc_type,
              MetricsLibraryInterface* metrics,
              Device::ChangeEventHandler device_changed_handler);
   ArcService(const ArcService&) = delete;
@@ -84,8 +88,8 @@ class ArcService {
   Datapath* datapath_;
   // IPv4 prefix and address manager, owned by Manager.
   AddressManager* addr_mgr_;
-  // Type of ARC environment, valid values are ARC_VM or ARC.
-  GuestMessage::GuestType guest_;
+  // Type of ARC environment.
+  ArcType arc_type_;
   // UMA metrics client, owned by Manager.
   MetricsLibraryInterface* metrics_;
   // Manager callback used for notifying about virtual device creation and

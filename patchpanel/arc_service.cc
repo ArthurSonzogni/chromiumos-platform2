@@ -153,7 +153,7 @@ bool OneTimeContainerSetup(Datapath& datapath, pid_t pid) {
 
 // Creates the ARC management Device used for VPN forwarding, ADB-over-TCP.
 std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
-                                       GuestMessage::GuestType guest) {
+                                       ArcService::ArcType arc_type) {
   auto ipv4_subnet = addr_mgr->AllocateIPv4Subnet(GuestType::kArc0);
   if (!ipv4_subnet) {
     LOG(ERROR) << "Subnet already in use or unavailable";
@@ -172,7 +172,8 @@ std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
     return nullptr;
   }
 
-  uint32_t subnet_index = (guest == GuestMessage::ARC_VM) ? 1 : kAnySubnetIndex;
+  uint32_t subnet_index =
+      (arc_type == ArcService::ArcType::kVM) ? 1 : kAnySubnetIndex;
   auto config = std::make_unique<Device::Config>(
       addr_mgr->GenerateMacAddress(subnet_index), std::move(ipv4_subnet),
       std::move(host_ipv4_addr), std::move(guest_ipv4_addr));
@@ -188,16 +189,16 @@ std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
 
 ArcService::ArcService(Datapath* datapath,
                        AddressManager* addr_mgr,
-                       GuestMessage::GuestType guest,
+                       ArcType arc_type,
                        MetricsLibraryInterface* metrics,
                        Device::ChangeEventHandler device_changed_handler)
     : datapath_(datapath),
       addr_mgr_(addr_mgr),
-      guest_(guest),
+      arc_type_(arc_type),
       metrics_(metrics),
       device_changed_handler_(device_changed_handler),
       id_(kInvalidId) {
-  arc_device_ = MakeArc0Device(addr_mgr, guest_);
+  arc_device_ = MakeArc0Device(addr_mgr, arc_type_);
   AllocateAddressConfigs();
 }
 
@@ -238,7 +239,7 @@ void ArcService::AllocateAddressConfigs() {
       continue;
     }
 
-    MacAddress mac_addr = (guest_ == GuestMessage::ARC_VM)
+    MacAddress mac_addr = (arc_type_ == ArcType::kVM)
                               ? addr_mgr_->GenerateMacAddress(mac_addr_index++)
                               : addr_mgr_->GenerateMacAddress();
     available_configs_[type].emplace_back(std::make_unique<Device::Config>(
@@ -310,7 +311,7 @@ bool ArcService::Start(uint32_t id) {
   }
 
   std::string arc_device_ifname;
-  if (guest_ == GuestMessage::ARC_VM) {
+  if (arc_type_ == ArcType::kVM) {
     // Allocate TAP devices for all configs.
     int arcvm_ifname_id = 0;
     for (auto* config : all_configs_) {
@@ -412,7 +413,7 @@ void ArcService::Stop(uint32_t id) {
   // After the ARC container has stopped, the pid is not known anymore.
   // The stop message for ARCVM may be sent after a new VM is started. Only
   // stop if the CID matched the latest started ARCVM CID.
-  if (guest_ == GuestMessage::ARC_VM && id_ != id) {
+  if (arc_type_ == ArcType::kVM && id_ != id) {
     LOG(WARNING) << "Mismatched ARCVM CIDs " << id_ << " != " << id;
     return;
   }
@@ -430,7 +431,7 @@ void ArcService::Stop(uint32_t id) {
   shill_devices_ = shill_devices;
 
   // Stop the bridge for the management interface arc0.
-  if (guest_ == GuestMessage::ARC) {
+  if (arc_type_ == ArcType::kContainer) {
     datapath_->RemoveInterface(ArcVethHostName(arc_device_->phys_ifname()));
     if (!datapath_->NetnsDeleteName(kArcNetnsName)) {
       LOG(WARNING) << "Failed to delete netns name " << kArcNetnsName;
@@ -481,7 +482,7 @@ void ArcService::AddDevice(const std::string& ifname,
   //  as the physical interface that this ARC virtual device is attached to.
   //  - ARCVM: the interfaces created by virtio-net follow the pattern eth%d.
   auto guest_ifname = ifname;
-  if (guest_ == GuestMessage::ARC_VM) {
+  if (arc_type_ == ArcType::kVM) {
     const auto it = arcvm_guest_ifnames_.find(config->tap_ifname());
     if (it == arcvm_guest_ifnames_.end()) {
       LOG(ERROR) << "Cannot acquire a ARCVM guest ifname for " << ifname;
@@ -490,9 +491,8 @@ void ArcService::AddDevice(const std::string& ifname,
     }
   }
 
-  auto device_type = guest_ == GuestMessage::ARC_VM
-                         ? Device::Type::kARCVM
-                         : Device::Type::kARCContainer;
+  auto device_type = arc_type_ == ArcType::kVM ? Device::Type::kARCVM
+                                               : Device::Type::kARCContainer;
   auto device =
       std::make_unique<Device>(device_type, ifname, ArcBridgeName(ifname),
                                guest_ifname, std::move(config));
@@ -513,7 +513,7 @@ void ArcService::AddDevice(const std::string& ifname,
       IPv4AddressToString(device->config().guest_ipv4_addr()));
 
   std::string virtual_device_ifname;
-  if (guest_ == GuestMessage::ARC_VM) {
+  if (arc_type_ == ArcType::kVM) {
     virtual_device_ifname = device->config().tap_ifname();
     if (virtual_device_ifname.empty()) {
       LOG(ERROR) << "No TAP device for " << *device;
@@ -538,7 +538,7 @@ void ArcService::AddDevice(const std::string& ifname,
   }
 
   if (!datapath_->AddToBridge(device->host_ifname(), virtual_device_ifname)) {
-    if (guest_ == GuestMessage::ARC) {
+    if (arc_type_ == ArcType::kContainer) {
       datapath_->RemoveInterface(virtual_device_ifname);
     }
     LOG(ERROR) << "Failed to bridge interface " << virtual_device_ifname;
@@ -572,7 +572,7 @@ void ArcService::RemoveDevice(const std::string& ifname) {
   device_changed_handler_.Run(*device, Device::ChangeEvent::kRemoved);
 
   // ARCVM TAP devices are removed in VmImpl::Stop() when the service stops
-  if (guest_ == GuestMessage::ARC)
+  if (arc_type_ == ArcType::kContainer)
     datapath_->RemoveInterface(ArcVethHostName(device->phys_ifname()));
 
   datapath_->StopRoutingDevice(device->phys_ifname(), device->host_ifname(),

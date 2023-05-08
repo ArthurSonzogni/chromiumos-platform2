@@ -65,9 +65,9 @@ class ArcServiceTest : public testing::Test {
     guest_devices_.clear();
   }
 
-  std::unique_ptr<ArcService> NewService(GuestMessage::GuestType guest) {
+  std::unique_ptr<ArcService> NewService(ArcService::ArcType arc_type) {
     return std::make_unique<ArcService>(
-        datapath_.get(), addr_mgr_.get(), guest, metrics_.get(),
+        datapath_.get(), addr_mgr_.get(), arc_type, metrics_.get(),
         base::BindRepeating(&ArcServiceTest::DeviceHandler,
                             base::Unretained(this)));
   }
@@ -91,7 +91,7 @@ TEST_F(ArcServiceTest, NotStarted_AddDevice) {
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"), _))
       .Times(0);
 
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->AddDevice("eth0", ShillClient::Device::Type::kEthernet);
   EXPECT_TRUE(svc->devices_.find("eth0") == svc->devices_.end());
   EXPECT_FALSE(svc->shill_devices_.find("eth0") == svc->shill_devices_.end());
@@ -113,7 +113,7 @@ TEST_F(ArcServiceTest, NotStarted_AddRemoveDevice) {
       .Times(0);
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0"))).Times(0);
 
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->AddDevice("eth0", ShillClient::Device::Type::kEthernet);
   svc->RemoveDevice("eth0");
   EXPECT_TRUE(svc->devices_.find("eth0") == svc->devices_.end());
@@ -140,7 +140,7 @@ TEST_F(ArcServiceTest, VerifyAddrConfigs) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(_, _)).WillRepeatedly(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
   svc->AddDevice("eth0", ShillClient::Device::Type::kEthernet);
   svc->AddDevice("eth1", ShillClient::Device::Type::kEthernet);
@@ -164,7 +164,7 @@ TEST_F(ArcServiceTest, VerifyAddrOrder) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(_, _)).WillRepeatedly(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
   svc->AddDevice("wlan0", ShillClient::Device::Type::kWifi);
   svc->AddDevice("eth0", ShillClient::Device::Type::kEthernet);
@@ -178,7 +178,7 @@ TEST_F(ArcServiceTest, StableArcVmMacAddrs) {
   EXPECT_CALL(*datapath_, AddBridge(_, _, 30)).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(_, _)).WillRepeatedly(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC_VM);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestCID);
   auto configs = svc->GetDeviceConfigs();
   EXPECT_EQ(configs.size(), 6);
@@ -204,7 +204,7 @@ TEST_F(ArcServiceTest, ContainerImpl_Start) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
 
@@ -222,7 +222,7 @@ TEST_F(ArcServiceTest, ContainerImpl_FailsToCreateInterface) {
   EXPECT_CALL(*datapath_, RemoveBridge(_)).Times(0);
   EXPECT_CALL(*datapath_, SetConntrackHelpers(_)).Times(0);
 
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
   EXPECT_FALSE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -243,7 +243,7 @@ TEST_F(ArcServiceTest, ContainerImpl_FailsToAddInterfaceToBridge) {
   EXPECT_CALL(*datapath_, RemoveBridge(_)).Times(0);
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).Times(0);
 
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -263,7 +263,7 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -302,7 +302,7 @@ TEST_F(ArcServiceTest, ContainerImpl_GetDevices) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -351,7 +351,7 @@ TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -411,7 +411,7 @@ TEST_F(ArcServiceTest, ContainerImpl_StartAfterDevice) {
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
                                  StrEq("100.115.92.6")));
 
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->AddDevice("eth0", ShillClient::Device::Type::kEthernet);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
@@ -432,7 +432,7 @@ TEST_F(ArcServiceTest, ContainerImpl_Stop) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -477,7 +477,7 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
       .WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -520,7 +520,7 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
       .WillOnce(Return(true));
-  auto svc = NewService(GuestMessage::ARC);
+  auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -603,7 +603,7 @@ TEST_F(ArcServiceTest, VmImpl_Start) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC_VM);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -625,7 +625,7 @@ TEST_F(ArcServiceTest, VmImpl_StartDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC_VM);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -662,7 +662,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC_VM);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -729,7 +729,7 @@ TEST_F(ArcServiceTest, VmImpl_Stop) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC_VM);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -766,7 +766,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  auto svc = NewService(GuestMessage::ARC_VM);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -851,7 +851,7 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC_VM);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -899,7 +899,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC_VM);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestPID);
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -954,7 +954,7 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
-  auto svc = NewService(GuestMessage::ARC_VM);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -994,7 +994,7 @@ TEST_F(ArcServiceTest, VmImpl_ArcvmInterfaceMapping) {
       .WillOnce(Return("vmtap6"))
       .WillOnce(Return("vmtap8"));
 
-  auto svc = NewService(GuestMessage::ARC_VM);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestPID);
 
   std::map<std::string, std::string> arcvm_guest_ifnames = {

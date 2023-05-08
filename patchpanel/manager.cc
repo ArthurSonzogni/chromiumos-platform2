@@ -236,10 +236,10 @@ void Manager::InitialSetup() {
   shill_client_->RegisterIPv6NetworkChangedHandler(base::BindRepeating(
       &Manager::OnIPv6NetworkChanged, weak_factory_.GetWeakPtr()));
 
-  GuestMessage::GuestType arc_guest =
-      USE_ARCVM ? GuestMessage::ARC_VM : GuestMessage::ARC;
+  auto arc_type =
+      USE_ARCVM ? ArcService::ArcType::kVM : ArcService::ArcType::kContainer;
   arc_svc_ = std::make_unique<ArcService>(
-      datapath_.get(), &addr_mgr_, arc_guest, metrics_.get(),
+      datapath_.get(), &addr_mgr_, arc_type, metrics_.get(),
       base::BindRepeating(&Manager::OnGuestDeviceChanged,
                           weak_factory_.GetWeakPtr()));
   cros_svc_ = std::make_unique<CrostiniService>(
