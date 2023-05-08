@@ -33,6 +33,7 @@ use crate::hiberutil::HibernateStage;
 use crate::hiberutil::TimestampFile;
 use crate::metrics::log_hibernate_attempt;
 use crate::metrics::read_and_send_metrics;
+use crate::metrics::DurationMetricUnit;
 use crate::metrics::METRICS_LOGGER;
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
@@ -239,7 +240,15 @@ impl SuspendConductor {
             resume_time.as_secs(),
             resume_time.subsec_millis()
         );
-        // TODO: log metric
+
+        let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+
+        metrics_logger.log_duration_sample(
+            "Platform.Hibernate.LoginToResumeReady",
+            resume_time,
+            DurationMetricUnit::Milliseconds,
+            30000,
+        );
     }
 
     /// Utility function to power the system down immediately.
