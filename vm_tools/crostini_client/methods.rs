@@ -15,6 +15,8 @@ use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
 
+use dbus::blocking;
+
 use dbus::{
     arg::OwnedFd,
     ffidisp::{BusType, Connection, ConnectionItem},
@@ -23,6 +25,8 @@ use dbus::{
 };
 use protobuf::EnumOrUnknown;
 use protobuf::Message as ProtoMessage;
+
+use system_api::client::OrgChromiumVmConcierge;
 use system_api::concierge_service::vm_info::VmType;
 use system_api::concierge_service::*;
 use system_api::dlcservice::*;
@@ -2584,15 +2588,17 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
         request.name = vm_name.to_owned();
 
-        let response: GetVmLogsResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                GET_VM_LOGS_METHOD,
-            )?,
-            &request,
-        )?;
+        let conn = blocking::Connection::new_system()?;
+
+        let proxy: blocking::Proxy<'_, _> = blocking::Connection::with_proxy(
+            &conn,
+            VM_CONCIERGE_SERVICE_NAME,
+            VM_CONCIERGE_SERVICE_PATH,
+            Duration::from_millis(DEFAULT_TIMEOUT_MS.try_into().unwrap()),
+        );
+
+        let response: GetVmLogsResponse =
+            ProtoMessage::parse_from_bytes(&proxy.get_vm_logs(request.write_to_bytes()?)?)?;
 
         Ok(response.log)
     }
