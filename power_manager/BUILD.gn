@@ -13,7 +13,8 @@ group("all") {
     ":cpufreq_config",
     ":dump_power_status",
     ":inject_powerd_input_event",
-    ":install_minijail_conf",
+    ":install_minijail_power_conf",
+    ":install_minijail_temp_logger_conf",
     ":libpolicy",
     ":libpolicy_stub",
     ":libpowerd",
@@ -87,7 +88,12 @@ if (use.cellular) {
   }
 }
 
-install_config("install_minijail_conf") {
+install_config("install_minijail_power_conf") {
+  sources = [ "minijail/powerd.conf" ]
+  install_path = "/usr/share/minijail"
+}
+
+install_config("install_minijail_temp_logger_conf") {
   sources = [ "minijail/temp_logger.conf" ]
   install_path = "/usr/share/minijail"
 }
