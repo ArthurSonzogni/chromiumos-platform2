@@ -1092,9 +1092,7 @@ void Service::RunBalloonPolicy() {
 
   std::optional<MemoryMargins> memory_margins_opt = GetMemoryMargins();
   if (!memory_margins_opt) {
-    LOG(ERROR) << "Failed to get ChromeOS memory margins, stopping balloon "
-               << "policy";
-    balloon_resizing_timer_.Stop();
+    LOG(ERROR) << "Failed to get ChromeOS memory margins";
     return;
   }
   MemoryMargins memory_margins = *memory_margins_opt;
