@@ -1125,11 +1125,11 @@ impl Frontend for Vmc {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::proto::system_api::concierge_service::*;
-    use crate::proto::system_api::dlcservice::*;
     use dbus::Message;
     use protobuf::Message as ProtoMessage;
     use std::collections::HashMap;
+    use system_api::concierge_service::*;
+    use system_api::dlcservice::*;
 
     fn mocked_connection_filter(mut msg: Message) -> Result<Message, Result<Message, dbus::Error>> {
         eprintln!("{:?}", msg);

@@ -23,6 +23,7 @@ getopts = "0.2"
 libc = "0.2.44"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
 protobuf = "3.2"
+system_api = { path = "../../system_api" } # provided by ebuild
 
 [build-dependencies]
 protobuf-codegen = "3.2"

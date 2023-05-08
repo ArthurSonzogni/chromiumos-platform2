@@ -22,12 +22,12 @@ use dbus::{
 };
 use protobuf::EnumOrUnknown;
 use protobuf::Message as ProtoMessage;
+use system_api::concierge_service::vm_info::VmType;
+use system_api::concierge_service::*;
+use system_api::dlcservice::*;
 
 use crate::disk::{DiskInfo, DiskOpType, VmDiskImageType};
 use crate::proto::system_api::cicerone_service::*;
-use crate::proto::system_api::concierge_service::vm_info::VmType;
-use crate::proto::system_api::concierge_service::*;
-use crate::proto::system_api::dlcservice::*;
 use crate::proto::system_api::launch::*;
 use crate::proto::system_api::seneschal_service::*;
 use crate::proto::system_api::vm_plugin_dispatcher;
