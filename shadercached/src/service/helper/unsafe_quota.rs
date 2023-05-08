@@ -15,6 +15,7 @@ use std::{
 const SHADERCACHED_USER: i32 = 333;
 // Disk quota () for shadercached when disk is not short in storage space
 const NORMAL_DISK_QUOTA: f64 = 0.05;
+const QUOTA_BLOCK_SIZE: u64 = 1024;
 
 fn get_device(path: &str) -> Result<String> {
     let rootdev_output = Command::new("rootdev")
@@ -25,7 +26,7 @@ fn get_device(path: &str) -> Result<String> {
     Ok(String::from_utf8(rootdev_output.stdout)?.trim().to_string())
 }
 
-fn get_max_block_size(device_path: &str) -> Result<u64> {
+fn get_device_size_in_blocks(device_path: &str, block_size: u64) -> Result<u64> {
     let mut path = device_path;
     if let Some(stripped) = device_path.strip_suffix('/') {
         path = stripped;
@@ -35,16 +36,18 @@ fn get_max_block_size(device_path: &str) -> Result<u64> {
     let device = splitted
         .last()
         .context("Failed to parse device from device")?;
-    let block_size = Command::new("cat")
+
+    let size_512_block = Command::new("cat")
         .arg(format!("/sys/class/block/{}/size", device))
         .stdout(Stdio::piped())
         .output()?;
 
     debug!(
-        "/sys/class/block/{}/size output for device {}: {:?}",
-        device, device_path, block_size
+        "Device {} byte size is {:?}",
+        device_path, size_512_block.stdout
     );
-    Ok(String::from_utf8(block_size.stdout)?.trim().parse()?)
+    let parsed: u64 = String::from_utf8(size_512_block.stdout)?.trim().parse()?;
+    Ok(parsed * 512 / block_size)
 }
 
 pub fn set_quota_normal<S: AsRef<OsStr> + ?Sized>(path_like: &S) -> Result<()> {
@@ -52,7 +55,7 @@ pub fn set_quota_normal<S: AsRef<OsStr> + ?Sized>(path_like: &S) -> Result<()> {
     let path_str = path.to_str().context("Failed to convert path to string")?;
 
     let device = get_device(path_str)?;
-    let max_size = get_max_block_size(&device)?;
+    let max_size = get_device_size_in_blocks(&device, QUOTA_BLOCK_SIZE)?;
     let limit = (max_size as f64 * NORMAL_DISK_QUOTA) as u64;
     set_quota(&device, limit)?;
     quota_on(&device)?;
