@@ -66,6 +66,7 @@ constexpr char kRelightingGpuApiKey[] = "relighting_gpu_api";
 constexpr char kBlurEnabled[] = "blur_enabled";
 constexpr char kReplaceEnabled[] = "replace_enabled";
 constexpr char kRelightEnabled[] = "relight_enabled";
+constexpr char kSegmentationModelTypeKey[] = "segmentation_model_type";
 
 constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBX_8888;
 constexpr uint32_t kBufferUsage = GRALLOC_USAGE_HW_TEXTURE;
@@ -1080,6 +1081,21 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
       return;
     }
     LOGF(INFO) << "Relighting GPU API: " << relighting_gpu_api;
+  }
+
+  std::string segmentation_model_type;
+  if (GetStringFromKey(json_values, kSegmentationModelTypeKey,
+                       &segmentation_model_type)) {
+    if (segmentation_model_type == "hd") {
+      new_config.segmentation_model_type = SegmentationModelType::kHd;
+    } else if (segmentation_model_type == "full") {
+      new_config.segmentation_model_type = SegmentationModelType::kFull;
+    } else {
+      LOGF(WARNING) << "Unknown Segmentation Model Type: "
+                    << segmentation_model_type;
+      return;
+    }
+    LOGF(INFO) << "Segmentation Model Type: " << segmentation_model_type;
   }
 
   process_thread_->PostTask(
