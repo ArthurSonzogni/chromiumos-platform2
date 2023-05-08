@@ -16,6 +16,7 @@
 
 namespace patchpanel {
 
+// Fills a protobuf NetworkDevice object with the given |virtual_device| Device.
 void FillDeviceProto(const Device& virtual_device, NetworkDevice* output);
 
 // Fills a protobuf IPv4Subnet object with the IPv4 address |base_addr| in

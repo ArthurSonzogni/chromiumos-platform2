@@ -494,6 +494,11 @@ void Manager::OnIPv6NetworkChanged(const std::string& ifname,
 void Manager::OnGuestDeviceChanged(const Device& virtual_device,
                                    Device::ChangeEvent event,
                                    GuestMessage::GuestType guest_type) {
+  // The legacy "arc0" Device is ignored for "NetworkDeviceChanged" signals
+  // and is never included in multicast forwarding or GuestIPv6Service.
+  if (virtual_device.type() == Device::Type::kARC0) {
+    return;
+  }
   dbus::Signal signal(kPatchPanelInterface, kNetworkDeviceChangedSignal);
   NetworkDeviceChangedSignal proto;
   proto.set_event(event == Device::ChangeEvent::kAdded
@@ -504,25 +509,6 @@ void Manager::OnGuestDeviceChanged(const Device& virtual_device,
   if (const auto* subnet = virtual_device.config().ipv4_subnet()) {
     FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
   }
-  switch (guest_type) {
-    case GuestMessage::ARC:
-      dev->set_guest_type(NetworkDevice::ARC);
-      break;
-    case GuestMessage::ARC_VM:
-      dev->set_guest_type(NetworkDevice::ARCVM);
-      break;
-    case GuestMessage::TERMINA_VM:
-      dev->set_guest_type(NetworkDevice::TERMINA_VM);
-      break;
-    case GuestMessage::PLUGIN_VM:
-      dev->set_guest_type(NetworkDevice::PLUGIN_VM);
-      break;
-    default:
-      dev->set_guest_type(NetworkDevice::UNKNOWN);
-      LOG(ERROR) << "Unknown patchpanel Device type";
-      return;
-  }
-
   if (dev->guest_type() != NetworkDevice::UNKNOWN) {
     const std::string& upstream_device =
         (guest_type == GuestMessage::ARC || guest_type == GuestMessage::ARC_VM)
@@ -631,14 +617,15 @@ std::unique_ptr<dbus::Response> Manager::OnGetDevices(
     return dbus_response;
   }
 
-  static const auto arc_guest_type =
-      USE_ARCVM ? NetworkDevice::ARCVM : NetworkDevice::ARC;
   for (const auto* arc_device : arc_svc_->GetDevices()) {
+    // The legacy "arc0" Device is never exposed in "GetDevices".
+    if (arc_device->type() == Device::Type::kARC0) {
+      continue;
+    }
     auto* dev = response.add_devices();
     FillDeviceProto(*arc_device, dev);
     FillDeviceDnsProxyProto(*arc_device, dev, dns_proxy_ipv4_addrs_,
                             dns_proxy_ipv6_addrs_);
-    dev->set_guest_type(arc_guest_type);
     if (const auto* subnet = arc_device->config().ipv4_subnet()) {
       FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
     }
@@ -647,19 +634,6 @@ std::unique_ptr<dbus::Response> Manager::OnGetDevices(
   for (const auto* crosvm_device : cros_svc_->GetDevices()) {
     auto* dev = response.add_devices();
     FillDeviceProto(*crosvm_device, dev);
-    switch (crosvm_device->type()) {
-      case Device::Type::kTerminaVM:
-        dev->set_guest_type(NetworkDevice::TERMINA_VM);
-        break;
-      case Device::Type::kParallelVM:
-        dev->set_guest_type(NetworkDevice::PLUGIN_VM);
-        break;
-      default:
-        LOG(ERROR)
-            << "Unexpected patchpanel Device type for CrostiniService Device: "
-            << crosvm_device->type();
-        continue;
-    }
     if (const auto* subnet = crosvm_device->config().ipv4_subnet()) {
       FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
     }
@@ -839,7 +813,6 @@ std::unique_ptr<dbus::Response> Manager::OnTerminaVmStartup(
     return dbus_response;
   }
   auto* dev = response.mutable_device();
-  dev->set_guest_type(NetworkDevice::TERMINA_VM);
   FillDeviceProto(*guest_device, dev);
   FillSubnetProto(*termina_subnet, dev->mutable_ipv4_subnet());
   FillSubnetProto(*lxd_subnet, response.mutable_container_subnet());
@@ -918,7 +891,6 @@ std::unique_ptr<dbus::Response> Manager::OnPluginVmStartup(
     return dbus_response;
   }
   auto* dev = response.mutable_device();
-  dev->set_guest_type(NetworkDevice::PLUGIN_VM);
   FillDeviceProto(*guest_device, dev);
   FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
 

@@ -8,13 +8,32 @@ namespace patchpanel {
 
 void FillDeviceProto(const Device& virtual_device,
                      patchpanel::NetworkDevice* output) {
-  // TODO(hugobenichi) Consolidate guest_type in Device class and set
-  // guest_type.
   output->set_ifname(virtual_device.host_ifname());
   output->set_phys_ifname(virtual_device.phys_ifname());
   output->set_guest_ifname(virtual_device.guest_ifname());
   output->set_ipv4_addr(virtual_device.config().guest_ipv4_addr());
   output->set_host_ipv4_addr(virtual_device.config().host_ipv4_addr());
+  switch (virtual_device.type()) {
+    case Device::Type::kARC0:
+      // The "arc0" legacy management device is not exposed in DBus
+      // patchpanel "GetDevices" method or in "NetworkDeviceChanged" signal.
+      // However the "arc0" legacy device is exposed in the ArcVmStartupResponse
+      // proto sent back to a "ArcVmStartup" method call. In this latter case
+      // the |guest_type| field is left empty.
+      break;
+    case Device::Type::kARCContainer:
+      output->set_guest_type(NetworkDevice::ARC);
+      break;
+    case Device::Type::kARCVM:
+      output->set_guest_type(NetworkDevice::ARCVM);
+      break;
+    case Device::Type::kTerminaVM:
+      output->set_guest_type(NetworkDevice::TERMINA_VM);
+      break;
+    case Device::Type::kParallelVM:
+      output->set_guest_type(NetworkDevice::PLUGIN_VM);
+      break;
+  }
 }
 
 // TODO(b/239559602) Introduce better types for IPv4 addr and IPv4 CIDR.
