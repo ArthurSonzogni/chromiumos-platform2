@@ -33,7 +33,6 @@ use crate::hiberutil::HibernateStage;
 use crate::hiberutil::TimestampFile;
 use crate::metrics::log_hibernate_attempt;
 use crate::metrics::read_and_send_metrics;
-use crate::metrics::MetricsFile;
 use crate::metrics::MetricsLogger;
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
@@ -74,8 +73,6 @@ impl SuspendConductor {
         if let Err(e) = log_hibernate_attempt() {
             warn!("Failed to log hibernate attempt: \n {}", e);
         }
-
-        self.create_metrics_file()?;
 
         // Don't hibernate if the update engine is up to something, as we would
         // not want to hibernate if upon reboot the other slot gets booted.
@@ -131,7 +128,6 @@ impl SuspendConductor {
         let frozen_userspace = snap_dev.freeze_userspace()?;
 
         self.metrics.flush()?;
-        self.metrics.file = None;
         redirect_log(HiberlogOut::BufferInMemory);
         self.volume_manager.unmount_hibermeta()?;
 
@@ -166,17 +162,16 @@ impl SuspendConductor {
             }
 
             let io_duration = start.elapsed();
-            self.create_metrics_file()?;
+
             self.metrics.metrics_send_io_sample(
                 "WriteHibernateImage",
                 snap_dev.get_image_size()?,
                 io_duration,
             );
 
-            // Close the metrics file before unmounting hibermeta. The metrics will be
+            // Flush the metrics file before unmounting hibermeta. The metrics will be
             // sent on resume.
             self.metrics.flush()?;
-            self.metrics.file = None;
 
             // Set the hibernate cookie so the next boot knows to start in RO mode.
             info!("Setting hibernate cookie at {}", block_path);
@@ -239,16 +234,6 @@ impl SuspendConductor {
             resume_time.subsec_millis()
         );
         // TODO: log metric
-    }
-
-    /// Create the file for the suspend metrics and configure the metrics logger
-    /// to use it.
-    fn create_metrics_file(&mut self) -> Result<()> {
-        let metrics_file_path = MetricsFile::get_path(HibernateStage::Suspend);
-        let metrics_file = MetricsFile::create(metrics_file_path)?;
-        self.metrics.file = Some(metrics_file);
-
-        Ok(())
     }
 
     /// Utility function to power the system down immediately.

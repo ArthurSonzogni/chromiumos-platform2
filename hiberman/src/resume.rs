@@ -38,7 +38,6 @@ use crate::hiberutil::ResumeOptions;
 use crate::hiberutil::TimestampFile;
 use crate::lvm::activate_physical_lv;
 use crate::metrics::read_and_send_metrics;
-use crate::metrics::MetricsFile;
 use crate::metrics::MetricsLogger;
 use crate::powerd::PowerdPendingResume;
 use crate::resume_dbus::{get_user_key, wait_for_resume_dbus_event, ResumeRequest};
@@ -145,10 +144,6 @@ impl ResumeConductor {
         }
 
         volume_manager.setup_hibermeta_lv(false)?;
-
-        let metrics_file_path = MetricsFile::get_path(HibernateStage::Resume);
-        let metrics_file = MetricsFile::create(metrics_file_path)?;
-        self.metrics_logger.file = Some(metrics_file);
 
         // Set up the snapshot device for resuming
         self.setup_snapshot_device(false, completion_receiver)?;
@@ -257,7 +252,6 @@ impl ResumeConductor {
 
         // Close the metrics file before unmounting 'hibermeta'.
         self.metrics_logger.flush()?;
-        self.metrics_logger.file = None;
 
         // Keep logs in memory for now.
         redirect_log(HiberlogOut::BufferInMemory);
