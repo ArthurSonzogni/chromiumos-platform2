@@ -8,6 +8,7 @@ pkg_config("deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libdrm",
     "libmojo",
   ]
 }
@@ -18,6 +19,7 @@ pkg_config("pub_deps") {
 
 source_set("utils") {
   sources = [
+    "display_utils.cc",
     "edid.cc",
     "evdev_utils.cc",
     "psr_cmd.cc",
