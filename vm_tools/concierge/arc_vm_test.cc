@@ -485,26 +485,6 @@ TEST(ArcVmParamsTest, MglruReclaimWithSwappiness) {
       base::StringPrintf("androidboot.arcvm_mglru_reclaim_swappiness=100")));
 }
 
-TEST(ArcVmParamsTest, UpdateO4CListViaA2C2Param) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  {
-    request.set_update_o4c_list_via_a2c2(true);
-    std::vector<std::string> params =
-        ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-    EXPECT_TRUE(
-        base::Contains(params, "androidboot.update_o4c_list_via_a2c2=1"));
-  }
-  {
-    request.set_update_o4c_list_via_a2c2(false);
-    std::vector<std::string> params =
-        ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-    EXPECT_TRUE(
-        base::Contains(params, "androidboot.update_o4c_list_via_a2c2=0"));
-  }
-}
-
 TEST(ArcVmParamsTest, NativeBridgeExperimentNone) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());

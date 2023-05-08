@@ -471,7 +471,7 @@ message StartArcVmRequest {
   // Whether updating O4C (Optimized for Chromebook applications) list via A2C2
   // (ARC Application Compatibility Configuration Delivery) is enabled (See
   // go/a2c2 for project details.)
-  bool update_o4c_list_via_a2c2 = 37;
+  bool update_o4c_list_via_a2c2 = 37 [deprecated = true];
 
   enum UsapProfileType {
     // Default USAP profile suitable for all devices.
