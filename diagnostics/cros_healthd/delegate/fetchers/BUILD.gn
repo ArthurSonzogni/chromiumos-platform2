@@ -8,12 +8,16 @@ pkg_config("target_default") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libdrm",
     "libmojo",
   ]
 }
 
 source_set("fetchers") {
-  sources = [ "boot_performance.cc" ]
+  sources = [
+    "boot_performance.cc",
+    "display_fetcher.cc",
+  ]
   configs += [ ":target_default" ]
   libs = [ "bootstat" ]
   deps = [
