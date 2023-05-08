@@ -202,6 +202,15 @@ class AfMapBuilder {
         label, AuthFactorType::kCryptohomeRecovery);
   }
 
+  // Helper to add copies of factors from an existing AuthFactorMap.
+  AfMapBuilder& AddCopiesFromMap(const AuthFactorMap& af_map) {
+    for (AuthFactorMap::ValueView entry : af_map) {
+      map_.Add(std::make_unique<AuthFactor>(entry.auth_factor()),
+               storage_type_);
+    }
+    return *this;
+  }
+
   // Consume the map.
   AuthFactorMap Consume() { return std::move(map_); }
 
@@ -4821,16 +4830,51 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprintAndAuth) {
                                       kFakeSecondFingerprintLabel};
   user_data_auth::AuthInput auth_input_proto;
   auth_input_proto.mutable_fingerprint_input();
-  TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
-                                      authenticate_future.GetCallback());
+  AuthSession verify_session(
+      {.username = kFakeUsername,
+       .is_ephemeral_user = false,
+       .intent = AuthIntent::kVerifyOnly,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
+       .user_exists = true,
+       .auth_factor_map = AfMapBuilder()
+                              .WithUss()
+                              .AddCopiesFromMap(auth_session.auth_factor_map())
+                              .Consume(),
+       .migrate_to_user_secret_stash = false},
+      backing_apis_);
+  TestFuture<CryptohomeStatus> verify_future;
+  verify_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
+                                        verify_future.GetCallback());
+  AuthSession decrypt_session(
+      {.username = kFakeUsername,
+       .is_ephemeral_user = false,
+       .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .auth_factor_status_update_timer =
+           std::make_unique<base::WallClockTimer>(),
+       .user_exists = true,
+       .auth_factor_map = AfMapBuilder()
+                              .WithUss()
+                              .AddCopiesFromMap(auth_session.auth_factor_map())
+                              .Consume(),
+       .migrate_to_user_secret_stash = false},
+      backing_apis_);
+  TestFuture<CryptohomeStatus> decrypt_future;
+  decrypt_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
+                                         decrypt_future.GetCallback());
+
   // Verify.
-  EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
-  EXPECT_THAT(
-      auth_session.authorized_intents(),
-      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_TRUE(auth_session.has_user_secret_stash());
+  EXPECT_THAT(verify_future.Get(), IsOk());
+  EXPECT_EQ(verify_session.status(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_THAT(verify_session.authorized_intents(),
+              UnorderedElementsAre(AuthIntent::kVerifyOnly));
+  EXPECT_THAT(decrypt_future.Get(), NotOk());
+  EXPECT_EQ(decrypt_session.status(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_THAT(decrypt_session.authorized_intents(), IsEmpty());
 }
 
 }  // namespace cryptohome

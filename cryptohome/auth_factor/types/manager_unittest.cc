@@ -108,7 +108,7 @@ TEST_F(AuthFactorDriverManagerTest, IsFullAuthAllowed) {
   EXPECT_THAT(decrypt_allowed(AuthFactorType::kKiosk), IsTrue());
   EXPECT_THAT(decrypt_allowed(AuthFactorType::kSmartCard), IsTrue());
   EXPECT_THAT(decrypt_allowed(AuthFactorType::kLegacyFingerprint), IsFalse());
-  EXPECT_THAT(decrypt_allowed(AuthFactorType::kFingerprint), IsTrue());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kFingerprint), IsFalse());
 
   EXPECT_THAT(vonly_allowed(AuthFactorType::kPassword), IsTrue());
   EXPECT_THAT(vonly_allowed(AuthFactorType::kPin), IsTrue());

@@ -316,8 +316,12 @@ class AuthSession final {
 
   // Switches the state to authorize the specified intents. Starts or restarts
   // the timer when applicable.
-  void SetAuthSessionAsAuthenticated(
+  void SetAuthorizedForIntents(
       base::span<const AuthIntent> new_authorized_intents);
+
+  // Sets the auth session as fully authenticated by the given factor type. What
+  // specific intents the session is authorized for depends on the factor type.
+  void SetAuthorizedForFullAuthIntents(AuthFactorType auth_factor_type);
 
   // Converts the D-Bus AuthInput proto into the C++ struct. Returns nullopt on
   // failure.

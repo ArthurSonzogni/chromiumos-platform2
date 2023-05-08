@@ -427,7 +427,7 @@ void AuthSession::RecordAuthSessionStart() const {
             << " factors=" << base::JoinString(factors, ",") << ".";
 }
 
-void AuthSession::SetAuthSessionAsAuthenticated(
+void AuthSession::SetAuthorizedForIntents(
     base::span<const AuthIntent> new_authorized_intents) {
   if (new_authorized_intents.empty()) {
     NOTREACHED() << "Empty intent set cannot be authorized";
@@ -443,6 +443,21 @@ void AuthSession::SetAuthSessionAsAuthenticated(
   LOG(INFO) << "AuthSession: authorized for "
             << IntentSetToDebugString(authorized_intents_) << ".";
   SetTimeoutTimer(kAuthSessionTimeout);
+}
+
+void AuthSession::SetAuthorizedForFullAuthIntents(
+    AuthFactorType auth_factor_type) {
+  // Determine what intents are allowed for this factor type under full auth.
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager_->GetDriver(auth_factor_type);
+  std::vector<AuthIntent> authorized_for;
+  for (AuthIntent intent : kAuthorizedIntentsForFullAuth) {
+    if (factor_driver.IsFullAuthAllowed(intent)) {
+      authorized_for.push_back(intent);
+    }
+  }
+  // Authorize the session for the subset of intents we found.
+  SetAuthorizedForIntents(authorized_for);
 }
 
 void AuthSession::SetTimeoutTimer(const base::TimeDelta& delay) {
@@ -533,7 +548,7 @@ CryptohomeStatus AuthSession::ExtendTimeoutTimer(
 CryptohomeStatus AuthSession::OnUserCreated() {
   // Since this function is called for a new user, it is safe to put the
   // AuthSession in an authenticated state.
-  SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
+  SetAuthorizedForIntents(kAuthorizedIntentsForFullAuth);
   user_exists_ = true;
 
   if (!is_ephemeral_user_) {
@@ -896,7 +911,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   }
 
   // Flip the status on the successful authentication.
-  SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
+  SetAuthorizedForFullAuthIntents(request_auth_factor_type);
 
   // Set the credential verifier for this credential.
   AddCredentialVerifier(request_auth_factor_type, vault_keyset_->GetLabel(),
@@ -2625,7 +2640,7 @@ void AuthSession::CompleteVerifyOnlyAuthentication(StatusCallback on_done,
     if (auth_intent_ == AuthIntent::kWebAuthn) {
       authorized_intents_.insert(AuthIntent::kWebAuthn);
     }
-    SetAuthSessionAsAuthenticated(lightweight_intents);
+    SetAuthorizedForIntents(lightweight_intents);
   }
   // Forward whatever the result was to on_done.
   std::move(on_done).Run(std::move(error));
@@ -3135,7 +3150,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   }
 
   // Flip the status on the successful authentication.
-  SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
+  SetAuthorizedForFullAuthIntents(auth_factor_type);
 
   // Set the credential verifier for this credential.
   AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
