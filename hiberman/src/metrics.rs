@@ -10,7 +10,6 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::io::Cursor;
 use std::io::Write;
 use std::mem;
 use std::os::unix::fs::OpenOptionsExt;
@@ -267,19 +266,9 @@ fn read_and_send_metrics_file(stage: HibernateStage) -> Result<()> {
     }
 
     let mut metrics_file = MetricsFile::open(&metrics_file_path)?;
-    let mut reader = BufReader::new(&mut metrics_file);
-    let mut buf = Vec::<u8>::new();
-    reader.read_until(0, &mut buf)?;
+    let reader = BufReader::new(&mut metrics_file);
 
-    if buf.is_empty() {
-        warn!("Metrics file '{}' is empty", metrics_file_path.display());
-        return Ok(());
-    }
-
-    // Now split that big buffer into lines.
-    let len_without_delim = buf.len() - 1;
-    let cursor = Cursor::new(&buf[..len_without_delim]);
-    for line in cursor.lines() {
+    for line in reader.lines() {
         let line = match line {
             Ok(l) => l,
             Err(e) => {
