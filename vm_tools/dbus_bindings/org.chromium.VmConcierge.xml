@@ -36,6 +36,21 @@
                     value="vm_tools::concierge::AdjustVmResponse"/>
       </arg>
     </method>
+    <method name="AggressiveBalloon">
+      <tp:docstring>
+        Inflate balloon in a vm until perceptible processes in the guest are
+        tried to kill.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::AggressiveBalloonRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::concierge::AggressiveBalloonResponse"/>
+      </arg>
+    </method>
     <method name="ArcVmCompleteBoot">
       <tp:docstring>
         Completes the boot of an ARCVM VM.
@@ -323,21 +338,6 @@
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ListVmsResponse"/>
-      </arg>
-    </method>
-    <method name="AggressiveBalloon">
-      <tp:docstring>
-        Inflate balloon in a vm until perceptible processes in the guest are
-        tried to kill.
-      </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
-      <arg type="ay" name="request" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::concierge::AggressiveBalloonRequest"/>
-      </arg>
-      <arg type="ay" name="response" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::concierge::AggressiveBalloonResponse"/>
       </arg>
     </method>
     <method name="ResizeDiskImage">
