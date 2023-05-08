@@ -21,7 +21,8 @@ bool PasswordAuthFactorDriver::IsSupported(
   return true;
 }
 
-bool PasswordAuthFactorDriver::IsVerifySupported(AuthIntent auth_intent) const {
+bool PasswordAuthFactorDriver::IsLightAuthAllowed(
+    AuthIntent auth_intent) const {
   return auth_intent == AuthIntent::kVerifyOnly;
 }
 

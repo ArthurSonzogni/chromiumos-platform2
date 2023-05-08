@@ -88,47 +88,92 @@ TEST_F(AuthFactorDriverManagerTest, IsPrepareRequired) {
                 "All types of AuthFactorType are not all included here");
 }
 
-// Test AuthFactorDriver::IsVerifySupported. We do this here instead of in a
+// Test AuthFactorDriver::IsFullAuthAllowed. We do this here instead of in a
 // per-driver test because the check is trivial enough that one test is simpler
 // to validate than N separate tests.
-TEST_F(AuthFactorDriverManagerTest, IsVerifySupported) {
-  auto decrypt_verify = [this](AuthFactorType type) {
-    return manager_.GetDriver(type).IsVerifySupported(AuthIntent::kDecrypt);
+TEST_F(AuthFactorDriverManagerTest, IsFullAuthAllowed) {
+  auto decrypt_allowed = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsFullAuthAllowed(AuthIntent::kDecrypt);
   };
-  auto vonly_verify = [this](AuthFactorType type) {
-    return manager_.GetDriver(type).IsVerifySupported(AuthIntent::kVerifyOnly);
+  auto vonly_allowed = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsFullAuthAllowed(AuthIntent::kVerifyOnly);
   };
-  auto webauthn_verify = [this](AuthFactorType type) {
-    return manager_.GetDriver(type).IsVerifySupported(AuthIntent::kWebAuthn);
+  auto webauthn_allowed = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsFullAuthAllowed(AuthIntent::kWebAuthn);
   };
 
-  EXPECT_THAT(decrypt_verify(AuthFactorType::kPassword), IsFalse());
-  EXPECT_THAT(decrypt_verify(AuthFactorType::kPin), IsFalse());
-  EXPECT_THAT(decrypt_verify(AuthFactorType::kCryptohomeRecovery), IsFalse());
-  EXPECT_THAT(decrypt_verify(AuthFactorType::kKiosk), IsFalse());
-  EXPECT_THAT(decrypt_verify(AuthFactorType::kSmartCard), IsFalse());
-  EXPECT_THAT(decrypt_verify(AuthFactorType::kLegacyFingerprint), IsFalse());
-  EXPECT_THAT(decrypt_verify(AuthFactorType::kFingerprint), IsFalse());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kPassword), IsTrue());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kPin), IsTrue());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kCryptohomeRecovery), IsTrue());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kKiosk), IsTrue());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kSmartCard), IsTrue());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kLegacyFingerprint), IsFalse());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kFingerprint), IsTrue());
 
-  EXPECT_THAT(vonly_verify(AuthFactorType::kPassword), IsTrue());
-  EXPECT_THAT(vonly_verify(AuthFactorType::kPin), IsFalse());
-  EXPECT_THAT(vonly_verify(AuthFactorType::kCryptohomeRecovery), IsFalse());
-  EXPECT_THAT(vonly_verify(AuthFactorType::kKiosk), IsFalse());
-  EXPECT_THAT(vonly_verify(AuthFactorType::kSmartCard), IsTrue());
-  EXPECT_THAT(vonly_verify(AuthFactorType::kLegacyFingerprint), IsTrue());
-  EXPECT_THAT(vonly_verify(AuthFactorType::kFingerprint), IsFalse());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kPassword), IsTrue());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kPin), IsTrue());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kCryptohomeRecovery), IsTrue());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kKiosk), IsTrue());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kSmartCard), IsTrue());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kLegacyFingerprint), IsFalse());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kFingerprint), IsTrue());
 
-  EXPECT_THAT(webauthn_verify(AuthFactorType::kPassword), IsFalse());
-  EXPECT_THAT(webauthn_verify(AuthFactorType::kPin), IsFalse());
-  EXPECT_THAT(webauthn_verify(AuthFactorType::kCryptohomeRecovery), IsFalse());
-  EXPECT_THAT(webauthn_verify(AuthFactorType::kKiosk), IsFalse());
-  EXPECT_THAT(webauthn_verify(AuthFactorType::kSmartCard), IsFalse());
-  EXPECT_THAT(webauthn_verify(AuthFactorType::kLegacyFingerprint), IsTrue());
-  EXPECT_THAT(webauthn_verify(AuthFactorType::kFingerprint), IsFalse());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kPassword), IsTrue());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kPin), IsTrue());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kCryptohomeRecovery), IsTrue());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kKiosk), IsTrue());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kSmartCard), IsTrue());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kLegacyFingerprint), IsFalse());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kFingerprint), IsTrue());
 
-  EXPECT_THAT(decrypt_verify(AuthFactorType::kUnspecified), IsFalse());
-  EXPECT_THAT(vonly_verify(AuthFactorType::kUnspecified), IsFalse());
-  EXPECT_THAT(webauthn_verify(AuthFactorType::kUnspecified), IsFalse());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kUnspecified), IsFalse());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kUnspecified), IsFalse());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kUnspecified), IsFalse());
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
+                "All types of AuthFactorType are not all included here");
+}
+
+// Test AuthFactorDriver::IsLightAuthAllowed. We do this here instead of in a
+// per-driver test because the check is trivial enough that one test is simpler
+// to validate than N separate tests.
+TEST_F(AuthFactorDriverManagerTest, IsLightAuthAllowed) {
+  auto decrypt_allowed = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsLightAuthAllowed(AuthIntent::kDecrypt);
+  };
+  auto vonly_allowed = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsLightAuthAllowed(AuthIntent::kVerifyOnly);
+  };
+  auto webauthn_allowed = [this](AuthFactorType type) {
+    return manager_.GetDriver(type).IsLightAuthAllowed(AuthIntent::kWebAuthn);
+  };
+
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kPassword), IsFalse());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kPin), IsFalse());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kCryptohomeRecovery), IsFalse());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kKiosk), IsFalse());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kSmartCard), IsFalse());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kLegacyFingerprint), IsFalse());
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kFingerprint), IsFalse());
+
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kPassword), IsTrue());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kPin), IsFalse());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kCryptohomeRecovery), IsFalse());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kKiosk), IsFalse());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kSmartCard), IsTrue());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kLegacyFingerprint), IsTrue());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kFingerprint), IsFalse());
+
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kPassword), IsFalse());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kPin), IsFalse());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kCryptohomeRecovery), IsFalse());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kKiosk), IsFalse());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kSmartCard), IsFalse());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kLegacyFingerprint), IsTrue());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kFingerprint), IsFalse());
+
+  EXPECT_THAT(decrypt_allowed(AuthFactorType::kUnspecified), IsFalse());
+  EXPECT_THAT(vonly_allowed(AuthFactorType::kUnspecified), IsFalse());
+  EXPECT_THAT(webauthn_allowed(AuthFactorType::kUnspecified), IsFalse());
   static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
                 "All types of AuthFactorType are not all included here");
 }

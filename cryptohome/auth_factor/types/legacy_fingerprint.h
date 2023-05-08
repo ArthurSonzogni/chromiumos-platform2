@@ -29,6 +29,7 @@ class LegacyFingerprintAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kLegacyFingerprint>,
       public AfDriverWithBlockTypes<>,
       public AfDriverWithMetadata<std::monostate>,
+      public AfDriverFullAuthUnsupported,
       public AfDriverNoDelay {
  public:
   explicit LegacyFingerprintAuthFactorDriver(
@@ -45,7 +46,7 @@ class LegacyFingerprintAuthFactorDriver final
   void PrepareForAuthenticate(
       const ObfuscatedUsername& username,
       PreparedAuthFactorToken::Consumer callback) override;
-  bool IsVerifySupported(AuthIntent auth_intent) const override;
+  bool IsLightAuthAllowed(AuthIntent auth_intent) const override;
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,
       const AuthInput& auth_input) const override;

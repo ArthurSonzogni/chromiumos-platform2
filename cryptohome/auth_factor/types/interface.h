@@ -72,11 +72,12 @@ class AuthFactorDriver {
       const ObfuscatedUsername& username,
       PreparedAuthFactorToken::Consumer callback) = 0;
 
-  // Indicates if the factor supports creating credential verifiers for a given
-  // intent. Note that this only indicates that the driver software support is
-  // present; this does not indicate that underlying firmware or hardware
-  // support (if required) is available.
-  virtual bool IsVerifySupported(AuthIntent auth_intent) const = 0;
+  // Specifies if the factor supports the given intent when doing either full or
+  // lightweight authentication. The full authentication is when you do a
+  // complete Authenticate sequence with the factor's underlying auth block
+  // while the lightweight authentication is done via a CredentialVerifier.
+  virtual bool IsFullAuthAllowed(AuthIntent auth_intent) const = 0;
+  virtual bool IsLightAuthAllowed(AuthIntent auth_intent) const = 0;
 
   // Creates a credential verifier for the specified type and input. Returns
   // null on failure or if verifiers are not supported by the driver.

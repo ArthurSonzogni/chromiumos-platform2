@@ -31,6 +31,7 @@ class PinAuthFactorDriver final
       public AfDriverWithBlockTypes<AuthBlockType::kPinWeaver>,
       public AfDriverWithMetadata<PinAuthFactorMetadata>,
       public AfDriverNoPrepare,
+      public AfDriverFullAuthDecrypt,
       public AfDriverNoCredentialVerifier {
  public:
   explicit PinAuthFactorDriver(Crypto* crypto) : crypto_(crypto) {}

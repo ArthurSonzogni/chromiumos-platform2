@@ -33,6 +33,7 @@ class FingerprintAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kFingerprint>,
       public AfDriverWithBlockTypes<AuthBlockType::kFingerprint>,
       public AfDriverWithMetadata<FingerprintAuthFactorMetadata>,
+      public AfDriverFullAuthDecrypt,
       public AfDriverNoCredentialVerifier,
       public AfDriverNoDelay {
  public:

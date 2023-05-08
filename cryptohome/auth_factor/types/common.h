@@ -121,11 +121,28 @@ class AfDriverNoPrepare : public virtual AuthFactorDriver {
                               PreparedAuthFactorToken::Consumer callback) final;
 };
 
+// Common implementations for full authentication support:
+//   AfDriverFullAuthDecrypt: Supports all
+//   AfDriverFullAuthVerify: Supports verify-only
+//   AfDriverFullAuthUnsupported: Does not support any
+class AfDriverFullAuthDecrypt : public virtual AuthFactorDriver {
+ private:
+  bool IsFullAuthAllowed(AuthIntent auth_intent) const final;
+};
+class AfDriverFullAuthVerify : public virtual AuthFactorDriver {
+ private:
+  bool IsFullAuthAllowed(AuthIntent auth_intent) const final;
+};
+class AfDriverFullAuthUnsupported : public virtual AuthFactorDriver {
+ private:
+  bool IsFullAuthAllowed(AuthIntent auth_intent) const final;
+};
+
 // Common implementation of the verifier functions for drivers which do not
 // support verifiers.
 class AfDriverNoCredentialVerifier : public virtual AuthFactorDriver {
  private:
-  bool IsVerifySupported(AuthIntent auth_intent) const final { return false; }
+  bool IsLightAuthAllowed(AuthIntent auth_intent) const final { return false; }
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,
       const AuthInput& auth_input) const final {

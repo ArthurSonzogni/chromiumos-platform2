@@ -54,7 +54,7 @@ void LegacyFingerprintAuthFactorDriver::PrepareForAuthenticate(
   fp_service_->Start(username, std::move(callback));
 }
 
-bool LegacyFingerprintAuthFactorDriver::IsVerifySupported(
+bool LegacyFingerprintAuthFactorDriver::IsLightAuthAllowed(
     AuthIntent auth_intent) const {
   return auth_intent == AuthIntent::kWebAuthn ||
          auth_intent == AuthIntent::kVerifyOnly;

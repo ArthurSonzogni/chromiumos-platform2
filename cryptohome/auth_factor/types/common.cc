@@ -10,6 +10,7 @@
 #include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/prepare_token.h"
+#include "cryptohome/auth_intent.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
@@ -43,6 +44,17 @@ void AfDriverNoPrepare::PrepareForAuthenticate(
       ErrorActionSet(
           {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+bool AfDriverFullAuthDecrypt::IsFullAuthAllowed(AuthIntent auth_intent) const {
+  return true;
+}
+bool AfDriverFullAuthVerify::IsFullAuthAllowed(AuthIntent auth_intent) const {
+  return auth_intent == AuthIntent::kVerifyOnly;
+}
+bool AfDriverFullAuthUnsupported::IsFullAuthAllowed(
+    AuthIntent auth_intent) const {
+  return false;
 }
 
 CryptohomeStatusOr<base::TimeDelta> AfDriverNoDelay::GetFactorDelay(

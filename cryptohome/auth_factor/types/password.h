@@ -51,6 +51,7 @@ class PasswordAuthFactorDriver final
       public AfDriverWithPasswordBlockTypes,
       public AfDriverWithMetadata<PasswordAuthFactorMetadata>,
       public AfDriverNoPrepare,
+      public AfDriverFullAuthDecrypt,
       public AfDriverNoDelay {
  public:
   PasswordAuthFactorDriver() = default;
@@ -59,7 +60,7 @@ class PasswordAuthFactorDriver final
   bool IsSupported(
       const std::set<AuthFactorStorageType>& configured_storage_types,
       const std::set<AuthFactorType>& configured_factors) const override;
-  bool IsVerifySupported(AuthIntent auth_intent) const override;
+  bool IsLightAuthAllowed(AuthIntent auth_intent) const override;
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,
       const AuthInput& auth_input) const override;

@@ -1379,6 +1379,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorPinGetFactorDelayMissingLabel = 2116,
   /* ./auth_factor/types/pin.cc */
   kLocAuthFactorPinGetFactorDelayReadFailed = 2117,
+  /* ./auth_session.cc */
+  kLocAuthSessionSingleLabelFullAuthNotSupportedAuthAuthFactor = 2118,
+  /* ./auth_session.cc */
+  kLocAuthSessionMultiLabelFullAuthNotSupportedAuthAuthFactor = 2119,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.

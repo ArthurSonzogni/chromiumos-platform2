@@ -29,6 +29,7 @@ class CryptohomeRecoveryAuthFactorDriver final
       public AfDriverWithBlockTypes<AuthBlockType::kCryptohomeRecovery>,
       public AfDriverWithMetadata<CryptohomeRecoveryAuthFactorMetadata>,
       public AfDriverNoPrepare,
+      public AfDriverFullAuthDecrypt,
       public AfDriverNoCredentialVerifier,
       public AfDriverNoDelay {
  public:

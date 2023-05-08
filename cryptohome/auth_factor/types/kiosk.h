@@ -28,6 +28,7 @@ class KioskAuthFactorDriver final
       public AfDriverWithPasswordBlockTypes,
       public AfDriverWithMetadata<KioskAuthFactorMetadata>,
       public AfDriverNoPrepare,
+      public AfDriverFullAuthDecrypt,
       public AfDriverNoCredentialVerifier,
       public AfDriverNoDelay {
  public:

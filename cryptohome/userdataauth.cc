@@ -3004,7 +3004,7 @@ void UserDataAuth::ListAuthFactors(
       }
       const AuthFactorDriver& factor_driver =
           auth_factor_driver_manager_->GetDriver(*type);
-      if (factor_driver.IsVerifySupported(AuthIntent::kVerifyOnly)) {
+      if (factor_driver.IsLightAuthAllowed(AuthIntent::kVerifyOnly)) {
         reply.add_supported_auth_factors(proto_type);
       }
     }

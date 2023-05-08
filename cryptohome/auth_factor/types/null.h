@@ -29,6 +29,7 @@ class NullAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kUnspecified>,
       public AfDriverWithBlockTypes<>,
       public AfDriverNoPrepare,
+      public AfDriverFullAuthUnsupported,
       public AfDriverNoCredentialVerifier,
       public AfDriverNoDelay {
  public:

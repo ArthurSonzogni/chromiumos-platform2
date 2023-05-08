@@ -1145,7 +1145,7 @@ void AuthSession::AuthenticateAuthFactor(
       }
       // A CredentialVerifier must exist if there is no label and the verifier
       // will be used for authentication.
-      if (!verifier || !factor_driver.IsVerifySupported(auth_intent_)) {
+      if (!verifier || !factor_driver.IsLightAuthAllowed(auth_intent_)) {
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionVerifierNotValidInAuthAuthFactor),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -1194,7 +1194,7 @@ void AuthSession::AuthenticateAuthFactor(
 
       // Attempt lightweight authentication via a credential verifier if
       // suitable.
-      if (verifier && factor_driver.IsVerifySupported(auth_intent_)) {
+      if (verifier && factor_driver.IsLightAuthAllowed(auth_intent_)) {
         CryptohomeStatusOr<AuthInput> auth_input =
             CreateAuthInputForAuthentication(auth_input_proto,
                                              verifier->auth_factor_metadata());
@@ -1210,6 +1210,18 @@ void AuthSession::AuthenticateAuthFactor(
             base::BindOnce(&AuthSession::CompleteVerifyOnlyAuthentication,
                            weak_factory_.GetWeakPtr(), std::move(on_done));
         verifier->Verify(std::move(*auth_input), std::move(verify_callback));
+        return;
+      }
+
+      // If we get here, we need to use full authentication. Make sure that it
+      // is supported for this type of auth factor and intent.
+      if (!factor_driver.IsFullAuthAllowed(auth_intent_)) {
+        std::move(on_done).Run(MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionSingleLabelFullAuthNotSupportedAuthAuthFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT));
         return;
       }
 
@@ -1289,6 +1301,18 @@ void AuthSession::AuthenticateAuthFactor(
         std::move(on_done).Run(MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthSessionMismatchedMultipLabelSizeAuthAuthFactor),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+        return;
+      }
+
+      // If we get here, we need to use full authentication. Make sure that it
+      // is supported for this type of auth factor and intent.
+      if (!factor_driver.IsFullAuthAllowed(auth_intent_)) {
+        std::move(on_done).Run(MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionMultiLabelFullAuthNotSupportedAuthAuthFactor),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_INVALID_ARGUMENT));

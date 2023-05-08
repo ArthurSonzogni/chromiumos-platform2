@@ -40,7 +40,7 @@ bool SmartCardAuthFactorDriver::IsSupported(
   return ChallengeCredentialAuthBlock::IsSupported(*crypto_).ok();
 }
 
-bool SmartCardAuthFactorDriver::IsVerifySupported(
+bool SmartCardAuthFactorDriver::IsLightAuthAllowed(
     AuthIntent auth_intent) const {
   return auth_intent == AuthIntent::kVerifyOnly;
 }
