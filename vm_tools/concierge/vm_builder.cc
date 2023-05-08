@@ -461,6 +461,7 @@ base::StringPairs VmBuilder::BuildRunParams() const {
     }
 
     args.emplace_back("--s2idle", "");
+    args.emplace_back("--ac-adapter", "");
   }
 
   if (enable_software_tpm_)
