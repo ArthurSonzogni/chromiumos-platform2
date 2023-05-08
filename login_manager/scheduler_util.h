@@ -16,18 +16,24 @@ class FilePath;
 
 namespace login_manager {
 
-// Implementation func to calculate hybrid and get small core cpu id list based
-// on the attribute (either cpu_capacity or cpuinfo_max_freq). If there are more
-// than two capacities or two freqs, we consider the cpus with two smallest
-// capacities / freqs as small cores.
+// Implementation func to retrieve a small core cpu id list based on the
+// provided attribute. If there are more than two unique attribute values read
+// from the cpu set, the cpus with two smallest values are returned.
+// For example: [cpu0 : 166, cpu1: 186, cpu2: 186, cpu3: 171] --> cpu0, cpu3
 // Returns non-empty cpu id list on success. Returns an empty list on any error
 // or non-hybrid cpu arch.
 std::vector<std::string> GetSmallCoreCpuIdsFromAttr(
     const base::FilePath& cpu_bus_dir, base::StringPiece attribute);
 
-// Calculates the number of cpu_capacity or cpu_freq and gets small core cpu id
-// list if the cpu arch is hybrid. It calls the impl func
-// GetSmallCoreCpuIdsFromAttr to do calculations.
+// Detects whether or not the system is running on a hybrid cpu architecture by
+// reading various cpu attributes in sysfs. If any of the attributes differ
+// between cpus, the lower performing cpus are returned.
+// sysfs attributes are probed in the following order:
+// - cpu_capacity
+// - cpuinfo_max_freq
+// - highest_perf (CPPC)
+// It calls the impl func GetSmallCoreCpuIdsFromAttr to perform the
+// calculations.
 // Returns non-empty cpu id list on success. Returns an empty list on any error
 // or non-hybrid cpu arch.
 std::vector<std::string> CalculateSmallCoreCpusIfHybrid(

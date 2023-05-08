@@ -20,8 +20,8 @@ namespace {
 constexpr size_t kCpuPrefixSize = 3;
 
 constexpr char kCpuBusDir[] = "/sys/bus/cpu/devices";
-constexpr char kCpuCapFile[] = "cpu_capacity";
-constexpr char kCpuMaxFreqFile[] = "cpufreq/cpuinfo_max_freq";
+constexpr const char* kPerfAttributeFiles[] = {
+    "cpu_capacity", "cpufreq/cpuinfo_max_freq", "acpi_cppc/highest_perf"};
 constexpr char kCpusetNonUrgentDir[] =
     "/sys/fs/cgroup/cpuset/chrome/non-urgent";
 
@@ -35,8 +35,8 @@ std::vector<std::string> GetSmallCoreCpuIdsFromAttr(
   if (!base::PathExists(cpu0_attr_file))
     return {};
 
-  // Gets attribute (cpu_capacity or max_freq) values through traversing the
-  // attribute of each cpu, and stores them into a map.
+  // Gets attribute values through traversing the attribute of each cpu, and
+  // stores them into a map.
   base::FileEnumerator enumerator(cpu_bus_dir, false /*recursive*/,
                                   base::FileEnumerator::DIRECTORIES);
   std::map<int, std::vector<std::string>> attr_to_cpu_ids_map;
@@ -82,21 +82,15 @@ std::vector<std::string> GetSmallCoreCpuIdsFromAttr(
 
 std::vector<std::string> CalculateSmallCoreCpusIfHybrid(
     const base::FilePath& cpu_bus_dir) {
-  // Gets small cpu ids if cpu arch is hybrid through traversing cpu_capacity of
-  // each cpu.
-  if (auto small_cpu_ids = GetSmallCoreCpuIdsFromAttr(cpu_bus_dir, kCpuCapFile);
-      !small_cpu_ids.empty()) {
-    return small_cpu_ids;
+  // sysfs attributes are probed in order they are appear in
+  // #kPerfAttributeFiles
+  for (const auto& perf_attr : kPerfAttributeFiles) {
+    if (std::vector<std::string> small_cpu_ids =
+            GetSmallCoreCpuIdsFromAttr(cpu_bus_dir, perf_attr);
+        !small_cpu_ids.empty()) {
+      return small_cpu_ids;
+    }
   }
-
-  // Gets small cpu ids if cpu arch is hybrid through traversing
-  // cpuinfo_max_freq of each cpu.
-  if (auto small_cpu_ids =
-          GetSmallCoreCpuIdsFromAttr(cpu_bus_dir, kCpuMaxFreqFile);
-      !small_cpu_ids.empty()) {
-    return small_cpu_ids;
-  }
-
   return {};
 }
 
