@@ -23,6 +23,7 @@ PACKAGES=(
   lvm2
   network-manager
   pciutils
+  tpm2-tools
   usbutils
   vim
   sudo
@@ -70,6 +71,11 @@ EOF
   install -D -m 0644 -t /usr/src/virtio-wayland-0/include/linux \
     "${DATA_ROOT}/usr/src/virtio-wayland-0/include/linux/virtio_wl.h" \
     "${DATA_ROOT}/usr/src/virtio-wayland-0/include/linux/virtwl.h"
+  install -D -m 0644 -t /usr/src/virtio-tpm-0 \
+    "${DATA_ROOT}/usr/src/virtio-tpm-0/dkms.conf" \
+    "${DATA_ROOT}/usr/src/virtio-tpm-0/Makefile" \
+    "${DATA_ROOT}/usr/src/virtio-tpm-0/tpm.h" \
+    "${DATA_ROOT}/usr/src/virtio-tpm-0/tpm_virtio.c"
   install -D -m 0644 -t /var/lib/dkms "${DATA_ROOT}/var/lib/dkms/mok.pub"
   install -D -m 0600 -t /var/lib/dkms "${DATA_ROOT}/var/lib/dkms/mok.key"
 
@@ -80,6 +86,7 @@ EOF
   kernel="$(dpkg-query -Wf '${Package}\n' 'linux-image-*-amd64' | tail -n 1 | \
     sed -E -e 's/linux-image-//')"
   dkms install virtio-wayland/0 -k "${kernel}"
+  dkms install virtio-tpm/0 -k "${kernel}"
 
   # chromeos guest tools repo
   curl https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > \
@@ -96,7 +103,7 @@ EOF
   apt-get -y install "${CROS_PACKAGES[@]}"
 
   # test user for debugging
-  useradd -m -s /bin/bash -G sudo chronos
+  useradd -m -s /bin/bash -G sudo,tss chronos
   chpasswd <<< chronos:test0000
   mkdir -p /var/lib/systemd/linger
   touch /var/lib/systemd/linger/chronos

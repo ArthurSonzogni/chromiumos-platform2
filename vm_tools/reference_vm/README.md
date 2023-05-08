@@ -36,8 +36,8 @@ virt-fw-vars --input /usr/share/OVMF/OVMF_VARS_4M.fd \
 
 ### Secure Boot
 
-The built image and firmware support UEFI Secure Boot. To load the out-of-tree
-`virtio_wl` module, a signing key is included in the built image at
+The built image and firmware support UEFI Secure Boot. To load out-of-tree modules
+(currently `virtio_wl` and `tpm_virtio`), a signing key is included in the built image at
 `/var/lib/dkms/mok.key`. The variables image generated using the above command
 includes the public key in the MOK.
 
