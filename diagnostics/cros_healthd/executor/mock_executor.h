@@ -135,6 +135,15 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               GetFioTestDirectoryFreeSpace,
               (GetFioTestDirectoryFreeSpaceCallback),
               (override));
+  MOCK_METHOD(void,
+              GetConnectedHdmiConnectors,
+              (GetConnectedHdmiConnectorsCallback),
+              (override));
+  MOCK_METHOD(void,
+              GetPrivacyScreenInfo,
+              (GetPrivacyScreenInfoCallback),
+              (override));
+  MOCK_METHOD(void, FetchDisplayInfo, (FetchDisplayInfoCallback), (override));
 };
 
 }  // namespace diagnostics

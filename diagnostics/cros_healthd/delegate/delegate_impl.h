@@ -51,6 +51,10 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void GetAmountOfFreeDiskSpace(
       const std::string& path,
       GetAmountOfFreeDiskSpaceCallback callback) override;
+  void GetConnectedHdmiConnectors(
+      GetConnectedHdmiConnectorsCallback callback) override;
+  void GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) override;
+  void FetchDisplayInfo(FetchDisplayInfoCallback callback) override;
 };
 
 }  // namespace diagnostics

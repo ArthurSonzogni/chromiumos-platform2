@@ -349,4 +349,30 @@ interface Executor {
   // The response:
   // * |free_space_byte| - Free disk space of fio test directory in bytes.
   GetFioTestDirectoryFreeSpace() => (uint64? free_space_byte);
+
+  // Returns a map of connector_ids to display info that records the
+  // active HDMI connectors.
+  //
+  // The response:
+  // * |connectors| - Maps the connector_id to its corresponding display info.
+  // * |err| - Error message if existed.
+  GetConnectedHdmiConnectors()
+      => (map<uint32, ExternalDisplayInfo> connectors, string? err);
+
+  // Returns whether a privacy screen is supported and whether is enabled on the
+  // embedded display.
+  //
+  // The response:
+  // * |privacy_screen_supported| - Whether privacy screen is supported on the
+  //                                device.
+  // * |privacy_screen_enabled| - Whether privacy screen is on.
+  GetPrivacyScreenInfo() => (bool privacy_screen_supported,
+                             bool privacy_screen_enabled,
+                             string? err);
+
+  // Fetch display info.
+  //
+  // The response:
+  // * |result| - Struct containing display info.
+  FetchDisplayInfo() => (DisplayResult result);
 };

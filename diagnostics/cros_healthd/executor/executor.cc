@@ -38,6 +38,7 @@
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <re2/re2.h>
 
+#include "base/notreached.h"
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/executor/utils/delegate_process.h"
@@ -848,6 +849,19 @@ void Executor::RunLongRunningDelegate(
     mojo::PendingReceiver<mojom::ProcessControl> receiver) {
   process_control->StartAndWait();
   process_control_set_.Add(std::move(process_control), std::move(receiver));
+}
+
+void Executor::GetConnectedHdmiConnectors(
+    GetConnectedHdmiConnectorsCallback callback) {
+  NOTIMPLEMENTED();
+}
+
+void Executor::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
+  NOTIMPLEMENTED();
+}
+
+void Executor::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
+  NOTIMPLEMENTED();
 }
 
 }  // namespace diagnostics

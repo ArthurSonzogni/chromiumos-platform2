@@ -27,6 +27,7 @@
 #include <libec/mkbp_event.h>
 #include <libec/motion_sense_command_lid_angle.h>
 
+#include "base/notreached.h"
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 #include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
@@ -423,6 +424,19 @@ void DelegateImpl::GetAmountOfFreeDiskSpace(
     return;
   }
   std::move(callback).Run(free_space);
+}
+
+void DelegateImpl::GetConnectedHdmiConnectors(
+    GetConnectedHdmiConnectorsCallback callback) {
+  NOTIMPLEMENTED();
+}
+
+void DelegateImpl::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
+  NOTIMPLEMENTED();
+}
+
+void DelegateImpl::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
+  NOTIMPLEMENTED();
 }
 
 }  // namespace diagnostics

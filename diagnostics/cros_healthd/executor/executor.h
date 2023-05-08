@@ -116,6 +116,10 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   void RemoveFioTestFile(RemoveFioTestFileCallback callback) override;
   void GetFioTestDirectoryFreeSpace(
       GetFioTestDirectoryFreeSpaceCallback callback) override;
+  void GetConnectedHdmiConnectors(
+      GetConnectedHdmiConnectorsCallback callback) override;
+  void GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) override;
+  void FetchDisplayInfo(FetchDisplayInfoCallback callback) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process
