@@ -19,7 +19,6 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "patchpanel/guest_type.h"
 #include "patchpanel/ipc.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/subnet.h"
@@ -43,10 +42,26 @@ namespace patchpanel {
 // have currently no Device representation.
 class Device {
  public:
+  enum class Type {
+    // ARC container or ARCVM legacy management interface used for adb
+    // connections and VPN forwarding.
+    kARC0,
+    // Virtual ethernet interface and bridge setup used by ARC container.
+    kARCContainer,
+    // TAP device and bridge setup used by ARCVM.
+    kARCVM,
+    // TAP device used by concierge for the Termina VM and its user LXD
+    // containers.
+    kTerminaVM,
+    // TAP device used by concierge for the Parallel VM.
+    kParallelVM,
+  };
+
   enum class ChangeEvent {
     kAdded,
     kRemoved,
   };
+
   using ChangeEventHandler = base::RepeatingCallback<void(
       const Device&, ChangeEvent, GuestMessage::GuestType)>;
 
@@ -114,7 +129,7 @@ class Device {
   // (e.g. arc0). |host_ifname| identifies the name of the virtual (bridge)
   // interface. |guest_ifname|, if specified, identifies the name of the
   // interface used inside the guest.
-  Device(GuestType type,
+  Device(Type type,
          const std::string& phys_ifname,
          const std::string& host_ifname,
          const std::string& guest_ifname,
@@ -124,7 +139,7 @@ class Device {
 
   ~Device() = default;
 
-  GuestType type() const { return type_; }
+  Type type() const { return type_; }
   const std::string& phys_ifname() const { return phys_ifname_; }
   const std::string& host_ifname() const { return host_ifname_; }
   const std::string& guest_ifname() const { return guest_ifname_; }
@@ -133,7 +148,7 @@ class Device {
 
  private:
   // The type of virtual device setup and guest.
-  GuestType type_;
+  Type type_;
   // The physical interface managed by shill that this virtual device is
   // attached to. Only defined for ARC and ARCVM. Otherwise:
   //   - for ARC0, |phys_ifname_| is set to a fixed constant ("arc0"),
@@ -159,6 +174,7 @@ class Device {
 };
 
 std::ostream& operator<<(std::ostream& stream, const Device& device);
+std::ostream& operator<<(std::ostream& stream, const Device::Type type);
 
 }  // namespace patchpanel
 

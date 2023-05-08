@@ -328,7 +328,7 @@ TEST_F(ArcServiceTest, ContainerImpl_GetDevices) {
   EXPECT_NE(it1, devs.end());
   EXPECT_EQ((*it1)->host_ifname(), "arc_eth0");
   EXPECT_EQ((*it1)->guest_ifname(), "eth0");
-  EXPECT_EQ((*it1)->type(), GuestType::kArcNet);
+  EXPECT_EQ((*it1)->type(), Device::Type::kARCContainer);
 
   const auto it2 = std::find_if(
       devs.begin(), devs.end(),
@@ -336,7 +336,7 @@ TEST_F(ArcServiceTest, ContainerImpl_GetDevices) {
   EXPECT_NE(it2, devs.end());
   EXPECT_EQ((*it2)->host_ifname(), "arc_wlan0");
   EXPECT_EQ((*it2)->guest_ifname(), "wlan0");
-  EXPECT_EQ((*it2)->type(), GuestType::kArcNet);
+  EXPECT_EQ((*it2)->type(), Device::Type::kARCContainer);
 }
 
 TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
@@ -922,7 +922,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   EXPECT_NE(it1, devs.end());
   EXPECT_EQ((*it1)->host_ifname(), "arc_eth0");
   EXPECT_EQ((*it1)->guest_ifname(), "eth1");
-  EXPECT_EQ((*it1)->type(), GuestType::kArcNet);
+  EXPECT_EQ((*it1)->type(), Device::Type::kARCVM);
 
   const auto it2 = std::find_if(
       devs.begin(), devs.end(),
@@ -930,7 +930,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   EXPECT_NE(it2, devs.end());
   EXPECT_EQ((*it2)->host_ifname(), "arc_wlan0");
   EXPECT_EQ((*it2)->guest_ifname(), "eth3");
-  EXPECT_EQ((*it2)->type(), GuestType::kArcNet);
+  EXPECT_EQ((*it2)->type(), Device::Type::kARCVM);
 
   const auto it3 = std::find_if(
       devs.begin(), devs.end(),
@@ -938,7 +938,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   EXPECT_NE(it3, devs.end());
   EXPECT_EQ((*it3)->host_ifname(), "arc_eth1");
   EXPECT_EQ((*it3)->guest_ifname(), "eth2");
-  EXPECT_EQ((*it3)->type(), GuestType::kArcNet);
+  EXPECT_EQ((*it3)->type(), Device::Type::kARCVM);
 }
 
 TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {

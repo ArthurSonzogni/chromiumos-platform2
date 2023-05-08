@@ -30,7 +30,7 @@ Device::Config::Config(const MacAddress& mac_addr,
       guest_ipv4_addr_(std::move(guest_ipv4_addr)),
       lxd_ipv4_subnet_(std::move(lxd_ipv4_subnet)) {}
 
-Device::Device(GuestType type,
+Device::Device(Device::Type type,
                const std::string& phys_ifname,
                const std::string& host_ifname,
                const std::string& guest_ifname,
@@ -71,6 +71,21 @@ std::ostream& operator<<(std::ostream& stream, const Device& device) {
          << MacAddressToString(device.config().mac_addr())
          << ", tap_ifname: " << device.config().tap_ifname() << '}';
   return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const Device::Type device_type) {
+  switch (device_type) {
+    case Device::Type::kARC0:
+      return stream << "ARC0";
+    case Device::Type::kARCContainer:
+      return stream << "ARC";
+    case Device::Type::kARCVM:
+      return stream << "ARCVM";
+    case Device::Type::kTerminaVM:
+      return stream << "Termina";
+    case Device::Type::kParallelVM:
+      return stream << "Parallel";
+  }
 }
 
 }  // namespace patchpanel

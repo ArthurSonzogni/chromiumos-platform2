@@ -22,6 +22,7 @@
 #pragma GCC diagnostic pop
 
 #include "patchpanel/adb_proxy.h"
+#include "patchpanel/device.h"
 #include "patchpanel/guest_type.h"
 #include "patchpanel/ipc.h"
 
@@ -110,9 +111,9 @@ void CrostiniService::Stop(uint64_t vm_id) {
     return;
   }
 
-  auto vm_type = VMTypeFromGuestType(it->second->type());
+  auto vm_type = VMTypeFromDeviceType(it->second->type());
   if (!vm_type) {
-    LOG(ERROR) << "Unexpected GuestType " << it->second->type()
+    LOG(ERROR) << "Unexpected Device type " << it->second->type()
                << " for TAP Device of VM " << vm_id;
     return;
   }
@@ -206,7 +207,8 @@ std::unique_ptr<Device> CrostiniService::AddTAP(CrostiniService::VMType vm_type,
   // physical network and instead follows the current default logical network,
   // therefore |phys_ifname| is set to a placeholder value. |guest_ifname| is
   // not used inside the crosvm guest and is left empty.
-  return std::make_unique<Device>(guest_type, tap, tap, "", std::move(config));
+  return std::make_unique<Device>(VirtualDeviceTypeFromVMType(vm_type), tap,
+                                  tap, "", std::move(config));
 }
 
 void CrostiniService::StartAdbPortForwarding(const std::string& ifname) {
@@ -276,12 +278,12 @@ void CrostiniService::CheckAdbSideloadingStatus() {
 }
 
 // static
-std::optional<CrostiniService::VMType> CrostiniService::VMTypeFromGuestType(
-    GuestType guest_type) {
-  switch (guest_type) {
-    case GuestType::kTerminaVM:
+std::optional<CrostiniService::VMType> CrostiniService::VMTypeFromDeviceType(
+    Device::Type device_type) {
+  switch (device_type) {
+    case Device::Type::kTerminaVM:
       return VMType::kTermina;
-    case GuestType::kPluginVM:
+    case Device::Type::kParallelVM:
       return VMType::kParallel;
     default:
       return std::nullopt;
@@ -331,6 +333,17 @@ GuestType CrostiniService::GuestTypeFromVMType(
       return GuestType::kTerminaVM;
     case VMType::kParallel:
       return GuestType::kPluginVM;
+  }
+}
+
+// static
+Device::Type CrostiniService::VirtualDeviceTypeFromVMType(
+    CrostiniService::VMType vm_type) {
+  switch (vm_type) {
+    case VMType::kTermina:
+      return Device::Type::kTerminaVM;
+    case VMType::kParallel:
+      return Device::Type::kParallelVM;
   }
 }
 

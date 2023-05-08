@@ -37,7 +37,7 @@ class CrostiniService {
     kParallel,
   };
 
-  static std::optional<VMType> VMTypeFromGuestType(GuestType guest_type);
+  static std::optional<VMType> VMTypeFromDeviceType(Device::Type device_type);
   static std::optional<VMType> VMTypeFromProtoGuestType(
       NetworkDevice::GuestType guest_type);
   static TrafficSource TrafficSourceFromVMType(VMType vm_type);
@@ -45,8 +45,11 @@ class CrostiniService {
   // is needed for the Device::ChangeEventHandler callback.
   static GuestMessage::GuestType GuestMessageTypeFromVMType(VMType vm_type);
   // Converts VMType to an internal GuestType enum value. This type is needed
-  // for allocating static IPv4 subnets and for the internal Device class.
+  // for allocating static IPv4 subnets.
   static GuestType GuestTypeFromVMType(VMType vm_type);
+  // Converts VMType to an internal Device::Type enum value. This type is needed
+  // for the internal Device class.
+  static Device::Type VirtualDeviceTypeFromVMType(VMType vm_type);
 
   // All pointers are required and must not be null, and are owned by the
   // caller.

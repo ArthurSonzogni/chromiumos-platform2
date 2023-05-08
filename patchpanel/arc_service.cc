@@ -181,7 +181,7 @@ std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
   // used to forward host traffic into an Android VPN. Therefore, |phys_ifname|
   // is not meaningful for the "arc0" virtual device and is set to a placeholder
   // value.
-  return std::make_unique<Device>(GuestType::kArc0, kArcIfname, kArcBridge,
+  return std::make_unique<Device>(Device::Type::kARC0, kArcIfname, kArcBridge,
                                   kArcIfname, std::move(config));
 }
 }  // namespace
@@ -490,9 +490,12 @@ void ArcService::AddDevice(const std::string& ifname,
     }
   }
 
-  auto device = std::make_unique<Device>(GuestType::kArcNet, ifname,
-                                         ArcBridgeName(ifname), guest_ifname,
-                                         std::move(config));
+  auto device_type = guest_ == GuestMessage::ARC_VM
+                         ? Device::Type::kARCVM
+                         : Device::Type::kARCContainer;
+  auto device =
+      std::make_unique<Device>(device_type, ifname, ArcBridgeName(ifname),
+                               guest_ifname, std::move(config));
   LOG(INFO) << "Starting ARC Device " << *device;
 
   // Create the bridge.

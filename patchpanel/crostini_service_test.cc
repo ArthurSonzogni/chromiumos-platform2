@@ -224,11 +224,11 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
     ASSERT_EQ(dev->host_ifname(), dev->phys_ifname());
     ASSERT_EQ("", dev->guest_ifname());
     if (dev->host_ifname() == "vmtap0") {
-      ASSERT_EQ(GuestType::kTerminaVM, dev->type());
+      ASSERT_EQ(Device::Type::kTerminaVM, dev->type());
     } else if (dev->host_ifname() == "vmtap1") {
-      ASSERT_EQ(GuestType::kPluginVM, dev->type());
+      ASSERT_EQ(Device::Type::kParallelVM, dev->type());
     } else if (dev->host_ifname() == "vmtap2") {
-      ASSERT_EQ(GuestType::kTerminaVM, dev->type());
+      ASSERT_EQ(Device::Type::kTerminaVM, dev->type());
     } else {
       FAIL() << "Unexpected guest Device " << dev->host_ifname();
     }
@@ -263,17 +263,15 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
 
 TEST_F(CrostiniServiceTest, VMTypeConversions) {
   EXPECT_EQ(CrostiniService::VMType::kTermina,
-            CrostiniService::VMTypeFromGuestType(GuestType::kTerminaVM));
+            CrostiniService::VMTypeFromDeviceType(Device::Type::kTerminaVM));
   EXPECT_EQ(CrostiniService::VMType::kParallel,
-            CrostiniService::VMTypeFromGuestType(GuestType::kPluginVM));
+            CrostiniService::VMTypeFromDeviceType(Device::Type::kParallelVM));
   EXPECT_EQ(std::nullopt,
-            CrostiniService::VMTypeFromGuestType(GuestType::kArc0));
+            CrostiniService::VMTypeFromDeviceType(Device::Type::kARC0));
   EXPECT_EQ(std::nullopt,
-            CrostiniService::VMTypeFromGuestType(GuestType::kArcNet));
+            CrostiniService::VMTypeFromDeviceType(Device::Type::kARCContainer));
   EXPECT_EQ(std::nullopt,
-            CrostiniService::VMTypeFromGuestType(GuestType::kLXDContainer));
-  EXPECT_EQ(std::nullopt,
-            CrostiniService::VMTypeFromGuestType(GuestType::kNetns));
+            CrostiniService::VMTypeFromDeviceType(Device::Type::kARCVM));
 
   EXPECT_EQ(
       CrostiniService::VMType::kTermina,
@@ -304,6 +302,13 @@ TEST_F(CrostiniServiceTest, VMTypeConversions) {
                                        CrostiniService::VMType::kTermina));
   EXPECT_EQ(GuestType::kPluginVM, CrostiniService::GuestTypeFromVMType(
                                       CrostiniService::VMType::kParallel));
+
+  EXPECT_EQ(Device::Type::kTerminaVM,
+            CrostiniService::VirtualDeviceTypeFromVMType(
+                CrostiniService::VMType::kTermina));
+  EXPECT_EQ(Device::Type::kParallelVM,
+            CrostiniService::VirtualDeviceTypeFromVMType(
+                CrostiniService::VMType::kParallel));
 }
 
 }  // namespace
