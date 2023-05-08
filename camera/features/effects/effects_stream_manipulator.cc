@@ -273,7 +273,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   void OnOptionsUpdated(const base::Value::Dict& json_values);
 
   void SetEffect(EffectsConfig new_config);
-  bool SetupGlThread();
+  bool SetupGlThread(base::FilePath config_file_path);
   void ShutdownOnGlThread();
   RenderResult RenderEffect(Camera3StreamBuffer& result_buffer,
                             int64_t timestamp);
@@ -293,7 +293,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   CopyResult CopyCameraBuffer(buffer_handle_t input_buffer,
                               buffer_handle_t output_buffer);
 
-  ReloadableConfigFile config_;
+  std::unique_ptr<ReloadableConfigFile> config_;
   RuntimeOptions* runtime_options_;
   StreamManipulator::Callbacks callbacks_;
 
@@ -335,7 +335,6 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
       GUARDED_BY_CONTEXT(gl_thread_checker_);
 
   CameraThread gl_thread_;
-  scoped_refptr<base::SingleThreadTaskRunner> process_thread_;
 
   void (*set_effect_callback_)(bool);
 
@@ -362,17 +361,12 @@ EffectsStreamManipulatorImpl::EffectsStreamManipulatorImpl(
     RuntimeOptions* runtime_options,
     std::unique_ptr<StillCaptureProcessor> still_capture_processor,
     void (*callback)(bool))
-    : config_(ReloadableConfigFile::Options{
-          config_file_path, base::FilePath(kOverrideEffectsConfigFile)}),
-      runtime_options_(runtime_options),
+    : runtime_options_(runtime_options),
       still_capture_processor_(std::move(still_capture_processor)),
       gl_thread_("EffectsGlThread"),
       set_effect_callback_(callback) {
   DETACH_FROM_THREAD(gl_thread_checker_);
 
-  if (!config_.IsValid()) {
-    LOGF(ERROR) << "Cannot load valid config. Turning off feature by default";
-  }
   CHECK(gl_thread_.Start());
 
   // TODO(b/260656766): find a better task runner than the one from gl_thread
@@ -387,7 +381,7 @@ EffectsStreamManipulatorImpl::EffectsStreamManipulatorImpl(
   gl_thread_.PostTaskSync(
       FROM_HERE,
       base::BindOnce(&EffectsStreamManipulatorImpl::SetupGlThread,
-                     base::Unretained(this)),
+                     base::Unretained(this), std::move(config_file_path)),
       &ret);
   if (!ret) {
     LOGF(ERROR) << "Failed to start GL thread. Turning off feature by default";
@@ -412,6 +406,7 @@ EffectsStreamManipulatorImpl::~EffectsStreamManipulatorImpl() {
 
 void EffectsStreamManipulatorImpl::ShutdownOnGlThread() {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
+  config_.reset();
   marker_file_timer_.reset();
   if (pipeline_) {
     pipeline_->Wait();
@@ -753,13 +748,6 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
   if (!pipeline_)
     return true;
 
-  if (!process_thread_) {
-    process_thread_ = base::SingleThreadTaskRunner::GetCurrentDefault();
-    config_.SetCallback(
-        base::BindRepeating(&EffectsStreamManipulatorImpl::OnOptionsUpdated,
-                            base::Unretained(this)));
-  }
-
   auto new_config = ConvertMojoConfig(runtime_options_->GetEffectsConfig());
   if (active_runtime_effects_config_ != new_config) {
     active_runtime_effects_config_ = new_config;
@@ -999,6 +987,7 @@ void EffectsStreamManipulatorImpl::ReturnStillCaptureResult(
 
 void EffectsStreamManipulatorImpl::OnOptionsUpdated(
     const base::Value::Dict& json_values) {
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   if (!pipeline_) {
     LOGF(WARNING) << "OnOptionsUpdated called, but pipeline not ready.";
     return;
@@ -1098,9 +1087,7 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
     LOGF(INFO) << "Segmentation Model Type: " << segmentation_model_type;
   }
 
-  process_thread_->PostTask(
-      FROM_HERE, base::BindOnce(&EffectsStreamManipulatorImpl::SetEffect,
-                                base::Unretained(this), std::move(new_config)));
+  SetEffect(std::move(new_config));
 }
 
 void EffectsStreamManipulatorImpl::SetEffect(EffectsConfig new_config) {
@@ -1117,8 +1104,22 @@ void EffectsStreamManipulatorImpl::SetEffect(EffectsConfig new_config) {
   }
 }
 
-bool EffectsStreamManipulatorImpl::SetupGlThread() {
+bool EffectsStreamManipulatorImpl::SetupGlThread(
+    base::FilePath config_file_path) {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
+
+  config_ =
+      std::make_unique<ReloadableConfigFile>(ReloadableConfigFile::Options{
+          .default_config_file_path = std::move(config_file_path),
+          .override_config_file_path =
+              base::FilePath(kOverrideEffectsConfigFile),
+      });
+  if (!config_->IsValid()) {
+    LOGF(ERROR) << "Cannot load valid config. Turning off feature by default";
+  }
+  config_->SetCallback(base::BindRepeating(
+      &EffectsStreamManipulatorImpl::OnOptionsUpdated, base::Unretained(this)));
+
   if (!egl_context_) {
     egl_context_ = EglContext::GetSurfacelessContext();
     if (!egl_context_->IsValid()) {
