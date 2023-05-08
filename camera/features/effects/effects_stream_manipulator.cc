@@ -801,7 +801,10 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
       LOGF(ERROR) << "EffectsStreamManipulator received failed buffer: "
                   << result.frame_number();
       metrics_.RecordError(CameraEffectError::kReceivedFailedBuffer);
-      return false;
+      // Even though the buffer status is not OK, we still need to send a
+      // response to the client to let them know their request was handled.
+      result.AppendOutputBuffer(std::move(result_buffer));
+      continue;
     }
 
     // Check existing output buffers for one with the same size so we can just
