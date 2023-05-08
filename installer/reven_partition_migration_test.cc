@@ -384,6 +384,7 @@ TEST_F(PartitionMigrationTest, RunSlotBMigrationError) {
 // only run the migration on install.
 TEST_F(PartitionMigrationTest, NotRunningFromInstaller) {
   SetIsInstall(false);
+  ExpectMetric(PartitionMigrationResult::kMigrationNotAllowed);
   EXPECT_TRUE(RunRevenPartitionMigration(cgpt_manager_, metrics_, env_));
 }
 

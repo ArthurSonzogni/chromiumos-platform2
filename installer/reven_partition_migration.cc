@@ -294,6 +294,7 @@ bool RunRevenPartitionMigration(CgptManagerInterface& cgpt_manager,
 
   if (!is_migration_allowed) {
     LOG(INFO) << "Migration not allowed";
+    SendResultMetric(PartitionMigrationResult::kMigrationNotAllowed, metrics);
     return true;
   }
 

@@ -27,8 +27,9 @@ enum class [[nodiscard]] PartitionMigrationResult {
   kDiskReadError = 7,
   kDiskWriteError = 8,
   kRootPartitionUnexpectedSize = 9,
+  kMigrationNotAllowed = 10,
 
-  kMax = kRootPartitionUnexpectedSize,
+  kMax = kMigrationNotAllowed,
 };
 
 // Plan for migrating one kernel partition (either slot A or slot B).
