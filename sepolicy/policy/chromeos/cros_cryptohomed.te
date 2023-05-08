@@ -25,6 +25,8 @@ allow cros_cryptohomed {
   cros_home_user
   cros_home_shadow_uid_user
 }:dir mounton;
+#Access rule for devices without ARC (e.g. Flex)
+allow cros_cryptohomed cros_downloads_file:dir relabelfrom;
 
 allow cros_cryptohomed {
   cros_home_shadow_uid
