@@ -1149,14 +1149,17 @@ void Cellular::NotifyCellularConnectionResult(const Error& error,
             << error.message();
     return;
   }
+  metrics()->NotifyCellularConnectionResult(error.type());
+  last_cellular_connection_results_[iccid] = error.type();
+  if (error.IsSuccess()) {
+    return;
+  }
   // used by anomaly detector for cellular subsystem crashes
   LOG(ERROR) << LoggingTag() << ": " << GetFriendlyModelId(model_id_)
              << " could not connect (trigger="
              << (is_user_triggered ? "dbus" : "auto")
              << ") to mccmnc=" << mobile_operator_info_->mccmnc() << ": "
              << error.message();
-  metrics()->NotifyCellularConnectionResult(error.type());
-  last_cellular_connection_results_[iccid] = error.type();
 }
 
 void Cellular::NotifyDetailedCellularConnectionResult(
