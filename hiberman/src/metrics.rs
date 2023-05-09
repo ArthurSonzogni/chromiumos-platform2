@@ -209,6 +209,10 @@ pub fn log_resume_failure() -> Result<()> {
 }
 
 pub fn read_and_send_metrics() {
+    // Flush any metrics in the buffer to the file before sending the metrics
+    let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+    let _ = metrics_logger.flush();
+
     let res = File::open(METRICS_FILE_PATH.as_path());
     if let Err(e) = res {
         warn!(
