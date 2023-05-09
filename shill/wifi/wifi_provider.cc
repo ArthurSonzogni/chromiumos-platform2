@@ -766,7 +766,7 @@ void WiFiProvider::AddCredentials(
     const PasspointCredentialsRefPtr& credentials) {
   credentials_by_id_[credentials->id()] = credentials;
 
-  LOG(INFO) << __func__ << ": " << credentials;
+  LOG(INFO) << __func__ << ": " << *credentials;
 
   // Notify the observers a set of credentials was added.
   // It is done before pushing it to the wifi device as at this point, the set
@@ -892,7 +892,7 @@ bool WiFiProvider::RemoveCredentials(
     const PasspointCredentialsRefPtr& credentials) {
   credentials_by_id_.erase(credentials->id());
 
-  LOG(INFO) << __func__ << ": " << credentials;
+  LOG(INFO) << __func__ << ": " << *credentials;
 
   // Notify the observers a set of credentials was removed.
   for (PasspointCredentialsObserver& observer : credentials_observers_) {
@@ -939,7 +939,7 @@ void WiFiProvider::OnPasspointCredentialsMatches(
   // Keep the best match for each service.
   std::map<WiFiService*, PasspointMatch> matches_by_service;
   for (const auto& m : matches) {
-    LOG(INFO) << __func__ << " match between " << m.credentials << " and "
+    LOG(INFO) << __func__ << " match between " << *m.credentials << " and "
               << m.endpoint->bssid_string();
 
     WiFiServiceRefPtr service = FindServiceForEndpoint(m.endpoint);
@@ -1022,7 +1022,7 @@ void WiFiProvider::OnPasspointCredentialsMatches(
     // Ensure the service is updated with the credentials and saved in the same
     // profile as the credentials set.
     LOG(INFO) << __func__ << " updating service " << service->log_name()
-              << " with " << match.credentials;
+              << " with " << *match.credentials;
     service->OnPasspointMatch(match.credentials, match.priority);
     manager_->UpdateService(service);
     if (service->profile() != match.credentials->profile()) {
