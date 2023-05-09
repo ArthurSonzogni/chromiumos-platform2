@@ -10,7 +10,6 @@
 #include "diagnostics/cros_healthd/fetchers/backlight_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/battery_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/disk_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/display_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
@@ -46,7 +45,6 @@ class FetchAggregator final {
   BacklightFetcher backlight_fetcher_;
   BatteryFetcher battery_fetcher_;
   DiskFetcher disk_fetcher_;
-  DisplayFetcher display_fetcher_;
   FanFetcher fan_fetcher_;
   GraphicsFetcher graphics_fetcher_;
   InputFetcher input_fetcher_;

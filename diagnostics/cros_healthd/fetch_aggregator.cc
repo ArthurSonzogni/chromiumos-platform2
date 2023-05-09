@@ -64,7 +64,6 @@ FetchAggregator::FetchAggregator(Context* context)
     : backlight_fetcher_(context),
       battery_fetcher_(context),
       disk_fetcher_(context),
-      display_fetcher_(context),
       fan_fetcher_(context),
       graphics_fetcher_(context),
       input_fetcher_(context),
