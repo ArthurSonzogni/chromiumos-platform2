@@ -75,11 +75,15 @@ allowxperm cros_cryptohomed {
   cros_home_shadow_uid
   cros_home_shadow_uid_user
   cros_stateful_partition
-  unlabeled
 }:dir ioctl cryptohome_fscrypt_ioctls;
 allowxperm cros_cryptohomed cros_home_shadow_uid:file ioctl {
   cryptohome_fscrypt_ioctls
   FS_IOC_FIEMAP
+};
+allowxperm cros_cryptohomed unlabeled:{ dir file } ioctl {
+  cryptohome_fscrypt_ioctls
+  FS_IOC_GETFLAGS
+  FS_IOC_SETFLAGS
 };
 
 # cryptohomed creates and relabelto dirs/files in
