@@ -1118,8 +1118,12 @@ void WiFiService::EmitConnectionAttemptResultEvent(
   ValidateTagState(kSessionTagExpectedValid,
                    Metrics::kWiFiSessionTagConnectionAttemptResultSuffix);
 
-  metrics()->NotifyWiFiConnectionAttemptResult(
-      Metrics::ConnectFailureToServiceErrorEnum(failure), session_tag_);
+  auto service_error = Metrics::ConnectFailureToServiceErrorEnum(failure);
+  metrics()->NotifyWiFiConnectionAttemptResult(service_error, session_tag_);
+  if (parent_credentials_) {
+    metrics()->SendEnumToUMA(Metrics::kMetricPasspointConnectionResult,
+                             service_error);
+  }
   if (failure != Service::kFailureNone) {
     // If the connection attempt was not successful there won't be a
     // corresponding disconnection event. Reset the session tag.

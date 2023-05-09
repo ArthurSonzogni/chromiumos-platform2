@@ -984,6 +984,10 @@ class Metrics : public DefaultServiceObserver {
       .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.StrokeEndReason"},
       .max = kNetworkServiceErrorMax,
   };
+  static constexpr EnumMetric<FixedName> kMetricPasspointConnectionResult = {
+      .n = FixedName{"Network.Shill.WiFi.Passpoint.ConnectionResult"},
+      .max = kNetworkServiceErrorMax,
+  };
 
   // Corresponds to RegulatoryDomain enum values in
   // /chromium/src/tools/metrics/histograms/enums.xml.
