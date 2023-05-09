@@ -826,7 +826,8 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
                        "frame_number", result.frame_number(), "width",
                        hdrnet_buffer.stream()->width, "height",
                        hdrnet_buffer.stream()->height, "format",
-                       hdrnet_buffer.stream()->format);
+                       hdrnet_buffer.stream()->format,
+                       perfetto::Flow::ProcessScoped(hdrnet_buffer.flow_id()));
     HdrNetStreamContext* stream_context =
         GetHdrNetContextFromHdrNetStream(hdrnet_buffer.stream());
     auto request_buffer_info =
@@ -834,7 +835,9 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
     DCHECK(request_buffer_info != pending_request_buffers.end());
 
     if (options_.denoiser_enable) {
-      TRACE_HDRNET_EVENT("HdrNetStreamManipulator::RunIirDenoise");
+      TRACE_HDRNET_EVENT(
+          "HdrNetStreamManipulator::RunIirDenoise",
+          perfetto::Flow::ProcessScoped(hdrnet_buffer.flow_id()));
       // Run the denoiser.
       SharedImage& input_img =
           stream_context->shared_images[request_buffer_info->buffer_index];

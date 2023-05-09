@@ -875,7 +875,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
 EffectsStreamManipulatorImpl::RenderResult
 EffectsStreamManipulatorImpl::RenderEffect(Camera3StreamBuffer& result_buffer,
                                            int64_t timestamp) {
-  TRACE_EFFECTS();
+  TRACE_EFFECTS(perfetto::Flow::ProcessScoped(result_buffer.flow_id()));
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   DCHECK(result_buffer.status() == CAMERA3_BUFFER_STATUS_OK);
   if (!result_buffer.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {

@@ -188,6 +188,7 @@ void Camera3StreamBuffer::StartTracing(int frame_number) {
   if (!is_valid() || trace_started_) {
     return;
   }
+  TRACE_COMMON_EVENT("AttachBuffer", perfetto::Flow::ProcessScoped(flow_id()));
   TRACE_COMMON_BEGIN(
       GetBufferEventStr(type_),
       perfetto::Track(reinterpret_cast<uintptr_t>(*raw_buffer_.buffer)),
@@ -202,6 +203,8 @@ void Camera3StreamBuffer::EndTracing() {
   if (!is_valid() || !trace_started_) {
     return;
   }
+  TRACE_COMMON_EVENT("DetachBuffer",
+                     perfetto::TerminatingFlow::ProcessScoped(flow_id()));
   TRACE_COMMON_END(
       perfetto::Track(reinterpret_cast<uintptr_t>(*raw_buffer_.buffer)));
   trace_started_ = false;
@@ -708,6 +711,7 @@ void Camera3CaptureDescriptor::PopulateEventAnnotation(
 
   std::string input_buffer;
   if (input_buffer_) {
+    perfetto::Flow::ProcessScoped(input_buffer_->flow_id())(ctx);
     if (base::JSONWriter::WriteWithOptions(
             ToValueDict(input_buffer_.value()),
             base::JSONWriter::OPTIONS_PRETTY_PRINT, &input_buffer)) {
@@ -717,6 +721,7 @@ void Camera3CaptureDescriptor::PopulateEventAnnotation(
 
   base::Value::List out_bufs;
   for (const auto& b : GetOutputBuffers()) {
+    perfetto::Flow::ProcessScoped(b.flow_id())(ctx);
     out_bufs.Append(ToValueDict(b));
   }
   std::string output_buffers;

@@ -18,7 +18,7 @@
 #define TRACE_COMMON_BEGIN(event, track, ...) \
   TRACE_EVENT_BEGIN(kCameraTraceCategoryCommon, event, track, ##__VA_ARGS__)
 
-#define TRACE_COMMON_END(track) \
-  TRACE_EVENT_END(kCameraTraceCategoryCommon, track)
+#define TRACE_COMMON_END(track, ...) \
+  TRACE_EVENT_END(kCameraTraceCategoryCommon, track, ##__VA_ARGS__)
 
 #endif  // CAMERA_COMMON_COMMON_TRACING_H_

@@ -202,6 +202,9 @@ class CROS_CAMERA_EXPORT Camera3StreamBuffer {
   void StartTracing(int frame_number);
   void EndTracing();
 
+  // Used for creating a Perfetto flow to visualize the buffer lifecycle.
+  uint64_t flow_id() const { return reinterpret_cast<uintptr_t>(*buffer()); }
+
   bool is_valid() {
     return raw_buffer_.stream != nullptr && raw_buffer_.buffer != nullptr &&
            *raw_buffer_.buffer != nullptr;

@@ -834,7 +834,9 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
     uint32_t frame_number) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   DCHECK_NE(ctx, nullptr);
-  TRACE_AUTO_FRAMING("frame_number", frame_number);
+  TRACE_AUTO_FRAMING(
+      "frame_number", frame_number,
+      perfetto::Flow::ProcessScoped(full_frame_buffer.flow_id()));
 
   if (full_frame_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
     VLOGF(1) << "Received full frame buffer with error in result "
@@ -949,7 +951,8 @@ bool AutoFramingStreamManipulator::ProcessStillYuvOnThread(
     uint32_t frame_number) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   DCHECK_NE(ctx, nullptr);
-  TRACE_AUTO_FRAMING("frame_number", frame_number);
+  TRACE_AUTO_FRAMING("frame_number", frame_number,
+                     perfetto::Flow::ProcessScoped(still_yuv_buffer.flow_id()));
 
   if (still_yuv_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
     VLOGF(1) << "Received still YUV buffer with error in result "

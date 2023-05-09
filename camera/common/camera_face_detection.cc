@@ -113,6 +113,8 @@ FaceDetectResult FaceDetector::Detect(
 void FaceDetector::DetectAsync(buffer_handle_t buffer,
                                std::optional<Size> active_sensor_array_size,
                                ResultCallback result_callback) {
+  TRACE_COMMON(
+      perfetto::Flow::ProcessScoped(reinterpret_cast<uintptr_t>(buffer)));
   ScopedMapping mapping(buffer);
   if (!mapping.is_valid()) {
     LOGF(ERROR) << "Failed to map buffer";

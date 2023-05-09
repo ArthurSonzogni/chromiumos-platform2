@@ -808,7 +808,17 @@ bool CameraDeviceAdapter::IsRequestOrResultStalling() {
 // static
 void CameraDeviceAdapter::ProcessCaptureResult(
     const camera3_callback_ops_t* ops, const camera3_capture_result_t* result) {
-  TRACE_HAL_ADAPTER("frame_number", result->frame_number);
+  TRACE_HAL_ADAPTER([&](perfetto::EventContext ctx) {
+    ctx.AddDebugAnnotation("frame_number", result->frame_number);
+    if (result->input_buffer != nullptr) {
+      perfetto::Flow::ProcessScoped(
+          reinterpret_cast<uintptr_t>(*result->input_buffer->buffer))(ctx);
+    }
+    for (int i = 0; i < result->num_output_buffers; ++i) {
+      perfetto::Flow::ProcessScoped(
+          reinterpret_cast<uintptr_t>(*result->output_buffers[i].buffer))(ctx);
+    }
+  });
 
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
@@ -823,7 +833,9 @@ void CameraDeviceAdapter::ProcessCaptureResult(
 void CameraDeviceAdapter::ReturnResultToClient(
     const camera3_callback_ops_t* ops,
     Camera3CaptureDescriptor result_descriptor) {
-  TRACE_HAL_ADAPTER();
+  TRACE_HAL_ADAPTER([&](perfetto::EventContext ctx) {
+    result_descriptor.PopulateEventAnnotation(ctx);
+  });
 
   if (!result_descriptor.has_metadata() &&
       !result_descriptor.has_input_buffer() &&
