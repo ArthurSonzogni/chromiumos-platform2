@@ -178,8 +178,6 @@ StreamManipulatorManager::StreamManipulatorManager(
 
   MaybeEnableAutoFramingStreamManipulator(feature_profile, runtime_options,
                                           gpu_resources, &stream_manipulators_);
-  MaybeEnableHdrNetStreamManipulator(feature_profile, create_options,
-                                     gpu_resources, &stream_manipulators_);
 
 #if USE_CAMERA_FEATURE_EFFECTS
   LOGF(INFO) << "Service built with effects support";
@@ -199,6 +197,11 @@ StreamManipulatorManager::StreamManipulatorManager(
 #else
   LOGF(INFO) << "Service built without effects support";
 #endif
+
+  // HDRnet must get frames without applying any other post-processing because
+  // the ML inference needs pixel values in linear domain.
+  MaybeEnableHdrNetStreamManipulator(feature_profile, create_options,
+                                     gpu_resources, &stream_manipulators_);
 
   // TODO(jcliang): See if we want to move ZSL to feature profile.
   stream_manipulators_.emplace_back(std::make_unique<ZslStreamManipulator>());
