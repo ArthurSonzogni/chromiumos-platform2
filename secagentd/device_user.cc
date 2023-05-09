@@ -11,10 +11,14 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
+#include "base/files/important_file_writer.h"
 #include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/no_destructor.h"
 #include "base/strings/strcat.h"
+#include "base/uuid.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "brillo/errors/error.h"
@@ -25,7 +29,15 @@ namespace secagentd {
 DeviceUser::DeviceUser(
     std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
         session_manager)
-    : weak_ptr_factory_(this), session_manager_(std::move(session_manager)) {}
+    : DeviceUser(std::move(session_manager), base::FilePath("/")) {}
+
+DeviceUser::DeviceUser(
+    std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
+        session_manager,
+    const base::FilePath& root_path)
+    : weak_ptr_factory_(this),
+      session_manager_(std::move(session_manager)),
+      root_path_(root_path) {}
 
 void DeviceUser::RegisterSessionChangeHandler() {
   session_manager_->RegisterSessionStateChangedSignalHandler(
@@ -122,6 +134,24 @@ void DeviceUser::UpdateDeviceUser() {
       }
       return;
     }
+    // Check if username file exists in daemon-store.
+    std::string username_file_path =
+        "run/daemon-store/secagentd/" + sanitized + "/username";
+    base::FilePath username_file = root_path_.Append(username_file_path);
+    if (base::PathExists(username_file)) {
+      int64_t file_size;
+      if (!base::GetFileSize(username_file, &file_size) || file_size == 0) {
+        LOG(ERROR)
+            << "Failed to get username file size. Checking policy instead";
+      } else if (!base::ReadFileToString(username_file, &username) ||
+                 username.empty()) {
+        LOG(ERROR) << "Failed to read username. Checking policy instead";
+      } else {
+        device_user_ = username;
+        return;
+      }
+    }
+
     // Retrieve user policy information.
     auto response = RetrievePolicy(login_manager::ACCOUNT_TYPE_USER, username);
     if (!response.ok()) {
@@ -134,8 +164,11 @@ void DeviceUser::UpdateDeviceUser() {
       if (IsAffiliated(user_policy)) {
         device_user_ = username;
       } else {
-        // TODO(b/277796550): Make count stable across reboots.
-        device_user_ = "UnaffiliatedUser";
+        device_user_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
+      }
+      if (!base::ImportantFileWriter::WriteFileAtomically(username_file,
+                                                          device_user_)) {
+        LOG(ERROR) << "Failed to write username to file";
       }
     }
   }

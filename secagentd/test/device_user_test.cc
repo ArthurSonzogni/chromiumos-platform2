@@ -6,9 +6,13 @@
 
 #include <memory>
 
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
+#include "base/uuid.h"
 #include "dbus/mock_bus.h"
 #include "dbus/mock_object_proxy.h"
 #include "gmock/gmock.h"  // IWYU pragma: keep
@@ -22,9 +26,10 @@ using ::testing::_;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::WithArg;
+using ::testing::WithArgs;
 
 constexpr char kDeviceUser[] = "deviceUser@email.com";
-constexpr char kUnaffiliated[] = "UnaffiliatedUser";
+constexpr char kSanitized[] = "C02gxaaci";
 constexpr char kGuest[] = "GuestUser";
 constexpr char kUnknown[] = "Unknown";
 constexpr char kAffiliationID[] = "affiliation_id";
@@ -38,8 +43,13 @@ class DeviceUserTestFixture : public ::testing::Test {
         std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
     session_manager_ref_ = session_manager_.get();
 
-    device_user_ =
-        base::MakeRefCounted<DeviceUser>(std::move(session_manager_));
+    ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
+    daemon_store_directory_ =
+        fake_root_.GetPath().Append("run/daemon-store/secagentd/");
+    ASSERT_TRUE(base::CreateDirectory(daemon_store_directory_));
+
+    device_user_ = DeviceUser::CreateForTesting(std::move(session_manager_),
+                                                fake_root_.GetPath());
   }
 
   std::string GetUser() { return device_user_->GetDeviceUser(); }
@@ -104,6 +114,8 @@ class DeviceUserTestFixture : public ::testing::Test {
   }
 
   base::test::TaskEnvironment task_environment_;
+  base::FilePath daemon_store_directory_;
+  base::ScopedTempDir fake_root_;
   base::RepeatingCallback<void(const std::string&)> registration_cb_;
   scoped_refptr<DeviceUser> device_user_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyMock>
@@ -143,6 +155,110 @@ TEST_F(DeviceUserTestFixture, TestAffiliatedUser) {
   task_environment_.FastForwardBy(base::Seconds(2));
 
   EXPECT_EQ(kDeviceUser, device_user_->GetDeviceUser());
+}
+
+TEST_F(DeviceUserTestFixture, TestDaemonStoreAffiliated) {
+  EXPECT_CALL(*session_manager_ref_, IsGuestSessionActive)
+      .WillRepeatedly(WithArg<0>(Invoke([](bool* is_guest) {
+        *is_guest = false;
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_, RetrievePrimarySession)
+      .WillRepeatedly(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = kDeviceUser;
+            *sanitized = kSanitized;
+            return true;
+          })));
+  EXPECT_CALL(
+      *session_manager_ref_,
+      RetrievePolicyEx(CreateExpectedDescriptorBlob("device", ""), _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("device", kAffiliationID);
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_,
+              RetrievePolicyEx(
+                  CreateExpectedDescriptorBlob("user", kDeviceUser), _, _, _))
+      .Times(1)
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("user", kAffiliationID);
+        return true;
+      })));
+  ASSERT_TRUE(
+      base::CreateDirectory(daemon_store_directory_.Append(kSanitized)));
+
+  SaveRegisterSessionStateCb();
+  device_user_->RegisterSessionChangeHandler();
+  registration_cb_.Run("started");
+  task_environment_.FastForwardBy(base::Seconds(2));
+
+  EXPECT_EQ(kDeviceUser, device_user_->GetDeviceUser());
+  base::FilePath username_file =
+      daemon_store_directory_.Append(kSanitized).Append("username");
+  ASSERT_TRUE(base::PathExists(username_file));
+  std::string username;
+  ASSERT_TRUE(base::ReadFileToString(username_file, &username));
+  EXPECT_EQ(kDeviceUser, username);
+
+  // Trigger callback again to verify the file is read from.
+  SetDeviceUser("");
+  registration_cb_.Run("started");
+  task_environment_.FastForwardBy(base::Seconds(2));
+  EXPECT_EQ(kDeviceUser, device_user_->GetDeviceUser());
+}
+
+TEST_F(DeviceUserTestFixture, TestDaemonStoreUnaffiliated) {
+  EXPECT_CALL(*session_manager_ref_, IsGuestSessionActive)
+      .WillRepeatedly(WithArg<0>(Invoke([](bool* is_guest) {
+        *is_guest = false;
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_, RetrievePrimarySession)
+      .WillRepeatedly(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = kDeviceUser;
+            *sanitized = kSanitized;
+            return true;
+          })));
+  EXPECT_CALL(
+      *session_manager_ref_,
+      RetrievePolicyEx(CreateExpectedDescriptorBlob("device", ""), _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("device", kAffiliationID);
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_,
+              RetrievePolicyEx(
+                  CreateExpectedDescriptorBlob("user", kDeviceUser), _, _, _))
+      .Times(1)
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("user", "DifferentID");
+        return true;
+      })));
+  ASSERT_TRUE(
+      base::CreateDirectory(daemon_store_directory_.Append(kSanitized)));
+
+  SaveRegisterSessionStateCb();
+  device_user_->RegisterSessionChangeHandler();
+  registration_cb_.Run("started");
+  task_environment_.FastForwardBy(base::Seconds(2));
+
+  // Just verify that the username is a valid uuid because it
+  // is random each time.
+  EXPECT_TRUE(base::IsValidUuid(device_user_->GetDeviceUser()));
+  base::FilePath username_file =
+      daemon_store_directory_.Append(kSanitized).Append("username");
+  ASSERT_TRUE(base::PathExists(username_file));
+  std::string username;
+  ASSERT_TRUE(base::ReadFileToString(username_file, &username));
+  EXPECT_TRUE(base::IsValidUuid(username));
+
+  // Trigger callback again to verify the file is read from.
+  SetDeviceUser("");
+  registration_cb_.Run("started");
+  task_environment_.FastForwardBy(base::Seconds(2));
+  EXPECT_TRUE(base::IsValidUuid(device_user_->GetDeviceUser()));
 }
 
 TEST_F(DeviceUserTestFixture, TestLogout) {
@@ -190,7 +306,7 @@ TEST_F(DeviceUserTestFixture, TestUnaffiliatedUser) {
   registration_cb_.Run("started");
   task_environment_.FastForwardBy(base::Seconds(2));
 
-  EXPECT_EQ(kUnaffiliated, device_user_->GetDeviceUser());
+  EXPECT_TRUE(base::IsValidUuid(device_user_->GetDeviceUser()));
 }
 
 TEST_F(DeviceUserTestFixture, TestGuestUser) {

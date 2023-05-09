@@ -7,8 +7,10 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "absl/status/statusor.h"
+#include "base/files/file_path.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
@@ -30,12 +32,17 @@ class DeviceUserInterface : public base::RefCounted<DeviceUserInterface> {
 };
 
 class DeviceUser : public DeviceUserInterface {
-  friend class testing::DeviceUserTestFixture;
-
  public:
   explicit DeviceUser(
       std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
           session_manager_);
+
+  // Allow calling the private test-only constructor without befriending
+  // scoped_refptr.
+  template <typename... Args>
+  static scoped_refptr<DeviceUser> CreateForTesting(Args&&... args) {
+    return base::WrapRefCounted(new DeviceUser(std::forward<Args>(args)...));
+  }
 
   // Start monitoring for login/out events.
   // Called when XDR reporting becomes enabled.
@@ -49,6 +56,13 @@ class DeviceUser : public DeviceUserInterface {
   DeviceUser& operator=(DeviceUser&&) = delete;
 
  private:
+  friend class testing::DeviceUserTestFixture;
+
+  explicit DeviceUser(
+      std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
+          session_manager,
+      const base::FilePath& root_path);
+
   // Logs an error if registering for session changes fails.
   void HandleRegistrationResult(const std::string& interface,
                                 const std::string& signal,
@@ -71,6 +85,7 @@ class DeviceUser : public DeviceUserInterface {
       session_manager_;
   std::string device_user_ = "";
   std::string device_id_ = "";
+  const base::FilePath root_path_;
 };
 
 }  // namespace secagentd
