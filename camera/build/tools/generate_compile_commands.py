@@ -64,10 +64,10 @@ def fix_source_file_path(compdb: List[dict], chroot: bool):
     """
 
     patterns = {
-        # For src/platform2/camera
-        r"(camera/.*)": "src/platform2",
         # For src/platform/camera
         r"platform2/camera_hal/(.*)": "src/platform/camera",
+        # For repos in src/platform2
+        r"platform2/(.*)": "src/plaform2",
     }
 
     KEY_FILE = "file"
@@ -105,10 +105,10 @@ def fix_include_path(compdb: List[dict], chroot: bool):
     """
 
     patterns = {
-        # For src/platform2/camera
-        r"-I[^ ]*/(camera/[^ ]*)": "src/platform2",
         # For src/platform/camera
         r"-I[^ ]*/platform2/camera_hal/([^ ]*)": "src/platform/camera",
+        # For repos in src/platform2
+        r"-I[^ ]*/platform2/?([^ ]*)": "src/platform2",
     }
 
     KEY_COMMAND = "command"
@@ -169,7 +169,7 @@ def aggregate_compile_db(
     result = []
     for path in compdb_files:
         # pylint: disable=encoding-missing
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             result.extend(json.loads(f.read()))
     return result
 
@@ -237,7 +237,7 @@ def main(argv: list):
         "--output_file",
         type=str,
         default="compile_commands.json",
-        help=("Output compilation database file name " "(default=%(default)s)"),
+        help=("Output compilation database file name (default=%(default)s)"),
     )
     parser.add_argument(
         "--noemerge",
@@ -245,17 +245,16 @@ def main(argv: list):
         action="store_false",
         default=True,
         help=(
-            "Do not emerge the packages and combine the "
-            "available existing compilation database in "
-            "the sysroot"
+            "Do not emerge the packages and combine the available existing "
+            "compilation database in the sysroot"
         ),
     )
     parser.add_argument(
-        "--nochroot",
+        "--chroot",
         dest="chroot",
-        action="store_false",
-        default=True,
-        help=("Generate the no chroot version of compilation " "database"),
+        action="store_true",
+        default=False,
+        help=("Generate the chroot version of compilation database"),
     )
     parser.add_argument(
         "--append",
@@ -288,6 +287,7 @@ def main(argv: list):
         "packages",
         type=str,
         nargs="*",
+        # pylint: disable=consider-using-f-string
         help=(
             "Package(s) to emerge and/or copy compilation database from, in "
             "addition to the default set of packages: %s"
@@ -328,7 +328,7 @@ def main(argv: list):
                 "Append to the existing compdb file %s", args.output_file
             )
             # pylint: disable=encoding-missing
-            with open(args.output_file, "r") as f:
+            with open(args.output_file, "r", encoding="utf-8") as f:
                 compdb_aggregated.extend(json.loads(f.read()))
 
         compdb_aggregated.extend(
@@ -339,7 +339,7 @@ def main(argv: list):
         fix_include_path(compdb_aggregated, args.chroot)
 
         # pylint: disable=encoding-missing
-        with open(args.output_file, "w+") as f:
+        with open(args.output_file, "w+", encoding="utf-8") as f:
             f.write(json.dumps(compdb_aggregated, indent=2))
     finally:
         if cleanup_closure is not None:
