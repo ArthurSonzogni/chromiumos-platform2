@@ -2198,6 +2198,7 @@ mno {
       localized_name {
         name : "Rogers 5G Tethering"
       }
+      is_required_by_carrier_spec : true
       ip_type: IPV4V6
       type : DUN
     }
@@ -2214,6 +2215,7 @@ mno {
       localized_name {
         name : "Rogers Tethering"
       }
+      is_required_by_carrier_spec : true
       ip_type : IPV4V6
       type : DUN
     }

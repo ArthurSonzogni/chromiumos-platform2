@@ -403,13 +403,15 @@ class MobileOperatorInfoCarriersRogersTest
                          .ApnTypes({kApnTypeDefault})),
         kRogersApn4GDun(ApnBuilder("ltedata.apn")
                             .IpType(kApnIpTypeV4V6)
-                            .ApnTypes({kApnTypeDun})),
+                            .ApnTypes({kApnTypeDun})
+                            .IsRequiredByCarrierSpec(true)),
         kRogersApn5G(ApnBuilder("mobile.apn")
                          .IpType(kApnIpTypeV4V6)
                          .ApnTypes({kApnTypeDefault})),
         kRogersApn5GDun(ApnBuilder("data.apn")
                             .IpType(kApnIpTypeV4V6)
-                            .ApnTypes({kApnTypeDun})),
+                            .ApnTypes({kApnTypeDun})
+                            .IsRequiredByCarrierSpec(true)),
         kRogersMccmncs({"302720"}) {}
 
  protected:
