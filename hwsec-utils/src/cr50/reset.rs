@@ -20,12 +20,19 @@ use crate::cr50::clear_terminal;
 use crate::cr50::gsctool_cmd_successful;
 use crate::error::HwsecError;
 
+// RMA Reset Authorization parameters.
+// - URL of Reset Authorization Server.
 const RMA_SERVER: &str = "https://www.google.com/chromeos/partner/console/cr50reset";
+// - Number of retries before giving up.
 const MAX_RETRIES: i32 = 3;
+// - RETRY_DELAY=10
 const RETRY_DELAY: i32 = 10;
 const FRECON_PID_FILE: &str = "/run/frecon/pid";
 
 fn gbb_force_dev_mode(ctx: &mut impl Context) -> Result<u32, HwsecError> {
+    // Disable SW WP and set GBB_FLAG_FORCE_DEV_SWITCH_ON (0x8) to force boot in
+    // developer mode after RMA reset.
+
     // TODO: call flashrom with library instead of commands
     ctx.cmd_runner()
         .run(
@@ -47,11 +54,15 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
     const WAIT_TO_ENTER_RMA_SECS: u64 = 2;
     const SECS_IN_A_DAY: u64 = 86400;
 
+    // Make sure frecon is running.
     let frecon_pid = fs::read_to_string(FRECON_PID_FILE).map_err(|_| {
         error!("Failed to read {}", FRECON_PID_FILE);
         HwsecError::FileError
     })?;
 
+    // This is the path to the pre-chroot filesystem. Since frecon is started
+    // before the chroot, all files that frecon accesses must be copied to
+    // this path.
     let chg_str_path = format!("/proc/{}/root", frecon_pid);
 
     if !Path::new(&chg_str_path).exists() {
@@ -59,34 +70,42 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
         return Err(HwsecError::FileError);
     }
 
+    // Get HWID and replace whitespace with underscore.
     let hwid = get_hwid(ctx).map_err(|e| {
         error!("Failed to get hwid.");
         e
     })?;
 
+    // Get challenge string and remove "Challenge:".
     let challenge_string = get_challenge_string(ctx).map_err(|e| {
         error!("Failed to get challenge string.");
         e
     })?;
 
+    // Test if we have a challenge.
     if challenge_string.is_empty() {
         error!(r"Challenge wasn't generated. CR50 might need updating.");
         return Err(HwsecError::GsctoolResponseBadFormatError);
     }
 
+    // Preserve enough space to prevent terminal scrolling.
     clear_terminal();
 
+    // Display the challenge.
     println!("Challenge:");
     println!("{}", challenge_string);
 
+    // Remove whitespace and newline from challenge.
     let challenge_string = challenge_string.replace(['\n', ' '], "");
 
+    // Calculate challenge URL and display it.
     let chstr = format!(
         "{}?challenge={}&hwid={}",
         RMA_SERVER, challenge_string, hwid
     );
     println!("\nURL: {}", chstr);
 
+    // Create qrcode and display it.
     // TODO: replace qrencode command with qrcode library like this
     //
     // let qrcode = QrCode::new(challenge_string).unwrap();
@@ -114,6 +133,7 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
     })?;
 
     for _ in 0..MAX_RETRIES {
+        // Read authorization code. Show input in uppercase letters.
         print!("\nEnter authorization code: ");
         let mut auth_code = String::new();
         while io::stdin().read_line(&mut auth_code).is_err() {
@@ -121,9 +141,14 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
         }
         let auth_code = auth_code.to_uppercase();
 
+        // Test authorization code.
         if gsctool_cmd_successful(ctx, vec!["--trunks_send", "--rma_auth", &auth_code]) {
             println!("The system will reboot shortly.");
+            // Wait for cr50 to enter RMA mode.
             thread::sleep(time::Duration::from_secs(WAIT_TO_ENTER_RMA_SECS));
+
+            // Force the next boot to be in developer mode so that we can boot to
+            // RMA shim again.
             gbb_force_dev_mode(ctx).map_err(|e| {
                 error!("gbb_force_dev_mode failed.");
                 e
@@ -137,6 +162,7 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
                     HwsecError::SystemRebootError
                 })?;
 
+            // Sleep indefinitely to avoid continue.
             thread::sleep(time::Duration::from_secs(SECS_IN_A_DAY));
         }
 
