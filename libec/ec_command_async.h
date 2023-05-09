@@ -51,11 +51,26 @@ class EcCommandAsync : public EcCommand<O, I> {
   bool Run(int fd) override {
     CHECK_GT(options_.poll_for_result_num_attempts, 0);
 
+    /*
+     * Force the insize of the first async BaseCmd to be zero because the first
+     * async command only schedules the command and does not return any response
+     * with a meaningful size.
+     */
+    uint32_t original_insize = BaseCmd::RespSize();
+    BaseCmd::SetRespSize(0);
+
     if (!BaseCmd::Run(fd)) {
       LOG(ERROR) << "Failed to start command";
+      BaseCmd::SetRespSize(original_insize);
       return false;
     }
 
+    /*
+     * Restore the insize to its original value before the execution of the
+     * second async command because this is the command that will return the
+     * actual response.
+     */
+    BaseCmd::SetRespSize(original_insize);
     int num_attempts = options_.poll_for_result_num_attempts;
     while (num_attempts--) {
       base::PlatformThread::Sleep(options_.poll_interval);

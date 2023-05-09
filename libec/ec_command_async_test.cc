@@ -34,6 +34,7 @@ class MockAddEntropyCommand
   explicit MockAddEntropyCommand(const Options& options)
       : MockEcCommandAsync(
             EC_CMD_ADD_ENTROPY, ADD_ENTROPY_GET_RESULT, options) {}
+  static constexpr std::size_t expected_response_size = 0;
 };
 
 class MockFlashProtectCommand
@@ -43,6 +44,8 @@ class MockFlashProtectCommand
   explicit MockFlashProtectCommand(const Options& options)
       : MockEcCommandAsync(
             EC_CMD_FLASH_PROTECT, FLASH_PROTECT_GET_RESULT, options) {}
+  static constexpr std::size_t expected_response_size =
+      sizeof(ec_response_flash_protect);
 };
 
 template <typename T>
@@ -65,16 +68,19 @@ TYPED_TEST(EcCommandAsyncTest, Run_Success) {
       // First call to ioctl() to start the command; EC returns success.
       .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
         data->cmd.result = EC_RES_SUCCESS;
+        EXPECT_EQ(data->cmd.insize, 0);
         return data->cmd.insize;
       })
       // Second call to ioctl() to get the result; EC returns busy.
       .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
         data->cmd.result = EC_RES_BUSY;
+        EXPECT_EQ(data->cmd.insize, TypeParam::expected_response_size);
         return data->cmd.insize;
       })
       // Third call to ioctl() to get the result; EC returns success.
       .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
         data->cmd.result = EC_RES_SUCCESS;
+        EXPECT_EQ(data->cmd.insize, TypeParam::expected_response_size);
         return data->cmd.insize;
       });
 
@@ -91,11 +97,13 @@ TYPED_TEST(EcCommandAsyncTest, Run_TimeoutFailure) {
       // First call to ioctl() to start the command; EC returns success.
       .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
         data->cmd.result = EC_RES_SUCCESS;
+        EXPECT_EQ(data->cmd.insize, 0);
         return data->cmd.insize;
       })
       // All remaining ioctl() calls; EC returns busy.
       .WillRepeatedly([](int, uint32_t, typename TypeParam::Data* data) {
         data->cmd.result = EC_RES_BUSY;
+        EXPECT_EQ(data->cmd.insize, TypeParam::expected_response_size);
         return data->cmd.insize;
       });
 
@@ -116,11 +124,13 @@ TYPED_TEST(EcCommandAsyncTest, Run_Failure) {
       // First call to ioctl() to start the command; EC returns success.
       .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
         data->cmd.result = EC_RES_SUCCESS;
+        EXPECT_EQ(data->cmd.insize, 0);
         return data->cmd.insize;
       })
       // Second call to ioctl() to get the result; EC returns error.
       .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
         data->cmd.result = EC_RES_ERROR;
+        EXPECT_EQ(data->cmd.insize, TypeParam::expected_response_size);
         return data->cmd.insize;
       });
 
@@ -143,12 +153,14 @@ TYPED_TEST(EcCommandAsyncTest, Run_IoctlTimesOut) {
       // First call to ioctl() to start the command; EC returns success.
       .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
         data->cmd.result = EC_RES_SUCCESS;
+        EXPECT_EQ(data->cmd.insize, 0);
         return data->cmd.insize;
       })
       // Second call to ioctl() to get the result returns error (EC not
       // responding).
       .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
         errno = ETIMEDOUT;
+        EXPECT_EQ(data->cmd.insize, TypeParam::expected_response_size);
         return kIoctlFailureRetVal;
       });
 
@@ -165,17 +177,20 @@ TYPED_TEST(EcCommandAsyncTest, Run_IoctlTimesOut_IgnoreFailure) {
       // First call to ioctl() to start the command; EC returns success.
       .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
         data->cmd.result = EC_RES_SUCCESS;
+        EXPECT_EQ(data->cmd.insize, 0);
         return data->cmd.insize;
       })
       // Second call to ioctl() to get the result returns error; EC not
       // responding.
       .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
         errno = ETIMEDOUT;
+        EXPECT_EQ(data->cmd.insize, TypeParam::expected_response_size);
         return kIoctlFailureRetVal;
       })
       // Third call to ioctl() to get the result; EC returns success.
       .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
         data->cmd.result = EC_RES_SUCCESS;
+        EXPECT_EQ(data->cmd.insize, TypeParam::expected_response_size);
         return data->cmd.insize;
       });
 
