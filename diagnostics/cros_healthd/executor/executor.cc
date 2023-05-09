@@ -63,6 +63,7 @@ constexpr char kHciconfigBinary[] = "/usr/bin/hciconfig";
 constexpr char kCrosEcDevice[] = "/dev/cros_ec";
 constexpr char kStressAppTestBinary[] = "/usr/bin/stressapptest";
 constexpr char kFioCacheFile[] = "/var/cache/diagnostics/fio-test-file";
+constexpr char kDrmDevice[] = "/dev/dri";
 
 }  // namespace
 }  // namespace path
@@ -101,6 +102,8 @@ constexpr char kFio[] = "fio-seccomp.policy";
 constexpr char kRm[] = "healthd_rm-seccomp.policy";
 // SECCOMP policy for df.
 constexpr char kFreeDiskSpace[] = "healthd_free_disk_space-seccomp.policy";
+// SECCOMP policy for drm.
+constexpr char kDrm[] = "drm-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -861,7 +864,18 @@ void Executor::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
 }
 
 void Executor::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
-  NOTIMPLEMENTED();
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kDrm, kCrosHealthdSandboxUser, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{path::kDrmDevice}},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{});
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->FetchDisplayInfo(CreateOnceDelegateCallback(
+      std::move(delegate), std::move(callback),
+      mojom::DisplayResult::NewError(mojom::ProbeError::New(
+          mojom::ErrorType::kSystemUtilityError, kFailToLaunchDelegate))));
+  delegate_ptr->StartAsync();
 }
 
 }  // namespace diagnostics

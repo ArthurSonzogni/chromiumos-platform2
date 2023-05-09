@@ -30,6 +30,7 @@
 #include "base/notreached.h"
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
+#include "diagnostics/cros_healthd/delegate/fetchers/display_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
 #include "diagnostics/cros_healthd/delegate/utils/psr_cmd.h"
 #include "diagnostics/cros_healthd/executor/constants.h"
@@ -436,7 +437,7 @@ void DelegateImpl::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
 }
 
 void DelegateImpl::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
-  NOTIMPLEMENTED();
+  std::move(callback).Run(GetDisplayInfo());
 }
 
 }  // namespace diagnostics

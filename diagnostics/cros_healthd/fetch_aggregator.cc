@@ -181,7 +181,7 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kDisplay: {
-        display_fetcher_.FetchDisplayInfo(
+        context_->executor()->FetchDisplayInfo(
             CreateFetchCallback(&barrier, &info->display_result));
         break;
       }
