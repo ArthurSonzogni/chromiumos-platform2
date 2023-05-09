@@ -777,8 +777,8 @@ bool RoutingTable::ParseRoutingPolicyMessage(const RTNLMessage& message,
   }
 
   entry->family = message.family();
-  entry->src = IPAddress::CreateFromFamily_Deprecated(entry->family);
-  entry->dst = IPAddress::CreateFromFamily_Deprecated(entry->family);
+  entry->src = IPAddress::CreateFromFamily(entry->family);
+  entry->dst = IPAddress::CreateFromFamily(entry->family);
 
   entry->invert_rule = !!(route_status.flags & FIB_RULE_INVERT);
 

@@ -16,8 +16,8 @@ namespace shill {
 
 RoutingPolicyEntry::RoutingPolicyEntry(IPAddress::Family family)
     : family(family),
-      dst(IPAddress::CreateFromFamily_Deprecated(family)),
-      src(IPAddress::CreateFromFamily_Deprecated(family)) {}
+      dst(IPAddress::CreateFromFamily(family)),
+      src(IPAddress::CreateFromFamily(family)) {}
 
 // static
 RoutingPolicyEntry RoutingPolicyEntry::Create(IPAddress::Family family_in) {
@@ -79,10 +79,10 @@ RoutingPolicyEntry& RoutingPolicyEntry::FlipFamily() {
                                               : IPAddress::kFamilyIPv4;
   // We should not have src/dst whose family does not match |family|.
   if (src.family() != IPAddress::kFamilyUnknown) {
-    src = IPAddress::CreateFromFamily_Deprecated(family);
+    src = IPAddress::CreateFromFamily(family);
   }
   if (dst.family() != IPAddress::kFamilyUnknown) {
-    dst = IPAddress::CreateFromFamily_Deprecated(family);
+    dst = IPAddress::CreateFromFamily(family);
   }
 
   return *this;
