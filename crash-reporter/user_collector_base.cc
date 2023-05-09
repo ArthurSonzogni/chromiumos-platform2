@@ -418,10 +418,13 @@ void UserCollectorBase::HandleSyscall(const std::string& exec,
 
   // The main information needed to act on this crash report is the syscall
   // name and seccomp policy file, so use the syscall name in the crash
-  // signature. The policy file path is sometimes available as an
-  // environment variable which gets included with the process information,
-  // but isn't available here, so it isn't included in the signature.
+  // signature and surface it to the system log. The policy file path is
+  // sometimes available as an environment variable which gets included with
+  // the process information, but isn't available here, so it isn't included
+  // in the signature.
   AddCrashMetaData("sig", exec + std::string("-seccomp-violation-") + name);
+  LOG(ERROR) << "'" << exec << "' called syscall '" << name
+             << "' not included in its seccomp policy";
 }
 
 bool UserCollectorBase::GetCreatedCrashDirectory(pid_t pid,
