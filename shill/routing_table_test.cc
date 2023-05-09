@@ -573,7 +573,7 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGateway) {
 
   // Don't specify a gateway address.
   const auto gateway_address =
-      IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4);
+      IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
 
   const auto local_address =
       *IPAddress::CreateFromPrefixString(kTestDeviceNetAddress4);
@@ -620,7 +620,7 @@ TEST_F(RoutingTableTest, RequestHostRouteBadSequence) {
 
 TEST_F(RoutingTableTest, RequestHostRouteWithCallback) {
   IPAddress destination_address =
-      IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4);
+      IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
 
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _))
       .WillOnce(
@@ -636,8 +636,7 @@ TEST_F(RoutingTableTest, RequestHostRouteWithCallback) {
   auto entry =
       RoutingTableEntry::Create(
           destination_address,
-          IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4),
-          gateway_address)
+          IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4), gateway_address)
           .SetMetric(kMetric);
 
   EXPECT_CALL(target, MockedTarget(kTestDeviceIndex0, _));
@@ -647,7 +646,7 @@ TEST_F(RoutingTableTest, RequestHostRouteWithCallback) {
 
 TEST_F(RoutingTableTest, RequestHostRouteWithoutGatewayWithCallback) {
   const auto destination_address =
-      IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4);
+      IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
 
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _))
       .WillOnce(
@@ -657,12 +656,11 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGatewayWithCallback) {
                                                  target.mocked_callback()));
 
   const int kMetric = 10;
-  auto entry =
-      RoutingTableEntry::Create(
-          destination_address,
-          IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4),
-          IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4))
-          .SetMetric(kMetric);
+  auto entry = RoutingTableEntry::Create(
+                   destination_address,
+                   IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4),
+                   IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4))
+                   .SetMetric(kMetric);
 
   EXPECT_CALL(target, MockedTarget(kTestDeviceIndex0, _));
   SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry,
@@ -682,12 +680,11 @@ TEST_F(RoutingTableTest, CancelQueryCallback) {
   // Cancels the callback by destroying the owner object.
   target.reset();
   const int kMetric = 10;
-  auto entry =
-      RoutingTableEntry::Create(
-          IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4),
-          IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4),
-          IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4))
-          .SetMetric(kMetric);
+  auto entry = RoutingTableEntry::Create(
+                   IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4),
+                   IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4),
+                   IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4))
+                   .SetMetric(kMetric);
   SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry,
                                 kTestRequestSeq, RTPROT_UNSPEC);
 }
@@ -709,7 +706,7 @@ TEST_F(RoutingTableTest, CreateLinkRoute) {
       kTestNetAddress0, kTestRemotePrefix4);
   auto remote_address = *IPAddress::CreateFromString(kTestNetAddress1);
   const auto default_address =
-      IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4);
+      IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4);
   IPAddress remote_address_with_prefix(remote_address);
   remote_address_with_prefix.set_prefix(
       IPAddress::GetMaxPrefixLength(remote_address_with_prefix.family()));

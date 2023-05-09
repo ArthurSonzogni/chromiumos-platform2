@@ -285,13 +285,13 @@ class ConnectionDiagnosticsTest : public Test {
   void ExpectResolveTargetServerIPAddressEndTimeout() {
     ExpectResolveTargetServerIPAddressEnd(
         ConnectionDiagnostics::kResultTimeout,
-        IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4));
+        IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4));
   }
 
   void ExpectResolveTargetServerIPAddressEndFailure() {
     ExpectResolveTargetServerIPAddressEnd(
         ConnectionDiagnostics::kResultFailure,
-        IPAddress::CreateFromFamily_Deprecated(IPAddress::kFamilyIPv4));
+        IPAddress::CreateFromFamily(IPAddress::kFamilyIPv4));
   }
 
   void ExpectPingHostStartSuccess(ConnectionDiagnostics::Type ping_event_type,
