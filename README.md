@@ -90,6 +90,7 @@ copies.
 | [ippusb_bridge](./ippusb_bridge/) | HTTP proxy to IPP-enabled printers |
 | [kerberos](./kerberos/) | Daemon for managing Kerberos tickets |
 | [kexec-lite](./kexec-lite/) | Simple implementation of kexec-tools |
+| [libarc-attestation](./libarc-attestation/) | Library to facilitate Android Attestation and Remote Key Provisioning for ARC Keymint Daemon |
 | [libbrillo](./libbrillo/) | Common platform utility library |
 | [libchromeos-rs](./libchromeos-rs/) | Common platform utility library for Rust |
 | [libchromeos-ui](./libchromeos-ui/) ||
