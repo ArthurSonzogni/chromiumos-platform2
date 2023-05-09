@@ -24,15 +24,20 @@ main() {
     --debian-release=bookworm \
     -o "${image_path}"
 
+  sudo virt-sparsify --in-place --machine-readable "${image_path}"
+
   zstd --no-progress -16 "${image_path}"
   sudo rm -f "${image_path}"
 }
 
 install_deps() {
   # If additional dependencies are required, please also note them in README.md.
+  # Googlers: libguestfs-tools depends on qemu-system-x86 which may cause HT/SMT
+  # to be disabled.
   sudo apt-get update
   sudo DEBIAN_FRONTEND=noninteractive apt-get -q -y install \
-    eatmydata fai-setup-storage lvm2 python3-requests python3-yaml
+    eatmydata fai-setup-storage lvm2 python3-requests python3-yaml \
+    libguestfs-tools
 
   # TODO(b/280695675): Remove this once the VM image has a newer OS.
   # shellcheck disable=SC2154
