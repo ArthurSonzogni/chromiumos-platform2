@@ -138,6 +138,50 @@ pub fn lv_remove(volume_group: &str, name: &str) -> Result<()> {
         .context(format!("Failed to remove logical volume '{volume}'"))
 }
 
+/// Returns the free space in the thinpool.
+pub fn get_free_thinpool_space(volume_group: &str) -> Result<u64> {
+    let volume = full_lv_name(volume_group, "thinpool");
+
+    let out = checked_command_output(Command::new("/sbin/lvdisplay").args([
+        "-C",
+        "--noheadings",
+        "--units",
+        "b",
+        "-o",
+        "lv_size,data_percent",
+        &volume,
+    ]))?;
+
+    let output = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let mut split = output.split(' ');
+    // strip the unit indication
+    let size_s = split.next().unwrap().trim_end_matches('B');
+    let percent_s = split.next().unwrap();
+    let size = size_s.parse::<u64>().unwrap();
+    let percent = percent_s.parse::<f64>().unwrap();
+    let free_space = (size as f64 * 0.01 * (100.0 - percent)) as u64;
+
+    Ok(free_space)
+}
+
+/// Get the data usage of a thin volume in percent.
+pub fn get_thin_volume_usage_percent(volume_group: &str, name: &str) -> Result<u8> {
+    let volume = full_lv_name(volume_group, name);
+
+    let out = checked_command_output(Command::new("/sbin/lvdisplay").args([
+        "-C",
+        "--noheadings",
+        "-o",
+        "data_percent",
+        &volume,
+    ]))?;
+
+    let output = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let percent = output.parse::<f64>().unwrap();
+
+    Ok(percent as u8)
+}
+
 /// Get the fully qualified name of an LV.
 fn full_lv_name(volume_group: &str, name: &str) -> String {
     format!("{}/{}", volume_group, name)

@@ -18,10 +18,7 @@ use std::fs::create_dir;
 use std::fs::read_dir;
 use std::fs::read_link;
 use std::fs::remove_file;
-use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::BufRead;
-use std::io::BufReader;
 use std::io::IoSlice;
 use std::io::Write;
 use std::path::Path;
@@ -40,6 +37,7 @@ use crate::hiberutil::checked_command_output;
 use crate::hiberutil::emergency_reboot;
 use crate::hiberutil::get_device_mounted_at_dir;
 use crate::hiberutil::get_page_size;
+use crate::hiberutil::get_ram_size;
 use crate::hiberutil::keyctl_add_key;
 use crate::hiberutil::keyctl_remove_key;
 use crate::hiberutil::log_io_duration;
@@ -49,7 +47,9 @@ use crate::hiberutil::unmount_filesystem;
 use crate::hiberutil::HibernateError;
 use crate::lvm::activate_lv;
 use crate::lvm::create_thin_volume;
+use crate::lvm::get_free_thinpool_space;
 use crate::lvm::get_lvs;
+use crate::lvm::get_thin_volume_usage_percent;
 use crate::lvm::get_vg_name;
 use crate::lvm::lv_exists;
 use crate::lvm::lv_path;
@@ -314,6 +314,17 @@ impl VolumeManager {
         mount_filesystem(path.as_path(), hibermeta_dir, "ext2", 0, "")?;
 
         Ok(ActiveMount::new(hibermeta_dir))
+    }
+
+    /// Returns the free space in the thinpool.
+    pub fn get_free_thinpool_space(&self) -> Result<u64> {
+        get_free_thinpool_space(&self.vg_name)
+    }
+
+    pub fn is_hiberimage_thickened(&self) -> Result<bool> {
+        let usage_percent = get_thin_volume_usage_percent(&self.vg_name, HIBERIMAGE_VOLUME_NAME)?;
+
+        Ok(usage_percent >= 99)
     }
 
     /// Create the hibermeta volume.
@@ -792,21 +803,6 @@ impl VolumeManager {
 
 fn roundup_mutiple(val: u64, alignment: u64) -> u64 {
     ((val + alignment - 1) / alignment) * alignment
-}
-
-fn get_ram_size() -> u64 {
-    let f = File::open("/proc/meminfo").unwrap();
-    let reader = BufReader::new(f);
-
-    for l in reader.lines() {
-        let l = l.unwrap();
-        if l.starts_with("MemTotal:") {
-            let size_kb = l.split_whitespace().nth(1).unwrap().parse::<u64>().unwrap();
-            return size_kb * 1024;
-        }
-    }
-
-    panic!("Could not determine RAM size");
 }
 
 fn get_blockdev_size(path: &Path) -> Result<u64> {

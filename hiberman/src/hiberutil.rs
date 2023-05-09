@@ -55,6 +55,9 @@ pub enum HibernateError {
     /// Insufficient Memory available.
     #[error("Not enough free memory and swap")]
     InsufficientMemoryAvailableError(),
+    /// Insufficient free disk space available.
+    #[error("Not enough disk space")]
+    InsufficientDiskSpaceError(),
     /// Failed to send metrics
     #[error("Failed to send metrics: {0}")]
     MetricsSendFailure(String),
@@ -531,6 +534,22 @@ pub fn unmount_filesystem<P: AsRef<OsStr>>(mountpoint: P) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Get the size of the system RAM
+pub fn get_ram_size() -> u64 {
+    let f = File::open("/proc/meminfo").unwrap();
+    let reader = BufReader::new(f);
+
+    for l in reader.lines() {
+        let l = l.unwrap();
+        if l.starts_with("MemTotal:") {
+            let size_kb = l.split_whitespace().nth(1).unwrap().parse::<u64>().unwrap();
+            return size_kb * 1024;
+        }
+    }
+
+    panic!("Could not determine RAM size");
 }
 
 /// Add a logon key to the kernel key ring

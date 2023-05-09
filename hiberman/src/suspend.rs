@@ -29,6 +29,7 @@ use crate::hiberlog::replay_logs;
 use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogOut;
 use crate::hiberlog::LogRedirectGuard;
+use crate::hiberutil::get_ram_size;
 use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::prealloc_mem;
 use crate::hiberutil::HibernateError;
@@ -76,6 +77,19 @@ impl SuspendConductor {
 
         if let Err(e) = log_hibernate_attempt() {
             warn!("Failed to log hibernate attempt: \n {}", e);
+        }
+
+        if !self.volume_manager.is_hiberimage_thickened()? {
+            let free_thinpool_space = self.volume_manager.get_free_thinpool_space()?;
+            // The max image size is half of the system RAM, add a bit of margin.
+            if free_thinpool_space < (get_ram_size() as f64 * 0.75) as u64 {
+                warn!(
+                    "Not enough space ({} MB) in the thinpool for writing the hibernate image",
+                    free_thinpool_space / (1024 * 1024)
+                );
+
+                return Err(HibernateError::InsufficientDiskSpaceError().into());
+            }
         }
 
         // Don't hibernate if the update engine is up to something, as we would
