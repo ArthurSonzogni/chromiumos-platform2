@@ -243,6 +243,7 @@ type cros_home_shadow_uid_root_debugd, file_type, cros_file_type, cros_home_file
 type cros_home_shadow_uid_root_kerberosd, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_pvm, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_pvm-dispatcher, file_type, cros_file_type, cros_home_file_type;
+type cros_home_shadow_uid_root_secagentd, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_session_manager, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_shill, file_type, cros_file_type, cros_home_file_type;
 type cros_home_shadow_uid_root_shill_logs, file_type, cros_file_type, cros_home_file_type;
@@ -551,6 +552,7 @@ type cros_run_power_manager, file_type, cros_file_type, cros_run_file_type;
 type cros_run_pvm, file_type, cros_file_type, cros_run_file_type;
 type cros_run_rgbkbd, file_type, cros_file_type, cros_run_file_type;
 type cros_run_rsyslogd, file_type, cros_file_type, cros_run_file_type;
+type cros_run_secagentd, file_type, cros_file_type, cros_run_file_type;
 type cros_run_seneschal, file_type, cros_file_type, cros_run_file_type;
 type cros_run_session_manager, file_type, cros_file_type, cros_run_file_type;
 type cros_run_shill, file_type, cros_file_type, cros_run_file_type;

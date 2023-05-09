@@ -593,6 +593,7 @@ has_arc(`
 /home/.shadow/[0-9a-z]{40}/mount/root/kerberosd(/.*)?   u:object_r:cros_home_shadow_uid_root_kerberosd:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/pvm(/.*)?   u:object_r:cros_home_shadow_uid_root_pvm:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/pvm-dispatcher(/.*)?   u:object_r:cros_home_shadow_uid_root_pvm-dispatcher:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/secagentd(/.*)?   u:object_r:cros_home_shadow_uid_root_secagentd:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/session_manager(/.*)?   u:object_r:cros_home_shadow_uid_root_session_manager:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/shill(/.*)?   u:object_r:cros_home_shadow_uid_root_shill:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/shill_logs(/.*)?   u:object_r:cros_home_shadow_uid_root_shill_logs:s0
