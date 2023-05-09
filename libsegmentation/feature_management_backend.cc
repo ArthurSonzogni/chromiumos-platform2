@@ -12,6 +12,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <brillo/process/process.h>
 #include <google/protobuf/util/json_util.h>
 #include <rootdev/rootdev.h>
 #include <vboot/vboot_host.h>
@@ -25,9 +26,142 @@ namespace segmentation {
 
 namespace {
 
-// Returns the device information parsed from the HW id.
-std::optional<libsegmentation::DeviceInfo> GetDeviceInfoFromHwId() {
+// The path for the "gsctool" binary.
+constexpr char kGscToolBinaryPath[] = "/usr/sbin/gsctool";
+
+// The output of |kGscToolBinaryPath| will contain a "chassis_x_branded:" line.
+constexpr char kChassisXBrandedKey[] = "chassis_x_branded:";
+
+// The output of |kGscToolBinaryPath| will contain a "hw_compliance_version:"
+// line.
+constexpr char kHwXComplianceVersion[] = "hw_compliance_version:";
+
+// The output from the "gsctool" binary. Some or all of these fields may not be
+// present in the output.
+struct GscToolOutput {
+  bool chassis_x_branded;
+  int32_t hw_compliance_version;
+};
+
+// Parses output from running |kGscToolBinaryPath| into GscToolOutput.
+std::optional<GscToolOutput> ParseGscToolOutput(
+    const std::string& gsc_tool_output) {
+  GscToolOutput output;
+  std::istringstream iss(gsc_tool_output);
+  std::string line;
+
+  // Flags to indicate we've found the required fields.
+  bool found_chassis = false;
+  bool found_compliance_version = false;
+
+  // Keep going till there are lines in the output or we've found both the
+  // fields.
+  while (std::getline(iss, line) &&
+         (!found_chassis || !found_compliance_version)) {
+    std::istringstream line_stream(line);
+    std::string key;
+    line_stream >> key;
+
+    if (key == kChassisXBrandedKey) {
+      bool value;
+      line_stream >> std::boolalpha >> value;
+      output.chassis_x_branded = value;
+      found_chassis = true;
+    } else if (key == kHwXComplianceVersion) {
+      int32_t value;
+      line_stream >> value;
+      output.hw_compliance_version = value;
+      found_compliance_version = true;
+    }
+  }
+
+  if (found_chassis && found_compliance_version) {
+    return output;
+  }
+  return std::nullopt;
+}
+
+libsegmentation::DeviceInfo_FeatureLevel HwComplianceVersionToFeatureLevel(
+    int32_t hw_compliance_version) {
+  switch (hw_compliance_version) {
+    case 0:
+      return libsegmentation::DeviceInfo_FeatureLevel::
+          DeviceInfo_FeatureLevel_FEATURE_LEVEL_0;
+    case 1:
+      return libsegmentation::DeviceInfo_FeatureLevel::
+          DeviceInfo_FeatureLevel_FEATURE_LEVEL_1;
+    default:
+      return libsegmentation::DeviceInfo_FeatureLevel::
+          DeviceInfo_FeatureLevel_FEATURE_LEVEL_UNKNOWN;
+  }
+}
+
+// Returns the device information parsed from the output of the GSC tool binary
+// on the device.
+std::optional<libsegmentation::DeviceInfo> GetDeviceInfoFromGSC() {
+  if (!base::PathExists(base::FilePath(kGscToolBinaryPath))) {
+    LOG(ERROR) << "Can't find gsctool binary";
+    return std::nullopt;
+  }
+
   libsegmentation::DeviceInfo device_info;
+  base::FilePath output_path;
+  if (!base::CreateTemporaryFile(&output_path)) {
+    LOG(ERROR) << "Failed to open output file";
+    return std::nullopt;
+  }
+
+  brillo::ProcessImpl process;
+  process.AddArg(kGscToolBinaryPath);
+  std::vector<std::string> args = {"--factory_config", "--any"};
+  for (const auto& arg : args) {
+    process.AddArg(arg);
+  }
+  process.RedirectOutput(output_path.value().c_str());
+
+  if (!process.Start()) {
+    LOG(ERROR) << "Failed to start gsctool process";
+    return std::nullopt;
+  }
+
+  if (process.Wait() < 0) {
+    LOG(ERROR) << "Failed to wait for the gsctool process";
+    return std::nullopt;
+  }
+
+  std::string output;
+  if (!base::ReadFileToString(output_path, &output)) {
+    LOG(ERROR) << "Failed to read output from the gsctool";
+    return std::nullopt;
+  }
+
+  std::optional<GscToolOutput> gsc_tool_output = ParseGscToolOutput(output);
+  if (!gsc_tool_output) {
+    LOG(ERROR) << "Failed to parse output from the gsctool";
+    return std::nullopt;
+  }
+
+  bool chassis_x_branded = gsc_tool_output.value().chassis_x_branded;
+  int32_t hw_compliance_version = gsc_tool_output.value().hw_compliance_version;
+
+  if (chassis_x_branded || hw_compliance_version > 0) {
+    if (chassis_x_branded) {
+      device_info.set_feature_level(
+          HwComplianceVersionToFeatureLevel(hw_compliance_version));
+    } else {
+      // TODO(abhishekbh): Read from PRODUCT_ALLOWLIST to determine the feature
+      // level.
+      device_info.set_feature_level(
+          libsegmentation::DeviceInfo_FeatureLevel::
+              DeviceInfo_FeatureLevel_FEATURE_LEVEL_0);
+    }
+  } else {
+    // TODO(abhishekbh): Read from PRODUCT_COMPONENT_ALLOWLIST to determine the
+    // feature level.
+    device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
+                                      DeviceInfo_FeatureLevel_FEATURE_LEVEL_0);
+  }
+
   return device_info;
 }
 
@@ -71,7 +205,7 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
   std::optional<libsegmentation::DeviceInfo> device_info_result =
       FeatureManagementUtil::ReadDeviceInfoFromFile(device_info_file);
   if (!device_info_result) {
-    device_info_result = GetDeviceInfoFromHwId();
+    device_info_result = GetDeviceInfoFromGSC();
     if (!device_info_result) {
       LOG(ERROR) << "Failed to get device info from the hardware id";
       return false;
