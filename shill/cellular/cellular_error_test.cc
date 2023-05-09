@@ -39,6 +39,9 @@ const char kErrorIpv6OnlyAllowedMM1[] =
     "org.freedesktop.ModemManager1.Error.MobileEquipment."
     "Ipv6OnlyAllowed";
 
+const char kErrorUnknownMM1[] =
+    "org.freedesktop.ModemManager1.Error.MobileEquipment."
+    "Unknown";
 const char kErrorWrongStateMM1[] =
     "org.freedesktop.ModemManager1.Error.Core.WrongState";
 
@@ -84,6 +87,7 @@ INSTANTIATE_TEST_SUITE_P(
         TestParam(kErrorNotSubscribedMM1, Error::kInvalidApn),
         TestParam(kErrorMissingOrUnknownApnMM1, Error::kInvalidApn),
         TestParam(kErrorUserAuthenticationFailedMM1, Error::kInvalidApn),
+        TestParam(kErrorUnknownMM1, Error::kInternalError),
         TestParam(kErrorWrongStateMM1, Error::kWrongState),
         TestParam("Some random error name.", Error::kOperationFailed)));
 

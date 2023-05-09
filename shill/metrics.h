@@ -571,6 +571,7 @@ class Metrics : public DefaultServiceObserver {
     kCellularConnectResultPinRequired = 8,
     kCellularConnectResultPinBlocked = 9,
     kCellularConnectResultInvalidApn = 10,
+    kCellularConnectResultInternalError = 11,
     kCellularConnectResultMax
   };
   static constexpr EnumMetric<FixedName> kMetricCellularConnectResult = {

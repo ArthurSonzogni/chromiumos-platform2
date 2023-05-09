@@ -85,6 +85,9 @@ Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
       return Metrics::CellularConnectResult::kCellularConnectResultPinBlocked;
     case Error::kInvalidApn:
       return Metrics::CellularConnectResult::kCellularConnectResultInvalidApn;
+    case Error::kInternalError:
+      return Metrics::CellularConnectResult::
+          kCellularConnectResultInternalError;
     default:
       LOG(WARNING) << "Unexpected error type: " << error;
       return Metrics::CellularConnectResult::kCellularConnectResultUnknown;

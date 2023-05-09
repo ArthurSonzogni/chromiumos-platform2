@@ -1918,7 +1918,8 @@ void CellularCapability3gpp::UpdateLinkSpeed(const KeyValueStore& properties) {
 }
 
 bool CellularCapability3gpp::RetriableConnectError(const Error& error) const {
-  return error.type() == Error::kInvalidApn;
+  return error.type() == Error::kInvalidApn ||
+         error.type() == Error::kInternalError;
 }
 
 std::string CellularCapability3gpp::NormalizeMdn(const std::string& mdn) const {
