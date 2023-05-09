@@ -85,10 +85,14 @@ bool StoreToConfigString(const StoreInterface* storage,
   return true;
 }
 
+// Gets the DHCP options for starting the IPv4 DHCP server at the downstream.
+// Returns std::nullopt if the upstream is an IPv6-only network.
 std::optional<patchpanel::Client::DHCPOptions> GetDHCPOptions(
     const Network& network) {
   const auto ipconfig = network.ipconfig();
-  if (!ipconfig) {
+  // Checks if upstream has IPv4 configuration and it's ready. If not, then we
+  // don't start the DHCP server.
+  if (!ipconfig || !ipconfig->properties().HasIPAddressAndDNS()) {
     return std::nullopt;
   }
 
