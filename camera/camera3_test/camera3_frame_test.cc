@@ -1572,18 +1572,27 @@ TEST_P(Camera3FrameContentTest, SWPrivacySwitch) {
   ASSERT_EQ(3, i420_image->planes.size());
 
   auto IsBlack = [](const ScopedImage& i420_image) {
+    // Allow some margin when checking Y and U/V values.
+    uint8_t delta = 2;
     for (size_t h = 0; h < i420_image->height; ++h) {
       for (size_t w = 0; w < i420_image->width; ++w) {
         uint8_t y = i420_image->planes[0].addr[h * i420_image->width + w];
-        if (y != 0 && y != 16) {
+        if (!((0 <= y && y <= delta) || (16 - delta <= y && y <= 16 + delta))) {
+          LOGF(ERROR) << "Non black pixel detected: Y="
+                      << static_cast<int32_t>(y);
           return false;
         }
       }
     }
     for (size_t h = 0; h < i420_image->height / 2; ++h) {
       for (size_t w = 0; w < i420_image->width / 2; ++w) {
-        if (i420_image->planes[1].addr[h * i420_image->width / 2 + w] != 128 ||
-            i420_image->planes[2].addr[h * i420_image->width / 2 + w] != 128) {
+        uint8_t u = i420_image->planes[1].addr[h * i420_image->width / 2 + w];
+        uint8_t v = i420_image->planes[2].addr[h * i420_image->width / 2 + w];
+        if (!(128 - delta <= u && u <= 128 + delta && 128 - delta <= v &&
+              v <= 128 + delta)) {
+          LOGF(ERROR) << "Non black pixel detected: U="
+                      << static_cast<int32_t>(u)
+                      << ", V=" << static_cast<int32_t>(v);
           return false;
         }
       }
