@@ -10,6 +10,8 @@ namespace arc::keymint {
 
 namespace {
 
+// TODO(b/274723521) : Add more required ConvertEnum functions for KeyMint
+// Server.
 keymaster_tag_t ConvertEnum(arc::mojom::keymint::Tag tag) {
   return static_cast<keymaster_tag_t>(tag);
 }
