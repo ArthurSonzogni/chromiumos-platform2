@@ -4,11 +4,10 @@
 
 use hwsec_utils::context::RealContext;
 use hwsec_utils::cr50::cr50_reset;
-use log::error;
 
 fn main() {
     let mut real_ctx = RealContext::new();
     if cr50_reset(&mut real_ctx).is_err() {
-        error!("Cr50 Reset Error.");
+        eprintln!("Cr50 Reset Error.");
     }
 }

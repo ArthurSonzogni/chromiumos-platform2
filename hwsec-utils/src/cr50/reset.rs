@@ -3,9 +3,8 @@
 // found in the LICENSE file.
 
 use std::io;
+use std::io::Write;
 use std::path::Path;
-
-use log::error;
 
 use super::get_challenge_string;
 use super::get_gbb_flags;
@@ -37,7 +36,7 @@ fn gbb_force_dev_mode(ctx: &mut impl Context) -> Result<u32, HwsecError> {
             vec!["-p", "host", "--wp-disable", "--wp-range", "0,0"],
         )
         .map_err(|_| {
-            error!("Failed to run flashrom");
+            eprintln!("Failed to run flashrom");
             HwsecError::CommandRunnerError
         })?;
 
@@ -60,25 +59,25 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
     let chg_str_path = format!("/proc/{}/root", frecon_pid);
 
     if !Path::new(&chg_str_path).exists() {
-        error!("frecon not running. Can't display qrcode.");
+        eprintln!("frecon not running. Can't display qrcode.");
         return Err(HwsecError::FileError);
     }
 
     // Get HWID and replace whitespace with underscore.
     let hwid = get_hwid(ctx).map_err(|e| {
-        error!("Failed to get hwid.");
+        eprintln!("Failed to get hwid.");
         e
     })?;
 
     // Get challenge string and remove "Challenge:".
     let challenge_string = get_challenge_string(ctx).map_err(|e| {
-        error!("Failed to get challenge string.");
+        eprintln!("Failed to get challenge string.");
         e
     })?;
 
     // Test if we have a challenge.
     if challenge_string.is_empty() {
-        error!(r"Challenge wasn't generated. CR50 might need updating.");
+        eprintln!(r"Challenge wasn't generated. CR50 might need updating.");
         return Err(HwsecError::GsctoolResponseBadFormatError);
     }
 
@@ -117,15 +116,17 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
             ],
         )
         .map_err(|_| {
-            error!("Failed to qrencode.");
+            eprintln!("Failed to qrencode.");
             HwsecError::QrencodeError
         })?;
 
-    ctx.write_contents_to_file("/run/frecon/vt0", b"\x0033]image:file=/chg.png\x0033\\")?;
+    ctx.write_contents_to_file("/run/frecon/vt0", b"\x1b]image:file=/chg.png\x1b\\")?;
 
     for _ in 0..MAX_RETRIES {
         // Read authorization code. Show input in uppercase letters.
         print!("\nEnter authorization code: ");
+        // Flush stdout buffer. Here we ignore possible i/o error.
+        io::stdout().flush().ok();
         let mut auth_code = String::new();
         while io::stdin().read_line(&mut auth_code).is_err() {
             println!("Please only enter ASCII characters.");
@@ -141,7 +142,7 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
             // Force the next boot to be in developer mode so that we can boot to
             // RMA shim again.
             gbb_force_dev_mode(ctx).map_err(|e| {
-                error!("gbb_force_dev_mode failed.");
+                eprintln!("gbb_force_dev_mode failed.");
                 e
             })?;
 
@@ -149,7 +150,7 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
             ctx.cmd_runner()
                 .run("reboot", Vec::<&str>::new())
                 .map_err(|_| {
-                    error!("Failed to reboot.");
+                    eprintln!("Failed to reboot.");
                     HwsecError::SystemRebootError
                 })?;
 
@@ -164,6 +165,8 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
 
     for _ in 0..RETRY_DELAY {
         print!(".");
+        // Flush stdout buffer. Here we ignore possible i/o error.
+        io::stdout().flush().ok();
         ctx.sleep(1);
     }
 
