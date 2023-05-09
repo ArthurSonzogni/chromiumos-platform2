@@ -2,11 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use core::time;
-use std::fs;
 use std::io;
 use std::path::Path;
-use std::thread;
 
 use log::error;
 
@@ -55,10 +52,7 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
     const SECS_IN_A_DAY: u64 = 86400;
 
     // Make sure frecon is running.
-    let frecon_pid = fs::read_to_string(FRECON_PID_FILE).map_err(|_| {
-        error!("Failed to read {}", FRECON_PID_FILE);
-        HwsecError::FileError
-    })?;
+    let frecon_pid = ctx.read_file_to_string(FRECON_PID_FILE)?;
 
     // This is the path to the pre-chroot filesystem. Since frecon is started
     // before the chroot, all files that frecon accesses must be copied to
@@ -127,10 +121,7 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
             HwsecError::QrencodeError
         })?;
 
-    fs::write("/run/frecon/vt0", "\x0033]image:file=/chg.png\x0033\\").map_err(|_| {
-        error!("Failed to write to /run/frecon/vt0");
-        HwsecError::FileError
-    })?;
+    ctx.write_contents_to_file("/run/frecon/vt0", b"\x0033]image:file=/chg.png\x0033\\")?;
 
     for _ in 0..MAX_RETRIES {
         // Read authorization code. Show input in uppercase letters.
@@ -145,7 +136,7 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
         if gsctool_cmd_successful(ctx, vec!["--trunks_send", "--rma_auth", &auth_code]) {
             println!("The system will reboot shortly.");
             // Wait for cr50 to enter RMA mode.
-            thread::sleep(time::Duration::from_secs(WAIT_TO_ENTER_RMA_SECS));
+            ctx.sleep(WAIT_TO_ENTER_RMA_SECS);
 
             // Force the next boot to be in developer mode so that we can boot to
             // RMA shim again.
@@ -163,7 +154,7 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
                 })?;
 
             // Sleep indefinitely to avoid continue.
-            thread::sleep(time::Duration::from_secs(SECS_IN_A_DAY));
+            ctx.sleep(SECS_IN_A_DAY);
         }
 
         println!("Invalid authorization code. Please try again.\n");
@@ -173,7 +164,7 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
 
     for _ in 0..RETRY_DELAY {
         print!(".");
-        thread::sleep(time::Duration::from_secs(1));
+        ctx.sleep(1);
     }
 
     Ok(())
