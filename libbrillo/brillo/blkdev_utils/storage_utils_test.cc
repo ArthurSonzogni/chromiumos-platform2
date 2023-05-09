@@ -33,9 +33,7 @@ class MockStorageUtils : public StorageUtils {
 };
 
 TEST(NvmeTest, GetStorageTypeTest) {
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath root = temp_dir.GetPath();
+  base::FilePath root("/");
   base::FilePath root_disk = root.Append("dev/nvme0n1");
   MockStorageUtils storage_utils_mock = MockStorageUtils();
   EXPECT_EQ(StorageType::nvme,
@@ -50,8 +48,8 @@ TEST(EmmcTest, GetStorageTypeTest) {
   base::FilePath type_file_path = root.Append("sys/block/mmcblk0/device/type");
   std::map<base::FilePath, base::FilePath> abs_path_map{
       {type_file_path,
-       root.Append(
-           "sys/devices/pci0000:00/0000:00:1a.0/mmc_host/mmc1/mmc1:0001")},
+       base::FilePath(
+           "/sys/devices/pci0000:00/0000:00:1a.0/mmc_host/mmc1/mmc1:0001")},
   };
   MockStorageUtils storage_utils_mock = MockStorageUtils();
   storage_utils_mock.SetAbsPathReturnValue(abs_path_map);
@@ -67,8 +65,9 @@ TEST(UsbTest, GetStorageTypeTest) {
   base::FilePath type_file_path = root.Append("sys/block/sda/device/type");
   std::map<base::FilePath, base::FilePath> abs_path_map{
       {type_file_path,
-       root.Append("sys/devices/pci0000:00/0000:00:14.0/usb4/4-1/4-1:1.0/host1/"
-                   "target1:0:0/1:0:0:0")},
+       base::FilePath(
+           "/sys/devices/pci0000:00/0000:00:14.0/usb4/4-1/4-1:1.0/host1/"
+           "target1:0:0/1:0:0:0")},
   };
   MockStorageUtils storage_utils_mock = MockStorageUtils();
   storage_utils_mock.SetAbsPathReturnValue(abs_path_map);
@@ -84,8 +83,8 @@ TEST(UfsTest, GetStorageTypeTest) {
   base::FilePath type_file_path = root.Append("sys/block/sda/device/type");
   std::map<base::FilePath, base::FilePath> abs_path_map{
       {type_file_path,
-       root.Append(
-           "sys/devices/pci0000:00/0000:00:12.7/host0/ufs0:0:0/0:0:0:0")},
+       base::FilePath(
+           "/sys/devices/pci0000:00/0000:00:12.7/host0/ufs0:0:0/0:0:0:0")},
   };
   MockStorageUtils storage_utils_mock = MockStorageUtils();
   storage_utils_mock.SetAbsPathReturnValue(abs_path_map);
@@ -105,8 +104,8 @@ TEST(UfsDriverTest, GetStorageTypeTest) {
   ASSERT_TRUE(brillo::WriteStringToFile(vendor_file, ""));
   std::map<base::FilePath, base::FilePath> abs_path_map{
       {type_file_path,
-       root.Append(
-           "sys/devices/pci0000:00/0000:00:12.7/host0/target0:0:0/0:0:0:0")},
+       base::FilePath(
+           "/sys/devices/pci0000:00/0000:00:12.7/host0/target0:0:0/0:0:0:0")},
       {driver_path, root.Append("sys/bus/pci/drivers/ufshcd")},
   };
   MockStorageUtils storage_utils_mock = MockStorageUtils();
@@ -126,8 +125,8 @@ TEST(AtaTest, GetStorageTypeTest) {
   ASSERT_TRUE(brillo::WriteStringToFile(vendor_file, "ATA vendor"));
   std::map<base::FilePath, base::FilePath> abs_path_map{
       {type_file_path,
-       root.Append(
-           "sys/devices/pci0000:00/0000:00:12.7/host0/target0:0:0/0:0:0:0")}};
+       base::FilePath(
+           "/sys/devices/pci0000:00/0000:00:12.7/host0/target0:0:0/0:0:0:0")}};
   MockStorageUtils storage_utils_mock = MockStorageUtils();
   storage_utils_mock.SetAbsPathReturnValue(abs_path_map);
   EXPECT_EQ(StorageType::ata,
@@ -142,8 +141,8 @@ TEST(OthersTest, GetStorageTypeTest) {
   base::FilePath type_file_path = root.Append("sys/block/sda/device/type");
   std::map<base::FilePath, base::FilePath> abs_path_map{
       {type_file_path,
-       root.Append(
-           "sys/devices/pci0000:00/0000:00:12.7/host0/other0:0:0/0:0:0:0")}};
+       base::FilePath(
+           "/sys/devices/pci0000:00/0000:00:12.7/host0/other0:0:0/0:0:0:0")}};
   MockStorageUtils storage_utils_mock = MockStorageUtils();
   storage_utils_mock.SetAbsPathReturnValue(abs_path_map);
   EXPECT_EQ(StorageType::others,
