@@ -39,16 +39,18 @@ const char kUserCrashSignal[] = "org.chromium.CrashReporter.UserCrash";
 // Linux syscall numbers are `long`, so we need to handle the edge cases when
 // parsing since long is 32-bit for ARM while long is 64-bit for x86_64 and
 // aarch64.
+// NOLINTNEXTLINE(runtime/int)
 bool StringToSyscallNumber(base::StringPiece input, long* output) {
-  static_assert(sizeof(long) <= sizeof(int64_t));
+  static_assert(sizeof(long) <= sizeof(int64_t));  // NOLINT(runtime/int)
   int64_t parsed;
   if (!base::StringToInt64(input, &parsed)) {
     return false;
   }
+  // NOLINTNEXTLINE(runtime/int)
   if (parsed < 0 || (sizeof(int64_t) > sizeof(long) && parsed > LONG_MAX)) {
     return false;
   }
-  *output = static_cast<long>(parsed);
+  *output = static_cast<long>(parsed);  // NOLINT(runtime/int)
   return true;
 }
 
@@ -400,7 +402,7 @@ void UserCollectorBase::HandleSyscall(const std::string& exec,
   AddCrashMetaUploadData("seccomp_blocked_syscall_nr", split[0]);
   AddCrashMetaUploadData("seccomp_proc_pid_syscall", contents);
 
-  long syscall_num;
+  long syscall_num;  // NOLINT(runtime/int) The kernel uses long for syscalls
   if (!StringToSyscallNumber(split[0], &syscall_num)) {
     LOG(WARNING) << "Failed to parse syscall number: " << split[0];
     return;
