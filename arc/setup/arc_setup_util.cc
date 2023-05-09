@@ -989,7 +989,7 @@ bool SafeCopyFile(const base::FilePath& src_path,
   len = st.st_size;
 
   do {
-    ret = sendfile(dest_fd.get(), src_fd.get(), NULL, len);
+    ret = sendfile(dest_fd.get(), src_fd.get(), nullptr, len);
     if (ret == -1) {
       PLOG(ERROR) << "Fail to copy file " << src_path << " to " << dest_path
                   << errno;
@@ -1115,8 +1115,8 @@ std::optional<std::string> FilterMediaProfile(
 
   auto result = [&doc, &content, enable_front_camera,
                  enable_back_camera]() -> std::optional<std::string> {
-    doc = xmlReadMemory(content.c_str(), content.size(), NULL, NULL, 0);
-    if (doc == NULL) {
+    doc = xmlReadMemory(content.c_str(), content.size(), nullptr, nullptr, 0);
+    if (doc == nullptr) {
       LOG(ERROR) << "Failed to parse media profile content:\n" << content;
       return std::nullopt;
     }
@@ -1124,7 +1124,7 @@ std::optional<std::string> FilterMediaProfile(
     xmlKeepBlanksDefault(0);
 
     xmlNodePtr settings = xmlDocGetRootElement(doc);
-    if (settings == NULL) {
+    if (settings == nullptr) {
       LOG(ERROR) << "No root element node found in media profile content:\n"
                  << content;
       return std::nullopt;
@@ -1137,7 +1137,7 @@ std::optional<std::string> FilterMediaProfile(
     }
 
     std::vector<xmlNodePtr> camera_profiles;
-    for (xmlNodePtr cur = xmlFirstElementChild(settings); cur != NULL;
+    for (xmlNodePtr cur = xmlFirstElementChild(settings); cur != nullptr;
          cur = xmlNextElementSibling(cur)) {
       if (std::string("CamcorderProfiles") !=
           reinterpret_cast<const char*>(cur->name)) {
@@ -1166,16 +1166,18 @@ std::optional<std::string> FilterMediaProfile(
         return std::nullopt;
     }
 
-    xmlNodePtr front_camera_profile = NULL;
-    xmlNodePtr back_camera_profile = NULL;
+    xmlNodePtr front_camera_profile = nullptr;
+    xmlNodePtr back_camera_profile = nullptr;
     for (xmlNodePtr profile : camera_profiles) {
       auto* cameraId = reinterpret_cast<const char*>(
           xmlGetProp(profile, reinterpret_cast<const xmlChar*>("cameraId")));
       if (std::string("0") == cameraId) {
-        CHECK(back_camera_profile == NULL) << "Duplicate back facing profile";
+        CHECK(back_camera_profile == nullptr)
+            << "Duplicate back facing profile";
         back_camera_profile = profile;
       } else if (std::string("1") == cameraId) {
-        CHECK(front_camera_profile == NULL) << "Duplicate front facing profile";
+        CHECK(front_camera_profile == nullptr)
+            << "Duplicate front facing profile";
         front_camera_profile = profile;
       } else {
         LOG(ERROR) << "Unknown cameraId \"" << cameraId
@@ -1211,7 +1213,7 @@ std::optional<std::string> FilterMediaProfile(
     xmlChar* buf;
     int size;
     xmlDocDumpFormatMemory(doc, &buf, &size, /* format */ 1);
-    CHECK(buf != NULL) << "Failed to dump filtered xml result";
+    CHECK(buf != nullptr) << "Failed to dump filtered xml result";
     std::string xml_result(reinterpret_cast<const char*>(buf));
     xmlFree(buf);
     return xml_result;
