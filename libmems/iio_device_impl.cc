@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <fcntl.h>
 #include <memory>
 #include <optional>
@@ -74,8 +75,16 @@ IioDeviceImpl::IioDeviceImpl(IioContextImpl* ctx, iio_device* dev)
 
   base::FileEnumerator file_enumerator(GetPath().Append("events"), false,
                                        base::FileEnumerator::FILES, "*_en");
+  std::vector<base::FilePath> files;
   for (base::FilePath file = file_enumerator.Next(); !file.empty();
        file = file_enumerator.Next()) {
+    files.push_back(file);
+  }
+
+  // Sort the events to align event indices with channel numbers.
+  std::sort(files.begin(), files.end());
+
+  for (const auto& file : files) {
     auto iio_event = IioEventImpl::Create(file);
     if (iio_event)
       events_.push_back(std::move(iio_event));
