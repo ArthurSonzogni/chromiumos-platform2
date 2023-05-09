@@ -72,29 +72,56 @@ bool FeatureManagementImpl::IsFeatureEnabled(const std::string& name) {
   if (name.compare(0, prefix_len, FeatureManagement::kPrefix))
     return false;
 
-  auto level = GetFeatureLevel();
-  if (level == FEATURE_LEVEL_UNKNOWN)
-    level = FEATURE_LEVEL_0;
+  enum FeatureLevel feature_level = GetFeatureLevel();
+  if (feature_level == FEATURE_LEVEL_UNKNOWN)
+    feature_level = FEATURE_LEVEL_0;
 
+  enum ScopeLevel scope_level = GetScopeLevel();
+  if (scope_level == SCOPE_LEVEL_UNKNOWN)
+    scope_level = SCOPE_LEVEL_0;
+
+  // Now we have the feature_level and the scope_level, after we
+  // found that the feature exist, check if its level is equal or
+  // greater than the DUT feature_level and if its scope array contains
+  // the DUT scope_level.
   std::string in_feature = name.substr(prefix_len);
-  for (auto feature : bundle_.features()) {
-    if (!feature.name().compare(in_feature))
-      return level >= feature.feature_level() + FEATURE_LEVEL_VALID_OFFSET;
+  for (const auto& feature : bundle_.features()) {
+    if (!feature.name().compare(in_feature)) {
+      auto it = std::find(feature.scopes().begin(), feature.scopes().end(),
+                          scope_level - SCOPE_LEVEL_VALID_OFFSET);
+
+      return feature_level - FEATURE_LEVEL_VALID_OFFSET >=
+                 feature.feature_level() &&
+             it != feature.scopes().end();
+    }
   }
   return false;
 }
 
 const std::set<std::string> FeatureManagementImpl::ListFeatures(
     const FeatureUsage usage) {
-  auto level = GetFeatureLevel();
-  if (level == FEATURE_LEVEL_UNKNOWN)
-    level = FEATURE_LEVEL_0;
+  enum FeatureLevel feature_level = GetFeatureLevel();
+  if (feature_level == FEATURE_LEVEL_UNKNOWN)
+    feature_level = FEATURE_LEVEL_0;
 
+  enum ScopeLevel scope_level = GetScopeLevel();
+  if (scope_level == SCOPE_LEVEL_UNKNOWN)
+    scope_level = SCOPE_LEVEL_0;
+
+  // Now we have the feature_level and the scope_level, return all features
+  // that:
+  // 1. matches the usage and
+  // 2. its feature level is equal or greater than the DUT feature_level and
+  // 3. its scope array contains the DUT scope_level.
   std::set<std::string> features;
-  for (auto feature : bundle_.features()) {
+  for (const auto& feature : bundle_.features()) {
+    auto it = std::find(feature.scopes().begin(), feature.scopes().end(),
+                        scope_level - SCOPE_LEVEL_VALID_OFFSET);
+
     if (std::find(feature.usages().begin(), feature.usages().end(), usage) !=
             feature.usages().end() &&
-        level >= feature.feature_level() + FEATURE_LEVEL_VALID_OFFSET)
+        feature_level - FEATURE_LEVEL_VALID_OFFSET >= feature.feature_level() &&
+        it != feature.scopes().end())
       features.emplace(FeatureManagement::kPrefix + feature.name());
   }
   return features;

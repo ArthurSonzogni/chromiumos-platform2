@@ -122,7 +122,7 @@ class FeatureManagementImplTest : public ::testing::Test {
 };
 
 TEST_F(FeatureManagementImplTest, GetBasicFeature) {
-  // Test with an empty file. Expect feature level to be 0.
+  // Test with an empty file. Expect feature level to be 0, scope to 0.
   EXPECT_EQ(feature_management_->IsFeatureEnabled("A"), false);
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementA"), true);
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementAPad"),
@@ -199,10 +199,24 @@ TEST_F(FeatureManagementImplTest, GetFeatureLevel0) {
   EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementD"), false);
 }
 
-TEST_F(FeatureManagementImplTest, GetFeatureLevel1) {
+TEST_F(FeatureManagementImplTest, GetFeatureLevel1Scope0) {
   libsegmentation::DeviceInfo device_info;
   device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
                                     DeviceInfo_FeatureLevel_FEATURE_LEVEL_1);
+  EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
+                                                           device_info_path_));
+
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementA"), true);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementB"), false);
+  EXPECT_EQ(feature_management_->IsFeatureEnabled("FeatureManagementD"), false);
+}
+
+TEST_F(FeatureManagementImplTest, GetFeatureLevel1Scope1) {
+  libsegmentation::DeviceInfo device_info;
+  device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
+                                    DeviceInfo_FeatureLevel_FEATURE_LEVEL_1);
+  device_info.set_scope_level(libsegmentation::DeviceInfo_ScopeLevel::
+                                  DeviceInfo_ScopeLevel_SCOPE_LEVEL_1);
   EXPECT_TRUE(FeatureManagementUtil::WriteDeviceInfoToFile(device_info,
                                                            device_info_path_));
 
