@@ -127,6 +127,8 @@ struct DownstreamNetworkInfo {
   // The domain search of the DHCP option, only used when |enable_ipv4_dhcp| is
   // true.
   std::vector<std::string> dhcp_domain_searches;
+  // The extra DHCP options, only used when |enable_ipv4_dhcp| is true.
+  DHCPServerController::Config::DHCPOptions dhcp_options;
 
   // Set to true if GuestIPv6Service is used on the downstream network.
   bool enable_ipv6;

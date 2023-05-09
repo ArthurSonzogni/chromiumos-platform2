@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
@@ -24,6 +25,9 @@ class DHCPServerController {
   // created, so the configuration is always valid.
   class Config {
    public:
+    using DHCPOptions =
+        std::vector<std::pair<uint8_t /*tag*/, std::string /*content*/>>;
+
     // Creates the Config instance if the arguments are valid.
     // |host_cidr| is CIDR of the DHCP server. Its prefix_length() determines
     // the subnet that the DHCP server serves.
@@ -31,13 +35,16 @@ class DHCPServerController {
     // the same subnet as the DHCP server serves.
     // |dns_servers| is the list of DNS servers.
     // |domain_searches| is the list of the domain search.
+    // |mtu| is the MTU of the downstream. std::nullopt means the default value.
+    // |dhcp_options| is the list of the DHCP options.
     static std::optional<Config> Create(
         const shill::IPv4CIDR& host_cidr,
         const shill::IPv4Address& start_ip,
         const shill::IPv4Address& end_ip,
         const std::vector<shill::IPv4Address>& dns_servers,
         const std::vector<std::string>& domain_searches,
-        const std::optional<int>& mtu);
+        const std::optional<int>& mtu,
+        const DHCPOptions& dhcp_options);
 
     // Getter methods of each field.
     const std::string& host_ip() const { return host_ip_; }
@@ -47,6 +54,7 @@ class DHCPServerController {
     const std::string& dns_servers() const { return dns_servers_; }
     const std::string& domain_searches() const { return domain_searches_; }
     const std::string& mtu() const { return mtu_; }
+    const DHCPOptions& dhcp_options() const { return dhcp_options_; }
 
    private:
     Config(const std::string& host_ip,
@@ -55,7 +63,8 @@ class DHCPServerController {
            const std::string& end_ip,
            const std::string& dns_servers,
            const std::string& domain_searches,
-           const std::string& mtu);
+           const std::string& mtu,
+           const DHCPOptions& dhcp_options);
 
     friend std::ostream& operator<<(std::ostream& os, const Config& config);
 
@@ -69,6 +78,8 @@ class DHCPServerController {
     std::string domain_searches_;
     // Empty if the MTU is default value.
     std::string mtu_;
+    // The extra DHCP options.
+    DHCPOptions dhcp_options_;
   };
 
   explicit DHCPServerController(const std::string& ifname);

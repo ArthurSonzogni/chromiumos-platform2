@@ -1302,7 +1302,6 @@ bool ClientImpl::CreateTetheredNetwork(
   }
   // TODO(b/239559602) Fill out DHCP options:
   //  - If the upstream network has a DHCP lease, copy relevant options.
-  //  - Option 43 with ANDROID_METERED if the upstream network is metered.
   //  - Forward DHCP WPAD proxy configuration if advertised by the upstream
   //    network.
   if (dhcp_options.has_value()) {
@@ -1313,6 +1312,12 @@ bool ClientImpl::CreateTetheredNetwork(
     }
     for (const auto& domain_search : dhcp_options->domain_search_list) {
       ipv4_config->add_domain_searches(domain_search);
+    }
+    if (dhcp_options->is_android_metered) {
+      auto options = ipv4_config->add_options();
+      // RFC 3925 defines the DHCP option 43 is Vendor Specific.
+      options->set_code(43);
+      options->set_content("ANDROID_METERED");
     }
   }
 

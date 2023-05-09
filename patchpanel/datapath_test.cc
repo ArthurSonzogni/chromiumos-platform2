@@ -227,6 +227,8 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   const std::vector<std::string> domain_searches = {"domain.local0",
                                                     "domain.local1"};
   const int mtu = 1540;
+  const DHCPServerController::Config::DHCPOptions dhcp_options = {
+      {43, "ANDROID_METERED"}};
 
   IPv4Subnet* ipv4_subnet = new IPv4Subnet();
   ipv4_subnet->set_addr(subnet_ip.ToByteString());
@@ -243,6 +245,9 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   ipv4_config->add_dns_servers(dns_servers[1].ToByteString());
   ipv4_config->add_domain_searches(domain_searches[0]);
   ipv4_config->add_domain_searches(domain_searches[1]);
+  auto dhcp_option = ipv4_config->add_options();
+  dhcp_option->set_code(dhcp_options[0].first);
+  dhcp_option->set_content(dhcp_options[0].second);
 
   TetheredNetworkRequest request;
   request.set_upstream_ifname("wwan0");
@@ -263,6 +268,7 @@ TEST(DatapathTest, DownstreamNetworkInfo_CreateFromTetheredNetworkRequest) {
   EXPECT_EQ(info->dhcp_domain_searches, domain_searches);
   EXPECT_EQ(info->mtu, mtu);
   EXPECT_EQ(info->enable_ipv6, true);
+  EXPECT_EQ(info->dhcp_options, dhcp_options);
 }
 
 TEST(DatapathTest,

@@ -51,8 +51,9 @@ class DHCPServerControllerTest : public ::testing::Test {
         "domain.local1",
     };
     const std::optional<int> mtu = 2000;
+    const Config::DHCPOptions dhcp_options = {{43, "ANDROID_METERED"}};
     return Config::Create(host_ip, start_ip, end_ip, dns_servers,
-                          domain_searches, mtu)
+                          domain_searches, mtu, dhcp_options)
         .value();
   }
 
@@ -66,7 +67,7 @@ TEST_F(DHCPServerControllerTest, ConfigWithWrongSubnet) {
   const auto start_ip = *IPv4Address::CreateFromString("192.168.5.50");
   const auto end_ip = *IPv4Address::CreateFromString("192.168.5.100");
 
-  EXPECT_EQ(Config::Create(host_ip, start_ip, end_ip, {}, {}, std::nullopt),
+  EXPECT_EQ(Config::Create(host_ip, start_ip, end_ip, {}, {}, std::nullopt, {}),
             std::nullopt);
 }
 
@@ -76,7 +77,7 @@ TEST_F(DHCPServerControllerTest, ConfigWithWrongRange) {
   const auto start_ip = *IPv4Address::CreateFromString("192.168.1.100");
   const auto end_ip = *IPv4Address::CreateFromString("192.168.1.50");
 
-  EXPECT_EQ(Config::Create(host_ip, start_ip, end_ip, {}, {}, std::nullopt),
+  EXPECT_EQ(Config::Create(host_ip, start_ip, end_ip, {}, {}, std::nullopt, {}),
             std::nullopt);
 }
 
@@ -93,8 +94,9 @@ TEST_F(DHCPServerControllerTest, ValidConfig) {
       "domain.local1",
   };
   const std::optional<int> mtu = 2000;
+  const Config::DHCPOptions dhcp_options = {{43, "ANDROID_METERED"}};
   const auto config = Config::Create(host_ip, start_ip, end_ip, dns_servers,
-                                     domain_searches, mtu);
+                                     domain_searches, mtu, dhcp_options);
 
   ASSERT_NE(config, std::nullopt);
   EXPECT_EQ(config->host_ip(), "192.168.1.1");
@@ -103,6 +105,7 @@ TEST_F(DHCPServerControllerTest, ValidConfig) {
   EXPECT_EQ(config->end_ip(), "192.168.1.100");
   EXPECT_EQ(config->dns_servers(), "1.2.3.4,5.6.7.8");
   EXPECT_EQ(config->mtu(), "2000");
+  EXPECT_EQ(config->dhcp_options(), dhcp_options);
 }
 
 TEST_F(DHCPServerControllerTest, ValidConfigWithoutOptionalArgument) {
@@ -110,7 +113,7 @@ TEST_F(DHCPServerControllerTest, ValidConfigWithoutOptionalArgument) {
   const auto start_ip = *IPv4Address::CreateFromString("192.168.1.50");
   const auto end_ip = *IPv4Address::CreateFromString("192.168.1.100");
   const auto config =
-      Config::Create(host_ip, start_ip, end_ip, {}, {}, std::nullopt);
+      Config::Create(host_ip, start_ip, end_ip, {}, {}, std::nullopt, {});
 
   ASSERT_NE(config, std::nullopt);
   EXPECT_EQ(config->dns_servers(), "");
@@ -135,6 +138,7 @@ TEST_F(DHCPServerControllerTest, StartSuccessfulAtFirstTime) {
       "--dhcp-option=option:dns-server,1.2.3.4,5.6.7.8",
       "--dhcp-option=option:domain-search,domain.local0,domain.local1",
       "--dhcp-option=option:mtu,2000",
+      "--dhcp-option=43,ANDROID_METERED",
   };
   constexpr pid_t pid = 5;
 

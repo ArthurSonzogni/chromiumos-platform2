@@ -2366,6 +2366,11 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
     info->dhcp_domain_searches = {ipv4_config.domain_searches().begin(),
                                   ipv4_config.domain_searches().end()};
 
+    // Fill the DHCP options.
+    for (const auto& option : ipv4_config.options()) {
+      info->dhcp_options.emplace_back(option.code(), option.content());
+    }
+
     // TODO(b/239559602) Copy or generate the IPv6 prefix configuration for
     // LocalOnlyHotspot mode.
   }
@@ -2397,7 +2402,7 @@ DownstreamNetworkInfo::ToDHCPServerConfig() const {
 
   return DHCPServerController::Config::Create(
       ipv4_cidr, ipv4_dhcp_start_addr, ipv4_dhcp_end_addr, dhcp_dns_servers,
-      dhcp_domain_searches, mtu);
+      dhcp_domain_searches, mtu, dhcp_options);
 }
 
 std::ostream& operator<<(std::ostream& stream,

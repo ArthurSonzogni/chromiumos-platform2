@@ -623,6 +623,11 @@ class Service : public base::RefCounted<Service> {
   // connectivity.
   virtual TetheringState GetTethering() const;
 
+  // If the user has explicitly designated this connection to be metered
+  // or unmetered, returns that value. Otherwise, returns whether or not the
+  // connection is confirmed or inferred to be metered.
+  bool IsMetered() const;
+
   // Initializes the traffic_counter_snapshot_ map to the counter values. The
   // snapshots should never be updated without also refreshing the counters.
   mockable void InitializeTrafficCounterSnapshot(
@@ -951,11 +956,6 @@ class Service : public base::RefCounted<Service> {
   // Linearize security parameters (crypto algorithm, key rotation, endpoint
   // authentication) for comparison.
   uint16_t SecurityLevel();
-
-  // If the user has explicitly designated this connection to be metered
-  // or unmetered, returns that value. Otherwise, returns whether or not the
-  // connection is confirmed or inferred to be metered.
-  bool IsMetered() const;
 
   // Get the storage key for current traffic counters corresponding
   // to |source| and |suffix| (one of kStorageTrafficCounterSuffixes).

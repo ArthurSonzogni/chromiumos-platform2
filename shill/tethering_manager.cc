@@ -88,7 +88,7 @@ bool StoreToConfigString(const StoreInterface* storage,
 // Gets the DHCP options for starting the IPv4 DHCP server at the downstream.
 // Returns std::nullopt if the upstream is an IPv6-only network.
 std::optional<patchpanel::Client::DHCPOptions> GetDHCPOptions(
-    const Network& network) {
+    const Network& network, const Service& service) {
   const auto ipconfig = network.ipconfig();
   // Checks if upstream has IPv4 configuration and it's ready. If not, then we
   // don't start the DHCP server.
@@ -97,6 +97,7 @@ std::optional<patchpanel::Client::DHCPOptions> GetDHCPOptions(
   }
 
   patchpanel::Client::DHCPOptions options;
+  // Fill the DNS servers.
   for (const auto& dns_server : ipconfig->properties().dns_servers) {
     const auto dns_server_ip =
         IPAddress::CreateFromString(dns_server, IPAddress::kFamilyIPv4);
@@ -109,7 +110,12 @@ std::optional<patchpanel::Client::DHCPOptions> GetDHCPOptions(
       options.dns_server_addresses.push_back(ip_bytes);
     }
   }
+
+  // Fill the list of domain search.
   options.domain_search_list = ipconfig->properties().domain_search;
+
+  // Set the flag for "ANDROID_METERED" option.
+  options.is_android_metered = service.IsMetered();
   return options;
 }
 
@@ -455,7 +461,7 @@ void TetheringManager::CheckAndStartDownstreamTetheredNetwork() {
     return;
   }
 
-  if (!upstream_network_) {
+  if (!upstream_network_ || !upstream_service_) {
     return;
   }
 
@@ -479,7 +485,7 @@ void TetheringManager::CheckAndStartDownstreamTetheredNetwork() {
   downstream_network_started_ =
       manager_->patchpanel_client()->CreateTetheredNetwork(
           downstream_ifname, upstream_ifname,
-          GetDHCPOptions(*upstream_network_), mtu,
+          GetDHCPOptions(*upstream_network_, *upstream_service_), mtu,
           base::BindOnce(&TetheringManager::OnDownstreamNetworkReady,
                          base::Unretained(this)));
   if (!downstream_network_started_) {
