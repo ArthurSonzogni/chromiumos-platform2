@@ -43,7 +43,7 @@ std::string ErrorPtrToStr(const brillo::ErrorPtr& err) {
                             err->GetMessage().c_str());
 }
 
-int PrintDict(const base::Value& dict) {
+int PrintDict(const base::Value::Dict& dict) {
   std::string json;
   if (!base::JSONWriter::WriteWithOptions(
           dict, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json)) {
@@ -54,59 +54,51 @@ int PrintDict(const base::Value& dict) {
   return EX_OK;
 }
 
-base::Value Dict() {
-  return base::Value(base::Value::Type::DICT);
+base::Value::Dict Dict() {
+  return base::Value::Dict();
 }
 
-base::Value ToDict(const lvmd::PhysicalVolume& pv) {
-  auto pv_dict = Dict();
-  pv_dict.SetStringKey(kDevicePath, pv.device_path());
+base::Value::Dict ToDict(const lvmd::PhysicalVolume& pv) {
+  auto pv_dict = Dict().Set(kDevicePath, pv.device_path());
 
-  auto dict = Dict();
-  dict.SetKey(kPhysicalVolume, std::move(pv_dict));
+  auto dict = Dict().Set(kPhysicalVolume, std::move(pv_dict));
   return dict;
 }
 
-base::Value ToDict(const lvmd::VolumeGroup& vg) {
-  auto vg_dict = Dict();
-  vg_dict.SetStringKey(kName, vg.name());
+base::Value::Dict ToDict(const lvmd::VolumeGroup& vg) {
+  auto vg_dict = Dict().Set(kName, vg.name());
 
-  auto dict = Dict();
-  dict.SetKey(kVolumeGroup, std::move(vg_dict));
+  auto dict = Dict().Set(kVolumeGroup, std::move(vg_dict));
   return dict;
 }
 
-base::Value ToDict(const lvmd::Thinpool& thinpool) {
+base::Value::Dict ToDict(const lvmd::Thinpool& thinpool) {
   auto vg_dict = ToDict(thinpool.volume_group());
-  auto thinpool_dict = Dict();
-  thinpool_dict.SetKey(kVolumeGroup, std::move(vg_dict));
-  thinpool_dict.SetStringKey(kName, thinpool.name());
-  thinpool_dict.SetIntKey(kTotalBytes, thinpool.total_bytes());
-  thinpool_dict.SetIntKey(kFreeBytes, thinpool.free_bytes());
+  auto thinpool_dict =
+      Dict()
+          .Set(kVolumeGroup, std::move(vg_dict))
+          .Set(kName, thinpool.name())
+          .Set(kTotalBytes, static_cast<int>(thinpool.total_bytes()))
+          .Set(kFreeBytes, static_cast<int>(thinpool.free_bytes()));
 
-  auto dict = Dict();
-  dict.SetKey(kThinpool, std::move(thinpool_dict));
+  auto dict = Dict().Set(kThinpool, std::move(thinpool_dict));
   return dict;
 }
 
-base::Value ToDict(const lvmd::LogicalVolume& lv) {
-  auto lv_dict = Dict();
-  lv_dict.SetStringKey(kName, lv.name());
-  lv_dict.SetStringKey(kPath, lv.path());
+base::Value::Dict ToDict(const lvmd::LogicalVolume& lv) {
+  auto lv_dict = Dict().Set(kName, lv.name()).Set(kPath, lv.path());
 
-  auto dict = Dict();
-  dict.SetKey(kLogicalVolume, std::move(lv_dict));
+  auto dict = Dict().Set(kLogicalVolume, std::move(lv_dict));
   return dict;
 }
 
-base::Value ToDict(const lvmd::LogicalVolumeList& lvs) {
+base::Value::Dict ToDict(const lvmd::LogicalVolumeList& lvs) {
   auto lv_list = base::Value::List();
   for (const auto& lv : lvs.logical_volume()) {
     lv_list.Append(ToDict(lv));
   }
 
-  auto dict = Dict();
-  dict.SetKey(kLogicalVolumeList, base::Value(std::move(lv_list)));
+  auto dict = Dict().Set(kLogicalVolumeList, base::Value(std::move(lv_list)));
   return dict;
 }
 

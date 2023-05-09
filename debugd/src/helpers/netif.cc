@@ -152,7 +152,7 @@ class NetInterface {
   Value ipv6_{Value::Type::DICT};
   Value flags_{Value::Type::LIST};
   std::string mac_;
-  Value signal_strengths_{Value::Type::DICT};
+  Value::Dict signal_strengths_;
 
   void AddAddressTo(Value::Dict& dv, struct sockaddr* sa);
 };
@@ -166,7 +166,7 @@ bool NetInterface::Init() {
 
 void NetInterface::AddSignalStrength(const std::string& name, int strength) {
   // Use base::Value::SetKey, because |name| may contain ".".
-  signal_strengths_.SetIntKey(name, strength);
+  signal_strengths_.Set(name, strength);
 }
 
 void NetInterface::AddAddressTo(Value::Dict& dict, struct sockaddr* sa) {
@@ -198,17 +198,17 @@ void NetInterface::AddAddress(struct ifaddrs* ifa) {
 }
 
 Value NetInterface::ToValue() const {
-  Value dv(Value::Type::DICT);
+  Value::Dict dv;
   if (!ipv4_.GetDict().empty())
-    dv.SetKey("ipv4", ipv4_.Clone());
+    dv.Set("ipv4", ipv4_.Clone());
   if (!ipv6_.GetDict().empty())
-    dv.SetKey("ipv6", ipv6_.Clone());
+    dv.Set("ipv6", ipv6_.Clone());
   if (flags_.GetList().size())
-    dv.SetKey("flags", flags_.Clone());
-  if (!signal_strengths_.GetDict().empty())
-    dv.SetKey("signal-strengths", signal_strengths_.Clone());
-  dv.SetStringKey("mac", mac_);
-  return dv;
+    dv.Set("flags", flags_.Clone());
+  if (!signal_strengths_.empty())
+    dv.Set("signal-strengths", signal_strengths_.Clone());
+  dv.Set("mac", mac_);
+  return Value(std::move(dv));
 }
 
 std::string DevicePathToName(const std::string& path) {

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <utility>
 
 #include <base/json/json_reader.h>
 #include <base/values.h>
@@ -96,15 +97,15 @@ TEST(HexFieldConverterTest, TestIntToDecString) {
       {-0x7b, "-123"},
   };
   for (const auto& [in, out] : cases) {
-    base::Value dict_value(base::Value::Type::DICT);
-    dict_value.SetIntKey("key", in);
+    base::Value::Dict dict_value = base::Value::Dict().Set("key", in);
 
     auto converter = HexFieldConverter::Build("");
 
-    ASSERT_EQ(converter->Convert("key", &dict_value), ReturnCode::OK)
+    auto value = base::Value(std::move(dict_value));
+    ASSERT_EQ(converter->Convert("key", &value), ReturnCode::OK)
         << "failed to convert string: " << in;
 
-    auto* string_value = dict_value.FindStringKey("key");
+    auto* string_value = value.FindStringKey("key");
     ASSERT_NE(string_value, nullptr);
     ASSERT_EQ(*string_value, out) << in << " is not converted to " << out;
   }
@@ -112,15 +113,15 @@ TEST(HexFieldConverterTest, TestIntToDecString) {
 
 TEST(IntegerFieldConverterTest, TestDoubleToInt) {
   double v = 123.5;
-  base::Value dict_value(base::Value::Type::DICT);
-  dict_value.SetDoubleKey("key", v);
+  auto dict_value = base::Value::Dict().Set("key", v);
 
   auto converter = IntegerFieldConverter::Build("");
 
-  ASSERT_EQ(converter->Convert("key", &dict_value), ReturnCode::OK)
+  auto value = base::Value(std::move(dict_value));
+  ASSERT_EQ(converter->Convert("key", &value), ReturnCode::OK)
       << "failed to convert double";
 
-  auto int_value = dict_value.FindIntKey("key");
+  auto int_value = value.FindIntKey("key");
   ASSERT_TRUE(int_value.has_value());
   ASSERT_EQ(*int_value, 123) << v << " is not converted to 123";
 }

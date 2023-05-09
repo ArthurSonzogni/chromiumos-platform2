@@ -126,7 +126,6 @@ MemoryFunction::DataType GetMemoryInfo() {
     auto dmi_path = dmi_dirname.Append(dmi_basename);
     if (!base::DirectoryExists(dmi_path))
       break;
-    base::Value info(base::Value::Type::DICT);
     std::string raw_bytes;
     if (!base::ReadFileToString(dmi_path.Append("raw"), &raw_bytes)) {
       LOG(ERROR) << "Failed to read file in sysfs: " << dmi_path.value();
@@ -143,12 +142,13 @@ MemoryFunction::DataType GetMemoryInfo() {
     // The field "slot" denotes to the entry number instead of the physical slot
     // number, which refers to mosys' output. To be compatible with current
     // HWID, we still preserve this field.
-    info.SetIntKey("slot", entry);
-    info.SetStringKey("path", dmi_path.value());
-    info.SetIntKey("size", dmi_memory->size);
-    info.SetIntKey("speed", dmi_memory->speed);
-    info.SetStringKey("locator", dmi_memory->locator);
-    info.SetStringKey("part", dmi_memory->part_number);
+    auto info = base::Value::Dict()
+                    .Set("slot", entry)
+                    .Set("path", dmi_path.value())
+                    .Set("size", dmi_memory->size)
+                    .Set("speed", dmi_memory->speed)
+                    .Set("locator", dmi_memory->locator)
+                    .Set("part", dmi_memory->part_number);
     results.Append(std::move(info));
   }
 

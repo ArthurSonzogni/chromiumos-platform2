@@ -66,14 +66,15 @@ bool StatefulRecovery::CopyPartitionInfo() {
   if (!platform_->StatVFS(FilePath(kRecoverSource), &vfs))
     return false;
 
-  base::Value dv(base::Value::Type::DICT);
-  dv.SetStringKey("filesystem", FilePath(kRecoverSource).value());
-  dv.SetIntKey("blocks-total", vfs.f_blocks);
-  dv.SetIntKey("blocks-free", vfs.f_bfree);
-  dv.SetIntKey("blocks-avail", vfs.f_bavail);
-  dv.SetIntKey("inodes-total", vfs.f_files);
-  dv.SetIntKey("inodes-free", vfs.f_ffree);
-  dv.SetIntKey("inodes-avail", vfs.f_favail);
+  base::Value::Dict dv =
+      base::Value::Dict()
+          .Set("filesystem", FilePath(kRecoverSource).value())
+          .Set("blocks-total", static_cast<int>(vfs.f_blocks))
+          .Set("blocks-free", static_cast<int>(vfs.f_bfree))
+          .Set("blocks-avail", static_cast<int>(vfs.f_bavail))
+          .Set("inodes-total", static_cast<int>(vfs.f_files))
+          .Set("inodes-free", static_cast<int>(vfs.f_ffree))
+          .Set("inodes-avail", static_cast<int>(vfs.f_favail));
 
   std::string output;
   base::JSONWriter::WriteWithOptions(dv, base::JSONWriter::OPTIONS_PRETTY_PRINT,

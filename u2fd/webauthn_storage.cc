@@ -68,19 +68,19 @@ bool WebAuthnStorage::WriteRecord(const WebAuthnRecord& record) {
     return false;
   }
 
-  base::Value record_value(base::Value::Type::DICT);
-  record_value.SetStringKey(kCredentialIdKey, credential_id_hex);
-  record_value.SetStringKey(
-      kSecretKey, base::Base64Encode(brillo::Blob(record.secret.begin(),
-                                                  record.secret.end())));
-  record_value.SetStringKey(kKeyBlobKey, base::Base64Encode(record.key_blob));
-  record_value.SetStringKey(kRpIdKey, record.rp_id);
-  record_value.SetStringKey(kRpDisplayNameKey, record.rp_display_name);
-  record_value.SetStringKey(kUserIdKey, base::HexEncode(record.user_id.data(),
-                                                        record.user_id.size()));
-  record_value.SetStringKey(kUserDisplayNameKey, record.user_display_name);
-  record_value.SetDoubleKey(kCreatedTimestampKey, record.timestamp);
-  record_value.SetBoolKey(kIsResidentKeyKey, record.is_resident_key);
+  base::Value::Dict record_value =
+      base::Value::Dict()
+          .Set(kCredentialIdKey, credential_id_hex)
+          .Set(kSecretKey, base::Base64Encode(brillo::Blob(
+                               record.secret.begin(), record.secret.end())))
+          .Set(kKeyBlobKey, base::Base64Encode(record.key_blob))
+          .Set(kRpIdKey, record.rp_id)
+          .Set(kRpDisplayNameKey, record.rp_display_name)
+          .Set(kUserIdKey,
+               base::HexEncode(record.user_id.data(), record.user_id.size()))
+          .Set(kUserDisplayNameKey, record.user_display_name)
+          .Set(kCreatedTimestampKey, record.timestamp)
+          .Set(kIsResidentKeyKey, record.is_resident_key);
 
   std::string json_string;
   JSONStringValueSerializer json_serializer(&json_string);

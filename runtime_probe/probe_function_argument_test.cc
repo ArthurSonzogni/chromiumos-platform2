@@ -58,25 +58,28 @@ TEST(ProbeFunctionArgumentTest, EmptyArgument) {
 
 TEST(ProbeFunctionArgumentTest, WithArguments) {
   const base::Value empty_value(base::Value::Type::DICT);
-  base::Value arg_value(base::Value::Type::DICT);
-  arg_value.SetStringKey("a_str", "a_str");
-  arg_value.SetIntKey("a_int", 1);
-  arg_value.SetBoolKey("a_bool", true);
+  base::Value::Dict arg_value = base::Value::Dict()
+                                    .Set("a_str", "a_str")
+                                    .Set("a_int", 1)
+                                    .Set("a_bool", true);
 
   auto mock_func1 = CreateProbeFunction<Mock2ProbeFunction>(empty_value);
   EXPECT_EQ(mock_func1, nullptr);
 
-  auto mock_func2 = CreateProbeFunction<Mock2ProbeFunction>(arg_value);
+  auto mock_func2 =
+      CreateProbeFunction<Mock2ProbeFunction>(base::Value(arg_value.Clone()));
   EXPECT_NE(mock_func2, nullptr);
   EXPECT_EQ(mock_func2->default_int_, 1);
 
-  arg_value.SetKey("default_int", base::Value(2));
-  auto mock_func3 = CreateProbeFunction<Mock2ProbeFunction>(arg_value);
+  arg_value.Set("default_int", base::Value(2));
+  auto mock_func3 =
+      CreateProbeFunction<Mock2ProbeFunction>(base::Value(arg_value.Clone()));
   EXPECT_NE(mock_func3, nullptr);
   EXPECT_EQ(mock_func3->default_int_, 2);
 
-  arg_value.SetKey("invalid_field", base::Value("invalid_field"));
-  auto mock_func4 = CreateProbeFunction<Mock2ProbeFunction>(arg_value);
+  arg_value.Set("invalid_field", base::Value("invalid_field"));
+  auto mock_func4 = CreateProbeFunction<Mock2ProbeFunction>(
+      base::Value(std::move(arg_value)));
   EXPECT_EQ(mock_func4, nullptr);
 }
 
