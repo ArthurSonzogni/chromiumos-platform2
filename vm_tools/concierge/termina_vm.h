@@ -23,7 +23,6 @@
 #include <chromeos/patchpanel/mac_address_generator.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <chromeos/patchpanel/subnet.h>
-#include <manatee/dbus-proxies.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
@@ -363,10 +362,6 @@ class TerminaVm final : public VmBaseImpl {
   // Record's this VM's "type" in the classification sense (e.g. termina,
   // borealis, other...).
   const VmId::Type classification_;
-
-  // The manatee-client D-Bus client to talk to dugong that will eventually
-  // talk to the hypervisor.
-  std::unique_ptr<org::chromium::ManaTEEInterfaceProxy> manatee_client_;
 
   // Handle to the wayland socket used by this VM. This object cleans up the
   // server/socket in its destructor.

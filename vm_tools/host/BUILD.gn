@@ -46,7 +46,6 @@ pkg_config("host_target_defaults_pkgs") {
     "libbrillo",
     "libchrome",
     "libcros_config",
-    "libmanatee-client",
     "libpatchpanel-client",
     "libpatchpanel-util",
   ]

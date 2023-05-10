@@ -83,7 +83,6 @@
 #include <dbus/object_proxy.h>
 #include <dbus/shadercached/dbus-constants.h>
 #include <dbus/vm_concierge/dbus-constants.h>
-#include <manatee/dbus-proxies.h>
 #include <vboot/crossystem.h>
 #include <vm_applications/apps.pb.h>
 #include <vm_cicerone/cicerone_service.pb.h>

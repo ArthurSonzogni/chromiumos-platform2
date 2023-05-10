@@ -137,8 +137,6 @@ TerminaVm::TerminaVm(
       bus_(bus),
       vm_permission_service_proxy_(vm_permission_service_proxy),
       classification_(classification),
-      manatee_client_(
-          std::make_unique<org::chromium::ManaTEEInterfaceProxy>(bus_)),
       socket_(std::move(socket)) {}
 
 // For testing.
