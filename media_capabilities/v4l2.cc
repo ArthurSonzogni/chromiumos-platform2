@@ -62,7 +62,6 @@ Codec GetCodec(uint32_t format) {
     case V4L2_PIX_FMT_VP9_FRAME:
       return Codec::kVP9;
     case V4L2_PIX_FMT_JPEG:
-    case V4L2_PIX_FMT_JPEG_RAW:
       return Codec::kJPEG;
     default:
       return Codec::kUnknown;
