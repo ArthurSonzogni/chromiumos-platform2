@@ -142,8 +142,12 @@ void enter_vfs_namespace() {
                                           MS_BIND | MS_REC, nullptr)));
 
   // Mount /run/chromeos-config/v1 to access chromeos-config.
-  PCHECK(mj_call(minijail_bind(j.get(), "/run/chromeos-config/v1",
-                               "/run/chromeos-config/v1", 0)));
+  // /run/chromeos-config/v1 is not consistently available on devices in the
+  // field, see b/256739303. Make this failure non-fatal.
+  if (!mj_call(minijail_bind(j.get(), "/run/chromeos-config/v1",
+                             "/run/chromeos-config/v1", 0))) {
+    PLOG(ERROR) << "Could not bind mount /run/chromeos-config/v1";
+  }
 
   // Mount /run/lock so that lock file for crossystem is shared.
   PCHECK(mj_call(minijail_bind(j.get(), "/run/lock", "/run/lock", 1)));
