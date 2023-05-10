@@ -44,11 +44,11 @@ class BRILLO_EXPORT FakeClient : public Client {
                                 Client::VirtualDevice* device) override;
   bool NotifyParallelsVmShutdown(uint64_t vm_id) override;
 
-  bool DefaultVpnRouting(int socket) override;
+  bool DefaultVpnRouting(const base::ScopedFD& socket) override;
 
-  bool RouteOnVpn(int socket) override;
+  bool RouteOnVpn(const base::ScopedFD& socket) override;
 
-  bool BypassVpn(int socket) override;
+  bool BypassVpn(const base::ScopedFD& socket) override;
 
   std::pair<base::ScopedFD, Client::ConnectedNamespace> ConnectNamespace(
       pid_t pid,

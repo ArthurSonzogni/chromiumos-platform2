@@ -180,9 +180,9 @@ class MockPatchpanelClient : public patchpanel::Client {
               (uint64_t, int, patchpanel::Client::VirtualDevice*),
               (override));
   MOCK_METHOD(bool, NotifyParallelsVmShutdown, (uint64_t), (override));
-  MOCK_METHOD(bool, DefaultVpnRouting, (int), (override));
-  MOCK_METHOD(bool, RouteOnVpn, (int), (override));
-  MOCK_METHOD(bool, BypassVpn, (int), (override));
+  MOCK_METHOD(bool, DefaultVpnRouting, (const base::ScopedFD&), (override));
+  MOCK_METHOD(bool, RouteOnVpn, (const base::ScopedFD&), (override));
+  MOCK_METHOD(bool, BypassVpn, (const base::ScopedFD&), (override));
   MOCK_METHOD(
       (std::pair<base::ScopedFD, patchpanel::Client::ConnectedNamespace>),
       ConnectNamespace,

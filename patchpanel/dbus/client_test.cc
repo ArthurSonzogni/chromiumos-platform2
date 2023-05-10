@@ -9,117 +9,85 @@
 #include <string>
 #include <vector>
 
-#include <base/functional/bind.h>
-// Ignore Wconversion warnings in libbase headers.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#include <base/test/task_environment.h>
-#pragma GCC diagnostic pop
-#include <base/task/sequenced_task_runner.h>
-#include <chromeos/dbus/service_constants.h>
-// Ignore Wconversion warnings in dbus headers.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#include <dbus/message.h>
 #include <dbus/mock_bus.h>
-#include <dbus/mock_object_proxy.h>
-#include <dbus/object_path.h>
-#pragma GCC diagnostic pop
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
+#include "patchpanel/dbus/mock_patchpanel_proxy.h"
 #include "patchpanel/net_util.h"
 
 namespace patchpanel {
 namespace {
 
 using ::testing::_;
-using ::testing::ByMove;
+using ::testing::AllOf;
+using ::testing::DoAll;
+using ::testing::Property;
 using ::testing::Return;
 using ::testing::SaveArg;
-
-void ExpectProtoRequestResponse(scoped_refptr<dbus::MockObjectProxy> proxy,
-                                google::protobuf::MessageLite* request_proto,
-                                google::protobuf::MessageLite* response_proto) {
-  EXPECT_CALL(*proxy, CallMethodAndBlock(_, _))
-      .WillOnce([request_proto, response_proto](
-                    dbus::MethodCall* method_call,
-                    int timeout_ms) -> std::unique_ptr<dbus::Response> {
-        auto response = dbus::Response::CreateEmpty();
-        dbus::MessageReader(method_call).PopArrayOfBytesAsProto(request_proto);
-        dbus::MessageWriter(response.get())
-            .AppendProtoAsArrayOfBytes(*response_proto);
-        return response;
-      });
-}
+using ::testing::SetArgPointee;
 
 class ClientTest : public testing::Test {
  protected:
-  ClientTest()
-      : dbus_(new dbus::MockBus{dbus::Bus::Options{}}),
-        proxy_(new dbus::MockObjectProxy(
-            dbus_.get(),
-            kPatchPanelServiceName,
-            dbus::ObjectPath(kPatchPanelServicePath))),
-        client_(Client::New(dbus_, proxy_.get())) {}
-  ~ClientTest() { dbus_->ShutdownAndBlock(); }
-
   void SetUp() override {
-    EXPECT_CALL(*dbus_, GetDBusTaskRunner())
-        .WillRepeatedly(
-            Return(base::SequencedTaskRunner::GetCurrentDefault().get()));
+    dbus_ = new dbus::MockBus{dbus::Bus::Options{}};
+    proxy_ = new MockPatchPanelProxy();
+    client_ = Client::NewForTesting(
+        dbus_,
+        std::unique_ptr<org::chromium::PatchPanelProxyInterface>(proxy_));
   }
 
-  base::test::TaskEnvironment task_environment_;
   scoped_refptr<dbus::MockBus> dbus_;
-  scoped_refptr<dbus::MockObjectProxy> proxy_;
   std::unique_ptr<Client> client_;
+  MockPatchPanelProxy* proxy_;  // It's owned by |client_|.
 };
 
 TEST_F(ClientTest, NotifyArcStartup) {
-  pid_t pid = 3456;
-  patchpanel::ArcStartupRequest request_proto;
-  patchpanel::ArcStartupResponse response_proto;
-  ExpectProtoRequestResponse(proxy_, &request_proto, &response_proto);
-  bool result = client_->NotifyArcStartup(pid);
+  const pid_t pid = 3456;
+  EXPECT_CALL(*proxy_,
+              ArcStartup(Property(&ArcStartupRequest::pid, pid), _, _, _))
+      .WillOnce(Return(true));
+
+  const bool result = client_->NotifyArcStartup(pid);
   EXPECT_TRUE(result);
-  EXPECT_EQ(pid, request_proto.pid());
 }
 
 TEST_F(ClientTest, NotifyArcShutdown) {
-  patchpanel::ArcShutdownRequest request_proto;
-  patchpanel::ArcShutdownResponse response_proto;
-  ExpectProtoRequestResponse(proxy_, &request_proto, &response_proto);
-  bool result = client_->NotifyArcShutdown();
+  EXPECT_CALL(*proxy_, ArcShutdown(_, _, _, _)).WillOnce(Return(true));
+
+  const bool result = client_->NotifyArcShutdown();
   EXPECT_TRUE(result);
 }
 
 TEST_F(ClientTest, NotifyArcVmStartup) {
-  uint32_t cid = 5;
-
-  patchpanel::ArcVmStartupRequest request_proto;
-  patchpanel::ArcVmStartupResponse response_proto;
+  const uint32_t cid = 5;
   // FIXME: add virtual devices to the response_proto.
-  ExpectProtoRequestResponse(proxy_, &request_proto, &response_proto);
-  auto virtual_devices = client_->NotifyArcVmStartup(cid);
+  ArcVmStartupResponse response_proto;
+
+  EXPECT_CALL(*proxy_,
+              ArcVmStartup(Property(&ArcVmStartupRequest::cid, cid), _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
+
+  const auto virtual_devices = client_->NotifyArcVmStartup(cid);
   EXPECT_TRUE(virtual_devices.empty());
-  EXPECT_EQ(cid, request_proto.cid());
 }
 
 TEST_F(ClientTest, NotifyArcVmShutdown) {
-  uint32_t cid = 5;
-  patchpanel::ArcVmShutdownRequest request_proto;
-  patchpanel::ArcVmShutdownResponse response_proto;
-  ExpectProtoRequestResponse(proxy_, &request_proto, &response_proto);
-  bool result = client_->NotifyArcVmShutdown(cid);
+  const uint32_t cid = 5;
+
+  EXPECT_CALL(*proxy_,
+              ArcVmShutdown(Property(&ArcVmShutdownRequest::cid, cid), _, _, _))
+      .WillOnce(Return(true));
+
+  const bool result = client_->NotifyArcVmShutdown(cid);
   EXPECT_TRUE(result);
-  EXPECT_EQ(cid, request_proto.cid());
 }
 
 TEST_F(ClientTest, NotifyTerminaVmStartup) {
-  patchpanel::TerminaVmStartupRequest request_proto;
-  patchpanel::TerminaVmStartupResponse response_proto;
+  const uint32_t cid = 5;
+
+  TerminaVmStartupResponse response_proto;
   auto* response_device = response_proto.mutable_device();
   response_device->set_ifname("vmtap1");
   response_device->set_phys_ifname("wlan0");
@@ -130,7 +98,7 @@ TEST_F(ClientTest, NotifyTerminaVmStartup) {
   response_device_subnet->set_addr(
       std::vector<uint8_t>{100, 115, 92, 16}.data(), 4);
   response_device_subnet->set_prefix_len(30);
-  response_device->set_guest_type(patchpanel::NetworkDevice::TERMINA_VM);
+  response_device->set_guest_type(NetworkDevice::TERMINA_VM);
   response_device->set_dns_proxy_ipv4_addr(
       std::vector<uint8_t>{100, 115, 93, 1}.data(), 4);
   response_device->set_dns_proxy_ipv6_addr(
@@ -141,15 +109,18 @@ TEST_F(ClientTest, NotifyTerminaVmStartup) {
   auto* response_subnet = response_proto.mutable_container_subnet();
   response_subnet->set_addr(std::vector<uint8_t>{100, 115, 92, 128}.data(), 4);
   response_subnet->set_prefix_len(24);
-  ExpectProtoRequestResponse(proxy_, &request_proto, &response_proto);
 
-  uint32_t cid = 5;
+  EXPECT_CALL(
+      *proxy_,
+      TerminaVmStartup(Property(&TerminaVmStartupRequest::cid, cid), _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
+
   Client::VirtualDevice device;
   Client::IPv4Subnet container_subnet;
-  bool result =
+  const bool result =
       client_->NotifyTerminaVmStartup(cid, &device, &container_subnet);
+
   EXPECT_TRUE(result);
-  EXPECT_EQ(cid, request_proto.cid());
   EXPECT_EQ("vmtap1", device.ifname);
   EXPECT_EQ("wlan0", device.phys_ifname);
   EXPECT_EQ("not_defined", device.guest_ifname);
@@ -166,18 +137,22 @@ TEST_F(ClientTest, NotifyTerminaVmStartup) {
 }
 
 TEST_F(ClientTest, NotifyTerminaVmShutdown) {
-  uint32_t cid = 5;
-  patchpanel::TerminaVmShutdownRequest request_proto;
-  patchpanel::TerminaVmShutdownResponse response_proto;
-  ExpectProtoRequestResponse(proxy_, &request_proto, &response_proto);
+  const uint32_t cid = 5;
+
+  EXPECT_CALL(
+      *proxy_,
+      TerminaVmShutdown(Property(&TerminaVmShutdownRequest::cid, cid), _, _, _))
+      .WillOnce(Return(true));
+
   bool result = client_->NotifyTerminaVmShutdown(cid);
   EXPECT_TRUE(result);
-  EXPECT_EQ(cid, request_proto.cid());
 }
 
 TEST_F(ClientTest, NotifyParallelsVmStartup) {
-  patchpanel::ParallelsVmStartupRequest request_proto;
-  patchpanel::ParallelsVmStartupResponse response_proto;
+  const uint64_t id = 5;
+  const int subnet_index = 4;
+
+  ParallelsVmStartupResponse response_proto;
   auto* response_device = response_proto.mutable_device();
   response_device->set_ifname("vmtap2");
   response_device->set_phys_ifname("eth0");
@@ -188,7 +163,7 @@ TEST_F(ClientTest, NotifyParallelsVmStartup) {
   response_device_subnet->set_addr(
       std::vector<uint8_t>{100, 115, 93, 32}.data(), 4);
   response_device_subnet->set_prefix_len(28);
-  response_device->set_guest_type(patchpanel::NetworkDevice::PARALLELS_VM);
+  response_device->set_guest_type(NetworkDevice::PARALLELS_VM);
   response_device->set_dns_proxy_ipv4_addr(
       std::vector<uint8_t>{100, 115, 93, 5}.data(), 4);
   response_device->set_dns_proxy_ipv6_addr(
@@ -196,15 +171,18 @@ TEST_F(ClientTest, NotifyParallelsVmStartup) {
                            0xc7, 0x4a, 0xd2}
           .data(),
       16);
-  ExpectProtoRequestResponse(proxy_, &request_proto, &response_proto);
 
-  uint64_t id = 5;
-  int subnet_index = 4;
+  EXPECT_CALL(*proxy_,
+              ParallelsVmStartup(
+                  AllOf(Property(&ParallelsVmStartupRequest::id, id),
+                        Property(&ParallelsVmStartupRequest::subnet_index,
+                                 subnet_index)),
+                  _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
+
   Client::VirtualDevice device;
   bool result = client_->NotifyParallelsVmStartup(id, subnet_index, &device);
   EXPECT_TRUE(result);
-  EXPECT_EQ(id, request_proto.id());
-  EXPECT_EQ(subnet_index, request_proto.subnet_index());
   EXPECT_EQ("vmtap2", device.ifname);
   EXPECT_EQ("eth0", device.phys_ifname);
   EXPECT_EQ("not_defined", device.guest_ifname);
@@ -219,22 +197,35 @@ TEST_F(ClientTest, NotifyParallelsVmStartup) {
 }
 
 TEST_F(ClientTest, NotifyParallelsVmShutdown) {
-  uint64_t id = 5;
-  patchpanel::ParallelsVmShutdownRequest request_proto;
-  patchpanel::ParallelsVmShutdownResponse response_proto;
-  ExpectProtoRequestResponse(proxy_, &request_proto, &response_proto);
-  bool result = client_->NotifyParallelsVmShutdown(id);
+  const uint64_t id = 5;
+
+  EXPECT_CALL(*proxy_,
+              ParallelsVmShutdown(Property(&ParallelsVmShutdownRequest::id, id),
+                                  _, _, _))
+      .WillOnce(Return(true));
+
+  const bool result = client_->NotifyParallelsVmShutdown(id);
   EXPECT_TRUE(result);
-  EXPECT_EQ(id, request_proto.id());
 }
 
-TEST_F(ClientTest, ConnectNamespace) {
-  pid_t pid = 3456;
-  std::string outbound_ifname = "";
+TEST_F(ClientTest, ConnectNamespace_Fail) {
+  const pid_t invalid_pid = 3456;
+  const std::string outbound_ifname = "";
 
-  // Failure case - invalid pid
-  auto result = client_->ConnectNamespace(pid, outbound_ifname, false, true,
-                                          Client::TrafficSource::kSystem);
+  auto action = [](const patchpanel::ConnectNamespaceRequest&,
+                   const base::ScopedFD&, patchpanel::ConnectNamespaceResponse*,
+                   brillo::ErrorPtr* error, int) {
+    *error = brillo::Error::Create(FROM_HERE, "", "", "");
+    return false;
+  };
+  EXPECT_CALL(*proxy_, ConnectNamespace(
+                           Property(&ConnectNamespaceRequest::pid, invalid_pid),
+                           _, _, _, _))
+      .WillOnce(action);
+
+  const auto result =
+      client_->ConnectNamespace(invalid_pid, outbound_ifname, false, true,
+                                Client::TrafficSource::kSystem);
   EXPECT_FALSE(result.first.is_valid());
   EXPECT_TRUE(result.second.peer_ifname.empty());
   EXPECT_TRUE(result.second.host_ifname.empty());
@@ -242,14 +233,13 @@ TEST_F(ClientTest, ConnectNamespace) {
   EXPECT_EQ("", IPv4AddressToString(result.second.host_ipv4_address));
   EXPECT_EQ("", IPv4AddressToString(result.second.ipv4_subnet.base_addr));
   EXPECT_EQ(0, result.second.ipv4_subnet.prefix_len);
+}
 
-  // Failure case - prohibited pid
-  result = client_->ConnectNamespace(1, outbound_ifname, false, true,
-                                     Client::TrafficSource::kSystem);
-  EXPECT_FALSE(result.first.is_valid());
+TEST_F(ClientTest, ConnectNamespace) {
+  const pid_t pid = 3456;
+  const std::string outbound_ifname = "test_ifname";
 
-  // Success case
-  patchpanel::ConnectNamespaceResponse response_proto;
+  ConnectNamespaceResponse response_proto;
   response_proto.set_peer_ifname("veth0");
   response_proto.set_host_ifname("arc_ns0");
   response_proto.set_peer_ipv4_address(Ipv4Addr(100, 115, 92, 130));
@@ -257,14 +247,18 @@ TEST_F(ClientTest, ConnectNamespace) {
   auto* response_subnet = response_proto.mutable_ipv4_subnet();
   response_subnet->set_prefix_len(30);
   response_subnet->set_addr(std::vector<uint8_t>{100, 115, 92, 128}.data(), 4);
-  std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
-  dbus::MessageWriter response_writer(response.get());
-  response_writer.AppendProtoAsArrayOfBytes(response_proto);
-  EXPECT_CALL(*proxy_, CallMethodAndBlock(_, _))
-      .WillOnce(Return(ByMove(std::move(response))));
 
-  result = client_->ConnectNamespace(pid, outbound_ifname, false, true,
-                                     Client::TrafficSource::kSystem);
+  EXPECT_CALL(
+      *proxy_,
+      ConnectNamespace(
+          AllOf(Property(&ConnectNamespaceRequest::pid, pid),
+                Property(&ConnectNamespaceRequest::outbound_physical_device,
+                         outbound_ifname)),
+          _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(response_proto), Return(true)));
+
+  const auto result = client_->ConnectNamespace(
+      pid, outbound_ifname, false, true, Client::TrafficSource::kSystem);
   EXPECT_TRUE(result.first.is_valid());
   EXPECT_EQ("arc_ns0", result.second.host_ifname);
   EXPECT_EQ("veth0", result.second.peer_ifname);
@@ -286,24 +280,22 @@ TEST_F(ClientTest, RegisterNeighborEventHandler) {
         actual_event = event;
       });
 
-  base::RepeatingCallback<void(dbus::Signal * signal)> registered_dbus_callback;
+  // Store the DBus callback.
+  base::RepeatingCallback<void(
+      const patchpanel::NeighborReachabilityEventSignal&)>
+      registered_dbus_callback;
+  EXPECT_CALL(*proxy_, RegisterNeighborReachabilityEventSignalHandler(_, _))
+      .WillOnce(SaveArg<0>(&registered_dbus_callback));
 
-  EXPECT_CALL(*proxy_,
-              DoConnectToSignal(kPatchPanelInterface,
-                                kNeighborReachabilityEventSignal, _, _))
-      .WillOnce(SaveArg<2>(&registered_dbus_callback));
   client_->RegisterNeighborReachabilityEventHandler(callback);
 
+  // Trigger the DBus callback to simulate the signal arrival.
   NeighborReachabilityEventSignal signal_proto;
   signal_proto.set_ifindex(7);
   signal_proto.set_ip_addr("1.2.3.4");
   signal_proto.set_role(NeighborReachabilityEventSignal::GATEWAY);
   signal_proto.set_type(NeighborReachabilityEventSignal::FAILED);
-  dbus::Signal signal(kPatchPanelInterface, kNeighborReachabilityEventSignal);
-  dbus::MessageWriter writer(&signal);
-  writer.AppendProtoAsArrayOfBytes(signal_proto);
-
-  registered_dbus_callback.Run(&signal);
+  registered_dbus_callback.Run(signal_proto);
 
   EXPECT_EQ(call_num, 1);
   EXPECT_EQ(actual_event.ifindex, 7);

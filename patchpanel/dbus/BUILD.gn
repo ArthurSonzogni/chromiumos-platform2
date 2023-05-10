@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
@@ -25,6 +26,13 @@ pkg_config("target_defaults") {
   ]
 }
 
+# Generate the D-Bus C++ binding.
+generate_dbus_proxies("patchpanel_dbus_proxies") {
+  sources = [ "../dbus_bindings/org.chromium.patchpanel.xml" ]
+  proxy_output_file = "include/patchpanel/dbus-proxies.h"
+  dbus_service_config = "../dbus_bindings/dbus-service-config.json"
+}
+
 shared_library("libpatchpanel-client") {
   sources = [
     "../net_util.cc",
@@ -38,6 +46,18 @@ shared_library("libpatchpanel-client") {
     all_dependent_pkg_deps = [ "protobuf-lite" ]
   }
   libs = [ "system_api" ]
+  deps = [ ":patchpanel_dbus_proxies" ]
+}
+
+if (use.fuzzer || use.test) {
+  source_set("patchpanel_client_test_support") {
+    sources = [ "mock_patchpanel_proxy.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [ ":libpatchpanel-client" ]
+  }
 }
 
 if (use.fuzzer) {
@@ -52,7 +72,10 @@ if (use.fuzzer) {
       ":target_defaults",
       ":fuzzing_config",
     ]
-    deps = [ ":libpatchpanel-client" ]
+    deps = [
+      ":libpatchpanel-client",
+      ":patchpanel_client_test_support",
+    ]
   }
 }
 
@@ -71,6 +94,7 @@ if (use.test) {
     defines = [ "UNIT_TEST" ]
     deps = [
       ":libpatchpanel-client",
+      ":patchpanel_client_test_support",
       "//common-mk/testrunner",
     ]
   }

@@ -49,15 +49,15 @@ bool FakeClient::NotifyParallelsVmShutdown(uint64_t vm_id) {
   return true;
 }
 
-bool FakeClient::DefaultVpnRouting(int socket) {
+bool FakeClient::DefaultVpnRouting(const base::ScopedFD& socket) {
   return true;
 }
 
-bool FakeClient::RouteOnVpn(int socket) {
+bool FakeClient::RouteOnVpn(const base::ScopedFD& socket) {
   return true;
 }
 
-bool FakeClient::BypassVpn(int socket) {
+bool FakeClient::BypassVpn(const base::ScopedFD& socket) {
   return true;
 }
 

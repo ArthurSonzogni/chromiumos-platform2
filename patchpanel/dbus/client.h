@@ -23,6 +23,12 @@
 #include <dbus/object_proxy.h>
 #pragma GCC diagnostic pop
 
+namespace org {
+namespace chromium {
+class PatchPanelProxyInterface;
+}  // namespace chromium
+}  // namespace org
+
 namespace patchpanel {
 
 // Simple wrapper around patchpanel DBus API. All public functions are blocking
@@ -180,6 +186,10 @@ class BRILLO_EXPORT Client {
   };
 
   // Contains the options for creating the IPv4 DHCP server.
+  // TODO(b/239559602) Fill out DHCP options:
+  //  - If the upstream network has a DHCP lease, copy relevant options.
+  //  - Forward DHCP WPAD proxy configuration if advertised by the upstream
+  //    network.
   struct DHCPOptions {
     std::vector<std::array<uint8_t, 4>> dns_server_addresses;
     std::vector<std::string> domain_search_list;
@@ -201,13 +211,17 @@ class BRILLO_EXPORT Client {
                               const DownstreamNetwork& downstream_network,
                               const std::vector<NetworkClientInfo>& clients)>;
 
-  // This variation creates a dbus object internally
+  // Creates the instance with the system dbus object which is created
+  // internally. The dbus object will shutdown at destruction.
   static std::unique_ptr<Client> New();
+
+  // Creates the instance with the dbus object.
   static std::unique_ptr<Client> New(const scoped_refptr<dbus::Bus>& bus);
 
-  // Only used in tests.
-  static std::unique_ptr<Client> New(const scoped_refptr<dbus::Bus>& bus,
-                                     dbus::ObjectProxy* proxy);
+  // Creates the instance by injecting the bus and proxy objects.
+  static std::unique_ptr<Client> NewForTesting(
+      scoped_refptr<dbus::Bus> bus,
+      std::unique_ptr<org::chromium::PatchPanelProxyInterface> proxy);
 
   static bool IsArcGuest(GuestType guest_type);
   static std::string TrafficSourceName(TrafficSource source);
@@ -245,15 +259,15 @@ class BRILLO_EXPORT Client {
   // Reset the VPN routing intent mark on a socket to the default policy for
   // the current uid. This is in general incorrect to call this method for
   // a socket that is already connected.
-  virtual bool DefaultVpnRouting(int socket) = 0;
+  virtual bool DefaultVpnRouting(const base::ScopedFD& socket) = 0;
 
   // Mark a socket to be always routed through a VPN if there is one.
   // Must be called before the socket is connected.
-  virtual bool RouteOnVpn(int socket) = 0;
+  virtual bool RouteOnVpn(const base::ScopedFD& socket) = 0;
 
   // Mark a socket to be always routed through the physical network.
   // Must be called before the socket is connected.
-  virtual bool BypassVpn(int socket) = 0;
+  virtual bool BypassVpn(const base::ScopedFD& socket) = 0;
 
   // Sends a ConnectNamespaceRequest for the given namespace pid. Returns a
   // pair with a valid ScopedFD and the ConnectedNamespace response

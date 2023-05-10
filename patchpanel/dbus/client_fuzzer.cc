@@ -10,6 +10,7 @@
 #include <fuzzer/FuzzedDataProvider.h>
 
 #include "patchpanel/dbus/client.h"
+#include "patchpanel/dbus/mock_patchpanel_proxy.h"
 
 namespace patchpanel {
 
@@ -20,53 +21,13 @@ class Environment {
   }
 };
 
-class FakeObjectProxy : public dbus::ObjectProxy {
- public:
-  explicit FakeObjectProxy(dbus::Bus* bus)
-      : dbus::ObjectProxy(bus, "svc", dbus::ObjectPath("/obj/path"), 0) {}
-
-  std::unique_ptr<dbus::Response> CallMethodAndBlockWithErrorDetails(
-      dbus::MethodCall* method_call,
-      int timeout_ms,
-      dbus::ScopedDBusError* error) override {
-    return nullptr;
-  }
-
-  std::unique_ptr<dbus::Response> CallMethodAndBlock(
-      dbus::MethodCall* method_call, int timeout_ms) override {
-    return nullptr;
-  }
-
-  void CallMethod(dbus::MethodCall* method_call,
-                  int timeout_ms,
-                  ResponseCallback callback) override {}
-
-  void CallMethodWithErrorResponse(dbus::MethodCall* method_call,
-                                   int timeout_ms,
-                                   ResponseOrErrorCallback callback) override {}
-
-  void CallMethodWithErrorCallback(dbus::MethodCall* method_call,
-                                   int timeout_ms,
-                                   ResponseCallback callback,
-                                   ErrorCallback error_callback) override {}
-
-  void ConnectToSignal(const std::string& interface_name,
-                       const std::string& signal_name,
-                       SignalCallback signal_callback,
-                       OnConnectedCallback on_connected_callback) override {}
-
-  void WaitForServiceToBeAvailable(
-      WaitForServiceToBeAvailableCallback callback) override {}
-
-  void Detach() override {}
-};
-
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
   dbus::Bus::Options options;
   scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
-  scoped_refptr<dbus::ObjectProxy> proxy(new FakeObjectProxy(bus.get()));
-  auto client = Client::New(bus, proxy.get());
+  auto client = Client::NewForTesting(
+      bus, std::unique_ptr<org::chromium::PatchPanelProxyInterface>(
+               new testing::NiceMock<MockPatchPanelProxy>()));
   FuzzedDataProvider provider(data, size);
 
   while (provider.remaining_bytes() > 0) {
