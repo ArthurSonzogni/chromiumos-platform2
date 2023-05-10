@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 
+#include <string>
+
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd/mojom/delegate.mojom.h"
@@ -46,6 +48,9 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
       override;
   void GetLidAngle(GetLidAngleCallback callback) override;
   void GetPsr(GetPsrCallback callback) override;
+  void GetAmountOfFreeDiskSpace(
+      const std::string& path,
+      GetAmountOfFreeDiskSpaceCallback callback) override;
 };
 
 }  // namespace diagnostics

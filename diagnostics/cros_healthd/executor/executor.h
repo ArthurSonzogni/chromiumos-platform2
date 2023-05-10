@@ -114,6 +114,8 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
               mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                   receiver) override;
   void RemoveFioTestFile(RemoveFioTestFileCallback callback) override;
+  void GetFioTestDirectoryFreeSpace(
+      GetFioTestDirectoryFreeSpaceCallback callback) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process

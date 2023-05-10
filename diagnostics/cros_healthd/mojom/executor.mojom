@@ -340,4 +340,10 @@ interface Executor {
   // The response:
   // * |result| - contains information of removing test file by running rm.
   RemoveFioTestFile() => (ExecutedProcessResult result);
+
+  // Get the free disk space of fio test directory in bytes.
+  //
+  // The response:
+  // * |free_space_byte| - Free disk space of fio test directory in bytes.
+  GetFioTestDirectoryFreeSpace() => (uint64? free_space_byte);
 };

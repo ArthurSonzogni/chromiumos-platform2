@@ -98,6 +98,8 @@ constexpr char kStressAppTest[] = "stressapptest-seccomp.policy";
 constexpr char kFio[] = "fio-seccomp.policy";
 // SECCOMP policy for rm.
 constexpr char kRm[] = "healthd_rm-seccomp.policy";
+// SECCOMP policy for df.
+constexpr char kFreeDiskSpace[] = "healthd_free_disk_space-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -728,6 +730,22 @@ void Executor::RemoveFioTestFile(RemoveFioTestFileCallback callback) {
 
   RunAndWaitProcess(std::move(process), std::move(callback),
                     /*combine_stdout_and_stderr=*/false);
+}
+
+void Executor::GetFioTestDirectoryFreeSpace(
+    GetFioTestDirectoryFreeSpaceCallback callback) {
+  const auto& cache_dir = base::FilePath(path::kFioCacheFile).DirName();
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kFreeDiskSpace, kCrosHealthdSandboxUser, kNullCapability,
+      /*readonly_mount_points=*/std::vector<base::FilePath>{cache_dir},
+      /*writable_mount_points=*/std::vector<base::FilePath>{});
+
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->GetAmountOfFreeDiskSpace(
+      cache_dir.value(),
+      CreateOnceDelegateCallback(std::move(delegate), std::move(callback),
+                                 std::nullopt));
+  delegate_ptr->StartAsync();
 }
 
 void Executor::RunAndWaitProcess(
