@@ -523,6 +523,9 @@ message StartArcVmRequest {
 
   // Controls whether WebView Zygote is lazily initialized in ARC.
   bool enable_web_view_zygote_lazy_init = 42;
+
+  // Whether vmm-swap of crosvm is enabled
+  bool enable_vmm_swap = 43;
 }
 
 enum VmStatus {
