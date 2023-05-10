@@ -18,6 +18,7 @@ use sync::Mutex;
 use system_api::client::OrgChromiumPowerManager;
 
 use crate::hiberutil::log_duration;
+use crate::metrics::DurationMetricUnit;
 use crate::metrics::METRICS_LOGGER;
 
 /// Define the name used on powerd dbus.
@@ -118,7 +119,12 @@ fn wait_for_hibernate_resume_ready() -> Result<()> {
                 let duration = start.elapsed();
                 log_duration("Got powerd HibernateResumeReady signal", duration);
                 let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
-                metrics_logger.metrics_send_duration_sample("HibernateResumeReady", duration, 10);
+                metrics_logger.log_duration_sample(
+                    "HibernateResumeReady",
+                    duration,
+                    DurationMetricUnit::Seconds,
+                    10,
+                );
                 return Ok(());
             }
         }

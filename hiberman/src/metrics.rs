@@ -44,6 +44,13 @@ pub const BYTES_PER_MB_F64: f64 = 1048576.0;
 /// Max expected IO size for IO metrics.
 pub const MAX_IO_SIZE_KB: isize = 9437000;
 
+pub enum DurationMetricUnit {
+    Milliseconds,
+    Seconds,
+    Minutes,
+    Hours,
+}
+
 /// A MetricSample represents a sample point for a Hibernate histogram in UMA.
 /// It requires the histogram name, the sample value, the minimum value,
 /// the maximum value, and the number of buckets.
@@ -142,20 +149,29 @@ impl MetricsLogger {
         self.log_metric(duration_metric);
     }
 
-    pub fn metrics_send_duration_sample(
+    pub fn log_duration_sample(
         &mut self,
         histogram: &str,
         duration: Duration,
+        unit: DurationMetricUnit,
         max: isize,
     ) {
         let mut num_buckets = 50;
         if max < 50 {
             num_buckets = max + 1;
         }
+
+        let value = match unit {
+            DurationMetricUnit::Milliseconds => duration.as_millis() as u64,
+            DurationMetricUnit::Seconds => duration.as_secs(),
+            DurationMetricUnit::Minutes => duration.as_secs() / 60,
+            DurationMetricUnit::Hours => duration.as_secs() / 3600,
+        };
+
         let base_name = "Platform.Hibernate.Duration.";
         let duration_metric = MetricsSample {
             name: &format!("{}{}", base_name, histogram),
-            value: duration.as_secs() as isize,
+            value: value as isize,
             min: 0,
             max,
             buckets: num_buckets as usize,
