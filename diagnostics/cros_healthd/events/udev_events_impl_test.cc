@@ -28,7 +28,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 using testing::_;
 using testing::ByMove;
@@ -58,10 +58,10 @@ constexpr uint16_t kFakeUsbVid = 0x47f;
 constexpr uint16_t kFakeUsbPid = 0x430c;
 
 class MockCrosHealthdThunderboltObserver
-    : public mojo_ipc::CrosHealthdThunderboltObserver {
+    : public mojom::CrosHealthdThunderboltObserver {
  public:
   explicit MockCrosHealthdThunderboltObserver(
-      mojo::PendingReceiver<mojo_ipc::CrosHealthdThunderboltObserver> receiver)
+      mojo::PendingReceiver<mojom::CrosHealthdThunderboltObserver> receiver)
       : receiver_{this /* impl */, std::move(receiver)} {
     DCHECK(receiver_.is_bound());
   }
@@ -76,13 +76,13 @@ class MockCrosHealthdThunderboltObserver
   MOCK_METHOD(void, OnUnAuthorized, (), (override));
 
  private:
-  mojo::Receiver<mojo_ipc::CrosHealthdThunderboltObserver> receiver_;
+  mojo::Receiver<mojom::CrosHealthdThunderboltObserver> receiver_;
 };
 
-class MockCrosHealthdUsbObserver : public mojo_ipc::CrosHealthdUsbObserver {
+class MockCrosHealthdUsbObserver : public mojom::CrosHealthdUsbObserver {
  public:
   explicit MockCrosHealthdUsbObserver(
-      mojo::PendingReceiver<mojo_ipc::CrosHealthdUsbObserver> receiver)
+      mojo::PendingReceiver<mojom::CrosHealthdUsbObserver> receiver)
       : receiver_{this /* impl */, std::move(receiver)} {
     DCHECK(receiver_.is_bound());
   }
@@ -90,11 +90,11 @@ class MockCrosHealthdUsbObserver : public mojo_ipc::CrosHealthdUsbObserver {
   MockCrosHealthdUsbObserver& operator=(const MockCrosHealthdUsbObserver&) =
       delete;
 
-  MOCK_METHOD(void, OnAdd, (mojo_ipc::UsbEventInfoPtr), (override));
-  MOCK_METHOD(void, OnRemove, (mojo_ipc::UsbEventInfoPtr), (override));
+  MOCK_METHOD(void, OnAdd, (mojom::UsbEventInfoPtr), (override));
+  MOCK_METHOD(void, OnRemove, (mojom::UsbEventInfoPtr), (override));
 
  private:
-  mojo::Receiver<mojo_ipc::CrosHealthdUsbObserver> receiver_;
+  mojo::Receiver<mojom::CrosHealthdUsbObserver> receiver_;
 };
 
 class UdevEventsImplTest : public BaseFileTest {
@@ -114,8 +114,8 @@ class ThunderboltEventTest : public UdevEventsImplTest {
             base::test::TaskEnvironment::ThreadPoolExecutionMode::ASYNC) {}
 
   void SetUp() override {
-    mojo::PendingRemote<mojo_ipc::CrosHealthdThunderboltObserver> observer;
-    mojo::PendingReceiver<mojo_ipc::CrosHealthdThunderboltObserver>
+    mojo::PendingRemote<mojom::CrosHealthdThunderboltObserver> observer;
+    mojo::PendingReceiver<mojom::CrosHealthdThunderboltObserver>
         observer_receiver(observer.InitWithNewPipeAndPassReceiver());
     observer_ =
         std::make_unique<StrictMock<MockCrosHealthdThunderboltObserver>>(
@@ -171,8 +171,8 @@ class UsbEventTest : public UdevEventsImplTest {
             base::test::TaskEnvironment::ThreadPoolExecutionMode::ASYNC) {}
 
   void SetUp() override {
-    mojo::PendingRemote<mojo_ipc::CrosHealthdUsbObserver> observer;
-    mojo::PendingReceiver<mojo_ipc::CrosHealthdUsbObserver> observer_receiver(
+    mojo::PendingRemote<mojom::CrosHealthdUsbObserver> observer;
+    mojo::PendingReceiver<mojom::CrosHealthdUsbObserver> observer_receiver(
         observer.InitWithNewPipeAndPassReceiver());
     observer_ = std::make_unique<StrictMock<MockCrosHealthdUsbObserver>>(
         std::move(observer_receiver));
@@ -283,7 +283,7 @@ TEST_F(ThunderboltEventTest, TestThunderboltUnAuthorizedEvent) {
 TEST_F(UsbEventTest, TestUsbAddEvent) {
   base::RunLoop run_loop;
   EXPECT_CALL(*mock_observer(), OnAdd(_))
-      .WillOnce([&](mojo_ipc::UsbEventInfoPtr info) {
+      .WillOnce([&](mojom::UsbEventInfoPtr info) {
         EXPECT_EQ(info->vendor, kFakeUsbVendor);
         EXPECT_EQ(info->name, kFakeUsbName);
         EXPECT_EQ(info->vid, kFakeUsbVid);
@@ -302,7 +302,7 @@ TEST_F(UsbEventTest, TestUsbAddEvent) {
 TEST_F(UsbEventTest, TestUsbRemoveEvent) {
   base::RunLoop run_loop;
   EXPECT_CALL(*mock_observer(), OnRemove(_))
-      .WillOnce([&](mojo_ipc::UsbEventInfoPtr info) {
+      .WillOnce([&](mojom::UsbEventInfoPtr info) {
         EXPECT_EQ(info->vendor, kFakeUsbVendor);
         EXPECT_EQ(info->name, kFakeUsbName);
         EXPECT_EQ(info->vid, kFakeUsbVid);
