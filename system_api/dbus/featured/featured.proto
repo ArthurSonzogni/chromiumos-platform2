@@ -29,6 +29,10 @@ message FeatureOverride {
   // If the feature is enabled AND has parameters associated with it,
   // they'll appear here.
   repeated Param params = 3;
+  // Name of the field trial (study).
+  string trial_name = 4;
+  // Name of the experiment group the device is enrolled in.
+  string group_name = 5;
 }
 
 // Information about the last known "safe" seed.
