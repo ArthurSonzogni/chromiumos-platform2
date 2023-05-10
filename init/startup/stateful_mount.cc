@@ -184,12 +184,12 @@ bool StatefulMount::GetImageVars(base::FilePath json_file,
     return false;
   }
 
-  base::Value* image_vars = part_vars->FindDictKey(key);
+  base::Value::Dict* image_vars = part_vars->GetDict().FindDict(key);
   if (image_vars == nullptr) {
     LOG(ERROR) << "Failed to get image variables from " << json_file;
     return false;
   }
-  *vars = std::move(*image_vars);
+  *vars = base::Value(std::move(*image_vars));
   return true;
 }
 

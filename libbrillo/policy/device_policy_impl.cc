@@ -129,10 +129,10 @@ int ConvertDayOfWeekStringToInt(const std::string& day_of_week_str) {
   return -1;
 }
 
-bool DecodeWeeklyTimeFromValue(const base::Value& dict_value,
+bool DecodeWeeklyTimeFromValue(const base::Value::Dict& dict_value,
                                int* day_of_week_out,
                                base::TimeDelta* time_out) {
-  const std::string* day_of_week_str = dict_value.FindStringKey("day_of_week");
+  const std::string* day_of_week_str = dict_value.FindString("day_of_week");
   if (!day_of_week_str) {
     LOG(ERROR) << "Day of the week is absent.";
     return false;
@@ -143,13 +143,13 @@ bool DecodeWeeklyTimeFromValue(const base::Value& dict_value,
     return false;
   }
 
-  std::optional<int> hours = dict_value.FindIntKey("hours");
+  const std::optional<int> hours = dict_value.FindInt("hours");
   if (!hours.has_value() || hours < 0 || hours > 23) {
     LOG(ERROR) << "Hours are absent or are outside of the range [0, 24).";
     return false;
   }
 
-  std::optional<int> minutes = dict_value.FindIntKey("minutes");
+  const std::optional<int> minutes = dict_value.FindInt("minutes");
   if (!minutes.has_value() || minutes < 0 || minutes > 59) {
     LOG(ERROR) << "Minutes are absent or are outside the range [0, 60)";
     return false;
@@ -780,8 +780,10 @@ bool DevicePolicyImpl::GetDisallowedTimeIntervals(
       LOG(ERROR) << "Invalid JSON string given. Interval is not a dict.";
       return false;
     }
-    const base::Value* start = interval_value.FindDictKey("start");
-    const base::Value* end = interval_value.FindDictKey("end");
+
+    const base::Value::Dict& interval_value_dict = interval_value.GetDict();
+    const base::Value::Dict* start = interval_value_dict.FindDict("start");
+    const base::Value::Dict* end = interval_value_dict.FindDict("end");
     if (!start || !end) {
       LOG(ERROR) << "Interval is missing start/end.";
       return false;

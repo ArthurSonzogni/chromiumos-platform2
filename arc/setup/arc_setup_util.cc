@@ -807,13 +807,14 @@ bool GetOciContainerState(const base::FilePath& path,
   }
   *out_container_pid = pid.value();
 
-  const base::Value* annotations = container_state->FindDictKey("annotations");
+  const base::Value::Dict* annotations =
+      container_state->GetDict().FindDict("annotations");
   if (!annotations) {
     LOG(ERROR) << "Failed to get annotations from container state";
     return false;
   }
   const std::string* container_root_path =
-      annotations->FindStringKey("org.chromium.run_oci.container_root");
+      annotations->FindString("org.chromium.run_oci.container_root");
   if (!container_root_path) {
     LOG(ERROR)
         << "Failed to get org.chromium.run_oci.container_root annotation";
