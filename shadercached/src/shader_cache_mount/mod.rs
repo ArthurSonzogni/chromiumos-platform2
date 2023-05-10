@@ -59,7 +59,7 @@ impl ShaderCacheMount {
         let precompiled_cache_path = Path::new(CRYPTO_HOME)
             .join(&vm_id.vm_owner_id)
             .join(PRECOMPILED_CACHE_DIR)
-            .join(&vm_name_encoded);
+            .join(vm_name_encoded);
         Ok(ShaderCacheMount {
             mount_queue: HashSet::new(),
             unmount_queue: HashSet::new(),
@@ -95,7 +95,7 @@ impl ShaderCacheMount {
         if !dst_path.exists() {
             // Attempt to only create the final directory, the parent directory
             // should already exist.
-            if let Err(e) = fs::create_dir(&dst_path) {
+            if let Err(e) = fs::create_dir(dst_path) {
                 debug!(
                     "Failed create mount directory: {:?}, retrying after getting permissions",
                     e
@@ -106,11 +106,11 @@ impl ShaderCacheMount {
                 // on service module. This may involve splitting path creation
                 // and setting up permissions.
                 service::add_shader_cache_group_permission(vm_id, conn).await?;
-                fs::create_dir(&self.get_mount_base_path()?)?;
+                fs::create_dir(dst_path)?;
                 debug!("Successfully created mount directory on retry");
             }
             let perm = fs::Permissions::from_mode(0o750);
-            if let Err(e) = fs::set_permissions(&dst_path, perm) {
+            if let Err(e) = fs::set_permissions(dst_path, perm) {
                 error!("Failed to set permissions for {}: {}", dst_path_str, e);
                 fs::remove_dir(dst_path)?;
                 return Err(anyhow!("Failed to set permissions: {}", e));
