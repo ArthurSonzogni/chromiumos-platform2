@@ -158,16 +158,9 @@ static bool is_v4l2_dec_jpeg_device(int fd) {
  * output, i.e. for its V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE queue.
  */
 static bool is_v4l2_enc_jpeg_device(int fd) {
-  if (is_hw_jpeg_acc_device(fd)) {
-    if (is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-                               V4L2_PIX_FMT_JPEG))
-      return true;
-
-    if (is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-                               V4L2_PIX_FMT_JPEG_RAW))
-      return true;
-  }
-  return false;
+  return is_hw_jpeg_acc_device(fd) &&
+         is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
+                                V4L2_PIX_FMT_JPEG);
 }
 
 #endif  // defined(USE_V4L2_CODEC)
