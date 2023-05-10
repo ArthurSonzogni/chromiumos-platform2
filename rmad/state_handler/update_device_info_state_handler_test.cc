@@ -69,6 +69,7 @@ struct StateHandlerArgs {
   bool has_dram_part_num = true;
   bool has_region_list = true;
   bool has_sku_list = true;
+  const std::vector<uint64_t> sku_list = kSkuList;
   bool has_custom_label_list = true;
   bool set_serial_number_success = true;
   bool set_region_success = true;
@@ -77,6 +78,7 @@ struct StateHandlerArgs {
   bool set_dram_part_num_success = true;
   bool sku_overflow = false;
   bool flush_out_vpd_success = true;
+  bool has_cbi = true;
 };
 
 }  // namespace
@@ -192,10 +194,11 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     auto cros_config_utils = std::make_unique<NiceMock<MockCrosConfigUtils>>();
     ON_CALL(*cros_config_utils, GetRmadConfig(_))
         .WillByDefault(
-            DoAll(SetArgPointee<0>(RmadConfig{.has_cbi = true}), Return(true)));
+            DoAll(SetArgPointee<0>(RmadConfig{.has_cbi = args.has_cbi}),
+                  Return(true)));
     if (args.has_sku_list) {
       ON_CALL(*cros_config_utils, GetSkuIdList(_))
-          .WillByDefault(DoAll(SetArgPointee<0>(kSkuList), Return(true)));
+          .WillByDefault(DoAll(SetArgPointee<0>(args.sku_list), Return(true)));
     } else {
       ON_CALL(*cros_config_utils, GetSkuIdList(_)).WillByDefault(Return(false));
     }
@@ -299,6 +302,24 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoRegionList_Failed) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoSkuList_Failed) {
   auto handler = CreateStateHandler({.has_sku_list = false});
+  json_store_->SetValue(kMlbRepair, false);
+
+  EXPECT_EQ(handler->InitializeState(),
+            RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_NoCbiNoSkuNoSkuList_Success) {
+  auto handler =
+      CreateStateHandler({.has_sku = false, .sku_list = {}, .has_cbi = false});
+  json_store_->SetValue(kMlbRepair, false);
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_NoCbiNoSkuHasSkuList_Failed) {
+  auto handler = CreateStateHandler({.has_sku = false, .has_cbi = false});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(),
