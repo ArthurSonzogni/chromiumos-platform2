@@ -39,6 +39,10 @@ class EventSubscriber final : public ash::cros_healthd::mojom::EventObserver {
   void SubscribeToEvents(base::OnceClosure on_subscription_disconnect,
                          ash::cros_healthd::mojom::EventCategoryEnum category);
 
+  // Check if |category| is supported and then output the result.
+  void IsEventSupported(base::OnceClosure run_loop_closure,
+                        ash::cros_healthd::mojom::EventCategoryEnum category);
+
  private:
   // Allows mojo communication with cros_healthd event service.
   mojo::Remote<ash::cros_healthd::mojom::CrosHealthdEventService>

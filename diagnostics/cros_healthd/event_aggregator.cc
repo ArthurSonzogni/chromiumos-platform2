@@ -102,9 +102,8 @@ void EventAggregator::AddObserver(
 void EventAggregator::IsEventSupported(
     mojom::EventCategoryEnum category,
     mojom::CrosHealthdEventService::IsEventSupportedCallback callback) {
-  // TODO(b/271514913): Implement the real logic of this method. For now, we
-  // just assume that all the events are available.
-  std::move(callback).Run(nullptr);
+  std::move(callback).Run(
+      mojom::SupportStatus::NewSupported(mojom::Supported::New()));
 }
 
 void EventAggregator::AddObserver(

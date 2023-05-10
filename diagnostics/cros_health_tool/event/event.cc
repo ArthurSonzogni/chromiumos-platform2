@@ -64,6 +64,9 @@ std::string GetCategoryHelp() {
 
 int event_main(int argc, char** argv) {
   std::string category_help = GetCategoryHelp();
+  DEFINE_bool(check_supported, false,
+              "Check the support status of |category|. It won't subscribe the"
+              " event.");
   DEFINE_string(category, "", category_help.c_str());
   DEFINE_uint32(length_seconds, 10, "Number of seconds to listen for events.");
   brillo::FlagHelper::Init(argc, argv,
@@ -84,41 +87,47 @@ int event_main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  // Subscribe to the specified category.
+  auto category = iterator->second;
   base::RunLoop run_loop;
   EventSubscriber event_subscriber;
-  switch (iterator->second) {
-    case mojom::EventCategoryEnum::kAudio:
-    case mojom::EventCategoryEnum::kAudioJack:
-    case mojom::EventCategoryEnum::kBluetooth:
-    case mojom::EventCategoryEnum::kKeyboardDiagnostic:
-    case mojom::EventCategoryEnum::kLid:
-    case mojom::EventCategoryEnum::kPower:
-    case mojom::EventCategoryEnum::kSdCard:
-    case mojom::EventCategoryEnum::kThunderbolt:
-    case mojom::EventCategoryEnum::kUsb:
-    case mojom::EventCategoryEnum::kTouchpad:
-    case mojom::EventCategoryEnum::kHdmi:
-    case mojom::EventCategoryEnum::kTouchscreen:
-    case mojom::EventCategoryEnum::kStylusGarage:
-    case mojom::EventCategoryEnum::kStylus:
-      event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
-                                         iterator->second);
-      break;
-    case mojom::EventCategoryEnum::kNetwork:
-      event_subscriber.SubscribeToNetworkEvents();
-      break;
-    case mojom::EventCategoryEnum::kUnmappedEnumField:
-      NOTREACHED();
-      return EXIT_FAILURE;
+  if (FLAGS_check_supported) {
+    // Check the support status.
+    event_subscriber.IsEventSupported(run_loop.QuitClosure(), category);
+  } else {
+    // Subscribe to the specified category.
+    switch (category) {
+      case mojom::EventCategoryEnum::kAudio:
+      case mojom::EventCategoryEnum::kAudioJack:
+      case mojom::EventCategoryEnum::kBluetooth:
+      case mojom::EventCategoryEnum::kKeyboardDiagnostic:
+      case mojom::EventCategoryEnum::kLid:
+      case mojom::EventCategoryEnum::kPower:
+      case mojom::EventCategoryEnum::kSdCard:
+      case mojom::EventCategoryEnum::kThunderbolt:
+      case mojom::EventCategoryEnum::kUsb:
+      case mojom::EventCategoryEnum::kTouchpad:
+      case mojom::EventCategoryEnum::kHdmi:
+      case mojom::EventCategoryEnum::kTouchscreen:
+      case mojom::EventCategoryEnum::kStylusGarage:
+      case mojom::EventCategoryEnum::kStylus:
+        event_subscriber.SubscribeToEvents(run_loop.QuitClosure(), category);
+        break;
+      case mojom::EventCategoryEnum::kNetwork:
+        event_subscriber.SubscribeToNetworkEvents();
+        break;
+      case mojom::EventCategoryEnum::kUnmappedEnumField:
+        NOTREACHED();
+        return EXIT_FAILURE;
+    }
+
+    std::cout << "Subscribe to " << FLAGS_category << " events successfully."
+              << std::endl;
+
+    // Schedule an exit after |FLAGS_length_seconds|.
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE, run_loop.QuitClosure(), base::Seconds(FLAGS_length_seconds));
   }
 
-  std::cout << "Subscribe to " << FLAGS_category << " events successfully."
-            << std::endl;
-
-  // Schedule an exit after |FLAGS_length_seconds|.
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE, run_loop.QuitClosure(), base::Seconds(FLAGS_length_seconds));
   run_loop.Run();
   return EXIT_SUCCESS;
 }
