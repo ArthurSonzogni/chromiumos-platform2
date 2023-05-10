@@ -142,14 +142,7 @@ void CellularBearer::GetIPConfigMethodAndProperties(
         ->dns_servers.push_back(properties.Get<std::string>(kPropertyDNS3));
   }
   if (properties.Contains<uint32_t>(kPropertyMtu)) {
-    uint32_t mtu = properties.Get<uint32_t>(kPropertyMtu);
-    // TODO(b/139816862): A larger-than-expected MTU value has been observed
-    // on some modem. Here we temporarily ignore any MTU value larger than
-    // |IPConfig::kDefaultMTU| until the issue has been addressed on the modem
-    // side. Remove this workaround later.
-    if (mtu <= static_cast<uint32_t>(IPConfig::kDefaultMTU)) {
-      (*ipconfig_properties)->mtu = mtu;
-    }
+    (*ipconfig_properties)->mtu = properties.Get<uint32_t>(kPropertyMtu);
   }
 
   // If the modem didn't do its own IPv6 SLAAC, it may still report a link-local
