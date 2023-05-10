@@ -22,9 +22,9 @@ group("all") {
 # Binary
 executable("arc-keymintd") {
   sources = [
-    "main.cc",
+    "conversion.cc",
     "keymint_server.cc",
-    "conversion.cc"
+    "main.cc",
   ]
   pkg_deps = [
     "libbrillo",
@@ -42,7 +42,10 @@ executable("arc-keymintd") {
 
 # Mojo bindings
 generate_mojom_bindings("keymint_mojo_bindings") {
-  sources = [ "mojo/keymint.mojom" ]
+  sources = [
+    "mojo/cert_store.mojom",
+    "mojo/keymint.mojom",
+  ]
 }
 
 # LibKeyMint Support
