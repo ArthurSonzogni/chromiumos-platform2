@@ -1016,6 +1016,72 @@
   </event>
 </project>
 
+<project name="UsbPdDevice">
+  <owner>wonchung@google.com</owner>
+  <owner>chromeos-usb@google.com</owner>
+  <id>none</id>
+  <summary>
+    Project for recording basic USB PD device information that meets privacy constraints.
+  </summary>
+
+  <event name="UsbPdDeviceInfo">
+    <summary>
+      Records the USB PD device info.
+    </summary>
+    <metric name="VendorId" type="int">
+      <summary>
+        The vendor id of the USB PD device.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        The product id of the USB PD device.
+      </summary>
+    </metric>
+    <metric name="ExitId" type="int">
+      <summary>
+        XID of the USB PD device that is uniquely assigned by USB-IF once it is
+        certified. Set to 0 if the device is not certified.
+      </summary>
+    </metric>
+    <metric name="SupportsPd" type="int">
+      <summary>
+        Boolean to indicate if the device supports USB PD.
+      </summary>
+    </metric>
+    <metric name="SupportsUsb" type="int">
+      <summary>
+        Boolean to indicate if the device supports USB.
+      </summary>
+    </metric>
+    <metric name="SupportsDp" type="int">
+      <summary>
+        Boolean to indicate if the device supports DP alt mode.
+      </summary>
+    </metric>
+    <metric name="SupportsTbt" type="int">
+      <summary>
+        Boolean to indicate if the device supports TBT alt mode.
+      </summary>
+    </metric>
+    <metric name="SupportsUsb4" type="int">
+      <summary>
+        Boolean to indicate if the device supports USB4 mode.
+      </summary>
+    </metric>
+    <metric name="DataRole" type="int">
+      <summary>
+        Enum for data role. 0: None, 1: Device, 2: Host.
+      </summary>
+    </metric>
+    <metric name="PowerRole" type="int">
+      <summary>
+        Enum for power role. 0: None, 1: Sink, 2: Source.
+      </summary>
+    </metric>
+  </event>
+</project>
+
 <project name="WiFiChipset">
   <owner>druth@google.com</owner>
   <owner>matthewmwang@chromium.org</owner>
