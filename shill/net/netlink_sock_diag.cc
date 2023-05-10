@@ -8,7 +8,6 @@
 #include <linux/netlink.h>
 #include <linux/sock_diag.h>
 #include <sys/socket.h>
-#include <sys/utsname.h>
 
 #include <string>
 #include <utility>
@@ -17,8 +16,6 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/numerics/safe_conversions.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_split.h>
 
 #include "shill/net/netlink_fd.h"
 #include "shill/net/sockets.h"
@@ -71,28 +68,6 @@ NetlinkSockDiag::NetlinkSockDiag(std::unique_ptr<Sockets> sockets,
 // static
 std::unique_ptr<NetlinkSockDiag> NetlinkSockDiag::Create(
     std::unique_ptr<Sockets> sockets) {
-  struct utsname un;
-  if (uname(&un) < 0) {
-    PLOG(ERROR) << "Could not check kernel version";
-    return nullptr;
-  }
-
-  unsigned major, minor;
-  std::vector<std::string> version = base::SplitString(
-      un.release, ".", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  if (version.size() < 2 || !base::StringToUint(version[0], &major) ||
-      !base::StringToUint(version[1], &minor)) {
-    LOG(ERROR) << "Error parsing kernel version";
-    return nullptr;
-  }
-
-  // SOCK_DESTROY has only been backported to 3.14 and above.
-  if (major < 3 || (major == 3 && minor < 14)) {
-    LOG(ERROR) << "Kernel version " << major << "." << minor
-               << " does not support SOCK_DESTROY";
-    return nullptr;
-  }
-
   int file_descriptor =
       OpenNetlinkSocketFD(sockets.get(), NETLINK_SOCK_DIAG, 0);
   if (file_descriptor == Sockets::kInvalidFileDescriptor)
