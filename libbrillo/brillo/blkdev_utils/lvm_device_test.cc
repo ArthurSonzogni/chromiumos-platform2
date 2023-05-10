@@ -58,6 +58,30 @@ TEST(VolumeGroupTest, VolumeGroupSanityTest) {
   EXPECT_EQ("", vg.GetName());
 }
 
+TEST(VolumeGroupTest, VolumeGroupRemoveRunnerTest) {
+  VolumeGroup vg("foobar", nullptr);
+  EXPECT_FALSE(vg.Rename("foo"));
+}
+
+TEST(VolumeGroupTest, VolumeGroupRemoveEmptySourceTest) {
+  auto lvm = std::make_shared<testing::StrictMock<MockLvmCommandRunner>>();
+  VolumeGroup vg("", lvm);
+  EXPECT_FALSE(vg.Rename("foobar"));
+}
+
+TEST(VolumeGroupTest, VolumeGroupRemoveEmptyTargetTest) {
+  auto lvm = std::make_shared<testing::StrictMock<MockLvmCommandRunner>>();
+  VolumeGroup vg("foobar", lvm);
+  EXPECT_FALSE(vg.Rename(""));
+}
+
+TEST(VolumeGroupTest, VolumeGroupRemoveTest) {
+  auto lvm = std::make_shared<testing::StrictMock<MockLvmCommandRunner>>();
+  EXPECT_CALL(*lvm, RunCommand(_)).WillOnce(testing::Return(true));
+  VolumeGroup vg("foobar", lvm);
+  EXPECT_TRUE(vg.Rename("foo"));
+}
+
 TEST(ThinpoolTest, InvalidThinpoolTest) {
   auto lvm = std::make_shared<MockLvmCommandRunner>();
   Thinpool thinpool("", "", lvm);

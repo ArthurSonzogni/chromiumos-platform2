@@ -128,6 +128,15 @@ bool VolumeGroup::Remove() {
   return ret;
 }
 
+bool VolumeGroup::Rename(const std::string& volume_group_name) {
+  if (volume_group_name_.empty() || volume_group_name.empty() || !lvm_)
+    return false;
+  if (!lvm_->RunCommand({"vgrename", volume_group_name_, volume_group_name}))
+    return false;
+  volume_group_name_ = volume_group_name;
+  return true;
+}
+
 LogicalVolume::LogicalVolume(const std::string& logical_volume_name,
                              const std::string& volume_group_name,
                              std::shared_ptr<LvmCommandRunner> lvm)
