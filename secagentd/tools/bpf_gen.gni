@@ -61,8 +61,9 @@ template("generate_ebpf_skeletons") {
       "${root_gen_dir}",
     ]
     if (defined(defines)) {
+      args += [ "--defines" ]
       foreach(define, defines) {
-        args += [ "--defines=" + define ]
+        args += [ define ]
       }
     }
     if (btf_inout_dir != "") {
