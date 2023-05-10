@@ -1023,95 +1023,58 @@ bool Log::StartToGetLogData(std::unique_ptr<SandboxedProcess>& child_proc,
   return child_proc->Start();
 }
 
-LogTool::ParallelLogCollector::ParallelLogCollector() = default;
+LogTool::ParallelLogCollector::ParallelLogCollector(
+    base::TimeDelta max_wait_time)
+    : max_parallelism_(std::max(2, base::SysInfo::NumberOfProcessors())),
+      deadline_(base::TimeTicks::Now() + max_wait_time) {}
 
 bool LogTool::ParallelLogCollector::StartGetLogs(
     const std::vector<Log>& log_list) {
   DLOG(INFO) << "StartGetLogs, size=" << log_list.size();
 
   if (!temp_dir_.CreateUniqueTempDir()) {
-    PLOG(ERROR) << "Failed to create a temporary directory";
+    LOG(ERROR) << "Failed to create a temporary directory";
     return false;
   }
 
-  pid_t child_pid;
+  // Specify the temp file to store log data for each log. The mapping is needed
+  // when reading them later.
   for (const Log& log : log_list) {
     // The temp file to store the log content.
     const base::FilePath output_file =
         temp_dir_.GetPath().Append(log.GetName());
     file_log_map_.emplace(output_file, log);
-
-    auto sub_process = std::make_unique<SandboxedProcess>();
-    switch (log.GetType()) {
-      case Log::kCommand:
-        if (log.StartToGetLogData(sub_process, output_file)) {
-          child_pids_.emplace(sub_process->pid(), log.GetName());
-          // Keep a reference so that the process won't be killed after this
-          // method exits. It will terminate itself eventually.
-          child_processes_.push_back(std::move(sub_process));
-        }
-        break;
-      case Log::kFile:
-      case Log::kGlob:
-        if ((child_pid = fork()) == -1) {
-          PLOG(ERROR) << "StartGetLogs: fork failure, skip log="
-                      << log.GetName();
-          // Skip this log so we can give other logs a chance.
-          continue;
-        }
-        if (child_pid == 0) {
-          // Child process.
-          base::WriteFile(output_file, log.GetLogData());
-          exit(EXIT_SUCCESS);
-        } else {
-          // Parent process.
-          child_pids_.emplace(child_pid, log.GetName());
-        }
-        break;
-    }
   }
-  VLOG(2) << "StartGetLogs, created child process count=" << child_pids_.size();
+
+  task_controller_pid_ = fork();
+  switch (task_controller_pid_) {
+    case -1:
+      // Fork failed.
+      PLOG(ERROR) << "StartGetLogs: fork failure";
+      return false;
+    case 0:
+      // Child process.
+      CollectLogs(file_log_map_, deadline_, max_parallelism_);
+      exit(EXIT_SUCCESS);
+    default:
+      // Parent process.
+      VLOG(1) << "StartGetLogs, task_controller_pid=" << task_controller_pid_;
+      break;
+  }
+
   return true;
 }
 
-void LogTool::ParallelLogCollector::Wait(base::TimeDelta timeout) {
-  base::TimeTicks deadline = base::TimeTicks::Now() + timeout;
+void LogTool::ParallelLogCollector::EndGetLogs(base::Value::Dict* dict) {
+  const base::TimeDelta sleep_interval = base::Seconds(1);
+  // Wait for the controller to finish or until the deadline.
   int status;
-  pid_t pid;
-  while (!child_pids_.empty() && (base::TimeTicks::Now() < deadline) > 0) {
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-      // A child has exited.
-      child_pids_.erase(pid);
-    }
-    if (pid == 0) {
-      // Sleep for 1 second.
-      sleep(1);
-    } else if (!child_pids_.empty()) {
-      // Something wrong.
-      LOG(ERROR)
-          << "EndGetLogs: error encountered while waiting for child processes";
+  while (base::TimeTicks::Now() < deadline_) {
+    if (waitpid(task_controller_pid_, &status, WNOHANG) > 0) {
       break;
     }
+    sleep(sleep_interval.InSeconds());
   }
-  if (!child_pids_.empty()) {
-    LOG(WARNING) << "EndGetLogs: wait timed out. remaining child processes: "
-                 << child_pids_.size();
-    for (const auto& kv : child_pids_) {
-      LOG(WARNING) << "EndGetLogs: Log=[" << kv.first
-                   << "] timed out, pid=" + kv.second;
-    }
-  }
-  // Releases exited processes since they have exited already.
-  for (auto& p : child_processes_) {
-    if (!base::Contains(child_pids_, p->pid())) {
-      p->Release();
-    }
-  }
-}
-
-void LogTool::ParallelLogCollector::EndGetLogs(base::Value::Dict* dict,
-                                               base::TimeDelta timeout) {
-  Wait(timeout);
 
   for (auto const& pair : file_log_map_) {
     const Log& log = pair.second;
@@ -1132,6 +1095,99 @@ void LogTool::ParallelLogCollector::EndGetLogs(base::Value::Dict* dict,
       LOG(ERROR) << "EndGetLogs: failed to read file=" << pair.first.value()
                  << ", log=" << log.GetName();
       dict->Set(log.GetName(), kLogNotAvailable);
+    }
+  }
+}
+
+void LogTool::ParallelLogCollector::CollectLogs(
+    const std::map<base::FilePath, Log>& filepath_logs,
+    const base::TimeTicks& deadline,
+    const size_t max_parallelism) {
+  VLOG(1) << "CollectLogs: max_parallelism=" << max_parallelism;
+  // Keep track of all processes created in this method.
+  std::vector<std::unique_ptr<brillo::Process>> child_processes;
+  // Track created pids and their corresponding log names.
+  std::unordered_map<pid_t, const std::string&> running_child_pids_;
+
+  pid_t child_pid;
+  int status;
+
+  // Time to wait before checking any task has completed. Most tasks are quick.
+  const base::TimeDelta poll_interval = base::Milliseconds(20);
+  auto task_it = filepath_logs.begin();
+
+  while (task_it != filepath_logs.end() && base::TimeTicks::Now() < deadline) {
+    child_pid = waitpid(-1, &status, WNOHANG);
+    if (child_pid > 0) {
+      // A child process has exited.
+      running_child_pids_.erase(child_pid);
+    }
+    // Limit # of concurrent tasks to be <= max_parallelism.
+    if (running_child_pids_.size() >= max_parallelism) {
+      usleep(poll_interval.InMicroseconds());
+      // Go back and check whether any tasks have completed.
+      continue;
+    }
+    // Start to process a new task.
+    const Log& log = task_it->second;
+    const base::FilePath& output_file = task_it->first;
+    auto sub_process = std::make_unique<SandboxedProcess>();
+
+    switch (log.GetType()) {
+      case Log::kCommand:
+        if (log.StartToGetLogData(sub_process, output_file)) {
+          running_child_pids_.emplace(sub_process->pid(), log.GetName());
+          child_processes.push_back(std::move(sub_process));
+        }
+        break;
+      case Log::kFile:
+      case Log::kGlob:
+        child_pid = fork();
+        switch (child_pid) {
+          case -1:
+            PLOG(ERROR) << "CollectLogs: fork failure, log=" << log.GetName();
+            // Fork failed. Skip this log. When the system is having serious
+            // problems such that fork keeps failing, then the loop will exit
+            // quickly.
+            break;
+          case 0:
+            // Child process.
+            base::WriteFile(output_file, log.GetLogData());
+            exit(EXIT_SUCCESS);
+          default:
+            // Parent process.
+            running_child_pids_.emplace(child_pid, log.GetName());
+            break;
+        }
+        break;
+    }
+    ++task_it;
+  }
+
+  // Wait for started tasks to complete or timeout.
+  while (!running_child_pids_.empty() && base::TimeTicks::Now() < deadline) {
+    child_pid = waitpid(-1, &status, WNOHANG);
+    if (child_pid > 0) {
+      // A child process has exited.
+      running_child_pids_.erase(child_pid);
+    } else {
+      usleep(poll_interval.InMicroseconds());
+    }
+  }
+
+  // Log tasks not started yet.
+  for (; task_it != filepath_logs.end(); task_it++) {
+    LOG(WARNING) << "CollectLogs: not started, Log="
+                 << task_it->second.GetName();
+  }
+  // Log tasks started but not finished on time.
+  for (auto& p : child_processes) {
+    if (base::Contains(running_child_pids_, p->pid())) {
+      LOG(WARNING) << "CollectLogs: timed out, Log="
+                   << running_child_pids_.at(p->pid());
+    } else {
+      // Releases exited processes.
+      p->Release();
     }
   }
 }
@@ -1337,7 +1393,7 @@ void LogTool::GetFeedbackLogsV3(const base::ScopedFD& fd,
 
   // Gather all log items which will be run in child processes.
   const std::vector<Log> log_list = GetRequestedLogItems(requested_logs);
-  ParallelLogCollector log_helper;
+  ParallelLogCollector log_helper(kFeedbackLogTimeout);
   // Start a child process for each log item and collect logs async.
   log_helper.StartGetLogs(log_list);
 
@@ -1373,10 +1429,7 @@ void LogTool::GetFeedbackLogsV3(const base::ScopedFD& fd,
   }
 
   // Wait for all child processes to complete and load the log data.
-  auto remaining_wait_time =
-      kFeedbackLogTimeout -
-      (base::TimeTicks::Now() - connectivity_report_start_at);
-  log_helper.EndGetLogs(&dictionary, remaining_wait_time);
+  log_helper.EndGetLogs(&dictionary);
 
   // The /usr/bin/chromeos-pgmem command gave the following error when run in
   // log_helper: WARNING chromeos-pgmem: [process_meter.cc(255)] Unknown chrome

@@ -7,6 +7,9 @@
 
 #include <sys/types.h>
 
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <optional>
@@ -19,6 +22,7 @@
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
+#include <base/system/sys_info.h>
 #include <base/values.h>
 #include <brillo/process/process.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
@@ -26,6 +30,7 @@
 #include <dbus/bus.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
+#include "base/time/time.h"
 #include "debugd/src/log_provider.h"
 #include "debugd/src/perf_tool.h"
 #include "debugd/src/sandboxed_process.h"
@@ -112,7 +117,7 @@ class LogTool : public debugd::LogProvider {
   // A helper class to collect logs in parallel.
   class ParallelLogCollector {
    public:
-    ParallelLogCollector();
+    explicit ParallelLogCollector(base::TimeDelta max_wait_time);
     ParallelLogCollector(const ParallelLogCollector&) = delete;
     ParallelLogCollector& operator=(const ParallelLogCollector&) = delete;
 
@@ -122,18 +127,24 @@ class LogTool : public debugd::LogProvider {
     // Insert logs collected to the |dict|. Must be called after StartGetLogs().
     // It will wait maximum !timeout_seconds| seconds. The logs which have not
     // finished on time may not be collected.
-    void EndGetLogs(base::Value::Dict* dict, base::TimeDelta timeout);
+    void EndGetLogs(base::Value::Dict* dict);
 
    private:
-    // Wait for all child processes to be completed. Must be called after
-    // StartGetLogs().
-    void Wait(base::TimeDelta timeout);
+    void CollectLogs(const std::map<base::FilePath, Log>& filepath_logs,
+                     const base::TimeTicks& deadline,
+                     const size_t max_parallelism);
 
-    std::vector<std::unique_ptr<brillo::Process>> child_processes_;
+    // Specify the maximum number of concurrent tasks.
+    const size_t max_parallelism_;
+    // The collector is expected to finish before this |deadline_|. Unfinished
+    // logs will be skipped.
+    base::TimeTicks deadline_;
+
+    // Task controller pid.
+    pid_t task_controller_pid_;
+
     // Track the mapping between the output file name and the Log.
     std::map<base::FilePath, Log> file_log_map_;
-    // Track created pids and their corresponding log names. Used by Wait().
-    std::unordered_map<pid_t, const std::string&> child_pids_;
     // Log data will be saved to this temp folder.
     base::ScopedTempDir temp_dir_;
   };
