@@ -62,6 +62,10 @@ constexpr char kArcVmmSwapFeatureName[] = "CrOSLateBootArcVmmSwap";
 // A feature name for enabling AAudio MMAP support in audio HAL
 constexpr char kArcVmAAudioMMAPFeatureName[] = "CrOSLateBootArcVmAAudioMMAP";
 
+// A feature name for using low latency (5ms) AAudio MMAP
+constexpr char kArcVmAAudioMMAPLowLatencyFeatureName[] =
+    "CrOSLateBootArcVmAAudioMMAPLowLatency";
+
 // The timeout in ms for LMKD to read from it's vsock connection to concierge.
 // 100ms is long enough to allow concierge to respond even under extreme system
 // load, but short enough that LMKD can still kill processes before the linux
@@ -78,6 +82,9 @@ const VariationsFeature kArcVmmSwapFeature{kArcVmmSwapFeatureName,
 
 const VariationsFeature kArcVmAAudioMMAPFeature{kArcVmAAudioMMAPFeatureName,
                                                 FEATURE_DISABLED_BY_DEFAULT};
+
+const VariationsFeature kArcVmAAudioMMAPLowLatencyFeature{
+    kArcVmAAudioMMAPLowLatencyFeatureName, FEATURE_DISABLED_BY_DEFAULT};
 
 // Returns |image_path| on production. Returns a canonicalized path of the image
 // file when in dev mode.
@@ -207,6 +214,14 @@ bool ShouldEnableAAudioMMAP(bool is_feature_enabled, bool is_dev_mode) {
        cpu_model_name.find("pentium") == std::string::npos);
 
   return is_feature_enabled && supported_cpu;
+}
+
+// Returns the period size to use for AAudio MMAP.
+// If low latency is enabled, use period size = 256 which gives lower
+// latency but may cause audio glitches.
+// If not, use period size = 512.
+int GetAAudioMMAPPeriodSize(bool is_low_latency_enabled) {
+  return is_low_latency_enabled ? 256 : 512;
 }
 
 // This function boosts the arcvm and arcvm-vcpus cgroups, by applying the
@@ -409,6 +424,11 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
           platform_features_->IsEnabledBlocking(kArcVmAAudioMMAPFeature),
           is_dev_mode)) {
     params.emplace_back("androidboot.audio.aaudio_mmap_enabled=1");
+    bool low_latency_enabled = platform_features_->IsEnabledBlocking(
+        kArcVmAAudioMMAPLowLatencyFeature);
+    params.emplace_back(
+        base::StringPrintf("androidboot.audio.aaudio_mmap_period_size=%d",
+                           GetAAudioMMAPPeriodSize(low_latency_enabled)));
   }
 
   // Workaround for slow vm-host IPC when recording video.
