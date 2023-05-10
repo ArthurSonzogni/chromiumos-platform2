@@ -18,6 +18,7 @@ use std::time::Duration;
 use dbus::{
     arg::OwnedFd,
     ffidisp::{BusType, Connection, ConnectionItem},
+    strings::{Interface, Member},
     Message,
 };
 use protobuf::EnumOrUnknown;
@@ -309,8 +310,8 @@ impl Default for ContainerSource {
 
 struct ProtobusSignalWatcher<'a> {
     connection: Option<&'a Connection>,
-    interface: String,
-    signal: String,
+    interface: Interface<'a>,
+    signal: Member<'a>,
 }
 
 impl<'a> ProtobusSignalWatcher<'a> {
@@ -321,8 +322,8 @@ impl<'a> ProtobusSignalWatcher<'a> {
     ) -> Result<ProtobusSignalWatcher<'a>, Box<dyn Error>> {
         let out = ProtobusSignalWatcher {
             connection,
-            interface: interface.to_owned(),
-            signal: signal.to_owned(),
+            interface: interface.to_owned().into(),
+            signal: signal.to_owned().into(),
         };
         if let Some(connection) = out.connection {
             connection.add_match(&out.format_rule())?;
@@ -353,9 +354,7 @@ impl<'a> ProtobusSignalWatcher<'a> {
                     if let (Some(msg_interface), Some(msg_signal)) =
                         (message.interface(), message.member())
                     {
-                        if msg_interface.as_cstr().to_string_lossy() == self.interface
-                            && msg_signal.as_cstr().to_string_lossy() == self.signal
-                        {
+                        if msg_interface == self.interface && msg_signal == self.signal {
                             let proto_message: O = dbus_message_to_proto(&message)?;
                             if predicate(&proto_message) {
                                 return Ok(proto_message);

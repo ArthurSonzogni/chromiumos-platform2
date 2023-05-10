@@ -18,7 +18,7 @@ overflow-checks = true
 
 [dependencies]
 base64 = "0.13.0"
-dbus = "0.8"
+dbus = "0.9"
 getopts = "0.2"
 libc = "0.2.44"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild

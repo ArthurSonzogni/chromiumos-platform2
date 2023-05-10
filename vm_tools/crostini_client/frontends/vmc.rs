@@ -1135,7 +1135,7 @@ mod tests {
         eprintln!("{:?}", msg);
         msg.set_serial(1);
         if let Some(member) = msg.member() {
-            match member.as_cstr().to_bytes() {
+            match member.into_cstring().to_bytes() {
                 b"GetDlcState" => {
                     let mut dlc_state = DlcState::new();
                     dlc_state.state = dlc_state::State::INSTALLED.into();
