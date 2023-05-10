@@ -1476,17 +1476,14 @@ bool Service::Init() {
   static const std::map<const char*, AsyncServiceMethod> kAsyncServiceMethods =
       {
           {kStartVmMethod,
-           &Service::StartVmHelper<StartVmRequest, &Service::GetVmMemoryMiB,
-                                   &Service::StartVm>},
+           &Service::StartVmHelper<StartVmRequest, &Service::StartVm>},
           // TODO(b/220235105): Query pvm memsize and then make the return
           // type a plain int64_t.
           {kStartPluginVmMethod,
-           &Service::StartVmHelper<StartPluginVmRequest, nullptr,
+           &Service::StartVmHelper<StartPluginVmRequest,
                                    &Service::StartPluginVm>},
           {kStartArcVmMethod,
-           &Service::StartVmHelper<StartArcVmRequest,
-                                   &Service::GetArcVmMemoryMiB,
-                                   &Service::StartArcVm>},
+           &Service::StartVmHelper<StartArcVmRequest, &Service::StartArcVm>},
       };
 
   // TODO(b/269214379): Wait for completion for RegisterAsync on
@@ -2114,9 +2111,9 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   auto vm = TerminaVm::Create(
       vsock_cid, std::move(network_client), std::move(server_proxy),
       std::move(runtime_dir), vm_memory_id, std::move(log_path),
-      std::move(stateful_device), std::move(stateful_size),
-      GetVmMemoryMiB(request), features, vm_permission_service_proxy_, bus_,
-      vm_id, classification, std::move(vm_builder), std::move(socket));
+      std::move(stateful_device), std::move(stateful_size), features,
+      vm_permission_service_proxy_, bus_, vm_id, classification,
+      std::move(vm_builder), std::move(socket));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
@@ -2259,10 +2256,6 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   }
   vms_[vm_id] = std::move(vm);
   return response;
-}
-
-int64_t Service::GetVmMemoryMiB(const StartVmRequest& request) {
-  return ::vm_tools::concierge::GetVmMemoryMiB();
 }
 
 // Typical check based on the name of protocol buffer fields. Our business logic

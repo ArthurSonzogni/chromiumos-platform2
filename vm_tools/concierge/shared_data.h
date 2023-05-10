@@ -99,7 +99,6 @@ std::optional<base::FilePath> GetInstalledOrRequestPflashPath(
     const VmId& vm_id, const base::FilePath& start_vm_request_pflash_path);
 
 template <class StartXXRequest,
-          int64_t (Service::*GetVmMemory)(const StartXXRequest&),
           StartVmResponse (Service::*StartVm)(
               StartXXRequest, std::unique_ptr<dbus::MessageReader>, VmMemoryId)>
 void Service::StartVmHelper(

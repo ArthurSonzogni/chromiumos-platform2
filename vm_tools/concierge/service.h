@@ -95,7 +95,6 @@ class Service final : public org::chromium::VmConciergeInterface {
   // Helper function that is used by StartVm, StartPluginVm and StartArcVm
   template <
       class StartXXRequest,
-      int64_t (Service::*GetVmMemory)(const StartXXRequest&),
       StartVmResponse (Service::*StartVm)(StartXXRequest,
                                           std::unique_ptr<dbus::MessageReader>,
                                           VmMemoryId vm_memory_id)>
@@ -107,10 +106,6 @@ class Service final : public org::chromium::VmConciergeInterface {
                           std::unique_ptr<dbus::MessageReader> reader,
                           VmMemoryId vm_memory_id);
 
-  // Returns how many mebibyte of physical memory to use for the
-  // VM being started with the given request.
-  int64_t GetVmMemoryMiB(const StartVmRequest& request);
-
   // Handles a request to start a plugin-based VM.
   StartVmResponse StartPluginVm(StartPluginVmRequest request,
                                 std::unique_ptr<dbus::MessageReader> reader,
@@ -120,10 +115,6 @@ class Service final : public org::chromium::VmConciergeInterface {
   StartVmResponse StartArcVm(StartArcVmRequest request,
                              std::unique_ptr<dbus::MessageReader> reader,
                              VmMemoryId vm_memory_id);
-
-  // Returns how many mebibyte of physical memory to use for the
-  // VM being started with the given request.
-  int64_t GetArcVmMemoryMiB(const StartArcVmRequest& request);
 
   // Handles a request to stop a VM.
   StopVmResponse StopVm(const StopVmRequest& request) override;
