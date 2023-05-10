@@ -53,6 +53,7 @@ source_set("libcros_healthd_system") {
     "bluetooth_event_hub.cc",
     "bluetooth_info_manager.cc",
     "context.cc",
+    "ground_truth.cc",
     "libdrm_util_impl.cc",
     "mojo_service_impl.cc",
     "powerd_adapter_impl.cc",
@@ -131,6 +132,7 @@ if (use.test) {
   source_set("libcros_healthd_system_test") {
     sources = [
       "bluetooth_event_hub_test.cc",
+      "ground_truth_test.cc",
       "powerd_adapter_impl_test.cc",
       "system_config_test.cc",
     ]
