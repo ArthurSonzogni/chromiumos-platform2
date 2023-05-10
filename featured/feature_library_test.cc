@@ -5,9 +5,12 @@
 #include <utility>
 
 #include <base/dcheck_is_on.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
+#include <base/strings/strcat.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
@@ -15,6 +18,7 @@
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
+#include <featured/proto_bindings/featured.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -45,12 +49,17 @@ class FeatureLibraryTest : public testing::Test {
         mock_feature_proxy_(
             new dbus::MockObjectProxy(mock_bus_.get(),
                                       kFeatureLibInterface,
-                                      dbus::ObjectPath(kFeatureLibPath))) {}
+                                      dbus::ObjectPath(kFeatureLibPath))) {
+    EXPECT_TRUE(dir_.CreateUniqueTempDir());
+    active_trials_dir_ = dir_.GetPath().Append("active_trials");
+    EXPECT_TRUE(base::CreateDirectory(active_trials_dir_));
+  }
 
   void SetUp() override {
     PlatformFeatures::InitializeForTesting(mock_bus_, mock_chrome_proxy_.get(),
                                            mock_feature_proxy_.get());
     features_ = PlatformFeatures::Get();
+    features_->SetActiveTrialFileDirectoryForTesting(active_trials_dir_);
   }
 
   void TearDown() override { PlatformFeatures::ShutdownForTesting(); }
@@ -147,6 +156,10 @@ class FeatureLibraryTest : public testing::Test {
   scoped_refptr<dbus::MockObjectProxy> mock_feature_proxy_;
   PlatformFeatures* features_;
   std::unique_ptr<base::RunLoop> run_loop_;
+  base::FilePath active_trials_dir_;
+
+ private:
+  base::ScopedTempDir dir_;
 };
 
 // Parameterized tests, with a boolean indicating whether the feature should be
@@ -899,6 +912,113 @@ TEST_F(FeatureLibraryTest, RegisterSignalHandler_Failure) {
       }));
   EXPECT_TRUE(ran);
   EXPECT_FALSE(result);
+}
+
+// Test that an active trial file is written.
+TEST_F(FeatureLibraryTest, RecordSingleActiveTrial) {
+  featured::FeatureOverride trial;
+  trial.set_trial_name("test_trial");
+  trial.set_group_name("test_group");
+  features_->RecordActiveTrial(trial);
+
+  size_t num_found_files = 0;
+  base::FileEnumerator e(active_trials_dir_, /*recursive=*/false,
+                         base::FileEnumerator::FILES);
+  for (base::FilePath file = e.Next(); !file.empty(); file = e.Next()) {
+    EXPECT_EQ(file.BaseName(), base::FilePath("test_trial,test_group"));
+    ++num_found_files;
+  }
+
+  EXPECT_EQ(num_found_files, 1);
+}
+
+// Test that multiple active feature files are written for non-duplicate
+// features.
+TEST_F(FeatureLibraryTest, RecordMultipleActiveTrials) {
+  featured::FeatureOverride f1;
+  f1.set_trial_name("test_trial_1");
+  f1.set_group_name("test_group_1");
+  features_->RecordActiveTrial(f1);
+
+  featured::FeatureOverride f2;
+  f2.set_trial_name("test_trial_2");
+  f2.set_group_name("test_group_2");
+
+  features_->RecordActiveTrial(f2);
+
+  std::vector<base::FilePath> expected_files;
+  expected_files.push_back(base::FilePath("test_trial_1,test_group_1"));
+  expected_files.push_back(base::FilePath("test_trial_2,test_group_2"));
+
+  size_t num_found_files = 0;
+  base::FileEnumerator e(active_trials_dir_, /*recursive=*/false,
+                         base::FileEnumerator::FILES);
+  for (base::FilePath file = e.Next(); !file.empty(); file = e.Next()) {
+    EXPECT_TRUE(base::Contains(expected_files, file.BaseName()));
+    ++num_found_files;
+  }
+
+  EXPECT_EQ(num_found_files, expected_files.size());
+}
+
+// Test that only one active feature file is written when recording duplicate
+// active features.
+TEST_F(FeatureLibraryTest, RecordDuplicateActiveTrialOnlyOnce) {
+  featured::FeatureOverride trial;
+  trial.set_trial_name("test_trial");
+  trial.set_group_name("test_group");
+
+  features_->RecordActiveTrial(trial);
+  features_->RecordActiveTrial(trial);
+
+  size_t num_found_files = 0;
+  base::FileEnumerator e(active_trials_dir_, /*recursive=*/false,
+                         base::FileEnumerator::FILES);
+  for (base::FilePath file = e.Next(); !file.empty(); file = e.Next()) {
+    EXPECT_EQ(file.BaseName(), base::FilePath("test_trial,test_group"));
+    ++num_found_files;
+  }
+
+  EXPECT_EQ(num_found_files, 1);
+}
+
+// Test that trial names with kTrialGroupSeparator get escaped.
+TEST_F(FeatureLibraryTest, EscapeTrialNameWithSeparator) {
+  featured::FeatureOverride trial;
+  trial.set_trial_name("test_trial,");
+  trial.set_group_name("test_group");
+
+  features_->RecordActiveTrial(trial);
+
+  size_t num_found_files = 0;
+  base::FileEnumerator e(active_trials_dir_, /*recursive=*/false,
+                         base::FileEnumerator::FILES);
+  for (base::FilePath file = e.Next(); !file.empty(); file = e.Next()) {
+    EXPECT_EQ(file.BaseName(), base::FilePath("test_trial%2C,test_group"));
+    ++num_found_files;
+  }
+
+  EXPECT_EQ(num_found_files, 1);
+}
+
+// Test that trial names with forward slashes are escaped and created as files,
+// not as subdirectories.
+TEST_F(FeatureLibraryTest, EscapeTrialNameWithForwardSlash) {
+  featured::FeatureOverride trial;
+  trial.set_trial_name("test_trial/");
+  trial.set_group_name("test_group");
+
+  features_->RecordActiveTrial(trial);
+
+  size_t num_found_files = 0;
+  base::FileEnumerator e(active_trials_dir_, /*recursive=*/false,
+                         base::FileEnumerator::FILES);
+  for (base::FilePath file = e.Next(); !file.empty(); file = e.Next()) {
+    EXPECT_EQ(file.BaseName(), base::FilePath("test_trial%2F,test_group"));
+    ++num_found_files;
+  }
+
+  EXPECT_EQ(num_found_files, 1);
 }
 
 #if DCHECK_IS_ON()

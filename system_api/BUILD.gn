@@ -732,6 +732,12 @@ proto_library("system_api-featured-protos") {
   proto_out_dir = "include/featured/proto_bindings"
   sources = [ "${proto_in_dir}/featured.proto" ]
   standalone = true
+
+  # system_api-featured-protos is used by a shared_library
+  # object, so we need to build it with "-fPIC" instead of "-fPIE".
+  # Adds a dependency from feature_library to system_api-featured-protos,
+  # which otherwise would break.
+  use_pic = true
 }
 
 goproto_library("system_api-featured-goprotos") {

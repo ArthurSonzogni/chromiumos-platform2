@@ -5,16 +5,21 @@
 
 #include <utility>
 
+#include <base/files/file.h>
+#include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
+#include <base/strings/escape.h>
+#include <base/strings/strcat.h>
 #include <base/synchronization/lock.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_proxy_util.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
+#include <featured/proto_bindings/featured.pb.h>
 
 namespace feature {
 
@@ -25,6 +30,7 @@ PlatformFeatures* g_instance = nullptr;
 
 }  // namespace
 
+constexpr char kActiveTrialFileDirectory[] = "/run/featured/active";
 constexpr char kFeatureLibInterface[] = "org.chromium.feature_lib";
 constexpr char kFeatureLibPath[] = "/org/chromium/feature_lib";
 constexpr char kRefetchSignal[] = "RefetchFeatureState";
@@ -32,7 +38,10 @@ constexpr char kRefetchSignal[] = "RefetchFeatureState";
 PlatformFeatures::PlatformFeatures(scoped_refptr<dbus::Bus> bus,
                                    dbus::ObjectProxy* chrome_proxy,
                                    dbus::ObjectProxy* feature_proxy)
-    : bus_(bus), chrome_proxy_(chrome_proxy), feature_proxy_(feature_proxy) {
+    : bus_(bus),
+      chrome_proxy_(chrome_proxy),
+      feature_proxy_(feature_proxy),
+      active_trial_file_dir_(kActiveTrialFileDirectory) {
   base::AutoLock auto_lock(GetInstanceLock());
   CHECK(!g_instance);
   g_instance = this;
@@ -376,4 +385,38 @@ base::Lock& PlatformFeatures::GetInstanceLock() {
   return *lock;
 }
 
+void PlatformFeatures::SetActiveTrialFileDirectoryForTesting(
+    const base::FilePath& dir) {
+  active_trial_file_dir_ = dir;
+}
+
+void PlatformFeatures::RecordActiveTrial(
+    const featured::FeatureOverride& trial) {
+  std::string escaped_trial_name =
+      base::EscapeAllExceptUnreserved(trial.trial_name());
+  std::string escaped_group_name =
+      base::EscapeAllExceptUnreserved(trial.group_name());
+
+  const base::FilePath filename(base::StrCat(
+      {escaped_trial_name, kTrialGroupSeparator, escaped_group_name}));
+  const base::FilePath full_path(active_trial_file_dir_.Append(filename));
+
+  // Create file if it does not exist.
+  // Note: This file gets automatically cleaned up on reboot if written to
+  // kActiveTrialFileDirectory. The study is not treated as once-active,
+  // always-active, across boots. The study will only be active for the rest of
+  // the current boot unless activated again in a subsequent boot.
+  base::File active_trial_file(full_path,
+                               base::File::FLAG_CREATE | base::File::FLAG_READ);
+
+  // Not an error if the trial file already exists.
+  if ((!active_trial_file.IsValid()) &&
+      (active_trial_file.error_details() !=
+       base::File::Error::FILE_ERROR_EXISTS)) {
+    PLOG(ERROR) << "Failed to create " << full_path
+                << " for trial: " << trial.trial_name()
+                << ", group: " << trial.group_name();
+    return;
+  }
+}
 }  // namespace feature

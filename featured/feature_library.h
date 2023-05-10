@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/location.h>
 #include <base/memory/scoped_refptr.h>
@@ -23,9 +24,16 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+#include <featured/proto_bindings/featured.pb.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace feature {
+
+// This character is not allowed in trial names so it makes for a good
+// separator. Context: FeatureList::IsValidFeatureOrFieldTrialName().
+// NOTE: If a trial name contains "," because it was not validated, the
+// separator will be escaped when writing the active trial file.
+constexpr char kTrialGroupSeparator[] = ",";
 
 class FEATURE_EXPORT PlatformFeaturesInterface {
  public:
@@ -204,6 +212,11 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   friend class FeatureLibraryTest;
 
   FRIEND_TEST(FeatureLibraryTest, CheckFeatureIdentity);
+  FRIEND_TEST(FeatureLibraryTest, RecordSingleActiveTrial);
+  FRIEND_TEST(FeatureLibraryTest, RecordMultipleActiveTrials);
+  FRIEND_TEST(FeatureLibraryTest, RecordDuplicateActiveTrialOnlyOnce);
+  FRIEND_TEST(FeatureLibraryTest, EscapeTrialNameWithSeparator);
+  FRIEND_TEST(FeatureLibraryTest, EscapeTrialNameWithForwardSlash);
 
   explicit PlatformFeatures(scoped_refptr<dbus::Bus> bus,
                             dbus::ObjectProxy* chrome_proxy,
@@ -269,6 +282,27 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   // This lock protects the global instance variable.
   static base::Lock& GetInstanceLock();
 
+  // Used only for testing. Modifies what directory active trial files are
+  // written to.
+  void SetActiveTrialFileDirectoryForTesting(const base::FilePath& dir);
+
+  // Creates a new active trial file of the format `TrialName,GroupName` to the
+  // directory specified by `active_trial_file_dir_`, where TrialName and
+  // GroupName are escaped versions, by url encoding, of the actual trial name
+  // and group name, separated by kTrialGroupSeparator. Alphanumerics and -._~
+  // will not be escaped. The created file is empty since all necessary metadata
+  // is provided in the filename.
+  //
+  // Chrome may list these files to determine which trials are active, in order
+  // to mark them as active in UMA.
+  //
+  // NOTE: If the active trial file already exists, the existing file will not
+  // be overwritten or modified.
+  //
+  // For testing, callers can change what directory these files are created in
+  // with SetActiveTrialFileDirectoryForTesting().
+  void RecordActiveTrial(const featured::FeatureOverride& trial);
+
   scoped_refptr<dbus::Bus> bus_;
   // An object proxy used for communicating with ash-chrome.
   dbus::ObjectProxy* chrome_proxy_;
@@ -282,6 +316,9 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   base::Lock lock_;
   std::map<std::string, const VariationsFeature*> feature_identity_tracker_
       GUARDED_BY(lock_);
+
+  // Directory where active trial files are written.
+  base::FilePath active_trial_file_dir_;
 
   base::WeakPtrFactory<PlatformFeatures> weak_ptr_factory_{this};
 };
