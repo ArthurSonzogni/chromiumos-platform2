@@ -298,9 +298,12 @@ pub fn cr50_verify_ro(ctx: &mut impl Context, ro_descriptions: &Path) -> Result<
 }
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
 
     use super::retrieve_dut_board_id_values;
     use super::retrieve_dut_firmware_rw_version;
+    use super::update_dut;
+    use super::update_dut_if_needed;
     use crate::context::mock::MockContext;
     use crate::context::Context;
     use crate::cr50::Version;
@@ -379,5 +382,141 @@ mod tests {
         );
         let result = retrieve_dut_board_id_values(&mut mock_ctx);
         assert_eq!(result, Err(HwsecError::InternalError))
+    }
+
+    #[test]
+    fn test_update_dut_ok() {
+        let mut mock_ctx = MockContext::new();
+        // mock interaction for retrieve_image_board_id_values
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--machine", "--binvers", "mock_image_path"],
+            0,
+            "IMAGE_BID_STRING=00000000\nIMAGE_BID_MASK=00000000\nIMAGE_BID_FLAGS=00000000\n",
+            "",
+        );
+        // mock interaction for retrieve_dut_board_id_values
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--board_id", "--machine"],
+            0,
+            "BID_TYPE=00000000\nBID_TYPE_INV=ffffffff\nBID_FLAGS=00000000\n",
+            "",
+        );
+        // mock interaction for updating firmware
+        mock_ctx
+            .cmd_runner()
+            .add_gsctool_interaction(vec!["mock_image_path"], 0, "", "");
+        let result = update_dut(&mut mock_ctx, Path::new("mock_image_path"));
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn test_update_dut_bid_incompatible() {
+        // (image_bid & image_mask) != (chip_bid & image_mask)
+        let mut mock_ctx = MockContext::new();
+        // mock interaction for retrieve_image_board_id_values
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--machine", "--binvers", "mock_image_path"],
+            0,
+            "IMAGE_BID_STRING=00000000\nIMAGE_BID_MASK=00000000\nIMAGE_BID_FLAGS=00000000\n",
+            "",
+        );
+        // mock interaction for retrieve_dut_board_id_values
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--board_id", "--machine"],
+            0,
+            "BID_TYPE=00000001\nBID_TYPE_INV=ffffffff\nBID_FLAGS=00000000\n",
+            "",
+        );
+        let result = update_dut(&mut mock_ctx, Path::new("mock_image_path"));
+        assert_eq!(result, Err(HwsecError::InternalError));
+    }
+
+    #[test]
+    fn test_update_dut_image_flag_incompatible() {
+        // (image_flags & chip_flags) != (image_flags)
+        let mut mock_ctx = MockContext::new();
+        // mock interaction for retrieve_image_board_id_values
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--machine", "--binvers", "mock_image_path"],
+            0,
+            "IMAGE_BID_STRING=00000000\nIMAGE_BID_MASK=00000000\nIMAGE_BID_FLAGS=00000001\n",
+            "",
+        );
+        // mock interaction for retrieve_dut_board_id_values
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--board_id", "--machine"],
+            0,
+            "BID_TYPE=00000000\nBID_TYPE_INV=ffffffff\nBID_FLAGS=00000000\n",
+            "",
+        );
+        let result = update_dut(&mut mock_ctx, Path::new("mock_image_path"));
+        assert_eq!(result, Err(HwsecError::InternalError));
+    }
+
+    #[test]
+    fn test_update_dut_if_needed_update_not_needed() {
+        let mut mock_ctx = MockContext::new();
+        // mock interaction for retrieve_dut_firmware_rw_version
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--fwver", "--machine"],
+            0,
+            "RW_FW_VER=1.2.3",
+            "",
+        );
+        // mock interaction for retrieve_image_rw_version
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--machine", "--binvers", "mock_image_path"],
+            0,
+            "IMAGE_RW_FW_VER=1.2.3",
+            "",
+        );
+        let result = update_dut_if_needed(&mut mock_ctx, Path::new("mock_image_path"));
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn test_update_dut_if_needed_successfully_update() {
+        let mut mock_ctx = MockContext::new();
+        // mock interaction for retrieve_dut_firmware_rw_version
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--fwver", "--machine"],
+            0,
+            "RW_FW_VER=1.2.3",
+            "",
+        );
+        // mock interaction for retrieve_image_rw_version
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--machine", "--binvers", "mock_image_path"],
+            0,
+            "IMAGE_RW_FW_VER=1.2.4",
+            "",
+        );
+        // mock interaction for retrieve_image_board_id_values
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--machine", "--binvers", "mock_image_path"],
+            0,
+            "IMAGE_BID_STRING=00000000\nIMAGE_BID_MASK=00000000\nIMAGE_BID_FLAGS=00000000\n",
+            "",
+        );
+        // mock interaction for retrieve_dut_board_id_values
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--board_id", "--machine"],
+            0,
+            "BID_TYPE=00000000\nBID_TYPE_INV=ffffffff\nBID_FLAGS=00000000\n",
+            "",
+        );
+        // mock interaction for updating firmware
+        mock_ctx
+            .cmd_runner()
+            .add_gsctool_interaction(vec!["mock_image_path"], 0, "", "");
+        // mock interaction for retrieve_dut_firmware_rw_version (after update)
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--fwver", "--machine"],
+            0,
+            "RW_FW_VER=1.2.4",
+            "",
+        );
+        let result = update_dut_if_needed(&mut mock_ctx, Path::new("mock_image_path"));
+        assert_eq!(result, Ok(()));
     }
 }
