@@ -5,6 +5,7 @@
 #include "typecd/metrics.h"
 
 #include <base/logging.h>
+#include <metrics/structured_events.h>
 
 namespace {
 constexpr char kPartnerTypeMetricName[] = "ChromeOS.TypeC.PartnerType";
@@ -61,6 +62,30 @@ void Metrics::ReportDpSuccess(DpSuccessMetric val) {
     LOG(WARNING) << "Failed to send DP success sample to UMA, val: "
                  << static_cast<int>(val);
   }
+}
+
+void Metrics::ReportBasicPdDeviceInfo(int vid,
+                                      int pid,
+                                      int xid,
+                                      bool supports_pd,
+                                      bool supports_usb,
+                                      bool supports_dp,
+                                      bool supports_tbt,
+                                      bool supports_usb4,
+                                      DataRoleMetric data_role,
+                                      PowerRoleMetric power_role) {
+  metrics::structured::events::usb_pd_device::UsbPdDeviceInfo()
+      .SetVendorId(vid)
+      .SetProductId(pid)
+      .SetExitId(xid)
+      .SetSupportsPd(supports_pd)
+      .SetSupportsUsb(supports_usb)
+      .SetSupportsDp(supports_dp)
+      .SetSupportsTbt(supports_tbt)
+      .SetSupportsUsb4(supports_usb4)
+      .SetDataRole(static_cast<int>(data_role))
+      .SetPowerRole(static_cast<int>(power_role))
+      .Record();
 }
 
 }  // namespace typecd

@@ -64,3 +64,7 @@ fstatfs: 1
 clock_gettime: 1
 gettimeofday: 1
 process_vm_readv: 1
+rt_sigaction: 1
+lchown: 1
+uname: 1
+fchmod: 1

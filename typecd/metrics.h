@@ -127,6 +127,24 @@ enum class DpSuccessMetric {
   kMaxValue = kFail,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class DataRoleMetric {
+  kOther = 0,
+  kDevice = 1,
+  kHost = 2,
+  kMaxValue = kHost,
+};
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class PowerRoleMetric {
+  kOther = 0,
+  kSink = 1,
+  kSource = 2,
+  kMaxValue = kSource,
+};
+
 // A class for collecting UMA metrics.
 class Metrics {
  public:
@@ -142,6 +160,18 @@ class Metrics {
   void ReportPartnerLocation(PartnerLocationMetric location);
   void ReportPowerSourceLocation(PowerSourceLocationMetric location);
   void ReportDpSuccess(DpSuccessMetric val);
+
+  // Structured metrics
+  void ReportBasicPdDeviceInfo(int vid,
+                               int pid,
+                               int xid,
+                               bool supports_pd,
+                               bool supports_usb,
+                               bool supports_dp,
+                               bool supports_tbt,
+                               bool supports_usb4,
+                               DataRoleMetric data_role,
+                               PowerRoleMetric power_role);
 
  private:
   MetricsLibrary metrics_library_;
