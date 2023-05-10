@@ -125,6 +125,8 @@ flatbuffers::Offset<SerializedCommonMetadata> SerializeCommonMetadataToOffset(
       &builder, common_metadata.chromeos_version_last_updated);
   auto chrome_offset = hwsec_foundation::ToFlatBuffer<std::string>()(
       &builder, common_metadata.chrome_version_last_updated);
+  auto name_offset = hwsec_foundation::ToFlatBuffer<std::string>()(
+      &builder, common_metadata.user_specified_name);
 
   SerializedCommonMetadataBuilder cm_builder(builder);
   cm_builder.add_chromeos_version_last_updated(chromeos_offset);
@@ -133,6 +135,7 @@ flatbuffers::Offset<SerializedCommonMetadata> SerializeCommonMetadataToOffset(
     cm_builder.add_lockout_policy(
         GetSerializedLockoutPolicy(common_metadata.lockout_policy.value()));
   }
+  cm_builder.add_user_specified_name(name_offset);
   return cm_builder.Finish();
 }
 
@@ -273,7 +276,9 @@ void ConvertCommonMetadataFromFlatbuffer(
       .chrome_version_last_updated =
           hwsec_foundation::FromFlatBuffer<std::string>()(
               flatbuffer_table.chrome_version_last_updated()),
-      .lockout_policy = GetLockoutPolicy(flatbuffer_table.lockout_policy())};
+      .lockout_policy = GetLockoutPolicy(flatbuffer_table.lockout_policy()),
+      .user_specified_name = hwsec_foundation::FromFlatBuffer<std::string>()(
+          flatbuffer_table.user_specified_name())};
 }
 
 bool ConvertPasswordMetadataFromFlatbuffer(

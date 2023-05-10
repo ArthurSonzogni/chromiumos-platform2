@@ -36,6 +36,9 @@ table SerializedCommonMetadata {
   // Each factor needs to define its lockout policy.
   // For most factors, it is currenlty NO_LOCKOUT.
   lockout_policy:SerializedLockoutPolicy(id:2);
+  // User supplied name of each auth factor.
+  // This is supplied by client, updated through Add/Update requests.
+  user_specified_name:string (id:3);
 }
 
 // Metadata for a `PASSWORD` auth factor.

@@ -153,6 +153,8 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
   out_auth_factor_metadata.common.lockout_policy =
       LockoutPolicyFromAuthFactorProto(
           auth_factor.common_metadata().lockout_policy());
+  out_auth_factor_metadata.common.user_specified_name =
+      auth_factor.common_metadata().user_specified_name();
 
   // Extract the factor type and use it to try and extract the factor-specific
   // metadata. Returns false if this fails.

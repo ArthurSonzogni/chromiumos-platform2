@@ -24,6 +24,7 @@ struct CommonAuthFactorMetadata {
   std::string chromeos_version_last_updated;
   std::string chrome_version_last_updated;
   std::optional<LockoutPolicy> lockout_policy;
+  std::string user_specified_name;
 };
 
 struct PasswordAuthFactorMetadata {};
