@@ -102,8 +102,69 @@ void EventAggregator::AddObserver(
 void EventAggregator::IsEventSupported(
     mojom::EventCategoryEnum category,
     mojom::CrosHealthdEventService::IsEventSupportedCallback callback) {
-  std::move(callback).Run(
-      mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+  switch (category) {
+    // Exception.
+    case mojom::EventCategoryEnum::kUnmappedEnumField:
+      std::move(callback).Run(mojom::SupportStatus::NewException(
+          mojom::Exception::New(mojom::Exception::Reason::kUnexpected,
+                                "Got kUnmappedEnumField")));
+      return;
+    // Currently not supported.
+    case mojom::EventCategoryEnum::kNetwork:
+      std::move(callback).Run(
+          mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+              "Not implemented. Please contact cros_healthd team.", nullptr)));
+      return;
+    // Always supported.
+    case mojom::EventCategoryEnum::kUsb:
+    case mojom::EventCategoryEnum::kThunderbolt:
+    case mojom::EventCategoryEnum::kBluetooth:
+    case mojom::EventCategoryEnum::kPower:
+      std::move(callback).Run(
+          mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+      return;
+    // Need to be determined by boxster/cros_config.
+    case mojom::EventCategoryEnum::kLid:
+      std::move(callback).Run(
+          mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+      return;
+    case mojom::EventCategoryEnum::kAudio:
+      std::move(callback).Run(
+          mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+      return;
+    case mojom::EventCategoryEnum::kAudioJack:
+      std::move(callback).Run(
+          mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+      return;
+    case mojom::EventCategoryEnum::kSdCard:
+      std::move(callback).Run(
+          mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+      return;
+    case mojom::EventCategoryEnum::kKeyboardDiagnostic:
+      std::move(callback).Run(
+          mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+      return;
+    case mojom::EventCategoryEnum::kTouchpad:
+      std::move(callback).Run(
+          mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+      return;
+    case mojom::EventCategoryEnum::kHdmi:
+      std::move(callback).Run(
+          mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+      return;
+    case mojom::EventCategoryEnum::kTouchscreen:
+      std::move(callback).Run(
+          mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+      return;
+    case mojom::EventCategoryEnum::kStylusGarage:
+      std::move(callback).Run(
+          mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+      return;
+    case mojom::EventCategoryEnum::kStylus:
+      std::move(callback).Run(
+          mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+      return;
+  }
 }
 
 void EventAggregator::AddObserver(
