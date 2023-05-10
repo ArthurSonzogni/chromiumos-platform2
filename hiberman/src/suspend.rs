@@ -161,6 +161,8 @@ impl SuspendConductor {
         let dry_run = self.options.dry_run;
         let snap_dev = frozen_userspace.as_mut();
 
+        let timestamp_hibernated = UNIX_EPOCH.elapsed().unwrap_or(Duration::ZERO);
+
         // This is where the suspend path and resume path fork. On success,
         // both halves of these conditions execute, just at different times.
         if snap_dev.atomic_snapshot()? {
@@ -228,6 +230,25 @@ impl SuspendConductor {
             redirect_log(HiberlogOut::BufferInMemory);
 
             info!("Resumed from hibernate");
+
+            let timestamp_resumed = self.timestamp_resumed.unwrap();
+            let time_hibernated = timestamp_resumed
+                .checked_sub(timestamp_hibernated)
+                .unwrap_or_else(|| -> Duration {
+                    warn!(
+                        "Hibernate timestamps are bogus: hibernate time: {:?}, resume time: {:?})",
+                        timestamp_hibernated, timestamp_resumed
+                    );
+                    Duration::ZERO
+                });
+
+            let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+            metrics_logger.log_duration_sample(
+                "Platform.Hibernate.HibernateDuration",
+                time_hibernated,
+                DurationMetricUnit::Hours,
+                8760, // 1 year
+            );
         }
 
         // Unset the hibernate cookie.
