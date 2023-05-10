@@ -32,6 +32,9 @@ class StartupListenerImpl final : public vm_tools::StartupListener::Service {
   grpc::Status VmReady(grpc::ServerContext* ctx,
                        const vm_tools::EmptyMessage* request,
                        vm_tools::EmptyMessage* response) override;
+  grpc::Status VmInstallStatus(grpc::ServerContext* ctx,
+                               const vm_tools::VmInstallState* status,
+                               vm_tools::EmptyMessage* response) override;
 
   // Add the VM with the vsock context id |cid| to the set of VMs that have
   // been started but have not checked in as ready yet. |event_fd| will be

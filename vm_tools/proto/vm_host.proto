@@ -76,6 +76,32 @@ service StartupListener {
   // Called by each VM when it starts up to indicate that it is ready to handle
   // incoming requests.
   rpc VmReady(EmptyMessage) returns (EmptyMessage);
+  // Called by VM installers to indicate installation status
+  rpc VmInstallStatus(VmInstallState) returns (EmptyMessage);
+}
+
+// A message representing the outcome of VM installs
+message VmInstallState {
+  enum State {
+    UNKNOWN = 0;
+    IN_PROGRESS = 1;
+    FAILED = 2;
+    SUCCEEDED = 3;
+  }
+  State state = 1;
+  enum Step {
+    unknown = 0;
+    launcher_start = 1;
+    core_start = 2;
+    install_fetch_image = 3;
+    install_configure = 4;
+    install_done = 5;
+    install_success = 6;
+    install_failure = 7;
+  }
+  Step in_progress_step = 2;
+  int64 in_progress_percent = 3;
+  string failed_reason = 4;
 }
 
 // A message representing one of more log messages from the serial out

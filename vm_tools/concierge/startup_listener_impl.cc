@@ -43,6 +43,15 @@ grpc::Status StartupListenerImpl::VmReady(grpc::ServerContext* ctx,
   return grpc::Status::OK;
 }
 
+grpc::Status StartupListenerImpl::VmInstallStatus(
+    grpc::ServerContext* ctx,
+    const vm_tools::VmInstallState* status,
+    vm_tools::EmptyMessage* response) {
+  LOG(INFO) << "Received VM install status: " << status->state();
+  LOG(INFO) << "Install Step:" << status->in_progress_step();
+  return grpc::Status::OK;
+}
+
 void StartupListenerImpl::AddPendingVm(uint32_t cid, int32_t event_fd) {
   base::AutoLock lock(vm_lock_);
   pending_vms_[cid] = event_fd;
