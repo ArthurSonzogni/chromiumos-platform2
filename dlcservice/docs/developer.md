@@ -134,8 +134,8 @@ restart. It is completely up to dlcservice to return any type of root mount
 paths in the future, but the root will always be suffixed at `/run/imageloader`.
 
 If your service/daemon uses minijail, you will have to:
-*   Bind mount `/run/imageloader/` by passing the parameter
-    `-b /run/imageloader/` to minijail.
+*   Recursively bind mount (`MS_BIND|MS_REC`) `/run/imageloader/` by passing the
+    parameter `-k` to minijail.
 *   Set the parameters `-v -Kslave` to allow propagation of the mount namespace
     of the mounted DLC image to your service.
 *   Depending on your seccomp filters, you might have to include additional
