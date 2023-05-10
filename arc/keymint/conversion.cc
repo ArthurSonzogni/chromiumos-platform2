@@ -10,14 +10,6 @@ namespace arc::keymint {
 
 namespace {
 
-keymaster_key_format_t ConvertEnum(arc::mojom::keymint::KeyFormat key_format) {
-  return static_cast<keymaster_key_format_t>(key_format);
-}
-
-keymaster_purpose_t ConvertEnum(arc::mojom::keymint::KeyPurpose key_purpose) {
-  return static_cast<keymaster_purpose_t>(key_purpose);
-}
-
 keymaster_tag_t ConvertEnum(arc::mojom::keymint::Tag tag) {
   return static_cast<keymaster_tag_t>(tag);
 }

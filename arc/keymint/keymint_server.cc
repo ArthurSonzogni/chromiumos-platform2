@@ -30,19 +30,7 @@
 //
 namespace arc::keymint {
 
-namespace {
-
-constexpr size_t kOperationTableSize = 16;
-// TODO(b/278968783): Add version negotiation for KeyMint.
-// KeyMint Message versions are drawn from Android
-// Keymaster Messages.
-constexpr int32_t kKeyMintMessageVersion = 4;
-
-}  // namespace
-
-KeyMintServer::Backend::Backend()
-    : context_(new context::ArcKeyMintContext()),
-      keymint_(context_, kOperationTableSize, kKeyMintMessageVersion) {}
+KeyMintServer::Backend::Backend() = default;
 
 KeyMintServer::Backend::~Backend() = default;
 
@@ -55,16 +43,7 @@ KeyMintServer::~KeyMintServer() = default;
 
 void KeyMintServer::SetSystemVersion(uint32_t android_version,
                                      uint32_t android_patchlevel) {
-  auto task_lambda = [](context::ArcKeyMintContext* context,
-                        uint32_t android_version, uint32_t android_patchlevel) {
-    // |context| is guaranteed valid here because it's owned
-    // by |backend_|, which outlives the |backend_thread_|
-    // this runs on.
-    context->SetSystemVersion(android_version, android_patchlevel);
-  };
-  backend_thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(task_lambda, backend_.context(),
-                                android_version, android_patchlevel));
+  // TODO(b/274723521): Add this back.
 }
 
 template <typename KmMember, typename KmRequest, typename KmResponse>
@@ -73,68 +52,111 @@ void KeyMintServer::RunKeyMintRequest(
     KmMember member,
     std::unique_ptr<KmRequest> request,
     base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback) {
-  auto task_lambda =
-      [](const base::Location& location,
-         scoped_refptr<base::TaskRunner> original_task_runner,
-         ::keymaster::AndroidKeymaster* keymaster, KmMember member,
-         std::unique_ptr<KmRequest> request,
-         base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback) {
-        // Prepare a KeyMint response data structure.
-        auto response =
-            std::make_unique<KmResponse>(keymaster->message_version());
-        // Execute the operation.
-        (*keymaster.*member)(*request, response.get());
-        // Post |callback| to the |original_task_runner| given |response|.
-        original_task_runner->PostTask(
-            location, base::BindOnce(std::move(callback), std::move(response)));
-      };
-  // Post the KeyMint operation to a background thread while capturing the
-  // current task runner.
-  backend_thread_.task_runner()->PostTask(
-      location,
-      base::BindOnce(task_lambda, location,
-                     base::SingleThreadTaskRunner::GetCurrentDefault(),
-                     backend_.keymint(), member, std::move(request),
-                     std::move(callback)));
+  // TODO(b/274723521): Add this back.
+}
+
+void KeyMintServer::AddRngEntropy(const std::vector<uint8_t>& data,
+                                  AddRngEntropyCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::GetKeyCharacteristics(
+    arc::mojom::keymint::GetKeyCharacteristicsRequestPtr request,
+    GetKeyCharacteristicsCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::GenerateKey(
+    arc::mojom::keymint::GenerateKeyRequestPtr request,
+    GenerateKeyCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::ImportKey(arc::mojom::keymint::ImportKeyRequestPtr request,
+                              ImportKeyCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::ImportWrappedKey(
+    arc::mojom::keymint::ImportWrappedKeyRequestPtr request,
+    ImportWrappedKeyCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::UpgradeKey(
+    arc::mojom::keymint::UpgradeKeyRequestPtr request,
+    UpgradeKeyCallback callback) {
+  // TODO(b/274723521): Finish this.
 }
 
 void KeyMintServer::DeleteKey(const std::vector<uint8_t>& key_blob,
                               DeleteKeyCallback callback) {
-  // Convert input |key_blob| into |km_request|. All data is deep copied to
-  // avoid use-after-free.
-  auto km_request = std::make_unique<::keymaster::DeleteKeyRequest>(
-      backend_.keymint()->message_version());
-  km_request->SetKeyMaterial(key_blob.data(), key_blob.size());
-
-  // Call keymint.
-  RunKeyMintRequest(
-      FROM_HERE, &::keymaster::AndroidKeymaster::DeleteKey,
-      std::move(km_request),
-      base::BindOnce(
-          [](DeleteKeyCallback callback,
-             std::unique_ptr<::keymaster::DeleteKeyResponse> km_response) {
-            // Run callback.
-            std::move(callback).Run(km_response->error);
-          },
-          std::move(callback)));
+  // TODO(b/274723521): Add this back.
 }
 
 void KeyMintServer::DeleteAllKeys(DeleteAllKeysCallback callback) {
-  // Prepare keymint request.
-  auto km_request = std::make_unique<::keymaster::DeleteAllKeysRequest>(
-      backend_.keymint()->message_version());
+  // TODO(b/274723521): Add this back.
+}
 
-  // Call keymint.
-  RunKeyMintRequest(
-      FROM_HERE, &::keymaster::AndroidKeymaster::DeleteAllKeys,
-      std::move(km_request),
-      base::BindOnce(
-          [](DeleteAllKeysCallback callback,
-             std::unique_ptr<::keymaster::DeleteAllKeysResponse> km_response) {
-            // Run callback.
-            std::move(callback).Run(km_response->error);
-          },
-          std::move(callback)));
+void KeyMintServer::DestroyAttestationIds(
+    DestroyAttestationIdsCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::Begin(arc::mojom::keymint::BeginRequestPtr request,
+                          BeginCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::DeviceLocked(
+    bool password_only,
+    arc::mojom::keymint::TimeStampTokenPtr timestamp_token,
+    DeviceLockedCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::EarlyBootEnded(EarlyBootEndedCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::ConvertStorageKeyToEphemeral(
+    const std::vector<uint8_t>& storage_key_blob,
+    ConvertStorageKeyToEphemeralCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::GetRootOfTrustChallenge(
+    GetRootOfTrustChallengeCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::GetRootOfTrust(const std::vector<uint8_t>& challenge,
+                                   GetRootOfTrustCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::SendRootOfTrust(const std::vector<uint8_t>& root_of_trust,
+                                    SendRootOfTrustCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::UpdateAad(arc::mojom::keymint::UpdateAadRequestPtr request,
+                              UpdateAadCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::Update(arc::mojom::keymint::UpdateRequestPtr request,
+                           UpdateCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::Finish(arc::mojom::keymint::FinishRequestPtr request,
+                           FinishCallback callback) {
+  // TODO(b/274723521): Finish this.
+}
+
+void KeyMintServer::Abort(uint64_t op_handle, AbortCallback callback) {
+  // TODO(b/274723521): Finish this.
 }
 
 }  // namespace arc::keymint
