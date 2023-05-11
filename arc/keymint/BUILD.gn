@@ -27,6 +27,7 @@ executable("arc-keymintd") {
   sources = [
     "cert_store_instance.cc",
     "conversion.cc",
+    "daemon.cc",
     "keymint_server.cc",
     "main.cc",
   ]
@@ -37,8 +38,8 @@ executable("arc-keymintd") {
   ]
   deps = [
     ":keymint_mojo_bindings",
-    ":libcppbor_external",
     ":libarckeymint_context",
+    ":libcppbor_external",
     ":libkeymint",
     ":libkeymint-support",
     ":liblog",
