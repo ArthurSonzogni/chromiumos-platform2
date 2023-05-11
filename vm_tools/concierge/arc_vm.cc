@@ -83,6 +83,9 @@ constexpr char kKeyToOverrideBlockMultipleWorkers[] = "BLOCK_MULTIPLE_WORKERS";
 // Custom parameter key to override the async executor for the disk devices.
 constexpr char kKeyToOverrideIoBlockAsyncExecutor[] = "BLOCK_ASYNC_EXECUTOR";
 
+// Custom parameter key to skip total bytes written management for ARCVM swap.
+constexpr char kKeyToSkipVmmTbwManagement[] = "SKIP_SWAP_TBW_MANAGEMENT";
+
 // Shared directories and their tags
 constexpr char kOemEtcSharedDir[] = "/run/arcvm/host_generated/oem/etc";
 constexpr char kOemEtcSharedDirTag[] = "oem_etc";
@@ -538,6 +541,11 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.SetBlockAsyncExecutor(executor_enum.value());
   }
 
+  if (custom_parameters.ObtainSpecialParameter(kKeyToSkipVmmTbwManagement)
+          .value_or("false") == "true") {
+    skip_tbw_management_ = true;
+  }
+
   // Finally set the path to the kernel.
   const std::string kernel_path =
       custom_parameters.ObtainSpecialParameter(kKeyToOverrideKernelPath)
@@ -857,7 +865,7 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
             "Requires cooling down period after last vmm-swap out");
         return;
       }
-      if (!vmm_swap_tbw_policy_->CanSwapOut()) {
+      if (!skip_tbw_management_ && !vmm_swap_tbw_policy_->CanSwapOut()) {
         LOG(WARNING) << "Enabling vmm-swap is rejected by TBW limit";
         response.set_success(false);
         response.set_failure_reason("TBW (total bytes written) reached target");

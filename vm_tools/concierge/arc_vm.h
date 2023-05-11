@@ -256,6 +256,7 @@ class ArcVm final : public VmBaseImpl {
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_
       GUARDED_BY_CONTEXT(sequence_checker_);
+  bool skip_tbw_management_ = false;
 
   uint64_t aggressive_balloon_target_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
   AggressiveBalloonCallback aggressive_balloon_callback_
