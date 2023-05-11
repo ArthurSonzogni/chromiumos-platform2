@@ -97,7 +97,7 @@ TEST_F(ProbeConfigTest, LoadConfig) {
   EXPECT_EQ(probe_statement->component_name_, "generic");
   EXPECT_EQ(probe_statement->key_.size(), 0);
   EXPECT_NE(probe_statement->expect_, nullptr);
-  EXPECT_EQ(probe_statement->information_->DictSize(), 0);
+  EXPECT_EQ(probe_statement->information_->GetDict().size(), 0);
   EXPECT_NE(probe_statement->probe_function_, nullptr);
 
   const SysfsFunction* probe_function =
