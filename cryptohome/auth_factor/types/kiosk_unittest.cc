@@ -73,16 +73,19 @@ TEST_F(KioskDriverTest, SupportedWithNoOtherFactors) {
   AuthFactorDriver& driver = kiosk_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset}, {}),
+  EXPECT_THAT(
+      driver.IsSupportedByStorage({AuthFactorStorageType::kVaultKeyset}, {}),
+      IsTrue());
+  EXPECT_THAT(driver.IsSupportedByStorage({AuthFactorStorageType::kVaultKeyset},
+                                          {AuthFactorType::kKiosk}),
               IsTrue());
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset},
-                                 {AuthFactorType::kKiosk}),
+  EXPECT_THAT(driver.IsSupportedByStorage(
+                  {AuthFactorStorageType::kUserSecretStash}, {}),
               IsTrue());
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
-              IsTrue());
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
-                                 {AuthFactorType::kKiosk}),
-              IsTrue());
+  EXPECT_THAT(
+      driver.IsSupportedByStorage({AuthFactorStorageType::kUserSecretStash},
+                                  {AuthFactorType::kKiosk}),
+      IsTrue());
 }
 
 TEST_F(KioskDriverTest, UnsupportedWithOtherFactors) {
@@ -91,12 +94,22 @@ TEST_F(KioskDriverTest, UnsupportedWithOtherFactors) {
   AuthFactorDriver& driver = kiosk_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset},
-                                 {AuthFactorType::kPassword}),
+  EXPECT_THAT(driver.IsSupportedByStorage({AuthFactorStorageType::kVaultKeyset},
+                                          {AuthFactorType::kPassword}),
               IsFalse());
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
-                                 {AuthFactorType::kPassword}),
-              IsFalse());
+  EXPECT_THAT(
+      driver.IsSupportedByStorage({AuthFactorStorageType::kUserSecretStash},
+                                  {AuthFactorType::kPassword}),
+      IsFalse());
+}
+
+TEST_F(KioskDriverTest, AlwaysSupportedByHardare) {
+  // Setup
+  KioskAuthFactorDriver kiosk_driver;
+  AuthFactorDriver& driver = kiosk_driver;
+
+  // Test, Verify
+  EXPECT_THAT(driver.IsSupportedByHardware(), IsTrue());
 }
 
 TEST_F(KioskDriverTest, PrepareForAddFails) {

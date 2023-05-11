@@ -46,12 +46,7 @@ user_data_auth::LockoutPolicy LockoutPolicyToAuthFactor(
 
 }  // namespace
 
-bool PinAuthFactorDriver::IsSupported(
-    const std::set<AuthFactorStorageType>& /*configured_storage_types*/,
-    const std::set<AuthFactorType>& configured_factors) const {
-  if (configured_factors.count(AuthFactorType::kKiosk) > 0) {
-    return false;
-  }
+bool PinAuthFactorDriver::IsSupportedByHardware() const {
   return PinWeaverAuthBlock::IsSupported(*crypto_).ok();
 }
 

@@ -92,9 +92,32 @@ TEST_F(PinDriverTest, UnsupportedWithKiosk) {
   AuthFactorDriver& driver = pin_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
-                                 {AuthFactorType::kKiosk}),
-              IsFalse());
+  EXPECT_THAT(
+      driver.IsSupportedByStorage({AuthFactorStorageType::kUserSecretStash},
+                                  {AuthFactorType::kKiosk}),
+      IsFalse());
+}
+
+TEST_F(PinDriverTest, SupportedWithVk) {
+  // Setup
+  PinAuthFactorDriver pin_driver(&crypto_);
+  AuthFactorDriver& driver = pin_driver;
+
+  // Test, Verify
+  EXPECT_THAT(
+      driver.IsSupportedByStorage({AuthFactorStorageType::kVaultKeyset}, {}),
+      IsTrue());
+}
+
+TEST_F(PinDriverTest, SupportedWithUss) {
+  // Setup
+  PinAuthFactorDriver pin_driver(&crypto_);
+  AuthFactorDriver& driver = pin_driver;
+
+  // Test, Verify
+  EXPECT_THAT(driver.IsSupportedByStorage(
+                  {AuthFactorStorageType::kUserSecretStash}, {}),
+              IsTrue());
 }
 
 TEST_F(PinDriverTest, UnsupportedByBlock) {
@@ -104,11 +127,10 @@ TEST_F(PinDriverTest, UnsupportedByBlock) {
   AuthFactorDriver& driver = pin_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
-              IsFalse());
+  EXPECT_THAT(driver.IsSupportedByHardware(), IsFalse());
 }
 
-TEST_F(PinDriverTest, SupportedByBlockWithVk) {
+TEST_F(PinDriverTest, SupportedByBlock) {
   // Setup
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
@@ -116,20 +138,7 @@ TEST_F(PinDriverTest, SupportedByBlockWithVk) {
   AuthFactorDriver& driver = pin_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset}, {}),
-              IsTrue());
-}
-
-TEST_F(PinDriverTest, SupportedByBlockWithUss) {
-  // Setup
-  EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
-  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
-  PinAuthFactorDriver pin_driver(&crypto_);
-  AuthFactorDriver& driver = pin_driver;
-
-  // Test, Verify
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
-              IsTrue());
+  EXPECT_THAT(driver.IsSupportedByHardware(), IsTrue());
 }
 
 TEST_F(PinDriverTest, PrepareForAddFails) {

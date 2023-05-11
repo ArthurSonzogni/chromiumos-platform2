@@ -26,6 +26,8 @@ namespace cryptohome {
 class KioskAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kKiosk>,
       public AfDriverWithPasswordBlockTypes,
+      public AfDriverSupportedByStorage<AfDriverStorageConfig::kNoChecks,
+                                        AfDriverKioskConfig::kOnlyKiosk>,
       public AfDriverWithMetadata<KioskAuthFactorMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
@@ -35,9 +37,7 @@ class KioskAuthFactorDriver final
   KioskAuthFactorDriver() = default;
 
  private:
-  bool IsSupported(
-      const std::set<AuthFactorStorageType>& configured_storage_types,
-      const std::set<AuthFactorType>& configured_factors) const override;
+  bool IsSupportedByHardware() const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;

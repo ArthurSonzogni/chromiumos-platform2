@@ -32,6 +32,8 @@ namespace cryptohome {
 class FingerprintAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kFingerprint>,
       public AfDriverWithBlockTypes<AuthBlockType::kFingerprint>,
+      public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
+                                        AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<FingerprintAuthFactorMetadata>,
       public AfDriverFullAuthNoDecrypt,
       public AfDriverNoCredentialVerifier,
@@ -42,9 +44,7 @@ class FingerprintAuthFactorDriver final
       : crypto_(crypto), bio_service_(bio_service) {}
 
  private:
-  bool IsSupported(
-      const std::set<AuthFactorStorageType>& configured_storage_types,
-      const std::set<AuthFactorType>& configured_factors) const override;
+  bool IsSupportedByHardware() const override;
   bool IsPrepareRequired() const override;
   void PrepareForAdd(const ObfuscatedUsername& username,
                      PreparedAuthFactorToken::Consumer callback) override;

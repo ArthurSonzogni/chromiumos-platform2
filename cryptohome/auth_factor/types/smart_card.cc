@@ -31,12 +31,7 @@ bool IsChallengeCredentialReady(
 
 }  // namespace
 
-bool SmartCardAuthFactorDriver::IsSupported(
-    const std::set<AuthFactorStorageType>& /*configured_storage_types*/,
-    const std::set<AuthFactorType>& configured_factors) const {
-  if (configured_factors.count(AuthFactorType::kKiosk) > 0) {
-    return false;
-  }
+bool SmartCardAuthFactorDriver::IsSupportedByHardware() const {
   return ChallengeCredentialAuthBlock::IsSupported(*crypto_).ok();
 }
 

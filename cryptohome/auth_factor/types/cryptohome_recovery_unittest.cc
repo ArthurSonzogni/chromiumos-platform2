@@ -75,8 +75,9 @@ TEST_F(CryptohomeRecoveryDriverTest, UnsupportedWithVk) {
   AuthFactorDriver& driver = recovery_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset}, {}),
-              IsFalse());
+  EXPECT_THAT(
+      driver.IsSupportedByStorage({AuthFactorStorageType::kVaultKeyset}, {}),
+      IsFalse());
 }
 
 TEST_F(CryptohomeRecoveryDriverTest, UnsupportedWithKiosk) {
@@ -85,9 +86,23 @@ TEST_F(CryptohomeRecoveryDriverTest, UnsupportedWithKiosk) {
   AuthFactorDriver& driver = recovery_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
-                                 {AuthFactorType::kKiosk}),
-              IsFalse());
+  EXPECT_THAT(
+      driver.IsSupportedByStorage({AuthFactorStorageType::kUserSecretStash},
+                                  {AuthFactorType::kKiosk}),
+      IsFalse());
+}
+
+TEST_F(CryptohomeRecoveryDriverTest, SupportedWithVkUssMix) {
+  // Setup
+  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
+  AuthFactorDriver& driver = recovery_driver;
+
+  // Test, Verify
+  EXPECT_THAT(
+      driver.IsSupportedByStorage({AuthFactorStorageType::kUserSecretStash,
+                                   AuthFactorStorageType::kVaultKeyset},
+                                  {}),
+      IsTrue());
 }
 
 TEST_F(CryptohomeRecoveryDriverTest, UnsupportedByBlock) {
@@ -97,8 +112,7 @@ TEST_F(CryptohomeRecoveryDriverTest, UnsupportedByBlock) {
   AuthFactorDriver& driver = recovery_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
-              IsFalse());
+  EXPECT_THAT(driver.IsSupportedByHardware(), IsFalse());
 }
 
 TEST_F(CryptohomeRecoveryDriverTest, SupportedByBlock) {
@@ -108,21 +122,7 @@ TEST_F(CryptohomeRecoveryDriverTest, SupportedByBlock) {
   AuthFactorDriver& driver = recovery_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
-              IsTrue());
-}
-
-TEST_F(CryptohomeRecoveryDriverTest, SupportedWithVkUssMix) {
-  // Setup
-  EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
-  CryptohomeRecoveryAuthFactorDriver recovery_driver(&crypto_);
-  AuthFactorDriver& driver = recovery_driver;
-
-  // Test, Verify
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash,
-                                  AuthFactorStorageType::kVaultKeyset},
-                                 {}),
-              IsTrue());
+  EXPECT_THAT(driver.IsSupportedByHardware(), IsTrue());
 }
 
 TEST_F(CryptohomeRecoveryDriverTest, PrepareForAddFails) {

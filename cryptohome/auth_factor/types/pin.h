@@ -29,6 +29,8 @@ namespace cryptohome {
 class PinAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kPin>,
       public AfDriverWithBlockTypes<AuthBlockType::kPinWeaver>,
+      public AfDriverSupportedByStorage<AfDriverStorageConfig::kNoChecks,
+                                        AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<PinAuthFactorMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
@@ -37,9 +39,7 @@ class PinAuthFactorDriver final
   explicit PinAuthFactorDriver(Crypto* crypto) : crypto_(crypto) {}
 
  private:
-  bool IsSupported(
-      const std::set<AuthFactorStorageType>& configured_storage_types,
-      const std::set<AuthFactorType>& configured_factors) const override;
+  bool IsSupportedByHardware() const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   bool IsDelaySupported() const override;

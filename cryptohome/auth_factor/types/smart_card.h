@@ -30,6 +30,8 @@ namespace cryptohome {
 class SmartCardAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kSmartCard>,
       public AfDriverWithBlockTypes<AuthBlockType::kChallengeCredential>,
+      public AfDriverSupportedByStorage<AfDriverStorageConfig::kNoChecks,
+                                        AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<SmartCardAuthFactorMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
@@ -44,9 +46,7 @@ class SmartCardAuthFactorDriver final
         key_challenge_service_factory_(key_challenge_service_factory) {}
 
  private:
-  bool IsSupported(
-      const std::set<AuthFactorStorageType>& configured_storage_types,
-      const std::set<AuthFactorType>& configured_factors) const override;
+  bool IsSupportedByHardware() const override;
   bool IsLightAuthAllowed(AuthIntent auth_intent) const override;
   std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
       const std::string& auth_factor_label,

@@ -50,10 +50,15 @@ class AuthFactorDriver {
   // type to use.
   virtual base::span<const AuthBlockType> block_types() const = 0;
 
-  // Indicates if the factor is supported based on a combination of the types of
-  // auth factor storages being used, the currently configured factors, and the
-  // available underlying hardware.
-  virtual bool IsSupported(
+  // Indicates if the factor is supported by the current hardware. This should
+  // things like along the lines of "is the necessary hardware present", "does
+  // it have the right firmware", "is it running".
+  virtual bool IsSupportedByHardware() const = 0;
+
+  // Indicates if the factor is supported by the current storage configuration.
+  // This depends on both what type of storage is in use, and what other factors
+  // already exist.
+  virtual bool IsSupportedByStorage(
       const std::set<AuthFactorStorageType>& configured_storage_types,
       const std::set<AuthFactorType>& configured_factors) const = 0;
 

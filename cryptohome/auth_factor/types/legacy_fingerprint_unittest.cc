@@ -81,8 +81,9 @@ TEST_F(LegacyFingerprintDriverTest, UnsupportedWithVk) {
   AuthFactorDriver& driver = legacy_fp_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset}, {}),
-              IsFalse());
+  EXPECT_THAT(
+      driver.IsSupportedByStorage({AuthFactorStorageType::kVaultKeyset}, {}),
+      IsFalse());
 }
 
 TEST_F(LegacyFingerprintDriverTest, UnsupportedWithUss) {
@@ -91,8 +92,18 @@ TEST_F(LegacyFingerprintDriverTest, UnsupportedWithUss) {
   AuthFactorDriver& driver = legacy_fp_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
+  EXPECT_THAT(driver.IsSupportedByStorage(
+                  {AuthFactorStorageType::kUserSecretStash}, {}),
               IsFalse());
+}
+
+TEST_F(LegacyFingerprintDriverTest, UnsupportedByHardware) {
+  // Setup
+  LegacyFingerprintAuthFactorDriver legacy_fp_driver(&fp_service_);
+  AuthFactorDriver& driver = legacy_fp_driver;
+
+  // Test, Verify.
+  EXPECT_THAT(driver.IsSupportedByHardware(), IsFalse());
 }
 
 TEST_F(LegacyFingerprintDriverTest, PrepareForAddFails) {

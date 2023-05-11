@@ -37,7 +37,8 @@ class LegacyFingerprintAuthFactorDriver final
       : fp_service_(fp_service) {}
 
  private:
-  bool IsSupported(
+  bool IsSupportedByHardware() const override;
+  bool IsSupportedByStorage(
       const std::set<AuthFactorStorageType>& configured_storage_types,
       const std::set<AuthFactorType>& configured_factors) const override;
   bool IsPrepareRequired() const override;

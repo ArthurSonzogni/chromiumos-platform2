@@ -27,6 +27,8 @@ namespace cryptohome {
 class CryptohomeRecoveryAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kCryptohomeRecovery>,
       public AfDriverWithBlockTypes<AuthBlockType::kCryptohomeRecovery>,
+      public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
+                                        AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<CryptohomeRecoveryAuthFactorMetadata>,
       public AfDriverNoPrepare,
       public AfDriverFullAuthDecrypt,
@@ -37,9 +39,7 @@ class CryptohomeRecoveryAuthFactorDriver final
       : crypto_(crypto) {}
 
  private:
-  bool IsSupported(
-      const std::set<AuthFactorStorageType>& configured_storage_types,
-      const std::set<AuthFactorType>& configured_factors) const override;
+  bool IsSupportedByHardware() const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;

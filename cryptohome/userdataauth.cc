@@ -3045,7 +3045,9 @@ void UserDataAuth::ListAuthFactors(
       }
       const AuthFactorDriver& factor_driver =
           auth_factor_driver_manager_->GetDriver(*type);
-      if (factor_driver.IsSupported(configured_storages, configured_types)) {
+      if (factor_driver.IsSupportedByStorage(configured_storages,
+                                             configured_types) &&
+          factor_driver.IsSupportedByHardware()) {
         reply.add_supported_auth_factors(proto_type);
       }
     }

@@ -80,24 +80,27 @@ TEST_F(PasswordDriverTest, SupportedWithoutKiosk) {
   AuthFactorDriver& driver = password_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset}, {}),
+  EXPECT_THAT(
+      driver.IsSupportedByStorage({AuthFactorStorageType::kVaultKeyset}, {}),
+      IsTrue());
+  EXPECT_THAT(driver.IsSupportedByStorage({AuthFactorStorageType::kVaultKeyset},
+                                          {AuthFactorType::kPin}),
               IsTrue());
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset},
-                                 {AuthFactorType::kPin}),
+  EXPECT_THAT(driver.IsSupportedByStorage(
+                  {AuthFactorStorageType::kVaultKeyset},
+                  {AuthFactorType::kPassword, AuthFactorType::kPin}),
+              IsTrue());
+  EXPECT_THAT(driver.IsSupportedByStorage(
+                  {AuthFactorStorageType::kUserSecretStash}, {}),
               IsTrue());
   EXPECT_THAT(
-      driver.IsSupported({AuthFactorStorageType::kVaultKeyset},
-                         {AuthFactorType::kPassword, AuthFactorType::kPin}),
+      driver.IsSupportedByStorage({AuthFactorStorageType::kUserSecretStash},
+                                  {AuthFactorType::kPin}),
       IsTrue());
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
+  EXPECT_THAT(driver.IsSupportedByStorage(
+                  {AuthFactorStorageType::kUserSecretStash},
+                  {AuthFactorType::kPassword, AuthFactorType::kPin}),
               IsTrue());
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
-                                 {AuthFactorType::kPin}),
-              IsTrue());
-  EXPECT_THAT(
-      driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
-                         {AuthFactorType::kPassword, AuthFactorType::kPin}),
-      IsTrue());
 }
 
 TEST_F(PasswordDriverTest, UnsupportedWithKiosk) {
@@ -106,12 +109,22 @@ TEST_F(PasswordDriverTest, UnsupportedWithKiosk) {
   AuthFactorDriver& driver = password_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset},
-                                 {AuthFactorType::kKiosk}),
+  EXPECT_THAT(driver.IsSupportedByStorage({AuthFactorStorageType::kVaultKeyset},
+                                          {AuthFactorType::kKiosk}),
               IsFalse());
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
-                                 {AuthFactorType::kKiosk}),
-              IsFalse());
+  EXPECT_THAT(
+      driver.IsSupportedByStorage({AuthFactorStorageType::kUserSecretStash},
+                                  {AuthFactorType::kKiosk}),
+      IsFalse());
+}
+
+TEST_F(PasswordDriverTest, AlwaysSupportedByHardware) {
+  // Setup
+  PasswordAuthFactorDriver password_driver;
+  AuthFactorDriver& driver = password_driver;
+
+  // Test, Verify
+  EXPECT_THAT(driver.IsSupportedByHardware(), IsTrue());
 }
 
 TEST_F(PasswordDriverTest, GetDelayFails) {

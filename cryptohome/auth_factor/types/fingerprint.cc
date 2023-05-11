@@ -29,16 +29,8 @@ using ::hwsec_foundation::status::MakeStatus;
 
 }  // namespace
 
-bool FingerprintAuthFactorDriver::IsSupported(
-    const std::set<AuthFactorStorageType>& configured_storage_types,
-    const std::set<AuthFactorType>& configured_factors) const {
-  if (configured_factors.count(AuthFactorType::kKiosk) > 0) {
-    return false;
-  }
-  return configured_storage_types.size() == 1 &&
-         configured_storage_types.count(
-             AuthFactorStorageType::kUserSecretStash) &&
-         FingerprintAuthBlock::IsSupported(*crypto_, bio_service_).ok();
+bool FingerprintAuthFactorDriver::IsSupportedByHardware() const {
+  return FingerprintAuthBlock::IsSupported(*crypto_, bio_service_).ok();
 }
 
 bool FingerprintAuthFactorDriver::IsPrepareRequired() const {

@@ -25,6 +25,7 @@
 #include <array>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 
 #include <base/containers/span.h>
@@ -33,6 +34,7 @@
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_intent.h"
@@ -62,6 +64,50 @@ class AfDriverWithBlockTypes : public virtual AuthFactorDriver {
   // block_types lookups with a singular static array.
   static constexpr std::array<AuthBlockType, sizeof...(kTypes)> kTypeArray = {
       kTypes...};
+};
+
+// Common implementation of IsSupportedByStorage(). This implementation is
+// templated on several different options that you can specify.
+enum class AfDriverKioskConfig {
+  kNoKiosk,    // Check that there are no kiosk factors.
+  kOnlyKiosk,  // Check that there are only kiosk factors (or no factors).
+};
+enum class AfDriverStorageConfig {
+  kNoChecks,  // Don't do any checks for storage types.
+  kUsingUss,  // Check that there are USS storage types.
+};
+template <AfDriverStorageConfig kStorageConfig,
+          AfDriverKioskConfig kKioskConfig>
+class AfDriverSupportedByStorage : public virtual AuthFactorDriver {
+ private:
+  bool IsSupportedByStorage(
+      const std::set<AuthFactorStorageType>& configured_storage_types,
+      const std::set<AuthFactorType>& configured_factors) const final {
+    switch (kStorageConfig) {
+      case AfDriverStorageConfig::kNoChecks:
+        break;
+      case AfDriverStorageConfig::kUsingUss:
+        if (configured_storage_types.count(
+                AuthFactorStorageType::kUserSecretStash) == 0) {
+          return false;
+        }
+        break;
+    }
+    switch (kKioskConfig) {
+      case AfDriverKioskConfig::kNoKiosk:
+        if (configured_factors.count(AuthFactorType::kKiosk) > 0) {
+          return false;
+        }
+        break;
+      case AfDriverKioskConfig::kOnlyKiosk:
+        if (configured_factors.count(AuthFactorType::kKiosk) !=
+            configured_factors.size()) {
+          return false;
+        }
+        break;
+    }
+    return true;
+  }
 };
 
 // Common implementation of ConvertToProto(). This implementation is templated

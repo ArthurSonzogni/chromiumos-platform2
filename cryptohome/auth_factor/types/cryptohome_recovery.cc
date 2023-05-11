@@ -12,15 +12,8 @@
 
 namespace cryptohome {
 
-bool CryptohomeRecoveryAuthFactorDriver::IsSupported(
-    const std::set<AuthFactorStorageType>& configured_storage_types,
-    const std::set<AuthFactorType>& configured_factors) const {
-  if (configured_factors.count(AuthFactorType::kKiosk) > 0) {
-    return false;
-  }
-  return configured_storage_types.count(
-             AuthFactorStorageType::kUserSecretStash) &&
-         CryptohomeRecoveryAuthBlock::IsSupported(*crypto_).ok();
+bool CryptohomeRecoveryAuthFactorDriver::IsSupportedByHardware() const {
+  return CryptohomeRecoveryAuthBlock::IsSupported(*crypto_).ok();
 }
 
 bool CryptohomeRecoveryAuthFactorDriver::NeedsResetSecret() const {

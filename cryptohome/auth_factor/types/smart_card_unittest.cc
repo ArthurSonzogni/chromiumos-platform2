@@ -108,9 +108,38 @@ TEST_F(SmartCardDriverTest, UnsupportedWithKiosk) {
   AuthFactorDriver& driver = sc_driver;
 
   // Test, Verify.
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash},
-                                 {AuthFactorType::kKiosk}),
-              IsFalse());
+  EXPECT_THAT(
+      driver.IsSupportedByStorage({AuthFactorStorageType::kUserSecretStash},
+                                  {AuthFactorType::kKiosk}),
+      IsFalse());
+}
+
+TEST_F(SmartCardDriverTest, SupportedWithVk) {
+  // Setup
+  SmartCardAuthFactorDriver sc_driver(
+      &crypto_,
+      AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
+      &key_challenge_service_factory_);
+  AuthFactorDriver& driver = sc_driver;
+
+  // Test, Verify
+  EXPECT_THAT(
+      driver.IsSupportedByStorage({AuthFactorStorageType::kVaultKeyset}, {}),
+      IsTrue());
+}
+
+TEST_F(SmartCardDriverTest, SupportedWithUss) {
+  // Setup
+  SmartCardAuthFactorDriver sc_driver(
+      &crypto_,
+      AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
+      &key_challenge_service_factory_);
+  AuthFactorDriver& driver = sc_driver;
+
+  // Test, Verify
+  EXPECT_THAT(driver.IsSupportedByStorage(
+                  {AuthFactorStorageType::kUserSecretStash}, {}),
+              IsTrue());
 }
 
 TEST_F(SmartCardDriverTest, UnsupportedByBlock) {
@@ -123,11 +152,10 @@ TEST_F(SmartCardDriverTest, UnsupportedByBlock) {
   AuthFactorDriver& driver = sc_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
-              IsFalse());
+  EXPECT_THAT(driver.IsSupportedByHardware(), IsFalse());
 }
 
-TEST_F(SmartCardDriverTest, SupportedByBlockWithVk) {
+TEST_F(SmartCardDriverTest, SupportedByBlock) {
   // Setup
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   SmartCardAuthFactorDriver sc_driver(
@@ -137,22 +165,7 @@ TEST_F(SmartCardDriverTest, SupportedByBlockWithVk) {
   AuthFactorDriver& driver = sc_driver;
 
   // Test, Verify
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kVaultKeyset}, {}),
-              IsTrue());
-}
-
-TEST_F(SmartCardDriverTest, SupportedByBlockWithUss) {
-  // Setup
-  EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
-  SmartCardAuthFactorDriver sc_driver(
-      &crypto_,
-      AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
-      &key_challenge_service_factory_);
-  AuthFactorDriver& driver = sc_driver;
-
-  // Test, Verify
-  EXPECT_THAT(driver.IsSupported({AuthFactorStorageType::kUserSecretStash}, {}),
-              IsTrue());
+  EXPECT_THAT(driver.IsSupportedByHardware(), IsTrue());
 }
 
 TEST_F(SmartCardDriverTest, PrepareForAddFails) {
