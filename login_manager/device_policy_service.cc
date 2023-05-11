@@ -11,8 +11,8 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/containers/flat_map.h>
 #include <base/containers/fixed_flat_map.h>
+#include <base/containers/flat_map.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -492,8 +492,8 @@ bool DevicePolicyService::MayUpdateSystemSettings() {
 
   // Check whether device is running on ChromeOS firmware.
   char buffer[Crossystem::kVbMaxStringProperty];
-  if (!crossystem_->VbGetSystemPropertyString(Crossystem::kMainfwType, buffer,
-                                              sizeof(buffer)) ||
+  if (crossystem_->VbGetSystemPropertyString(Crossystem::kMainfwType, buffer,
+                                             sizeof(buffer) != 0) ||
       strcmp(Crossystem::kMainfwTypeNonchrome, buffer) == 0) {
     return false;
   }

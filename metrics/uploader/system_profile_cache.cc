@@ -189,7 +189,7 @@ bool SystemProfileCache::GetHardwareId(std::string* hwid) {
   }
 
   char buffer[128];
-  if (buffer != VbGetSystemPropertyString("hwid", buffer, sizeof(buffer))) {
+  if (VbGetSystemPropertyString("hwid", buffer, sizeof(buffer)) != 0) {
     LOG(ERROR) << "error getting hwid";
     return false;
   }

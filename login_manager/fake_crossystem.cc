@@ -16,14 +16,14 @@ int FakeCrossystem::VbSetSystemPropertyInt(const char* name, int value) {
   return 0;
 }
 
-const char* FakeCrossystem::VbGetSystemPropertyString(const char* name,
-                                                      char* dest,
-                                                      std::size_t size) {
+int FakeCrossystem::VbGetSystemPropertyString(const char* name,
+                                              char* dest,
+                                              std::size_t size) {
   if (string_map_.find(name) == string_map_.end())
-    return nullptr;
+    return -1;
 
   string_map_[name].copy(dest, size);
-  return dest;
+  return 0;
 }
 
 int FakeCrossystem::VbSetSystemPropertyString(const char* name,

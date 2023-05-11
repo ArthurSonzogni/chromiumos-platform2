@@ -121,8 +121,8 @@ void AgentPlugin::StartInitializingAgentProto() {
   GetUefiSecureBootInformation(base::FilePath(kBootDataFilepath));
 
   base::AutoLock lock(tcb_attributes_lock_);
-  if (get_fwid_rv) {
-    tcb_attributes_.set_system_firmware_version(get_fwid_rv);
+  if (get_fwid_rv == 0) {
+    tcb_attributes_.set_system_firmware_version(buffer);
   } else {
     LOG(ERROR) << "Failed to retrieve fwid";
   }

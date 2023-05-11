@@ -112,13 +112,6 @@ fn check_return(ret: c_int) -> Result<c_int> {
     }
 }
 
-fn check_return_str(ret: *const c_char) -> Result<*const c_char> {
-    match ret.is_null() {
-        true => Err(Error::CrossystemFailed),
-        false => Ok(ret),
-    }
-}
-
 impl Crossystem {
     pub fn new() -> Self {
         lazy_static! {
@@ -146,7 +139,7 @@ impl Crossystem {
 
         // Safe because it doesn't change any system state, mutex guard provides thread safety, and
         // both name and buffer are owned.
-        check_return_str(unsafe {
+        check_return(unsafe {
             VbGetSystemPropertyString(
                 name.as_ptr(),
                 buffer.as_mut_ptr() as *mut c_char,

@@ -10,18 +10,18 @@
 class CrossystemImpl : public Crossystem {
  public:
   // Reads a system property integer.
-  int VbGetSystemPropertyInt(const char* name);
+  int VbGetSystemPropertyInt(const char* name) override;
 
   // Sets a system property integer.
-  int VbSetSystemPropertyInt(const char* name, int value);
+  int VbSetSystemPropertyInt(const char* name, int value) override;
 
   // Reads a system property string into a destination buffer.
-  const char* VbGetSystemPropertyString(const char* name,
-                                        char* dest,
-                                        std::size_t size);
+  int VbGetSystemPropertyString(const char* name,
+                                char* dest,
+                                std::size_t size) override;
 
   // Sets a system property string.
-  int VbSetSystemPropertyString(const char* name, const char* value);
+  int VbSetSystemPropertyString(const char* name, const char* value) override;
 };
 
 #endif  // LOGIN_MANAGER_CROSSYSTEM_IMPL_H_

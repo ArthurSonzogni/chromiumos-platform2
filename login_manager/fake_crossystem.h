@@ -12,12 +12,12 @@
 
 class FakeCrossystem : public Crossystem {
  public:
-  int VbGetSystemPropertyInt(const char* name);
-  int VbSetSystemPropertyInt(const char* name, int value);
-  const char* VbGetSystemPropertyString(const char* name,
-                                        char* dest,
-                                        std::size_t size);
-  int VbSetSystemPropertyString(const char* name, const char* value);
+  int VbGetSystemPropertyInt(const char* name) override;
+  int VbSetSystemPropertyInt(const char* name, int value) override;
+  int VbGetSystemPropertyString(const char* name,
+                                char* dest,
+                                std::size_t size) override;
+  int VbSetSystemPropertyString(const char* name, const char* value) override;
 
  private:
   std::map<std::string, int> int_map_;

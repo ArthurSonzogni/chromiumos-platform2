@@ -288,10 +288,9 @@ std::string GetDescriptionForMode(const char* mode) {
 
 std::string GetHardwareID() {
   char buffer[VB_MAX_STRING_PROPERTY];
-  const char* property =
-      VbGetSystemPropertyString("hwid", buffer, std::size(buffer));
-  if (property != nullptr) {
-    return std::string(property);
+
+  if (VbGetSystemPropertyString("hwid", buffer, std::size(buffer)) == 0) {
+    return std::string(buffer);
   }
   LOG(WARNING) << "Could not read hwid property.";
   return std::string();

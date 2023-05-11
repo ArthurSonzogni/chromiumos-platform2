@@ -55,10 +55,10 @@ class Crossystem {
   // The caller can expect an un-truncated value if the size provided is at
   // least kVbMaxStringProperty.
   //
-  // Returns the passed buffer, or nullptr if error.
-  virtual const char* VbGetSystemPropertyString(const char* name,
-                                                char* dest,
-                                                std::size_t size) = 0;
+  // Returns 0 if success, -1 if error.
+  virtual int VbGetSystemPropertyString(const char* name,
+                                        char* dest,
+                                        std::size_t size) = 0;
 
   // Sets a system property string.
   //

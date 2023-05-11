@@ -14,9 +14,9 @@ int CrossystemImpl::VbSetSystemPropertyInt(const char* name, int value) {
   return ::VbSetSystemPropertyInt(name, value);
 }
 
-const char* CrossystemImpl::VbGetSystemPropertyString(const char* name,
-                                                      char* dest,
-                                                      std::size_t size) {
+int CrossystemImpl::VbGetSystemPropertyString(const char* name,
+                                              char* dest,
+                                              std::size_t size) {
   return ::VbGetSystemPropertyString(name, dest, size);
 }
 

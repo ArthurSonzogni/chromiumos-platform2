@@ -75,12 +75,11 @@ constexpr char kMountEncryptedMetricsPath[] =
 static result_code get_system_property(const char* prop,
                                        char* buf,
                                        size_t length) {
-  const char* rc;
+  int rc = VbGetSystemPropertyString(prop, buf, length);
+  LOG(INFO) << "Got System Property '" << prop
+            << "': " << ((rc == 0) ? buf : "FAIL");
 
-  rc = VbGetSystemPropertyString(prop, buf, length);
-  LOG(INFO) << "Got System Property '" << prop << "': " << (rc ? buf : "FAIL");
-
-  return rc != NULL ? RESULT_SUCCESS : RESULT_FAIL_FATAL;
+  return rc == 0 ? RESULT_SUCCESS : RESULT_FAIL_FATAL;
 }
 
 static int has_chromefw(void) {

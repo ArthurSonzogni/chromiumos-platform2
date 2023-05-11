@@ -26,8 +26,8 @@ bool CrossystemImpl::VbSetSystemPropertyInt(const std::string& name,
 std::optional<std::string> CrossystemImpl::VbGetSystemPropertyString(
     const std::string& name) const {
   char value_buffer[VB_MAX_STRING_PROPERTY];
-  if (NULL == ::VbGetSystemPropertyString(name.c_str(), value_buffer,
-                                          sizeof(value_buffer)))
+  if (::VbGetSystemPropertyString(name.c_str(), value_buffer,
+                                  sizeof(value_buffer)) != 0)
     return std::nullopt;
   return value_buffer;
 }

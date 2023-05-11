@@ -34,14 +34,14 @@ bool StartsWith(const std::string& full_string, const std::string& prefix) {
 bool IsUsbBootEnabled() {
   std::array<char, VB_MAX_STRING_PROPERTY> crossystem_buffer;
   if (VbGetSystemPropertyString("fwid", crossystem_buffer.data(),
-                                crossystem_buffer.size())) {
+                                crossystem_buffer.size()) == 0) {
     std::string fwid(crossystem_buffer.data());
     // Older fwid strings (including Mario/Alex/ZGB) are <platform>.<version>.
     if (StartsWith(fwid, "Mario.")) {
       return false;
     } else if (StartsWith(fwid, "Alex.") || StartsWith(fwid, "ZGB.")) {
       if (VbGetSystemPropertyString("mainfw_type", crossystem_buffer.data(),
-                                    crossystem_buffer.size())) {
+                                    crossystem_buffer.size()) == 0) {
         return !strcmp(crossystem_buffer.data(), "developer");
       }
       return false;
