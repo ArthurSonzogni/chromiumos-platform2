@@ -99,11 +99,12 @@ bool NetlinkSockDiag::DestroySockets(uint8_t protocol, const IPAddress& saddr) {
 
   SockDiagRequest request = CreateDestroyRequest(family, protocol);
   for (const auto& sockid : socks) {
+    if (memcmp(sockid.idiag_src, saddr.GetConstData(), saddr.GetLength()) != 0)
+      continue;
     VLOG(1) << "Destroying socket (" << family << ", " << protocol << ")";
     request.header.nlmsg_seq = ++sequence_number_;
     request.req_opts.id = sockid;
-    if (!memcmp(sockid.idiag_src, saddr.GetConstData(), saddr.GetLength()) ||
-        sockets_->Send(file_descriptor_, static_cast<void*>(&request),
+    if (sockets_->Send(file_descriptor_, static_cast<void*>(&request),
                        sizeof(request), 0) < 0) {
       PLOG(ERROR) << "Failed to write request to netlink socket";
       return false;
