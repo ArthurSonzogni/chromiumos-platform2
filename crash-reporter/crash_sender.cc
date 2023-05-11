@@ -109,8 +109,11 @@ int RunChildMain(int argc, const char* argv[]) {
   } else if (flags.allow_dev_sending) {
     LOG(INFO) << "--dev flag present, ignore image checks and uploading "
               << "crashes to staging server at go/crash-staging";
+  } else if (flags.dry_run) {
+    LOG(INFO) << "--dry_run flag present, ignore image checks and will not "
+              << "actually upload to server.";
   } else {
-    // Normal mode (not test, not dev).
+    // Normal mode (not test, not dev, not dry run).
     if (util::IsTestImage() && !flags.force_upload_on_test_images) {
       LOG(INFO) << "Exiting early due to test image.";
       return EXIT_FAILURE;

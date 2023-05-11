@@ -1384,6 +1384,27 @@ TEST_F(CrashSenderUtilTest, ChooseActionUploadOldReports) {
   EXPECT_EQ(Sender::kSend, sender.ChooseAction(old_os_meta_, &reason, &info));
 }
 
+TEST_F(CrashSenderUtilTest, ChooseActionDryRun) {
+  // If we set dry_run, then the OS check will be skipped.
+  ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled));
+
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+
+  Sender::Options options;
+  options.dry_run = true;
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
+
+  std::string reason;
+  CrashInfo info;
+
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(old_os_meta_, &reason, &info));
+}
+
 TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   auto mock =
       std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();

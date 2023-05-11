@@ -450,7 +450,8 @@ bool Sender::IsSafeDeviceCoredump(const CrashInfo& info) {
 SenderBase::Action Sender::ChooseAction(const base::FilePath& meta_file,
                                         std::string* reason,
                                         CrashInfo* info) {
-  if (!IsMock() && !IsOfficialImage() && !allow_dev_sending_ && !test_mode_) {
+  if (!IsMock() && !IsOfficialImage() && !allow_dev_sending_ && !test_mode_ &&
+      !dry_run_) {
     *reason = "Not an official OS version";
     RecordCrashRemoveReason(kNotOfficialImage);
     return kRemove;
@@ -473,7 +474,7 @@ SenderBase::Action Sender::ChooseAction(const base::FilePath& meta_file,
   }
 
   bool allow_old_os_timestamps =
-      allow_dev_sending_ || test_mode_ || upload_old_reports_;
+      allow_dev_sending_ || test_mode_ || upload_old_reports_ || dry_run_;
 
   std::unique_ptr<util::ScopedProcessingFileBase> f;
   SenderBase::Action act = EvaluateMetaFileMinimal(
