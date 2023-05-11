@@ -1067,7 +1067,8 @@ main() {
 
   # We untrap on success and run cleanup ourselves. Otherwise, on any failure,
   # run our custom trap method to gather any diagnostic data before cleaning up.
-  trap cleanup_on_failure EXIT
+  # Also, cleanup mounts if install is interrupted.
+  trap cleanup_on_failure INT TERM EXIT
 
   # Clean media browser mounts if they've popped up.
   prepare_disk
