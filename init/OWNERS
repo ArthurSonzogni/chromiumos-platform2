@@ -1,4 +1,4 @@
-include chromiumos/chromite:/OWNERS.au
+include chromiumos/owners:v1:/platform/OWNERS.au
 
 vapier@chromium.org
 sarthakkukreti@chromium.org
