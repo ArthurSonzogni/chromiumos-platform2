@@ -18,6 +18,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/ec/cros_ec_dev.h>
+#include <libec/add_entropy_command.h>
 #include <libec/ec_command.h>
 #include <libec/ec_command_async.h>
 #include <libec/fingerprint/fp_context_command_factory.h>
@@ -362,19 +363,7 @@ bool CrosFpDevice::EcReboot(ec_image to_image) {
 
 bool CrosFpDevice::AddEntropy(bool reset) {
   // Create the secret.
-  EcCommandAsync<struct ec_params_rollback_add_entropy, EmptyParam>
-      cmd_add_entropy(EC_CMD_ADD_ENTROPY, ADD_ENTROPY_GET_RESULT,
-                      {.poll_for_result_num_attempts = 20,
-                       .poll_interval = base::Milliseconds(100),
-                       // The EC temporarily stops responding to EC commands
-                       // when this command is run, so we will keep trying until
-                       // we get success (or time out).
-                       .validate_poll_result = false});
-  if (reset) {
-    cmd_add_entropy.SetReq({.action = ADD_ENTROPY_RESET_ASYNC});
-  } else {
-    cmd_add_entropy.SetReq({.action = ADD_ENTROPY_ASYNC});
-  }
+  ec::AddEntropyCommand cmd_add_entropy(reset);
 
   if (cmd_add_entropy.Run(cros_fd_.get())) {
     LOG(INFO) << "Entropy has been successfully added.";
