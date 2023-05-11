@@ -1008,7 +1008,8 @@ void AuthSession::OnMigrationUssCreated(
   // migrated PIN. Hence don't abort the password migration if the
   // |reset_secret| can't be added during the password migration.
   if (MigrateResetSecretToUss()) {
-    // TODO(b:279508471) : Add metrics to see this code path is run.
+    LOG(INFO) << "Reset secret is migrated to UserSecretStash before the "
+                 "migration of the PIN VaultKeyset.";
   }
 
   CryptohomeStatusOr<AuthInput> migration_auth_input_status =
@@ -3250,12 +3251,16 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
           AuthFactorStorageType::kVaultKeyset) &&
       keyset_management_->GetVaultKeyset(obfuscated_username_,
                                          auth_factor_label) != nullptr) {
-    // TODO(b:279508471) : Add metrics to see this code path is in use.
+    // This code path runs to cleanup a backup VaultKeyset for a migrated-to-USS
+    // factor if it is not cleaned up due to the existence of not-migrated
+    // VaultKeyset factors. Report the cleanup result to UMA whether it is (i)
+    // success (ii) failure in adding reset_secret, or (iii) failure in removing
+    // the keyset file, recording whether is a password or PIN.
     bool should_cleanup_backup_keyset = false;
     if (auth_factor_type != AuthFactorType::kPassword) {
       should_cleanup_backup_keyset = true;
     } else {
-      // If there is a unmigrated PIN VaultKeyset we need to calculate the
+      // If there is an unmigrated PIN VaultKeyset we need to calculate the
       // reset_secret from password backup VaultKeyset and not-migrated PIN
       // keyset. In this case reset secret needs to be added to UserSecretStash
       // before removing the backup keysets.
@@ -3267,16 +3272,26 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
         vault_keyset_ = std::move(vk_status).value();
         if (PersistResetSecretToUss()) {
           should_cleanup_backup_keyset = true;
+        } else {
+          ReportBackupKeysetCleanupResult(
+              BackupKeysetCleanupResult::kAddResetSecretFailed);
         }
+      } else {
+        ReportBackupKeysetCleanupResult(
+            BackupKeysetCleanupResult::kGetValidKeysetFailed);
       }
     }
 
     // Cleanup backup VaultKeyset of the authenticated factor.
-    if (should_cleanup_backup_keyset &&
-        CleanUpBackupKeyset(*keyset_management_, obfuscated_username_,
-                            auth_factor_label)
-            .ok()) {
-      // TODO(b:279508471) : Add metrics to see this code path is in use.
+    if (should_cleanup_backup_keyset) {
+      if (CleanUpBackupKeyset(*keyset_management_, obfuscated_username_,
+                              auth_factor_label)
+              .ok()) {
+        ReportBackupKeysetCleanupSucessWithType(auth_factor_type);
+
+      } else {
+        ReportBackupKeysetCleanupFileFailureWithType(auth_factor_type);
+      }
     }
   }
 

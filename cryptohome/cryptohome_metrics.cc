@@ -119,6 +119,8 @@ constexpr char kVkToUssMigrationStatus[] = "Cryptohome.VkToUssMigrationStatus";
 constexpr char kMaskedDownloadsItems[] = "Cryptohome.MaskedDownloadsItems";
 constexpr char kDownloadsBindMountMigrationStatusHistogram[] =
     "Cryptohome.DownloadsBindMountMigrationStatus";
+constexpr char kBackupKeysetCleanupResult[] =
+    "Cryptohome.BackupKeysetCleanupResult";
 
 constexpr char kNumUserHomeDirectories[] =
     "Platform.DiskUsage.NumUserHomeDirectories";
@@ -942,6 +944,49 @@ void ReportVkToUssMigrationStatus(VkToUssMigrationStatus status) {
   g_metrics->SendEnumToUMA(
       kVkToUssMigrationStatus, static_cast<int>(status),
       static_cast<int>(VkToUssMigrationStatus::kMaxValue) + 1);
+}
+
+void ReportBackupKeysetCleanupSucessWithType(AuthFactorType auth_factor_type) {
+  if (auth_factor_type == AuthFactorType::kPassword) {
+    ReportBackupKeysetCleanupResult(
+        BackupKeysetCleanupResult::kRemovedBackupPassword);
+  }
+
+  if (auth_factor_type == AuthFactorType::kPin) {
+    ReportBackupKeysetCleanupResult(
+        BackupKeysetCleanupResult::kRemovedBackupPin);
+  }
+
+  ReportBackupKeysetCleanupResult(
+      BackupKeysetCleanupResult::kRemovedBackupOtherType);
+}
+
+void ReportBackupKeysetCleanupFileFailureWithType(
+    AuthFactorType auth_factor_type) {
+  if (auth_factor_type == AuthFactorType::kPassword) {
+    ReportBackupKeysetCleanupResult(
+        BackupKeysetCleanupResult::kRemoveFileFailedPassword);
+    return;
+  }
+
+  if (auth_factor_type == AuthFactorType::kPin) {
+    ReportBackupKeysetCleanupResult(
+        BackupKeysetCleanupResult::kRemoveFileFailedPin);
+    return;
+  }
+
+  ReportBackupKeysetCleanupResult(
+      BackupKeysetCleanupResult::kRemoveFileFailedOtherType);
+}
+
+void ReportBackupKeysetCleanupResult(BackupKeysetCleanupResult status) {
+  if (!g_metrics) {
+    return;
+  }
+
+  g_metrics->SendEnumToUMA(
+      kBackupKeysetCleanupResult, static_cast<int>(status),
+      static_cast<int>(BackupKeysetCleanupResult::kMaxValue) + 1);
 }
 
 }  // namespace cryptohome
