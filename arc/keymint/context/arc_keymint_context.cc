@@ -6,8 +6,10 @@
 
 namespace arc::keymint::context {
 
-ArcKeyMintContext::ArcKeymasterContext() {}
+ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
+    : PureSoftKeymasterContext(version),
+      rsa_key_factory_(context_adaptor_.GetWeakPtr(), KM_ALGORITHM_RSA) {}
 
-ArcKeyMintContext::~ArcKeymasterContext() = default;
+ArcKeyMintContext::~ArcKeyMintContext() = default;
 
 }  // namespace arc::keymint::context

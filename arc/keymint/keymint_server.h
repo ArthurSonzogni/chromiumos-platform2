@@ -15,6 +15,8 @@
 #include <mojo/cert_store.mojom.h>
 #include <mojo/keymint.mojom.h>
 
+#include "arc/keymint/context/arc_keymint_context.h"
+
 namespace arc::keymint {
 
 // KeyMintServer is a Mojo implementation of the KeyMint 2 AIDL interface.
@@ -108,7 +110,13 @@ class KeyMintServer : public arc::mojom::keymint::KeyMintServer {
     Backend& operator=(const Backend&) = delete;
     ~Backend();
 
-    // TODO(b/274723521): Add keymint() and context() back.
+    context::ArcKeyMintContext* context() { return context_; }
+
+    ::keymaster::AndroidKeymaster* keymint() { return &keymint_; }
+
+   private:
+    context::ArcKeyMintContext* context_;  // Owned by |keymint_|.
+    ::keymaster::AndroidKeymaster keymint_;
   };
 
   // Runs the AndroidKeyMint operation |member| with |request| as input in the

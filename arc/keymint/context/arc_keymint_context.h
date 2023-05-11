@@ -12,12 +12,18 @@
 #include <keymaster/key_factory.h>
 #include <keymaster/UniquePtr.h>
 
+#include "arc/keymint/context/context_adaptor.h"
+#include "arc/keymint/context/cros_key.h"
+#include "arc/keymint/key_data.pb.h"
+
 namespace arc::keymint::context {
 
 // Defines specific behavior for ARC KeyMint in ChromeOS.
 class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
  public:
-  ArcKeyMintContext();
+  // Disable default constructor.
+  ArcKeyMintContext() = delete;
+  explicit ArcKeyMintContext(::keymaster::KmVersion version);
   ~ArcKeyMintContext() override;
   // Not copyable nor assignable.
   ArcKeyMintContext(const ArcKeyMintContext&) = delete;
@@ -25,9 +31,11 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
 
  private:
   // TODO(b/274723555): Implement ARC KeyMint context.
-  // mutable ContextAdaptor context_adaptor_;
-
-  // mutable CrosKeyFactory rsa_key_factory_;
+  // Since the initialization of |rsa_key_factory_| uses
+  // |context_adaptor_|, hence |context_adaptor_| must
+  // be declared before |rsa_key_factory_|.
+  mutable ContextAdaptor context_adaptor_;
+  mutable CrosKeyFactory rsa_key_factory_;
 
   // mutable std::vector<mojom::ChromeOsKeyPtr> placeholder_keys_;
 

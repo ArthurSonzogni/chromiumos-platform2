@@ -30,7 +30,21 @@
 //
 namespace arc::keymint {
 
-KeyMintServer::Backend::Backend() = default;
+namespace {
+
+constexpr size_t kOperationTableSize = 16;
+// TODO(b/278968783): Add version negotiation for KeyMint.
+// KeyMint Message versions are drawn from Android
+// Keymaster Messages.
+constexpr int32_t kKeyMintMessageVersion = 4;
+
+constexpr ::keymaster::KmVersion kKeyMintVersion =
+    ::keymaster::KmVersion::KEYMINT_2;
+}  // namespace
+
+KeyMintServer::Backend::Backend()
+    : context_(new context::ArcKeyMintContext(kKeyMintVersion)),
+      keymint_(context_, kOperationTableSize, kKeyMintMessageVersion) {}
 
 KeyMintServer::Backend::~Backend() = default;
 
@@ -58,7 +72,29 @@ void KeyMintServer::RunKeyMintRequest(
     KmMember member,
     std::unique_ptr<KmRequest> request,
     base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback) {
-  // TODO(b/274723521): Add this back.
+  auto task_lambda =
+      [](const base::Location& location,
+         scoped_refptr<base::TaskRunner> original_task_runner,
+         ::keymaster::AndroidKeymaster* keymaster, KmMember member,
+         std::unique_ptr<KmRequest> request,
+         base::OnceCallback<void(std::unique_ptr<KmResponse>)> callback) {
+        // Prepare a KeyMint response data structure.
+        auto response =
+            std::make_unique<KmResponse>(keymaster->message_version());
+        // Execute the operation.
+        (*keymaster.*member)(*request, response.get());
+        // Post |callback| to the |original_task_runner| given |response|.
+        original_task_runner->PostTask(
+            location, base::BindOnce(std::move(callback), std::move(response)));
+      };
+  // Post the KeyMint operation to a background thread while capturing the
+  // current task runner.
+  backend_thread_.task_runner()->PostTask(
+      location,
+      base::BindOnce(task_lambda, location,
+                     base::SingleThreadTaskRunner::GetCurrentDefault(),
+                     backend_.keymint(), member, std::move(request),
+                     std::move(callback)));
 }
 
 void KeyMintServer::AddRngEntropy(const std::vector<uint8_t>& data,
