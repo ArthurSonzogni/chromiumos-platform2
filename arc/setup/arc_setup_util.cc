@@ -1217,11 +1217,11 @@ std::optional<std::string> FilterMediaProfile(
     }
 
     // Dump results.
-    xmlChar* buf;
-    int size;
+    xmlChar* buf = nullptr;
+    int size = 0;
     xmlDocDumpFormatMemory(doc, &buf, &size, /* format */ 1);
     CHECK(buf != nullptr) << "Failed to dump filtered xml result";
-    std::string xml_result(reinterpret_cast<const char*>(buf));
+    std::string xml_result(reinterpret_cast<const char*>(buf), size);
     xmlFree(buf);
     return xml_result;
   }();
