@@ -186,5 +186,30 @@ memcg     1
   ASSERT_STATS_EQUAL(expected_stats, *stats);
 }
 
+TEST(MglruUtilTest, TestMultipleCrostini) {
+  const std::string input =
+      R"(memcg     1 /
+  node     0
+           0       1177          0         822
+           1       1177          7           0
+           2       1177          0           0
+           3       1177       1171        5125
+)";
+
+  const MglruStats expected_stats = {
+      .cgs = {{// CG 0
+               .id = 1,
+               .nodes = {{// Node 0
+                          .id = 0,
+                          .generations = {{0, 1177, 0, 822},
+                                          {1, 1177, 7, 0},
+                                          {2, 1177, 0, 0},
+                                          {3, 1177, 1171, 5125}}}}}}};
+
+  std::optional<MglruStats> stats = ParseStatsFromString(input);
+  ASSERT_TRUE(stats);
+  ASSERT_STATS_EQUAL(expected_stats, *stats);
+}
+
 }  // namespace
 }  // namespace vm_tools::concierge::mglru

@@ -103,6 +103,14 @@ bool ParseMemcg(std::stringstream& mglru_stream, MglruStats& parsed_stats) {
     return false;
   }
 
+  // Newer kernel versions have a '/' after memcg
+  std::streampos before_slash = mglru_stream.tellg();
+  mglru_stream >> token;
+  if (token != "/") {
+    mglru_stream.clear();
+    mglru_stream.seekg(before_slash);
+  }
+
   // After the id is a list of one or more nodes. Parse nodes until failure. The
   // first failure indicates the end of the list of nodes.
   while (ParseNode(mglru_stream, new_memcg)) {
