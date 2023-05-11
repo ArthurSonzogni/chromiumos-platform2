@@ -1917,7 +1917,8 @@ StartVmResponse Service::StartVmInternal(
 
     disks.push_back(Disk{.path = base::FilePath(kProcFileDescriptorsPath)
                                      .Append(base::NumberToString(raw_fd)),
-                         .writable = true});
+                         .writable = true,
+                         .block_id = "cr-extra-disk"});
   }
 
   // Create the runtime directory.

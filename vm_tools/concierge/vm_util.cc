@@ -126,10 +126,17 @@ base::StringPairs Disk::GetCrosvmArgs() const {
     async_executor_arg = base::StrCat(
         {",async_executor=", AsyncExecutorToString(async_executor.value())});
   }
+  std::string block_id_arg;
+  if (block_id) {
+    // Virtio_blk can't handle more than 20 chars:
+    // https://docs.oasis-open.org/virtio/virtio/v1.2/csd01/virtio-v1.2-csd01.html#x1-2850006
+    CHECK_LE(block_id.value().size(), 20);
+    block_id_arg = base::StrCat({",id=", block_id.value()});
+  }
 
-  std::string second =
-      base::StrCat({path.value(), sparse_arg, o_direct_arg,
-                    multiple_workers_arg, block_size_arg, async_executor_arg});
+  std::string second = base::StrCat({path.value(), sparse_arg, o_direct_arg,
+                                     multiple_workers_arg, block_size_arg,
+                                     async_executor_arg, block_id_arg});
   base::StringPairs result = {{std::move(first), std::move(second)}};
   return result;
 }

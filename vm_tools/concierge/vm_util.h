@@ -84,6 +84,9 @@ struct Disk {
 
   // Block size.
   std::optional<size_t> block_size;
+
+  // Block ID (max 20 chars).
+  std::optional<std::string> block_id;
 };
 
 // Path to the crosvm binary.
