@@ -492,13 +492,13 @@ TEST_F(CellularServiceProviderTest, CreateTemporaryServiceFromProfileNoIccid) {
 
 TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork_ReuseDataAPN) {
   StrictMock<base::MockOnceCallback<void(TetheringManager::SetEnabledResult,
-                                         Network*)>>
+                                         Network*, ServiceRefPtr)>>
       cb;
 
   // No Device registered.
   EXPECT_CALL(
       cb, Run(TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
-              nullptr));
+              nullptr, ServiceRefPtr()));
   provider()->AcquireTetheringNetwork(cb.Get());
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
@@ -514,7 +514,7 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork_ReuseDataAPN) {
 
   EXPECT_CALL(
       cb, Run(TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
-              nullptr));
+              nullptr, ServiceRefPtr()));
   provider()->AcquireTetheringNetwork(cb.Get());
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
@@ -523,8 +523,8 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork_ReuseDataAPN) {
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestDeviceName, Technology::kCellular);
   EXPECT_CALL(*network, IsConnected()).WillRepeatedly(Return(true));
-  EXPECT_CALL(cb,
-              Run(TetheringManager::SetEnabledResult::kSuccess, network.get()));
+  EXPECT_CALL(cb, Run(TetheringManager::SetEnabledResult::kSuccess,
+                      network.get(), ServiceRefPtr(service)));
   service->SetAttachedNetwork(network->AsWeakPtr());
   provider()->AcquireTetheringNetwork(cb.Get());
   DispatchPendingEvents();

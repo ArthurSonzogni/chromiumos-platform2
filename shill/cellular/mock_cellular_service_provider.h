@@ -25,11 +25,10 @@ class MockCellularServiceProvider : public CellularServiceProvider {
       TetheringEntitlementCheck,
       (base::OnceCallback<void(TetheringManager::EntitlementStatus result)>),
       ());
-  MOCK_METHOD(
-      void,
-      AcquireTetheringNetwork,
-      (base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>),
-      ());
+  MOCK_METHOD(void,
+              AcquireTetheringNetwork,
+              (TetheringManager::AcquireNetworkCallback),
+              ());
   MOCK_METHOD(void,
               ReleaseTetheringNetwork,
               (Network*, base::OnceCallback<void(bool)>),

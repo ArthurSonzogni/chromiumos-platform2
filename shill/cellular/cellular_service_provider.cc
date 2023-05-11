@@ -368,8 +368,7 @@ void CellularServiceProvider::TetheringEntitlementCheck(
 }
 
 void CellularServiceProvider::AcquireTetheringNetwork(
-    base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>
-        callback) {
+    TetheringManager::AcquireNetworkCallback callback) {
   SLOG(3) << __func__;
   // For now assume that the main data network is always used for tethering.
   // TODO(b/249151422) Implement tethering network selection logic and supports:
@@ -382,8 +381,7 @@ void CellularServiceProvider::AcquireTetheringNetwork(
 }
 
 void CellularServiceProvider::OnTetheringNetworkReady(
-    base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>
-        callback) {
+    TetheringManager::AcquireNetworkCallback callback) {
   SLOG(3) << __func__;
   // Even when reusing the main data connection, make sure that the Network
   // object passed back to the caller is obtained at same time as when the
@@ -394,7 +392,7 @@ void CellularServiceProvider::OnTetheringNetworkReady(
   if (!cellular_service || !cellular_service->cellular()) {
     std::move(callback).Run(
         TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
-        nullptr);
+        nullptr, nullptr);
     return;
   }
 
@@ -402,12 +400,12 @@ void CellularServiceProvider::OnTetheringNetworkReady(
   if (!network || !network->IsConnected()) {
     std::move(callback).Run(
         TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
-        nullptr);
+        nullptr, nullptr);
     return;
   }
 
-  std::move(callback).Run(TetheringManager::SetEnabledResult::kSuccess,
-                          network);
+  std::move(callback).Run(TetheringManager::SetEnabledResult::kSuccess, network,
+                          cellular_service);
 }
 
 void CellularServiceProvider::ReleaseTetheringNetwork(

@@ -120,6 +120,7 @@ TetheringManager::TetheringManager(Manager* manager)
       allowed_(false),
       state_(TetheringState::kTetheringIdle),
       upstream_network_(nullptr),
+      upstream_service_(nullptr),
       downstream_network_started_(false),
       hotspot_dev_(nullptr),
       hotspot_service_up_(false),
@@ -546,6 +547,7 @@ void TetheringManager::FreeUpstreamNetwork() {
   DCHECK(upstream_network_);
   upstream_network_->UnregisterEventHandler(this);
   upstream_network_ = nullptr;
+  upstream_service_ = nullptr;
 }
 
 void TetheringManager::OnStoppingTetheringTimeout() {
@@ -641,7 +643,7 @@ void TetheringManager::StartTetheringSession() {
     const auto result = upstream_network
                             ? SetEnabledResult::kSuccess
                             : SetEnabledResult::kUpstreamNetworkNotAvailable;
-    OnUpstreamNetworkAcquired(result, upstream_network);
+    OnUpstreamNetworkAcquired(result, upstream_network, eth_service.get());
   } else {
     // TODO(b/235762746) Add support for WiFi as an upstream technology for "usb
     // tethering" and for chipsets that support simultaneous hotspot and station
@@ -849,7 +851,8 @@ void TetheringManager::OnDownstreamNetworkReady(
 }
 
 void TetheringManager::OnUpstreamNetworkAcquired(SetEnabledResult result,
-                                                 Network* network) {
+                                                 Network* network,
+                                                 ServiceRefPtr service) {
   if (result != SetEnabledResult::kSuccess) {
     LOG(ERROR) << __func__ << ": no upstream " << upstream_technology_
                << " Network available";
@@ -859,6 +862,7 @@ void TetheringManager::OnUpstreamNetworkAcquired(SetEnabledResult result,
   }
 
   DCHECK(network);
+  DCHECK(service);
   if (!network->IsConnected()) {
     LOG(ERROR) << __func__ << ": upstream Network was not connected";
     PostSetEnabledResult(SetEnabledResult::kFailure);
@@ -870,8 +874,10 @@ void TetheringManager::OnUpstreamNetworkAcquired(SetEnabledResult result,
   // not have Internet access and if portal detection is no currently running.
 
   DCHECK(!upstream_network_);
+  DCHECK(!upstream_service_);
   upstream_network_ = network;
   upstream_network_->RegisterEventHandler(this);
+  upstream_service_ = service;
   CheckAndStartDownstreamTetheredNetwork();
 }
 
@@ -1238,6 +1244,7 @@ void TetheringManager::OnNetworkStopped(int interface_index, bool is_failure) {
 
 void TetheringManager::OnNetworkDestroyed(int interface_index) {
   upstream_network_ = nullptr;
+  upstream_service_ = nullptr;
   StopTetheringSession(StopReason::kUpstreamDisconnect);
 }
 

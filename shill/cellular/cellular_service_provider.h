@@ -79,8 +79,7 @@ class CellularServiceProvider : public ProviderInterface {
   // tethering session, creating and connecting a new Network if necessary for
   // the current carrier and modem.
   mockable void AcquireTetheringNetwork(
-      base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>
-          callback);
+      TetheringManager::AcquireNetworkCallback callback);
 
   // Notifies that a tethering session has stopped and that the Network object
   // obtained with AcquireTetheringNetwork() is not used for tethering anymore.
@@ -103,8 +102,7 @@ class CellularServiceProvider : public ProviderInterface {
 
   CellularService* GetActiveService();
   void OnTetheringNetworkReady(
-      base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>
-          callback);
+      TetheringManager::AcquireNetworkCallback callback);
 
   Manager* manager_;
   // Use a single profile for Cellular services. Set to the first (device)

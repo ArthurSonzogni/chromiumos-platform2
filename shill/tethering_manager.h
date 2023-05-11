@@ -81,7 +81,8 @@ class TetheringManager : public Network::EventHandler {
     kTetheringActive,
     kTetheringStopping,
   };
-
+  using AcquireNetworkCallback = base::OnceCallback<void(
+      TetheringManager::SetEnabledResult, Network*, ServiceRefPtr)>;
   // Storage group for tethering configs.
   static constexpr char kStorageId[] = "tethering";
 
@@ -208,7 +209,9 @@ class TetheringManager : public Network::EventHandler {
   // patchpanel DownstreamNetwork callback handler.
   void OnDownstreamNetworkReady(base::ScopedFD downstream_network_fd);
   // Upstream network fetch callback handler.
-  void OnUpstreamNetworkAcquired(SetEnabledResult result, Network* network);
+  void OnUpstreamNetworkAcquired(SetEnabledResult result,
+                                 Network* network,
+                                 ServiceRefPtr service);
   // Upstream network release callback handler.
   void OnUpstreamNetworkReleased(bool is_success);
   // Trigger callback function asynchronously to post SetTetheringEnabled dbus
@@ -297,6 +300,10 @@ class TetheringManager : public Network::EventHandler {
   // Pointer to upstream network. This pointer is valid when state_ is not
   // kTetheringIdle.
   Network* upstream_network_;
+  // Pointer to upstream service. This pointer is valid when |upstream_network_|
+  // is not nullptr.
+  ServiceRefPtr upstream_service_;
+
   // File descriptor representing the downstream network setup managed by
   // patchpanel. Closing this file descriptor tears down the downstream network.
   // TODO(b/275645124) Handle DownstreamNetwork errors raised by patchpanel

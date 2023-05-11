@@ -169,6 +169,7 @@ class TetheringManagerTest : public testing::Test {
             &manager_, "wlan0", "ap0", "", 0, event_cb_.Get())),
         network_(new MockNetwork(
             kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular)),
+        service_(new MockService(&manager_)),
         wifi_phy_(hotspot_device_->phy_index()) {
     // Replace the Manager's WiFi provider with a mock.
     manager_.wifi_provider_.reset(wifi_provider_);
@@ -427,7 +428,8 @@ class TetheringManagerTest : public testing::Test {
 
   void OnUpstreamNetworkAcquired(TetheringManager* tethering_manager,
                                  TetheringManager::SetEnabledResult result) {
-    tethering_manager->OnUpstreamNetworkAcquired(result, network_.get());
+    tethering_manager->OnUpstreamNetworkAcquired(result, network_.get(),
+                                                 service_.get());
   }
 
   void OnUpstreamNetworkReleased(TetheringManager* tethering_manager,
@@ -471,6 +473,7 @@ class TetheringManagerTest : public testing::Test {
   MockUpstart* upstart_;
   scoped_refptr<MockHotspotDevice> hotspot_device_;
   std::unique_ptr<MockNetwork> network_;
+  scoped_refptr<MockService> service_;
   MockWiFiPhy wifi_phy_;
 };
 
