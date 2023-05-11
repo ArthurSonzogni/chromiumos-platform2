@@ -34,7 +34,7 @@ constexpr char kChassisXBrandedKey[] = "chassis_x_branded:";
 
 // The output of |kGscToolBinaryPath| will contain a "hw_compliance_version:"
 // line.
-constexpr char kHwXComplianceVersion[] = "hw_compliance_version:";
+constexpr char kHwXComplianceVersion[] = "hw_x_compliance_version:";
 
 // The output from the "gsctool" binary. Some or all of these fields may not be
 // present in the output.
