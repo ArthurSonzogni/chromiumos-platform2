@@ -1234,6 +1234,8 @@ const char* Service::ConnectFailureToString(const ConnectFailure& state) {
       return kErrorHTTPGetFailed;
     case kFailureInternal:
       return kErrorInternal;
+    case kFailureInvalidAPN:
+      return kErrorInvalidAPN;
     case kFailureIPsecCertAuth:
       return kErrorIpsecCertAuthFailed;
     case kFailureIPsecPSKAuth:

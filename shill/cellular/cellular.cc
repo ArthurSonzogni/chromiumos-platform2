@@ -65,6 +65,7 @@
 #include "shill/net/sockets.h"
 #include "shill/ppp_daemon.h"
 #include "shill/profile.h"
+#include "shill/service.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 #include "shill/technology.h"
@@ -1360,8 +1361,12 @@ void Cellular::OnConnectReply(std::string iccid,
   NotifyCellularConnectionResult(error, iccid, is_user_triggered);
   if (!error.IsSuccess()) {
     LOG(WARNING) << LoggingTag() << ": " << __func__ << ": Failed: " << error;
-    if (service_ && service_->iccid() == iccid)
-      service_->SetFailure(Service::kFailureConnect);
+    if (service_ && service_->iccid() == iccid) {
+      if (error.type() == Error::kInvalidApn)
+        service_->SetFailure(Service::kFailureInvalidAPN);
+      else
+        service_->SetFailure(Service::kFailureConnect);
+    }
     return;
   }
   metrics()->NotifyDeviceConnectFinished(interface_index());

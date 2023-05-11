@@ -965,6 +965,7 @@ class Metrics : public DefaultServiceObserver {
     kNetworkServiceErrorDisconnect = 25,
     kNetworkServiceErrorSimLocked = 26,
     kNetworkServiceErrorNotRegistered = 27,
+    kNetworkServiceErrorInvalidAPN = 28,
     kNetworkServiceErrorMax
   };
   static constexpr EnumMetric<NameByTechnology> kMetricNetworkServiceError = {

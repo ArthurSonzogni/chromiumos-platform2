@@ -125,6 +125,7 @@ class Service : public base::RefCounted<Service> {
     kFailureEAPLocalTLS,
     kFailureEAPRemoteTLS,
     kFailureHTTPGet,
+    kFailureInvalidAPN,
     kFailureIPsecCertAuth,
     kFailureIPsecPSKAuth,
     kFailureInternal,

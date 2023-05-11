@@ -1099,9 +1099,11 @@ bool CellularCapability3gpp::ConnectionAttemptContinue(
 
   // And stop if no more APNs to try
   if (attempt->apn_try_list.empty()) {
+    // This path is only reached if |RetriableConnectError| was true fo all
+    // attempts.
     Error error;
     Error::PopulateAndLog(
-        FROM_HERE, &error, Error::kOperationFailed,
+        FROM_HERE, &error, Error::kInvalidApn,
         base::StringPrintf(
             "Connection attempt (%s) failed, no remaining APNs to try",
             ApnList::GetApnTypeString(apn_type).c_str()));

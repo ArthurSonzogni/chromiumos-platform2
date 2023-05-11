@@ -718,6 +718,7 @@ const char kErrorDhcpFailed[] = "dhcp-failed";
 const char kErrorHTTPGetFailed[] = "http-get-failed";
 const char kErrorInternal[] = "internal-error";
 const char kErrorInvalidFailure[] = "invalid-failure";
+const char kErrorInvalidAPN[] = "invalid-apn";
 const char kErrorIpsecCertAuthFailed[] = "ipsec-cert-auth-failed";
 const char kErrorIpsecPskAuthFailed[] = "ipsec-psk-auth-failed";
 const char kErrorNeedEvdo[] = "need-evdo";

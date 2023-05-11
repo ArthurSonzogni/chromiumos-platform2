@@ -455,6 +455,8 @@ Metrics::NetworkServiceError Metrics::ConnectFailureToServiceErrorEnum(
       return kNetworkServiceErrorIPsecPSKAuth;
     case Service::kFailureInternal:
       return kNetworkServiceErrorInternal;
+    case Service::kFailureInvalidAPN:
+      return kNetworkServiceErrorInvalidAPN;
     case Service::kFailureNeedEVDO:
       return kNetworkServiceErrorNeedEVDO;
     case Service::kFailureNeedHomeNetwork:
