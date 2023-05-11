@@ -256,7 +256,7 @@ void Service::StartArcVm(
         vm_tools::concierge::StartVmResponse>> response_sender,
     const vm_tools::concierge::StartArcVmRequest& request) {
   LOG(INFO) << "Received StartArcVm request";
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   StartVmResponse response;
   // We change to a success status later if necessary.
@@ -273,6 +273,7 @@ void Service::StartArcVm(
 
 StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
                                             StartVmResponse& response) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(VmInfo::ARC_VM);
 

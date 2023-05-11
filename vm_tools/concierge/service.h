@@ -26,6 +26,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
 #include <base/synchronization/lock.h>
+#include <base/thread_annotations.h>
 #include <base/threading/thread.h>
 #include <base/timer/timer.h>
 #include <brillo/dbus/dbus_object.h>
@@ -490,7 +491,7 @@ class Service final : public org::chromium::VmConciergeInterface {
   uint32_t next_seneschal_server_port_;
 
   // Active VMs keyed by VmId which is (owner_id, vm_name).
-  VmMap vms_;
+  VmMap vms_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   // The shill D-Bus client.
   std::unique_ptr<ShillClient> shill_client_;

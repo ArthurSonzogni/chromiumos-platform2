@@ -100,7 +100,7 @@ void Service::StartPluginVm(
         vm_tools::concierge::StartVmResponse>> response_sender,
     const vm_tools::concierge::StartPluginVmRequest& request) {
   LOG(INFO) << "Received StartPluginVm request";
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   StartVmResponse response;
   // We change to a success status later if necessary.
@@ -118,6 +118,7 @@ void Service::StartPluginVm(
 StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
                                                StartVmResponse& response) {
   LOG(INFO) << "Received StartPluginVm request";
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(VmInfo::PLUGIN_VM);

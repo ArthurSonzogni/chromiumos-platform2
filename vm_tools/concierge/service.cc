@@ -1080,6 +1080,7 @@ static std::optional<std::string> GameModeToForegroundVmName(
 // Runs balloon policy against each VM to balance memory.
 // This will be called periodically by balloon_resizing_timer_.
 void Service::RunBalloonPolicy() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // TODO(b/191946183): Design and migrate to a new D-Bus API
   // that is less chatty for implementing balloon logic.
 
@@ -1188,6 +1189,7 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
                                     StorageLocation location,
                                     const string& lookup_name,
                                     ListVmDisksResponse* response) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::FilePath image_dir;
   base::FileEnumerator::FileType file_type = base::FileEnumerator::FILES;
   const char* const* allowed_ext = kDiskImageExtensions;
@@ -1607,7 +1609,7 @@ bool Service::Init() {
 }
 
 void Service::HandleChildExit() {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // We can't just rely on the information in the siginfo structure because
   // more than one child may have exited but only one SIGCHLD will be
   // generated.
@@ -1727,6 +1729,8 @@ void Service::StartVm(dbus::MethodCall* method_call,
 StartVmResponse Service::StartVmInternal(
     StartVmRequest request, std::unique_ptr<dbus::MessageReader> reader) {
   LOG(INFO) << "Received request: " << __func__;
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
 
@@ -2295,7 +2299,7 @@ bool ValidateVmNameAndOwner(const _RequestProto& request,
 
 StopVmResponse Service::StopVm(const StopVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   StopVmResponse response;
 
@@ -2315,6 +2319,7 @@ StopVmResponse Service::StopVm(const StopVmRequest& request) {
 }
 
 bool Service::StopVmInternal(const VmId& vm_id, VmStopReason reason) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
@@ -2365,7 +2370,7 @@ void Service::StopAllVms() {
 }
 
 void Service::StopAllVmsImpl(VmStopReason reason) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   LOG(INFO) << "Received StopAllVms request";
 
   struct ThreadContext {
@@ -2416,7 +2421,7 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
 
 SuspendVmResponse Service::SuspendVm(const SuspendVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   SuspendVmResponse response;
 
@@ -2450,7 +2455,7 @@ SuspendVmResponse Service::SuspendVm(const SuspendVmRequest& request) {
 
 ResumeVmResponse Service::ResumeVm(const ResumeVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   ResumeVmResponse response;
 
@@ -2494,7 +2499,7 @@ ResumeVmResponse Service::ResumeVm(const ResumeVmRequest& request) {
 
 GetVmInfoResponse Service::GetVmInfo(const GetVmInfoRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   GetVmInfoResponse response;
 
@@ -2527,7 +2532,7 @@ GetVmInfoResponse Service::GetVmInfo(const GetVmInfoRequest& request) {
 GetVmEnterpriseReportingInfoResponse Service::GetVmEnterpriseReportingInfo(
     const GetVmEnterpriseReportingInfoRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   GetVmEnterpriseReportingInfoResponse response;
 
@@ -2554,6 +2559,7 @@ GetVmEnterpriseReportingInfoResponse Service::GetVmEnterpriseReportingInfo(
 // Returns true on success, or false if the VM does not exist.
 bool Service::OnVmBootComplete(const std::string& owner_id,
                                const std::string& name) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto iter = FindVm(owner_id, name);
   if (iter == vms_.end()) {
     return false;
@@ -2569,7 +2575,7 @@ bool Service::OnVmBootComplete(const std::string& owner_id,
 ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
     const ArcVmCompleteBootRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   ArcVmCompleteBootResponse response;
 
@@ -2597,7 +2603,7 @@ ArcVmCompleteBootResponse Service::ArcVmCompleteBoot(
 SetBalloonTimerResponse Service::SetBalloonTimer(
     const SetBalloonTimerRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   SetBalloonTimerResponse response;
 
@@ -2618,7 +2624,8 @@ SetBalloonTimerResponse Service::SetBalloonTimer(
 
 AdjustVmResponse Service::AdjustVm(const AdjustVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   AdjustVmResponse response;
 
   if (!ValidateVmNameAndOwner(request, response)) {
@@ -2679,7 +2686,7 @@ AdjustVmResponse Service::AdjustVm(const AdjustVmRequest& request) {
 
 SyncVmTimesResponse Service::SyncVmTimes() {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   SyncVmTimesResponse response;
   int failures = 0;
@@ -2704,9 +2711,9 @@ bool Service::StartTermina(TerminaVm* vm,
                            string* failure_reason,
                            vm_tools::StartTerminaResponse::MountResult* result,
                            int64_t* out_free_bytes) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-  DCHECK(result);
   LOG(INFO) << "Starting Termina-specific services";
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK(result);
 
   std::string dst_addr;
   IPv4AddressToString(vm->ContainerSubnet(), &dst_addr);
@@ -2847,7 +2854,7 @@ bool CreateFilesystem(const base::FilePath& disk_location,
 void Service::CreateDiskImage(dbus::MethodCall* method_call,
                               dbus::ExportedObject::ResponseSender sender) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   dbus::MessageReader reader(method_call);
 
@@ -3155,7 +3162,7 @@ CreateDiskImageResponse Service::CreateDiskImageInternal(
 DestroyDiskImageResponse Service::DestroyDiskImage(
     const DestroyDiskImageRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   DestroyDiskImageResponse response;
 
@@ -3272,7 +3279,7 @@ DestroyDiskImageResponse Service::DestroyDiskImage(
 ResizeDiskImageResponse Service::ResizeDiskImage(
     const ResizeDiskImageRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   ResizeDiskImageResponse response;
 
@@ -3334,6 +3341,8 @@ void Service::ResizeDisk(const std::string& owner_id,
                          uint64_t new_size,
                          DiskImageStatusEnum* status,
                          std::string* failure_reason) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   auto iter = FindVm(owner_id, vm_name);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Unable to find VM " << vm_name;
@@ -3351,6 +3360,7 @@ void Service::ProcessResize(const std::string& owner_id,
                             uint64_t target_size,
                             DiskImageStatusEnum* status,
                             std::string* failure_reason) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto iter = FindVm(owner_id, vm_name);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Unable to find VM " << vm_name;
@@ -3402,7 +3412,7 @@ void Service::FinishResize(const std::string& owner_id,
 void Service::ExportDiskImage(dbus::MethodCall* method_call,
                               dbus::ExportedObject::ResponseSender sender) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   dbus::MessageReader reader(method_call);
 
@@ -3446,6 +3456,7 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
     ExportDiskImageRequest request,
     base::ScopedFD storage_fd,
     base::ScopedFD digest_fd) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   ExportDiskImageResponse response;
   response.set_status(DISK_STATUS_FAILED);
 
@@ -3526,7 +3537,7 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
 ImportDiskImageResponse Service::ImportDiskImage(
     const ImportDiskImageRequest& request, const base::ScopedFD& in_fd) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   ImportDiskImageResponse response;
   response.set_status(DISK_STATUS_FAILED);
@@ -3624,7 +3635,7 @@ void Service::RunDiskImageOperation(std::string uuid) {
 DiskImageStatusResponse Service::DiskImageStatus(
     const DiskImageStatusRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   DiskImageStatusResponse response;
   response.set_status(DISK_STATUS_FAILED);
@@ -3655,7 +3666,7 @@ DiskImageStatusResponse Service::DiskImageStatus(
 CancelDiskImageResponse Service::CancelDiskImageOperation(
     const CancelDiskImageRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   CancelDiskImageResponse response;
 
@@ -3688,7 +3699,7 @@ CancelDiskImageResponse Service::CancelDiskImageOperation(
 
 ListVmDisksResponse Service::ListVmDisks(const ListVmDisksRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   ListVmDisksResponse response;
 
@@ -3717,7 +3728,7 @@ ListVmDisksResponse Service::ListVmDisks(const ListVmDisksRequest& request) {
 AttachUsbDeviceResponse Service::AttachUsbDevice(
     const AttachUsbDeviceRequest& request, const base::ScopedFD& fd) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   AttachUsbDeviceResponse response;
 
@@ -3772,7 +3783,7 @@ AttachUsbDeviceResponse Service::AttachUsbDevice(
 DetachUsbDeviceResponse Service::DetachUsbDevice(
     const DetachUsbDeviceRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   DetachUsbDeviceResponse response;
 
@@ -3805,7 +3816,7 @@ DetachUsbDeviceResponse Service::DetachUsbDevice(
 ListUsbDeviceResponse Service::ListUsbDevices(
     const ListUsbDeviceRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   ListUsbDeviceResponse response;
 
@@ -3846,7 +3857,7 @@ DnsSettings Service::ComposeDnsResponse() {
 
 DnsSettings Service::GetDnsSettings() {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   return ComposeDnsResponse();
 }
@@ -3856,7 +3867,8 @@ SetVmCpuRestrictionResponse Service::SetVmCpuRestriction(
   // TODO(yusukes,hashimoto): Instead of allowing Chrome to decide when to
   // restrict each VM's CPU usage, let Concierge itself do that for potentially
   // better security. See crrev.com/c/3564880 for more context.
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   VLOG(3) << "Received SetVmCpuRestriction request";
 
   SetVmCpuRestrictionResponse response;
@@ -3884,7 +3896,7 @@ SetVmCpuRestrictionResponse Service::SetVmCpuRestriction(
 
 ListVmsResponse Service::ListVms(const ListVmsRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   ListVmsResponse response;
 
@@ -3938,7 +3950,7 @@ void Service::ReclaimVmMemory(
         ReclaimVmMemoryResponse>> response_sender,
     const ReclaimVmMemoryRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   ReclaimVmMemoryResponse response;
 
@@ -3973,7 +3985,7 @@ void Service::AggressiveBalloon(
         AggressiveBalloonResponse>> response_sender,
     const AggressiveBalloonRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   AggressiveBalloonResponse response;
 
@@ -4006,6 +4018,7 @@ void Service::AggressiveBalloon(
 
 void Service::OnResolvConfigChanged(std::vector<string> nameservers,
                                     std::vector<string> search_domains) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (nameservers_ == nameservers && search_domains_ == search_domains) {
     return;
   }
@@ -4029,6 +4042,7 @@ void Service::OnResolvConfigChanged(std::vector<string> nameservers,
 }
 
 void Service::OnDefaultNetworkServiceChanged() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   for (auto& vm_entry : vms_) {
     auto& vm = vm_entry.second;
     if (vm->IsSuspended()) {
@@ -4042,7 +4056,7 @@ void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
                                         uint32_t cid,
                                         pid_t pid,
                                         std::string vm_token) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kNotifyVmStartedMethod);
   dbus::MessageWriter writer(&method_call);
@@ -4100,7 +4114,7 @@ void Service::SendVmGuestUserlandReadySignal(
 }
 
 void Service::NotifyVmStopping(const VmId& vm_id, int64_t cid) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Notify cicerone.
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kNotifyVmStoppingMethod);
@@ -4126,7 +4140,7 @@ void Service::NotifyVmStopping(const VmId& vm_id, int64_t cid) {
 void Service::NotifyVmStopped(const VmId& vm_id,
                               int64_t cid,
                               VmStopReason reason) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Notify cicerone.
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kNotifyVmStoppedMethod);
@@ -4152,7 +4166,7 @@ void Service::NotifyVmStopped(const VmId& vm_id,
 
 std::string Service::GetContainerToken(const VmId& vm_id,
                                        const std::string& container_name) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kGetContainerTokenMethod);
   dbus::MessageWriter writer(&method_call);
@@ -4199,6 +4213,7 @@ std::string Service::GetHostTimeZone() {
 }
 
 void Service::OnLocaltimeFileChanged(const base::FilePath& path, bool error) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (error) {
     LOG(WARNING) << "Error while reading system timezone change";
     return;
@@ -4218,6 +4233,7 @@ void Service::OnLocaltimeFileChanged(const base::FilePath& path, bool error) {
 }
 
 void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK_EQ(signal->GetInterface(), vm_tools::cicerone::kVmCiceroneInterface);
   DCHECK_EQ(signal->GetMember(), vm_tools::cicerone::kTremplinStartedSignal);
 
@@ -4241,6 +4257,7 @@ void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
 }
 
 void Service::OnVmToolsStateChangedSignal(dbus::Signal* signal) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   string owner_id, vm_name;
   bool running;
   if (!pvm::dispatcher::ParseVmToolsChangedSignal(signal, &owner_id, &vm_name,
@@ -4276,6 +4293,7 @@ void Service::OnSignalConnected(const std::string& interface_name,
 }
 
 void Service::HandleSuspendImminent() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   for (const auto& pair : vms_) {
     auto& vm = pair.second;
     if (vm->UsesExternalSuspendSignals()) {
@@ -4286,6 +4304,7 @@ void Service::HandleSuspendImminent() {
 }
 
 void Service::HandleSuspendDone() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   for (const auto& vm_entry : vms_) {
     auto& vm = vm_entry.second;
     if (vm->UsesExternalSuspendSignals()) {
@@ -4305,11 +4324,13 @@ void Service::HandleSuspendDone() {
 }
 
 Service::VmMap::iterator Service::FindVm(const VmId& vm_id) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return vms_.find(vm_id);
 }
 
 Service::VmMap::iterator Service::FindVm(const std::string& owner_id,
                                          const std::string& vm_name) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return vms_.find(VmId(owner_id, vm_name));
 }
 
@@ -4595,7 +4616,7 @@ void AddGroupPermissionChildren(const base::FilePath& path) {
 bool Service::AddGroupPermissionMesa(
     brillo::ErrorPtr* error, const AddGroupPermissionMesaRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (!ValidateVmNameAndOwner(request,
                               request /* in place of a response proto */)) {
@@ -4616,7 +4637,7 @@ bool Service::AddGroupPermissionMesa(
 GetVmLaunchAllowedResponse Service::GetVmLaunchAllowed(
     const GetVmLaunchAllowedRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   GetVmLaunchAllowedResponse response;
 
@@ -4639,7 +4660,7 @@ bool Service::GetVmLogs(brillo::ErrorPtr* error,
                         const GetVmLogsRequest& request,
                         GetVmLogsResponse* response) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (!ValidateVmNameAndOwner(request, *response)) {
     *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
@@ -4681,7 +4702,7 @@ bool Service::GetVmLogs(brillo::ErrorPtr* error,
 
 SwapVmResponse Service::SwapVm(const SwapVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   SwapVmResponse response;
 
@@ -4702,7 +4723,7 @@ SwapVmResponse Service::SwapVm(const SwapVmRequest& request) {
 }
 
 void Service::NotifyVmSwapping(const VmId& vm_id) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // Send the D-Bus signal out to notify everyone that we are swapping a VM.
   vm_tools::concierge::VmSwappingSignal proto;
@@ -4834,6 +4855,7 @@ void Service::OnStatefulDiskSpaceUpdate(
 
 void Service::HandleStatefulDiskSpaceUpdate(
     VmId vm_id, const spaced::StatefulDiskSpaceUpdate update) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto iter = FindVm(vm_id);
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
