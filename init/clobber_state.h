@@ -35,7 +35,7 @@ class ClobberState {
     bool fast_wipe = false;
     // Don't delete the non-active set of kernel/root partitions.
     bool keepimg = false;
-    // Preserve some files and VPD keys.
+    // Preserve some files.
     bool safe_wipe = false;
     // Preserve rollback data.
     bool rollback_wipe = false;
@@ -149,6 +149,9 @@ class ClobberState {
                               ClobberUi* ui,
                               bool fast,
                               bool discard);
+
+  // Removes well-known keys from the VPD.
+  static void RemoveVpdKeys();
 
   // Reads successful and priority metadata from partition numbered
   // `partition_number` on `disk`, storing the results in `successful_out` and

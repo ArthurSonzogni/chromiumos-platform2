@@ -818,6 +818,26 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
 }
 
 // static
+void ClobberState::RemoveVpdKeys() {
+  constexpr std::array<const char*, 1> keys_to_remove{
+      // This key is used for caching the feature level.
+      // Need to remove it, as it must be recalculated when re-entering normal
+      // mode.
+      "feature_device_info",
+  };
+  for (auto key : keys_to_remove) {
+    brillo::ProcessImpl vpd;
+    vpd.AddArg("/usr/sbin/vpd");
+    vpd.AddStringOption("-i", "RW_VPD");
+    vpd.AddStringOption("-d", key);
+    // Do not report failures as the key might not even exist in the VPD.
+    vpd.RedirectOutputToMemory(true);
+    vpd.Run();
+    AppendToLog("vpd", vpd.GetOutputString(STDOUT_FILENO));
+  }
+}
+
+// static
 int ClobberState::GetPartitionNumber(const base::FilePath& drive_name,
                                      const std::string& partition_label) {
   // TODO(C++20): Switch to aggregate initialization once we require C++20.
@@ -1568,6 +1588,9 @@ int ClobberState::Run() {
     if (utils::CreateEncryptedRebootVault())
       CollectClobberCrashReports();
   }
+
+  // Remove keys that may alter device state.
+  RemoveVpdKeys();
 
   if (!args_.keepimg) {
     EnsureKernelIsBootable(root_disk_, wipe_info_.active_kernel_partition);
