@@ -41,6 +41,12 @@ KeyMintServer::KeyMintServer()
 
 KeyMintServer::~KeyMintServer() = default;
 
+void KeyMintServer::UpdateContextPlaceholderKeys(
+    std::vector<mojom::ChromeOsKeyPtr> keys,
+    base::OnceCallback<void(bool)> callback) {
+  // TODO(b/274723521): Finish this.
+}
+
 void KeyMintServer::SetSystemVersion(uint32_t android_version,
                                      uint32_t android_patchlevel) {
   // TODO(b/274723521): Add this back.

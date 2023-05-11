@@ -12,6 +12,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/threading/thread.h>
 #include <keymaster/android_keymaster.h>
+#include <mojo/cert_store.mojom.h>
 #include <mojo/keymint.mojom.h>
 
 namespace arc::keymint {
@@ -27,6 +28,9 @@ class KeyMintServer : public arc::mojom::keymint::KeyMintServer {
   KeyMintServer(const KeyMintServer&) = delete;
   KeyMintServer& operator=(const KeyMintServer&) = delete;
   ~KeyMintServer() override;
+
+  void UpdateContextPlaceholderKeys(std::vector<mojom::ChromeOsKeyPtr> keys,
+                                    base::OnceCallback<void(bool)> callback);
 
   base::WeakPtr<KeyMintServer> GetWeakPtr() {
     return weak_ptr_factory_.GetWeakPtr();

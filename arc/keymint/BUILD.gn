@@ -22,6 +22,7 @@ group("all") {
 # Binary
 executable("arc-keymintd") {
   sources = [
+    "cert_store_instance.cc",
     "conversion.cc",
     "keymint_server.cc",
     "main.cc",
