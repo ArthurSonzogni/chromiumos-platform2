@@ -835,11 +835,22 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
   switch (request.operation()) {
     case SwapOperation::ENABLE:
       // TODO(b/265386291): Check TBW (total bytes written).
-    case SwapOperation::FORCE_ENABLE:
       LOG(INFO) << "Enable vmm-swap";
       if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
         response.set_success(true);
         swap_policy_timer_->Start(FROM_HERE, base::Minutes(10), this,
+                                  &ArcVm::RunVmmSwapOut);
+      } else {
+        LOG(ERROR) << "Failed to enable vmm-swap";
+        response.set_success(false);
+        response.set_failure_reason("Failed to enable vmm swap");
+      }
+      break;
+    case SwapOperation::FORCE_ENABLE:
+      LOG(INFO) << "Force enable vmm-swap";
+      if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
+        response.set_success(true);
+        swap_policy_timer_->Start(FROM_HERE, base::Seconds(10), this,
                                   &ArcVm::RunVmmSwapOut);
       } else {
         LOG(ERROR) << "Failed to enable vmm-swap";
@@ -859,17 +870,6 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
         LOG(ERROR) << "Failed to disable vmm-swap";
         response.set_success(false);
         response.set_failure_reason("Failed to disable vmm swap");
-      }
-      break;
-    case SwapOperation::SWAPOUT:
-      LOG(INFO) << "Force vmm-swap out";
-      if (swap_policy_timer_->IsRunning()) {
-        swap_policy_timer_->FireNow();
-        response.set_success(true);
-      } else {
-        LOG(WARNING) << "There is no pending vmm-swap out";
-        response.set_success(false);
-        response.set_failure_reason("There is no pending vmm-swap out");
       }
       break;
     default:

@@ -868,8 +868,6 @@ class ArcVmTest : public ::testing::Test {
     return HandleSwapVmRequest(SwapOperation::FORCE_ENABLE);
   }
 
-  bool ForceVmmSwapOut() { return HandleSwapVmRequest(SwapOperation::SWAPOUT); }
-
   bool DisableVmmSwap() { return HandleSwapVmRequest(SwapOperation::DISABLE); }
 
  protected:
@@ -1092,18 +1090,6 @@ TEST_F(ArcVmTest, ForceEnableVmmSwapFail) {
   FakeCrosvmControl::Get()->result_enable_vmm_swap_ = false;
   ASSERT_FALSE(ForceEnableVmmSwap());
   ASSERT_FALSE(swap_policy_timer_->IsRunning());
-}
-
-TEST_F(ArcVmTest, ForceVmmSwapOut) {
-  ASSERT_TRUE(EnableVmmSwap());
-  ASSERT_TRUE(ForceVmmSwapOut());
-  ASSERT_FALSE(swap_policy_timer_->IsRunning());
-  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 1);
-}
-
-TEST_F(ArcVmTest, ForceVmmSwapOutWhenNoPendingSwapOut) {
-  ASSERT_FALSE(ForceVmmSwapOut());
-  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
 }
 
 TEST_F(ArcVmTest, DisableVmmSwap) {
