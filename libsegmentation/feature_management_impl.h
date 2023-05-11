@@ -24,8 +24,7 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   // feature-management-data.
   FeatureManagementImpl();
 
-  explicit FeatureManagementImpl(const base::FilePath& device_info_file_path)
-      : device_info_file_path_(device_info_file_path) {}
+  explicit FeatureManagementImpl(const base::FilePath& device_info_file_path);
 
   // FeatureManagementInterface overrides.
   bool IsFeatureEnabled(const std::string& name) const override;
@@ -33,9 +32,16 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
   ScopeLevel GetScopeLevel() override;
 
  private:
-  // Represents the file on the stateful partition that houses the device info.
-  // This will be read to populate |cached_device_info|.
+  // Represents the file that houses the device info. This will be read to
+  // populate |cached_device_info|.
+  //
+  // In production we will write to this path via the "vpd" binary and read it
+  // as a regular file. For testing, we read and write from a test file stored
+  // in this variable.
   base::FilePath device_info_file_path_;
+
+  // Use the "vpd" binary to persist the state.
+  bool persist_via_vpd_ = false;
 
 #if USE_FEATURE_MANAGEMENT
   // Reads device info from the stateful partition, if not present reads it from

@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 
+#include <base/base64.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
@@ -165,6 +166,32 @@ std::optional<libsegmentation::DeviceInfo> GetDeviceInfoFromGSC() {
   return device_info;
 }
 
+// Write |device_info| as base64 to the "vpd" binary by spawning a new process.
+bool WriteToVpd(const libsegmentation::DeviceInfo& device_info) {
+  std::string serialized = device_info.SerializeAsString();
+  std::string base64_encoded;
+  base::Base64Encode(serialized, &base64_encoded);
+
+  brillo::ProcessImpl process;
+  process.AddArg("/usr/sbin/vpd");
+  process.AddArg("-i");
+  process.AddArg("RW_VPD");
+  process.AddArg("-s");
+  process.AddArg("feature_device_info=" + base64_encoded);
+
+  if (!process.Start()) {
+    LOG(ERROR) << "Failed to start VPD process";
+    return false;
+  }
+
+  int return_code = process.Wait();
+  if (return_code != 0) {
+    LOG(ERROR) << "VPD process exited with return code: " << return_code;
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 FeatureManagementInterface::FeatureLevel
@@ -211,13 +238,19 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
       return false;
     }
 
-    // Persist the device info read from the hardware id to the stateful
-    // partition. If we fail to write it then don't cache it. We only cache it
-    // if we have the same device info on the stateful partition.
-    if (!FeatureManagementUtil::WriteDeviceInfoToFile(
-            device_info_result.value(), device_info_file)) {
-      LOG(WARNING) << "Failed to persist device info";
-      return false;
+    // Persist the device info read from "gsctool" via "vpd" or to a regular
+    // file for testing. If we fail to write it then don't cache it.
+    if (persist_via_vpd_) {
+      if (!WriteToVpd(device_info_result.value())) {
+        LOG(ERROR) << "Failed to persist device info via vpd";
+        return false;
+      }
+    } else {
+      if (!FeatureManagementUtil::WriteDeviceInfoToFile(
+              device_info_result.value(), device_info_file)) {
+        LOG(ERROR) << "Failed to persist device info";
+        return false;
+      }
     }
   }
 

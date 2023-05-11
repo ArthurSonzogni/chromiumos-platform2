@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
 
+#include "base/files/file.h"
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management_interface.h"
 
@@ -24,10 +25,10 @@ class BRILLO_EXPORT FeatureManagementUtil {
   static std::optional<libsegmentation::DeviceInfo> ReadDeviceInfoFromFile(
       const base::FilePath& file_path);
 
-  // Writes |device_info| as JSON to |file_path|. Returns false if the write
+  // Writes |device_info| as base64 to |file_path|. Returns false if the write
   // isn't successful.
   static bool WriteDeviceInfoToFile(
-      const libsegmentation::DeviceInfo device_info,
+      const libsegmentation::DeviceInfo& device_info,
       const base::FilePath& file_path);
 
   // Converts feature level from the internal proto to the external API.

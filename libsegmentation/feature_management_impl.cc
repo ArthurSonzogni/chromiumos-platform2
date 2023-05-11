@@ -23,11 +23,15 @@
 
 namespace segmentation {
 
-#if USE_FEATURE_MANAGEMENT
-// File that will house device info on the stateful partition.
-constexpr char kDeviceInfoFilePath[] =
-    "/mnt/stateful_partition/unencrypted/cache/libsegmentation/property.json";
+// Sysfs file corresponding to VPD state. This will be used to persist device
+// info state and read cache device info state.
+constexpr const char kVpdSysfsFilePath[] =
+    "/sys/firmware/vpd/rw/feature_device_info";
 
+#if USE_FEATURE_MANAGEMENT
+// Sysfs file corresponding to VPD state. This will be used to persist device
+// info state and read cache device info state.
+const char* kDeviceInfoFilePath = kVpdSysfsFilePath;
 #else
 constexpr char kDeviceInfoFilePath[] = "";
 
@@ -44,6 +48,13 @@ FeatureManagementInterface::ScopeLevel FeatureManagementImpl::GetScopeLevel() {
 
 FeatureManagementImpl::FeatureManagementImpl()
     : FeatureManagementImpl(base::FilePath(kDeviceInfoFilePath)) {}
+
+FeatureManagementImpl::FeatureManagementImpl(
+    const base::FilePath& device_info_file_path)
+    : device_info_file_path_(device_info_file_path) {
+  persist_via_vpd_ =
+      device_info_file_path_ == base::FilePath(kVpdSysfsFilePath);
+}
 
 bool FeatureManagementImpl::IsFeatureEnabled(const std::string& name) const {
   // To be continued.

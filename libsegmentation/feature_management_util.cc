@@ -4,9 +4,11 @@
 
 #include <optional>
 
+#include <base/base64.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/process/process.h>
 #include <google/protobuf/util/json_util.h>
 
 #include "libsegmentation/device_info.pb.h"
@@ -19,42 +21,30 @@ namespace segmentation {
 // successful.
 std::optional<libsegmentation::DeviceInfo>
 FeatureManagementUtil::ReadDeviceInfoFromFile(const base::FilePath& file_path) {
-  std::string json_input;
-  if (!base::ReadFileToString(file_path, &json_input)) {
-    LOG(ERROR) << "Failed to read JSON string from file: " << file_path;
+  std::string encoded;
+  if (!base::ReadFileToString(file_path, &encoded)) {
+    LOG(ERROR) << "Failed to read protobuf string from file: " << file_path;
     return std::nullopt;
   }
 
+  // The value is expected to be in the base64 format.
+  std::string decoded;
+  base::Base64Decode(encoded, &decoded);
   libsegmentation::DeviceInfo device_info;
-  google::protobuf::util::JsonParseOptions options;
-  options.ignore_unknown_fields = false;
-  auto status = google::protobuf::util::JsonStringToMessage(
-      json_input, &device_info, options);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to parse JSON string into DeviceInfo message: "
-               << status.message();
+  if (!device_info.ParseFromString(decoded)) {
+    LOG(ERROR) << "Failed to parse device info from the protobuf";
     return std::nullopt;
   }
-
   return device_info;
 }
 
-// Writes |device_info| as JSON to |file_path|. Returns false if the write isn't
-// successful.
 bool FeatureManagementUtil::WriteDeviceInfoToFile(
-    const libsegmentation::DeviceInfo device_info,
+    const libsegmentation::DeviceInfo& device_info,
     const base::FilePath& file_path) {
-  std::string json_output;
-  google::protobuf::util::JsonPrintOptions options;
-  options.add_whitespace = true;
-  options.always_print_primitive_fields = true;
-  auto status = google::protobuf::util::MessageToJsonString(
-      device_info, &json_output, options);
-  if (!status.ok()) {
-    return false;
-  }
-
-  return base::WriteFile(file_path, json_output);
+  std::string serialized = device_info.SerializeAsString();
+  std::string base64_encoded;
+  base::Base64Encode(serialized, &base64_encoded);
+  return base::WriteFile(file_path, base64_encoded);
 }
 
 FeatureManagementInterface::FeatureLevel
