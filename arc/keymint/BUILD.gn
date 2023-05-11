@@ -28,6 +28,7 @@ executable("arc-keymintd") {
     "cert_store_instance.cc",
     "conversion.cc",
     "daemon.cc",
+    "keymint_logger.cc",
     "keymint_server.cc",
     "main.cc",
   ]
@@ -172,9 +173,9 @@ pkg_config("libarckeymint_context_config") {
 shared_library("libarckeymint_context") {
   sources = [
     # TODO(b/274723555): Add AOSP sources from KeyMint for KeyMint Context.
+    "context/arc_keymint_context.cc",
     "context/context_adaptor.cc",
     "context/cros_key.cc",
-    "context/arc_keymint_context.cc"
   ]
   public_configs = [ ":libarckeymint_context_config" ]
   configs += [
