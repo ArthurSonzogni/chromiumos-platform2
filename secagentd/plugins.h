@@ -5,6 +5,7 @@
 #ifndef SECAGENTD_PLUGINS_H_
 #define SECAGENTD_PLUGINS_H_
 
+#include <missive/proto/record_constants.pb.h>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -16,9 +17,13 @@
 #include "absl/strings/str_format.h"
 #include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
+#include "base/check.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
+#include "secagentd/bpf/bpf_types.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
+#include "secagentd/common.h"
 #include "secagentd/device_user.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
@@ -33,6 +38,7 @@ namespace secagentd {
 namespace testing {
 class AgentPluginTestFixture;
 class ProcessPluginTestFixture;
+class NetworkPluginTestFixture;
 }  // namespace testing
 
 class PluginInterface {
@@ -46,7 +52,151 @@ class PluginInterface {
   virtual std::string GetName() const = 0;
   virtual ~PluginInterface() = default;
 };
+template <typename HashT,
+          typename XdrT,
+          typename XdrAtomicVariantT,
+          Types::BpfSkeleton SkelType,
+          reporting::Destination destination>
+struct PluginConfig {
+  using HashType = HashT;
+  using XdrType = XdrT;
+  using XdrAtomicType = XdrAtomicVariantT;
+  static constexpr Types::BpfSkeleton skeleton_type{SkelType};
+  static constexpr reporting::Destination reporting_destination{destination};
+};
 
+using NetworkPluginConfig =
+    PluginConfig<std::string,
+                 cros_xdr::reporting::XdrNetworkEvent,
+                 cros_xdr::reporting::NetworkEventAtomicVariant,
+                 Types::BpfSkeleton::kNetwork,
+                 reporting::Destination::CROS_SECURITY_NETWORK>;
+
+template <typename Config>
+class BpfPlugin : public PluginInterface {
+ public:
+  using BatchSenderType = BatchSender<typename Config::HashType,
+                                      typename Config::XdrType,
+                                      typename Config::XdrAtomicType>;
+  using BatchSenderInterfaceType =
+      BatchSenderInterface<typename Config::HashType,
+                           typename Config::XdrType,
+                           typename Config::XdrAtomicType>;
+  using BatchKeyGenerator = base::RepeatingCallback<typename Config::HashType(
+      const typename Config::XdrAtomicType&)>;
+
+  BpfPlugin(
+      BatchKeyGenerator batch_key_generator,
+      scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
+      scoped_refptr<MessageSenderInterface> message_sender,
+      scoped_refptr<ProcessCacheInterface> process_cache,
+      scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+      scoped_refptr<DeviceUserInterface> device_user,
+      uint32_t batch_interval_s)
+      : device_user_(device_user),
+        process_cache_(process_cache),
+        message_sender_(message_sender),
+        policies_features_broker_(policies_features_broker),
+        weak_ptr_factory_(this) {
+    batch_sender_ = std::make_unique<BatchSenderType>(
+        std::move(batch_key_generator), message_sender,
+        Config::reporting_destination, batch_interval_s);
+    CHECK(message_sender != nullptr);
+    CHECK(process_cache != nullptr);
+    CHECK(bpf_skeleton_factory);
+    factory_ = std::move(bpf_skeleton_factory);
+  }
+
+  absl::Status Activate() override {
+    // Was called previously, so do nothing and report OK.
+    if (skeleton_wrapper_) {
+      return absl::OkStatus();
+    }
+    struct BpfCallbacks callbacks;
+    callbacks.ring_buffer_event_callback = base::BindRepeating(
+        &BpfPlugin::HandleRingBufferEvent, weak_ptr_factory_.GetWeakPtr());
+    callbacks.ring_buffer_read_ready_callback =
+        base::BindRepeating(&BpfPlugin::HandleBpfRingBufferReadReady,
+                            weak_ptr_factory_.GetWeakPtr());
+    skeleton_wrapper_ =
+        factory_->Create(Config::skeleton_type, std::move(callbacks));
+    if (skeleton_wrapper_ == nullptr) {
+      return absl::InternalError(
+          absl::StrFormat("%s BPF program loading error.", GetName()));
+    }
+
+    batch_sender_->Start();
+    return absl::OkStatus();
+  }
+
+  absl::Status Deactivate() override {
+    // destructing the skeleton_wrapper_ unloads and cleans up the BPFs.
+    skeleton_wrapper_ = nullptr;
+    return absl::OkStatus();
+  }
+
+  bool IsActive() const override { return skeleton_wrapper_ != nullptr; }
+
+ protected:
+  std::unique_ptr<BatchSenderInterfaceType> batch_sender_;
+  scoped_refptr<DeviceUserInterface> device_user_;
+  scoped_refptr<ProcessCacheInterface> process_cache_;
+
+ private:
+  friend testing::NetworkPluginTestFixture;
+  void HandleBpfRingBufferReadReady() const {
+    skeleton_wrapper_->ConsumeEvent();
+  }
+  virtual void HandleRingBufferEvent(const bpf::cros_event& bpf_event) = 0;
+  void SetBatchSenderForTesting(
+      std::unique_ptr<BatchSenderInterfaceType> given) {
+    batch_sender_ = std::move(given);
+  }
+  scoped_refptr<BpfSkeletonFactoryInterface> factory_;
+  scoped_refptr<MessageSenderInterface> message_sender_;
+  scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
+  std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
+  base::WeakPtrFactory<BpfPlugin> weak_ptr_factory_;
+};
+
+class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
+ public:
+  NetworkPlugin(
+      scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
+      scoped_refptr<MessageSenderInterface> message_sender,
+      scoped_refptr<ProcessCacheInterface> process_cache,
+      scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+      scoped_refptr<DeviceUserInterface> device_user,
+      uint32_t batch_interval_s)
+      : BpfPlugin(base::BindRepeating(
+                      [](const cros_xdr::reporting::NetworkEventAtomicVariant&)
+                          -> std::string {
+                        // TODO(b:282814056): Make hashing function optional
+                        //  for batch_sender then drop this. Not all users
+                        //  of batch_sender need the visit functionality.
+                        CHECK(false);
+                        return "";
+                      }),
+                  bpf_skeleton_factory,
+                  message_sender,
+                  process_cache,
+                  policies_features_broker,
+                  device_user,
+                  batch_interval_s) {}
+
+  std::string GetName() const override;
+
+ private:
+  void EnqueueBatchedEvent(
+      std::unique_ptr<cros_xdr::reporting::NetworkEventAtomicVariant>
+          atomic_event);
+  void HandleRingBufferEvent(const bpf::cros_event& bpf_event) override;
+  std::unique_ptr<cros_xdr::reporting::NetworkSocketListenEvent>
+  MakeListenEvent(
+      const secagentd::bpf::cros_network_socket_listen& listen_event) const;
+};
+
+// TODO(b:283278819): convert this over to use the generic BpfPlugin.
 class ProcessPlugin : public PluginInterface {
  public:
   ProcessPlugin(
@@ -85,18 +235,18 @@ class ProcessPlugin : public PluginInterface {
   void EnqueueBatchedEvent(
       std::unique_ptr<cros_xdr::reporting::ProcessEventAtomicVariant>
           atomic_event);
-  // Converts the BPF process start event into a XDR process exec protobuf.
+  // Converts the BPF process start event into a XDR process exec
+  // protobuf.
   std::unique_ptr<cros_xdr::reporting::ProcessExecEvent> MakeExecEvent(
       const secagentd::bpf::cros_process_start& process_start);
   std::unique_ptr<cros_xdr::reporting::ProcessTerminateEvent>
-  // Converts the BPF process exit event into a XDR process terminate protobuf.
+  // Converts the BPF process exit event into a XDR process terminate
+  // protobuf.
   MakeTerminateEvent(const secagentd::bpf::cros_process_exit& process_exit);
   // Inject the given (mock) BatchSender object for unit testing.
   void SetBatchSenderForTesting(std::unique_ptr<BatchSenderType> given) {
     batch_sender_ = std::move(given);
   }
-  // This is static because it must be accessible to a C style function.
-  static struct BpfCallbacks callbacks_;
   base::WeakPtrFactory<ProcessPlugin> weak_ptr_factory_;
   scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;

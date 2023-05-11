@@ -19,6 +19,7 @@
 #include "base/functional/callback_forward.h"
 #include "base/strings/strcat.h"
 #include "secagentd/bpf/bpf_types.h"
+#include "secagentd/bpf_skeletons/skeleton_network_bpf.h"
 #include "secagentd/common.h"
 #include "secagentd/metrics_sender.h"
 namespace secagentd {
@@ -51,10 +52,10 @@ class BpfSkeletonInterface {
 
  protected:
   friend class BpfSkeletonFactory;
+  friend class NetworkBpfSkeleton;
   BpfSkeletonInterface() = default;
 
   virtual absl::Status LoadAndAttach() = 0;
-
   // Register callbacks to handle:
   // 1 - When a security event from a ring buffer has been consumed and is
   // available for further processing.
@@ -102,6 +103,7 @@ class BpfSkeleton : public BpfSkeletonInterface {
 
  protected:
   friend class BpfSkeletonFactory;
+  friend class NetworkBpfSkeleton;
   absl::Status LoadAndAttach() override {
     if (callbacks_.ring_buffer_event_callback.is_null() ||
         callbacks_.ring_buffer_read_ready_callback.is_null()) {
@@ -172,10 +174,11 @@ class BpfSkeleton : public BpfSkeletonInterface {
   }
   void RegisterCallbacks(BpfCallbacks cbs) override { callbacks_ = cbs; }
 
+  SkeletonType* skel_{nullptr};
+
  private:
   BpfCallbacks callbacks_;
   std::string name_;
-  SkeletonType* skel_{nullptr};
   const SkeletonCallbacks<SkeletonType> skel_cbs_;
   const SkeletonMetrics metrics_;
   struct ring_buffer* rb_{nullptr};
@@ -187,6 +190,7 @@ class BpfSkeletonFactoryInterface
  public:
   struct SkeletonInjections {
     std::unique_ptr<BpfSkeletonInterface> process;
+    std::unique_ptr<BpfSkeletonInterface> network;
   };
 
   // Creates a BPF Handler class that loads and attaches a BPF application.
@@ -207,7 +211,6 @@ class BpfSkeletonFactory : public BpfSkeletonFactoryInterface {
 
  private:
   SkeletonInjections di_;
-  absl::flat_hash_set<Types::BpfSkeleton> created_skeletons_;
 };
 
 }  //  namespace secagentd

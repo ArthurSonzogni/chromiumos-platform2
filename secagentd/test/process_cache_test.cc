@@ -22,19 +22,11 @@
 #include "gtest/gtest.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
+#include "secagentd/test/test_utils.h"
 
 namespace {
 
 namespace pb = cros_xdr::reporting;
-
-MATCHER_P(EqualsProto,
-          message,
-          "Match a proto Message equal to the matcher's argument.") {
-  std::string expected_serialized, actual_serialized;
-  message.SerializeToString(&expected_serialized);
-  arg.SerializeToString(&actual_serialized);
-  return expected_serialized == actual_serialized;
-}
 
 // Partially() protobuf matcher isn't available and importing it is more
 // involved than copy-pasting a single macro. So improvise.

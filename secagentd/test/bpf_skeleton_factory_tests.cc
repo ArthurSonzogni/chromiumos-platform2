@@ -22,10 +22,21 @@ class BpfSkeletonFactoryTestFixture
  public:
   void SetUp() override {
     type = GetParam();
-    auto skel = std::make_unique<MockBpfSkeleton>();
-    bpf_skeleton = skel.get();
+    auto mock_process_skel = std::make_unique<MockBpfSkeleton>();
+    auto mock_network_skel = std::make_unique<MockBpfSkeleton>();
+    switch (type) {
+      case Types::BpfSkeleton::kProcess:
+        active_skeleton = mock_process_skel.get();
+        break;
+      case Types::BpfSkeleton::kNetwork:
+        active_skeleton = mock_network_skel.get();
+        break;
+    }
+
     skel_factory = base::MakeRefCounted<BpfSkeletonFactory>(
-        BpfSkeletonFactory::SkeletonInjections({.process = std::move(skel)}));
+        BpfSkeletonFactory::SkeletonInjections(
+            {.process = std::move(mock_process_skel),
+             .network = std::move(mock_network_skel)}));
     cbs.ring_buffer_event_callback =
         base::BindRepeating([](const bpf::cros_event&) {});
     cbs.ring_buffer_read_ready_callback = base::BindRepeating([]() {});
@@ -33,14 +44,14 @@ class BpfSkeletonFactoryTestFixture
   BpfCallbacks cbs;
   Types::BpfSkeleton type;
   scoped_refptr<BpfSkeletonFactory> skel_factory;
-  MockBpfSkeleton* bpf_skeleton;
+  MockBpfSkeleton* active_skeleton;
 };
 
 TEST_P(BpfSkeletonFactoryTestFixture, TestSuccessfulBPFAttach) {
   {
     InSequence seq;
-    EXPECT_CALL(*bpf_skeleton, RegisterCallbacks(BPF_CBS_EQ(cbs))).Times(1);
-    EXPECT_CALL(*bpf_skeleton, LoadAndAttach())
+    EXPECT_CALL(*active_skeleton, RegisterCallbacks(BPF_CBS_EQ(cbs))).Times(1);
+    EXPECT_CALL(*active_skeleton, LoadAndAttach())
         .WillOnce(Return(absl::OkStatus()));
   }
   EXPECT_TRUE(skel_factory->Create(type, cbs));
@@ -49,8 +60,8 @@ TEST_P(BpfSkeletonFactoryTestFixture, TestSuccessfulBPFAttach) {
 TEST_P(BpfSkeletonFactoryTestFixture, TestFailedBPFAttach) {
   {
     InSequence seq;
-    EXPECT_CALL(*bpf_skeleton, RegisterCallbacks(BPF_CBS_EQ(cbs))).Times(1);
-    EXPECT_CALL(*bpf_skeleton, LoadAndAttach())
+    EXPECT_CALL(*active_skeleton, RegisterCallbacks(BPF_CBS_EQ(cbs))).Times(1);
+    EXPECT_CALL(*active_skeleton, LoadAndAttach())
         .WillOnce(Return(absl::InternalError("Load and Attach Failed")));
   }
   EXPECT_EQ(skel_factory->Create(type, cbs), nullptr);
@@ -59,7 +70,8 @@ TEST_P(BpfSkeletonFactoryTestFixture, TestFailedBPFAttach) {
 INSTANTIATE_TEST_SUITE_P(
     BpfSkeletonFactoryTest,
     BpfSkeletonFactoryTestFixture,
-    ::testing::ValuesIn<Types::BpfSkeleton>({Types::BpfSkeleton::kProcess}),
+    ::testing::ValuesIn<Types::BpfSkeleton>({Types::BpfSkeleton::kProcess,
+                                             Types::BpfSkeleton::kNetwork}),
     [](const ::testing::TestParamInfo<BpfSkeletonFactoryTestFixture::ParamType>&
            info) { return absl::StrFormat("%s", info.param); });
 

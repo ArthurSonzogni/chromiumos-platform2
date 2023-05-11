@@ -61,6 +61,9 @@ enum class BpfAttachResult {
   kMaxValue = kErrorRingBuffer,
 };
 
+static constexpr EnumMetric<BpfAttachResult> kNetworkBpfAttach = {
+    .name = "Bpf.Network.AttachResult"};
+
 static constexpr EnumMetric<BpfAttachResult> kProcessBpfAttach = {
     .name = "Bpf.Process.AttachResult"};
 

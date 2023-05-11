@@ -146,7 +146,8 @@ void MessageSender::InitializeAndWatchDeviceTz() {
 absl::Status MessageSender::InitializeQueues() {
   // Array of possible destinations.
   const reporting::Destination kDestinations[] = {
-      reporting::CROS_SECURITY_PROCESS, reporting::CROS_SECURITY_AGENT};
+      reporting::CROS_SECURITY_NETWORK, reporting::CROS_SECURITY_PROCESS,
+      reporting::CROS_SECURITY_AGENT};
 
   for (auto destination : kDestinations) {
     auto report_queue_result =

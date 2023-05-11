@@ -12,6 +12,7 @@
 #include "attestation-client/attestation/dbus-proxies.h"
 #include "base/memory/scoped_refptr.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
+#include "secagentd/bpf_skeletons/skeleton_network_bpf.h"
 #include "secagentd/bpf_skeletons/skeleton_process_bpf.h"
 #include "secagentd/common.h"
 #include "secagentd/message_sender.h"
@@ -26,10 +27,6 @@ namespace pb = cros_xdr::reporting;
 
 std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
     Types::BpfSkeleton type, BpfCallbacks cbs) {
-  if (created_skeletons_.contains(type)) {
-    return nullptr;
-  }
-
   std::unique_ptr<BpfSkeletonInterface> rv{nullptr};
   switch (type) {
     case Types::BpfSkeleton::kProcess:
@@ -45,6 +42,19 @@ std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
             SkeletonMetrics{.attach_result = metrics::kProcessBpfAttach});
       }
       break;
+    case Types::BpfSkeleton::kNetwork:
+      if (di_.network) {
+        rv = std::move(di_.network);
+      } else {
+        SkeletonCallbacks<network_bpf> skel_cbs;
+        skel_cbs.destroy = base::BindRepeating(network_bpf__destroy);
+        skel_cbs.open = base::BindRepeating(network_bpf__open);
+        skel_cbs.open_opts = base::BindRepeating(network_bpf__open_opts);
+        rv = std::make_unique<BpfSkeleton<network_bpf>>(
+            "network", skel_cbs,
+            SkeletonMetrics{.attach_result = metrics::kNetworkBpfAttach});
+      }
+      break;
     default:
       LOG(ERROR) << "Failed to create skeleton: unhandled type " << type;
       return nullptr;
@@ -57,7 +67,6 @@ std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
                << status.message();
     return nullptr;
   }
-  created_skeletons_.insert(type);
   return rv;
 }
 
@@ -76,6 +85,11 @@ std::unique_ptr<PluginInterface> PluginFactory::Create(
   switch (type) {
     case Types::Plugin::kProcess:
       rv = std::make_unique<ProcessPlugin>(
+          bpf_skeleton_factory_, message_sender, process_cache,
+          policies_features_broker, device_user, batch_interval_s);
+      break;
+    case Types::Plugin::kNetwork:
+      rv = std::make_unique<NetworkPlugin>(
           bpf_skeleton_factory_, message_sender, process_cache,
           policies_features_broker, device_user, batch_interval_s);
       break;
