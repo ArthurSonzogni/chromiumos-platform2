@@ -85,6 +85,18 @@ This is always supported.
 
 ### Audio
 
+This is always supported. Chromebox may not have a speaker so the event may not
+be suitable, if OEMs want us to report it as non-supported, please
+[reach out to us][team-contact].
+
+Spec:
+[Chromebook](https://chromeos.google.com/partner/dlm/docs/latest-requirements/chromebook.html#spkr-gen-0007-v01),
+[Convertible](https://chromeos.google.com/partner/dlm/docs/latest-requirements/convertible.html#spkr-gen-0003-v01),
+[Detachable](https://chromeos.google.com/partner/dlm/docs/latest-requirements/detachable.html#spkr-gen-0001-v01),
+[Chromeslate](https://chromeos.google.com/partner/dlm/docs/latest-requirements/chromeslate.html#spkr-gen-0005-v01),
+[Chromebox](https://chromeos.google.com/partner/dlm/docs/latest-requirements/chromebox.html#spkr-gen-0004-v01),
+[Chromebase](https://chromeos.google.com/partner/dlm/docs/latest-requirements/chromebase.html#spkr-gen-0007-v01)
+
 ### AudioJack
 
 ### SdCard

@@ -46,6 +46,7 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
     case mojom::EventCategoryEnum::kThunderbolt:
     case mojom::EventCategoryEnum::kBluetooth:
     case mojom::EventCategoryEnum::kPower:
+    case mojom::EventCategoryEnum::kAudio:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     // Need to be determined by boxster/cros_config.
     case mojom::EventCategoryEnum::kLid: {
@@ -64,8 +65,6 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
       return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
           "Not supported form factor: " + form_factor, nullptr));
     }
-    case mojom::EventCategoryEnum::kAudio:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     case mojom::EventCategoryEnum::kAudioJack:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     case mojom::EventCategoryEnum::kSdCard:

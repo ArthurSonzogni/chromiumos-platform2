@@ -73,6 +73,7 @@ TEST_F(GroundTruthTest, AlwaysSupported) {
   ExpectEventSupported(mojom::EventCategoryEnum::kThunderbolt);
   ExpectEventSupported(mojom::EventCategoryEnum::kBluetooth);
   ExpectEventSupported(mojom::EventCategoryEnum::kPower);
+  ExpectEventSupported(mojom::EventCategoryEnum::kAudio);
 }
 
 TEST_F(GroundTruthTest, CurrentUnsupported) {
