@@ -26,7 +26,11 @@ shared_library("libarc-attestation") {
   sources = [ "lib/interface.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "lib"
-  deps = [ ":arc_attestation_blob_proto" ]
+
+  pkg_deps = [
+    "protobuf",
+    "system_api",
+  ]
 }
 
 install_config("install_libarc-attestation_headers") {
@@ -38,16 +42,6 @@ executable("arc-attestation-cmd") {
   sources = [ "cmd_client/arc_attestation_cmd.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "bin"
-}
-
-proto_library("arc_attestation_blob_proto") {
-  # Use -fPIC so this code can be linked into a shared library.
-  use_pic = true
-  standalone = true
-
-  proto_in_dir = "common"
-  proto_out_dir = "include/libarc-attestation/"
-  sources = [ "${proto_in_dir}/arc_attestation_blob.proto" ]
 }
 
 if (use.test) {

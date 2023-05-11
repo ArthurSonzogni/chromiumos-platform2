@@ -34,6 +34,7 @@ group("all") {
     ":system_api-imageloader-protos",
     ":system_api-kerberos-goprotos",
     ":system_api-kerberos-protos",
+    ":system_api-libarc_attestation-protos",
     ":system_api-login_manager-goprotos",
     ":system_api-login_manager-protos",
     ":system_api-lorgnette-goprotos",
@@ -95,6 +96,7 @@ shared_library("libsystem_api") {
     ":system_api-bootlockbox-protos",
     ":system_api-chaps-protos",
     ":system_api-cryptohome-protos",
+    ":system_api-libarc_attestation-protos",
     ":system_api-patchpanel-protos",
     ":system_api-tpm_manager-protos",
   ]
@@ -302,6 +304,17 @@ proto_library("system_api-attestation-protos") {
   standalone = true
 
   # system_api-attestation-protos" is used by a shared_library
+  # object, so we need to build it with "-fPIC" instead of "-fPIE".
+  use_pic = true
+}
+
+proto_library("system_api-libarc_attestation-protos") {
+  proto_in_dir = "dbus/libarc_attestation"
+  proto_out_dir = "include/libarc_attestation/proto_bindings"
+  sources = [ "${proto_in_dir}/arc_attestation_blob.proto" ]
+  standalone = true
+
+  # system_api-libarc_attestation-protos" is used by a shared_library
   # object, so we need to build it with "-fPIC" instead of "-fPIE".
   use_pic = true
 }

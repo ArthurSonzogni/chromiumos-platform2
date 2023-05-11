@@ -4,25 +4,30 @@
 
 syntax = "proto3";
 
+option optimize_for = LITE_RUNTIME;
+
 package arc_attestation;
 
-// BlobVersion is an enum that denotes the device type the blob is generated
-// on and the version of the blob.
-enum BlobVersion {
-  // The blob version is not set, server should reject this blob as invalid
-  // if this value is present.
-  UNSET = 0;
+// CrOSVersionAttestationVersion is an enum that denotes the device type the
+// blob is generated on and the version of the blob, for the ChromeOS Version
+// Attestation Blob.
+enum CrOSVersionAttestationVersion {
+  // CROS_BLOB_VERSION_UNSET indicates that the blob version is not set, server
+  // should reject this blob as invalid if this value is present.
+  CROS_BLOB_VERSION_UNSET = 0;
 
-  // TPM2_FORMAT_1 is the first version of ChromeOS-specific Blob used by
-  // devices with a TPM2.0 chip. This includes cr50 and ti50 devices.
-  TPM2_FORMAT_1 = 1;
+  // CROS_BLOB_VERSION_TPM2_FORMAT_1 is the first version of ChromeOS-specific
+  // Blob used by devices with a TPM2.0 chip. This includes cr50 and ti50
+  // devices.
+  CROS_BLOB_VERSION_TPM2_FORMAT_1 = 1;
 }
 
-// This message is used to hold all additional information needed to validate
-// a ChromeOS system for the purpose of Android Remote Key Provisioning (RKP).
-message CrOSSpecificBlob {
+// This message is used to hold all information needed to remotely verify the
+// ChromeOS version. It is designed to abstract away different underlying
+// secure element or TPM.
+message CrOSVersionAttestationBlob {
   // Denotes the version and device this is generated on.
-  BlobVersion version = 1;
+  CrOSVersionAttestationVersion version = 1;
 
   // A TPM certifying key is a key provisioned with the TPM's Attestation
   // Identity Key (a key outlined in TPM standard) through the ChromeOS PCA
@@ -74,4 +79,11 @@ message CrOSSpecificBlob {
   // The quotation is generated with TPM2_NV_Certify.
   // The NVRAM content is in TPM2B_ATTEST and can be verified directly.
   bytes kernel_antirollback_quote = 6;
+}
+
+// This message is used to hold all additional information needed to validate
+// a ChromeOS system for the purpose of Android Remote Key Provisioning (RKP).
+message CrOSSpecificBlob {
+  // Records the version attestation information.
+  CrOSVersionAttestationBlob version_attestation = 1;
 }
