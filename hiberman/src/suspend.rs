@@ -47,6 +47,18 @@ use crate::update_engine::is_update_engine_idle;
 use crate::volume::ActiveMount;
 use crate::volume::VolumeManager;
 
+/// Reason why an attempt to suspend was aborted
+/// Values need to match CrosHibernateAbortReason in Chromium's enums.xml
+enum SuspendAbortReason {
+    // These values are persisted to logs. Entries should not be renumbered and
+    // numeric values should never be reused.
+    Other = 0,
+    InsufficientFreeMemory = 1,
+    InsufficientDiskSpace = 2,
+    UpdateEngineActive = 3,
+    Count = 4,
+}
+
 /// The SuspendConductor weaves a delicate baton to guide us through the
 /// symphony of hibernation.
 pub struct SuspendConductor {
@@ -73,6 +85,20 @@ impl SuspendConductor {
 
         info!("Beginning hibernate");
 
+        if let Err(e) = self.hibernate_inner() {
+            let _hibermeta_mount = self.volume_manager.mount_hibermeta()?;
+
+            read_and_send_metrics();
+
+            return Err(e);
+        }
+
+        Ok(())
+    }
+
+    /// Hibernates the system, and returns either upon failure to hibernate or
+    /// after the system has resumed from a successful hibernation.
+    fn hibernate_inner(&mut self) -> Result<()> {
         let hibermeta_mount = self.volume_manager.setup_hibermeta_lv(true)?;
 
         if let Err(e) = log_hibernate_attempt() {
@@ -88,6 +114,7 @@ impl SuspendConductor {
                     free_thinpool_space / (1024 * 1024)
                 );
 
+                Self::log_suspend_abort(SuspendAbortReason::InsufficientDiskSpace);
                 return Err(HibernateError::InsufficientDiskSpaceError().into());
             }
         }
@@ -98,6 +125,7 @@ impl SuspendConductor {
         // further checks for updates it can apply. So no state except idle is
         // safe.
         if !is_update_engine_idle()? {
+            Self::log_suspend_abort(SuspendAbortReason::UpdateEngineActive);
             return Err(HibernateError::UpdateEngineBusyError()).context("Update engine is active");
         }
 
@@ -164,7 +192,19 @@ impl SuspendConductor {
         // to disk. The thinpool workqueue does this every second.
         thread::sleep(Duration::from_millis(1100));
 
-        self.snapshot_and_save(frozen_userspace)
+        if let Err(e) = self.snapshot_and_save(frozen_userspace) {
+            if let Some(HibernateError::SnapshotIoctlError(_, err)) = e.downcast_ref() {
+                if err.errno() == libc::ENOMEM {
+                    Self::log_suspend_abort(SuspendAbortReason::InsufficientFreeMemory);
+                } else {
+                    Self::log_suspend_abort(SuspendAbortReason::Other);
+                }
+            }
+
+            return Err(e);
+        }
+
+        Ok(())
     }
 
     /// Snapshot the system, write the result to disk, and power down. Returns
@@ -339,5 +379,15 @@ impl SuspendConductor {
             ))
             .context("Failed to reboot")
         }
+    }
+
+    fn log_suspend_abort(reason: SuspendAbortReason) {
+        let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+
+        metrics_logger.log_enum_metric(
+            "Platform.Hibernate.Abort",
+            reason as isize,
+            SuspendAbortReason::Count as isize - 1,
+        );
     }
 }
