@@ -115,9 +115,6 @@ class CameraHalAdapter {
 
   void SetCameraSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
 
-  void SetCameraSWPrivacySwitchStateOnCameraModuleThread(
-      mojom::CameraPrivacySwitchState state);
-
   mojom::SetEffectResult SetCameraEffect(mojom::EffectsConfigPtr config);
 
  protected:
@@ -155,6 +152,8 @@ class CameraHalAdapter {
   std::optional<mojom::CameraPrivacySwitchState>
   LoadCachedCameraSWPrivacySwitchState();
   void CacheCameraSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
+  void SetCameraSWPrivacySwitchStateOnCameraModuleThread(
+      mojom::CameraPrivacySwitchState state);
 
   // Gets the static metadata of a camera given the original static metadata
   // with updated metadata modifications from the camera service such as vendor

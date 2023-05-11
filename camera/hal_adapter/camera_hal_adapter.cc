@@ -189,10 +189,6 @@ int32_t CameraHalAdapter::OpenDevice(
     return -EINVAL;
   }
 
-  LOGF(INFO) << camera_client_type << ", camera_id = " << camera_id
-             << ", camera_module = " << camera_module->common.name
-             << ", internal_camera_id = " << internal_camera_id;
-
   if (device_adapters_.find(camera_id) != device_adapters_.end()) {
     LOGF(WARNING) << "Multiple calls to OpenDevice on device " << camera_id;
     if (device_adapters_[camera_id]->IsRequestOrResultStalling()) {
@@ -211,6 +207,19 @@ int32_t CameraHalAdapter::OpenDevice(
 
   int module_id = camera_id_map_[camera_id].first;
   cros_camera_hal_t* cros_camera_hal = camera_interfaces_[module_id].second;
+
+  // If HAL-level SW privacy switch is not available, force OpenDevice() to
+  // fail.
+  if (cros_camera_hal && !cros_camera_hal->set_privacy_switch_state &&
+      stream_manipulator_runtime_options_.sw_privacy_switch_state() ==
+          mojom::CameraPrivacySwitchState::ON) {
+    return -ENODEV;
+  }
+
+  LOGF(INFO) << camera_client_type << ", camera_id = " << camera_id
+             << ", camera_module = " << camera_module->common.name
+             << ", internal_camera_id = " << internal_camera_id;
+
   hw_module_t* common = &camera_module->common;
   camera3_device_t* camera_device;
   int ret;
@@ -286,8 +295,7 @@ int32_t CameraHalAdapter::OpenDevice(
               .camera_module_name = camera_module->common.name,
               .set_face_detection_result_callback =
                   std::move(set_face_detection_result_callback),
-              .sw_privacy_switch_stream_manipulator_enabled =
-                  cros_camera_hal->set_privacy_switch_state == nullptr},
+              .sw_privacy_switch_stream_manipulator_enabled = false},
           &stream_manipulator_runtime_options_, gpu_resources_,
           mojo_manager_token_),
       do_notify_invalid_capture_request);
@@ -330,18 +338,6 @@ void CameraHalAdapter::SetCameraSWPrivacySwitchState(
           &CameraHalAdapter::SetCameraSWPrivacySwitchStateOnCameraModuleThread,
           base::Unretained(this), state));
   CacheCameraSWPrivacySwitchState(state);
-}
-
-void CameraHalAdapter::SetCameraSWPrivacySwitchStateOnCameraModuleThread(
-    mojom::CameraPrivacySwitchState state) {
-  DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  for (const auto& camera_interface : camera_interfaces_) {
-    cros_camera_hal_t* hal = camera_interface.second;
-    if (hal->set_privacy_switch_state != nullptr) {
-      hal->set_privacy_switch_state(state ==
-                                    mojom::CameraPrivacySwitchState::ON);
-    }
-  }
 }
 
 mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
@@ -554,6 +550,24 @@ void CameraHalAdapter::CacheCameraSWPrivacySwitchState(
   if (!base::WriteFile(kSWPrivacySwitchFilePath, str)) {
     LOGF(ERROR) << "Failed to write the SW privacy switch state to "
                 << std::quoted(kSWPrivacySwitchFilePath.value());
+  }
+}
+
+void CameraHalAdapter::SetCameraSWPrivacySwitchStateOnCameraModuleThread(
+    mojom::CameraPrivacySwitchState state) {
+  DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  for (int module_id = 0; module_id < camera_interfaces_.size(); ++module_id) {
+    cros_camera_hal_t* hal = camera_interfaces_[module_id].second;
+    if (hal->set_privacy_switch_state != nullptr) {
+      hal->set_privacy_switch_state(state ==
+                                    mojom::CameraPrivacySwitchState::ON);
+    } else if (state == mojom::CameraPrivacySwitchState::ON) {
+      for (const auto& [camera_id, device_adapter] : device_adapters_) {
+        if (camera_id_map_[camera_id].first == module_id) {
+          device_adapter->ForceClose();
+        }
+      }
+    }
   }
 }
 

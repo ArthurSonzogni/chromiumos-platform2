@@ -168,6 +168,10 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   bool IsRequestOrResultStalling();
 
+  // Closes the camera as a fallback solution for HALs that have not implemented
+  // HAL-level SW privacy switch yet.
+  void ForceClose();
+
  private:
   // Implementation of camera3_callback_ops_t.
   static void ProcessCaptureResult(const camera3_callback_ops_t* ops,
@@ -238,6 +242,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // process_capture_result() to return output buffers to the client.
   void NotifyInvalidCaptureRequest(
       const mojom::Camera3CaptureRequestPtr& request_ptr);
+
+  void ForceCloseOnDeviceOpsThread();
 
   // The thread that all the camera3 device ops operate on.
   base::Thread camera_device_ops_thread_;

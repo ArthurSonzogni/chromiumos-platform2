@@ -255,6 +255,10 @@ int32_t CameraDeviceAdapter::Initialize(
   TRACE_HAL_ADAPTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
+  if (device_closed_) {
+    return -ENODEV;
+  }
+
   {
     base::AutoLock l(fence_sync_thread_lock_);
     if (!fence_sync_thread_.Start()) {
@@ -291,6 +295,10 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     mojom::Camera3StreamConfigurationPtr* updated_config) {
   TRACE_HAL_ADAPTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
+
+  if (device_closed_) {
+    return -ENODEV;
+  }
 
   base::ElapsedTimer timer;
 
@@ -483,6 +491,10 @@ mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
   TRACE_HAL_ADAPTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
+  if (device_closed_) {
+    return mojom::CameraMetadata::New();
+  }
+
   size_t type_index = static_cast<size_t>(type);
   if (type_index >= CAMERA3_TEMPLATE_COUNT) {
     LOGF(ERROR) << "Invalid template index given";
@@ -502,8 +514,12 @@ mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
 
 int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     mojom::Camera3CaptureRequestPtr request) {
-  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("frame_number", request->frame_number);
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
+
+  if (device_closed_) {
+    return -ENODEV;
+  }
 
   camera3_capture_request_t req;
   req.frame_number = request->frame_number;
@@ -689,6 +705,10 @@ void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
   TRACE_HAL_ADAPTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
+  if (device_closed_) {
+    return;
+  }
+
   base::ScopedFD dump_fd(mojo::UnwrapPlatformHandle(std::move(fd)).TakeFD());
   camera_device_->ops->dump(camera_device_, dump_fd.get());
 }
@@ -696,6 +716,10 @@ void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
 int32_t CameraDeviceAdapter::Flush() {
   TRACE_HAL_ADAPTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
+
+  if (device_closed_) {
+    return -ENODEV;
+  }
 
   // By Android spec flush() must return in 1000ms.
   constexpr base::TimeDelta kFlushTimeout = base::Milliseconds(1000);
@@ -804,6 +828,13 @@ bool CameraDeviceAdapter::IsRequestOrResultStalling() {
              CameraMonitor::MonitorType::kRequestsMonitor) ||
          !capture_monitor_.HasBeenKicked(
              CameraMonitor::MonitorType::kResultsMonitor);
+}
+
+void CameraDeviceAdapter::ForceClose() {
+  camera_device_ops_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&CameraDeviceAdapter::ForceCloseOnDeviceOpsThread,
+                     base::Unretained(this)));
 }
 
 // static
@@ -1401,6 +1432,18 @@ void CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread() {
   DCHECK(camera_callback_ops_thread_.task_runner()->BelongsToCurrentThread());
   base::AutoLock l(callback_ops_delegate_lock_);
   callback_ops_delegate_.reset();
+}
+
+void CameraDeviceAdapter::ForceCloseOnDeviceOpsThread() {
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
+  Flush();
+  camera3_notify_msg_t msg = {
+      .type = CAMERA3_MSG_ERROR,
+      .message.error = {.frame_number = 0,
+                        .error_stream = nullptr,
+                        .error_code = CAMERA3_MSG_ERROR_DEVICE}};
+  NotifyClient(this, msg);
+  Close();
 }
 
 }  // namespace cros
