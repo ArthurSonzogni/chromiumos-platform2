@@ -862,14 +862,14 @@ bool DevicePolicyImpl::GetHighestDeviceMinimumVersion(
   if (!decoded_policy)
     return false;
 
-  const base::Value* requirements_entries =
-      decoded_policy->FindListKey("requirements");
-  if (!requirements_entries || requirements_entries->GetList().empty())
+  const base::Value::List* requirements_entries =
+      decoded_policy->GetDict().FindList("requirements");
+  if (!requirements_entries || requirements_entries->empty())
     return false;
 
   base::Version highest_version("0");
   bool valid_version_found = false;
-  for (const auto& version_value : requirements_entries->GetList()) {
+  for (const auto& version_value : *requirements_entries) {
     if (!version_value.is_dict()) {
       LOG(WARNING) << "Invalid JSON string given. Version is not a dictionary.";
       continue;
