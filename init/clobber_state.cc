@@ -1150,7 +1150,14 @@ bool ClobberState::PreserveLogicalVolumesWipe(
       return false;
   }
 
-  // TODO(b/222344877): Rename the volume group using `vgrename`.
+  auto old_vg_name = vg->GetName();
+  auto new_vg_name = GenerateRandomVolumeGroupName();
+  if (!vg->Rename(new_vg_name)) {
+    LOG(ERROR) << "Failed to rename volume group from=" << old_vg_name
+               << " to=" << new_vg_name;
+    return false;
+  }
+
   return true;
 }
 

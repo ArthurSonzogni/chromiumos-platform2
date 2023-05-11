@@ -1920,6 +1920,11 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
                                                   lvs[0].GetName()}))
       .WillOnce(Return(true));
 
+  EXPECT_CALL(*mock_lvm_command_runner_,
+              RunCommand(std::vector<std::string>{"vgrename", "foobar_vg",
+                                                  "STATEFULSTATEFUL"}))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
       {
           .lv_name = kUnencrypted,
@@ -1956,6 +1961,11 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
               RunCommand(std::vector<std::string>{"lvremove", "--force",
                                                   lvs[0].GetName()}))
       .Times(0);
+
+  EXPECT_CALL(*mock_lvm_command_runner_,
+              RunCommand(std::vector<std::string>{"vgrename", "foobar_vg",
+                                                  "STATEFULSTATEFUL"}))
+      .WillOnce(Return(true));
 
   EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
       {
@@ -2059,6 +2069,11 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
                                                     lv.GetName()}))
         .WillOnce(Return(true));
   }
+
+  EXPECT_CALL(*mock_lvm_command_runner_,
+              RunCommand(std::vector<std::string>{"vgrename", "foobar_vg",
+                                                  "STATEFULSTATEFUL"}))
+      .WillOnce(Return(true));
 
   EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
       {
