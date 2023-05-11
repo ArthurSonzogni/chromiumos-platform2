@@ -88,7 +88,8 @@ install_config("unittest_deps") {
       "libcros_ml_core_internal.so",
       "moon_big.jpg",
     ]
-  } else if (use.camera_feature_effects) {
+  } else if (use.camera_feature_effects && use.internal) {
+    # TODO(b/281928456): Investigate a cleaner way to check this condition.
     sources += [ "${sysroot}/build/rootfs/dlc-scaled/ml-core-internal/" +
                  "package/root/libcros_ml_core_internal.so" ]
   }
