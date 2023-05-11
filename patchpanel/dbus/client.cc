@@ -1305,8 +1305,8 @@ bool ClientImpl::CreateTetheredNetwork(
   //  - Option 43 with ANDROID_METERED if the upstream network is metered.
   //  - Forward DHCP WPAD proxy configuration if advertised by the upstream
   //    network.
-  auto* ipv4_config = request.mutable_ipv4_config();
-  if (dhcp_options) {
+  if (dhcp_options.has_value()) {
+    auto* ipv4_config = request.mutable_ipv4_config();
     ipv4_config->set_use_dhcp(true);
     for (const auto& dns_server : dhcp_options->dns_server_addresses) {
       ipv4_config->add_dns_servers(dns_server.data(), dns_server.size());
