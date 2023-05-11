@@ -3875,6 +3875,8 @@ int real_main(int argc, char** argv) {
       noop_driver = true;
     } else if (strstr(arg, "--separate-outputs") == arg) {
       ctx.separate_outputs = true;
+    } else if (strstr(arg, "--stable-scaling") == arg) {
+      ctx.stable_scaling = true;
 #ifdef PERFETTO_TRACING
     } else if (strstr(arg, "--trace-filename") == arg) {
       ctx.trace_filename = sl_arg_value(arg);

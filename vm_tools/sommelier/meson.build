@@ -213,6 +213,7 @@ if get_option('with_tests')
     sources: [
       'sommelier-test.cc',
       'sommelier-test-main.cc',
+      'sommelier-transform-test.cc',
       'sommelier-output-test.cc',
       'sommelier-window-test.cc',
       'sommelier-xdg-shell-test.cc',

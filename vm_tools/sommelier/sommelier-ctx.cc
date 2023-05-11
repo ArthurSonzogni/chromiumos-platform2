@@ -187,6 +187,7 @@ void sl_context_init_default(struct sl_context* ctx) {
   ctx->trace_system = false;
   ctx->use_direct_scale = false;
   ctx->separate_outputs = false;
+  ctx->stable_scaling = false;
 
   wl_list_init(&ctx->accelerators);
   wl_list_init(&ctx->windowed_accelerators);

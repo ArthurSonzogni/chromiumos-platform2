@@ -3,9 +3,42 @@
 // found in the LICENSE file.
 
 #include <math.h>
+#include <type_traits>
 
 #include "sommelier-tracing.h"    // NOLINT(build/include_directory)
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
+
+namespace {
+
+template <
+    typename T,
+    typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
+void stable_scale_host_to_guest(T* value, double scale) {
+  *value = static_cast<T>(ceil(static_cast<double>(*value) * scale));
+}
+
+template <
+    typename T,
+    typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
+void stable_scale_size_host_to_guest(T* value, double scale) {
+  *value = static_cast<T>(floor(static_cast<double>(*value) * scale));
+}
+
+template <
+    typename T,
+    typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
+void stable_scale_guest_to_host(T* value, double scale) {
+  *value = static_cast<T>(floor(static_cast<double>(*value) / scale));
+}
+
+template <
+    typename T,
+    typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
+void stable_scale_size_guest_to_host(T* value, double scale) {
+  *value = static_cast<T>(ceil(static_cast<double>(*value) / scale));
+}
+
+}  // namespace
 
 static void sl_transform_get_scale_factors(
     struct sl_context* ctx,
@@ -40,11 +73,16 @@ static void sl_transform_direct_to_host_damage(
     int64_t* y,
     double scale_x,
     double scale_y) {
-  double xwhole = trunc(static_cast<double>(*x) / scale_x);
-  double ywhole = trunc(static_cast<double>(*y) / scale_y);
+  if (ctx->stable_scaling) {
+    stable_scale_guest_to_host(x, scale_x);
+    stable_scale_guest_to_host(y, scale_y);
+  } else {
+    double x_whole = trunc(static_cast<double>(*x) / scale_x);
+    double y_whole = trunc(static_cast<double>(*y) / scale_y);
 
-  *x = static_cast<int64_t>(xwhole);
-  *y = static_cast<int64_t>(ywhole);
+    *x = static_cast<int64_t>(x_whole);
+    *y = static_cast<int64_t>(y_whole);
+  }
 }
 
 static void sl_transform_direct_to_guest_fixed(struct sl_context* ctx,
@@ -52,7 +90,12 @@ static void sl_transform_direct_to_guest_fixed(struct sl_context* ctx,
                                                wl_fixed_t* coord,
                                                uint32_t axis) {
   double scale = sl_transform_direct_axis_scale(ctx, surface, axis);
-  double result = wl_fixed_to_double(*coord) * scale;
+  double result = wl_fixed_to_double(*coord);
+  if (ctx->stable_scaling) {
+    stable_scale_host_to_guest(&result, scale);
+  } else {
+    result *= scale;
+  }
 
   *coord = wl_fixed_from_double(result);
 }
@@ -61,15 +104,24 @@ static void sl_transform_direct_to_guest_fixed(struct sl_context* ctx,
                                                struct sl_host_surface* surface,
                                                wl_fixed_t* x,
                                                wl_fixed_t* y) {
-  double scalex, scaley;
+  double scale_x, scale_y;
+  double result_x = wl_fixed_to_double(*x);
+  double result_y = wl_fixed_to_double(*y);
 
-  sl_transform_get_scale_factors(ctx, surface, &scalex, &scaley);
+  sl_transform_get_scale_factors(ctx, surface, &scale_x, &scale_y);
 
-  double resultx = wl_fixed_to_double(*x) * scalex;
-  double resulty = wl_fixed_to_double(*y) * scaley;
+  if (ctx->stable_scaling) {
+    stable_scale_host_to_guest(&result_x, scale_x);
+    stable_scale_host_to_guest(&result_y, scale_y);
+    *x = wl_fixed_from_double(result_x);
+    *y = wl_fixed_from_double(result_y);
+  } else {
+    result_x *= scale_x;
+    result_y *= scale_y;
 
-  *x = wl_fixed_from_double(resultx);
-  *y = wl_fixed_from_double(resulty);
+    *x = wl_fixed_from_double(result_x);
+    *y = wl_fixed_from_double(result_y);
+  }
 }
 
 static void sl_transform_direct_to_host_fixed(struct sl_context* ctx,
@@ -77,7 +129,13 @@ static void sl_transform_direct_to_host_fixed(struct sl_context* ctx,
                                               wl_fixed_t* coord,
                                               uint32_t axis) {
   double scale = sl_transform_direct_axis_scale(ctx, surface, axis);
-  double result = wl_fixed_to_double(*coord) / scale;
+  double result = wl_fixed_to_double(*coord);
+
+  if (ctx->stable_scaling) {
+    stable_scale_guest_to_host(&result, scale);
+  } else {
+    result /= scale;
+  }
 
   *coord = wl_fixed_from_double(result);
 }
@@ -86,51 +144,69 @@ static void sl_transform_direct_to_host_fixed(struct sl_context* ctx,
                                               struct sl_host_surface* surface,
                                               wl_fixed_t* x,
                                               wl_fixed_t* y) {
-  double scalex, scaley;
+  double scale_x, scale_y;
 
-  sl_transform_get_scale_factors(ctx, surface, &scalex, &scaley);
+  sl_transform_get_scale_factors(ctx, surface, &scale_x, &scale_y);
 
-  double resultx = wl_fixed_to_double(*x) / scalex;
-  double resulty = wl_fixed_to_double(*y) / scaley;
+  double result_x = wl_fixed_to_double(*x);
+  double result_y = wl_fixed_to_double(*y);
 
-  *x = wl_fixed_from_double(resultx);
-  *y = wl_fixed_from_double(resulty);
+  if (ctx->stable_scaling) {
+    stable_scale_guest_to_host(&result_x, scale_x);
+    stable_scale_guest_to_host(&result_y, scale_y);
+  } else {
+    result_x /= scale_x;
+    result_y /= scale_y;
+  }
+
+  *x = wl_fixed_from_double(result_x);
+  *y = wl_fixed_from_double(result_y);
 }
 
 static void sl_transform_direct_to_guest(struct sl_context* ctx,
                                          struct sl_host_surface* surface,
                                          int32_t* x,
                                          int32_t* y) {
-  double scalex, scaley;
+  double scale_x, scale_y;
 
-  sl_transform_get_scale_factors(ctx, surface, &scalex, &scaley);
+  sl_transform_get_scale_factors(ctx, surface, &scale_x, &scale_y);
 
-  double inputx = scalex * static_cast<double>(*x);
-  double inputy = scaley * static_cast<double>(*y);
+  if (ctx->stable_scaling) {
+    stable_scale_host_to_guest(x, scale_x);
+    stable_scale_host_to_guest(y, scale_y);
+  } else {
+    double input_x = static_cast<double>(*x) * scale_x;
+    double input_y = static_cast<double>(*y) * scale_y;
 
-  double xwhole =
-      (surface && surface->scale_round_on_x) ? lround(inputx) : trunc(inputx);
+    double x_whole = (surface && surface->scale_round_on_x) ? lround(input_x)
+                                                            : trunc(input_x);
 
-  double ywhole =
-      (surface && surface->scale_round_on_y) ? lround(inputy) : trunc(inputy);
+    double y_whole = (surface && surface->scale_round_on_y) ? lround(input_y)
+                                                            : trunc(input_y);
 
-  *x = static_cast<int32_t>(xwhole);
-  *y = static_cast<int32_t>(ywhole);
+    *x = static_cast<int32_t>(x_whole);
+    *y = static_cast<int32_t>(y_whole);
+  }
 }
 
 static void sl_transform_direct_to_host(struct sl_context* ctx,
                                         struct sl_host_surface* surface,
                                         int32_t* x,
                                         int32_t* y) {
-  double scalex, scaley;
+  double scale_x, scale_y;
 
-  sl_transform_get_scale_factors(ctx, surface, &scalex, &scaley);
+  sl_transform_get_scale_factors(ctx, surface, &scale_x, &scale_y);
 
-  double xwhole = trunc(static_cast<double>(*x) / scalex);
-  double ywhole = trunc(static_cast<double>(*y) / scaley);
+  if (ctx->stable_scaling) {
+    stable_scale_guest_to_host(x, scale_x);
+    stable_scale_guest_to_host(y, scale_y);
+  } else {
+    double x_whole = trunc(static_cast<double>(*x) / scale_x);
+    double y_whole = trunc(static_cast<double>(*y) / scale_y);
 
-  *x = static_cast<int32_t>(xwhole);
-  *y = static_cast<int32_t>(ywhole);
+    *x = static_cast<int32_t>(x_whole);
+    *y = static_cast<int32_t>(y_whole);
+  }
 }
 
 bool sl_transform_viewport_scale(struct sl_context* ctx,
@@ -160,8 +236,13 @@ bool sl_transform_viewport_scale(struct sl_context* ctx,
       *height = 1;
 
   } else {
-    *width = ceil(*width / scale);
-    *height = ceil(*height / scale);
+    if (ctx->stable_scaling) {
+      stable_scale_size_guest_to_host(width, scale);
+      stable_scale_size_guest_to_host(height, scale);
+    } else {
+      *width = ceil(*width / scale);
+      *height = ceil(*height / scale);
+    }
   }
 
   return do_viewport;
@@ -205,8 +286,13 @@ void sl_transform_host_to_guest(struct sl_context* ctx,
   if (ctx->use_direct_scale) {
     sl_transform_direct_to_guest(ctx, surface, x, y);
   } else {
-    (*x) *= ctx->scale;
-    (*y) *= ctx->scale;
+    if (ctx->stable_scaling) {
+      stable_scale_host_to_guest(x, ctx->scale);
+      stable_scale_host_to_guest(y, ctx->scale);
+    } else {
+      (*x) *= ctx->scale;
+      (*y) *= ctx->scale;
+    }
   }
 }
 
@@ -220,8 +306,13 @@ void sl_transform_host_to_guest_fixed(struct sl_context* ctx,
     double dx = wl_fixed_to_double(*x);
     double dy = wl_fixed_to_double(*y);
 
-    dx *= ctx->scale;
-    dy *= ctx->scale;
+    if (ctx->stable_scaling) {
+      stable_scale_host_to_guest(&dx, ctx->scale);
+      stable_scale_host_to_guest(&dy, ctx->scale);
+    } else {
+      dx *= ctx->scale;
+      dy *= ctx->scale;
+    }
 
     *x = wl_fixed_from_double(dx);
     *y = wl_fixed_from_double(dy);
@@ -236,8 +327,11 @@ void sl_transform_host_to_guest_fixed(struct sl_context* ctx,
     sl_transform_direct_to_guest_fixed(ctx, surface, coord, axis);
   } else {
     double dx = wl_fixed_to_double(*coord);
-
-    dx *= ctx->scale;
+    if (ctx->stable_scaling) {
+      stable_scale_host_to_guest(&dx, ctx->scale);
+    } else {
+      dx *= ctx->scale;
+    }
     *coord = wl_fixed_from_double(dx);
   }
 }
@@ -249,8 +343,13 @@ void sl_transform_guest_to_host(struct sl_context* ctx,
   if (ctx->use_direct_scale) {
     sl_transform_direct_to_host(ctx, surface, x, y);
   } else {
-    (*x) /= ctx->scale;
-    (*y) /= ctx->scale;
+    if (ctx->stable_scaling) {
+      stable_scale_guest_to_host(x, ctx->scale);
+      stable_scale_guest_to_host(y, ctx->scale);
+    } else {
+      (*x) /= ctx->scale;
+      (*y) /= ctx->scale;
+    }
   }
 }
 
@@ -264,8 +363,13 @@ void sl_transform_guest_to_host_fixed(struct sl_context* ctx,
     double dx = wl_fixed_to_double(*x);
     double dy = wl_fixed_to_double(*y);
 
-    dx /= ctx->scale;
-    dy /= ctx->scale;
+    if (ctx->stable_scaling) {
+      stable_scale_guest_to_host(&dx, ctx->scale);
+      stable_scale_guest_to_host(&dy, ctx->scale);
+    } else {
+      dx /= ctx->scale;
+      dy /= ctx->scale;
+    }
 
     *x = wl_fixed_from_double(dx);
     *y = wl_fixed_from_double(dy);
@@ -281,7 +385,11 @@ void sl_transform_guest_to_host_fixed(struct sl_context* ctx,
   } else {
     double dx = wl_fixed_to_double(*coord);
 
-    dx /= ctx->scale;
+    if (ctx->stable_scaling) {
+      stable_scale_guest_to_host(&dx, ctx->scale);
+    } else {
+      dx /= ctx->scale;
+    }
     *coord = wl_fixed_from_double(dx);
   }
 }
@@ -395,6 +503,11 @@ void sl_transform_reset_surface_scale(struct sl_context* ctx,
 void sl_transform_output_dimensions(struct sl_context* ctx,
                                     int32_t* width,
                                     int32_t* height) {
-  *width = (*width) * ctx->scale;
-  *height = (*height) * ctx->scale;
+  if (ctx->stable_scaling) {
+    stable_scale_size_host_to_guest(width, ctx->scale);
+    stable_scale_size_host_to_guest(height, ctx->scale);
+  } else {
+    *width = (*width) * ctx->scale;
+    *height = (*height) * ctx->scale;
+  }
 }
