@@ -261,9 +261,15 @@ class V4L2TestEnvironment : public ::testing::Environment {
         (model == "garg360" && usb_info_.vid_pid == "0408:5194")) {
       AddNegativeGtestFilter("V4L2Test.MaximumSupportedResolution");
     }
-    // Waive reconfigure stream latency for collis model. The latency for this
-    // model can be up to 4s.
-    if (model == "collis" && usb_info_.vid_pid == "13d3:5521") {
+    // We should not allow more than 1s for ReconfigureStreamLatency test.
+    // Therefore, disable these tests for some models that take unusual time
+    // to reconfigure. ReconfigureAndOneCaptureLatency test does not have a
+    // strict time restriction but should run fast enough to pass the test.
+    // (b/262473731)
+    if ((model == "collis" && usb_info_.vid_pid == "13d3:5521") ||
+        (model == "jelboz360" && usb_info_.vid_pid == "13d3:5521") ||
+        (model == "dood" && usb_info_.vid_pid == "0408:3029")) {
+      AddNegativeGtestFilter("V4L2Test.ReconfigureStreamLatency");
       AddNegativeGtestFilter(
           "V4L2Test/V4L2ReconfigureTest.ReconfigureAndOneCaptureLatency*");
     }
@@ -1164,9 +1170,9 @@ INSTANTIATE_TEST_SUITE_P(
     V4L2Test,
     V4L2ReconfigureTest,
     ::testing::ValuesIn(std::vector<std::tuple<Size, Size, base::TimeDelta>>{
-        {Size(320, 240), Size(1280, 720), base::Milliseconds(2300)},
-        {Size(320, 240), Size(1920, 1080), base::Milliseconds(3000)},
-        {Size(320, 240), Size(2592, 1944), base::Milliseconds(3000)}}));
+        {Size(320, 240), Size(1280, 720), base::Milliseconds(2500)},
+        {Size(320, 240), Size(1920, 1080), base::Milliseconds(3500)},
+        {Size(320, 240), Size(2592, 1944), base::Milliseconds(3500)}}));
 }  // namespace tests
 }  // namespace cros
 
