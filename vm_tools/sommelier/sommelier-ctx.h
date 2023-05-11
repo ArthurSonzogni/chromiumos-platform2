@@ -192,13 +192,18 @@ struct sl_context {
   xcb_colormap_t colormaps[256];
   Timing* timing;
   const char* trace_filename;
-  bool enable_xshape;
-  bool enable_x11_move_windows;
+
+  // Command-line configurable options.
   bool trace_system;
   bool use_explicit_fence;
   bool use_virtgpu_channel;
   bool use_direct_scale;
-  bool separate_outputs;
+
+  // Experimental feature flags to be cleaned up.
+  bool enable_x11_move_windows;  // TODO(b/247452928): Clean this up.
+  bool enable_xshape;            // TODO(b/281929016): Clean this up.
+  bool separate_outputs;         // TODO(b/281929026): Clean this up.
+
   // Never freed after allocation due the fact sommelier doesn't have a
   // shutdown function yet.
   WaylandChannel* channel;
