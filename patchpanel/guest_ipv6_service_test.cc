@@ -29,8 +29,10 @@ class GuestIPv6ServiceUnderTest : public GuestIPv6Service {
                void(NDProxyControlMessage::NDProxyRequestType type,
                     int32_t if_id_primary,
                     int32_t if_id_secondary));
-  MOCK_METHOD2(StartRAServer,
-               bool(const std::string& ifname, const std::string& prefix));
+  MOCK_METHOD3(StartRAServer,
+               bool(const std::string& ifname,
+                    const std::string& prefix,
+                    const std::optional<int>& mtu));
   MOCK_METHOD1(StopRAServer, bool(const std::string& ifname));
 
   void FakeNDProxyNeighborDetectionSignal(int if_id, const in6_addr& ip6addr) {
@@ -246,6 +248,7 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
 }
 
 TEST_F(GuestIPv6ServiceTest, RAServer) {
+  const std::optional<int> mtu = 1450;
   GuestIPv6ServiceUnderTest target(datapath_.get(), shill_client_.get(),
                                    system_.get());
   ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
@@ -267,13 +270,13 @@ TEST_F(GuestIPv6ServiceTest, RAServer) {
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::START_NEIGHBOR_MONITOR,
                                  101, _));
-  target.StartForwarding("up1", "down1");
+  target.StartForwarding("up1", "down1", mtu);
 
-  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::"))
+  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::", mtu))
       .WillOnce(Return(true));
   target.OnUplinkIPv6Changed("up1", "2001:db8:0:200::1234");
 
-  EXPECT_CALL(target, StartRAServer("down2", "2001:db8:0:200::"))
+  EXPECT_CALL(target, StartRAServer("down2", "2001:db8:0:200::", mtu))
       .WillOnce(Return(true));
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::START_NS_NA, _, _))
@@ -281,7 +284,8 @@ TEST_F(GuestIPv6ServiceTest, RAServer) {
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::START_NEIGHBOR_MONITOR,
                                  102, _));
-  target.StartForwarding("up1", "down2");
+  // The previously set MTU should be used when passing std::nullopt.
+  target.StartForwarding("up1", "down2", std::nullopt);
 
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, _, _))
@@ -298,6 +302,7 @@ TEST_F(GuestIPv6ServiceTest, RAServer) {
 }
 
 TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
+  const std::optional<int> mtu = 1450;
   GuestIPv6ServiceUnderTest target(datapath_.get(), shill_client_.get(),
                                    system_.get());
   ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
@@ -306,14 +311,14 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
   target.SetForwardMethod("up1",
                           GuestIPv6Service::ForwardMethod::kMethodRAServer);
 
-  target.StartForwarding("up1", "down1");
+  target.StartForwarding("up1", "down1", mtu);
 
-  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::"))
+  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::", mtu))
       .WillOnce(Return(true));
   target.OnUplinkIPv6Changed("up1", "2001:db8:0:200::1234");
 
   EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
-  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:100::"))
+  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:100::", mtu))
       .WillOnce(Return(true));
   target.OnUplinkIPv6Changed("up1", "2001:db8:0:100::abcd");
 
@@ -322,6 +327,7 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
 }
 
 TEST_F(GuestIPv6ServiceTest, SetMethodOnTheFly) {
+  const std::optional<int> mtu = 1450;
   GuestIPv6ServiceUnderTest target(datapath_.get(), shill_client_.get(),
                                    system_.get());
   ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
@@ -334,11 +340,11 @@ TEST_F(GuestIPv6ServiceTest, SetMethodOnTheFly) {
       SendNDProxyControl(
           NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 1,
           101));
-  target.StartForwarding("up1", "down1");
+  target.StartForwarding("up1", "down1", mtu);
 
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, 1, 101));
-  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::"))
+  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::", mtu))
       .WillOnce(Return(true));
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::START_NEIGHBOR_MONITOR,

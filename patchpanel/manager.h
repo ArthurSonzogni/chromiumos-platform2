@@ -174,7 +174,8 @@ class Manager {
   void StartForwarding(const std::string& ifname_physical,
                        const std::string& ifname_virtual,
                        const ForwardingSet& fs = {.ipv6 = true,
-                                                  .multicast = true});
+                                                  .multicast = true},
+                       const std::optional<int>& mtu = std::nullopt);
   void StopForwarding(const std::string& ifname_physical,
                       const std::string& ifname_virtual,
                       const ForwardingSet& fs = {.ipv6 = true,

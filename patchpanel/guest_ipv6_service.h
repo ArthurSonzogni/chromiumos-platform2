@@ -44,8 +44,16 @@ class GuestIPv6Service {
 
   void Start();
 
+  // Starts forwarding from the upstream interface |ifname_uplink| to the
+  // downstream interface |ifname_downlink|. |mtu| is the MTU of the upstream.
+  // If |mtu| has value, then store it into |forward_record_|. Otherwise, use
+  // the value which is previously stored at |forward_record_|.
+  //
+  // Note: the MTU value is only used when the forwarding method is RA server.
+  // If there is no stored MTU value, RA server does not announce MTU value.
   void StartForwarding(const std::string& ifname_uplink,
                        const std::string& ifname_downlink,
+                       const std::optional<int>& mtu = std::nullopt,
                        bool downlink_is_tethering = false);
 
   void StopForwarding(const std::string& ifname_uplink,
@@ -87,7 +95,8 @@ class GuestIPv6Service {
       int32_t if_id_secondary);
 
   virtual bool StartRAServer(const std::string& ifname,
-                             const std::string& prefix);
+                             const std::string& prefix,
+                             const std::optional<int>& mtu);
   virtual bool StopRAServer(const std::string& ifname);
 
   // Callback from NDProxy telling us to add a new IPv6 route to guest or IPv6
@@ -98,6 +107,7 @@ class GuestIPv6Service {
   struct ForwardEntry {
     ForwardMethod method;
     std::set<std::string> downstream_ifnames;
+    std::optional<int> mtu;
   };
 
   // Helper functions to find corresponding uplink interface for a downlink and

@@ -856,10 +856,9 @@ patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
   // TODO(b/278966909) Prevents neighbor discovery between the downstream
   // network and other virtual guests and interfaces in the same upstream
   // group.
-  // TODO(b/279371725) Add MTU support in GuestIPv6Service.
   if (info.enable_ipv6) {
     StartForwarding(info.upstream_ifname, info.downstream_ifname,
-                    ForwardingSet{.ipv6 = true});
+                    ForwardingSet{.ipv6 = true}, info.mtu);
   }
 
   int fdkey = local_client_fd.release();
@@ -876,12 +875,13 @@ void Manager::SendGuestMessage(const GuestMessage& msg) {
 
 void Manager::StartForwarding(const std::string& ifname_physical,
                               const std::string& ifname_virtual,
-                              const ForwardingSet& fs) {
+                              const ForwardingSet& fs,
+                              const std::optional<int>& mtu) {
   if (ifname_physical.empty() || ifname_virtual.empty())
     return;
 
   if (fs.ipv6) {
-    ipv6_svc_->StartForwarding(ifname_physical, ifname_virtual);
+    ipv6_svc_->StartForwarding(ifname_physical, ifname_virtual, mtu);
   }
 
   if (fs.multicast && IsMulticastInterface(ifname_physical)) {

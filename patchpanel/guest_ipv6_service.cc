@@ -77,10 +77,15 @@ bool PrepareRunPath() {
   return true;
 }
 
-bool CreateConfigFile(const std::string& ifname, const std::string& prefix) {
+bool CreateConfigFile(const std::string& ifname,
+                      const std::string& prefix,
+                      const std::optional<int>& mtu) {
   std::vector<std::string> lines;
   lines.push_back(base::StringPrintf("interface %s {", ifname.c_str()));
   lines.push_back("  AdvSendAdvert on;");
+  if (mtu) {
+    lines.push_back(base::StringPrintf("  AdvLinkMTU %d;", *mtu));
+  }
   lines.push_back(base::StringPrintf("  prefix %s/64 {", prefix.c_str()));
   lines.push_back("    AdvOnLink off;");
   lines.push_back("    AdvAutonomous on;");
@@ -144,6 +149,7 @@ void GuestIPv6Service::Start() {
 
 void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
                                        const std::string& ifname_downlink,
+                                       const std::optional<int>& mtu,
                                        bool downlink_is_tethering) {
   LOG(INFO) << "Starting IPv6 forwarding between uplink: " << ifname_uplink
             << ", downlink: " << ifname_downlink;
@@ -163,14 +169,14 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
   // Lookup ForwardEntry for the specified uplink. If it does not exist, create
   // a new one based on its device type.
   ForwardMethod forward_method;
-
   if (forward_record_.find(ifname_uplink) != forward_record_.end()) {
     forward_method = forward_record_[ifname_uplink].method;
     forward_record_[ifname_uplink].downstream_ifnames.insert(ifname_downlink);
   } else if (forward_method_override_.find(ifname_uplink) !=
              forward_method_override_.end()) {
     forward_method = forward_method_override_[ifname_uplink];
-    forward_record_[ifname_uplink] = {forward_method, {ifname_downlink}};
+    forward_record_[ifname_uplink] = {
+        forward_method, {ifname_downlink}, std::nullopt};
   } else {
     ShillClient::Device upstream_shill_device;
     shill_client_->GetDeviceProperties(ifname_uplink, &upstream_shill_device);
@@ -181,7 +187,13 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
                 << ifname_uplink << ", skipped";
       return;
     }
-    forward_record_[ifname_uplink] = {forward_method, {ifname_downlink}};
+    forward_record_[ifname_uplink] = {
+        forward_method, {ifname_downlink}, std::nullopt};
+  }
+
+  // Set the MTU value to |forward_record_|.
+  if (mtu && forward_record_[ifname_uplink].mtu != *mtu) {
+    forward_record_[ifname_uplink].mtu = *mtu;
   }
 
   if (!datapath_->MaskInterfaceFlags(ifname_uplink, IFF_ALLMULTI)) {
@@ -232,7 +244,8 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
     }
 
     if (forward_method == ForwardMethod::kMethodRAServer) {
-      if (!StartRAServer(ifname_downlink, IPAddressTo64BitPrefix(uplink_ip))) {
+      if (!StartRAServer(ifname_downlink, IPAddressTo64BitPrefix(uplink_ip),
+                         forward_record_[ifname_uplink].mtu)) {
         LOG(WARNING) << "Failed to start RA server on downlink "
                      << ifname_downlink << " with uplink " << ifname_uplink
                      << " ip " << uplink_ip;
@@ -400,7 +413,8 @@ void GuestIPv6Service::OnUplinkIPv6Changed(const std::string& ifname,
           StopRAServer(ifname_downlink);
         }
         if (!new_prefix.empty()) {
-          if (!StartRAServer(ifname_downlink, new_prefix)) {
+          if (!StartRAServer(ifname_downlink, new_prefix,
+                             forward_record_[ifname].mtu)) {
             LOG(WARNING) << "Failed to start RA server on downlink "
                          << ifname_downlink << " with uplink " << ifname
                          << " ip " << uplink_ip;
@@ -430,12 +444,15 @@ void GuestIPv6Service::SetForwardMethod(const std::string& ifname_uplink,
                                         ForwardMethod method) {
   forward_method_override_[ifname_uplink] = method;
 
-  if (forward_record_.find(ifname_uplink) != forward_record_.end()) {
+  const auto it = forward_record_.find(ifname_uplink);
+  if (it != forward_record_.end()) {
     // Need a copy here since StopUplink() will modify the record
-    auto downlinks = forward_record_[ifname_uplink].downstream_ifnames;
+    auto downlinks = it->second.downstream_ifnames;
+    auto mtu = it->second.mtu;
+
     StopUplink(ifname_uplink);
     for (const auto& downlink : downlinks) {
-      StartForwarding(ifname_uplink, downlink);
+      StartForwarding(ifname_uplink, downlink, mtu);
     }
   }
 }
@@ -526,8 +543,9 @@ const std::set<std::string>& GuestIPv6Service::UplinkToDownlinks(
 }
 
 bool GuestIPv6Service::StartRAServer(const std::string& ifname,
-                                     const std::string& prefix) {
-  return PrepareRunPath() && CreateConfigFile(ifname, prefix) &&
+                                     const std::string& prefix,
+                                     const std::optional<int>& mtu) {
+  return PrepareRunPath() && CreateConfigFile(ifname, prefix, mtu) &&
          StartRadvd(ifname);
 }
 
