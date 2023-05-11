@@ -33,7 +33,7 @@ using testing::SaveArg;
 using testing::SetArgPointee;
 using testing::StrictMock;
 
-namespace rmad {
+namespace {
 
 constexpr char kSerialNumber[] = "TestSerialNumber";
 constexpr char kRegion[] = "TestRegion";
@@ -60,31 +60,39 @@ constexpr uint32_t kNewSkuSelection = 1;
 constexpr uint32_t kNewCustomLabelSelection = 2;
 constexpr char kNewDramPartNum[] = "NewTestDramPartNum";
 
+struct StateHandlerArgs {
+  const std::vector<bool> wp_status_list = {false};
+  bool has_serial_number = true;
+  bool has_region = true;
+  bool has_sku = true;
+  std::string custom_label = std::string(kCustomLabelTag);
+  bool has_dram_part_num = true;
+  bool has_region_list = true;
+  bool has_sku_list = true;
+  bool has_custom_label_list = true;
+  bool set_serial_number_success = true;
+  bool set_region_success = true;
+  bool set_sku_success = true;
+  bool set_custom_label_success = true;
+  bool set_dram_part_num_success = true;
+  bool sku_overflow = false;
+  bool flush_out_vpd_success = true;
+};
+
+}  // namespace
+
+namespace rmad {
+
 class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<UpdateDeviceInfoStateHandler> CreateStateHandler(
-      const std::vector<bool>& wp_status_list,
-      bool serial_number = true,
-      bool region = true,
-      bool sku = true,
-      std::string custom_label = std::string(kCustomLabelTag),
-      bool dram_part_num = true,
-      bool region_list = true,
-      bool sku_list = true,
-      bool custom_label_list = true,
-      bool set_serial_number = true,
-      bool set_region = true,
-      bool set_sku = true,
-      bool set_custom_label = true,
-      bool set_dram_part_num = true,
-      bool sku_overflow = false,
-      bool flush_out_vpd = true) {
+      const StateHandlerArgs& args = {}) {
     // Mock |WriteProtectUtils|.
     auto write_protect_utils =
         std::make_unique<StrictMock<MockWriteProtectUtils>>();
     {
       InSequence seq;
-      for (bool enabled : wp_status_list) {
+      for (bool enabled : args.wp_status_list) {
         EXPECT_CALL(*write_protect_utils, GetHardwareWriteProtectionStatus(_))
             .WillOnce(DoAll(SetArgPointee<0, bool>(enabled), Return(true)));
       }
@@ -93,44 +101,45 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     // Mock |VpdUtils|.
     auto vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
     ON_CALL(*vpd_utils, FlushOutRoVpdCache())
-        .WillByDefault(Return(flush_out_vpd));
+        .WillByDefault(Return(args.flush_out_vpd_success));
 
-    if (serial_number) {
+    if (args.has_serial_number) {
       ON_CALL(*vpd_utils, GetSerialNumber(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kSerialNumber), Return(true)));
     } else {
       ON_CALL(*vpd_utils, GetSerialNumber(_)).WillByDefault(Return(false));
     }
 
-    if (region) {
+    if (args.has_region) {
       ON_CALL(*vpd_utils, GetRegion(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kRegion), Return(true)));
     } else {
       ON_CALL(*vpd_utils, GetRegion(_)).WillByDefault(Return(false));
     }
 
-    if (!custom_label.empty()) {
+    if (!args.custom_label.empty()) {
       ON_CALL(*vpd_utils, GetCustomLabelTag(_, _))
-          .WillByDefault(DoAll(SetArgPointee<0>(custom_label), Return(true)));
+          .WillByDefault(
+              DoAll(SetArgPointee<0>(args.custom_label), Return(true)));
     } else {
       ON_CALL(*vpd_utils, GetCustomLabelTag(_, _)).WillByDefault(Return(false));
     }
 
-    if (set_serial_number) {
+    if (args.set_serial_number_success) {
       ON_CALL(*vpd_utils, SetSerialNumber(_))
           .WillByDefault(DoAll(SaveArg<0>(&serial_number_set_), Return(true)));
     } else {
       ON_CALL(*vpd_utils, SetSerialNumber(_)).WillByDefault(Return(false));
     }
 
-    if (set_region) {
+    if (args.set_region_success) {
       ON_CALL(*vpd_utils, SetRegion(_))
           .WillByDefault(DoAll(SaveArg<0>(&region_set_), Return(true)));
     } else {
       ON_CALL(*vpd_utils, SetRegion(_)).WillByDefault(Return(false));
     }
 
-    if (set_custom_label) {
+    if (args.set_custom_label_success) {
       ON_CALL(*vpd_utils, SetCustomLabelTag(_, _))
           .WillByDefault(DoAll(SaveArg<0>(&custom_label_set_), Return(true)));
     } else {
@@ -139,31 +148,31 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
 
     // Mock |CbiUtils|.
     auto cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
-    if (sku && !sku_overflow) {
+    if (args.has_sku && !args.sku_overflow) {
       ON_CALL(*cbi_utils, GetSkuId(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kSkuId), Return(true)));
-    } else if (sku_overflow) {
+    } else if (args.sku_overflow) {
       ON_CALL(*cbi_utils, GetSkuId(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kSkuIdOverflow), Return(true)));
     } else {
       ON_CALL(*cbi_utils, GetSkuId(_)).WillByDefault(Return(false));
     }
 
-    if (set_sku) {
+    if (args.set_sku_success) {
       ON_CALL(*cbi_utils, SetSkuId(_))
           .WillByDefault(DoAll(SaveArg<0>(&sku_set_), Return(true)));
     } else {
       ON_CALL(*cbi_utils, SetSkuId(_)).WillByDefault(Return(false));
     }
 
-    if (dram_part_num) {
+    if (args.has_dram_part_num) {
       ON_CALL(*cbi_utils, GetDramPartNum(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kDramPartNum), Return(true)));
     } else {
       ON_CALL(*cbi_utils, GetDramPartNum(_)).WillByDefault(Return(false));
     }
 
-    if (set_dram_part_num) {
+    if (args.set_dram_part_num_success) {
       ON_CALL(*cbi_utils, SetDramPartNum(_))
           .WillByDefault(DoAll(SaveArg<0>(&dram_part_num_set_), Return(true)));
     } else {
@@ -172,26 +181,26 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
 
     // Mock |RegionsUtils|.
     auto regions_utils = std::make_unique<NiceMock<MockRegionsUtils>>();
-    if (region_list) {
+    if (args.has_region_list) {
       ON_CALL(*regions_utils, GetRegionList(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kRegionList), Return(true)));
     } else {
       ON_CALL(*regions_utils, GetRegionList(_)).WillByDefault(Return(false));
     }
 
-    // Mocl |CrosConfigUtils|.
+    // Mock |CrosConfigUtils|.
     auto cros_config_utils = std::make_unique<NiceMock<MockCrosConfigUtils>>();
     ON_CALL(*cros_config_utils, GetRmadConfig(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(RmadConfig{.has_cbi = true}), Return(true)));
-    if (sku_list) {
+    if (args.has_sku_list) {
       ON_CALL(*cros_config_utils, GetSkuIdList(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kSkuList), Return(true)));
     } else {
       ON_CALL(*cros_config_utils, GetSkuIdList(_)).WillByDefault(Return(false));
     }
 
-    if (custom_label_list) {
+    if (args.has_custom_label_list) {
       ON_CALL(*cros_config_utils, GetCustomLabelTagList(_))
           .WillByDefault(
               DoAll(SetArgPointee<0>(kCustomLabelTagList), Return(true)));
@@ -215,24 +224,21 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_Mlb_Success) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, true);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoMlb_Success) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_VarMissing_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   // No kMlbRepair set in |json_store_|.
 
   EXPECT_EQ(handler->InitializeState(),
@@ -240,32 +246,28 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_VarMissing_Failed) {
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_WpEnabled_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({true});
+  auto handler = CreateStateHandler({.wp_status_list = {true}});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_WP_ENABLED);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        InitializeState_NoSerialNumberSuccess) {
-  // wp_status, serial_number.
-  auto handler = CreateStateHandler({false}, false);
+  auto handler = CreateStateHandler({.has_serial_number = false});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoRegion_Success) {
-  // wp_status, serial_number, region.
-  auto handler = CreateStateHandler({false}, true, false);
+  auto handler = CreateStateHandler({.has_region = false});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoSku_Success) {
-  // wp_status, serial_number, region, sku.
-  auto handler = CreateStateHandler({false}, true, true, false);
+  auto handler = CreateStateHandler({.has_sku = false});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
@@ -273,8 +275,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoSku_Success) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        InitializeState_NoCustomLabel_Success) {
-  // wp_status, serial_number, region, sku, custom_label.
-  auto handler = CreateStateHandler({false}, true, true, true, "");
+  auto handler = CreateStateHandler({.custom_label = ""});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
@@ -282,19 +283,14 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        InitializeState_NoDramPartNum_Success) {
-  // wp_status, serial_number, region, sku, custom_label, dram_part_num.
-  auto handler =
-      CreateStateHandler({false}, true, true, true, kCustomLabelTag, false);
+  auto handler = CreateStateHandler({.has_dram_part_num = false});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoRegionList_Failed) {
-  // wp_status, serial_number, region, sku, custom_label, dram_part_num,
-  // region_list.
-  auto handler = CreateStateHandler({false}, true, true, true, kCustomLabelTag,
-                                    true, false);
+  auto handler = CreateStateHandler({.has_region_list = false});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(),
@@ -302,10 +298,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoRegionList_Failed) {
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoSkuList_Failed) {
-  // wp_status, serial_number, region, sku, custom_label, dram_part_num,
-  // region_list, sku_list.
-  auto handler = CreateStateHandler({false}, true, true, true, kCustomLabelTag,
-                                    true, true, false);
+  auto handler = CreateStateHandler({.has_sku_list = false});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(),
@@ -314,10 +307,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NoSkuList_Failed) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        InitializeState_NoCustomLabelList_Failed) {
-  // wp_status, serial_number, region, sku, custom_label, dram_part_num,
-  // region_list, sku_list, custom_label_list.
-  auto handler = CreateStateHandler({false}, true, true, true, kCustomLabelTag,
-                                    true, true, true, false);
+  auto handler = CreateStateHandler({.has_custom_label_list = false});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(),
@@ -326,10 +316,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        InitializeState_CustomLabelListNotMatched_Success) {
-  // wp_status, serial_number, region, sku, custom_label, dram_part_num,
-  // region_list, sku_list, custom_label_list.
-  auto handler = CreateStateHandler({false}, true, true, true, "WLNotMatched",
-                                    true, true, true, true);
+  auto handler = CreateStateHandler({.custom_label = "WLNotMatched"});
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
@@ -339,8 +326,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_Success) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -367,8 +353,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_Success) {
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_MissingState) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -380,11 +365,8 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_MissingState) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_CannotSetSerialNumber_Failed) {
-  // wp_status, serial_number, region, sku, custom_label, dram_part_num,
-  // region_list, sku_list, custom_label_list, set_serial_number.
-  auto handler =
-      CreateStateHandler({false, false}, true, true, true, kCustomLabelTag,
-                         true, true, true, true, false);
+  auto handler = CreateStateHandler(
+      {.wp_status_list = {false, false}, .set_serial_number_success = false});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -404,11 +386,8 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_CannotSetRegion_Failed) {
-  // wp_status, serial_number, region, sku, custom_label, dram_part_num,
-  // region_list, sku_list, custom_label_list, set_serial_number, set_region
-  auto handler =
-      CreateStateHandler({false, false}, true, true, true, kCustomLabelTag,
-                         true, true, true, true, true, false);
+  auto handler = CreateStateHandler(
+      {.wp_status_list = {false, false}, .set_region_success = false});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -430,11 +409,8 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_CannotSetRegion_WPEnabled_Failed) {
-  // wp_status, serial_number, region, sku, custom_label, dram_part_num,
-  // region_list, sku_list, custom_label_list, set_serial_number, set_region.
-  auto handler =
-      CreateStateHandler({false, true}, true, true, true, kCustomLabelTag, true,
-                         true, true, true, true, false);
+  auto handler = CreateStateHandler(
+      {.wp_status_list = {false, true}, .set_region_success = false});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -455,12 +431,8 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_CannotSetSku_Failed) {
-  // wp_status, serial_number, region, sku, custom_label, dram_part_num,
-  // region_list, sku_list, custom_label_list, set_serial_number, set_region,
-  // set_sku
-  auto handler =
-      CreateStateHandler({false, false}, true, true, true, kCustomLabelTag,
-                         true, true, true, true, true, true, false);
+  auto handler = CreateStateHandler(
+      {.wp_status_list = {false, false}, .set_sku_success = false});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -483,12 +455,8 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_CannotSetSku_Failed) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_CannotSetCustomLabel_Failed) {
-  // wp_status, serial_number, region, sku, custom_label, dram_part_num,
-  // region_list, sku_list, custom_label_list, set_serial_number, set_region,
-  // set_sku, set_custom_label
-  auto handler =
-      CreateStateHandler({false, false}, true, true, true, kCustomLabelTag,
-                         true, true, true, true, true, true, true, false);
+  auto handler = CreateStateHandler(
+      {.wp_status_list = {false, false}, .set_custom_label_success = false});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -512,12 +480,8 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_CannotSetDramPartNum_Failed) {
-  // wp_status, serial_number, region, sku, custom_label, dram_part_num,
-  // region_list, sku_list, custom_label_list, set_serial_number, set_region,
-  // set_sku, set_custom_label, set_dram_part_num
-  auto handler =
-      CreateStateHandler({false, false}, true, true, true, kCustomLabelTag,
-                         true, true, true, true, true, true, true, true, false);
+  auto handler = CreateStateHandler(
+      {.wp_status_list = {false, false}, .set_dram_part_num_success = false});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -541,8 +505,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionEmpty_Faled) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -562,8 +525,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionEmpty_Faled) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_RegionWrongIndex_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -582,8 +544,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuEmpty_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -603,8 +564,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuEmpty_Failed) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_SkuWrongIndex_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -624,8 +584,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_CustomLabelEmpty_Success) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -650,8 +609,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_CustomLabelWrongIndex_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -670,8 +628,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlyMlb_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -693,8 +650,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlyMlb_Failed) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlySerialNumber_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -716,8 +672,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlyRegion_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -739,8 +694,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlySku_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -763,8 +717,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlySku_Failed) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlyCustomLabel_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -786,8 +739,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlyDram_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -809,8 +761,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlyDram_Failed) {
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlyRegionListSize_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -832,8 +783,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlyRegionListItem_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -855,8 +805,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlySkuListSize_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -878,8 +827,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlySkuListItem_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -901,8 +849,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlyCustomLabelListSize_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -924,8 +871,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
        GetNextStateCase_ReadOnlyCustomLabelListItem_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -946,12 +892,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuOverflow_Success) {
-  // wp_status, serial_number, region, sku, custom_label, dram_part_num,
-  // region_list, sku_list, custom_label_list, set_serial_number, set_region,
-  // set_sku, set_custom_label, set_dram_part_num, sku_overflow.
-  auto handler =
-      CreateStateHandler({false}, true, true, true, kCustomLabelTag, true, true,
-                         true, true, true, true, true, true, true, true);
+  auto handler = CreateStateHandler({.sku_overflow = true});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -979,12 +920,8 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuOverflow_Success) {
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_FlushOutVpd_Failed) {
-  // wp_status, serial_number, region, sku, custom_label, dram_part_num,
-  // region_list, sku_list, custom_label_list, set_serial_number, set_region,
-  // set_sku, set_custom_label, set_dram_part_num, sku_overflow, flush_out_vpd.
-  auto handler = CreateStateHandler({false, false}, true, true, true,
-                                    kCustomLabelTag, true, true, true, true,
-                                    true, true, true, true, true, false, false);
+  auto handler = CreateStateHandler(
+      {.wp_status_list = {false, false}, .flush_out_vpd_success = false});
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -1003,8 +940,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_FlushOutVpd_Failed) {
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, TryGetNextStateCaseAtBoot_Failed) {
-  // wp_status.
-  auto handler = CreateStateHandler({false});
+  auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
