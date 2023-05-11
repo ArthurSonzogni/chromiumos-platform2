@@ -270,6 +270,30 @@ PartnerTypeMetric Partner::GetPartnerTypeMetric() {
   return ret;
 }
 
+DataRoleMetric Partner::GetDataRoleMetric() {
+  DataRoleMetric ret = DataRoleMetric::kOther;
+  DataRole port_dr = port_->GetDataRole();
+
+  if (port_dr == DataRole::kHost)
+    ret = DataRoleMetric::kDevice;
+  else if (port_dr == DataRole::kDevice)
+    ret = DataRoleMetric::kHost;
+
+  return ret;
+}
+
+PowerRoleMetric Partner::GetPowerRoleMetric() {
+  PowerRoleMetric ret = PowerRoleMetric::kOther;
+  PowerRole port_pr = port_->GetPowerRole();
+
+  if (port_pr == PowerRole::kSource)
+    ret = PowerRoleMetric::kSink;
+  else if (port_pr == PowerRole::kSink)
+    ret = PowerRoleMetric::kSource;
+
+  return ret;
+}
+
 void Partner::ReportMetrics(Metrics* metrics) {
   if (!metrics || metrics_reported_)
     return;
@@ -281,6 +305,10 @@ void Partner::ReportMetrics(Metrics* metrics) {
   }
 
   metrics->ReportPartnerType(GetPartnerTypeMetric());
+  metrics->ReportBasicPdDeviceInfo(GetVendorId(), GetProductId(), GetXid(),
+                                   GetSupportsPD(), SupportsUsb(), SupportsDp(),
+                                   SupportsTbt(), SupportsUsb4(),
+                                   GetDataRoleMetric(), GetPowerRoleMetric());
 
   metrics_reported_ = true;
 }
@@ -329,6 +357,18 @@ bool Partner::SupportsUsb4() {
   auto partner_cap = (GetProductTypeVDO1() >> kDeviceCapabilityBitOffset) &
                      kDeviceCapabilityMask;
   return (partner_cap & kDeviceCapabilityUSB4);
+}
+
+int Partner::GetVendorId() {
+  return GetIdHeaderVDO() & kIdHeaderVDOVidMask;
+}
+
+int Partner::GetProductId() {
+  return (GetProductVDO() >> kProductVDOPidBitOffset) & kProductVDOPidMask;
+}
+
+int Partner::GetXid() {
+  return GetCertStateVDO();
 }
 
 }  // namespace typecd

@@ -112,6 +112,19 @@ class Partner : public Peripheral {
   // PartnerTypeMetric.
   PartnerTypeMetric GetPartnerTypeMetric();
 
+  // Convenience function used by ReportMetrics to get the right enum for
+  // DataRoleMetric.
+  DataRoleMetric GetDataRoleMetric();
+
+  // Convenience function used by ReportMetrics to get the right enum for
+  // PowerRoleMetric.
+  PowerRoleMetric GetPowerRoleMetric();
+
+  // Extract ID values from VDOs.
+  int GetVendorId();
+  int GetProductId();
+  int GetXid();
+
   // Parse and store the value of the "supports_usb_power_delivery" file from
   // sysfs. If there is an error parsing the file contents, the value is assumed
   // to be false.

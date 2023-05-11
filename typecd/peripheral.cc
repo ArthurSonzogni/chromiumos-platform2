@@ -24,7 +24,7 @@ uint32_t ObfuscatedIdHeaderVDO(uint32_t id_header_vdo) {
 
 // We don't want to display PID in the logs, so zero it out.
 uint32_t ObfuscatedProductVDO(uint32_t product_vdo) {
-  return product_vdo & ~typecd::kProductVDOPidMask;
+  return product_vdo & ~typecd::kProductVDOPidMaskWithOffset;
 }
 
 }  // namespace

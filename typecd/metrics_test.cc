@@ -59,6 +59,10 @@ TEST_F(MetricsTest, CheckPartnerTypeUSB4Hub) {
                                 kTBTVDOIndex_GatkexCreek));
   p.AddAltMode(mode_path);
 
+  EXPECT_TRUE(p.SupportsUsb());
+  EXPECT_TRUE(p.SupportsDp());
+  EXPECT_TRUE(p.SupportsTbt());
+  EXPECT_TRUE(p.SupportsUsb4());
   EXPECT_EQ(PartnerTypeMetric::kUSB4Hub, p.GetPartnerTypeMetric());
 }
 
@@ -102,6 +106,10 @@ TEST_F(MetricsTest, CheckPartnerTypeTBTDPAltHub) {
       CreateFakeAltMode(mode_path, kDellSVID_WD19TB, kDell_WD19TB_VDO2, 1));
   p.AddAltMode(mode_path);
 
+  EXPECT_TRUE(p.SupportsUsb());
+  EXPECT_TRUE(p.SupportsDp());
+  EXPECT_TRUE(p.SupportsTbt());
+  EXPECT_FALSE(p.SupportsUsb4());
   EXPECT_EQ(PartnerTypeMetric::kTBTDPAltHub, p.GetPartnerTypeMetric());
 }
 
@@ -132,6 +140,10 @@ TEST_F(MetricsTest, CheckPartnerTypeTBTDPAltPeripheral) {
                                 kDPVDOIndex_Sabrent));
   p.AddAltMode(mode_path);
 
+  EXPECT_TRUE(p.SupportsUsb());
+  EXPECT_TRUE(p.SupportsDp());
+  EXPECT_TRUE(p.SupportsTbt());
+  EXPECT_FALSE(p.SupportsUsb4());
   EXPECT_EQ(PartnerTypeMetric::kTBTDPAltPeripheral, p.GetPartnerTypeMetric());
 }
 
@@ -155,6 +167,10 @@ TEST_F(MetricsTest, CheckPartnerTypeTBTPeripheral) {
       CreateFakeAltMode(mode_path, kTBTAltModeVID, kTBTVDO, kTBTVDOIndex));
   p.AddAltMode(mode_path);
 
+  EXPECT_TRUE(p.SupportsUsb());
+  EXPECT_FALSE(p.SupportsDp());
+  EXPECT_TRUE(p.SupportsTbt());
+  EXPECT_FALSE(p.SupportsUsb4());
   EXPECT_EQ(PartnerTypeMetric::kTBTPeripheral, p.GetPartnerTypeMetric());
 }
 
@@ -179,6 +195,10 @@ TEST_F(MetricsTest, CheckPartnerTypeDPAltHub) {
                                 kDPVDOIndex_Startech_DK30C2DAGPD));
   p.AddAltMode(mode_path);
 
+  EXPECT_FALSE(p.SupportsUsb());
+  EXPECT_TRUE(p.SupportsDp());
+  EXPECT_FALSE(p.SupportsTbt());
+  EXPECT_FALSE(p.SupportsUsb4());
   EXPECT_EQ(PartnerTypeMetric::kDPAltHub, p.GetPartnerTypeMetric());
 }
 
@@ -193,6 +213,10 @@ TEST_F(MetricsTest, CheckPartnerTypePowerBrick) {
   p.SetProductTypeVDO2(0x0);
   p.SetProductTypeVDO3(0x0);
 
+  EXPECT_FALSE(p.SupportsUsb());
+  EXPECT_FALSE(p.SupportsDp());
+  EXPECT_FALSE(p.SupportsTbt());
+  EXPECT_FALSE(p.SupportsUsb4());
   EXPECT_EQ(PartnerTypeMetric::kPowerBrick, p.GetPartnerTypeMetric());
 }
 
@@ -215,6 +239,12 @@ TEST_F(MetricsTest, CheckNoPartnerType) {
   p.SetProductTypeVDO3(0x0);
   p.SetSupportsPD(true);
 
+  EXPECT_FALSE(p.SupportsUsb());
+  EXPECT_FALSE(p.SupportsDp());
+  EXPECT_FALSE(p.SupportsTbt());
+  EXPECT_FALSE(p.SupportsUsb4());
+  EXPECT_EQ(DataRoleMetric::kDevice, p.GetDataRoleMetric());
+  EXPECT_EQ(PowerRoleMetric::kSource, p.GetPowerRoleMetric());
   EXPECT_EQ(PartnerTypeMetric::kPDSourcingDevice, p.GetPartnerTypeMetric());
 }
 
