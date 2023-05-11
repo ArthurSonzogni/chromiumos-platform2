@@ -62,6 +62,7 @@ inline constexpr char kGetAuthFactorExtendedInfo[] =
     "GetAuthFactorExtendedInfo";
 inline constexpr char kGetAuthSessionStatus[] = "GetAuthSessionStatus";
 inline constexpr char kGetRecoveryRequest[] = "GetRecoveryRequest";
+inline constexpr char kModifyAuthFactorIntents[] = "ModifyAuthFactorIntents";
 
 // Methods of the |kArcQuotaInterface| interface:
 inline constexpr char kGetArcDiskFeatures[] = "GetArcDiskFeatures";

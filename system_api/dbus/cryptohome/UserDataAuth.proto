@@ -1305,6 +1305,20 @@ message RemoveAuthFactorReply {
   CryptohomeErrorInfo error_info = 2;
 }
 
+// Specifies the intents that are available, or which could be available, for a
+// given type of auth factor.
+message AuthIntentsForAuthFactorType {
+  AuthFactorType type = 1;
+  // The currently available intents for the type based on current policy.
+  repeated AuthIntent current = 2;
+  // The minimal intents for the type. These intents are always available for
+  // this type and cannot be disabled via policy.
+  repeated AuthIntent minimum = 3;
+  // The maximal intents for the type. Intents not in this list cannot be used
+  // with this type of factor, regardless of policy.
+  repeated AuthIntent maximum = 4;
+}
+
 // List all of the auth factors that are configured, as well as the set of auth
 // factor types which are supported.
 message ListAuthFactorsRequest {
@@ -1323,6 +1337,8 @@ message ListAuthFactorsReply {
   repeated AuthFactorWithStatus configured_auth_factors_with_status = 5;
   // All of the auth factor types supported for this user.
   repeated AuthFactorType supported_auth_factors = 4;
+  // All of the auth factor intents available for the currently supported types.
+  repeated AuthIntentsForAuthFactorType auth_intents_for_types = 6;
 }
 
 message RecoveryExtendedInfoRequest {
@@ -1427,6 +1443,33 @@ message TerminateAuthFactorRequest {
 message TerminateAuthFactorReply {
   CryptohomeErrorCode error = 1;
   CryptohomeErrorInfo error_info = 2;
+}
+
+// Send a request to modify the available intents for a user. This can be used
+// to persistently enable or disable the use of a specific type of auth factor
+// for a specific intent.
+message ModifyAuthFactorIntentsRequest {
+  // The id of an authenticated AuthSession. The policy changes will be applied
+  // to the user associated with the session.
+  bytes auth_session_id = 1;
+  // The type for which the policy should be changed.
+  AuthFactorType type = 2;
+  // The set of intents which should be enabled for this policy.
+  //
+  // Note that it is not considered an error to specify intents which the type
+  // does not support, or to exclude intents which are mandatory. Only the
+  // intents which are configurable will be adjusted. It follows from this that
+  // you can set the available intents to the minimum set by passing an empty
+  // list of intents, and to the maximum set by passing a full list.
+  repeated AuthIntent intents = 3;
+}
+
+message ModifyAuthFactorIntentsReply {
+  CryptohomeErrorCode error = 1;
+  CryptohomeErrorInfo error_info = 2;
+
+  // The new auth intents for the modified type.
+  AuthIntentsForAuthFactorType auth_intents = 3;
 }
 
 // Fingerprint scan results.
