@@ -184,22 +184,6 @@ pub fn set_gbb_flags(ctx: &mut impl Context, new_flags: u32) -> Result<(), Hwsec
         .map(|_| ())
 }
 
-pub fn get_hwid(ctx: &mut impl Context) -> Result<String, HwsecError> {
-    // Get HWID and replace whitespace with underscore.
-    Ok(ctx
-        .cmd_runner()
-        .output("crossystem", vec!["hwid"])
-        .map_err(|_| HwsecError::CommandRunnerError)?
-        .replace(' ', "_"))
-}
-
-pub fn get_challenge_string(ctx: &mut impl Context) -> Result<String, HwsecError> {
-    // containing whitespace and newline characters
-    Ok(get_gsctool_output(ctx, vec!["--trunks_send", "--rma_auth"])
-        .map_err(|_| HwsecError::GsctoolResponseBadFormatError)?
-        .replace("Challenge:", ""))
-}
-
 pub fn extract_factory_config_from_gsctool_response(
     raw_response: &str,
 ) -> Result<FactoryConfig, HwsecError> {

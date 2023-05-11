@@ -6,14 +6,13 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 
-use super::get_challenge_string;
 use super::get_gbb_flags;
-use super::get_hwid;
 use super::set_gbb_flags;
 use crate::command_runner::CommandRunner;
 use crate::context::Context;
 use crate::cr50::clear_terminal;
 use crate::cr50::gsctool_cmd_successful;
+use crate::cr50::run_gsctool_cmd;
 use crate::error::HwsecError;
 
 // RMA Reset Authorization parameters.
@@ -46,6 +45,95 @@ fn gbb_force_dev_mode(ctx: &mut impl Context) -> Result<u32, HwsecError> {
     Ok(new_flags)
 }
 
+fn get_crossystem_hwid(ctx: &mut impl Context) -> Result<String, HwsecError> {
+    // Get HWID and replace whitespace with underscore.
+    Ok(ctx
+        .cmd_runner()
+        .output("crossystem", vec!["hwid"])
+        .map_err(|_| {
+            eprintln!("Failed to get hwid.");
+            HwsecError::CommandRunnerError
+        })?
+        .replace(' ', "_"))
+}
+
+/// Retrieve the challenge to perform Cr50 reset from 'gsctool -tr', which has raw response of the
+/// following format:
+///
+/// Challenge:
+///  AEDNM 6GCYN C7Q55 5HYS7 3SECR KRQRL ERXG7 HFSNF
+///  CAZDM XWTDR HAWDE 36GWE UDMKP H7TSM RRTV5 CWS75
+fn get_challenge_string_from_gsctool(ctx: &mut impl Context) -> Result<String, HwsecError> {
+    let gsctool_output =
+        run_gsctool_cmd(ctx, vec!["--trunks_send", "--rma_auth"]).map_err(|e| {
+            eprintln!("Failed to run gsctool.");
+            e
+        })?;
+
+    if !gsctool_output.status.success() {
+        eprintln!("{}", std::str::from_utf8(&gsctool_output.stderr).unwrap());
+        return Err(HwsecError::GsctoolError(
+            gsctool_output.status.code().unwrap(),
+        ));
+    }
+
+    let challenge_string = std::str::from_utf8(&gsctool_output.stdout)
+        .map_err(|_| {
+            eprintln!("Internal error occurred.");
+            HwsecError::GsctoolResponseBadFormatError
+        })?
+        .replace("Challenge:", "");
+
+    // Test if we have a challenge.
+    if challenge_string.is_empty() {
+        return Err(HwsecError::GsctoolResponseBadFormatError);
+    }
+
+    // result may contain whitespace and newline characters
+    Ok(challenge_string)
+}
+
+/// This function returns the challenge url string, and prints output similarly as follows
+/// in the terminal:
+///
+/// Challenge:
+///
+///  AEDNM 6GCYN C7Q55 5HYS7 3SECR KRQRL ERXG7 HFSNF
+///  CAZDM XWTDR HAWDE 36GWE UDMKP H7TSM RRTV5 CWS75
+///
+/// URL: https://www.google.com/chromeos/partner/console/cr50reset?\
+/// challenge=AEDNM6GCYNC7Q555HYS73SECRKRQRLERXG7HFSNFCAZDMXWTDRHAWDE36GWEUDMKPH7TSMRRTV5CWS75\
+/// &hwid=VOLET_TEST_5042
+fn generate_challenge_url_and_display_challenge(
+    ctx: &mut impl Context,
+) -> Result<String, HwsecError> {
+    // Get HWID and replace whitespace with underscore.
+    let hwid = get_crossystem_hwid(ctx)?;
+    // Get challenge string and remove "Challenge:".
+    let challenge_string = get_challenge_string_from_gsctool(ctx).map_err(|_| {
+        eprintln!("Challenge wasn't generated. CR50 might need updating.");
+        HwsecError::InternalError
+    })?;
+
+    // Preserve enough space to prevent terminal scrolling.
+    clear_terminal();
+
+    // Display the challenge.
+    println!("Challenge:");
+    println!("{}", challenge_string);
+
+    // Remove whitespace and newline from challenge.
+    let challenge_string = challenge_string.replace(['\n', ' '], "");
+
+    // Calculate challenge URL and display it.
+    let challenge_url = format!(
+        "{}?challenge={}&hwid={}",
+        RMA_SERVER, challenge_string, hwid
+    );
+    println!("URL: {}", challenge_url);
+    Ok(challenge_url)
+}
+
 pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
     const WAIT_TO_ENTER_RMA_SECS: u64 = 2;
     const SECS_IN_A_DAY: u64 = 86400;
@@ -62,41 +150,7 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
         eprintln!("frecon not running. Can't display qrcode.");
         return Err(HwsecError::FileError);
     }
-
-    // Get HWID and replace whitespace with underscore.
-    let hwid = get_hwid(ctx).map_err(|e| {
-        eprintln!("Failed to get hwid.");
-        e
-    })?;
-
-    // Get challenge string and remove "Challenge:".
-    let challenge_string = get_challenge_string(ctx).map_err(|e| {
-        eprintln!("Failed to get challenge string.");
-        e
-    })?;
-
-    // Test if we have a challenge.
-    if challenge_string.is_empty() {
-        eprintln!(r"Challenge wasn't generated. CR50 might need updating.");
-        return Err(HwsecError::GsctoolResponseBadFormatError);
-    }
-
-    // Preserve enough space to prevent terminal scrolling.
-    clear_terminal();
-
-    // Display the challenge.
-    println!("Challenge:");
-    println!("{}", challenge_string);
-
-    // Remove whitespace and newline from challenge.
-    let challenge_string = challenge_string.replace(['\n', ' '], "");
-
-    // Calculate challenge URL and display it.
-    let chstr = format!(
-        "{}?challenge={}&hwid={}",
-        RMA_SERVER, challenge_string, hwid
-    );
-    println!("\nURL: {}", chstr);
+    let challenge_url = generate_challenge_url_and_display_challenge(ctx)?;
 
     // Create qrcode and display it.
     // TODO: replace qrencode command with qrcode library like this
@@ -112,16 +166,14 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
                 "5",
                 "-o",
                 &format!("{}/chg.png", chg_str_path),
-                &chstr,
+                &challenge_url,
             ],
         )
         .map_err(|_| {
             eprintln!("Failed to qrencode.");
             HwsecError::QrencodeError
         })?;
-
     ctx.write_contents_to_file("/run/frecon/vt0", b"\x1b]image:file=/chg.png\x1b\\")?;
-
     for _ in 0..MAX_RETRIES {
         // Read authorization code. Show input in uppercase letters.
         print!("\nEnter authorization code: ");
@@ -178,6 +230,9 @@ mod tests {
     use std::time::SystemTime;
     use std::time::UNIX_EPOCH;
 
+    use super::generate_challenge_url_and_display_challenge;
+    use super::get_challenge_string_from_gsctool;
+    use super::get_crossystem_hwid;
     use crate::command_runner::MockCommandInput;
     use crate::command_runner::MockCommandOutput;
     use crate::context::mock::MockContext;
@@ -232,5 +287,104 @@ mod tests {
         assert_eq!(new_flag, Err(HwsecError::VbootScriptResponseBadFormatError));
     }
 
-    // TODO (b/249022052): add unit tests for function cr50_reset
+    #[test]
+    fn test_get_crossystem_hwid() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_expectation(
+            MockCommandInput::new("crossystem", vec!["hwid"]),
+            MockCommandOutput::new(0, "VOLET TEST 5042", ""),
+        );
+        let result = get_crossystem_hwid(&mut mock_ctx);
+        assert_eq!(result, Ok(String::from("VOLET_TEST_5042")));
+    }
+
+    #[test]
+    fn test_get_challenge_string_from_gsctool_ok() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--trunks_send", "--rma_auth"],
+            0,
+            "Challenge:\nMOCK CHALLENGE\n",
+            "",
+        );
+        let result = get_challenge_string_from_gsctool(&mut mock_ctx);
+        assert_eq!(result, Ok(String::from("\nMOCK CHALLENGE\n")));
+    }
+
+    #[test]
+    fn test_get_challenge_string_from_gsctool_failed_attempt() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--trunks_send", "--rma_auth"],
+            3,
+            "",
+            "error 4",
+        );
+        let result = get_challenge_string_from_gsctool(&mut mock_ctx);
+        assert_eq!(result, Err(HwsecError::GsctoolError(3)));
+    }
+    #[test]
+    fn test_get_challenge_string_from_gsctool_empty_challenge() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--trunks_send", "--rma_auth"],
+            0,
+            "Challenge:",
+            "",
+        );
+        let result = get_challenge_string_from_gsctool(&mut mock_ctx);
+        assert_eq!(result, Err(HwsecError::GsctoolResponseBadFormatError));
+    }
+
+    // The follow test input/expected output is from a real result generated by running
+    // cr50-reset.sh on DUT
+    //
+    // Challenge:
+    //
+    //  AEDNM 6GCYN C7Q55 5HYS7 3SECR KRQRL ERXG7 HFSNF
+    //  CAZDM XWTDR HAWDE 36GWE UDMKP H7TSM RRTV5 CWS75
+    //
+    // URL: https://www.google.com/chromeos/partner/console/cr50reset?\
+    // challenge=AEDNM6GCYNC7Q555HYS73SECRKRQRLERXG7HFSNFCAZDMXWTDRHAWDE36GWEUDMKPH7TSMRRTV5CWS75\
+    // &hwid=VOLET_TEST_5042
+    //
+    // Enter authorization code:
+    #[test]
+    fn test_generate_challenge_url_and_display_challenge_ok() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_expectation(
+            MockCommandInput::new("crossystem", vec!["hwid"]),
+            MockCommandOutput::new(0, "VOLET TEST 5042", ""),
+        );
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--trunks_send", "--rma_auth"],
+            0,
+            include_str!(
+                "../command_runner/expected_message/successfully_gsctool_rma_auth_response.txt"
+            ),
+            "",
+        );
+        let result = generate_challenge_url_and_display_challenge(&mut mock_ctx);
+        let expected_url = "https://www.google.com/chromeos/partner/console/cr50reset?challenge=\
+        AEDNM6GCYNC7Q555HYS73SECRKRQRLERXG7HFSNFCAZDMXWTDRHAWDE36GWEUDMKPH7TSMRRTV5CWS75&\
+        hwid=VOLET_TEST_5042";
+        assert_eq!(result, Ok(String::from(expected_url)));
+    }
+
+    #[test]
+    fn test_generate_challenge_url_and_display_challenge_fail_challenge_not_generated() {
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_expectation(
+            MockCommandInput::new("crossystem", vec!["hwid"]),
+            MockCommandOutput::new(0, "MOCK HWID", ""),
+        );
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--trunks_send", "--rma_auth"],
+            3,
+            "",
+            "error 4",
+        );
+        let result = generate_challenge_url_and_display_challenge(&mut mock_ctx);
+        assert_eq!(result, Err(HwsecError::InternalError));
+    }
 }
