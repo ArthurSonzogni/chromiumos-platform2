@@ -8,6 +8,7 @@ use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Read;
+use std::mem;
 use std::time::Duration;
 use std::time::Instant;
 use std::time::UNIX_EPOCH;
@@ -28,6 +29,7 @@ use crate::device_mapper::DeviceMapper;
 use crate::files::remove_resume_in_progress_file;
 use crate::hiberlog;
 use crate::hiberlog::redirect_log;
+use crate::hiberlog::redirect_log_to_file;
 use crate::hiberlog::replay_logs;
 use crate::hiberlog::HiberlogOut;
 use crate::hiberutil::lock_process_memory;
@@ -44,6 +46,7 @@ use crate::resume_dbus::{get_user_key, wait_for_resume_dbus_event, ResumeRequest
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
+use crate::volume::ActiveMount;
 use crate::volume::PendingStatefulMerge;
 use crate::volume::VolumeManager;
 
@@ -94,7 +97,7 @@ impl ResumeConductor {
         redirect_log(HiberlogOut::Syslog);
 
         // Mount hibermeta for access to logs and metrics. Create it if it doesn't exist yet.
-        VolumeManager::new()?.setup_hibermeta_lv(true)?;
+        let _hibermeta_mount = VolumeManager::new()?.setup_hibermeta_lv(true)?;
 
         // Now replay earlier logs. Don't wipe the logs out if this is just a dry
         // run.
@@ -107,8 +110,6 @@ impl ResumeConductor {
         drop(pending_merge);
         // Read the metrics files to send out samples.
         read_and_send_metrics();
-
-        VolumeManager::new()?.unmount_hibermeta()?;
 
         result
     }
@@ -141,7 +142,7 @@ impl ResumeConductor {
             return Err(e);
         }
 
-        volume_manager.setup_hibermeta_lv(false)?;
+        let hibermeta_mount = volume_manager.setup_hibermeta_lv(false)?;
 
         // Set up the snapshot device for resuming
         self.setup_snapshot_device(false, completion_receiver)?;
@@ -156,7 +157,7 @@ impl ResumeConductor {
         volume_manager.lockdown_hiberimage()?;
 
         let _locked_memory = lock_process_memory()?;
-        self.resume_system(hiber_image_file)
+        self.resume_system(hiber_image_file, hibermeta_mount)
     }
 
     /// Helper function to evaluate the hibernate cookie and decide whether or
@@ -203,11 +204,15 @@ impl ResumeConductor {
     }
 
     /// Inner helper function to read the resume image and launch it.
-    fn resume_system(&mut self, hiber_image_file: File) -> Result<()> {
+    fn resume_system(
+        &mut self,
+        hiber_image_file: File,
+        mut hibermeta_mount: ActiveMount,
+    ) -> Result<()> {
         let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Resume);
         let log_file = hiberlog::LogFile::create(log_file_path)?;
         // Start logging to the resume logger.
-        redirect_log(HiberlogOut::File(Box::new(log_file)));
+        let redirect_guard = redirect_log_to_file(log_file);
 
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Write)?;
 
@@ -253,11 +258,9 @@ impl ResumeConductor {
         }
 
         // Keep logs in memory for now.
-        redirect_log(HiberlogOut::BufferInMemory);
+        mem::drop(redirect_guard);
 
-        // TODO: creating several instances of the volume manager is ugly.
-        // Should it be a ref-counted singleton?
-        VolumeManager::new()?.unmount_hibermeta()?;
+        hibermeta_mount.unmount()?;
 
         // This is safe because sync() does not modify memory.
         unsafe {

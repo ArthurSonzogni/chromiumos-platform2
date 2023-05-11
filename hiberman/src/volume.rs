@@ -187,10 +187,10 @@ impl VolumeManager {
     }
 
     /// Set up the hibermeta logical volume.
-    pub fn setup_hibermeta_lv(&mut self, create: bool) -> Result<()> {
+    pub fn setup_hibermeta_lv(&mut self, create: bool) -> Result<ActiveMount> {
         if get_device_mounted_at_dir(HIBERMETA_DIR).is_ok() {
-            debug!("{HIBERMETA_DIR} is already mounted");
-            return Ok(());
+            return Err(HibernateError::HibernateVolumeError())
+                .context(format!("{HIBERMETA_DIR} is already mounted"));
         }
 
         if lv_exists(&self.vg_name, HIBERMETA_VOLUME_NAME)? {
@@ -303,20 +303,17 @@ impl VolumeManager {
     }
 
     /// Mount the hibermeta LV if it isn't already mounted
-    pub fn mount_hibermeta(&mut self) -> Result<()> {
+    pub fn mount_hibermeta(&mut self) -> Result<ActiveMount> {
         if get_device_mounted_at_dir(HIBERMETA_DIR).is_ok() {
-            debug!("{HIBERMETA_DIR} is already mounted");
-            return Ok(());
+            return Err(HibernateError::HibernateVolumeError())
+                .context(format!("{HIBERMETA_DIR} is already mounted"));
         }
 
         let hibermeta_dir = Path::new(HIBERMETA_DIR);
         let path = lv_path(&self.vg_name, HIBERMETA_VOLUME_NAME);
-        mount_filesystem(path.as_path(), hibermeta_dir, "ext2", 0, "")
-    }
+        mount_filesystem(path.as_path(), hibermeta_dir, "ext2", 0, "")?;
 
-    /// Unmount the hibermeta LV.
-    pub fn unmount_hibermeta(&mut self) -> Result<()> {
-        unmount_filesystem(Path::new(HIBERMETA_DIR))
+        Ok(ActiveMount::new(hibermeta_dir))
     }
 
     /// Create the hibermeta volume.
@@ -848,6 +845,37 @@ fn zero_init_blockdev(path: &Path, num_bytes: u64) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Tracks and active mount and unmounts it when the instance is dropped.
+pub struct ActiveMount {
+    mountpoint: PathBuf,
+    is_mounted: bool,
+}
+
+impl ActiveMount {
+    /// Create a new ActiveMount
+    fn new<P: AsRef<OsStr>>(mountpoint: P) -> Self {
+        ActiveMount {
+            mountpoint: PathBuf::from(Path::new(&mountpoint)),
+            is_mounted: true,
+        }
+    }
+
+    /// Unmount the active mount
+    pub fn unmount(&mut self) -> Result<()> {
+        self.is_mounted = false;
+        unmount_filesystem(&self.mountpoint)
+    }
+}
+
+impl Drop for ActiveMount {
+    /// Unmounts the active mount if it is still mounted
+    fn drop(&mut self) {
+        if self.is_mounted {
+            self.unmount().unwrap();
+        }
+    }
 }
 
 /// Object that tracks the lifetime of a temporarily suspended dm-target, and

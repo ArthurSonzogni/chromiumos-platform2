@@ -303,6 +303,22 @@ impl LogFile {
     }
 }
 
+/// Helper struct that redirects the hibernate logs to a buffer in memory
+/// when the struct goes out of scope.
+///
+/// The struct is used during the suspend and resume process to ensure
+/// that an open log file is always closed before unmounting 'hibermeta'
+/// (which hosts the log file).
+pub struct LogRedirectGuard {}
+
+impl LogRedirectGuard {}
+
+impl Drop for LogRedirectGuard {
+    fn drop(&mut self) {
+        redirect_log(HiberlogOut::BufferInMemory);
+    }
+}
+
 /// Divert the log to a new output. If the log was previously pointing to syslog
 /// or a file, those messages are flushed. If the log was previously being
 /// stored in memory, those messages will naturally flush to the given new
@@ -332,6 +348,14 @@ pub fn redirect_log(out: HiberlogOut) {
         }
         _ => {}
     }
+}
+
+/// Divert the log to a file. If the log was previously pointing to syslog
+/// those messages are flushed.
+pub fn redirect_log_to_file(log_file: File) -> LogRedirectGuard {
+    redirect_log(HiberlogOut::File(Box::new(log_file)));
+
+    LogRedirectGuard {}
 }
 
 /// Discard any buffered but unsent logging data.

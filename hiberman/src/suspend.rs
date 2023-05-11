@@ -4,6 +4,7 @@
 
 //! Implements hibernate suspend functionality.
 
+use std::mem;
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
@@ -23,9 +24,11 @@ use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
 use crate::hiberlog;
 use crate::hiberlog::redirect_log;
+use crate::hiberlog::redirect_log_to_file;
 use crate::hiberlog::replay_logs;
 use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogOut;
+use crate::hiberlog::LogRedirectGuard;
 use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::prealloc_mem;
 use crate::hiberutil::HibernateError;
@@ -40,6 +43,7 @@ use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
 use crate::update_engine::is_update_engine_idle;
+use crate::volume::ActiveMount;
 use crate::volume::VolumeManager;
 
 /// The SuspendConductor weaves a delicate baton to guide us through the
@@ -68,7 +72,7 @@ impl SuspendConductor {
 
         info!("Beginning hibernate");
 
-        self.volume_manager.setup_hibermeta_lv(true)?;
+        let hibermeta_mount = self.volume_manager.setup_hibermeta_lv(true)?;
 
         if let Err(e) = log_hibernate_attempt() {
             warn!("Failed to log hibernate attempt: \n {}", e);
@@ -87,7 +91,7 @@ impl SuspendConductor {
         // logging daemon's about to be frozen.
         let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Suspend);
         let log_file = hiberlog::LogFile::create(log_file_path)?;
-        redirect_log(HiberlogOut::File(Box::new(log_file)));
+        let redirect_guard = redirect_log_to_file(log_file);
 
         debug!("Syncing filesystems");
         // This is safe because sync() does not modify memory.
@@ -97,9 +101,9 @@ impl SuspendConductor {
 
         prealloc_mem().context("Failed to preallocate memory for hibernate")?;
 
-        let result = self.suspend_system();
+        let result = self.suspend_system(hibermeta_mount, redirect_guard);
 
-        self.volume_manager.mount_hibermeta()?;
+        let _hibermeta_mount = self.volume_manager.mount_hibermeta()?;
 
         // Now send any remaining logs and future logs to syslog.
         redirect_log(HiberlogOut::Syslog);
@@ -114,15 +118,20 @@ impl SuspendConductor {
         // Read the metrics files and send out the samples.
         read_and_send_metrics();
 
-        self.volume_manager.unmount_hibermeta()?;
-
         result
     }
 
     /// Inner helper function to actually take the snapshot, save it to disk,
     /// and shut down. Returns upon a failure to hibernate, or after a
     /// successful hibernation has resumed.
-    fn suspend_system(&mut self) -> Result<()> {
+    ///
+    /// The order of the `hibermeta_mount` and `log_redirect_guard` parameters
+    /// must not be changed!!!
+    fn suspend_system(
+        &mut self,
+        mut hibermeta_mount: ActiveMount,
+        log_redirect_guard: LogRedirectGuard,
+    ) -> Result<()> {
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Read)?;
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
@@ -132,8 +141,8 @@ impl SuspendConductor {
             metrics_logger.flush()?;
         }
 
-        redirect_log(HiberlogOut::BufferInMemory);
-        self.volume_manager.unmount_hibermeta()?;
+        mem::drop(log_redirect_guard);
+        hibermeta_mount.unmount()?;
 
         self.volume_manager.thicken_hiberimage()?;
 
@@ -159,10 +168,10 @@ impl SuspendConductor {
             // hibernated kernel.
 
             // Briefly remount 'hibermeta' to write logs and metrics.
-            self.volume_manager.mount_hibermeta()?;
+            let mut hibermeta_mount = self.volume_manager.mount_hibermeta()?;
             let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Suspend);
             let log_file = hiberlog::LogFile::open(log_file_path)?;
-            redirect_log(HiberlogOut::File(Box::new(log_file)));
+            let redirect_guard = redirect_log_to_file(log_file);
 
             let start = Instant::now();
 
@@ -196,8 +205,8 @@ impl SuspendConductor {
                 info!("Powering off");
             }
 
-            redirect_log(HiberlogOut::BufferInMemory);
-            self.volume_manager.unmount_hibermeta()?;
+            mem::drop(redirect_guard);
+            hibermeta_mount.unmount()?;
 
             // Power the thing down.
             if !dry_run {
