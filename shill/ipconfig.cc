@@ -276,13 +276,13 @@ std::ostream& operator<<(std::ostream& stream,
   if (!properties.web_proxy_auto_discovery.empty()) {
     stream << ", wpad: " << properties.web_proxy_auto_discovery;
   }
-  if (!properties.default_route) {
+  if (properties.default_route) {
     stream << ", default_route: true";
   }
-  if (!properties.blackhole_ipv6) {
+  if (properties.blackhole_ipv6) {
     stream << ", blackhole_ipv6: true";
   }
-  if (!properties.use_if_addrs) {
+  if (properties.use_if_addrs) {
     stream << ", use_if_addrs: true";
   }
   if (properties.mtu != IPConfig::kUndefinedMTU) {
