@@ -5,6 +5,9 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_GROUND_TRUTH_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_GROUND_TRUTH_H_
 
+#include <string>
+
+#include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
@@ -13,7 +16,7 @@ namespace diagnostics {
 
 class GroundTruth final {
  public:
-  GroundTruth();
+  explicit GroundTruth(Context* context);
   GroundTruth(const GroundTruth&) = delete;
   GroundTruth& operator=(const GroundTruth&) = delete;
   ~GroundTruth();
@@ -23,6 +26,13 @@ class GroundTruth final {
   void IsEventSupported(ash::cros_healthd::mojom::EventCategoryEnum category,
                         ash::cros_healthd::mojom::CrosHealthdEventService::
                             IsEventSupportedCallback callback);
+
+  // cros_config related functions.
+  std::string FormFactor();
+
+ private:
+  // Unowned. Should outlive this instance.
+  Context* const context_ = nullptr;
 };
 
 }  // namespace diagnostics

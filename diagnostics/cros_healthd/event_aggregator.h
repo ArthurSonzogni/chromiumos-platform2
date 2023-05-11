@@ -78,7 +78,7 @@ class EventAggregator final {
   std::unique_ptr<StylusGarageEvents> stylus_garage_events_;
   std::unique_ptr<StylusEvents> stylus_events_;
   EventReporter event_reporter_{context_};
-  GroundTruth ground_truth_;
+  GroundTruth ground_truth_{context_};
 };
 
 }  // namespace diagnostics
