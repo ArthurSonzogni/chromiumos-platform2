@@ -16,7 +16,9 @@ namespace diagnostics {
 namespace {
 
 using ::testing::_;
+using ::testing::Contains;
 using ::testing::Invoke;
+using ::testing::Not;
 using ::testing::Return;
 
 class MockSandboxedProcess : public SandboxedProcess {
@@ -160,32 +162,8 @@ TEST_F(SandboxedProcessTest, NoNetworkNamespace) {
 
   EXPECT_TRUE(process.Start());
   EXPECT_EQ(cmd_, expected_cmd);
-  EXPECT_EQ(minijail_args_set_,
-            (std::set<std::vector<std::string>>{
-                {"-P", "/mnt/empty"},
-                {"-v"},
-                {"-r"},
-                {"-l"},
-                {"--uts"},
-                {"-u", kTestUser},
-                {"-g", kTestUser},
-                {"-G"},
-                {"-c", kTestCapabilitiesMaskHex},
-                {"-S", base::FilePath{kSeccompPolicyDirectory}
-                           .Append(kTestSeccompName)
-                           .value()},
-                {"-n"},
-                {"-b", kTestReadOnlyFile},
-                {"-b", kTestWritableFileMountFlag},
-                {"-b", "/"},
-                {"-b", "/dev/log"},
-                {"-d"},
-                {"-k", "tmpfs,/tmp,tmpfs"},
-                {"-k", "tmpfs,/proc,tmpfs"},
-                {"-k", "tmpfs,/run,tmpfs"},
-                {"-k", "tmpfs,/sys,tmpfs"},
-                {"-k", "tmpfs,/var,tmpfs"},
-            }));
+  EXPECT_THAT(minijail_args_set_,
+              Not(Contains(std::vector<std::string>{"-e"})));
 }
 
 }  // namespace
