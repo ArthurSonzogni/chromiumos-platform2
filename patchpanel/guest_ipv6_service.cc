@@ -161,19 +161,14 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
   // Lookup ForwardEntry for the specified uplink. If it does not exist, create
   // a new one based on its device type.
   ForwardMethod forward_method;
-  std::vector<ForwardEntry>::iterator it;
-  for (it = forward_record_.begin(); it != forward_record_.end(); it++) {
-    if (it->upstream_ifname == ifname_uplink)
-      break;
-  }
-  if (it != forward_record_.end()) {
-    forward_method = it->method;
-    it->downstream_ifnames.insert(ifname_downlink);
+
+  if (forward_record_.find(ifname_uplink) != forward_record_.end()) {
+    forward_method = forward_record_[ifname_uplink].method;
+    forward_record_[ifname_uplink].downstream_ifnames.insert(ifname_downlink);
   } else if (forward_method_override_.find(ifname_uplink) !=
              forward_method_override_.end()) {
     forward_method = forward_method_override_[ifname_uplink];
-    forward_record_.push_back(ForwardEntry{
-        forward_method, ifname_uplink, std::set<std::string>{ifname_downlink}});
+    forward_record_[ifname_uplink] = {forward_method, {ifname_downlink}};
   } else {
     ShillClient::Device upstream_shill_device;
     shill_client_->GetDeviceProperties(ifname_uplink, &upstream_shill_device);
@@ -184,8 +179,7 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
                 << ifname_uplink << ", skipped";
       return;
     }
-    forward_record_.push_back(ForwardEntry{
-        forward_method, ifname_uplink, std::set<std::string>{ifname_downlink}});
+    forward_record_[ifname_uplink] = {forward_method, {ifname_downlink}};
   }
 
   if (!datapath_->MaskInterfaceFlags(ifname_uplink, IFF_ALLMULTI)) {
@@ -217,12 +211,9 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
   }
 
   // Start NA proxying between the new downlink and existing downlinks, if any.
-  for (it = forward_record_.begin(); it != forward_record_.end(); it++) {
-    if (it->upstream_ifname == ifname_uplink)
-      break;
-  }
-  CHECK(it != forward_record_.end());
-  for (const auto& another_downlink : it->downstream_ifnames) {
+  CHECK(forward_record_.find(ifname_uplink) != forward_record_.end());
+  for (const auto& another_downlink :
+       forward_record_[ifname_uplink].downstream_ifnames) {
     if (another_downlink != ifname_downlink) {
       int32_t if_id_downlink2 = if_cache_[another_downlink];
       SendNDProxyControl(NDProxyControlMessage::START_NS_NA, if_id_downlink,
@@ -253,27 +244,25 @@ void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
   LOG(INFO) << "Stopping IPv6 forwarding between uplink: " << ifname_uplink
             << ", downlink: " << ifname_downlink;
 
-  std::vector<ForwardEntry>::iterator it;
-  for (it = forward_record_.begin(); it != forward_record_.end(); it++) {
-    if (it->upstream_ifname == ifname_uplink)
-      break;
-  }
+  const auto it = forward_record_.find(ifname_uplink);
   if (it == forward_record_.end()) {
     return;
   }
-  if (it->downstream_ifnames.find(ifname_downlink) ==
-      it->downstream_ifnames.end()) {
+
+  auto& forward_record = it->second;
+  if (forward_record.downstream_ifnames.find(ifname_downlink) ==
+      forward_record.downstream_ifnames.end()) {
     return;
   }
 
-  if (it->method != ForwardMethod::kMethodRAServer) {
+  if (forward_record.method != ForwardMethod::kMethodRAServer) {
     SendNDProxyControl(NDProxyControlMessage::STOP_PROXY,
                        if_cache_[ifname_uplink], if_cache_[ifname_downlink]);
   }
 
   // Remove proxying between specified downlink and all other downlinks in the
   // same group.
-  for (const auto& another_downlink : it->downstream_ifnames) {
+  for (const auto& another_downlink : forward_record.downstream_ifnames) {
     if (another_downlink != ifname_downlink) {
       SendNDProxyControl(NDProxyControlMessage::STOP_PROXY,
                          if_cache_[ifname_downlink],
@@ -292,7 +281,7 @@ void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
   }
   downstream_neighbors_[ifname_downlink].clear();
 
-  if (it->method == ForwardMethod::kMethodRAServer) {
+  if (forward_record.method == ForwardMethod::kMethodRAServer) {
     SendNDProxyControl(NDProxyControlMessage::STOP_NEIGHBOR_MONITOR,
                        if_cache_[ifname_downlink], 0);
     if (uplink_ips_[ifname_uplink] != "") {
@@ -300,8 +289,8 @@ void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
     }
   }
 
-  it->downstream_ifnames.erase(ifname_downlink);
-  if (it->downstream_ifnames.empty()) {
+  forward_record.downstream_ifnames.erase(ifname_downlink);
+  if (forward_record.downstream_ifnames.empty()) {
     forward_record_.erase(it);
   }
 }
@@ -309,24 +298,21 @@ void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
 void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
   LOG(INFO) << "Stopping all IPv6 forwarding with uplink: " << ifname_uplink;
 
-  std::vector<ForwardEntry>::iterator it;
-  for (it = forward_record_.begin(); it != forward_record_.end(); it++) {
-    if (it->upstream_ifname == ifname_uplink)
-      break;
-  }
-  if (it == forward_record_.end())
+  if (forward_record_.find(ifname_uplink) == forward_record_.end()) {
     return;
+  }
 
   // Remove proxying between specified uplink and all downlinks.
-  if (it->method != ForwardMethod::kMethodRAServer) {
-    for (const auto& ifname_downlink : it->downstream_ifnames) {
+  if (forward_record_[ifname_uplink].method != ForwardMethod::kMethodRAServer) {
+    for (const auto& ifname_downlink :
+         forward_record_[ifname_uplink].downstream_ifnames) {
       SendNDProxyControl(NDProxyControlMessage::STOP_PROXY,
                          if_cache_[ifname_uplink], if_cache_[ifname_downlink]);
     }
   }
 
   // Remove proxying between all downlink pairs in the forward group.
-  const auto& downlinks = it->downstream_ifnames;
+  const auto& downlinks = forward_record_[ifname_uplink].downstream_ifnames;
   for (auto it1 = downlinks.begin(); it1 != downlinks.end(); it1++) {
     for (auto it2 = std::next(it1); it2 != downlinks.end(); it2++) {
       SendNDProxyControl(NDProxyControlMessage::STOP_PROXY,
@@ -334,7 +320,8 @@ void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
     }
   }
 
-  for (const auto& ifname_downlink : it->downstream_ifnames) {
+  for (const auto& ifname_downlink :
+       forward_record_[ifname_uplink].downstream_ifnames) {
     // Remove ip neigh proxy entry
     if (uplink_ips_[ifname_uplink] != "") {
       datapath_->RemoveIPv6NeighborProxy(ifname_downlink,
@@ -347,8 +334,9 @@ void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
     downstream_neighbors_[ifname_downlink].clear();
   }
 
-  if (it->method == ForwardMethod::kMethodRAServer) {
-    for (const auto& ifname_downlink : it->downstream_ifnames) {
+  if (forward_record_[ifname_uplink].method == ForwardMethod::kMethodRAServer) {
+    for (const auto& ifname_downlink :
+         forward_record_[ifname_uplink].downstream_ifnames) {
       SendNDProxyControl(NDProxyControlMessage::STOP_NEIGHBOR_MONITOR,
                          if_cache_[ifname_downlink], 0);
       if (uplink_ips_[ifname_uplink] != "") {
@@ -357,7 +345,7 @@ void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
     }
   }
 
-  forward_record_.erase(it);
+  forward_record_.erase(ifname_uplink);
 }
 
 void GuestIPv6Service::OnUplinkIPv6Changed(const std::string& ifname,
@@ -368,12 +356,7 @@ void GuestIPv6Service::OnUplinkIPv6Changed(const std::string& ifname,
     return;
   }
 
-  std::vector<ForwardEntry>::iterator it;
-  for (it = forward_record_.begin(); it != forward_record_.end(); it++) {
-    if (it->upstream_ifname == ifname)
-      break;
-  }
-  if (it != forward_record_.end()) {
+  if (forward_record_.find(ifname) != forward_record_.end()) {
     // Note that the order of StartForwarding() and OnUplinkIPv6Changed() is not
     // certain so the `ip neigh proxy` and /128 route changes need to be handled
     // in both code paths. When an uplink is newly connected to,
@@ -382,7 +365,8 @@ void GuestIPv6Service::OnUplinkIPv6Changed(const std::string& ifname,
     // network switches to an existing uplink, StartForwarding() is after
     // OnUplinkIPv6Changed() (which was already called when it was not default
     // yet).
-    for (const auto& ifname_downlink : it->downstream_ifnames) {
+    for (const auto& ifname_downlink :
+         forward_record_[ifname].downstream_ifnames) {
       // Update ip neigh proxy entries
       if (uplink_ips_[ifname] != "") {
         datapath_->RemoveIPv6NeighborProxy(ifname_downlink,
@@ -404,7 +388,7 @@ void GuestIPv6Service::OnUplinkIPv6Changed(const std::string& ifname,
         }
       }
 
-      if (it->method == ForwardMethod::kMethodRAServer) {
+      if (forward_record_[ifname].method == ForwardMethod::kMethodRAServer) {
         auto old_prefix = IPAddressTo64BitPrefix(uplink_ips_[ifname]);
         auto new_prefix = IPAddressTo64BitPrefix(uplink_ip);
         if (old_prefix == new_prefix) {
@@ -444,14 +428,9 @@ void GuestIPv6Service::SetForwardMethod(const std::string& ifname_uplink,
                                         ForwardMethod method) {
   forward_method_override_[ifname_uplink] = method;
 
-  std::vector<ForwardEntry>::iterator it;
-  for (it = forward_record_.begin(); it != forward_record_.end(); it++) {
-    if (it->upstream_ifname == ifname_uplink)
-      break;
-  }
-  if (it != forward_record_.end()) {
+  if (forward_record_.find(ifname_uplink) != forward_record_.end()) {
     // Need a copy here since StopUplink() will modify the record
-    auto downlinks = it->downstream_ifnames;
+    auto downlinks = forward_record_[ifname_uplink].downstream_ifnames;
     StopUplink(ifname_uplink);
     for (const auto& downlink : downlinks) {
       StartForwarding(ifname_uplink, downlink);
@@ -524,10 +503,11 @@ void GuestIPv6Service::RegisterDownstreamNeighborIP(
 
 std::optional<std::string> GuestIPv6Service::DownlinkToUplink(
     const std::string& downlink) {
-  std::vector<ForwardEntry>::iterator it;
-  for (it = forward_record_.begin(); it != forward_record_.end(); it++) {
-    if (it->downstream_ifnames.find(downlink) != it->downstream_ifnames.end())
-      return it->upstream_ifname;
+  for (const auto& [upstream_ifname, forward_record] : forward_record_) {
+    if (forward_record.downstream_ifnames.find(downlink) !=
+        forward_record.downstream_ifnames.end()) {
+      return upstream_ifname;
+    }
   }
   return std::nullopt;
 }
@@ -536,10 +516,9 @@ const std::set<std::string>& GuestIPv6Service::UplinkToDownlinks(
     const std::string& uplink) {
   static std::set<std::string> empty_set;
 
-  std::vector<ForwardEntry>::iterator it;
-  for (it = forward_record_.begin(); it != forward_record_.end(); it++) {
-    if (it->upstream_ifname == uplink)
-      return it->downstream_ifnames;
+  const auto it = forward_record_.find(uplink);
+  if (it != forward_record_.end()) {
+    return it->second.downstream_ifnames;
   }
   return empty_set;
 }

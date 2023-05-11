@@ -97,7 +97,6 @@ class GuestIPv6Service {
  private:
   struct ForwardEntry {
     ForwardMethod method;
-    std::optional<std::string> upstream_ifname;
     std::set<std::string> downstream_ifnames;
   };
 
@@ -117,7 +116,8 @@ class GuestIPv6Service {
 
   bool StartRadvd(const std::string& ifname);
 
-  std::vector<ForwardEntry> forward_record_;
+  // The current forwarding records, keyed by the upstream interface name.
+  std::map<std::string /*upstream_ifname*/, ForwardEntry> forward_record_;
   std::map<std::string, ForwardMethod> forward_method_override_;
 
   // We cache the if_ids of netdevices when start forwarding to ensure that the
