@@ -47,4 +47,15 @@ int WiFiBandToNl(WiFiBand band) {
   }
 }
 
+bool IsWiFiLimitedFreq(uint32_t freq) {
+  if (freq > 2462 && freq <= 2495) {
+    // Channel 12 and 13 should be avoided as it is only allowed in low power
+    // operation. Channel 14 should be avoided as it only allows non-OFDM mode
+    // in JP.
+    return true;
+  }
+
+  return false;
+}
+
 }  // namespace shill

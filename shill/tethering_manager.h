@@ -131,8 +131,8 @@ class TetheringManager : public Network::EventHandler {
   FRIEND_TEST(TetheringManagerTest, MARWithTetheringRestart);
   FRIEND_TEST(TetheringManagerTest, CheckMACStored);
   FRIEND_TEST(TetheringManagerTest, SelectFrequency_Empty);
-  FRIEND_TEST(TetheringManagerTest, SelectFrequency_NoValid5G);
-  FRIEND_TEST(TetheringManagerTest, SelectFrequency);
+  FRIEND_TEST(TetheringManagerTest, SelectFrequency_NoValidHB);
+  FRIEND_TEST(TetheringManagerTest, SelectFrequency_DualBandsAvailable);
 
   enum class StopReason {
     kInitial,             // Initial idle state.

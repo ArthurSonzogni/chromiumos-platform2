@@ -43,6 +43,10 @@ inline std::ostream& operator<<(std::ostream& stream, WiFiBand band) {
   return stream << WiFiBandName(band);
 }
 
+// Some frequencies are marked as usable but with some limitation. Return
+// whether the given frequency is limited or not.
+bool IsWiFiLimitedFreq(uint32_t freq);
+
 }  // namespace shill
 
 #endif  // SHILL_WIFI_WIFI_RF_H_

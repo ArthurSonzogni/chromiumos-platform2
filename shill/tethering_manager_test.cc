@@ -18,7 +18,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/test/mock_callback.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
@@ -80,6 +79,12 @@ constexpr char kTestInterfaceName[] = "wwan0";
 // The value below is "testAP-0000" in hex;
 constexpr char kTestAPHexSSID[] = "7465737441502d30303030";
 constexpr char kTestPassword[] = "user_password";
+
+// WiFi frequency constants
+constexpr uint32_t kLBStartFreq = 2412;
+constexpr uint32_t kChan11Freq = 2462;
+constexpr uint32_t kHBStartFreq = 5160;
+constexpr uint32_t kHBEndFreq = 5980;
 
 bool GetConfigMAR(const KeyValueStore& caps) {
   return caps.Get<bool>(kTetheringConfMARProperty);
@@ -1506,13 +1511,15 @@ TEST_F(TetheringManagerTest, SelectFrequency_Empty) {
   EXPECT_EQ(freq, -1);
 }
 
-TEST_F(TetheringManagerTest, SelectFrequency_NoValid5G) {
+TEST_F(TetheringManagerTest, SelectFrequency_NoValidHB) {
   WiFiPhy::Frequencies frequencies = {
       {0,
        {
-           {.value = 2412},
-           {.value = 2417},
-           {.value = 2422},
+           {.value = 2412},  // Channel 1
+           {.value = 2417},  // Channel 2
+           {.value = 2422},  // Channel 3
+           {.value = 2467},  // Channel 12
+           {.value = 2472},  // Channel 13
        }},
       {1,
        {
@@ -1522,39 +1529,55 @@ TEST_F(TetheringManagerTest, SelectFrequency_NoValid5G) {
   int freq;
   tethering_manager_->band_ = WiFiBand::kAllBands;
   freq = tethering_manager_->SelectFrequency(frequencies);
+  EXPECT_GE(freq, kLBStartFreq);
+  EXPECT_LE(freq, kChan11Freq);  // Should avoid channel greater than channel 11
   EXPECT_TRUE(base::Contains(frequencies[0], uint32_t(freq),
                              [](auto& f) { return f.value; }));
 }
 
-TEST_F(TetheringManagerTest, SelectFrequency) {
-  WiFiPhy::Frequencies frequencies;
-  std::map<WiFiBand, std::pair<int, int>> rf_limits = {
-      {WiFiBand::kLowBand, {2401, 2495}},
-      {WiFiBand::kHighBand, {5150, 5895}},
-  };
-
-  for (auto band : {WiFiBand::kLowBand, WiFiBand::kHighBand}) {
-    int num_freqs = base::RandInt(1, 10);
-    std::vector<WiFiPhy::Frequency> band_freqs;
-    for (int i = 0; i < num_freqs; ++i) {
-      band_freqs.push_back(
-          {.value = static_cast<uint32_t>(
-               base::RandInt(rf_limits[band].first, rf_limits[band].second))});
-    }
-    frequencies[WiFiBandToNl(band)] = std::move(band_freqs);
-  }
+TEST_F(TetheringManagerTest, SelectFrequency_DualBandsAvailable) {
+  WiFiPhy::Frequencies frequencies = {
+      {0,
+       {
+           {.value = 2412},  // Channel 1
+           {.value = 2417},  // Channel 2
+           {.value = 2422},  // Channel 3
+           {.value = 2467},  // Channel 12
+           {.value = 2472},  // Channel 13
+       }},
+      {1,
+       {
+           {.value = 5180},  // Channel 36
+           {.value = 5200},  // Channel 40
+           {.value = 5220},  // Channel 44
+           {.value = 5240},  // Channel 48
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_RADAR,
+            .value = 5260},  // Channel 52
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_RADAR,
+            .value = 5280},  // Channel 56
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_NO_IR,
+            .value = 5300},  // Channel 60
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_NO_IR,
+            .value = 5320},  // Channel 64
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_DISABLED,
+            .value = 5340},  // Channel 68
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_DISABLED,
+            .value = 5360},  // Channel 72
+       }}};
 
   int freq;
   tethering_manager_->band_ = WiFiBand::kLowBand;
   freq = tethering_manager_->SelectFrequency(frequencies);
-  EXPECT_GT(freq, 0);
+  EXPECT_GE(freq, kLBStartFreq);
+  EXPECT_LE(freq, kChan11Freq);  // Should avoid channel greater than channel 11
   EXPECT_TRUE(
       base::Contains(frequencies[WiFiBandToNl(tethering_manager_->band_)],
                      uint32_t(freq), [](auto& f) { return f.value; }));
 
   tethering_manager_->band_ = WiFiBand::kHighBand;
   freq = tethering_manager_->SelectFrequency(frequencies);
-  EXPECT_GT(freq, 0);
+  EXPECT_GE(freq, kHBStartFreq);
+  EXPECT_LE(freq, kHBEndFreq);
   EXPECT_TRUE(
       base::Contains(frequencies[WiFiBandToNl(tethering_manager_->band_)],
                      uint32_t(freq), [](auto& f) { return f.value; }));
@@ -1563,7 +1586,8 @@ TEST_F(TetheringManagerTest, SelectFrequency) {
   // however with a valid 5GHz frequency it should be preferred.
   tethering_manager_->band_ = WiFiBand::kAllBands;
   freq = tethering_manager_->SelectFrequency(frequencies);
-  EXPECT_GT(freq, 0);
+  EXPECT_GE(freq, kHBStartFreq);
+  EXPECT_LE(freq, kHBEndFreq);
   EXPECT_TRUE(base::Contains(frequencies[WiFiBandToNl(WiFiBand::kHighBand)],
                              uint32_t(freq), [](auto& f) { return f.value; }));
 }

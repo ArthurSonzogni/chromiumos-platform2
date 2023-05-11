@@ -1084,7 +1084,8 @@ int TetheringManager::SelectFrequency(const WiFiPhy::Frequencies& bands) {
     for (auto& freq : band->second) {
       if (freq.flags & (1 << NL80211_FREQUENCY_ATTR_DISABLED |
                         1 << NL80211_FREQUENCY_ATTR_NO_IR |
-                        1 << NL80211_FREQUENCY_ATTR_RADAR)) {
+                        1 << NL80211_FREQUENCY_ATTR_RADAR) ||
+          IsWiFiLimitedFreq(freq.value)) {
         SLOG(3) << "Skipping freq: " << freq.value;
         continue;
       }
