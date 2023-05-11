@@ -64,7 +64,7 @@ action("print_proto_library_local") {
          ] + inputs
 }
 
-shared_library("libarc-attestation") {
+source_set("libarc-attestation-source") {
   sources = [
     "lib/interface.cc",
     "lib/manager.cc",
@@ -72,7 +72,7 @@ shared_library("libarc-attestation") {
     "lib/version_attester.cc",
   ]
   configs += [ ":target_defaults" ]
-  install_path = "lib"
+  configs += [ "//common-mk:pic" ]
 
   pkg_deps = [
     "libattestation-client",
@@ -83,6 +83,11 @@ shared_library("libarc-attestation") {
     "hwsec",
     "hwsec-foundation",
   ]
+}
+
+shared_library("libarc-attestation") {
+  deps = [ ":libarc-attestation-source" ]
+  install_path = "lib"
 }
 
 install_config("install_libarc-attestation_headers") {
@@ -131,11 +136,22 @@ proto_library("arc_attestation_cmd_proto") {
 
 if (use.test) {
   executable("libarc-attestation_test") {
-    sources = [ "testrunner.cc" ]
+    sources = [
+      "lib/arc_attestation_test.cc",
+      "testrunner.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
     ]
-    deps = [ "//common-mk/testrunner" ]
+    run_test = true
+    deps = [
+      ":libarc-attestation-source",
+      "//common-mk/testrunner",
+    ]
+    pkg_deps = [
+      "libattestation-client",
+      "libattestation-client-test",
+    ]
   }
 }
