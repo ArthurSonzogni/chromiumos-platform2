@@ -14,6 +14,8 @@
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <gmock/gmock.h>
+#include <libcrossystem/crossystem.h>
+#include <libcrossystem/crossystem_fake.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
@@ -143,6 +145,8 @@ bool Tpm2SimulatorProxyForTest::Init() {
     LOG(ERROR) << "Failed to init fake TPM nvram.";
     return false;
   }
+  crossystem_ = std::make_unique<crossystem::Crossystem>(
+      std::make_unique<crossystem::fake::CrossystemFake>());
 
   ON_CALL(tpm_manager_, GetTpmNonsensitiveStatus(_, _, _, _))
       .WillByDefault([](auto&&,
@@ -173,6 +177,7 @@ bool Tpm2SimulatorProxyForTest::Init() {
   Proxy::SetTrunksFactory(trunks_factory_.get());
   Proxy::SetTpmManager(&tpm_manager_);
   Proxy::SetTpmNvram(tpm_nvram_.GetMock());
+  Proxy::SetCrossystem(crossystem_.get());
 
   initialized_ = true;
   return true;

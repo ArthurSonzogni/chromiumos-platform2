@@ -21,6 +21,9 @@ namespace org::chromium {
 class TpmManagerProxyInterface;
 class TpmNvramProxyInterface;
 }  // namespace org::chromium
+namespace crossystem {
+class Crossystem;
+}  // namespace crossystem
 
 namespace hwsec {
 
@@ -38,6 +41,7 @@ class Proxy {
   trunks::TrunksFactory& GetTrunksFactory() const;
   org::chromium::TpmManagerProxyInterface& GetTpmManager() const;
   org::chromium::TpmNvramProxyInterface& GetTpmNvram() const;
+  crossystem::Crossystem& GetCrossystem() const;
 
  protected:
   Proxy() = default;
@@ -48,6 +52,7 @@ class Proxy {
   void SetTrunksFactory(trunks::TrunksFactory* trunks_factory);
   void SetTpmManager(org::chromium::TpmManagerProxyInterface* tpm_manager);
   void SetTpmNvram(org::chromium::TpmNvramProxyInterface* tpm_nvram);
+  void SetCrossystem(crossystem::Crossystem* crossystem);
 
  private:
   hwsec::overalls::Overalls* overalls_ptr_;
@@ -55,6 +60,7 @@ class Proxy {
   trunks::TrunksFactory* trunks_factory_ptr_;
   org::chromium::TpmManagerProxyInterface* tpm_manager_;
   org::chromium::TpmNvramProxyInterface* tpm_nvram_;
+  crossystem::Crossystem* crossystem_;
 };
 
 }  // namespace hwsec

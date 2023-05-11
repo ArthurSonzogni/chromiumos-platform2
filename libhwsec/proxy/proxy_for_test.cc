@@ -6,6 +6,8 @@
 
 #include <memory>
 
+#include <libcrossystem/crossystem.h>
+#include <libcrossystem/crossystem_fake.h>
 #include <gmock/gmock.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
@@ -74,6 +76,8 @@ struct ProxyForTest::InnerData {
 #endif  // USE_TPM2
   testing::NiceMock<org::chromium::TpmManagerProxyMock> tpm_manager;
   testing::NiceMock<org::chromium::TpmNvramProxyMock> tpm_nvram;
+  crossystem::Crossystem crossystem{
+      std::make_unique<crossystem::fake::CrossystemFake>()};
 };
 
 ProxyForTest::ProxyForTest()
@@ -98,6 +102,7 @@ ProxyForTest::ProxyForTest()
 #endif
   SetTpmManager(&inner_data_->tpm_manager);
   SetTpmNvram(&inner_data_->tpm_nvram);
+  SetCrossystem(&inner_data_->crossystem);
 }
 
 ProxyForTest::~ProxyForTest() = default;
@@ -161,6 +166,10 @@ org::chromium::TpmManagerProxyMock& ProxyForTest::GetMockTpmManagerProxy() {
 
 org::chromium::TpmNvramProxyMock& ProxyForTest::GetMockTpmNvramProxy() {
   return inner_data_->tpm_nvram;
+}
+
+crossystem::Crossystem& ProxyForTest::GetFakeCrossystem() {
+  return inner_data_->crossystem;
 }
 
 }  // namespace hwsec

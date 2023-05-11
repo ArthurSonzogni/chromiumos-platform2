@@ -69,6 +69,7 @@ class ProxyForTest : public Proxy {
   trunks::MockBlobParser& GetMockBlobParser();
   org::chromium::TpmManagerProxyMock& GetMockTpmManagerProxy();
   org::chromium::TpmNvramProxyMock& GetMockTpmNvramProxy();
+  crossystem::Crossystem& GetFakeCrossystem();
 
  private:
   // The InnerData implementation is in the cpp file.

@@ -6,6 +6,7 @@
 
 #include <base/check.h>
 
+#include <libcrossystem/crossystem.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
@@ -44,6 +45,10 @@ void Proxy::SetTpmNvram(org::chromium::TpmNvramProxyInterface* tpm_nvram) {
   tpm_nvram_ = tpm_nvram;
 }
 
+void Proxy::SetCrossystem(crossystem::Crossystem* crossystem) {
+  crossystem_ = crossystem;
+}
+
 // A tricks to make the linkage failure if accessing wrong proxy on the
 // wrong board.
 #if USE_TPM1
@@ -74,6 +79,11 @@ org::chromium::TpmManagerProxyInterface& Proxy::GetTpmManager() const {
 org::chromium::TpmNvramProxyInterface& Proxy::GetTpmNvram() const {
   CHECK(tpm_nvram_);
   return *tpm_nvram_;
+}
+
+crossystem::Crossystem& Proxy::GetCrossystem() const {
+  CHECK(crossystem_);
+  return *crossystem_;
 }
 
 }  // namespace hwsec

@@ -8,6 +8,7 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_connection.h>
+#include <libcrossystem/crossystem.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
@@ -44,6 +45,7 @@ struct ProxyImpl::InnerData {
 
   std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager;
   std::unique_ptr<org::chromium::TpmNvramProxy> tpm_nvram;
+  std::unique_ptr<crossystem::Crossystem> crossystem;
 };
 
 ProxyImpl::ProxyImpl() = default;
@@ -93,6 +95,7 @@ bool ProxyImpl::Init() {
   inner_data_->tpm_manager =
       std::make_unique<org::chromium::TpmManagerProxy>(bus);
   inner_data_->tpm_nvram = std::make_unique<org::chromium::TpmNvramProxy>(bus);
+  inner_data_->crossystem = std::make_unique<crossystem::Crossystem>();
 
   // Export the pointer to the proxy interface.
 
@@ -107,6 +110,7 @@ bool ProxyImpl::Init() {
 
   Proxy::SetTpmManager(inner_data_->tpm_manager.get());
   Proxy::SetTpmNvram(inner_data_->tpm_nvram.get());
+  Proxy::SetCrossystem(inner_data_->crossystem.get());
 
   return true;
 }

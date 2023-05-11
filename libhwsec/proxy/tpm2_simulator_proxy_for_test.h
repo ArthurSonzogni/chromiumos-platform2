@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/files/scoped_temp_dir.h>
+#include <libcrossystem/crossystem.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 #include <trunks/command_transceiver.h>
@@ -45,6 +46,7 @@ class Tpm2SimulatorProxyForTest : public Proxy {
   std::unique_ptr<trunks::TrunksFactoryImpl> trunks_factory_;
   testing::NiceMock<org::chromium::TpmManagerProxyMock> tpm_manager_;
   FakeTpmNvramForTest tpm_nvram_;
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
   bool initialized_ = false;
 };
 

@@ -28,6 +28,7 @@ pkg_config("target_defaults") {
     "absl",
     "libbrillo",
     "libchrome",
+    "libcrossystem",
     "libmetrics",
     "libtpm_manager-client",
     "openssl",
@@ -112,6 +113,7 @@ shared_library("libhwsec_test") {
   if (use.tpm) {
     sources += [ "test_utils/tpm1/test_fixture.cc" ]
   }
+  pkg_deps = [ "libcrossystem-test" ]
   configs += [ ":target_defaults" ]
   libs = [
     "tpm2",
@@ -388,6 +390,7 @@ if (use.test) {
   pkg_config("test_config") {
     pkg_deps = [
       "libchrome-test",
+      "libcrossystem-test",
       "libtpm_manager-client-test",
     ]
   }
