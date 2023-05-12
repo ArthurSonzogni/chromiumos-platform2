@@ -21,6 +21,7 @@ use std::time::Duration;
 use anyhow::Context;
 use anyhow::Result;
 use lazy_static::lazy_static;
+use log::debug;
 use log::warn;
 use serde::Deserialize;
 use serde::Serialize;
@@ -229,7 +230,13 @@ pub fn read_and_send_metrics() {
     let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
     let _ = metrics_logger.flush();
 
-    let res = File::open(METRICS_FILE_PATH.as_path());
+    let metrics_file_path = METRICS_FILE_PATH.as_path();
+    if !metrics_file_path.exists() {
+        debug!("No metrics to send");
+        return;
+    }
+
+    let res = File::open(metrics_file_path);
     if let Err(e) = res {
         warn!(
             "Failed to open metrics file {}: {}",
