@@ -207,6 +207,9 @@ message CheckFilesTransferRequest {
   optional DlpComponent destination_component = 3;
   // Requested file action.
   optional FileAction file_action = 4;
+  // I/O Task Id. Optional field needed to properly show warnings within the
+  // Files app.
+  optional uint64 io_task_id = 5;
 }
 
 message CheckFilesTransferResponse {
@@ -226,6 +229,9 @@ message IsFilesTransferRestrictedRequest {
   optional DlpComponent destination_component = 4;
   // Requested file action.
   optional FileAction file_action = 5;
+  // I/O Task Id. Optional field needed to properly show warnings within the
+  // Files app.
+  optional uint64 io_task_id = 6;
 }
 
 message IsFilesTransferRestrictedResponse {

@@ -789,6 +789,8 @@ void DlpAdaptor::ProcessCheckFilesTransferWithData(
     matching_request.set_destination_component(request.destination_component());
   if (request.has_file_action())
     matching_request.set_file_action(request.file_action());
+  if (request.has_io_task_id())
+    matching_request.set_io_task_id(request.io_task_id());
 
   auto callbacks = base::SplitOnceCallback(
       base::BindOnce(&DlpAdaptor::ReplyOnCheckFilesTransfer,
