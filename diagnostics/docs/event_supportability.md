@@ -131,3 +131,17 @@ defined in
 to set it up.
 
 ### Stylus
+
+It's supported only when `stylus-category` is explicitly configured as
+"internal" or "external".
+
+You can run the following commands on your DUT:
+1. `cros_config /hardware-properties stylus-category` This is helpful to
+   understand what the value of `stylus-category` is.
+2. `cros-health-tool event --category=stylus --check_supported` Use this to see
+   if healthd reports the correct support status.
+
+To configure `stylus-category` in Boxster, you can use `create_stylus` function
+defined in
+[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
+to set it up.

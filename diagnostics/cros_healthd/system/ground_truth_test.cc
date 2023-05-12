@@ -132,5 +132,29 @@ TEST_F(GroundTruthTest, StylusGarageEvent) {
   }
 }
 
+TEST_F(GroundTruthTest, StylusEvent) {
+  std::vector<std::pair</*stylus-category=*/std::string, /*supported=*/bool>>
+      test_combinations = {
+          {cros_config_value::kStylusCategoryInternal, true},
+          {cros_config_value::kStylusCategoryExternal, true},
+          {cros_config_value::kStylusCategoryUnknown, false},
+          {cros_config_value::kStylusCategoryNone, false},
+          {"Others", false},
+      };
+
+  // Test not set the cros_config first to simulate file not found.
+  ExpectEventUnsupported(mojom::EventCategoryEnum::kStylus);
+
+  for (const auto& [stylus_category, supported] : test_combinations) {
+    SetCrosConfig(cros_config_path::kHardwareProperties,
+                  cros_config_property::kStylusCategory, stylus_category);
+    if (supported) {
+      ExpectEventSupported(mojom::EventCategoryEnum::kStylus);
+    } else {
+      ExpectEventUnsupported(mojom::EventCategoryEnum::kStylus);
+    }
+  }
+}
+
 }  // namespace
 }  // namespace diagnostics

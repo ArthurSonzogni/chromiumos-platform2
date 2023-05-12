@@ -99,8 +99,18 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
                                 stylus_category),
           nullptr));
     }
-    case mojom::EventCategoryEnum::kStylus:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+    case mojom::EventCategoryEnum::kStylus: {
+      auto stylus_category = StylusCategory();
+      if (stylus_category == cros_config_value::kStylusCategoryInternal ||
+          stylus_category == cros_config_value::kStylusCategoryExternal) {
+        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+      }
+
+      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+          WrapUnsupportedString(cros_config_property::kStylusCategory,
+                                stylus_category),
+          nullptr));
+    }
   }
 }
 
