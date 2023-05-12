@@ -6,7 +6,9 @@
 
 #include "metrics/structured/recorder_singleton.h"
 
+#include <base/logging.h>
 #include <base/notreached.h>
+#include <algorithm>
 
 namespace metrics {
 namespace structured {
@@ -55,6 +57,19 @@ void EventBase::AddDoubleMetric(uint64_t name_hash, double value) {
   metrics_.push_back(metric);
 }
 
+void EventBase::AddIntArrayMetric(uint64_t name_hash,
+                                  const std::vector<int64_t>& value,
+                                  size_t max_length) {
+  CHECK(value.size() <= max_length)
+      << "Metric: " << name_hash << " array length larger then max ("
+      << value.size() << " > " << max_length << ")";
+
+  size_t size = std::min(max_length, value.size());
+  Metric metric(name_hash, MetricType::kIntArray);
+  metric.int_array_value = std::vector(value.begin(), value.begin() + size);
+  metrics_.push_back(metric);
+}
+
 std::string EventBase::GetHmacMetricForTest(uint64_t name_hash) const {
   for (const auto& metric : metrics_) {
     if (metric.name_hash == name_hash) {
@@ -93,6 +108,17 @@ double EventBase::GetDoubleMetricForTest(uint64_t name_hash) const {
   }
   NOTREACHED() << "Failed to get metric value. Invalid name hash " << name_hash;
   return 0.0;
+}
+
+std::vector<int64_t> EventBase::GetIntArrayMetricForTest(
+    uint64_t name_hash) const {
+  for (const auto& metric : metrics_) {
+    if (metric.name_hash == name_hash) {
+      return metric.int_array_value;
+    }
+  }
+  NOTREACHED() << "Failed to get metric value. Invalid name hash " << name_hash;
+  return {};
 }
 
 }  // namespace structured

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -70,6 +69,10 @@ HEADER_METRIC_TEMPLATE = """\
 
 """
 
+HEADER_ARRAY_LENGTH_TEMPLATE = """\
+  static constexpr size_t Get{metric.name}MaxLength() {{ return {metric.max_size}; }}
+"""
+
 
 IMPL_FILE_TEMPLATE = """\
 // Generated from gen_events.py. DO NOT EDIT!
@@ -107,6 +110,18 @@ IMPL_EVENT_TEMPLATE = """\
 IMPL_METRIC_TEMPLATE = """\
 {event.name}& {event.name}::Set{metric.name}(const {metric.setter_type} value) {{
   {metric.setter}(k{metric.name}NameHash, value);
+  return *this;
+}}
+
+{metric.getter_type} {event.name}::Get{metric.name}ForTest() const {{
+  return {metric.getter}(k{metric.name}NameHash);
+}}
+
+"""
+
+IMPL_ARRAY_METRIC_TEMPLATE = """\
+{event.name}& {event.name}::Set{metric.name}(const {metric.setter_type} value) {{
+  {metric.setter}(k{metric.name}NameHash, value, {event.name}::Get{metric.name}MaxLength());
   return *this;
 }}
 

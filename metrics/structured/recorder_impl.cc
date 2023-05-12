@@ -149,6 +149,12 @@ bool RecorderImpl::Record(const EventBase& event) {
       case EventBase::MetricType::kDouble:
         metric_proto->set_value_double(metric.double_value);
         break;
+      case EventBase::MetricType::kIntArray:
+        StructuredEventProto::Metric::RepeatedInt64* repeated_int64 =
+            metric_proto->mutable_value_repeated_int64();
+        repeated_int64->mutable_values()->Assign(metric.int_array_value.begin(),
+                                                 metric.int_array_value.end());
+        break;
     }
   }
 

@@ -1720,4 +1720,22 @@
   </event>
 </project>
 
+<project name="TestProjectThree">
+  <owner>andrewbregger@google.com</owner>
+  <id>none</id>
+  <summary>
+    Project for unit testing, do not use.
+  </summary>
+  <event name="TestEventFour">
+    <summary>
+      Event for unit testing, do not use.
+    </summary>
+    <metric name="TestMetricFive" type="int-array" max="10">
+      <summary>
+        A per-user keyed hash array value.
+      </summary>
+    </metric>
+  </event>
+</project>
+
 </structured-metrics>

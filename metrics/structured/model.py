@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -66,8 +65,9 @@ class Model:
 
     OWNER_REGEX = r"^.+@(chromium\.org|google\.com)$"
     NAME_REGEX = r"^[A-Za-z0-9_.]+$"
-    TYPE_REGEX = r"^(hmac-string|raw-string|int|double)$"
+    TYPE_REGEX = r"^(hmac-string|raw-string|int|double|int-array)$"
     ID_REGEX = r"^(none|per-project|uma)$"
+    MAX_REGEX = r"^[0-9]+$"
 
     def __init__(self, xml_string):
         elem = ET.fromstring(xml_string)
@@ -131,9 +131,7 @@ class Project:
         events = "\n\n".join(str(e) for e in self.events)
         events = tw.indent(events, "    ")
         summary = wrap(self.summary, indent="  ")
-        owners = "\n".join(
-            f"    <owner>{o}</owner>" for o in self.owners
-        )
+        owners = "\n".join(f"    <owner>{o}</owner>" for o in self.owners)
 
         result = tw.dedent(
             """\
@@ -212,11 +210,13 @@ class Metric:
     """
 
     def __init__(self, elem, project):
-        util.check_attributes(elem, {"name", "type"})
+        util.check_attributes(elem, {"name", "type", "max"})
         util.check_children(elem, {"summary"})
 
         self.name = util.get_attr(elem, "name", Model.NAME_REGEX)
         self.type = util.get_attr(elem, "type", Model.TYPE_REGEX)
+        if self.type == "int-array":
+            self.max_size = int(util.get_attr(elem, "max", Model.MAX_REGEX))
         self.summary = util.get_text_child(elem, "summary")
 
         if self.type == "raw-string" and project.id != "none":
@@ -225,6 +225,9 @@ class Metric:
                 f"raw-string metrics must be in a project with id type "
                 f"'none', but {project.name} has id type '{project.id}'",
             )
+
+    def is_array(self):
+        return "array" in self.type
 
     def __repr__(self):
         summary = wrap(self.summary, indent="        ")

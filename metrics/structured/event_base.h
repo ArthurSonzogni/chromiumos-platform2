@@ -5,6 +5,7 @@
 #ifndef METRICS_STRUCTURED_EVENT_BASE_H_
 #define METRICS_STRUCTURED_EVENT_BASE_H_
 
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
@@ -39,6 +40,7 @@ class BRILLO_EXPORT EventBase {
     kInt = 1,
     kRawString = 2,
     kDouble = 3,
+    kIntArray = 4,
   };
 
   // Stores all information about a single metric: name hash, value, and a
@@ -61,6 +63,7 @@ class BRILLO_EXPORT EventBase {
     int64_t int_value;
     std::string string_value;
     double double_value;
+    std::vector<int64_t> int_array_value;
   };
 
   // Finalizes the event and sends it for recording. After this call, the event
@@ -92,6 +95,10 @@ class BRILLO_EXPORT EventBase {
 
   void AddDoubleMetric(uint64_t name_hash, double value);
 
+  void AddIntArrayMetric(uint64_t hash_name,
+                         const std::vector<int64_t>& values,
+                         size_t max_length);
+
   std::string GetHmacMetricForTest(uint64_t name_hash) const;
 
   int64_t GetIntMetricForTest(uint64_t name_hash) const;
@@ -99,6 +106,8 @@ class BRILLO_EXPORT EventBase {
   std::string GetRawStringMetricForTest(uint64_t name_hash) const;
 
   double GetDoubleMetricForTest(uint64_t name_hash) const;
+
+  std::vector<int64_t> GetIntArrayMetricForTest(uint64_t name_hash) const;
 
  private:
   // First 8 bytes of the MD5 hash of the following string:

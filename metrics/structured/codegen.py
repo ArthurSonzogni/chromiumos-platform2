@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -131,6 +130,12 @@ class MetricInfo:
             self.setter = "AddDoubleMetric"
             self.getter_type = "double"
             self.getter = "GetDoubleMetricForTest"
+        elif metric.type == "int-array":
+            self.setter_type = "std::vector<int64_t>&"
+            self.max_size = metric.max_size
+            self.setter = "AddIntArrayMetric"
+            self.getter_type = "std::vector<int64_t>"
+            self.getter = "GetIntArrayMetricForTest"
         else:
             raise ValueError("Invalid metric type.")
 
@@ -147,6 +152,8 @@ class Template:
         project_template,
         event_template,
         metric_template,
+        array_template,
+        is_header,
     ):
         self.model = model
         self.dirname = dirname
@@ -155,10 +162,12 @@ class Template:
         self.project_template = project_template
         self.event_template = event_template
         self.metric_template = metric_template
+        self.array_template = array_template
+        self.is_header = is_header
 
     def write_file(self):
         file_info = FileInfo(self.dirname, self.basename)
-        with open(file_info.filepath, "w") as f:
+        with open(file_info.filepath, "w", encoding="utf-8") as f:
             f.write(self._stamp_file(file_info))
 
     def _stamp_file(self, file_info):
@@ -190,10 +199,28 @@ class Template:
 
     def _stamp_event(self, file_info, project_info, event):
         event_info = EventInfo(event, project_info)
-        metric_code = "".join(
-            self._stamp_metric(file_info, event_info, metric)
-            for metric in event.metrics
-        )
+        if self.is_header:
+            metric_code = "".join(
+                self._stamp_metric(file_info, event_info, metric)
+                for metric in event.metrics
+            )
+            metric_code += "".join(
+                self._stamp_array_metric(file_info, event_info, metric)
+                for metric in event.metrics
+                if metric.is_array()
+            )
+        else:
+            metric_code = "".join(
+                self._stamp_metric(file_info, event_info, metric)
+                for metric in event.metrics
+                if not metric.is_array()
+            )
+            metric_code += "".join(
+                self._stamp_array_metric(file_info, event_info, metric)
+                for metric in event.metrics
+                if metric.is_array()
+            )
+
         return self.event_template.format(
             file=file_info,
             project=project_info,
@@ -203,5 +230,10 @@ class Template:
 
     def _stamp_metric(self, file_info, event_info, metric):
         return self.metric_template.format(
+            file=file_info, event=event_info, metric=MetricInfo(metric)
+        )
+
+    def _stamp_array_metric(self, file_info, event_info, metric):
+        return self.array_template.format(
             file=file_info, event=event_info, metric=MetricInfo(metric)
         )

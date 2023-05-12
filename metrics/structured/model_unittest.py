@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -319,6 +318,25 @@ class ModelTest(unittest.TestCase):
                   <summary> Test metric. </summary>
                 </metric>
                 <metric name="Duplicate" type="int">
+                  <summary> Test metric. </summary>
+                </metric>
+              </event>
+            </project>
+            </structured-metrics>"""
+        )
+
+    def test_missing_max(self):
+        # An int array metric is missing a max attribute.
+        self.assert_model_raises(
+            """\
+            <structured-metrics>
+            <project name="MyProject">
+              <owner>test@</owner>
+              <id>uma</id>
+              <summary> Test project. </summary>
+              <event name="MyEvent">
+                <summary> Test event. </summary>
+                <metric name="Metric" type="int-array">
                   <summary> Test metric. </summary>
                 </metric>
               </event>
