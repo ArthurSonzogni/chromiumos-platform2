@@ -101,7 +101,6 @@ enum ChromeOSError {
     },
     FailedUpdateContainerDevices(String),
     FailedAggressiveBalloon(String),
-    FailedSwapVm(String),
     InvalidEmail,
     InvalidExportPath,
     InvalidImportPath,
@@ -217,9 +216,6 @@ impl fmt::Display for ChromeOSError {
             }
             FailedAggressiveBalloon(reason) => {
                 write!(f, "Failed to update aggressive balloon: {}", reason)
-            }
-            FailedSwapVm(reason) => {
-                write!(f, "Failed to swap vm: {}", reason)
             }
             InvalidEmail => write!(f, "the active session has an invalid email address"),
             InvalidExportPath => write!(f, "disk export path is invalid"),
@@ -2633,35 +2629,6 @@ impl Methods {
             Ok(())
         } else {
             Err(FailedAggressiveBalloon(response.failure_reason).into())
-        }
-    }
-
-    pub fn vmm_swap(
-        &mut self,
-        vm_name: &str,
-        user_id_hash: &str,
-        operation: SwapOperation,
-    ) -> Result<(), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
-        let mut request = SwapVmRequest::new();
-        request.owner_id = user_id_hash.to_owned();
-        request.name = vm_name.to_owned();
-        request.operation = operation.into();
-
-        let response: SwapVmResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                SWAP_VM_METHOD,
-            )?,
-            &request,
-        )?;
-
-        if response.success {
-            Ok(())
-        } else {
-            Err(FailedSwapVm(response.failure_reason).into())
         }
     }
 }
