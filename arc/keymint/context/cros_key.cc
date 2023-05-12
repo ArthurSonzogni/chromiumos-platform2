@@ -86,6 +86,49 @@ const keymaster_key_format_t* CrosKeyFactory::SupportedExportFormats(
   return nullptr;
 }
 
+CrosKey::CrosKey(::keymaster::AuthorizationSet&& hw_enforced,
+                 ::keymaster::AuthorizationSet&& sw_enforced,
+                 const CrosKeyFactory* key_factory,
+                 KeyData&& key_data)
+    : ::keymaster::Key(
+          std::move(hw_enforced), std::move(sw_enforced), key_factory),
+      key_data_(std::move(key_data)) {}
+
+CrosKey::~CrosKey() = default;
+
+ChapsKey::ChapsKey(::keymaster::AuthorizationSet&& hw_enforced,
+                   ::keymaster::AuthorizationSet&& sw_enforced,
+                   const CrosKeyFactory* key_factory,
+                   KeyData&& key_data)
+    : CrosKey(std::move(hw_enforced),
+              std::move(sw_enforced),
+              key_factory,
+              std::move(key_data)) {}
+
+ChapsKey::ChapsKey(ChapsKey&& chaps_key)
+    : ChapsKey(chaps_key.hw_enforced_move(),
+               chaps_key.sw_enforced_move(),
+               chaps_key.cros_key_factory(),
+               std::move(chaps_key.key_data_)) {}
+
+ChapsKey::~ChapsKey() = default;
+
+ChapsKey& ChapsKey::operator=(ChapsKey&& other) {
+  hw_enforced_ = other.hw_enforced_move();
+  sw_enforced_ = other.sw_enforced_move();
+  key_factory_ = other.cros_key_factory();
+  key_data_ = std::move(other.key_data_);
+  return *this;
+}
+
+keymaster_error_t ChapsKey::formatted_key_material(
+    keymaster_key_format_t format,
+    ::keymaster::UniquePtr<uint8_t[]>* out_material,
+    size_t* out_size) const {
+  // TODO(b/274723555): Implement this function for KeyMint Context.
+  return KM_ERROR_UNKNOWN_ERROR;
+}
+
 CrosOperationFactory::CrosOperationFactory(keymaster_algorithm_t algorithm,
                                            keymaster_purpose_t purpose)
     : algorithm_(algorithm), purpose_(purpose) {}

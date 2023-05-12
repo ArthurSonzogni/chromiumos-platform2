@@ -102,6 +102,66 @@ class CrosKeyFactory : public ::keymaster::KeyFactory {
   mutable std::unique_ptr<CrosOperationFactory> sign_factory_;
 };
 
+// Base class for ChromeOS keys.
+class CrosKey : public ::keymaster::Key {
+ public:
+  CrosKey(::keymaster::AuthorizationSet&& hw_enforced,
+          ::keymaster::AuthorizationSet&& sw_enforced,
+          const CrosKeyFactory* key_factory,
+          KeyData&& key_data);
+  ~CrosKey() override;
+  // Not copyable nor assignable.
+  CrosKey(const CrosKey&) = delete;
+  CrosKey& operator=(const CrosKey&) = delete;
+
+  const CrosKeyFactory* cros_key_factory() const {
+    return static_cast<const CrosKeyFactory*>(key_factory_);
+  }
+
+  const KeyData& key_data() const { return key_data_; }
+
+ protected:
+  KeyData key_data_;
+};
+
+class ChapsKey : public CrosKey {
+ public:
+  ChapsKey(::keymaster::AuthorizationSet&& hw_enforced,
+           ::keymaster::AuthorizationSet&& sw_enforced,
+           const CrosKeyFactory* key_factory,
+           KeyData&& key_data);
+  ChapsKey(ChapsKey&& chaps_key);
+  ~ChapsKey() override;
+  ChapsKey& operator=(ChapsKey&&);
+  // Not copyable nor assignable.
+  ChapsKey(const ChapsKey&) = delete;
+  ChapsKey& operator=(const ChapsKey&) = delete;
+
+  // Exports the public/private key in the given format.
+  //
+  // The only supported format is |KM_KEY_FORMAT_X509| for public keys
+  // (SubjectPublicKeyInfo).
+  //
+  // KeyMint does not own private keys so those can't be exported and an error
+  // will be returned.
+  keymaster_error_t formatted_key_material(
+      keymaster_key_format_t format,
+      ::keymaster::UniquePtr<uint8_t[]>* out_material,
+      size_t* out_size) const override;
+
+  // Returns key label, corresponding to PKCS#11 CKA_LABEL.
+  const std::string& label() const { return key_data().chaps_key().label(); }
+  // Returns key ID, corresponding to PKCS#11 CKA_ID.
+  brillo::Blob id() const {
+    return brillo::Blob(key_data().chaps_key().id().begin(),
+                        key_data().chaps_key().id().end());
+  }
+  // Returns the chaps slot where this key is stored.
+  ContextAdaptor::Slot slot() const {
+    return static_cast<ContextAdaptor::Slot>(key_data().chaps_key().slot());
+  }
+};
+
 class CrosOperationFactory : public ::keymaster::OperationFactory {
  public:
   CrosOperationFactory(keymaster_algorithm_t algorithm,
