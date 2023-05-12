@@ -75,6 +75,8 @@ void CrosQtIMContext::Activate() {
     backend_->Activate(surface);
     is_activated_ = true;
   }
+
+  backend_->SetSupportsSurrounding(false);
   backend_->SetContentType(GetUpdatedHints());
 
   // TODO(zihanchen): Dig deeper into Qt::AA_DisableNativeVirtualKeyboard
@@ -141,6 +143,7 @@ void CrosQtIMContext::update(Qt::InputMethodQueries queries) {
   // TODO(zihanchen): Listen to Qt::ImSurroundingText when adding support for
   // surrounding text
   if (queries.testFlag(Qt::ImHints)) {
+    backend_->SetSupportsSurrounding(false);
     backend_->SetContentType(GetUpdatedHints());
   }
 }
