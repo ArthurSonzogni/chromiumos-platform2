@@ -35,7 +35,7 @@ Some commands help you to debug the issue or have a quick try:
 
 This is always supported.
 
-Spec:
+Spec (Partners only):
 [Chromebook](https://chromeos.google.com/partner/dlm/docs/latest-requirements/chromebook.html#usbc-gen-0001-v01),
 [Convertible](https://chromeos.google.com/partner/dlm/docs/latest-requirements/convertible.html#usbc-gen-0001-v01),
 [Detachable](https://chromeos.google.com/partner/dlm/docs/latest-requirements/detachable.html#usbc-gen-0012-v01),
@@ -71,7 +71,7 @@ to set it up.
 
 This is always supported.
 
-Spec:
+Spec (Partners only):
 [Chromebook](https://chromeos.google.com/partner/dlm/docs/latest-requirements/chromebook.html#bt-gen-0001-v01),
 [Convertible](https://chromeos.google.com/partner/dlm/docs/latest-requirements/convertible.html#bt-gen-0001-v01),
 [Detachable](https://chromeos.google.com/partner/dlm/docs/latest-requirements/detachable.html#bt-gen-0001-v01),
@@ -89,7 +89,7 @@ This is always supported. Chromebox may not have a speaker so the event may not
 be suitable, if OEMs want us to report it as non-supported, please
 [reach out to us][team-contact].
 
-Spec:
+Spec (Partners only):
 [Chromebook](https://chromeos.google.com/partner/dlm/docs/latest-requirements/chromebook.html#spkr-gen-0007-v01),
 [Convertible](https://chromeos.google.com/partner/dlm/docs/latest-requirements/convertible.html#spkr-gen-0003-v01),
 [Detachable](https://chromeos.google.com/partner/dlm/docs/latest-requirements/detachable.html#spkr-gen-0001-v01),
@@ -115,5 +115,19 @@ moment. Please [reach out to us][team-contact] if you need network events.
 ### Touchscreen
 
 ### StylusGarage
+
+It's supported only when `stylus-category` is explicitly configured as
+"internal", which means it's a "garaged stylus".
+
+You can run the following commands on your DUT:
+1. `cros_config /hardware-properties stylus-category` This is helpful to
+   understand what the value of `stylus-category` is.
+2. `cros-health-tool event --category=stylus_garage --check_supported` Use this
+   to see if healthd reports the correct support status.
+
+To configure `stylus-category` in Boxster, you can use `create_stylus` function
+defined in
+[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
+to set it up.
 
 ### Stylus

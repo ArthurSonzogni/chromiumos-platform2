@@ -29,8 +29,12 @@ class GroundTruth final {
 
   // cros_config related functions.
   std::string FormFactor();
+  std::string StylusCategory();
 
  private:
+  std::string ReadCrosConfig(const std::string& path,
+                             const std::string& property);
+
   // Unowned. Should outlive this instance.
   Context* const context_ = nullptr;
 };

@@ -6,6 +6,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/strings/stringprintf.h>
+
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
@@ -20,6 +22,14 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 void LogCrosConfigFail(const std::string& path, const std::string& property) {
   LOG(ERROR) << "Failed to read cros_config: " << path << "/" << property;
+}
+
+std::string WrapUnsupportedString(const std::string& cros_config_property,
+                                  const std::string& cros_config_value) {
+  std::string msg = base::StringPrintf(
+      "Not supported cros_config property [%s]: [%s]",
+      cros_config_property.c_str(), cros_config_value.c_str());
+  return msg;
 }
 
 }  // namespace
@@ -63,7 +73,8 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
       }
 
       return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-          "Not supported form factor: " + form_factor, nullptr));
+          WrapUnsupportedString(cros_config_property::kFormFactor, form_factor),
+          nullptr));
     }
     case mojom::EventCategoryEnum::kAudioJack:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
@@ -77,8 +88,17 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     case mojom::EventCategoryEnum::kTouchscreen:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-    case mojom::EventCategoryEnum::kStylusGarage:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+    case mojom::EventCategoryEnum::kStylusGarage: {
+      auto stylus_category = StylusCategory();
+      if (stylus_category == cros_config_value::kStylusCategoryInternal) {
+        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+      }
+
+      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+          WrapUnsupportedString(cros_config_property::kStylusCategory,
+                                stylus_category),
+          nullptr));
+    }
     case mojom::EventCategoryEnum::kStylus:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
   }
@@ -92,16 +112,24 @@ void GroundTruth::IsEventSupported(
 }
 
 std::string GroundTruth::FormFactor() {
-  std::string form_factor;
-  if (!context_->cros_config()->GetString(cros_config_path::kHardwareProperties,
-                                          cros_config_property::kFormFactor,
-                                          &form_factor)) {
-    LogCrosConfigFail(cros_config_path::kHardwareProperties,
-                      cros_config_property::kFormFactor);
+  return ReadCrosConfig(cros_config_path::kHardwareProperties,
+                        cros_config_property::kFormFactor);
+}
+
+std::string GroundTruth::StylusCategory() {
+  return ReadCrosConfig(cros_config_path::kHardwareProperties,
+                        cros_config_property::kStylusCategory);
+}
+
+std::string GroundTruth::ReadCrosConfig(const std::string& path,
+                                        const std::string& property) {
+  std::string value;
+  if (!context_->cros_config()->GetString(path, property, &value)) {
+    LogCrosConfigFail(path, property);
     return "";
   }
 
-  return form_factor;
+  return value;
 }
 
 }  // namespace diagnostics

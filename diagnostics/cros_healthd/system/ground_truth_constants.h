@@ -16,6 +16,7 @@ inline constexpr char kHardwareProperties[] = "/hardware-properties";
 namespace cros_config_property {
 
 inline constexpr char kFormFactor[] = "form-factor";
+inline constexpr char kStylusCategory[] = "stylus-category";
 
 }  // namespace cros_config_property
 
@@ -29,6 +30,12 @@ inline constexpr char kChromebase[] = "CHROMEBASE";
 inline constexpr char kChromebox[] = "CHROMEBOX";
 inline constexpr char kChromebit[] = "CHROMEBIT";
 inline constexpr char kChromeslate[] = "CHROMESLATE";
+
+// Possible values of /hardware-properties/stylus-category.
+inline constexpr char kStylusCategoryUnknown[] = "unknown";
+inline constexpr char kStylusCategoryNone[] = "none";
+inline constexpr char kStylusCategoryInternal[] = "internal";
+inline constexpr char kStylusCategoryExternal[] = "external";
 
 }  // namespace cros_config_value
 
