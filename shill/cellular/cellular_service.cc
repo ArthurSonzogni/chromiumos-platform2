@@ -110,6 +110,13 @@ bool LoadApnField(const StoreInterface* storage,
   return false;
 }
 
+bool ApnFieldExists(const StoreInterface* storage,
+                    const std::string& storage_group,
+                    const std::string& keytag,
+                    const std::string& apntag) {
+  return storage->GetString(storage_group, keytag + "." + apntag, NULL);
+}
+
 void LoadApn(const StoreInterface* storage,
              const std::string& storage_group,
              const std::string& keytag,
@@ -123,11 +130,17 @@ void LoadApn(const StoreInterface* storage,
         !base::StringToInt((*apn_info)[cellular::kApnVersionProperty],
                            &version) ||
         version < cellular::kCurrentApnCacheVersion) {
-      LOG(INFO) << __func__ << ": APN version mismatch: " << keytag;
+      if (ApnFieldExists(storage, storage_group, keytag, kApnProperty)) {
+        LOG(INFO) << __func__ << ": APN version mismatch: " << keytag;
+      }
       return;
     }
   }
-
+  if (!ApnFieldExists(storage, storage_group, keytag, kApnProperty)) {
+    LOG(INFO) << __func__
+              << ": APN field not previously stored in cache: " << keytag;
+    return;
+  }
   if (!LoadApnField(storage, storage_group, keytag, kApnProperty, apn_info)) {
     LOG(ERROR) << __func__ << ": Failed to load APN field: " << keytag;
     return;
