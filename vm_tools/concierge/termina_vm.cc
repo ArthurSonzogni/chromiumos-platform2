@@ -112,7 +112,6 @@ TerminaVm::TerminaVm(
     std::unique_ptr<patchpanel::Client> network_client,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir,
-    VmMemoryId vm_memory_id,
     base::FilePath log_path,
     std::string stateful_device,
     uint64_t stateful_size,
@@ -126,8 +125,7 @@ TerminaVm::TerminaVm(
                  vsock_cid,
                  std::move(seneschal_server_proxy),
                  kCrosvmSocket,
-                 std::move(runtime_dir),
-                 vm_memory_id),
+                 std::move(runtime_dir)),
       features_(features),
       stateful_device_(stateful_device),
       stateful_size_(stateful_size),
@@ -153,8 +151,7 @@ TerminaVm::TerminaVm(
                  vsock_cid,
                  std::move(seneschal_server_proxy),
                  "" /* cros_vm_socket */,
-                 std::move(runtime_dir),
-                 0 /* vm_memory_id */),
+                 std::move(runtime_dir)),
       subnet_(std::move(subnet)),
       features_(features),
       stateful_device_(stateful_device),
@@ -175,7 +172,6 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     std::unique_ptr<patchpanel::Client> network_client,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir,
-    VmMemoryId vm_memory_id,
     base::FilePath log_path,
     std::string stateful_device,
     uint64_t stateful_size,
@@ -188,10 +184,9 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     std::unique_ptr<ScopedWlSocket> socket) {
   auto vm = base::WrapUnique(new TerminaVm(
       vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
-      std::move(runtime_dir), vm_memory_id, std::move(log_path),
-      std::move(stateful_device), std::move(stateful_size), features,
-      vm_permission_service_proxy, std::move(bus), std::move(id),
-      classification, std::move(socket)));
+      std::move(runtime_dir), std::move(log_path), std::move(stateful_device),
+      std::move(stateful_size), features, vm_permission_service_proxy,
+      std::move(bus), std::move(id), classification, std::move(socket)));
 
   if (!vm->Start(std::move(vm_builder)))
     vm.reset();
@@ -1113,7 +1108,6 @@ VmInterface::Info TerminaVm::GetInfo() {
       .ipv4_address = IPv4Address(),
       .pid = pid(),
       .cid = cid(),
-      .vm_memory_id = vm_memory_id_,
       .seneschal_server_handle = seneschal_server_handle(),
       .permission_token = permission_token_,
       .status = IsTremplinStarted() ? VmInterface::Status::RUNNING

@@ -297,11 +297,6 @@ VmBuilder& VmBuilder::SetBlockSize(size_t block_size) {
   return *this;
 }
 
-VmBuilder& VmBuilder::SetVmMemoryId(VmMemoryId vm_memory_id) {
-  vm_memory_id_ = std::make_optional(vm_memory_id);
-  return *this;
-}
-
 VmBuilder& VmBuilder::SetVmmSwapDir(base::FilePath vmm_swap_dir) {
   vmm_swap_dir_ = std::move(vmm_swap_dir);
   return *this;
@@ -493,13 +488,6 @@ base::StringPairs VmBuilder::BuildRunParams() const {
 
   if (!pflash_.empty())
     args.emplace_back("--pflash", "path=" + pflash_.value());
-
-  if (vm_memory_id_) {
-    std::string mms_control_socket = "/run/mms_control_";
-    mms_control_socket += std::to_string(*vm_memory_id_);
-    mms_control_socket += ".sock";
-    args.emplace_back("--balloon-control", mms_control_socket);
-  }
 
   if (!vmm_swap_dir_.empty()) {
     args.emplace_back("--swap", vmm_swap_dir_.value());

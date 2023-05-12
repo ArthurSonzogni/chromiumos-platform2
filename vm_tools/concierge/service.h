@@ -111,14 +111,12 @@ class Service final : public org::chromium::VmConciergeInterface {
 
   // Handles a request to start a VM.
   StartVmResponse StartVmInternal(StartVmRequest request,
-                                  std::unique_ptr<dbus::MessageReader> reader,
-                                  VmMemoryId vm_memory_id);
+                                  std::unique_ptr<dbus::MessageReader> reader);
   void StartVm(dbus::MethodCall* method_call,
                dbus::ExportedObject::ResponseSender sender) override;
 
   // Handles a request to start a plugin-based VM.
   StartVmResponse StartPluginVmInternal(StartPluginVmRequest request,
-                                        VmMemoryId vm_memory_id,
                                         StartVmResponse& response);
   void StartPluginVm(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
@@ -127,7 +125,6 @@ class Service final : public org::chromium::VmConciergeInterface {
 
   // Handles a request to start ARCVM.
   StartVmResponse StartArcVmInternal(StartArcVmRequest request,
-                                     VmMemoryId vm_memory_id,
                                      StartVmResponse& response);
   void StartArcVm(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
@@ -545,10 +542,6 @@ class Service final : public org::chromium::VmConciergeInterface {
 
   // Thread on which memory reclaim operations are performed.
   base::Thread reclaim_thread_{"memory reclaim thread"};
-
-  // The next vm memory id. Only used for non-manatee builds, since
-  // the manatee memory service specifies the id on manatee builds.
-  VmMemoryId next_vm_memory_id_ = 0;
 
   // The timer which invokes the balloon resizing logic.
   base::RepeatingTimer balloon_resizing_timer_;

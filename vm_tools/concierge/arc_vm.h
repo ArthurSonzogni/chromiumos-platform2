@@ -78,7 +78,6 @@ class ArcVm final : public VmBaseImpl {
       std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
       base::FilePath runtime_dir,
       base::FilePath data_disk_path,
-      VmMemoryId vm_memory_id,
       ArcVmFeatures features,
       VmBuilder vm_builder);
   ~ArcVm() override;
@@ -168,7 +167,6 @@ class ArcVm final : public VmBaseImpl {
         std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
         base::FilePath runtime_dir,
         base::FilePath data_disk_path,
-        VmMemoryId vm_memory_id,
         ArcVmFeatures features,
         base::OneShotTimer* swap_policy_timer = new base::OneShotTimer(),
         base::RepeatingTimer* aggressive_balloon_timer =

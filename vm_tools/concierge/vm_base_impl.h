@@ -33,15 +33,13 @@ class VmBaseImpl : public VmInterface {
  public:
   VmBaseImpl(std::unique_ptr<patchpanel::Client> network_client,
              std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-             base::FilePath runtime_dir,
-             VmMemoryId vm_memory_id);
+             base::FilePath runtime_dir);
 
   VmBaseImpl(std::unique_ptr<patchpanel::Client> network_client,
              uint32_t vsock_cid,
              std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
              std::string cros_vm_socket,
-             base::FilePath runtime_dir,
-             VmMemoryId vm_memory_id);
+             base::FilePath runtime_dir);
 
   VmBaseImpl(const VmBaseImpl&) = delete;
   VmBaseImpl& operator=(const VmBaseImpl&) = delete;
@@ -121,9 +119,6 @@ class VmBaseImpl : public VmInterface {
 
   // Balloon policy with its state.
   std::unique_ptr<BalloonPolicyInterface> balloon_policy_;
-
-  // Id to identify the VM for memory management.
-  VmMemoryId vm_memory_id_;
 
  private:
   void HandleSuspendImminent() override;

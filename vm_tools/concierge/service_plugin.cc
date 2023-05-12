@@ -111,12 +111,11 @@ void Service::StartPluginVm(
     return;
   }
 
-  StartPluginVmInternal(request, next_vm_memory_id_++, response);
+  StartPluginVmInternal(request, response);
   response_sender->Return(response);
 }
 
 StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
-                                               VmMemoryId vm_memory_id,
                                                StartVmResponse& response) {
   LOG(INFO) << "Received StartPluginVm request";
 
@@ -243,8 +242,8 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
 
   auto vm = PluginVm::Create(
       vm_id, std::move(stateful_dir), std::move(iso_dir), root_dir.Take(),
-      runtime_dir.Take(), vm_memory_id, std::move(network_client),
-      request.subnet_index(), request.net_options().enable_vnet_hdr(), bus_,
+      runtime_dir.Take(), std::move(network_client), request.subnet_index(),
+      request.net_options().enable_vnet_hdr(), bus_,
       std::move(seneschal_server_proxy), vm_permission_service_proxy_,
       vmplugin_service_proxy_, std::move(vm_builder));
   if (!vm) {

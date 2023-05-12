@@ -833,7 +833,7 @@ class ArcVmTest : public ::testing::Test {
 
     vm_ = std::unique_ptr<ArcVm>(
         new ArcVm(vsock_cid, std::make_unique<patchpanel::FakeClient>(),
-                  nullptr, temp_dir_.GetPath(), base::FilePath("dummy"), 0, {},
+                  nullptr, temp_dir_.GetPath(), base::FilePath("dummy"), {},
                   swap_policy_timer_, aggressive_balloon_timer_));
 
     SetBalloonStats(0, 1024 * MIB);

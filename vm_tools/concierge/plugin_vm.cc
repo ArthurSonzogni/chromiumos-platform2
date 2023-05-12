@@ -110,7 +110,6 @@ std::unique_ptr<PluginVm> PluginVm::Create(
     base::FilePath iso_dir,
     base::FilePath root_dir,
     base::FilePath runtime_dir,
-    VmMemoryId vm_memory_id,
     std::unique_ptr<patchpanel::Client> network_client,
     int subnet_index,
     bool enable_vnet_hdr,
@@ -123,7 +122,7 @@ std::unique_ptr<PluginVm> PluginVm::Create(
       std::move(id), std::move(network_client), std::move(bus),
       std::move(seneschal_server_proxy), vm_permission_service_proxy,
       vmplugin_service_proxy, std::move(iso_dir), std::move(root_dir),
-      std::move(runtime_dir), vm_memory_id));
+      std::move(runtime_dir)));
 
   if (!vm->CreateUsbListeningSocket() ||
       !vm->Start(std::move(stateful_dir), subnet_index, enable_vnet_hdr,
@@ -201,7 +200,6 @@ VmInterface::Info PluginVm::GetInfo() {
       .ipv4_address = subnet_->AddressAtOffset(kGuestAddressOffset),
       .pid = process_.pid(),
       .cid = 0,
-      .vm_memory_id = vm_memory_id_,
       .seneschal_server_handle = seneschal_server_handle(),
       .permission_token = permission_token_,
       .status = VmInterface::Status::RUNNING,
@@ -627,12 +625,10 @@ PluginVm::PluginVm(VmId id,
                    dbus::ObjectProxy* vmplugin_service_proxy,
                    base::FilePath iso_dir,
                    base::FilePath root_dir,
-                   base::FilePath runtime_dir,
-                   VmMemoryId vm_memory_id)
+                   base::FilePath runtime_dir)
     : VmBaseImpl(std::move(network_client),
                  std::move(seneschal_server_proxy),
-                 std::move(runtime_dir),
-                 vm_memory_id),
+                 std::move(runtime_dir)),
       id_(std::move(id)),
       iso_dir_(std::move(iso_dir)),
       bus_(std::move(bus)),

@@ -267,12 +267,11 @@ void Service::StartArcVm(
     return;
   }
 
-  StartArcVmInternal(request, next_vm_memory_id_++, response);
+  StartArcVmInternal(request, response);
   response_sender->Return(response);
 }
 
 StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
-                                            VmMemoryId vm_memory_id,
                                             StartVmResponse& response) {
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(VmInfo::ARC_VM);
@@ -585,7 +584,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   auto vm = ArcVm::Create(base::FilePath(kKernelPath), vsock_cid,
                           std::move(network_client), std::move(server_proxy),
                           std::move(runtime_dir), std::move(data_disk_path),
-                          vm_memory_id, features, std::move(vm_builder));
+                          features, std::move(vm_builder));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 

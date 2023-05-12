@@ -1090,21 +1090,6 @@ void Service::RunBalloonPolicy() {
   }
   MemoryMargins memory_margins = *memory_margins_opt;
 
-  std::vector<std::pair<uint32_t, BalloonStats>> balloon_stats;
-  std::vector<uint32_t> ids;
-  for (auto& vm_entry : vms_) {
-    auto& vm = vm_entry.second;
-    if (!vm->GetBalloonPolicy(memory_margins, vm_entry.first.name())) {
-      // Skip VMs that don't have a memory policy. It may just not be ready
-      // yet.
-      continue;
-    }
-    auto stats_opt = vm->GetBalloonStats();
-    if (stats_opt) {
-      balloon_stats.emplace_back(vm->GetInfo().vm_memory_id, *stats_opt);
-    }
-  }
-
   const auto available_memory = GetAvailableMemory();
   if (!available_memory.has_value()) {
     return;
@@ -1136,16 +1121,21 @@ void Service::RunBalloonPolicy() {
       // Skip suspended VMs since there is no effect.
       continue;
     }
-    auto stats_iter = std::find_if(
-        balloon_stats.begin(), balloon_stats.end(),
-        [&vm](auto& pair) { return pair.first == vm->GetInfo().vm_memory_id; });
-    if (stats_iter == balloon_stats.end()) {
+
+    const std::unique_ptr<BalloonPolicyInterface>& policy =
+        vm->GetBalloonPolicy(memory_margins, vm_entry.first.name());
+    if (!policy) {
+      // Skip VMs that don't have a memory policy. It may just not be ready
+      // yet.
+      continue;
+    }
+
+    auto stats_opt = vm->GetBalloonStats();
+    if (!stats_opt) {
       // Stats not available. Skip running policies.
       continue;
     }
-    BalloonStats stats = stats_iter->second;
-    const std::unique_ptr<BalloonPolicyInterface>& policy =
-        vm->GetBalloonPolicy(memory_margins, vm_entry.first.name());
+    BalloonStats stats = *stats_opt;
 
     // Switch available memory for this VM based on the current game mode.
     bool is_in_game_mode = foreground_vm_name.has_value() &&
@@ -1729,16 +1719,13 @@ void Service::StartVm(dbus::MethodCall* method_call,
     return;
   }
 
-  response = StartVmInternal(std::move(request), std::move(reader),
-                             next_vm_memory_id_++);
+  response = StartVmInternal(std::move(request), std::move(reader));
   SendDbusResponse(std::move(response_sender), method_call, response);
   return;
 }
 
 StartVmResponse Service::StartVmInternal(
-    StartVmRequest request,
-    std::unique_ptr<dbus::MessageReader> reader,
-    VmMemoryId vm_memory_id) {
+    StartVmRequest request, std::unique_ptr<dbus::MessageReader> reader) {
   LOG(INFO) << "Received request: " << __func__;
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
@@ -2106,10 +2093,9 @@ StartVmResponse Service::StartVmInternal(
 
   auto vm = TerminaVm::Create(
       vsock_cid, std::move(network_client), std::move(server_proxy),
-      std::move(runtime_dir), vm_memory_id, std::move(log_path),
-      std::move(stateful_device), std::move(stateful_size), features,
-      vm_permission_service_proxy_, bus_, vm_id, classification,
-      std::move(vm_builder), std::move(socket));
+      std::move(runtime_dir), std::move(log_path), std::move(stateful_device),
+      std::move(stateful_size), features, vm_permission_service_proxy_, bus_,
+      vm_id, classification, std::move(vm_builder), std::move(socket));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
