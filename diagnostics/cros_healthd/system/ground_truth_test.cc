@@ -156,5 +156,27 @@ TEST_F(GroundTruthTest, StylusEvent) {
   }
 }
 
+TEST_F(GroundTruthTest, TouchscreenEvent) {
+  std::vector<std::pair</*has-touchscreen=*/std::string, /*supported=*/bool>>
+      test_combinations = {
+          {"true", true},
+          {"false", false},
+          {"Others", false},
+      };
+
+  // Test not set the cros_config first to simulate file not found.
+  ExpectEventUnsupported(mojom::EventCategoryEnum::kTouchscreen);
+
+  for (const auto& [has_touchscreen, supported] : test_combinations) {
+    SetCrosConfig(cros_config_path::kHardwareProperties,
+                  cros_config_property::kHasTouchscreen, has_touchscreen);
+    if (supported) {
+      ExpectEventSupported(mojom::EventCategoryEnum::kTouchscreen);
+    } else {
+      ExpectEventUnsupported(mojom::EventCategoryEnum::kTouchscreen);
+    }
+  }
+}
+
 }  // namespace
 }  // namespace diagnostics

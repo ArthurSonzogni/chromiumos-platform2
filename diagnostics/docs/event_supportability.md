@@ -114,6 +114,19 @@ moment. Please [reach out to us][team-contact] if you need network events.
 
 ### Touchscreen
 
+It's supported only when `has-touchscreen` is explicitly configured as "true".
+
+You can run the following commands on your DUT:
+1. `cros_config /hardware-properties has-touchscreen` This is helpful to
+   understand what the value of `has-touchscreen` is.
+2. `cros-health-tool event --category=touchscreen --check_supported` Use this
+   to see if healthd reports the correct support status.
+
+To configure `has-touchscreen` in Boxster, you can use `create_screen` function
+defined in
+[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
+to set it up, in this case, you should fill the `touch` parameter as `True`.
+
 ### StylusGarage
 
 It's supported only when `stylus-category` is explicitly configured as

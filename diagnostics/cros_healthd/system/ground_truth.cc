@@ -86,8 +86,17 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     case mojom::EventCategoryEnum::kHdmi:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-    case mojom::EventCategoryEnum::kTouchscreen:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+    case mojom::EventCategoryEnum::kTouchscreen: {
+      auto has_touchscreen = HasTouchscreen();
+      if (has_touchscreen == "true") {
+        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+      }
+
+      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+          WrapUnsupportedString(cros_config_property::kHasTouchscreen,
+                                has_touchscreen),
+          nullptr));
+    }
     case mojom::EventCategoryEnum::kStylusGarage: {
       auto stylus_category = StylusCategory();
       if (stylus_category == cros_config_value::kStylusCategoryInternal) {
@@ -129,6 +138,11 @@ std::string GroundTruth::FormFactor() {
 std::string GroundTruth::StylusCategory() {
   return ReadCrosConfig(cros_config_path::kHardwareProperties,
                         cros_config_property::kStylusCategory);
+}
+
+std::string GroundTruth::HasTouchscreen() {
+  return ReadCrosConfig(cros_config_path::kHardwareProperties,
+                        cros_config_property::kHasTouchscreen);
 }
 
 std::string GroundTruth::ReadCrosConfig(const std::string& path,

@@ -17,6 +17,7 @@ namespace cros_config_property {
 
 inline constexpr char kFormFactor[] = "form-factor";
 inline constexpr char kStylusCategory[] = "stylus-category";
+inline constexpr char kHasTouchscreen[] = "has-touchscreen";
 
 }  // namespace cros_config_property
 
