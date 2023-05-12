@@ -8,6 +8,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -58,6 +59,7 @@
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
+#include "cryptohome/credential_verifier.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/error/converter.h"
@@ -78,6 +80,7 @@
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
+#include "cryptohome/user_session/user_session.h"
 #include "cryptohome/util/proto_enum.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -116,51 +119,119 @@ void ReplyWithStatus(base::OnceCallback<void(const ReplyType&)> on_done,
   ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
 }
 
-// Wrapper function for converting |auth_factor_status| into
-// user_data_auth::AuthFactorWithStatus and subsequently calling |on_done| with
-// ReplyWithError.
-template <typename ReplyType>
-void ReplyWithAuthFactorStatus(
+// Builder function for AuthFactorWithStatus. This function takes into account
+// type and calls various library functions needed to convert AuthFactor to a
+// proto for a persistent user.
+std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
     AuthFactorDriverManager* auth_factor_driver_manager,
-    base::OnceCallback<void(const ReplyType&)> on_done,
-    CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor_status) {
-  ReplyType reply;
-  if (!auth_factor_status.ok()) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocUserDataAuthNoAuthFactorInUpdateAuthFactorMetadata))
-            .Wrap(std::move(auth_factor_status).err_status()));
-    return;
-  }
-
+    const AuthFactor& auth_factor) {
   const AuthFactorDriver& factor_driver =
-      auth_factor_driver_manager->GetDriver(auth_factor_status.value()->type());
+      auth_factor_driver_manager->GetDriver(auth_factor.type());
   auto auth_factor_proto =
-      factor_driver.ConvertToProto(auth_factor_status.value()->label(),
-                                   auth_factor_status.value()->metadata());
+      factor_driver.ConvertToProto(auth_factor.label(), auth_factor.metadata());
   if (!auth_factor_proto) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocUserDataAuthProtoFailureInUpdateAuthFactorMetadata),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-    return;
+    return std::nullopt;
   }
   user_data_auth::AuthFactorWithStatus auth_factor_with_status;
   *auth_factor_with_status.mutable_auth_factor() =
       std::move(*auth_factor_proto);
   auto supported_intents =
-      GetSupportedIntents(**auth_factor_status, *auth_factor_driver_manager);
+      GetSupportedIntents(auth_factor, *auth_factor_driver_manager);
   for (const auto& auth_intent : supported_intents) {
     auth_factor_with_status.add_available_for_intents(
         AuthIntentToProto(auth_intent));
   }
-  *reply.mutable_updated_auth_factor() = std::move(auth_factor_with_status);
-  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+  return auth_factor_with_status;
+}
+
+// Builder function for AuthFactorWithStatus for epehermal users. This function
+// takes into account type and calls various library functions needed to convert
+// AuthFactor to a proto.
+std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
+    AuthFactorDriverManager* auth_factor_driver_manager,
+    const CredentialVerifier* verifier) {
+  const AuthFactorDriver& factor_driver =
+      auth_factor_driver_manager->GetDriver(verifier->auth_factor_type());
+  auto proto_factor = factor_driver.ConvertToProto(
+      verifier->auth_factor_label(), verifier->auth_factor_metadata());
+  if (!proto_factor) {
+    LOG(INFO) << "Could not convert";
+    return std::nullopt;
+  }
+  user_data_auth::AuthFactorWithStatus auth_factor_with_status;
+  *auth_factor_with_status.mutable_auth_factor() = std::move(*proto_factor);
+  // All ephemeral users have light verification only enabled by
+  // default.
+  auth_factor_with_status.add_available_for_intents(
+      AuthIntentToProto(AuthIntent::kVerifyOnly));
+  return auth_factor_with_status;
+}
+
+// Wrapper function for the ReplyWithError for AddAuthFactorReply,
+// UpdateAuthFactorMetadata and UpdateAuthFactorWithReply.
+template <typename ReplyType>
+void ReplyWithAuthFactorStatus(
+    AuthSession* auth_session,
+    AuthFactorDriverManager* auth_factor_driver_manager,
+    UserSession* user_session,
+    user_data_auth::AuthFactor auth_factor,
+    base::OnceCallback<void(const ReplyType&)> on_done,
+    CryptohomeStatus status) {
+  ReplyType reply;
+  if (!status.ok()) {
+    ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
+    return;
+  }
+
+  // These should be active and we expect these to be set always. Static assert
+  // is required as this function should only used for the three replies.
+  static_assert(
+      std::is_same_v<ReplyType, user_data_auth::AddAuthFactorReply> ||
+      std::is_same_v<ReplyType, user_data_auth::UpdateAuthFactorReply> ||
+      std::is_same_v<ReplyType, user_data_auth::UpdateAuthFactorMetadataReply>);
+  CHECK(auth_session);
+  CHECK(auth_factor_driver_manager);
+
+  std::optional<user_data_auth::AuthFactorWithStatus> auth_factor_with_status;
+
+  // Select which AuthFactorWithStatus to build based on user type.
+  if (auth_session->ephemeral_user()) {
+    DCHECK(user_session);
+    auth_factor_with_status = GetAuthFactorWithStatus(
+        auth_factor_driver_manager,
+        user_session->FindCredentialVerifier(auth_factor.label()));
+  } else {
+    auth_factor_with_status = GetAuthFactorWithStatus(
+        auth_factor_driver_manager, auth_session->auth_factor_map()
+                                        .Find(auth_factor.label())
+                                        ->auth_factor());
+  }
+
+  if (!auth_factor_with_status.has_value()) {
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthProtoFailureInReplyWithAuthFactorStatus),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+  }
+
+  // If is needed here because there are different names for the same Proto type
+  // across three calls.
+  if constexpr (std::is_same_v<ReplyType, user_data_auth::AddAuthFactorReply>) {
+    *reply.mutable_added_auth_factor() =
+        std::move(auth_factor_with_status.value());
+  } else if constexpr (std::is_same_v<ReplyType,
+                                      user_data_auth::UpdateAuthFactorReply> ||
+                       std::is_same_v<
+                           ReplyType,
+                           user_data_auth::UpdateAuthFactorMetadataReply>) {
+    *reply.mutable_updated_auth_factor() =
+        std::move(auth_factor_with_status.value());
+  }
+
+  ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
 }
 
 // Get the Account ID for an AccountIdentifier proto.
@@ -200,9 +271,9 @@ void GroupDmcryptDeviceMounts(
     base::FilePath device_group(
         match->first.value().substr(0, last_component_index));
     if (device_group.ReferencesParent()) {
-      // This should probably never occur in practice, but seems useful from the
-      // security hygiene perspective to explicitly prevent transforming stuff
-      // like "/foo/..-" into "/foo/..".
+      // This should probably never occur in practice, but seems useful from
+      // the security hygiene perspective to explicitly prevent transforming
+      // stuff like "/foo/..-" into "/foo/..".
       LOG(WARNING) << "Skipping malformed dm-crypt mount point: "
                    << match->first;
       continue;
@@ -2801,8 +2872,11 @@ void UserDataAuth::AddAuthFactor(
 
   auth_session_status.value()->AddAuthFactor(
       request,
-      base::BindOnce(&ReplyWithStatus<user_data_auth::AddAuthFactorReply>,
-                     std::move(on_done)));
+      base::BindOnce(
+          &ReplyWithAuthFactorStatus<user_data_auth::AddAuthFactorReply>,
+          auth_session_status->Get(), auth_factor_driver_manager_,
+          sessions_->Find(auth_session_status.value()->username()),
+          request.auth_factor(), std::move(on_done)));
 }
 
 void UserDataAuth::AuthenticateAuthFactor(
@@ -2883,8 +2957,11 @@ void UserDataAuth::UpdateAuthFactor(
   PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
   auth_session_status.value()->UpdateAuthFactor(
       request,
-      base::BindOnce(&ReplyWithStatus<user_data_auth::UpdateAuthFactorReply>,
-                     std::move(on_done)));
+      base::BindOnce(
+          &ReplyWithAuthFactorStatus<user_data_auth::UpdateAuthFactorReply>,
+          auth_session_status->Get(), auth_factor_driver_manager_,
+          sessions_->Find(auth_session_status.value()->username()),
+          request.auth_factor(), std::move(on_done)));
 }
 
 void UserDataAuth::UpdateAuthFactorMetadata(
@@ -2912,7 +2989,9 @@ void UserDataAuth::UpdateAuthFactorMetadata(
       request,
       base::BindOnce(&ReplyWithAuthFactorStatus<
                          user_data_auth::UpdateAuthFactorMetadataReply>,
-                     auth_factor_driver_manager_, std::move(on_done)));
+                     auth_session_status->Get(), auth_factor_driver_manager_,
+                     sessions_->Find(auth_session_status.value()->username()),
+                     request.auth_factor(), std::move(on_done)));
 }
 
 void UserDataAuth::RemoveAuthFactor(
@@ -2986,23 +3065,11 @@ void UserDataAuth::ListAuthFactors(
 
     // Populate the response from the items in the AuthFactorMap.
     for (AuthFactorMap::ValueView item : auth_factor_map) {
-      AuthFactor auth_factor = item.auth_factor();
-      const AuthFactorDriver& factor_driver =
-          auth_factor_driver_manager_->GetDriver(auth_factor.type());
-      auto auth_factor_proto = factor_driver.ConvertToProto(
-          auth_factor.label(), auth_factor.metadata());
-      if (auth_factor_proto) {
-        user_data_auth::AuthFactorWithStatus auth_factor_with_status;
-        *auth_factor_with_status.mutable_auth_factor() =
-            std::move(*auth_factor_proto);
-        auto supported_intents =
-            GetSupportedIntents(auth_factor, *auth_factor_driver_manager_);
-        for (const auto& auth_intent : supported_intents) {
-          auth_factor_with_status.add_available_for_intents(
-              AuthIntentToProto(auth_intent));
-        }
+      auto auth_factor_with_status = GetAuthFactorWithStatus(
+          auth_factor_driver_manager_, item.auth_factor());
+      if (auth_factor_with_status.has_value()) {
         *reply.add_configured_auth_factors_with_status() =
-            std::move(auth_factor_with_status);
+            std::move(auth_factor_with_status.value());
       }
     }
 
@@ -3054,21 +3121,11 @@ void UserDataAuth::ListAuthFactors(
     if (user_session) {
       for (const CredentialVerifier* verifier :
            user_session->GetCredentialVerifiers()) {
-        const AuthFactorDriver& factor_driver =
-            auth_factor_driver_manager_->GetDriver(
-                verifier->auth_factor_type());
-        if (auto proto_factor = factor_driver.ConvertToProto(
-                verifier->auth_factor_label(),
-                verifier->auth_factor_metadata())) {
-          user_data_auth::AuthFactorWithStatus auth_factor_with_status;
-          *auth_factor_with_status.mutable_auth_factor() =
-              std::move(*proto_factor);
-          // All ephemeral users have light verification only enabled by
-          // default.
-          auth_factor_with_status.add_available_for_intents(
-              AuthIntentToProto(AuthIntent::kVerifyOnly));
+        auto auth_factor_with_status =
+            GetAuthFactorWithStatus(auth_factor_driver_manager_, verifier);
+        if (auth_factor_with_status.has_value()) {
           *reply.add_configured_auth_factors_with_status() =
-              std::move(auth_factor_with_status);
+              std::move(auth_factor_with_status.value());
         }
       }
     }

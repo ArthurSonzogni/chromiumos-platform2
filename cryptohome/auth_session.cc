@@ -47,6 +47,7 @@
 #include "cryptohome/auth_factor/with_driver.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_input_utils.h"
+#include "cryptohome/auth_session_proto_utils.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
@@ -1909,7 +1910,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
 
 void AuthSession::UpdateAuthFactorMetadata(
     const user_data_auth::UpdateAuthFactorMetadataRequest request,
-    AuthFactorStatusCallback on_done) {
+    StatusCallback on_done) {
   if (request.auth_factor_label().empty()) {
     LOG(ERROR) << "AuthSession: UpdateAuthFactorMetadata request contains "
                   "empty auth factor label.";
@@ -1987,7 +1988,7 @@ void AuthSession::UpdateAuthFactorMetadata(
             .Wrap(std::move(status)));
     return;
   }
-  std::move(on_done).Run(std::move(auth_factor));
+  std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
 void AuthSession::PrepareAuthFactor(

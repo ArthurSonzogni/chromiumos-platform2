@@ -1774,7 +1774,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./userdataauth.cc */
   kLocUserDataAuthNoAuthFactorInUpdateAuthFactorMetadata = 3532,
   /* ./userdataauth.cc */
-  kLocUserDataAuthProtoFailureInUpdateAuthFactorMetadata = 3533,
+  kLocUserDataAuthProtoFailureInReplyWithAuthFactorStatus = 3533,
   /* ./auth_session.cc */
   kLocAuthSessionNoLabelInUpdateAuthFactorMetadata = 3534,
   /* ./auth_session.cc */

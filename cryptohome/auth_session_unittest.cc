@@ -2005,7 +2005,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     request.set_auth_factor_label(auth_factor_proto.label());
     *request.mutable_auth_factor() = std::move(auth_factor_proto);
 
-    TestFuture<CryptohomeStatusOr<std::unique_ptr<AuthFactor>>> update_future;
+    TestFuture<CryptohomeStatus> update_future;
     auth_session.UpdateAuthFactorMetadata(request, update_future.GetCallback());
 
     if (update_future.Get().ok() ||

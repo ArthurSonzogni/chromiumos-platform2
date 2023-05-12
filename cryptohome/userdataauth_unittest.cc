@@ -4536,6 +4536,7 @@ TEST_F(UserDataAuthApiTest, ChalCredBadSRKROCA) {
   ASSERT_TRUE(add_factor_reply.has_value());
   EXPECT_EQ(add_factor_reply->error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_TPM_UDPATE_REQUIRED);
+  EXPECT_FALSE(add_factor_reply->has_added_auth_factor());
 }
 
 TEST_F(UserDataAuthApiTest, MountFailed) {

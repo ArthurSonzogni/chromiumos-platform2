@@ -2187,6 +2187,11 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
 
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(reply.has_added_auth_factor());
+  EXPECT_EQ(reply.added_auth_factor().auth_factor().label(), kPasswordLabel);
+  EXPECT_THAT(reply.added_auth_factor().available_for_intents(),
+              UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY));
+  EXPECT_TRUE(reply.added_auth_factor().auth_factor().has_password_metadata());
   // Check the user session has a verifier for the given password.
   const CredentialVerifier* verifier =
       found_user_session->FindCredentialVerifier(kPasswordLabel);
@@ -2209,10 +2214,17 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   MockOwnerUser("whoever", homedirs_);
   AuthSession* const first_auth_session = PrepareEphemeralUser();
   ASSERT_TRUE(first_auth_session);
-  EXPECT_EQ(
-      AddPasswordAuthFactor(*first_auth_session, kPasswordLabel, kPassword)
-          .error(),
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  user_data_auth::AddAuthFactorReply add_reply =
+      AddPasswordAuthFactor(*first_auth_session, kPasswordLabel, kPassword);
+
+  EXPECT_EQ(add_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(add_reply.has_added_auth_factor());
+  EXPECT_EQ(add_reply.added_auth_factor().auth_factor().label(),
+            kPasswordLabel);
+  EXPECT_THAT(add_reply.added_auth_factor().available_for_intents(),
+              UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY));
+  EXPECT_TRUE(
+      add_reply.added_auth_factor().auth_factor().has_password_metadata());
 
   // Act.
   AuthSession* second_auth_session;
@@ -2249,10 +2261,17 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   MockOwnerUser("whoever", homedirs_);
   AuthSession* const first_auth_session = PrepareEphemeralUser();
   ASSERT_TRUE(first_auth_session);
-  EXPECT_EQ(
-      AddPasswordAuthFactor(*first_auth_session, kPasswordLabel, kPassword)
-          .error(),
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  auto add_reply =
+      AddPasswordAuthFactor(*first_auth_session, kPasswordLabel, kPassword);
+
+  EXPECT_EQ(add_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(add_reply.has_added_auth_factor());
+  EXPECT_EQ(add_reply.added_auth_factor().auth_factor().label(),
+            kPasswordLabel);
+  EXPECT_THAT(add_reply.added_auth_factor().available_for_intents(),
+              UnorderedElementsAre(user_data_auth::AUTH_INTENT_VERIFY_ONLY));
+  EXPECT_TRUE(
+      add_reply.added_auth_factor().auth_factor().has_password_metadata());
 
   // Act.
   AuthSession* second_auth_session;

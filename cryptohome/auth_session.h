@@ -35,7 +35,6 @@
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_intent.h"
-#include "cryptohome/auth_session_proto_utils.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
@@ -83,9 +82,6 @@ constexpr AuthIntent kAuthorizedIntentsForFullAuth[] = {
 class AuthSession final {
  public:
   using StatusCallback = base::OnceCallback<void(CryptohomeStatus)>;
-  using AuthFactorStatusCallback =
-      base::OnceCallback<void(CryptohomeStatusOr<std::unique_ptr<AuthFactor>>)>;
-
   // Parameter struct used to specify all the base parameters of AuthSession.
   // These parameters do not include the underlying interfaces that AuthSession
   // depends on, which are defined below in a separate parameter struct.
@@ -224,7 +220,7 @@ class AuthSession final {
   // UpdateAuthFactorMetadata updates the auth factor without new credentials.
   void UpdateAuthFactorMetadata(
       const user_data_auth::UpdateAuthFactorMetadataRequest request,
-      AuthFactorStatusCallback on_done);
+      StatusCallback on_done);
 
   // PrepareAuthFactor prepares an auth factor, e.g. fingerprint auth factor
   // which is not directly associated with a knowledge factor.
