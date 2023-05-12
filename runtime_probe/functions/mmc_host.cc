@@ -46,10 +46,12 @@ MmcHostFunction::DataType MmcHostFunction::EvalImpl() const {
       continue;
     }
     std::string mmc_host_name = mmc_host_path.BaseName().value();
-    node_res->GetDict().Set(
-        "is_emmc_attached",
-        mmc_attached_hosts.count(mmc_host_name) ? "1" : "0");
-    results.Append(std::move(*node_res));
+    bool is_emmc_attached = mmc_attached_hosts.count(mmc_host_name);
+    if (!is_emmc_attached_.has_value() ||
+        is_emmc_attached_ == is_emmc_attached) {
+      node_res->GetDict().Set("is_emmc_attached", is_emmc_attached ? "1" : "0");
+      results.Append(std::move(*node_res));
+    }
   }
 
   return results;

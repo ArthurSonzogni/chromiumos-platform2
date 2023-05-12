@@ -6,6 +6,7 @@
 #define RUNTIME_PROBE_FUNCTIONS_MMC_HOST_H_
 
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/probe_function_argument.h"
 
 namespace runtime_probe {
 
@@ -19,6 +20,10 @@ class MmcHostFunction : public PrivilegedProbeFunction {
  private:
   // PrivilegedProbeFunction overrides.
   DataType EvalImpl() const override;
+
+  // Only fetches the devices match the emmc attached state. If omit, all the
+  // devices are fetched.
+  PROBE_FUNCTION_ARG_DEF(std::optional<bool>, is_emmc_attached);
 };
 
 }  // namespace runtime_probe
