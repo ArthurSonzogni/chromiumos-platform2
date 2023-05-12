@@ -79,8 +79,11 @@ TEST_F(GuestIPv6ServiceTest, SingleUpstreamSingleDownstream) {
   EXPECT_CALL(*datapath_, MaskInterfaceFlags("down1", IFF_ALLMULTI, 0))
       .WillOnce(Return(true));
 
-  EXPECT_CALL(target, SendNDProxyControl(
-                          NDProxyControlMessage::START_NS_NA_RS_RA, 1, 101));
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 1,
+          101));
   target.StartForwarding("up1", "down1");
 
   // This should work even IfNametoindex is returning 0 (netdevices can be
@@ -97,8 +100,11 @@ TEST_F(GuestIPv6ServiceTest, SingleUpstreamSingleDownstream) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, MaskInterfaceFlags("down1", IFF_ALLMULTI, 0))
       .WillOnce(Return(true));
-  EXPECT_CALL(target, SendNDProxyControl(
-                          NDProxyControlMessage::START_NS_NA_RS_RA, 1, 101));
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 1,
+          101));
   target.StartForwarding("up1", "down1");
 
   EXPECT_CALL(target,
@@ -120,15 +126,24 @@ TEST_F(GuestIPv6ServiceTest, MultipleUpstreamMultipleDownstream) {
   ON_CALL(*system_, IfNametoindex("down2")).WillByDefault(Return(102));
   ON_CALL(*system_, IfNametoindex("down3")).WillByDefault(Return(103));
 
-  EXPECT_CALL(target, SendNDProxyControl(
-                          NDProxyControlMessage::START_NS_NA_RS_RA, 1, 101));
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 1,
+          101));
   target.StartForwarding("up1", "down1");
-  EXPECT_CALL(target, SendNDProxyControl(
-                          NDProxyControlMessage::START_NS_NA_RS_RA, 2, 102));
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 2,
+          102));
   target.StartForwarding("up2", "down2");
 
-  EXPECT_CALL(target, SendNDProxyControl(
-                          NDProxyControlMessage::START_NS_NA_RS_RA, 1, 103));
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 1,
+          103));
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::START_NS_NA, _, _))
       .With(Args<1, 2>(AreTheseTwo(101, 103)));
@@ -142,8 +157,11 @@ TEST_F(GuestIPv6ServiceTest, MultipleUpstreamMultipleDownstream) {
       .With(Args<1, 2>(AreTheseTwo(101, 103)));
   target.StopForwarding("up1", "down3");
 
-  EXPECT_CALL(target, SendNDProxyControl(
-                          NDProxyControlMessage::START_NS_NA_RS_RA, 2, 103));
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 2,
+          103));
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::START_NS_NA, _, _))
       .With(Args<1, 2>(AreTheseTwo(102, 103)));
@@ -171,8 +189,11 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
 
   // StartForwarding() and OnUplinkIPv6Changed() can be triggered in different
   // order in different scenario so we need to verify both.
-  EXPECT_CALL(target, SendNDProxyControl(
-                          NDProxyControlMessage::START_NS_NA_RS_RA, 1, 101));
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 1,
+          101));
   target.StartForwarding("up1", "down1");
 
   EXPECT_CALL(*datapath_, AddIPv6NeighborProxy("down1", "2001:db8:0:100::1234"))
@@ -195,8 +216,11 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
   // OnUplinkIPv6Changed -> StartForwarding
   target.OnUplinkIPv6Changed("up1", "2001:db8:0:200::1234");
 
-  EXPECT_CALL(target, SendNDProxyControl(
-                          NDProxyControlMessage::START_NS_NA_RS_RA, 1, 101));
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 1,
+          101));
   EXPECT_CALL(*datapath_, AddIPv6NeighborProxy("down1", "2001:db8:0:200::1234"))
       .WillOnce(Return(true));
   target.StartForwarding("up1", "down1");
@@ -231,8 +255,11 @@ TEST_F(GuestIPv6ServiceTest, RAServer) {
   target.SetForwardMethod("up1",
                           GuestIPv6Service::ForwardMethod::kMethodRAServer);
 
-  EXPECT_CALL(target, SendNDProxyControl(
-                          NDProxyControlMessage::START_NS_NA_RS_RA, _, _))
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, _,
+          _))
       .Times(0);
   EXPECT_CALL(target, SendNDProxyControl(
                           NDProxyControlMessage::START_NS_NA_RS_RA, _, _))
@@ -302,8 +329,11 @@ TEST_F(GuestIPv6ServiceTest, SetMethodOnTheFly) {
 
   target.OnUplinkIPv6Changed("up1", "2001:db8:0:200::1234");
 
-  EXPECT_CALL(target, SendNDProxyControl(
-                          NDProxyControlMessage::START_NS_NA_RS_RA, 1, 101));
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 1,
+          101));
   target.StartForwarding("up1", "down1");
 
   EXPECT_CALL(target,
