@@ -89,6 +89,7 @@ typeDefs:
     - none
     - internal
     - external
+    - unknown
   psu-type: &psu-type
     description: |
       Type of PSU the device has:
@@ -1286,6 +1287,15 @@ properties:
                   type: boolean
                 has-poe-peripheral-support:
                   description: Does the device have hardware for connecting PoE peripherals.
+                  type: boolean
+                has-hdmi:
+                  description: True if the device has an HDMI port.
+                  type: boolean
+                has-audio-jack:
+                  description: True if the device has an audio jack.
+                  type: boolean
+                has-sd-reader:
+                  description: True if the device has an SD card reader.
                   type: boolean
                 display-type: *display-type
                 stylus-category: *stylus-category

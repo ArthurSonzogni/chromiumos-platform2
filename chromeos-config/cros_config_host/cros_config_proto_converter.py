@@ -1757,6 +1757,25 @@ def _build_hardware_properties(hw_topology):
     if privacy_screen.present == topology_pb2.HardwareFeatures.PRESENT:
         result["has-privacy-screen"] = True
 
+    screen = hw_topology.screen.hardware_feature.screen
+    if screen.touch_support == topology_pb2.HardwareFeatures.PRESENT:
+        result["has-touchscreen"] = True
+
+    hdmi = hw_topology.hdmi.hardware_feature.hdmi
+    if hdmi.present == topology_pb2.HardwareFeatures.PRESENT:
+        result["has-hdmi"] = True
+
+    audio = hw_topology.audio.hardware_feature.audio
+    if (
+        audio.headphone_codec is not None and
+        audio.headphone_codec
+        != topology_pb2.HardwareFeatures.Audio.AUDIO_CODEC_UNKNOWN
+    ):
+        result["has-audio-jack"] = True
+
+    if hw_topology.sd_reader is not None:
+        result["has-sd-reader"] = True
+
     sensors = hw_topology.accelerometer_gyroscope_magnetometer.hardware_feature
     acc = sensors.accelerometer
     if acc.base_accelerometer == topology_pb2.HardwareFeatures.PRESENT:
@@ -1800,6 +1819,21 @@ def _build_storage(hw_topology):
     result = {}
     if storage_type in storage_type_names:
         result["storage-type"] = storage_type_names[storage_type]
+
+    return result
+
+
+def _build_stylus(hw_topology):
+    stylus_category_names = {
+        topology_pb2.HardwareFeatures.Stylus.STYLUS_UNKNOWN: "unknown",
+        topology_pb2.HardwareFeatures.Stylus.NONE: "none",
+        topology_pb2.HardwareFeatures.Stylus.INTERNAL: "internal",
+        topology_pb2.HardwareFeatures.Stylus.EXTERNAL: "external",
+    }
+    stylus_category = hw_topology.stylus.hardware_feature.stylus.stylus
+    result = {}
+    if stylus_category in stylus_category_names:
+        result["stylus-category"] = stylus_category_names[stylus_category]
 
     return result
 
@@ -2768,6 +2802,11 @@ def _transform_build_config(config, config_files, whitelabel):
     )
     _upsert(
         _build_storage(config.hw_design_config.hardware_topology),
+        result,
+        "hardware-properties",
+    )
+    _upsert(
+        _build_stylus(config.hw_design_config.hardware_topology),
         result,
         "hardware-properties",
     )
