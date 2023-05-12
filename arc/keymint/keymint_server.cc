@@ -63,7 +63,16 @@ void KeyMintServer::UpdateContextPlaceholderKeys(
 
 void KeyMintServer::SetSystemVersion(uint32_t android_version,
                                      uint32_t android_patchlevel) {
-  // TODO(b/274723521): Add this back.
+  auto task_lambda = [](context::ArcKeyMintContext* context,
+                        uint32_t android_version, uint32_t android_patchlevel) {
+    // |context| is guaranteed valid here because it's owned
+    // by |backend_|, which outlives the |backend_thread_|
+    // this runs on.
+    context->SetSystemVersion(android_version, android_patchlevel);
+  };
+  backend_thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(task_lambda, backend_.context(),
+                                android_version, android_patchlevel));
 }
 
 template <typename KmMember, typename KmRequest, typename KmResponse>
@@ -133,11 +142,41 @@ void KeyMintServer::UpgradeKey(
 
 void KeyMintServer::DeleteKey(const std::vector<uint8_t>& key_blob,
                               DeleteKeyCallback callback) {
-  // TODO(b/274723521): Add this back.
+  // Convert input |key_blob| into |km_request|. All data is deep copied to
+  // avoid use-after-free.
+  auto km_request = std::make_unique<::keymaster::DeleteKeyRequest>(
+      backend_.keymint()->message_version());
+  km_request->SetKeyMaterial(key_blob.data(), key_blob.size());
+
+  // Call keymint.
+  RunKeyMintRequest(
+      FROM_HERE, &::keymaster::AndroidKeymaster::DeleteKey,
+      std::move(km_request),
+      base::BindOnce(
+          [](DeleteKeyCallback callback,
+             std::unique_ptr<::keymaster::DeleteKeyResponse> km_response) {
+            // Run callback.
+            std::move(callback).Run(km_response->error);
+          },
+          std::move(callback)));
 }
 
 void KeyMintServer::DeleteAllKeys(DeleteAllKeysCallback callback) {
-  // TODO(b/274723521): Add this back.
+  // Prepare keymint request.
+  auto km_request = std::make_unique<::keymaster::DeleteAllKeysRequest>(
+      backend_.keymint()->message_version());
+
+  // Call keymint.
+  RunKeyMintRequest(
+      FROM_HERE, &::keymaster::AndroidKeymaster::DeleteAllKeys,
+      std::move(km_request),
+      base::BindOnce(
+          [](DeleteAllKeysCallback callback,
+             std::unique_ptr<::keymaster::DeleteAllKeysResponse> km_response) {
+            // Run callback.
+            std::move(callback).Run(km_response->error);
+          },
+          std::move(callback)));
 }
 
 void KeyMintServer::DestroyAttestationIds(
