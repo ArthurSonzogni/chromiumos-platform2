@@ -83,6 +83,8 @@ bool RecorderImpl::Record(const EventBase& event) {
           events::usb_error::HubError::kProjectNameHash &&
       event.project_name_hash() !=
           events::usb_error::XhciError::kProjectNameHash &&
+      event.project_name_hash() !=
+          events::usb_pd_device::UsbPdDeviceInfo::kProjectNameHash &&
       !metrics_library_.AreMetricsEnabled()) {
     return false;
   }
