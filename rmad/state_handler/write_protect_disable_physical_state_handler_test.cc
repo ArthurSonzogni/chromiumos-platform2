@@ -33,6 +33,20 @@ using testing::Return;
 using testing::SetArgPointee;
 using testing::StrictMock;
 
+namespace {
+
+struct StateHandlerArgs {
+  std::vector<bool> wp_status_list = {};
+  bool factory_mode_enabled = false;
+  bool enable_factory_mode_succeeded = true;
+  bool is_cros_debug = false;
+  bool* factory_mode_toggled = nullptr;
+  bool* powerwash_requested = nullptr;
+  bool* reboot_toggled = nullptr;
+};
+
+}  // namespace
+
 namespace rmad {
 
 class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
@@ -44,30 +58,21 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
   };
 
   scoped_refptr<WriteProtectDisablePhysicalStateHandler> CreateStateHandler(
-      const std::vector<bool>& wp_status_list,
-      bool factory_mode_enabled,
-      bool enable_factory_mode_success,
-      bool expect_powerwash,
-      bool is_cros_debug,
-      bool* factory_mode_toggled = nullptr,
-      bool* powerwash_requested = nullptr,
-      bool* reboot_toggled = nullptr) {
+      const StateHandlerArgs& args = {}) {
     // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =
         std::make_unique<NiceMock<MockCrosSystemUtils>>();
-    if (expect_powerwash) {
-      ON_CALL(*mock_crossystem_utils,
-              GetInt(Eq(CrosSystemUtils::kCrosDebugProperty), _))
-          .WillByDefault(
-              DoAll(SetArgPointee<1>(is_cros_debug ? 1 : 0), Return(true)));
-    }
+    ON_CALL(*mock_crossystem_utils,
+            GetInt(Eq(CrosSystemUtils::kCrosDebugProperty), _))
+        .WillByDefault(
+            DoAll(SetArgPointee<1>(args.is_cros_debug ? 1 : 0), Return(true)));
 
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<StrictMock<MockWriteProtectUtils>>();
     {
       InSequence seq;
-      for (bool enabled : wp_status_list) {
+      for (bool enabled : args.wp_status_list) {
         EXPECT_CALL(*mock_write_protect_utils,
                     GetHardwareWriteProtectionStatus(_))
             .WillOnce(DoAll(SetArgPointee<0, bool>(enabled), Return(true)));
@@ -77,11 +82,11 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
     // Mock |Cr50Utils|.
     auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
     ON_CALL(*mock_cr50_utils, IsFactoryModeEnabled())
-        .WillByDefault(Return(factory_mode_enabled));
-    if (factory_mode_toggled) {
+        .WillByDefault(Return(args.factory_mode_enabled));
+    if (args.factory_mode_toggled) {
       ON_CALL(*mock_cr50_utils, EnableFactoryMode())
-          .WillByDefault(DoAll(Assign(factory_mode_toggled, true),
-                               Return(enable_factory_mode_success)));
+          .WillByDefault(DoAll(Assign(args.factory_mode_toggled, true),
+                               Return(args.enable_factory_mode_succeeded)));
     }
 
     // Register signal callback.
@@ -91,11 +96,11 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
     // Register request powerwash callback.
     daemon_callback_->SetExecuteRequestRmaPowerwashCallback(base::BindRepeating(
         &WriteProtectDisablePhysicalStateHandlerTest::RequestRmaPowerwash,
-        base::Unretained(this), powerwash_requested));
+        base::Unretained(this), args.powerwash_requested));
     // Register reboot EC callback.
     daemon_callback_->SetExecuteRebootEcCallback(base::BindRepeating(
         &WriteProtectDisablePhysicalStateHandlerTest::RebootEc,
-        base::Unretained(this), reboot_toggled));
+        base::Unretained(this), args.reboot_toggled));
 
     return base::MakeRefCounted<WriteProtectDisablePhysicalStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
@@ -128,25 +133,30 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Success) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-  auto handler = CreateStateHandler({}, true, true, false, true);
+  // Set up environment to wipe device.
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
-  EXPECT_TRUE(handler->GetState().wp_disable_physical().keep_device_open());
+  EXPECT_FALSE(handler->GetState().wp_disable_physical().keep_device_open());
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Failed) {
   // No kWipeDevice set in |json_store_|.
-  auto handler = CreateStateHandler({}, true, true, false, true);
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        TryGetNextStateCaseAtBoot_Succeeded_FactoryModeEnabled) {
+  // Set up environment for wiping the device and rebooted the device.
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   EXPECT_TRUE(json_store_->SetValue(kEcRebooted, true));
-  auto handler = CreateStateHandler({false}, true, true, false, true);
+
+  auto handler = CreateStateHandler(
+      {.wp_status_list = {false}, .factory_mode_enabled = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
@@ -170,10 +180,13 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
-       GetNextStateCase_Succeeded_KeepDeviceOpen) {
+       TryGetNextStateCaseAtBoot_Succeeded_KeepDeviceOpen) {
+  // Set up environment for not wiping the device and rebooted the device.
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
   EXPECT_TRUE(json_store_->SetValue(kEcRebooted, true));
-  auto handler = CreateStateHandler({false}, false, true, false, true);
+
+  auto handler = CreateStateHandler(
+      {.wp_status_list = {false}, .factory_mode_enabled = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
@@ -198,11 +211,15 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
             RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN);
 }
 
-TEST_F(WriteProtectDisablePhysicalStateHandlerTest, GetNextStateCase_Failed) {
-  // WP still enabled.
+TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
+       TryGetNextStateCaseAtBoot_Failed) {
+  // Set up environment for not wiping the device and rebooted the device.
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
   EXPECT_TRUE(json_store_->SetValue(kEcRebooted, true));
-  auto handler = CreateStateHandler({true}, true, true, false, true);
+
+  // WP is still enabled.
+  auto handler = CreateStateHandler(
+      {.wp_status_list = {true}, .factory_mode_enabled = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
@@ -212,12 +229,19 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest, GetNextStateCase_Failed) {
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_Success_AdditionalEcReboot) {
+  // Set up environment for not wiping the device and the device has not
+  // rebooted yet.
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
+
+  // Factory mode is enabled but we still need to do EC reboot.
   bool factory_mode_toggled = false, powerwash_requested = false,
        reboot_toggled = false;
-  auto handler = CreateStateHandler({false}, false, true, false, true,
-                                    &factory_mode_toggled, &powerwash_requested,
-                                    &reboot_toggled);
+  auto handler =
+      CreateStateHandler({.wp_status_list = {false},
+                          .factory_mode_enabled = true,
+                          .factory_mode_toggled = &factory_mode_toggled,
+                          .powerwash_requested = &powerwash_requested,
+                          .reboot_toggled = &reboot_toggled});
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -254,13 +278,20 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
-       GetNextStateCase_FactoryModeSuccess) {
+       GetNextStateCase_EnableFactoryModeSuccess) {
+  // Set up environment for wiping the device and the device has not rebooted
+  // yet.
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
+  // Factory mode is disabled so we should enable it and do EC reboot.
   bool factory_mode_toggled = false, powerwash_requested = false,
        reboot_toggled = false;
-  auto handler = CreateStateHandler({true, true, false}, false, true, true,
-                                    true, &factory_mode_toggled,
-                                    &powerwash_requested, &reboot_toggled);
+  auto handler =
+      CreateStateHandler({.wp_status_list = {true, true, false},
+                          .factory_mode_enabled = false,
+                          .factory_mode_toggled = &factory_mode_toggled,
+                          .powerwash_requested = &powerwash_requested,
+                          .reboot_toggled = &reboot_toggled});
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -316,18 +347,27 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_FactoryModeSuccess_PowerwashDisabled_CrosDebug) {
+  // Set up environment for wiping the device and the device has not rebooted
+  // yet.
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
+  // Powerwash is disabled manually.
+  brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
+
+  // Factory mode is disabled so we should enable it and do EC reboot.
   bool factory_mode_toggled = false, powerwash_requested = false,
        reboot_toggled = false;
+  auto handler =
+      CreateStateHandler({.wp_status_list = {false},
+                          .factory_mode_enabled = false,
+                          .is_cros_debug = true,
+                          .factory_mode_toggled = &factory_mode_toggled,
+                          .powerwash_requested = &powerwash_requested,
+                          .reboot_toggled = &reboot_toggled});
 
-  auto handler = CreateStateHandler({false}, false, true, true, true,
-                                    &factory_mode_toggled, &powerwash_requested,
-                                    &reboot_toggled);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   EXPECT_FALSE(handler->GetState().wp_disable_physical().keep_device_open());
-
-  brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
 
   RmadState state;
   state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
@@ -365,17 +405,28 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_FactoryModeSuccess_PowerwashDisabled_NonCrosDebug) {
+  // Set up environment for wiping the device and the device has not rebooted
+  // yet.
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
+  // Powerwash is disabled manually.
+  brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
+
+  // Factory mode is disabled so we should enable it an do EC reboot. cros_debug
+  // is not turned on so we still do a powerwash.
   bool factory_mode_toggled = false, powerwash_requested = false,
        reboot_toggled = false;
-  auto handler = CreateStateHandler({false}, false, true, true, false,
-                                    &factory_mode_toggled, &powerwash_requested,
-                                    &reboot_toggled);
+  auto handler =
+      CreateStateHandler({.wp_status_list = {false},
+                          .factory_mode_enabled = false,
+                          .is_cros_debug = false,
+                          .factory_mode_toggled = &factory_mode_toggled,
+                          .powerwash_requested = &powerwash_requested,
+                          .reboot_toggled = &reboot_toggled});
+
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   EXPECT_FALSE(handler->GetState().wp_disable_physical().keep_device_open());
-
-  brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
 
   RmadState state;
   state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
@@ -413,13 +464,21 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_FactoryModeFailed) {
+  // Set up environment for wiping the device and the device has not rebooted
+  // yet.
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
+  // Factory mode is disabled so we should enable it, but it fails.
   bool factory_mode_toggled = false, powerwash_requested = false,
        reboot_toggled = false;
+  auto handler =
+      CreateStateHandler({.wp_status_list = {false},
+                          .factory_mode_enabled = false,
+                          .enable_factory_mode_succeeded = false,
+                          .factory_mode_toggled = &factory_mode_toggled,
+                          .powerwash_requested = &powerwash_requested,
+                          .reboot_toggled = &reboot_toggled});
 
-  auto handler = CreateStateHandler({true, true, false}, false, false, true,
-                                    true, &factory_mode_toggled,
-                                    &powerwash_requested, &reboot_toggled);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
   EXPECT_FALSE(handler->GetState().wp_disable_physical().keep_device_open());
@@ -439,21 +498,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   EXPECT_FALSE(signal_sent);
   EXPECT_FALSE(powerwash_requested);
   EXPECT_FALSE(reboot_toggled);
-  // First call to |mock_crossystem_utils_| during polling, get 1.
-  task_environment_.FastForwardBy(
-      WriteProtectDisablePhysicalStateHandler::kPollInterval);
-  EXPECT_FALSE(factory_mode_toggled);
-  EXPECT_FALSE(signal_sent);
-  EXPECT_FALSE(powerwash_requested);
-  EXPECT_FALSE(reboot_toggled);
-  // Second call to |mock_crossystem_utils_| during polling, get 1.
-  task_environment_.FastForwardBy(
-      WriteProtectDisablePhysicalStateHandler::kPollInterval);
-  EXPECT_FALSE(factory_mode_toggled);
-  EXPECT_FALSE(signal_sent);
-  EXPECT_FALSE(powerwash_requested);
-  EXPECT_FALSE(reboot_toggled);
-  // Third call to |mock_crossystem_utils_| during polling, get 0.
+  // Call to |mock_crossystem_utils_| during polling, get 0.
   // Try to enable factory mode and send the signal.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
@@ -474,8 +519,11 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 
 TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
        GetNextStateCase_MissingState) {
+  // Set up environment for not wiping the device and the device has not
+  // rebooted yet.
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-  auto handler = CreateStateHandler({}, false, true, false, true);
+
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WriteProtectDisablePhysicalState.

@@ -27,6 +27,15 @@ using testing::Return;
 using testing::SetArgPointee;
 using testing::StrictMock;
 
+namespace {
+
+struct StateHandlerArgs {
+  std::vector<bool> wp_status_list = {};
+  bool enable_swwp_succeeded = true;
+};
+
+}  // namespace
+
 namespace rmad {
 
 class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
@@ -38,20 +47,20 @@ class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
   };
 
   scoped_refptr<WriteProtectEnablePhysicalStateHandler> CreateStateHandler(
-      const std::vector<bool>& wp_status_list, bool enable_swwp_success) {
+      const StateHandlerArgs& args = {}) {
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<StrictMock<MockWriteProtectUtils>>();
     {
       InSequence seq;
-      for (bool enabled : wp_status_list) {
+      for (bool enabled : args.wp_status_list) {
         EXPECT_CALL(*mock_write_protect_utils,
                     GetHardwareWriteProtectionStatus(_))
             .WillOnce(DoAll(SetArgPointee<0, bool>(enabled), Return(true)));
       }
     }
     EXPECT_CALL(*mock_write_protect_utils, EnableSoftwareWriteProtection())
-        .WillRepeatedly(Return(enable_swwp_success));
+        .WillRepeatedly(Return(args.enable_swwp_succeeded));
 
     // Register signal callback.
     daemon_callback_->SetWriteProtectSignalCallback(
@@ -70,19 +79,19 @@ class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
-TEST_F(WriteProtectEnablePhysicalStateHandlerTest, InitializeState_Success) {
-  auto handler = CreateStateHandler({}, true);
+TEST_F(WriteProtectEnablePhysicalStateHandlerTest, InitializeState_Succeeded) {
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(WriteProtectEnablePhysicalStateHandlerTest, InitializeState_Fail) {
-  auto handler = CreateStateHandler({}, false);
+  auto handler = CreateStateHandler({.enable_swwp_succeeded = false});
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
 
-TEST_F(WriteProtectEnablePhysicalStateHandlerTest, GetNextStateCase_Success) {
-  auto handler = CreateStateHandler({true}, true);
+TEST_F(WriteProtectEnablePhysicalStateHandlerTest, GetNextStateCase_Succeeded) {
+  auto handler = CreateStateHandler({.wp_status_list = {true}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -95,7 +104,7 @@ TEST_F(WriteProtectEnablePhysicalStateHandlerTest, GetNextStateCase_Success) {
 
 TEST_F(WriteProtectEnablePhysicalStateHandlerTest,
        GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler({}, true);
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WriteProtectEnablePhysicalState.
@@ -107,7 +116,8 @@ TEST_F(WriteProtectEnablePhysicalStateHandlerTest,
 }
 
 TEST_F(WriteProtectEnablePhysicalStateHandlerTest, GetNextStateCase_Wait) {
-  auto handler = CreateStateHandler({false, false, false, true}, true);
+  auto handler =
+      CreateStateHandler({.wp_status_list = {false, false, false, true}});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
 

@@ -32,8 +32,6 @@ using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
 
-namespace rmad {
-
 namespace {
 
 constexpr char kTestChallengeCode[] = "ABCDEFGH";
@@ -44,19 +42,25 @@ constexpr char kTestUrl[] =
     "https://www.google.com/chromeos/partner/console/"
     "cr50reset?challenge=ABCDEFGH&hwid=MODEL_TEST";
 
+struct StateHandlerArgs {
+  bool factory_mode_enabled = false;
+  bool is_cros_debug = false;
+  bool* powerwash_requested = nullptr;
+  bool* reboot_toggled = nullptr;
+};
+
 }  // namespace
+
+namespace rmad {
 
 class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<WriteProtectDisableRsuStateHandler> CreateStateHandler(
-      bool factory_mode_enabled,
-      bool is_cros_debug,
-      bool* powerwash_requested = nullptr,
-      bool* reboot_toggled = nullptr) {
+      const StateHandlerArgs& args = {}) {
     // Mock |Cr50Utils|.
     auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
     ON_CALL(*mock_cr50_utils, IsFactoryModeEnabled())
-        .WillByDefault(Return(factory_mode_enabled));
+        .WillByDefault(Return(args.factory_mode_enabled));
     ON_CALL(*mock_cr50_utils, GetRsuChallengeCode(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(kTestChallengeCode), Return(true)));
@@ -64,6 +68,7 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
         .WillByDefault(Return(true));
     ON_CALL(*mock_cr50_utils, PerformRsu(Ne(kTestUnlockCode)))
         .WillByDefault(Return(false));
+
     // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =
         std::make_unique<NiceMock<MockCrosSystemUtils>>();
@@ -73,22 +78,24 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_crossystem_utils,
             GetInt(Eq(CrosSystemUtils::kCrosDebugProperty), _))
         .WillByDefault(
-            DoAll(SetArgPointee<1>(is_cros_debug ? 1 : 0), Return(true)));
+            DoAll(SetArgPointee<1>(args.is_cros_debug ? 1 : 0), Return(true)));
+
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<NiceMock<MockWriteProtectUtils>>();
     ON_CALL(*mock_write_protect_utils, GetHardwareWriteProtectionStatus(_))
         .WillByDefault(
-            DoAll(SetArgPointee<0>(!factory_mode_enabled), Return(true)));
+            DoAll(SetArgPointee<0>(!args.factory_mode_enabled), Return(true)));
 
     // Register request powerwash feedback.
     daemon_callback_->SetExecuteRequestRmaPowerwashCallback(base::BindRepeating(
         &WriteProtectDisableRsuStateHandlerTest::RequestRmaPowerwash,
-        base::Unretained(this), powerwash_requested));
+        base::Unretained(this), args.powerwash_requested));
+
     // Register reboot EC callback.
     daemon_callback_->SetExecuteRebootEcCallback(
         base::BindRepeating(&WriteProtectDisableRsuStateHandlerTest::RebootEc,
-                            base::Unretained(this), reboot_toggled));
+                            base::Unretained(this), args.reboot_toggled));
 
     return base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
@@ -119,7 +126,7 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
        InitializeState_FactoryModeEnabled) {
-  auto handler = CreateStateHandler(true, true);
+  auto handler = CreateStateHandler({.factory_mode_enabled = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_EQ(handler->GetState().wp_disable_rsu().rsu_done(), true);
   EXPECT_EQ(handler->GetState().wp_disable_rsu().challenge_code(),
@@ -135,7 +142,7 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
        InitializeState_FactoryModeDisabled) {
-  auto handler = CreateStateHandler(false, true);
+  auto handler = CreateStateHandler({.factory_mode_enabled = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_EQ(handler->GetState().wp_disable_rsu().rsu_done(), false);
   EXPECT_EQ(handler->GetState().wp_disable_rsu().challenge_code(),
@@ -161,7 +168,9 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
        TryGetNextStateCaseAtBoot_Succeeded) {
   bool powerwash_requested = false, reboot_toggled = false;
   auto handler =
-      CreateStateHandler(true, true, &powerwash_requested, &reboot_toggled);
+      CreateStateHandler({.factory_mode_enabled = true,
+                          .powerwash_requested = &powerwash_requested,
+                          .reboot_toggled = &reboot_toggled});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
@@ -187,10 +196,12 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
-       TryGetNextStateCaseAtBoot_Failed) {
+       TryGetNextStateCaseAtBoot_Failed_FactoryModeDisabled) {
   bool powerwash_requested = false, reboot_toggled = false;
   auto handler =
-      CreateStateHandler(false, true, &powerwash_requested, &reboot_toggled);
+      CreateStateHandler({.factory_mode_enabled = false,
+                          .powerwash_requested = &powerwash_requested,
+                          .reboot_toggled = &reboot_toggled});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
@@ -200,10 +211,12 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
   EXPECT_FALSE(reboot_toggled);
 }
 
-TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Success_Rsu) {
+TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Succeeded_Rsu) {
   bool powerwash_requested = false, reboot_toggled = false;
   auto handler =
-      CreateStateHandler(false, true, &powerwash_requested, &reboot_toggled);
+      CreateStateHandler({.factory_mode_enabled = false,
+                          .powerwash_requested = &powerwash_requested,
+                          .reboot_toggled = &reboot_toggled});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -236,7 +249,10 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
        GetNextStateCase_PowerwashDisabled_CrosDebug) {
   bool powerwash_requested = false, reboot_toggled = false;
   auto handler =
-      CreateStateHandler(false, true, &powerwash_requested, &reboot_toggled);
+      CreateStateHandler({.factory_mode_enabled = false,
+                          .is_cros_debug = true,
+                          .powerwash_requested = &powerwash_requested,
+                          .reboot_toggled = &reboot_toggled});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
@@ -260,7 +276,10 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
        GetNextStateCase_PowerwashDisabled_NonCrosDebug) {
   bool powerwash_requested = false, reboot_toggled = false;
   auto handler =
-      CreateStateHandler(false, false, &powerwash_requested, &reboot_toggled);
+      CreateStateHandler({.factory_mode_enabled = false,
+                          .is_cros_debug = false,
+                          .powerwash_requested = &powerwash_requested,
+                          .reboot_toggled = &reboot_toggled});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   brillo::TouchFile(GetTempDirPath().AppendASCII(kDisablePowerwashFilePath));
@@ -281,7 +300,7 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler(false, true);
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WriteProtectDisableRsuState.
@@ -294,7 +313,7 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_MissingState) {
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
        GetNextStateCase_WrongUnlockCode) {
-  auto handler = CreateStateHandler(false, true);
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;

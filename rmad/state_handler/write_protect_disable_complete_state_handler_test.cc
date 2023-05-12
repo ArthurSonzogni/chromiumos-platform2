@@ -18,34 +18,48 @@
 using testing::NiceMock;
 using testing::Return;
 
+namespace {
+
+struct StateHandlerArgs {
+  bool disable_swwp_succeeded = true;
+};
+
+};  // namespace
+
 namespace rmad {
 
 class WriteProtectDisableCompleteStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<WriteProtectDisableCompleteStateHandler> CreateStateHandler(
-      WpDisableMethod wp_disable_method, bool disable_swwp_success) {
+      const StateHandlerArgs& args = {}) {
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<NiceMock<MockWriteProtectUtils>>();
     ON_CALL(*mock_write_protect_utils, DisableSoftwareWriteProtection())
-        .WillByDefault(Return(disable_swwp_success));
+        .WillByDefault(Return(args.disable_swwp_succeeded));
 
-    EXPECT_TRUE(json_store_->SetValue(kWpDisableMethod,
-                                      WpDisableMethod_Name(wp_disable_method)));
     return base::MakeRefCounted<WriteProtectDisableCompleteStateHandler>(
         json_store_, daemon_callback_, std::move(mock_write_protect_utils));
   }
 };
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest, InitializeState_Skipped) {
-  auto handler = CreateStateHandler(RMAD_WP_DISABLE_METHOD_SKIPPED, true);
+  // Set up environment for skipping disabling WP.
+  EXPECT_TRUE(json_store_->SetValue(
+      kWpDisableMethod, WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_SKIPPED)));
+
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_EQ(handler->GetState().wp_disable_complete().action(),
             WriteProtectDisableCompleteState::RMAD_WP_DISABLE_COMPLETE_NO_OP);
 }
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest, InitializeState_Rsu) {
-  auto handler = CreateStateHandler(RMAD_WP_DISABLE_METHOD_RSU, true);
+  // Set up environment for using RSU to disable WP.
+  EXPECT_TRUE(json_store_->SetValue(
+      kWpDisableMethod, WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_RSU)));
+
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_EQ(handler->GetState().wp_disable_complete().action(),
             WriteProtectDisableCompleteState::RMAD_WP_DISABLE_COMPLETE_NO_OP);
@@ -53,8 +67,13 @@ TEST_F(WriteProtectDisableCompleteStateHandlerTest, InitializeState_Rsu) {
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
        InitializeState_PhysicalAssembleDevice) {
-  auto handler =
-      CreateStateHandler(RMAD_WP_DISABLE_METHOD_PHYSICAL_ASSEMBLE_DEVICE, true);
+  // Set up environment for using physical method to disable WP and turn on
+  // factory mode.
+  EXPECT_TRUE(json_store_->SetValue(
+      kWpDisableMethod,
+      WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_PHYSICAL_ASSEMBLE_DEVICE)));
+
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_EQ(handler->GetState().wp_disable_complete().action(),
             WriteProtectDisableCompleteState::
@@ -63,16 +82,33 @@ TEST_F(WriteProtectDisableCompleteStateHandlerTest,
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
        InitializeState_PhysicalKeepDeviceOpen) {
-  auto handler = CreateStateHandler(
-      RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN, true);
+  // Set up environment for using physical method to disable WP and doesn't turn
+  // on factory mode.
+  EXPECT_TRUE(json_store_->SetValue(
+      kWpDisableMethod,
+      WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_PHYSICAL_KEEP_DEVICE_OPEN)));
+
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_EQ(handler->GetState().wp_disable_complete().action(),
             WriteProtectDisableCompleteState::
                 RMAD_WP_DISABLE_COMPLETE_KEEP_DEVICE_OPEN);
 }
 
-TEST_F(WriteProtectDisableCompleteStateHandlerTest, GetNextStateCase_Success) {
-  auto handler = CreateStateHandler(RMAD_WP_DISABLE_METHOD_RSU, true);
+TEST_F(WriteProtectDisableCompleteStateHandlerTest, InitializeState_Failed) {
+  // |kWpDisableMethod| not set.
+  auto handler = CreateStateHandler();
+  EXPECT_EQ(handler->InitializeState(),
+            RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
+}
+
+TEST_F(WriteProtectDisableCompleteStateHandlerTest,
+       GetNextStateCase_Succeeded) {
+  // Set up environment for using RSU to disable WP.
+  EXPECT_TRUE(json_store_->SetValue(
+      kWpDisableMethod, WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_RSU)));
+
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -85,7 +121,11 @@ TEST_F(WriteProtectDisableCompleteStateHandlerTest, GetNextStateCase_Success) {
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
        GetNextStateCase_DisableSwwpFailed) {
-  auto handler = CreateStateHandler(RMAD_WP_DISABLE_METHOD_RSU, false);
+  // Set up environment for using RSU to disable WP.
+  EXPECT_TRUE(json_store_->SetValue(
+      kWpDisableMethod, WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_RSU)));
+
+  auto handler = CreateStateHandler({.disable_swwp_succeeded = false});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -98,7 +138,11 @@ TEST_F(WriteProtectDisableCompleteStateHandlerTest,
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
        GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler(RMAD_WP_DISABLE_METHOD_RSU, true);
+  // Set up environment for using RSU to disable WP.
+  EXPECT_TRUE(json_store_->SetValue(
+      kWpDisableMethod, WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_RSU)));
+
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WriteProtectDisableCompleteState.
