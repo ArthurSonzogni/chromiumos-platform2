@@ -48,8 +48,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
-#include "cryptohome/scrypt_verifier.h"
-#include "cryptohome/smart_card_verifier.h"
 #include "cryptohome/vault_keyset.h"
 
 using cryptohome::error::CryptohomeCryptoError;

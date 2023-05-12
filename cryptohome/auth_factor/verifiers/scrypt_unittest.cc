@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cryptohome/scrypt_verifier.h>
+#include "cryptohome/auth_factor/verifiers/scrypt.h"
 
 #include <memory>
 #include <variant>

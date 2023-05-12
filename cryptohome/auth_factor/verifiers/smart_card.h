@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_SMART_CARD_VERIFIER_H_
-#define CRYPTOHOME_SMART_CARD_VERIFIER_H_
+#ifndef CRYPTOHOME_AUTH_FACTOR_VERIFIERS_SMART_CARD_H_
+#define CRYPTOHOME_AUTH_FACTOR_VERIFIERS_SMART_CARD_H_
 
 #include <memory>
 #include <string>
@@ -63,4 +63,4 @@ class SmartCardVerifier final : public AsyncCredentialVerifier {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_SMART_CARD_VERIFIER_H_
+#endif  // CRYPTOHOME_AUTH_FACTOR_VERIFIERS_SMART_CARD_H_

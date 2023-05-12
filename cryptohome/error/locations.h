@@ -1343,13 +1343,13 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //// This is a separator block at value 2100
   //// See location_db.py for more info.
   //////////////////////////////////////////////////
-  /* ./scrypt_verifier.cc */
+  /* ./auth_factor/verifiers/scrypt.cc */
   kLocScryptVerifierVerifyNoUserInput = 2100,
-  /* ./scrypt_verifier.cc */
+  /* ./auth_factor/verifiers/scrypt.cc */
   kLocScryptVerifierVerifyScryptFailed = 2101,
-  /* ./scrypt_verifier.cc */
+  /* ./auth_factor/verifiers/scrypt.cc */
   kLocScryptVerifierVerifyWrongScryptOutputSize = 2102,
-  /* ./scrypt_verifier.cc */
+  /* ./auth_factor/verifiers/scrypt.cc */
   kLocScryptVerifierVerifySecretMismatch = 2103,
   /* ./auth_blocks/generic.h */
   kLocGenericAuthBlockIsSupportedNotFound = 2104,
@@ -1393,15 +1393,15 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionManagerTokenCollision = 2301,
   /* =Obsolete= */
   kLocAuthSessionCreateInitializedFail = 2302,
-  /* ./smart_card_verifier.cc */
+  /* ./auth_factor/verifiers/smart_card.cc */
   kLocSmartCardVerifierNoKeyService = 2303,
-  /* ./smart_card_verifier.cc */
+  /* ./auth_factor/verifiers/smart_card.cc */
   kLocSmartCardVerifierNoInputUser = 2304,
-  /* ./smart_card_verifier.cc */
+  /* ./auth_factor/verifiers/smart_card.cc */
   kLocSmartCardVerifierNoInputAuth = 2305,
-  /* ./smart_card_verifier.cc */
+  /* ./auth_factor/verifiers/smart_card.cc */
   kLocSmartCardVerifierNoInputAlg = 2306,
-  /* ./smart_card_verifier.cc */
+  /* ./auth_factor/verifiers/smart_card.cc */
   kLocSmartCardVerifierCannotVerify = 2307,
   /* ./challenge_credentials/challenge_credentials_helper_impl.cc */
   kLocChalCredHelperTpmUnavailableInCheckTpmStatus = 2308,
