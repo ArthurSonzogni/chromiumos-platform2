@@ -32,6 +32,7 @@ TEST(ManifestTest, ParseManifest) {
   const std::string manifest_version = R"(1)";
   const std::string use_logical_volume = R"(true)";
   const std::string scaled = R"(true)";
+  const std::string powerwash_safe = R"(true)";
   const std::string manifest_raw = std::string() + R"(
     {
     "critical-update":)" + critical_update +
@@ -67,6 +68,8 @@ TEST(ManifestTest, ParseManifest) {
     "use-logical-volume":)" + use_logical_volume +
                                    R"(,
     "scaled":)" + scaled +
+                                   R"(,
+    "powerwash-safe":)" + powerwash_safe +
                                    R"(
     }
   )";
@@ -94,6 +97,7 @@ TEST(ManifestTest, ParseManifest) {
   EXPECT_EQ(manifest.critical_update(), true);
   EXPECT_TRUE(manifest.use_logical_volume());
   EXPECT_TRUE(manifest.scaled());
+  EXPECT_TRUE(manifest.powerwash_safe());
 }
 
 TEST(ManifestTest, ParseManifestNoOptional) {
@@ -136,6 +140,7 @@ TEST(ManifestTest, ParseManifestNoOptional) {
   EXPECT_EQ(manifest.critical_update(), false);
   EXPECT_FALSE(manifest.use_logical_volume());
   EXPECT_FALSE(manifest.scaled());
+  EXPECT_FALSE(manifest.powerwash_safe());
 
   // Sizes should default to 0.
   EXPECT_EQ(manifest.preallocated_size(), 0);

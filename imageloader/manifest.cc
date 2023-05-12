@@ -49,6 +49,7 @@ constexpr char kDaysToPurge[] = "days-to-purge";
 constexpr char kDescription[] = "description";
 constexpr char kUseLogicalVolume[] = "use-logical-volume";
 constexpr char kScaled[] = "scaled";
+constexpr char kPowerwashSafe[] = "powerwash-safe";
 
 bool GetSHA256FromString(const std::string& hash_str,
                          std::vector<uint8_t>* bytes) {
@@ -183,6 +184,9 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
 
   // If `scaled` field does not exist, by default it is false.
   scaled_ = manifest_dict.FindBool(kScaled).value_or(false);
+
+  // If `powerwash-safe` field does not exist, by default it is false.
+  powerwash_safe_ = manifest_dict.FindBool(kPowerwashSafe).value_or(false);
 
   // All of these fields are optional.
   const std::string* id = manifest_dict.FindString(kId);

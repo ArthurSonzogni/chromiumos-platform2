@@ -60,6 +60,7 @@ class BRILLO_EXPORT Manifest {
   }
   bool use_logical_volume() const { return use_logical_volume_; }
   bool scaled() const { return scaled_; }
+  bool powerwash_safe() const { return powerwash_safe_; }
 
  private:
   // Required manifest fields:
@@ -88,6 +89,7 @@ class BRILLO_EXPORT Manifest {
   std::map<std::string, std::string> metadata_;
   bool use_logical_volume_ = false;
   bool scaled_ = false;
+  bool powerwash_safe_ = false;
 };
 
 }  // namespace imageloader
