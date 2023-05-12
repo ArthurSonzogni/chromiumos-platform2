@@ -17,18 +17,13 @@ const POLL_INTERVAL: Duration = Duration::from_millis(50);
 
 /// Represents whether or not the random bytes are pulled from the source of
 /// /dev/random or /dev/urandom.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub enum Source {
     // This is the default and uses the same source as /dev/urandom.
+    #[default]
     Pseudorandom,
     // This uses the same source as /dev/random and may be.
     Random,
-}
-
-impl Default for Source {
-    fn default() -> Self {
-        Source::Pseudorandom
-    }
 }
 
 impl Source {
