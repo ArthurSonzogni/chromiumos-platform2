@@ -50,6 +50,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_factor/types/manager.h"
+#include "cryptohome/auth_factor/with_driver.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/auth_session_proto_utils.h"
@@ -121,7 +122,6 @@ void ReplyWithStatus(base::OnceCallback<void(const ReplyType&)> on_done,
 template <typename ReplyType>
 void ReplyWithAuthFactorStatus(
     AuthFactorDriverManager* auth_factor_driver_manager,
-    AuthBlockUtility* auth_block_utility,
     base::OnceCallback<void(const ReplyType&)> on_done,
     CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor_status) {
   ReplyType reply;
@@ -153,8 +153,8 @@ void ReplyWithAuthFactorStatus(
   user_data_auth::AuthFactorWithStatus auth_factor_with_status;
   *auth_factor_with_status.mutable_auth_factor() =
       std::move(*auth_factor_proto);
-  auto supported_intents = auth_block_utility->GetSupportedIntentsFromState(
-      auth_factor_status.value()->auth_block_state());
+  auto supported_intents =
+      GetSupportedIntents(**auth_factor_status, *auth_factor_driver_manager);
   for (const auto& auth_intent : supported_intents) {
     auth_factor_with_status.add_available_for_intents(
         AuthIntentToProto(auth_intent));
@@ -2183,8 +2183,7 @@ void UserDataAuth::StartAuthSession(
       // Only populate reply with AuthFactors that support the intended form of
       // authentication.
       auto supported_intents =
-          auth_block_utility_->GetSupportedIntentsFromState(
-              auth_factor.auth_block_state());
+          GetSupportedIntents(auth_factor, *auth_factor_driver_manager_);
       std::optional<AuthIntent> requested_intent =
           AuthIntentFromProto(request.intent());
       if (requested_intent && supported_intents.contains(*requested_intent)) {
@@ -2913,8 +2912,7 @@ void UserDataAuth::UpdateAuthFactorMetadata(
       request,
       base::BindOnce(&ReplyWithAuthFactorStatus<
                          user_data_auth::UpdateAuthFactorMetadataReply>,
-                     auth_factor_driver_manager_, auth_block_utility_,
-                     std::move(on_done)));
+                     auth_factor_driver_manager_, std::move(on_done)));
 }
 
 void UserDataAuth::RemoveAuthFactor(
@@ -2998,8 +2996,7 @@ void UserDataAuth::ListAuthFactors(
         *auth_factor_with_status.mutable_auth_factor() =
             std::move(*auth_factor_proto);
         auto supported_intents =
-            auth_block_utility_->GetSupportedIntentsFromState(
-                auth_factor.auth_block_state());
+            GetSupportedIntents(auth_factor, *auth_factor_driver_manager_);
         for (const auto& auth_intent : supported_intents) {
           auth_factor_with_status.add_available_for_intents(
               AuthIntentToProto(auth_intent));

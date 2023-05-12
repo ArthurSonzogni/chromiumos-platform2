@@ -252,6 +252,7 @@ class AuthSessionTest : public ::testing::Test {
   void SetUp() override {
     EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
     EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
     EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(true));
     EXPECT_CALL(hwsec_, GetManufacturer())
         .WillRepeatedly(ReturnValue(0x43524f53));
@@ -3225,9 +3226,6 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                       authenticate_future.GetCallback());
   EXPECT_THAT(authenticate_future.Get(), NotOk());
-  EXPECT_CALL(auth_block_utility_, GetSupportedIntentsFromState(_))
-      .WillRepeatedly(Return(base::flat_set<AuthIntent>(
-          {AuthIntent::kVerifyOnly, AuthIntent::kDecrypt})));
   // As currently the user is locked out until they log in via password, the
   // delay policy does not matter, but once the passwordless policy is set, this
   // timing should change to reflect that.

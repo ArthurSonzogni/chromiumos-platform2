@@ -77,9 +77,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   std::optional<AuthBlockType> GetAuthBlockTypeFromState(
       const AuthBlockState& state) const override;
 
-  base::flat_set<AuthIntent> GetSupportedIntentsFromState(
-      const AuthBlockState& auth_block_state) const override;
-
   bool GetAuthBlockStateFromVaultKeyset(
       const std::string& label,
       const ObfuscatedUsername& obfuscated_username,

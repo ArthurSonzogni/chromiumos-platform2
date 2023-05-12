@@ -21,6 +21,11 @@ enum class AuthIntent {
   // allows the WebAuthn operation.
   kWebAuthn,
 };
+inline constexpr AuthIntent kAllAuthIntents[] = {
+    AuthIntent::kDecrypt,
+    AuthIntent::kVerifyOnly,
+    AuthIntent::kWebAuthn,
+};
 
 }  // namespace cryptohome
 

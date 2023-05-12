@@ -306,6 +306,7 @@ if (use.test) {
       "auth_factor/types/password_unittest.cc",
       "auth_factor/types/pin_unittest.cc",
       "auth_factor/types/smart_card_unittest.cc",
+      "auth_factor/with_driver_unittest.cc",
       "auth_factor_vault_keyset_converter_unittest.cc",
       "auth_input_utils_unittest.cc",
       "auth_session_keyset_management_unittest.cc",

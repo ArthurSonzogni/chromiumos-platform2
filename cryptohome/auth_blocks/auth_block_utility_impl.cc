@@ -325,59 +325,6 @@ std::optional<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
   return generic.GetAuthBlockTypeFromState(auth_block_state);
 }
 
-base::flat_set<AuthIntent> AuthBlockUtilityImpl::GetSupportedIntentsFromState(
-    const AuthBlockState& auth_block_state) const {
-  // The supported intents. Defaults to all of them.
-  base::flat_set<AuthIntent> supported_intents = {
-      AuthIntent::kDecrypt, AuthIntent::kVerifyOnly, AuthIntent::kWebAuthn};
-
-  std::optional<AuthBlockType> auth_block_type =
-      GetAuthBlockTypeFromState(auth_block_state);
-
-  // Invalid block types support nothing.
-  if (!auth_block_type) {
-    supported_intents.clear();
-    return supported_intents;
-  }
-
-  // Non-Pinweaver based AuthFactors are assumed to support all AuthIntents by
-  // default.
-  if (*auth_block_type != AuthBlockType::kPinWeaver) {
-    return supported_intents;
-  }
-
-  auto* state = std::get_if<PinWeaverAuthBlockState>(&auth_block_state.state);
-  if (!state) {
-    supported_intents.clear();
-    return supported_intents;
-  }
-  // Ensure that the AuthFactor has le_label.
-  if (!state->le_label.has_value()) {
-    LOG(ERROR) << "PinWeaver AuthBlockState does not have le_label";
-    supported_intents.clear();
-    return supported_intents;
-  }
-  // Check with PinWeaver and fill the appropriate value.
-  if (!crypto_->le_manager()) {
-    LOG(ERROR) << "Crypto object does not have a valid LE manager";
-    supported_intents.clear();
-    return supported_intents;
-  }
-  if (!crypto_->cryptohome_keys_manager()) {
-    LOG(ERROR) << "Crypto object does not have a valid keys manager";
-    supported_intents.clear();
-    return supported_intents;
-  }
-
-  PinWeaverAuthBlock pinweaver_auth_block =
-      PinWeaverAuthBlock(*features_, crypto_->le_manager());
-  if (pinweaver_auth_block.GetLockoutDelay(state->le_label.value()) > 0) {
-    supported_intents.clear();
-  }
-
-  return supported_intents;
-}
-
 CryptohomeStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
     const AuthBlockState& auth_block_state) {
   std::optional<AuthBlockType> auth_block_type =

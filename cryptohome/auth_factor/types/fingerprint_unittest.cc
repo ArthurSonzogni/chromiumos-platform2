@@ -54,7 +54,7 @@ class FingerprintDriverTest : public AuthFactorDriverGenericTest {
     bio_command_processor_ = processor.get();
     EXPECT_CALL(*bio_command_processor_, SetEnrollScanDoneCallback(_));
     EXPECT_CALL(*bio_command_processor_, SetAuthScanDoneCallback(_));
-    EXPECT_CALL(*bio_command_processor_, SetSessionFailedCallback);
+    EXPECT_CALL(*bio_command_processor_, SetSessionFailedCallback(_));
     bio_service_ = std::make_unique<BiometricsAuthBlockService>(
         std::move(processor), /*enroll_signal_sender=*/base::DoNothing(),
         /*auth_signal_sender=*/base::DoNothing());

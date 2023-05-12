@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/containers/flat_set.h>
 #include <base/containers/span.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
@@ -92,11 +91,6 @@ class AuthBlockUtility {
   // This function returns the AuthBlock type based on AuthBlockState.
   virtual std::optional<AuthBlockType> GetAuthBlockTypeFromState(
       const AuthBlockState& state) const = 0;
-
-  // Returns the set of supported AuthIntents, determined from the PinWeaver
-  // AuthBlockState if it is available.
-  virtual base::flat_set<AuthIntent> GetSupportedIntentsFromState(
-      const AuthBlockState& auth_block_state) const = 0;
 
   // This populates an AuthBlockState allocated by the caller.
   [[nodiscard]] virtual bool GetAuthBlockStateFromVaultKeyset(

@@ -44,6 +44,7 @@
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/pin.h"
+#include "cryptohome/auth_factor/with_driver.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_input_utils.h"
 #include "cryptohome/credential_verifier.h"
@@ -496,8 +497,8 @@ void AuthSession::AuthFactorStatusUpdateTimer() {
     user_data_auth::StatusInfo status_info;
     *auth_factor_with_status.mutable_auth_factor() =
         std::move(*auth_factor_proto);
-    auto supported_intents = auth_block_utility_->GetSupportedIntentsFromState(
-        auth_factor.auth_block_state());
+    auto supported_intents =
+        GetSupportedIntents(auth_factor, *auth_factor_driver_manager_);
     for (const auto& auth_intent : supported_intents) {
       auth_factor_with_status.add_available_for_intents(
           AuthIntentToProto(auth_intent));

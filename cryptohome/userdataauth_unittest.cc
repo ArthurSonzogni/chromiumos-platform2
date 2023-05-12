@@ -3079,9 +3079,6 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
         vk->SetExtendedTPMKey(SecureBlob("fake extended tpm key"));
         return vk;
       });
-  EXPECT_CALL(auth_block_utility_, GetSupportedIntentsFromState(_))
-      .WillOnce(Return(base::flat_set<AuthIntent>(
-          {AuthIntent::kVerifyOnly, AuthIntent::kDecrypt})));
 
   TestFuture<user_data_auth::StartAuthSessionReply>
       start_auth_session_reply_future;
@@ -3126,9 +3123,6 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
         vk->SetExtendedTPMKey(SecureBlob("fake extended tpm key"));
         return vk;
       });
-  EXPECT_CALL(auth_block_utility_, GetSupportedIntentsFromState(_))
-      .WillOnce(Return(base::flat_set<AuthIntent>(
-          {AuthIntent::kVerifyOnly, AuthIntent::kDecrypt})));
   // Add a verifier as well.
   session_->AddCredentialVerifier(std::make_unique<MockCredentialVerifier>(
       AuthFactorType::kPassword, kFakeLabel,
