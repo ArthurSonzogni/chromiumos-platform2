@@ -9,7 +9,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/process/process.h>
-#include <google/protobuf/util/json_util.h>
 
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management_interface.h"
@@ -17,8 +16,8 @@
 
 namespace segmentation {
 
-// Writes |device_info| as JSON to |file_path|. Returns false if the write isn't
-// successful.
+// Writes |device_info| as base64 to |file_path|. Returns false if the write
+// isn't successful.
 std::optional<libsegmentation::DeviceInfo>
 FeatureManagementUtil::ReadDeviceInfoFromFile(const base::FilePath& file_path) {
   std::string encoded;

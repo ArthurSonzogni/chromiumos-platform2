@@ -10,14 +10,9 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/json/json_reader.h>
-#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/values.h>
 #include <brillo/data_encoding.h>
-#include <google/protobuf/util/json_util.h>
-#include <rootdev/rootdev.h>
-#include <vboot/vboot_host.h>
 
 #include "libsegmentation/device_info.pb.h"
 #include "libsegmentation/feature_management.h"

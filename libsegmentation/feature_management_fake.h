@@ -13,7 +13,6 @@
 
 #include "libsegmentation/feature_management.h"
 #include "libsegmentation/feature_management_interface.h"
-#include "proto/feature_management.pb.h"
 
 namespace segmentation {
 
