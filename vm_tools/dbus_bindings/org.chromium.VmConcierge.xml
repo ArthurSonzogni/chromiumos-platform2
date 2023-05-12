@@ -112,6 +112,7 @@
         Creates a disk image.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="raw" />
+      <!--
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::CreateDiskImageRequest"/>
@@ -128,6 +129,7 @@
           Returns success==true when successful, see failure_reason when not.
         </tp:docstring>
       </arg>
+      -->
     </method>
     <method name="DestroyDiskImage">
       <tp:docstring>
@@ -185,6 +187,7 @@
         Exports a VM disk image.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="raw" />
+      <!--
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::ExportDiskImageRequest"/>
@@ -206,6 +209,7 @@
           Please check status and failure_reason.
         </tp:docstring>
       </arg>
+      -->
     </method>
     <method name="GetDnsSettings">
       <tp:docstring>
