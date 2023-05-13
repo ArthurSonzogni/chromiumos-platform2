@@ -210,6 +210,12 @@ class CellularCapability3gpp {
 
   const std::vector<MobileOperatorMapper::MobileAPN>& GetProfiles() const;
 
+  // ------------------------------------------------------------------------
+  // Modem Type
+  // ------------------------------------------------------------------------
+  bool IsModemFM101();
+  bool IsModemFM350();
+  bool IsModemL850();
   // -------------------------------------------------------------------------
   // SIM lock management
   // -------------------------------------------------------------------------
@@ -413,8 +419,6 @@ class CellularCapability3gpp {
   // TODO(b/228528516) Remove this hack once the fix for
   // b/228042798 lands.
   bool IsDualStackSupported();
-  bool IsModemFM101();
-  bool IsModemFM350();
   void SetNextAttachApn();
   void ScheduleNextAttach(const Error& error);
   void FillInitialEpsBearerPropertyMap(KeyValueStore* properties);

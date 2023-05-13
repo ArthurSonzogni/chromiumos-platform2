@@ -978,6 +978,16 @@ bool CellularCapability3gpp::IsModemFM101() {
   return cellular()->device_id()->Match(fm101_device_id);
 }
 
+bool CellularCapability3gpp::IsModemL850() {
+  SLOG(this, 2) << __func__;
+  if (!cellular()->device_id())
+    return false;
+
+  SLOG(this, 2) << "device_id: " << cellular()->device_id()->AsString();
+  DeviceId l850_device_id = {DeviceId::BusType::kUsb, 0x2cb7, 0x0007};
+  return cellular()->device_id()->Match(l850_device_id);
+}
+
 void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
                                               KeyValueStore* properties) {
   DCHECK(base::Contains(apn_info, kApnProperty));

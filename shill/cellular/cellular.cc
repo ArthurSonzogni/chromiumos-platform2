@@ -1542,11 +1542,19 @@ void Cellular::LinkUp(int data_interface_index) {
   CHECK(capability_);
   CellularBearer* bearer =
       capability_->GetActiveBearer(ApnList::ApnType::kDefault);
+  if (!bearer) {
+    LOG(WARNING) << LoggingTag() << ": No bearer found";
+    // TODO(b/282250501): Update Cellular interface IP configurations.
+    // Add disconnect here.
+    return;
+  }
   bool ipv6_configured = false;
-
+  bool ipv4_configured = false;
+  std::unique_ptr<IPConfig::Properties> static_ipv4_props;
+  std::optional<DHCPProvider::Options> dhcp_opts = std::nullopt;
   // Some modems use kMethodStatic and some use kMethodDHCP for IPv6 config
-  if (bearer && bearer->ipv6_config_method() !=
-                    CellularBearer::IPConfigMethod::kUnknown) {
+  if (bearer->ipv6_config_method() !=
+      CellularBearer::IPConfigMethod::kUnknown) {
     SLOG(2) << LoggingTag()
             << ": Assign static IPv6 configuration from bearer.";
     const auto& ipv6_props = *bearer->ipv6_config_properties();
@@ -1565,11 +1573,7 @@ void Cellular::LinkUp(int data_interface_index) {
     ipv6_configured = true;
   }
 
-  std::unique_ptr<IPConfig::Properties> static_ipv4_props;
-  std::optional<DHCPProvider::Options> dhcp_opts = std::nullopt;
-
-  if (bearer &&
-      bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kStatic) {
+  if (bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kStatic) {
     SLOG(2) << LoggingTag()
             << ": Assign static IPv4 configuration from bearer.";
     // Override the MTU with a given limit for a specific serving operator
@@ -1582,15 +1586,27 @@ void Cellular::LinkUp(int data_interface_index) {
          mobile_operator_info_->mtu() < static_ipv4_props->mtu)) {
       static_ipv4_props->mtu = mobile_operator_info_->mtu();
     }
-  } else if (!ipv6_configured ||
-             (bearer && bearer->ipv4_config_method() ==
-                            CellularBearer::IPConfigMethod::kDHCP)) {
-    SLOG(2) << LoggingTag() << ": Start DHCP to acquire IPv4 configuration.";
-    dhcp_opts = manager()->CreateDefaultDHCPOption();
-    dhcp_opts->use_arp_gateway = false;
-    dhcp_opts->use_rfc_8925 = false;
+    ipv4_configured = true;
+  } else if (bearer->ipv4_config_method() ==
+             CellularBearer::IPConfigMethod::kDHCP) {
+    if (capability_->IsModemL850()) {
+      LOG(WARNING) << LoggingTag()
+                   << ": DHCP configuration not supported on L850"
+                      " (Ignoring kDHCP).";
+    } else {
+      dhcp_opts = manager()->CreateDefaultDHCPOption();
+      dhcp_opts->use_arp_gateway = false;
+      dhcp_opts->use_rfc_8925 = false;
+      ipv4_configured = true;
+    }
   }
 
+  if (!ipv6_configured && !ipv4_configured) {
+    LOG(WARNING) << LoggingTag()
+                 << ": No supported IP configuration found in bearer";
+    // TODO(b/282250501): Update Cellular interface IP configurations.
+    // Add disconnect here.
+  }
   Network::StartOptions opts = {
       .dhcp = dhcp_opts,
       .accept_ra = true,

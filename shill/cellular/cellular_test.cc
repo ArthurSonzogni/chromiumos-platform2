@@ -15,6 +15,7 @@
 #include <utility>
 #include "dbus/shill/dbus-constants.h"
 #include "shill/dbus-constants.h"
+#include "shill/device_id.h"
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -1805,6 +1806,32 @@ TEST_F(CellularTest, LinkUpDHCP) {
   Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
 }
 
+TEST_F(CellularTest, LinkUpDHCPL850) {
+  auto l850DeviceId =
+      std::make_unique<DeviceId>(DeviceId::BusType::kUsb, 0x2cb7, 0x0007);
+  device_->SetDeviceId(std::move(l850DeviceId));
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 RpcIdentifier(""), "");
+  bearer->set_apn_type_for_testing(ApnList::ApnType::kDefault);
+  bearer->set_data_interface_for_testing(kTestInterfaceName);
+  bearer->set_ipv4_config_method_for_testing(
+      CellularBearer::IPConfigMethod::kDHCP);
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
+  device_->set_state_for_testing(Cellular::State::kConnected);
+
+  MockCellularService* service = SetMockService();
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
+
+  EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor, EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
+                                          kTestInterfaceName));
+
+  device_->LinkUp(device_->interface_index());
+  EXPECT_EQ(service, device_->selected_service());
+  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
 TEST_F(CellularTest, EstablishLinkStatic) {
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
