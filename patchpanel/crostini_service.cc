@@ -282,8 +282,8 @@ std::optional<CrostiniService::VMType> CrostiniService::VMTypeFromDeviceType(
   switch (device_type) {
     case Device::Type::kTerminaVM:
       return VMType::kTermina;
-    case Device::Type::kParallelVM:
-      return VMType::kParallel;
+    case Device::Type::kParallelsVM:
+      return VMType::kParallels;
     default:
       return std::nullopt;
   }
@@ -295,8 +295,8 @@ CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::GuestType guest_type) {
   switch (guest_type) {
     case NetworkDevice::TERMINA_VM:
       return VMType::kTermina;
-    case NetworkDevice::PLUGIN_VM:
-      return VMType::kParallel;
+    case NetworkDevice::PARALLELS_VM:
+      return VMType::kParallels;
     default:
       return std::nullopt;
   }
@@ -308,8 +308,8 @@ TrafficSource CrostiniService::TrafficSourceFromVMType(
   switch (vm_type) {
     case VMType::kTermina:
       return TrafficSource::kCrosVM;
-    case VMType::kParallel:
-      return TrafficSource::kPluginVM;
+    case VMType::kParallels:
+      return TrafficSource::kParallelsVM;
   }
 }
 
@@ -319,8 +319,8 @@ GuestMessage::GuestType CrostiniService::GuestMessageTypeFromVMType(
   switch (vm_type) {
     case VMType::kTermina:
       return GuestMessage::TERMINA_VM;
-    case VMType::kParallel:
-      return GuestMessage::PLUGIN_VM;
+    case VMType::kParallels:
+      return GuestMessage::PARALLELS_VM;
   }
 }
 
@@ -330,8 +330,8 @@ AddressManager::GuestType CrostiniService::GuestTypeFromVMType(
   switch (vm_type) {
     case VMType::kTermina:
       return AddressManager::GuestType::kTerminaVM;
-    case VMType::kParallel:
-      return AddressManager::GuestType::kPluginVM;
+    case VMType::kParallels:
+      return AddressManager::GuestType::kParallelsVM;
   }
 }
 
@@ -341,8 +341,8 @@ Device::Type CrostiniService::VirtualDeviceTypeFromVMType(
   switch (vm_type) {
     case VMType::kTermina:
       return Device::Type::kTerminaVM;
-    case VMType::kParallel:
-      return Device::Type::kParallelVM;
+    case VMType::kParallels:
+      return Device::Type::kParallelsVM;
   }
 }
 
@@ -351,8 +351,8 @@ std::ostream& operator<<(std::ostream& stream,
   switch (vm_type) {
     case CrostiniService::VMType::kTermina:
       return stream << "Termina";
-    case CrostiniService::VMType::kParallel:
-      return stream << "Parallel";
+    case CrostiniService::VMType::kParallels:
+      return stream << "Parallels";
   }
 }
 

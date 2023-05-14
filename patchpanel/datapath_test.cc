@@ -377,7 +377,7 @@ TEST(DatapathTest, Start) {
       {IpFamily::kIPv4, "nat -D PREROUTING -j ingress_port_forwarding -w"},
       {IpFamily::kIPv4, "nat -D PREROUTING -j apply_auto_dnat_to_arc -w"},
       {IpFamily::kIPv4, "nat -D PREROUTING -j apply_auto_dnat_to_crostini -w"},
-      {IpFamily::kIPv4, "nat -D PREROUTING -j apply_auto_dnat_to_pluginvm -w"},
+      {IpFamily::kIPv4, "nat -D PREROUTING -j apply_auto_dnat_to_parallels -w"},
       {IpFamily::kDual, "nat -D PREROUTING -j redirect_default_dns -w"},
       {IpFamily::kIPv4, "nat -L redirect_dns -w"},
       {IpFamily::kIPv4, "nat -F redirect_dns -w"},
@@ -388,9 +388,9 @@ TEST(DatapathTest, Start) {
       {IpFamily::kIPv4, "nat -L apply_auto_dnat_to_crostini -w"},
       {IpFamily::kIPv4, "nat -F apply_auto_dnat_to_crostini -w"},
       {IpFamily::kIPv4, "nat -X apply_auto_dnat_to_crostini -w"},
-      {IpFamily::kIPv4, "nat -L apply_auto_dnat_to_pluginvm -w"},
-      {IpFamily::kIPv4, "nat -F apply_auto_dnat_to_pluginvm -w"},
-      {IpFamily::kIPv4, "nat -X apply_auto_dnat_to_pluginvm -w"},
+      {IpFamily::kIPv4, "nat -L apply_auto_dnat_to_parallels -w"},
+      {IpFamily::kIPv4, "nat -F apply_auto_dnat_to_parallels -w"},
+      {IpFamily::kIPv4, "nat -X apply_auto_dnat_to_parallels -w"},
       {IpFamily::kDual, "nat -L redirect_default_dns -w"},
       {IpFamily::kDual, "nat -F redirect_default_dns -w"},
       {IpFamily::kDual, "nat -X redirect_default_dns -w"},
@@ -548,11 +548,11 @@ TEST(DatapathTest, Start) {
        "-w"},
       {IpFamily::kIPv4, "nat -N apply_auto_dnat_to_arc -w"},
       {IpFamily::kIPv4, "nat -N apply_auto_dnat_to_crostini -w"},
-      {IpFamily::kIPv4, "nat -N apply_auto_dnat_to_pluginvm -w"},
+      {IpFamily::kIPv4, "nat -N apply_auto_dnat_to_parallels -w"},
       {IpFamily::kIPv4, "nat -N ingress_port_forwarding -w"},
       {IpFamily::kIPv4, "nat -A PREROUTING -j apply_auto_dnat_to_arc -w"},
       {IpFamily::kIPv4, "nat -A PREROUTING -j apply_auto_dnat_to_crostini -w"},
-      {IpFamily::kIPv4, "nat -A PREROUTING -j apply_auto_dnat_to_pluginvm -w"},
+      {IpFamily::kIPv4, "nat -A PREROUTING -j apply_auto_dnat_to_parallels -w"},
       {IpFamily::kIPv4, "nat -A PREROUTING -j ingress_port_forwarding -w"},
       {IpFamily::kDual, "nat -N redirect_default_dns -w"},
       {IpFamily::kDual, "nat -N redirect_chrome_dns -w"},
@@ -639,7 +639,7 @@ TEST(DatapathTest, Stop) {
       {IpFamily::kIPv4, "nat -D PREROUTING -j ingress_port_forwarding -w"},
       {IpFamily::kIPv4, "nat -D PREROUTING -j apply_auto_dnat_to_arc -w"},
       {IpFamily::kIPv4, "nat -D PREROUTING -j apply_auto_dnat_to_crostini -w"},
-      {IpFamily::kIPv4, "nat -D PREROUTING -j apply_auto_dnat_to_pluginvm -w"},
+      {IpFamily::kIPv4, "nat -D PREROUTING -j apply_auto_dnat_to_parallels -w"},
       {IpFamily::kDual, "nat -D PREROUTING -j redirect_default_dns -w"},
       {IpFamily::kIPv4, "nat -L redirect_dns -w"},
       {IpFamily::kIPv4, "nat -F redirect_dns -w"},
@@ -650,9 +650,9 @@ TEST(DatapathTest, Stop) {
       {IpFamily::kIPv4, "nat -L apply_auto_dnat_to_crostini -w"},
       {IpFamily::kIPv4, "nat -F apply_auto_dnat_to_crostini -w"},
       {IpFamily::kIPv4, "nat -X apply_auto_dnat_to_crostini -w"},
-      {IpFamily::kIPv4, "nat -L apply_auto_dnat_to_pluginvm -w"},
-      {IpFamily::kIPv4, "nat -F apply_auto_dnat_to_pluginvm -w"},
-      {IpFamily::kIPv4, "nat -X apply_auto_dnat_to_pluginvm -w"},
+      {IpFamily::kIPv4, "nat -L apply_auto_dnat_to_parallels -w"},
+      {IpFamily::kIPv4, "nat -F apply_auto_dnat_to_parallels -w"},
+      {IpFamily::kIPv4, "nat -X apply_auto_dnat_to_parallels -w"},
       {IpFamily::kDual, "nat -L redirect_default_dns -w"},
       {IpFamily::kDual, "nat -F redirect_default_dns -w"},
       {IpFamily::kDual, "nat -X redirect_default_dns -w"},
@@ -1436,40 +1436,40 @@ TEST(DatapathTest, RemoveInboundIPv4DNATCrostini) {
   datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kCrostini, "eth0", "1.2.3.4");
 }
 
-TEST(DatapathTest, AddInboundIPv4DNATPluginVm) {
+TEST(DatapathTest, AddInboundIPv4DNATParallelsVm) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
   Verify_iptables(*runner, IpFamily::kIPv4,
-                  "nat -A apply_auto_dnat_to_pluginvm -i eth0 -m socket "
+                  "nat -A apply_auto_dnat_to_parallels -i eth0 -m socket "
                   "--nowildcard -j ACCEPT -w");
   Verify_iptables(*runner, IpFamily::kIPv4,
-                  "nat -A apply_auto_dnat_to_pluginvm -i eth0 -p tcp -j DNAT "
+                  "nat -A apply_auto_dnat_to_parallels -i eth0 -p tcp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
   Verify_iptables(*runner, IpFamily::kIPv4,
-                  "nat -A apply_auto_dnat_to_pluginvm -i eth0 -p udp -j DNAT "
+                  "nat -A apply_auto_dnat_to_parallels -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kPluginVm, "eth0", "1.2.3.4");
+  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kParallels, "eth0", "1.2.3.4");
 }
 
-TEST(DatapathTest, RemoveInboundIPv4DNATPluginVm) {
+TEST(DatapathTest, RemoveInboundIPv4DNATParallelsVm) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
   Verify_iptables(*runner, IpFamily::kIPv4,
-                  "nat -D apply_auto_dnat_to_pluginvm -i eth0 -m socket "
+                  "nat -D apply_auto_dnat_to_parallels -i eth0 -m socket "
                   "--nowildcard -j ACCEPT -w");
   Verify_iptables(*runner, IpFamily::kIPv4,
-                  "nat -D apply_auto_dnat_to_pluginvm -i eth0 -p tcp -j DNAT "
+                  "nat -D apply_auto_dnat_to_parallels -i eth0 -p tcp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
   Verify_iptables(*runner, IpFamily::kIPv4,
-                  "nat -D apply_auto_dnat_to_pluginvm -i eth0 -p udp -j DNAT "
+                  "nat -D apply_auto_dnat_to_parallels -i eth0 -p udp -j DNAT "
                   "--to-destination 1.2.3.4 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kPluginVm, "eth0", "1.2.3.4");
+  datapath.RemoveInboundIPv4DNAT(AutoDnatTarget::kParallels, "eth0", "1.2.3.4");
 }
 
 TEST(DatapathTest, MaskInterfaceFlags) {

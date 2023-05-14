@@ -1028,7 +1028,7 @@ void Proxy::StartGuestDnsRedirection(
 
   switch (device.guest_type) {
     case patchpanel::Client::GuestType::kTerminaVm:
-    case patchpanel::Client::GuestType::kPluginVm:
+    case patchpanel::Client::GuestType::kParallelsVm:
       if (opts_.type == Type::kDefault) {
         StartDnsRedirection(device.ifname, sa_family);
       }
@@ -1048,7 +1048,7 @@ void Proxy::StopGuestDnsRedirection(
     const patchpanel::Client::VirtualDevice& device, sa_family_t sa_family) {
   switch (device.guest_type) {
     case patchpanel::Client::GuestType::kTerminaVm:
-    case patchpanel::Client::GuestType::kPluginVm:
+    case patchpanel::Client::GuestType::kParallelsVm:
       if (opts_.type == Type::kDefault) {
         StopDnsRedirection(device.ifname, sa_family);
       }

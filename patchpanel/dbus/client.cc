@@ -43,8 +43,8 @@ patchpanel::TrafficCounter::Source ConvertTrafficSource(
       return patchpanel::TrafficCounter::ARC;
     case Client::TrafficSource::kCrosVm:
       return patchpanel::TrafficCounter::CROSVM;
-    case Client::TrafficSource::kPluginVm:
-      return patchpanel::TrafficCounter::PLUGINVM;
+    case Client::TrafficSource::kParallelsVm:
+      return patchpanel::TrafficCounter::PARALLELS_VM;
     case Client::TrafficSource::kUpdateEngine:
       return patchpanel::TrafficCounter::UPDATE_ENGINE;
     case Client::TrafficSource::kVpn:
@@ -65,8 +65,8 @@ Client::TrafficSource ConvertTrafficSource(
       return Client::TrafficSource::kArc;
     case patchpanel::TrafficCounter::CROSVM:
       return Client::TrafficSource::kCrosVm;
-    case patchpanel::TrafficCounter::PLUGINVM:
-      return Client::TrafficSource::kPluginVm;
+    case patchpanel::TrafficCounter::PARALLELS_VM:
+      return Client::TrafficSource::kParallelsVm;
     case patchpanel::TrafficCounter::UPDATE_ENGINE:
       return Client::TrafficSource::kUpdateEngine;
     case patchpanel::TrafficCounter::VPN:
@@ -207,8 +207,8 @@ std::optional<Client::VirtualDevice> ConvertVirtualDevice(
     case patchpanel::NetworkDevice::TERMINA_VM:
       out->guest_type = Client::GuestType::kTerminaVm;
       break;
-    case patchpanel::NetworkDevice::PLUGIN_VM:
-      out->guest_type = Client::GuestType::kPluginVm;
+    case patchpanel::NetworkDevice::PARALLELS_VM:
+      out->guest_type = Client::GuestType::kParallelsVm;
       break;
     default:
       LOG(ERROR) << __func__ << ": Unknown GuestType "
@@ -566,10 +566,10 @@ class ClientImpl : public Client {
                               Client::IPv4Subnet* container_subnet) override;
   bool NotifyTerminaVmShutdown(uint32_t cid) override;
 
-  bool NotifyPluginVmStartup(uint64_t vm_id,
-                             int subnet_index,
-                             Client::VirtualDevice* device) override;
-  bool NotifyPluginVmShutdown(uint64_t vm_id) override;
+  bool NotifyParallelsVmStartup(uint64_t vm_id,
+                                int subnet_index,
+                                Client::VirtualDevice* device) override;
+  bool NotifyParallelsVmShutdown(uint64_t vm_id) override;
 
   bool DefaultVpnRouting(int socket) override;
 
@@ -883,18 +883,18 @@ bool ClientImpl::NotifyTerminaVmShutdown(uint32_t cid) {
   return true;
 }
 
-bool ClientImpl::NotifyPluginVmStartup(uint64_t vm_id,
-                                       int subnet_index,
-                                       Client::VirtualDevice* device) {
-  dbus::MethodCall method_call(kPatchPanelInterface, kPluginVmStartupMethod);
+bool ClientImpl::NotifyParallelsVmStartup(uint64_t vm_id,
+                                          int subnet_index,
+                                          Client::VirtualDevice* device) {
+  dbus::MethodCall method_call(kPatchPanelInterface, kParallelsVmStartupMethod);
   dbus::MessageWriter writer(&method_call);
 
-  PluginVmStartupRequest request;
+  ParallelsVmStartupRequest request;
   request.set_id(vm_id);
   request.set_subnet_index(subnet_index);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
-    LOG(ERROR) << "Failed to encode PluginVmStartupRequest proto";
+    LOG(ERROR) << "Failed to encode ParallelsVmStartupRequest proto";
     return false;
   }
 
@@ -907,7 +907,7 @@ bool ClientImpl::NotifyPluginVmStartup(uint64_t vm_id,
   }
 
   dbus::MessageReader reader(dbus_response.get());
-  PluginVmStartupResponse response;
+  ParallelsVmStartupResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse response proto";
     return false;
@@ -928,15 +928,16 @@ bool ClientImpl::NotifyPluginVmStartup(uint64_t vm_id,
   return true;
 }
 
-bool ClientImpl::NotifyPluginVmShutdown(uint64_t vm_id) {
-  dbus::MethodCall method_call(kPatchPanelInterface, kPluginVmShutdownMethod);
+bool ClientImpl::NotifyParallelsVmShutdown(uint64_t vm_id) {
+  dbus::MethodCall method_call(kPatchPanelInterface,
+                               kParallelsVmShutdownMethod);
   dbus::MessageWriter writer(&method_call);
 
-  PluginVmShutdownRequest request;
+  ParallelsVmShutdownRequest request;
   request.set_id(vm_id);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
-    LOG(ERROR) << "Failed to encode PluginVmShutdownRequest proto";
+    LOG(ERROR) << "Failed to encode ParallelsVmShutdownRequest proto";
     return false;
   }
 
@@ -949,7 +950,7 @@ bool ClientImpl::NotifyPluginVmShutdown(uint64_t vm_id) {
   }
 
   dbus::MessageReader reader(dbus_response.get());
-  PluginVmShutdownResponse response;
+  ParallelsVmShutdownResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse response proto";
     return false;

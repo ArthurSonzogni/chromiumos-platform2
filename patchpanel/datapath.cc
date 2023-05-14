@@ -93,7 +93,8 @@ constexpr char kVpnLockdownChain[] = "vpn_lockdown";
 // of hosted guests with the corresponding hierarchy.
 constexpr char kApplyAutoDnatToArcChain[] = "apply_auto_dnat_to_arc";
 constexpr char kApplyAutoDnatToCrostiniChain[] = "apply_auto_dnat_to_crostini";
-constexpr char kApplyAutoDnatToPluginvmChain[] = "apply_auto_dnat_to_pluginvm";
+constexpr char kApplyAutoDnatToParallelsChain[] =
+    "apply_auto_dnat_to_parallels";
 // nat PREROUTING chain for egress traffic from downstream guests.
 constexpr char kRedirectDefaultDnsChain[] = "redirect_default_dns";
 // nat OUTPUT chains for egress traffic from processes running on the host.
@@ -145,8 +146,8 @@ std::string AutoDnatTargetChainName(AutoDnatTarget auto_dnat_target) {
       return kApplyAutoDnatToArcChain;
     case AutoDnatTarget::kCrostini:
       return kApplyAutoDnatToCrostiniChain;
-    case AutoDnatTarget::kPluginVm:
-      return kApplyAutoDnatToPluginvmChain;
+    case AutoDnatTarget::kParallels:
+      return kApplyAutoDnatToParallelsChain;
   }
 }
 
@@ -251,7 +252,7 @@ void Datapath::Start() {
       {IpFamily::kIPv4, Iptables::Table::kNat, kIngressPortForwardingChain},
       {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToArcChain},
       {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToCrostiniChain},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToPluginvmChain},
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToParallelsChain},
       // Create filter subchains for managing the egress firewall VPN rules.
       {IpFamily::kDual, Iptables::Table::kFilter, kVpnEgressFiltersChain},
       {IpFamily::kDual, Iptables::Table::kFilter, kVpnAcceptChain},
@@ -293,13 +294,13 @@ void Datapath::Start() {
       {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
        kIngressPortForwardingChain},
       // ARC default ingress forwarding is always first, Crostini second, and
-      // PluginVM last.
+      // Parallels VM last.
       {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
        kApplyAutoDnatToArcChain},
       {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
        kApplyAutoDnatToCrostiniChain},
       {IpFamily::kIPv4, Iptables::Table::kNat, "PREROUTING",
-       kApplyAutoDnatToPluginvmChain},
+       kApplyAutoDnatToParallelsChain},
       // When VPN lockdown is enabled, a REJECT rule must stop
       // any egress traffic tagged with the |kFwmarkRouteOnVpn| intent mark.
       // This REJECT rule is added to |kVpnLockdownChain|. In addition, when VPN
@@ -540,7 +541,7 @@ void Datapath::ResetIptables() {
                  "PREROUTING", kApplyAutoDnatToCrostiniChain, /*iif=*/"",
                  /*oif=*/"", /*log_failures=*/false);
   ModifyJumpRule(IpFamily::kIPv4, Iptables::Table::kNat, Iptables::Command::kD,
-                 "PREROUTING", kApplyAutoDnatToPluginvmChain, /*iif=*/"",
+                 "PREROUTING", kApplyAutoDnatToParallelsChain, /*iif=*/"",
                  /*oif=*/"", /*log_failures=*/false);
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kNat, Iptables::Command::kD,
                  "PREROUTING", kRedirectDefaultDnsChain, /*iif=*/"", /*oif=*/"",
@@ -596,7 +597,7 @@ void Datapath::ResetIptables() {
       {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToArcChain, true},
       {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToCrostiniChain,
        true},
-      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToPluginvmChain,
+      {IpFamily::kIPv4, Iptables::Table::kNat, kApplyAutoDnatToParallelsChain,
        true},
   };
   for (const auto& op : resetOps) {

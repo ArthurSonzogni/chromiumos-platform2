@@ -58,11 +58,11 @@ TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {
   // LXD container ??
 }
 
-TEST_F(ProtoUtilsTest, ConvertParallelDevice) {
+TEST_F(ProtoUtilsTest, ConvertParallelsDevice) {
   const uint32_t subnet_index = 1;
   const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
-      AddressManager::GuestType::kPluginVM, subnet_index);
+      AddressManager::GuestType::kParallelsVM, subnet_index);
   auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
   auto expected_host_ipv4 = host_ipv4_addr->Address();
@@ -71,7 +71,7 @@ TEST_F(ProtoUtilsTest, ConvertParallelDevice) {
   auto config = std::make_unique<Device::Config>(
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr));
-  auto device = std::make_unique<Device>(Device::Type::kParallelVM, "vmtap1",
+  auto device = std::make_unique<Device>(Device::Type::kParallelsVM, "vmtap1",
                                          "vmtap1", "", std::move(config));
 
   NetworkDevice proto_device;
@@ -84,7 +84,7 @@ TEST_F(ProtoUtilsTest, ConvertParallelDevice) {
   ASSERT_EQ("", proto_device.guest_ifname());
   ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
-  ASSERT_EQ(NetworkDevice::PLUGIN_VM, proto_device.guest_type());
+  ASSERT_EQ(NetworkDevice::PARALLELS_VM, proto_device.guest_type());
 }
 
 TEST_F(ProtoUtilsTest, ConvertARCContainerDevice) {

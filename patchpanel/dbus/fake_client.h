@@ -39,10 +39,10 @@ class BRILLO_EXPORT FakeClient : public Client {
                               Client::IPv4Subnet* container_subnet) override;
   bool NotifyTerminaVmShutdown(uint32_t cid) override;
 
-  bool NotifyPluginVmStartup(uint64_t vm_id,
-                             int subnet_index,
-                             Client::VirtualDevice* device) override;
-  bool NotifyPluginVmShutdown(uint64_t vm_id) override;
+  bool NotifyParallelsVmStartup(uint64_t vm_id,
+                                int subnet_index,
+                                Client::VirtualDevice* device) override;
+  bool NotifyParallelsVmShutdown(uint64_t vm_id) override;
 
   bool DefaultVpnRouting(int socket) override;
 

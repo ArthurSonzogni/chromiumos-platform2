@@ -77,7 +77,7 @@ const std::string& TrafficSourceName(TrafficSource source) {
       {kHostVpn, "HOST_VPN"},
       {kArc, "ARC"},
       {kCrosVM, "CROSVM"},
-      {kPluginVM, "PLUGINVM"},
+      {kParallelsVM, "PARALLELS_VM"},
       {kTetherDownstream, "TETHER_DOWNSTREAM"},
       {kArcVpn, "ARC_VPN"},
       {kUnknown, "UNKNOWN"},

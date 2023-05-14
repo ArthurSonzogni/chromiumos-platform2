@@ -31,7 +31,7 @@ namespace patchpanel {
 //  veth interface is attached.
 //  - ARCVM: a TAP device plus a software bridge to which the TAP device is
 //  attached.
-//  - Termina VMs, plugin VMs, other crosvm guests: a TAP device, with no
+//  - Termina VMs, Parallels VMs, other crosvm guests: a TAP device, with no
 // software bridge.
 // The main interface interacting with other parts of the network layer is:
 //  - ARC, ARCVM: the software bridge.
@@ -52,8 +52,8 @@ class Device {
     // TAP device used by concierge for the Termina VM and its user LXD
     // containers.
     kTerminaVM,
-    // TAP device used by concierge for the Parallel VM.
-    kParallelVM,
+    // TAP device used by concierge for the Parallels VM.
+    kParallelsVM,
   };
 
   enum class ChangeEvent {
@@ -157,8 +157,8 @@ class Device {
   // The name of the main virtual interface created by patchpanel for carrying
   // packets out of the guest environment and onto the host routing setup. For
   // all ARC virtual devices, |host_ifname_| corresponds to the virtual bridge
-  // created with Datapath::AddBridge(). For other crosvm guests (Termina,
-  // Crostini, PluginVM, etc) this corresponds to the TAP device created with
+  // created with Datapath::AddBridge(). For other crosvm guests (Termina VM,
+  // Parallels VM, etc) this corresponds to the TAP device created with
   // Datapath::AddTAP().
   std::string host_ifname_;
   // The name of the virtual interface used inside the guest environment. Only

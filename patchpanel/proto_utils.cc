@@ -30,8 +30,8 @@ void FillDeviceProto(const Device& virtual_device,
     case Device::Type::kTerminaVM:
       output->set_guest_type(NetworkDevice::TERMINA_VM);
       break;
-    case Device::Type::kParallelVM:
-      output->set_guest_type(NetworkDevice::PLUGIN_VM);
+    case Device::Type::kParallelsVM:
+      output->set_guest_type(NetworkDevice::PARALLELS_VM);
       break;
   }
 }

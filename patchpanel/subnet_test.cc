@@ -23,11 +23,11 @@ namespace {
 
 constexpr uint32_t kContainerBaseAddress = Ipv4Addr(100, 115, 92, 192);
 constexpr uint32_t kVmBaseAddress = Ipv4Addr(100, 115, 92, 24);
-constexpr uint32_t kPluginBaseAddress = Ipv4Addr(100, 115, 92, 128);
+constexpr uint32_t kParallelsBaseAddress = Ipv4Addr(100, 115, 92, 128);
 
 constexpr uint32_t kContainerSubnetPrefixLength = 28;
 constexpr uint32_t kVmSubnetPrefixLength = 30;
-constexpr uint32_t kPluginSubnetPrefixLength = 28;
+constexpr uint32_t kParallelsSubnetPrefixLength = 28;
 
 uint32_t AddOffset(uint32_t base_addr_no, uint32_t offset_ho) {
   return htonl(ntohl(base_addr_no) + offset_ho);
@@ -213,28 +213,28 @@ TEST(SubtnetAddress, StringConversion) {
               vm_subnet.AllocateAtOffset(1)->ToCidrString());
   }
 
-  Subnet plugin_subnet(kPluginBaseAddress, kPluginSubnetPrefixLength,
-                       base::DoNothing());
-  EXPECT_EQ("100.115.92.128/28", plugin_subnet.ToCidrString());
+  Subnet parallels_subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
+                          base::DoNothing());
+  EXPECT_EQ("100.115.92.128/28", parallels_subnet.ToCidrString());
   {
     EXPECT_EQ("100.115.92.129",
-              plugin_subnet.AllocateAtOffset(0)->ToIPv4String());
+              parallels_subnet.AllocateAtOffset(0)->ToIPv4String());
     EXPECT_EQ("100.115.92.130",
-              plugin_subnet.AllocateAtOffset(1)->ToIPv4String());
+              parallels_subnet.AllocateAtOffset(1)->ToIPv4String());
     EXPECT_EQ("100.115.92.141",
-              plugin_subnet.AllocateAtOffset(12)->ToIPv4String());
+              parallels_subnet.AllocateAtOffset(12)->ToIPv4String());
     EXPECT_EQ("100.115.92.142",
-              plugin_subnet.AllocateAtOffset(13)->ToIPv4String());
+              parallels_subnet.AllocateAtOffset(13)->ToIPv4String());
   }
   {
     EXPECT_EQ("100.115.92.129/28",
-              plugin_subnet.AllocateAtOffset(0)->ToCidrString());
+              parallels_subnet.AllocateAtOffset(0)->ToCidrString());
     EXPECT_EQ("100.115.92.130/28",
-              plugin_subnet.AllocateAtOffset(1)->ToCidrString());
+              parallels_subnet.AllocateAtOffset(1)->ToCidrString());
     EXPECT_EQ("100.115.92.141/28",
-              plugin_subnet.AllocateAtOffset(12)->ToCidrString());
+              parallels_subnet.AllocateAtOffset(12)->ToCidrString());
     EXPECT_EQ("100.115.92.142/28",
-              plugin_subnet.AllocateAtOffset(13)->ToCidrString());
+              parallels_subnet.AllocateAtOffset(13)->ToCidrString());
   }
 }
 
@@ -250,31 +250,32 @@ TEST(Subnet, Cleanup) {
 
 // Tests that the subnet rejects attempts to allocate addresses outside its
 // range.
-TEST(PluginSubnet, OutOfBounds) {
-  Subnet subnet(kPluginBaseAddress, kPluginSubnetPrefixLength,
+TEST(ParallelsSubnet, OutOfBounds) {
+  Subnet subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
                 base::DoNothing());
 
-  EXPECT_FALSE(subnet.Allocate(htonl(ntohl(kPluginBaseAddress) - 1)));
-  EXPECT_FALSE(subnet.Allocate(kPluginBaseAddress));
+  EXPECT_FALSE(subnet.Allocate(htonl(ntohl(kParallelsBaseAddress) - 1)));
+  EXPECT_FALSE(subnet.Allocate(kParallelsBaseAddress));
+  EXPECT_FALSE(subnet.Allocate(
+      AddOffset(kParallelsBaseAddress,
+                (1ull << (32 - kParallelsSubnetPrefixLength)) - 1)));
   EXPECT_FALSE(subnet.Allocate(AddOffset(
-      kPluginBaseAddress, (1ull << (32 - kPluginSubnetPrefixLength)) - 1)));
-  EXPECT_FALSE(subnet.Allocate(AddOffset(
-      kPluginBaseAddress, (1ull << (32 - kPluginSubnetPrefixLength)))));
+      kParallelsBaseAddress, (1ull << (32 - kParallelsSubnetPrefixLength)))));
 }
 
 // Tests that the subnet rejects attempts to allocate the same address twice.
-TEST(PluginSubnet, DuplicateAddress) {
-  Subnet subnet(kPluginBaseAddress, kPluginSubnetPrefixLength,
+TEST(ParallelsSubnet, DuplicateAddress) {
+  Subnet subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
                 base::DoNothing());
 
-  auto addr = subnet.Allocate(AddOffset(kPluginBaseAddress, 1));
+  auto addr = subnet.Allocate(AddOffset(kParallelsBaseAddress, 1));
   EXPECT_TRUE(addr);
-  EXPECT_FALSE(subnet.Allocate(AddOffset(kPluginBaseAddress, 1)));
+  EXPECT_FALSE(subnet.Allocate(AddOffset(kParallelsBaseAddress, 1)));
 }
 
 // Tests that the subnet allows allocating all addresses in the subnet's range.
-TEST(PluginSubnet, Allocate) {
-  Subnet subnet(kPluginBaseAddress, kPluginSubnetPrefixLength,
+TEST(ParallelsSubnet, Allocate) {
+  Subnet subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
                 base::DoNothing());
 
   std::vector<std::unique_ptr<SubnetAddress>> addrs;
@@ -282,16 +283,16 @@ TEST(PluginSubnet, Allocate) {
 
   for (uint32_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
     // Offset by one since the network id is not allocatable.
-    auto addr = subnet.Allocate(AddOffset(kPluginBaseAddress, offset + 1));
+    auto addr = subnet.Allocate(AddOffset(kParallelsBaseAddress, offset + 1));
     EXPECT_TRUE(addr);
-    EXPECT_EQ(AddOffset(kPluginBaseAddress, offset + 1), addr->Address());
+    EXPECT_EQ(AddOffset(kParallelsBaseAddress, offset + 1), addr->Address());
     addrs.emplace_back(std::move(addr));
   }
 }
 // Tests that the subnet allows allocating all addresses in the subnet's range
 // using an offset.
-TEST(PluginSubnet, AllocateAtOffset) {
-  Subnet subnet(kPluginBaseAddress, kPluginSubnetPrefixLength,
+TEST(ParallelsSubnet, AllocateAtOffset) {
+  Subnet subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
                 base::DoNothing());
 
   std::vector<std::unique_ptr<SubnetAddress>> addrs;
@@ -300,22 +301,22 @@ TEST(PluginSubnet, AllocateAtOffset) {
   for (uint32_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
     auto addr = subnet.AllocateAtOffset(offset);
     EXPECT_TRUE(addr);
-    EXPECT_EQ(AddOffset(kPluginBaseAddress, offset + 1), addr->Address());
+    EXPECT_EQ(AddOffset(kParallelsBaseAddress, offset + 1), addr->Address());
     addrs.emplace_back(std::move(addr));
   }
 }
 
 // Tests that the subnet frees addresses when they are destroyed.
-TEST(PluginSubnet, Free) {
-  Subnet subnet(kPluginBaseAddress, kPluginSubnetPrefixLength,
+TEST(ParallelsSubnet, Free) {
+  Subnet subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
                 base::DoNothing());
 
   {
-    auto addr = subnet.Allocate(AddOffset(kPluginBaseAddress, 1));
+    auto addr = subnet.Allocate(AddOffset(kParallelsBaseAddress, 1));
     EXPECT_TRUE(addr);
   }
 
-  EXPECT_TRUE(subnet.Allocate(AddOffset(kPluginBaseAddress, 1)));
+  EXPECT_TRUE(subnet.Allocate(AddOffset(kParallelsBaseAddress, 1)));
 }
 
 }  // namespace patchpanel

@@ -142,7 +142,8 @@ bool PluginVm::StopVm() {
   // This should run before the process existence check below since we still
   // want to release the network resources on crash.
   // Note the client will only be null during testing.
-  if (network_client_ && !network_client_->NotifyPluginVmShutdown(id_hash_)) {
+  if (network_client_ &&
+      !network_client_->NotifyParallelsVmShutdown(id_hash_)) {
     LOG(WARNING) << "Unable to notify networking services";
   }
 
@@ -186,7 +187,8 @@ bool PluginVm::Shutdown() {
   // This should run before the process existence check below since we still
   // want to release the network resources on crash.
   // Note the client will only be null during testing.
-  if (network_client_ && !network_client_->NotifyPluginVmShutdown(id_hash_)) {
+  if (network_client_ &&
+      !network_client_->NotifyParallelsVmShutdown(id_hash_)) {
     LOG(WARNING) << "Unable to notify networking services";
   }
 
@@ -668,8 +670,8 @@ bool PluginVm::Start(base::FilePath stateful_dir,
 
   // Get the network interface.
   patchpanel::Client::VirtualDevice network_device;
-  if (!network_client_->NotifyPluginVmStartup(id_hash_, subnet_index,
-                                              &network_device)) {
+  if (!network_client_->NotifyParallelsVmStartup(id_hash_, subnet_index,
+                                                 &network_device)) {
     LOG(ERROR) << "No network devices available";
     return false;
   }

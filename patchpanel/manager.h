@@ -82,11 +82,11 @@ class Manager {
   // Handles notification indicating a Termina VM is spinning down.
   void TerminaVmShutdown(uint64_t vm_id);
 
-  // Handles notification indicating a Plugin VM is booting up.
-  const Device* const PluginVmStartup(uint64_t vm_id, uint32_t subnet_index);
+  // Handles notification indicating a Parallels VM is booting up.
+  const Device* const ParallelsVmStartup(uint64_t vm_id, uint32_t subnet_index);
 
-  // Handles notification indicating a Plugin VM is spinning down.
-  void PluginVmShutdown(uint64_t vm_id);
+  // Handles notification indicating a Parallels VM is spinning down.
+  void ParallelsVmShutdown(uint64_t vm_id);
 
   // Sets a VPN intent fwmark on a socket.
   bool SetVpnIntent(SetVpnIntentRequest::VpnRoutingPolicy policy,

@@ -203,21 +203,21 @@ ModifyPortRuleResponse PatchpanelAdaptor::ModifyPortRule(
   return response;
 }
 
-PluginVmShutdownResponse PatchpanelAdaptor::PluginVmShutdown(
-    const PluginVmShutdownRequest& request) {
-  LOG(INFO) << "Plugin VM shutting down";
-  RecordDbusEvent(DbusUmaEvent::kPluginVmShutdown);
+ParallelsVmShutdownResponse PatchpanelAdaptor::ParallelsVmShutdown(
+    const ParallelsVmShutdownRequest& request) {
+  LOG(INFO) << "Parallels VM shutting down";
+  RecordDbusEvent(DbusUmaEvent::kParallelsVmShutdown);
 
-  manager_->PluginVmShutdown(request.id());
+  manager_->ParallelsVmShutdown(request.id());
 
-  RecordDbusEvent(DbusUmaEvent::kPluginVmShutdownSuccess);
+  RecordDbusEvent(DbusUmaEvent::kParallelsVmShutdownSuccess);
   return {};
 }
 
-PluginVmStartupResponse PatchpanelAdaptor::PluginVmStartup(
-    const PluginVmStartupRequest& request) {
-  LOG(INFO) << "Plugin VM starting up";
-  RecordDbusEvent(DbusUmaEvent::kPluginVmStartup);
+ParallelsVmStartupResponse PatchpanelAdaptor::ParallelsVmStartup(
+    const ParallelsVmStartupRequest& request) {
+  LOG(INFO) << "Parallels VM starting up";
+  RecordDbusEvent(DbusUmaEvent::kParallelsVmStartup);
 
   if (request.subnet_index() < 0) {
     LOG(ERROR) << "Invalid subnet index: " << request.subnet_index();
@@ -226,9 +226,9 @@ PluginVmStartupResponse PatchpanelAdaptor::PluginVmStartup(
   const uint32_t subnet_index = static_cast<uint32_t>(request.subnet_index());
   const uint64_t vm_id = request.id();
   const auto* const guest_device =
-      manager_->PluginVmStartup(vm_id, subnet_index);
+      manager_->ParallelsVmStartup(vm_id, subnet_index);
   if (!guest_device) {
-    LOG(DFATAL) << "Plugin VM TAP Device missing";
+    LOG(DFATAL) << "Parallels VM TAP Device missing";
     return {};
   }
   const auto* subnet = guest_device->config().ipv4_subnet();
@@ -237,13 +237,13 @@ PluginVmStartupResponse PatchpanelAdaptor::PluginVmStartup(
     return {};
   }
 
-  PluginVmStartupResponse response;
+  ParallelsVmStartupResponse response;
   auto* dev = response.mutable_device();
-  dev->set_guest_type(NetworkDevice::PLUGIN_VM);
+  dev->set_guest_type(NetworkDevice::PARALLELS_VM);
   FillDeviceProto(*guest_device, dev);
   FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
 
-  RecordDbusEvent(DbusUmaEvent::kPluginVmStartupSuccess);
+  RecordDbusEvent(DbusUmaEvent::kParallelsVmStartupSuccess);
   return response;
 }
 

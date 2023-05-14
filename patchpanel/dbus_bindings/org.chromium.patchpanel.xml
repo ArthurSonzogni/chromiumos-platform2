@@ -159,27 +159,27 @@
       </arg>
     </method>
 
-    <method name="PluginVmShutdown">
+    <method name="ParallelsVmShutdown">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::PluginVmShutdownRequest" />
+                    value="patchpanel::ParallelsVmShutdownRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::PluginVmShutdownResponse" />
+                    value="patchpanel::ParallelsVmShutdownResponse" />
       </arg>
     </method>
 
-    <method name="PluginVmStartup">
+    <method name="ParallelsVmStartup">
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::PluginVmStartupRequest" />
+                    value="patchpanel::ParallelsVmStartupRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::PluginVmStartupResponse" />
+                    value="patchpanel::ParallelsVmStartupResponse" />
       </arg>
     </method>
 

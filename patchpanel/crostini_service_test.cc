@@ -105,23 +105,23 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
   ASSERT_TRUE(crostini->GetDevices().empty());
 }
 
-TEST_F(CrostiniServiceTest, StartStopParallelVM) {
+TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
   constexpr uint64_t vm_id = 102;
   auto crostini = NewService();
 
   EXPECT_CALL(*datapath_, AddTAP("", _, _, "crosvm"))
       .WillOnce(Return("vmtap0"));
   EXPECT_CALL(*datapath_, AddIPv4Route(_, _, _)).Times(0);
-  EXPECT_CALL(
-      *datapath_,
-      StartRoutingDevice("", "vmtap0", _, TrafficSource::kPluginVM, true, 0));
+  EXPECT_CALL(*datapath_,
+              StartRoutingDevice("", "vmtap0", _, TrafficSource::kParallelsVM,
+                                 true, 0));
 
   // There should be no virtual device before the VM starts.
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
   ASSERT_TRUE(crostini->GetDevices().empty());
 
-  // The virtual datapath for the Parallel VM can successfully start.
-  auto* device = crostini->Start(vm_id, CrostiniService::VMType::kParallel,
+  // The virtual datapath for the Parallels VM can successfully start.
+  auto* device = crostini->Start(vm_id, CrostiniService::VMType::kParallels,
                                  /*subnet_index=*/1);
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap0", device->host_ifname());
@@ -138,7 +138,7 @@ TEST_F(CrostiniServiceTest, StartStopParallelVM) {
   ASSERT_FALSE(devices.empty());
   ASSERT_EQ(device, devices[0]);
 
-  // The virtual datapath for the Parallel VM can successfully stop.
+  // The virtual datapath for the Parallels VM can successfully stop.
   crostini->Stop(vm_id);
   it = guest_devices_.find("vmtap0");
   ASSERT_NE(guest_devices_.end(), it);
@@ -162,9 +162,9 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   EXPECT_CALL(*datapath_, AddIPv4Route(_, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice("", "vmtap0", _,
                                              TrafficSource::kCrosVM, true, 0));
-  EXPECT_CALL(
-      *datapath_,
-      StartRoutingDevice("", "vmtap1", _, TrafficSource::kPluginVM, true, 0));
+  EXPECT_CALL(*datapath_,
+              StartRoutingDevice("", "vmtap1", _, TrafficSource::kParallelsVM,
+                                 true, 0));
   EXPECT_CALL(*datapath_, StartRoutingDevice("", "vmtap2", _,
                                              TrafficSource::kCrosVM, true, 0));
 
@@ -187,8 +187,8 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   // After starting, there should be a virtual device for that VM.
   ASSERT_EQ(device, crostini->GetDevice(vm_id1));
 
-  // Start Parallel VM.
-  device = crostini->Start(vm_id2, CrostiniService::VMType::kParallel,
+  // Start Parallels VM.
+  device = crostini->Start(vm_id2, CrostiniService::VMType::kParallels,
                            /*subnet_index=*/0);
   ASSERT_NE(nullptr, device);
   ASSERT_EQ("vmtap1", device->host_ifname());
@@ -222,7 +222,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
     if (dev->host_ifname() == "vmtap0") {
       ASSERT_EQ(Device::Type::kTerminaVM, dev->type());
     } else if (dev->host_ifname() == "vmtap1") {
-      ASSERT_EQ(Device::Type::kParallelVM, dev->type());
+      ASSERT_EQ(Device::Type::kParallelsVM, dev->type());
     } else if (dev->host_ifname() == "vmtap2") {
       ASSERT_EQ(Device::Type::kTerminaVM, dev->type());
     } else {
@@ -246,7 +246,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   ASSERT_EQ(Device::ChangeEvent::kRemoved, it->second);
   guest_devices_.clear();
 
-  // Stop Plugin VM. Its virtual device is destroyed.
+  // Stop Parallels VM. Its virtual device is destroyed.
   crostini->Stop(vm_id2);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id2));
   it = guest_devices_.find("vmtap1");
@@ -260,8 +260,8 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
 TEST_F(CrostiniServiceTest, VMTypeConversions) {
   EXPECT_EQ(CrostiniService::VMType::kTermina,
             CrostiniService::VMTypeFromDeviceType(Device::Type::kTerminaVM));
-  EXPECT_EQ(CrostiniService::VMType::kParallel,
-            CrostiniService::VMTypeFromDeviceType(Device::Type::kParallelVM));
+  EXPECT_EQ(CrostiniService::VMType::kParallels,
+            CrostiniService::VMTypeFromDeviceType(Device::Type::kParallelsVM));
   EXPECT_EQ(std::nullopt,
             CrostiniService::VMTypeFromDeviceType(Device::Type::kARC0));
   EXPECT_EQ(std::nullopt,
@@ -273,8 +273,8 @@ TEST_F(CrostiniServiceTest, VMTypeConversions) {
       CrostiniService::VMType::kTermina,
       CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::TERMINA_VM));
   EXPECT_EQ(
-      CrostiniService::VMType::kParallel,
-      CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::PLUGIN_VM));
+      CrostiniService::VMType::kParallels,
+      CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::PARALLELS_VM));
   EXPECT_EQ(std::nullopt,
             CrostiniService::VMTypeFromProtoGuestType(NetworkDevice::ARC));
   EXPECT_EQ(std::nullopt,
@@ -284,29 +284,30 @@ TEST_F(CrostiniServiceTest, VMTypeConversions) {
 
   EXPECT_EQ(TrafficSource::kCrosVM, CrostiniService::TrafficSourceFromVMType(
                                         CrostiniService::VMType::kTermina));
-  EXPECT_EQ(TrafficSource::kPluginVM, CrostiniService::TrafficSourceFromVMType(
-                                          CrostiniService::VMType::kParallel));
+  EXPECT_EQ(TrafficSource::kParallelsVM,
+            CrostiniService::TrafficSourceFromVMType(
+                CrostiniService::VMType::kParallels));
 
   EXPECT_EQ(GuestMessage::TERMINA_VM,
             CrostiniService::GuestMessageTypeFromVMType(
                 CrostiniService::VMType::kTermina));
-  EXPECT_EQ(GuestMessage::PLUGIN_VM,
+  EXPECT_EQ(GuestMessage::PARALLELS_VM,
             CrostiniService::GuestMessageTypeFromVMType(
-                CrostiniService::VMType::kParallel));
+                CrostiniService::VMType::kParallels));
 
   EXPECT_EQ(
       AddressManager::GuestType::kTerminaVM,
       CrostiniService::GuestTypeFromVMType(CrostiniService::VMType::kTermina));
-  EXPECT_EQ(
-      AddressManager::GuestType::kPluginVM,
-      CrostiniService::GuestTypeFromVMType(CrostiniService::VMType::kParallel));
+  EXPECT_EQ(AddressManager::GuestType::kParallelsVM,
+            CrostiniService::GuestTypeFromVMType(
+                CrostiniService::VMType::kParallels));
 
   EXPECT_EQ(Device::Type::kTerminaVM,
             CrostiniService::VirtualDeviceTypeFromVMType(
                 CrostiniService::VMType::kTermina));
-  EXPECT_EQ(Device::Type::kParallelVM,
+  EXPECT_EQ(Device::Type::kParallelsVM,
             CrostiniService::VirtualDeviceTypeFromVMType(
-                CrostiniService::VMType::kParallel));
+                CrostiniService::VMType::kParallels));
 }
 
 }  // namespace

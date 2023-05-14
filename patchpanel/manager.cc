@@ -444,19 +444,19 @@ void Manager::TerminaVmShutdown(uint64_t vm_id) {
   StopCrosVm(vm_id, GuestMessage::TERMINA_VM);
 }
 
-const Device* const Manager::PluginVmStartup(uint64_t vm_id,
-                                             uint32_t subnet_index) {
+const Device* const Manager::ParallelsVmStartup(uint64_t vm_id,
+                                                uint32_t subnet_index) {
   const auto* guest_device =
-      StartCrosVm(vm_id, CrostiniService::VMType::kParallel, subnet_index);
+      StartCrosVm(vm_id, CrostiniService::VMType::kParallels, subnet_index);
   if (!guest_device) {
-    LOG(ERROR) << "Failed to start Plugin VM network service";
+    LOG(ERROR) << "Failed to start Parallels VM network service";
     return nullptr;
   }
   return guest_device;
 }
 
-void Manager::PluginVmShutdown(uint64_t vm_id) {
-  StopCrosVm(vm_id, GuestMessage::PLUGIN_VM);
+void Manager::ParallelsVmShutdown(uint64_t vm_id) {
+  StopCrosVm(vm_id, GuestMessage::PARALLELS_VM);
 }
 
 bool Manager::SetVpnIntent(SetVpnIntentRequest::VpnRoutingPolicy policy,

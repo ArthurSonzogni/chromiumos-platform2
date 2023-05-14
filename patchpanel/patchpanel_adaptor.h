@@ -68,10 +68,10 @@ class PatchpanelAdaptor : public org::chromium::PatchPanelInterface,
       const TrafficCountersRequest& request) const override;
   ModifyPortRuleResponse ModifyPortRule(
       const ModifyPortRuleRequest& request) override;
-  PluginVmShutdownResponse PluginVmShutdown(
-      const PluginVmShutdownRequest& request) override;
-  PluginVmStartupResponse PluginVmStartup(
-      const PluginVmStartupRequest& request) override;
+  ParallelsVmShutdownResponse ParallelsVmShutdown(
+      const ParallelsVmShutdownRequest& request) override;
+  ParallelsVmStartupResponse ParallelsVmStartup(
+      const ParallelsVmStartupRequest& request) override;
   SetDnsRedirectionRuleResponse SetDnsRedirectionRule(
       const SetDnsRedirectionRuleRequest& request,
       const base::ScopedFD& client_fd) override;

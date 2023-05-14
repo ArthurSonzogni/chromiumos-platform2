@@ -176,10 +176,10 @@ class MockPatchpanelClient : public patchpanel::Client {
               (override));
   MOCK_METHOD(bool, NotifyTerminaVmShutdown, (uint32_t), (override));
   MOCK_METHOD(bool,
-              NotifyPluginVmStartup,
+              NotifyParallelsVmStartup,
               (uint64_t, int, patchpanel::Client::VirtualDevice*),
               (override));
-  MOCK_METHOD(bool, NotifyPluginVmShutdown, (uint64_t), (override));
+  MOCK_METHOD(bool, NotifyParallelsVmShutdown, (uint64_t), (override));
   MOCK_METHOD(bool, DefaultVpnRouting, (int), (override));
   MOCK_METHOD(bool, RouteOnVpn, (int), (override));
   MOCK_METHOD(bool, BypassVpn, (int), (override));
@@ -1176,10 +1176,10 @@ TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
   EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(_)).WillOnce(Return(true));
   proxy.OnDefaultDeviceChanged(&default_device);
 
-  // Plugin VM started.
+  // Parallels VM started.
   auto event1 = patchpanel::Client::VirtualDeviceEvent::kAdded;
   auto plugin_vm_dev =
-      virtualdev(patchpanel::Client::GuestType::kPluginVm, "vmtap1", "eth0");
+      virtualdev(patchpanel::Client::GuestType::kParallelsVm, "vmtap1", "eth0");
   proxy.OnVirtualDeviceChanged(event1, plugin_vm_dev);
 
   // ARC started.
@@ -1306,7 +1306,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   // Guest started.
   auto event1 = patchpanel::Client::VirtualDeviceEvent::kAdded;
   auto plugin_vm_dev =
-      virtualdev(patchpanel::Client::GuestType::kPluginVm, "vmtap0", "eth0");
+      virtualdev(patchpanel::Client::GuestType::kParallelsVm, "vmtap0", "eth0");
 
   EXPECT_CALL(
       *mock_client,
@@ -1478,7 +1478,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
   // Guest started.
   auto event1 = patchpanel::Client::VirtualDeviceEvent::kAdded;
   auto dev =
-      virtualdev(patchpanel::Client::GuestType::kPluginVm, "vmtap0", "eth0");
+      virtualdev(patchpanel::Client::GuestType::kParallelsVm, "vmtap0", "eth0");
   EXPECT_CALL(
       *mock_client,
       RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,

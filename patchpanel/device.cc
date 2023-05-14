@@ -83,8 +83,8 @@ std::ostream& operator<<(std::ostream& stream, const Device::Type device_type) {
       return stream << "ARCVM";
     case Device::Type::kTerminaVM:
       return stream << "Termina";
-    case Device::Type::kParallelVM:
-      return stream << "Parallel";
+    case Device::Type::kParallelsVM:
+      return stream << "Parallels";
   }
 }
 

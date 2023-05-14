@@ -53,7 +53,7 @@ class BRILLO_EXPORT Client {
     kUser,
     kArc,
     kCrosVm,
-    kPluginVm,
+    kParallelsVm,
     kUpdateEngine,
     kVpn,
     kSystem,
@@ -62,7 +62,7 @@ class BRILLO_EXPORT Client {
   static constexpr std::initializer_list<TrafficSource> kAllTrafficSources = {
       TrafficSource::kUnknown,      TrafficSource::kChrome,
       TrafficSource::kUser,         TrafficSource::kArc,
-      TrafficSource::kCrosVm,       TrafficSource::kPluginVm,
+      TrafficSource::kCrosVm,       TrafficSource::kParallelsVm,
       TrafficSource::kUpdateEngine, TrafficSource::kVpn,
       TrafficSource::kSystem,
   };
@@ -83,7 +83,7 @@ class BRILLO_EXPORT Client {
     kArcContainer,
     kArcVm,
     kTerminaVm,
-    kPluginVm,
+    kParallelsVm,
   };
 
   // See NetworkDeviceChangedSignal in patchpanel_service.proto.
@@ -237,10 +237,10 @@ class BRILLO_EXPORT Client {
                                       IPv4Subnet* container_subnet) = 0;
   virtual bool NotifyTerminaVmShutdown(uint32_t cid) = 0;
 
-  virtual bool NotifyPluginVmStartup(uint64_t vm_id,
-                                     int subnet_index,
-                                     VirtualDevice* device) = 0;
-  virtual bool NotifyPluginVmShutdown(uint64_t vm_id) = 0;
+  virtual bool NotifyParallelsVmStartup(uint64_t vm_id,
+                                        int subnet_index,
+                                        VirtualDevice* device) = 0;
+  virtual bool NotifyParallelsVmShutdown(uint64_t vm_id) = 0;
 
   // Reset the VPN routing intent mark on a socket to the default policy for
   // the current uid. This is in general incorrect to call this method for

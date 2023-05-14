@@ -89,9 +89,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     client->NotifyTerminaVmStartup(provider.ConsumeIntegral<uint32_t>(),
                                    &device, &subnet);
     client->NotifyTerminaVmShutdown(provider.ConsumeIntegral<uint32_t>());
-    client->NotifyPluginVmStartup(provider.ConsumeIntegral<uint64_t>(),
-                                  provider.ConsumeIntegral<int>(), &device);
-    client->NotifyPluginVmShutdown(provider.ConsumeIntegral<uint64_t>());
+    client->NotifyParallelsVmStartup(provider.ConsumeIntegral<uint64_t>(),
+                                     provider.ConsumeIntegral<int>(), &device);
+    client->NotifyParallelsVmShutdown(provider.ConsumeIntegral<uint64_t>());
     // TODO(garrick): Enable the following once the memory leaks in Chrome OS
     // DBus are resolved.
     //    client->DefaultVpnRouting(provider.ConsumeIntegral<int>());

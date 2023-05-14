@@ -24,14 +24,14 @@ namespace {
 // | 192-252 (/28) | Containers | Used by Crostini LXD user containers         |
 // +---------------+------------+----------------------------------------------+
 //
-// The 100.115.93.0/24 subnet is reserved for plugin VMs.
+// The 100.115.93.0/24 subnet is reserved for Parallels VMs.
 
 }  // namespace
 
 AddressManager::AddressManager() {
   for (auto g :
        {GuestType::kArc0, GuestType::kArcNet, GuestType::kTerminaVM,
-        GuestType::kPluginVM, GuestType::kLXDContainer, GuestType::kNetns}) {
+        GuestType::kParallelsVM, GuestType::kLXDContainer, GuestType::kNetns}) {
     uint32_t base_addr;
     uint32_t prefix_length = 30;
     uint32_t subnets = 1;
@@ -57,7 +57,7 @@ AddressManager::AddressManager() {
         prefix_length = 28;
         subnets = 4;
         break;
-      case GuestType::kPluginVM:
+      case GuestType::kParallelsVM:
         base_addr = Ipv4Addr(100, 115, 93, 0);
         prefix_length = 29;
         subnets = 32;
@@ -74,7 +74,7 @@ MacAddress AddressManager::GenerateMacAddress(uint32_t index) {
 
 std::unique_ptr<Subnet> AddressManager::AllocateIPv4Subnet(GuestType guest,
                                                            uint32_t index) {
-  if (index > 0 && guest != GuestType::kPluginVM) {
+  if (index > 0 && guest != GuestType::kParallelsVM) {
     LOG(ERROR) << "Subnet indexing not supported for guest";
     return nullptr;
   }
@@ -90,9 +90,9 @@ std::ostream& operator<<(std::ostream& stream,
     case AddressManager::GuestType::kArcNet:
       return stream << "ARC_NET";
     case AddressManager::GuestType::kTerminaVM:
-      return stream << "VM_TERMINA";
-    case AddressManager::GuestType::kPluginVM:
-      return stream << "VM_PLUGIN";
+      return stream << "TERMINA_VM";
+    case AddressManager::GuestType::kParallelsVM:
+      return stream << "PARALLELS_VM";
     case AddressManager::GuestType::kLXDContainer:
       return stream << "LXD_CONTAINER";
     case AddressManager::GuestType::kNetns:

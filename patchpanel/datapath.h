@@ -165,7 +165,7 @@ enum class IpFamily {
 enum class AutoDnatTarget {
   kArc,
   kCrostini,
-  kPluginVm,
+  kParallels,
 };
 
 // Returns for given interface name the host name of a ARC veth pair.

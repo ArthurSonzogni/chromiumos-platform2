@@ -175,9 +175,9 @@ TEST_F(ClientTest, NotifyTerminaVmShutdown) {
   EXPECT_EQ(cid, request_proto.cid());
 }
 
-TEST_F(ClientTest, NotifyPluginVmStartup) {
-  patchpanel::PluginVmStartupRequest request_proto;
-  patchpanel::PluginVmStartupResponse response_proto;
+TEST_F(ClientTest, NotifyParallelsVmStartup) {
+  patchpanel::ParallelsVmStartupRequest request_proto;
+  patchpanel::ParallelsVmStartupResponse response_proto;
   auto* response_device = response_proto.mutable_device();
   response_device->set_ifname("vmtap2");
   response_device->set_phys_ifname("eth0");
@@ -188,7 +188,7 @@ TEST_F(ClientTest, NotifyPluginVmStartup) {
   response_device_subnet->set_addr(
       std::vector<uint8_t>{100, 115, 93, 32}.data(), 4);
   response_device_subnet->set_prefix_len(28);
-  response_device->set_guest_type(patchpanel::NetworkDevice::PLUGIN_VM);
+  response_device->set_guest_type(patchpanel::NetworkDevice::PARALLELS_VM);
   response_device->set_dns_proxy_ipv4_addr(
       std::vector<uint8_t>{100, 115, 93, 5}.data(), 4);
   response_device->set_dns_proxy_ipv6_addr(
@@ -201,7 +201,7 @@ TEST_F(ClientTest, NotifyPluginVmStartup) {
   uint64_t id = 5;
   int subnet_index = 4;
   Client::VirtualDevice device;
-  bool result = client_->NotifyPluginVmStartup(id, subnet_index, &device);
+  bool result = client_->NotifyParallelsVmStartup(id, subnet_index, &device);
   EXPECT_TRUE(result);
   EXPECT_EQ(id, request_proto.id());
   EXPECT_EQ(subnet_index, request_proto.subnet_index());
@@ -212,18 +212,18 @@ TEST_F(ClientTest, NotifyPluginVmStartup) {
   EXPECT_EQ("100.115.93.33", IPv4AddressToString(device.host_ipv4_addr));
   EXPECT_EQ("100.115.93.32", IPv4AddressToString(device.ipv4_subnet.base_addr));
   EXPECT_EQ(28, device.ipv4_subnet.prefix_len);
-  EXPECT_EQ(Client::GuestType::kPluginVm, device.guest_type);
+  EXPECT_EQ(Client::GuestType::kParallelsVm, device.guest_type);
   EXPECT_EQ("100.115.93.5", IPv4AddressToString(device.dns_proxy_ipv4_addr));
   EXPECT_EQ("2001:db8::bfc7:4ad2",
             IPv6AddressToString(device.dns_proxy_ipv6_addr));
 }
 
-TEST_F(ClientTest, NotifyPluginVmShutdown) {
+TEST_F(ClientTest, NotifyParallelsVmShutdown) {
   uint64_t id = 5;
-  patchpanel::PluginVmShutdownRequest request_proto;
-  patchpanel::PluginVmShutdownResponse response_proto;
+  patchpanel::ParallelsVmShutdownRequest request_proto;
+  patchpanel::ParallelsVmShutdownResponse response_proto;
   ExpectProtoRequestResponse(proxy_, &request_proto, &response_proto);
-  bool result = client_->NotifyPluginVmShutdown(id);
+  bool result = client_->NotifyParallelsVmShutdown(id);
   EXPECT_TRUE(result);
   EXPECT_EQ(id, request_proto.id());
 }
@@ -334,8 +334,8 @@ TEST_F(ClientTest, TrafficSourceName) {
   EXPECT_EQ("USER", Client::TrafficSourceName(Client::TrafficSource::kUser));
   EXPECT_EQ("CROSVM",
             Client::TrafficSourceName(Client::TrafficSource::kCrosVm));
-  EXPECT_EQ("PLUGINVM",
-            Client::TrafficSourceName(Client::TrafficSource::kPluginVm));
+  EXPECT_EQ("PARALLELS_VM",
+            Client::TrafficSourceName(Client::TrafficSource::kParallelsVm));
   EXPECT_EQ("UPDATE_ENGINE",
             Client::TrafficSourceName(Client::TrafficSource::kUpdateEngine));
   EXPECT_EQ("VPN", Client::TrafficSourceName(Client::TrafficSource::kVpn));

@@ -290,8 +290,8 @@ TrafficCounter::Source TrafficSourceToProto(TrafficSource source) {
       return TrafficCounter::ARC;
     case TrafficSource::kCrosVM:
       return TrafficCounter::CROSVM;
-    case TrafficSource::kPluginVM:
-      return TrafficCounter::PLUGINVM;
+    case TrafficSource::kParallelsVM:
+      return TrafficCounter::PARALLELS_VM;
     case TrafficSource::kTetherDownstream:
       return TrafficCounter::SYSTEM;
     case TrafficSource::kArcVpn:
@@ -318,8 +318,8 @@ TrafficSource ProtoToTrafficSource(TrafficCounter::Source source) {
       return TrafficSource::kArc;
     case TrafficCounter::CROSVM:
       return TrafficSource::kCrosVM;
-    case TrafficCounter::PLUGINVM:
-      return TrafficSource::kPluginVM;
+    case TrafficCounter::PARALLELS_VM:
+      return TrafficSource::kParallelsVM;
     default:
     case TrafficCounter::UNKNOWN:
       return TrafficSource::kUnknown;

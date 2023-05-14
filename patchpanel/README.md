@@ -4,12 +4,12 @@ This directory contains the Patchpanel platform networking service daemon
 (formerly arc-networkd).
 
 Patchpanel is the network control plane manager for all guest application
-platforms running inside virtual machines (ARCVM, Termina, PluginVM) or
+platforms running inside virtual machines (ARCVM, Termina VM, Parallels VM) or
 containers (ARC++). Patchpanel configures and controls the network datapath for
 these guest platforms and provides additional services and features:
 *   Creation and configuration of virtual ethernet interface pairs for ARC++.
-*   Creation and configuration of TAP devices for CrosVM (ARCVM, Termina
-    and PluginVM).
+*   Creation and configuration of TAP devices for CrosVM (ARCVM, Termina VM,
+    and Parallels VM).
 *   Configuration of source NAT and IP forwarding for all guest platforms, and
     configuration of inbound firewall destination NAT rules for ARC.
 *   IPv6 NDProxy forwarder implementing [RFC 4389] and proxying ICMPv6 traffic

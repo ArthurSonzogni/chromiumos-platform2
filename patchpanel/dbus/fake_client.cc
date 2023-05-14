@@ -39,13 +39,13 @@ bool FakeClient::NotifyTerminaVmShutdown(uint32_t cid) {
   return true;
 }
 
-bool FakeClient::NotifyPluginVmStartup(uint64_t vm_id,
-                                       int subnet_index,
-                                       Client::VirtualDevice* device) {
+bool FakeClient::NotifyParallelsVmStartup(uint64_t vm_id,
+                                          int subnet_index,
+                                          Client::VirtualDevice* device) {
   return true;
 }
 
-bool FakeClient::NotifyPluginVmShutdown(uint64_t vm_id) {
+bool FakeClient::NotifyParallelsVmShutdown(uint64_t vm_id) {
   return true;
 }
 

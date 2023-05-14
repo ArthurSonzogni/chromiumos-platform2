@@ -24,16 +24,16 @@
 namespace patchpanel {
 
 // Crostini networking service handling address allocation, TAP device creation,
-// and patchpanel Device management for Crostini VMs (Termina VMs, Plugin VMs).
-// CrostiniService currently only supports one TAP device per VM instance.
+// and patchpanel Device management for Crostini VMs (Termina VMs, Parallels
+// VMs). CrostiniService currently only supports one TAP device per VM instance.
 class CrostiniService {
  public:
   // All types of VM supported by CrostiniService.
   enum class VMType {
     // Crostini Linux VM with a user LXD container.
     kTermina,
-    // Parallel VM.
-    kParallel,
+    // Parallels VM.
+    kParallels,
   };
 
   static std::optional<VMType> VMTypeFromDeviceType(Device::Type device_type);

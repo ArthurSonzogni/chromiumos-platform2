@@ -68,14 +68,14 @@ message NetworkDevice {
     ARC = 1;
     ARCVM = 2;
     TERMINA_VM = 3;
-    PLUGIN_VM = 4;
+    PARALLELS_VM = 4;
   };
 
   // The name of the main virtual interface created by patchpanel for carrying
   // packets out of the guest environment and onto the host routing setup. For
   // ARC this corresponds to the virtual bridge used for that virtual device.
-  // For other crosvm guests (Termina, Crostini, PluginVM, etc) this corresponds
-  // to the tap device used by crosvm virtio net stack.
+  // For other crosvm guests (Termina, Crostini, Parallels VM, etc) this
+  // corresponds to the tap device used by crosvm virtio net stack.
   string ifname = 1;
 
   // The name of the physical interface to which the virtual device is mapped.
@@ -169,8 +169,8 @@ message TerminaVmShutdownRequest {
 // Intentionally empty response.
 message TerminaVmShutdownResponse {}
 
-// Notification that a Plugin VM is starting up.
-message PluginVmStartupRequest {
+// Notification that a Parallels VM is starting up.
+message ParallelsVmStartupRequest {
   // The unique ID of the VM.
   uint64 id = 1;
 
@@ -180,23 +180,23 @@ message PluginVmStartupRequest {
   int32 subnet_index = 2;
 }
 
-// Information required by Concierge to continue the Plugin VM startup.
-message PluginVmStartupResponse {
+// Information required by Concierge to continue the Parallels VM startup.
+message ParallelsVmStartupResponse {
   // The TAP device to be used for the VM.
   NetworkDevice device = 1;
 };
 
-// Notification that the Plugin VM is shutting down.
+// Notification that the Parallels VM is shutting down.
 // This message must also be sent if the startup process fails so any
 // allocated resources, including the subnets, are properly freed.
-message PluginVmShutdownRequest {
-  // The unique ID of the Plugin VM; must match what was sent at startup.
+message ParallelsVmShutdownRequest {
+  // The unique ID of the Parallels VM; must match what was sent at startup.
   // Required.
   uint64 id = 1;
 }
 
 // Intentionally empty response.
-message PluginVmShutdownResponse {}
+message ParallelsVmShutdownResponse {}
 
 // Request to set the VPN routing policy for a socket. The socket file
 // descriptor must be immediately appended to the DBUS message after the
@@ -246,9 +246,9 @@ message ConnectNamespaceRequest {
   // priority interface (physical or virtual).
   string outbound_physical_device = 2;
 
-  // If true, traffic originated from managed OSs (Crostini, ARC, PluginVMs) and
-  // from Chrome can be routed to this namespace, and traffic originated from
-  // this namespace can be routed to these other privilege domains.
+  // If true, traffic originated from managed OSs (Termina VMs, ARC, Parallels
+  // VM) and from Chrome can be routed to this namespace, and traffic originated
+  // from this namespace can be routed to these other privilege domains.
   bool allow_user_traffic = 3;
 
   // This field specifies the routing behavior to use when (1)
@@ -303,7 +303,7 @@ message TrafficCounter {
     USER = 2;
     ARC = 3;
     CROSVM = 4;
-    PLUGINVM = 5;
+    PARALLELS_VM = 5;
     UPDATE_ENGINE = 6;
     // As a source, VPN means traffic initiated by the VPN app/program and going
     // to the underlying physical network (or from physical network to the VPN
@@ -478,7 +478,7 @@ message SetDnsRedirectionRuleRequest {
   enum RuleType {
     INVALID_RULE_TYPE = 0;
     // Rules for traffic from guests that track the default network (e.g.
-    // Crostini, PluginVMs).
+    // Crostini, Parallels VMs).
     DEFAULT = 1;
     // Rules for traffic from ARC interfaces (e.g. arc_eth0, arc_wlan0).
     ARC = 2;

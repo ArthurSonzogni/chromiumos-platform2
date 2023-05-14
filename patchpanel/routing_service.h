@@ -44,7 +44,7 @@ enum TrafficSource {
   // Traffic corresponding to uid "chronos".
   kChrome = 1,
   // Other uids classified as "user" for traffic purposes: debugd, cups,
-  // tlsdate, pluginvm, etc.
+  // tlsdate, pluginvm (Parallels), etc.
   kUser = 2,
   // Traffic from Update engine.
   kUpdateEngine = 3,
@@ -60,8 +60,8 @@ enum TrafficSource {
   kArc = 0x20,
   // Crostini VMs and lxc containers.
   kCrosVM = 0x21,
-  // Other plugin VMs.
-  kPluginVM = 0x22,
+  // Parallels VMs.
+  kParallelsVM = 0x22,
   // A tethered downstream network. Currently reserved for future use.
   kTetherDownstream = 0x23,
   // Traffic emitted by Android VPNs for their tunnelled connections.
@@ -86,7 +86,7 @@ const std::string& TrafficSourceName(TrafficSource source);
 //                     originated traffic by domain.
 // reserved(7bits): no usage at the moment.
 // legacy SNAT(1bit): legacy bit used for setting up SNAT for ARC, Crostini, and
-//                    PluginVMs with iptables MASQUERADE.
+//                    Parallels VMs with iptables MASQUERADE.
 //
 // Note that bitfields are not a portable way to define a
 // stable Fwmark. Also note that the in-memory representation of values of
@@ -184,7 +184,7 @@ constexpr char kUidKerberosdExec[] = "kerberosd-exec";
 // to sync time immediately after boot on the sign-in screen when no VPN can
 // be active.
 constexpr char kUidTlsdate[] = "tlsdate";
-// Plugin vm problem report utility (b/160916677)
+// Parallels VM problem report utility (b/160916677)
 constexpr char kUidPluginvm[] = "pluginvm";
 // smbfs SMB filesystem daemon
 constexpr char kUidFuseSmbfs[] = "fuse-smbfs";
@@ -216,12 +216,12 @@ constexpr std::array<TrafficSource, 5> kLocalSources{
 
 // All forwarded sources
 constexpr std::array<TrafficSource, 5> kForwardedSources{
-    {kArc, kCrosVM, kPluginVM, kTetherDownstream, kArcVpn}};
+    {kArc, kCrosVM, kParallelsVM, kTetherDownstream, kArcVpn}};
 
 // All sources
 constexpr std::array<TrafficSource, 10> kAllSources{
-    {kChrome, kUser, kUpdateEngine, kSystem, kHostVpn, kArc, kCrosVM, kPluginVM,
-     kTetherDownstream, kArcVpn}};
+    {kChrome, kUser, kUpdateEngine, kSystem, kHostVpn, kArc, kCrosVM,
+     kParallelsVM, kTetherDownstream, kArcVpn}};
 
 // iptables type keywords for neighbor discovery packets
 constexpr std::array<char[32], 4> kNeighborDiscoveryTypes{
