@@ -414,17 +414,11 @@ GetDevicesResponse Manager::GetDevices() const {
     FillDeviceProto(*arc_device, dev);
     FillDeviceDnsProxyProto(*arc_device, dev, dns_proxy_ipv4_addrs_,
                             dns_proxy_ipv6_addrs_);
-    if (const auto* subnet = arc_device->config().ipv4_subnet()) {
-      FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
-    }
   }
 
   for (const auto* crosvm_device : cros_svc_->GetDevices()) {
     auto* dev = response.add_devices();
     FillDeviceProto(*crosvm_device, dev);
-    if (const auto* subnet = crosvm_device->config().ipv4_subnet()) {
-      FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
-    }
   }
 
   return response;

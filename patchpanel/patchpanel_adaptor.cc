@@ -231,8 +231,7 @@ ParallelsVmStartupResponse PatchpanelAdaptor::ParallelsVmStartup(
     LOG(DFATAL) << "Parallels VM TAP Device missing";
     return {};
   }
-  const auto* subnet = guest_device->config().ipv4_subnet();
-  if (!subnet) {
+  if (!guest_device->config().ipv4_subnet()) {
     LOG(DFATAL) << "Missing required subnet for {cid: " << vm_id << "}";
     return {};
   }
@@ -241,7 +240,6 @@ ParallelsVmStartupResponse PatchpanelAdaptor::ParallelsVmStartup(
   auto* dev = response.mutable_device();
   dev->set_guest_type(NetworkDevice::PARALLELS_VM);
   FillDeviceProto(*guest_device, dev);
-  FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
 
   RecordDbusEvent(DbusUmaEvent::kParallelsVmStartupSuccess);
   return response;
@@ -310,8 +308,7 @@ TerminaVmStartupResponse PatchpanelAdaptor::TerminaVmStartup(
   if (!guest_device) {
     return {};
   }
-  const auto* termina_subnet = guest_device->config().ipv4_subnet();
-  if (!termina_subnet) {
+  if (!guest_device->config().ipv4_subnet()) {
     LOG(DFATAL) << "Missing required Termina IPv4 subnet for {cid: " << cid
                 << "}";
     return {};
@@ -326,7 +323,6 @@ TerminaVmStartupResponse PatchpanelAdaptor::TerminaVmStartup(
   TerminaVmStartupResponse response;
   auto* dev = response.mutable_device();
   FillDeviceProto(*guest_device, dev);
-  FillSubnetProto(*termina_subnet, dev->mutable_ipv4_subnet());
   FillSubnetProto(*lxd_subnet, response.mutable_container_subnet());
 
   RecordDbusEvent(DbusUmaEvent::kTerminaVmStartupSuccess);
@@ -341,9 +337,6 @@ void PatchpanelAdaptor::OnNetworkDeviceChanged(const Device& virtual_device,
                        : NetworkDeviceChangedSignal::DEVICE_REMOVED);
   auto* dev = signal.mutable_device();
   FillDeviceProto(virtual_device, dev);
-  if (const auto* subnet = virtual_device.config().ipv4_subnet()) {
-    FillSubnetProto(*subnet, dev->mutable_ipv4_subnet());
-  }
   SendNetworkDeviceChangedSignal(signal);
 }
 

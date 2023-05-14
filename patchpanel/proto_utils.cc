@@ -34,6 +34,9 @@ void FillDeviceProto(const Device& virtual_device,
       output->set_guest_type(NetworkDevice::PARALLELS_VM);
       break;
   }
+  if (const auto* subnet = virtual_device.config().ipv4_subnet()) {
+    FillSubnetProto(*subnet, output->mutable_ipv4_subnet());
+  }
 }
 
 // TODO(b/239559602) Introduce better types for IPv4 addr and IPv4 CIDR.
