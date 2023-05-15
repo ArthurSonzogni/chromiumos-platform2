@@ -116,25 +116,6 @@ class TpmUtility {
                     const std::string& data_to_sign,
                     std::string* signature) = 0;
 
-  // Quotes a PCR specified by |pcr_index|. The |key_blob| must be a restricted
-  // signing key. On success returns true and populates:
-  //   |quoted_pcr_value| - The value of the register at the time it was quoted.
-  //   |quoted_data| - The exact serialized data that was signed.
-  //   |quote| - The signature.
-  virtual bool QuotePCR(uint32_t pcr_index,
-                        const std::string& key_blob,
-                        std::string* quoted_pcr_value,
-                        std::string* quoted_data,
-                        std::string* quote) = 0;
-
-  // Checks if |quote| is valid for a single PCR specified by |pcr_index|
-  // acoording to |quoted_pcr_value| and |quoted_data|. See |QuotePCR| above for
-  // more information about the input variables.
-  virtual bool IsQuoteForPCR(const std::string& quoted_pcr_value,
-                             const std::string& quoted_data,
-                             const std::string& quote,
-                             uint32_t pcr_index) const = 0;
-
   // Reads a PCR specified by |pcr_index|. On success returns true and
   // populates |_pcr_value|.
   virtual bool ReadPCR(uint32_t pcr_index, std::string* pcr_value) = 0;
