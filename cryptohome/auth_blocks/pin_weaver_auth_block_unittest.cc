@@ -51,6 +51,7 @@ using ::hwsec_foundation::kAesBlockSize;
 using ::hwsec_foundation::kDefaultAesKeySize;
 using ::hwsec_foundation::kDefaultPassBlobSize;
 using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::error::testing::ReturnOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
 using ::testing::DoAll;
@@ -671,6 +672,52 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
     EXPECT_NE(CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE,
               status->local_legacy_error());
   }
+}
+
+TEST_F(PinWeaverAuthBlockTest, PrepareForRemovalSuccess) {
+  const uint64_t kLabel = 100;
+
+  AuthBlockState auth_state;
+  PinWeaverAuthBlockState pinweaver_auth_state;
+  pinweaver_auth_state.le_label = kLabel;
+  auth_state.state = pinweaver_auth_state;
+
+  EXPECT_CALL(le_cred_manager_, RemoveCredential(kLabel))
+      .WillOnce(ReturnOk<CryptohomeLECredError>());
+
+  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
+}
+
+TEST_F(PinWeaverAuthBlockTest, PrepareForRemovalNoState) {
+  AuthBlockState auth_state;
+
+  // Prepare for removal should still succeed when there is no valid auth state.
+  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
+}
+
+TEST_F(PinWeaverAuthBlockTest, PrepareForRemovalRemoveError) {
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+  const uint64_t kLabel = 100;
+
+  AuthBlockState auth_state;
+  PinWeaverAuthBlockState pinweaver_auth_state;
+  pinweaver_auth_state.le_label = kLabel;
+  auth_state.state = pinweaver_auth_state;
+
+  EXPECT_CALL(le_cred_manager_, RemoveCredential(kLabel))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet(), LE_CRED_ERROR_LE_LOCKED))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet(),
+          LE_CRED_ERROR_INVALID_LABEL));
+
+  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), NotOk());
+  // Prepare for removal should still succeed when the label doesn't exist in
+  // the tree.
+  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
 }
 
 }  // namespace cryptohome
