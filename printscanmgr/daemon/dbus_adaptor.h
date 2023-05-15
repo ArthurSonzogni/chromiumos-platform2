@@ -5,15 +5,20 @@
 #ifndef PRINTSCANMGR_DAEMON_DBUS_ADAPTOR_H_
 #define PRINTSCANMGR_DAEMON_DBUS_ADAPTOR_H_
 
+#include <memory>
+
 #include <base/memory/scoped_refptr.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>
 #include <dbus/bus.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
 #include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 #include "printscanmgr/daemon/cups_tool.h"
+#include "printscanmgr/daemon/printscan_tool.h"
 #include "printscanmgr/dbus_adaptors/org.chromium.printscanmgr.h"
+#include "printscanmgr/mojom/executor.mojom.h"
 
 namespace printscanmgr {
 
@@ -21,13 +26,14 @@ namespace printscanmgr {
 class DbusAdaptor final : public org::chromium::printscanmgrAdaptor,
                           public org::chromium::printscanmgrInterface {
  public:
-  explicit DbusAdaptor(scoped_refptr<dbus::Bus> bus);
+  explicit DbusAdaptor(mojo::PendingRemote<mojom::Executor> remote);
   DbusAdaptor(const DbusAdaptor&) = delete;
   DbusAdaptor& operator=(const DbusAdaptor&) = delete;
   ~DbusAdaptor() override;
 
   // Registers the D-Bus object and interface.
-  void RegisterAsync(brillo::dbus_utils::AsyncEventSequencer::CompletionAction
+  void RegisterAsync(scoped_refptr<dbus::Bus> bus,
+                     brillo::dbus_utils::AsyncEventSequencer::CompletionAction
                          completion_action);
 
   // org::chromium::printscanmgrInterface overrides:
@@ -43,8 +49,9 @@ class DbusAdaptor final : public org::chromium::printscanmgrAdaptor,
       const PrintscanDebugSetCategoriesRequest& request) override;
 
  private:
-  brillo::dbus_utils::DBusObject dbus_object_;
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   CupsTool cups_tool_;
+  PrintscanTool printscan_tool_;
 };
 
 }  // namespace printscanmgr

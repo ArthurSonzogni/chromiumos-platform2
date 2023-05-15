@@ -66,3 +66,6 @@ exit: 1
 rt_sigreturn: 1
 getcwd: 1
 writev: 1
+socketpair: 1
+memfd_create: 1
+eventfd2: 1

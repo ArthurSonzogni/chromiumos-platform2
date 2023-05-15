@@ -13,21 +13,23 @@
 
 namespace printscanmgr {
 
-DbusAdaptor::DbusAdaptor(scoped_refptr<dbus::Bus> bus)
+DbusAdaptor::DbusAdaptor(mojo::PendingRemote<mojom::Executor> remote)
     : org::chromium::printscanmgrAdaptor(this),
-      dbus_object_(/*object_manager=*/nullptr,
-                   bus,
-                   dbus::ObjectPath(kPrintscanmgrServicePath)) {}
+      printscan_tool_(std::move(remote)) {}
+
 DbusAdaptor::~DbusAdaptor() = default;
 
 void DbusAdaptor::RegisterAsync(
+    scoped_refptr<dbus::Bus> bus,
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction
         completion_action) {
-  brillo::dbus_utils::DBusInterface* interface =
-      dbus_object_.AddOrGetInterface(kPrintscanmgrInterface);
-  DCHECK(interface);
-  RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(std::move(completion_action));
+  DCHECK(bus);
+  dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
+      /*object_manager=*/nullptr, bus,
+      dbus::ObjectPath(kPrintscanmgrServicePath));
+  dbus_object_->AddOrGetInterface(kPrintscanmgrInterface);
+  RegisterWithDBusObject(dbus_object_.get());
+  dbus_object_->RegisterAsync(std::move(completion_action));
 }
 
 CupsAddAutoConfiguredPrinterResponse DbusAdaptor::CupsAddAutoConfiguredPrinter(
@@ -53,11 +55,7 @@ CupsRetrievePpdResponse DbusAdaptor::CupsRetrievePpd(
 
 PrintscanDebugSetCategoriesResponse DbusAdaptor::PrintscanDebugSetCategories(
     const PrintscanDebugSetCategoriesRequest& request) {
-  NOTIMPLEMENTED() << " PrintscanDebugSetCategories not implemented.";
-
-  PrintscanDebugSetCategoriesResponse response;
-
-  return response;
+  return printscan_tool_.DebugSetCategories(request);
 }
 
 }  // namespace printscanmgr
