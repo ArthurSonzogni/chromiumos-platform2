@@ -1176,10 +1176,11 @@ message AddAuthFactorReply {
   AuthFactorWithStatus added_auth_factor = 3;
 }
 
-// AuthenticateAuthFactorRequest is built when a user is trying to
-// authenticate with an AuthFactor for a user. When the call is made,
-// AuthSession is in an unauthenticated state. After the operation the
-// AuthSession would still be in an authenticated state.
+// AuthenticateAuthFactorRequest is a request to authenticate a user with an
+// AuthFactor. The call can be made multiple times to attempt to authorize the
+// AuthSession for the intents requested by the AuthFactor. If the AuthSession
+// was already authenticated, it will be authorized for a superset of existing
+// intents and the new intents of the AuthFactor.
 message AuthenticateAuthFactorRequest {
   // AuthFactor cannot be authenticated without an active AuthSession running.
   // This id would be used to associate the AuthFactor to an AuthSession.

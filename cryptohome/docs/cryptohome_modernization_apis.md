@@ -129,8 +129,15 @@ through an authenticated AuthSession.
       such as text for a Password AuthFactor.
     - *Reply*:
       - CryptohomeErrorCode - Returns if there is any error
-2. **AuthenticateAuthFactor** - This will Authenticate an existing AuthFactor.
-This call will authenticate an AuthSession.
+      - AuthFactorWithStatus - Returns the newly updated AuthFactor with a
+      list of intents the factor is available for.
+2. **AuthenticateAuthFactor** - Authenticates an existing AuthFactor and sets
+the AuthSession's authorized_for intents based on the type of authentication
+that occurred. If the factor that is authenticated enables more intents than
+requested, the AuthSession will be authorized for those intents. Calling
+AuthenticateAuthFactor again on an already authenticated AuthSession will not
+downgrade the intents, but it may upgrade the authorized_for intents based
+on the factor used.
     - *Input*:
       - auth_session_id - AuthSession used to identify users. The AuthSession
       needs to be authenticated for this call to be a success.
@@ -152,7 +159,9 @@ to update an AuthFactor. (E.g. Changing pin or password).
       - auth_input - This is set if any input is required for the AuthFactor,
       such as text for a Password AuthFactor.
     - *Reply*:
-      - CryptohomeErrorCode - Returns if there is any error
+      - CryptohomeErrorCode - Returns if there is any error.
+      - AuthFactorWithStatus - Returns the newly updated AuthFactor with a
+      list of intents the factor is available for.
 4. **RemoveAuthFactor** - This is called when a user wants to remove an
 AuthFactor.
     - *Input*:
@@ -222,6 +231,20 @@ It will also shut down the signal sender associated with the auth factor type.
       - CryptohomeErrorCode - Returns if there is any error.
     - *Usage*:
       - Properly terminate the underlying sensor session.
+8. **UpdateAuthFactorMetadata** - This call will be used in the case of a user wanting
+to update an AuthFactor's metadata. (E.g. Changing FP Label).
+    - *Input*:
+      -auth_session_id - AuthSession used to identify users. The AuthSession
+      needs to be authenticated for this call to be a success.
+      - auth_factor_label - The label that will be used to identify an
+      AuthFactor to update.
+      - auth_factor - AuthFactor information about the existing factor that will
+      replace the existing. Note: No new AuthFactor will be created here and no
+      secrets are modified.
+    - *Reply*:
+      - CryptohomeErrorCode - Returns if there is any error.
+      - AuthFactorWithStatus - Returns the newly updated AuthFactor with a
+      list of intents the factor is available for.
 
 ## Order of Operations
 
@@ -375,3 +398,14 @@ any persistent users present.
     when we move WebAuthn secret into auth session, Chrome shouldn't process
     this step, but return the auth session ID to u2fd in a successful response
     of WebAuthn verification, then let u2fd do the InvalidateAuthSession.
+
+### Chrome wants to do UpdateAuthFactorMetata for Any Factor
+
+1.  `StartAuthSession` - Chrome initiates an AuthSession with
+ `AUTH_INTENT_DECRYPT` AuthIntent.
+2.  `AuthenticateAuthFactor`
+3.  `UpdateAuthFactorMetadata` -
+    - Ensure that AuthFactor provided has all information, existing and any
+    new information that needs to be updated.
+    - Any metadata field that is updated by cryptohome will be ignored.
+4.  `InvalidateAuthSession`
