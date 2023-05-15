@@ -156,9 +156,9 @@ bool SwapManagementDBusAdaptor::InitiateSwapZramWriteback(
 }
 
 bool SwapManagementDBusAdaptor::MGLRUSetEnable(brillo::ErrorPtr* error,
-                                               bool enable) {
+                                               uint8_t value) {
   ResetShutdownTimer();
-  absl::Status status = swap_tool_->MGLRUSetEnable(enable);
+  absl::Status status = swap_tool_->MGLRUSetEnable(value);
   if (!status.ok()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          "org.chromium.SwapManagement.error.MGLRUSetEnable",

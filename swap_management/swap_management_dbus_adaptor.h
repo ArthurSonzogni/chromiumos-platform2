@@ -44,7 +44,7 @@ class SwapManagementDBusAdaptor
                                  uint32_t limit) override;
   bool InitiateSwapZramWriteback(brillo::ErrorPtr* error,
                                  uint32_t mode) override;
-  bool MGLRUSetEnable(brillo::ErrorPtr* error, bool enable) override;
+  bool MGLRUSetEnable(brillo::ErrorPtr* error, uint8_t value) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;

@@ -79,7 +79,7 @@ class SwapTool {
   absl::Status InitiateSwapZramWriteback(uint32_t mode);
 
   // MGLRU configuration.
-  absl::Status MGLRUSetEnable(bool enable);
+  absl::Status MGLRUSetEnable(uint8_t value);
 
  private:
   absl::StatusOr<bool> IsZramSwapOn();

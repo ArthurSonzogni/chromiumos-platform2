@@ -709,18 +709,9 @@ absl::Status SwapTool::InitiateSwapZramWriteback(uint32_t mode) {
   return SwapToolUtil::Get()->WriteFile(filepath, mode_str);
 }
 
-absl::Status SwapTool::MGLRUSetEnable(bool enable) {
-  base::FilePath filepath = base::FilePath("/sys/kernel/mm/lru_gen/enabled");
-  if (enable) {
-    absl::Status status = SwapToolUtil::Get()->WriteFile(filepath, "y");
-    if (status.ok() || !absl::IsInvalidArgument(status))
-      return status;
-
-    // If writing "y" fails with invalid argument error, fallback to write 1.
-    return SwapToolUtil::Get()->WriteFile(filepath, "1");
-  }
-
-  return SwapToolUtil::Get()->WriteFile(filepath, "0");
+absl::Status SwapTool::MGLRUSetEnable(uint8_t value) {
+  return SwapToolUtil::Get()->WriteFile(
+      base::FilePath("/sys/kernel/mm/lru_gen/enabled"), std::to_string(value));
 }
 
 }  // namespace swap_management

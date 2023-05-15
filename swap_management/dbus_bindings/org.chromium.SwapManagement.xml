@@ -56,9 +56,9 @@
       <tp:docstring>
         Enable/Disable the MGLRU feature.
       </tp:docstring>
-      <arg name="enable" type="b" direction="in">
+      <arg name="value" type="y" direction="in">
         <tp:docstring>
-          Whether to enable or disable.
+          Value to enable MGLRU.
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
