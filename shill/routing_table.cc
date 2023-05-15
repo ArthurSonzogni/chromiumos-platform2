@@ -882,7 +882,15 @@ bool RoutingTable::AddRule(int interface_index,
                  NLM_F_CREATE | NLM_F_EXCL)) {
     return false;
   }
-  policy_tables_[interface_index].push_back(entry);
+  // Add entry into policy table if no identical entry exists.
+  // Note that the main routing table route can be added multiple times without
+  // removal so duplication check is essential here.
+  auto& policy_table = policy_tables_[interface_index];
+  if (std::find(policy_table.begin(), policy_table.end(), entry) !=
+      policy_table.end()) {
+    return true;
+  }
+  policy_table.push_back(entry);
   return true;
 }
 
