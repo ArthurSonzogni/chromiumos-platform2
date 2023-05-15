@@ -25,6 +25,9 @@ pub(crate) mod tests {
     // Device path for GPU card.
     pub const GPU0_DEVICE_PATH: &str = "sys/class/drm/card0";
 
+    // Device path for GPU RPS path
+    pub const GPU0_RPS_DEVICE_PATH: &str = "sys/class/drm/card0/gt/gt0";
+
     pub struct MockPowerPreferencesManager {}
     impl power::PowerPreferencesManager for MockPowerPreferencesManager {
         fn update_power_preferences(
@@ -192,7 +195,7 @@ model name      : {model_name}"#
 
     pub fn setup_mock_intel_gpu_dev_dirs(root: &Path) {
         fs::create_dir_all(root.join(CPUINFO_PATH).parent().unwrap()).unwrap();
-        fs::create_dir_all(root.join(GPU0_DEVICE_PATH)).unwrap();
+        fs::create_dir_all(root.join(GPU0_RPS_DEVICE_PATH)).unwrap();
     }
 
     pub fn setup_mock_intel_gpu_files(root: &Path) {
@@ -206,6 +209,17 @@ model name      : {model_name}"#
             fs::write(
                 root.join(GPU0_DEVICE_PATH).join(PathBuf::from(gpu_file)),
                 default_freq.to_string(),
+            )
+            .unwrap();
+        }
+
+        let rps_files = vec![("rps_up_threshold_pct", 85), ("rps_down_threshold_pct", 95)];
+
+        for (rps_file, default_val) in &rps_files {
+            fs::write(
+                root.join(GPU0_RPS_DEVICE_PATH)
+                    .join(PathBuf::from(rps_file)),
+                default_val.to_string(),
             )
             .unwrap();
         }

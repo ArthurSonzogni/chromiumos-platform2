@@ -8,6 +8,15 @@ DRIVERS=="i915", ACTION=="add", ATTR{gt_boost_freq_mhz}!="", \
 DRIVERS=="i915", ACTION=="add", ATTR{gt_max_freq_mhz}!="", \
   RUN+="/bin/chown resourced:resourced $sys$devpath/gt_max_freq_mhz"
 
+KERNEL=="card0", SUBSYSTEM=="drm", ACTION=="add", \
+  TEST=="$sys$devpath/gt/gt0/rps_up_threshold_pct", \
+  RUN+="/bin/chown resourced:resourced $sys$devpath/gt/gt0/rps_up_threshold_pct"
+
+KERNEL=="card0", SUBSYSTEM=="drm", ACTION=="add", \
+  TEST=="$sys$devpath/gt/gt0/rps_down_threshold_pct", \
+  RUN+="/bin/chown resourced:resourced \
+  $sys$devpath/gt/gt0/rps_down_threshold_pct"
+
 KERNEL=="intel-rapl:0", ACTION=="add", ATTR{constraint_0_power_limit_uw}!="", \
   RUN+="/bin/chown resourced:resourced $sys$devpath/constraint_0_power_limit_uw"
 
