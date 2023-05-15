@@ -85,6 +85,8 @@ constexpr char kKeyToOverrideBlockMultipleWorkers[] = "BLOCK_MULTIPLE_WORKERS";
 constexpr char kKeyToOverrideIoBlockAsyncExecutor[] = "BLOCK_ASYNC_EXECUTOR";
 
 // Custom parameter key to skip total bytes written management for ARCVM swap.
+// TODO(b/284408104): Rename this to skip whole vmm-swap policies to unblock
+// integration tests
 constexpr char kKeyToSkipVmmTbwManagement[] = "SKIP_SWAP_TBW_MANAGEMENT";
 
 // Shared directories and their tags
@@ -857,67 +859,19 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
   switch (request.operation()) {
     case SwapOperation::ENABLE:
       LOG(INFO) << "Enable vmm-swap";
-      if (is_vmm_swap_enabled_ && (base::Time::Now() - last_vmm_swap_out_at_) <
-                                      kVmmSwapOutCoolingDownPeriod) {
-        LOG(INFO) << "Skip enabling vmm-swap for maintenance for "
-                  << kVmmSwapOutCoolingDownPeriod;
-        response.set_success(false);
-        response.set_failure_reason(
-            "Requires cooling down period after last vmm-swap out");
-        return;
-      }
-      if (!skip_tbw_management_ && !vmm_swap_tbw_policy_->CanSwapOut()) {
-        LOG(WARNING) << "Enabling vmm-swap is rejected by TBW limit";
-        response.set_success(false);
-        response.set_failure_reason("TBW (total bytes written) reached target");
-        return;
-      }
-      if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
-        is_vmm_swap_enabled_ = true;
-        response.set_success(true);
-        swap_policy_timer_->Start(FROM_HERE, base::Minutes(10), this,
-                                  &ArcVm::StartVmmSwapOut);
-      } else {
-        LOG(ERROR) << "Failure on crosvm swap command for enable";
-        response.set_success(false);
-        response.set_failure_reason(
-            "Failure on crosvm swap command for enable");
-      }
+      HandleSwapVmEnableRequest(response);
       break;
+
     case SwapOperation::FORCE_ENABLE:
       LOG(INFO) << "Force enable vmm-swap";
-      if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
-        is_vmm_swap_enabled_ = true;
-        response.set_success(true);
-        swap_policy_timer_->Start(FROM_HERE, base::Seconds(10), this,
-                                  &ArcVm::StartVmmSwapOut);
-      } else {
-        LOG(ERROR) << "Failure on crosvm swap command for force-enable";
-        response.set_success(false);
-        response.set_failure_reason(
-            "Failure on crosvm swap command for force-enable");
-      }
+      HandleSwapVmForceEnableRequest(response);
       break;
+
     case SwapOperation::DISABLE:
       LOG(INFO) << "Disable vmm-swap";
-      if (swap_policy_timer_->IsRunning()) {
-        LOG(INFO) << "Cancel pending swap out";
-        swap_policy_timer_->Stop();
-      }
-      if (swap_state_monitor_timer_->IsRunning()) {
-        LOG(INFO) << "Cancel swap state monitor";
-        swap_state_monitor_timer_->Stop();
-      }
-      if (CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath().c_str())) {
-        response.set_success(true);
-      } else {
-        LOG(ERROR) << "Failure on crosvm swap command for disable";
-        response.set_success(false);
-        response.set_failure_reason(
-            "Failure on crosvm swap command for disable");
-      }
-      is_vmm_swap_enabled_ = false;
+      HandleSwapVmDisableRequest(response);
       break;
+
     default:
       LOG(WARNING) << "Undefined vmm-swap operation";
       response.set_success(false);
@@ -1147,6 +1101,86 @@ void ArcVm::InflateAggressiveBalloonOnTimer() {
           std::move(aggressive_balloon_callback_), "failed to inflate balloon");
     }
   }
+}
+
+void ArcVm::HandleSwapVmEnableRequest(SwapVmResponse& response) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  vmm_swap_usage_policy_.OnEnabled();
+  if (is_vmm_swap_enabled_) {
+    if ((base::Time::Now() - last_vmm_swap_out_at_) <
+        kVmmSwapOutCoolingDownPeriod) {
+      LOG(INFO) << "Skip enabling vmm-swap for maintenance for "
+                << kVmmSwapOutCoolingDownPeriod;
+      response.set_success(false);
+      response.set_failure_reason(
+          "Requires cooling down period after last vmm-swap out");
+      return;
+    }
+  } else {
+    base::TimeDelta next_disable_duration =
+        vmm_swap_usage_policy_.PredictDuration();
+    // TODO(b/265386289): Set duration target dynamically
+    if (!skip_tbw_management_ && next_disable_duration < base::Days(2)) {
+      LOG(INFO) << "Enabling vmm-swap is rejected by usage prediction. "
+                   "Predict duration: "
+                << next_disable_duration << " should be longer than 2 days";
+      response.set_success(false);
+      response.set_failure_reason("Predicted disable soon");
+      return;
+    }
+  }
+  if (!skip_tbw_management_ && !vmm_swap_tbw_policy_->CanSwapOut()) {
+    LOG(WARNING) << "Enabling vmm-swap is rejected by TBW limit";
+    response.set_success(false);
+    response.set_failure_reason("TBW (total bytes written) reached target");
+    return;
+  }
+  if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
+    is_vmm_swap_enabled_ = true;
+    response.set_success(true);
+    swap_policy_timer_->Start(FROM_HERE, base::Minutes(10), this,
+                              &ArcVm::StartVmmSwapOut);
+  } else {
+    LOG(ERROR) << "Failure on crosvm swap command for enable";
+    response.set_success(false);
+    response.set_failure_reason("Failure on crosvm swap command for enable");
+  }
+}
+
+void ArcVm::HandleSwapVmForceEnableRequest(SwapVmResponse& response) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
+    is_vmm_swap_enabled_ = true;
+    response.set_success(true);
+    swap_policy_timer_->Start(FROM_HERE, base::Seconds(10), this,
+                              &ArcVm::StartVmmSwapOut);
+  } else {
+    LOG(ERROR) << "Failure on crosvm swap command for force-enable";
+    response.set_success(false);
+    response.set_failure_reason(
+        "Failure on crosvm swap command for force-enable");
+  }
+}
+
+void ArcVm::HandleSwapVmDisableRequest(SwapVmResponse& response) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  vmm_swap_usage_policy_.OnDisabled();
+  if (swap_policy_timer_->IsRunning()) {
+    LOG(INFO) << "Cancel pending swap out";
+    swap_policy_timer_->Stop();
+  }
+  if (swap_state_monitor_timer_->IsRunning()) {
+    LOG(INFO) << "Cancel swap state monitor";
+    swap_state_monitor_timer_->Stop();
+  }
+  if (CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath().c_str())) {
+    response.set_success(true);
+  } else {
+    LOG(ERROR) << "Failure on crosvm swap command for disable";
+    response.set_success(false);
+    response.set_failure_reason("Failure on crosvm swap command for disable");
+  }
+  is_vmm_swap_enabled_ = false;
 }
 
 void ArcVm::StartVmmSwapOut() {

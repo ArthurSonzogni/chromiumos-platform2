@@ -843,6 +843,11 @@ class ArcVmTest : public ::testing::Test {
                   base::FilePath("dummy"), {}, swap_policy_timer_,
                   swap_state_monitor_timer_, aggressive_balloon_timer_));
 
+    // The more than 28days enabled log unblocks the VmmSwapUsagePolicy.
+    // We don't add OnDisabled log here because adding OnDisabled log at 50days
+    // ago again will invalidate this enabled log on some test cases.
+    vm_->vmm_swap_usage_policy_.OnEnabled(base::Time::Now() - base::Days(50));
+
     SetBalloonStats(0, 1024 * MIB);
   }
   void TearDown() override {
@@ -879,6 +884,11 @@ class ArcVmTest : public ::testing::Test {
 
   void ProceedTimeAfterSwapOut(base::TimeDelta delta) {
     vm_->last_vmm_swap_out_at_ -= delta;
+  }
+
+  void AddUsageLog(base::Time time, base::TimeDelta duration) {
+    vm_->vmm_swap_usage_policy_.OnEnabled(time);
+    vm_->vmm_swap_usage_policy_.OnDisabled(time + duration);
   }
 
  protected:
@@ -1124,6 +1134,34 @@ TEST_F(ArcVmTest, EnableVmmSwapAgainExceedsTbwTarget) {
   swap_state_monitor_timer_->Fire();
   ProceedTimeAfterSwapOut(base::Hours(24));
   ASSERT_FALSE(EnableVmmSwap());
+}
+
+TEST_F(ArcVmTest, EnableVmmSwapRejectedByUsagePolicy) {
+  // Invalidates the usage log.
+  AddUsageLog(base::Time::Now() - base::Days(50), base::Seconds(1));
+  AddUsageLog(base::Time::Now() - base::Days(28) - base::Hours(1),
+              base::Days(2));
+  AddUsageLog(base::Time::Now() - base::Days(21) - base::Hours(1),
+              base::Days(2));
+  AddUsageLog(base::Time::Now() - base::Days(14) - base::Hours(1),
+              base::Days(2));
+  AddUsageLog(base::Time::Now() - base::Days(7) - base::Hours(1),
+              base::Days(2));
+  ASSERT_FALSE(EnableVmmSwap());
+}
+
+TEST_F(ArcVmTest, EnableVmmSwapPassUsagePolicy) {
+  // Invalidates the usage log.
+  AddUsageLog(base::Time::Now() - base::Days(50), base::Seconds(1));
+  AddUsageLog(base::Time::Now() - base::Days(28) - base::Hours(1),
+              base::Days(2) + base::Hours(2));
+  AddUsageLog(base::Time::Now() - base::Days(21) - base::Hours(1),
+              base::Days(2) + base::Hours(2));
+  AddUsageLog(base::Time::Now() - base::Days(14) - base::Hours(1),
+              base::Days(2) + base::Hours(2));
+  AddUsageLog(base::Time::Now() - base::Days(7) - base::Hours(1),
+              base::Days(2) + base::Hours(2));
+  ASSERT_TRUE(EnableVmmSwap());
 }
 
 TEST_F(ArcVmTest, MonitorSwapStateChangeStillTrimInProgress) {

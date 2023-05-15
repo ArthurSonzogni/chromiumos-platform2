@@ -33,6 +33,7 @@
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_util.h"
 #include "vm_tools/concierge/vmm_swap_tbw_policy.h"
+#include "vm_tools/concierge/vmm_swap_usage_policy.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
 namespace vm_tools {
@@ -199,6 +200,10 @@ class ArcVm final : public VmBaseImpl {
 
   // Handlers for aggressive balloon
   void InflateAggressiveBalloonOnTimer();
+
+  void HandleSwapVmEnableRequest(SwapVmResponse& response);
+  void HandleSwapVmForceEnableRequest(SwapVmResponse& response);
+  void HandleSwapVmDisableRequest(SwapVmResponse& response);
   void StartVmmSwapOut();
   void RunVmmSwapOutAfterTrim();
 
@@ -256,6 +261,8 @@ class ArcVm final : public VmBaseImpl {
   std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer_
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  VmmSwapUsagePolicy vmm_swap_usage_policy_
       GUARDED_BY_CONTEXT(sequence_checker_);
   bool skip_tbw_management_ = false;
 
