@@ -13,11 +13,14 @@
 
 namespace printscanmgr {
 
-DbusAdaptor::DbusAdaptor(scoped_refptr<dbus::Bus> bus)
+DbusAdaptor::DbusAdaptor(scoped_refptr<dbus::Bus> bus,
+                         mojo::PendingRemote<mojom::Executor> remote)
     : org::chromium::printscanmgrAdaptor(this),
       dbus_object_(/*object_manager=*/nullptr,
                    bus,
-                   dbus::ObjectPath(kPrintscanmgrServicePath)) {}
+                   dbus::ObjectPath(kPrintscanmgrServicePath)),
+      printscan_tool_(std::move(remote)) {}
+
 DbusAdaptor::~DbusAdaptor() = default;
 
 void DbusAdaptor::RegisterAsync(
@@ -53,11 +56,7 @@ CupsRetrievePpdResponse DbusAdaptor::CupsRetrievePpd(
 
 PrintscanDebugSetCategoriesResponse DbusAdaptor::PrintscanDebugSetCategories(
     const PrintscanDebugSetCategoriesRequest& request) {
-  NOTIMPLEMENTED() << " PrintscanDebugSetCategories not implemented.";
-
-  PrintscanDebugSetCategoriesResponse response;
-
-  return response;
+  return printscan_tool_.DebugSetCategories(request);
 }
 
 }  // namespace printscanmgr
