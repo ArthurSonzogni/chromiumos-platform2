@@ -19,3 +19,9 @@ else
 # TODO(b/257867792): Resolve errors and run tests on armhf.
 	echo "Skipping tests due to Weston errors on armhf."
 endif
+
+# Exclude qtbase-abi in ${shlib:Depends}. This is a virtual package that is not
+# compatible with Ubuntu users, and is not needed since cros-im already depends
+# on libqt5core5a.
+override_dh_shlibdeps:
+	dh_shlibdeps -- -xqtbase-abi
