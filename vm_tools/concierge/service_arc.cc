@@ -56,9 +56,6 @@ constexpr char kPstoreExtension[] = ".pstore";
 constexpr char kArcVmLowMemJemallocArenasFeatureName[] =
     "CrOSLateBootArcVmLowMemJemallocArenas";
 
-// A feature name for enabling vmm swap.
-constexpr char kArcVmmSwapFeatureName[] = "CrOSLateBootArcVmmSwap";
-
 // A feature name for enabling AAudio MMAP support in audio HAL
 constexpr char kArcVmAAudioMMAPFeatureName[] = "CrOSLateBootArcVmAAudioMMAP";
 
@@ -75,10 +72,6 @@ constexpr uint32_t kLmkdVsockTimeoutMs = 100;
 // Needs to be const as libfeatures does pointers checking.
 const VariationsFeature kArcVmLowMemJemallocArenasFeature{
     kArcVmLowMemJemallocArenasFeatureName, FEATURE_DISABLED_BY_DEFAULT};
-
-// Needs to be const as libfeatures does pointers checking.
-const VariationsFeature kArcVmmSwapFeature{kArcVmmSwapFeatureName,
-                                           FEATURE_DISABLED_BY_DEFAULT};
 
 const VariationsFeature kArcVmAAudioMMAPFeature{kArcVmAAudioMMAPFeatureName,
                                                 FEATURE_DISABLED_BY_DEFAULT};
@@ -413,8 +406,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   features.use_dev_conf = !request.ignore_dev_conf();
   features.low_mem_jemalloc_arenas_enabled =
       platform_features_->IsEnabledBlocking(kArcVmLowMemJemallocArenasFeature);
-  features.vmm_swap_enabled =
-      platform_features_->IsEnabledBlocking(kArcVmmSwapFeature);
 
   // Enable the responsive balloon feature in LMKD
   params.emplace_back(base::StringPrintf("androidboot.lmkd.vsock_timeout=%d",
@@ -579,8 +570,9 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
-  if (features.vmm_swap_enabled)
+  if (request.enable_vmm_swap()) {
     vm_builder.SetVmmSwapDir(GetCryptohomePath(request.owner_id()));
+  }
 
   auto vm = ArcVm::Create(base::FilePath(kKernelPath), vsock_cid,
                           std::move(network_client), std::move(server_proxy),
