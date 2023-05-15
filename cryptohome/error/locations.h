@@ -1763,11 +1763,11 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUSSGetUserMetadataFailedInFromEncContainer = 3526,
   /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSGetUserMetadataFailedInFromEncContainerWrappingKey = 3527,
-  /* ./auth_blocks/fingerprint_auth_block.cc */
+  /* =Obsolete= */
   kLocFingerprintAuthBlockFailedToGetStateFailedInPrepareForRemoval = 3528,
-  /* ./auth_blocks/fingerprint_auth_block.cc */
+  /* =Obsolete= */
   kLocFingerprintAuthBlockNoTemplateIdInPrepareForRemoval = 3529,
-  /* ./auth_blocks/fingerprint_auth_block.cc */
+  /* =Obsolete= */
   kLocFingerprintAuthBlockNoLabelInPrepareForRemoval = 3530,
   /* ./userdataauth.cc */
   kLocUserDataAuthNoAuthSessionInUpdateAuthFactorMetadata = 3531,

@@ -879,21 +879,46 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalSuccess) {
   EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
 }
 
-TEST_F(FingerprintAuthBlockTest, PrepareForRemovalEmptyTemplateIdFailure) {
+TEST_F(FingerprintAuthBlockTest, PrepareForRemovalEmptyTemplateId) {
   AuthBlockState auth_state;
   FingerprintAuthBlockState fingerprint_auth_state;
   fingerprint_auth_state.gsc_secret_label = kFakeCredLabel;
   auth_state.state = fingerprint_auth_state;
-
-  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), NotOk());
+  EXPECT_CALL(mock_le_manager_, RemoveCredential(kFakeCredLabel))
+      .WillOnce(ReturnOk<CryptohomeLECredError>());
+  // Prepare for removal should continue to delete the PinWeaver leaf if the
+  // template ID doesn't exist.
+  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
 }
-TEST_F(FingerprintAuthBlockTest, PrepareForRemovalNullGscLabelFailure) {
+
+TEST_F(FingerprintAuthBlockTest, PrepareForRemovalNullGscLabel) {
   AuthBlockState auth_state;
   FingerprintAuthBlockState fingerprint_auth_state;
   fingerprint_auth_state.template_id = kFakeRecordId;
   auth_state.state = fingerprint_auth_state;
 
+  // Prepare for removal should still succeed when the label doesn't exist.
+  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
+}
+
+TEST_F(FingerprintAuthBlockTest, PrepareForRemovalPinWeaverRemoveFailed) {
+  AuthBlockState auth_state;
+  FingerprintAuthBlockState fingerprint_auth_state;
+  fingerprint_auth_state.template_id = kFakeRecordId;
+  fingerprint_auth_state.gsc_secret_label = kFakeCredLabel;
+  auth_state.state = fingerprint_auth_state;
+
+  EXPECT_CALL(mock_le_manager_, RemoveCredential(kFakeCredLabel))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationPlaceholder, ErrorActionSet(), LE_CRED_ERROR_LE_LOCKED))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationPlaceholder, ErrorActionSet(),
+          LE_CRED_ERROR_INVALID_LABEL));
+
   EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), NotOk());
+  // Prepare for removal should still succeed when the label doesn't exist in
+  // the tree.
+  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
 }
 
 }  // namespace

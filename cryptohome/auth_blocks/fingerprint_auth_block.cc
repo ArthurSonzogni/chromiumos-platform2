@@ -392,40 +392,53 @@ CryptohomeStatus FingerprintAuthBlock::PrepareForRemoval(
     const AuthBlockState& state) {
   auto* fp_state = std::get_if<FingerprintAuthBlockState>(&state.state);
   if (!fp_state) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocFingerprintAuthBlockFailedToGetStateFailedInPrepareForRemoval),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_FATAL);
+    LOG(ERROR) << "Failed to get AuthBlockState in fingerprint auth block.";
+    // This error won't be solved by retrying, go ahead and delete the auth
+    // factor anyway.
+    return OkStatus<CryptohomeCryptoError>();
   }
 
   // Ensure that the auth block state has template_id.
   if (fp_state->template_id.empty()) {
+    // This error won't be solved by retrying, go ahead and delete the
+    // credential leaf.
     LOG(ERROR) << "FingerprintAuthBlockState does not have template_id";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocFingerprintAuthBlockNoTemplateIdInPrepareForRemoval),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_FATAL);
+  } else {
+    // TODO(b/277274350): Remove the encrypted fingerprint template.
+    // If removal of the template fails, we need to return an error to fail the
+    // whole Remove operation because biod's template state needs to be
+    // consistent with cryptohome's.
   }
 
   // Ensure that the auth block state has gsc_secret_label.
   if (!fp_state->gsc_secret_label.has_value()) {
     LOG(ERROR) << "FingerprintAuthBlockState does not have gsc_secret_label";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoLabelInPrepareForRemoval),
-        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_FATAL);
+    // This error won't be solved by retrying, go ahead and delete the auth
+    // factor anyway.
+    return OkStatus<CryptohomeCryptoError>();
   }
 
-  // TODO(b/277274350): Remove the encrypted fingerprint template.
+  LECredStatus status =
+      le_manager_->RemoveCredential(fp_state->gsc_secret_label.value());
+  if (!status.ok()) {
+    if (status->local_lecred_error() ==
+        LECredError::LE_CRED_ERROR_INVALID_LABEL) {
+      LOG(ERROR) << "Invalid gsc_secret_label in fingerprint auth block: "
+                 << status;
+      // This error won't be solved by retrying, go ahead and delete the auth
+      // factor anyway.
+      return OkStatus<CryptohomeCryptoError>();
+    }
+    // Other LE errors might be resolved by retrying, so fail the remove
+    // operation here.
+    return std::move(status);
+  }
 
   // Rate limiter leaf is not removed since it is shared among all fingerprint
   // auth factors. Also, even if all fingerprint auth factors are removed,
   // we still keep the rate limiter leaf so in the future new fingerprint
   // auth factors can be added more efficiently.
-
-  return le_manager_->RemoveCredential(fp_state->gsc_secret_label.value());
+  return OkStatus<CryptohomeError>();
 }
 
 CryptoStatusOr<uint64_t> FingerprintAuthBlock::CreateRateLimiter(
