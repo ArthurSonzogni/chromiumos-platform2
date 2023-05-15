@@ -90,11 +90,11 @@ class VmBaseImpl : public VmInterface {
 
   // Suspends this VM
   // Returns true on success, false otherwise
-  bool Suspend() const;
+  bool SuspendCrosvm() const;
 
   // Resumes this VM
   // Returns true on success, false otherwise
-  bool Resume() const;
+  bool ResumeCrosvm() const;
 
   // The 9p server managed by seneschal that provides access to shared files for
   // this VM. Returns 0 if there is no seneschal server associated with this

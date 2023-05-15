@@ -139,11 +139,11 @@ bool VmBaseImpl::Stop() const {
   return CrosvmControl::Get()->StopVm(GetVmSocketPath().c_str());
 }
 
-bool VmBaseImpl::Suspend() const {
+bool VmBaseImpl::SuspendCrosvm() const {
   return CrosvmControl::Get()->SuspendVm(GetVmSocketPath().c_str());
 }
 
-bool VmBaseImpl::Resume() const {
+bool VmBaseImpl::ResumeCrosvm() const {
   return CrosvmControl::Get()->ResumeVm(GetVmSocketPath().c_str());
 }
 
@@ -155,11 +155,11 @@ uint32_t VmBaseImpl::seneschal_server_handle() const {
 }
 
 void VmBaseImpl::HandleSuspendImminent() {
-  Suspend();
+  SuspendCrosvm();
 }
 
 void VmBaseImpl::HandleSuspendDone() {
-  Resume();
+  ResumeCrosvm();
 }
 
 void VmBaseImpl::MakeRtVcpu() {

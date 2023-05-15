@@ -652,11 +652,11 @@ void TerminaVm::HandleSuspendImminent() {
     LOG(ERROR) << "Failed to prepare for suspending" << status.error_message();
   }
 
-  Suspend();
+  SuspendCrosvm();
 }
 
 void TerminaVm::HandleSuspendDone() {
-  Resume();
+  ResumeCrosvm();
 }
 
 bool TerminaVm::Mount9P(uint32_t port, string target) {

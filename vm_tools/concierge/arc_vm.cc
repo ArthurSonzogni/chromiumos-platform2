@@ -703,11 +703,11 @@ bool ArcVm::ListUsbDevice(std::vector<UsbDeviceEntry>* devices) {
 }
 
 void ArcVm::HandleSuspendImminent() {
-  Suspend();
+  SuspendCrosvm();
 }
 
 void ArcVm::HandleSuspendDone() {
-  Resume();
+  ResumeCrosvm();
 }
 
 // static
