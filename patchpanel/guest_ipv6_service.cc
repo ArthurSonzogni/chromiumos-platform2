@@ -10,6 +10,7 @@
 #include <sys/prctl.h>
 #include <sys/signal.h>
 
+#include <algorithm>
 #include <optional>
 #include <set>
 #include <string>
@@ -79,6 +80,7 @@ bool PrepareRunPath() {
 
 bool CreateConfigFile(const std::string& ifname,
                       const std::string& prefix,
+                      const std::vector<std::string>& rdnss,
                       const std::optional<int>& mtu) {
   std::vector<std::string> lines;
   lines.push_back(base::StringPrintf("interface %s {", ifname.c_str()));
@@ -90,6 +92,11 @@ bool CreateConfigFile(const std::string& ifname,
   lines.push_back("    AdvOnLink off;");
   lines.push_back("    AdvAutonomous on;");
   lines.push_back("  };");
+  if (!rdnss.empty()) {
+    lines.push_back(base::StringPrintf("  RDNSS %s {",
+                                       base::JoinString(rdnss, " ").c_str()));
+    lines.push_back("  };");
+  }
   lines.push_back("};");
   lines.push_back("");
   std::string contents = base::JoinString(lines, "\n");
@@ -245,6 +252,7 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
 
     if (forward_method == ForwardMethod::kMethodRAServer) {
       if (!StartRAServer(ifname_downlink, IPAddressTo64BitPrefix(uplink_ip),
+                         uplink_dns_[ifname_uplink],
                          forward_record_[ifname_uplink].mtu)) {
         LOG(WARNING) << "Failed to start RA server on downlink "
                      << ifname_downlink << " with uplink " << ifname_uplink
@@ -413,7 +421,7 @@ void GuestIPv6Service::OnUplinkIPv6Changed(const std::string& ifname,
           StopRAServer(ifname_downlink);
         }
         if (!new_prefix.empty()) {
-          if (!StartRAServer(ifname_downlink, new_prefix,
+          if (!StartRAServer(ifname_downlink, new_prefix, uplink_dns_[ifname],
                              forward_record_[ifname].mtu)) {
             LOG(WARNING) << "Failed to start RA server on downlink "
                          << ifname_downlink << " with uplink " << ifname
@@ -425,6 +433,51 @@ void GuestIPv6Service::OnUplinkIPv6Changed(const std::string& ifname,
   }
 
   uplink_ips_[ifname] = uplink_ip;
+}
+
+void GuestIPv6Service::UpdateUplinkIPv6DNS(
+    const std::string& ifname, const std::vector<std::string>& dns_addresses) {
+  const auto& old_dns = uplink_dns_[ifname];
+  VLOG(1) << __func__ << ": " << ifname << ", {"
+          << base::JoinString(old_dns, ",") << "} to {"
+          << base::JoinString(dns_addresses, ",") << "}";
+
+  // Check if the new dns list is identical with the old one.
+  auto sorted_dns = dns_addresses;
+  std::sort(sorted_dns.begin(), sorted_dns.end());
+  bool identical = true;
+  if (old_dns.size() == sorted_dns.size()) {
+    for (size_t i = 0; i < old_dns.size(); ++i) {
+      if (old_dns[i] != sorted_dns[i]) {
+        identical = false;
+        break;
+      }
+    }
+  } else {
+    identical = false;
+  }
+  if (identical) {
+    return;
+  }
+
+  if (auto it = forward_record_.find(ifname);
+      it != forward_record_.end() &&
+      it->second.method == ForwardMethod::kMethodRAServer) {
+    for (const auto& ifname_downlink : it->second.downstream_ifnames) {
+      const auto& uplink_ip = uplink_ips_[ifname];
+      auto prefix = IPAddressTo64BitPrefix(uplink_ip);
+      if (!prefix.empty()) {
+        StopRAServer(ifname_downlink);
+        if (!StartRAServer(ifname_downlink, prefix, sorted_dns,
+                           it->second.mtu)) {
+          LOG(WARNING) << "Failed to start RA server on downlink "
+                       << ifname_downlink << " with uplink " << ifname << " ip "
+                       << uplink_ip;
+        }
+      }
+    }
+  }
+  uplink_dns_[ifname] = sorted_dns;
 }
 
 void GuestIPv6Service::StartLocalHotspot(
@@ -544,8 +597,9 @@ const std::set<std::string>& GuestIPv6Service::UplinkToDownlinks(
 
 bool GuestIPv6Service::StartRAServer(const std::string& ifname,
                                      const std::string& prefix,
+                                     const std::vector<std::string>& rdnss,
                                      const std::optional<int>& mtu) {
-  return PrepareRunPath() && CreateConfigFile(ifname, prefix, mtu) &&
+  return PrepareRunPath() && CreateConfigFile(ifname, prefix, rdnss, mtu) &&
          StartRadvd(ifname);
 }
 

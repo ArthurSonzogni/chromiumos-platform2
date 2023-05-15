@@ -64,6 +64,9 @@ class GuestIPv6Service {
   void OnUplinkIPv6Changed(const std::string& ifname,
                            const std::string& ipv6_address);
 
+  void UpdateUplinkIPv6DNS(const std::string& ifname,
+                           const std::vector<std::string>& dns_addresses);
+
   // For local hotspot there is no uplink. We need to first start the RA
   // server on the tethering link with the provided prefix info.
   // StartForwarding() is still expected to be called among this link and
@@ -96,6 +99,7 @@ class GuestIPv6Service {
 
   virtual bool StartRAServer(const std::string& ifname,
                              const std::string& prefix,
+                             const std::vector<std::string>& rdnss,
                              const std::optional<int>& mtu);
   virtual bool StopRAServer(const std::string& ifname);
 
@@ -138,6 +142,8 @@ class GuestIPv6Service {
 
   // Uplink ifname -> the IPv6 address on that uplink, read from shill.
   std::map<std::string, std::string> uplink_ips_;
+  // Similarly, uplink ifname -> DNS servers information from shill.
+  std::map<std::string, std::vector<std::string>> uplink_dns_;
 
   // The IP address of neighbors discovered on each downlink. This information
   // is used to add /128 routes to those downlinks.

@@ -29,9 +29,10 @@ class GuestIPv6ServiceUnderTest : public GuestIPv6Service {
                void(NDProxyControlMessage::NDProxyRequestType type,
                     int32_t if_id_primary,
                     int32_t if_id_secondary));
-  MOCK_METHOD3(StartRAServer,
+  MOCK_METHOD4(StartRAServer,
                bool(const std::string& ifname,
                     const std::string& prefix,
+                    const std::vector<std::string>& rdnss,
                     const std::optional<int>& mtu));
   MOCK_METHOD1(StopRAServer, bool(const std::string& ifname));
 
@@ -272,11 +273,13 @@ TEST_F(GuestIPv6ServiceTest, RAServer) {
                                  101, _));
   target.StartForwarding("up1", "down1", mtu);
 
-  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::", mtu))
+  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::",
+                                    std::vector<std::string>{}, mtu))
       .WillOnce(Return(true));
   target.OnUplinkIPv6Changed("up1", "2001:db8:0:200::1234");
 
-  EXPECT_CALL(target, StartRAServer("down2", "2001:db8:0:200::", mtu))
+  EXPECT_CALL(target, StartRAServer("down2", "2001:db8:0:200::",
+                                    std::vector<std::string>{}, mtu))
       .WillOnce(Return(true));
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::START_NS_NA, _, _))
@@ -313,14 +316,62 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
 
   target.StartForwarding("up1", "down1", mtu);
 
-  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::", mtu))
+  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::",
+                                    std::vector<std::string>{}, mtu))
       .WillOnce(Return(true));
   target.OnUplinkIPv6Changed("up1", "2001:db8:0:200::1234");
 
   EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
-  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:100::", mtu))
+  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:100::",
+                                    std::vector<std::string>{}, mtu))
       .WillOnce(Return(true));
   target.OnUplinkIPv6Changed("up1", "2001:db8:0:100::abcd");
+
+  EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
+  target.StopUplink("up1");
+}
+
+TEST_F(GuestIPv6ServiceTest, RAServerUplinkDNSChange) {
+  const std::optional<int> mtu = 1450;
+  GuestIPv6ServiceUnderTest target(datapath_.get(), shill_client_.get(),
+                                   system_.get());
+  ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
+  ON_CALL(*system_, IfNametoindex("down1")).WillByDefault(Return(101));
+
+  target.SetForwardMethod("up1",
+                          GuestIPv6Service::ForwardMethod::kMethodRAServer);
+
+  target.StartForwarding("up1", "down1", mtu);
+
+  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::",
+                                    std::vector<std::string>{}, mtu))
+      .WillOnce(Return(true));
+  target.OnUplinkIPv6Changed("up1", "2001:db8:0:200::1234");
+
+  // Update DNS should trigger RA server restart.
+  EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
+  EXPECT_CALL(target,
+              StartRAServer("down1", "2001:db8:0:200::",
+                            std::vector<std::string>{"2001:db8:0:cafe::2",
+                                                     "2001:db8:0:cafe::3"},
+                            mtu))
+      .WillOnce(Return(true));
+  target.UpdateUplinkIPv6DNS("up1",
+                             {"2001:db8:0:cafe::2", "2001:db8:0:cafe::3"});
+
+  // If the content of DNS did not change, no restart should be triggered.
+  EXPECT_CALL(target, StopRAServer(_)).Times(0);
+  EXPECT_CALL(target, StartRAServer(_, _, _, _)).Times(0);
+  target.UpdateUplinkIPv6DNS("up1",
+                             {"2001:db8:0:cafe::3", "2001:db8:0:cafe::2"});
+
+  // Removal of a DNS address should trigger RA server restart.
+  EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
+  EXPECT_CALL(target, StartRAServer(
+                          "down1", "2001:db8:0:200::",
+                          std::vector<std::string>{"2001:db8:0:cafe::3"}, mtu))
+      .WillOnce(Return(true));
+  target.UpdateUplinkIPv6DNS("up1", {"2001:db8:0:cafe::3"});
 
   EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
   target.StopUplink("up1");
@@ -344,7 +395,8 @@ TEST_F(GuestIPv6ServiceTest, SetMethodOnTheFly) {
 
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, 1, 101));
-  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::", mtu))
+  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::",
+                                    std::vector<std::string>{}, mtu))
       .WillOnce(Return(true));
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::START_NEIGHBOR_MONITOR,

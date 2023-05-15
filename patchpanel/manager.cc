@@ -264,6 +264,7 @@ void Manager::OnIPConfigsChanged(const std::string& ifname,
   } else {
     datapath_->AddRedirectDnsRule(ifname, ipconfig.ipv4_dns_addresses.front());
   }
+  ipv6_svc_->UpdateUplinkIPv6DNS(ifname, ipconfig.ipv6_dns_addresses);
 }
 
 void Manager::OnIPv6NetworkChanged(const std::string& ifname,
