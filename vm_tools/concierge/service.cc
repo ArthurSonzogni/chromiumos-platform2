@@ -101,6 +101,7 @@
 #include "vm_tools/concierge/shared_data.h"
 #include "vm_tools/concierge/ssh_keys.h"
 #include "vm_tools/concierge/termina_vm.h"
+#include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
 #include "vm_tools/concierge/vm_util.h"
@@ -1643,7 +1644,7 @@ void Service::HandleChildExit() {
 
     // See if this is a process we launched.
     auto iter = std::find_if(vms_.begin(), vms_.end(), [=](auto& pair) {
-      VmInterface::Info info = pair.second->GetInfo();
+      VmBaseImpl::Info info = pair.second->GetInfo();
       return pid == info.pid;
     });
 
@@ -2363,11 +2364,11 @@ class VMDelegate : public base::PlatformThread::Delegate {
   VMDelegate& operator=(VMDelegate&& other) = default;
   explicit VMDelegate(const Service&) = delete;
   VMDelegate& operator=(const Service&) = delete;
-  explicit VMDelegate(VmInterface* vm) : vm_(vm) {}
+  explicit VMDelegate(VmBaseImpl* vm) : vm_(vm) {}
   void ThreadMain() override { vm_->Shutdown(); }
 
  private:
-  VmInterface* vm_;
+  VmBaseImpl* vm_;
 };
 
 void Service::StopAllVms() {
@@ -2391,8 +2392,8 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
     ThreadContext& ctx = ctxs[i++];
 
     const VmId& id = vm.first;
-    VmInterface* vm_interface = vm.second.get();
-    VmInterface::Info info = vm_interface->GetInfo();
+    VmBaseImpl* vm_base_impl = vm.second.get();
+    VmBaseImpl::Info info = vm_base_impl->GetInfo();
 
     // Notify that we are about to stop a VM.
     NotifyVmStopping(id, info.cid);
@@ -2401,7 +2402,7 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
     // then forcibly) it if it hasn't stopped yet.
     //
     // Would you just take a lambda function? Why do we need the Delegate?...
-    ctx.delegate = VMDelegate(vm_interface);
+    ctx.delegate = VMDelegate(vm_base_impl);
     base::PlatformThread::Create(0, &ctx.delegate, &ctx.handle);
   }
 
@@ -2411,8 +2412,8 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
     base::PlatformThread::Join(ctx.handle);
 
     const VmId& id = vm.first;
-    VmInterface* vm_interface = vm.second.get();
-    VmInterface::Info info = vm_interface->GetInfo();
+    VmBaseImpl* vm_base_impl = vm.second.get();
+    VmBaseImpl::Info info = vm_base_impl->GetInfo();
 
     // Notify that we have stopped a VM.
     NotifyVmStopped(id, info.cid, reason);
@@ -2520,7 +2521,7 @@ GetVmInfoResponse Service::GetVmInfo(const GetVmInfoRequest& request) {
     return response;
   }
 
-  VmInterface::Info vm = iter->second->GetInfo();
+  VmBaseImpl::Info vm = iter->second->GetInfo();
 
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_ipv4_address(vm.ipv4_address);
@@ -3918,7 +3919,7 @@ ListVmsResponse Service::ListVms(const ListVmsRequest& request) {
       continue;
     }
 
-    VmInterface::Info info = vm->GetInfo();
+    VmBaseImpl::Info info = vm->GetInfo();
     ExtendedVmInfo* proto = response.add_vms();
     VmInfo* proto_info = proto->mutable_vm_info();
     proto->set_name(id.name());
@@ -3932,15 +3933,15 @@ ListVmsResponse Service::ListVms(const ListVmsRequest& request) {
     // The vms_ member only contains VMs with running crosvm instances. So the
     // STOPPED case below should not be possible.
     switch (info.status) {
-      case VmInterface::Status::STARTING: {
+      case VmBaseImpl::Status::STARTING: {
         proto->set_status(VM_STATUS_STARTING);
         break;
       }
-      case VmInterface::Status::RUNNING: {
+      case VmBaseImpl::Status::RUNNING: {
         proto->set_status(VM_STATUS_RUNNING);
         break;
       }
-      case VmInterface::Status::STOPPED: {
+      case VmBaseImpl::Status::STOPPED: {
         NOTREACHED();
         proto->set_status(VM_STATUS_STOPPED);
         break;

@@ -16,6 +16,7 @@
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/shared_data.h"
+#include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
 namespace vm_tools {
@@ -253,7 +254,7 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
     return response;
   }
 
-  VmInterface::Info info = vm->GetInfo();
+  VmBaseImpl::Info info = vm->GetInfo();
 
   vm_info->set_ipv4_address(info.ipv4_address);
   vm_info->set_pid(info.pid);
@@ -261,11 +262,11 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
   vm_info->set_seneschal_server_handle(info.seneschal_server_handle);
   vm_info->set_permission_token(info.permission_token);
   switch (info.status) {
-    case VmInterface::Status::STARTING: {
+    case VmBaseImpl::Status::STARTING: {
       response.set_status(VM_STATUS_STARTING);
       break;
     }
-    case VmInterface::Status::RUNNING: {
+    case VmBaseImpl::Status::RUNNING: {
       response.set_status(VM_STATUS_RUNNING);
       break;
     }

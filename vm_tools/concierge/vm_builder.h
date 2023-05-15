@@ -15,7 +15,7 @@
 #include <base/strings/string_split.h>
 #include <dbus/object_proxy.h>
 
-#include "vm_tools/concierge/vm_interface.h"
+#include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools {

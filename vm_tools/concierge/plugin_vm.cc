@@ -30,6 +30,7 @@
 #include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/tap_device_builder.h"
+#include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
 #include "vm_tools/concierge/vm_util.h"
@@ -197,14 +198,14 @@ bool PluginVm::Shutdown() {
              pvm::dispatcher::VmOpResult::SUCCESS;
 }
 
-VmInterface::Info PluginVm::GetInfo() {
-  VmInterface::Info info = {
+VmBaseImpl::Info PluginVm::GetInfo() {
+  VmBaseImpl::Info info = {
       .ipv4_address = subnet_->AddressAtOffset(kGuestAddressOffset),
       .pid = process_.pid(),
       .cid = 0,
       .seneschal_server_handle = seneschal_server_handle(),
       .permission_token = permission_token_,
-      .status = VmInterface::Status::RUNNING,
+      .status = VmBaseImpl::Status::RUNNING,
       .type = VmId::Type::PLUGIN_VM,
   };
 
@@ -375,7 +376,7 @@ bool PluginVm::DetachUsbDevice(uint8_t port) {
   usb_req_waiting_xmit_.emplace_back(req, base::ScopedFD());
 
   // TODO(dtor): report status only when plugin responds; requires changes to
-  // the VM interface API.
+  // the VmBaseImpl API.
   return true;
 }
 

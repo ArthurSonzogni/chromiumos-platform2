@@ -16,6 +16,7 @@
 #include <base/system/sys_info.h>
 
 #include "vm_tools/concierge/service.h"
+#include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools {
@@ -116,7 +117,7 @@ bool Service::CheckExistingVm(const T& request, StartVmResponse* response) {
   if (iter != vms_.end()) {
     LOG(INFO) << "VM with requested name is already running";
 
-    VmInterface::Info vm = iter->second->GetInfo();
+    VmBaseImpl::Info vm = iter->second->GetInfo();
 
     VmInfo* vm_info = response->mutable_vm_info();
     vm_info->set_ipv4_address(vm.ipv4_address);
@@ -125,11 +126,11 @@ bool Service::CheckExistingVm(const T& request, StartVmResponse* response) {
     vm_info->set_seneschal_server_handle(vm.seneschal_server_handle);
     vm_info->set_vm_type(ToLegacyVmType(vm.type));
     switch (vm.status) {
-      case VmInterface::Status::STARTING: {
+      case VmBaseImpl::Status::STARTING: {
         response->set_status(VM_STATUS_STARTING);
         break;
       }
-      case VmInterface::Status::RUNNING: {
+      case VmBaseImpl::Status::RUNNING: {
         response->set_status(VM_STATUS_RUNNING);
         break;
       }

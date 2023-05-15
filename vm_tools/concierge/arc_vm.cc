@@ -46,6 +46,7 @@
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/crosvm_control.h"
 #include "vm_tools/concierge/tap_device_builder.h"
+#include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_util.h"
 
@@ -779,13 +780,13 @@ uint32_t ArcVm::IPv4Address() const {
   return 0;
 }
 
-VmInterface::Info ArcVm::GetInfo() {
-  VmInterface::Info info = {
+VmBaseImpl::Info ArcVm::GetInfo() {
+  VmBaseImpl::Info info = {
       .ipv4_address = IPv4Address(),
       .pid = pid(),
       .cid = cid(),
       .seneschal_server_handle = seneschal_server_handle(),
-      .status = VmInterface::Status::RUNNING,
+      .status = VmBaseImpl::Status::RUNNING,
       .type = VmId::Type::ARCVM,
   };
 
