@@ -214,7 +214,6 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
     bool blob_result_pending = false;
     bool blob_intermediate_yuv_pending = false;
     bool still_capture_processor_pending = false;
-    base::OnceClosure yuv_cleanup_closure;
   };
 
   // Per-stream state, spanning multiple frames.
@@ -241,15 +240,6 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
     base::TimeTicks last_processed_frame_timestamp;
   };
 
-  struct RenderResult {
-    // Whether the render was successful or not.
-    CameraEffectError result = CameraEffectError::kNoError;
-
-    // Once the output buffer of a successful render isn't needed anymore, this
-    // closure should be called.
-    base::OnceClosure cleanup_closure;
-  };
-
   struct PipelineResult {
     GLuint texture;
     int width;
@@ -264,10 +254,6 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
     // stored here. Note that if |buffer_copied| is false, this doesn't mean an
     // error occurred, it could also mean there was no buffer to copy.
     CameraEffectError copy_error = CameraEffectError::kNoError;
-
-    // Once the output buffer of a successful copy isn't needed anymore, this
-    // closure should be called.
-    base::OnceClosure cleanup_closure;
   };
 
   void OnOptionsUpdated(const base::Value::Dict& json_values);
@@ -275,8 +261,8 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   void SetEffect(EffectsConfig new_config);
   bool SetupGlThread(base::FilePath config_file_path);
   void ShutdownOnGlThread();
-  RenderResult RenderEffect(Camera3StreamBuffer& result_buffer,
-                            int64_t timestamp);
+  CameraEffectError RenderEffect(Camera3StreamBuffer& result_buffer,
+                                 int64_t timestamp);
   bool EnsureImages(buffer_handle_t buffer_handle);
   bool NV12ToRGBA();
   bool RGBAToNV12();
@@ -463,9 +449,6 @@ void EffectsStreamManipulatorImpl::CaptureContext::CheckForCompletion() && {
     return;
   }
   TRACE_EFFECTS("frame_number", frame_number);
-  if (yuv_cleanup_closure) {
-    std::move(yuv_cleanup_closure).Run();
-  }
   stream_context->capture_contexts.erase(frame_number);
 }
 
@@ -800,22 +783,19 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     // copy the results to this buffer instead of running the effects pipeline.
     CopyResult copy_result = TryCopyExistingCameraBuffer(result, result_buffer);
 
-    base::ScopedClosureRunner cleanup_runner;
-    if (copy_result.buffer_copied) {
-      cleanup_runner.ReplaceClosure(std::move(copy_result.cleanup_closure));
-    } else {
+    if (!copy_result.buffer_copied) {
       if (copy_result.copy_error != CameraEffectError::kNoError) {
         metrics_.RecordError(copy_result.copy_error);
       }
 
       if (last_set_effect_config_.HasEnabledEffects()) {
-        RenderResult render_result = RenderEffect(result_buffer, *timestamp);
+        CameraEffectError render_result =
+            RenderEffect(result_buffer, *timestamp);
         num_processed_streams++;
-        if (render_result.result != CameraEffectError::kNoError) {
-          metrics_.RecordError(render_result.result);
+        if (render_result != CameraEffectError::kNoError) {
+          metrics_.RecordError(render_result);
           continue;
         }
-        cleanup_runner.ReplaceClosure(std::move(render_result.cleanup_closure));
       }
     }
 
@@ -835,7 +815,6 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
           still_capture_processor_->QueuePendingYuvImage(
               result.frame_number(), *result_buffer.buffer(), base::ScopedFD());
           capture_context->blob_intermediate_yuv_pending = false;
-          capture_context->yuv_cleanup_closure = cleanup_runner.Release();
         }
         // Don't append the same YUV buffer stream twice.
         if (capture_context->yuv_stream_appended) {
@@ -861,42 +840,26 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
   return true;
 }
 
-EffectsStreamManipulatorImpl::RenderResult
-EffectsStreamManipulatorImpl::RenderEffect(Camera3StreamBuffer& result_buffer,
-                                           int64_t timestamp) {
+CameraEffectError EffectsStreamManipulatorImpl::RenderEffect(
+    Camera3StreamBuffer& result_buffer, int64_t timestamp) {
   TRACE_EFFECTS(perfetto::Flow::ProcessScoped(result_buffer.flow_id()));
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   DCHECK(result_buffer.status() == CAMERA3_BUFFER_STATUS_OK);
   if (!result_buffer.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
     LOGF(ERROR) << "Timed out waiting for input buffer";
-    return {CameraEffectError::kSyncWaitTimeout};
+    return CameraEffectError::kSyncWaitTimeout;
   }
 
   buffer_handle_t buffer_handle = *result_buffer.buffer();
 
-  auto* manager = CameraBufferManager::GetInstance();
-  if (manager->Register(buffer_handle) != 0) {
-    LOG(ERROR) << "Failed to register buffer";
-    return {CameraEffectError::kBufferRegistrationFailed};
-  }
-  base::ScopedClosureRunner deregister_action(base::BindOnce(
-      [](EffectsMetricsData& metrics, CameraBufferManager* manager,
-         buffer_handle_t buffer_handle) {
-        if (manager->Deregister(buffer_handle) != 0) {
-          LOG(ERROR) << "Failed to deregister buffer";
-          metrics.RecordError(CameraEffectError::kBufferUnregistrationFailed);
-        }
-      },
-      std::ref(metrics_), manager, buffer_handle));
-
   if (!EnsureImages(buffer_handle)) {
     LOGF(ERROR) << "Failed to ensure GPU resources";
-    return {CameraEffectError::kGPUImageInitializationFailed};
+    return CameraEffectError::kGPUImageInitializationFailed;
   }
 
   if (!NV12ToRGBA()) {
     LOGF(ERROR) << "Failed to convert from YUV to RGB";
-    return {CameraEffectError::kYUVConversionFailed};
+    return CameraEffectError::kYUVConversionFailed;
   }
 
   // Mediapipe requires timestamps to be strictly increasing for a given
@@ -930,10 +893,10 @@ EffectsStreamManipulatorImpl::RenderEffect(Camera3StreamBuffer& result_buffer,
 
   if (!conv_result) {
     LOGF(ERROR) << "Failed to convert from RGB to YUV";
-    return {CameraEffectError::kYUVConversionFailed};
+    return CameraEffectError::kYUVConversionFailed;
   }
   result_buffer.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_OK;
-  return RenderResult{.cleanup_closure = deregister_action.Release()};
+  return CameraEffectError::kNoError;
 }
 
 void EffectsStreamManipulatorImpl::Notify(camera3_notify_msg_t msg) {
@@ -1269,21 +1232,6 @@ EffectsStreamManipulatorImpl::CopyCameraBuffer(buffer_handle_t input_buffer,
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   TRACE_EFFECTS();
 
-  auto* manager = CameraBufferManager::GetInstance();
-  if (manager->Register(output_buffer) != 0) {
-    LOG(ERROR) << "Failed to register buffer";
-    return {.copy_error = CameraEffectError::kBufferRegistrationFailed};
-  }
-  base::ScopedClosureRunner deregister_action(base::BindOnce(
-      [](EffectsMetricsData& metrics, CameraBufferManager* manager,
-         buffer_handle_t buffer_handle) {
-        if (manager->Deregister(buffer_handle) != 0) {
-          LOG(ERROR) << "Failed to deregister buffer";
-          metrics.RecordError(CameraEffectError::kBufferUnregistrationFailed);
-        }
-      },
-      std::ref(metrics_), manager, output_buffer));
-
   auto completed_image =
       SharedImage::CreateFromBuffer(input_buffer, Texture2D::Target::kTarget2D,
                                     /*separate_yuv_textures=*/true);
@@ -1304,8 +1252,7 @@ EffectsStreamManipulatorImpl::CopyCameraBuffer(buffer_handle_t input_buffer,
     return CopyResult{.copy_error = CameraEffectError::kYUVConversionFailed};
   }
 
-  return CopyResult{.buffer_copied = true,
-                    .cleanup_closure = deregister_action.Release()};
+  return CopyResult{.buffer_copied = true};
 }
 
 }  // namespace cros
