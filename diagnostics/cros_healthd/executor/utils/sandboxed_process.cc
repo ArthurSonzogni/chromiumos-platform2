@@ -79,6 +79,11 @@ SandboxedProcess::SandboxedProcess(
     const std::vector<base::FilePath>& writable_mount_points,
     uint32_t sandbox_option)
     : command_(command), readonly_mount_points_(readonly_mount_points) {
+  // Per our security requirement, it is not allowed to invoke a sandboxed
+  // process as root. In addition, minijail would refuse to start the subprocess
+  // when the user is specified as root.
+  CHECK(user != "root")
+      << "Invoking a sandboxed process as root is not allowed.";
   auto seccomp_file =
       base::FilePath(kSeccompPolicyDirectory).Append(seccomp_filename);
   sandbox_arguments_ = {
