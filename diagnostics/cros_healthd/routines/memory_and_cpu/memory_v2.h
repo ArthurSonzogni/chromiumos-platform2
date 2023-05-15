@@ -83,7 +83,7 @@ class MemoryRoutineV2 final : public BaseRoutineControl {
   // output capturing.
   base::File stdout_file_;
   // Stores the number of bytes the stdout file has been read so far.
-  size_t read_stdout_size_;
+  int64_t read_stdout_size_;
   // Stores the parsed stdout result.
   std::vector<std::vector<std::string>> parsed_memtester_result_;
   // Stores the number of kib the memtester should test for as requested by the

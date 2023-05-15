@@ -278,8 +278,8 @@ void MemoryRoutineV2::ReadNewMemtesterResult() {
   // Read and parse the new output.
   std::string output;
   char buf[kBufSize];
-  size_t offset = read_stdout_size_;
-  size_t current_stdout_size = stdout_file_.GetLength();
+  int64_t offset = read_stdout_size_;
+  int64_t current_stdout_size = stdout_file_.GetLength();
 
   // Should not happen. But just in case reset everything and reread again.
   if (current_stdout_size < offset) {
@@ -290,8 +290,8 @@ void MemoryRoutineV2::ReadNewMemtesterResult() {
   }
 
   while (offset < current_stdout_size) {
-    size_t read_len = stdout_file_.Read(
-        offset, buf, std::min(kBufSize, current_stdout_size - offset));
+    int read_len = stdout_file_.Read(
+        offset, buf, std::min<int64_t>(kBufSize, current_stdout_size - offset));
     if (read_len < 0) {
       LOG(ERROR) << "Read memtester stdout unsuccessful";
       return;
