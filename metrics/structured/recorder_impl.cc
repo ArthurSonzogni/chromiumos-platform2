@@ -72,11 +72,13 @@ bool RecorderImpl::Record(const EventBase& event) {
   // by the consent check in chromium, which happens when the events are read
   // from disk.
   //
-  // The same applies to usb device and error metrics.
+  // The same applies to usb metrics.
   if (event.project_name_hash() !=
           events::rmad::ShimlessRmaReport::kProjectNameHash &&
       event.project_name_hash() !=
           events::usb_device::UsbDeviceInfo::kProjectNameHash &&
+      event.project_name_hash() !=
+          events::usb_session::UsbSessionEvent::kProjectNameHash &&
       event.project_name_hash() !=
           events::usb_error::HubError::kProjectNameHash &&
       event.project_name_hash() !=

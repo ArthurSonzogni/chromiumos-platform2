@@ -888,6 +888,65 @@
   </event>
 </project>
 
+<project name="UsbSession">
+  <owner>jthies@google.com</owner>
+  <owner>chromeos-usb@google.com</owner>
+  <id>per-project</id>
+  <summary>
+    Records events at various points of USB device connection for more detailed
+    metrics on peripheral devices. These metrics are only recorded for devices
+    in the USB metrics allowlist.
+  </summary>
+  <event name="UsbSessionEvent">
+    <summary>
+      Records events emmitted by the kernel at notable points during a USB connection lifecycle.
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The time elapsed since boot, in microseconds.
+      </summary>
+    </metric>
+    <metric name="Action" type="int">
+      <summary>
+        USB device action which caused the metric to be recorded (attach,
+        remove, etc.).
+      </summary>
+    </metric>
+    <metric name="DeviceNum" type="int">
+      <summary>
+        USB device number assigned by the kernel to each connected USB device.
+        Will be 0-127 and increment on every new device connection.
+      </summary>
+    </metric>
+    <metric name="BusNum" type="int">
+      <summary>
+        Bus number the USB device is connected on.
+      </summary>
+    </metric>
+    <metric name="Depth" type="int">
+      <summary>
+        Depth of device in the USB topology. This defines the number of hubs
+        between a device and the host controller.
+      </summary>
+    </metric>
+    <metric name="VendorId" type="int">
+      <summary>
+        The vendor id of the USB device.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        The product id of the USB device.
+      </summary>
+    </metric>
+  </event>
+</project>
+
 <project name="UsbError">
   <owner>jthies@google.com</owner>
   <owner>chromeos-usb@google.com</owner>
