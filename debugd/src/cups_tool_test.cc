@@ -54,6 +54,7 @@ class FakeLpTools : public LpTools {
 
   int Lpadmin(const ProcessWithOutput::ArgList& arg_list,
               bool inherit_usergroups,
+              const base::EnvironmentMap& env,
               const std::vector<uint8_t>* std_input) override {
     return lpadmin_result_;
   }
@@ -88,6 +89,7 @@ class FakeLpTools : public LpTools {
                 const ProcessWithOutput::ArgList& arg_list,
                 const std::vector<uint8_t>* std_input = nullptr,
                 bool inherit_usergroups = false,
+                const base::EnvironmentMap& env = {},
                 std::string* out = nullptr) const override {
     return runasuser_result_;
   }
@@ -256,8 +258,9 @@ TEST(CupsToolTest, InvalidPPDTooSmall) {
   std::vector<uint8_t> empty_ppd;
 
   CupsTool cups;
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", empty_ppd),
-            CupsResult::CUPS_INVALID_PPD);
+  EXPECT_EQ(
+      cups.AddManuallyConfiguredPrinter("test", "ipp://", "en", empty_ppd),
+      CupsResult::CUPS_INVALID_PPD);
 }
 
 TEST(CupsToolTest, InvalidPPDBadGzip) {
@@ -268,7 +271,7 @@ TEST(CupsToolTest, InvalidPPDBadGzip) {
   bad_ppd[1] = 0x8b;
 
   CupsTool cups;
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", bad_ppd),
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", "en", bad_ppd),
             CupsResult::CUPS_INVALID_PPD);
 }
 
@@ -286,7 +289,7 @@ TEST(CupsToolTest, InvalidPPDBadContents) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", bad_ppd),
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", "en", bad_ppd),
             CupsResult::CUPS_INVALID_PPD);
 }
 
@@ -300,7 +303,7 @@ TEST(CupsToolTest, ManualMissingURI) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "", good_ppd),
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "", "en", good_ppd),
             CupsResult::CUPS_BAD_URI);
 }
 
@@ -316,7 +319,7 @@ TEST(CupsToolTest, ManualMissingName) {
   cups.SetLpToolsForTesting(std::move(lptools));
 
   EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
-                "", "ipp://127.0.0.1:631/ipp/print", good_ppd),
+                "", "ipp://127.0.0.1:631/ipp/print", "en", good_ppd),
             CupsResult::CUPS_FATAL);
 }
 
@@ -333,7 +336,7 @@ TEST(CupsToolTest, ManualUnknownError) {
   cups.SetLpToolsForTesting(std::move(lptools));
 
   EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
-                "test", "ipp://127.0.0.1:631/ipp/print", good_ppd),
+                "test", "ipp://127.0.0.1:631/ipp/print", "en", good_ppd),
             CupsResult::CUPS_LPADMIN_FAILURE);
 }
 
@@ -350,7 +353,7 @@ TEST(CupsToolTest, ManualInvalidPpdDuringLpadmin) {
   cups.SetLpToolsForTesting(std::move(lptools));
 
   EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
-                "test", "ipp://127.0.0.1:631/ipp/print", good_ppd),
+                "test", "ipp://127.0.0.1:631/ipp/print", "en", good_ppd),
             CupsResult::CUPS_INVALID_PPD);
 }
 
@@ -367,7 +370,7 @@ TEST(CupsToolTest, ManualNotAutoConf) {
   cups.SetLpToolsForTesting(std::move(lptools));
 
   EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
-                "test", "ipp://127.0.0.1:631/ipp/print", good_ppd),
+                "test", "ipp://127.0.0.1:631/ipp/print", "en", good_ppd),
             CupsResult::CUPS_FATAL);
 }
 
@@ -384,13 +387,14 @@ TEST(CupsToolTest, ManualUnhandledError) {
   cups.SetLpToolsForTesting(std::move(lptools));
 
   EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
-                "test", "ipp://127.0.0.1:631/ipp/print", good_ppd),
+                "test", "ipp://127.0.0.1:631/ipp/print", "en", good_ppd),
             CupsResult::CUPS_FATAL);
 }
 
 TEST(CupsToolTest, AutoMissingURI) {
   CupsTool cups;
-  EXPECT_EQ(cups.AddAutoConfiguredPrinter("test", ""), CupsResult::CUPS_FATAL);
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter("test", "", "en"),
+            CupsResult::CUPS_FATAL);
 }
 
 TEST(CupsToolTest, AutoMissingName) {
@@ -400,8 +404,9 @@ TEST(CupsToolTest, AutoMissingName) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(cups.AddAutoConfiguredPrinter("", "ipp://127.0.0.1:631/ipp/print"),
-            CupsResult::CUPS_FATAL);
+  EXPECT_EQ(
+      cups.AddAutoConfiguredPrinter("", "ipp://127.0.0.1:631/ipp/print", "en"),
+      CupsResult::CUPS_FATAL);
 }
 
 TEST(CupsToolTest, AutoUnreasonableUri) {
@@ -411,8 +416,9 @@ TEST(CupsToolTest, AutoUnreasonableUri) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(cups.AddAutoConfiguredPrinter("", "ipp://127.0.0.1:631/ipp/print"),
-            CupsResult::CUPS_BAD_URI);
+  EXPECT_EQ(
+      cups.AddAutoConfiguredPrinter("", "ipp://127.0.0.1:631/ipp/print", "en"),
+      CupsResult::CUPS_BAD_URI);
 }
 
 TEST(CupsToolTest, AddAutoConfiguredPrinter) {
@@ -422,9 +428,9 @@ TEST(CupsToolTest, AddAutoConfiguredPrinter) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_SUCCESS);
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", "en"),
+            CupsResult::CUPS_SUCCESS);
 }
 
 TEST(CupsToolTest, AutoUnknwonError) {
@@ -435,9 +441,9 @@ TEST(CupsToolTest, AutoUnknwonError) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_AUTOCONF_FAILURE);
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", "en"),
+            CupsResult::CUPS_AUTOCONF_FAILURE);
 }
 
 TEST(CupsToolTest, AutoFatalError) {
@@ -448,9 +454,9 @@ TEST(CupsToolTest, AutoFatalError) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_FATAL);
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", "en"),
+            CupsResult::CUPS_FATAL);
 }
 
 TEST(CupsToolTest, AutoIoError) {
@@ -461,9 +467,9 @@ TEST(CupsToolTest, AutoIoError) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_IO_ERROR);
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", "en"),
+            CupsResult::CUPS_IO_ERROR);
 }
 
 TEST(CupsToolTest, AutoMemoryAllocError) {
@@ -474,9 +480,9 @@ TEST(CupsToolTest, AutoMemoryAllocError) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_MEMORY_ALLOC_ERROR);
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", "en"),
+            CupsResult::CUPS_MEMORY_ALLOC_ERROR);
 }
 
 TEST(CupsToolTest, AutoInvalidPpd) {
@@ -487,9 +493,9 @@ TEST(CupsToolTest, AutoInvalidPpd) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_FATAL);
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", "en"),
+            CupsResult::CUPS_FATAL);
 }
 
 TEST(CupsToolTest, AutoServerUnreachable) {
@@ -500,9 +506,9 @@ TEST(CupsToolTest, AutoServerUnreachable) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_FATAL);
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", "en"),
+            CupsResult::CUPS_FATAL);
 }
 
 TEST(CupsToolTest, AutoPrinterUnreachable) {
@@ -513,9 +519,9 @@ TEST(CupsToolTest, AutoPrinterUnreachable) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_PRINTER_UNREACHABLE);
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", "en"),
+            CupsResult::CUPS_PRINTER_UNREACHABLE);
 }
 
 TEST(CupsToolTest, AutoPrinterWrongResponse) {
@@ -526,9 +532,9 @@ TEST(CupsToolTest, AutoPrinterWrongResponse) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_PRINTER_WRONG_RESPONSE);
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", "en"),
+            CupsResult::CUPS_PRINTER_WRONG_RESPONSE);
 }
 
 TEST(CupsToolTest, AutoPrinterNotAutoConf) {
@@ -539,9 +545,9 @@ TEST(CupsToolTest, AutoPrinterNotAutoConf) {
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
 
-  EXPECT_EQ(
-      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
-      CupsResult::CUPS_PRINTER_NOT_AUTOCONF);
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", "en"),
+            CupsResult::CUPS_PRINTER_NOT_AUTOCONF);
 }
 
 TEST(CupsToolTest, FoomaticPPD) {
@@ -559,8 +565,9 @@ TEST(CupsToolTest, FoomaticPPD) {
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", foomatic_ppd),
-            CupsResult::CUPS_SUCCESS);
+  EXPECT_EQ(
+      cups.AddManuallyConfiguredPrinter("test", "ipp://", "en", foomatic_ppd),
+      CupsResult::CUPS_SUCCESS);
 }
 
 TEST(CupsToolTest, FoomaticError) {
@@ -578,8 +585,9 @@ TEST(CupsToolTest, FoomaticError) {
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
-  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", foomatic_ppd),
-            CupsResult::CUPS_INVALID_PPD);
+  EXPECT_EQ(
+      cups.AddManuallyConfiguredPrinter("test", "ipp://", "en", foomatic_ppd),
+      CupsResult::CUPS_INVALID_PPD);
 }
 
 TEST(CupsToolTest, RemovePrinter) {

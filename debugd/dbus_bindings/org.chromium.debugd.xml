@@ -439,6 +439,23 @@
       <arg name="uri" type="s" direction="in" />
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="CupsAddAutoConfiguredPrinterV2">
+      <tp:docstring>
+        Add a printer that can be auto-configured to CUPS.  Immediately attempt
+        to connect.  Returns true if setup was successful.
+      </tp:docstring>
+      <arg name="result" type="i" direction="out" />
+      <arg name="name" type="s" direction="in" />
+      <arg name="uri" type="s" direction="in" />
+      <arg name="language" type="s" direction="in">
+        <tp:docstring>
+          The user's language, expressed in "ll", "ll-CC", or "ll_CC" format.
+          UTF-8 will always be used as the text encoding for printing-related
+          strings.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
     <method name="CupsAddManuallyConfiguredPrinter">
       <tp:docstring>
         Add a printer to CUPS using the passed PPD contents.  Immediately
@@ -447,6 +464,29 @@
       <arg name="result" type="i" direction="out" />
       <arg name="name" type="s" direction="in" />
       <arg name="uri" type="s" direction="in" />
+      <arg name="ppd_contents" type="ay" direction="in">
+        <tp:docstring>
+          The contents of the CUPS Postscript Printer Driver for this printer.
+          This data may optionally be gzip compressed.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="CupsAddManuallyConfiguredPrinterV2">
+      <tp:docstring>
+        Add a printer to CUPS using the passed PPD contents.  Immediately
+        attempt to connect.  Returns true if setup was successful.
+      </tp:docstring>
+      <arg name="result" type="i" direction="out" />
+      <arg name="name" type="s" direction="in" />
+      <arg name="uri" type="s" direction="in" />
+      <arg name="language" type="s" direction="in">
+        <tp:docstring>
+          The user's language, expressed in "ll", "ll-CC", or "ll_CC" format.
+          UTF-8 will always be used as the text encoding for printing-related
+          strings.
+        </tp:docstring>
+      </arg>
       <arg name="ppd_contents" type="ay" direction="in">
         <tp:docstring>
           The contents of the CUPS Postscript Printer Driver for this printer.

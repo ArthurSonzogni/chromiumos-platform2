@@ -129,9 +129,17 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::string GetExample() override;
   int32_t CupsAddAutoConfiguredPrinter(const std::string& name,
                                        const std::string& uri) override;
+  int32_t CupsAddAutoConfiguredPrinterV2(const std::string& name,
+                                         const std::string& uri,
+                                         const std::string& language) override;
   int32_t CupsAddManuallyConfiguredPrinter(
       const std::string& name,
       const std::string& uri,
+      const std::vector<uint8_t>& ppd_contents) override;
+  int32_t CupsAddManuallyConfiguredPrinterV2(
+      const std::string& name,
+      const std::string& uri,
+      const std::string& language,
       const std::vector<uint8_t>& ppd_contents) override;
   bool CupsRemovePrinter(const std::string& name) override;
   std::vector<uint8_t> CupsRetrievePpd(const std::string& name) override;

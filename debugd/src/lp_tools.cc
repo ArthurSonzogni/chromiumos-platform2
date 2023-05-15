@@ -47,6 +47,7 @@ int LpToolsImpl::RunAsUser(const std::string& user,
                            const ProcessWithOutput::ArgList& arg_list,
                            const std::vector<uint8_t>* std_input,
                            bool inherit_usergroups,
+                           const base::EnvironmentMap& env,
                            std::string* out) const {
   ProcessWithOutput process;
   process.set_separate_stderr(true);
@@ -57,6 +58,9 @@ int LpToolsImpl::RunAsUser(const std::string& user,
 
   if (inherit_usergroups)
     process.InheritUsergroups();
+
+  if (!env.empty())
+    process.SetEnvironmentVariables(env);
 
   if (!process.Init())
     return ProcessWithOutput::kRunError;
@@ -118,11 +122,12 @@ int LpToolsImpl::RunAsUser(const std::string& user,
 // Runs lpadmin with the provided |arg_list| and |std_input|.
 int LpToolsImpl::Lpadmin(const ProcessWithOutput::ArgList& arg_list,
                          bool inherit_usergroups,
+                         const base::EnvironmentMap& env,
                          const std::vector<uint8_t>* std_input) {
   // Run in lp group so we can read and write /run/cups/cups.sock.
   return RunAsUser(kLpadminUser, kLpGroup, kLpadminCommand,
                    kLpadminSeccompPolicy, arg_list, std_input,
-                   inherit_usergroups);
+                   inherit_usergroups, env);
 }
 
 // Runs lpstat with the provided |arg_list| and |std_input|.
@@ -132,7 +137,8 @@ int LpToolsImpl::Lpstat(const ProcessWithOutput::ArgList& arg_list,
   return RunAsUser(kLpadminUser, kLpGroup, kLpstatCommand, kLpstatSeccompPolicy,
                    arg_list,
                    /*std_input=*/nullptr,
-                   /*inherit_usergroups=*/false, output);
+                   /*inherit_usergroups=*/false,
+                   /*env=*/{}, output);
 }
 
 int LpToolsImpl::CupsTestPpd(const std::vector<uint8_t>& ppd_content) const {

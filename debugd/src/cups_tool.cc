@@ -70,7 +70,7 @@ int TestPPD(const LpTools& lp_tools, const std::vector<uint8_t>& ppd_data) {
   if (ppd_content[0] == 0x1f && ppd_content[1] == 0x8b) {  // gzip header
     std::string out;
     int ret = lp_tools.RunAsUser(kLpadminUser, kLpadminGroup, kGzipCommand, "",
-                                 {"-cfd"}, &ppd_content, false, &out);
+                                 {"-cfd"}, &ppd_content, false, {}, &out);
     if (ret || out.empty()) {
       LOG(ERROR) << "gzip failed";
       return ret ? ret : 1;
@@ -170,7 +170,8 @@ void CupsTool::SetLpToolsForTesting(std::unique_ptr<LpTools> lptools) {
 // Invokes lpadmin with arguments to configure a new printer using '-m
 // everywhere'.
 int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
-                                           const std::string& uri) {
+                                           const std::string& uri,
+                                           const std::string& language) {
   if (!IppEverywhereURI(uri)) {
     LOG(WARNING) << "IPP, IPPS or IPPUSB required for IPP Everywhere: " << uri;
     return CupsResult::CUPS_FATAL;
@@ -188,15 +189,18 @@ int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
 
   const bool is_ippusb =
       base::StartsWith(uri, "ippusb://", base::CompareCase::INSENSITIVE_ASCII);
-  LOG(INFO) << "Adding auto-configured printer " << name << " at " << uri;
-  const int result = lp_tools_->Lpadmin(
-      {"-v", uri, "-p", name, "-m", "everywhere", "-E"}, is_ippusb);
+  LOG(INFO) << "Adding auto-configured printer " << name << " at " << uri
+            << " with language " << language;
+  const int result =
+      lp_tools_->Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"},
+                         is_ippusb, {{"CROS_CUPS_LANGUAGE", language}});
   return LpadminReturnCodeToCupsResult(result, /*autoconf=*/true);
 }
 
 int32_t CupsTool::AddManuallyConfiguredPrinter(
     const std::string& name,
     const std::string& uri,
+    const std::string& language,
     const std::vector<uint8_t>& ppd_contents) {
   if (TestPPD(*lp_tools_.get(), ppd_contents) != EXIT_SUCCESS) {
     LOG(ERROR) << "PPD failed validation";
@@ -213,9 +217,11 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
     return CupsResult::CUPS_FATAL;
   }
 
-  LOG(INFO) << "Adding manual printer " << name << " at " << uri;
-  const int result = lp_tools_->Lpadmin(
-      {"-v", uri, "-p", name, "-P", "-", "-E"}, false, &ppd_contents);
+  LOG(INFO) << "Adding manual printer " << name << " at " << uri
+            << " with language " << language;
+  const int result =
+      lp_tools_->Lpadmin({"-v", uri, "-p", name, "-P", "-", "-E"}, false,
+                         {{"CROS_CUPS_LANGUAGE", language}}, &ppd_contents);
   return LpadminReturnCodeToCupsResult(result, /*autoconf=*/false);
 }
 

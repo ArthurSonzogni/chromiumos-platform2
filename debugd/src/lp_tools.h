@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/environment.h>
 #include <base/files/file_path.h>
 
 #include "debugd/src/process_with_output.h"
@@ -21,6 +22,7 @@ class LpTools {
   // Runs lpadmin with the provided |arg_list| and |std_input|.
   virtual int Lpadmin(const ProcessWithOutput::ArgList& arg_list,
                       bool inherit_usergroups = false,
+                      const base::EnvironmentMap& env = {},
                       const std::vector<uint8_t>* std_input = nullptr) = 0;
 
   // Runs lpstat with the provided |arg_list| and |std_input|.
@@ -43,6 +45,7 @@ class LpTools {
                         const ProcessWithOutput::ArgList& arg_list,
                         const std::vector<uint8_t>* std_input = nullptr,
                         bool inherit_usergroups = false,
+                        const base::EnvironmentMap& env = {},
                         std::string* out = nullptr) const = 0;
 
   // Change ownership of a file.  Return 0 on success, -1 on error.
@@ -57,6 +60,7 @@ class LpToolsImpl : public LpTools {
 
   int Lpadmin(const ProcessWithOutput::ArgList& arg_list,
               bool inherit_usergroups = false,
+              const base::EnvironmentMap& env = {},
               const std::vector<uint8_t>* std_input = nullptr) override;
 
   int Lpstat(const ProcessWithOutput::ArgList& arg_list,
@@ -75,6 +79,7 @@ class LpToolsImpl : public LpTools {
                 const ProcessWithOutput::ArgList& arg_list,
                 const std::vector<uint8_t>* std_input = nullptr,
                 bool inherit_usergroups = false,
+                const base::EnvironmentMap& env = {},
                 std::string* out = nullptr) const override;
 
   int Chown(const std::string& path, uid_t owner, gid_t group) const override;
