@@ -281,7 +281,7 @@ TEST_F(BackendAttestationTpm2Test, IsQuoted) {
             TPM_RC_SUCCESS);
 
   attestation::Quote fake_quote;
-  fake_quote.set_quote(serialized_fake_attest);
+  fake_quote.set_quoted_data(serialized_fake_attest);
 
   auto is_quoted_result =
       backend_->GetAttestationTpm2().IsQuoted(kFakeDeviceConfigs, fake_quote);
@@ -313,7 +313,7 @@ TEST_F(BackendAttestationTpm2Test, IsQuotedWrontDeviceConfigs) {
             TPM_RC_SUCCESS);
 
   attestation::Quote fake_quote;
-  fake_quote.set_quote(serialized_fake_attest);
+  fake_quote.set_quoted_data(serialized_fake_attest);
 
   auto is_quoted_result = backend_->GetAttestationTpm2().IsQuoted(
       kExpectedDeviceConfigs, fake_quote);
@@ -326,7 +326,7 @@ TEST_F(BackendAttestationTpm2Test, IsQuotedWrongFormat) {
       DeviceConfigs{DeviceConfig::kBootMode};
 
   attestation::Quote fake_quote;
-  fake_quote.set_quote("");
+  fake_quote.set_quoted_data("");
 
   auto is_quoted_result =
       backend_->GetAttestationTpm2().IsQuoted(kFakeDeviceConfigs, fake_quote);

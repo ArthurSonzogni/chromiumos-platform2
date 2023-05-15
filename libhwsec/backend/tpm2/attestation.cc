@@ -185,26 +185,27 @@ StatusOr<bool> AttestationTpm2::IsQuoted(DeviceConfigs device_configs,
     return MakeStatus<TPMError>("No device config specified",
                                 TPMRetryAction::kNoRetry);
   }
-  if (!quote.has_quote()) {
+  if (!quote.has_quoted_data()) {
     return MakeStatus<TPMError>("Invalid attestation::Quote",
                                 TPMRetryAction::kNoRetry);
   }
 
-  std::string buffer = quote.quote();
-  trunks::TPMS_ATTEST parsed_signature;
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(trunks::Parse_TPMS_ATTEST(
-                      &buffer, &parsed_signature, nullptr)))
-      .WithStatus<TPMError>("Failed to parse the quote");
+  std::string quoted_data = quote.quoted_data();
 
-  if (parsed_signature.magic != trunks::TPM_GENERATED_VALUE) {
+  trunks::TPMS_ATTEST quoted_struct;
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(trunks::Parse_TPMS_ATTEST(
+                      &quoted_data, &quoted_struct, nullptr)))
+      .WithStatus<TPMError>("Failed to parse TPMS_ATTEST");
+
+  if (quoted_struct.magic != trunks::TPM_GENERATED_VALUE) {
     return MakeStatus<TPMError>("Bad magic value", TPMRetryAction::kNoRetry);
   }
-  if (parsed_signature.type != trunks::TPM_ST_ATTEST_QUOTE) {
+  if (quoted_struct.type != trunks::TPM_ST_ATTEST_QUOTE) {
     return MakeStatus<TPMError>("Not a quote", TPMRetryAction::kNoRetry);
   }
 
   const trunks::TPML_PCR_SELECTION& pcr_select =
-      parsed_signature.attested.quote.pcr_select;
+      quoted_struct.attested.quote.pcr_select;
   if (pcr_select.count != 1) {
     return MakeStatus<TPMError>("Wrong number of PCR selection",
                                 TPMRetryAction::kNoRetry);
