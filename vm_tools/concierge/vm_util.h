@@ -14,16 +14,17 @@
 #include <set>
 #include <string>
 #include <vector>
-#include "base/files/scoped_file.h"
 
 #include <base/files/file_path.h>
-#include <base/strings/string_split.h>
+#include <base/files/scoped_file.h>
 #include <base/strings/string_piece.h>
+#include <base/strings/string_split.h>
 #include <base/time/time.h>
 #include <base/values.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
-#include <vm_tools/concierge/balloon_policy.h>
+
+#include "vm_tools/concierge/balloon_policy.h"
 
 namespace base {
 class FilePath;

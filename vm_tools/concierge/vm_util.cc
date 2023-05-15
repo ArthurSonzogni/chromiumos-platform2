@@ -30,6 +30,7 @@
 #include <base/format_macros.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/safe_sprintf.h>
 #include <base/strings/strcat.h>
@@ -39,12 +40,10 @@
 #include <base/system/sys_info.h>
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
-
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <vm_applications/apps.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 
-#include "base/memory/ptr_util.h"
 #include "vm_tools/concierge/crosvm_control.h"
 
 namespace vm_tools::concierge {

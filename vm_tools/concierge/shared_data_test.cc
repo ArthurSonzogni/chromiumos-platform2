@@ -5,8 +5,10 @@
 #include "vm_tools/concierge/shared_data.h"
 
 #include <unordered_map>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
 #include "base/files/file_path.h"
 #include "base/files/scoped_temp_dir.h"
 
