@@ -76,14 +76,13 @@
 #include <brillo/process/process.h>
 #include <brillo/scoped_umask.h>
 #include <brillo/secure_blob.h>
+#include <libcrossystem/crossystem.h>
 #include <rootdev/rootdev.h>
 #include <secure_erase_file/secure_erase_file.h>
 
 extern "C" {
 #include <keyutils.h>
 #include <linux/fs.h>
-// Uses libvboot_host for accessing crossystem variables.
-#include <vboot/crossystem.h>
 }
 
 #include "cryptohome/crc.h"
@@ -161,7 +160,8 @@ Platform::Platform()
                            .Append(std::to_string(getpid()))
                            .Append(kMountInfoFile)),
       loop_device_manager_(std::make_unique<brillo::LoopDeviceManager>()),
-      lvm_(std::make_unique<brillo::LogicalVolumeManager>()) {}
+      lvm_(std::make_unique<brillo::LogicalVolumeManager>()),
+      crossystem_(std::make_unique<crossystem::Crossystem>()) {}
 
 Platform::~Platform() {}
 
@@ -1221,7 +1221,7 @@ bool Platform::ReportFilesystemDetails(const FilePath& filesystem,
 }
 
 bool Platform::FirmwareWriteProtected() {
-  return VbGetSystemPropertyInt("wpsw_cur") != 0;
+  return crossystem_->VbGetSystemPropertyInt("wpsw_cur").value_or(-1) != 0;
 }
 
 base::UnguessableToken Platform::CreateUnguessableToken() {

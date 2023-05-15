@@ -54,6 +54,9 @@ namespace base {
 class Thread;
 class Time;
 }  // namespace base
+namespace crossystem {
+class Crossystem;
+}  // namespace crossystem
 
 namespace cryptohome {
 
@@ -1010,6 +1013,7 @@ class BRILLO_EXPORT Platform {
   base::FilePath mount_info_path_;
   std::unique_ptr<brillo::LoopDeviceManager> loop_device_manager_;
   std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
+  std::unique_ptr<crossystem::Crossystem> crossystem_;
 
   friend class PlatformTest;
   FRIEND_TEST(PlatformTest, ReadMountInfoFileCorruptedMountInfo);

@@ -121,7 +121,6 @@ executable("cryptohome") {
     "libecryptfs",
     "libmetrics",
     "libuser_data_auth-client",
-    "vboot_host",
   ]
 }
 
@@ -152,7 +151,6 @@ executable("cryptohomed") {
     "libbootlockbox-client",
     "libecryptfs",
     "libmetrics",
-    "vboot_host",
   ]
 }
 
@@ -184,9 +182,9 @@ executable("lockbox-cache") {
     "libs:libcrostpm",
   ]
   pkg_deps = [
+    "libcrossystem",
     "libecryptfs",
     "libmetrics",
-    "vboot_host",
   ]
 }
 
@@ -227,7 +225,6 @@ executable("mount-encrypted") {
     ":mount_encrypted_lib",
     "libs:libcrostpm",
   ]
-  pkg_deps = [ "vboot_host" ]
 }
 executable("homedirs_initializer") {
   sources = [ "homedirs_initializer.cc" ]
@@ -423,7 +420,6 @@ if (use.test) {
       "libmetrics",
       "libuser_data_auth-client",
       "libuser_data_auth-client-test",
-      "vboot_host",
     ]
   }
 

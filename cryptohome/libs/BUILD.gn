@@ -295,7 +295,6 @@ pkg_config("libcrosplatform_dependent_config") {
     "libcros_config",
     "libecryptfs",
     "libmetrics",
-    "vboot_host",
   ]
 }
 
@@ -349,6 +348,7 @@ shared_library("libcryptohome_platform") {
     "../platform.cc",
     "../util/get_random_suffix.cc",
   ]
+  pkg_deps = [ "libcrossystem" ]
   configs += [ ":target_defaults" ]
   libs = [
     "keyutils",
@@ -358,7 +358,6 @@ shared_library("libcryptohome_platform") {
   if (use.selinux) {
     libs += [ "selinux" ]
   }
-  pkg_deps = [ "vboot_host" ]
   install_path = "lib"
 }
 
