@@ -186,7 +186,7 @@ class BRILLO_EXPORT MigrationHelper {
   uint64_t effective_chunk_size_;
   uint64_t total_byte_count_;
   uint64_t total_directory_byte_count_;
-  int64_t initial_free_space_bytes_;
+  int64_t initial_dest_free_space_bytes_;
   int n_files_;
   int n_dirs_;
   int n_symlinks_;

@@ -7,6 +7,9 @@
 #include <string>
 
 #include <base/containers/contains.h>
+#include <base/files/file_path.h>
+
+#include "cryptohome/platform.h"
 
 namespace cryptohome::data_migrator {
 
@@ -17,7 +20,9 @@ constexpr char kAtimeXattrName[] = "user.atime";
 
 }  // namespace
 
-FakeMigrationHelperDelegate::FakeMigrationHelperDelegate() = default;
+FakeMigrationHelperDelegate::FakeMigrationHelperDelegate(
+    Platform* platform, const base::FilePath& to_dir)
+    : platform_(platform), to_dir_(to_dir) {}
 
 FakeMigrationHelperDelegate::~FakeMigrationHelperDelegate() = default;
 
@@ -34,6 +39,11 @@ void FakeMigrationHelperDelegate::AddXattrMapping(const std::string& name_from,
 void FakeMigrationHelperDelegate::AddUidMapping(
     uid_t uid_from, const std::optional<uid_t>& uid_to) {
   uid_mappings_[uid_from] = uid_to;
+}
+
+void FakeMigrationHelperDelegate::SetFreeDiskSpaceForMigrator(
+    int64_t free_disk_space_for_migrator) {
+  free_disk_space_for_migrator_ = free_disk_space_for_migrator;
 }
 
 bool FakeMigrationHelperDelegate::ShouldMigrateFile(
@@ -77,6 +87,13 @@ std::string FakeMigrationHelperDelegate::ConvertXattrName(
     return iter->second;
   }
   return name;
+}
+
+int64_t FakeMigrationHelperDelegate::FreeSpaceForMigrator() {
+  if (free_disk_space_for_migrator_.has_value()) {
+    return free_disk_space_for_migrator_.value();
+  }
+  return platform_->AmountOfFreeDiskSpace(to_dir_);
 }
 
 }  // namespace cryptohome::data_migrator

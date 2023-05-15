@@ -76,6 +76,7 @@ DircryptoMigrationHelperDelegate::DircryptoMigrationHelperDelegate(
     const base::FilePath& to_dir,
     MigrationType migration_type)
     : platform_(platform),
+      to_dir_(to_dir),
       skipped_file_list_path_(to_dir.Append(kSkippedFileListFileName)),
       migration_type_(migration_type) {
   if (migration_type_ == MigrationType::MINIMAL) {
@@ -184,6 +185,10 @@ void DircryptoMigrationHelperDelegate::RecordSkippedFile(
                      "skipped files "
                   << skipped_file_list_path_.value();
   }
+}
+
+int64_t DircryptoMigrationHelperDelegate::FreeSpaceForMigrator() {
+  return platform_->AmountOfFreeDiskSpace(to_dir_);
 }
 
 void DircryptoMigrationHelperDelegate::ReportStartTime() {

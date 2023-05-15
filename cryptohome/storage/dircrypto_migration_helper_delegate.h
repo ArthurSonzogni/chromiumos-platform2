@@ -40,6 +40,7 @@ class DircryptoMigrationHelperDelegate
   std::string GetMtimeXattrName() override;
   std::string GetAtimeXattrName() override;
   void RecordSkippedFile(const base::FilePath& path) override;
+  int64_t FreeSpaceForMigrator() override;
   void ReportStartTime() override;
   void ReportEndTime() override;
   void ReportStartStatus(data_migrator::MigrationStartStatus status) override;
@@ -55,6 +56,8 @@ class DircryptoMigrationHelperDelegate
 
  private:
   Platform* const platform_;
+
+  const base::FilePath to_dir_;
 
   // Name of the file to store the names of the files that are skipped during
   // the migration due to file IO error on open.

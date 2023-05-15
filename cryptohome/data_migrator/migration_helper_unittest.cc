@@ -71,12 +71,12 @@ class MigrationHelperTest : public ::testing::Test {
   }
 
  protected:
-  NiceMock<MockPlatform> platform_;
-  FakeMigrationHelperDelegate delegate_;
-
   base::FilePath status_files_dir_;
   base::FilePath from_dir_;
   base::FilePath to_dir_;
+
+  NiceMock<MockPlatform> platform_;
+  FakeMigrationHelperDelegate delegate_{&platform_, to_dir_};
 
   std::vector<uint64_t> migrated_values_;
   std::vector<uint64_t> total_values_;
@@ -792,7 +792,7 @@ TEST_F(MigrationHelperTest, NotEnoughFreeSpace) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
 
-  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_)).WillOnce(Return(0));
+  delegate_.SetFreeDiskSpaceForMigrator(0);
   EXPECT_FALSE(helper.Migrate(base::BindRepeating(
       &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 }
@@ -818,7 +818,7 @@ TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
   from_file.SetLength(kFileSize);
   from_file.Close();
 
-  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_)).WillOnce(Return(kFreeSpace));
+  delegate_.SetFreeDiskSpaceForMigrator(kFreeSpace);
   EXPECT_CALL(platform_, SendFile(_, _, kExpectedChunkSize,
                                   kFileSize - kExpectedChunkSize))
       .WillOnce(Return(true));

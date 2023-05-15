@@ -319,11 +319,20 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     return false;
   }
 
-  initial_free_space_bytes_ = platform_->AmountOfFreeDiskSpace(to_base_path_);
-  if (initial_free_space_bytes_ < 0) {
-    LOG(ERROR) << "Failed to determine free disk space";
+  initial_dest_free_space_bytes_ =
+      platform_->AmountOfFreeDiskSpace(to_base_path_);
+  if (initial_dest_free_space_bytes_ < 0) {
+    LOG(ERROR) << "Failed to determine free disk space on destination";
     return false;
   }
+  const int64_t free_space_for_migrator_signed =
+      delegate_->FreeSpaceForMigrator();
+  if (free_space_for_migrator_signed < 0) {
+    LOG(ERROR) << "Failed to determine free disk space for migrator";
+    return false;
+  }
+  const uint64_t free_space_for_migrator =
+      static_cast<uint64_t>(free_space_for_migrator_signed);
   const uint64_t kRequiredFreeSpaceForMainThread =
       kFreeSpaceBuffer + total_directory_byte_count_;
   // Calculate required space used by the number of job threads (or a minimum of
@@ -331,13 +340,13 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
   const uint64_t kRequiredFreeSpace =
       kRequiredFreeSpaceForMainThread +
       (num_job_threads_ == 0 ? 1 : num_job_threads_) * kErasureBlockSize;
-  if (static_cast<uint64_t>(initial_free_space_bytes_) < kRequiredFreeSpace) {
+  if (free_space_for_migrator < kRequiredFreeSpace) {
     LOG(ERROR) << "Not enough space to begin the migration";
     status_reporter.SetLowDiskSpaceFailure();
     return false;
   }
   const uint64_t kFreeSpaceForJobThreads =
-      initial_free_space_bytes_ - kRequiredFreeSpaceForMainThread;
+      free_space_for_migrator - kRequiredFreeSpaceForMainThread;
   if (num_job_threads_ == 0) {
     // Limit the number of job threads based on the available free space.
     num_job_threads_ =
@@ -349,6 +358,11 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
   if (effective_chunk_size_ > kErasureBlockSize)
     effective_chunk_size_ =
         effective_chunk_size_ - (effective_chunk_size_ % kErasureBlockSize);
+
+  LOG(INFO) << "Free space for migrator: " << free_space_for_migrator;
+  LOG(INFO) << "Total directory byte count: " << total_directory_byte_count_;
+  LOG(INFO) << "Effective chunk size: " << effective_chunk_size_;
+  LOG(INFO) << "Number of job threads: " << num_job_threads_;
 
   if (delegate_->ShouldReportProgress()) {
     // Calculate total bytes to migrate only if we need to report the progress.
@@ -389,7 +403,7 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
                                         failed_error_type_);
     if (failed_error_type_ == base::File::FILE_ERROR_NO_SPACE) {
       delegate_->ReportFailedNoSpace(
-          initial_free_space_bytes_ / (1024 * 1024),
+          initial_dest_free_space_bytes_ / (1024 * 1024),
           no_space_failure_free_space_bytes_ / (1024 * 1024));
     }
     return false;

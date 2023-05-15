@@ -77,6 +77,9 @@ class BRILLO_EXPORT MigrationHelperDelegate {
   // IO error on opening it. |path| is a relative path from migration source.
   virtual void RecordSkippedFile(const base::FilePath& path) {}
 
+  // Returns the amount of free space in bytes that MigrationHelper can use.
+  virtual int64_t FreeSpaceForMigrator() = 0;
+
   // Reports the current time as the migration start time.
   virtual void ReportStartTime() {}
   // Reports the current time as the migration end time.

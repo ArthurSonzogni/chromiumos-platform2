@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
 #include <base/strings/string_util.h>
+#include <base/system/sys_info.h>
 
 using cryptohome::data_migrator::FailureLocationType;
 
@@ -40,6 +41,13 @@ constexpr char kVirtiofsXattrPrefix[] = "user.virtiofs.";
 
 static_assert(base::StringPiece(kVirtiofsSecurityXattrPrefix)
                   .find(kVirtiofsXattrPrefix) == 0);
+
+// This must be a file path on the stateful partition, since both of the
+// migration source and the destination are there when the destination is a
+// crosvm disk image.
+// TODO(b/280248293): Reconsider this path when we roll out the migration to
+// LVM-enabled devices.
+constexpr char kPathToCheckFreeDiskSpaceForMigrator[] = "/home";
 
 // Struct to describe a single range of Android UID/GID mapping.
 // 'T' is either uid_t or gid_t.
@@ -156,6 +164,11 @@ std::string ArcVmDataMigrationHelperDelegate::ConvertXattrName(
     return name.substr(std::char_traits<char>::length(kVirtiofsXattrPrefix));
   }
   return name;
+}
+
+int64_t ArcVmDataMigrationHelperDelegate::FreeSpaceForMigrator() {
+  return base::SysInfo::AmountOfFreeDiskSpace(
+      base::FilePath(kPathToCheckFreeDiskSpaceForMigrator));
 }
 
 void ArcVmDataMigrationHelperDelegate::ReportStartTime() {
