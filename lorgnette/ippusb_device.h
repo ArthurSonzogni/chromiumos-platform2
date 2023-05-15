@@ -29,6 +29,12 @@ std::optional<std::string> BackendForDevice(const std::string& device_name);
 // devices before using them to scan.
 std::vector<ScannerInfo> FindIppUsbDevices(libusb_context* context);
 
+// Loop through all altsettings for all interfaces in |config| and return true
+// if any is a printer interface class that implements the IPP-USB protocol.
+// Also sets |isPrinter| to true if any interface has the printer class
+// regardless of whether it supports IPP-USB.
+bool ContainsIppUsbInterface(const libusb_config_descriptor* config,
+                             bool* isPrinter);
 }  // namespace lorgnette
 
 #endif  // LORGNETTE_IPPUSB_DEVICE_H_

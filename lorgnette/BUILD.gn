@@ -78,6 +78,9 @@ static_library("liblorgnette") {
     "sane_client.cc",
     "sane_client_fake.cc",
     "sane_client_impl.cc",
+    "usb/libusb_wrapper_impl.cc",
+    "usb/usb_device.cc",
+    "usb/usb_device_impl.cc",
     "uuid_util.cc",
   ]
   all_dependent_configs = [ ":liblorgnette_config" ]
@@ -142,6 +145,9 @@ if (use.test) {
       "sane_client_test.cc",
       "test_util.cc",
       "test_util_test.cc",
+      "usb/libusb_wrapper_fake.cc",
+      "usb/usb_device_fake.cc",
+      "usb/usb_device_test.cc",
     ]
     configs += [
       "//common-mk:test",

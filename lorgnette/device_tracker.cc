@@ -12,13 +12,15 @@
 #include <base/time/time.h>
 
 #include "lorgnette/firewall_manager.h"
+#include "lorgnette/usb/libusb_wrapper.h"
 #include "lorgnette/uuid_util.h"
 
 namespace lorgnette {
 
-DeviceTracker::DeviceTracker(SaneClient* sane_client)
-    : sane_client_(sane_client) {
+DeviceTracker::DeviceTracker(SaneClient* sane_client, LibusbWrapper* libusb)
+    : sane_client_(sane_client), libusb_(libusb) {
   DCHECK(sane_client_);
+  DCHECK(libusb_);
 }
 
 DeviceTracker::~DeviceTracker() {
@@ -173,17 +175,17 @@ void DeviceTracker::EnumerateUSBDevices(std::string session_id) {
 
   LOG(INFO) << __func__ << ": Enumerating USB devices for " << session_id;
 
-  // Foreach device from libusb
-  // TODO(b/277049537): Implement actual libusb calls.
-  {
-    if (/*device supports IPP-USB*/ (false)) {
+  for (auto& device : libusb_->GetDevices()) {
+    if (!session->dlc_started && device->NeedsNonBundledBackend()) {
+      // TODO(rishabhagr): Kick off background DLC download.
+      session->dlc_started = true;
+    }
+    if (device->SupportsIppUsb()) {
+      LOG(INFO) << "Device " << device->Description()
+                << " supports IPP-USB and needs to be probed";
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE, base::BindOnce(&DeviceTracker::ProbeIPPUSBDevice,
                                     weak_factory_.GetWeakPtr(), session_id));
-    }
-    if (!session->dlc_started && /*device needs DLC for backend*/ (false)) {
-      // TODO(rishabhagr): Kick off background DLC download.
-      session->dlc_started = true;
     }
   }
 

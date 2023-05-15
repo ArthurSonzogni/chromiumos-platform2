@@ -17,6 +17,8 @@
 #include "lorgnette/enums.h"
 #include "lorgnette/sane_client_fake.h"
 #include "lorgnette/test_util.h"
+#include "lorgnette/usb/libusb_wrapper.h"
+#include "lorgnette/usb/libusb_wrapper_fake.h"
 
 using ::testing::_;
 
@@ -69,8 +71,8 @@ class MockManager : public Manager {
 
 class MockDeviceTracker : public DeviceTracker {
  public:
-  explicit MockDeviceTracker(SaneClient* sane_client)
-      : DeviceTracker(sane_client) {}
+  MockDeviceTracker(SaneClient* sane_client, LibusbWrapper* libusb)
+      : DeviceTracker(sane_client, libusb) {}
 
   MOCK_METHOD(StartScannerDiscoveryResponse,
               StartScannerDiscovery,
@@ -89,8 +91,10 @@ class MockDeviceTracker : public DeviceTracker {
 
 TEST(DBusServiceAdaptorTest, ListScanners) {
   auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
   MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker = std::make_unique<MockDeviceTracker>(sane_client.get());
+  auto tracker =
+      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
   auto dbus_service =
       DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
   brillo::ErrorPtr error;
@@ -101,8 +105,10 @@ TEST(DBusServiceAdaptorTest, ListScanners) {
 
 TEST(DBusServiceAdaptorTest, GetScannerCapabilities) {
   auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
   MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker = std::make_unique<MockDeviceTracker>(sane_client.get());
+  auto tracker =
+      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
   auto dbus_service =
       DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
   brillo::ErrorPtr error;
@@ -114,8 +120,10 @@ TEST(DBusServiceAdaptorTest, GetScannerCapabilities) {
 
 TEST(DBusServiceAdaptorTest, StartScan) {
   auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
   MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker = std::make_unique<MockDeviceTracker>(sane_client.get());
+  auto tracker =
+      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
   auto dbus_service =
       DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
   StartScanRequest request;
@@ -125,8 +133,10 @@ TEST(DBusServiceAdaptorTest, StartScan) {
 
 TEST(DBusServiceAdaptorTest, GetNextImage) {
   auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
   MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker = std::make_unique<MockDeviceTracker>(sane_client.get());
+  auto tracker =
+      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
   auto dbus_service =
       DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
   GetNextImageRequest request;
@@ -138,8 +148,10 @@ TEST(DBusServiceAdaptorTest, GetNextImage) {
 
 TEST(DBusServiceAdaptorTest, CancelScan) {
   auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
   MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker = std::make_unique<MockDeviceTracker>(sane_client.get());
+  auto tracker =
+      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
   auto dbus_service =
       DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
   CancelScanRequest request;
@@ -149,11 +161,13 @@ TEST(DBusServiceAdaptorTest, CancelScan) {
 
 TEST(DBusServiceAdaptorTest, ToggleDebugging) {
   auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
   MockManager* manager = new MockManager({}, sane_client.get());
   bool callback_called = false;
   base::RepeatingCallback<void()> callback = base::BindLambdaForTesting(
       [&callback_called]() { callback_called = true; });
-  auto tracker = std::make_unique<MockDeviceTracker>(sane_client.get());
+  auto tracker =
+      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
   auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager),
                                          tracker.get(), callback);
   SetDebugConfigRequest request;
@@ -164,8 +178,10 @@ TEST(DBusServiceAdaptorTest, ToggleDebugging) {
 
 TEST(DBusServiceAdaptorTest, UnchangedDebugging) {
   auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
   MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker = std::make_unique<MockDeviceTracker>(sane_client.get());
+  auto tracker =
+      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
   bool callback_called = false;
   base::RepeatingCallback<void()> callback = base::BindLambdaForTesting(
       [&callback_called]() { callback_called = true; });
@@ -179,8 +195,10 @@ TEST(DBusServiceAdaptorTest, UnchangedDebugging) {
 
 TEST(DBusServiceAdaptorTest, StartScannerDiscovery) {
   auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
   MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker = std::make_unique<MockDeviceTracker>(sane_client.get());
+  auto tracker =
+      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
   auto dbus_service =
       DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
   StartScannerDiscoveryRequest request;
@@ -192,8 +210,10 @@ TEST(DBusServiceAdaptorTest, StartScannerDiscovery) {
 
 TEST(DBusServiceAdaptorTest, StopScannerDiscovery) {
   auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
   MockManager* manager = new MockManager({}, sane_client.get());
-  auto tracker = std::make_unique<MockDeviceTracker>(sane_client.get());
+  auto tracker =
+      std::make_unique<MockDeviceTracker>(sane_client.get(), libusb.get());
   auto dbus_service =
       DBusServiceAdaptor(std::unique_ptr<Manager>(manager), tracker.get(), {});
   StopScannerDiscoveryRequest request;

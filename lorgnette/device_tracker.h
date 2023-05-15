@@ -40,13 +40,14 @@ using ScannerListChangedSignalSender =
     base::RepeatingCallback<void(const ScannerListChangedSignal&)>;
 
 class FirewallManager;
+class LibusbWrapper;
 class SaneClient;
 
 // DeviceTracker is responsible for keeping track of which scanners are
 // available and which ones are in use at any given time.
 class DeviceTracker {
  public:
-  explicit DeviceTracker(SaneClient* sane_client);
+  DeviceTracker(SaneClient* sane_client, LibusbWrapper* libusb);
   DeviceTracker(const DeviceTracker&) = delete;
   DeviceTracker& operator=(const DeviceTracker&) = delete;
   virtual ~DeviceTracker();
@@ -116,6 +117,10 @@ class DeviceTracker {
   // Manages port access for receiving replies from network scanners.
   // Not owned.
   FirewallManager* firewall_manager_ GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Manages a libusb context for querying USB devices.
+  // Not owned.
+  LibusbWrapper* libusb_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   // All the previously discovered devices.  Used to match subsequent SANE
   // entries for the same device and to accelerate subsequent discovery

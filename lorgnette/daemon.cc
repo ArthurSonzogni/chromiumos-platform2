@@ -19,6 +19,8 @@
 #include "lorgnette/dbus_service_adaptor.h"
 #include "lorgnette/sane_client.h"
 #include "lorgnette/sane_client_impl.h"
+#include "lorgnette/usb/libusb_wrapper.h"
+#include "lorgnette/usb/libusb_wrapper_impl.h"
 
 using std::string;
 
@@ -57,11 +59,12 @@ int Daemon::OnInit() {
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   sane_client_ = SaneClientImpl::Create();
+  libusb_ = LibusbWrapperImpl::Create();
   auto manager =
       std::make_unique<Manager>(base::BindRepeating(&Daemon::PostponeShutdown,
                                                     weak_factory_.GetWeakPtr()),
                                 sane_client_.get());
-  device_tracker_.reset(new DeviceTracker(sane_client_.get()));
+  device_tracker_.reset(new DeviceTracker(sane_client_.get(), libusb_.get()));
   dbus_service_.reset(
       new DBusServiceAdaptor(std::move(manager), device_tracker_.get(),
                              base::BindRepeating(&Daemon::OnDebugChanged,

@@ -58,30 +58,6 @@ std::string VidPid(const libusb_device_descriptor& descriptor) {
                             descriptor.idProduct);
 }
 
-// Loop through all altsettings for all interfaces in |config| and return true
-// if any is a printer interface class that implements the IPP-USB protocol.
-// Also sets |isPrinter| to true if any interface has the printer class
-// regardless of whether it supports IPP-USB.
-bool ContainsIppUsbInterface(const libusb_config_descriptor* config,
-                             bool* isPrinter) {
-  for (uint8_t i = 0; i < config->bNumInterfaces; i++) {
-    for (uint8_t j = 0; j < config->interface[i].num_altsetting; j++) {
-      const libusb_interface_descriptor* interface =
-          &config->interface[i].altsetting[j];
-
-      if (interface->bInterfaceClass != LIBUSB_CLASS_PRINTER) {
-        continue;
-      }
-
-      *isPrinter = true;
-      if (interface->bInterfaceProtocol == kIppUsbInterfaceProtocol) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 // Create a ScannerInfo protobuf describing |device|, which is presumed to be an
 // IPP-USB capable printer.  The resulting |device_name| member will claim escl
 // support through the ippusb backend, but this function will not check for
@@ -229,6 +205,26 @@ std::vector<ScannerInfo> FindIppUsbDevices(libusb_context* context) {
 
   libusb_free_device_list(dev_list, 1);
   return scanners;
+}
+
+bool ContainsIppUsbInterface(const libusb_config_descriptor* config,
+                             bool* isPrinter) {
+  for (uint8_t i = 0; i < config->bNumInterfaces; i++) {
+    for (uint8_t j = 0; j < config->interface[i].num_altsetting; j++) {
+      const libusb_interface_descriptor* interface =
+          &config->interface[i].altsetting[j];
+
+      if (interface->bInterfaceClass != LIBUSB_CLASS_PRINTER) {
+        continue;
+      }
+
+      *isPrinter = true;
+      if (interface->bInterfaceProtocol == kIppUsbInterfaceProtocol) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 }  // namespace lorgnette

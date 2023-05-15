@@ -18,6 +18,7 @@
 
 namespace lorgnette {
 
+class LibusbWrapper;
 class SaneClient;
 
 class Daemon : public brillo::DBusServiceDaemon {
@@ -56,6 +57,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   base::CancelableOnceClosure shutdown_callback_;
 
   std::unique_ptr<SaneClient> sane_client_;
+  std::unique_ptr<LibusbWrapper> libusb_;
   std::unique_ptr<DeviceTracker> device_tracker_;
 
   // Keep as the last member variable.

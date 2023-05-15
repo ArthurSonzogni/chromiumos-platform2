@@ -15,6 +15,7 @@
 #include "base/test/task_environment.h"
 #include "lorgnette/sane_client_fake.h"
 #include "lorgnette/test_util.h"
+#include "lorgnette/usb/libusb_wrapper_fake.h"
 
 using ::testing::_;
 using ::testing::ElementsAre;
@@ -36,7 +37,9 @@ TEST(DeviceTrackerTest, CreateMultipleSessions) {
       });
 
   auto sane_client = std::make_unique<SaneClientFake>();
-  auto tracker = std::make_unique<DeviceTracker>(sane_client.get());
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
   tracker->SetScannerListChangedSignalSender(signal_handler);
 
   EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 0);
@@ -87,7 +90,9 @@ TEST(DeviceTrackerTest, CreateDuplicateSessions) {
       });
 
   auto sane_client = std::make_unique<SaneClientFake>();
-  auto tracker = std::make_unique<DeviceTracker>(sane_client.get());
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
   tracker->SetScannerListChangedSignalSender(signal_handler);
 
   EXPECT_EQ(tracker->NumActiveDiscoverySessions(), 0);
@@ -132,7 +137,9 @@ TEST(DeviceTrackerTest, StartSessionMissingClient) {
   base::RunLoop run_loop;
 
   auto sane_client = std::make_unique<SaneClientFake>();
-  auto tracker = std::make_unique<DeviceTracker>(sane_client.get());
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
 
   StartScannerDiscoveryRequest start_request;
   start_request.set_client_id("");
@@ -156,7 +163,9 @@ TEST(DeviceTrackerTest, StopSessionMissingID) {
       });
 
   auto sane_client = std::make_unique<SaneClientFake>();
-  auto tracker = std::make_unique<DeviceTracker>(sane_client.get());
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
   tracker->SetScannerListChangedSignalSender(signal_handler);
 
   StopScannerDiscoveryRequest stop_request;
