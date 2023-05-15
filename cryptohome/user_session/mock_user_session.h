@@ -12,7 +12,6 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
-#include "cryptohome/credentials.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/storage/cryptohome_vault.h"

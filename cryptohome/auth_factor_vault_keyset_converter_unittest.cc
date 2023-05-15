@@ -32,7 +32,6 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
-#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -126,7 +125,6 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
     Username name;
     ObfuscatedUsername obfuscated;
     brillo::SecureBlob passkey;
-    Credentials credentials;
     base::FilePath homedir_path;
     base::FilePath user_path;
   };
@@ -138,13 +136,8 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
     ObfuscatedUsername obfuscated =
         brillo::cryptohome::home::SanitizeUserName(username);
     brillo::SecureBlob passkey(password);
-    Credentials credentials(username, passkey);
 
-    user = {username,
-            obfuscated,
-            passkey,
-            credentials,
-            UserPath(obfuscated),
+    user = {username, obfuscated, passkey, UserPath(obfuscated),
             brillo::cryptohome::home::GetHashedUserPath(obfuscated)};
   }
 
@@ -204,7 +197,6 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
     vk.CreateFromFileSystemKeyset(file_system_keyset_);
     vk.SetKeyData(key_data);
     vk.set_backup_vk_for_testing(true);
-    user.credentials.set_key_data(key_data);
     key_blobs_.vkk_key = brillo::SecureBlob(32, 'A');
     key_blobs_.vkk_iv = brillo::SecureBlob(16, 'B');
     key_blobs_.chaps_iv = brillo::SecureBlob(16, 'C');

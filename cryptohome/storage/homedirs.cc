@@ -27,7 +27,6 @@
 #include <cryptohome/proto_bindings/key.pb.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
-#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"

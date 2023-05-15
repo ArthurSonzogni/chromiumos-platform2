@@ -15,7 +15,6 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/credential_verifier.h"
-#include "cryptohome/credentials.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"

@@ -24,7 +24,6 @@
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 
-#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
@@ -133,7 +132,6 @@ class RealUserSessionTest : public ::testing::Test {
     Username name;
     ObfuscatedUsername obfuscated;
     brillo::SecureBlob passkey;
-    Credentials credentials;
     base::FilePath homedir_path;
     base::FilePath user_path;
     FileSystemKeyset user_fs_keyset;
@@ -164,13 +162,8 @@ class RealUserSessionTest : public ::testing::Test {
     ObfuscatedUsername obfuscated =
         brillo::cryptohome::home::SanitizeUserName(username);
     brillo::SecureBlob passkey(password);
-    Credentials credentials(username, passkey);
 
-    UserInfo info = {username,
-                     obfuscated,
-                     passkey,
-                     credentials,
-                     UserPath(obfuscated),
+    UserInfo info = {username, obfuscated, passkey, UserPath(obfuscated),
                      brillo::cryptohome::home::GetHashedUserPath(obfuscated)};
     users_.push_back(info);
   }
@@ -462,14 +455,15 @@ class RealUserSessionReAuthTest : public ::testing::Test {
  public:
   // MockPlatform will provide environment with system salt.
   MockPlatform platform_;
+  const Username kFakeUsername{"test_username"};
 };
 
 TEST_F(RealUserSessionReAuthTest, VerifyUser) {
-  Credentials credentials(Username("username"), SecureBlob("password"));
-  RealUserSession session(Username("username"), nullptr, nullptr, nullptr,
-                          nullptr, nullptr);
+  RealUserSession session(kFakeUsername, nullptr, nullptr, nullptr, nullptr,
+                          nullptr);
 
-  EXPECT_TRUE(session.VerifyUser(credentials.GetObfuscatedUsername()));
+  EXPECT_TRUE(session.VerifyUser(
+      brillo::cryptohome::home::SanitizeUserName(kFakeUsername)));
   EXPECT_FALSE(session.VerifyUser(ObfuscatedUsername("other")));
 }
 
@@ -478,8 +472,8 @@ TEST_F(RealUserSessionReAuthTest, AddAndRemoveCredentialVerifiers) {
   auto [verifier2, ptr2] = MakeTestVerifier("b2");
   auto [verifier3, ptr3] = MakeTestVerifier("c3");
 
-  RealUserSession session(Username("username"), nullptr, nullptr, nullptr,
-                          nullptr, nullptr);
+  RealUserSession session(kFakeUsername, nullptr, nullptr, nullptr, nullptr,
+                          nullptr);
 
   // The session should start without verifiers.
   EXPECT_THAT(session.GetCredentialVerifiers(), IsEmpty());
@@ -516,8 +510,8 @@ TEST_F(RealUserSessionReAuthTest, AddAndRemoveLabellessCredentialVerifiers) {
   auto [verifier2, ptr2] = MakeTestVerifier("b2");
   auto [verifier3, ptr3] = MakeTestVerifier("");  // label-less
 
-  RealUserSession session(Username("username"), nullptr, nullptr, nullptr,
-                          nullptr, nullptr);
+  RealUserSession session(kFakeUsername, nullptr, nullptr, nullptr, nullptr,
+                          nullptr);
 
   // The session should start without verifiers.
   EXPECT_THAT(session.GetCredentialVerifiers(), IsEmpty());

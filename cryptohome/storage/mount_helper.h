@@ -19,7 +19,6 @@
 #include <brillo/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "cryptohome/credentials.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/error.h"

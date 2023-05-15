@@ -37,7 +37,6 @@
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/auth_session_proto_utils.h"
 #include "cryptohome/credential_verifier.h"
-#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"

@@ -42,7 +42,6 @@
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
-#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/features.h"
@@ -186,7 +185,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     Username username;
     ObfuscatedUsername obfuscated;
     brillo::SecureBlob passkey;
-    Credentials credentials;
     base::FilePath homedir_path;
     base::FilePath user_path;
   };
@@ -195,13 +193,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     Username username(name);
     ObfuscatedUsername obfuscated = SanitizeUserName(username);
     brillo::SecureBlob passkey(password);
-    Credentials credentials(username, passkey);
 
-    UserInfo info = {username,
-                     obfuscated,
-                     passkey,
-                     credentials,
-                     UserPath(obfuscated),
+    UserInfo info = {username, obfuscated, passkey, UserPath(obfuscated),
                      brillo::cryptohome::home::GetHashedUserPath(obfuscated)};
     users_.push_back(info);
   }

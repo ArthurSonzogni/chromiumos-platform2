@@ -20,7 +20,6 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <policy/mock_device_policy.h>
 
-#include "cryptohome/credentials.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
@@ -76,7 +75,6 @@ struct UserInfo {
   Username name;
   ObfuscatedUsername obfuscated;
   brillo::SecureBlob passkey;
-  Credentials credentials;
   base::FilePath homedir_path;
   base::FilePath user_path;
 };
@@ -133,13 +131,8 @@ class HomeDirsTest
     ObfuscatedUsername obfuscated =
         brillo::cryptohome::home::SanitizeUserName(username);
     brillo::SecureBlob passkey(password);
-    Credentials credentials(username, passkey);
 
-    UserInfo info = {username,
-                     obfuscated,
-                     passkey,
-                     credentials,
-                     UserPath(obfuscated),
+    UserInfo info = {username, obfuscated, passkey, UserPath(obfuscated),
                      brillo::cryptohome::home::GetHashedUserPath(obfuscated)};
     users_.push_back(info);
   }

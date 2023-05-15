@@ -52,7 +52,6 @@
 #include "cryptohome/cleanup/mock_low_disk_space_handler.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/common/print_UserDataAuth_proto.h"
-#include "cryptohome/credentials_test_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/features.h"

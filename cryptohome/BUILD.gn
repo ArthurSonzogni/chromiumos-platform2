@@ -326,7 +326,6 @@ if (use.test) {
       "cleanup/user_oldest_activity_timestamp_manager_unittest.cc",
       "crc_unittest.cc",
       "credential_verifier_unittest.cc",
-      "credentials_unittest.cc",
       "crypto_unittest.cc",
       "cryptohome_key_loader_unittest.cc",
       "cryptohome_keys_manager_unittest.cc",

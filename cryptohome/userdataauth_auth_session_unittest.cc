@@ -31,7 +31,6 @@
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
-#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
@@ -366,7 +365,6 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
 
   void ExpectAuth(const Username& username, const brillo::SecureBlob& secret) {
     auto vk = std::make_unique<VaultKeyset>();
-    Credentials creds(username, secret);
     EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
         .WillOnce(Return(ByMove(std::move(vk))));
     ON_CALL(keyset_management_, UserExists(SanitizeUserName(username)))
@@ -381,10 +379,7 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
     // VaultKeyset Construct the vault keyset with credentials for
     // AuthBlockType::kTpmNotBoundToPcrAuthBlockState.
     const brillo::SecureBlob blob16(16, 'A');
-
     brillo::SecureBlob passkey(20, 'A');
-    Credentials credentials(Username("Test User"), passkey);
-
     brillo::SecureBlob system_salt_ =
         brillo::SecureBlob(*brillo::cryptohome::home::GetSystemSalt());
 

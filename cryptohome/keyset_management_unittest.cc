@@ -35,7 +35,6 @@
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
-#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/filesystem_layout.h"
@@ -168,9 +167,11 @@ class KeysetManagementTest : public ::testing::Test {
     Username name;
     ObfuscatedUsername obfuscated;
     brillo::SecureBlob passkey;
-    Credentials credentials;
     base::FilePath homedir_path;
     base::FilePath user_path;
+    KeyData key_data;
+    SerializedVaultKeyset_SignatureChallengeInfo
+        challenge_credentials_keyset_info;
   };
 
   const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
@@ -189,13 +190,8 @@ class KeysetManagementTest : public ::testing::Test {
     ObfuscatedUsername obfuscated =
         brillo::cryptohome::home::SanitizeUserName(username);
     brillo::SecureBlob passkey(password);
-    Credentials credentials(username, passkey);
 
-    UserInfo info = {username,
-                     obfuscated,
-                     passkey,
-                     credentials,
-                     UserPath(obfuscated),
+    UserInfo info = {username, obfuscated, passkey, UserPath(obfuscated),
                      brillo::cryptohome::home::GetHashedUserPath(obfuscated)};
     users_.push_back(info);
   }
@@ -339,7 +335,7 @@ class KeysetManagementTest : public ::testing::Test {
 TEST_F(KeysetManagementTest, AddInitialKeysetSaveError) {
   // SETUP
 
-  users_[0].credentials.set_key_data(DefaultKeyData());
+  users_[0].key_data = DefaultKeyData();
   auto vk = std::make_unique<NiceMock<MockVaultKeyset>>();
   EXPECT_CALL(*vk, Save(_)).WillOnce(Return(false));
   EXPECT_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
@@ -348,13 +344,13 @@ TEST_F(KeysetManagementTest, AddInitialKeysetSaveError) {
   TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob(kSalt)};
   auth_state_ = std::make_unique<AuthBlockState>();
   auth_state_->state = pcr_state;
-  users_[0].credentials.set_key_data(DefaultKeyData());
+  users_[0].key_data = DefaultKeyData();
 
   // TEST
+
   auto status_or = keyset_management_->AddInitialKeyset(
       VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
-      users_[0].credentials.key_data(),
-      users_[0].credentials.challenge_credentials_keyset_info(),
+      users_[0].key_data, users_[0].challenge_credentials_keyset_info,
       file_system_keyset_, std::move(key_blobs_), std::move(auth_state_));
 
   // VERIFY
@@ -1132,17 +1128,17 @@ TEST_F(KeysetManagementTest, AddInitialKeyset) {
   TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob(kSalt)};
   auth_state_ = std::make_unique<AuthBlockState>();
   auth_state_->state = pcr_state;
-  users_[0].credentials.set_key_data(DefaultKeyData());
+  users_[0].key_data = DefaultKeyData();
 
   // TEST
-  EXPECT_TRUE(keyset_management_
-                  ->AddInitialKeyset(
-                      VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
-                      users_[0].credentials.key_data(),
-                      users_[0].credentials.challenge_credentials_keyset_info(),
-                      file_system_keyset_, std::move(key_blobs_),
-                      std::move(auth_state_))
-                  .ok());
+  EXPECT_TRUE(
+      keyset_management_
+          ->AddInitialKeyset(VaultKeysetIntent{.backup = false},
+                             users_[0].obfuscated, users_[0].key_data,
+                             users_[0].challenge_credentials_keyset_info,
+                             file_system_keyset_, std::move(key_blobs_),
+                             std::move(auth_state_))
+          .ok());
 
   // VERIFY
 

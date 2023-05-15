@@ -15,7 +15,6 @@
 #include <dbus/cryptohome/dbus-constants.h>
 #include <gmock/gmock.h>
 
-#include "cryptohome/credentials.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/username.h"
