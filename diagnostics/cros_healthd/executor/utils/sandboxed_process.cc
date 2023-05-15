@@ -68,7 +68,9 @@ uint32_t FetchJailedProcessPid(uint32_t parent_pid) {
 
 SandboxedProcess::SandboxedProcess() = default;
 
-SandboxedProcess::~SandboxedProcess() = default;
+SandboxedProcess::~SandboxedProcess() {
+  Reset(0);
+}
 
 SandboxedProcess::SandboxedProcess(
     const std::vector<std::string>& command,
