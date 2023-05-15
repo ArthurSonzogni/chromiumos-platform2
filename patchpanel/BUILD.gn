@@ -78,66 +78,61 @@ generate_dbus_adaptors("patchpanel_dbus_adaptors") {
   dbus_service_config = "dbus_bindings/dbus-service-config.json"
 }
 
-util_sources = [
-  "address_manager.cc",
-  "dns/big_endian.cc",
-  "dns/dns_query.cc",
-  "dns/dns_response.cc",
-  "dns/dns_util.cc",
-  "dns/io_buffer.cc",
-  "mac_address_generator.cc",
-  "message_dispatcher.cc",
-  "net_util.cc",
-  "socket.cc",
-  "socket_forwarder.cc",
-  "subnet.cc",
-  "subnet_pool.cc",
-]
-
-libpatchpanel_sources = [
-  "adb_proxy.cc",
-  "arc_service.cc",
-  "broadcast_forwarder.cc",
-  "counters_service.cc",
-  "crostini_service.cc",
-  "datapath.cc",
-  "device.cc",
-  "dhcp_server_controller.cc",
-  "firewall.cc",
-  "guest_ipv6_service.cc",
-  "iptables.cc",
-  "manager.cc",
-  "minijailed_process_runner.cc",
-  "multicast_forwarder.cc",
-  "multicast_proxy.cc",
-  "ndproxy.cc",
-  "network_monitor_service.cc",
-  "patchpanel_adaptor.cc",
-  "patchpanel_daemon.cc",
-  "proto_utils.cc",
-  "routing_service.cc",
-  "scoped_ns.cc",
-  "shill_client.cc",
-  "subprocess_controller.cc",
-  "system.cc",
-]
+source_set("util_sources") {
+  sources = [
+    "address_manager.cc",
+    "dns/big_endian.cc",
+    "dns/dns_query.cc",
+    "dns/dns_response.cc",
+    "dns/dns_util.cc",
+    "dns/io_buffer.cc",
+    "mac_address_generator.cc",
+    "message_dispatcher.cc",
+    "net_util.cc",
+    "socket.cc",
+    "socket_forwarder.cc",
+    "subnet.cc",
+    "subnet_pool.cc",
+  ]
+  configs += [
+    ":target_defaults",
+    "//common-mk:pic",
+  ]
+}
 
 shared_library("libpatchpanel-util") {
-  sources = util_sources
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "libshill-client",
-    "libshill-net",
-    "protobuf",
-    "re2",
-  ]
-  libs = [ "system_api" ]
+  deps = [ ":util_sources" ]
   install_path = "lib"
 }
 
 static_library("libpatchpanel") {
-  sources = libpatchpanel_sources + util_sources
+  sources = [
+    "adb_proxy.cc",
+    "arc_service.cc",
+    "broadcast_forwarder.cc",
+    "counters_service.cc",
+    "crostini_service.cc",
+    "datapath.cc",
+    "device.cc",
+    "dhcp_server_controller.cc",
+    "firewall.cc",
+    "guest_ipv6_service.cc",
+    "iptables.cc",
+    "manager.cc",
+    "minijailed_process_runner.cc",
+    "multicast_forwarder.cc",
+    "multicast_proxy.cc",
+    "ndproxy.cc",
+    "network_monitor_service.cc",
+    "patchpanel_adaptor.cc",
+    "patchpanel_daemon.cc",
+    "proto_utils.cc",
+    "routing_service.cc",
+    "scoped_ns.cc",
+    "shill_client.cc",
+    "subprocess_controller.cc",
+    "system.cc",
+  ]
   configs += [ ":target_defaults" ]
   cflags = [ "-Wconversion" ]
   defines = [ "USE_ARCVM=${use.arcvm}" ]
@@ -148,6 +143,7 @@ static_library("libpatchpanel") {
   deps = [
     ":patchpanel_dbus_adaptors",
     ":patchpanel_ipc_protos",
+    ":util_sources",
   ]
 }
 
