@@ -9,12 +9,14 @@ pkg_config("libexecutor_pkg_deps") {
     "dbus-1",
     "libbrillo",
     "libchrome",
+    "libmojo",
   ]
 }
 
 source_set("libexecutor") {
   sources = [
     "executor.cc",
+    "mojo_adaptor.cc",
     "upstart_tools.cc",
   ]
   configs += [ ":libexecutor_pkg_deps" ]
