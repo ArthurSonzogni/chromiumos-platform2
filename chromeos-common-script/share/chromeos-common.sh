@@ -16,7 +16,7 @@
 # command, as sudo does.
 # This way we avoid using sudo when running on a device in verified mode.
 maybe_sudo() {
-   if [ "${UID:-$(id -u)}" = "0" ]; then
+   if [ "$(id -u)" = "0" ]; then
      PATH="${PATH}:/sbin:/usr/sbin" "$@"
    else
      sudo "$@"
@@ -122,7 +122,7 @@ partsize() {
 # (-> /dev/mmcblk0).
 get_block_dev_from_partition_dev() {
   local partition="$1"
-  if ! (expr match "${partition}" ".*[0-9]$" >/dev/null) ; then
+  if ! (expr "${partition}" : ".*[0-9]$" >/dev/null) ; then
     echo "Invalid partition name: ${partition}" >&2
     exit 1
   fi
@@ -130,7 +130,7 @@ get_block_dev_from_partition_dev() {
   local block
   block="$(echo "${partition}" | sed -e 's/[0-9]*$//')"
   # If needed, strip the trailing 'p'.
-  if (expr match "${block}" ".*[0-9]p$" >/dev/null); then
+  if (expr "${block}" : ".*[0-9]p$" >/dev/null); then
     echo "${block%p}"
   else
     echo "${block}"
@@ -141,7 +141,7 @@ get_block_dev_from_partition_dev() {
 # This works for /dev/sda3 (-> 3) as well as /dev/mmcblk0p2 (-> 2).
 get_partition_number() {
   local partition="$1"
-  if ! (expr match "${partition}" ".*[0-9]$" >/dev/null) ; then
+  if ! (expr "${partition}" : ".*[0-9]$" >/dev/null) ; then
     echo "Invalid partition name: ${partition}" >&2
     exit 1
   fi
@@ -158,7 +158,7 @@ make_partition_dev() {
   local num="$2"
   # If the disk block device ends with a number, we add a 'p' before the
   # partition number.
-  if (expr match "${block}" ".*[0-9]$" >/dev/null) ; then
+  if (expr "${block}" : ".*[0-9]$" >/dev/null) ; then
     echo "${block}p${num}"
   else
     echo "${block}${num}"
@@ -392,8 +392,10 @@ get_fixed_dst_drive() {
 
 # Check if rootfs is mounted on a removable device.
 rootdev_removable() {
-  local dst_drive="$(get_fixed_dst_drive)"
-  local root_drive="$(rootdev -s -d)"
+  local dst_drive
+  dst_drive="$(get_fixed_dst_drive)"
+  local root_drive
+  root_drive="$(rootdev -s -d)"
 
   if [ "${dst_drive}" != "${root_drive}" ]; then
     return 0
