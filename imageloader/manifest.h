@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/values.h>
 #include <brillo/brillo_export.h>
 
 namespace imageloader {
@@ -27,8 +28,13 @@ class BRILLO_EXPORT Manifest {
   Manifest(const Manifest&) = delete;
   Manifest& operator=(const Manifest&) = delete;
 
+  // Equals comparator.
+  bool operator==(const Manifest& rhs) const;
+
   // Parse the manifest raw string. Return true if successful.
   bool ParseManifest(const std::string& manifest_raw);
+  // Parse the manifest raw dictionary value. Return true if successful.
+  bool ParseManifest(const base::Value::Dict& manifest_dict);
 
   // Getters for required manifest fields:
   int manifest_version() const { return manifest_version_; }

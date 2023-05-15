@@ -82,6 +82,39 @@ bool ParseMetadata(const base::Value& metadata,
 
 }  // namespace
 
+// clang-format off
+bool Manifest::operator==(const Manifest& rhs) const {
+  // NOTE: Update the comparator when a class member is added/removed.
+  return
+      // Required manifest fields:
+      manifest_version() == rhs.manifest_version() &&
+      image_sha256() == rhs.image_sha256() &&
+      table_sha256() == rhs.table_sha256() &&
+      version() == rhs.version() &&
+      // Optional manifest fields:
+      fs_type() == rhs.fs_type() &&
+      id() == rhs.id() &&
+      package() == rhs.package() &&
+      name() == rhs.name() &&
+      image_type() == rhs.image_type() &&
+      preallocated_size() == rhs.preallocated_size() &&
+      size() == rhs.size() &&
+      is_removable() == rhs.is_removable() &&
+      preload_allowed() == rhs.preload_allowed() &&
+      factory_install() == rhs.factory_install() &&
+      mount_file_required() == rhs.mount_file_required() &&
+      reserved() == rhs.reserved() &&
+      critical_update() == rhs.critical_update() &&
+      used_by() == rhs.used_by() &&
+      days_to_purge() == rhs.days_to_purge() &&
+      description() == rhs.description() &&
+      metadata() == rhs.metadata() &&
+      use_logical_volume() == rhs.use_logical_volume() &&
+      scaled() == rhs.scaled() &&
+      powerwash_safe() == rhs.powerwash_safe();
+}
+// clang-format on
+
 bool Manifest::ParseManifest(const std::string& manifest_raw) {
   // Now deserialize the manifest json and read out the rest of the component.
   auto manifest_value = base::JSONReader::ReadAndReturnValueWithError(
@@ -96,8 +129,10 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
     LOG(ERROR) << "Manifest file is not dictionary.";
     return false;
   }
-  const base::Value::Dict& manifest_dict = manifest_value->GetDict();
+  return ParseManifest(manifest_value->GetDict());
+}
 
+bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
   // This will have to be changed if the manifest version is bumped.
   std::optional<int> manifest_version =
       manifest_dict.FindInt(kManifestVersionField);
