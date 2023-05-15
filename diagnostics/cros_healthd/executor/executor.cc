@@ -263,6 +263,7 @@ Executor::Executor(
   dlcservice_proxy_ =
       std::make_unique<org::chromium::DlcServiceInterfaceProxy>(dbus_bus);
   dlc_manager_ = std::make_unique<DlcManager>(dlcservice_proxy_.get());
+  dlc_manager_->Initialize();
 }
 
 Executor::~Executor() = default;
