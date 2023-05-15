@@ -520,12 +520,12 @@ grpc::Status ServiceImpl::LaunchProcess(
 grpc::Status ServiceImpl::Mount(grpc::ServerContext* ctx,
                                 const MountRequest* request,
                                 MountResponse* response) {
-  LOG(INFO) << "Received mount request";
+  LOG(INFO) << "Received mount request for " << request->target();
 
-  // TODO(b/272384619): concierge shouldn't send requests to mount the tools
-  // image. The code to do it should be removed once the relevant termina uprev
-  // passes. Then, this workaround can be removed.
-  if (request->target() == "/opt/google/cros-containers") {
+  // TODO(b/280685257): concierge shouldn't send requests to mount the external
+  // disk. The code to do it should be removed once the relevant vms' uprevs
+  // pass. Then, this workaround can be removed.
+  if (request->target() == "/mnt/external/0") {
     return grpc::Status::OK;
   }
 
