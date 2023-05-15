@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/scoped_native_library.h>
+#include <ml_core/effects_pipeline_bindings.h>
 #include <session_manager/dbus-proxies.h>
 
 #include "ml_core/opencl_caching/constants.h"
@@ -20,11 +21,87 @@ using org::chromium::SessionManagerInterfaceProxy;
 
 constexpr char kLibraryName[] = "libcros_ml_core_internal.so";
 
+std::optional<base::ScopedNativeLibrary> g_library;
+cros_ml_effects_CreateEffectsPipelineFn g_create_fn = nullptr;
+cros_ml_effects_DeleteEffectsPipelineFn g_delete_fn = nullptr;
+cros_ml_effects_ProcessFrameFn g_process_fn = nullptr;
+cros_ml_effects_WaitFn g_wait_fn = nullptr;
+cros_ml_effects_SetRenderedImageObserverFn g_set_rendered_image_observer_fn =
+    nullptr;
+cros_ml_effects_SetEffectFn g_set_effect_fn = nullptr;
+cros_ml_effects_SetLogObserverFn g_set_log_observer_fn = nullptr;
+
+bool EnsurePipelineLibraryLoaded(const base::FilePath& dlc_root_path) {
+  if (g_library && g_library->is_valid()) {
+    return true;
+  }
+
+#ifdef USE_LOCAL_ML_CORE_INTERNAL
+  // This should be /usr/local/lib on boards with 32-bit ARM userspace, but
+  // currently we only enable the feature on 64-bit boards.
+  base::FilePath lib_path =
+      base::FilePath("/usr/local/lib64").Append(kLibraryName);
+#else
+  base::FilePath lib_path = dlc_root_path.Append(kLibraryName);
+#endif
+  base::NativeLibraryOptions native_library_options;
+  base::NativeLibraryLoadError load_error;
+  native_library_options.prefer_own_symbols = true;
+  g_library.emplace(base::LoadNativeLibraryWithOptions(
+      lib_path, native_library_options, &load_error));
+
+  if (!g_library->is_valid()) {
+    LOG(ERROR) << "Pipeline library load error: " << load_error.ToString();
+    return false;
+  }
+
+  LOG(INFO) << "Loading pipeline library from: " << lib_path;
+
+  g_create_fn = reinterpret_cast<cros_ml_effects_CreateEffectsPipelineFn>(
+      g_library->GetFunctionPointer("cros_ml_effects_CreateEffectsPipeline"));
+  g_delete_fn = reinterpret_cast<cros_ml_effects_DeleteEffectsPipelineFn>(
+      g_library->GetFunctionPointer("cros_ml_effects_DeleteEffectsPipeline"));
+  g_process_fn = reinterpret_cast<cros_ml_effects_ProcessFrameFn>(
+      g_library->GetFunctionPointer("cros_ml_effects_ProcessFrame"));
+  g_wait_fn = reinterpret_cast<cros_ml_effects_WaitFn>(
+      g_library->GetFunctionPointer("cros_ml_effects_Wait"));
+  g_set_rendered_image_observer_fn =
+      reinterpret_cast<cros_ml_effects_SetRenderedImageObserverFn>(
+          g_library->GetFunctionPointer(
+              "cros_ml_effects_SetRenderedImageObserver"));
+  g_set_effect_fn = reinterpret_cast<cros_ml_effects_SetEffectFn>(
+      g_library->GetFunctionPointer("cros_ml_effects_SetEffect"));
+  g_set_log_observer_fn = reinterpret_cast<cros_ml_effects_SetLogObserverFn>(
+      g_library->GetFunctionPointer("cros_ml_effects_SetLogObserver"));
+
+  bool load_ok = (g_create_fn != nullptr) && (g_delete_fn != nullptr) &&
+                 (g_process_fn != nullptr) && (g_wait_fn != nullptr) &&
+                 (g_set_rendered_image_observer_fn != nullptr) &&
+                 (g_set_effect_fn != nullptr);
+
+  if (!load_ok) {
+    DLOG(ERROR) << "g_create_fn: " << g_create_fn;
+    DLOG(ERROR) << "g_delete_fn: " << g_delete_fn;
+    DLOG(ERROR) << "g_process_fn: " << g_process_fn;
+    DLOG(ERROR) << "g_wait_fn: " << g_wait_fn;
+    DLOG(ERROR) << "g_set_rendered_image_observer_fn: "
+                << g_set_rendered_image_observer_fn;
+    DLOG(ERROR) << "g_set_effect_fn: " << g_set_effect_fn;
+    DLOG(ERROR) << "g_set_log_observer_fn: " << g_set_log_observer_fn;
+
+    LOG(ERROR) << "Pipeline cannot load the expected functions";
+    g_library.reset();
+    return false;
+  }
+
+  return true;
+}
+
 class EffectsPipelineImpl : public cros::EffectsPipeline {
  public:
   ~EffectsPipelineImpl() override {
-    if (pipeline_ && delete_fn_) {
-      delete_fn_(pipeline_);
+    if (pipeline_ && g_delete_fn) {
+      g_delete_fn(pipeline_);
     }
   }
 
@@ -32,12 +109,16 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
                     GLuint frame_texture,
                     uint32_t frame_width,
                     uint32_t frame_height) override {
+    CHECK(g_process_fn);
     frames_started_ = true;
-    return process_frame_fn_(pipeline_, timestamp, frame_texture, frame_width,
-                             frame_height);
+    return g_process_fn(pipeline_, timestamp, frame_texture, frame_width,
+                        frame_height);
   }
 
-  bool Wait() override { return wait_fn_(pipeline_); }
+  bool Wait() override {
+    CHECK(g_wait_fn);
+    return g_wait_fn(pipeline_);
+  }
 
   bool SetRenderedImageObserver(
       std::unique_ptr<cros::ProcessedFrameObserver> observer) override {
@@ -51,7 +132,8 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
   // TODO(b:237964122) Consider converting effects_config to a protobuf
   void SetEffect(cros::EffectsConfig* effects_config,
                  void (*callback)(bool)) override {
-    set_effect_fn_(pipeline_, effects_config, callback);
+    CHECK(g_set_effect_fn);
+    g_set_effect_fn(pipeline_, effects_config, callback);
   }
 
  protected:
@@ -59,70 +141,18 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
   bool Initialize(const base::FilePath& dlc_root_path,
                   EGLContext share_context,
                   const base::FilePath& caching_dir_override) {
-#ifdef USE_LOCAL_ML_CORE_INTERNAL
-    // TODO(jmpollock) this should be /usr/local/lib on arm.
-    base::FilePath lib_path =
-        base::FilePath("/usr/local/lib64").Append(kLibraryName);
-#else
-    base::FilePath lib_path = dlc_root_path.Append(kLibraryName);
-#endif
-    base::NativeLibraryOptions native_library_options;
-    base::NativeLibraryLoadError load_error;
-    native_library_options.prefer_own_symbols = true;
-    library_.emplace(base::LoadNativeLibraryWithOptions(
-        lib_path, native_library_options, &load_error));
-
-    if (!library_->is_valid()) {
-      LOG(ERROR) << "Pipeline library load error: " << load_error.ToString();
-      return false;
-    }
-
-    LOG(INFO) << "Loading pipeline library from: " << lib_path;
-
-    create_fn_ = reinterpret_cast<cros_ml_effects_CreateEffectsPipelineFn>(
-        library_->GetFunctionPointer("cros_ml_effects_CreateEffectsPipeline"));
-    delete_fn_ = reinterpret_cast<cros_ml_effects_DeleteEffectsPipelineFn>(
-        library_->GetFunctionPointer("cros_ml_effects_DeleteEffectsPipeline"));
-    process_frame_fn_ = reinterpret_cast<cros_ml_effects_ProcessFrameFn>(
-        library_->GetFunctionPointer("cros_ml_effects_ProcessFrame"));
-    wait_fn_ = reinterpret_cast<cros_ml_effects_WaitFn>(
-        library_->GetFunctionPointer("cros_ml_effects_Wait"));
-    set_rendered_image_observer_fn_ =
-        reinterpret_cast<cros_ml_effects_SetRenderedImageObserverFn>(
-            library_->GetFunctionPointer(
-                "cros_ml_effects_SetRenderedImageObserver"));
-    set_effect_fn_ = reinterpret_cast<cros_ml_effects_SetEffectFn>(
-        library_->GetFunctionPointer("cros_ml_effects_SetEffect"));
-    set_log_observer_fn_ = reinterpret_cast<cros_ml_effects_SetLogObserverFn>(
-        library_->GetFunctionPointer("cros_ml_effects_SetLogObserver"));
-
-    bool load_ok = (create_fn_ != nullptr) && (delete_fn_ != nullptr) &&
-                   (process_frame_fn_ != nullptr) && (wait_fn_ != nullptr) &&
-                   (set_rendered_image_observer_fn_ != nullptr) &&
-                   (set_effect_fn_ != nullptr) &&
-                   (set_log_observer_fn_ != nullptr);
-
-    if (!load_ok) {
-      LOG(ERROR) << "create_fn_" << create_fn_;
-      LOG(ERROR) << "delete_fn_" << delete_fn_;
-      LOG(ERROR) << "process_frame_fn_" << process_frame_fn_;
-      LOG(ERROR) << "wait_fn_" << wait_fn_;
-      LOG(ERROR) << "set_rendered_image_observer_fn_"
-                 << set_rendered_image_observer_fn_;
-      LOG(ERROR) << "set_effect_fn_" << set_effect_fn_;
-      LOG(ERROR) << "set_log_observer_fn_" << set_log_observer_fn_;
-      LOG(ERROR) << "Pipeline cannot load the expected functions";
+    if (!EnsurePipelineLibraryLoaded(dlc_root_path)) {
       return false;
     }
 
     std::string cache_dir(caching_dir_override.empty()
                               ? cros::kOpenCLCachingDir
                               : caching_dir_override.value());
-    pipeline_ = create_fn_(share_context, cache_dir.c_str());
+    pipeline_ = g_create_fn(share_context, cache_dir.c_str());
     LOG(INFO) << "Pipeline created, cache_dir: " << cache_dir;
-    set_rendered_image_observer_fn_(
+    g_set_rendered_image_observer_fn(
         pipeline_, this, &EffectsPipelineImpl::RenderedImageFrameHandler);
-    set_log_observer_fn_(pipeline_, &EffectsPipelineImpl::OnLogMessage);
+    g_set_log_observer_fn(pipeline_, &EffectsPipelineImpl::OnLogMessage);
 
     return true;
   }
@@ -161,15 +191,6 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
     }
   }
 
-  std::optional<base::ScopedNativeLibrary> library_;
-  cros_ml_effects_CreateEffectsPipelineFn create_fn_ = nullptr;
-  cros_ml_effects_DeleteEffectsPipelineFn delete_fn_ = nullptr;
-  cros_ml_effects_ProcessFrameFn process_frame_fn_ = nullptr;
-  cros_ml_effects_WaitFn wait_fn_ = nullptr;
-  cros_ml_effects_SetRenderedImageObserverFn set_rendered_image_observer_fn_ =
-      nullptr;
-  cros_ml_effects_SetEffectFn set_effect_fn_ = nullptr;
-  cros_ml_effects_SetLogObserverFn set_log_observer_fn_ = nullptr;
   void* pipeline_ = nullptr;
   bool frames_started_ = false;
 
