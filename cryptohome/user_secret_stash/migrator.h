@@ -2,20 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_USS_MIGRATOR_H_
-
-#define CRYPTOHOME_USS_MIGRATOR_H_
+#ifndef CRYPTOHOME_USER_SECRET_STASH_MIGRATOR_H_
+#define CRYPTOHOME_USER_SECRET_STASH_MIGRATOR_H_
 
 #include <memory>
 #include <string>
 
 #include <base/functional/bind.h>
 #include <brillo/secure_blob.h>
-
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+
 #include "cryptohome/error/cryptohome_error.h"
-#include "cryptohome/user_secret_stash.h"
-#include "cryptohome/user_secret_stash_storage.h"
+#include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -62,4 +61,4 @@ class UssMigrator {
 };
 
 }  // namespace cryptohome
-#endif  // CRYPTOHOME_USS_MIGRATOR_H_
+#endif  // CRYPTOHOME_USER_SECRET_STASH_MIGRATOR_H_

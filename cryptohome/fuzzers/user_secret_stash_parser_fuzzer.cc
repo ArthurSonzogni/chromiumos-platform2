@@ -20,7 +20,7 @@
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
 #include "cryptohome/fuzzers/blob_mutator.h"
-#include "cryptohome/user_secret_stash.h"
+#include "cryptohome/user_secret_stash/user_secret_stash.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;

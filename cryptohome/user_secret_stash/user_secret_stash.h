@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_USER_SECRET_STASH_H_
-#define CRYPTOHOME_USER_SECRET_STASH_H_
+#ifndef CRYPTOHOME_USER_SECRET_STASH_USER_SECRET_STASH_H_
+#define CRYPTOHOME_USER_SECRET_STASH_USER_SECRET_STASH_H_
 
 #include <brillo/secure_blob.h>
 #include <stdint.h>
@@ -247,4 +247,4 @@ class UserSecretStash {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_USER_SECRET_STASH_H_
+#endif  // CRYPTOHOME_USER_SECRET_STASH_USER_SECRET_STASH_H_

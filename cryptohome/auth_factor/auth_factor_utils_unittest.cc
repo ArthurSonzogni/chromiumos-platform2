@@ -27,7 +27,7 @@
 #include "cryptohome/fake_features.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/user_secret_stash.h"
+#include "cryptohome/user_secret_stash/user_secret_stash.h"
 
 namespace cryptohome {
 namespace {

@@ -319,8 +319,8 @@ static_library("libcrosplatform") {
     "../storage/keyring/real_keyring.cc",
     "../storage/keyring/utils.cc",
     "../storage/mount_constants.cc",
-    "../user_secret_stash.cc",
-    "../user_secret_stash_storage.cc",
+    "../user_secret_stash/storage.cc",
+    "../user_secret_stash/user_secret_stash.cc",
   ]
   all_dependent_configs = [
     ":libcrosplatform_dependent_config",
@@ -417,7 +417,7 @@ static_library("libcrostpm") {
     "../pkcs11_init.cc",
     "../sign_in_hash_tree.cc",
     "../signature_sealing/structures_proto.cc",
-    "../uss_migrator.cc",
+    "../user_secret_stash/migrator.cc",
     "../vault_keyset.cc",
   ]
   all_dependent_configs = [ ":target_defaults" ]

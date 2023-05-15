@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/uss_migrator.h"
+#include "cryptohome/user_secret_stash/migrator.h"
 
 #include <memory>
 #include <string>
@@ -18,8 +18,8 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/reap.h"
 #include "cryptohome/storage/file_system_keyset.h"
-#include "cryptohome/user_secret_stash.h"
-#include "cryptohome/user_secret_stash_storage.h"
+#include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {

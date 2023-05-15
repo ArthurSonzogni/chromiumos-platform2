@@ -64,11 +64,11 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
-#include "cryptohome/user_secret_stash.h"
-#include "cryptohome/user_secret_stash_storage.h"
+#include "cryptohome/user_secret_stash/migrator.h"
+#include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/username.h"
-#include "cryptohome/uss_migrator.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/user_secret_stash_storage.h"
+#include "cryptohome/user_secret_stash/storage.h"
 
 #include <sys/stat.h>
 

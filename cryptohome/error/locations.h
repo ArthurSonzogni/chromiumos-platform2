@@ -801,91 +801,91 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthNoAuthSessionInAddAuthFactor = 487,
   /* =Obsolete= */
   kLocUserDataAuthAddAuthFactorFailedInAddAuthFactor = 488,
-  /* ./user_secret_stash_storage.cc */
+  /* ./user_secret_stash/storage.cc */
   kLocUSSStorageWriteFailedInPersist = 489,
-  /* ./user_secret_stash_storage.cc */
+  /* ./user_secret_stash/storage.cc */
   kLocUSSStorageReadFailedInLoadPersisted = 490,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSNoFEKInGetFSKeyFromPayload = 491,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSNoFNEKInGetFSKeyFromPayload = 492,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSNoFEKSaltInGetFSKeyFromPayload = 493,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSNoFNEKSaltInGetFSKeyFromPayload = 494,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSNoFEKSigInGetFSKeyFromPayload = 495,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSNoFNEKSigInGetFSKeyFromPayload = 496,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSNoChapsKeyInGetFSKeyFromPayload = 497,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSDeserializeFailedInGetContainerFromFB = 498,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSNoAlgInGetContainerFromFB = 499,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSUnknownAlgInGetContainerFromFB = 500,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSNoCiphertextInGetContainerFromFB = 501,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSNoIVInGetContainerFromFB = 502,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSIVWrongSizeInGetContainerFromFB = 503,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSNoGCMTagInGetContainerFromFB = 504,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSTagWrongSizeInGetContainerFromFB = 505,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSEmptyWrappingIDInUnwrapMKFromBlocks = 506,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSWrongWKSizeInUnwrapMKFromBlocks = 507,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSWrappedBlockNotFoundInUnwrapMKFromBlocks = 508,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSUnknownAlgInUnwrapMKFromBlocks = 509,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSEmptyEncKeyInUnwrapMKFromBlocks = 510,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSWrongIVSizeInUnwrapMKFromBlocks = 511,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSWrongTagSizeInUnwrapMKFromBlocks = 512,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSDecryptFailedInUnwrapMKFromBlocks = 513,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSInvalidKeySizeInFromEncContainer = 514,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSGetFromFBFailedInFromEncContainer = 515,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSFromPayloadFailedInFromEncContainer = 516,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSAesGcmFailedInFromEncPayload = 517,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSDeserializeFailedInFromEncPayload = 518,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSGetFSKeyFailedInFromEncPayload = 519,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSGetFromFBFailedInFromEncContainerWithWK = 520,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSUnwrapMKFailedInFromEncContainerWithWK = 521,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSFromPayloadFailedInFromEncContainerWithWK = 522,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSUnwrapMKFailedInUnwrapMK = 523,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSMainKeyEmptyInAddWrappedMainKey = 524,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSWrappingIDEmptyInAddWrappedMainKey = 525,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSWrappingWrongSizeInAddWrappedMainKey = 526,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSDuplicateWrappingInAddWrappedMainKey = 527,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSEncryptFailedInAddWrappedMainKey = 528,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSPayloadSerializeFailedInGetEncContainer = 529,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSPayloadEncryptFailedInGetEncContainer = 530,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSContainerSerializeFailedInGetEncContainer = 531,
   /* ./userdataauth.cc */
   kLocUserDataAuthNotConfiguredInStartAuthSession = 532,
@@ -1501,7 +1501,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNoVkInAddKeyset = 2728,
   /* ./auth_factor/auth_factor_manager.cc */
   kLocAuthFactorManagerEmptyReadInLoad = 2729,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSEmptySerializedInGetContainerFromFB = 2730,
   /* =Obsolete= */
   kLocAuthSessionDeleteOldBackupFailedInUpdateWithUSS = 2731,
@@ -1757,11 +1757,11 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionLabelLookupUnimplemented = 3523,
   /* ./userdataauth.cc */
   kLocUserDataMalformedRequestInAuthAuthFactor = 3524,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSDeserializeFailedInGeUserMetadata = 3525,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSGetUserMetadataFailedInFromEncContainer = 3526,
-  /* ./user_secret_stash.cc */
+  /* ./user_secret_stash/user_secret_stash.cc */
   kLocUSSGetUserMetadataFailedInFromEncContainerWrappingKey = 3527,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockFailedToGetStateFailedInPrepareForRemoval = 3528,
@@ -1785,7 +1785,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionDifferentLabelInUpdateAuthFactorMetadata = 3537,
   /* ./auth_session.cc */
   kLocAuthSessionDifferentTypeInUpdateAuthFactorMetadata = 3538,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionBadMetadataUpdateAuthFactorMetadata = 3539,
   /* ./auth_session.cc */
   kLocAuthSessionFailedSaveInUpdateAuthFactorMetadata = 3540,

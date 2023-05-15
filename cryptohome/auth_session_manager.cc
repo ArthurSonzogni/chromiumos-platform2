@@ -20,7 +20,7 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/user_secret_stash_storage.h"
+#include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/user_session_map.h"
 
 namespace cryptohome {

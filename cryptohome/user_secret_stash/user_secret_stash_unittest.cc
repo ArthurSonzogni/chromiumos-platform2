@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/user_secret_stash.h"
+#include "cryptohome/user_secret_stash/user_secret_stash.h"
 
 #include <base/test/scoped_chromeos_version_info.h>
 #include <brillo/secure_blob.h>

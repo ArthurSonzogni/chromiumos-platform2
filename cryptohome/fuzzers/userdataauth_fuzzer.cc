@@ -51,7 +51,7 @@
 #include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mock_mount_factory.h"
 #include "cryptohome/storage/mount_factory.h"
-#include "cryptohome/user_secret_stash.h"
+#include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/userdataauth.h"
 
 namespace cryptohome {
