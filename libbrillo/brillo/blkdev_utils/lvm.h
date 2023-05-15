@@ -41,7 +41,9 @@ class BRILLO_EXPORT LogicalVolumeManager {
                                               const std::string& thinpool_name);
 
   // Lists all logical volumes on the volume group.
-  virtual std::vector<LogicalVolume> ListLogicalVolumes(const VolumeGroup& vg);
+  // Empty pattern implies no filtering.
+  virtual std::vector<LogicalVolume> ListLogicalVolumes(
+      const VolumeGroup& vg, const std::string& pattern = "");
 
   // Returns a logical volume named |lv_name|, if it exists on volume group |vg|
   virtual std::optional<LogicalVolume> GetLogicalVolume(

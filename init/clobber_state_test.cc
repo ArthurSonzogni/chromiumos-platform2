@@ -1835,7 +1835,7 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
   EXPECT_CALL(*mock_lvm_ptr_, GetVolumeGroup(_)).WillOnce(Return(vg));
 
   std::vector<brillo::LogicalVolume> lvs;
-  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_, _)).WillOnce(Return(lvs));
 
   // Must always have unencrypted.
   EXPECT_FALSE(clobber_.PreserveLogicalVolumesWipe({}));
@@ -1856,7 +1856,7 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
   std::vector<brillo::LogicalVolume> lvs{
       brillo::LogicalVolume{"lv-name-1", "vg-name-1", mock_lvm_command_runner_},
   };
-  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_, _)).WillOnce(Return(lvs));
 
   EXPECT_CALL(*mock_lvm_command_runner_.get(),
               RunCommand(std::vector<std::string>{"lvremove", "--force",
@@ -1882,7 +1882,7 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
       .WillOnce(Return(lv));
 
   std::vector<brillo::LogicalVolume> lvs;
-  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_, _)).WillOnce(Return(lvs));
 
   EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
       {
@@ -1913,7 +1913,7 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
   std::vector<brillo::LogicalVolume> lvs{
       brillo::LogicalVolume{"lv-name-1", "vg-name-1", mock_lvm_command_runner_},
   };
-  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_, _)).WillOnce(Return(lvs));
 
   EXPECT_CALL(*mock_lvm_command_runner_.get(),
               RunCommand(std::vector<std::string>{"lvremove", "--force",
@@ -1955,7 +1955,7 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
       brillo::LogicalVolume{kUnencrypted, "vg-name-1",
                             mock_lvm_command_runner_},
   };
-  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_, _)).WillOnce(Return(lvs));
 
   EXPECT_CALL(*mock_lvm_command_runner_.get(),
               RunCommand(std::vector<std::string>{"lvremove", "--force",
@@ -1997,7 +1997,7 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
       brillo::LogicalVolume{kUnencrypted, "vg-name-1",
                             mock_lvm_command_runner_},
   };
-  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_, _)).WillOnce(Return(lvs));
 
   EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
       {
@@ -2029,7 +2029,7 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
       brillo::LogicalVolume{kUnencrypted, "vg-name-1",
                             mock_lvm_command_runner_},
   };
-  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_, _)).WillOnce(Return(lvs));
 
   EXPECT_TRUE(clobber_.PreserveLogicalVolumesWipe({
       {
@@ -2061,7 +2061,7 @@ TEST_F(LogicalVolumeStatefulPartitionMockedTest,
       brillo::LogicalVolume{"foobar", "vg-name-1", mock_lvm_command_runner_},
       brillo::LogicalVolume{kThinpool, "vg-name-1", mock_lvm_command_runner_},
   };
-  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_)).WillOnce(Return(lvs));
+  EXPECT_CALL(*mock_lvm_ptr_, ListLogicalVolumes(_, _)).WillOnce(Return(lvs));
 
   for (const auto& lv : lvs) {
     EXPECT_CALL(*mock_lvm_command_runner_.get(),

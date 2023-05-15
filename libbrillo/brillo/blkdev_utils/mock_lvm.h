@@ -62,7 +62,7 @@ class MockLogicalVolumeManager : public LogicalVolumeManager {
               (override));
   MOCK_METHOD(std::vector<LogicalVolume>,
               ListLogicalVolumes,
-              (const VolumeGroup&),
+              (const VolumeGroup&, const std::string&),
               (override));
 
   MOCK_METHOD(std::optional<PhysicalVolume>,

@@ -24,6 +24,7 @@
 #include <optional>
 
 #include <base/logging.h>
+#include <base/strings/pattern.h>
 
 namespace brillo {
 
@@ -141,7 +142,7 @@ std::optional<LogicalVolume> LogicalVolumeManager::GetLogicalVolume(
 }
 
 std::vector<LogicalVolume> LogicalVolumeManager::ListLogicalVolumes(
-    const VolumeGroup& vg) {
+    const VolumeGroup& vg, const std::string& pattern) {
   std::string output;
   std::string vg_name = vg.GetName();
   std::vector<LogicalVolume> lv_vector;
@@ -168,6 +169,12 @@ std::vector<LogicalVolume> LogicalVolumeManager::ListLogicalVolumes(
     const std::string* output_lv_name = lv_dictionary.FindStringKey("lv_name");
     if (!output_lv_name) {
       LOG(ERROR) << "Failed to get logical volume name";
+      continue;
+    }
+
+    if (!pattern.empty() && !base::MatchPattern(*output_lv_name, pattern)) {
+      LOG(INFO) << "Logical volume=" << *output_lv_name
+                << " does not match pattern=" << pattern;
       continue;
     }
 

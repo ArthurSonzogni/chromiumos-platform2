@@ -176,6 +176,41 @@ TEST(ListLogicalVolumesTest, ValidReportTest) {
   }
 }
 
+TEST(ListLogicalVolumesTest, PatternMatchingTest) {
+  auto lvm = std::make_shared<MockLvmCommandRunner>();
+  LogicalVolumeManager lvmanager(lvm);
+  VolumeGroup vg("bar", lvm);
+  std::string report =
+      base::StringPrintf(kSampleMultiReport, "lv", "lv_name", "foo0", "vg_name",
+                         "bar", "lv_name", "foo1", "vg_name", "bar");
+
+  EXPECT_CALL(*lvm, RunProcess(_, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(report), Return(true)));
+
+  {
+    auto lv_vector = lvmanager.ListLogicalVolumes(vg, /*pattern=*/"");
+    ASSERT_EQ(lv_vector.size(), 2);
+    EXPECT_EQ("bar/foo0", lv_vector[0].GetName());
+    EXPECT_EQ("bar/foo1", lv_vector[1].GetName());
+  }
+  {
+    auto lv_vector = lvmanager.ListLogicalVolumes(vg, /*pattern=*/"foo*");
+    ASSERT_EQ(lv_vector.size(), 2);
+    EXPECT_EQ("bar/foo0", lv_vector[0].GetName());
+    EXPECT_EQ("bar/foo1", lv_vector[1].GetName());
+  }
+  {
+    auto lv_vector = lvmanager.ListLogicalVolumes(vg, /*pattern=*/"foo0");
+    ASSERT_EQ(lv_vector.size(), 1);
+    EXPECT_EQ("bar/foo0", lv_vector[0].GetName());
+  }
+  {
+    auto lv_vector = lvmanager.ListLogicalVolumes(vg, /*pattern=*/"*1");
+    ASSERT_EQ(lv_vector.size(), 1);
+    EXPECT_EQ("bar/foo1", lv_vector[0].GetName());
+  }
+}
+
 TEST(RemoveLogicalVolumeTest, NonexistingLvTest) {
   auto lvm = std::make_shared<MockLvmCommandRunner>();
   LogicalVolumeManager lvmanager(lvm);
