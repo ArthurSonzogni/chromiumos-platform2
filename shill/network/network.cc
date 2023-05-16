@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -856,18 +857,39 @@ void Network::OnNeighborReachabilityEvent(
   }
 }
 
+// TODO(b/269401899): these accessors adapt to the legacy portal detection
+// behavior that runs on IPv4 when an IPv4 address is available, and IPv6 when
+// IPv4 address is not available but both IPv6 address and IPv6 DNS are
+// available. Should be removed when portal detection migrate to the ideal
+// behavior of running on both IPv4 and IPv6 separately.
 std::vector<std::string> Network::dns_servers() const {
-  if (!connection_) {
-    return {};
+  if (ipconfig() && !ipconfig()->properties().address.empty()) {
+    return ipconfig()->properties().dns_servers;
   }
-  return connection_->dns_servers();
+  if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
+    return ip6config()->properties().dns_servers;
+  }
+  return {};
 }
 
-const IPAddress* Network::local() const {
-  if (!connection_) {
-    return nullptr;
+std::optional<IPAddress> Network::local() const {
+  if (ipconfig() && !ipconfig()->properties().address.empty()) {
+    return IPAddress::CreateFromString((ipconfig()->properties().address));
   }
-  return &connection_->local();
+  if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
+    return IPAddress::CreateFromString((ip6config()->properties().address));
+  }
+  return std::nullopt;
+}
+
+std::optional<IPAddress> Network::gateway() const {
+  if (ipconfig() && !ipconfig()->properties().address.empty()) {
+    return IPAddress::CreateFromString(ipconfig()->properties().gateway);
+  }
+  if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
+    return IPAddress::CreateFromString(ip6config()->properties().gateway);
+  }
+  return std::nullopt;
 }
 
 bool Network::StartPortalDetection(bool reset) {
@@ -884,8 +906,8 @@ bool Network::StartPortalDetection(bool reset) {
 
   DCHECK(connection_ != nullptr);
   portal_detector_ = CreatePortalDetector();
-  if (!portal_detector_->Start(interface_name_, connection_->local(),
-                               connection_->dns_servers(), logging_tag_)) {
+  if (!portal_detector_->Start(interface_name_, *local(), dns_servers(),
+                               logging_tag_)) {
     LOG(ERROR) << logging_tag_ << ": Portal detection failed to start.";
     portal_detector_.reset();
     return false;
@@ -906,8 +928,8 @@ bool Network::RestartPortalDetection() {
   }
 
   DCHECK(connection_ != nullptr);
-  if (!portal_detector_->Restart(interface_name_, connection_->local(),
-                                 connection_->dns_servers(), logging_tag_)) {
+  if (!portal_detector_->Restart(interface_name_, *local(), dns_servers(),
+                                 logging_tag_)) {
     LOG(ERROR) << logging_tag_ << ": Portal detection failed to restart.";
     StopPortalDetection();
     return false;
@@ -992,7 +1014,8 @@ void Network::StartConnectionDiagnostics() {
     return;
   }
   DCHECK(connection_ != nullptr);
-  connection_diagnostics_ = CreateConnectionDiagnostics(*connection_);
+  connection_diagnostics_ =
+      CreateConnectionDiagnostics(*local(), *gateway(), dns_servers());
   if (!connection_diagnostics_->Start(probing_configuration_.portal_http_url)) {
     connection_diagnostics_.reset();
     LOG(WARNING) << logging_tag_ << ": Failed to start connection diagnostics";
@@ -1007,11 +1030,12 @@ void Network::StopConnectionDiagnostics() {
 }
 
 std::unique_ptr<ConnectionDiagnostics> Network::CreateConnectionDiagnostics(
-    const Connection& connection) {
+    const IPAddress& ip_address,
+    const IPAddress& gateway,
+    const std::vector<std::string>& dns_list) {
   return std::make_unique<ConnectionDiagnostics>(
-      interface_name(), interface_index(), connection.local(),
-      connection.gateway(), connection.dns_servers(), dispatcher_, metrics_,
-      base::DoNothing());
+      interface_name(), interface_index(), ip_address, gateway, dns_list,
+      dispatcher_, metrics_, base::DoNothing());
 }
 
 bool Network::IsConnectedViaTether() const {

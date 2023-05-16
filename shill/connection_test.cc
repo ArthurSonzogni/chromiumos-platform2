@@ -398,7 +398,6 @@ TEST_F(ConnectionTest, InitState) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);
 
-  EXPECT_EQ(device->interface_index(), connection_->interface_index());
   EXPECT_EQ(device->link_name(), connection_->interface_name());
   EXPECT_FALSE(connection_->IsDefault());
 }
@@ -424,8 +423,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
 
   IPAddress test_local_address(local_address_);
   test_local_address.set_prefix(kPrefix0);
-  EXPECT_TRUE(test_local_address.Equals(connection_->local()));
-  EXPECT_TRUE(gateway_ipv4_address_.Equals(connection_->gateway()));
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Set default priority and use DNS.
@@ -473,8 +470,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIncludedRoutes) {
 
   IPAddress test_local_address(local_address_);
   test_local_address.set_prefix(kPrefix0);
-  EXPECT_TRUE(test_local_address.Equals(connection_->local()));
-  EXPECT_TRUE(gateway_ipv4_address_.Equals(connection_->gateway()));
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Set default priority and use DNS.
@@ -522,8 +517,6 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
 
   IPAddress test_local_address(local_address_);
   test_local_address.set_prefix(kPrefix0);
-  EXPECT_TRUE(test_local_address.Equals(connection_->local()));
-  EXPECT_TRUE(gateway_ipv4_address_.Equals(connection_->gateway()));
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Set default priority and use DNS.
@@ -574,8 +567,6 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIncludedRoutes) {
 
   IPAddress test_local_address(local_address_);
   test_local_address.set_prefix(kPrefix0);
-  EXPECT_TRUE(test_local_address.Equals(connection_->local()));
-  EXPECT_TRUE(gateway_ipv4_address_.Equals(connection_->gateway()));
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Set default priority and use DNS.
@@ -655,8 +646,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
 
   IPAddress test_local_address(local_address_);
   test_local_address.set_prefix(kPrefix0);
-  EXPECT_TRUE(test_local_address.Equals(connection_->local()));
-  EXPECT_TRUE(gateway_ipv4_address_.Equals(connection_->gateway()));
   EXPECT_FALSE(connection_->IsIPv6());
 
   AddNonPhysicalRoutingPolicyExpectations(device, Connection::kDefaultPriority);
@@ -694,7 +683,6 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIPv6) {
   connection_->UpdateFromIPConfig(ipv6_properties_);
 
   IPAddress test_local_address(local_ipv6_address_);
-  EXPECT_TRUE(test_local_address.Equals(connection_->local()));
   EXPECT_TRUE(connection_->IsIPv6());
 
   // Destruct cleanup.
@@ -718,7 +706,6 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIPv6) {
   connection_->UpdateFromIPConfig(ipv6_properties_);
 
   IPAddress test_local_address(local_ipv6_address_);
-  EXPECT_TRUE(test_local_address.Equals(connection_->local()));
   EXPECT_TRUE(connection_->IsIPv6());
 
   // Destruct cleanup
@@ -975,8 +962,6 @@ TEST_F(ConnectionTest, PointToPointNetwork) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(device->interface_index(),
                                              IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(properties);
-
-  EXPECT_TRUE(connection_->gateway().IsDefault());
 
   // Destruct cleanup.
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _));

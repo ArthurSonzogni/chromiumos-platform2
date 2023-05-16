@@ -84,20 +84,15 @@ class Connection {
   // Update and apply the new DNS servers setting to this connection.
   virtual void UpdateDNSServers(const std::vector<std::string>& dns_servers);
 
-  virtual const std::string& interface_name() const { return interface_name_; }
-  virtual int interface_index() const { return interface_index_; }
-  const std::vector<std::string>& dns_servers() const { return dns_servers_; }
-
   // Flush and (re)create routing policy rules for the connection.
   // Called by Network when it detects address changes (that were not applied
   // through Connection) that need to be reflected in the routing policy rules.
   void UpdateRoutingPolicy(const std::vector<IPAddress>& all_addresses);
 
-  const IPAddress& local() const { return local_; }
-  const IPAddress& gateway() const { return gateway_; }
-
   // Return true if this is an IPv6 connection.
   virtual bool IsIPv6();
+
+  virtual const std::string& interface_name() const { return interface_name_; }
 
  private:
   friend class ConnectionTest;

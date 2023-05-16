@@ -3092,7 +3092,7 @@ void Manager::StartConnectivityTest(const DeviceRefPtr& device) {
                   .insert(std::make_pair(device->link_name(),
                                          std::move(portal_detector)))
                   .first;
-  const IPAddress* local_addr = device->network()->local();
+  auto local_addr = device->network()->local();
   if (!local_addr) {
     LOG(DFATAL) << device->LoggingTag() << ": Does not have a valid address";
     return;

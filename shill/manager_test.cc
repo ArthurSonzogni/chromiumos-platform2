@@ -475,7 +475,7 @@ class ManagerTest : public PropertyStoreTest {
         mock_device->technology());
     auto* mock_network_ptr = mock_network.get();
     EXPECT_CALL(*mock_network, IsConnected()).WillRepeatedly(Return(true));
-    EXPECT_CALL(*mock_network, local()).WillRepeatedly(Return(&ip_addr));
+    EXPECT_CALL(*mock_network, local()).WillRepeatedly(Return(ip_addr));
     EXPECT_CALL(*mock_network, dns_servers())
         .WillRepeatedly(Return(kDNSServers));
     mock_device->set_network_for_testing(std::move(mock_network));

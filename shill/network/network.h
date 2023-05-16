@@ -285,8 +285,12 @@ class Network {
 
   // Properties of the current IP config. Returns IPv4 properties if the Network
   // is dual-stack, and default (empty) values if the Network is not connected.
+  // TODO(b/269401899): These getters should be deprecated. Instead, callers
+  // should use getters like GetAddresses() to get properties of all IP families
+  // at the same time.
   mockable std::vector<std::string> dns_servers() const;
-  mockable const IPAddress* local() const;
+  mockable std::optional<IPAddress> local() const;
+  std::optional<IPAddress> gateway() const;
 
   // TODO(b/232177767): This group of getters and setters are only exposed for
   // the purpose of refactor. New code outside Device should not use these.
@@ -377,7 +381,9 @@ class Network {
   // this function only for unit tests, so that we can inject a mock
   // ConnectionDiagnostics object easily.
   mockable std::unique_ptr<ConnectionDiagnostics> CreateConnectionDiagnostics(
-      const Connection& connection);
+      const IPAddress& ip_address,
+      const IPAddress& gateway,
+      const std::vector<std::string>& dns_list);
 
   // Shuts down and clears all the running state of this network. If
   // |trigger_callback| is true and the Network is started, OnNetworkStopped()
