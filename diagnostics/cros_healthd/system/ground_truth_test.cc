@@ -208,5 +208,32 @@ TEST_F(GroundTruthTest, TouchpadEvent) {
   }
 }
 
+TEST_F(GroundTruthTest, KeyboardDiagnosticEvent) {
+  std::vector<std::pair</*form-factor=*/std::string, /*supported=*/bool>>
+      test_combinations = {
+          {cros_config_value::kClamshell, true},
+          {cros_config_value::kConvertible, true},
+          {cros_config_value::kDetachable, true},
+          {cros_config_value::kChromebase, false},
+          {cros_config_value::kChromebox, false},
+          {cros_config_value::kChromebit, false},
+          {cros_config_value::kChromeslate, false},
+          {"Others", false},
+      };
+
+  // Test not set the cros_config first to simulate file not found.
+  ExpectEventUnsupported(mojom::EventCategoryEnum::kKeyboardDiagnostic);
+
+  for (const auto& [form_factor, supported] : test_combinations) {
+    SetCrosConfig(cros_config_path::kHardwareProperties,
+                  cros_config_property::kFormFactor, form_factor);
+    if (supported) {
+      ExpectEventSupported(mojom::EventCategoryEnum::kKeyboardDiagnostic);
+    } else {
+      ExpectEventUnsupported(mojom::EventCategoryEnum::kKeyboardDiagnostic);
+    }
+  }
+}
+
 }  // namespace
 }  // namespace diagnostics

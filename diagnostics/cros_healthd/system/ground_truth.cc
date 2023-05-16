@@ -59,6 +59,7 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
     case mojom::EventCategoryEnum::kAudio:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     // Need to be determined by boxster/cros_config.
+    case mojom::EventCategoryEnum::kKeyboardDiagnostic:
     case mojom::EventCategoryEnum::kTouchpad:
     case mojom::EventCategoryEnum::kLid: {
       std::vector<std::string> supported_form_factors = {
@@ -80,8 +81,6 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
     case mojom::EventCategoryEnum::kAudioJack:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     case mojom::EventCategoryEnum::kSdCard:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-    case mojom::EventCategoryEnum::kKeyboardDiagnostic:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     case mojom::EventCategoryEnum::kHdmi:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
