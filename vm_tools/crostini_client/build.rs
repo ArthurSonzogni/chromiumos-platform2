@@ -146,11 +146,17 @@ const APIS: &[SystemApiDbus] = &[
 const PROTOS: &[SystemApiDbus] = &[SystemApiDbus::new("dbus", "arc/arc.proto")];
 
 fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
     let system_api_root = match env::var("SYSROOT") {
         Ok(path) => PathBuf::from(path).join("usr/include/chromeos"),
         // Make this work when typing "cargo build" in platform2/vm_tools/crostini_client
         Err(_) => PathBuf::from("../../system_api"),
     };
+    let system_api_dbus_source_root = system_api_root.join("dbus");
+    println!(
+        "cargo:rerun-if-changed={}",
+        system_api_dbus_source_root.display()
+    );
 
     let mut input_paths = Vec::new();
     let mut generator = protobuf_codegen::Codegen::new();
