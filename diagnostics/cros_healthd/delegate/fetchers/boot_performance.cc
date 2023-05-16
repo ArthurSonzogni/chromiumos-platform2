@@ -12,6 +12,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <metrics/bootstat.h>
 #include <re2/re2.h>
@@ -136,6 +137,14 @@ mojom::ProbeErrorPtr PopulateBootUpInfo(mojom::BootPerformanceInfoPtr& info) {
     return error;
   }
   info->boot_up_seconds += kernel_time;
+  if (info->boot_up_seconds > 3600) {
+    // This is an impossible case, there must be something wrong when parsing.
+    return CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        base::StringPrintf("boot_up_seconds is too large. firmware_time: %lf, "
+                           "kernel_time: %lf",
+                           firmware_time, kernel_time));
+  }
 
   double proc_uptime;
   error = ParseProcUptime(proc_uptime);
