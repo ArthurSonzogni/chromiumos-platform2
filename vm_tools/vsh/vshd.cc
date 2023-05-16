@@ -51,10 +51,51 @@ using vm_tools::vsh::RecvMessage;
 using vm_tools::vsh::SendMessage;
 using vm_tools::vsh::Shutdown;
 using vm_tools::vsh::VshForwarder;
+using vm_tools::vsh::WriteKernelLogToFd;
+
+namespace {
+
+// Path to logging file.
+constexpr char kDevKmsg[] = "/dev/kmsg";
+
+// Prefix inserted before every log message.
+std::string_view kLogPrefix = "vshd: ";
+
+// File descriptor that points to /dev/kmsg. Needs to be a global variable
+// because logging::LogMessageHandlerFunction is just a function pointer so we
+// can't bind any variables to it via base::Bind*.
+base::ScopedFD g_kmsg_fd;
+
+bool LogToKmsg(logging::LogSeverity severity,
+               const char* file,
+               int line,
+               size_t message_start,
+               const string& message) {
+  DCHECK(g_kmsg_fd.is_valid());
+
+  // Even if the write wasn't successful, we can't log anything here because
+  // this _is_ the logging function. Just return whether the write succeeded.
+  return WriteKernelLogToFd(g_kmsg_fd.get(), severity, kLogPrefix, message,
+                            message_start);
+}
+
+}  // namespace
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+
+  // Save vshd logs to kernel's printk buffer so that we can see what happened
+  // through pstore even when vsh doesn't work.
+  int kmsg_fd = open(kDevKmsg, O_WRONLY | O_CLOEXEC);
+  if (kmsg_fd != -1) {
+    g_kmsg_fd.reset(kmsg_fd);
+    logging::SetLogMessageHandler(LogToKmsg);
+  } else {
+    PLOG(WARNING) << "Failed to open /dev/kmsg";
+  }
+
+  LOG(INFO) << "vshd started";
 
   DEFINE_uint64(forward_to_host_port, 0, "Port to forward to on the host");
   DEFINE_bool(inherit_env, false, "Inherit the current environment variables");

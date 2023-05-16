@@ -11,10 +11,10 @@
 
 #include <arpa/inet.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
-#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/message_loops/message_loop.h>
 
@@ -104,6 +104,60 @@ bool RecvMessage(int sockfd, MessageLite* message) {
 void Shutdown() {
   brillo::MessageLoop::current()->PostTask(FROM_HERE,
                                            base::BindOnce(&ShutdownTask));
+}
+
+bool WriteKernelLogToFd(int fd,
+                        logging::LogSeverity severity,
+                        std::string_view prefix,
+                        const std::string& message,
+                        size_t message_start) {
+  std::string_view priority;
+  switch (severity) {
+    case logging::LOGGING_VERBOSE:
+      priority = "<7>";
+      break;
+    case logging::LOGGING_INFO:
+      priority = "<6>";
+      break;
+    case logging::LOGGING_WARNING:
+      priority = "<4>";
+      break;
+    case logging::LOGGING_ERROR:
+      priority = "<3>";
+      break;
+    case logging::LOGGING_FATAL:
+      priority = "<2>";
+      break;
+    default:
+      priority = "<5>";
+      break;
+  }
+
+  const struct iovec iovs[] = {
+      {
+          .iov_base = static_cast<void*>(const_cast<char*>(priority.data())),
+          .iov_len = priority.length(),
+      },
+      {
+          .iov_base = static_cast<void*>(const_cast<char*>(prefix.data())),
+          .iov_len = prefix.length(),
+      },
+      {
+          .iov_base = static_cast<void*>(
+              const_cast<char*>(message.c_str() + message_start)),
+          .iov_len = message.length() - message_start,
+      },
+  };
+
+  ssize_t count = 0;
+  for (const struct iovec& iov : iovs) {
+    count += iov.iov_len;
+  }
+
+  ssize_t ret =
+      HANDLE_EINTR(writev(fd, iovs, sizeof(iovs) / sizeof(struct iovec)));
+
+  return ret == count;
 }
 
 }  // namespace vsh

@@ -55,5 +55,24 @@ TEST(VshTest, SendAndRecvHostMessage) {
   EXPECT_EQ(received_data.data(), msg);
 }
 
+TEST(VshTest, WriteKernelLog) {
+  std::string msg("log message");
+  int pipe_fds[2];
+
+  ASSERT_TRUE(base::CreateLocalNonBlockingPipe(pipe_fds));
+  base::ScopedFD fd_read(pipe_fds[0]);
+  base::ScopedFD fd_write(pipe_fds[1]);
+
+  ASSERT_TRUE(WriteKernelLogToFd(fd_write.get(), logging::LOGGING_INFO,
+                                 "utils_test: ", msg, 0));
+
+  char buf[1024];
+  ssize_t read_size = read(fd_read.get(), buf, sizeof(buf));
+  ASSERT_GT(read_size, 0);
+  ASSERT_LT(read_size, 1024);
+  buf[read_size] = '\0';
+  EXPECT_STREQ(buf, "<6>utils_test: log message");
+}
+
 }  // namespace vsh
 }  // namespace vm_tools

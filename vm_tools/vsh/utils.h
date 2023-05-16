@@ -8,11 +8,14 @@
 // Generic utility functions that need to be shared between the vsh client
 // and server.
 
+#include <string>
+
 #include <stddef.h>
 #include <stdint.h>
 #include <unistd.h>
 
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 
 #include <google/protobuf/message_lite.h>
 
@@ -43,6 +46,13 @@ bool RecvMessage(int sockfd, google::protobuf::MessageLite* message);
 
 // Posts a task to the main message loop to shut down.
 void Shutdown();
+
+// Format a log message for dmesg and write it to the given fd.
+bool WriteKernelLogToFd(int fd,
+                        logging::LogSeverity severity,
+                        std::string_view prefix,
+                        const std::string& message,
+                        size_t message_start);
 
 }  // namespace vsh
 }  // namespace vm_tools
