@@ -213,25 +213,27 @@ class MountHelper : public MountHelperInterface {
   int MigrateDirectory(const base::FilePath& dst,
                        const base::FilePath& src) const;
 
-  // Bind-mounts
+  // Calls InternalMountDaemonStoreDirectories to bind-mount
   //   /home/.shadow/$hash/mount/root/$daemon (*)
   // to
   //   /run/daemon-store/$daemon/$hash
-  // and
+  // for a hardcoded list of $daemon directories.
+  bool MountDaemonStoreDirectories(
+      const FilePath& root_home, const ObfuscatedUsername& obfuscated_username);
+  // Calls InternalMountDaemonStoreDirectories to bind-mount
   //   /home/.shadow/$hash/mount/root/.cache/$daemon (*)
   // to
   //   /run/daemon-store-cache/$daemon/$hash
   // for a hardcoded list of $daemon directories.
-  //
+  bool MountDaemonStoreCacheDirectories(
+      const FilePath& root_home, const ObfuscatedUsername& obfuscated_username);
   // This can be used to make the Cryptohome mount propagate into the daemon's
   // mount namespace. See
   // https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md#securely-mounting-cryptohome-daemon-store-folders
   // for details.
   //
   // (*) Path for a regular mount. The path is different for an ephemeral mount.
-  bool MountDaemonStoreDirectories(
-      const FilePath& root_home, const ObfuscatedUsername& obfuscated_username);
-  bool MountDaemonStoreDirectories(
+  bool InternalMountDaemonStoreDirectories(
       const FilePath& root_home,
       const ObfuscatedUsername& obfuscated_username,
       const char* etc_daemon_store_base_dir,

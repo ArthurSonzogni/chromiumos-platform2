@@ -25,6 +25,7 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_constants.h"
 
@@ -96,7 +97,10 @@ std::vector<DirectoryACL> GetCacheSubdirectories(const FilePath& dir) {
       {dir.Append(kUserHomeSuffix)
            .Append(kGCacheDir)
            .Append(kGCacheVersion2Dir),
-       kAccessMode | kGroupWriteAccess, kChronosUid, kChronosAccessGid}};
+       kAccessMode | kGroupWriteAccess, kChronosUid, kChronosAccessGid},
+      {dir.Append(kRootHomeSuffix).Append(kDaemonStoreCacheDir),
+       kAccessMode | kGroupWriteAccess, kRootUid, kDaemonStoreGid},
+  };
 }
 
 std::vector<DirectoryACL> GetCommonSubdirectories(const FilePath& dir,
@@ -695,17 +699,21 @@ bool MountHelper::BindAndPush(const FilePath& src,
   return true;
 }
 
-bool MountHelper::MountDaemonStoreDirectories(
+bool MountHelper::MountDaemonStoreCacheDirectories(
     const FilePath& root_home, const ObfuscatedUsername& obfuscated_username) {
-  return (MountDaemonStoreDirectories(root_home, obfuscated_username,
-                                      kEtcDaemonStoreBaseDir,
-                                      kRunDaemonStoreBaseDir) &&
-          MountDaemonStoreDirectories(
-              root_home.Append(kDaemonStoreCacheDir), obfuscated_username,
-              kEtcDaemonStoreBaseDir, kRunDaemonStoreCacheBaseDir));
+  return InternalMountDaemonStoreDirectories(
+      root_home.Append(kDaemonStoreCacheDir), obfuscated_username,
+      kEtcDaemonStoreBaseDir, kRunDaemonStoreCacheBaseDir);
 }
 
 bool MountHelper::MountDaemonStoreDirectories(
+    const FilePath& root_home, const ObfuscatedUsername& obfuscated_username) {
+  return InternalMountDaemonStoreDirectories(root_home, obfuscated_username,
+                                             kEtcDaemonStoreBaseDir,
+                                             kRunDaemonStoreBaseDir);
+}
+
+bool MountHelper::InternalMountDaemonStoreDirectories(
     const FilePath& root_home,
     const ObfuscatedUsername& obfuscated_username,
     const char* etc_daemon_store_base_dir,
@@ -849,7 +857,9 @@ bool MountHelper::MountCacheSubdirectories(
 
   const FilePath tracked_subdir_paths[] = {
       FilePath(kUserHomeSuffix).Append(kCacheDir),
-      FilePath(kUserHomeSuffix).Append(kGCacheDir)};
+      FilePath(kUserHomeSuffix).Append(kGCacheDir),
+      FilePath(kRootHomeSuffix).Append(kDaemonStoreCacheDir),
+  };
 
   for (const auto& tracked_dir : tracked_subdir_paths) {
     FilePath src_dir = cache_directory.Append(tracked_dir);
@@ -961,6 +971,9 @@ StorageStatus MountHelper::PerformMount(MountType mount_type,
         MOUNT_ERROR_FATAL);
   }
 
+  const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
+  const FilePath root_home = GetMountedRootHomePath(obfuscated_username);
+
   switch (mount_type) {
     case MountType::ECRYPTFS:
       if (!SetUpEcryptfsMount(obfuscated_username, fek_signature,
@@ -1002,6 +1015,10 @@ StorageStatus MountHelper::PerformMount(MountType mount_type,
             FROM_HERE, "Can't setup dmcrypt cache to migrate from ecryptfs",
             MOUNT_ERROR_MOUNT_DMCRYPT_FAILED);
       }
+      if (!MountDaemonStoreCacheDirectories(root_home, obfuscated_username)) {
+        return StorageStatus::Make(FROM_HERE, "Can't mount daemon-store-cache",
+                                   MOUNT_ERROR_MOUNT_DMCRYPT_FAILED);
+      }
       return StorageStatus::Ok();
     case MountType::DIR_CRYPTO:
       SetUpDircryptoMount(obfuscated_username);
@@ -1023,6 +1040,10 @@ StorageStatus MountHelper::PerformMount(MountType mount_type,
             FROM_HERE, "Can't setup dmcrypt cache to migrate from fscrypt",
             MOUNT_ERROR_MOUNT_DMCRYPT_FAILED);
       }
+      if (!MountDaemonStoreCacheDirectories(root_home, obfuscated_username)) {
+        return StorageStatus::Make(FROM_HERE, "Can't mount daemon-store-cache",
+                                   MOUNT_ERROR_MOUNT_DMCRYPT_FAILED);
+      }
       return StorageStatus::Ok();
     case MountType::DMCRYPT:
       if (!SetUpDmcryptMount(obfuscated_username,
@@ -1035,9 +1056,6 @@ StorageStatus MountHelper::PerformMount(MountType mount_type,
     case MountType::NONE:
       NOTREACHED();
   }
-
-  const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
-  const FilePath root_home = GetMountedRootHomePath(obfuscated_username);
 
   if (!IsFirstMountComplete(obfuscated_username)) {
     CopySkeleton(user_home);
@@ -1061,6 +1079,12 @@ StorageStatus MountHelper::PerformMount(MountType mount_type,
         FROM_HERE,
         "Failed to mount tracked subdirectories from the cache volume",
         MOUNT_ERROR_MOUNT_DMCRYPT_FAILED);
+  }
+
+  // Mount daemon store cache directories from .cache into  /run/daemon-store.
+  if (!MountDaemonStoreCacheDirectories(root_home, obfuscated_username)) {
+    return StorageStatus::Make(FROM_HERE, "Can't mount daemon-store-cache",
+                               MOUNT_ERROR_MOUNT_DMCRYPT_FAILED);
   }
 
   return StorageStatus::Ok();
@@ -1120,6 +1144,12 @@ StorageStatus MountHelper::PerformEphemeralMount(
     return StorageStatus::Make(FROM_HERE,
                                "Can't mount home and daemonstore for ephemeral",
                                MOUNT_ERROR_FATAL);
+  }
+
+  if (!MountDaemonStoreCacheDirectories(root_home, obfuscated_username)) {
+    return StorageStatus::Make(
+        FROM_HERE, "Can't mount home and daemon-store-cache for ephemeral",
+        MOUNT_ERROR_FATAL);
   }
 
   return StorageStatus::Ok();

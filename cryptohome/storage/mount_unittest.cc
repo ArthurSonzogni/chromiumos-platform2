@@ -95,6 +95,7 @@ constexpr char kEtcDaemonStore[] = "/etc/daemon-store";
 constexpr char kRun[] = "/run";
 constexpr char kRunCryptohome[] = "/run/cryptohome";
 constexpr char kRunDaemonStore[] = "/run/daemon-store";
+constexpr char kRunDaemonStoreCache[] = "/run/daemon-store-cache";
 
 constexpr char kHome[] = "/home";
 constexpr char kHomeChronos[] = "/home/chronos";
@@ -146,6 +147,8 @@ void PrepareDirectoryStructure(Platform* platform) {
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
       base::FilePath(kRunDaemonStore), 0755, kRootUid, kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
+      base::FilePath(kRunDaemonStoreCache), 0755, kRootUid, kRootGid));
+  ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
       base::FilePath(kHome), 0755, kRootUid, kRootGid));
   ASSERT_TRUE(platform->SafeCreateDirAndSetOwnershipAndPermissions(
       base::FilePath(kHomeChronos), 0755, kChronosUid, kChronosGid));
@@ -186,7 +189,11 @@ void PrepareDirectoryStructure(Platform* platform) {
   ASSERT_TRUE(platform->CreateDirectory(
       base::FilePath(kRunDaemonStore).Append(kSomeDaemon)));
   ASSERT_TRUE(platform->CreateDirectory(
+      base::FilePath(kRunDaemonStoreCache).Append(kSomeDaemon)));
+  ASSERT_TRUE(platform->CreateDirectory(
       base::FilePath(kRunDaemonStore).Append(kAnotherDaemon)));
+  ASSERT_TRUE(platform->CreateDirectory(
+      base::FilePath(kRunDaemonStoreCache).Append(kAnotherDaemon)));
 }
 
 void CheckExistanceAndPermissions(Platform* platform,
@@ -235,8 +242,24 @@ void CheckRootAndDaemonStoreMounts(Platform* platform,
                   .Append(*obfuscated_username),
           },
           {
+              vault_mount_point.Append(kRootHomeSuffix)
+                  .Append(kDaemonStoreCacheDir)
+                  .Append(kSomeDaemon),
+              base::FilePath(kRunDaemonStoreCache)
+                  .Append(kSomeDaemon)
+                  .Append(*obfuscated_username),
+          },
+          {
               vault_mount_point.Append(kRootHomeSuffix).Append(kAnotherDaemon),
               base::FilePath(kRunDaemonStore)
+                  .Append(kAnotherDaemon)
+                  .Append(*obfuscated_username),
+          },
+          {
+              vault_mount_point.Append(kRootHomeSuffix)
+                  .Append(kDaemonStoreCacheDir)
+                  .Append(kAnotherDaemon),
+              base::FilePath(kRunDaemonStoreCache)
                   .Append(kAnotherDaemon)
                   .Append(*obfuscated_username),
           },
@@ -271,7 +294,15 @@ void CheckRootAndDaemonStoreMounts(Platform* platform,
                                               .Append(kSomeDaemon)
                                               .Append(*obfuscated_username)),
                 expect_present);
+    ASSERT_THAT(platform->DirectoryExists(base::FilePath(kRunDaemonStoreCache)
+                                              .Append(kSomeDaemon)
+                                              .Append(*obfuscated_username)),
+                expect_present);
     ASSERT_THAT(platform->DirectoryExists(base::FilePath(kRunDaemonStore)
+                                              .Append(kAnotherDaemon)
+                                              .Append(*obfuscated_username)),
+                expect_present);
+    ASSERT_THAT(platform->DirectoryExists(base::FilePath(kRunDaemonStoreCache)
                                               .Append(kAnotherDaemon)
                                               .Append(*obfuscated_username)),
                 expect_present);
@@ -613,6 +644,12 @@ class PersistentSystemTest : public ::testing::Test {
              GetUserMountDirectory(obfuscated_username)
                  .Append(kUserHomeSuffix)
                  .Append(kGCacheDir)},
+            {GetDmcryptUserCacheDirectory(obfuscated_username)
+                 .Append(kRootHomeSuffix)
+                 .Append(kDaemonStoreCacheDir),
+             GetUserMountDirectory(obfuscated_username)
+                 .Append(kRootHomeSuffix)
+                 .Append(kDaemonStoreCacheDir)},
         };
     std::multimap<const base::FilePath, const base::FilePath> volume_mount_map;
     std::multimap<const base::FilePath, const base::FilePath> cache_mount_map;
