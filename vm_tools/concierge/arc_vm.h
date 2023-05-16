@@ -243,7 +243,7 @@ class ArcVm final : public VmBaseImpl {
       lmkd_vsock_read_watcher_;
 
   // Ensure calls are made on the right thread.
-  base::SequenceChecker sequence_checker_;
+  SEQUENCE_CHECKER(sequence_checker_);
 
   // Timer used to run vmm-swap policy. All operations for vmm-swap policy runs
   // on the main thread.

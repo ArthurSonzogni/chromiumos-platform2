@@ -508,7 +508,7 @@ class Service final : public org::chromium::VmConciergeInterface {
   base::OnceClosure quit_closure_;
 
   // Ensure calls are made on the right thread.
-  base::SequenceChecker sequence_checker_;
+  SEQUENCE_CHECKER(sequence_checker_);
 
   // Signal must be connected before we can call SetTremplinStarted in a VM.
   bool is_tremplin_started_signal_connected_ = false;
