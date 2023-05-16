@@ -41,4 +41,25 @@ DocumentSource CreateDocumentSource(const std::string& name,
   return source;
 }
 
+libusb_device_descriptor MakeMinimalDeviceDescriptor() {
+  libusb_device_descriptor descriptor;
+  memset(&descriptor, 0, sizeof(descriptor));
+  descriptor.bLength = sizeof(descriptor);
+  descriptor.bDescriptorType = LIBUSB_DT_DEVICE;
+  descriptor.idVendor = 0x1234;
+  descriptor.idProduct = 0x4321;
+  return descriptor;
+}
+
+std::unique_ptr<libusb_interface_descriptor> MakeIppUsbInterfaceDescriptor() {
+  auto descriptor = std::make_unique<libusb_interface_descriptor>();
+  descriptor->bLength = sizeof(libusb_interface_descriptor);
+  descriptor->bDescriptorType = LIBUSB_DT_INTERFACE;
+  descriptor->bInterfaceNumber = 0;
+  descriptor->bAlternateSetting = 1;
+  descriptor->bInterfaceClass = LIBUSB_CLASS_PRINTER;
+  descriptor->bInterfaceProtocol = 0x04;  // IPP-USB protocol.
+  return descriptor;
+}
+
 }  // namespace lorgnette

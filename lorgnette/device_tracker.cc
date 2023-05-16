@@ -4,6 +4,8 @@
 
 #include "lorgnette/device_tracker.h"
 
+#include <utility>
+
 #include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -12,7 +14,9 @@
 #include <base/time/time.h>
 
 #include "lorgnette/firewall_manager.h"
+#include "lorgnette/sane_client.h"
 #include "lorgnette/usb/libusb_wrapper.h"
+#include "lorgnette/usb/usb_device.h"
 #include "lorgnette/uuid_util.h"
 
 namespace lorgnette {
@@ -57,7 +61,8 @@ StartScannerDiscoveryResponse DeviceTracker::StartScannerDiscovery(
   StartScannerDiscoveryResponse response;
   std::string client_id = request.client_id();
   if (client_id.empty()) {
-    LOG(ERROR) << "Missing client_id in StartScannerDiscovery request";
+    LOG(ERROR) << __func__
+               << ": Missing client_id in StartScannerDiscovery request";
     return response;
   }
 
@@ -181,11 +186,12 @@ void DeviceTracker::EnumerateUSBDevices(std::string session_id) {
       session->dlc_started = true;
     }
     if (device->SupportsIppUsb()) {
-      LOG(INFO) << "Device " << device->Description()
+      LOG(INFO) << __func__ << ": Device " << device->Description()
                 << " supports IPP-USB and needs to be probed";
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE, base::BindOnce(&DeviceTracker::ProbeIPPUSBDevice,
-                                    weak_factory_.GetWeakPtr(), session_id));
+                                    weak_factory_.GetWeakPtr(), session_id,
+                                    std::move(device)));
     }
   }
 
@@ -200,7 +206,8 @@ void DeviceTracker::EnumerateUSBDevices(std::string session_id) {
   }
 }
 
-void DeviceTracker::ProbeIPPUSBDevice(std::string session_id) {
+void DeviceTracker::ProbeIPPUSBDevice(std::string session_id,
+                                      std::unique_ptr<UsbDevice> device) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   auto maybe_session = GetSession(session_id);
@@ -209,9 +216,40 @@ void DeviceTracker::ProbeIPPUSBDevice(std::string session_id) {
     return;
   }
 
-  LOG(INFO) << __func__ << ": Probing IPP-USB device for " << session_id;
+  LOG(INFO) << __func__ << ": Probing IPP-USB device " << device->Description()
+            << " for " << session_id;
 
-  // TODO(b/277049537):  Implement eSCL check and save device.
+  std::optional<ScannerInfo> scanner_info = device->IppUsbScannerInfo();
+  if (!scanner_info) {
+    LOG(ERROR) << __func__ << ": Unable to get scanner info from device "
+               << device->Description();
+    return;
+  }
+
+  LOG(INFO) << __func__ << ": Attempting eSCL connection for "
+            << device->Description() << " at " << scanner_info->name();
+  brillo::ErrorPtr error;
+  SANE_Status status;
+  std::unique_ptr<SaneDevice> sane_device =
+      sane_client_->ConnectToDevice(&error, &status, scanner_info->name());
+  if (!sane_device) {
+    LOG(ERROR) << __func__ << ": Failed to open device "
+               << device->Description() << " as " << scanner_info->name()
+               << ": " << sane_strstatus(status);
+    return;
+  }
+
+  // TODO(b/277049537): Fetch device UUID from the scanner.
+
+  LOG(INFO) << __func__ << ": Device " << device->Description()
+            << " supports eSCL over IPP-USB at " << scanner_info->name();
+  ScannerListChangedSignal signal;
+  signal.set_event_type(ScannerListChangedSignal::SCANNER_ADDED);
+  signal.set_session_id(session_id);
+  *signal.mutable_scanner() = *scanner_info;
+  signal_sender_.Run(signal);
+
+  known_devices_.push_back(std::move(*scanner_info));
 }
 
 void DeviceTracker::EnumerateSANEDevices(std::string session_id) {

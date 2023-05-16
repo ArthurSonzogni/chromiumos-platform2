@@ -9,21 +9,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "lorgnette/test_util.h"
 #include "lorgnette/usb/usb_device_fake.h"
 
 namespace lorgnette {
 
 namespace {
-
-libusb_device_descriptor MakeMinimalDeviceDescriptor() {
-  libusb_device_descriptor descriptor;
-  memset(&descriptor, 0, sizeof(descriptor));
-  descriptor.bLength = sizeof(descriptor);
-  descriptor.bDescriptorType = LIBUSB_DT_DEVICE;
-  descriptor.idVendor = 0x1234;
-  descriptor.idProduct = 0x4321;
-  return descriptor;
-}
 
 TEST(UsbDeviceTest, ExpectedDescription) {
   UsbDeviceFake device;
@@ -83,12 +74,8 @@ TEST(UsbDeviceTest, PrinterWithoutIppUsb) {
   device.Init();
 
   // One altsetting with a printer class but not the IPP-USB protocol.
-  auto altsetting = std::make_unique<libusb_interface_descriptor>();
-  altsetting->bLength = sizeof(libusb_interface_descriptor);
-  altsetting->bDescriptorType = LIBUSB_DT_INTERFACE;
-  altsetting->bInterfaceNumber = 0;
-  altsetting->bAlternateSetting = 1;
-  altsetting->bInterfaceClass = LIBUSB_CLASS_PRINTER;
+  auto altsetting = MakeIppUsbInterfaceDescriptor();
+  altsetting->bInterfaceProtocol = 0;
 
   // One interface containing the altsetting.
   auto interface = std::make_unique<libusb_interface>();
@@ -119,13 +106,7 @@ TEST(UsbDeviceTest, PrinterWithIppUsb) {
   device.Init();
 
   // One altsetting with a printer class and the IPP-USB protocol.
-  auto altsetting = std::make_unique<libusb_interface_descriptor>();
-  altsetting->bLength = sizeof(libusb_interface_descriptor);
-  altsetting->bDescriptorType = LIBUSB_DT_INTERFACE;
-  altsetting->bInterfaceNumber = 0;
-  altsetting->bAlternateSetting = 1;
-  altsetting->bInterfaceClass = LIBUSB_CLASS_PRINTER;
-  altsetting->bInterfaceProtocol = 0x04;  // IPP-USB protocol.
+  auto altsetting = MakeIppUsbInterfaceDescriptor();
 
   // One interface containing the altsetting.
   auto interface = std::make_unique<libusb_interface>();
@@ -144,6 +125,73 @@ TEST(UsbDeviceTest, PrinterWithIppUsb) {
   device.SetConfigDescriptors({descriptor});
 
   EXPECT_TRUE(device.SupportsIppUsb());
+}
+
+TEST(UsbDeviceTest, ScannerInfoMissingDescriptor) {
+  UsbDeviceFake device;
+  device.Init();
+
+  EXPECT_EQ(device.IppUsbScannerInfo(), std::nullopt);
+}
+
+TEST(UsbDeviceTest, ScannerInfoMissingManufacturer) {
+  UsbDeviceFake device;
+
+  libusb_device_descriptor device_desc = MakeMinimalDeviceDescriptor();
+  device_desc.iManufacturer = 1;
+  device.SetDeviceDescriptor(device_desc);
+  device.Init();
+
+  EXPECT_EQ(device.IppUsbScannerInfo(), std::nullopt);
+}
+
+TEST(UsbDeviceTest, ScannerInfoMissingProduct) {
+  UsbDeviceFake device;
+
+  libusb_device_descriptor device_desc = MakeMinimalDeviceDescriptor();
+  device_desc.iManufacturer = 1;
+  device_desc.iProduct = 2;
+  device.SetStringDescriptors({"", "GoogleTest"});
+  device.SetDeviceDescriptor(device_desc);
+  device.Init();
+
+  EXPECT_EQ(device.IppUsbScannerInfo(), std::nullopt);
+}
+
+TEST(UsbDeviceTest, ScannerInfoDedupMfgrInModel) {
+  UsbDeviceFake device;
+
+  libusb_device_descriptor device_desc = MakeMinimalDeviceDescriptor();
+  device_desc.iManufacturer = 1;
+  device_desc.iProduct = 2;
+  device.SetStringDescriptors({"", "GoogleTest", "GoogleTest Scanner 3000"});
+  device.SetDeviceDescriptor(device_desc);
+  device.Init();
+
+  auto info = device.IppUsbScannerInfo();
+  ASSERT_TRUE(info.has_value());
+  EXPECT_EQ(info->name(),
+            "ippusb:escl:GoogleTest Scanner 3000:1234_4321/eSCL/");
+  EXPECT_EQ(info->manufacturer(), "GoogleTest");
+  EXPECT_EQ(info->model(), "GoogleTest Scanner 3000");
+}
+
+TEST(UsbDeviceTest, ScannerInfoConcatModelWithoutMfgr) {
+  UsbDeviceFake device;
+
+  libusb_device_descriptor device_desc = MakeMinimalDeviceDescriptor();
+  device_desc.iManufacturer = 1;
+  device_desc.iProduct = 2;
+  device.SetStringDescriptors({"", "GoogleTest", "Scanner 3000"});
+  device.SetDeviceDescriptor(device_desc);
+  device.Init();
+
+  auto info = device.IppUsbScannerInfo();
+  ASSERT_TRUE(info.has_value());
+  EXPECT_EQ(info->name(),
+            "ippusb:escl:GoogleTest Scanner 3000:1234_4321/eSCL/");
+  EXPECT_EQ(info->manufacturer(), "GoogleTest");
+  EXPECT_EQ(info->model(), "Scanner 3000");
 }
 
 }  // namespace

@@ -120,4 +120,22 @@ TEST(TestUtils, EqualsDocumentSourceFalseWrongColorModes) {
   EXPECT_THAT(test_ds, Not(EqualsDocumentSource(expected_ds)));
 }
 
+TEST(TestUtils, MakeMinimalDeviceDescriptor) {
+  auto descriptor = MakeMinimalDeviceDescriptor();
+
+  EXPECT_EQ(descriptor.bLength, sizeof(descriptor));
+  EXPECT_EQ(descriptor.bDescriptorType, LIBUSB_DT_DEVICE);
+  EXPECT_EQ(descriptor.idVendor, 0x1234);
+  EXPECT_EQ(descriptor.idProduct, 0x4321);
+}
+
+TEST(TestUtils, MakeIppUsbInterfaceDescriptor) {
+  auto descriptor = MakeIppUsbInterfaceDescriptor();
+
+  EXPECT_EQ(descriptor->bLength, sizeof(libusb_interface_descriptor));
+  EXPECT_EQ(descriptor->bDescriptorType, LIBUSB_DT_INTERFACE);
+  EXPECT_EQ(descriptor->bInterfaceClass, LIBUSB_CLASS_PRINTER);
+  EXPECT_EQ(descriptor->bInterfaceProtocol, 0x04);
+}
+
 }  // namespace lorgnette

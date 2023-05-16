@@ -49,4 +49,27 @@ UsbDevice::ScopedConfigDescriptor UsbDeviceImpl::GetConfigDescriptor(
   return ScopedConfigDescriptor(config, &libusb_free_config_descriptor);
 }
 
+std::optional<std::string> UsbDeviceImpl::GetStringDescriptor(uint8_t index) {
+  libusb_device_handle* h;
+  int status = libusb_open(device_, &h);
+  if (status < 0) {
+    LOG(ERROR) << "Failed to open device " << Description() << ": "
+               << libusb_error_name(status);
+    return std::nullopt;
+  }
+  auto handle = std::unique_ptr<libusb_device_handle, decltype(&libusb_close)>(
+      h, libusb_close);
+
+  std::vector<uint8_t> buf(256);
+  int bytes = libusb_get_string_descriptor_ascii(handle.get(), index,
+                                                 buf.data(), buf.size());
+  if (bytes < 0) {
+    LOG(ERROR) << "Failed to read string descriptor " << index
+               << " from device " << Description() << ": "
+               << libusb_error_name(bytes);
+    return std::nullopt;
+  }
+  return std::string((const char*)buf.data(), bytes);
+}
+
 }  // namespace lorgnette

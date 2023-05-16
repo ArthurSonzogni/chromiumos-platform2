@@ -10,6 +10,7 @@
 #include <string>
 
 #include <libusb.h>
+#include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 
 namespace lorgnette {
 
@@ -34,6 +35,9 @@ class UsbDevice {
   // clean itself up and must not be passed to `libusb_free_config_descriptor`.
   virtual ScopedConfigDescriptor GetConfigDescriptor(uint8_t config) const = 0;
 
+  // Equivalent of `libusb_get_string_descriptor_ascii`.
+  virtual std::optional<std::string> GetStringDescriptor(uint8_t index) = 0;
+
   // Returns a description of this device that can be used for logging.
   std::string Description() const;
 
@@ -45,6 +49,11 @@ class UsbDevice {
   // Returns true if this device contains a printer class interface that
   // supports the appropriate IPP-USB protocol.
   bool SupportsIppUsb() const;
+
+  // Returns a populated ScannerInfo struct as if this device were an eSCL over
+  // IPP-USB scanner.  The returned name will only work if the device actually
+  // does support eSCL through its IPP-USB interface.
+  std::optional<ScannerInfo> IppUsbScannerInfo();
 
   // Returns true if this device needs to have a backend downloaded with DLC
   // before it will be recognized by `sane_get_devices`.

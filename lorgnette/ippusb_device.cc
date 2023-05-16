@@ -63,6 +63,8 @@ std::string VidPid(const libusb_device_descriptor& descriptor) {
 // support through the ippusb backend, but this function will not check for
 // proper support.  The caller must connect to the device and probe it before
 // attempting to scan.
+// TODO(b/277049540): Remove this once all callers are migrated over to the
+// version in UsbDevice.
 std::optional<ScannerInfo> ScannerInfoForDevice(
     libusb_device* device, const libusb_device_descriptor& descriptor) {
   const std::string vid_pid = VidPid(descriptor);
@@ -118,6 +120,8 @@ std::optional<ScannerInfo> ScannerInfoForDevice(
 
 // Check if |device| is a printer that supports IPP-USB and return a ScannerInfo
 // proto if it is.
+// TODO(b/277049540): Remove this once all callers are migrated over to the
+// version in UsbDevice.
 std::optional<ScannerInfo> CheckUsbDevice(libusb_device* device) {
   libusb_device_descriptor descriptor;
   int status = libusb_get_device_descriptor(device, &descriptor);

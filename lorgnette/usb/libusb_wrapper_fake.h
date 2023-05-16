@@ -21,6 +21,11 @@ class LibusbWrapperFake : public LibusbWrapper {
   ~LibusbWrapperFake() override = default;
 
   std::vector<std::unique_ptr<UsbDevice>> GetDevices() override;
+
+  void SetDevices(std::vector<std::unique_ptr<UsbDevice>> devices);
+
+ private:
+  std::vector<std::unique_ptr<UsbDevice>> devices_;
 };
 
 }  // namespace lorgnette

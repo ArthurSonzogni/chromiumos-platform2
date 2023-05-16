@@ -5,12 +5,19 @@
 #include "lorgnette/usb/usb_device.h"
 
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <libusb.h>
 
 #include "lorgnette/ippusb_device.h"
 
 namespace lorgnette {
+
+namespace {
+
+const char kScannerTypeMFP[] = "multi-function peripheral";  // Matches SANE.
+
+}  // namespace
 
 std::string UsbDevice::Description() const {
   return vid_pid_;
@@ -59,6 +66,43 @@ bool UsbDevice::SupportsIppUsb() const {
   }
 
   return isIppUsb;
+}
+
+std::optional<ScannerInfo> UsbDevice::IppUsbScannerInfo() {
+  auto maybe_descriptor = GetDeviceDescriptor();
+  if (!maybe_descriptor.has_value()) {
+    return std::nullopt;
+  }
+  libusb_device_descriptor& descriptor = maybe_descriptor.value();
+
+  auto mfgr_name = GetStringDescriptor(descriptor.iManufacturer);
+  if (!mfgr_name.has_value() || mfgr_name->empty()) {
+    LOG(ERROR) << "Device " << Description() << " is missing manufacturer";
+    return std::nullopt;
+  }
+
+  auto model_name = GetStringDescriptor(descriptor.iProduct);
+  if (!model_name.has_value() || model_name->empty()) {
+    LOG(ERROR) << "Device " << Description() << " is missing product";
+    return std::nullopt;
+  }
+
+  std::string printer_name;
+  if (base::StartsWith(*model_name, *mfgr_name,
+                       base::CompareCase::INSENSITIVE_ASCII)) {
+    printer_name = *model_name;
+  } else {
+    printer_name = *mfgr_name + " " + *model_name;
+  }
+
+  std::string device_name = base::StringPrintf(
+      "ippusb:escl:%s:%04x_%04x/eSCL/", printer_name.c_str(), vid_, pid_);
+  ScannerInfo info;
+  info.set_name(device_name);
+  info.set_manufacturer(*mfgr_name);
+  info.set_model(*model_name);
+  info.set_type(kScannerTypeMFP);  // Printer that can scan == MFP.
+  return info;
 }
 
 bool UsbDevice::NeedsNonBundledBackend() const {

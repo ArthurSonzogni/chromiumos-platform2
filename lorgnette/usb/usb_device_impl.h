@@ -6,6 +6,7 @@
 #define LORGNETTE_USB_USB_DEVICE_IMPL_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <libusb.h>
@@ -22,6 +23,7 @@ class UsbDeviceImpl : public UsbDevice {
 
   std::optional<libusb_device_descriptor> GetDeviceDescriptor() const override;
   ScopedConfigDescriptor GetConfigDescriptor(uint8_t config) const override;
+  std::optional<std::string> GetStringDescriptor(uint8_t index) override;
 
  private:
   explicit UsbDeviceImpl(libusb_device* device);

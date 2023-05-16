@@ -42,6 +42,7 @@ using ScannerListChangedSignalSender =
 class FirewallManager;
 class LibusbWrapper;
 class SaneClient;
+class UsbDevice;
 
 // DeviceTracker is responsible for keeping track of which scanners are
 // available and which ones are in use at any given time.
@@ -102,7 +103,8 @@ class DeviceTracker {
   // any processing.
   void StartDiscoverySessionInternal(std::string session_id);
   void EnumerateUSBDevices(std::string session_id);
-  void ProbeIPPUSBDevice(std::string session_id);
+  void ProbeIPPUSBDevice(std::string session_id,
+                         std::unique_ptr<UsbDevice> device);
   void EnumerateSANEDevices(std::string session_id);
   void ProbeSANEDevice(std::string session_id);
   void SendEnumerationCompletedSignal(std::string session_id);

@@ -6,11 +6,13 @@
 #define LORGNETTE_TEST_UTIL_H_
 
 #include <cstdint>
+#include <memory>
 #include <ostream>
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
+#include <libusb.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 
 using ::testing::ExplainMatchResult;
@@ -70,6 +72,9 @@ MATCHER_P(EqualsDocumentSource, expected, "") {
   return ExplainMatchResult(UnorderedElementsAreArray(expected.color_modes()),
                             arg.color_modes(), result_listener);
 }
+
+libusb_device_descriptor MakeMinimalDeviceDescriptor();
+std::unique_ptr<libusb_interface_descriptor> MakeIppUsbInterfaceDescriptor();
 
 }  // namespace lorgnette
 
