@@ -27,11 +27,22 @@ constexpr char kValidLogLine[] =
     R"TEXT({"path_hash":"a_local_id","capture_time":"9876543",)TEXT"
     R"TEXT("fatal_crash_type":"kernel","upload_id":"a_crash_report_id"})TEXT";
 
-const auto kExpectedResult = mojom::CrashEventInfo::New(
+const auto kExpectedUnuploadedResultForValidLogLine =
+    mojom::CrashEventInfo::New(
+        /*crash_type=*/mojom::CrashEventInfo::CrashType::kKernel,
+        /*local_id=*/"a_local_id",
+        /*capture_time=*/base::Time::FromDoubleT(9876543.0),
+        /*upload_info=*/nullptr);
+
+const auto kExpectedUploadedResultForValidLogLine = mojom::CrashEventInfo::New(
     /*crash_type=*/mojom::CrashEventInfo::CrashType::kKernel,
     /*local_id=*/"a_local_id",
     /*capture_time=*/base::Time::FromDoubleT(9876543.0),
-    /*upload_info=*/nullptr);
+    /*upload_info=*/
+    mojom::CrashUploadInfo::New(
+        /*crash_report_id=*/"a_crash_report_id",
+        /*creation_time=*/base::Time(),
+        /*offset=*/0u));
 
 constexpr char kInvalidLogLine[] = "{{{{";
 
@@ -220,12 +231,7 @@ TEST_P(UploadsLogParserInvalidTest, ParseOneInvalidFollowingOneValid) {
                                       /*creation_time=*/base::Time(),
                                       /*init_offset=*/0u);
   ASSERT_EQ(result.size(), 1u);
-  auto expected_result = kExpectedResult.Clone();
-  expected_result->upload_info = mojom::CrashUploadInfo::New(
-      /*crash_report_id=*/"a_crash_report_id",
-      /*creation_time=*/base::Time(),
-      /*offset=*/0u);
-  EXPECT_TRUE(result[0].Equals(expected_result));
+  EXPECT_TRUE(result[0].Equals(kExpectedUploadedResultForValidLogLine));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -263,8 +269,8 @@ TEST(UploadsLogParserTest, ParseTwoSeparateValidLines) {
                                       /*creation_time=*/base::Time(),
                                       /*init_offset=*/0u);
   ASSERT_EQ(result.size(), 2u);
-  EXPECT_TRUE(result[0].Equals(kExpectedResult));
-  EXPECT_TRUE(result[1].Equals(kExpectedResult));
+  EXPECT_TRUE(result[0].Equals(kExpectedUnuploadedResultForValidLogLine));
+  EXPECT_TRUE(result[1].Equals(kExpectedUnuploadedResultForValidLogLine));
 }
 
 TEST(UploadsLogParserTest, ParseTwoTrailingValidLinesWithBlank) {
@@ -277,8 +283,8 @@ TEST(UploadsLogParserTest, ParseTwoTrailingValidLinesWithBlank) {
                                       /*creation_time=*/base::Time(),
                                       /*init_offset=*/0u);
   ASSERT_EQ(result.size(), 2u);
-  EXPECT_TRUE(result[0].Equals(kExpectedResult));
-  EXPECT_TRUE(result[1].Equals(kExpectedResult));
+  EXPECT_TRUE(result[0].Equals(kExpectedUnuploadedResultForValidLogLine));
+  EXPECT_TRUE(result[1].Equals(kExpectedUnuploadedResultForValidLogLine));
 }
 
 }  // namespace
