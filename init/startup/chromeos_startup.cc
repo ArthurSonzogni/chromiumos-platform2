@@ -98,6 +98,7 @@ constexpr char kReclaimFullVar[] = ".reclaim_full_var";
 const int kVarFullThreshold = 10485760;
 
 constexpr char kDaemonStore[] = "daemon-store";
+constexpr char kDaemonStoreCache[] = "daemon-store-cache";
 constexpr char kEtc[] = "etc";
 
 constexpr char kDisableStatefulSecurityHard[] =
@@ -540,8 +541,16 @@ void ChromeosStartup::MoveToLibDeviceSettings() {
 // See
 // https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md#securely-mounting-daemon-store-folders.
 void ChromeosStartup::CreateDaemonStore() {
-  base::FilePath run_ds = root_.Append(kRun).Append(kDaemonStore);
-  base::FilePath etc_ds = root_.Append(kEtc).Append(kDaemonStore);
+  // Create /run/daemon-store and /run/daemon-store-cache based on
+  // /etc/daemon-store.
+  CreateDaemonStore(root_.Append(kRun).Append(kDaemonStore),
+                    root_.Append(kEtc).Append(kDaemonStore));
+  CreateDaemonStore(root_.Append(kRun).Append(kDaemonStoreCache),
+                    root_.Append(kEtc).Append(kDaemonStore));
+}
+
+void ChromeosStartup::CreateDaemonStore(base::FilePath run_ds,
+                                        base::FilePath etc_ds) {
   base::FileEnumerator iter(etc_ds, false,
                             base::FileEnumerator::FileType::DIRECTORIES);
   for (base::FilePath store = iter.Next(); !store.empty();

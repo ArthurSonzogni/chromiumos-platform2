@@ -906,6 +906,7 @@ TEST_F(DaemonStoreTest, NonEmptyEtc) {
   base::FilePath run = base_dir.Append("run");
   base::FilePath etc = base_dir.Append("etc");
   base::FilePath run_daemon = run.Append("daemon-store");
+  base::FilePath run_daemon_cache = run.Append("daemon-store-cache");
   base::FilePath etc_daemon = etc.Append("daemon-store");
   base::FilePath etc_file = etc_daemon.Append("test_file");
   base::FilePath etc_file_not_ds = etc.Append("test/not_incl");
@@ -916,15 +917,18 @@ TEST_F(DaemonStoreTest, NonEmptyEtc) {
   ASSERT_TRUE(CreateDirAndWriteFile(sub_file, "1"));
 
   base::FilePath run_subdir = run_daemon.Append("subdir");
+  base::FilePath run_cache_subdir = run_daemon_cache.Append("subdir");
   base::FilePath run_test_exclude = run.Append("test/not_incl");
   base::FilePath run_ds_exclude = run_daemon.Append("test/not_incl");
   platform_->SetMountResultForPath(run_subdir, run_subdir.value());
+  platform_->SetMountResultForPath(run_cache_subdir, run_cache_subdir.value());
   struct stat st_dir;
   st_dir.st_mode = S_IFDIR;
   platform_->SetStatResultForPath(subdir, st_dir);
 
   startup_->CreateDaemonStore();
   EXPECT_TRUE(base::DirectoryExists(run_subdir));
+  EXPECT_TRUE(base::DirectoryExists(run_cache_subdir));
   EXPECT_FALSE(base::PathExists(run_test_exclude));
   EXPECT_FALSE(base::PathExists(run_ds_exclude));
 }

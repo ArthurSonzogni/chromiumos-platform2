@@ -136,6 +136,9 @@ class ChromeosStartup {
   // migration.
   int RunChromeosStartupScript();
 
+  // Create directories inside run_ds based on etc_ds directory structure.
+  void CreateDaemonStore(base::FilePath run_ds, base::FilePath etc_ds);
+
   std::unique_ptr<CrosSystem> cros_system_;
   const Flags flags_;
   const base::FilePath lsb_file_;
