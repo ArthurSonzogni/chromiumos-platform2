@@ -8,6 +8,7 @@
 #include <sys/prctl.h>
 #include <sysexits.h>
 
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -31,9 +32,53 @@ namespace dns_proxy {
 namespace {
 
 constexpr base::TimeDelta kSubprocessRestartDelay = base::Milliseconds(900);
+constexpr base::TimeDelta kSubprocessMaxWaitTime = base::Seconds(3);
+constexpr base::TimeDelta kSubprocessWaitSleepTime = base::Milliseconds(100);
 constexpr char kSeccompPolicyPath[] =
     "/usr/share/policy/dns-proxy-seccomp.policy";
 constexpr char kResolvConfRunPath[] = "/run/dns-proxy/resolv.conf";
+
+// Loops until all child processes are stopped or there is an error. This
+// function is safe to call even if |pids| contains an already stopped children
+// as long as waitpid is not previously called for the pid.
+bool WaitForChildren(std::set<pid_t> pids) {
+  base::TimeTicks deadline = base::TimeTicks::Now() + kSubprocessMaxWaitTime;
+  while (base::TimeTicks::Now() < deadline) {
+    int status;
+    pid_t pid = HANDLE_EINTR(waitpid(0, &status, WNOHANG));
+    if (pid == -1) {
+      if (errno == ECHILD) {
+        return true;
+      }
+      PLOG(ERROR) << "Unable to find child processes";
+      return false;
+    }
+    if (pid == 0) {
+      base::PlatformThread::Sleep(kSubprocessWaitSleepTime);
+      continue;
+    }
+
+    // Log child process exit status.
+    if (WIFEXITED(status)) {
+      LOG(INFO) << "Process " << pid << " exited with status "
+                << WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+      LOG(INFO) << "Process " << pid << " killed by signal " << WTERMSIG(status)
+                << (WCOREDUMP(status) ? " (core dumped)" : "");
+    } else {
+      LOG(WARNING) << "Unknown exit status " << status << " for process "
+                   << pid;
+    }
+
+    // Wait until all child processes exit.
+    pids.erase(pid);
+    if (pids.empty()) {
+      return true;
+    }
+  }
+  LOG(WARNING) << "Reached maximum wait time before all child processes exit";
+  return false;
+}
 
 }  // namespace
 
@@ -71,8 +116,15 @@ int Controller::OnInit() {
 
 void Controller::OnShutdown(int* code) {
   LOG(INFO) << "Stopping DNS Proxy service (" << *code << ")";
+  std::set<pid_t> pids = {};
   for (const auto& p : proxies_) {
+    pids.emplace(p.pid);
     Kill(p);
+  }
+  if (!WaitForChildren(pids)) {
+    LOG(WARNING) << "Failed to wait for all child processes to stop";
+  } else {
+    LOG(INFO) << "Stopped all child processes properly";
   }
   is_shutdown_ = true;
 }
