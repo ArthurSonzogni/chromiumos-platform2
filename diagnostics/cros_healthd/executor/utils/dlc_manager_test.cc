@@ -57,12 +57,12 @@ class DlcManagerTest : public testing::Test {
   }
 
   void SetInstallDlcCall(bool is_success) {
-    EXPECT_CALL(mock_dlc_service_, InstallDlcAsync(_, _, _, _))
+    EXPECT_CALL(mock_dlc_service_, InstallAsync(_, _, _, _))
         .WillOnce(WithArgs<0, 1, 2>(Invoke(
-            [=](const std::string& in_id,
+            [=](const dlcservice::InstallRequest& in_install_request,
                 base::OnceCallback<void()> success_callback,
                 base::OnceCallback<void(brillo::Error*)> error_callback) {
-              last_install_dlc_id = in_id;
+              last_install_dlc_id = in_install_request.id();
               if (is_success) {
                 std::move(success_callback).Run();
               } else {

@@ -38,13 +38,15 @@ void DlcManager::HandleDlcServiceAvailableResponse(
     return;
   }
 
+  dlcservice::InstallRequest install_request;
+  install_request.set_id(dlc_id);
   auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
       &DlcManager::HandleDlcInstallResponse, weak_factory_.GetWeakPtr(), dlc_id,
       std::move(root_path_cb)));
 
   // The installation will complete immediately if the DLC is already installed.
-  dlcservice_proxy_->InstallDlcAsync(dlc_id, std::move(on_success),
-                                     std::move(on_error));
+  dlcservice_proxy_->InstallAsync(install_request, std::move(on_success),
+                                  std::move(on_error));
 }
 
 void DlcManager::HandleDlcInstallResponse(const std::string& dlc_id,
