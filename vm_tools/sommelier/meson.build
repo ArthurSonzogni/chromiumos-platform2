@@ -107,11 +107,15 @@ endif
 #=================#
 
 gamepad_sources = []
+gamepad_testing = []
 gamepad_dependencies = []
 if get_option('gamepad')
   gamepad_sources = [
     'sommelier-gaming.cc',
     'libevdev/libevdev-shim.cc',
+  ]
+  gamepad_testing = [
+    'sommelier-gaming-test.cc',
   ]
   gamepad_dependencies = [
     dependency('libevdev'),
@@ -207,7 +211,6 @@ if get_option('with_tests')
   sommelier_test = executable('sommelier_test',
     install: true,
     sources: [
-      'sommelier-gaming-test.cc',
       'sommelier-test.cc',
       'sommelier-test-main.cc',
       'sommelier-output-test.cc',
@@ -215,7 +218,7 @@ if get_option('with_tests')
       'sommelier-xdg-shell-test.cc',
       'testing/mock-wayland-channel.cc',
       'testing/sommelier-test-util.cc',
-    ] + wl_outs + shim_outs,
+    ] + wl_outs + shim_outs + gamepad_testing,
     link_with: libsommelier,
     dependencies: [
       dependency('gtest'),
