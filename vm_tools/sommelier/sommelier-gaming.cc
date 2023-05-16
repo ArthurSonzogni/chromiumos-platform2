@@ -96,6 +96,7 @@ const uint32_t kStadiaProduct = 0x9400;
 
 const uint32_t kSonyVendor = 0x54C;
 const uint32_t kDualSenseProduct = 0xCE6;
+const uint32_t kDualShock4Product = 0x9CC;
 
 const DeviceID kStadiaUSB = {
     .vendor = kStadiaVendor, .product = kStadiaProduct, .version = 0x111};
@@ -117,6 +118,15 @@ const DeviceID kDualSenseUSB = {
 
 const DeviceID kDualSenseBT = {
     .vendor = kSonyVendor, .product = kDualSenseProduct, .version = 0x100};
+
+const DeviceID kDualShock4USB = {
+    .vendor = kSonyVendor, .product = kDualShock4Product, .version = 0x8111};
+
+const DeviceID kDualShock4BT = {
+    .vendor = kSonyVendor, .product = kDualShock4Product, .version = 0x8100};
+
+const DeviceID kXboxSeriesXBT = {
+    .vendor = kXboxVendor, .product = 0xB13, .version = 0x513};
 
 // Mappings from the input event of a given gamepad (key) to the
 // appropriate output event (value). These mappings are intended to maintain
@@ -156,9 +166,43 @@ const std::unordered_map<uint32_t, uint32_t> kDualSenseMapping = {
     // Unused buttons: Touchpad_click: BTN_THUMBL, Microphone_button: BTN_THUMBR
 };
 
+// DualShock4 (PS4).
+const std::unordered_map<uint32_t, uint32_t> kDualShock4Mapping = {
+    // Left Joystick
+    {ABS_X, ABS_X},
+    {ABS_Y, ABS_Y},
+    // Right Joystick
+    {ABS_RX, ABS_RX},
+    {ABS_RY, ABS_RY},
+    // Joystick press
+    {BTN_THUMBL, BTN_THUMBL},
+    {BTN_THUMBR, BTN_THUMBR},
+    // DPad
+    {ABS_HAT0X, ABS_HAT0X},
+    {ABS_HAT0Y, ABS_HAT0Y},
+    // Right-hand Buttons
+    {BTN_A, BTN_A},
+    {BTN_B, BTN_B},
+    {BTN_X, BTN_Y},
+    {BTN_Y, BTN_X},
+    // Left bumper and trigger
+    {BTN_TL, BTN_TL},
+    {ABS_Z, ABS_Z},
+    // Right bumper and trigger
+    {BTN_TR, BTN_TR},
+    {ABS_RZ, ABS_RZ},
+    // Menu buttons
+    {BTN_SELECT, BTN_SELECT},
+    {BTN_START, BTN_START},
+    {BTN_MODE, BTN_MODE},
+};
+
 // Represents how the input events of a certain controllers (key) should be
-// interpreted (value). So far this pattern has been observed in the Stadia
-// and several SteelSeries controllers in BT mode.
+// interpreted (value). So far this pattern has been observed in:
+// - Stadia
+// - Stratus Duo (BT)
+// - Stratus + (BT)
+// - Xbox Series X (BT)
 const std::unordered_map<uint32_t, uint32_t> kAxisQuirkMapping = {
     // Left Joystick
     {ABS_X, ABS_X},
@@ -195,10 +239,16 @@ const std::unordered_map<DeviceID,
     kDeviceMappings = {
         {kStadiaUSB, &kAxisQuirkMapping},
         {kStadiaBT, &kAxisQuirkMapping},
+        // Note that the BTN_MODE is not mapped correctly for the
+        // Stratus Duo, due to it being interpreted on the host
+        // as a key event causing a browser HOME action.
         {kStratusDuoBT, &kAxisQuirkMapping},
         {kStratusPlusBT, &kAxisQuirkMapping},
         {kDualSenseUSB, &kDualSenseMapping},
         {kDualSenseBT, &kDualSenseMapping},
+        {kDualShock4USB, &kDualShock4Mapping},
+        {kDualShock4BT, &kDualShock4Mapping},
+        {kXboxSeriesXBT, &kAxisQuirkMapping},
 };
 
 // Note: the majority of protocol errors are treated as non-fatal, and
