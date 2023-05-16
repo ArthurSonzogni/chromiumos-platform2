@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file_path_watcher.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -22,6 +23,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -199,37 +201,28 @@ Metrics::VpnIpsecEncryptionAlgorithm ParseEncryptionAlgorithm(
   // simplicity.
   std::string algo_str;
   base::ReplaceChars(input, "-", "_", &algo_str);
-  static const std::map<std::string, Metrics::VpnIpsecEncryptionAlgorithm>
-      str2enum = {
-          {"AES_CBC_128", Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_128},
-          {"AES_CBC_192", Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_192},
-          {"AES_CBC_256", Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_256},
-          {"CAMELLIA_CBC_128",
-           Metrics::kVpnIpsecEncryptionAlgorithm_CAMELLIA_CBC_128},
-          {"CAMELLIA_CBC_192",
-           Metrics::kVpnIpsecEncryptionAlgorithm_CAMELLIA_CBC_192},
-          {"CAMELLIA_CBC_256",
-           Metrics::kVpnIpsecEncryptionAlgorithm_CAMELLIA_CBC_256},
-          {"3DES_CBC", Metrics::kVpnIpsecEncryptionAlgorithm_3DES_CBC},
-          {"AES_GCM_16_128",
-           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_16_128},
-          {"AES_GCM_16_192",
-           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_16_192},
-          {"AES_GCM_16_256",
-           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_16_256},
-          {"AES_GCM_12_128",
-           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_12_128},
-          {"AES_GCM_12_192",
-           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_12_192},
-          {"AES_GCM_12_256",
-           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_12_256},
-          {"AES_GCM_8_128",
-           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_8_128},
-          {"AES_GCM_8_192",
-           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_8_192},
-          {"AES_GCM_8_256",
-           Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_8_256},
-      };
+  static constexpr auto str2enum = base::MakeFixedFlatMap<
+      base::StringPiece, Metrics::VpnIpsecEncryptionAlgorithm>({
+      {"AES_CBC_128", Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_128},
+      {"AES_CBC_192", Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_192},
+      {"AES_CBC_256", Metrics::kVpnIpsecEncryptionAlgorithm_AES_CBC_256},
+      {"CAMELLIA_CBC_128",
+       Metrics::kVpnIpsecEncryptionAlgorithm_CAMELLIA_CBC_128},
+      {"CAMELLIA_CBC_192",
+       Metrics::kVpnIpsecEncryptionAlgorithm_CAMELLIA_CBC_192},
+      {"CAMELLIA_CBC_256",
+       Metrics::kVpnIpsecEncryptionAlgorithm_CAMELLIA_CBC_256},
+      {"3DES_CBC", Metrics::kVpnIpsecEncryptionAlgorithm_3DES_CBC},
+      {"AES_GCM_16_128", Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_16_128},
+      {"AES_GCM_16_192", Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_16_192},
+      {"AES_GCM_16_256", Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_16_256},
+      {"AES_GCM_12_128", Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_12_128},
+      {"AES_GCM_12_192", Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_12_192},
+      {"AES_GCM_12_256", Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_12_256},
+      {"AES_GCM_8_128", Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_8_128},
+      {"AES_GCM_8_192", Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_8_192},
+      {"AES_GCM_8_256", Metrics::kVpnIpsecEncryptionAlgorithm_AES_GCM_8_256},
+  });
   const auto it = str2enum.find(algo_str);
   if (it == str2enum.end()) {
     return Metrics::kVpnIpsecEncryptionAlgorithmUnknown;
@@ -248,8 +241,9 @@ Metrics::VpnIpsecIntegrityAlgorithm ParseIntegrityAlgorithm(
   // simplicity.
   std::string algo_str;
   base::ReplaceChars(input, "-", "_", &algo_str);
-  static const std::map<std::string, Metrics::VpnIpsecIntegrityAlgorithm>
-      str2enum = {
+  static constexpr auto str2enum =
+      base::MakeFixedFlatMap<base::StringPiece,
+                             Metrics::VpnIpsecIntegrityAlgorithm>({
           {"HMAC_SHA2_256_128",
            Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA2_256_128},
           {"HMAC_SHA2_384_192",
@@ -259,7 +253,7 @@ Metrics::VpnIpsecIntegrityAlgorithm ParseIntegrityAlgorithm(
           {"HMAC_SHA1_96", Metrics::kVpnIpsecIntegrityAlgorithm_HMAC_SHA1_96},
           {"AES_XCBC_96", Metrics::kVpnIpsecIntegrityAlgorithm_AES_XCBC_96},
           {"AES_CMAC_96", Metrics::kVpnIpsecIntegrityAlgorithm_AES_CMAC_96},
-      };
+      });
   const auto it = str2enum.find(algo_str);
   if (it == str2enum.end()) {
     return Metrics::kVpnIpsecIntegrityAlgorithmUnknown;
@@ -271,23 +265,24 @@ Metrics::VpnIpsecIntegrityAlgorithm ParseIntegrityAlgorithm(
 // strongswan project for the names:
 // - libstrongswan/crypto/diffie_hellman.c
 Metrics::VpnIpsecDHGroup ParseDHGroup(const std::string& input) {
-  static const std::map<std::string, Metrics::VpnIpsecDHGroup> str2enum = {
-      {"ECP_256", Metrics::kVpnIpsecDHGroup_ECP_256},
-      {"ECP_384", Metrics::kVpnIpsecDHGroup_ECP_384},
-      {"ECP_521", Metrics::kVpnIpsecDHGroup_ECP_521},
-      {"ECP_256_BP", Metrics::kVpnIpsecDHGroup_ECP_256_BP},
-      {"ECP_384_BP", Metrics::kVpnIpsecDHGroup_ECP_384_BP},
-      {"ECP_512_BP", Metrics::kVpnIpsecDHGroup_ECP_512_BP},
-      {"CURVE_25519", Metrics::kVpnIpsecDHGroup_CURVE_25519},
-      {"CURVE_448", Metrics::kVpnIpsecDHGroup_CURVE_448},
-      {"MODP_1024", Metrics::kVpnIpsecDHGroup_MODP_1024},
-      {"MODP_1536", Metrics::kVpnIpsecDHGroup_MODP_1536},
-      {"MODP_2048", Metrics::kVpnIpsecDHGroup_MODP_2048},
-      {"MODP_3072", Metrics::kVpnIpsecDHGroup_MODP_3072},
-      {"MODP_4096", Metrics::kVpnIpsecDHGroup_MODP_4096},
-      {"MODP_6144", Metrics::kVpnIpsecDHGroup_MODP_6144},
-      {"MODP_8192", Metrics::kVpnIpsecDHGroup_MODP_8192},
-  };
+  static constexpr auto str2enum =
+      base::MakeFixedFlatMap<base::StringPiece, Metrics::VpnIpsecDHGroup>({
+          {"ECP_256", Metrics::kVpnIpsecDHGroup_ECP_256},
+          {"ECP_384", Metrics::kVpnIpsecDHGroup_ECP_384},
+          {"ECP_521", Metrics::kVpnIpsecDHGroup_ECP_521},
+          {"ECP_256_BP", Metrics::kVpnIpsecDHGroup_ECP_256_BP},
+          {"ECP_384_BP", Metrics::kVpnIpsecDHGroup_ECP_384_BP},
+          {"ECP_512_BP", Metrics::kVpnIpsecDHGroup_ECP_512_BP},
+          {"CURVE_25519", Metrics::kVpnIpsecDHGroup_CURVE_25519},
+          {"CURVE_448", Metrics::kVpnIpsecDHGroup_CURVE_448},
+          {"MODP_1024", Metrics::kVpnIpsecDHGroup_MODP_1024},
+          {"MODP_1536", Metrics::kVpnIpsecDHGroup_MODP_1536},
+          {"MODP_2048", Metrics::kVpnIpsecDHGroup_MODP_2048},
+          {"MODP_3072", Metrics::kVpnIpsecDHGroup_MODP_3072},
+          {"MODP_4096", Metrics::kVpnIpsecDHGroup_MODP_4096},
+          {"MODP_6144", Metrics::kVpnIpsecDHGroup_MODP_6144},
+          {"MODP_8192", Metrics::kVpnIpsecDHGroup_MODP_8192},
+      });
   const auto it = str2enum.find(input);
   if (it == str2enum.end()) {
     return Metrics::kVpnIpsecDHGroupUnknown;
