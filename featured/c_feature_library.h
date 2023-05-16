@@ -64,9 +64,15 @@ void FEATURE_EXPORT CFeatureLibraryDelete(CFeatureLibrary handle);
 // language thread runtimes will likely be incompatible with C++'s
 // SequencedTaskRunner.
 
-// C wrapper for PlatformFeatures::IsEnabledBlocking
+// C wrapper for PlatformFeatures::IsEnabledBlocking, with the default timeout.
 int FEATURE_EXPORT CFeatureLibraryIsEnabledBlocking(
     CFeatureLibrary handle, const struct VariationsFeature* const feature);
+
+// C wrapper for PlatformFeatures::IsEnabledBlocking, with a timeout.
+int FEATURE_EXPORT CFeatureLibraryIsEnabledBlockingWithTimeout(
+    CFeatureLibrary handle,
+    const struct VariationsFeature* const feature,
+    int timeout_ms);
 
 // C wrapper for PlatformFeatures::GetParamsAndEnabled is NOT defined, since
 // different language thread runtimes will likely be incompatible with C++'s

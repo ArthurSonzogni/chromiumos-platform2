@@ -56,7 +56,8 @@ void PlatformFeatures::IsEnabled(const VariationsFeature& feature,
       weak_ptr_factory_.GetWeakPtr(), feature, std::move(callback)));
 }
 
-bool PlatformFeatures::IsEnabledBlocking(const VariationsFeature& feature) {
+bool PlatformFeatures::IsEnabledBlockingWithTimeout(
+    const VariationsFeature& feature, int timeout_ms) {
   DCHECK(CheckFeatureIdentity(feature)) << feature.name;
 
   dbus::MethodCall call(chromeos::kChromeFeaturesServiceInterface,
@@ -64,7 +65,7 @@ bool PlatformFeatures::IsEnabledBlocking(const VariationsFeature& feature) {
   dbus::MessageWriter writer(&call);
   writer.AppendString(feature.name);
   std::unique_ptr<dbus::Response> response = brillo::dbus_utils::CallDBusMethod(
-      bus_, chrome_proxy_, &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      bus_, chrome_proxy_, &call, timeout_ms);
   if (!response) {
     return feature.default_state == FEATURE_ENABLED_BY_DEFAULT;
   }

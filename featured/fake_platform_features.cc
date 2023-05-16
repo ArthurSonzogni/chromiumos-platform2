@@ -23,7 +23,8 @@ void FakePlatformFeatures::IsEnabled(const VariationsFeature& feature,
       FROM_HERE, base::BindOnce(std::move(callback), enabled));
 }
 
-bool FakePlatformFeatures::IsEnabledBlocking(const VariationsFeature& feature) {
+bool FakePlatformFeatures::IsEnabledBlockingWithTimeout(
+    const VariationsFeature& feature, int timeout_ms) {
   base::AutoLock auto_lock(enabled_lock_);
   auto it = enabled_.find(feature.name);
   if (it != enabled_.end()) {

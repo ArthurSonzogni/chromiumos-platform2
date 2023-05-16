@@ -30,7 +30,8 @@ class FEATURE_EXPORT FakePlatformFeatures : public PlatformFeaturesInterface {
   void IsEnabled(const VariationsFeature& feature,
                  IsEnabledCallback callback) override;
 
-  bool IsEnabledBlocking(const VariationsFeature& feature) override;
+  bool IsEnabledBlockingWithTimeout(const VariationsFeature& feature,
+                                    int timeout_ms) override;
 
   void GetParamsAndEnabled(
       const std::vector<const VariationsFeature*>& features,

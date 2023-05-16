@@ -33,6 +33,14 @@ extern "C" int CFeatureLibraryIsEnabledBlocking(
   return library->IsEnabledBlocking(*feature);
 }
 
+extern "C" int CFeatureLibraryIsEnabledBlockingWithTimeout(
+    CFeatureLibrary handle,
+    const struct VariationsFeature* const feature,
+    int timeout_ms) {
+  auto* library = reinterpret_cast<feature::PlatformFeaturesInterface*>(handle);
+  return library->IsEnabledBlockingWithTimeout(*feature, timeout_ms);
+}
+
 extern "C" int CFeatureLibraryGetParamsAndEnabledBlocking(
     CFeatureLibrary handle,
     const struct VariationsFeature* const* features,
