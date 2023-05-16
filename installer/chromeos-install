@@ -781,9 +781,9 @@ install_stateful() {
   esac
 }
 
-# Retrieves the recovery key version.
+# Get the recovery key version.
 # Default value on failure is "1".
-retrieve_key_version() {
+get_recovery_key_version() {
   local tmpdir="$(mktemp -d)"
   local tmpflash="${tmpdir}/flash"
   local tmpflashparsed="${tmpdir}/flashparsed"
@@ -794,7 +794,7 @@ retrieve_key_version() {
   # Read the flashrom.
   flashrom -i GBB:"${tmpflash}" -r >&2
   if [ "$?" -ne 0 ]; then
-    echo "Failed to read flashrom, defaulting to \"1\"." >&2
+    echo "Failed to read flashrom, defaulting to recovery key version=\"1\"" >&2
     # Default.
     echo "1"
   else
@@ -874,7 +874,7 @@ copy_partition() {
   "${PARTITION_NUM_MINIOS_A}"|"${PARTITION_NUM_MINIOS_B}")
     # Choose to copy from A or B for miniOS partitions.
     local src_part_num
-    if [ "$(retrieve_key_version)" -eq "1" ]; then
+    if [ "$(get_recovery_key_version)" -eq "1" ]; then
       src_part_num="${PARTITION_NUM_MINIOS_A}"
     else
       src_part_num="${PARTITION_NUM_MINIOS_B}"
