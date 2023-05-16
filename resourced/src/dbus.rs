@@ -74,7 +74,7 @@ fn send_pressure_signal(
     }
 }
 
-// Call debugd SwapSetSwappiness when set_game_mode returns TuneSwappiness.
+// Call swap_management SwapSetSwappiness when set_game_mode returns TuneSwappiness.
 fn set_game_mode_and_tune_swappiness(
     power_preferences_manager: &dyn power::PowerPreferencesManager,
     mode: common::GameMode,
@@ -86,14 +86,18 @@ fn set_game_mode_and_tune_swappiness(
         const SWAPPINESS_PATH: &str = "/proc/sys/vm/swappiness";
         if swappiness != common::read_file_to_u64(SWAPPINESS_PATH)? as u32 {
             tokio::spawn(async move {
-                let debugd_proxy = Proxy::new(
-                    "org.chromium.debugd",
-                    "/org/chromium/debugd",
+                let swap_management_proxy = Proxy::new(
+                    "org.chromium.SwapManagement",
+                    "/org/chromium/SwapManagement",
                     DEFAULT_DBUS_TIMEOUT,
                     conn,
                 );
-                match debugd_proxy
-                    .method_call("org.chromium.debugd", "SwapSetSwappiness", (swappiness,))
+                match swap_management_proxy
+                    .method_call(
+                        "org.chromium.SwapManagement",
+                        "SwapSetSwappiness",
+                        (swappiness,),
+                    )
                     .await
                 {
                     Ok(()) => (), // For type inference.
