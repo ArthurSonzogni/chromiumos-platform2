@@ -21,7 +21,7 @@ class Fake1GenericCameraFunction : public GenericCameraFunction {
 
  public:
   std::unique_ptr<UsbCameraFunction> GetUsbProber(
-      const base::Value& dict_value) override {
+      const base::Value::Dict& dict_value) override {
     return CreateFakeProbeFunction<UsbCameraFunction>(R"JSON(
       [{
         "bus_type": "usb",
@@ -33,7 +33,7 @@ class Fake1GenericCameraFunction : public GenericCameraFunction {
   }
 
   std::unique_ptr<MipiCameraFunction> GetMipiProber(
-      const base::Value& dict_value) override {
+      const base::Value::Dict& dict_value) override {
     return CreateFakeProbeFunction<MipiCameraFunction>(R"JSON(
       [{
         "bus_type": "mipi",
@@ -57,7 +57,7 @@ class Fake2GenericCameraFunction : public GenericCameraFunction {
 
  public:
   std::unique_ptr<UsbCameraFunction> GetUsbProber(
-      const base::Value& dict_value) override {
+      const base::Value::Dict& dict_value) override {
     return CreateFakeProbeFunction<UsbCameraFunction>(R"JSON(
       [{
         "bus_type": "usb",
@@ -69,7 +69,7 @@ class Fake2GenericCameraFunction : public GenericCameraFunction {
   }
 
   std::unique_ptr<MipiCameraFunction> GetMipiProber(
-      const base::Value& dict_value) override {
+      const base::Value::Dict& dict_value) override {
     // MIPI camera probe function initialization failed.
     return nullptr;
   }
@@ -80,14 +80,14 @@ class Fake3GenericCameraFunction : public GenericCameraFunction {
 
  public:
   std::unique_ptr<UsbCameraFunction> GetUsbProber(
-      const base::Value& dict_value) override {
+      const base::Value::Dict& dict_value) override {
     return CreateFakeProbeFunction<UsbCameraFunction>(R"JSON(
       []
     )JSON");
   }
 
   std::unique_ptr<MipiCameraFunction> GetMipiProber(
-      const base::Value& dict_value) override {
+      const base::Value::Dict& dict_value) override {
     return CreateFakeProbeFunction<MipiCameraFunction>(R"JSON(
       []
     )JSON");
@@ -97,9 +97,7 @@ class Fake3GenericCameraFunction : public GenericCameraFunction {
 class GenericCameraFunctionTest : public BaseFunctionTest {};
 
 TEST_F(GenericCameraFunctionTest, ProbeGenericCamera) {
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<Fake1GenericCameraFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<Fake1GenericCameraFunction>();
 
   auto result = probe_function->Eval();
   auto ans = CreateProbeResultFromJson(R"JSON(
@@ -127,9 +125,7 @@ TEST_F(GenericCameraFunctionTest, ProbeGenericCamera) {
 }
 
 TEST_F(GenericCameraFunctionTest, ProbeEmptyResults) {
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<Fake3GenericCameraFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<Fake3GenericCameraFunction>();
 
   auto result = probe_function->Eval();
   auto ans = CreateProbeResultFromJson(R"JSON(
@@ -139,9 +135,7 @@ TEST_F(GenericCameraFunctionTest, ProbeEmptyResults) {
 }
 
 TEST_F(GenericCameraFunctionTest, ProberInitilizationFailed) {
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<Fake2GenericCameraFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<Fake2GenericCameraFunction>();
 
   EXPECT_EQ(probe_function, nullptr);
 }

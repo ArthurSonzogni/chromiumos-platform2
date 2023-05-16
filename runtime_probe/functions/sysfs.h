@@ -62,26 +62,6 @@ class SysfsFunction : public ProbeFunction {
   // It will be used for both parsing and logging.
   NAME_PROBE_FUNCTION("sysfs");
 
-  // Define a parser for this function.
-  //
-  // This function takes the arguments in `const base::Value&` type.
-  // This function should parse the `dict_value`, if the `dict_value` has
-  // correct format, this function should return a new instance of
-  // `SysfsFunction` whose members are decided by `dict_value`.
-  //
-  // @args dict_value: a JSON dictionary to parse arguments from.
-  //
-  // @return pointer to new `SysfsFunction` instance on success, nullptr
-  //   otherwise.
-  template <typename T>
-  static auto FromKwargsValue(const base::Value& dict_value) {
-    PARSE_BEGIN();
-    PARSE_ARGUMENT(dir_path);
-    PARSE_ARGUMENT(keys);
-    PARSE_ARGUMENT(optional_keys, {});
-    PARSE_END();
-  }
-
  private:
   // Override `EvalImpl` function, which should return a list of Value.
   DataType EvalImpl() const override;

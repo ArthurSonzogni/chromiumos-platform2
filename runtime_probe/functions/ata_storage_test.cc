@@ -43,9 +43,7 @@ class AtaStorageFunctionTest : public BaseFunctionTest {
 };
 
 TEST_F(AtaStorageFunctionTest, ProbeFromSysfs) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockAtaStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockAtaStorageFunction>();
 
   auto ata1_path = GetPathUnderRoot("/sys/class/block/sda1");
 
@@ -64,9 +62,7 @@ TEST_F(AtaStorageFunctionTest, ProbeFromSysfs) {
 }
 
 TEST_F(AtaStorageFunctionTest, ProbeFromSysfsEmptyNodePath) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockAtaStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockAtaStorageFunction>();
 
   base::FilePath empty_path;
 
@@ -78,9 +74,7 @@ TEST_F(AtaStorageFunctionTest, ProbeFromSysfsEmptyNodePath) {
 }
 
 TEST_F(AtaStorageFunctionTest, ProbeFromSysfsNotAtaVendor) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockAtaStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockAtaStorageFunction>();
 
   auto ata1_path = GetPathUnderRoot("/sys/class/block/sda1");
 
@@ -93,9 +87,7 @@ TEST_F(AtaStorageFunctionTest, ProbeFromSysfsNotAtaVendor) {
 }
 
 TEST_F(AtaStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockAtaStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockAtaStorageFunction>();
 
   auto ata1_path = GetPathUnderRoot("/sys/class/block/sda1");
 
@@ -107,9 +99,7 @@ TEST_F(AtaStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
 }
 
 TEST_F(AtaStorageFunctionTest, ProbeFromStorageTool) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockAtaStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockAtaStorageFunction>();
 
   auto ata1_path = GetPathUnderRoot("/sys/class/block/sda1");
 

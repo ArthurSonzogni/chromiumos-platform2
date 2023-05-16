@@ -43,8 +43,8 @@ TEST(SysfsFunctionTest, TestRead) {
       "keys": ["1"],
       "optional_keys": ["2"]
   })");
-  json_val->SetStringKey("dir_path", temp_dir.GetPath().Append("D*").value());
-  auto p = CreateProbeFunction<SysfsFunction>(*json_val);
+  json_val->GetDict().Set("dir_path", temp_dir.GetPath().Append("D*").value());
+  auto p = CreateProbeFunction<SysfsFunction>(json_val->GetDict());
   ASSERT_TRUE(p) << "Failed to create SysfsFunction: " << *json_val;
 
   auto f = dynamic_cast<SysfsFunction*>(p.get());
@@ -79,9 +79,9 @@ TEST(SysfsFunctionTest, TestRead) {
       "optional_keys": ["2"]
   })");
 
-  json_val_abs->SetStringKey("dir_path",
-                             temp_dir.GetPath().Append("D*").value());
-  auto p_abs = CreateProbeFunction<SysfsFunction>(*json_val_abs);
+  json_val_abs->GetDict().Set("dir_path",
+                              temp_dir.GetPath().Append("D*").value());
+  auto p_abs = CreateProbeFunction<SysfsFunction>(json_val_abs->GetDict());
   ASSERT_TRUE(p_abs) << "Failed to create SysfsFunction: " << *json_val_abs;
 
   auto f_abs = dynamic_cast<SysfsFunction*>(p_abs.get());

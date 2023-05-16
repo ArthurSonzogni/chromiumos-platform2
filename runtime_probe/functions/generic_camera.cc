@@ -20,8 +20,8 @@ void ConcatenateDataType(GenericCameraFunction::DataType* dest,
 }  // namespace
 
 bool GenericCameraFunction::PostParseArguments() {
-  usb_prober_ = GetUsbProber(base::Value{base::Value::Dict{}});
-  mipi_prober_ = GetMipiProber(base::Value{base::Value::Dict{}});
+  usb_prober_ = GetUsbProber(base::Value::Dict{});
+  mipi_prober_ = GetMipiProber(base::Value::Dict{});
 
   return usb_prober_ && mipi_prober_;
 }

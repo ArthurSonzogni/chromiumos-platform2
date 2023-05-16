@@ -50,9 +50,7 @@ class MmcStorageFunctionTest : public BaseFunctionTest {
 };
 
 TEST_F(MmcStorageFunctionTest, ProbeFromSysfs) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockMmcStorageFunction>();
 
   auto blk1_path = base::StringPrintf("%s/mmcblk1", kMmcBlockPath);
   SetMmcStorage(blk1_path, {{"type", kMmcType},
@@ -73,9 +71,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromSysfs) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromSysfsNonMmcStorage) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockMmcStorageFunction>();
 
   auto blk1_path = base::StringPrintf("%s/mmcblk1", kMmcBlockPath);
   // The type of the storage is "unknown".
@@ -90,9 +86,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromSysfsNonMmcStorage) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromSysfsNoTypeFile) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockMmcStorageFunction>();
 
   auto blk1_path = base::StringPrintf("%s/mmcblk1", kMmcBlockPath);
   // No file for storage type.
@@ -106,9 +100,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromSysfsNoTypeFile) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockMmcStorageFunction>();
 
   auto blk1_path = base::StringPrintf("%s/mmcblk1", kMmcBlockPath);
   // No required field "name".
@@ -122,9 +114,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromSysfsEmptyPath) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockMmcStorageFunction>();
 
   base::FilePath empty_path;
   auto result = probe_function->ProbeFromSysfs(empty_path);
@@ -133,9 +123,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromSysfsEmptyPath) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolWithAsciiStringFwVersion) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockMmcStorageFunction>();
 
   auto blk1_path = base::StringPrintf("%s/mmcblk1", kMmcBlockPath);
   std::string mmc_extcsd_output = R"(Firmware version:
@@ -162,9 +150,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolWithAsciiStringFwVersion) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolWithHexValueFwVersion) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockMmcStorageFunction>();
 
   auto blk1_path = base::StringPrintf("%s/mmcblk1", kMmcBlockPath);
   std::string mmc_extcsd_output = R"(Firmware version:
@@ -191,9 +177,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolWithHexValueFwVersion) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolInvalidFwVersionHexValue) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockMmcStorageFunction>();
 
   auto blk1_path = base::StringPrintf("%s/mmcblk1", kMmcBlockPath);
   // Invalid hex representation 0xZZ.
@@ -222,9 +206,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolInvalidFwVersionHexValue) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolInvalidFwVersionByteCount) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockMmcStorageFunction>();
 
   auto blk1_path = base::StringPrintf("%s/mmcblk1", kMmcBlockPath);
   // The output for firmware version should be 8 bytes, but got only 1 byte.
@@ -246,9 +228,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolInvalidFwVersionByteCount) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolDBusCallFailed) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockMmcStorageFunction>();
 
   auto blk1_path = base::StringPrintf("%s/mmcblk1", kMmcBlockPath);
   auto debugd = mock_context()->mock_debugd_proxy();

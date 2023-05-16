@@ -23,7 +23,9 @@ using DataType = typename ProbeFunction::DataType;
 auto ProbeFunction::registered_functions_ =
     AllFunctions::ConstructRegisteredFunctionTable();
 
-ProbeFunction::ProbeFunction(base::Value&& raw_value) {}
+ProbeFunction::ProbeFunction() = default;
+
+ProbeFunction::~ProbeFunction() = default;
 
 std::unique_ptr<ProbeFunction> ProbeFunction::FromValue(const base::Value& dv) {
   if (!dv.is_dict()) {
@@ -58,13 +60,12 @@ std::unique_ptr<ProbeFunction> ProbeFunction::FromValue(const base::Value& dv) {
   }
 
   if (!kwargs.is_dict()) {
-    // TODO(stimim): implement syntax sugar.
     LOG(ERROR) << "Function argument should be a dictionary";
     return nullptr;
   }
 
   return static_cast<std::unique_ptr<ProbeFunction>>(
-      registered_functions_[function_name](kwargs));
+      registered_functions_[function_name](kwargs.GetDict()));
 }
 
 int ProbeFunction::EvalInHelper(std::string* /*output*/) const {
@@ -105,12 +106,11 @@ bool ProbeFunction::ParseArguments(const base::Value::Dict& arguments) {
   return success ? PostParseArguments() : false;
 }
 
-PrivilegedProbeFunction::PrivilegedProbeFunction(base::Value&& raw_value)
-    : raw_value_(std::move(raw_value)) {}
-
 bool PrivilegedProbeFunction::InvokeHelper(std::string* result) const {
+  base::Value::Dict probe_statement;
+  probe_statement.Set(GetFunctionName(), arguments().Clone());
   std::string probe_statement_str;
-  base::JSONWriter::Write(raw_value_, &probe_statement_str);
+  base::JSONWriter::Write(probe_statement, &probe_statement_str);
 
   return Context::Get()->helper_invoker()->Invoke(
       /*probe_function=*/this, probe_statement_str, result);

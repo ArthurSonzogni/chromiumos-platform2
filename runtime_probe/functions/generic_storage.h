@@ -23,25 +23,6 @@ class GenericStorageFunction : public ProbeFunction {
  public:
   NAME_PROBE_FUNCTION("generic_storage");
 
-  template <typename T>
-  static std::unique_ptr<T> FromKwargsValue(const base::Value& dict_value) {
-    PARSE_BEGIN();
-    instance->ata_prober_ = CreateProbeFunction<AtaStorageFunction>(dict_value);
-    if (!instance->ata_prober_)
-      return nullptr;
-    instance->mmc_prober_ = CreateProbeFunction<MmcStorageFunction>(dict_value);
-    if (!instance->mmc_prober_)
-      return nullptr;
-    instance->nvme_prober_ =
-        CreateProbeFunction<NvmeStorageFunction>(dict_value);
-    if (!instance->nvme_prober_)
-      return nullptr;
-    instance->ufs_prober_ = CreateProbeFunction<UfsStorageFunction>(dict_value);
-    if (!instance->ufs_prober_)
-      return nullptr;
-    PARSE_END();
-  }
-
  private:
   // ProbeFunction overrides.
   bool PostParseArguments() override;

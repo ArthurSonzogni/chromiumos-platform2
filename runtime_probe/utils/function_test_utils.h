@@ -60,10 +60,9 @@ class FakeProbeFunction : public ProbeFunctionType {
 template <typename ProbeFunctionType>
 std::unique_ptr<ProbeFunctionType> CreateFakeProbeFunction(
     const std::string& probe_result) {
-  base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeProbeFunction<ProbeFunctionType>>(
-          probe_statement);
+          base::Value::Dict{});
   auto res = base::JSONReader::Read(probe_result);
   probe_function->fake_result_ = std::move(res->GetList());
   return probe_function;

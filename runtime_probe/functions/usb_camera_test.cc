@@ -62,9 +62,7 @@ class UsbCameraFunctionTest : public BaseFunctionTest {
 };
 
 TEST_F(UsbCameraFunctionTest, ProbeUsbCamera) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeUsbCameraFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeUsbCameraFunction>();
 
   SetCameraDevice(0, {{"idProduct", "1234"},
                       {"idVendor", "5678"},
@@ -106,9 +104,7 @@ TEST_F(UsbCameraFunctionTest, ProbeUsbCamera) {
 }
 
 TEST_F(UsbCameraFunctionTest, NoRequiredFields) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeUsbCameraFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeUsbCameraFunction>();
 
   // No required field "idProduct".
   SetCameraDevice(0, {{"idVendor", "5678"},
@@ -139,9 +135,7 @@ TEST_F(UsbCameraFunctionTest, NoRequiredFields) {
 }
 
 TEST_F(UsbCameraFunctionTest, QueryCapFailed) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeUsbCameraFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeUsbCameraFunction>();
 
   SetCameraDevice(0, {{"idProduct", "1234"}, {"idVendor", "5678"}});
 
@@ -155,9 +149,7 @@ TEST_F(UsbCameraFunctionTest, QueryCapFailed) {
 }
 
 TEST_F(UsbCameraFunctionTest, InvalidCap) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeUsbCameraFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeUsbCameraFunction>();
 
   SetCameraDevice(0, {{"idProduct", "1234"}, {"idVendor", "5678"}});
 
@@ -174,9 +166,7 @@ TEST_F(UsbCameraFunctionTest, InvalidCap) {
 }
 
 TEST_F(UsbCameraFunctionTest, NoSysfsData) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeUsbCameraFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeUsbCameraFunction>();
 
   SetFile({kDevPath, "video0"}, "don't care");
 

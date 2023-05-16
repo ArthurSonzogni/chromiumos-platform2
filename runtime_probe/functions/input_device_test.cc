@@ -84,9 +84,7 @@ B: ABS=0)";
       GetPathUnderRoot({"sys/devices/XXX/1234:5678:90ab.0001/input/input7"})
           .value());
 
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<InputDeviceFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<InputDeviceFunction>();
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);
 }
@@ -122,9 +120,7 @@ B: ABS=)" +
       GetPathUnderRoot({"sys/devices/XXX/0018:04F3:2D5A.0001/input/input4"})
           .value());
 
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<InputDeviceFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<InputDeviceFunction>();
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);
 }
@@ -160,9 +156,7 @@ B: ABS=0)";
       GetPathUnderRoot({"sys/devices/XXX/i2c-ELAN0000:00/input/input11"})
           .value());
 
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<InputDeviceFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<InputDeviceFunction>();
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);
 }
@@ -197,9 +191,7 @@ B: SW=14)";
                   {"sys/devices/XXX/jsl_rt5682_rt1015/sound/card0/input12"})
                   .value());
 
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<InputDeviceFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<InputDeviceFunction>();
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);
 }
@@ -225,8 +217,6 @@ B: ABS=)" +
       GetTouchscreenAbs();
 
   SetFile(kInputDevicesPath, input_devices);
-
-  base::Value probe_statement(base::Value::Type::DICT);
 
   auto ans = CreateProbeResultFromJson(R"JSON(
     [
@@ -259,8 +249,7 @@ B: ABS=)" +
       GetPathUnderRoot({"sys/devices/XXX/0018:04F3:2D5A.0001/input/input4"})
           .value());
 
-  auto probe_function =
-      CreateProbeFunction<InputDeviceFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<InputDeviceFunction>();
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);
 }
@@ -287,8 +276,8 @@ B: ABS=)" +
 
   SetFile(kInputDevicesPath, input_devices);
 
-  base::Value probe_statement(base::Value::Type::DICT);
-  probe_statement.SetStringKey("device_type", "stylus");
+  base::Value::Dict arg;
+  arg.Set("device_type", "stylus");
 
   // Only contain results of given device type.
   auto ans = CreateProbeResultFromJson(R"JSON(
@@ -309,8 +298,7 @@ B: ABS=)" +
       GetPathUnderRoot({"sys/devices/XXX/1234:5678:90ab.0001/input/input7"})
           .value());
 
-  auto probe_function =
-      CreateProbeFunction<InputDeviceFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<InputDeviceFunction>(arg);
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);
 }
@@ -363,9 +351,7 @@ B: ABS=)" +
           {"sys/devices/XXX/i2c-ELAN0001:00/0018:0000:2D5A.0001/input/input4"})
           .value());
 
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<InputDeviceFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<InputDeviceFunction>();
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);
 }
@@ -375,9 +361,7 @@ TEST_F(InputDeviceFunctionTest, ProcfsNotExist) {
     []
   )JSON");
 
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<InputDeviceFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<InputDeviceFunction>();
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);
 }

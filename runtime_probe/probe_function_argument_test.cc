@@ -9,7 +9,6 @@
 
 #include "runtime_probe/probe_function.h"
 #include "runtime_probe/probe_function_argument.h"
-#include "runtime_probe/probe_function_argument_legacy.h"
 
 namespace runtime_probe {
 namespace {
@@ -53,10 +52,10 @@ class ArgProbeFunction : public BaseProbeFunction {
                          default_vec_int,
                          std::vector<int>{1, 2, 3});
   PROBE_FUNCTION_ARG_DEF(std::unique_ptr<ProbeFunction>, a_probe_fun);
-  PROBE_FUNCTION_ARG_DEF(std::unique_ptr<ProbeFunction>,
-                         default_probe_fun,
-                         CreateProbeFunction<NoArgProbeFunction>(
-                             base::Value(base::Value::Type::DICT)));
+  PROBE_FUNCTION_ARG_DEF(
+      std::unique_ptr<ProbeFunction>,
+      default_probe_fun,
+      CreateProbeFunction<NoArgProbeFunction>(base::Value::Dict{}));
 
   static bool post_parse_arg_result_;
 };
@@ -91,9 +90,6 @@ class ProbeFunctionArgumentTest : public ::testing::Test {
   ProbeFunction::RegisteredFunctionTableType original_function_table_;
 };
 
-template <typename T>
-constexpr auto CreateProbeFunctionTmp = &T::template FromKwargsValueTmp<T>;
-
 TEST_F(ProbeFunctionArgumentTest, Required) {
   arg_.Set("a_str", "str");
   arg_.Set("a_int", 42);
@@ -111,7 +107,7 @@ TEST_F(ProbeFunctionArgumentTest, Required) {
     arg_.Set("a_probe_fun", std::move(probe_fun));
   }
 
-  auto fun = CreateProbeFunctionTmp<ArgProbeFunction>(arg_);
+  auto fun = CreateProbeFunction<ArgProbeFunction>(arg_);
   ASSERT_TRUE(fun);
   EXPECT_EQ(fun->a_str_, "str");
   EXPECT_EQ(fun->a_int_, 42);
@@ -144,7 +140,7 @@ TEST_F(ProbeFunctionArgumentTest, Optional) {
     arg_.Set("default_probe_fun", std::move(probe_fun));
   }
 
-  auto fun = CreateProbeFunctionTmp<ArgProbeFunction>(arg_);
+  auto fun = CreateProbeFunction<ArgProbeFunction>(arg_);
   ASSERT_TRUE(fun);
   EXPECT_EQ(fun->default_int_, 1);
   EXPECT_EQ(fun->opt_int_, 2);
@@ -155,25 +151,25 @@ TEST_F(ProbeFunctionArgumentTest, Optional) {
 
 TEST_F(ProbeFunctionArgumentTest, Empty) {
   arg_.clear();
-  auto fun = CreateProbeFunctionTmp<ArgProbeFunction>(arg_);
+  auto fun = CreateProbeFunction<ArgProbeFunction>(arg_);
   ASSERT_FALSE(fun);
 }
 
 TEST_F(ProbeFunctionArgumentTest, WrongType) {
   arg_.Set("a_int", "str");
-  auto fun = CreateProbeFunctionTmp<ArgProbeFunction>(arg_);
+  auto fun = CreateProbeFunction<ArgProbeFunction>(arg_);
   ASSERT_FALSE(fun);
 }
 
 TEST_F(ProbeFunctionArgumentTest, WrongOptionalType) {
   arg_.Set("opt_int", "str");
-  auto fun = CreateProbeFunctionTmp<ArgProbeFunction>(arg_);
+  auto fun = CreateProbeFunction<ArgProbeFunction>(arg_);
   ASSERT_FALSE(fun);
 }
 
 TEST_F(ProbeFunctionArgumentTest, WrongDefaultType) {
   arg_.Set("default_int", "str");
-  auto fun = CreateProbeFunctionTmp<ArgProbeFunction>(arg_);
+  auto fun = CreateProbeFunction<ArgProbeFunction>(arg_);
   ASSERT_FALSE(fun);
 }
 
@@ -185,19 +181,19 @@ TEST_F(ProbeFunctionArgumentTest, WrongVectorType) {
     tmp.Append(6);
     arg_.Set("default_vec_int", std::move(tmp));
   }
-  auto fun = CreateProbeFunctionTmp<ArgProbeFunction>(arg_);
+  auto fun = CreateProbeFunction<ArgProbeFunction>(arg_);
   ASSERT_FALSE(fun);
 }
 
 TEST_F(ProbeFunctionArgumentTest, Unexpected) {
   arg_.Set("unexpected", "str");
-  auto fun = CreateProbeFunctionTmp<ArgProbeFunction>(arg_);
+  auto fun = CreateProbeFunction<ArgProbeFunction>(arg_);
   ASSERT_FALSE(fun);
 }
 
 TEST_F(ProbeFunctionArgumentTest, PostParseArgumentsFailed) {
   ArgProbeFunction::post_parse_arg_result_ = false;
-  auto fun = CreateProbeFunctionTmp<ArgProbeFunction>(arg_);
+  auto fun = CreateProbeFunction<ArgProbeFunction>(arg_);
   ASSERT_FALSE(fun);
 }
 

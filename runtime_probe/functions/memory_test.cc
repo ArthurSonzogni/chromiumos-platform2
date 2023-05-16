@@ -132,8 +132,7 @@ TEST_F(MemoryTest, ProbeMemory) {
           {base::StringPrintf("sys/firmware/dmi/entries/%d-1", kMemoryType)})
           .value());
 
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function = CreateProbeFunction<MemoryFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MemoryFunction>();
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);
 }
@@ -167,8 +166,7 @@ TEST_F(MemoryTest, ProbeKbMemory) {
           {base::StringPrintf("sys/firmware/dmi/entries/%d-0", kMemoryType)})
           .value());
 
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function = CreateProbeFunction<MemoryFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MemoryFunction>();
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);
 }
@@ -178,8 +176,7 @@ TEST_F(MemoryTest, NoDmiData) {
     []
   )JSON");
 
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function = CreateProbeFunction<MemoryFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MemoryFunction>();
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);
 }
@@ -218,8 +215,7 @@ TEST_F(MemoryTest, InvalidDmiData) {
           {base::StringPrintf("sys/firmware/dmi/entries/%d-1", kMemoryType)})
           .value());
 
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function = CreateProbeFunction<MemoryFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MemoryFunction>();
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);
 }

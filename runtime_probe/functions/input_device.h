@@ -29,13 +29,6 @@ class InputDeviceFunction : public PrivilegedProbeFunction {
  public:
   NAME_PROBE_FUNCTION("input_device");
 
-  template <typename T>
-  static auto FromKwargsValue(const base::Value& dict_value) {
-    PARSE_BEGIN();
-    PARSE_ARGUMENT(device_type, std::string(""));
-    PARSE_END();
-  }
-
  private:
   DataType EvalImpl() const override;
 

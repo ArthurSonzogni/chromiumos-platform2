@@ -20,14 +20,10 @@ void ConcatenateDataType(GenericStorageFunction::DataType* dest,
 }  // namespace
 
 bool GenericStorageFunction::PostParseArguments() {
-  ata_prober_ =
-      CreateProbeFunction<AtaStorageFunction>(base::Value{base::Value::Dict{}});
-  mmc_prober_ =
-      CreateProbeFunction<MmcStorageFunction>(base::Value{base::Value::Dict{}});
-  nvme_prober_ = CreateProbeFunction<NvmeStorageFunction>(
-      base::Value{base::Value::Dict{}});
-  ufs_prober_ =
-      CreateProbeFunction<UfsStorageFunction>(base::Value{base::Value::Dict{}});
+  ata_prober_ = CreateProbeFunction<AtaStorageFunction>(base::Value::Dict{});
+  mmc_prober_ = CreateProbeFunction<MmcStorageFunction>(base::Value::Dict{});
+  nvme_prober_ = CreateProbeFunction<NvmeStorageFunction>(base::Value::Dict{});
+  ufs_prober_ = CreateProbeFunction<UfsStorageFunction>(base::Value::Dict{});
 
   return ata_prober_ && mmc_prober_ && nvme_prober_ && ufs_prober_;
 }

@@ -35,26 +35,6 @@ class EcI2cFunction : public PrivilegedProbeFunction {
  public:
   NAME_PROBE_FUNCTION("ec_i2c");
 
-  // Define a parser for this function.
-  //
-  // @args dict_value: a JSON dictionary to parse arguments from.
-  //
-  // @return pointer to new `EcI2cFunction` instance on success, nullptr
-  //   otherwise.
-  template <typename T>
-  static std::unique_ptr<T> FromKwargsValue(const base::Value& dict_value) {
-    PARSE_BEGIN();
-    PARSE_ARGUMENT(i2c_bus);
-    PARSE_ARGUMENT(chip_addr);
-    PARSE_ARGUMENT(data_addr);
-    PARSE_ARGUMENT(size, 8);
-    if (instance->size_ != 8 && instance->size_ != 16) {
-      LOG(ERROR) << "\"size\" should be 8 or 16.";
-      return nullptr;
-    }
-    PARSE_END();
-  }
-
  private:
   // PrivilegedProbeFunction overrides.
   bool PostParseArguments() final;

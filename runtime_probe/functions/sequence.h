@@ -35,13 +35,6 @@ class SequenceFunction : public ProbeFunction {
  public:
   NAME_PROBE_FUNCTION("sequence");
 
-  template <typename T>
-  static auto FromKwargsValue(const base::Value& dict_value) {
-    PARSE_BEGIN();
-    PARSE_ARGUMENT(functions);
-    PARSE_END();
-  }
-
  private:
   DataType EvalImpl() const override;
 

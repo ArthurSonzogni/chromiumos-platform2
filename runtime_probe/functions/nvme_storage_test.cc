@@ -53,9 +53,7 @@ class NvmeStorageFunctionTest : public BaseFunctionTest {
 };
 
 TEST_F(NvmeStorageFunctionTest, ProbeFromSysfs) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNvmeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockNvmeStorageFunction>();
 
   auto nvme1_path = GetPathUnderRoot("/sys/class/block/nvme0n1");
 
@@ -76,9 +74,7 @@ TEST_F(NvmeStorageFunctionTest, ProbeFromSysfs) {
 }
 
 TEST_F(NvmeStorageFunctionTest, ProbeFromSysfsNoDriverSymbolicLink) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNvmeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockNvmeStorageFunction>();
 
   auto nvme1_path = GetPathUnderRoot("/sys/class/block/nvme0n1");
 
@@ -92,9 +88,7 @@ TEST_F(NvmeStorageFunctionTest, ProbeFromSysfsNoDriverSymbolicLink) {
 }
 
 TEST_F(NvmeStorageFunctionTest, ProbeFromSysfsNotNvmeDriver) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNvmeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockNvmeStorageFunction>();
 
   auto nvme1_path = GetPathUnderRoot("/sys/class/block/nvme0n1");
 
@@ -111,9 +105,7 @@ TEST_F(NvmeStorageFunctionTest, ProbeFromSysfsNotNvmeDriver) {
 }
 
 TEST_F(NvmeStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNvmeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockNvmeStorageFunction>();
 
   auto nvme1_path = GetPathUnderRoot("/sys/class/block/nvme0n1");
 
@@ -126,9 +118,7 @@ TEST_F(NvmeStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
 }
 
 TEST_F(NvmeStorageFunctionTest, ProbeFromStorageTool) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNvmeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockNvmeStorageFunction>();
 
   auto nvme2_path = GetPathUnderRoot("/sys/class/block/nvme0n2");
 
@@ -164,9 +154,7 @@ TEST_F(NvmeStorageFunctionTest, ProbeFromStorageTool) {
 }
 
 TEST_F(NvmeStorageFunctionTest, ProbeFromStorageToolNoFwVersion) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNvmeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockNvmeStorageFunction>();
 
   auto nvme1_path = GetPathUnderRoot("/sys/class/block/nvme0n1");
 
@@ -195,9 +183,7 @@ TEST_F(NvmeStorageFunctionTest, ProbeFromStorageToolNoFwVersion) {
 }
 
 TEST_F(NvmeStorageFunctionTest, ProbeFromStorageToolNoModelNumber) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNvmeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockNvmeStorageFunction>();
 
   auto nvme1_path = GetPathUnderRoot("/sys/class/block/nvme0n1");
 
@@ -226,9 +212,7 @@ TEST_F(NvmeStorageFunctionTest, ProbeFromStorageToolNoModelNumber) {
 }
 
 TEST_F(NvmeStorageFunctionTest, ProbeFromStorageToolDBusCallFailed) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNvmeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockNvmeStorageFunction>();
 
   auto nvme1_path = GetPathUnderRoot("/sys/class/block/nvme0n1");
 
@@ -241,9 +225,7 @@ TEST_F(NvmeStorageFunctionTest, ProbeFromStorageToolDBusCallFailed) {
 }
 
 TEST_F(NvmeStorageFunctionTest, ProbeFromStorageToolParseDebugdOutputFailed) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNvmeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockNvmeStorageFunction>();
 
   auto nvme1_path = GetPathUnderRoot("/sys/class/block/nvme0n1");
 
@@ -258,9 +240,7 @@ TEST_F(NvmeStorageFunctionTest, ProbeFromStorageToolParseDebugdOutputFailed) {
 }
 
 TEST_F(NvmeStorageFunctionTest, ProbeFromStorageToolInvalidDebugdOutput) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNvmeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockNvmeStorageFunction>();
 
   auto nvme1_path = GetPathUnderRoot("/sys/class/block/nvme0n1");
 

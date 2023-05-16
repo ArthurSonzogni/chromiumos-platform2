@@ -22,10 +22,7 @@ constexpr char kFakeMmcName[] = "mmcX:1234";
 
 class MmcHostFunctionTest : public BaseFunctionTest {
  protected:
-  void SetUp() {
-    base::Value probe_statement(base::Value::Type::DICT);
-    probe_function_ = CreateProbeFunction<MmcHostFunction>(probe_statement);
-  }
+  void SetUp() { probe_function_ = CreateProbeFunction<MmcHostFunction>(); }
 
   // Returns the string of the real path of the fake mmc host device.
   std::string SetMmcHost() {

@@ -66,9 +66,7 @@ cros::PlatformCameraInfo CreateV4L2PlatformCameraInfo(std::string name,
 }
 
 TEST_F(MipiCameraFunctionTest, ProbeMipiCamera) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeMipiCameraFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeMipiCameraFunction>();
 
   probe_function->fake_cameras_ = std::vector<cros::PlatformCameraInfo>{
       CreateEepromPlatformCameraInfo("ABC-00/ABC-1234", "TC", 1234u, "OV",
@@ -97,9 +95,7 @@ TEST_F(MipiCameraFunctionTest, ProbeMipiCamera) {
 }
 
 TEST_F(MipiCameraFunctionTest, GetDeviceConfigFailed) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeMipiCameraFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeMipiCameraFunction>();
 
   // Fail to get device config.
   probe_function->fake_cameras_ = std::nullopt;
@@ -112,9 +108,7 @@ TEST_F(MipiCameraFunctionTest, GetDeviceConfigFailed) {
 }
 
 TEST_F(MipiCameraFunctionTest, NoCamera) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeMipiCameraFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeMipiCameraFunction>();
 
   // Get empty camera list.
   probe_function->fake_cameras_ = std::vector<cros::PlatformCameraInfo>{};

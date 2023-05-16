@@ -45,8 +45,7 @@ class MockTcpcFunction : public TcpcFunction {
 class TcpcFunctionTest : public BaseFunctionTest {};
 
 TEST_F(TcpcFunctionTest, ProbeTcpc) {
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function = CreateProbeFunction<MockTcpcFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockTcpcFunction>();
 
   EXPECT_CALL(*probe_function, GetEcDevice())
       .WillOnce(Return(ByMove(base::ScopedFD{})));

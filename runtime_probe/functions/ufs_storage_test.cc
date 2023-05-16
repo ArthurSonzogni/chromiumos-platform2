@@ -45,9 +45,7 @@ class UfsStorageFunctionTest : public BaseFunctionTest {
 };
 
 TEST_F(UfsStorageFunctionTest, ProbeFromSysfs) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockUfsStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockUfsStorageFunction>();
 
   auto ufs1_path = GetPathUnderRoot("/sys/class/block/sda1");
 
@@ -66,9 +64,7 @@ TEST_F(UfsStorageFunctionTest, ProbeFromSysfs) {
 }
 
 TEST_F(UfsStorageFunctionTest, ProbeFromSysfsEmptyNodePath) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockUfsStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockUfsStorageFunction>();
 
   base::FilePath empty_path;
 
@@ -80,9 +76,7 @@ TEST_F(UfsStorageFunctionTest, ProbeFromSysfsEmptyNodePath) {
 }
 
 TEST_F(UfsStorageFunctionTest, ProbeFromSysfsNoUfsBsg) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockUfsStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockUfsStorageFunction>();
 
   auto ufs1_path = GetPathUnderRoot("/sys/class/block/sda1");
 
@@ -95,9 +89,7 @@ TEST_F(UfsStorageFunctionTest, ProbeFromSysfsNoUfsBsg) {
 }
 
 TEST_F(UfsStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockUfsStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockUfsStorageFunction>();
 
   auto ufs1_path = GetPathUnderRoot("/sys/class/block/sda1");
 
@@ -110,9 +102,7 @@ TEST_F(UfsStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
 }
 
 TEST_F(UfsStorageFunctionTest, ProbeFromStorageTool) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockUfsStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<MockUfsStorageFunction>();
 
   auto ufs1_path = GetPathUnderRoot("/sys/class/block/sda1");
 

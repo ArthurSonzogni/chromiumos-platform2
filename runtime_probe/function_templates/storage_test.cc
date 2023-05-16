@@ -51,9 +51,7 @@ class FakeStorageFunction : public StorageFunction {
 class StorageFunctionTest : public BaseFunctionTest {};
 
 TEST_F(StorageFunctionTest, ProbeStorage) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
 
   SetFile({kStorageDirPath, "blk1/removable"}, "0");
   SetFile({kStorageDirPath, "blk1/size"}, "100");
@@ -105,9 +103,7 @@ TEST_F(StorageFunctionTest, ProbeStorage) {
 }
 
 TEST_F(StorageFunctionTest, RemovableStorage) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
 
   // The storage device is removable.
   SetFile({kStorageDirPath, "blk1/removable"}, "1");
@@ -128,9 +124,7 @@ TEST_F(StorageFunctionTest, RemovableStorage) {
 }
 
 TEST_F(StorageFunctionTest, NoRemovableProperty) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
 
   // No file for removable property.
   SetFile({kStorageDirPath, "blk1/size"}, "100");
@@ -150,9 +144,7 @@ TEST_F(StorageFunctionTest, NoRemovableProperty) {
 }
 
 TEST_F(StorageFunctionTest, LoopbackDevice) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
 
   SetFile({kStorageDirPath, "loop0/removable"}, "0");
   SetFile({kStorageDirPath, "loop0/size"}, "100");
@@ -172,9 +164,7 @@ TEST_F(StorageFunctionTest, LoopbackDevice) {
 }
 
 TEST_F(StorageFunctionTest, DmVerityDevice) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
 
   SetFile({kStorageDirPath, "dm-0/removable"}, "0");
   SetFile({kStorageDirPath, "dm-0/size"}, "100");
@@ -194,9 +184,7 @@ TEST_F(StorageFunctionTest, DmVerityDevice) {
 }
 
 TEST_F(StorageFunctionTest, NoSysfsResult) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
 
   SetFile({kStorageDirPath, "blk1/removable"}, "0");
   SetFile({kStorageDirPath, "blk1/size"}, "100");
@@ -229,9 +217,7 @@ TEST_F(StorageFunctionTest, NoSysfsResult) {
 }
 
 TEST_F(StorageFunctionTest, NoSectorCount) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
 
   // No file for storage sector count.
   SetFile({kStorageDirPath, "blk1/removable"}, "0");
@@ -260,9 +246,7 @@ TEST_F(StorageFunctionTest, NoSectorCount) {
 }
 
 TEST_F(StorageFunctionTest, InvalidSectorCount) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
 
   // Invalid format for storage sector count.
   SetFile({kStorageDirPath, "blk1/removable"}, "0");
@@ -292,9 +276,7 @@ TEST_F(StorageFunctionTest, InvalidSectorCount) {
 }
 
 TEST_F(StorageFunctionTest, NoLogicalBlockSize) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
 
   // No file for storage logical block size.
   SetFile({kStorageDirPath, "blk1/removable"}, "0");
@@ -324,9 +306,7 @@ TEST_F(StorageFunctionTest, NoLogicalBlockSize) {
 }
 
 TEST_F(StorageFunctionTest, InvalidLogicalBlockSize) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
 
   // Invalid format for storage logical block size.
   SetFile({kStorageDirPath, "blk1/removable"}, "0");
@@ -357,9 +337,7 @@ TEST_F(StorageFunctionTest, InvalidLogicalBlockSize) {
 }
 
 TEST_F(StorageFunctionTest, NonpositiveLogicalBlockSize) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<FakeStorageFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
 
   // Nonpositive number for storage logical block size.
   SetFile({kStorageDirPath, "blk1/removable"}, "0");

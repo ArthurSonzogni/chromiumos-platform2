@@ -13,11 +13,6 @@
 #include "runtime_probe/probe_function_argument.h"
 
 namespace runtime_probe {
-namespace internal {
-
-bool IsValidNetworkType(const std::string& type);
-
-}
 
 // TODO(b/269822306): Move this class to //runtime_probe/functions after we
 // remove all XXX_network functions.
@@ -26,17 +21,6 @@ class NetworkFunction : public PrivilegedProbeFunction {
 
  public:
   NAME_PROBE_FUNCTION("network");
-
-  template <typename T>
-  static std::unique_ptr<T> FromKwargsValue(const base::Value& dict_value) {
-    PARSE_BEGIN();
-    PARSE_ARGUMENT(device_type, std::string(""));
-    if (!internal::IsValidNetworkType(instance->device_type_)) {
-      LOG(ERROR) << "Got an unexpected network type " << instance->device_type_;
-      return nullptr;
-    }
-    PARSE_END();
-  }
 
  protected:
   virtual std::optional<std::string> GetNetworkType() const;

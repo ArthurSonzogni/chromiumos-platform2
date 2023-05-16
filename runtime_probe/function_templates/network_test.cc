@@ -65,8 +65,7 @@ class NetworkFunctionTest : public BaseFunctionTest {
 
 TEST_F(NetworkFunctionTest, ProbeNetwork) {
   SetNetworkDevice("wlan0", shill::kTypeWifi);
-  base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<NetworkFunction>();
 
   auto result = probe_function->Eval();
   EXPECT_EQ(result.size(), 1);
@@ -83,8 +82,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkByType) {
 
   // Probe all.
   {
-    const base::Value probe_statement(base::Value::Type::DICT);
-    auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
+    auto probe_function = CreateProbeFunction<NetworkFunction>();
     auto result = probe_function->Eval();
     std::set<std::string> result_types;
     for (const auto& each_result : result) {
@@ -97,9 +95,9 @@ TEST_F(NetworkFunctionTest, ProbeNetworkByType) {
   }
   // Filter by each type.
   for (const auto& expected_type : expected_types) {
-    base::Value probe_statement(base::Value::Type::DICT);
-    probe_statement.GetDict().Set("device_type", expected_type);
-    auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
+    base::Value::Dict arg;
+    arg.Set("device_type", expected_type);
+    auto probe_function = CreateProbeFunction<NetworkFunction>(arg);
     auto result = probe_function->Eval();
     EXPECT_EQ(result.size(), 1);
     EXPECT_THAT(result[0].GetDict().FindString("type"),
@@ -111,9 +109,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkByType) {
   // migration.
   // Probe all.
   {
-    const base::Value probe_statement(base::Value::Type::DICT);
-    auto probe_function =
-        CreateProbeFunction<MockNetworkFunction>(probe_statement);
+    auto probe_function = CreateProbeFunction<MockNetworkFunction>();
     EXPECT_CALL(*probe_function, GetNetworkType())
         .WillOnce(Return(std::nullopt));
     auto result = probe_function->Eval();
@@ -128,9 +124,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkByType) {
   }
   // Filter by each type.
   for (const auto& expected_type : expected_types) {
-    base::Value probe_statement(base::Value::Type::DICT);
-    auto probe_function =
-        CreateProbeFunction<MockNetworkFunction>(probe_statement);
+    auto probe_function = CreateProbeFunction<MockNetworkFunction>();
     EXPECT_CALL(*probe_function, GetNetworkType())
         .WillOnce(Return(expected_type));
     auto result = probe_function->Eval();
@@ -141,9 +135,9 @@ TEST_F(NetworkFunctionTest, ProbeNetworkByType) {
 }
 
 TEST_F(NetworkFunctionTest, CreateNetworkFunctionFailed) {
-  base::Value probe_statement(base::Value::Type::DICT);
-  probe_statement.GetDict().Set("device_type", "unknown_type");
-  auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
+  base::Value::Dict arg;
+  arg.Set("device_type", "unknown_type");
+  auto probe_function = CreateProbeFunction<NetworkFunction>(arg);
   EXPECT_FALSE(probe_function);
 }
 

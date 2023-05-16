@@ -71,7 +71,7 @@ TEST_F(EcI2cFunctionTest, ProbeSucceed) {
     }
   )JSON");
   auto probe_function =
-      CreateProbeFunction<MockEcI2cFunction>(*probe_statement);
+      CreateProbeFunction<MockEcI2cFunction>(probe_statement->GetDict());
 
   EXPECT_CALL(*probe_function, GetEcDevice)
       .WillOnce(Return(ByMove(base::ScopedFD{})));
@@ -101,7 +101,7 @@ TEST_F(EcI2cFunctionTest, Probe16bitDataSucceed) {
     }
   )JSON");
   auto probe_function =
-      CreateProbeFunction<MockEcI2cFunction>(*probe_statement);
+      CreateProbeFunction<MockEcI2cFunction>(probe_statement->GetDict());
 
   EXPECT_CALL(*probe_function, GetEcDevice)
       .WillOnce(Return(ByMove(base::ScopedFD{})));
@@ -129,7 +129,8 @@ TEST_F(EcI2cFunctionTest, InvalidSize) {
       "size": 7
     }
   )JSON");
-  EXPECT_FALSE(CreateProbeFunction<MockEcI2cFunction>(*probe_statement));
+  EXPECT_FALSE(
+      CreateProbeFunction<MockEcI2cFunction>(probe_statement->GetDict()));
 }
 
 TEST_F(EcI2cFunctionTest, EcFailed) {
@@ -141,7 +142,7 @@ TEST_F(EcI2cFunctionTest, EcFailed) {
     }
   )JSON");
   auto probe_function =
-      CreateProbeFunction<MockEcI2cFunction>(*probe_statement);
+      CreateProbeFunction<MockEcI2cFunction>(probe_statement->GetDict());
 
   EXPECT_CALL(*probe_function, GetEcDevice)
       .WillOnce(Return(ByMove(base::ScopedFD{})));
@@ -166,7 +167,7 @@ TEST_F(EcI2cFunctionTest, EcI2cFailed) {
     }
   )JSON");
   auto probe_function =
-      CreateProbeFunction<MockEcI2cFunction>(*probe_statement);
+      CreateProbeFunction<MockEcI2cFunction>(probe_statement->GetDict());
 
   EXPECT_CALL(*probe_function, GetEcDevice)
       .WillOnce(Return(ByMove(base::ScopedFD{})));

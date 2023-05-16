@@ -69,14 +69,6 @@ std::map<std::string, std::string> GetDevicesType() {
 
 }  // namespace
 
-namespace internal {
-
-bool IsValidNetworkType(const std::string& type) {
-  return base::Contains(kValidNetworkTypes, type);
-}
-
-}  // namespace internal
-
 bool NetworkFunction::PostParseArguments() {
   if (!base::Contains(kValidNetworkTypes, device_type_)) {
     LOG(ERROR) << "function " << GetFunctionName()

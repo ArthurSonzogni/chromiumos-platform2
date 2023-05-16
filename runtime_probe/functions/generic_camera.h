@@ -21,18 +21,6 @@ class GenericCameraFunction : public ProbeFunction {
  public:
   NAME_PROBE_FUNCTION("generic_camera");
 
-  template <typename T>
-  static std::unique_ptr<T> FromKwargsValue(const base::Value& dict_value) {
-    PARSE_BEGIN();
-    instance->usb_prober_ = instance->GetUsbProber(dict_value);
-    if (!instance->usb_prober_)
-      return nullptr;
-    instance->mipi_prober_ = instance->GetMipiProber(dict_value);
-    if (!instance->mipi_prober_)
-      return nullptr;
-    PARSE_END();
-  }
-
  private:
   // ProbeFunction overrides.
   bool PostParseArguments() override;
@@ -43,11 +31,11 @@ class GenericCameraFunction : public ProbeFunction {
 
   // For mocking.
   virtual std::unique_ptr<UsbCameraFunction> GetUsbProber(
-      const base::Value& dict_value) {
+      const base::Value::Dict& dict_value) {
     return CreateProbeFunction<UsbCameraFunction>(dict_value);
   }
   virtual std::unique_ptr<MipiCameraFunction> GetMipiProber(
-      const base::Value& dict_value) {
+      const base::Value::Dict& dict_value) {
     return CreateProbeFunction<MipiCameraFunction>(dict_value);
   }
 };

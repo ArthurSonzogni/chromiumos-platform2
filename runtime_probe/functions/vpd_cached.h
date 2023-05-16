@@ -30,18 +30,6 @@ class VPDCached : public PrivilegedProbeFunction {
  public:
   NAME_PROBE_FUNCTION("vpd_cached");
 
-  // Define a parser for this function.
-  //
-  // @args dict_value: a JSON dictionary to parse arguments from.
-  //
-  // @return pointer to new `VPDCached` instance on success, nullptr otherwise.
-  template <typename T>
-  static auto FromKwargsValue(const base::Value& dict_value) {
-    PARSE_BEGIN();
-    PARSE_ARGUMENT(vpd_name);
-    PARSE_END();
-  }
-
  private:
   DataType EvalImpl() const override;
 
