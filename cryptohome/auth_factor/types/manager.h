@@ -15,6 +15,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/key_challenge_service_factory.h"
+#include "cryptohome/platform.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
@@ -26,6 +27,7 @@ namespace cryptohome {
 class AuthFactorDriverManager {
  public:
   AuthFactorDriverManager(
+      Platform* platform,
       Crypto* crypto,
       AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory,

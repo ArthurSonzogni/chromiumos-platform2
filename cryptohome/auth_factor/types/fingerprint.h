@@ -24,6 +24,7 @@
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/platform.h"
 #include "cryptohome/username.h"
 #include "cryptohome/util/async_init.h"
 
@@ -35,13 +36,14 @@ class FingerprintAuthFactorDriver final
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<FingerprintAuthFactorMetadata>,
-      public AfDriverFullAuthNoDecrypt,
       public AfDriverNoCredentialVerifier,
       public AfDriverNoDelay {
  public:
   FingerprintAuthFactorDriver(
-      Crypto* crypto, AsyncInitPtr<BiometricsAuthBlockService> bio_service)
-      : crypto_(crypto), bio_service_(bio_service) {}
+      Platform* platform,
+      Crypto* crypto,
+      AsyncInitPtr<BiometricsAuthBlockService> bio_service)
+      : platform_(platform), crypto_(crypto), bio_service_(bio_service) {}
 
  private:
   bool IsSupportedByHardware() const override;
@@ -51,6 +53,7 @@ class FingerprintAuthFactorDriver final
   void PrepareForAuthenticate(
       const ObfuscatedUsername& username,
       PreparedAuthFactorToken::Consumer callback) override;
+  bool IsFullAuthAllowed(AuthIntent auth_intent) const override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
@@ -59,6 +62,7 @@ class FingerprintAuthFactorDriver final
       const CommonAuthFactorMetadata& common,
       const FingerprintAuthFactorMetadata& typed_metadata) const override;
 
+  Platform* platform_;
   Crypto* crypto_;
   AsyncInitPtr<BiometricsAuthBlockService> bio_service_;
 };

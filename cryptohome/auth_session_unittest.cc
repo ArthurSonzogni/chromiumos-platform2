@@ -359,9 +359,11 @@ class AuthSessionTest : public ::testing::Test {
   NiceMock<MockBiometricsCommandProcessor>* bio_processor_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
   AuthFactorDriverManager auth_factor_driver_manager_{
+      &platform_,
       &crypto_,
       AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
-      &key_challenge_service_factory_, fp_service_.get(),
+      &key_challenge_service_factory_,
+      fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
           [](AuthSessionTest* test) { return test->bio_service_.get(); },
           base::Unretained(this)))};

@@ -544,8 +544,12 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   NiceMock<MockAuthBlockUtility> mock_auth_block_utility_;
   AuthFactorDriverManager auth_factor_driver_manager_{
-      &crypto_, AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
-      fp_service_.get(), AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &platform_,
+      &crypto_,
+      AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
+      nullptr,
+      fp_service_.get(),
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   AuthSession::BackingApis backing_apis_{&crypto_,

@@ -26,6 +26,7 @@
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_le_credential_manager.h"
+#include "cryptohome/mock_platform.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
@@ -77,6 +78,7 @@ class AuthFactorWithDriverTest : public ::testing::Test {
   }
 
   // Mocks for all of the manager dependencies.
+  MockPlatform platform_;
   hwsec::MockCryptohomeFrontend hwsec_;
   hwsec::MockPinWeaverFrontend pinweaver_;
   MockCryptohomeKeysManager cryptohome_keys_manager_;
@@ -91,7 +93,10 @@ class AuthFactorWithDriverTest : public ::testing::Test {
 
   // A real version of the manager, using mock inputs.
   AuthFactorDriverManager manager_{
-      &crypto_, AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
+      &platform_,
+      &crypto_,
+      AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
+      nullptr,
       &fp_service_,
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
           [](AuthFactorWithDriverTest* test) {

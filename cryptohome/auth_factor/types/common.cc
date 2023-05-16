@@ -49,10 +49,6 @@ void AfDriverNoPrepare::PrepareForAuthenticate(
 bool AfDriverFullAuthDecrypt::IsFullAuthAllowed(AuthIntent auth_intent) const {
   return true;
 }
-bool AfDriverFullAuthNoDecrypt::IsFullAuthAllowed(
-    AuthIntent auth_intent) const {
-  return auth_intent != AuthIntent::kDecrypt;
-}
 bool AfDriverFullAuthUnsupported::IsFullAuthAllowed(
     AuthIntent auth_intent) const {
   return false;

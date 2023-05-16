@@ -190,9 +190,11 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   NiceMock<MockBiometricsCommandProcessor>* bio_processor_;
 
   AuthFactorDriverManager auth_factor_driver_manager_{
+      &platform_,
       &crypto_,
       AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
-      &key_challenge_service_factory_, &fp_service_,
+      &key_challenge_service_factory_,
+      &fp_service_,
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
           &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this)))};
 

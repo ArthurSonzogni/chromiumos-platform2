@@ -486,7 +486,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   if (!auth_factor_driver_manager_) {
     default_auth_factor_driver_manager_ =
         std::make_unique<AuthFactorDriverManager>(
-            crypto_,
+            platform_, crypto_,
             AsyncInitPtr<ChallengeCredentialsHelper>(base::BindRepeating(
                 [](UserDataAuth* uda) -> ChallengeCredentialsHelper* {
                   uda->AssertOnMountThread();

@@ -14,9 +14,11 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_intent.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -26,6 +28,8 @@ using ::cryptohome::error::CryptohomeError;
 using ::cryptohome::error::ErrorActionSet;
 using ::cryptohome::error::PossibleAction;
 using ::hwsec_foundation::status::MakeStatus;
+
+constexpr char kEnableDecryptFilename[] = "fingerprint_decrypt_enable";
 
 }  // namespace
 
@@ -65,6 +69,16 @@ void FingerprintAuthFactorDriver::PrepareForAuthenticate(
     return;
   }
   bio_service_->StartAuthenticateSession(type(), username, std::move(callback));
+}
+
+bool FingerprintAuthFactorDriver::IsFullAuthAllowed(
+    AuthIntent auth_intent) const {
+  // Support decrypt only if it is explicitly enabled.
+  if (auth_intent == AuthIntent::kDecrypt) {
+    return DoesFlagFileExist(kEnableDecryptFilename, platform_);
+  }
+  // All other intents are always supported.
+  return true;
 }
 
 bool FingerprintAuthFactorDriver::NeedsResetSecret() const {

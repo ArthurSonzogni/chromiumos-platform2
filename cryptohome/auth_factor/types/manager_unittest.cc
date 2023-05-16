@@ -17,6 +17,7 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
+#include "cryptohome/mock_platform.h"
 
 namespace cryptohome {
 namespace {
@@ -25,10 +26,12 @@ using ::testing::Eq;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
 using ::testing::Ref;
+using ::testing::Return;
 
 class AuthFactorDriverManagerTest : public ::testing::Test {
  protected:
   // Mocks for all of the manager dependencies.
+  MockPlatform platform_;
   hwsec::MockCryptohomeFrontend hwsec_;
   hwsec::MockPinWeaverFrontend pinweaver_;
   MockCryptohomeKeysManager cryptohome_keys_manager_;
@@ -40,8 +43,12 @@ class AuthFactorDriverManagerTest : public ::testing::Test {
 
   // A real version of the manager, using mock inputs.
   AuthFactorDriverManager manager_{
-      &crypto_, AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
-      &fp_service_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &platform_,
+      &crypto_,
+      AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
+      nullptr,
+      &fp_service_,
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
 };
 
 TEST_F(AuthFactorDriverManagerTest, GetDriverIsSameForConstAndNonconst) {
@@ -101,6 +108,7 @@ TEST_F(AuthFactorDriverManagerTest, IsFullAuthAllowed) {
   auto webauthn_allowed = [this](AuthFactorType type) {
     return manager_.GetDriver(type).IsFullAuthAllowed(AuthIntent::kWebAuthn);
   };
+  EXPECT_CALL(platform_, FileExists(_)).WillRepeatedly(Return(false));
 
   EXPECT_THAT(decrypt_allowed(AuthFactorType::kPassword), IsTrue());
   EXPECT_THAT(decrypt_allowed(AuthFactorType::kPin), IsTrue());

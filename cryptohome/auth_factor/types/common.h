@@ -169,13 +169,8 @@ class AfDriverNoPrepare : public virtual AuthFactorDriver {
 
 // Common implementations for full authentication support:
 //   AfDriverFullAuthDecrypt: Supports full auth for all intents
-//   AfDriverFullAuthNoDecrypt: Supports full auth for all intents but decrypt
 //   AfDriverFullAuthUnsupported: Does not support full authentication
 class AfDriverFullAuthDecrypt : public virtual AuthFactorDriver {
- private:
-  bool IsFullAuthAllowed(AuthIntent auth_intent) const final;
-};
-class AfDriverFullAuthNoDecrypt : public virtual AuthFactorDriver {
  private:
   bool IsFullAuthAllowed(AuthIntent auth_intent) const final;
 };

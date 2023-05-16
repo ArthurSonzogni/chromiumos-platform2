@@ -63,8 +63,12 @@ class AuthSessionManagerTest : public ::testing::Test {
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{
       FingerprintAuthBlockService::MakeNullService()};
   AuthFactorDriverManager auth_factor_driver_manager_{
-      &crypto_, AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
-      fp_service_.get(), AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &platform_,
+      &crypto_,
+      AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
+      nullptr,
+      fp_service_.get(),
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   FakeFeaturesForTesting features_;

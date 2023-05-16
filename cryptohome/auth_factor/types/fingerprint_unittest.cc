@@ -11,6 +11,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/test/test_future.h>
 #include <base/functional/callback.h>
 #include <gmock/gmock.h>
@@ -26,6 +27,7 @@
 #include "cryptohome/auth_factor/types/test_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_le_credential_manager.h"
+#include "cryptohome/mock_platform.h"
 #include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
@@ -60,6 +62,7 @@ class FingerprintDriverTest : public AuthFactorDriverGenericTest {
         /*auth_signal_sender=*/base::DoNothing());
   }
 
+  MockPlatform platform_;
   MockLECredentialManager* le_manager_;
   MockBiometricsCommandProcessor* bio_command_processor_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
@@ -68,7 +71,8 @@ class FingerprintDriverTest : public AuthFactorDriverGenericTest {
 TEST_F(FingerprintDriverTest, ConvertToProto) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   AuthFactorMetadata metadata =
       CreateMetadataWithType<FingerprintAuthFactorMetadata>();
@@ -94,7 +98,8 @@ TEST_F(FingerprintDriverTest, ConvertToProto) {
 TEST_F(FingerprintDriverTest, ConvertToProtoNullOpt) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   AuthFactorMetadata metadata;
 
@@ -109,7 +114,8 @@ TEST_F(FingerprintDriverTest, ConvertToProtoNullOpt) {
 TEST_F(FingerprintDriverTest, UnsupportedWithVk) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify.
@@ -121,7 +127,8 @@ TEST_F(FingerprintDriverTest, UnsupportedWithVk) {
 TEST_F(FingerprintDriverTest, SupportedWithVkUssMix) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify.
@@ -135,7 +142,7 @@ TEST_F(FingerprintDriverTest, SupportedWithVkUssMix) {
 TEST_F(FingerprintDriverTest, UnsupportedWithKiosk) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
+      &platform_, &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify.
@@ -148,7 +155,7 @@ TEST_F(FingerprintDriverTest, UnsupportedWithKiosk) {
 TEST_F(FingerprintDriverTest, UnsupportedByBlock) {
   // Setup
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
+      &platform_, &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify
@@ -162,7 +169,8 @@ TEST_F(FingerprintDriverTest, SupportedByBlock) {
   EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
       .WillOnce(ReturnValue(true));
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   // Test, Verify
@@ -172,7 +180,8 @@ TEST_F(FingerprintDriverTest, SupportedByBlock) {
 TEST_F(FingerprintDriverTest, PrepareForAddFailure) {
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   EXPECT_CALL(*bio_command_processor_, StartEnrollSession(_))
       .WillOnce([](auto&& callback) { std::move(callback).Run(false); });
@@ -191,7 +200,8 @@ TEST_F(FingerprintDriverTest, PrepareForAddFailure) {
 TEST_F(FingerprintDriverTest, PrepareForAddSuccess) {
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   EXPECT_CALL(*bio_command_processor_, StartEnrollSession(_))
       .WillOnce([](auto&& callback) { std::move(callback).Run(true); });
@@ -208,7 +218,8 @@ TEST_F(FingerprintDriverTest, PrepareForAddSuccess) {
 TEST_F(FingerprintDriverTest, PrepareForAuthFailure) {
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   EXPECT_CALL(*bio_command_processor_,
               StartAuthenticateSession(kObfuscatedUser, _))
@@ -229,7 +240,8 @@ TEST_F(FingerprintDriverTest, PrepareForAuthFailure) {
 TEST_F(FingerprintDriverTest, PrepareForAuthSuccess) {
   // Setup.
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   EXPECT_CALL(*bio_command_processor_,
               StartAuthenticateSession(kObfuscatedUser, _))
@@ -246,7 +258,8 @@ TEST_F(FingerprintDriverTest, PrepareForAuthSuccess) {
 
 TEST_F(FingerprintDriverTest, GetDelayFails) {
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   AuthFactor factor(AuthFactorType::kFingerprint, kLabel,
@@ -261,11 +274,34 @@ TEST_F(FingerprintDriverTest, GetDelayFails) {
 
 TEST_F(FingerprintDriverTest, CreateCredentialVerifierFails) {
   FingerprintAuthFactorDriver fp_driver(
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
 
   auto verifier = driver.CreateCredentialVerifier(kLabel, {});
   EXPECT_THAT(verifier, IsNull());
+}
+
+// Verify that the decrypt flag file works correct. When this feature is removed
+// this test should be removed along with the flag file mocks in
+// manager_unittest.cc.
+TEST_F(FingerprintDriverTest, IsFullAuthDecryptUsesFlagFile) {
+  FingerprintAuthFactorDriver fp_driver(
+      &platform_, &crypto_,
+      AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
+  AuthFactorDriver& driver = fp_driver;
+
+  EXPECT_CALL(platform_, FileExists(base::FilePath(
+                             "/var/lib/cryptohome/fingerprint_decrypt_enable")))
+      .WillOnce(Return(false));
+  EXPECT_THAT(driver.IsFullAuthAllowed(AuthIntent::kDecrypt), IsFalse());
+  EXPECT_THAT(driver.IsFullAuthAllowed(AuthIntent::kVerifyOnly), IsTrue());
+
+  EXPECT_CALL(platform_, FileExists(base::FilePath(
+                             "/var/lib/cryptohome/fingerprint_decrypt_enable")))
+      .WillOnce(Return(true));
+  EXPECT_THAT(driver.IsFullAuthAllowed(AuthIntent::kDecrypt), IsTrue());
+  EXPECT_THAT(driver.IsFullAuthAllowed(AuthIntent::kVerifyOnly), IsTrue());
 }
 
 }  // namespace
