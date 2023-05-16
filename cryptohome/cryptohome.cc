@@ -275,6 +275,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "prepare_vault_for_migration",
                                     "add_auth_factor",
                                     "authenticate_auth_factor",
+                                    "authenticate_with_status_update",
                                     "update_auth_factor",
                                     "remove_auth_factor",
                                     "list_auth_factors",
@@ -363,6 +364,7 @@ enum ActionEnum {
   ACTION_PREPARE_VAULT_FOR_MIGRATION,
   ACTION_ADD_AUTH_FACTOR,
   ACTION_AUTHENTICATE_AUTH_FACTOR,
+  ACTION_AUTHENTICATE_WITH_STATUS_UPDATE,
   ACTION_UPDATE_AUTH_FACTOR,
   ACTION_REMOVE_AUTH_FACTOR,
   ACTION_LIST_AUTH_FACTORS,
@@ -1151,6 +1153,57 @@ int DoAuthenticateAuthFactor(
 
   printer.PrintHumanOutput("AuthFactor authenticated.\n");
   return 0;
+}
+
+void OnAuthFactorStatusUpdateSignal(
+    Printer* printer,
+    base::RunLoop* run_loop,
+    const user_data_auth::AuthFactorStatusUpdate& auth_factor_status_update) {
+  printer->PrintReplyProtobuf(auth_factor_status_update);
+  run_loop->Quit();
+}
+
+void OnAuthFactorStatusUpdateSignalConnected(
+    base::RunLoop* run_loop,
+    int* ret_code,
+    Printer* printer,
+    base::CommandLine* cl,
+    org::chromium::UserDataAuthInterfaceProxy* proxy,
+    org::chromium::CryptohomeMiscInterfaceProxy* misc_proxy,
+    const std::string&,
+    const std::string&,
+    bool success) {
+  if (!success) {
+    printer->PrintHumanOutput(
+        "Failed to connect to AuthFactorStatusUpdate Signal.\n");
+    run_loop->Quit();
+    *ret_code = 1;
+    return;
+  }
+  *ret_code = DoAuthenticateAuthFactor(*printer, cl, *proxy, *misc_proxy);
+}
+
+int DoAuthenticateWithStatusUpdate(
+    Printer& printer,
+    base::CommandLine* cl,
+    org::chromium::UserDataAuthInterfaceProxy& proxy,
+    org::chromium::CryptohomeMiscInterfaceProxy& misc_proxy) {
+  // Because signals might be emitted as soon as AuthenticateAuthFactor is
+  // called, we need to ensure the signal is connected first. Therefore, the
+  // actual request will be sent in |OnAuthFactorStatusUpdateSignalConnected|.
+  // We will indefinitely block on the AuthFactorStatusUpdate signals in the CLI
+  // until either the operation either fails or succeeds. So we'll start the run
+  // loop here, pass its pointer to the callbacks, and let the callbacks end the
+  // run loop when the conditions are met.
+  int ret_code = 1;
+  base::RunLoop run_loop;
+  proxy.RegisterAuthFactorStatusUpdateSignalHandler(
+      base::BindRepeating(&OnAuthFactorStatusUpdateSignal, &printer, &run_loop),
+      base::BindOnce(&OnAuthFactorStatusUpdateSignalConnected, &run_loop,
+                     &ret_code, &printer, cl, &proxy, &misc_proxy));
+
+  run_loop.Run();
+  return ret_code;
 }
 
 // The |on_success| callback is triggered whenever the prepare signal that
@@ -3456,6 +3509,11 @@ int main(int argc, char** argv) {
                  action.c_str())) {
     return DoAuthenticateAuthFactor(printer, cl, userdataauth_proxy,
                                     misc_proxy);
+  } else if (!strcmp(switches::kActions
+                         [switches::ACTION_AUTHENTICATE_WITH_STATUS_UPDATE],
+                     action.c_str())) {
+    return DoAuthenticateWithStatusUpdate(printer, cl, userdataauth_proxy,
+                                          misc_proxy);
   } else if (!strcmp(switches::kActions[switches::ACTION_UPDATE_AUTH_FACTOR],
                      action.c_str())) {
     user_data_auth::UpdateAuthFactorRequest req;
