@@ -55,6 +55,10 @@ extern const char kEphemeralMountOptions[];
 // Daemon store directories.
 extern const char kEtcDaemonStoreBaseDir[];
 extern const char kRunDaemonStoreBaseDir[];
+extern const char kRunDaemonStoreCacheBaseDir[];
+
+// Directory within RootHome that is used for daemon store cache
+extern const char kDaemonStoreCacheDir[];
 
 }  // namespace cryptohome
 

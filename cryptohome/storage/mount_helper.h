@@ -217,6 +217,10 @@ class MountHelper : public MountHelperInterface {
   //   /home/.shadow/$hash/mount/root/$daemon (*)
   // to
   //   /run/daemon-store/$daemon/$hash
+  // and
+  //   /home/.shadow/$hash/mount/root/.cache/$daemon (*)
+  // to
+  //   /run/daemon-store-cache/$daemon/$hash
   // for a hardcoded list of $daemon directories.
   //
   // This can be used to make the Cryptohome mount propagate into the daemon's
@@ -227,6 +231,11 @@ class MountHelper : public MountHelperInterface {
   // (*) Path for a regular mount. The path is different for an ephemeral mount.
   bool MountDaemonStoreDirectories(
       const FilePath& root_home, const ObfuscatedUsername& obfuscated_username);
+  bool MountDaemonStoreDirectories(
+      const FilePath& root_home,
+      const ObfuscatedUsername& obfuscated_username,
+      const char* etc_daemon_store_base_dir,
+      const char* run_daemon_store_base_dir);
 
   // Sets up bind mounts from |user_home| and |root_home| to
   //   - /home/chronos/user (see MountLegacyHome()),

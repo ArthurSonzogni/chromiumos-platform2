@@ -30,5 +30,7 @@ constexpr char kEphemeralMountOptions[] = "";
 
 constexpr char kEtcDaemonStoreBaseDir[] = "/etc/daemon-store/";
 constexpr char kRunDaemonStoreBaseDir[] = "/run/daemon-store/";
+constexpr char kRunDaemonStoreCacheBaseDir[] = "/run/daemon-store-cache/";
 
+constexpr char kDaemonStoreCacheDir[] = ".cache";
 }  // namespace cryptohome

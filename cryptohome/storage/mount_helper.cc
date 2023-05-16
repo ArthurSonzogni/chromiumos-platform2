@@ -697,21 +697,35 @@ bool MountHelper::BindAndPush(const FilePath& src,
 
 bool MountHelper::MountDaemonStoreDirectories(
     const FilePath& root_home, const ObfuscatedUsername& obfuscated_username) {
-  // Iterate over all directories in /etc/daemon-store. This list is on rootfs,
-  // so it's tamper-proof and nobody can sneak in additional directories that we
-  // blindly mount. The actual mounts happen on /run/daemon-store, though.
+  return (MountDaemonStoreDirectories(root_home, obfuscated_username,
+                                      kEtcDaemonStoreBaseDir,
+                                      kRunDaemonStoreBaseDir) &&
+          MountDaemonStoreDirectories(
+              root_home.Append(kDaemonStoreCacheDir), obfuscated_username,
+              kEtcDaemonStoreBaseDir, kRunDaemonStoreCacheBaseDir));
+}
+
+bool MountHelper::MountDaemonStoreDirectories(
+    const FilePath& root_home,
+    const ObfuscatedUsername& obfuscated_username,
+    const char* etc_daemon_store_base_dir,
+    const char* run_daemon_store_base_dir) {
+  // Iterate over all directories in |etc_daemon_store_base_dir|. This list is
+  // on rootfs, so it's tamper-proof and nobody can sneak in additional
+  // directories that we blindly mount. The actual mounts happen on
+  // |run_daemon_store_base_dir|, though.
   std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
-      FilePath(kEtcDaemonStoreBaseDir), false /* recursive */,
+      FilePath(etc_daemon_store_base_dir), false /* recursive */,
       base::FileEnumerator::DIRECTORIES));
 
-  // /etc/daemon-store/<daemon-name>
+  // |etc_daemon_store_base_dir|/<daemon-name>
   FilePath etc_daemon_store_path;
   while (!(etc_daemon_store_path = file_enumerator->Next()).empty()) {
     const FilePath& daemon_name = etc_daemon_store_path.BaseName();
 
-    // /run/daemon-store/<daemon-name>
+    // |run_daemon_store_base_dir|/<daemon-name>
     FilePath run_daemon_store_path =
-        FilePath(kRunDaemonStoreBaseDir).Append(daemon_name);
+        FilePath(run_daemon_store_base_dir).Append(daemon_name);
     if (!platform_->DirectoryExists(run_daemon_store_path)) {
       // The chromeos_startup script should make sure this exist.
       PLOG(ERROR) << "Daemon store directory does not exist: "
@@ -719,10 +733,12 @@ bool MountHelper::MountDaemonStoreDirectories(
       return false;
     }
 
-    // /home/.shadow/<user_hash>/mount/root/<daemon-name>
+    // Typically, one of:
+    //   /home/.shadow/<user_hash>/mount/root/<daemon-name>
+    //   /home/.shadow/<user_hash>/mount/root/.cache/<daemon-name>
     const FilePath mount_source = root_home.Append(daemon_name);
 
-    // /run/daemon-store/<daemon-name>/<user_hash>
+    // |run_daemon_store_base_dir|/<daemon-name>/<user_hash>
     const FilePath mount_target =
         run_daemon_store_path.Append(*obfuscated_username);
 
