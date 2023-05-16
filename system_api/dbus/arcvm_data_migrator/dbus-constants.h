@@ -15,6 +15,7 @@ constexpr char kArcVmDataMigratorServiceName[] =
 
 // Method names.
 constexpr char kGetAndroidDataSizeMethod[] = "GetAndroidDataSize";
+constexpr char kGetAndroidDataInfoMethod[] = "GetAndroidDataInfo";
 constexpr char kHasDataToMigrateMethod[] = "HasDataToMigrate";
 constexpr char kStartMigrationMethod[] = "StartMigration";
 

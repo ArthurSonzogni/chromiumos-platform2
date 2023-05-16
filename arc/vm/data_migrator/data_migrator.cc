@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <sys/mount.h>
+#include <sys/stat.h>
 
 #include <arcvm_data_migrator/proto_bindings/arcvm_data_migrator.pb.h>
 #include <base/command_line.h>
@@ -90,6 +91,8 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     return true;
   }
 
+  // TODO(b/280248293): Remove this method after migrating all callers to
+  // GetAndroidDataInfo().
   bool GetAndroidDataSize(brillo::ErrorPtr* error,
                           const GetAndroidDataSizeRequest& request,
                           int64_t* size) override {
@@ -110,6 +113,44 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
          entry = enumerator.Next()) {
       *size += enumerator.GetInfo().GetSize();
     }
+    return true;
+  }
+
+  bool GetAndroidDataInfo(brillo::ErrorPtr* error,
+                          const GetAndroidDataInfoRequest& request,
+                          GetAndroidDataInfoResponse* response) override {
+    // Logical block size of the destination's file system.
+    constexpr int64_t kLogicalBlockSize = 4096;
+
+    const base::FilePath android_data_dir =
+        brillo::cryptohome::home::GetRootPath(
+            brillo::cryptohome::home::Username(request.username()))
+            .Append("android-data/data");
+
+    base::FileEnumerator enumerator(
+        android_data_dir, /*recursive=*/true,
+        // Use the same set of file types as
+        // cryptohome::data_migrator::MigrationHelper::CalculateDataToMigrate.
+        base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
+            base::FileEnumerator::SHOW_SYM_LINKS);
+
+    int64_t total_allocated_space_dest = 0;
+    int64_t total_allocated_blocks = 0;
+    for (base::FilePath entry = enumerator.Next(); !entry.empty();
+         entry = enumerator.Next()) {
+      const int64_t size = enumerator.GetInfo().GetSize();
+      // TODO(b/251764421): Revisit this calculation when we support migration
+      // to LVM devices.
+      total_allocated_space_dest +=
+          (size + kLogicalBlockSize - 1) & ~(kLogicalBlockSize - 1);
+      // Ext4 allocates an additional 4KiB block to a file if the total size of
+      // its xattrs is larger than can fit in the inode. To be safe, always
+      // increase the estimated allocated size on the destination by one block.
+      total_allocated_space_dest += kLogicalBlockSize;
+      total_allocated_blocks += enumerator.GetInfo().stat().st_blocks;
+    }
+    response->set_total_allocated_space_src(total_allocated_blocks * S_BLKSIZE);
+    response->set_total_allocated_space_dest(total_allocated_space_dest);
     return true;
   }
 

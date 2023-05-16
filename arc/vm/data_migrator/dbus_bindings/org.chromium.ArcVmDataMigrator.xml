@@ -26,6 +26,21 @@
       </arg>
       <arg name="response" type="x" direction="out"/>
     </method>
+    <method name="GetAndroidDataInfo">
+      <tp:docstring>
+        Measures and returns information (such as the total size of files
+        contained) about the host-side
+        /home/root/&lt;hash&gt;/android-data/data.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="arc::data_migrator::GetAndroidDataInfoRequest"/>
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="arc::data_migrator::GetAndroidDataInfoResponse"/>
+      </arg>
+    </method>
     <method name="StartMigration">
       <tp:docstring>
         Starts ARCVM /data migration. This first mounts the ext4 disk image of
