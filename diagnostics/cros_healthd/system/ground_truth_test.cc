@@ -97,6 +97,9 @@ TEST_F(GroundTruthTest, LidEvent) {
           {"Others", false},
       };
 
+  // Test not set the cros_config first to simulate file not found.
+  ExpectEventUnsupported(mojom::EventCategoryEnum::kLid);
+
   for (const auto& [form_factor, supported] : test_combinations) {
     SetCrosConfig(cros_config_path::kHardwareProperties,
                   cros_config_property::kFormFactor, form_factor);
@@ -174,6 +177,33 @@ TEST_F(GroundTruthTest, TouchscreenEvent) {
       ExpectEventSupported(mojom::EventCategoryEnum::kTouchscreen);
     } else {
       ExpectEventUnsupported(mojom::EventCategoryEnum::kTouchscreen);
+    }
+  }
+}
+
+TEST_F(GroundTruthTest, TouchpadEvent) {
+  std::vector<std::pair</*form-factor=*/std::string, /*supported=*/bool>>
+      test_combinations = {
+          {cros_config_value::kClamshell, true},
+          {cros_config_value::kConvertible, true},
+          {cros_config_value::kDetachable, true},
+          {cros_config_value::kChromebase, false},
+          {cros_config_value::kChromebox, false},
+          {cros_config_value::kChromebit, false},
+          {cros_config_value::kChromeslate, false},
+          {"Others", false},
+      };
+
+  // Test not set the cros_config first to simulate file not found.
+  ExpectEventUnsupported(mojom::EventCategoryEnum::kTouchpad);
+
+  for (const auto& [form_factor, supported] : test_combinations) {
+    SetCrosConfig(cros_config_path::kHardwareProperties,
+                  cros_config_property::kFormFactor, form_factor);
+    if (supported) {
+      ExpectEventSupported(mojom::EventCategoryEnum::kTouchpad);
+    } else {
+      ExpectEventUnsupported(mojom::EventCategoryEnum::kTouchpad);
     }
   }
 }

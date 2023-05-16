@@ -110,6 +110,23 @@ moment. Please [reach out to us][team-contact] if you need network events.
 
 ### Touchpad
 
+It's supported only when `form-factor` is explicitly configured as one of the
+following:
+- CLAMSHELL
+- CONVERTIBLE
+- DETACHABLE
+
+You can run the following commands on your DUT:
+1. `cros_config /hardware-properties form-factor` This is helpful to understand
+   what the value of `form-factor` is.
+2. `cros-health-tool event --category=touchpad --check_supported` Use this to
+   see if healthd reports the correct support status.
+
+To configure `form-factor` in Boxster, you can use `create_form_factor` function
+defined in
+[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
+to set it up.
+
 ### Hdmi
 
 ### Touchscreen
