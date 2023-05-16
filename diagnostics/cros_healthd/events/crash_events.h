@@ -28,11 +28,21 @@ namespace diagnostics {
 //     is_uploaded is true.
 //   - init_offset: The initial offset of the log string in uploads.log. Used
 //     only when is_uploaded is true.
+//   - parsed_bytes: Optional. Ignored if null. When not null, and the final
+//     line is complete, it is set to the size of `log`. Otherwise, it is set to
+//     the number of bytes parsed until the beginning of the final line because
+//     the final line is incomplete. For this function, any whitespace character
+//     breaks a line. A line is said to be complete if it ends with a whitespace
+//     character. This is useful for continuing parsing in case when the final
+//     line of uploads.log is partly written.
+//
+// Exported for test reasons.
 std::vector<ash::cros_healthd::mojom::CrashEventInfoPtr> ParseUploadsLog(
     base::StringPiece log,
     bool is_uploaded,
     base::Time creation_time,
-    uint64_t init_offset);
+    uint64_t init_offset,
+    uint64_t* parsed_bytes = nullptr);
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_EVENTS_CRASH_EVENTS_H_

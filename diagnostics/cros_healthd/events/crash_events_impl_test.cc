@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/strings/strcat.h>
 #include <base/strings/string_piece.h>
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
@@ -198,6 +199,44 @@ TEST(UploadsLogParserTest, PassThroughCreationTime) {
   ASSERT_EQ(result.size(), 2u);
   EXPECT_EQ(result[0]->upload_info->creation_time, kCreationTime);
   EXPECT_EQ(result[1]->upload_info->creation_time, kCreationTime);
+}
+
+TEST(UploadsLogParserTest, CalcParsedBytesWithValidLineEnding) {
+  uint64_t parsed_bytes;
+  std::ostringstream stream;
+  stream << kValidLogLine << "\n";
+  stream << kValidLogLine;
+  const auto input = stream.str();
+  const auto result = ParseUploadsLog(input, /*is_uploaded=*/true,
+                                      /*creation_time=*/base::Time(),
+                                      /*init_offset=*/kInitOffset,
+                                      /*parsed_bytes=*/&parsed_bytes);
+  EXPECT_EQ(parsed_bytes, input.size());
+}
+
+TEST(UploadsLogParserTest, CalcParsedBytesWithInvalidLineEnding) {
+  uint64_t parsed_bytes;
+  std::ostringstream stream;
+  stream << kValidLogLine << "\n";
+  stream << kInvalidLogLine;
+  const auto result = ParseUploadsLog(stream.str(), /*is_uploaded=*/true,
+                                      /*creation_time=*/base::Time(),
+                                      /*init_offset=*/kInitOffset,
+                                      /*parsed_bytes=*/&parsed_bytes);
+  EXPECT_EQ(parsed_bytes, base::StrCat({kValidLogLine, "\n"}).size());
+}
+
+TEST(UploadsLogParserTest, CalcParsedBytesWithWhitespaceEnding) {
+  uint64_t parsed_bytes;
+  std::ostringstream stream;
+  stream << kValidLogLine << "\n";
+  stream << kInvalidLogLine << "\n";
+  const auto input = stream.str();
+  const auto result = ParseUploadsLog(input, /*is_uploaded=*/true,
+                                      /*creation_time=*/base::Time(),
+                                      /*init_offset=*/kInitOffset,
+                                      /*parsed_bytes=*/&parsed_bytes);
+  EXPECT_EQ(parsed_bytes, input.size());
 }
 
 TEST(UploadsLogParserTest, MultipleDelimitersLogLineBreaksCorrectly) {

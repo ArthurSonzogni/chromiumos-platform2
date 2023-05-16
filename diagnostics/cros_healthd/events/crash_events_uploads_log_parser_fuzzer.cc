@@ -89,10 +89,12 @@ void CheckParsedResult(const std::string& input,
                        const std::vector<mojom::CrashEventInfoPtr>& expected,
                        bool is_uploaded,
                        base::Time creation_time,
-                       uint64_t init_offset) {
+                       uint64_t init_offset,
+                       uint64_t* parsed_bytes) {
   auto results = ParseUploadsLog(input, /*is_uploaded=*/is_uploaded,
                                  /*creation_time=*/creation_time,
-                                 /*init_offset=*/init_offset);
+                                 /*init_offset=*/init_offset,
+                                 /*parsed_bytes=*/parsed_bytes);
   CHECK_GE(results.size(), expected.size());
   size_t results_found = 0;
   for (const auto& result : results) {
@@ -104,6 +106,12 @@ void CheckParsedResult(const std::string& input,
     }
   }
   CHECK_EQ(results_found, expected.size());
+  // To accurately test parsed_bytes for a random string essentially requires
+  // writing a substantial portion of the the parser. Hence, we only check that
+  // parsed_bytes is in a normal range.
+  if (parsed_bytes) {
+    CHECK_LE(*parsed_bytes, input.size());
+  }
 }
 }  // namespace
 
@@ -133,12 +141,19 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     }
   }
 
+  uint64_t parsed_bytes;
+  uint64_t* parsed_bytes_pointer = nullptr;
+  if (data_provider.ConsumeBool()) {
+    parsed_bytes_pointer = &parsed_bytes;
+  }
+
   // Check whether parsed results include all parsed crash info in their
   // expected order, for both uploaded and unuploaded.
   CheckParsedResult(/*input=*/input.str(), /*expected=*/expected,
                     /*is_uploaded=*/true,
                     /*creation_time=*/creation_time,
-                    /*init_offset=*/init_offset);
+                    /*init_offset=*/init_offset,
+                    /*parsed_bytes=*/parsed_bytes_pointer);
   // Clear the field for expected now to prepare for checking unuploaded
   // crashes: Unuploaded crashes don't have the upload_info field.
   for (auto& item : expected) {
@@ -147,7 +162,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   CheckParsedResult(/*input=*/input.str(), /*expected=*/expected,
                     /*is_uploaded=*/false,
                     /*creation_time=*/creation_time,
-                    /*init_offset=*/init_offset);
+                    /*init_offset=*/init_offset,
+                    /*parsed_bytes=*/parsed_bytes_pointer);
   return 0;
 }
 }  // namespace diagnostics

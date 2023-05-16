@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 
 namespace diagnostics {
 namespace mojom = ash::cros_healthd::mojom;
@@ -89,7 +90,11 @@ mojom::CrashEventInfoPtr ParseUploadsLogEntry(const std::string& line,
 std::vector<mojom::CrashEventInfoPtr> ParseUploadsLog(base::StringPiece log,
                                                       bool is_uploaded,
                                                       base::Time creation_time,
-                                                      uint64_t init_offset) {
+                                                      uint64_t init_offset,
+                                                      uint64_t* parsed_bytes) {
+  if (parsed_bytes) {
+    *parsed_bytes = log.size();
+  }
   std::vector<mojom::CrashEventInfoPtr> result;
   // Using whitespace (instead of line breakers) as the delimiter here is a
   // bit odd, but this is what `TextLogUploadList::SplitIntoLines` does.
@@ -102,6 +107,12 @@ std::vector<mojom::CrashEventInfoPtr> ParseUploadsLog(base::StringPiece log,
     auto log_entry = ParseUploadsLogEntry(line, is_uploaded, creation_time,
                                           init_offset + result.size());
     if (log_entry.is_null()) {
+      // The last log line requires some special processing for parsed_bytes.
+      if (i == log_lines.size() - 1 && parsed_bytes &&
+          !base::IsAsciiWhitespace(log.back())) {
+        CHECK_GE(log.size(), line.size());
+        *parsed_bytes = log.size() - line.size();
+      }
       continue;
     }
     result.push_back(std::move(log_entry));
