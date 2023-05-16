@@ -3,11 +3,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-getfield() {
-  shift "$1"
-  echo "$1"
-}
-
 # Converts a floating point number of seconds to a properly rounded
 # number of integer milliseconds.
 seconds_to_ms() {
@@ -45,18 +40,27 @@ while [ $# -gt 0 ]; do
       continue
     ;;
   esac
+
+  if [ "$2" = "before" ] ; then
+    BEFORE="$3"
+    shift 2
+  fi
+
   # The 'boot-complete' upstart job tests for whether an event has
   # been recorded by calling this script, so it's not an error if
   # the requested event doesn't exist.
   EVENTFILE="/tmp/${TAG}-${EVENT}"
   if [ -f "${EVENTFILE}" ]; then
-    # The tail command is intentionally not quoted because getfield
-    # requires that the input is split into separate arguments.
-    result="$(getfield "${FIELD}" $(tail -1 "${EVENTFILE}"))"
+    result="$(awk -v field="${FIELD}" -v before="${BEFORE}"            \
+      '(!before || $field < before) {result=$field} END{print result}' \
+      "${EVENTFILE}"
+    )"
     if [ -n "${EMIT_MS}" ]; then
       result="$(seconds_to_ms "${result}")"
     fi
     echo "${result}"
   fi
+
+  BEFORE=""
   shift
 done

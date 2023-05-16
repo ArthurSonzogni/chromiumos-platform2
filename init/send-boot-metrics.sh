@@ -3,6 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# shellcheck disable=SC2016
 GET_FIRMWARE_TIME='
   /Exiting depthcharge with code/ {
     initial_usec = $8
@@ -20,6 +21,7 @@ get_firmware_time() {
     ftime="$(awk "${GET_FIRMWARE_TIME}" "${FIRMWARE_LOG}")"
   fi
   if [ -z "${ftime}" ]; then
+    # shellcheck disable=SC2154
     logger -t "${UPSTART_JOB}" "Missing timestamp in firmware log"
   fi
   echo "${ftime}"
@@ -44,11 +46,13 @@ report_disk_metrics() {
   metrics_client Platform.BootSectorsWritten "$2" 1 10000 50
 }
 
+# shellcheck disable=SC2046
 report_disk_metrics $(
   bootstat_get_last boot-complete read-sectors write-sectors)
 
-CHROME_EXEC_TIME=$(bootstat_get_last chrome-exec time)
 BOOT_COMPLETE_TIME=$(bootstat_get_last boot-complete time)
+CHROME_EXEC_TIME=$(bootstat_get_last chrome-exec                         \
+                                     time before "${BOOT_COMPLETE_TIME}" )
 PRE_STARTUP_TIME=$(bootstat_get_last pre-startup time)
 TOTAL_TIME=$(awk -v firmware_time="${FIRMWARE_TIME}"           \
                  -v boot_complete_time="${BOOT_COMPLETE_TIME}" \

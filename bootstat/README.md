@@ -19,13 +19,15 @@ associates the data with the passed in `<event-name>`.
 ### bootstat_get_last
 
 ```sh
-bootstat_get_last <event-name> [ <stat> ... ]
+bootstat_get_last <event-name> [ <stat> [before <value>] ... ]
 ```
 
 Print on standard output the value of the selected statistics recorded when
 the specified event occurred.  These are the available statistics:
 
 *   `time`: Total time since kernel startup at the time of the event.
+*   `time-ms`: Total time since kernel startup at the time of the event
+    converted to milliseconds.
 *   `read-sectors`: Total sectors read from any partition of the boot device
     since kernel startup.
 *   `write-sectors`: Total sectors written to any partition of the boot device
@@ -37,6 +39,12 @@ default is to report `time`.
 
 If an event has occurred more than once since kernel startup, only
 the statistics from the last occurrence are reported.
+
+If the `before` <value> option is specified after the statistics name the
+reported event will be from the last occurrence having value less than the
+specified `before` value. This way for time events it returns the last event
+happened before the specified time. For the sectors count statistics it will
+return values that are strictly less than the value specified.
 
 ## API Specification
 
