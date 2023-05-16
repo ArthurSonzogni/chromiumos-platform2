@@ -161,7 +161,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   void RunFioWithDlcRoot(
       ash::cros_healthd::mojom::FioJobArgumentPtr argument,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver,
-      std::optional<std::string> dlc_root_path);
+      std::optional<base::FilePath> dlc_root_path);
 
   // Task runner for all Mojo callbacks.
   const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner_;

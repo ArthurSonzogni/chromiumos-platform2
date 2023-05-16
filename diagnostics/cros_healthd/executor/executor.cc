@@ -198,12 +198,12 @@ std::optional<std::string> Convert(mojom::DiskReadTypeEnum disk_read_type) {
 }
 
 std::optional<std::vector<std::string>> GenerateFioCommand(
-    const std::string& fio_path,
+    const base::FilePath& fio_path,
     ash::cros_healthd::mojom::FioJobArgumentPtr argument) {
   switch (argument->which()) {
     case mojom::FioJobArgument::Tag::kPrepare:
       return std::vector<std::string>{
-          fio_path,
+          fio_path.value(),
           "--filename=" + std::string(path::kFioCacheFile),
           "--name=prepare",
           "--size=" +
@@ -221,7 +221,7 @@ std::optional<std::vector<std::string>> GenerateFioCommand(
         return std::nullopt;
       }
       return std::vector<std::string>{
-          fio_path,
+          fio_path.value(),
           "--filename=" + std::string(path::kFioCacheFile),
           "--name=run",
           "--time_based=1",
@@ -711,7 +711,7 @@ void Executor::RunFio(mojom::FioJobArgumentPtr argument,
 void Executor::RunFioWithDlcRoot(
     ash::cros_healthd::mojom::FioJobArgumentPtr argument,
     mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver,
-    std::optional<std::string> dlc_root_path) {
+    std::optional<base::FilePath> dlc_root_path) {
   if (!dlc_root_path.has_value()) {
     receiver.reset();
     return;
@@ -728,9 +728,8 @@ void Executor::RunFioWithDlcRoot(
       break;
   }
 
-  auto command = GenerateFioCommand(
-      base::FilePath(dlc_root_path.value()).Append("bin/fio").value(),
-      std::move(argument));
+  auto command = GenerateFioCommand(dlc_root_path.value().Append("bin/fio"),
+                                    std::move(argument));
   if (!command.has_value()) {
     receiver.reset();
     return;

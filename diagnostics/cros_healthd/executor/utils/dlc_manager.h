@@ -30,31 +30,30 @@ class DlcManager {
   DlcManager& operator=(const DlcManager&) = delete;
   virtual ~DlcManager() = default;
 
+  using DlcRootPathCallback =
+      base::OnceCallback<void(std::optional<base::FilePath>)>;
+
   // Check the DLC state and get its root path. Installation will be triggered
   // if the DLC is unexpectedly missing.
-  virtual void GetBinaryRootPath(
-      const std::string& dlc_id,
-      base::OnceCallback<void(std::optional<std::string>)> root_path_cb) const;
+  virtual void GetBinaryRootPath(const std::string& dlc_id,
+                                 DlcRootPathCallback root_path_cb) const;
 
  private:
   // Handle the response of service availability.
-  void HandleDlcServiceAvailableResponse(
-      const std::string& dlc_id,
-      base::OnceCallback<void(std::optional<std::string>)> root_path_cb,
-      bool service_is_available) const;
+  void HandleDlcServiceAvailableResponse(const std::string& dlc_id,
+                                         DlcRootPathCallback root_path_cb,
+                                         bool service_is_available) const;
 
   // Handle the response of installing DLC.
-  void HandleDlcInstallResponse(
-      const std::string& dlc_id,
-      base::OnceCallback<void(std::optional<std::string>)> root_path_cb,
-      brillo::Error* err) const;
+  void HandleDlcInstallResponse(const std::string& dlc_id,
+                                DlcRootPathCallback root_path_cb,
+                                brillo::Error* err) const;
 
   // Handle the response of DLC state.
-  void HandleDlcStateResponse(
-      const std::string& dlc_id,
-      base::OnceCallback<void(std::optional<std::string>)> root_path_cb,
-      brillo::Error* err,
-      const dlcservice::DlcState& state) const;
+  void HandleDlcStateResponse(const std::string& dlc_id,
+                              DlcRootPathCallback root_path_cb,
+                              brillo::Error* err,
+                              const dlcservice::DlcState& state) const;
 
   // Unowned pointer that should outlive this instance.
   org::chromium::DlcServiceInterfaceProxyInterface* const dlcservice_proxy_;
