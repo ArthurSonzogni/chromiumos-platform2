@@ -26,6 +26,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
@@ -46,13 +47,10 @@ using ::hwsec_foundation::status::OkStatus;
 using ::hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
-
 namespace {
 
-constexpr char kEnableUssFeatureTestFlagPath[] =
-    "/var/lib/cryptohome/uss_enabled";
-constexpr char kDisableUssFeatureTestFlagPath[] =
-    "/var/lib/cryptohome/uss_disabled";
+constexpr char kEnableUssFeatureTestFlagName[] = "uss_enabled";
+constexpr char kDisableUssFeatureTestFlagName[] = "uss_disabled";
 
 std::optional<bool>& GetUserSecretStashExperimentOverride() {
   // The static variable holding the overridden state. The default state is
@@ -62,11 +60,11 @@ std::optional<bool>& GetUserSecretStashExperimentOverride() {
 }
 
 bool EnableUssFeatureTestFlagFileExists(Platform* platform) {
-  return platform->FileExists(base::FilePath(kEnableUssFeatureTestFlagPath));
+  return DoesFlagFileExist(kEnableUssFeatureTestFlagName, platform);
 }
 
 bool DisableUssFeatureTestFlagFileExists(Platform* platform) {
-  return platform->FileExists(base::FilePath(kDisableUssFeatureTestFlagPath));
+  return DoesFlagFileExist(kDisableUssFeatureTestFlagName, platform);
 }
 
 // Loads the current OS version from the CHROMEOS_RELEASE_VERSION field in

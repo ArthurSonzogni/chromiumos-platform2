@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/cryptohome.h>
@@ -23,7 +24,6 @@
 using ::hwsec_foundation::CreateSecureRandomBlob;
 
 namespace cryptohome {
-
 namespace {
 
 constexpr char kShadowRoot[] = "/home/.shadow";
@@ -38,6 +38,9 @@ constexpr char kDmcryptVolumePrefix[] = "dmcrypt";
 
 // Storage for serialized RecoveryId.
 constexpr char kRecoveryIdFile[] = "recovery_id";
+
+// The directory where flag files live.
+constexpr char kFlagFileRoot[] = "/var/lib/cryptohome";
 
 bool GetOrCreateSalt(Platform* platform,
                      const base::FilePath& salt_file,
@@ -222,6 +225,29 @@ bool InitializeFilesystemLayout(Platform* platform, brillo::SecureBlob* salt) {
     return false;
   }
   return true;
+}
+
+bool DoesFlagFileExist(const std::string& name, Platform* platform) {
+  // Reject the name if it's an absolute path.
+  base::FilePath flag_file_name(name);
+  if (flag_file_name.IsAbsolute()) {
+    LOG(ERROR) << "attempted reading an absolute path as a flag file: " << name;
+    return false;
+  }
+  // Construct the full path of the flag file.
+  base::FilePath flag_file_dir(kFlagFileRoot);
+  base::FilePath flag_file_path = flag_file_dir.Append(flag_file_name);
+  // Verify that the name was actually a name and not a relative path. This is
+  // done by converting the path into an absolute path and verifying that the
+  // dirname is still kFlagFileRoot.
+  std::optional<base::FilePath> absolute_path =
+      base::MakeAbsoluteFilePathNoResolveSymbolicLinks(flag_file_path);
+  if (!absolute_path || absolute_path->DirName() != flag_file_dir) {
+    LOG(ERROR) << "attempted reading a relative path as a flag file: " << name;
+    return false;
+  }
+  // The path is "safe" so check that it exists.
+  return platform->FileExists(flag_file_path);
 }
 
 }  // namespace cryptohome
