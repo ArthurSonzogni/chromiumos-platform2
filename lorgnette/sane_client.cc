@@ -13,6 +13,12 @@
 
 namespace lorgnette {
 
+namespace {
+
+constexpr char kIppUsbSocketDir[] = "/run/ippusb";
+
+}  // namespace
+
 std::unique_ptr<SaneDevice> SaneClient::ConnectToDevice(
     brillo::ErrorPtr* error,
     SANE_Status* sane_status,
@@ -20,7 +26,8 @@ std::unique_ptr<SaneDevice> SaneClient::ConnectToDevice(
   std::string real_device = device_name;
   if (device_name.substr(0, 7) == "ippusb:") {
     LOG(INFO) << "Finding real backend for device: " << device_name;
-    std::optional<std::string> backend = BackendForDevice(device_name);
+    std::optional<std::string> backend =
+        BackendForDevice(device_name, IppUsbSocketDir());
     if (!backend.has_value()) {
       brillo::Error::AddToPrintf(
           error, FROM_HERE, brillo::errors::dbus::kDomain, kManagerServiceError,
@@ -35,6 +42,10 @@ std::unique_ptr<SaneDevice> SaneClient::ConnectToDevice(
   }
 
   return ConnectToDeviceInternal(error, sane_status, real_device);
+}
+
+base::FilePath SaneClient::IppUsbSocketDir() const {
+  return base::FilePath(kIppUsbSocketDir);
 }
 
 }  // namespace lorgnette

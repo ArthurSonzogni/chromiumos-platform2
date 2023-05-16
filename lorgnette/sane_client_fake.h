@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <sane/sane.h>
 
 #include "lorgnette/sane_client.h"
@@ -37,17 +38,20 @@ class SaneClientFake : public SaneClient {
 
   void SetDeviceForName(const std::string& device_name,
                         std::unique_ptr<SaneDeviceFake> device);
+  void SetIppUsbSocketDir(base::FilePath path);
 
  protected:
   std::unique_ptr<SaneDevice> ConnectToDeviceInternal(
       brillo::ErrorPtr* error,
       SANE_Status* sane_status,
       const std::string& device_name) override;
+  base::FilePath IppUsbSocketDir() const override;
 
  private:
   std::map<std::string, std::unique_ptr<SaneDeviceFake>> devices_;
   bool list_devices_result_;
   std::vector<ScannerInfo> scanners_;
+  std::optional<base::FilePath> ippusb_socket_dir_;
 };
 
 class SaneDeviceFake : public SaneDevice {

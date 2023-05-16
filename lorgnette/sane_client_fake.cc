@@ -64,6 +64,15 @@ void SaneClientFake::SetDeviceForName(const std::string& device_name,
   devices_.emplace(device_name, std::move(device));
 }
 
+void SaneClientFake::SetIppUsbSocketDir(base::FilePath path) {
+  ippusb_socket_dir_ = std::move(path);
+}
+
+base::FilePath SaneClientFake::IppUsbSocketDir() const {
+  return ippusb_socket_dir_ ? *ippusb_socket_dir_
+                            : SaneClient::IppUsbSocketDir();
+}
+
 SaneDeviceFake::SaneDeviceFake()
     : resolution_(100),
       source_name_("Fake source name"),

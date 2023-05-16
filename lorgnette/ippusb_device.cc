@@ -28,16 +28,16 @@ namespace lorgnette {
 
 namespace {
 
-const char kIppUsbSocketDir[] = "/run/ippusb";
 const base::TimeDelta kSocketCreationTimeout = base::Seconds(3);
 const char kScannerTypeMFP[] = "multi-function peripheral";  // Matches SANE.
 const uint8_t kIppUsbInterfaceProtocol = 0x04;
 
-// Wait for |sock_name| to appear in kIppUsbSocketDir.  Return true if that
+// Wait for |sock_name| to appear in |socket_dir|.  Return true if that
 // happens, or false if the socket doesn't appear within |timeout|.
-bool WaitForSocket(const std::string& sock_name, base::TimeDelta timeout) {
-  base::FilePath socket_path(kIppUsbSocketDir);
-  socket_path = socket_path.Append(sock_name);
+bool WaitForSocket(base::FilePath socket_dir,
+                   const std::string& sock_name,
+                   base::TimeDelta timeout) {
+  base::FilePath socket_path = socket_dir.Append(sock_name);
   LOG(INFO) << "Waiting for socket " << socket_path;
 
   base::ElapsedTimer timer;
@@ -164,7 +164,8 @@ std::optional<ScannerInfo> CheckUsbDevice(libusb_device* device) {
 
 }  // namespace
 
-std::optional<std::string> BackendForDevice(const std::string& device_name) {
+std::optional<std::string> BackendForDevice(const std::string& device_name,
+                                            base::FilePath socket_dir) {
   LOG(INFO) << "Finding real backend for device: " << device_name;
   std::string protocol, name, vid, pid, path;
   if (!RE2::FullMatch(
@@ -176,7 +177,7 @@ std::optional<std::string> BackendForDevice(const std::string& device_name) {
 
   std::string socket =
       base::StringPrintf("%s-%s.sock", vid.c_str(), pid.c_str());
-  if (!WaitForSocket(socket, kSocketCreationTimeout)) {
+  if (!WaitForSocket(socket_dir, socket, kSocketCreationTimeout)) {
     return std::nullopt;
   }
 

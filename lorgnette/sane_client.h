@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <brillo/errors/error.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 #include <sane/sane.h>
@@ -84,6 +85,8 @@ class SaneClient {
                                               const std::string& device_name);
 
  protected:
+  virtual base::FilePath IppUsbSocketDir() const;
+
   virtual std::unique_ptr<SaneDevice> ConnectToDeviceInternal(
       brillo::ErrorPtr* error,
       SANE_Status* sane_status,
