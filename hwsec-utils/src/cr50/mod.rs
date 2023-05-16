@@ -37,3 +37,6 @@ pub use reset::*;
 
 pub mod verify_ro;
 pub use verify_ro::*;
+
+pub mod disable_sleep;
+pub use disable_sleep::*;
