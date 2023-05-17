@@ -81,9 +81,6 @@ class Connection {
   // This should only be true for one connection at a time.
   virtual void SetUseDNS(bool enable);
 
-  // Update and apply the new DNS servers setting to this connection.
-  virtual void UpdateDNSServers(const std::vector<std::string>& dns_servers);
-
   // Flush and (re)create routing policy rules for the connection.
   // Called by Network when it detects address changes (that were not applied
   // through Connection) that need to be reflected in the routing policy rules.

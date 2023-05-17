@@ -902,25 +902,6 @@ TEST_F(ConnectionTest, HasOtherAddress) {
                                          kIPAddress1, kPrefix0)));
 }
 
-TEST_F(ConnectionTest, UpdateDNSServers) {
-  auto device = CreateDevice(Technology::kUnknown);
-  connection_ = CreateConnection(device);
-
-  static const char* const kDnsServers[] = {"1.1.1.1", "1.1.1.2"};
-  std::vector<std::string> dns_servers(kDnsServers, std::end(kDnsServers));
-
-  // Non-default connection.
-  EXPECT_CALL(resolver_, SetDNSFromLists(_, _)).Times(0);
-  connection_->UpdateDNSServers(dns_servers);
-  Mock::VerifyAndClearExpectations(&resolver_);
-
-  // Default connection.
-  connection_->SetUseDNS(true);
-  EXPECT_CALL(resolver_, SetDNSFromLists(dns_servers, _));
-  connection_->UpdateDNSServers(dns_servers);
-  Mock::VerifyAndClearExpectations(&resolver_);
-}
-
 TEST_F(ConnectionTest, BlackholeIPv6) {
   auto device = CreateDevice(Technology::kUnknown);
   connection_ = CreateConnection(device);

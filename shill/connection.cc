@@ -526,11 +526,6 @@ void Connection::SetUseDNS(bool enable) {
   use_dns_ = enable;
 }
 
-void Connection::UpdateDNSServers(const std::vector<std::string>& dns_servers) {
-  dns_servers_ = dns_servers;
-  PushDNSConfig();
-}
-
 void Connection::PushDNSConfig() {
   if (!use_dns_) {
     return;
