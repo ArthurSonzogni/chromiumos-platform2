@@ -16,13 +16,15 @@
 #include "metrics/serialization/serialization_utils.h"
 
 SynchronousMetricsWriter::SynchronousMetricsWriter(
-    base::FilePath uma_events_file)
-    : uma_events_file_(std::move(uma_events_file)) {}
+    bool use_nonblocking_lock, base::FilePath uma_events_file)
+    : use_nonblocking_lock_(use_nonblocking_lock),
+      uma_events_file_(std::move(uma_events_file)) {}
 
 bool SynchronousMetricsWriter::WriteMetrics(
     std::vector<metrics::MetricSample> samples) {
   return metrics::SerializationUtils::WriteMetricsToFile(
-      samples, uma_events_file_.value());
+      samples, uma_events_file_.value(),
+      /*use_nonblocking_lock=*/use_nonblocking_lock_);
 }
 
 bool SynchronousMetricsWriter::SetOutputFile(const std::string& output_file) {
@@ -76,7 +78,8 @@ void AsynchronousMetricsWriter::WaitUntilFlushed() {
 void AsynchronousMetricsWriter::WriteMetricsOnThread(
     std::vector<metrics::MetricSample> samples) {
   if (!metrics::SerializationUtils::WriteMetricsToFile(
-          samples, uma_events_file_.value())) {
+          samples, uma_events_file_.value(),
+          /*use_nonblocking_lock=*/false)) {
     LOG(ERROR) << "Failed to write metrics";
   }
 }

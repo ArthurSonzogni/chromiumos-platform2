@@ -14,9 +14,13 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_file.h"
+#include "base/functional/callback.h"
 #include "base/logging.h"
+#include "base/posix/eintr_wrapper.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
+#include "base/threading/platform_thread.h"
+#include "base/time/time.h"
 #include "metrics/serialization/metric_sample.h"
 
 #include <base/check.h>
@@ -26,6 +30,10 @@
 
 namespace metrics {
 namespace {
+
+// Timeout used to wait if the lock to write the metrics file is unavailable.
+constexpr base::TimeDelta kWaitForLockAvailableSleepTime =
+    base::Milliseconds(20);
 
 // Magic string that gets written at the beginning of the message file
 // when the file has been partially uploaded.
@@ -152,6 +160,30 @@ bool ReadMessage(int fd, std::string* message_out, size_t* bytes_used_out) {
   return true;
 }
 
+// Attempts to acquire the lock to |file_descriptor|.
+//
+// If |use_nonblocking_lock| is set to true, this function does at most two
+// nonblocking attempts to acquire the lock. If the first attempt fails,
+// |sleep_function| will run before trying again, giving time for the lock to
+// become available.
+//
+// If |use_nonblocking_lock| is set to false, this function blocks if unable to
+// acquire the file lock.
+bool AcquireLock(const base::ScopedFD& file_descriptor,
+                 bool use_nonblocking_lock,
+                 base::OnceCallback<void(base::TimeDelta)> sleep_function) {
+  int flags = LOCK_EX;
+  if (use_nonblocking_lock) {
+    flags |= LOCK_NB;
+    if (HANDLE_EINTR(flock(file_descriptor.get(), flags)) == 0) {
+      return true;
+    }
+    std::move(sleep_function).Run(kWaitForLockAvailableSleepTime);
+  }
+
+  return HANDLE_EINTR(flock(file_descriptor.get(), flags)) == 0;
+}
+
 }  // namespace
 
 MetricSample SerializationUtils::ParseSample(const std::string& sample) {
@@ -267,7 +299,18 @@ bool SerializationUtils::ReadAndTruncateMetricsFromFile(
 }
 
 bool SerializationUtils::WriteMetricsToFile(
-    const std::vector<MetricSample>& samples, const std::string& filename) {
+    const std::vector<MetricSample>& samples,
+    const std::string& filename,
+    bool use_nonblocking_lock) {
+  return WriteMetricsToFile(samples, filename, use_nonblocking_lock,
+                            base::BindOnce(&base::PlatformThread::Sleep));
+}
+
+bool SerializationUtils::WriteMetricsToFile(
+    const std::vector<MetricSample>& samples,
+    const std::string& filename,
+    bool use_nonblocking_lock,
+    base::OnceCallback<void(base::TimeDelta)> sleep_function) {
   std::string output;
   for (const auto& sample : samples) {
     if (!sample.IsValid()) {
@@ -298,7 +341,8 @@ bool SerializationUtils::WriteMetricsToFile(
   // which will leave the flock hanging and deadlock the reporting until the
   // forked process is killed otherwise. Thus we have to explicitly unlock the
   // file below.
-  if (HANDLE_EINTR(flock(file_descriptor.get(), LOCK_EX)) < 0) {
+  if (!AcquireLock(file_descriptor, use_nonblocking_lock,
+                   std::move(sleep_function))) {
     PLOG(ERROR) << filename << ": cannot lock";
     return false;
   }

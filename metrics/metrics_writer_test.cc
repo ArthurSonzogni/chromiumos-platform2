@@ -17,7 +17,8 @@ TEST(SynchronousMetricsWriterTest, WriteMetrics) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   auto file_path = temp_dir.GetPath().Append("metrics");
-  auto writer = base::MakeRefCounted<SynchronousMetricsWriter>(file_path);
+  auto writer = base::MakeRefCounted<SynchronousMetricsWriter>(
+      /*use_nonblocking_lock=*/false, file_path);
 
   auto sample1 = metrics::MetricSample::LinearHistogramSample("Test1", 1, 2);
   auto sample2 = metrics::MetricSample::LinearHistogramSample("Test2", 1, 2);
@@ -37,7 +38,8 @@ TEST(SynchronousMetricsWriterTest, SetOutputFile) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   auto file_path = temp_dir.GetPath().Append("metrics");
   auto file_path2 = temp_dir.GetPath().Append("metrics2");
-  auto writer = base::MakeRefCounted<SynchronousMetricsWriter>(file_path);
+  auto writer = base::MakeRefCounted<SynchronousMetricsWriter>(
+      /*use_nonblocking_lock=*/false, file_path);
 
   auto sample1 = metrics::MetricSample::LinearHistogramSample("Test1", 1, 2);
   auto sample2 = metrics::MetricSample::LinearHistogramSample("Test2", 1, 2);
@@ -64,8 +66,8 @@ class AsynchronousMetricsWriterTest : public testing::Test {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     file_path_ = temp_dir_.GetPath().Append("metrics");
     writer_ = base::MakeRefCounted<AsynchronousMetricsWriter>(
-        base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()}), true,
-        file_path_);
+        base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()}),
+        /*wait_on_destructor=*/true, file_path_);
   }
 
   base::test::TaskEnvironment task_environment_{

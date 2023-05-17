@@ -2,20 +2,26 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "metrics/serialization/serialization_utils.h"
+#include <memory>
 
 #include <base/check.h>
+#include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/bind.h>
+#include <base/threading/platform_thread.h>
+#include <brillo/process/process.h>
 #include <gtest/gtest.h>
 
 #include "metrics/serialization/metric_sample.h"
+#include "metrics/serialization/serialization_utils.h"
 
 namespace metrics {
 namespace {
@@ -29,6 +35,10 @@ class SerializationUtilsTest : public testing::Test {
       filepath_ = dir_path.Append("chromeossampletest");
       filename_ = filepath_.value();
     }
+
+    base::FilePath my_executable_path =
+        base::CommandLine::ForCurrentProcess()->GetProgram();
+    build_directory_ = base::FilePath(my_executable_path.DirName());
   }
   SerializationUtilsTest(const SerializationUtilsTest&) = delete;
   SerializationUtilsTest& operator=(const SerializationUtilsTest&) = delete;
@@ -42,9 +52,56 @@ class SerializationUtilsTest : public testing::Test {
     EXPECT_TRUE(sample.IsEqual(deserialized));
   }
 
+  // Lock the indicated file |file_name| using flock so that
+  // WriteMetricsToFile() will fail to acquire it. File will be created if
+  // it doesn't exist. Returns when the file is actually locked. Since locks are
+  // per-process, in order to prevent this process from locking the file, we
+  // have to spawn a separate process to hold the lock; the process holding the
+  // lock is returned. It can be killed to release the lock.
+  std::unique_ptr<brillo::Process> LockFile(const base::FilePath& file_name) {
+    base::Time start_time = base::Time::Now();
+    auto lock_process = std::make_unique<brillo::ProcessImpl>();
+    CHECK(!build_directory_.empty());
+    base::FilePath lock_file_holder = build_directory_.Append("hold_lock_file");
+    lock_process->AddArg(lock_file_holder.value());
+    lock_process->AddArg(file_name.value());
+    CHECK(lock_process->Start());
+
+    // Wait for the file to actually be locked. Don't wait forever in case the
+    // subprocess fails in some way.
+    base::Time stop_time = base::Time::Now() + base::Seconds(30);
+    bool success = false;
+    base::Time wait_start_time = base::Time::Now();
+    LOG(INFO) << "Took " << wait_start_time - start_time
+              << " to start subprocess";
+    while (!success && base::Time::Now() < stop_time) {
+      base::File lock_file(file_name, base::File::FLAG_OPEN |
+                                          base::File::FLAG_READ |
+                                          base::File::FLAG_WRITE);
+      if (lock_file.IsValid()) {
+        if (HANDLE_EINTR(
+                flock(lock_file.GetPlatformFile(), LOCK_EX | LOCK_NB)) < 0 &&
+            errno == EWOULDBLOCK) {
+          success = true;
+        }
+      }
+
+      if (!success) {
+        base::PlatformThread::Sleep(base::Seconds(1));
+      }
+    }
+    LOG(INFO) << "Took " << base::Time::Now() - wait_start_time
+              << " to verify file lock";
+
+    CHECK(success) << "Subprocess did not lock " << file_name.value();
+    return lock_process;
+  }
+
   std::string filename_;
   base::ScopedTempDir temporary_dir_;
   base::FilePath filepath_;
+  // Directory that the test executable lives in.
+  base::FilePath build_directory_;
 };
 
 TEST_F(SerializationUtilsTest, CrashSerializeTest) {
@@ -98,8 +155,8 @@ TEST_F(SerializationUtilsTest, BadInputIsCaughtTest) {
 }
 
 TEST_F(SerializationUtilsTest, MessageSeparatedByZero) {
-  SerializationUtils::WriteMetricsToFile({MetricSample::CrashSample("mycrash")},
-                                         filename_);
+  EXPECT_TRUE(SerializationUtils::WriteMetricsToFile(
+      {MetricSample::CrashSample("mycrash")}, filename_));
   int64_t size = 0;
   ASSERT_TRUE(base::GetFileSize(filepath_, &size));
   // 4 bytes for the size
@@ -133,7 +190,7 @@ TEST_F(SerializationUtilsTest, ReadLongMessageTest) {
   test_file.Close();
 
   MetricSample crash = MetricSample::CrashSample("test");
-  SerializationUtils::WriteMetricsToFile({crash}, filename_);
+  EXPECT_TRUE(SerializationUtils::WriteMetricsToFile({crash}, filename_));
 
   std::vector<MetricSample> samples;
   SerializationUtils::ReadAndTruncateMetricsFromFile(
@@ -197,7 +254,8 @@ TEST_F(SerializationUtilsTest, WriteReadTest) {
       MetricSample::HistogramSample("myrepeatedhist", 3, 1, 10, 5, 10),
   };
 
-  SerializationUtils::WriteMetricsToFile(output_samples, filename_);
+  EXPECT_TRUE(
+      SerializationUtils::WriteMetricsToFile(output_samples, filename_));
   std::vector<MetricSample> samples;
   SerializationUtils::ReadAndTruncateMetricsFromFile(
       filename_, &samples, SerializationUtils::kSampleBatchMaxLength);
@@ -227,8 +285,8 @@ TEST_F(SerializationUtilsTest, BatchedUploadTest) {
   const int sample_count =
       1.5 * sample_batch_max_length / serialized_sample_length;
 
-  SerializationUtils::WriteMetricsToFile(
-      std::vector<MetricSample>(sample_count, hist), filename_);
+  EXPECT_TRUE(SerializationUtils::WriteMetricsToFile(
+      std::vector<MetricSample>(sample_count, hist), filename_));
 
   std::vector<MetricSample> samples;
   bool first_pass_status = SerializationUtils::ReadAndTruncateMetricsFromFile(
@@ -258,6 +316,76 @@ TEST_F(SerializationUtilsTest, BatchedUploadTest) {
   ASSERT_EQ(stat_buf.st_size, 0);
   // Check that we read all samples.
   ASSERT_EQ(samples.size(), sample_count);
+}
+
+// Tests that WriteMetricsToFile() writes the sample metric to file on the first
+// attempt.
+TEST_F(SerializationUtilsTest,
+       WriteMetricsToFile_UseNonBlockingLock_GetLockOnFirstAttempt) {
+  bool cb_run = false;
+  EXPECT_TRUE(SerializationUtils::WriteMetricsToFile(
+      {MetricSample::CrashSample("mycrash")}, filename_,
+      /*use_nonblocking_lock=*/true,
+      base::BindLambdaForTesting(
+          [&cb_run](base::TimeDelta sleep_time) { cb_run = true; })));
+  EXPECT_FALSE(cb_run);
+
+  int64_t size = 0;
+  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
+  // 4 bytes for the size
+  // 5 bytes for crash
+  // 7 bytes for mycrash
+  // 2 bytes for the \0
+  // -> total of 18
+  EXPECT_EQ(size, 18);
+}
+
+// Tests that WriteMetricsToFile() writes the sample metric to file on the
+// second attempt. Another process is created at the start of the test to grab
+// the file lock, causing the first attempt to fail. The process is then killed,
+// freeing the lock for the second attempt.
+TEST_F(SerializationUtilsTest,
+       WriteMetricsToFile_UseNonBlockingLock_GetLockOnSecondAttempt) {
+  auto lock_process = LockFile(filepath_);
+  bool cb_run = false;
+  EXPECT_TRUE(SerializationUtils::WriteMetricsToFile(
+      {MetricSample::CrashSample("mycrash")}, filename_,
+      /*use_nonblocking_lock=*/true,
+      base::BindLambdaForTesting(
+          [&lock_process, &cb_run](base::TimeDelta sleep_time) {
+            cb_run = true;
+            lock_process->Kill(SIGKILL, /*timeout=*/5);
+            lock_process->Wait();
+          })));
+  EXPECT_TRUE(cb_run);
+
+  int64_t size = 0;
+  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
+  // 4 bytes for the size
+  // 5 bytes for crash
+  // 7 bytes for mycrash
+  // 2 bytes for the \0
+  // -> total of 18
+  EXPECT_EQ(size, 18);
+}
+
+// Tests that WriteMetricsToFile() does not write the sample metric since the
+// lock is never available. Another process is created at the start of the test
+// to grab the file lock, causing the first and second attempts to fail.
+TEST_F(SerializationUtilsTest,
+       WriteMetricsToFile_UseNonBlockingLock_NeverGetLock) {
+  auto lock_file = LockFile(filepath_);
+  bool cb_run = false;
+  EXPECT_FALSE(SerializationUtils::WriteMetricsToFile(
+      {MetricSample::CrashSample("mycrash")}, filename_,
+      /*use_nonblocking_lock=*/true,
+      base::BindLambdaForTesting(
+          [&cb_run](base::TimeDelta sleep_time) { cb_run = true; })));
+  EXPECT_TRUE(cb_run);
+
+  int64_t size = 0;
+  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
+  EXPECT_EQ(size, 0);
 }
 
 }  // namespace

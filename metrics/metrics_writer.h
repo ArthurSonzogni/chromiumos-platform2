@@ -38,12 +38,15 @@ class MetricsWriter : public base::RefCountedThreadSafe<MetricsWriter> {
 // the caller thread.
 //
 // It acquires a file lock to write logs so that this may block the thread for
-// non-trivial time.
+// non-trivial time. This writer can use a nonblocking file lock by setting
+// `use_nonblocking_lock` to true. Note that using a nonblocking lock will
+// result in dropped metrics if the lock could not be grabbed.
 //
 // This class is not thread-safe.
 class SynchronousMetricsWriter : public MetricsWriter {
  public:
   explicit SynchronousMetricsWriter(
+      bool use_nonblocking_lock = false,
       base::FilePath uma_events_file = base::FilePath(kUMAEventsPath));
 
   bool WriteMetrics(std::vector<metrics::MetricSample> samples) override;
@@ -53,6 +56,8 @@ class SynchronousMetricsWriter : public MetricsWriter {
   friend class CMetricsLibraryTest;
   friend class MetricsLibraryTest;
 
+  // Whether or not to use a nonblocking lock when calling `WriteMetrics()`.
+  bool use_nonblocking_lock_;
   base::FilePath uma_events_file_;
 };
 
