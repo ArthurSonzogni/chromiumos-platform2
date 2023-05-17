@@ -158,14 +158,6 @@ uint32_t VmBaseImpl::seneschal_server_handle() const {
   return 0;
 }
 
-void VmBaseImpl::HandleSuspendImminent() {
-  SuspendCrosvm();
-}
-
-void VmBaseImpl::HandleSuspendDone() {
-  ResumeCrosvm();
-}
-
 void VmBaseImpl::MakeRtVcpu() {
   CrosvmControl::Get()->MakeRtVm(GetVmSocketPath().c_str());
 }

@@ -261,10 +261,10 @@ class VmBaseImpl {
 
  private:
   // Handle the device going to suspend.
-  virtual void HandleSuspendImminent();
+  virtual void HandleSuspendImminent() = 0;
 
   // Handle the device resuming from a suspend.
-  virtual void HandleSuspendDone();
+  virtual void HandleSuspendDone() = 0;
 
   // Whether the VM is currently suspended.
   bool suspended_ = false;
