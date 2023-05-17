@@ -108,6 +108,12 @@ EOF
   mkdir -p /var/lib/systemd/linger
   touch /var/lib/systemd/linger/chronos
 
+  # Disable garcon auto-updates.
+  sed -i -E \
+    -e 's/(DisableAutomaticCrosPackageUpdates=)false/\1true/' \
+    -e 's/(DisableAutomaticSecurityUpdates=)false/\1true/' \
+    /home/chronos/.config/cros-garcon.conf
+
   # TODO(b/271522474): leave networking to NM
   ln -sf /run/resolv.conf /etc/resolv.conf
 
