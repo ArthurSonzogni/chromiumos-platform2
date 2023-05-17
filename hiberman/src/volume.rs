@@ -56,6 +56,7 @@ use crate::lvm::lv_path;
 use crate::lvm::lv_remove;
 use crate::lvm::thicken_thin_volume;
 use crate::lvm::ActivatedLogicalVolume;
+use crate::metrics::METRICS_LOGGER;
 use crate::snapwatch::DmSnapshotSpaceMonitor;
 
 /// Define the name of the hibernate logical volume.
@@ -139,6 +140,15 @@ impl Drop for PendingStatefulMerge<'_> {
     }
 }
 
+/// Result of a file system check.
+enum FileSystemStatus {
+    // These values are persisted to logs. Entries should not be renumbered and
+    // numeric values should never be reused.
+    Clean = 0,
+    HasErrors = 1,
+    Count = 2,
+}
+
 enum ThinpoolMode {
     ReadOnly,
     ReadWrite,
@@ -206,13 +216,15 @@ impl VolumeManager {
                     bdev_path, e
                 );
 
-                // TODO: add metric
+                log_file_system_status(FileSystemStatus::HasErrors);
 
                 info!("Formatting 'hibermeta' volume {}", bdev_path);
                 // Use -K to tell mkfs not to run a discard on the block device, which
                 // would destroy all the nice thickening done at creation time.
                 checked_command_output(Command::new(MKFS_EXT2_PATH).args(["-K", &bdev_path]))
                     .context("Cannot format 'hibermeta' volume")?;
+            } else {
+                log_file_system_status(FileSystemStatus::Clean);
             }
         } else if create {
             self.create_hibermeta_lv()?;
@@ -841,6 +853,17 @@ fn zero_init_blockdev(path: &Path, num_bytes: u64) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Log a metric for the 'hibermeta' file system status.
+fn log_file_system_status(status: FileSystemStatus) {
+    let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+
+    metrics_logger.log_enum_metric(
+        "Platform.Hibernate.FileSystem.Hibermeta.FileSystemStatus",
+        status as isize,
+        FileSystemStatus::Count as isize - 1,
+    );
 }
 
 /// Tracks and active mount and unmounts it when the instance is dropped.
