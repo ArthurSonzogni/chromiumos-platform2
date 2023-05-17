@@ -2,19 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_UTILS_MOCK_FLASHROM_UTILS_H_
-#define RMAD_UTILS_MOCK_FLASHROM_UTILS_H_
+#ifndef RMAD_UTILS_MOCK_FUTILITY_UTILS_H_
+#define RMAD_UTILS_MOCK_FUTILITY_UTILS_H_
 
-#include "rmad/utils/flashrom_utils.h"
+#include "rmad/utils/futility_utils.h"
 
 #include <gmock/gmock.h>
 
 namespace rmad {
 
-class MockFlashromUtils : public FlashromUtils {
+class MockFutilityUtils : public FutilityUtils {
  public:
-  MockFlashromUtils() = default;
-  ~MockFlashromUtils() override = default;
+  MockFutilityUtils() = default;
+  ~MockFutilityUtils() override = default;
 
   MOCK_METHOD(bool, GetApWriteProtectionStatus, (bool*), (override));
   MOCK_METHOD(bool, GetEcWriteProtectionStatus, (bool*), (override));
@@ -24,4 +24,4 @@ class MockFlashromUtils : public FlashromUtils {
 
 }  // namespace rmad
 
-#endif  // RMAD_UTILS_MOCK_FLASHROM_UTILS_H_
+#endif  // RMAD_UTILS_MOCK_FUTILITY_UTILS_H_

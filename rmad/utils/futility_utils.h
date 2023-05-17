@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_UTILS_FLASHROM_UTILS_H_
-#define RMAD_UTILS_FLASHROM_UTILS_H_
+#ifndef RMAD_UTILS_FUTILITY_UTILS_H_
+#define RMAD_UTILS_FUTILITY_UTILS_H_
 
 namespace rmad {
 
-class FlashromUtils {
+class FutilityUtils {
  public:
-  FlashromUtils() = default;
-  virtual ~FlashromUtils() = default;
+  FutilityUtils() = default;
+  virtual ~FutilityUtils() = default;
 
   virtual bool GetApWriteProtectionStatus(bool* enabled) = 0;
   virtual bool GetEcWriteProtectionStatus(bool* enabled) = 0;
@@ -20,4 +20,4 @@ class FlashromUtils {
 
 }  // namespace rmad
 
-#endif  // RMAD_UTILS_FLASHROM_UTILS_H_
+#endif  // RMAD_UTILS_FUTILITY_UTILS_H_

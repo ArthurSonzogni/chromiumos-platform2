@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <rmad/utils/flashrom_utils_impl.h>
+#include <rmad/utils/futility_utils_impl.h>
 
 #include <memory>
 #include <sstream>
@@ -31,14 +31,14 @@ constexpr char kFutilityWriteProtectDisabledStr[] = "WP status: disabled";
 
 namespace rmad {
 
-FlashromUtilsImpl::FlashromUtilsImpl() : FlashromUtils() {
+FutilityUtilsImpl::FutilityUtilsImpl() : FutilityUtils() {
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
 }
 
-FlashromUtilsImpl::FlashromUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils)
-    : FlashromUtils(), cmd_utils_(std::move(cmd_utils)) {}
+FutilityUtilsImpl::FutilityUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils)
+    : FutilityUtils(), cmd_utils_(std::move(cmd_utils)) {}
 
-bool FlashromUtilsImpl::GetApWriteProtectionStatus(bool* enabled) {
+bool FutilityUtilsImpl::GetApWriteProtectionStatus(bool* enabled) {
   std::string futility_output;
   // Get WP status output string.
   if (!cmd_utils_->GetOutput({kFutilityCmd, "flash", "--wp-status"},
@@ -52,7 +52,7 @@ bool FlashromUtilsImpl::GetApWriteProtectionStatus(bool* enabled) {
   return true;
 }
 
-bool FlashromUtilsImpl::GetEcWriteProtectionStatus(bool* enabled) {
+bool FutilityUtilsImpl::GetEcWriteProtectionStatus(bool* enabled) {
   std::string flashrom_output;
   // Get WP status output string.
   if (!cmd_utils_->GetOutput({kFlashromCmd, "-p", "ec", "--wp-status"},
@@ -65,7 +65,7 @@ bool FlashromUtilsImpl::GetEcWriteProtectionStatus(bool* enabled) {
   return true;
 }
 
-bool FlashromUtilsImpl::EnableApSoftwareWriteProtection() {
+bool FutilityUtilsImpl::EnableApSoftwareWriteProtection() {
   // Enable AP WP.
   if (std::string output;
       !cmd_utils_->GetOutput({kFutilityCmd, "flash", "--wp-enable"}, &output)) {
@@ -77,7 +77,7 @@ bool FlashromUtilsImpl::EnableApSoftwareWriteProtection() {
   return true;
 }
 
-bool FlashromUtilsImpl::DisableSoftwareWriteProtection() {
+bool FutilityUtilsImpl::DisableSoftwareWriteProtection() {
   // Disable AP WP.
   if (std::string output; !cmd_utils_->GetOutput(
           {kFutilityCmd, "flash", "--wp-disable"}, &output)) {

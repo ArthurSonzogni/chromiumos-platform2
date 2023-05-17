@@ -11,22 +11,22 @@
 
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/ec_utils_impl.h"
-#include "rmad/utils/flashrom_utils_impl.h"
+#include "rmad/utils/futility_utils_impl.h"
 
 namespace rmad {
 
 WriteProtectUtilsImpl::WriteProtectUtilsImpl()
     : crossystem_utils_(std::make_unique<CrosSystemUtilsImpl>()),
       ec_utils_(std::make_unique<EcUtilsImpl>()),
-      flashrom_utils_(std::make_unique<FlashromUtilsImpl>()) {}
+      futility_utils_(std::make_unique<FutilityUtilsImpl>()) {}
 
 WriteProtectUtilsImpl::WriteProtectUtilsImpl(
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<EcUtils> ec_utils,
-    std::unique_ptr<FlashromUtils> flashrom_utils)
+    std::unique_ptr<FutilityUtils> futility_utils)
     : crossystem_utils_(std::move(crossystem_utils)),
       ec_utils_(std::move(ec_utils)),
-      flashrom_utils_(std::move(flashrom_utils)) {}
+      futility_utils_(std::move(futility_utils)) {}
 
 bool WriteProtectUtilsImpl::GetHardwareWriteProtectionStatus(
     bool* enabled) const {
@@ -41,23 +41,23 @@ bool WriteProtectUtilsImpl::GetHardwareWriteProtectionStatus(
 }
 
 bool WriteProtectUtilsImpl::GetApWriteProtectionStatus(bool* enabled) const {
-  if (!flashrom_utils_->GetApWriteProtectionStatus(enabled)) {
-    LOG(ERROR) << "Failed to get AP write protect with flashrom utils.";
+  if (!futility_utils_->GetApWriteProtectionStatus(enabled)) {
+    LOG(ERROR) << "Failed to get AP write protect with futility utils.";
     return false;
   }
   return true;
 }
 
 bool WriteProtectUtilsImpl::GetEcWriteProtectionStatus(bool* enabled) const {
-  if (!flashrom_utils_->GetEcWriteProtectionStatus(enabled)) {
-    LOG(ERROR) << "Failed to get EC write protect with flashrom utils.";
+  if (!futility_utils_->GetEcWriteProtectionStatus(enabled)) {
+    LOG(ERROR) << "Failed to get EC write protect with futility utils.";
     return false;
   }
   return true;
 }
 
 bool WriteProtectUtilsImpl::DisableSoftwareWriteProtection() {
-  return flashrom_utils_->DisableSoftwareWriteProtection();
+  return futility_utils_->DisableSoftwareWriteProtection();
 }
 
 bool WriteProtectUtilsImpl::EnableSoftwareWriteProtection() {
@@ -68,7 +68,7 @@ bool WriteProtectUtilsImpl::EnableSoftwareWriteProtection() {
   }
 
   // Enable AP write protection.
-  return flashrom_utils_->EnableApSoftwareWriteProtection();
+  return futility_utils_->EnableApSoftwareWriteProtection();
 }
 
 }  // namespace rmad

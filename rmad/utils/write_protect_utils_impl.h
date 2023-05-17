@@ -11,7 +11,7 @@
 
 #include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/ec_utils.h"
-#include "rmad/utils/flashrom_utils.h"
+#include "rmad/utils/futility_utils.h"
 
 namespace rmad {
 
@@ -21,7 +21,7 @@ class WriteProtectUtilsImpl : public WriteProtectUtils {
   explicit WriteProtectUtilsImpl(
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
       std::unique_ptr<EcUtils> ec_utils,
-      std::unique_ptr<FlashromUtils> flashrom_utils);
+      std::unique_ptr<FutilityUtils> futility_utils);
   ~WriteProtectUtilsImpl() override = default;
 
   bool GetHardwareWriteProtectionStatus(bool* enabled) const override;
@@ -33,7 +33,7 @@ class WriteProtectUtilsImpl : public WriteProtectUtils {
  private:
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<EcUtils> ec_utils_;
-  std::unique_ptr<FlashromUtils> flashrom_utils_;
+  std::unique_ptr<FutilityUtils> futility_utils_;
 };
 
 }  // namespace rmad

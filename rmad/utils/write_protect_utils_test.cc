@@ -11,7 +11,7 @@
 
 #include "rmad/utils/mock_crossystem_utils.h"
 #include "rmad/utils/mock_ec_utils.h"
-#include "rmad/utils/mock_flashrom_utils.h"
+#include "rmad/utils/mock_futility_utils.h"
 
 using testing::_;
 using testing::DoAll;
@@ -48,23 +48,23 @@ class WriteProtectUtilsTest : public testing::Test {
     ON_CALL(*mock_ec_utils, EnableSoftwareWriteProtection())
         .WillByDefault(Return(ecwp_success));
 
-    // Mock |FlashromUtils|.
-    auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
-    ON_CALL(*mock_flashrom_utils, GetApWriteProtectionStatus(_))
+    // Mock |FutilityUtils|.
+    auto mock_futility_utils = std::make_unique<NiceMock<MockFutilityUtils>>();
+    ON_CALL(*mock_futility_utils, GetApWriteProtectionStatus(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(apwp_enabled), Return(apwp_success)));
-    ON_CALL(*mock_flashrom_utils, GetEcWriteProtectionStatus(_))
+    ON_CALL(*mock_futility_utils, GetEcWriteProtectionStatus(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(ecwp_enabled), Return(ecwp_success)));
-    ON_CALL(*mock_flashrom_utils, DisableSoftwareWriteProtection())
+    ON_CALL(*mock_futility_utils, DisableSoftwareWriteProtection())
         .WillByDefault(Return(true));
     // Use |apwp_success| to control the return value of enabling AP SWWP.
-    ON_CALL(*mock_flashrom_utils, EnableApSoftwareWriteProtection())
+    ON_CALL(*mock_futility_utils, EnableApSoftwareWriteProtection())
         .WillByDefault(Return(apwp_success));
 
     return std::make_unique<WriteProtectUtilsImpl>(
         std::move(mock_crossystem_utils), std::move(mock_ec_utils),
-        std::move(mock_flashrom_utils));
+        std::move(mock_futility_utils));
   }
 };
 

@@ -28,7 +28,7 @@
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
-#include "rmad/utils/flashrom_utils_impl.h"
+#include "rmad/utils/futility_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
 namespace {

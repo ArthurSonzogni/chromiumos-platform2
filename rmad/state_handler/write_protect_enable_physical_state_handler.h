@@ -13,7 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
-#include "rmad/utils/flashrom_utils.h"
+#include "rmad/utils/futility_utils.h"
 #include "rmad/utils/write_protect_utils.h"
 
 namespace rmad {

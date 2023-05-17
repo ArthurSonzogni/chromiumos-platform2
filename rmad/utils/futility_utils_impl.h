@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RMAD_UTILS_FLASHROM_UTILS_IMPL_H_
-#define RMAD_UTILS_FLASHROM_UTILS_IMPL_H_
+#ifndef RMAD_UTILS_FUTILITY_UTILS_IMPL_H_
+#define RMAD_UTILS_FUTILITY_UTILS_IMPL_H_
 
-#include <rmad/utils/flashrom_utils.h>
+#include <rmad/utils/futility_utils.h>
 
 #include <memory>
 
@@ -13,11 +13,11 @@
 
 namespace rmad {
 
-class FlashromUtilsImpl : public FlashromUtils {
+class FutilityUtilsImpl : public FutilityUtils {
  public:
-  FlashromUtilsImpl();
-  explicit FlashromUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils);
-  ~FlashromUtilsImpl() override = default;
+  FutilityUtilsImpl();
+  explicit FutilityUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils);
+  ~FutilityUtilsImpl() override = default;
 
   bool GetApWriteProtectionStatus(bool* enabled) override;
   bool GetEcWriteProtectionStatus(bool* enabled) override;
@@ -30,4 +30,4 @@ class FlashromUtilsImpl : public FlashromUtils {
 
 }  // namespace rmad
 
-#endif  // RMAD_UTILS_FLASHROM_UTILS_IMPL_H_
+#endif  // RMAD_UTILS_FUTILITY_UTILS_IMPL_H_
