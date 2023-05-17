@@ -243,7 +243,10 @@ impl ResumeConductor {
 
         TimestampFile::record_timestamp("resume_start.ts", &self.timestamp_start)?;
 
-        let prep_time = UNIX_EPOCH.elapsed()? - self.timestamp_start;
+        let resume_prep_done = UNIX_EPOCH.elapsed().unwrap_or(Duration::ZERO);
+        let prep_time = resume_prep_done
+            .checked_sub(self.timestamp_start)
+            .unwrap_or(Duration::ZERO);
         debug!(
             "Preparation for resume from hibernate took {}.{}.s",
             prep_time.as_secs(),
@@ -304,7 +307,7 @@ impl ResumeConductor {
             }
         };
 
-        self.timestamp_start = UNIX_EPOCH.elapsed().unwrap();
+        self.timestamp_start = UNIX_EPOCH.elapsed().unwrap_or(Duration::ZERO);
 
         VolumeManager::new()?.setup_hiberimage(
             tpm_key.as_ref(),

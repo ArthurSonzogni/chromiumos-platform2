@@ -219,7 +219,7 @@ impl SuspendConductor {
                 }
             }
         } else {
-            self.timestamp_resumed = Some(UNIX_EPOCH.elapsed().unwrap());
+            self.timestamp_resumed = Some(UNIX_EPOCH.elapsed().unwrap_or(Duration::ZERO));
 
             // This is the resume path. First, forcefully reset the logger, which is some
             // stale partial state that the suspend path ultimately flushed and closed.
@@ -249,7 +249,16 @@ impl SuspendConductor {
         }
 
         let resume_start = res.unwrap();
-        let resume_time = self.timestamp_resumed.unwrap() - resume_start;
+        let resume_done = self.timestamp_resumed.unwrap();
+        let resume_time = resume_done
+            .checked_sub(resume_start)
+            .unwrap_or_else(|| -> Duration {
+                warn!(
+                    "Resume timestamps are bogus: resume start: {:?}, resume done: {:?}",
+                    resume_start, resume_done
+                );
+                Duration::ZERO
+            });
 
         debug!(
             "Resume from hibernate took {}.{}.s",
