@@ -193,6 +193,11 @@ StatusOr<bool> CryptohomeFrontendImpl::IsPinWeaverEnabled() const {
 }
 
 StatusOr<bool> CryptohomeFrontendImpl::IsBiometricsPinWeaverEnabled() const {
+  ASSIGN_OR_RETURN(bool enabled,
+                   middleware_.CallSync<&Backend::PinWeaver::IsEnabled>());
+  if (!enabled) {
+    return false;
+  }
   ASSIGN_OR_RETURN(uint8_t version,
                    middleware_.CallSync<&Backend::PinWeaver::GetVersion>());
   return version >= kBiometricsPinWeaverProtocolVersion;
