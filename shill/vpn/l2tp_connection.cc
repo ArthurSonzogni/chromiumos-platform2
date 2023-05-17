@@ -14,6 +14,7 @@
 #include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -205,8 +206,11 @@ void L2TPConnection::OnDisconnect() {
 bool L2TPConnection::WritePPPDConfig() {
   pppd_config_path_ = temp_dir_.GetPath().Append(kPPPDConfigFileName);
 
+  // Note that since StringPiece is used here, all the strings in this vector
+  // MUST be alive until the end of this function. Unit tests are supposed to
+  // catch the issue if this condition is not met.
   // TODO(b/200636771): Use proper mtu and mru.
-  std::vector<std::string> lines = {
+  std::vector<base::StringPiece> lines = {
       "ipcp-accept-local",
       "ipcp-accept-remote",
       "refuse-eap",
@@ -234,7 +238,9 @@ bool L2TPConnection::WritePPPDConfig() {
   // by this).
   lines.push_back("logfd -1");
 
-  lines.push_back(base::StrCat({"plugin ", PPPDaemon::kShimPluginPath}));
+  const std::string plugin_line =
+      base::StrCat({"plugin ", PPPDaemon::kShimPluginPath});
+  lines.push_back(plugin_line);
 
   std::string contents = base::JoinString(lines, "\n");
   return vpn_util_->WriteConfigFile(pppd_config_path_, contents);
@@ -255,7 +261,7 @@ bool L2TPConnection::WriteL2TPDConfig() {
   lines.push_back(base::StringPrintf("[lac %s]", kL2TPConnectionName));
 
   // Fills in bool properties.
-  auto bool_property = [](const std::string& key, bool value) -> std::string {
+  auto bool_property = [](base::StringPiece key, bool value) -> std::string {
     return base::StrCat({key, " = ", value ? "yes" : "no"});
   };
   lines.push_back(bool_property("require chap", config_->require_chap));
@@ -270,15 +276,17 @@ bool L2TPConnection::WriteL2TPDConfig() {
   // need to check them to ensure that the generated config file will not be
   // polluted. See https://crbug.com/1077754. Note that the ordering of
   // properties in the config file does not matter, we use a vector instead of
-  // map just for the ease of unit tests.
-  std::vector<std::pair<std::string, std::string>> string_properties = {
-      {"lns", config_->remote_ip},
-      {"name", config_->user},
-      {"bps", kBpsParameter},
-      {"redial timeout", kRedialTimeoutParameter},
-      {"max redials", kMaxRedialsParameter},
-      {"pppoptfile", pppd_config_path_.value()},
-  };
+  // map just for the ease of unit tests. Using StringPiece is safe here since
+  // because there is no temporary string object when constructing this vector.
+  const std::vector<std::pair<base::StringPiece, base::StringPiece>>
+      string_properties = {
+          {"lns", config_->remote_ip},
+          {"name", config_->user},
+          {"bps", kBpsParameter},
+          {"redial timeout", kRedialTimeoutParameter},
+          {"max redials", kMaxRedialsParameter},
+          {"pppoptfile", pppd_config_path_.value()},
+      };
   for (const auto& [key, value] : string_properties) {
     if (value.find('\n') != value.npos) {
       LOG(ERROR) << "The value for " << key << " contains newline characters";
