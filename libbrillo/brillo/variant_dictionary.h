@@ -5,6 +5,7 @@
 #ifndef LIBBRILLO_BRILLO_VARIANT_DICTIONARY_H_
 #define LIBBRILLO_BRILLO_VARIANT_DICTIONARY_H_
 
+#include <functional>
 #include <map>
 #include <string>
 
@@ -13,7 +14,7 @@
 
 namespace brillo {
 
-using VariantDictionary = std::map<std::string, brillo::Any>;
+using VariantDictionary = std::map<std::string, brillo::Any, std::less<>>;
 
 // GetVariantValueOrDefault tries to retrieve the named key from the dictionary
 // and convert it to the type T.  If the value does not exist, or the type

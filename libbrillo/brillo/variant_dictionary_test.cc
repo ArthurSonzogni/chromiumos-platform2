@@ -4,6 +4,7 @@
 
 #include <string>
 
+#include <base/strings/string_piece.h>
 #include <brillo/any.h>
 #include <brillo/variant_dictionary.h>
 #include <gtest/gtest.h>
@@ -23,4 +24,13 @@ TEST(VariantDictionary, GetVariantValueOrDefault) {
   // Test that missing keys result in defaults.
   EXPECT_EQ("", GetVariantValueOrDefault<std::string>(dictionary, "missing"));
   EXPECT_EQ(0, GetVariantValueOrDefault<int>(dictionary, "missing"));
+}
+
+TEST(VariantDictionary, LookupWithStringPiece) {
+  VariantDictionary dictionary;
+  dictionary.emplace("a", 1);
+  dictionary.emplace("b", "string");
+
+  EXPECT_NE(dictionary.find(base::StringPiece("a")), dictionary.end());
+  EXPECT_NE(dictionary.find(base::StringPiece("b")), dictionary.end());
 }
