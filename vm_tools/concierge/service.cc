@@ -1690,7 +1690,7 @@ std::string GetFilesystem(const base::FilePath& disk_location) {
 
 void Service::StartVm(dbus::MethodCall* method_call,
                       dbus::ExportedObject::ResponseSender response_sender) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   auto reader = std::make_unique<dbus::MessageReader>(method_call);
 

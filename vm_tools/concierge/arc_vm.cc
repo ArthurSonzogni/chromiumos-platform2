@@ -888,7 +888,7 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
 }
 
 void ArcVm::InflateAggressiveBalloon(AggressiveBalloonCallback callback) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (aggressive_balloon_callback_) {
     LOG(WARNING) << "Aggressive balloon is already ongoing";
     RunFailureAggressiveBalloonCallback(
@@ -911,7 +911,7 @@ void ArcVm::InflateAggressiveBalloon(AggressiveBalloonCallback callback) {
 }
 
 void ArcVm::StopAggressiveBalloon(AggressiveBalloonResponse& response) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   LOG(INFO) << "Stop aggressive balloon";
   if (aggressive_balloon_callback_) {
     RunFailureAggressiveBalloonCallback(std::move(aggressive_balloon_callback_),
@@ -923,7 +923,7 @@ void ArcVm::StopAggressiveBalloon(AggressiveBalloonResponse& response) {
 }
 
 bool ArcVm::SetupLmkdVsock() {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   arcvm_lmkd_vsock_fd_.reset(socket(AF_VSOCK, SOCK_STREAM, 0));
 
@@ -968,7 +968,7 @@ bool ArcVm::SetupLmkdVsock() {
 }
 
 void ArcVm::HandleLmkdVsockAccept() {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   lmkd_client_fd_.reset(
       HANDLE_EINTR(accept(arcvm_lmkd_vsock_fd_.get(), nullptr, nullptr)));
   if (!lmkd_client_fd_.is_valid()) {
@@ -996,7 +996,7 @@ void ArcVm::HandleLmkdVsockAccept() {
 }
 
 uint64_t ArcVm::DeflateBalloonOnLmkd(int oom_score_adj, uint64_t proc_size) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   uint64_t freed_space = 0;
   if (is_aggressive_balloon_enabled_) {
     if (oom_score_adj <= kPlatformPerceptibleMaxOmmScoreAdjValue) {
@@ -1037,7 +1037,7 @@ uint64_t ArcVm::DeflateBalloonOnLmkd(int oom_score_adj, uint64_t proc_size) {
 }
 
 void ArcVm::HandleLmkdVsockRead() {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // TODO(210075795) switch to using an int array for simplicity
   uint8_t lmkd_read_buf[kLmkdPacketMaxSize];
 
@@ -1099,7 +1099,7 @@ void ArcVm::HandleLmkdVsockRead() {
 }
 
 void ArcVm::InflateAggressiveBalloonOnTimer() {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   aggressive_balloon_target_ += kAggressiveBalloonIncrementSize;
   if (!SetBalloonSize(aggressive_balloon_target_)) {
     LOG(ERROR) << "Failed to inflate balloon.";
