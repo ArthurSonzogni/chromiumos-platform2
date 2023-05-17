@@ -1563,11 +1563,23 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
       PopulateReplyWithError(auth_session_status.status(), &reply);
       return reply;
     }
+  } else {
+    // Start an auth session internally because we need an auth session to
+    // cleanup the auth factors.
+    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+        auth_session_manager_->CreateAuthSession(
+            GetAccountId(request.identifier()), /*flags=*/0,
+            AuthIntent::kDecrypt);
+    if (!auth_session_status.ok()) {
+      PopulateReplyWithError(auth_session_status.status(), &reply);
+      return reply;
+    }
+    auth_session = std::move(auth_session_status).value();
   }
 
-  Username account_id = auth_session.AuthSessionStatus().ok()
-                            ? auth_session->username()
-                            : GetAccountId(request.identifier());
+  auth_session->PrepareAllAuthFactorsForRemoval();
+
+  Username account_id = auth_session->username();
   if (account_id->empty()) {
     // RemoveRequest must have valid account_id.
     PopulateReplyWithError(
@@ -1610,7 +1622,7 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
   // Since the user is now removed, any further operations require a fresh
   // AuthSession.
   if (auth_session.AuthSessionStatus().ok()) {
-    if (!auth_session_manager_->RemoveAuthSession(request.auth_session_id())) {
+    if (!auth_session_manager_->RemoveAuthSession(auth_session->token())) {
       NOTREACHED() << "Failed to remove AuthSession when removing user.";
     }
   }

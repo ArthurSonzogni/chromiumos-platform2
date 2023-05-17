@@ -2769,7 +2769,7 @@ TEST_F(UserDataAuthExTest, RemoveBusyMounted) {
   PrepareArguments();
   SetupMount(*kUser);
   remove_homedir_req_->mutable_identifier()->set_account_id(*kUser);
-  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
+  ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
   EXPECT_NE(
       userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
       user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);

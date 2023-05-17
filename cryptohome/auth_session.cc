@@ -1586,6 +1586,19 @@ void AuthSession::RemoveAuthFactor(
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
+void AuthSession::PrepareAllAuthFactorsForRemoval() {
+  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
+    const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
+    CryptohomeStatus remove_status =
+        auth_block_utility_->PrepareAuthBlockForRemoval(
+            auth_factor.auth_block_state());
+    if (!remove_status.ok()) {
+      LOG(WARNING) << "Failed to prepare auth factor " << auth_factor.label()
+                   << " for removal: " << remove_status;
+    }
+  }
+}
+
 CryptohomeStatus AuthSession::RemoveAuthFactorViaUserSecretStash(
     const std::string& auth_factor_label, const AuthFactor& auth_factor) {
   // Preconditions.

@@ -212,6 +212,10 @@ class AuthSession final {
   void RemoveAuthFactor(const user_data_auth::RemoveAuthFactorRequest& request,
                         StatusCallback on_done);
 
+  // PrepareAllAuthFactorsForRemoval is called to prepare all auth factors for
+  // removal before removing a user.
+  void PrepareAllAuthFactorsForRemoval();
+
   // UpdateAuthFactor is called when the user wants to update auth factor
   // provided in the `request`.
   void UpdateAuthFactor(const user_data_auth::UpdateAuthFactorRequest& request,
