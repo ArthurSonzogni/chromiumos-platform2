@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/test/mock_callback.h>
+#include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -69,6 +70,9 @@ class CellularServiceProviderTest : public testing::Test {
   void SetUp() override {
     EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
     provider_ = std::make_unique<CellularServiceProvider>(&manager_);
+    auto fake_cros_config = std::make_unique<brillo::FakeCrosConfig>();
+    fake_cros_config_ = fake_cros_config.get();
+    provider_->set_cros_config_for_testing(std::move(fake_cros_config));
     provider_->Start();
     profile_ = new NiceMock<MockProfile>(&manager_);
     provider_->set_profile_for_testing(profile_);
@@ -138,6 +142,7 @@ class CellularServiceProviderTest : public testing::Test {
   void DispatchPendingEvents() { dispatcher_.DispatchPendingEvents(); }
 
  protected:
+  brillo::FakeCrosConfig* fake_cros_config_;
   EventDispatcherForTest dispatcher_;
   NiceMock<MockControl> control_;
   NiceMock<MockMetrics> metrics_;
@@ -495,6 +500,7 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork_ReuseDataAPN) {
                                          Network*, ServiceRefPtr)>>
       cb;
 
+  fake_cros_config_->SetString("/modem", "firmware-variant", "vell");
   // No Device registered.
   EXPECT_CALL(
       cb, Run(TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
@@ -529,5 +535,29 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork_ReuseDataAPN) {
   provider()->AcquireTetheringNetwork(cb.Get());
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
+}
+
+TEST_F(CellularServiceProviderTest,
+       AcquireTetheringNetwork_HardwareDoesNotSupportTethering) {
+  StrictMock<base::MockOnceCallback<void(TetheringManager::SetEnabledResult,
+                                         Network*, ServiceRefPtr)>>
+      cb;
+  // Skip setting the firmware-variant value. If the value doesn't exist,
+  // tethering is not allowed.
+
+  // No Device registered.
+  EXPECT_CALL(cb, Run(TetheringManager::SetEnabledResult::kNotAllowed, nullptr,
+                      ServiceRefPtr()));
+  provider()->AcquireTetheringNetwork(cb.Get());
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+}
+
+TEST_F(CellularServiceProviderTest, HardwareSupportsTethering) {
+  // If the firmware-variant value doesn't exist, tethering is not allowed.
+  EXPECT_FALSE(provider()->HardwareSupportsTethering());
+
+  fake_cros_config_->SetString("/modem", "firmware-variant", "vell");
+  EXPECT_TRUE(provider()->HardwareSupportsTethering());
 }
 }  // namespace shill

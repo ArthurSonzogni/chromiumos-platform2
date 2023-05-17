@@ -5,11 +5,15 @@
 #ifndef SHILL_CELLULAR_CELLULAR_SERVICE_PROVIDER_H_
 #define SHILL_CELLULAR_CELLULAR_SERVICE_PROVIDER_H_
 
+#include <memory>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 
 #include "shill/cellular/cellular_service.h"
 #include "shill/mockable.h"
@@ -69,6 +73,15 @@ class CellularServiceProvider : public ProviderInterface {
 
   void set_profile_for_testing(ProfileRefPtr profile) { profile_ = profile; }
 
+  void set_cros_config_for_testing(
+      std::unique_ptr<brillo::CrosConfigInterface> cros_config) {
+    cros_config_ = std::move(cros_config);
+  }
+
+  // Returns true if the hardware supports tethering over cellular and the
+  // model was allowlisted for tethering.
+  mockable bool HardwareSupportsTethering();
+
   // Checks if sharing the Cellular connection in a tethering session with
   // client devices is allowed and supported for the current carrier and modem.
   mockable void TetheringEntitlementCheck(
@@ -111,6 +124,8 @@ class CellularServiceProvider : public ProviderInterface {
   // user profile. The SIM card itself can provide access security with a PIN.
   ProfileRefPtr profile_;
   std::vector<CellularServiceRefPtr> services_;
+  std::unique_ptr<brillo::CrosConfigInterface> cros_config_;
+  std::optional<std::string> variant_;
 
   base::WeakPtrFactory<CellularServiceProvider> weak_factory_{this};
 };

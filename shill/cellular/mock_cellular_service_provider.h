@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_WIFI_MOCK_CELLULAR_SERVICE_PROVIDER_H_
-#define SHILL_WIFI_MOCK_CELLULAR_SERVICE_PROVIDER_H_
+#ifndef SHILL_CELLULAR_MOCK_CELLULAR_SERVICE_PROVIDER_H_
+#define SHILL_CELLULAR_MOCK_CELLULAR_SERVICE_PROVIDER_H_
 
 #include "shill/cellular/cellular_service_provider.h"
 
@@ -16,10 +16,11 @@ namespace shill {
 
 class MockCellularServiceProvider : public CellularServiceProvider {
  public:
-  MockCellularServiceProvider(Manager* manager)
+  explicit MockCellularServiceProvider(Manager* manager)
       : CellularServiceProvider(manager) {}
   ~MockCellularServiceProvider() override = default;
 
+  MOCK_METHOD(bool, HardwareSupportsTethering, (), ());
   MOCK_METHOD(
       void,
       TetheringEntitlementCheck,
@@ -37,4 +38,4 @@ class MockCellularServiceProvider : public CellularServiceProvider {
 
 }  // namespace shill
 
-#endif  // SHILL_WIFI_MOCK_CELLULAR_SERVICE_PROVIDER_H_
+#endif  // SHILL_CELLULAR_MOCK_CELLULAR_SERVICE_PROVIDER_H_

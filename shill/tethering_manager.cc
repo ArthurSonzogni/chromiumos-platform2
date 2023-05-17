@@ -345,10 +345,8 @@ KeyValueStore TetheringManager::GetCapabilities(Error* /* error */) {
   // Ethernet is always supported as an upstream technology.
   upstream_technologies.push_back(TechnologyName(Technology::kEthernet));
 
-  // TODO(b/244334719): add a check with the CellularProvider to see if
-  // tethering is enabled for the given SIM card and modem. For now assume
-  // that Cellular is available as an upstream technology.
-  upstream_technologies.push_back(TechnologyName(Technology::kCellular));
+  if (manager_->cellular_service_provider()->HardwareSupportsTethering())
+    upstream_technologies.push_back(TechnologyName(Technology::kCellular));
 
   // TODO(b/244335143): This should be based on static SoC capability
   // information. Need to revisit this when Shill has a SoC capability

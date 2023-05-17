@@ -102,6 +102,7 @@ pkg_config("target_defaults") {
     "dbus-1",
     "libbrillo",
     "libchrome",
+    "libcros_config",
     "libmojo",
     "libnet-base",
     "libpatchpanel-client",

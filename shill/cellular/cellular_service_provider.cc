@@ -104,7 +104,7 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
 }  // namespace
 
 CellularServiceProvider::CellularServiceProvider(Manager* manager)
-    : manager_(manager) {}
+    : manager_(manager), cros_config_(std::make_unique<brillo::CrosConfig>()) {}
 
 CellularServiceProvider::~CellularServiceProvider() = default;
 
@@ -352,6 +352,21 @@ CellularService* CellularServiceProvider::GetActiveService() {
   return nullptr;
 }
 
+bool CellularServiceProvider::HardwareSupportsTethering() {
+  if (!variant_.has_value()) {
+    SLOG(3) << __func__ << " reading modem firmware variant";
+    std::string temp_variant;
+    if (!cros_config_->GetString("/modem", "firmware-variant", &temp_variant)) {
+      LOG(INFO) << "Cannot find modem firmware variant. Tethering through "
+                   "cellular is not supported";
+      return false;
+    }
+    variant_ = std::move(temp_variant);
+  }
+  // TODO(b/282816692): block/allow variants when the list is known.
+  return true;
+}
+
 void CellularServiceProvider::TetheringEntitlementCheck(
     base::OnceCallback<void(TetheringManager::EntitlementStatus)> callback) {
   SLOG(3) << __func__;
@@ -371,6 +386,14 @@ void CellularServiceProvider::TetheringEntitlementCheck(
 void CellularServiceProvider::AcquireTetheringNetwork(
     TetheringManager::AcquireNetworkCallback callback) {
   SLOG(3) << __func__;
+  if (!HardwareSupportsTethering()) {
+    manager_->dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback),
+                       TetheringManager::SetEnabledResult::kNotAllowed, nullptr,
+                       nullptr));
+    return;
+  }
   // For now assume that the main data network is always used for tethering.
   // TODO(b/249151422) Implement tethering network selection logic and supports:
   //   - switching the main data connection to a different APN for tethering,
