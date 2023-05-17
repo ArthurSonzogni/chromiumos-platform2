@@ -28,6 +28,7 @@ using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::WithArg;
 using ::testing::WithArgs;
+using ::testing::WithoutArgs;
 
 class DlcManagerTest : public testing::Test {
  protected:
@@ -97,15 +98,16 @@ class DlcManagerTest : public testing::Test {
             })));
   }
 
- private:
-  base::test::TaskEnvironment task_environment_;
-  scoped_refptr<dbus::MockObjectProxy> dlc_service_object_proxy_;
-  org::chromium::DlcServiceInterfaceProxyMock mock_dlc_service_;
-  DlcManager dlc_manager_{&mock_dlc_service_};
-
  protected:
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  org::chromium::DlcServiceInterfaceProxyMock mock_dlc_service_;
   base::RepeatingCallback<void(const dlcservice::DlcState&)> state_changed_cb;
   std::optional<std::string> last_install_dlc_id;
+
+ private:
+  scoped_refptr<dbus::MockObjectProxy> dlc_service_object_proxy_;
+  DlcManager dlc_manager_{&mock_dlc_service_};
 };
 
 // Test that DLC manager can get the DLC root path successfully.
@@ -124,22 +126,28 @@ TEST_F(DlcManagerTest, GetRootPathSuccess) {
 
 // Test that DLC manager handle the error when DLC service is unavailable.
 TEST_F(DlcManagerTest, DlcServiceUnavailableError) {
+  auto start_ticks_ = base::TimeTicks::Now();
   SetUpNotIntializedDlcManager();
   SetDlcServiceAvailability(/*available=*/false);
 
   EXPECT_FALSE(GetBinaryRootPathSync("test-dlc").has_value());
   EXPECT_FALSE(last_install_dlc_id.has_value());
+  EXPECT_LT(base::TimeTicks::Now() - start_ticks_, kGetDlcRootPathTimeout)
+      << "Unexpected to reach timeout";
 }
 
 // Test that DLC manager handle the error of registering DLC state change events
 // failure.
 TEST_F(DlcManagerTest, RegisterDlcStateChangedError) {
+  auto start_ticks_ = base::TimeTicks::Now();
   SetUpNotIntializedDlcManager();
   SetDlcServiceAvailability(/*available=*/true);
   SetRegisterDlcStateChangedCall(/*is_success=*/false);
 
   EXPECT_FALSE(GetBinaryRootPathSync("test-dlc").has_value());
   EXPECT_FALSE(last_install_dlc_id.has_value());
+  EXPECT_LT(base::TimeTicks::Now() - start_ticks_, kGetDlcRootPathTimeout)
+      << "Unexpected to reach timeout";
 }
 
 // Test that DLC manager handle the error of installing DLC.
@@ -165,6 +173,19 @@ TEST_F(DlcManagerTest, InstallDlcNotInstalledStateError) {
 
   EXPECT_FALSE(GetBinaryRootPathSync("test-dlc").has_value());
   EXPECT_EQ(last_install_dlc_id, "test-dlc");
+}
+
+// Test that DLC manager handle the timeout error of getting DLC root path.
+TEST_F(DlcManagerTest, GetRootPathSuccessTimeoutError) {
+  SetUpNotIntializedDlcManager();
+  SetDlcServiceAvailability(/*available=*/true);
+
+  EXPECT_CALL(mock_dlc_service_, DoRegisterDlcStateChangedSignalHandler(_, _))
+      .WillOnce(WithoutArgs(
+          [&]() { task_environment_.FastForwardBy(kGetDlcRootPathTimeout); }));
+
+  EXPECT_FALSE(GetBinaryRootPathSync("test-dlc").has_value());
+  EXPECT_FALSE(last_install_dlc_id.has_value());
 }
 
 }  // namespace

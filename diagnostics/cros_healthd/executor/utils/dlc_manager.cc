@@ -75,6 +75,11 @@ void DlcManager::GetBinaryRootPath(const std::string& dlc_id,
   pending_root_path_callbacks_[dlc_id].push_back(std::move(root_path_cb));
   WaitForInitialized(mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(
       &DlcManager::InstallDlc, weak_factory_.GetWeakPtr(), dlc_id)));
+  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&DlcManager::HandleDlcRootPathCallbackTimeout,
+                     weak_factory_.GetWeakPtr(), dlc_id),
+      kGetDlcRootPathTimeout);
 }
 
 void DlcManager::WaitForInitialized(base::OnceClosure on_initialized) {
@@ -151,6 +156,24 @@ void DlcManager::InvokeRootPathCallbacks(
         FROM_HERE, base::BindOnce(std::move(root_path_cb), root_path));
   }
   pending_root_path_callbacks_.erase(dlc_id);
+}
+
+void DlcManager::HandleDlcRootPathCallbackTimeout(const std::string& dlc_id) {
+  if (!pending_root_path_callbacks_.count(dlc_id)) {
+    return;
+  }
+
+  // Invoked the first-in callback with null result.
+  LOG(ERROR) << "DLC timeout error (" << dlc_id << ")";
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(std::move(pending_root_path_callbacks_[dlc_id][0]),
+                     std::nullopt));
+
+  pending_root_path_callbacks_.erase(pending_root_path_callbacks_.begin());
+  if (pending_root_path_callbacks_.empty()) {
+    pending_root_path_callbacks_.erase(dlc_id);
+  }
 }
 
 }  // namespace diagnostics

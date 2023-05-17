@@ -11,6 +11,7 @@
 
 #include <base/files/file_path.h>
 #include <base/functional/callback_helpers.h>
+#include <base/time/time.h>
 #include <brillo/errors/error.h>
 
 namespace dlcservice {
@@ -22,6 +23,10 @@ class DlcServiceInterfaceProxyInterface;
 }  // namespace org::chromium
 
 namespace diagnostics {
+
+// Timeout for getting DLC root path.
+// Assuming DLC size is below 3MiB and network speed is above 0.1MiB/s.
+constexpr base::TimeDelta kGetDlcRootPathTimeout = base::Seconds(30);
 
 // Interface for accessing verifed DLC and getting DLC root mount path.
 class DlcManager {
@@ -75,6 +80,9 @@ class DlcManager {
   // Invoke the pending callbacks for DLC with id |dlc_id|.
   void InvokeRootPathCallbacks(const std::string& dlc_id,
                                std::optional<base::FilePath> root_path);
+
+  // Handle the timeout for getting DLC root path.
+  void HandleDlcRootPathCallbackTimeout(const std::string& dlc_id);
 
   // Unowned pointer that should outlive this instance.
   org::chromium::DlcServiceInterfaceProxyInterface* const dlcservice_proxy_;
