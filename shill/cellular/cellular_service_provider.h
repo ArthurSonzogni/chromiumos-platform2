@@ -118,8 +118,12 @@ class CellularServiceProvider : public ProviderInterface {
   void RemoveService(CellularServiceRefPtr service);
 
   CellularService* GetActiveService();
-  void OnTetheringNetworkReady(
-      TetheringManager::AcquireNetworkCallback callback);
+  void OnAcquireTetheringNetworkReady(
+      TetheringManager::AcquireNetworkCallback callback,
+      Network* network,
+      const Error& error);
+  void OnReleaseTetheringNetworkReady(
+      base::OnceCallback<void(bool is_success)> callback, const Error& error);
 
   Manager* manager_;
   // Use a single profile for Cellular services. Set to the first (device)

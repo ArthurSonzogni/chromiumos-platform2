@@ -1526,6 +1526,70 @@ void Cellular::OnDisconnectFailed() {
   // down the modem and restart it here.
 }
 
+void Cellular::ReuseDefaultForTethering(
+    AcquireTetheringNetworkResultCallback callback) {
+  CHECK(!callback.is_null());
+  dispatcher()->PostTask(
+      FROM_HERE, base::BindOnce(std::move(callback), GetPrimaryNetwork(),
+                                Error(Error::kSuccess)));
+}
+
+Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
+    Error* out_error) {
+  Error error(Error::kSuccess);
+  if (!service_) {
+    error = Error(Error::kWrongState, "No service.");
+  } else if (!capability_) {
+    error = Error(Error::kWrongState, "No modem.");
+  } else if (inhibited_) {
+    error = Error(Error::kWrongState, "Inhibited.");
+  } else if (state_ != State::kLinked) {
+    error = Error(Error::kWrongState, "Default connection not available.");
+  } else if (!mobile_operator_info_->tethering_allowed()) {
+    error = Error(Error::kWrongState, "Not allowed by operator.");
+  }
+
+  if (error.IsFailure()) {
+    if (out_error)
+      *out_error = error;
+    return TetheringOperationType::kFailed;
+  }
+
+  // TODO(b/285267867): reuse DEFAULT if no DUN APN specified
+  // TODO(b/283395729): reuse DEFAULT network as DUN if APN type DEFAULT+DUN
+  // TODO(b/283396208): use DUN APN as DEFAULT
+  // TODO(b/283402454): connect DUN APN as additional multiplexed network
+  return TetheringOperationType::kReuseDefaultFallback;
+}
+
+void Cellular::AcquireTetheringNetwork(
+    AcquireTetheringNetworkResultCallback callback) {
+  SLOG(1) << LoggingTag() << ": " << __func__;
+  CHECK(!callback.is_null());
+
+  Error error;
+  switch (GetTetheringOperationType(&error)) {
+    case TetheringOperationType::kReuseDefaultFallback:
+      ReuseDefaultForTethering(std::move(callback));
+      return;
+    case TetheringOperationType::kFailed:
+      dispatcher()->PostTask(
+          FROM_HERE, base::BindOnce(std::move(callback), nullptr, error));
+      return;
+  }
+}
+
+void Cellular::ReleaseTetheringNetwork(Network* network,
+                                       ResultCallback callback) {
+  SLOG(1) << LoggingTag() << ": " << __func__;
+  CHECK(!callback.is_null());
+  // For now assume that the default network is always used for tethering.
+  // TODO(b/249151422) If using an extra PDN connection for tethering,
+  // disconnect it here, otherwise no-op
+  dispatcher()->PostTask(
+      FROM_HERE, base::BindOnce(std::move(callback), Error(Error::kSuccess)));
+}
+
 void Cellular::EstablishLink() {
   if (skip_establish_link_for_testing_) {
     return;

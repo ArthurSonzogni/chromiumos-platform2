@@ -191,7 +191,9 @@ class CellularTest : public testing::Test {
   void TearDown() override {
     metrics_.DeregisterDevice(device_->interface_index());
     device_->set_state_for_testing(Cellular::State::kDisabled);
-    GetCapability3gpp()->ReleaseProxies();
+    auto capability = GetCapability3gpp();
+    if (capability)
+      capability->ReleaseProxies();
     // Break cycle between Cellular and CellularService.
     device_->service_ = nullptr;
     device_->SelectService(nullptr);
@@ -2935,6 +2937,103 @@ TEST_F(CellularTest, CompareApnsFromApnList) {
   ASSERT_NE(service->GetLastGoodApn(), nullptr);
   EXPECT_TRUE(
       device_->CompareApns(apn_list_prop[0], *service->GetLastGoodApn()));
+}
+
+TEST_F(CellularTest, AcquireTetheringNetwork_NoService) {
+  device_->SetServiceForTesting(nullptr);
+  device_->SetSelectedServiceForTesting(nullptr);
+  ASSERT_EQ(device_->service(), nullptr);
+
+  base::test::TestFuture<Network*, const Error&> future;
+  device_->AcquireTetheringNetwork(future.GetCallback());
+  EXPECT_EQ(future.Get<Network*>(), nullptr);
+  EXPECT_TRUE(future.Get<Error>().IsFailure());
+}
+
+TEST_F(CellularTest, AcquireTetheringNetwork_NoModem) {
+  SetRegisteredWithService();
+  ASSERT_NE(device_->service(), nullptr);
+  device_->DestroyCapability();
+  ASSERT_EQ(GetCapability3gpp(), nullptr);
+
+  base::test::TestFuture<Network*, const Error&> future;
+  device_->AcquireTetheringNetwork(future.GetCallback());
+  EXPECT_EQ(future.Get<Network*>(), nullptr);
+  EXPECT_TRUE(future.Get<Error>().IsFailure());
+}
+
+TEST_F(CellularTest, AcquireTetheringNetwork_Inhibited) {
+  SetRegisteredWithService();
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  ASSERT_NE(device_->service(), nullptr);
+  SetInhibited(true);
+
+  base::test::TestFuture<Network*, const Error&> future;
+  device_->AcquireTetheringNetwork(future.GetCallback());
+  EXPECT_EQ(future.Get<Network*>(), nullptr);
+  EXPECT_TRUE(future.Get<Error>().IsFailure());
+}
+
+TEST_F(CellularTest, AcquireTetheringNetwork_Disconnected) {
+  SetRegisteredWithService();
+  EXPECT_EQ(Cellular::State::kRegistered, device_->state());
+  ASSERT_NE(device_->service(), nullptr);
+
+  base::test::TestFuture<Network*, const Error&> future;
+  device_->AcquireTetheringNetwork(future.GetCallback());
+  EXPECT_EQ(future.Get<Network*>(), nullptr);
+  EXPECT_TRUE(future.Get<Error>().IsFailure());
+}
+
+TEST_F(CellularTest, AcquireTetheringNetwork_DisallowedByOperator) {
+  SetRegisteredWithService();
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  ASSERT_NE(device_->service(), nullptr);
+
+  auto network = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
+
+  SetMockMobileOperatorInfoObjects();
+  CHECK(mock_mobile_operator_info_);
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_allowed())
+      .WillRepeatedly(Return(false));
+
+  base::test::TestFuture<Network*, const Error&> future;
+  device_->AcquireTetheringNetwork(future.GetCallback());
+  EXPECT_EQ(future.Get<Network*>(), nullptr);
+  EXPECT_TRUE(future.Get<Error>().IsFailure());
+}
+
+TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefault) {
+  auto network = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
+
+  base::test::TestFuture<Network*, const Error&> future;
+  device_->ReuseDefaultForTethering(future.GetCallback());
+  EXPECT_EQ(future.Get<Network*>(), default_pdn_);
+  EXPECT_TRUE(future.Get<Error>().IsSuccess());
+}
+
+TEST_F(CellularTest, ReleaseTetheringNetwork_NoOp) {
+  SetRegisteredWithService();
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  ASSERT_NE(device_->service(), nullptr);
+
+  auto network = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
+
+  base::test::TestFuture<const Error&> future;
+  device_->ReleaseTetheringNetwork(default_pdn_, future.GetCallback());
+  EXPECT_TRUE(future.Get<Error>().IsSuccess());
 }
 
 }  // namespace shill

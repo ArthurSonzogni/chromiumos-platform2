@@ -17,6 +17,7 @@
 
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_capability_3gpp.h"
+#include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/fake_properties_proxy.h"
@@ -31,10 +32,13 @@
 #include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 
+using testing::_;
+using testing::Invoke;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::StrictMock;
+using testing::WithArgs;
 
 namespace shill {
 
@@ -495,7 +499,7 @@ TEST_F(CellularServiceProviderTest, CreateTemporaryServiceFromProfileNoIccid) {
   ASSERT_FALSE(error.IsSuccess());
 }
 
-TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork_ReuseDataAPN) {
+TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork) {
   StrictMock<base::MockOnceCallback<void(TetheringManager::SetEnabledResult,
                                          Network*, ServiceRefPtr)>>
       cb;
@@ -509,31 +513,62 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork_ReuseDataAPN) {
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
 
-  // Set up a Cellular Device with a Service
-  CellularRefPtr device = CreateDevice("imsi1", "iccid1");
+  // Set up a Cellular Service with a Device
+  scoped_refptr<MockCellular> device =
+      new MockCellular(&manager_, kTestDeviceName, kTestDeviceAddress,
+                       kTestInterfaceIndex, kDBusService, kDBusPath);
   CellularServiceRefPtr service =
       provider()->LoadServicesForDevice(device.get());
   service->SetState(Service::kStateConnected);
-  const std::vector<DeviceRefPtr> devices = {device};
-  EXPECT_CALL(manager_, FilterByTechnology(Technology::kCellular))
-      .WillRepeatedly(Return(devices));
 
+  // The tethering network acquisition in the device fails
+  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_))
+      .WillOnce(WithArgs<0>(
+          Invoke([](Cellular::AcquireTetheringNetworkResultCallback callback) {
+            std::move(callback).Run(nullptr, Error(Error::kOperationFailed));
+          })));
   EXPECT_CALL(
       cb, Run(TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
               nullptr, ServiceRefPtr()));
   provider()->AcquireTetheringNetwork(cb.Get());
   DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(device.get());
   Mock::VerifyAndClearExpectations(&cb);
 
-  // Add a connected Network
-  auto network = std::make_unique<MockNetwork>(
-      kTestInterfaceIndex, kTestDeviceName, Technology::kCellular);
-  EXPECT_CALL(*network, IsConnected()).WillRepeatedly(Return(true));
-  EXPECT_CALL(cb, Run(TetheringManager::SetEnabledResult::kSuccess,
-                      network.get(), ServiceRefPtr(service)));
-  service->SetAttachedNetwork(network->AsWeakPtr());
+  // The tethering network acquisition in the device succeeds
+  // but for some reason no Network is returned
+  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_))
+      .WillOnce(WithArgs<0>(
+          Invoke([](Cellular::AcquireTetheringNetworkResultCallback callback) {
+            std::move(callback).Run(nullptr, Error(Error::kSuccess));
+          })));
+  EXPECT_CALL(
+      cb, Run(TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
+              nullptr, ServiceRefPtr()));
   provider()->AcquireTetheringNetwork(cb.Get());
   DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(device.get());
+  Mock::VerifyAndClearExpectations(&cb);
+
+  // Setup a tethering Network to be returned
+  std::unique_ptr<MockNetwork> network = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestDeviceName, Technology::kCellular);
+  auto network_ptr = network.get();
+  service->SetAttachedNetwork(network->AsWeakPtr());
+
+  // The tethering network acquisition in the device succeeds
+  // and a valid Network is returned
+  EXPECT_CALL(*(device.get()), AcquireTetheringNetwork(_))
+      .WillOnce(WithArgs<0>(
+          Invoke([network_ptr](
+                     Cellular::AcquireTetheringNetworkResultCallback callback) {
+            std::move(callback).Run(network_ptr, Error(Error::kSuccess));
+          })));
+  EXPECT_CALL(cb, Run(TetheringManager::SetEnabledResult::kSuccess, network_ptr,
+                      ServiceRefPtr(service)));
+  provider()->AcquireTetheringNetwork(cb.Get());
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(device.get());
   Mock::VerifyAndClearExpectations(&cb);
 }
 

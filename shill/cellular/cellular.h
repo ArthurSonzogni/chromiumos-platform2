@@ -265,6 +265,28 @@ class Cellular : public Device,
   void EntitlementCheck(
       base::OnceCallback<void(TetheringManager::EntitlementStatus)> callback);
 
+  // Asynchronously acquires the Network to be used in tethering, which may be
+  // the same one as used for default connection or a new one.
+  using AcquireTetheringNetworkResultCallback =
+      base::OnceCallback<void(Network* network, const Error& error)>;
+  virtual void AcquireTetheringNetwork(
+      AcquireTetheringNetworkResultCallback callback);
+
+  // Asynchronously releases the tethering network. This may involve
+  // disconnecting a PDN connection or a no-op in certain other cases.
+  void ReleaseTetheringNetwork(Network* network, ResultCallback callback);
+
+  // Public to ease testing tethering acquisition logic.
+  enum class TetheringOperationType {
+    // TODO(aleksandermj): Remove kReuseDefaultFallback once all the tethering
+    // acquisition approaches are implemented.
+    kReuseDefaultFallback,
+    // Used to report errors in GetTetheringOperationType()
+    kFailed,
+  };
+  TetheringOperationType GetTetheringOperationType(Error* error);
+  void ReuseDefaultForTethering(AcquireTetheringNetworkResultCallback callback);
+
   // Called when an OTA profile update arrives from the network.
   void OnProfilesChanged();
 
@@ -418,6 +440,7 @@ class Cellular : public Device,
   friend class CellularServiceTest;
   friend class CellularServiceProviderTest;
   friend class ModemTest;
+  FRIEND_TEST(CellularTest, AcquireTetheringNetwork_NoModem);
   FRIEND_TEST(CellularTest, ChangeServiceState);
   FRIEND_TEST(CellularTest, ChangeServiceStatePPP);
   FRIEND_TEST(CellularTest, CompareApns);

@@ -394,40 +394,62 @@ void CellularServiceProvider::AcquireTetheringNetwork(
                        nullptr));
     return;
   }
-  // For now assume that the main data network is always used for tethering.
-  // TODO(b/249151422) Implement tethering network selection logic and supports:
-  //   - switching the main data connection to a different APN for tethering,
-  //   - or bringing up a new separate APN connection only for tethering.
-  manager_->dispatcher()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&CellularServiceProvider::OnTetheringNetworkReady,
+
+  // Tethering setup requires an active service with a valid device.
+  const auto cellular_service = GetActiveService();
+  const auto cellular_device =
+      cellular_service ? cellular_service->cellular() : nullptr;
+  if (!cellular_device) {
+    manager_->dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            std::move(callback),
+            TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
+            nullptr, nullptr));
+    return;
+  }
+
+  // Request a network for tethering.
+  LOG(INFO) << "Acquiring tethering network.";
+  cellular_device->AcquireTetheringNetwork(
+      base::BindOnce(&CellularServiceProvider::OnAcquireTetheringNetworkReady,
                      weak_factory_.GetWeakPtr(), std::move(callback)));
 }
 
-void CellularServiceProvider::OnTetheringNetworkReady(
-    TetheringManager::AcquireNetworkCallback callback) {
+void CellularServiceProvider::OnAcquireTetheringNetworkReady(
+    TetheringManager::AcquireNetworkCallback callback,
+    Network* network,
+    const Error& error) {
   SLOG(3) << __func__;
-  // Even when reusing the main data connection, make sure that the Network
-  // object passed back to the caller is obtained at same time as when the
-  // caller's callback is triggered and no sooner. This avoid returning a
-  // pointer that could be invalidated by the time the callback is triggered
-  // (network disconnection).
+
   const auto cellular_service = GetActiveService();
   if (!cellular_service || !cellular_service->cellular()) {
+    LOG(WARNING)
+        << "Tethering network acquisition failed: no cellular service.";
     std::move(callback).Run(
         TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
         nullptr, nullptr);
     return;
   }
 
-  const auto network = cellular_service->attached_network();
-  if (!network || !network->IsConnected()) {
+  if (error.IsFailure()) {
+    LOG(WARNING) << "Tethering network acquisition failed: " << error;
     std::move(callback).Run(
         TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
         nullptr, nullptr);
     return;
   }
 
+  if (!network) {
+    LOG(WARNING)
+        << "Tethering network acquisition failed: no network reported.";
+    std::move(callback).Run(
+        TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
+        nullptr, nullptr);
+    return;
+  }
+
+  LOG(INFO) << "Tethering network acquisition successful.";
   std::move(callback).Run(TetheringManager::SetEnabledResult::kSuccess, network,
                           cellular_service);
 }
@@ -435,14 +457,36 @@ void CellularServiceProvider::OnTetheringNetworkReady(
 void CellularServiceProvider::ReleaseTetheringNetwork(
     Network* network, base::OnceCallback<void(bool is_success)> callback) {
   SLOG(3) << __func__;
-  // Always assume for now that the tethering upstream network was the main data
-  // network, i.e there is nothing to do.
-  // TODO(b/249151422) Switch back to original data APN if the main data network
-  // was switched to a different APN for tethering.
-  // TODO(b/249151422) Tear down the tethering APN if a separate APN connection
-  // was brought up for tethering.
-  manager_->dispatcher()->PostTask(FROM_HERE,
-                                   base::BindOnce(std::move(callback), true));
+
+  // Tethering release requires an active service with a valid device.
+  const auto cellular_service = GetActiveService();
+  const auto cellular_device =
+      cellular_service ? cellular_service->cellular() : nullptr;
+  if (!cellular_device) {
+    manager_->dispatcher()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(callback), false));
+    return;
+  }
+
+  LOG(INFO) << "Releasing tethering network.";
+  cellular_device->ReleaseTetheringNetwork(
+      network,
+      base::BindOnce(&CellularServiceProvider::OnReleaseTetheringNetworkReady,
+                     weak_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void CellularServiceProvider::OnReleaseTetheringNetworkReady(
+    base::OnceCallback<void(bool is_success)> callback, const Error& error) {
+  SLOG(3) << __func__;
+
+  if (error.IsFailure()) {
+    LOG(WARNING) << "Tethering network release failed: " << error;
+    std::move(callback).Run(false);
+    return;
+  }
+
+  LOG(WARNING) << "Tethering network release successful.";
+  std::move(callback).Run(true);
 }
 
 std::optional<std::string> CellularServiceProvider::GetOperatorCountryCode() {
