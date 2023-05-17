@@ -12,7 +12,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Error};
 use crossbeam_channel as cbchannel;
-use dbus::blocking::SyncConnection;
+use dbus::blocking::{LocalConnection, SyncConnection};
 use dbus::channel::{BusType, Channel, Sender};
 use dbus::tree::{Factory, Signal};
 use log::{error, info};
@@ -56,6 +56,44 @@ fn create_dbus_connection(bus: BusType) -> Result<SyncConnection> {
         OS_INSTALL_SERVICE_SERVICE_NAME
     ))?;
     Ok(conn)
+}
+
+/// Check for the file indicating we should autoinstall.
+///
+/// In some situations we want to trigger an install without user intervention.
+/// Returns true if the file to trigger it is present.
+fn is_autoinstall_file_present() -> bool {
+    // This guid is used for ChromeOS Flex UEFI variables,
+    // and was originally defined for crdyboot:
+    // https://chromium.googlesource.com/chromiumos/platform/crdyboot/
+    let file = Path::new(
+        "/sys/firmware/efi/efivars/ChromiumOSAutoInstall-2a6f93c9-29ea-46bf-b618-271b63baacf3",
+    );
+
+    file.exists()
+}
+
+/// Ask the system to shut down after autoinstall.
+///
+/// For UI-initiated install the browser will handle invoking shutdown. For
+/// autoinstall we do it ourselves.
+fn request_autoinstall_shutdown() -> Result<()> {
+    let connection = LocalConnection::new_system()?;
+    let proxy = connection.with_proxy(
+        "org.chromium.PowerManager",
+        "/org/chromium/PowerManager",
+        Duration::from_secs(1),
+    );
+    // The options are "user initiated" (0) and "other" (1), see:
+    // https://source.chromium.org/chromium/chromium/src/+/refs/heads/main:third_party/cros_system_api/dbus/power_manager/dbus-constants.h;l=115;drc=f7ad0c97ab13f1ba4836f3019e728e62e4f98cff
+    let shutdown_reason_other = 1;
+    proxy
+        .method_call(
+            "org.chromium.PowerManager",
+            "RequestShutdown",
+            (shutdown_reason_other, "OS autoinstall shut down"),
+        )
+        .context("failed to ask PowerManager to shut down the system")
 }
 
 #[derive(Debug)]
@@ -248,6 +286,15 @@ impl Server {
 
         tree.start_receive_sync(&*conn);
 
+        let autoinstall = is_autoinstall_file_present();
+        if autoinstall {
+            info!("autoinstall file found");
+            match self.installer.start_sender.try_send(()) {
+                Ok(()) => info!("starting install automatically"),
+                Err(err) => error!("failed to start autoinstall: {}", err),
+            }
+        }
+
         // If a ready channel was given, communicate that the server is
         // ready for requests. This is used for tests.
         if let Some(ready_channel) = &self.ready_channel {
@@ -261,6 +308,12 @@ impl Server {
 
             // Process any pending signals.
             while let Ok(content) = self.installer.signal_receiver.try_recv() {
+                if autoinstall && content.status == Status::Succeeded {
+                    info!("autoinstall completed; attempting to shut down");
+                    if let Err(err) = request_autoinstall_shutdown() {
+                        error!("failed to shut down: {}", err);
+                    }
+                }
                 send_signal(&conn, &signal, content);
             }
         }
