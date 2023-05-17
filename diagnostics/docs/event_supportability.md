@@ -117,6 +117,19 @@ chromeos-config.
 
 ### SdCard
 
+It's supported only when `has-sd-reader` is explicitly configured as "true".
+
+You can run the following commands on your DUT:
+1. `cros_config /hardware-properties has-sd-reader` This is helpful to
+   understand what the value of `has-sd-reader` is.
+2. `cros-health-tool event --category=sd_card --check_supported` Use this to see
+   if healthd reports the correct support status.
+
+To configure `has-sd-reader` in Boxster, you can use `create_sd_reader` function
+defined in
+[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
+to set it up.
+
 ### Network
 
 Not supported for the new event interface. Since there are no users at this

@@ -89,8 +89,17 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
                                 has_audio_jack),
           nullptr));
     }
-    case mojom::EventCategoryEnum::kSdCard:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+    case mojom::EventCategoryEnum::kSdCard: {
+      auto has_sd_reader = HasSdReader();
+      if (has_sd_reader == "true") {
+        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+      }
+
+      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+          WrapUnsupportedString(cros_config_property::kHasSdReader,
+                                has_sd_reader),
+          nullptr));
+    }
     case mojom::EventCategoryEnum::kHdmi: {
       auto has_hdmi = HasHdmi();
       if (has_hdmi == "true") {
@@ -168,6 +177,11 @@ std::string GroundTruth::HasHdmi() {
 std::string GroundTruth::HasAudioJack() {
   return ReadCrosConfig(cros_config_path::kHardwareProperties,
                         cros_config_property::kHasAudioJack);
+}
+
+std::string GroundTruth::HasSdReader() {
+  return ReadCrosConfig(cros_config_path::kHardwareProperties,
+                        cros_config_property::kHasSdReader);
 }
 
 std::string GroundTruth::ReadCrosConfig(const std::string& path,

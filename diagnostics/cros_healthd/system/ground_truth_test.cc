@@ -279,5 +279,27 @@ TEST_F(GroundTruthTest, AudioJackEvent) {
   }
 }
 
+TEST_F(GroundTruthTest, SdCardEvent) {
+  std::vector<std::pair</*has-sd-reader=*/std::string, /*supported=*/bool>>
+      test_combinations = {
+          {"true", true},
+          {"false", false},
+          {"Others", false},
+      };
+
+  // Test not set the cros_config first to simulate file not found.
+  ExpectEventUnsupported(mojom::EventCategoryEnum::kSdCard);
+
+  for (const auto& [has_sd_reader, supported] : test_combinations) {
+    SetCrosConfig(cros_config_path::kHardwareProperties,
+                  cros_config_property::kHasSdReader, has_sd_reader);
+    if (supported) {
+      ExpectEventSupported(mojom::EventCategoryEnum::kSdCard);
+    } else {
+      ExpectEventUnsupported(mojom::EventCategoryEnum::kSdCard);
+    }
+  }
+}
+
 }  // namespace
 }  // namespace diagnostics

@@ -20,6 +20,7 @@ inline constexpr char kStylusCategory[] = "stylus-category";
 inline constexpr char kHasTouchscreen[] = "has-touchscreen";
 inline constexpr char kHasHdmi[] = "has-hdmi";
 inline constexpr char kHasAudioJack[] = "has-audio-jack";
+inline constexpr char kHasSdReader[] = "has-sd-reader";
 
 }  // namespace cros_config_property
 

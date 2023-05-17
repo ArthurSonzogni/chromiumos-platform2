@@ -33,6 +33,7 @@ class GroundTruth final {
   std::string HasTouchscreen();
   std::string HasHdmi();
   std::string HasAudioJack();
+  std::string HasSdReader();
 
  private:
   std::string ReadCrosConfig(const std::string& path,
