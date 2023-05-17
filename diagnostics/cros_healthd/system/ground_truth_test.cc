@@ -235,5 +235,27 @@ TEST_F(GroundTruthTest, KeyboardDiagnosticEvent) {
   }
 }
 
+TEST_F(GroundTruthTest, HdmiEvent) {
+  std::vector<std::pair</*has-hdmi=*/std::string, /*supported=*/bool>>
+      test_combinations = {
+          {"true", true},
+          {"false", false},
+          {"Others", false},
+      };
+
+  // Test not set the cros_config first to simulate file not found.
+  ExpectEventUnsupported(mojom::EventCategoryEnum::kHdmi);
+
+  for (const auto& [has_hdmi, supported] : test_combinations) {
+    SetCrosConfig(cros_config_path::kHardwareProperties,
+                  cros_config_property::kHasHdmi, has_hdmi);
+    if (supported) {
+      ExpectEventSupported(mojom::EventCategoryEnum::kHdmi);
+    } else {
+      ExpectEventUnsupported(mojom::EventCategoryEnum::kHdmi);
+    }
+  }
+}
+
 }  // namespace
 }  // namespace diagnostics

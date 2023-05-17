@@ -31,6 +31,7 @@ class GroundTruth final {
   std::string FormFactor();
   std::string StylusCategory();
   std::string HasTouchscreen();
+  std::string HasHdmi();
 
  private:
   std::string ReadCrosConfig(const std::string& path,

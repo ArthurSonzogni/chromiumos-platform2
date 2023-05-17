@@ -82,8 +82,16 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     case mojom::EventCategoryEnum::kSdCard:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-    case mojom::EventCategoryEnum::kHdmi:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+    case mojom::EventCategoryEnum::kHdmi: {
+      auto has_hdmi = HasHdmi();
+      if (has_hdmi == "true") {
+        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+      }
+
+      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+          WrapUnsupportedString(cros_config_property::kHasHdmi, has_hdmi),
+          nullptr));
+    }
     case mojom::EventCategoryEnum::kTouchscreen: {
       auto has_touchscreen = HasTouchscreen();
       if (has_touchscreen == "true") {
@@ -141,6 +149,11 @@ std::string GroundTruth::StylusCategory() {
 std::string GroundTruth::HasTouchscreen() {
   return ReadCrosConfig(cros_config_path::kHardwareProperties,
                         cros_config_property::kHasTouchscreen);
+}
+
+std::string GroundTruth::HasHdmi() {
+  return ReadCrosConfig(cros_config_path::kHardwareProperties,
+                        cros_config_property::kHasHdmi);
 }
 
 std::string GroundTruth::ReadCrosConfig(const std::string& path,
