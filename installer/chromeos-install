@@ -21,6 +21,9 @@ SRC_BLKSIZE=512
 # Copy the rootfs in chunks to optimize disk cache usage.
 NUM_ROOTFS_CHUNKS=4
 
+# Cached recovery key version read from flashrom.
+RECOVERY_KEY_VERSION=
+
 # Helpful constants.
 HARDWARE_DIAGNOSTICS_PATH=/tmp/hardware_diagnostics.log
 TMPMNT=/tmp/install-mount-point
@@ -874,7 +877,13 @@ copy_partition() {
   "${PARTITION_NUM_MINIOS_A}"|"${PARTITION_NUM_MINIOS_B}")
     # Choose to copy from A or B for miniOS partitions.
     local src_part_num
-    if [ "$(get_recovery_key_version)" -eq "1" ]; then
+    if [ -n "${RECOVERY_KEY_VERSION}" ]; then
+      echo "Using cached recovery key version=\"${RECOVERY_KEY_VERSION}\""
+    else
+      RECOVERY_KEY_VERSION=$(get_recovery_key_version)
+      echo "Using recovery key version=\"${RECOVERY_KEY_VERSION}\""
+    fi
+    if [ "${RECOVERY_KEY_VERSION}" -eq "1" ]; then
       src_part_num="${PARTITION_NUM_MINIOS_A}"
     else
       src_part_num="${PARTITION_NUM_MINIOS_B}"
