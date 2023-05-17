@@ -78,8 +78,17 @@ mojom::SupportStatusPtr GroundTruth::GetEventSupportStatus(
           WrapUnsupportedString(cros_config_property::kFormFactor, form_factor),
           nullptr));
     }
-    case mojom::EventCategoryEnum::kAudioJack:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+    case mojom::EventCategoryEnum::kAudioJack: {
+      auto has_audio_jack = HasAudioJack();
+      if (has_audio_jack == "true") {
+        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+      }
+
+      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+          WrapUnsupportedString(cros_config_property::kHasAudioJack,
+                                has_audio_jack),
+          nullptr));
+    }
     case mojom::EventCategoryEnum::kSdCard:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     case mojom::EventCategoryEnum::kHdmi: {
@@ -154,6 +163,11 @@ std::string GroundTruth::HasTouchscreen() {
 std::string GroundTruth::HasHdmi() {
   return ReadCrosConfig(cros_config_path::kHardwareProperties,
                         cros_config_property::kHasHdmi);
+}
+
+std::string GroundTruth::HasAudioJack() {
+  return ReadCrosConfig(cros_config_path::kHardwareProperties,
+                        cros_config_property::kHasAudioJack);
 }
 
 std::string GroundTruth::ReadCrosConfig(const std::string& path,

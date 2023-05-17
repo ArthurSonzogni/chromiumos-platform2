@@ -99,6 +99,22 @@ Spec (Partners only):
 
 ### AudioJack
 
+It's supported only when `has-audio-jack` is explicitly configured as "true".
+
+You can run the following commands on your DUT:
+1. `cros_config /hardware-properties has-audio-jack` This is helpful to
+   understand what the value of `has-audio-jack` is.
+2. `cros-health-tool event --category=audio_jack --check_supported` Use this
+   to see if healthd reports the correct support status.
+
+To configure `has-audio-jack` in Boxster, you can use `create_audio` function
+defined in
+[hw_topology.star](https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star)
+to set it up by filling up the `headphone_codec` value to non
+`AUDIO_CODEC_UNKNOWN`. Because as long as there is a headphone codec, the audio
+jack is supported. So we transform this into `has-audio-jack` in
+chromeos-config.
+
 ### SdCard
 
 ### Network

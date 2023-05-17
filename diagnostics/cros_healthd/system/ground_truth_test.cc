@@ -257,5 +257,27 @@ TEST_F(GroundTruthTest, HdmiEvent) {
   }
 }
 
+TEST_F(GroundTruthTest, AudioJackEvent) {
+  std::vector<std::pair</*has-audio-jack=*/std::string, /*supported=*/bool>>
+      test_combinations = {
+          {"true", true},
+          {"false", false},
+          {"Others", false},
+      };
+
+  // Test not set the cros_config first to simulate file not found.
+  ExpectEventUnsupported(mojom::EventCategoryEnum::kAudioJack);
+
+  for (const auto& [has_audio_jack, supported] : test_combinations) {
+    SetCrosConfig(cros_config_path::kHardwareProperties,
+                  cros_config_property::kHasAudioJack, has_audio_jack);
+    if (supported) {
+      ExpectEventSupported(mojom::EventCategoryEnum::kAudioJack);
+    } else {
+      ExpectEventUnsupported(mojom::EventCategoryEnum::kAudioJack);
+    }
+  }
+}
+
 }  // namespace
 }  // namespace diagnostics

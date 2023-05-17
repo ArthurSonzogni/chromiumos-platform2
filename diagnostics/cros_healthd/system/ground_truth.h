@@ -32,6 +32,7 @@ class GroundTruth final {
   std::string StylusCategory();
   std::string HasTouchscreen();
   std::string HasHdmi();
+  std::string HasAudioJack();
 
  private:
   std::string ReadCrosConfig(const std::string& path,
