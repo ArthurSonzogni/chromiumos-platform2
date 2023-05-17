@@ -11,6 +11,7 @@
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read_v2.h"
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 
 namespace diagnostics {
 
@@ -64,6 +65,15 @@ void RoutineService::CreateRoutine(
           "Routine Argument not recognized/supported");
       break;
   }
+}
+
+void RoutineService::IsRoutineSupported(
+    mojom::RoutineArgumentPtr routine_arg,
+    mojom::CrosHealthdRoutinesService::IsRoutineSupportedCallback callback) {
+  // TODO(b/283024642): Implement the real logic of this method. For now, we
+  // just assume that all the routines are available.
+  std::move(callback).Run(
+      mojom::SupportStatus::NewSupported(mojom::Supported::New()));
 }
 
 void RoutineService::AddRoutine(

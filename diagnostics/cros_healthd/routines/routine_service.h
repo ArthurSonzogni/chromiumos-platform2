@@ -30,6 +30,10 @@ class RoutineService
       ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
       mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>
           routine_receiver) override;
+  void IsRoutineSupported(
+      ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
+      ash::cros_healthd::mojom::CrosHealthdRoutinesService::
+          IsRoutineSupportedCallback callback) override;
 
  private:
   // A helper function that adds a routine into the routine receiver set and

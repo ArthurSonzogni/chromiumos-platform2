@@ -11,25 +11,38 @@
 module ash.cros_healthd.mojom;
 
 import "diagnostics/mojom/external/time.mojom";
+import "diagnostics/mojom/public/cros_healthd_exception.mojom";
 
 // Routines interface exposed by the cros_healthd daemon.
 //
-// NextMinVersion: 1, NextIndex: 1
+// NextMinVersion: 2, NextIndex: 2
 interface CrosHealthdRoutinesService {
   // Requests that the a routine using the RoutineControl API is created on the
   // platform. This function creates different routine based on the
   // RoutineArgument supplied.
   //
   // The request:
-  // * |routine_argument| - a RoutineArgument type that provides all the necessary
-  //                        parameters and configs to create a particular type
-  //                        of routine.
+  // * |routine_argument| - a RoutineArgument type that provides all the
+  //                        necessary parameters and configs to create a
+  //                        particular type of routine.
   // * |routine_receiver| - a receiver that will be bound to the actual routine
   //                        control implementation, where the remote will be
   //                        held by the client for starting the routine and
   //                        adding observer.
-   CreateRoutine@0(RoutineArgument routine_argument,
-    pending_receiver<RoutineControl> routine_receiver);
+  CreateRoutine@0(RoutineArgument routine_argument,
+      pending_receiver<RoutineControl> routine_receiver);
+
+  // Checks whether a routine is supported.
+  //
+  // The request:
+  // * |routine_argument| - a RoutineArgument type that provides all the
+  //                        necessary parameters and configs to create a
+  //                        particular type of routine.
+  //
+  // The response:
+  // * |status| - See the documentation of `SupportStatus`.
+  [MinVersion=1] IsRoutineSupported@1(
+      RoutineArgument routine_argument) => (SupportStatus status);
 };
 
 // Possible routines the RoutineControl API can create.
