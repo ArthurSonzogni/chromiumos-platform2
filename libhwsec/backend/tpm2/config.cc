@@ -5,10 +5,14 @@
 #include "libhwsec/backend/tpm2/config.h"
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/hash/sha1.h>
+#include <base/no_destructor.h>
+#include <base/strings/string_number_conversions.h>
 #include <crypto/sha2.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
@@ -24,6 +28,7 @@ using brillo::BlobFromString;
 using brillo::BlobToString;
 using hwsec_foundation::Sha256;
 using hwsec_foundation::status::MakeStatus;
+using Mode = hwsec::DeviceConfigSettings::BootModeSetting::Mode;
 
 namespace hwsec {
 
@@ -84,6 +89,38 @@ Status AddToPolicySession(trunks::PolicySession& policy_session,
   return OkStatus();
 }
 
+std::string GetPCRValueForMode(const Mode& mode) {
+  char boot_modes[3] = {mode.developer_mode, mode.recovery_mode,
+                        mode.verified_firmware};
+  std::string mode_str(std::begin(boot_modes), std::end(boot_modes));
+  std::string mode_digest = base::SHA1HashString(mode_str);
+  mode_digest.resize(SHA256_DIGEST_LENGTH);
+  const std::string pcr_initial_value(SHA256_DIGEST_LENGTH, 0);
+  return crypto::SHA256HashString(pcr_initial_value + mode_digest);
+}
+
+// The mapping that maps pcr value to corresponding boot mode.
+const std::map<std::string, Mode>& BootModeMapping() {
+  static const base::NoDestructor<std::map<std::string, Mode>> mapping([] {
+    std::map<std::string, Mode> mapping;
+    // 3-byte boot mode:
+    //  - byte 0: 1 if in developer mode, 0 otherwise,
+    //  - byte 1: 1 if in recovery mode, 0 otherwise,
+    //  - byte 2: 1 if verified firmware, 0 if developer firmware.
+    // Iterating through all possible combination of modes.
+    for (int i = 0; i < (1 << 3); ++i) {
+      Mode mode = {
+          .developer_mode = i & 1,
+          .recovery_mode = i & 2,
+          .verified_firmware = i & 4,
+      };
+      mapping.emplace(GetPCRValueForMode(mode), mode);
+    }
+    return mapping;
+  }());
+  return *mapping;
+}
+
 }  // namespace
 
 StatusOr<OperationPolicy> ConfigTpm2::ToOperationPolicy(
@@ -126,9 +163,22 @@ Status ConfigTpm2::SetCurrentUser(const std::string& current_user) {
 
 StatusOr<bool> ConfigTpm2::IsCurrentUserSet() {
   ASSIGN_OR_RETURN(std::string && value, ReadPcr(kCurrentUserPcr),
-                   _.WithStatus<TPMError>("Failed to read boot mode PCR"));
+                   _.WithStatus<TPMError>("Failed to read current user PCR"));
 
   return value != std::string(SHA256_DIGEST_LENGTH, 0);
+}
+
+StatusOr<Mode> ConfigTpm2::GetCurrentBootMode() {
+  const std::map<std::string, Mode>& mapping = BootModeMapping();
+  ASSIGN_OR_RETURN(const std::string& value, ReadPcr(kBootModePcr),
+                   _.WithStatus<TPMError>("Failed to read boot mode PCR"));
+
+  if (auto it = mapping.find(value); it != mapping.end()) {
+    return it->second;
+  }
+  return MakeStatus<TPMError>("Encountered invalid boot mode value: " +
+                                  base::HexEncode(value.data(), value.size()),
+                              TPMRetryAction::kNoRetry);
 }
 
 StatusOr<ConfigTpm2::PcrMap> ConfigTpm2::ToPcrMap(
@@ -151,14 +201,7 @@ StatusOr<ConfigTpm2::PcrMap> ConfigTpm2::ToSettingsPcrMap(
   if (settings.boot_mode.has_value()) {
     const auto& mode = settings.boot_mode->mode;
     if (mode.has_value()) {
-      char boot_modes[3] = {mode->developer_mode, mode->recovery_mode,
-                            mode->verified_firmware};
-      std::string mode_str(std::begin(boot_modes), std::end(boot_modes));
-      std::string mode_digest = base::SHA1HashString(mode_str);
-      mode_digest.resize(SHA256_DIGEST_LENGTH);
-      const std::string pcr_initial_value(SHA256_DIGEST_LENGTH, 0);
-      result[kBootModePcr] =
-          crypto::SHA256HashString(pcr_initial_value + mode_digest);
+      result[kBootModePcr] = GetPCRValueForMode(*mode);
     } else {
       ASSIGN_OR_RETURN(std::string && value, ReadPcr(kBootModePcr),
                        _.WithStatus<TPMError>("Failed to read boot mode PCR"));

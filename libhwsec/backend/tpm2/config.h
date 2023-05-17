@@ -39,6 +39,8 @@ class ConfigTpm2 : public Config {
       const OperationPolicySetting& policy) override;
   Status SetCurrentUser(const std::string& current_user) override;
   StatusOr<bool> IsCurrentUserSet() override;
+  StatusOr<DeviceConfigSettings::BootModeSetting::Mode> GetCurrentBootMode()
+      override;
 
   using PcrMap = std::map<uint32_t, std::string>;
 

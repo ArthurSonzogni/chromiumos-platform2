@@ -28,6 +28,15 @@ class Config {
   // Is the current user had been set or not.
   virtual StatusOr<bool> IsCurrentUserSet() = 0;
 
+  // Returns current boot mode if it is valid.
+  // Some older boards are affected by a bug in AP firmware where PCR0 (boot
+  // mode PCR) is extended on resume from S3 (rather than just on initial
+  // boot), causing PCR0 to have an invalid/unexpected value (different from
+  // the expected value immediately after a normal boot). So, this function is
+  // also used for verifying that the boot mode of device is valid.
+  virtual StatusOr<DeviceConfigSettings::BootModeSetting::Mode>
+  GetCurrentBootMode() = 0;
+
  protected:
   Config() = default;
   ~Config() = default;

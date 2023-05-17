@@ -5,9 +5,13 @@
 #include "libhwsec/backend/tpm1/config.h"
 
 #include <cstdint>
+#include <map>
 #include <string>
 
+#include <base/containers/contains.h>
 #include <base/hash/sha1.h>
+#include <base/no_destructor.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <crypto/sha2.h>
 #include <libhwsec-foundation/crypto/sha.h>
@@ -22,6 +26,7 @@ using brillo::BlobFromString;
 using brillo::BlobToString;
 using hwsec_foundation::Sha1;
 using hwsec_foundation::status::MakeStatus;
+using Mode = hwsec::DeviceConfigSettings::BootModeSetting::Mode;
 
 namespace hwsec {
 
@@ -49,6 +54,40 @@ StatusOr<int> DeviceConfigToPcr(DeviceConfig config) {
   }
   return MakeStatus<TPMError>("Unknown device config",
                               TPMRetryAction::kNoRetry);
+}
+
+brillo::Blob GetPCRValueForMode(const Mode& mode) {
+  char boot_modes[3] = {mode.developer_mode, mode.recovery_mode,
+                        mode.verified_firmware};
+  std::string mode_str(std::begin(boot_modes), std::end(boot_modes));
+  const std::string mode_digest = base::SHA1HashString(mode_str);
+
+  // PCR0 value immediately after power on.
+  const std::string pcr_initial_value(base::kSHA1Length, 0);
+
+  return BlobFromString(base::SHA1HashString(pcr_initial_value + mode_digest));
+}
+
+// The mapping that maps pcr value to corresponding boot mode.
+const std::map<brillo::Blob, Mode>& BootModeMapping() {
+  static const base::NoDestructor<std::map<brillo::Blob, Mode>> mapping([] {
+    std::map<brillo::Blob, Mode> mapping;
+    // 3-byte boot mode:
+    //  - byte 0: 1 if in developer mode, 0 otherwise,
+    //  - byte 1: 1 if in recovery mode, 0 otherwise,
+    //  - byte 2: 1 if verified firmware, 0 if developer firmware.
+    // Iterating through all possible combination of modes.
+    for (int i = 0; i < (1 << 3); ++i) {
+      Mode mode = {
+          .developer_mode = i & 1,
+          .recovery_mode = i & 2,
+          .verified_firmware = i & 4,
+      };
+      mapping.emplace(GetPCRValueForMode(mode), mode);
+    }
+    return mapping;
+  }());
+  return *mapping;
 }
 
 }  // namespace
@@ -96,9 +135,22 @@ Status ConfigTpm1::SetCurrentUser(const std::string& current_user) {
 
 StatusOr<bool> ConfigTpm1::IsCurrentUserSet() {
   ASSIGN_OR_RETURN(brillo::Blob && value, ReadPcr(kCurrentUserPcrTpm1),
-                   _.WithStatus<TPMError>("Failed to read boot mode PCR"));
+                   _.WithStatus<TPMError>("Failed to read current user PCR"));
 
   return value != brillo::Blob(SHA_DIGEST_LENGTH, 0);
+}
+
+StatusOr<Mode> ConfigTpm1::GetCurrentBootMode() {
+  const std::map<brillo::Blob, Mode>& mapping = BootModeMapping();
+  ASSIGN_OR_RETURN(const brillo::Blob& value, ReadPcr(kBootModePcr),
+                   _.WithStatus<TPMError>("Failed to read boot mode PCR"));
+
+  if (auto it = mapping.find(value); it != mapping.end()) {
+    return it->second;
+  }
+  return MakeStatus<TPMError>("Encountered invalid boot mode value: " +
+                                  base::HexEncode(value.data(), value.size()),
+                              TPMRetryAction::kNoRetry);
 }
 
 StatusOr<ConfigTpm1::PcrMap> ConfigTpm1::ToPcrMap(
@@ -152,8 +204,7 @@ StatusOr<ConfigTpm1::PcrMap> ConfigTpm1::ToSettingsPcrMap(
   if (settings.boot_mode.has_value()) {
     const auto& mode = settings.boot_mode->mode;
     if (mode.has_value()) {
-      return MakeStatus<TPMError>("Unsupported settings",
-                                  TPMRetryAction::kNoRetry);
+      result[kBootModePcr] = GetPCRValueForMode(*mode);
     } else {
       ASSIGN_OR_RETURN(brillo::Blob && value, ReadPcr(kBootModePcr),
                        _.WithStatus<TPMError>("Failed to read boot mode PCR"));

@@ -30,6 +30,8 @@ class AttestationFrontendImpl : public AttestationFrontend,
       DeviceConfig device_config, const brillo::Blob& key_blob) const override;
   StatusOr<bool> IsQuoted(DeviceConfig device_config,
                           const attestation::Quote& quote) const override;
+  StatusOr<DeviceConfigSettings::BootModeSetting::Mode> GetCurrentBootMode()
+      const override;
 };
 
 }  // namespace hwsec

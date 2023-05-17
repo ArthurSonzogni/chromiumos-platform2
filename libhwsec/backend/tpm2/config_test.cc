@@ -5,6 +5,8 @@
 #include <memory>
 #include <utility>
 
+#include <base/hash/sha1.h>
+#include <crypto/sha2.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <openssl/sha.h>
@@ -100,6 +102,45 @@ TEST_F(BackendConfigTpm2Test, IsCurrentUserSetZero) {
 
   EXPECT_THAT(backend_->GetConfigTpm2().IsCurrentUserSet(),
               IsOkAndHolds(false));
+}
+
+TEST_F(BackendConfigTpm2Test, GetCurrentBootMode) {
+  DeviceConfigSettings::BootModeSetting::Mode fake_mode = {
+      .developer_mode = false,
+      .recovery_mode = true,
+      .verified_firmware = false,
+  };
+  char boot_modes[3] = {fake_mode.developer_mode, fake_mode.recovery_mode,
+                        fake_mode.verified_firmware};
+  std::string mode_string =
+      std::string(std::begin(boot_modes), std::end(boot_modes));
+  std::string mode_digest = base::SHA1HashString(mode_string);
+  mode_digest.resize(crypto::kSHA256Length);
+
+  const std::string pcr_initial_value(crypto::kSHA256Length, 0);
+  const std::string kValidPcr =
+      crypto::SHA256HashString(pcr_initial_value + mode_digest);
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ReadPCR(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kValidPcr), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto result = backend_->GetConfigTpm2().GetCurrentBootMode();
+  ASSERT_OK(result);
+  EXPECT_TRUE(result.value().developer_mode == fake_mode.developer_mode);
+  EXPECT_TRUE(result.value().recovery_mode == fake_mode.recovery_mode);
+  EXPECT_TRUE(result.value().verified_firmware == fake_mode.verified_firmware);
+}
+
+TEST_F(BackendConfigTpm2Test, GetCurrentBootModeInvalid) {
+  const std::string kInvalidPcr(SHA256_DIGEST_LENGTH, 0);
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ReadPCR(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kInvalidPcr), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto result = backend_->GetConfigTpm2().GetCurrentBootMode();
+  ASSERT_NOT_OK(result);
 }
 
 }  // namespace hwsec

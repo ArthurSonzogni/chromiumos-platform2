@@ -36,6 +36,10 @@ class MockAttestationFrontend : public MockFrontend,
               IsQuoted,
               (DeviceConfig device_config, const attestation::Quote& quote),
               (const override));
+  MOCK_METHOD(StatusOr<DeviceConfigSettings::BootModeSetting::Mode>,
+              GetCurrentBootMode,
+              (),
+              (const override));
 };
 
 }  // namespace hwsec

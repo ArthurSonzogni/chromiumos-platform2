@@ -42,6 +42,10 @@ class MockConfig : public Config {
               (const std::string& current_user),
               (override));
   MOCK_METHOD(StatusOr<bool>, IsCurrentUserSet, (), (override));
+  MOCK_METHOD(StatusOr<DeviceConfigSettings::BootModeSetting::Mode>,
+              GetCurrentBootMode,
+              (),
+              (override));
 
  private:
   Config* default_;

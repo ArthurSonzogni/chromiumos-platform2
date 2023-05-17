@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/hash/sha1.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <openssl/sha.h>
@@ -12,6 +13,7 @@
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 #include "libhwsec/overalls/mock_overalls.h"
 
+using brillo::BlobFromString;
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::ReturnError;
@@ -100,6 +102,47 @@ TEST_F(BackendConfigTpm1Test, IsCurrentUserSetZero) {
 
   EXPECT_THAT(backend_->GetConfigTpm1().IsCurrentUserSet(),
               IsOkAndHolds(false));
+}
+
+TEST_F(BackendConfigTpm1Test, GetCurrentBootMode) {
+  DeviceConfigSettings::BootModeSetting::Mode fake_mode = {
+      .developer_mode = false,
+      .recovery_mode = true,
+      .verified_firmware = false,
+  };
+  char boot_modes[3] = {fake_mode.developer_mode, fake_mode.recovery_mode,
+                        fake_mode.verified_firmware};
+  std::string mode_string =
+      std::string(std::begin(boot_modes), std::end(boot_modes));
+  std::string mode_digest = base::SHA1HashString(mode_string);
+
+  const std::string pcr_initial_value(base::kSHA1Length, 0);
+  const std::string kValidPcr =
+      base::SHA1HashString(pcr_initial_value + mode_digest);
+
+  brillo::Blob valid_pcr = BlobFromString(kValidPcr);
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_TPM_PcrRead(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(valid_pcr.size()),
+                      SetArgPointee<3>(valid_pcr.data()), Return(TPM_SUCCESS)));
+
+  auto result = backend_->GetConfigTpm1().GetCurrentBootMode();
+  ASSERT_OK(result);
+  EXPECT_TRUE(result.value().developer_mode == fake_mode.developer_mode);
+  EXPECT_TRUE(result.value().recovery_mode == fake_mode.recovery_mode);
+  EXPECT_TRUE(result.value().verified_firmware == fake_mode.verified_firmware);
+}
+
+TEST_F(BackendConfigTpm1Test, GetCurrentBootModeInvalid) {
+  const brillo::Blob kInvalidPcr(SHA_DIGEST_LENGTH, 0);
+
+  brillo::Blob invalid_pcr = kInvalidPcr;
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_TPM_PcrRead(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(invalid_pcr.size()),
+                      SetArgPointee<3>(invalid_pcr.data()),
+                      Return(TPM_SUCCESS)));
+
+  auto result = backend_->GetConfigTpm1().GetCurrentBootMode();
+  ASSERT_NOT_OK(result);
 }
 
 }  // namespace hwsec

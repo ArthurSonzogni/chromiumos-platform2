@@ -69,4 +69,9 @@ StatusOr<bool> AttestationFrontendImpl::IsQuoted(
       DeviceConfigs{device_config}, quote);
 }
 
+StatusOr<DeviceConfigSettings::BootModeSetting::Mode>
+AttestationFrontendImpl::GetCurrentBootMode() const {
+  return middleware_.CallSync<&Backend::Config::GetCurrentBootMode>();
+}
+
 }  // namespace hwsec

@@ -26,6 +26,8 @@ class AttestationFrontend : public Frontend {
       DeviceConfig device_config, const brillo::Blob& key_blob) const = 0;
   virtual StatusOr<bool> IsQuoted(DeviceConfig device_config,
                                   const attestation::Quote& quote) const = 0;
+  virtual StatusOr<DeviceConfigSettings::BootModeSetting::Mode>
+  GetCurrentBootMode() const = 0;
 };
 
 }  // namespace hwsec
