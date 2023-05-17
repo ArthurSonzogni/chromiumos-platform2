@@ -31,7 +31,6 @@ class TpmUtilityCommon : public TpmUtility {
   bool Initialize() override;
   bool IsTpmReady() override;
   bool RemoveOwnerDependency() override;
-  bool IsPCR0Valid() override;
 
  protected:
   // Gets the endorsement password from tpm_managerd. Returns false if the
@@ -48,8 +47,6 @@ class TpmUtilityCommon : public TpmUtility {
   void BuildValidPCR0Values();
 
  protected:
-  virtual std::string GetPCRValueForMode(const std::string& mode) = 0;
-
   bool has_cache_tpm_state_{false};
   bool is_ready_{false};
   std::string endorsement_password_;

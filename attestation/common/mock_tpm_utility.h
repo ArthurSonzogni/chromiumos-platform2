@@ -92,7 +92,6 @@ class MockTpmUtility : public TpmUtility {
               (uint32_t, int, const std::string&, std::string*, std::string*),
               (override));
   MOCK_METHOD(bool, ReadPCR, (uint32_t, std::string*), (override));
-  MOCK_METHOD(bool, IsPCR0Valid, (), (override));
   MOCK_METHOD(bool, RemoveOwnerDependency, (), (override));
   MOCK_METHOD(bool,
               CreateIdentity,

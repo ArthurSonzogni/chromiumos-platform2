@@ -27,7 +27,6 @@ class TpmUtilityStub : public TpmUtility {
   std::vector<KeyType> GetSupportedKeyTypes() override { return {}; }
   bool IsTpmReady() override { return false; }
   bool RemoveOwnerDependency() override { return false; }
-  bool IsPCR0Valid() override { return false; }
   TpmVersion GetVersion() override { return TPM_1_2; }
   bool ActivateIdentity(const std::string& identity_key_blob,
                         const std::string& asym_ca_contents,

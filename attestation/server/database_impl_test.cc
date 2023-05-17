@@ -7,11 +7,15 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/attestation/mock_frontend.h>
+#include <libhwsec/structures/device_config.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "attestation/common/mock_crypto_utility.h"
-#include "attestation/common/mock_tpm_utility.h"
+
 #include "attestation/server/database_impl.h"
 
+using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
 using testing::Invoke;
 using testing::NiceMock;
@@ -30,11 +34,17 @@ class DatabaseImplTest : public testing::Test, public DatabaseIO {
  public:
   ~DatabaseImplTest() override = default;
   void SetUp() override {
-    database_.reset(
-        new DatabaseImpl(&mock_crypto_utility_, &mock_tpm_utility_));
+    database_.reset(new DatabaseImpl(&mock_crypto_utility_, &mock_hwsec_));
     database_->set_io(this);
     InitializeFakeData();
-    EXPECT_CALL(mock_tpm_utility_, IsPCR0Valid()).WillRepeatedly(Return(true));
+    hwsec::DeviceConfigSettings::BootModeSetting::Mode fake_mode = {
+        .developer_mode = false,
+        .recovery_mode = false,
+        .verified_firmware = false,
+    };
+    EXPECT_CALL(mock_hwsec_, GetCurrentBootMode)
+        .WillRepeatedly(ReturnValue(fake_mode));
+
     database_->Initialize();
   }
 
@@ -66,7 +76,7 @@ class DatabaseImplTest : public testing::Test, public DatabaseIO {
   bool fake_persistent_data_readable_{true};
   bool fake_persistent_data_writable_{true};
   NiceMock<MockCryptoUtility> mock_crypto_utility_;
-  NiceMock<MockTpmUtility> mock_tpm_utility_;
+  NiceMock<hwsec::MockAttestationFrontend> mock_hwsec_;
   std::unique_ptr<DatabaseImpl> database_;
 };
 

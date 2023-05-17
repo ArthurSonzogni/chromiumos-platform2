@@ -30,8 +30,9 @@ const mode_t kDatabasePermissions = 0600;
 
 namespace attestation {
 
-DatabaseImpl::DatabaseImpl(CryptoUtility* crypto, TpmUtility* tpm_utility)
-    : io_(this), crypto_(crypto), tpm_utility_(tpm_utility) {}
+DatabaseImpl::DatabaseImpl(CryptoUtility* crypto,
+                           const hwsec::AttestationFrontend* hwsec)
+    : io_(this), crypto_(crypto), hwsec_(hwsec) {}
 
 DatabaseImpl::~DatabaseImpl() {
   brillo::SecureClearContainer(database_key_);
@@ -132,8 +133,9 @@ bool DatabaseImpl::EncryptProtobuf(std::string* encrypted_output) {
   CHECK_EQ(database_key_.empty(), sealed_database_key_.empty())
       << "Raw and sealed keys should be present in pair.";
   if (database_key_.empty()) {
-    if (!tpm_utility_->IsPCR0Valid()) {
-      LOG(ERROR) << __func__ << "Invalid PCR0 value, aborting.";
+    if (auto result = hwsec_->GetCurrentBootMode(); !result.ok()) {
+      LOG(ERROR) << __func__
+                 << "Invalid boot mode, aborting: " << result.status();
       metrics_.ReportAttestationOpsStatus(
           kAttestationEncryptDatabase, AttestationOpsStatus::kInvalidPcr0Value);
       return false;
@@ -159,8 +161,8 @@ bool DatabaseImpl::EncryptProtobuf(std::string* encrypted_output) {
 }
 
 bool DatabaseImpl::DecryptProtobuf(const std::string& encrypted_input) {
-  if (!tpm_utility_->IsPCR0Valid()) {
-    LOG(ERROR) << __func__ << "Invalid PCR0 value.";
+  if (auto result = hwsec_->GetCurrentBootMode(); !result.ok()) {
+    LOG(ERROR) << __func__ << "Invalid boot mode: " << result.status();
     metrics_.ReportAttestationOpsStatus(
         kAttestationDecryptDatabase, AttestationOpsStatus::kInvalidPcr0Value);
     return false;

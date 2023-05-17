@@ -26,7 +26,6 @@ TpmUtilityCommon::TpmUtilityCommon(
 TpmUtilityCommon::~TpmUtilityCommon() {}
 
 bool TpmUtilityCommon::Initialize() {
-  BuildValidPCR0Values();
   if (!tpm_manager_utility_) {
     LOG(INFO) << __func__ << "Reinitialize tpm_manager utility";
     tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();
@@ -88,37 +87,6 @@ bool TpmUtilityCommon::IsTpmReady() {
   is_ready_ = is_enabled && is_owned;
   UpdateTpmLocalData(local_data);
   return is_ready_;
-}
-
-void TpmUtilityCommon::BuildValidPCR0Values() {
-  // 3-byte boot mode:
-  //  - byte 0: 1 if in developer mode, 0 otherwise,
-  //  - byte 1: 1 if in recovery mode, 0 otherwise,
-  //  - byte 2: 1 if verified firmware, 0 if developer firmware.
-  constexpr char kKnownBootModes[][3] = {{0, 0, 0}, {0, 0, 1}, {0, 1, 0},
-                                         {0, 1, 1}, {1, 0, 0}, {1, 0, 1},
-                                         {1, 1, 0}, {1, 1, 1}};
-
-  for (const auto& mode_array : kKnownBootModes) {
-    const std::string mode(std::begin(mode_array), std::end(mode_array));
-    valid_pcr0_values_.insert(GetPCRValueForMode(mode));
-  }
-}
-
-bool TpmUtilityCommon::IsPCR0Valid() {
-  std::string pcr0_value;
-  if (!ReadPCR(0, &pcr0_value)) {
-    LOG(ERROR) << __func__ << "Failed to read PCR0";
-    return false;
-  }
-
-  if (!base::Contains(valid_pcr0_values_, pcr0_value)) {
-    LOG(ERROR) << "Encountered invalid PCR0 value: "
-               << base::HexEncode(pcr0_value.data(), pcr0_value.size());
-    return false;
-  }
-
-  return true;
 }
 
 bool TpmUtilityCommon::GetEndorsementPassword(std::string* password) {

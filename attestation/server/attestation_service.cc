@@ -495,7 +495,7 @@ void AttestationService::InitializeTask(InitializeCompleteCallback callback) {
   if (database_) {
     existing_database = true;
   } else {
-    default_database_.reset(new DatabaseImpl(crypto_utility_, tpm_utility_));
+    default_database_.reset(new DatabaseImpl(crypto_utility_, hwsec_));
     existing_database = default_database_->Initialize();
     database_ = default_database_.get();
   }
@@ -1725,8 +1725,9 @@ void AttestationService::PrepareForEnrollment(
   base::TimeTicks start = base::TimeTicks::Now();
   LOG(INFO) << "Attestation: Preparing for enrollment...";
 
-  if (!tpm_utility_->IsPCR0Valid()) {
-    LOG(ERROR) << __func__ << "Invalid PCR0 value, aborting.";
+  if (auto result = hwsec_->GetCurrentBootMode(); !result.ok()) {
+    LOG(ERROR) << __func__
+               << "Invalid boot mode, aborting: " << result.status();
     metrics_.ReportAttestationOpsStatus(
         kAttestationPrepareForEnrollment,
         AttestationOpsStatus::kInvalidPcr0Value);
@@ -2001,8 +2002,9 @@ bool AttestationService::ActivateAttestationKeyInternal(
     }
   }
   if (save_certificate) {
-    if (!tpm_utility_->IsPCR0Valid()) {
-      LOG(ERROR) << __func__ << "Invalid PCR0 value, aborting.";
+    if (auto result = hwsec_->GetCurrentBootMode(); !result.ok()) {
+      LOG(ERROR) << __func__
+                 << "Invalid boot mode, aborting: " << result.status();
       metrics_.ReportAttestationOpsStatus(
           kAttestationActivateAttestationKey,
           AttestationOpsStatus::kInvalidPcr0Value);
@@ -2448,8 +2450,8 @@ void AttestationService::VerifyTask(
     LOG(ERROR) << __func__ << ": Bad identity binding.";
     return;
   }
-  if (!tpm_utility_->IsPCR0Valid()) {
-    LOG(ERROR) << __func__ << ": Bad PCR0 value.";
+  if (auto result = hwsec_->GetCurrentBootMode(); !result.ok()) {
+    LOG(ERROR) << __func__ << "Invalid boot mode: " << result.status();
     metrics_.ReportAttestationOpsStatus(
         kAttestationVerify, AttestationOpsStatus::kInvalidPcr0Value);
   }

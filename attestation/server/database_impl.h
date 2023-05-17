@@ -7,11 +7,11 @@
 
 #include "attestation/server/database.h"
 
+#include <libhwsec/frontend/attestation/frontend.h>
 #include <memory>
 #include <string>
 
 #include "attestation/common/crypto_utility.h"
-#include "attestation/common/tpm_utility.h"
 #include "attestation/server/attestation_service_metrics.h"
 
 namespace attestation {
@@ -30,7 +30,8 @@ class DatabaseIO {
 class DatabaseImpl : public Database, public DatabaseIO {
  public:
   // Does not take ownership of pointers.
-  explicit DatabaseImpl(CryptoUtility* crypto, TpmUtility* tpm_utility);
+  explicit DatabaseImpl(CryptoUtility* crypto,
+                        const hwsec::AttestationFrontend* hwsec);
   ~DatabaseImpl() override;
 
   // Reads and decrypts any existing database on disk synchronously. Must be
@@ -62,7 +63,7 @@ class DatabaseImpl : public Database, public DatabaseIO {
   AttestationDatabase protobuf_;
   DatabaseIO* io_;
   CryptoUtility* crypto_;
-  TpmUtility* tpm_utility_;
+  const hwsec::AttestationFrontend* hwsec_;
   AttestationServiceMetrics metrics_;
   std::string database_key_;
   std::string sealed_database_key_;

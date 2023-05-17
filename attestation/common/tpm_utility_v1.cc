@@ -1276,15 +1276,6 @@ bool TpmUtilityV1::MakeIdentity(std::string* identity_public_key_der,
   return true;
 }
 
-std::string TpmUtilityV1::GetPCRValueForMode(const std::string& mode) {
-  const std::string mode_digest = base::SHA1HashString(mode);
-
-  // PCR0 value immediately after power on.
-  const std::string pcr_initial_value(base::kSHA1Length, 0);
-
-  return base::SHA1HashString(pcr_initial_value + mode_digest);
-}
-
 bool TpmUtilityV1::InitializeContextHandle(const std::string& consumer_name) {
   if (!static_cast<TSS_HCONTEXT>(context_handle_) || !tpm_handle_) {
     context_handle_.reset();

@@ -874,16 +874,6 @@ bool TpmUtilityV2::CreateRestrictedKey(KeyType key_type,
   return true;
 }
 
-std::string TpmUtilityV2::GetPCRValueForMode(const std::string& mode) {
-  std::string mode_digest = base::SHA1HashString(mode);
-  mode_digest.resize(crypto::kSHA256Length);
-
-  // PCR0 value immediately after power on.
-  const std::string pcr_initial_value(crypto::kSHA256Length, 0);
-
-  return crypto::SHA256HashString(pcr_initial_value + mode_digest);
-}
-
 bool TpmUtilityV2::ReadPCR(uint32_t pcr_index, std::string* pcr_value) {
   TPM_RC result = trunks_utility_->ReadPCR(pcr_index, pcr_value);
   if (result != TPM_RC_SUCCESS) {

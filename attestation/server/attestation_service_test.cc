@@ -234,10 +234,16 @@ class AttestationServiceBaseTest : public testing::Test {
           ->mutable_credentials()
           ->mutable_encrypted_endorsement_credentials())[TEST_ACA]
         .set_wrapping_key_id("test");
-    EXPECT_CALL(mock_tpm_utility_, IsPCR0Valid()).WillRepeatedly(Return(true));
     Quote fake_quote;
     fake_quote.set_quoted_pcr_value("");
     EXPECT_CALL(mock_hwsec_, Quote).WillRepeatedly(ReturnValue(fake_quote));
+    hwsec::DeviceConfigSettings::BootModeSetting::Mode fake_mode = {
+        .developer_mode = false,
+        .recovery_mode = false,
+        .verified_firmware = false,
+    };
+    EXPECT_CALL(mock_hwsec_, GetCurrentBootMode)
+        .WillRepeatedly(ReturnValue(fake_mode));
     // Run out initialize task(s) to avoid any race conditions with tests that
     // need to change the default setup.
     CHECK(
