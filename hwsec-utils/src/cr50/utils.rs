@@ -73,25 +73,6 @@ pub fn run_gsctool_cmd(
         .map_err(|_| HwsecError::CommandRunnerError)
 }
 
-pub fn get_gsctool_output(
-    ctx: &mut impl Context,
-    options: Vec<&str>,
-) -> Result<String, HwsecError> {
-    let gsctool_raw_output = run_gsctool_cmd(ctx, options)?;
-    Ok(String::from_utf8_lossy(&gsctool_raw_output.stdout).to_string())
-}
-
-pub fn get_gsctool_full_output(
-    ctx: &mut impl Context,
-    options: Vec<&str>,
-) -> Result<String, HwsecError> {
-    let gsctool_raw_output = run_gsctool_cmd(ctx, options)?;
-    Ok(
-        String::from_utf8_lossy(&[gsctool_raw_output.stdout, gsctool_raw_output.stderr].concat())
-            .to_string(),
-    )
-}
-
 pub fn run_metrics_client(
     ctx: &mut impl Context,
     options: Vec<&str>,
