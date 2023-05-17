@@ -29,6 +29,7 @@
 
 #include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/dlc_base.h"
+#include "dlcservice/metadata.h"
 #include "dlcservice/metrics.h"
 #if USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/lvm/mock_lvmd_proxy_wrapper.h"
@@ -141,7 +142,13 @@ void BaseTest::SetUpFilesAndDirectories() {
     base::CreateDirectory(JoinPaths(manifest_path_, id, kPackage));
     base::CopyFile(JoinPaths(testdata_path_, id, kPackage, kManifestName),
                    JoinPaths(manifest_path_, id, kPackage, kManifestName));
+    supported_dlc_.emplace(id);
   }
+
+  base::WriteFile(
+      JoinPaths(manifest_path_,
+                std::string(kMetadataPrefix).append(*supported_dlc_.begin())),
+      "Test metadata file.");
 }
 
 int64_t GetFileSize(const base::FilePath& path) {

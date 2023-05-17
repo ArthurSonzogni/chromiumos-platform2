@@ -1,0 +1,4 @@
+Name: libdlcservice-metadata
+Description: ChromeOS DLC metadata library
+Version: 1.0
+Libs: -ldlcservice-metadata

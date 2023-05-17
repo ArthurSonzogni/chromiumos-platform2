@@ -6,6 +6,7 @@
 #define DLCSERVICE_TEST_UTILS_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -33,6 +34,7 @@
 #include "dlcservice/mock_metrics.h"
 #include "dlcservice/mock_state_change_reporter.h"
 #include "dlcservice/mock_system_properties.h"
+#include "dlcservice/types.h"
 #if USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/lvm/mock_lvmd_proxy_wrapper.h"
 #endif  // USE_LVM_STATEFUL_PARTITION
@@ -101,6 +103,7 @@ class BaseTest : public testing::Test {
   base::FilePath verification_file_path_;
   base::FilePath mount_path_;
   base::FilePath resume_in_progress_path_;
+  std::set<DlcId> supported_dlc_;
 
 #if USE_LVM_STATEFUL_PARTITION
   std::unique_ptr<MockLvmdProxyWrapper> mock_lvmd_proxy_wrapper_;
