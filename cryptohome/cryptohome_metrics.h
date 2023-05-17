@@ -9,6 +9,7 @@
 
 #include <base/files/file.h>
 #include <base/time/time.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <metrics/metrics_library.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -676,6 +677,14 @@ void ReportBackupKeysetCleanupResult(BackupKeysetCleanupResult status);
 void ReportBackupKeysetCleanupSucessWithType(AuthFactorType auth_factor_type);
 void ReportBackupKeysetCleanupFileFailureWithType(
     AuthFactorType auth_factor_type);
+
+// Reports the emitted fingerprint enroll signal.
+void ReportFingerprintEnrollSignal(
+    user_data_auth::FingerprintScanResult scan_result);
+
+// Reports the emitted fingerprint auth signal.
+void ReportFingerprintAuthSignal(
+    user_data_auth::FingerprintScanResult scan_result);
 
 // Initialization helper.
 class ScopedMetricsInitializer {

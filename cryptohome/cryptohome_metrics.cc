@@ -121,6 +121,9 @@ constexpr char kDownloadsBindMountMigrationStatusHistogram[] =
     "Cryptohome.DownloadsBindMountMigrationStatus";
 constexpr char kBackupKeysetCleanupResult[] =
     "Cryptohome.BackupKeysetCleanupResult";
+constexpr char kFingerprintEnrollSignal[] =
+    "Cryptohome.Fingerprint.EnrollSignal";
+constexpr char kFingerprintAuthSignal[] = "Cryptohome.Fingerprint.AuthSignal";
 
 constexpr char kNumUserHomeDirectories[] =
     "Platform.DiskUsage.NumUserHomeDirectories";
@@ -987,6 +990,28 @@ void ReportBackupKeysetCleanupResult(BackupKeysetCleanupResult status) {
   g_metrics->SendEnumToUMA(
       kBackupKeysetCleanupResult, static_cast<int>(status),
       static_cast<int>(BackupKeysetCleanupResult::kMaxValue) + 1);
+}
+
+void ReportFingerprintEnrollSignal(
+    user_data_auth::FingerprintScanResult scan_result) {
+  if (!g_metrics) {
+    return;
+  }
+
+  g_metrics->SendEnumToUMA(kFingerprintEnrollSignal,
+                           static_cast<int>(scan_result),
+                           user_data_auth::FingerprintScanResult_ARRAYSIZE);
+}
+
+void ReportFingerprintAuthSignal(
+    user_data_auth::FingerprintScanResult scan_result) {
+  if (!g_metrics) {
+    return;
+  }
+
+  g_metrics->SendEnumToUMA(kFingerprintAuthSignal,
+                           static_cast<int>(scan_result),
+                           user_data_auth::FingerprintScanResult_ARRAYSIZE);
 }
 
 }  // namespace cryptohome

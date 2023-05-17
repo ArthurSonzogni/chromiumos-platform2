@@ -770,6 +770,7 @@ void UserDataAuth::OnFingerprintEnrollProgress(
   if (!prepare_auth_factor_progress_callback_) {
     return;
   }
+  ReportFingerprintEnrollSignal(result.scan_result().fingerprint_result());
   user_data_auth::PrepareAuthFactorProgress progress;
   user_data_auth::PrepareAuthFactorForAddProgress add_progress;
   add_progress.set_auth_factor_type(
@@ -786,6 +787,7 @@ void UserDataAuth::OnFingerprintAuthProgress(
   if (!prepare_auth_factor_progress_callback_) {
     return;
   }
+  ReportFingerprintAuthSignal(result.scan_result().fingerprint_result());
   user_data_auth::PrepareAuthFactorProgress progress;
   user_data_auth::PrepareAuthFactorForAuthProgress auth_progress;
   auth_progress.set_auth_factor_type(
