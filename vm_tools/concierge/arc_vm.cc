@@ -685,9 +685,10 @@ void ArcVm::InitializeBalloonPolicy(const MemoryMargins& margins,
 
 const std::unique_ptr<BalloonPolicyInterface>& ArcVm::GetBalloonPolicy(
     const MemoryMargins& margins, const std::string& vm) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // While it is enabling vmm-swap, balloon policy is suspended and the balloon
   // is kept as big as possible to keep guest memory minimized.
-  if (is_aggressive_balloon_enabled_) {
+  if (aggressive_balloon_timer_->IsRunning()) {
     static const std::unique_ptr<BalloonPolicyInterface> null_balloon_policy;
     return null_balloon_policy;
   }
@@ -922,7 +923,6 @@ void ArcVm::InflateAggressiveBalloon(AggressiveBalloonCallback callback) {
   }
   LOG(INFO) << "Inflating aggressive balloon";
   aggressive_balloon_target_ = stats_opt->balloon_actual;
-  is_aggressive_balloon_enabled_ = true;
   aggressive_balloon_callback_ = std::move(callback);
   aggressive_balloon_timer_->Start(FROM_HERE, base::Milliseconds(100), this,
                                    &ArcVm::InflateAggressiveBalloonOnTimer);
@@ -935,7 +935,6 @@ void ArcVm::StopAggressiveBalloon(AggressiveBalloonResponse& response) {
     RunFailureAggressiveBalloonCallback(std::move(aggressive_balloon_callback_),
                                         "aggressive balloon is disabled");
   }
-  is_aggressive_balloon_enabled_ = false;
   aggressive_balloon_timer_->Stop();
   response.set_success(true);
 }
@@ -1016,7 +1015,7 @@ void ArcVm::HandleLmkdVsockAccept() {
 uint64_t ArcVm::DeflateBalloonOnLmkd(int oom_score_adj, uint64_t proc_size) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   uint64_t freed_space = 0;
-  if (is_aggressive_balloon_enabled_) {
+  if (aggressive_balloon_timer_->IsRunning()) {
     if (oom_score_adj <= kPlatformPerceptibleMaxOmmScoreAdjValue) {
       // Load the latest actual balloon size. LMKD may notify multiple process
       // in a very short period and balloon size target can be not reflected to

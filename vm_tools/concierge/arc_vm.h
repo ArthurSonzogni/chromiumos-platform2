@@ -252,10 +252,11 @@ class ArcVm final : public VmBaseImpl {
   std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
-  bool is_aggressive_balloon_enabled_ = false;
-  uint64_t aggressive_balloon_target_ = 0;
-  AggressiveBalloonCallback aggressive_balloon_callback_;
-  std::unique_ptr<base::RepeatingTimer> aggressive_balloon_timer_;
+  uint64_t aggressive_balloon_target_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
+  AggressiveBalloonCallback aggressive_balloon_callback_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  std::unique_ptr<base::RepeatingTimer> aggressive_balloon_timer_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 };
 
 }  // namespace concierge

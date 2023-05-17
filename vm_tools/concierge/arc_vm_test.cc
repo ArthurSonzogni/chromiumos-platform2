@@ -989,31 +989,16 @@ TEST_F(ArcVmTest, DeflateBalloonOnLmkd) {
   ASSERT_FALSE(aggressive_balloon_timer_->IsRunning());
 }
 
-TEST_F(ArcVmTest, DeflateBalloonOnLmkdBalloonPolicyIsStillDisabled) {
+TEST_F(ArcVmTest, DeflateBalloonOnLmkdReenableBalloonPolicy) {
   FakeAggressiveBalloonCallback callback;
   SetBalloonStats(100 * MIB, 1024 * MIB);
   InitializeBalloonPolicy();
   vm_->InflateAggressiveBalloon(callback.Create());
-  vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue, 30 * MIB);
+  ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
+                                      30 * MIB),
+            30 * MIB);
   MemoryMargins margins;
-  ASSERT_FALSE(vm_->GetBalloonPolicy(margins, "arcvm"));
-}
-
-TEST_F(ArcVmTest, DeflateBalloonOnLmkdTwice) {
-  FakeAggressiveBalloonCallback callback;
-  SetBalloonStats(100 * MIB, 1024 * MIB);
-  vm_->InflateAggressiveBalloon(callback.Create());
-  ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
-                                      30 * MIB),
-            30 * MIB);
-  SetBalloonStats(90 * MIB, 1024 * MIB);
-  ASSERT_EQ(vm_->DeflateBalloonOnLmkd(kPlatformPerceptibleMaxOmmScoreAdjValue,
-                                      30 * MIB),
-            30 * MIB);
-  ASSERT_EQ(callback.counter_, 1);
-  ASSERT_EQ(FakeCrosvmControl::Get()->target_balloon_size_, 60 * MIB);
-  ASSERT_EQ(FakeCrosvmControl::Get()->count_set_balloon_size_, 2);
-  ASSERT_FALSE(aggressive_balloon_timer_->IsRunning());
+  EXPECT_TRUE(vm_->GetBalloonPolicy(margins, "arcvm"));
 }
 
 TEST_F(ArcVmTest, DeflateBalloonOnLmkdNotPerceptibleProcess) {
