@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -674,10 +673,7 @@ def _build_derived_power_prefs(config: Config) -> dict:
             "keyboard-backlight-user-steps"
         ] = hw_features.keyboard.backlight_user_steps
 
-    if (
-        light_sensor.lid_lightsensor == present
-        or light_sensor.base_lightsensor == present
-    ):
+    if present in (light_sensor.lid_lightsensor, light_sensor.base_lightsensor):
         if hw_features.keyboard.als_steps:
             _check_lux_threshold(
                 [step.lux_threshold for step in hw_features.keyboard.als_steps],
@@ -2049,7 +2045,7 @@ class _AudioConfigBuilder:
         )
 
     def _build_suffix(self, card_config, config_type="ucm"):
-        if config_type != "ucm" and config_type != "cras":
+        if config_type not in ("ucm", "cras"):
             raise Exception("Not supported config type.")
 
         suffix_format = getattr(
@@ -3524,7 +3520,7 @@ def hex_8bit(value):
     """
 
     if value > 0xFF or value < 0:
-        raise Exception("Sar file 8bit value %s out of range" % value)
+        raise Exception(f"Sar file 8bit value {value} out of range")
     return value.to_bytes(1, "little")
 
 
@@ -3539,7 +3535,7 @@ def hex_16bit(value):
     """
 
     if value > 0xFFFF or value < 0:
-        raise Exception("Sar file 16bit value %s out of range" % value)
+        raise Exception(f"Sar file 16bit value {value} out of range")
     return value.to_bytes(2, "little")
 
 
@@ -3554,7 +3550,7 @@ def hex_32bit(value):
     """
 
     if value > 0xFFFFFFFF or value < 0:
-        raise Exception("Sar file 32bit value %s out of range" % value)
+        raise Exception(f"Sar file 32bit value {value} out of range")
     return value.to_bytes(4, "little")
 
 
@@ -3593,7 +3589,7 @@ def wrds_ewrd_encode(sar_table_config):
                 + hex_8bit(tpc.limit_6g_5)
             )
         else:
-            raise Exception("ERROR: Invalid power table revision " % revision)
+            raise Exception(f"ERROR: Invalid power table revision {revision}")
         return data
 
     def is_zero_filled(databuffer):
@@ -3642,8 +3638,7 @@ def wrds_ewrd_encode(sar_table_config):
         return bytearray(0)
     else:
         raise Exception(
-            "ERROR: Invalid power table revision "
-            % sar_table_config.sar_table_version
+            f"ERROR: Invalid power table revision {sar_table_config.sar_table_version}"
         )
 
     if is_zero_filled(sar_table):
@@ -3695,7 +3690,7 @@ def wgds_encode(wgds_config):
                 + hex_8bit(offsets.offset_6g_a)
                 + hex_8bit(offsets.offset_6g_b)
             )
-        raise Exception("ERROR: Invalid geo offset table revision " % revision)
+        raise Exception(f"ERROR: Invalid geo offset table revision {revision}")
 
     subbands_count = 0
     offsets_count = 3
@@ -3707,8 +3702,7 @@ def wgds_encode(wgds_config):
         return bytearray(0)
     else:
         raise Exception(
-            "ERROR: Invalid geo offset table revision "
-            % wgds_config.wgds_version
+            f"ERROR: Invalid geo offset table revision {wgds_config.wgds_version}"
         )
 
     return (
@@ -3755,17 +3749,14 @@ def antgain_encode(ant_gain_config):
                 + hex_8bit(gains.ant_gain_6g_5)
             )
         raise Exception(
-            "ERROR: Invalid antenna gain table revision " % revision
+            f"ERROR: Invalid antenna gain table revision {revision}"
         )
 
     chain_count = 2
     bands_count = 0
     if ant_gain_config.ant_table_version == 0:
         bands_count = 5
-    elif (
-        ant_gain_config.ant_table_version == 1
-        or ant_gain_config.ant_table_version == 2
-    ):
+    elif ant_gain_config.ant_table_version in (1, 2):
         bands_count = 11
     else:
         return bytearray(0)
@@ -3794,7 +3785,7 @@ def wtas_encode(wtas_config):
     """
 
     if wtas_config.tas_list_size > 16:
-        raise Exception("Invalid deny list size " % wtas_config.tas_list_size)
+        raise Exception(f"Invalid deny list size {wtas_config.tas_list_size}")
 
     if wtas_config.sar_avg_version == 0xFFFF:
         return bytearray(0)
@@ -3823,7 +3814,7 @@ def wtas_encode(wtas_config):
         )
 
     raise Exception(
-        "Invalid time average table revision " % wtas_config.sar_avg_version
+        f"Invalid time average table revision {wtas_config.sar_avg_version}"
     )
 
 
