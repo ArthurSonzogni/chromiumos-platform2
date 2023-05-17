@@ -1383,6 +1383,15 @@ bool InitializeTest(int* argc,
   base::FilePath camera_hal_path =
       cmd_line->GetSwitchValuePath("camera_hal_path");
   int facing = GetCmdLineTestCameraFacing(*cmd_line);
+  if (!camera_hal_path.empty() &&
+      !cmd_line->GetSwitchValueASCII("connect_to_camera_service").empty()) {
+    LOGF(ERROR) << "Cannot specify both --camera_hal_path and "
+                   "--connect_to_camera_service.";
+    return false;
+  }
+  bool connect_to_camera_service =
+      camera_hal_path.empty() ? GetCmdLineTestConnectToCameraService(*cmd_line)
+                              : false;
 
   if (facing != -ENOENT) {
     if (facing == -EINVAL) {
@@ -1406,7 +1415,7 @@ bool InitializeTest(int* argc,
     }
   }
 
-  if (!GetCmdLineTestConnectToCameraService(*cmd_line)) {
+  if (!connect_to_camera_service) {
     // Open camera HAL and get module
     if (facing != -ENOENT) {
       camera3_test::GetModuleThread().Start();
