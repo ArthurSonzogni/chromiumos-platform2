@@ -128,6 +128,21 @@ const DeviceID kDualShock4BT = {
 const DeviceID kXboxSeriesXBT = {
     .vendor = kXboxVendor, .product = 0xB13, .version = 0x513};
 
+const DeviceID kXboxOneSOldBT = {
+    .vendor = kXboxVendor, .product = 0x2E0, .version = 0x903};
+
+const DeviceID kXboxOneS2016BT = {
+    .vendor = kXboxVendor, .product = 0x2FD, .version = 0x903};
+
+const DeviceID kXboxOneSUpdatedBT = {
+    .vendor = kXboxVendor, .product = 0xB20, .version = 0x517};
+
+const DeviceID kXboxAdaptiveBT = {
+    .vendor = kXboxVendor, .product = 0xB21, .version = 0x511};
+
+const DeviceID kXboxElite2BT = {
+    .vendor = kXboxVendor, .product = 0xB22, .version = 0x511};
+
 // Mappings from the input event of a given gamepad (key) to the
 // appropriate output event (value). These mappings are intended to maintain
 // the locality of a gamepad; i.e the left face button should map to a
@@ -203,6 +218,9 @@ const std::unordered_map<uint32_t, uint32_t> kDualShock4Mapping = {
 // - Stratus Duo (BT)
 // - Stratus + (BT)
 // - Xbox Series X (BT)
+// - Xbox One S (updated firmware) (BT)
+// - Xbox Adaptive (BT)
+// - Xbox Elite 2 (BT)
 const std::unordered_map<uint32_t, uint32_t> kAxisQuirkMapping = {
     // Left Joystick
     {ABS_X, ABS_X},
@@ -233,6 +251,70 @@ const std::unordered_map<uint32_t, uint32_t> kAxisQuirkMapping = {
     {BTN_MODE, BTN_MODE},
 };
 
+// Xbox One S (BT) - Old firmware.
+// Note: this mapping is based off of a mapping from another feature
+// and has not been explicitly tested. See b/277829347.
+const std::unordered_map<uint32_t, uint32_t> kXboxOneSOldMapping = {
+    // Left Joystick
+    {ABS_X, ABS_X},
+    {ABS_Y, ABS_Y},
+    // Right Joystick
+    {ABS_RX, ABS_RX},
+    {ABS_RY, ABS_RY},
+    // Joystick press
+    {BTN_TL2, BTN_THUMBL},
+    {BTN_TR2, BTN_THUMBR},
+    // DPad
+    {ABS_HAT0X, ABS_HAT0X},
+    {ABS_HAT0Y, ABS_HAT0Y},
+    // Face Buttons
+    {BTN_A, BTN_A},
+    {BTN_B, BTN_B},
+    {BTN_C, BTN_X},
+    {BTN_X, BTN_Y},
+    // Left bumper and trigger
+    {BTN_Y, BTN_TL},
+    {ABS_Z, ABS_Z},
+    // Right bumper and trigger
+    {BTN_Z, BTN_TR},
+    {ABS_RZ, ABS_RZ},
+    // Menu buttons
+    {BTN_TL, BTN_SELECT},
+    {BTN_TR, BTN_START},
+    {0x8b, BTN_MODE},
+};
+
+// Xbox One S (BT) - 2016 firmware.
+const std::unordered_map<uint32_t, uint32_t> kXboxOneS2016Mapping = {
+    // Left Joystick
+    {ABS_X, ABS_X},
+    {ABS_Y, ABS_Y},
+    // Right Joystick
+    {ABS_Z, ABS_RX},
+    {ABS_RZ, ABS_RY},
+    // Joystick press
+    {BTN_THUMBL, BTN_THUMBL},
+    {BTN_THUMBR, BTN_THUMBR},
+    // DPad
+    {ABS_HAT0X, ABS_HAT0X},
+    {ABS_HAT0Y, ABS_HAT0Y},
+    // Face Buttons
+    {BTN_A, BTN_A},
+    {BTN_B, BTN_B},
+    {BTN_X, BTN_X},
+    {BTN_Y, BTN_Y},
+    // Left bumper and trigger
+    {BTN_TL, BTN_TL},
+    {ABS_BRAKE, ABS_Z},
+    // Right bumper and trigger
+    {BTN_TR, BTN_TR},
+    {ABS_GAS, ABS_RZ},
+    // Menu buttons
+    {KEY_BACK, BTN_SELECT},
+    {BTN_START, BTN_START},
+    {KEY_HOMEPAGE, BTN_MODE},
+};
+
 // Map of devices to their respctive input remappings.
 const std::unordered_map<DeviceID,
                          const std::unordered_map<uint32_t, uint32_t>*>
@@ -249,6 +331,15 @@ const std::unordered_map<DeviceID,
         {kDualShock4USB, &kDualShock4Mapping},
         {kDualShock4BT, &kDualShock4Mapping},
         {kXboxSeriesXBT, &kAxisQuirkMapping},
+        {kXboxOneSOldBT, &kXboxOneSOldMapping},
+        {kXboxOneS2016BT, &kXboxOneS2016Mapping},
+        {kXboxOneSUpdatedBT, &kAxisQuirkMapping},
+        // These mappings are inferred to be the same based on the gamepad api
+        // mappings.
+        // See:
+        // https://source.chromium.org/chromium/chromium/src/+/refs/heads/main:device/gamepad/gamepad_standard_mappings_linux.cc;l=968
+        {kXboxAdaptiveBT, &kAxisQuirkMapping},
+        {kXboxElite2BT, &kAxisQuirkMapping},
 };
 
 // Note: the majority of protocol errors are treated as non-fatal, and
