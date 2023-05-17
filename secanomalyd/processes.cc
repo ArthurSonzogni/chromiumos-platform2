@@ -4,15 +4,23 @@
 
 #include "secanomalyd/processes.h"
 
+#include <dirent.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 #include <algorithm>
+#include <cstddef>
+#include <cstdio>
 #include <optional>
 #include <string>
 
+#include <absl/cleanup/cleanup.h>
 #include <base/files/file_path.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece_forward.h>
 #include <base/strings/string_split.h>
@@ -29,14 +37,39 @@ namespace {
 constexpr char kInitExecutable[] = "/sbin/init";
 const base::FilePath kProcPathBase("/proc");
 constexpr char kProcSubdirPattern[] = "[0-9]*";
-constexpr char kProcStatusFile[] = "status";
-constexpr char kProcCmdlineFile[] = "cmdline";
-constexpr char kProcNsPidPath[] = "ns/pid";
-constexpr char kProcNsMntPath[] = "ns/mnt";
+const base::FilePath kProcStatusFile("status");
+const base::FilePath kProcCmdlineFile("cmdline");
+const base::FilePath kProcNsPidPath("ns/pid");
+const base::FilePath kProcNsMntPath("ns/mnt");
 static constexpr LazyRE2 kProcNsPattern = {R"([a-z]+:\[(\d+)\])"};
 constexpr char kSecCompModeDisabled[] = "0";
 // SECCOMP_MODE_STRICT is 1.
 // SECCOMP_MODE_FILTER is 2.
+
+// Reads a file under a directory, given the FD for the directory. This is
+// useful for when the OS reuses a PID, in which case the underlying FD becomes
+// invalidated and the process is skipped.
+static bool ReadFileRelativeToDirFD(const int dir_fd,
+                                    const base::FilePath& filename,
+                                    std::string* content_ptr) {
+  int fd = HANDLE_EINTR(openat(dir_fd, filename.value().c_str(), O_RDONLY));
+  if (fd == -1) {
+    PLOG(ERROR) << "openat(" << filename << ") failed";
+    return false;
+  }
+
+  FILE* fs = fdopen(fd, "r");
+  if (!fs) {
+    PLOG(ERROR) << "Failed to obtain FD for " << filename << " file";
+    return false;
+  }
+
+  if (!base::ReadStreamToString(fs, content_ptr)) {
+    LOG(ERROR) << "ReadStreamToString failed on " << filename;
+    return false;
+  }
+  return true;
+}
 
 // Kernel arg and env lists use '\0' to delimit elements.
 static std::string SafeTransFromArgvEnvp(const std::string cmdline) {
@@ -74,30 +107,35 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
   SandboxStatus sandbox_status;
   sandbox_status.reset();
 
-  bool cmdline_file_read;
-  std::string status_file_content, cmdline_file_content;
-
-  const base::FilePath status_file_path = pid_path.Append(kProcStatusFile);
-  const base::FilePath cmdline_file_path = pid_path.Append(kProcCmdlineFile);
-  const base::FilePath pid_ns_path = pid_path.Append(kProcNsPidPath);
-  const base::FilePath mnt_ns_path = pid_path.Append(kProcNsMntPath);
-
   // Fail if we cannot parse a PID from the supplied path.
   if (!base::StringToInt(pid_path.BaseName().value(), &pid)) {
     LOG(ERROR) << "Could not parse a PID from path " << pid_path;
     return std::nullopt;
   }
 
-  // Fail if we cannot read the status file, since just a PID is not useful.
-  if (!base::ReadFileToString(status_file_path, &status_file_content)) {
+  DIR* pid_dir_ptr = opendir(pid_path.value().c_str());
+  if (!pid_dir_ptr) {
+    PLOG(ERROR) << "opendir(" << pid_path << ") failed";
     return std::nullopt;
   }
 
-  // Reads the rest of the process files before processing any content.
-  cmdline_file_read =
-      base::ReadFileToString(cmdline_file_path, &cmdline_file_content);
-  pidns = GetNsFromPath(pid_ns_path);
-  mntns = GetNsFromPath(mnt_ns_path);
+  absl::Cleanup close_dir = [=] {
+    if (closedir(pid_dir_ptr) == -1)
+      PLOG(ERROR) << "Failed to close " << pid_path;
+  };
+
+  int pid_dir_fd = HANDLE_EINTR(dirfd(pid_dir_ptr));
+  if (pid_dir_fd == -1) {
+    LOG(ERROR) << "Failed to obtain FD for " << pid_path;
+    return std::nullopt;
+  }
+
+  // Fail if we cannot read the status file, since just a PID is not useful.
+  std::string status_file_content;
+  if (!ReadFileRelativeToDirFD(pid_dir_fd, kProcStatusFile,
+                               &status_file_content)) {
+    return std::nullopt;
+  }
 
   // The /proc/pid/status file follows this format:
   // Attribute:\tValue\nAttribute:\tValue\n...
@@ -122,14 +160,24 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
       sandbox_status.set(kSecCompBit);
   }
 
-  if (!cmdline_file_read || cmdline_file_content.empty()) {
-    // If there are no args, we set `args` to be be the command name, but
-    // enclosed in square brackets. This is to follow the `ps` convention, and
-    // to avoid having empty lines in the list of processes in crash reports.
-    args = base::StringPrintf("[%s]", comm.c_str());
-  } else {
-    args = SafeTransFromArgvEnvp(cmdline_file_content);
+  // Fail if we cannot read the status file, since just a PID is not useful.
+  std::string cmdline_file_content;
+  if (ReadFileRelativeToDirFD(pid_dir_fd, kProcCmdlineFile,
+                              &cmdline_file_content)) {
+    // Reads the rest of the process files before processing any content.
+
+    if (cmdline_file_content.empty()) {
+      // If there are no args, we set `args` to be be the command name, but
+      // enclosed in square brackets. This is to follow the `ps` convention, and
+      // to avoid having empty lines in the list of processes in crash reports.
+      args = base::StringPrintf("[%s]", comm.c_str());
+    } else {
+      args = SafeTransFromArgvEnvp(cmdline_file_content);
+    }
   }
+
+  pidns = GetNsFromPath(pid_path.Append(kProcNsPidPath));
+  mntns = GetNsFromPath(pid_path.Append(kProcNsMntPath));
 
   return ProcEntry(pid, pidns, mntns, comm, args, sandbox_status);
 }
