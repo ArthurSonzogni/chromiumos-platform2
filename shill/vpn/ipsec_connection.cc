@@ -117,16 +117,16 @@ constexpr char kTPMDefaultPin[] = "111111";
 // https://wiki.strongswan.org/projects/strongswan/wiki/Strongswanconf
 class StrongSwanConfSection {
  public:
-  explicit StrongSwanConfSection(const std::string& name) : name_(name) {}
+  explicit StrongSwanConfSection(base::StringPiece name) : name_(name) {}
 
-  StrongSwanConfSection* AddSection(const std::string& name) {
+  StrongSwanConfSection* AddSection(base::StringPiece name) {
     auto section = new StrongSwanConfSection(name);
     sections_.emplace_back(section);
     return section;
   }
 
-  void AddKeyValue(const std::string& key, const std::string& value) {
-    key_values_[key] = value;
+  void AddKeyValue(base::StringPiece key, base::StringPiece value) {
+    key_values_.insert_or_assign(std::string(key), std::string(value));
   }
 
   std::string Format(int indent_base = 0) const {
