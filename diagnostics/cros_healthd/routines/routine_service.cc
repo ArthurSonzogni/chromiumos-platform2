@@ -18,7 +18,10 @@ namespace diagnostics {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-RoutineService::RoutineService(Context* context) : context_(context) {}
+RoutineService::RoutineService(Context* context) : context_(context) {
+  CHECK(context_);
+  ground_truth_ = std::make_unique<GroundTruth>(context_);
+}
 
 RoutineService::~RoutineService() = default;
 
@@ -76,10 +79,8 @@ void RoutineService::CreateRoutine(
 void RoutineService::IsRoutineSupported(
     mojom::RoutineArgumentPtr routine_arg,
     mojom::CrosHealthdRoutinesService::IsRoutineSupportedCallback callback) {
-  // TODO(b/283024642): Implement the real logic of this method. For now, we
-  // just assume that all the routines are available.
-  std::move(callback).Run(
-      mojom::SupportStatus::NewSupported(mojom::Supported::New()));
+  ground_truth_->IsRoutineSupported(std::move(routine_arg),
+                                    std::move(callback));
 }
 
 void RoutineService::AddRoutine(

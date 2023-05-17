@@ -13,6 +13,7 @@
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
@@ -152,6 +153,34 @@ void GroundTruth::IsEventSupported(
     mojom::EventCategoryEnum category,
     mojom::CrosHealthdEventService::IsEventSupportedCallback callback) {
   auto status = GetEventSupportStatus(category);
+  std::move(callback).Run(std::move(status));
+}
+
+mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
+    mojom::RoutineArgumentPtr routine_arg) {
+  switch (routine_arg->which()) {
+    case mojom::RoutineArgument::Tag::kMemory:
+      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+    case mojom::RoutineArgument::Tag::kAudioDriver:
+      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+    case mojom::RoutineArgument::Tag::kCpuStress:
+      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+    case mojom::RoutineArgument::Tag::kUfsLifetime:
+      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+    case mojom::RoutineArgument::Tag::kDiskRead:
+      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+    case mojom::RoutineArgument::Tag::kCpuCache:
+      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+    case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
+      return mojom::SupportStatus::NewException(mojom::Exception::New(
+          mojom::Exception::Reason::kUnexpected, "Got kUnrecognizedArgument"));
+  }
+}
+
+void GroundTruth::IsRoutineSupported(
+    mojom::RoutineArgumentPtr routine_arg,
+    mojom::CrosHealthdRoutinesService::IsRoutineSupportedCallback callback) {
+  auto status = GetRoutineSupportStatus(std::move(routine_arg));
   std::move(callback).Run(std::move(status));
 }
 

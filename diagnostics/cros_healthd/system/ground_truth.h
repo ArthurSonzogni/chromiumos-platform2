@@ -11,6 +11,7 @@
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
@@ -26,6 +27,12 @@ class GroundTruth final {
   void IsEventSupported(ash::cros_healthd::mojom::EventCategoryEnum category,
                         ash::cros_healthd::mojom::CrosHealthdEventService::
                             IsEventSupportedCallback callback);
+  ash::cros_healthd::mojom::SupportStatusPtr GetRoutineSupportStatus(
+      ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg);
+  void IsRoutineSupported(
+      ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
+      ash::cros_healthd::mojom::CrosHealthdRoutinesService::
+          IsRoutineSupportedCallback callback);
 
   // cros_config related functions.
   std::string FormFactor();
