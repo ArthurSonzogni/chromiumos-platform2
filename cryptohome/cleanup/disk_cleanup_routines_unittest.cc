@@ -22,6 +22,7 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_homedirs.h"
+#include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/username.h"
 
 using ::testing::_;
@@ -367,6 +368,35 @@ TEST_P(DiskCleanupRoutinesTest, DeleteUserProfile) {
 TEST_P(DiskCleanupRoutinesTest, DeleteUserProfileFail) {
   EXPECT_CALL(homedirs_, Remove(kTestUser)).WillOnce(Return(false));
   EXPECT_FALSE(routines_.DeleteUserProfile(kTestUser));
+}
+
+TEST_P(DiskCleanupRoutinesTest, DeleteDaemonStoreCache) {
+  base::FilePath mount;
+  if (ShouldTestEcryptfs()) {
+    mount = UserPath(kTestUser).Append(kEcryptfsVaultDir);
+  } else {
+    mount = UserPath(kTestUser).Append(kMountDir);
+  }
+  base::FilePath root = mount.Append(kRootHomeSuffix);
+  base::FilePath daemon_store_cache = root.Append(kDaemonStoreCacheDir);
+  base::FilePath daemon_one = daemon_store_cache.Append("daemon-one");
+  base::FilePath daemon_two = daemon_store_cache.Append("daemon-two");
+
+  std::vector<base::FilePath> allDaemonPaths{daemon_one, daemon_two};
+  ExpectTrackedDirectoryEnumeration({root});
+  ExpectTrackedDirectoryEnumeration({daemon_store_cache});
+
+  EXPECT_CALL(platform_, GetFileEnumerator(daemon_store_cache, false, _))
+      .WillRepeatedly(
+          Return(CreateMockFileEnumeratorWithEntries(allDaemonPaths)));
+
+  // Don't delete anything else.
+  EXPECT_CALL(platform_, DeletePathRecursively(_)).Times(0);
+
+  for (const auto& entry : allDaemonPaths)
+    EXPECT_CALL(platform_, DeletePathRecursively(entry)).WillOnce(Return(true));
+
+  routines_.DeleteDaemonStoreCache(kTestUser);
 }
 
 }  // namespace cryptohome

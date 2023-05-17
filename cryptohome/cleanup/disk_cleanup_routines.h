@@ -33,6 +33,8 @@ class DiskCleanupRoutines {
   virtual bool DeleteUserAndroidCache(const ObfuscatedUsername& obfuscated);
   // Remove the entire user profile.
   virtual bool DeleteUserProfile(const ObfuscatedUsername& obfuscated);
+  // Remove daemon-store-cache directory contents.
+  virtual bool DeleteDaemonStoreCache(const ObfuscatedUsername& obfuscated);
 
  private:
   base::FilePath GetShadowDir(const ObfuscatedUsername& obfuscated) const;

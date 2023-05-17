@@ -233,6 +233,7 @@ void DiskCleanup::set_routines_for_testing(DiskCleanupRoutines* routines) {
   routines_.reset(routines);
 }
 
+// TODO(vsavu): Split up this function
 bool DiskCleanup::FreeDiskSpaceInternal() {
   // If ephemeral policies are set, remove all ephemeral cryptohomes except
   // those currently mounted or belonging to the owner.
@@ -358,6 +359,53 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
 
   bool early_stop = false;
 
+  // Purge up daemon store cache.
+  old_free_disk_space = free_disk_space;
+  for (auto dir = normal_cleanup_homedirs.rbegin();
+       dir != normal_cleanup_homedirs.rend(); dir++) {
+    if (!routines_->DeleteDaemonStoreCache(dir->obfuscated))
+      result = false;
+
+    if (HasTargetFreeSpace()) {
+      early_stop = true;
+      break;
+    }
+  }
+  free_disk_space = AmountOfFreeDiskSpace();
+  const int64_t freed_daemon_store_cache_space =
+      free_disk_space.value() - old_free_disk_space.value();
+  // Report only if something was deleted.
+  if (freed_daemon_store_cache_space > 0) {
+    ReportFreedDaemonStoreCacheDiskSpaceInMb(freed_daemon_store_cache_space /
+                                             1024 / 1024);
+  }
+
+  if (!early_stop)
+    last_normal_disk_cleanup_complete_ = platform_->GetCurrentTime();
+
+  switch (GetFreeDiskSpaceState(free_disk_space)) {
+    case DiskCleanup::FreeSpaceState::kAboveTarget:
+      ReportDiskCleanupProgress(
+          DiskCleanupProgress::kDaemonStoreCacheCleanedAboveTarget);
+      return result;
+    case DiskCleanup::FreeSpaceState::kAboveThreshold:
+    case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
+      // Do not call ReportDiskCleanupProgress if cleaned_over_minimum was set
+      // by previous clean up routine (i.e. gcache cleanup).
+      if (!cleaned_over_minimum) {
+        ReportDiskCleanupProgress(
+            DiskCleanupProgress::kDaemonStoreCacheCleanedAboveMinimum);
+      }
+      return result;
+    case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
+    case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
+      // Continue cleanup.
+      break;
+    case DiskCleanup::FreeSpaceState::kError:
+      LOG(ERROR) << "Failed to get the amount of free space";
+      return false;
+  }
+
   // Purge Dmcrypt cache vaults.
   for (auto dir = normal_cleanup_homedirs.rbegin();
        dir != normal_cleanup_homedirs.rend(); dir++) {
@@ -394,10 +442,8 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
       return result;
     case DiskCleanup::FreeSpaceState::kAboveThreshold:
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
-      if (!cleaned_over_minimum) {
-        ReportDiskCleanupProgress(
-            DiskCleanupProgress::kCacheVaultsCleanedAboveMinimum);
-      }
+      ReportDiskCleanupProgress(
+          DiskCleanupProgress::kCacheVaultsCleanedAboveMinimum);
       return result;
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
     case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:

@@ -273,4 +273,28 @@ bool DiskCleanupRoutines::RemoveAllRemovableFiles(const FilePath& dir) {
   return ret;
 }
 
+bool DiskCleanupRoutines::DeleteDaemonStoreCache(
+    const ObfuscatedUsername& obfuscated) {
+  FilePath user_dir = GetShadowDir(obfuscated);
+
+  const FilePath root_home_dir = FilePath(kRootHomeSuffix);
+
+  FilePath daemon_store_cache;
+  if (!GetTrackedDirectory(
+          user_dir, FilePath(kRootHomeSuffix).Append(kDaemonStoreCacheDir),
+          &daemon_store_cache)) {
+    LOG(ERROR) << "Failed to locate Daemon Store Cache directory";
+    return false;
+  }
+
+  VLOG(1) << "Deleting Daemon Store Cache " << daemon_store_cache.value();
+  // Daemon store cache dirs that can be completely removed on low disk space.
+  if (!DeleteDirectoryContents(daemon_store_cache)) {
+    LOG(ERROR) << "Failed to remove Daemon Store Cache directory";
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace cryptohome

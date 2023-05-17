@@ -38,6 +38,8 @@ constexpr char kCryptohomeGCacheFreedDiskSpaceInMbHistogram[] =
     "Cryptohome.GCache.FreedDiskSpaceInMb";
 constexpr char kCryptohomeCacheVaultFreedDiskSpaceInMbHistogram[] =
     "Cryptohome.FreedCacheVaultDiskSpaceInMb";
+constexpr char kCryptohomeDaemonStoreCacheFreedDiskSpaceInMbHistogram[] =
+    "Cryptohome.FreedDaemonStoreCacheDiskSpaceInMb";
 constexpr char kCryptohomeFreeDiskSpaceTotalTimeHistogram[] =
     "Cryptohome.FreeDiskSpaceTotalTime2";
 constexpr char kCryptohomeLoginDiskCleanupTotalTime[] =
@@ -406,6 +408,16 @@ void ReportFreedGCacheDiskSpaceInMb(int mb) {
   }
   g_metrics->SendToUMA(kCryptohomeGCacheFreedDiskSpaceInMbHistogram, mb,
                        10 /* 10 MiB minimum */, 1024 * 10 /* 10 GiB maximum */,
+                       50 /* number of buckets */);
+}
+
+void ReportFreedDaemonStoreCacheDiskSpaceInMb(int mb) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendToUMA(kCryptohomeDaemonStoreCacheFreedDiskSpaceInMbHistogram,
+                       mb, 10 /* 10 MiB minimum */,
+                       1024 * 10 /* 10 GiB maximum */,
                        50 /* number of buckets */);
 }
 
