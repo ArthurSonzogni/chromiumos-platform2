@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/strings/string_piece.h>
 #include <brillo/type_list.h>
 #include <brillo/type_name_undecorate.h>
 #include <brillo/variant_dictionary.h>
@@ -54,8 +55,8 @@ class KeyValueStore {
   //
   // Compare to PropertyStore, which enables a class to (selectively)
   // expose its instance members as properties accessible via
-  // RPC. (RPC support for ProperyStore is implemented in a
-  // protocol-specific adaptor. e.g. dbus_adpator.)
+  // RPC. (RPC support for PropertyStore is implemented in a
+  // protocol-specific adaptor. e.g. dbus_adaptor.)
   //
   // Implemented separately from PropertyStore, to avoid complicating
   // the PropertyStore interface. In particular, objects implementing the
@@ -76,21 +77,21 @@ class KeyValueStore {
   void CopyFrom(const KeyValueStore& b);
   bool IsEmpty() const;
 
-  void Remove(const std::string& name);
+  void Remove(base::StringPiece name);
 
-  bool ContainsVariant(const std::string& name) const;
-  const brillo::Any& GetVariant(const std::string& name) const;
-  void SetVariant(const std::string& name, const brillo::Any& value);
+  bool ContainsVariant(base::StringPiece name) const;
+  const brillo::Any& GetVariant(base::StringPiece name) const;
+  void SetVariant(base::StringPiece name, const brillo::Any& value);
 
   template <typename T, typename = brillo::EnableIfIsOneOf<T, KeyValueTypes>>
-  bool Contains(const std::string& name) const {
+  bool Contains(base::StringPiece name) const {
     return ContainsVariant(name) &&
            properties_.find(name)->second.IsTypeCompatible<T>();
   }
 
   template <typename T,
             typename brillo::EnableIfIsOneOfArithmetic<T, KeyValueTypes> = 0>
-  T Get(const std::string& name) const {
+  T Get(base::StringPiece name) const {
     const auto& value = GetVariant(name);
     CHECK(value.IsTypeCompatible<T>())
         << "for " << brillo::GetTypeTag<T>() << " property " << name;
@@ -99,7 +100,7 @@ class KeyValueStore {
 
   template <typename T,
             typename brillo::EnableIfIsOneOfNonArithmetic<T, KeyValueTypes> = 0>
-  const T& Get(const std::string& name) const {
+  const T& Get(base::StringPiece name) const {
     const auto& value = GetVariant(name);
     CHECK(value.IsTypeCompatible<T>())
         << "for " << brillo::GetTypeTag<T>() << " property " << name;
@@ -108,13 +109,13 @@ class KeyValueStore {
 
   template <typename T,
             typename brillo::EnableIfIsOneOfArithmetic<T, KeyValueTypes> = 0>
-  void Set(const std::string& name, T value) {
+  void Set(base::StringPiece name, T value) {
     SetVariant(name, brillo::Any(value));
   }
 
   template <typename T,
             typename brillo::EnableIfIsOneOfNonArithmetic<T, KeyValueTypes> = 0>
-  void Set(const std::string& name, const T& value) {
+  void Set(base::StringPiece name, const T& value) {
     SetVariant(name, brillo::Any(value));
   }
 
@@ -122,7 +123,7 @@ class KeyValueStore {
   // |default_value|.
   template <typename T,
             typename brillo::EnableIfIsOneOfArithmetic<T, KeyValueTypes> = 0>
-  T Lookup(const std::string& name, T default_value) const {
+  T Lookup(base::StringPiece name, T default_value) const {
     const auto it(properties_.find(name));
     if (it == properties_.end()) {
       return default_value;
@@ -134,7 +135,7 @@ class KeyValueStore {
 
   template <typename T,
             typename brillo::EnableIfIsOneOfNonArithmetic<T, KeyValueTypes> = 0>
-  T Lookup(const std::string& name, const T& default_value) const {
+  T Lookup(base::StringPiece name, const T& default_value) const {
     const auto it(properties_.find(name));
     if (it == properties_.end()) {
       return default_value;
@@ -147,7 +148,7 @@ class KeyValueStore {
   // Gets a value from KeyValueStore in std::optional. Returns std::nullopt if
   // the key does not exist
   template <typename T, typename = brillo::EnableIfIsOneOf<T, KeyValueTypes>>
-  std::optional<T> GetOptionalValue(const std::string& key) const {
+  std::optional<T> GetOptionalValue(base::StringPiece key) const {
     if (!Contains<T>(key)) {
       return std::nullopt;
     }
@@ -157,7 +158,7 @@ class KeyValueStore {
   // If |value| is not std::nullopt, updates the value for |key| to |value|;
   // otherwise, clears the value for |key|.
   template <typename T, typename = brillo::EnableIfIsOneOf<T, KeyValueTypes>>
-  void SetFromOptionalValue(const std::string& key, std::optional<T> value) {
+  void SetFromOptionalValue(base::StringPiece key, std::optional<T> value) {
     if (value.has_value()) {
       Set<T>(key, value.value());
     } else {
@@ -169,7 +170,7 @@ class KeyValueStore {
   // the key does not exist or the value is empty.
   using ContainerTypes = brillo::TypeList<std::string, Strings>;
   template <typename T, typename = brillo::EnableIfIsOneOf<T, ContainerTypes>>
-  std::optional<T> GetOptionalValueWithoutEmpty(const std::string& key) const {
+  std::optional<T> GetOptionalValueWithoutEmpty(base::StringPiece key) const {
     if (Lookup<T>(key, T{}).empty()) {
       return std::nullopt;
     }
