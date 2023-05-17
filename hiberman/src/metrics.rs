@@ -52,6 +52,19 @@ pub enum DurationMetricUnit {
     Hours,
 }
 
+/// Top level events of the hibernate cycle.
+pub enum HibernateEvent {
+    // These values are persisted to logs. Entries should not be renumbered and
+    // numeric values should never be reused.
+    SuspendAttempt = 0,
+    SuspendSuccess = 1,
+    SuspendFailure = 2,
+    ResumeAttempt = 3,
+    ResumeSuccess = 4,
+    ResumeFailure = 5,
+    Count = 6,
+}
+
 #[derive(Serialize, Deserialize)]
 enum HistogramType {
     Exponential,
@@ -199,6 +212,15 @@ impl MetricsLogger {
         };
 
         self.buf.push_back(entry);
+    }
+
+    /// Log a top-level event in the hibernate cycle.
+    pub fn log_event(&mut self, event: HibernateEvent) {
+        self.log_enum_metric(
+            "Platform.Hibernate.Event",
+            event as isize,
+            HibernateEvent::Count as isize - 1,
+        );
     }
 }
 

@@ -39,6 +39,7 @@ use crate::hiberutil::TimestampFile;
 use crate::metrics::log_hibernate_attempt;
 use crate::metrics::read_and_send_metrics;
 use crate::metrics::DurationMetricUnit;
+use crate::metrics::HibernateEvent;
 use crate::metrics::METRICS_LOGGER;
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
@@ -85,8 +86,12 @@ impl SuspendConductor {
 
         info!("Beginning hibernate");
 
+        log_metric_event(HibernateEvent::SuspendAttempt);
+
         if let Err(e) = self.hibernate_inner() {
             let _hibermeta_mount = self.volume_manager.mount_hibermeta()?;
+
+            log_metric_event(HibernateEvent::SuspendFailure);
 
             read_and_send_metrics();
 
@@ -144,6 +149,12 @@ impl SuspendConductor {
         prealloc_mem().context("Failed to preallocate memory for hibernate")?;
 
         let result = self.suspend_system(hibermeta_mount, redirect_guard);
+
+        if result.is_ok() {
+            log_metric_event(HibernateEvent::ResumeSuccess);
+        } else {
+            log_metric_event(HibernateEvent::SuspendFailure);
+        }
 
         let _hibermeta_mount = self.volume_manager.mount_hibermeta()?;
 
@@ -237,6 +248,8 @@ impl SuspendConductor {
             }
 
             let io_duration = start.elapsed();
+
+            log_metric_event(HibernateEvent::SuspendSuccess);
 
             {
                 let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
@@ -390,4 +403,10 @@ impl SuspendConductor {
             SuspendAbortReason::Count as isize - 1,
         );
     }
+}
+
+/// Logs a hibernate metric event.
+fn log_metric_event(event: HibernateEvent) {
+    let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+    metrics_logger.log_event(event);
 }

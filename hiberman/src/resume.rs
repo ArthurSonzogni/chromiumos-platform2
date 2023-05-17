@@ -40,6 +40,7 @@ use crate::hiberutil::ResumeOptions;
 use crate::hiberutil::TimestampFile;
 use crate::lvm::activate_physical_lv;
 use crate::metrics::read_and_send_metrics;
+use crate::metrics::HibernateEvent;
 use crate::metrics::METRICS_LOGGER;
 use crate::powerd::PowerdPendingResume;
 use crate::resume_dbus::{get_user_key, wait_for_resume_dbus_event, ResumeRequest};
@@ -60,6 +61,7 @@ const TPM_SEED_FILE: &str = "/run/hiberman/tpm_seed";
 pub struct ResumeConductor {
     options: ResumeOptions,
     stateful_block_path: String,
+    tried_to_resume: bool,
     timestamp_start: Duration,
 }
 
@@ -69,6 +71,7 @@ impl ResumeConductor {
         Ok(ResumeConductor {
             options: Default::default(),
             stateful_block_path: path_to_stateful_block()?,
+            tried_to_resume: false,
             timestamp_start: Duration::ZERO,
         })
     }
@@ -90,8 +93,14 @@ impl ResumeConductor {
 
         let result = self.resume_inner();
 
-        // If we get here resuming from hibernate failed and we continue to
+        // If we get here we are not resuming from hibernate and continue to
         // run the bootstrap system.
+
+        if self.tried_to_resume {
+            // We tried to resume, but did not succeed.
+            let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+            metrics_logger.log_event(HibernateEvent::ResumeFailure);
+        }
 
         // Move pending and future logs to syslog.
         redirect_log(HiberlogOut::Syslog);
@@ -142,6 +151,11 @@ impl ResumeConductor {
             return Err(e);
         }
 
+        {
+            let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
+            metrics_logger.log_event(HibernateEvent::ResumeAttempt);
+        }
+
         let hibermeta_mount = volume_manager.setup_hibermeta_lv(false)?;
 
         // Set up the snapshot device for resuming
@@ -162,7 +176,7 @@ impl ResumeConductor {
 
     /// Helper function to evaluate the hibernate cookie and decide whether or
     /// not to continue with resume.
-    fn decide_to_resume(&self) -> Result<()> {
+    fn decide_to_resume(&mut self) -> Result<()> {
         // If the cookie left by hibernate and updated by resume-init doesn't
         // indicate readiness, skip the resume unless testing manually.
         let cookie = get_hibernate_cookie(Some(&self.stateful_block_path))
@@ -170,7 +184,9 @@ impl ResumeConductor {
         let description = cookie_description(&cookie);
 
         if cookie == HibernateCookieValue::ResumeInProgress || self.options.dry_run {
-            if cookie != HibernateCookieValue::ResumeInProgress {
+            if cookie == HibernateCookieValue::ResumeInProgress {
+                self.tried_to_resume = true;
+            } else {
                 info!(
                     "Hibernate cookie was {}, continuing anyway due to --dry-run",
                     description
