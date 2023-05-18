@@ -25,13 +25,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
-#include "shill/logging.h"
-
 namespace shill {
-
-namespace Logging {
-static auto kModuleLogScope = ScopeLogger::kManager;
-}  // namespace Logging
 
 namespace {
 
@@ -71,7 +65,7 @@ ProcessManager* ProcessManager::GetInstance() {
 }
 
 void ProcessManager::Init() {
-  SLOG(2) << __func__;
+  VLOG(2) << __func__;
   CHECK(!async_signal_handler_);
   async_signal_handler_.reset(new brillo::AsynchronousSignalHandler());
   async_signal_handler_->Init();
@@ -80,7 +74,7 @@ void ProcessManager::Init() {
 }
 
 void ProcessManager::Stop() {
-  SLOG(2) << __func__;
+  VLOG(2) << __func__;
   CHECK(async_signal_handler_);
   process_reaper_.Unregister();
   async_signal_handler_.reset();
@@ -106,7 +100,7 @@ pid_t ProcessManager::StartProcess(
     const std::vector<std::pair<int, int>>& fds_to_bind,
     bool terminate_with_parent,
     ExitCallback exit_callback) {
-  SLOG(2) << __func__ << "(" << program.value() << ")";
+  VLOG(2) << __func__ << "(" << program.value() << ")";
 
   // Setup/create child process.
   std::unique_ptr<brillo::Process> process(new brillo::ProcessImpl());
@@ -182,7 +176,7 @@ pid_t ProcessManager::StartProcessInMinijailWithStdout(
 }
 
 bool ProcessManager::StopProcess(pid_t pid) {
-  SLOG(2) << __func__ << "(" << pid << ")";
+  VLOG(2) << __func__ << "(" << pid << ")";
 
   if (pending_termination_processes_.find(pid) !=
       pending_termination_processes_.end()) {
@@ -203,7 +197,7 @@ bool ProcessManager::StopProcess(pid_t pid) {
 }
 
 bool ProcessManager::StopProcessAndBlock(pid_t pid) {
-  SLOG(2) << __func__ << "(" << pid << ")";
+  VLOG(2) << __func__ << "(" << pid << ")";
 
   auto terminated_process = pending_termination_processes_.find(pid);
 
@@ -239,7 +233,7 @@ bool ProcessManager::StopProcessAndBlock(pid_t pid) {
 }
 
 bool ProcessManager::KillProcessWithTimeout(pid_t pid, bool kill_signal) {
-  SLOG(2) << __func__ << "(pid: " << pid << ")";
+  VLOG(2) << __func__ << "(pid: " << pid << ")";
 
   bool killed = false;
   if (KillProcess(pid, kill_signal ? SIGKILL : SIGTERM, &killed)) {
@@ -260,11 +254,11 @@ bool ProcessManager::KillProcessWithTimeout(pid_t pid, bool kill_signal) {
 }
 
 bool ProcessManager::KillProcess(pid_t pid, int signal, bool* killed) {
-  SLOG(2) << __func__ << "(pid: " << pid << ")";
+  VLOG(2) << __func__ << "(pid: " << pid << ")";
 
   if (kill(pid, signal) < 0) {
     if (errno == ESRCH) {
-      SLOG(2) << "Process " << pid << " has exited.";
+      VLOG(2) << "Process " << pid << " has exited.";
       *killed = true;
       return true;
     }
@@ -278,7 +272,7 @@ bool ProcessManager::WaitpidWithTimeout(pid_t pid,
                                         unsigned int sleep_ms,
                                         unsigned int upper_bound_ms,
                                         int tries) {
-  SLOG(2) << __func__ << "(pid: " << pid << ")";
+  VLOG(2) << __func__ << "(pid: " << pid << ")";
 
   while (tries-- > 0) {
     if (waitpid(pid, nullptr, WNOHANG) == pid) {
@@ -293,7 +287,7 @@ bool ProcessManager::WaitpidWithTimeout(pid_t pid,
 }
 
 bool ProcessManager::UpdateExitCallback(pid_t pid, ExitCallback new_callback) {
-  SLOG(2) << __func__ << "(pid: " << pid << ")";
+  VLOG(2) << __func__ << "(pid: " << pid << ")";
 
   const auto process_entry = watched_processes_.find(pid);
   if (process_entry == watched_processes_.end()) {
@@ -312,7 +306,7 @@ pid_t ProcessManager::StartProcessInMinijailWithPipesInternal(
     const std::map<std::string, std::string>& environment,
     const MinijailOptions& minijail_options,
     struct std_file_descriptors std_fds) {
-  SLOG(2) << __func__ << "(" << program.value() << ")";
+  VLOG(2) << __func__ << "(" << program.value() << ")";
 
   std::vector<char*> args;
   args.push_back(const_cast<char*>(program.value().c_str()));
@@ -415,7 +409,7 @@ void ProcessManager::OnProcessStdoutReadable(pid_t pid) {
 }
 
 void ProcessManager::OnProcessExited(pid_t pid, const siginfo_t& info) {
-  SLOG(2) << __func__ << "(pid: " << pid << ")";
+  VLOG(2) << __func__ << "(pid: " << pid << ")";
 
   // Invoke the exit callback if the process is being watched.
   auto watched_process = watched_processes_.find(pid);
@@ -437,7 +431,7 @@ void ProcessManager::OnProcessExited(pid_t pid, const siginfo_t& info) {
 }
 
 void ProcessManager::CheckProcessExitStateAndNotify(pid_t pid) {
-  SLOG(2) << __func__ << "(pid: " << pid << ")";
+  VLOG(2) << __func__ << "(pid: " << pid << ")";
 
   auto watched_process_it = watched_processes_.find(pid);
   CHECK(watched_process_it != watched_processes_.end());
@@ -466,7 +460,7 @@ void ProcessManager::CheckProcessExitStateAndNotify(pid_t pid) {
 
 void ProcessManager::ProcessTerminationTimeoutHandler(pid_t pid,
                                                       bool kill_signal) {
-  SLOG(2) << __func__ << "(pid: " << pid << ")";
+  VLOG(2) << __func__ << "(pid: " << pid << ")";
 
   CHECK(pending_termination_processes_.find(pid) !=
         pending_termination_processes_.end());
@@ -482,7 +476,7 @@ void ProcessManager::ProcessTerminationTimeoutHandler(pid_t pid,
 }
 
 bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
-  SLOG(2) << __func__ << "(pid: " << pid << ", "
+  VLOG(2) << __func__ << "(pid: " << pid << ", "
           << "use_sigkill: " << kill_signal << ")";
 
   int signal = (kill_signal) ? SIGKILL : SIGTERM;

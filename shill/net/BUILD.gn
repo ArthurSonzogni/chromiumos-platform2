@@ -92,8 +92,6 @@ write_deps("libshill-net_deps") {
 }
 
 net_sources = [
-  "../logging.cc",
-  "../scope_logger.cc",
   "attribute_list.cc",
   "byte_string.cc",
   "control_netlink_attribute.cc",
