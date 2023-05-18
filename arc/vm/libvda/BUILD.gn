@@ -9,7 +9,6 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":libvda",
-    ":libvda_gpu_unittest",
     ":libvda_pc",
   ]
 
@@ -113,27 +112,6 @@ if (use.test) {
       "//common-mk/testrunner",
     ]
   }
-}
-
-# Unit tests for the GPU VDA impl, to be executed by tast tests.
-executable("libvda_gpu_unittest") {
-  sources = [
-    "decode/test/decode_event_thread.cc",
-    "decode/test/decode_unittest_common.cc",
-    "decode/test/encoded_data_helper.cc",
-    "decode_gpu_test.cc",
-  ]
-
-  # Need to define UNIT_TEST for ShadowingAtExitManager.
-  defines = [ "UNIT_TEST" ]
-  ldflags = [ "-pthread" ]
-  configs += [ "//common-mk:test" ]
-  libs = [ "pthread" ]
-  pkg_deps = [
-    "gbm",
-    "libchrome-test",
-  ]
-  deps = [ ":libvda_source_set" ]
 }
 
 if (use.fuzzer) {
