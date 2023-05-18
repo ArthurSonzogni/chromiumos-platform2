@@ -18,6 +18,7 @@
 
 #include <base/base64.h>
 #include <base/check.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
@@ -518,16 +519,27 @@ void UMALogExternalDeviceAttached(MetricsLibrary* metrics,
                          static_cast<int>(UMADeviceSpeed::kMaxValue));
 }
 
-void StructuredMetricsExternalDeviceAttached(int VendorId,
-                                             std::string VendorName,
-                                             int ProductId,
-                                             std::string ProductName,
-                                             int DeviceClass) {
+void StructuredMetricsExternalDeviceAttached(
+    int VendorId,
+    std::string VendorName,
+    int ProductId,
+    std::string ProductName,
+    int DeviceClass,
+    std::vector<int64_t> InterfaceClass) {
   // Limit string length to prevent badly behaving device from creating huge
   // metrics packet.
   int string_len_limit = 200;
   VendorName = VendorName.substr(0, string_len_limit);
   ProductName = ProductName.substr(0, string_len_limit);
+
+  // In case the size of InterfaceClass exceed the max number of interfaces
+  // supported by the UsbDeviceInfo metrics, just slice the vector and report.
+  // The max length supported is large enough that this is quite unlikely.
+  int max_interface = metrics::structured::events::usb_device::UsbDeviceInfo::
+      GetInterfaceClassMaxLength();
+  if (InterfaceClass.size() > max_interface) {
+    InterfaceClass.resize(max_interface);
+  }
 
   metrics::structured::events::usb_device::UsbDeviceInfo()
       .SetVendorId(VendorId)
@@ -535,6 +547,7 @@ void StructuredMetricsExternalDeviceAttached(int VendorId,
       .SetProductId(ProductId)
       .SetProductName(ProductName)
       .SetDeviceClass(DeviceClass)
+      .SetInterfaceClass(std::move(InterfaceClass))
       .Record();
 }
 
@@ -1033,21 +1046,28 @@ int GetDeviceClass(base::FilePath normalized_devpath) {
     }
   }
 
-  std::string base_name = normalized_devpath.BaseName().value();
-  base::FilePath normalized_intfpath =
-      normalized_devpath.Append(base_name.append(":1.0"));
+  return 0;
+}
 
-  std::string intf_class;
-  int intf_class_int;
-  if (base::ReadFileToString(normalized_intfpath.Append("bInterfaceClass"),
-                             &intf_class)) {
+std::vector<int64_t> GetInterfaceClass(base::FilePath normalized_devpath) {
+  std::vector<int64_t> ret;
+  base::FileEnumerator enumerator(normalized_devpath, false,
+                                  base::FileEnumerator::DIRECTORIES);
+  for (auto intf_path = enumerator.Next(); !intf_path.empty();
+       intf_path = enumerator.Next()) {
+    std::string intf_class;
+    int64_t intf_class_int;
+    if (!base::ReadFileToString(intf_path.Append("bInterfaceClass"),
+                                &intf_class)) {
+      continue;
+    }
     base::TrimWhitespaceASCII(intf_class, base::TRIM_ALL, &intf_class);
-    if (base::HexStringToInt(intf_class, &intf_class_int)) {
-      return intf_class_int;
+    if (base::HexStringToInt64(intf_class, &intf_class_int)) {
+      ret.push_back(intf_class_int);
     }
   }
 
-  return 0;
+  return ret;
 }
 
 std::string GetUsbTreePath(base::FilePath normalized_devpath) {

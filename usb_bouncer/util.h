@@ -118,11 +118,13 @@ void UMALogExternalDeviceAttached(MetricsLibrary* metrics,
                                   UMADeviceSpeed speed);
 
 // Report structured metrics on external device attach events.
-void StructuredMetricsExternalDeviceAttached(int VendorId,
-                                             std::string VendorName,
-                                             int ProductId,
-                                             std::string ProductName,
-                                             int DeviceClass);
+void StructuredMetricsExternalDeviceAttached(
+    int VendorId,
+    std::string VendorName,
+    int ProductId,
+    std::string ProductName,
+    int DeviceClass,
+    std::vector<int64_t> InterfaceClass);
 
 // Report structured metric on error uevents from the hub driver.
 void StructuredMetricsHubError(int ErrorCode,
@@ -222,6 +224,9 @@ std::string GetProductName(base::FilePath normalized_devpath);
 
 // Returns device class for a sysfs device.
 int GetDeviceClass(base::FilePath normalized_devpath);
+
+// Returns interface classes for a sysfs device.
+std::vector<int64_t> GetInterfaceClass(base::FilePath normalized_devpath);
 
 // Returns a USB device's location in the USB device tree. Here, the device
 // location is a string with the content of the USB device's devpath file

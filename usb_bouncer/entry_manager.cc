@@ -337,7 +337,8 @@ void EntryManager::ReportMetrics(const std::string& devpath,
   StructuredMetricsExternalDeviceAttached(
       GetVendorId(normalized_devpath), GetVendorName(normalized_devpath),
       GetProductId(normalized_devpath), GetProductName(normalized_devpath),
-      GetDeviceClass(normalized_devpath));
+      GetDeviceClass(normalized_devpath),
+      GetInterfaceClass(normalized_devpath));
 }
 
 }  // namespace usb_bouncer
