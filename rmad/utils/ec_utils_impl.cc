@@ -28,16 +28,47 @@ bool EcUtilsImpl::Reboot() {
   return reboot_cmd.Run(ec_fd.get());
 }
 
-bool EcUtilsImpl::EnableSoftwareWriteProtection() {
+bool EcUtilsImpl::SetEcSoftwareWriteProtection(bool enable) {
   base::ScopedFD ec_fd = GetEcFd();
   if (!ec_fd.is_valid()) {
     return false;
   }
-  ec::flash_protect::Flags flags = ec::flash_protect::Flags::kRoNow |
-                                   ec::flash_protect::Flags::kRwNow |
-                                   ec::flash_protect::Flags::kRoAtBoot;
-  auto flashprotect_cmd = ec::FlashProtectCommand(flags, flags);
+
+  ec::flash_protect::Flags mask = ec::flash_protect::Flags::kRoNow |
+                                  ec::flash_protect::Flags::kRwNow |
+                                  ec::flash_protect::Flags::kRoAtBoot;
+  ec::flash_protect::Flags flags =
+      enable ? mask : ec::flash_protect::Flags::kNone;
+  auto flashprotect_cmd = ec::FlashProtectCommand(flags, mask);
   return flashprotect_cmd.Run(ec_fd.get());
+}
+
+bool EcUtilsImpl::EnableEcSoftwareWriteProtection() {
+  return EcUtilsImpl::SetEcSoftwareWriteProtection(true);
+}
+
+bool EcUtilsImpl::DisableEcSoftwareWriteProtection() {
+  return EcUtilsImpl::SetEcSoftwareWriteProtection(false);
+}
+
+bool EcUtilsImpl::GetEcWriteProtectionStatus(bool* enabled) {
+  base::ScopedFD ec_fd = GetEcFd();
+  if (!ec_fd.is_valid()) {
+    return false;
+  }
+
+  ec::flash_protect::Flags flags = ec::flash_protect::Flags::kNone;
+  auto flashprotect_cmd = ec::FlashProtectCommand(flags, flags);
+  if (!flashprotect_cmd.Run(ec_fd.get())) {
+    LOG(ERROR) << "Failed to run EC WP status command";
+    return false;
+  }
+
+  *enabled =
+      (flashprotect_cmd.GetFlags() & ec::flash_protect::Flags::kRoAtBoot) !=
+      ec::flash_protect::Flags::kNone;
+
+  return true;
 }
 
 base::ScopedFD EcUtilsImpl::GetEcFd() const {

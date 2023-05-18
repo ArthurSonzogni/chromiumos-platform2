@@ -17,9 +17,8 @@ class MockFutilityUtils : public FutilityUtils {
   ~MockFutilityUtils() override = default;
 
   MOCK_METHOD(bool, GetApWriteProtectionStatus, (bool*), (override));
-  MOCK_METHOD(bool, GetEcWriteProtectionStatus, (bool*), (override));
   MOCK_METHOD(bool, EnableApSoftwareWriteProtection, (), (override));
-  MOCK_METHOD(bool, DisableSoftwareWriteProtection, (), (override));
+  MOCK_METHOD(bool, DisableApSoftwareWriteProtection, (), (override));
 };
 
 }  // namespace rmad

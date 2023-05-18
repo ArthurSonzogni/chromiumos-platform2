@@ -20,10 +20,6 @@
 
 namespace {
 
-constexpr char kFlashromCmd[] = "/usr/sbin/flashrom";
-constexpr char kFlashromWriteProtectDisabledStr[] =
-    "WP: write protect is disabled";
-
 constexpr char kFutilityCmd[] = "/usr/bin/futility";
 constexpr char kFutilityWriteProtectDisabledStr[] = "WP status: disabled";
 
@@ -52,19 +48,6 @@ bool FutilityUtilsImpl::GetApWriteProtectionStatus(bool* enabled) {
   return true;
 }
 
-bool FutilityUtilsImpl::GetEcWriteProtectionStatus(bool* enabled) {
-  std::string flashrom_output;
-  // Get WP status output string.
-  if (!cmd_utils_->GetOutput({kFlashromCmd, "-p", "ec", "--wp-status"},
-                             &flashrom_output)) {
-    return false;
-  }
-  // Check if WP is disabled.
-  *enabled = (flashrom_output.find(kFlashromWriteProtectDisabledStr) ==
-              std::string::npos);
-  return true;
-}
-
 bool FutilityUtilsImpl::EnableApSoftwareWriteProtection() {
   // Enable AP WP.
   if (std::string output;
@@ -77,18 +60,11 @@ bool FutilityUtilsImpl::EnableApSoftwareWriteProtection() {
   return true;
 }
 
-bool FutilityUtilsImpl::DisableSoftwareWriteProtection() {
+bool FutilityUtilsImpl::DisableApSoftwareWriteProtection() {
   // Disable AP WP.
   if (std::string output; !cmd_utils_->GetOutput(
           {kFutilityCmd, "flash", "--wp-disable"}, &output)) {
     LOG(ERROR) << "Failed to disable AP SWWP";
-    LOG(ERROR) << output;
-    return false;
-  }
-  // Disable EC WP.
-  if (std::string output; !cmd_utils_->GetOutput(
-          {kFlashromCmd, "-p", "ec", "--wp-disable"}, &output)) {
-    LOG(ERROR) << "Failed to disable EC SWWP";
     LOG(ERROR) << output;
     return false;
   }

@@ -19,9 +19,12 @@ class EcUtilsImpl : public EcUtils {
   ~EcUtilsImpl() override = default;
 
   bool Reboot() override;
-  bool EnableSoftwareWriteProtection() override;
+  bool GetEcWriteProtectionStatus(bool* enabled) override;
+  bool EnableEcSoftwareWriteProtection() override;
+  bool DisableEcSoftwareWriteProtection() override;
 
  private:
+  bool SetEcSoftwareWriteProtection(bool enable);
   base::ScopedFD GetEcFd() const;
 };
 

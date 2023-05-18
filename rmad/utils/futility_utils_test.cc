@@ -21,11 +21,6 @@ using testing::StrictMock;
 
 namespace {
 
-constexpr char kFlashromWriteProtectEnabledOutput[] =
-    R"(WP: write protect is enabled.)";
-constexpr char kFlashromWriteProtectDisabledOutput[] =
-    R"(WP: write protect is disabled.)";
-
 constexpr char kFutilityWriteProtectEnabledOutput[] = R"(WP status: enabled.)";
 constexpr char kFutilityWriteProtectDisabledOutput[] = R"(WP status: disabled)";
 constexpr char kFutilityWriteProtectMisconfiguredOutput[] =
@@ -89,42 +84,6 @@ TEST_F(FutilityUtilsTest, GetApWriteProtectionStatus_Failed) {
 
   bool enabled;
   EXPECT_FALSE(futility_utils->GetApWriteProtectionStatus(&enabled));
-}
-
-TEST_F(FutilityUtilsTest, GetEcWriteProtectionStatus_Enabled) {
-  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
-  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kFlashromWriteProtectEnabledOutput),
-                      Return(true)));
-  auto futility_utils =
-      std::make_unique<FutilityUtilsImpl>(std::move(mock_cmd_utils));
-
-  bool enabled;
-  EXPECT_TRUE(futility_utils->GetEcWriteProtectionStatus(&enabled));
-  EXPECT_TRUE(enabled);
-}
-
-TEST_F(FutilityUtilsTest, GetEcWriteProtectionStatus_Disabled) {
-  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
-  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kFlashromWriteProtectDisabledOutput),
-                      Return(true)));
-  auto futility_utils =
-      std::make_unique<FutilityUtilsImpl>(std::move(mock_cmd_utils));
-
-  bool enabled;
-  EXPECT_TRUE(futility_utils->GetEcWriteProtectionStatus(&enabled));
-  EXPECT_FALSE(enabled);
-}
-
-TEST_F(FutilityUtilsTest, GetEcWriteProtectionStatus_Failed) {
-  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
-  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
-  auto futility_utils =
-      std::make_unique<FutilityUtilsImpl>(std::move(mock_cmd_utils));
-
-  bool enabled;
-  EXPECT_FALSE(futility_utils->GetEcWriteProtectionStatus(&enabled));
 }
 
 TEST_F(FutilityUtilsTest, EnableApSoftwareWriteProtection_Success) {

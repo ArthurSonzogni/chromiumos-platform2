@@ -49,20 +49,26 @@ bool WriteProtectUtilsImpl::GetApWriteProtectionStatus(bool* enabled) const {
 }
 
 bool WriteProtectUtilsImpl::GetEcWriteProtectionStatus(bool* enabled) const {
-  if (!futility_utils_->GetEcWriteProtectionStatus(enabled)) {
-    LOG(ERROR) << "Failed to get EC write protect with futility utils.";
+  if (!ec_utils_->GetEcWriteProtectionStatus(enabled)) {
+    LOG(ERROR) << "Failed to get EC write protect with ec utils.";
     return false;
   }
   return true;
 }
 
 bool WriteProtectUtilsImpl::DisableSoftwareWriteProtection() {
-  return futility_utils_->DisableSoftwareWriteProtection();
+  // Disable EC write protection.
+  if (!ec_utils_->DisableEcSoftwareWriteProtection()) {
+    LOG(ERROR) << "Failed to disable EC SWWP";
+    return false;
+  }
+
+  return futility_utils_->DisableApSoftwareWriteProtection();
 }
 
 bool WriteProtectUtilsImpl::EnableSoftwareWriteProtection() {
   // Enable EC write protection.
-  if (!ec_utils_->EnableSoftwareWriteProtection()) {
+  if (!ec_utils_->EnableEcSoftwareWriteProtection()) {
     LOG(ERROR) << "Failed to enable EC SWWP";
     return false;
   }

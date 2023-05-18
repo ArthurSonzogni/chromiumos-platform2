@@ -45,18 +45,20 @@ class WriteProtectUtilsTest : public testing::Test {
     // Mock |EcUtils|.
     auto mock_ec_utils = std::make_unique<NiceMock<MockEcUtils>>();
     // Use |ecwp_success| to control the return value of enabling EC SWWP.
-    ON_CALL(*mock_ec_utils, EnableSoftwareWriteProtection())
+    ON_CALL(*mock_ec_utils, EnableEcSoftwareWriteProtection())
         .WillByDefault(Return(ecwp_success));
+    ON_CALL(*mock_ec_utils, DisableEcSoftwareWriteProtection())
+        .WillByDefault(Return(true));
+    ON_CALL(*mock_ec_utils, GetEcWriteProtectionStatus(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(ecwp_enabled), Return(ecwp_success)));
 
     // Mock |FutilityUtils|.
     auto mock_futility_utils = std::make_unique<NiceMock<MockFutilityUtils>>();
     ON_CALL(*mock_futility_utils, GetApWriteProtectionStatus(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(apwp_enabled), Return(apwp_success)));
-    ON_CALL(*mock_futility_utils, GetEcWriteProtectionStatus(_))
-        .WillByDefault(
-            DoAll(SetArgPointee<0>(ecwp_enabled), Return(ecwp_success)));
-    ON_CALL(*mock_futility_utils, DisableSoftwareWriteProtection())
+    ON_CALL(*mock_futility_utils, DisableApSoftwareWriteProtection())
         .WillByDefault(Return(true));
     // Use |apwp_success| to control the return value of enabling AP SWWP.
     ON_CALL(*mock_futility_utils, EnableApSoftwareWriteProtection())

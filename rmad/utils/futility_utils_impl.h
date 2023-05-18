@@ -20,9 +20,8 @@ class FutilityUtilsImpl : public FutilityUtils {
   ~FutilityUtilsImpl() override = default;
 
   bool GetApWriteProtectionStatus(bool* enabled) override;
-  bool GetEcWriteProtectionStatus(bool* enabled) override;
   bool EnableApSoftwareWriteProtection() override;
-  bool DisableSoftwareWriteProtection() override;
+  bool DisableApSoftwareWriteProtection() override;
 
  private:
   std::unique_ptr<CmdUtils> cmd_utils_;

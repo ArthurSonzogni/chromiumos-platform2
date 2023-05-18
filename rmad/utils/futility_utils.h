@@ -13,9 +13,8 @@ class FutilityUtils {
   virtual ~FutilityUtils() = default;
 
   virtual bool GetApWriteProtectionStatus(bool* enabled) = 0;
-  virtual bool GetEcWriteProtectionStatus(bool* enabled) = 0;
   virtual bool EnableApSoftwareWriteProtection() = 0;
-  virtual bool DisableSoftwareWriteProtection() = 0;
+  virtual bool DisableApSoftwareWriteProtection() = 0;
 };
 
 }  // namespace rmad

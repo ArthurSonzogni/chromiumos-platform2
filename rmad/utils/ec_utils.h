@@ -15,7 +15,9 @@ class EcUtils {
   virtual ~EcUtils() = default;
 
   virtual bool Reboot() = 0;
-  virtual bool EnableSoftwareWriteProtection() = 0;
+  virtual bool GetEcWriteProtectionStatus(bool* enabled) = 0;
+  virtual bool EnableEcSoftwareWriteProtection() = 0;
+  virtual bool DisableEcSoftwareWriteProtection() = 0;
 
   // TODO(b/242143606): Merge CbiUtils to this class.
 };
