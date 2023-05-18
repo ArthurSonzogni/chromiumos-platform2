@@ -69,6 +69,11 @@ class BalloonPolicyInterface {
                                            int proc_oom_score,
                                            uint64_t& new_balloon_size,
                                            uint64_t& freed_space) = 0;
+
+  // Update the current balloon size. This method is supposed to be called when
+  // the balloon size has been changed by someone outside of the balloon policy
+  // (e.g., aggressive balloon).
+  virtual void UpdateCurrentBalloonSize(uint64_t size) = 0;
 };
 
 class BalanceAvailableBalloonPolicy : public BalloonPolicyInterface {
@@ -89,6 +94,10 @@ class BalanceAvailableBalloonPolicy : public BalloonPolicyInterface {
                                    int proc_oom_score,
                                    uint64_t& new_balloon_size,
                                    uint64_t& freed_space) override;
+
+  // Ignore this because BalanceAvailableBalloonPolicy does not cache the
+  // balloon size.
+  void UpdateCurrentBalloonSize(uint64_t size) override {}
 
  private:
   // ChromeOS's critical margin.
@@ -169,6 +178,8 @@ class LimitCacheBalloonPolicy : public BalloonPolicyInterface {
                                    int proc_oom_score,
                                    uint64_t& new_balloon_size,
                                    uint64_t& freed_space) override;
+
+  void UpdateCurrentBalloonSize(uint64_t size) override;
 
   // Updates the deflation limits when the balloon policy is refreshed
   void UpdateBalloonDeflationLimits(ComponentMemoryMargins component_margins,
