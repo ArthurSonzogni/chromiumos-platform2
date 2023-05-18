@@ -162,6 +162,9 @@ EffectsConfig ConvertMojoConfig(cros::mojom::EffectsConfigPtr effects_config) {
     base::strlcpy(config.background_image_asset, path.value().c_str(),
                   sizeof(config.background_image_asset));
   }
+  if (effects_config->light_intensity) {
+    config.light_intensity = *effects_config->light_intensity;
+  }
   return config;
 }
 
