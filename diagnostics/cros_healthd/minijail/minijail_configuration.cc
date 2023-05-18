@@ -184,6 +184,8 @@ void EnterExecutorMinijail() {
   // MS_SLAVE is the default mount propagation to run inside a new VFS namespace
   // in the minijail command-line tool (-v). Set it explicitly for DLC.
   minijail_remount_mode(j.get(), MS_SLAVE);
+  // Keep things simple here: Because subprocesses are sandboxed, in most cases
+  // we only bind-mount top-level directories.
   PCHECK(0 == minijail_enter_pivot_root(j.get(), "/mnt/empty"));
   PCHECK(0 == minijail_bind(j.get(), "/", "/", /*writeable=*/0));
   PCHECK(0 == minijail_bind(j.get(), "/sys", "/sys", /*writeable=*/0));
@@ -197,12 +199,24 @@ void EnterExecutorMinijail() {
   PCHECK(0 == minijail_mount(j.get(), "tmpfs", "/run", "tmpfs", /*flags=*/0));
   PCHECK(0 == minijail_mount(j.get(), "/dev", "/dev", "bind",
                              /*flags=*/MS_BIND | MS_REC));
-  // Shared socket file for talking to the D-Bus daemon.
+  // Shared socket file for talking to the D-Bus daemon (/run/dbus).
+  PCHECK(0 == minijail_bind(j.get(), "/run", "/run", /*writeable=*/0));
+  // Lock files used by subprocesses (e.g., crash_sender) that are shared
+  // across processes. (/run/lock)
   PCHECK(0 ==
-         minijail_bind(j.get(), "/run/dbus", "/run/dbus", /*writeable=*/0));
+         minijail_bind(j.get(), "/run/lock", "/run/lock", /*writeable=*/1));
   // Used by DLC.
   PCHECK(0 == minijail_mount(j.get(), "/run/imageloader", "/run/imageloader",
                              "none", /*flags=*/MS_BIND | MS_REC));
+  // Mount '/home/chronos' instead of '/home' because '/home/chronos' is a
+  // separate file system.
+  //
+  // '/home/chronos' is mounted by chromeos_startup:
+  // https://www.chromium.org/chromium-os/chromiumos-design-docs/boot-design/#creating-the-stateful-file-system-the-chromeos_startup-script
+  // Therefore, cros_healthd, which starts after basic service, should always
+  // have access to '/home/chronos' when this line is reached.
+  PCHECK(0 == minijail_bind(j.get(), "/home/chronos", "/home/chronos",
+                            /*writeable=*/0));
 
   // Also bind efivars, which is a separate filesystem mounted under sys.
   // It is only present on some systems.

@@ -118,6 +118,10 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
       (override));
   MOCK_METHOD(void, GetPsr, (GetPsrCallback), (override));
   MOCK_METHOD(void,
+              FetchCrashFromCrashSender,
+              (FetchCrashFromCrashSenderCallback),
+              (override));
+  MOCK_METHOD(void,
               RunStressAppTest,
               (uint32_t test_mem_mib,
                uint32_t test_seconds,

@@ -375,4 +375,10 @@ interface Executor {
   // The response:
   // * |result| - Struct containing display info.
   FetchDisplayInfo() => (DisplayResult result);
+
+  // Fetch crash information by calling crash_sender.
+  //
+  // The response:
+  // * |result| - contains information received from running crash_sender.
+  FetchCrashFromCrashSender() => (ExecutedProcessResult result);
 };

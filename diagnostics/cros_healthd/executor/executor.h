@@ -104,6 +104,8 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
           process_control_receiver) override;
   void GetPsr(GetPsrCallback callback) override;
+  void FetchCrashFromCrashSender(
+      FetchCrashFromCrashSenderCallback callback) override;
   void RunStressAppTest(
       uint32_t test_mem_mib,
       uint32_t test_seconds,
@@ -127,14 +129,14 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   // started. If cancelling is required, RunLongRunningProcess() should be used
   // instead.
   void RunAndWaitProcess(
-      std::unique_ptr<SandboxedProcess> process,
+      std::unique_ptr<brillo::ProcessImpl> process,
       base::OnceCallback<
           void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,
       bool combine_stdout_and_stderr);
   void OnRunAndWaitProcessFinished(
       base::OnceCallback<
           void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,
-      std::unique_ptr<SandboxedProcess> process,
+      std::unique_ptr<brillo::ProcessImpl> process,
       const siginfo_t& siginfo);
   // (DEPRECATED: Use RunLongRunningProcess() instead) Like RunAndWaitprocess()
   // above, but tracks the process internally so that it can be cancelled if

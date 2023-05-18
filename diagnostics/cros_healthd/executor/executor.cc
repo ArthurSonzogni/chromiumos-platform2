@@ -64,6 +64,7 @@ constexpr char kCrosEcDevice[] = "/dev/cros_ec";
 constexpr char kStressAppTestBinary[] = "/usr/bin/stressapptest";
 constexpr char kFioCacheFile[] = "/var/cache/diagnostics/fio-test-file";
 constexpr char kDrmDevice[] = "/dev/dri";
+constexpr char kCrashSenderBinary[] = "/sbin/crash_sender";
 
 }  // namespace
 }  // namespace path
@@ -510,6 +511,19 @@ void Executor::GetPsr(GetPsrCallback callback) {
   delegate_ptr->StartAsync();
 }
 
+void Executor::FetchCrashFromCrashSender(
+    FetchCrashFromCrashSenderCallback callback) {
+  // Use `brillo::ProcessImpl` instead of `SandboxedProcess` because
+  // crash_sender invokes minijail on startup. See `SetUpSandboxForDryRun` in
+  // platform2/crash-reporter/crash_sender.cc, which also contains a list of
+  // required directories.
+  auto subprocess = std::make_unique<brillo::ProcessImpl>();
+  subprocess->AddArg(path::kCrashSenderBinary);
+  subprocess->AddArg("--dry_run");
+  RunAndWaitProcess(std::move(subprocess), std::move(callback),
+                    /*combine_stdout_and_stderr=*/false);
+}
+
 void Executor::SetLedColor(mojom::LedName name,
                            mojom::LedColor color,
                            SetLedColorCallback callback) {
@@ -775,7 +789,7 @@ void Executor::GetFioTestDirectoryFreeSpace(
 }
 
 void Executor::RunAndWaitProcess(
-    std::unique_ptr<SandboxedProcess> process,
+    std::unique_ptr<brillo::ProcessImpl> process,
     base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback,
     bool combine_stdout_and_stderr) {
   process->RedirectOutputToMemory(combine_stdout_and_stderr);
@@ -790,7 +804,7 @@ void Executor::RunAndWaitProcess(
 
 void Executor::OnRunAndWaitProcessFinished(
     base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback,
-    std::unique_ptr<SandboxedProcess> process,
+    std::unique_ptr<brillo::ProcessImpl> process,
     const siginfo_t& siginfo) {
   auto result = mojom::ExecutedProcessResult::New();
 
