@@ -149,12 +149,9 @@ bool GetBlockCount(const base::FilePath& device_path,
   dumpe2fs.AddArg("-h");
   dumpe2fs.AddArg(device_path.value());
 
-  base::FilePath temp_file;
-  base::CreateTemporaryFile(&temp_file);
-  dumpe2fs.RedirectOutput(temp_file.value());
+  dumpe2fs.RedirectOutputToMemory(true);
   if (dumpe2fs.Run() == 0) {
-    std::string output;
-    base::ReadFileToString(temp_file, &output);
+    std::string output = dumpe2fs.GetOutputString(STDOUT_FILENO);
     size_t label = output.find("Block count");
     size_t value_start = output.find_first_of("0123456789", label);
     size_t value_end = output.find_first_not_of("0123456789", value_start);
@@ -190,17 +187,9 @@ bool GetBlockCount(const base::FilePath& device_path,
   return false;
 }
 
-void AppendFileToLog(const base::FilePath& file) {
-  std::string file_contents;
-  if (!base::ReadFileToString(file, &file_contents)) {
-    // Even if reading file failed, some of its contents may have been read
-    // successfully, so we still attempt to append them to our log file.
-    PLOG(ERROR) << "Reading from temporary file failed: " << file.value();
-  }
-
-  if (!base::AppendToFile(base::FilePath(kClobberLogPath), file_contents)) {
-    PLOG(ERROR) << "Appending " << file.value()
-                << " to clobber-state log failed";
+void AppendToLog(const std::string_view& source, const std::string& contents) {
+  if (!base::AppendToFile(base::FilePath(kClobberLogPath), contents)) {
+    PLOG(ERROR) << "Appending " << source << " to clobber-state log failed";
   }
 }
 
@@ -631,9 +620,6 @@ bool ClobberState::WipeMTDDevice(
                << device_path.value();
   }
 
-  base::FilePath temp_file;
-  base::CreateTemporaryFile(&temp_file);
-
   std::string physical_device =
       base::StringPrintf("/dev/ubi%d", partition_number);
   struct stat st;
@@ -644,9 +630,9 @@ bool ClobberState::WipeMTDDevice(
     ubiattach.AddArg("/bin/ubiattach");
     ubiattach.AddIntOption("-m", partition_number);
     ubiattach.AddIntOption("-d", partition_number);
-    ubiattach.RedirectOutput(temp_file.value());
+    ubiattach.RedirectOutputToMemory(true);
     ubiattach.Run();
-    AppendFileToLog(temp_file);
+    AppendToLog("ubiattach", ubiattach.GetOutputString(STDOUT_FILENO));
   }
 
   int max_bad_blocks_per_1024 =
@@ -660,9 +646,9 @@ bool ClobberState::WipeMTDDevice(
   brillo::ProcessImpl ubidetach;
   ubidetach.AddArg("/bin/ubidetach");
   ubidetach.AddIntOption("-d", partition_number);
-  ubidetach.RedirectOutput(temp_file.value());
+  ubidetach.RedirectOutputToMemory(true);
   int detach_ret = ubidetach.Run();
-  AppendFileToLog(temp_file);
+  AppendToLog("ubidetach", ubidetach.GetOutputString(STDOUT_FILENO));
   if (detach_ret) {
     LOG(ERROR) << "Detaching MTD volume failed with code " << detach_ret;
   }
@@ -672,9 +658,9 @@ bool ClobberState::WipeMTDDevice(
   ubiformat.AddArg("-y");
   ubiformat.AddIntOption("-e", 0);
   ubiformat.AddArg(base::StringPrintf("/dev/mtd%d", partition_number));
-  ubiformat.RedirectOutput(temp_file.value());
+  ubiformat.RedirectOutputToMemory(true);
   int format_ret = ubiformat.Run();
-  AppendFileToLog(temp_file);
+  AppendToLog("ubiformat", ubiformat.GetOutputString(STDOUT_FILENO));
   if (format_ret) {
     LOG(ERROR) << "Formatting MTD volume failed with code " << format_ret;
   }
@@ -686,9 +672,9 @@ bool ClobberState::WipeMTDDevice(
   ubiattach.AddIntOption("-d", partition_number);
   ubiattach.AddIntOption("-m", partition_number);
   ubiattach.AddIntOption("--max-beb-per1024", max_bad_blocks_per_1024);
-  ubiattach.RedirectOutput(temp_file.value());
+  ubiattach.RedirectOutputToMemory(true);
   int attach_ret = ubiattach.Run();
-  AppendFileToLog(temp_file);
+  AppendToLog("ubiattach", ubiattach.GetOutputString(STDOUT_FILENO));
   if (attach_ret) {
     LOG(ERROR) << "Reattaching MTD volume failed with code " << attach_ret;
   }
@@ -698,9 +684,9 @@ bool ClobberState::WipeMTDDevice(
   ubimkvol.AddIntOption("-s", volume_size);
   ubimkvol.AddStringOption("-N", partition_name);
   ubimkvol.AddArg(physical_device);
-  ubimkvol.RedirectOutput(temp_file.value());
+  ubimkvol.RedirectOutputToMemory(true);
   int mkvol_ret = ubimkvol.Run();
-  AppendFileToLog(temp_file);
+  AppendToLog("ubimkvol", ubimkvol.GetOutputString(STDOUT_FILENO));
   if (mkvol_ret) {
     LOG(ERROR) << "Making MTD volume failed with code " << mkvol_ret;
   }
@@ -1276,9 +1262,6 @@ void ClobberState::CreateLogicalVolumeStack() {
 
 int ClobberState::CreateStatefulFileSystem(
     const std::string& stateful_filesystem_device) {
-  base::FilePath temp_file;
-  base::CreateTemporaryFile(&temp_file);
-
   brillo::ProcessImpl mkfs;
   if (wipe_info_.is_mtd_flash) {
     mkfs.AddArg("/sbin/mkfs.ubifs");
@@ -1294,10 +1277,10 @@ int ClobberState::CreateStatefulFileSystem(
     mkfs.AddArg(stateful_filesystem_device);
     // TODO(wad) tune2fs.
   }
-  mkfs.RedirectOutput(temp_file.value());
+  mkfs.RedirectOutputToMemory(true);
   LOG(INFO) << "Creating stateful file system";
   int ret = mkfs.Run();
-  AppendFileToLog(temp_file);
+  AppendToLog("mkfs.ubifs", mkfs.GetOutputString(STDOUT_FILENO));
   return ret;
 }
 
@@ -1475,9 +1458,6 @@ int ClobberState::Run() {
   LOG(INFO) << "Inactive kernel device: "
             << wipe_info_.inactive_kernel_device.value();
 
-  base::FilePath temp_file;
-  base::CreateTemporaryFile(&temp_file);
-
   brillo::ProcessImpl log_preserve;
   log_preserve.AddArg("/sbin/clobber-log");
   log_preserve.AddArg("--preserve");
@@ -1500,9 +1480,9 @@ int ClobberState::Run() {
   if (args_.ad_migration_wipe)
     log_preserve.AddArg("ad_migration");
 
-  log_preserve.RedirectOutput(temp_file.value());
+  log_preserve.RedirectOutputToMemory(true);
   log_preserve.Run();
-  AppendFileToLog(temp_file);
+  AppendToLog("clobber-log", log_preserve.GetOutputString(STDOUT_FILENO));
 
   AttemptSwitchToFastWipe(is_rotational);
 
@@ -1555,9 +1535,9 @@ int ClobberState::Run() {
     tar.AddStringOption("-C", stateful_.value());
     tar.AddArg("-x");
     tar.AddStringOption("-f", preserved_tar_file.value());
-    tar.RedirectOutput(temp_file.value());
+    tar.RedirectOutputToMemory(true);
     ret = tar.Run();
-    AppendFileToLog(temp_file);
+    AppendToLog("tar", tar.GetOutputString(STDOUT_FILENO));
     if (ret != 0) {
       LOG(WARNING) << "Restoring preserved files failed with code " << ret;
     }
@@ -1575,9 +1555,9 @@ int ClobberState::Run() {
   log_restore.AddArg("/sbin/clobber-log");
   log_restore.AddArg("--restore");
   log_restore.AddArg("clobber-state");
-  log_restore.RedirectOutput(temp_file.value());
+  log_restore.RedirectOutputToMemory(true);
   ret = log_restore.Run();
-  AppendFileToLog(temp_file);
+  AppendToLog("clobber-log", log_restore.GetOutputString(STDOUT_FILENO));
   if (ret != 0) {
     LOG(WARNING) << "Restoring clobber.log failed with code " << ret;
   }
@@ -1683,9 +1663,6 @@ void ClobberState::ShredRotationalStatefulFiles() {
     }
   }
 
-  base::FilePath temp_file;
-  base::CreateTemporaryFile(&temp_file);
-
   // Shred everything else. We care about contents not filenames, so do not
   // use "-u" since metadata updates via fdatasync dominate the shred time.
   // Note that if the count-down is interrupted, the reset file continues
@@ -1700,9 +1677,9 @@ void ClobberState::ShredRotationalStatefulFiles() {
        path = stateful_files.Next()) {
     shred.AddArg(path.value());
   }
-  shred.RedirectOutput(temp_file.value());
+  shred.RedirectOutputToMemory(true);
   shred.Run();
-  AppendFileToLog(temp_file);
+  AppendToLog("shred", shred.GetOutputString(STDOUT_FILENO));
 
   sync();
 }
