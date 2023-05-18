@@ -197,12 +197,7 @@ static_library("libconcierge") {
   ]
   defines = [ "USE_ARCVM_GKI=${use.arcvm_gki}" ]
 
-  cflags_cc = [
-    # TODO(crbug.com/1082873): Remove after fixing usage of deprecated
-    # declarations.
-    "-Wno-error=deprecated-declarations",
-    "-Wthread-safety",
-  ]
+  cflags_cc = [ "-Wthread-safety" ]
   deps = [
     ":vm_concierge-adaptors",
     "//featured:libfeatures",
@@ -257,10 +252,6 @@ executable("cicerone_client") {
     "protobuf",
     "system_api",
   ]
-
-  # TODO(crbug.com/1082873): Remove after fixing usage of deprecated
-  # declarations.
-  cflags_cc = [ "-Wno-error=deprecated-declarations" ]
 }
 
 if (use.arcvm) {
