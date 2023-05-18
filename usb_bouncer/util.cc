@@ -9,6 +9,7 @@
 #include <sys/capability.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -551,6 +552,23 @@ void StructuredMetricsExternalDeviceAttached(
       .Record();
 }
 
+void StructuredMetricsUsbSessionEvent(UsbSessionMetric session_metric) {
+  // Only record UsbSessionEvents for devices in the USB metrics allowlist.
+  if (!DeviceInMetricsAllowlist(session_metric.vid, session_metric.pid))
+    return;
+
+  metrics::structured::events::usb_session::UsbSessionEvent()
+      .SetBootId(std::move(session_metric.boot_id))
+      .SetSystemTime(std::move(session_metric.system_time))
+      .SetAction(session_metric.action)
+      .SetDeviceNum(session_metric.devnum)
+      .SetBusNum(session_metric.busnum)
+      .SetDepth(session_metric.depth)
+      .SetVendorId(session_metric.vid)
+      .SetProductId(session_metric.pid)
+      .Record();
+}
+
 void StructuredMetricsHubError(int ErrorCode,
                                int VendorId,
                                int ProductId,
@@ -1034,6 +1052,19 @@ std::string GetProductName(base::FilePath normalized_devpath) {
   return std::string();
 }
 
+void GetVidPidFromEnvVar(std::string product, int* vendor_id, int* product_id) {
+  *vendor_id = 0;
+  *product_id = 0;
+  std::size_t index1 = product.find('/');
+  std::size_t index2 = product.find('/', index1 + 1);
+  if (index1 == std::string::npos || index2 == std::string::npos)
+    return;
+
+  base::HexStringToInt(product.substr(0, index1), vendor_id);
+  base::HexStringToInt(product.substr(index1 + 1, index2 - index1 - 1),
+                       product_id);
+}
+
 int GetDeviceClass(base::FilePath normalized_devpath) {
   std::string device_class;
   int device_class_int;
@@ -1081,6 +1112,11 @@ std::string GetUsbTreePath(base::FilePath normalized_devpath) {
   return std::string();
 }
 
+int GetUsbTreeDepth(base::FilePath normalized_devpath) {
+  std::string devpath = GetUsbTreePath(normalized_devpath);
+  return std::count(devpath.begin(), devpath.end(), '.');
+}
+
 int GetConnectedDuration(base::FilePath normalized_devpath) {
   std::string connected_duration;
   int connected_duration_int;
@@ -1111,6 +1147,35 @@ int GetPciDeviceClass(base::FilePath normalized_devpath) {
   }
 
   return 0;
+}
+
+int GetBusnum(base::FilePath normalized_devpath) {
+  std::string busnum;
+  int busnum_int;
+  if (base::ReadFileToString(normalized_devpath.Append("busnum"), &busnum)) {
+    base::TrimWhitespaceASCII(busnum, base::TRIM_ALL, &busnum);
+    if (base::StringToInt(busnum, &busnum_int)) {
+      return busnum_int;
+    }
+  }
+
+  return 0;
+}
+
+std::string GetBootId() {
+  std::string boot_id;
+  if (base::ReadFileToString(base::FilePath("/proc/sys/kernel/random/boot_id"),
+                             &boot_id)) {
+    base::TrimWhitespaceASCII(boot_id, base::TRIM_ALL, &boot_id);
+    return boot_id;
+  }
+  return std::string();
+}
+
+int64_t GetSystemTime() {
+  struct timespec ts;
+  clock_gettime(CLOCK_BOOTTIME, &ts);
+  return ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
 }
 
 }  // namespace usb_bouncer

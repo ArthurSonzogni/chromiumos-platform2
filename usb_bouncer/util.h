@@ -77,6 +77,17 @@ enum class UMADeviceSpeed {
   kMaxValue = k20000,
 };
 
+struct UsbSessionMetric {
+  std::string boot_id;
+  int64_t system_time;
+  int action;
+  int devnum;
+  int busnum;
+  int depth;
+  int vid;
+  int pid;
+};
+
 // Returns true if the process has CAP_CHOWN.
 bool CanChown();
 
@@ -125,6 +136,12 @@ void StructuredMetricsExternalDeviceAttached(
     std::string ProductName,
     int DeviceClass,
     std::vector<int64_t> InterfaceClass);
+
+// Report structured metric on device attach and removal with topology and
+// system boot information. Device topology information only gets recorded
+// on device connection. This will only record the metric for devices in the
+// USB metrics allowlist.
+void StructuredMetricsUsbSessionEvent(UsbSessionMetric session_metric);
 
 // Report structured metric on error uevents from the hub driver.
 void StructuredMetricsHubError(int ErrorCode,
@@ -222,6 +239,11 @@ int GetProductId(base::FilePath normalized_devpath);
 // Returns product name for a sysfs device.
 std::string GetProductName(base::FilePath normalized_devpath);
 
+// Assigns VID and PID from a uevent's product environment variable. This can
+// be used by USB bouncer methods that receive the product environment variable
+// to read VID/PID on device disconnection.
+void GetVidPidFromEnvVar(std::string product, int* vendor_id, int* product_id);
+
 // Returns device class for a sysfs device.
 int GetDeviceClass(base::FilePath normalized_devpath);
 
@@ -234,11 +256,25 @@ std::vector<int64_t> GetInterfaceClass(base::FilePath normalized_devpath);
 // and ports between the device and host controller (Example: "1.5.3.2").
 std::string GetUsbTreePath(base::FilePath normalized_devpath);
 
+// Returns the depth of a device in a USB topology. This is based on the USB
+// tree path returned by GetUsbTreePath.
+int GetUsbTreeDepth(base::FilePath normalized_devpath);
+
 // Returns the connected duration, in milliseconds, for a sysfs device.
 int GetConnectedDuration(base::FilePath normalized_devpath);
 
 // Returns the PCI device class for a sysfs device.
 int GetPciDeviceClass(base::FilePath normalized_devpath);
+
+// Returns the busnum for a sysfs device.
+int GetBusnum(base::FilePath normalized_devpath);
+
+// Returns the kernel boot_id, which is a unique identifier randomly generated
+// each time a system boots.
+std::string GetBootId();
+
+// Returns the time since boot in microseconds.
+int64_t GetSystemTime();
 
 }  // namespace usb_bouncer
 

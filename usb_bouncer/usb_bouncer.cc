@@ -279,7 +279,7 @@ int HandleReportError(const Configuration& config,
 
 int HandleUdev(const Configuration& config,
                const std::vector<std::string>& argv) {
-  if (argv.size() != 2) {
+  if (argv.size() < 2) {
     LOG(ERROR) << "Invalid options!";
     return EXIT_FAILURE;
   }
@@ -319,12 +319,34 @@ int HandleUdev(const Configuration& config,
     }
   }
 
+  // Gather data used for device metrics before daemonizing.
+  bool session_metric_available = false;
+  usb_bouncer::UsbSessionMetric session_metric;
+  if (argv.size() == 4) {
+    base::FilePath root_dir("/");
+    base::FilePath normalized_devpath = root_dir.Append("sys").Append(
+        usb_bouncer::StripLeadingPathSeparators(devpath));
+    session_metric.boot_id = usb_bouncer::GetBootId();
+    session_metric.system_time = usb_bouncer::GetSystemTime();
+    session_metric.action = static_cast<int>(action);
+    session_metric.busnum = usb_bouncer::GetBusnum(normalized_devpath);
+    session_metric.depth = usb_bouncer::GetUsbTreeDepth(normalized_devpath);
+    base::StringToInt(argv[2], &session_metric.devnum);
+    usb_bouncer::GetVidPidFromEnvVar(argv[3], &session_metric.vid,
+                                     &session_metric.pid);
+    session_metric_available = true;
+  }
+
   // All the information needed from udev and sysfs should be obtained prior to
   // this point. Daemonizing here allows usb_bouncer to wait on other system
   // services without blocking udev.
   if (config.fork_config == ForkConfig::kDoubleFork) {
     Daemonize();
   }
+
+  // Record session metric if it is available.
+  if (session_metric_available)
+    usb_bouncer::StructuredMetricsUsbSessionEvent(session_metric);
 
   // The DevpathToRuleCallback here to forwards the result of the sysfs read
   // performed before daemonizing.
