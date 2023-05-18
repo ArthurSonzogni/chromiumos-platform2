@@ -17,7 +17,7 @@
 namespace hwsec {
 
 StatusOr<brillo::SecureBlob> AttestationFrontendImpl::Unseal(
-    const brillo::Blob& sealed_data) {
+    const brillo::Blob& sealed_data) const {
   return middleware_.CallSync<&Backend::Sealing::Unseal>(
       OperationPolicy{
           .device_configs =
@@ -33,7 +33,7 @@ StatusOr<brillo::SecureBlob> AttestationFrontendImpl::Unseal(
 }
 
 StatusOr<brillo::Blob> AttestationFrontendImpl::Seal(
-    const brillo::SecureBlob& unsealed_data) {
+    const brillo::SecureBlob& unsealed_data) const {
   return middleware_.CallSync<&Backend::Sealing::Seal>(
       OperationPolicySetting{
           .device_config_settings =
@@ -52,7 +52,7 @@ StatusOr<brillo::Blob> AttestationFrontendImpl::Seal(
 }
 
 StatusOr<attestation::Quote> AttestationFrontendImpl::Quote(
-    DeviceConfig device_config, const brillo::Blob& key_blob) {
+    DeviceConfig device_config, const brillo::Blob& key_blob) const {
   ASSIGN_OR_RETURN(
       ScopedKey key,
       middleware_.CallSync<&Backend::KeyManagement::LoadKey>(
@@ -64,7 +64,7 @@ StatusOr<attestation::Quote> AttestationFrontendImpl::Quote(
 }
 
 StatusOr<bool> AttestationFrontendImpl::IsQuoted(
-    DeviceConfig device_config, const attestation::Quote& quote) {
+    DeviceConfig device_config, const attestation::Quote& quote) const {
   return middleware_.CallSync<&Backend::Attestation::IsQuoted>(
       DeviceConfigs{device_config}, quote);
 }

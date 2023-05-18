@@ -22,12 +22,14 @@ class AttestationFrontendImpl : public AttestationFrontend,
   using FrontendImpl::FrontendImpl;
   ~AttestationFrontendImpl() override = default;
 
-  StatusOr<brillo::SecureBlob> Unseal(const brillo::Blob& sealed_data) override;
-  StatusOr<brillo::Blob> Seal(const brillo::SecureBlob& unsealed_data) override;
-  StatusOr<attestation::Quote> Quote(DeviceConfig device_config,
-                                     const brillo::Blob& key_blob) override;
+  StatusOr<brillo::SecureBlob> Unseal(
+      const brillo::Blob& sealed_data) const override;
+  StatusOr<brillo::Blob> Seal(
+      const brillo::SecureBlob& unsealed_data) const override;
+  StatusOr<attestation::Quote> Quote(
+      DeviceConfig device_config, const brillo::Blob& key_blob) const override;
   StatusOr<bool> IsQuoted(DeviceConfig device_config,
-                          const attestation::Quote& quote) override;
+                          const attestation::Quote& quote) const override;
 };
 
 }  // namespace hwsec

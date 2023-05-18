@@ -23,19 +23,19 @@ class MockAttestationFrontend : public MockFrontend,
   MOCK_METHOD(StatusOr<brillo::SecureBlob>,
               Unseal,
               (const brillo::Blob& sealed_data),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<brillo::Blob>,
               Seal,
               (const brillo::SecureBlob& unsealed_data),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<attestation::Quote>,
               Quote,
               (DeviceConfig device_config, const brillo::Blob& key_blob),
-              (override));
+              (const override));
   MOCK_METHOD(StatusOr<bool>,
               IsQuoted,
               (DeviceConfig device_config, const attestation::Quote& quote),
-              (override));
+              (const override));
 };
 
 }  // namespace hwsec

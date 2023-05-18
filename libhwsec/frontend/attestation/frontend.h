@@ -19,13 +19,13 @@ class AttestationFrontend : public Frontend {
  public:
   ~AttestationFrontend() override = default;
   virtual StatusOr<brillo::SecureBlob> Unseal(
-      const brillo::Blob& sealed_data) = 0;
+      const brillo::Blob& sealed_data) const = 0;
   virtual StatusOr<brillo::Blob> Seal(
-      const brillo::SecureBlob& unsealed_data) = 0;
-  virtual StatusOr<attestation::Quote> Quote(DeviceConfig device_config,
-                                             const brillo::Blob& key_blob) = 0;
+      const brillo::SecureBlob& unsealed_data) const = 0;
+  virtual StatusOr<attestation::Quote> Quote(
+      DeviceConfig device_config, const brillo::Blob& key_blob) const = 0;
   virtual StatusOr<bool> IsQuoted(DeviceConfig device_config,
-                                  const attestation::Quote& quote) = 0;
+                                  const attestation::Quote& quote) const = 0;
 };
 
 }  // namespace hwsec
