@@ -1344,9 +1344,10 @@ static bool GetCmdLineTestConnectToCameraService(
     const base::CommandLine& cmd_line) {
   const auto& connect_to_camera_service =
       cmd_line.GetSwitchValueASCII("connect_to_camera_service");
-  // Camera_service is connected by default.
+  // Camera_service is connected by default if |camera_hal_path| is not
+  // specified.
   if (connect_to_camera_service.empty()) {
-    return true;
+    return cmd_line.GetSwitchValuePath("camera_hal_path").empty();
   }
   std::string str(connect_to_camera_service);
   std::transform(str.begin(), str.end(), str.begin(), ::tolower);
@@ -1383,15 +1384,13 @@ bool InitializeTest(int* argc,
   base::FilePath camera_hal_path =
       cmd_line->GetSwitchValuePath("camera_hal_path");
   int facing = GetCmdLineTestCameraFacing(*cmd_line);
-  if (!camera_hal_path.empty() &&
-      !cmd_line->GetSwitchValueASCII("connect_to_camera_service").empty()) {
+  bool connect_to_camera_service =
+      GetCmdLineTestConnectToCameraService(*cmd_line);
+  if (!camera_hal_path.empty() && connect_to_camera_service) {
     LOGF(ERROR) << "Cannot specify both --camera_hal_path and "
-                   "--connect_to_camera_service.";
+                   "--connect_to_camera_service=true.";
     return false;
   }
-  bool connect_to_camera_service =
-      camera_hal_path.empty() ? GetCmdLineTestConnectToCameraService(*cmd_line)
-                              : false;
 
   if (facing != -ENOENT) {
     if (facing == -EINVAL) {
