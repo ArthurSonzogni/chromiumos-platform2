@@ -115,14 +115,17 @@ bool Dumpe2fs(const base::FilePath& path,
   }
   dump.AddArg(path.value());
 
-  dump.RedirectOutputToMemory(true);
-  if (dump.Run() == 0) {
-    *info = dump.GetOutputString(STDOUT_FILENO);
-    return true;
+  if (info) {
+    dump.RedirectUsingMemory(STDOUT_FILENO);
   }
-  PLOG(WARNING) << "dumpe2fs failed";
-  *info = "";
-  return false;
+  if (dump.Run() != 0) {
+    PLOG(WARNING) << "dumpe2fs failed";
+    return false;
+  }
+  if (info) {
+    *info = dump.GetOutputString(STDOUT_FILENO);
+  }
+  return true;
 }
 
 bool IsFeatureEnabled(const std::string& fs_features,
@@ -277,6 +280,7 @@ std::vector<std::string> StatefulMount::GenerateExt4FeaturesWrapper() {
   std::vector<std::string> args;
   if (!Dumpe2fs(state_dev_, args, &state_dumpe2fs)) {
     PLOG(ERROR) << "Failed dumpe2fs for stateful partition.";
+    state_dumpe2fs = "";
   }
   return GenerateExt4Features(state_dumpe2fs);
 }

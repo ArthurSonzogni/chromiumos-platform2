@@ -85,18 +85,18 @@ int Platform::Ioctl(int fd, unsigned long request, int* arg1) {
 int Platform::MountEncrypted(const std::vector<std::string>& args,
                              std::string* output) {
   brillo::ProcessImpl mount_enc;
-  base::FilePath file;
-  base::CreateTemporaryFile(&file);
   mount_enc.AddArg("/usr/sbin/mount-encrypted");
   for (auto arg : args) {
     mount_enc.AddArg(arg);
   }
-  mount_enc.RedirectOutput(file.value());
-  int status = mount_enc.Run();
-  if (status == 0) {
-    base::ReadFileToString(file, output);
+  if (output) {
+    mount_enc.RedirectUsingMemory(STDOUT_FILENO);
   }
-  brillo::DeleteFile(file);
+
+  int status = mount_enc.Run();
+  if (output) {
+    *output = mount_enc.GetOutputString(STDOUT_FILENO);
+  }
   return status;
 }
 
