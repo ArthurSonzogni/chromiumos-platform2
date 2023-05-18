@@ -1113,7 +1113,17 @@ TEST_F(ArcVmTest, EnableVmmSwapAgainJustAfterVmmSwapOut) {
   swap_policy_timer_->Fire();
   FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
   swap_state_monitor_timer_->Fire();
+  FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
+  FakeCrosvmControl::Get()->count_vmm_swap_out_ = 0;
+  FakeCrosvmControl::Get()->count_vmm_swap_trim_ = 0;
   ASSERT_FALSE(EnableVmmSwap());
+  // Vmm-swap enable & trim without vmm-swap out.
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 1);
+  ASSERT_TRUE(swap_policy_timer_->IsRunning());
+  swap_policy_timer_->Fire();
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_trim_, 1);
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+  ASSERT_FALSE(swap_state_monitor_timer_->IsRunning());
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapAgain24HoursAfterVmmSwapOut) {
@@ -1133,7 +1143,17 @@ TEST_F(ArcVmTest, EnableVmmSwapAgainExceedsTbwTarget) {
   FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
   swap_state_monitor_timer_->Fire();
   ProceedTimeAfterSwapOut(base::Hours(24));
+  FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
+  FakeCrosvmControl::Get()->count_vmm_swap_out_ = 0;
+  FakeCrosvmControl::Get()->count_vmm_swap_trim_ = 0;
   ASSERT_FALSE(EnableVmmSwap());
+  // Vmm-swap enable & trim without vmm-swap out.
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 1);
+  ASSERT_TRUE(swap_policy_timer_->IsRunning());
+  swap_policy_timer_->Fire();
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_trim_, 1);
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 0);
+  ASSERT_FALSE(swap_state_monitor_timer_->IsRunning());
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapRejectedByUsagePolicy) {
@@ -1147,7 +1167,9 @@ TEST_F(ArcVmTest, EnableVmmSwapRejectedByUsagePolicy) {
               base::Days(2));
   AddUsageLog(base::Time::Now() - base::Days(7) - base::Hours(1),
               base::Days(2));
+  FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
   ASSERT_FALSE(EnableVmmSwap());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapPassUsagePolicy) {

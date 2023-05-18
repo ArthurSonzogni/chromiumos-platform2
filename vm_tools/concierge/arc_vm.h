@@ -204,6 +204,7 @@ class ArcVm final : public VmBaseImpl {
   void HandleSwapVmEnableRequest(SwapVmResponse& response);
   void HandleSwapVmForceEnableRequest(SwapVmResponse& response);
   void HandleSwapVmDisableRequest(SwapVmResponse& response);
+  void TrimVmmSwapMemory();
   void StartVmmSwapOut();
   void RunVmmSwapOutAfterTrim();
 

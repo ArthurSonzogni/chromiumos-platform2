@@ -1105,16 +1105,17 @@ void ArcVm::InflateAggressiveBalloonOnTimer() {
 
 void ArcVm::HandleSwapVmEnableRequest(SwapVmResponse& response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  bool satisfies_policy = true;
   vmm_swap_usage_policy_.OnEnabled();
   if (is_vmm_swap_enabled_) {
     if ((base::Time::Now() - last_vmm_swap_out_at_) <
         kVmmSwapOutCoolingDownPeriod) {
       LOG(INFO) << "Skip enabling vmm-swap for maintenance for "
                 << kVmmSwapOutCoolingDownPeriod;
+      satisfies_policy = false;
       response.set_success(false);
       response.set_failure_reason(
           "Requires cooling down period after last vmm-swap out");
-      return;
     }
   } else {
     base::TimeDelta next_disable_duration =
@@ -1124,26 +1125,44 @@ void ArcVm::HandleSwapVmEnableRequest(SwapVmResponse& response) {
       LOG(INFO) << "Enabling vmm-swap is rejected by usage prediction. "
                    "Predict duration: "
                 << next_disable_duration << " should be longer than 2 days";
+      satisfies_policy = false;
       response.set_success(false);
       response.set_failure_reason("Predicted disable soon");
-      return;
     }
   }
-  if (!skip_tbw_management_ && !vmm_swap_tbw_policy_->CanSwapOut()) {
+  if (satisfies_policy && !skip_tbw_management_ &&
+      !vmm_swap_tbw_policy_->CanSwapOut()) {
     LOG(WARNING) << "Enabling vmm-swap is rejected by TBW limit";
+    satisfies_policy = false;
     response.set_success(false);
     response.set_failure_reason("TBW (total bytes written) reached target");
+  }
+
+  // Even if it is not allowed to vmm-swap out memory to swap file, it worth
+  // doing vmm-swap trim. The trim command drops the zero/static pages
+  // faulted into the guest memory since the last vmm-swap out.
+  bool trim_vmm_swap_only = !satisfies_policy && is_vmm_swap_enabled_ &&
+                            !swap_policy_timer_->IsRunning();
+  if (!satisfies_policy && !trim_vmm_swap_only) {
     return;
   }
-  if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
+  if (!CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
+    LOG(ERROR) << "Failure on crosvm swap command for enable";
+    response.set_success(false);
+    response.set_failure_reason("Failure on crosvm swap command for enable");
+    return;
+  }
+  if (trim_vmm_swap_only) {
+    // When `trim_vmm_swap_only` is `true`, `suffice_policy` is always `false`
+    // which means it already failed on policy stage and
+    // `response.set_success()` is already set as `false` with failure reason.
+    swap_policy_timer_->Start(FROM_HERE, base::Minutes(10), this,
+                              &ArcVm::TrimVmmSwapMemory);
+  } else {
     is_vmm_swap_enabled_ = true;
     response.set_success(true);
     swap_policy_timer_->Start(FROM_HERE, base::Minutes(10), this,
                               &ArcVm::StartVmmSwapOut);
-  } else {
-    LOG(ERROR) << "Failure on crosvm swap command for enable";
-    response.set_success(false);
-    response.set_failure_reason("Failure on crosvm swap command for enable");
   }
 }
 
@@ -1181,6 +1200,14 @@ void ArcVm::HandleSwapVmDisableRequest(SwapVmResponse& response) {
     response.set_failure_reason("Failure on crosvm swap command for disable");
   }
   is_vmm_swap_enabled_ = false;
+}
+
+void ArcVm::TrimVmmSwapMemory() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  LOG(INFO) << "Trim vmm-swap memory";
+  if (!CrosvmControl::Get()->VmmSwapTrim(GetVmSocketPath().c_str())) {
+    LOG(ERROR) << "Failed to start vmm-swap trim";
+  }
 }
 
 void ArcVm::StartVmmSwapOut() {
