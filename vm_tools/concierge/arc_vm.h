@@ -19,6 +19,7 @@
 #include <base/notreached.h>
 #include <base/sequence_checker.h>
 #include <base/threading/thread.h>
+#include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <chromeos/patchpanel/mac_address_generator.h>
@@ -242,6 +243,8 @@ class ArcVm final : public VmBaseImpl {
   // Ensure calls are made on the right thread.
   SEQUENCE_CHECKER(sequence_checker_);
 
+  bool is_vmm_swap_enabled_ GUARDED_BY_CONTEXT(sequence_checker_) = false;
+  base::Time last_vmm_swap_out_at_ GUARDED_BY_CONTEXT(sequence_checker_);
   // Timer used to run vmm-swap policy. All operations for vmm-swap policy runs
   // on the main thread.
   std::unique_ptr<base::OneShotTimer> swap_policy_timer_

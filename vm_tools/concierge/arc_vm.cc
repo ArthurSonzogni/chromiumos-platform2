@@ -137,6 +137,9 @@ constexpr char kUnknown[] = "unknown";
 // bassed on the zone watermarks, since they can change during boot.
 constexpr base::TimeDelta kBalloonRefreshTime = base::Seconds(60);
 
+// The vmm-swap out should be skipped for 24 hours once it's done.
+constexpr base::TimeDelta kVmmSwapOutCoolingDownPeriod = base::Hours(24);
+
 // The default initialization parameters for ARCVM's LimitCacheBalloonPolicy
 static constexpr LimitCacheBalloonPolicy::Params kArcVmLimitCachePolicyParams =
     {
@@ -839,26 +842,39 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
     case SwapOperation::ENABLE:
       // TODO(b/265386291): Check TBW (total bytes written).
       LOG(INFO) << "Enable vmm-swap";
+      if (is_vmm_swap_enabled_ && (base::Time::Now() - last_vmm_swap_out_at_) <
+                                      kVmmSwapOutCoolingDownPeriod) {
+        LOG(INFO) << "Skip enabling vmm-swap for maintenance for "
+                  << kVmmSwapOutCoolingDownPeriod;
+        response.set_success(false);
+        response.set_failure_reason(
+            "Requires cooling down period after last vmm-swap out");
+        return;
+      }
       if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
+        is_vmm_swap_enabled_ = true;
         response.set_success(true);
         swap_policy_timer_->Start(FROM_HERE, base::Minutes(10), this,
                                   &ArcVm::StartVmmSwapOut);
       } else {
-        LOG(ERROR) << "Failed to enable vmm-swap";
+        LOG(ERROR) << "Failure on crosvm swap command for enable";
         response.set_success(false);
-        response.set_failure_reason("Failed to enable vmm swap");
+        response.set_failure_reason(
+            "Failure on crosvm swap command for enable");
       }
       break;
     case SwapOperation::FORCE_ENABLE:
       LOG(INFO) << "Force enable vmm-swap";
       if (CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
+        is_vmm_swap_enabled_ = true;
         response.set_success(true);
         swap_policy_timer_->Start(FROM_HERE, base::Seconds(10), this,
                                   &ArcVm::StartVmmSwapOut);
       } else {
-        LOG(ERROR) << "Failed to enable vmm-swap";
+        LOG(ERROR) << "Failure on crosvm swap command for force-enable";
         response.set_success(false);
-        response.set_failure_reason("Failed to enable vmm swap");
+        response.set_failure_reason(
+            "Failure on crosvm swap command for force-enable");
       }
       break;
     case SwapOperation::DISABLE:
@@ -874,10 +890,12 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
       if (CrosvmControl::Get()->DisableVmmSwap(GetVmSocketPath().c_str())) {
         response.set_success(true);
       } else {
-        LOG(ERROR) << "Failed to disable vmm-swap";
+        LOG(ERROR) << "Failure on crosvm swap command for disable";
         response.set_success(false);
-        response.set_failure_reason("Failed to disable vmm swap");
+        response.set_failure_reason(
+            "Failure on crosvm swap command for disable");
       }
+      is_vmm_swap_enabled_ = false;
       break;
     default:
       LOG(WARNING) << "Undefined vmm-swap operation";
@@ -1140,6 +1158,7 @@ void ArcVm::RunVmmSwapOutAfterTrim() {
       LOG(INFO) << "Vmm-swap out";
       swap_state_monitor_timer_->Stop();
       CrosvmControl::Get()->VmmSwapOut(GetVmSocketPath().c_str());
+      last_vmm_swap_out_at_ = base::Time::Now();
       return;
     default:
       LOG(INFO) << "Unexpected trim result" << status.state;

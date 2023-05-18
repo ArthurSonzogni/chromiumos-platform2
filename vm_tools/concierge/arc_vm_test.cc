@@ -11,6 +11,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <base/timer/mock_timer.h>
 #include <base/timer/timer.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
@@ -19,7 +20,6 @@
 #include <libcrossystem/crossystem_fake.h>
 #include <vm_concierge/concierge_service.pb.h>
 
-#include "base/functional/bind.h"
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/fake_crosvm_control.h"
 
@@ -871,6 +871,10 @@ class ArcVmTest : public ::testing::Test {
 
   bool DisableVmmSwap() { return HandleSwapVmRequest(SwapOperation::DISABLE); }
 
+  void ProceedTimeAfterSwapOut(base::TimeDelta delta) {
+    vm_->last_vmm_swap_out_at_ -= delta;
+  }
+
  protected:
   // Actual virtual machine being tested.
   std::unique_ptr<ArcVm> vm_;
@@ -1098,6 +1102,23 @@ TEST_F(ArcVmTest, VmmSwapOutAfterTrim) {
   swap_state_monitor_timer_->Fire();
   ASSERT_EQ(FakeCrosvmControl::Get()->count_vmm_swap_out_, 1);
   ASSERT_FALSE(swap_state_monitor_timer_->IsRunning());
+}
+
+TEST_F(ArcVmTest, EnableVmmSwapAgainJustAfterVmmSwapOut) {
+  ASSERT_TRUE(EnableVmmSwap());
+  swap_policy_timer_->Fire();
+  FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
+  swap_state_monitor_timer_->Fire();
+  ASSERT_FALSE(EnableVmmSwap());
+}
+
+TEST_F(ArcVmTest, EnableVmmSwapAgain24HoursAfterVmmSwapOut) {
+  ASSERT_TRUE(EnableVmmSwap());
+  swap_policy_timer_->Fire();
+  FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
+  swap_state_monitor_timer_->Fire();
+  ProceedTimeAfterSwapOut(base::Hours(24));
+  ASSERT_TRUE(EnableVmmSwap());
 }
 
 TEST_F(ArcVmTest, MonitorSwapStateChangeStillTrimInProgress) {
