@@ -106,6 +106,9 @@ class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
   // Set the local IP address of requests
   virtual void SetLocalIpAddress(const std::string& ip_address) = 0;
 
+  // Set the list of DNS servers to be used instead of the system default.
+  virtual void SetDnsServers(const std::vector<std::string>& dns_servers) = 0;
+
   // Use the default CA certificate for certificate verification. This
   // means that clients are only allowed to communicate with Google services.
   virtual void UseDefaultCertificate() {}

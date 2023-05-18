@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/location.h>
 #include <brillo/http/http_transport.h>
@@ -42,6 +43,10 @@ class MockTransport : public Transport {
   MOCK_METHOD(bool, CancelRequest, (RequestID), (override));
   MOCK_METHOD(void, SetDefaultTimeout, (base::TimeDelta), (override));
   MOCK_METHOD(void, SetLocalIpAddress, (const std::string&), (override));
+  MOCK_METHOD(void,
+              SetDnsServers,
+              (const std::vector<std::string>&),
+              (override));
   MOCK_METHOD(void, UseDefaultCertificate, (), (override));
   MOCK_METHOD(void, UseCustomCertificate, (Certificate), (override));
   MOCK_METHOD(void,

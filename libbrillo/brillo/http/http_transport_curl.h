@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/location.h>
 #include <base/memory/weak_ptr.h>
@@ -66,6 +67,8 @@ class BRILLO_EXPORT Transport : public http::Transport {
   void SetDefaultTimeout(base::TimeDelta timeout) override;
 
   void SetLocalIpAddress(const std::string& ip_address) override;
+
+  void SetDnsServers(const std::vector<std::string>& dns_servers) override;
 
   void UseDefaultCertificate() override;
 
@@ -146,6 +149,7 @@ class BRILLO_EXPORT Transport : public http::Transport {
   // The connection timeout for the requests made.
   base::TimeDelta connection_timeout_;
   std::string ip_address_;
+  std::vector<std::string> dns_servers_;
   base::FilePath certificate_path_;
   curl_slist* host_list_{nullptr};
   std::optional<int> buffer_size_;

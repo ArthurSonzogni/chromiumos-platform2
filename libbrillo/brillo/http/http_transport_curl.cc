@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/http/http_connection_curl.h>
@@ -202,6 +203,11 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
     code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_INTERFACE,
                                           ip_address_.c_str());
   }
+  if (code == CURLE_OK && !dns_servers_.empty()) {
+    code = curl_interface_->EasySetOptStr(
+        curl_handle, CURLOPT_DNS_SERVERS,
+        base::JoinString(dns_servers_, ",").c_str());
+  }
   if (code == CURLE_OK && host_list_) {
     code = curl_interface_->EasySetOptPtr(curl_handle, CURLOPT_RESOLVE,
                                           host_list_);
@@ -329,6 +335,10 @@ void Transport::SetDefaultTimeout(base::TimeDelta timeout) {
 
 void Transport::SetLocalIpAddress(const std::string& ip_address) {
   ip_address_ = "host!" + ip_address;
+}
+
+void Transport::SetDnsServers(const std::vector<std::string>& dns_servers) {
+  dns_servers_ = dns_servers;
 }
 
 void Transport::UseDefaultCertificate() {

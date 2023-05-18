@@ -430,6 +430,27 @@ TEST_F(HttpCurlTransportTest, RequestGetUploadBufferSizeDefault) {
   connection.reset();
 }
 
+TEST_F(HttpCurlTransportTest, SetDnsServers) {
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_DNS_SERVERS, "1.2.3.4,3.4.5.6"))
+      .WillOnce(Return(CURLE_OK));
+
+  transport_->SetDnsServers({"1.2.3.4", "3.4.5.6"});
+  auto connection = transport_->CreateConnection(
+      "http://foo.bar/get", request_type::kGet, {}, "", "", nullptr);
+
+  testing::Mock::VerifyAndClearExpectations(curl_api_.get());
+  EXPECT_NE(nullptr, connection.get());
+
+  EXPECT_CALL(*curl_api_, EasyCleanup(handle_)).Times(1);
+  connection.reset();
+}
+
 }  // namespace curl
 }  // namespace http
 }  // namespace brillo

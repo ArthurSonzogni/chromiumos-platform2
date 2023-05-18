@@ -112,6 +112,8 @@ class BRILLO_EXPORT Transport : public http::Transport {
 
   void SetLocalIpAddress(const std::string& ip_address) override {}
 
+  void SetDnsServers(const std::vector<std::string>& dns_servers) override {}
+
   void ResolveHostToIp(const std::string& host,
                        uint16_t port,
                        const std::string& ip_address) override {}
