@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/location.h>
+#include <base/strings/string_piece.h>
 
 namespace brillo {
 class Error;
@@ -54,23 +55,23 @@ class Error {
 
   Error();                    // Success by default.
   explicit Error(Type type);  // Uses the default message for |type|.
-  Error(Type type, const std::string& message);
+  Error(Type type, base::StringPiece message);
   Error(Type type,
-        const std::string& message,
-        const std::string& detailed_error_type);
-  Error(Type type, const std::string& message, const base::Location& location);
+        base::StringPiece message,
+        base::StringPiece detailed_error_type);
+  Error(Type type, base::StringPiece message, const base::Location& location);
   Error(const Error&);
   Error& operator=(const Error&);
 
   ~Error();
 
   void Populate(Type type);  // Uses the default message for |type|.
-  void Populate(Type type, const std::string& message);
+  void Populate(Type type, base::StringPiece message);
   void Populate(Type type,
-                const std::string& message,
-                const std::string& detailed_error_type);
+                base::StringPiece message,
+                base::StringPiece detailed_error_type);
   void Populate(Type type,
-                const std::string& message,
+                base::StringPiece message,
                 const base::Location& location);
 
   void Log() const;
@@ -97,14 +98,14 @@ class Error {
 
   static void LogMessage(const base::Location& from_here,
                          Type type,
-                         const std::string& message);
+                         base::StringPiece message);
 
   // Log an error message from |from_here|.  If |error| is non-NULL, also
   // populate it.
   static void PopulateAndLog(const base::Location& from_here,
                              Error* error,
                              Type type,
-                             const std::string& message);
+                             base::StringPiece message);
 
   static std::string GetLocationAsString(const base::Location& location);
 
