@@ -35,7 +35,6 @@ use crate::cookie::HibernateCookieValue;
 use crate::files::HIBERMETA_DIR;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::HiberlogOut;
-use crate::metrics::MetricsSample;
 use crate::metrics::METRICS_LOGGER;
 use crate::mmapbuf::MmapBuffer;
 
@@ -250,34 +249,34 @@ pub fn prealloc_mem() -> Result<()> {
     {
         let mut metrics_logger = METRICS_LOGGER.lock().unwrap();
 
-        metrics_logger.log_metric(MetricsSample {
-            name: "Platform.Hibernate.MemoryAvailable",
-            value: available_mb as isize,
-            min: 0,
-            max: 16384,
-            buckets: 50,
-        });
-        metrics_logger.log_metric(MetricsSample {
-            name: "Platform.Hibernate.MemoryAndSwapAvailable",
-            value: total_avail as isize,
-            min: 0,
-            max: 32768,
-            buckets: 50,
-        });
-        metrics_logger.log_metric(MetricsSample {
-            name: "Platform.Hibernate.AdditionalMemoryNeeded",
-            value: shortfall_mb,
-            min: 0,
-            max: 16384,
-            buckets: 50,
-        });
-        metrics_logger.log_metric(MetricsSample {
-            name: "Platform.Hibernate.ExcessMemoryAvailable",
-            value: extra_mb,
-            min: 0,
-            max: 16384,
-            buckets: 50,
-        });
+        metrics_logger.log_metric(
+            "Platform.Hibernate.MemoryAvailable",
+            available_mb as isize,
+            0,
+            16384,
+            50,
+        );
+        metrics_logger.log_metric(
+            "Platform.Hibernate.MemoryAndSwapAvailable",
+            total_avail as isize,
+            0,
+            32768,
+            50,
+        );
+        metrics_logger.log_metric(
+            "Platform.Hibernate.AdditionalMemoryNeeded",
+            shortfall_mb,
+            0,
+            16384,
+            50,
+        );
+        metrics_logger.log_metric(
+            "Platform.Hibernate.ExcessMemoryAvailable",
+            extra_mb,
+            0,
+            16384,
+            50,
+        );
     }
 
     if hiber_mb > (total_avail).try_into().unwrap() {

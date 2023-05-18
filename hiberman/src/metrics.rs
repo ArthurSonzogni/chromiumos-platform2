@@ -56,12 +56,12 @@ pub enum DurationMetricUnit {
 /// It requires the histogram name, the sample value, the minimum value,
 /// the maximum value, and the number of buckets.
 #[derive(Serialize, Deserialize)]
-pub struct MetricsSample<'a> {
-    pub name: &'a str,
-    pub value: isize,
-    pub min: isize,
-    pub max: isize,
-    pub buckets: usize,
+struct MetricsSample<'a> {
+    name: &'a str,
+    value: isize,
+    min: isize,
+    max: isize,
+    buckets: usize,
 }
 
 /// Define the hibernate metrics logger.
@@ -77,16 +77,8 @@ impl MetricsLogger {
     }
 
     /// Log a metric to the MetricsLogger buffer.
-    pub fn log_metric(&mut self, metric: MetricsSample) {
-        let entry = match serde_json::to_string(&metric) {
-            Ok(s) => s,
-            Err(e) => {
-                warn!("Failed to make metric string, {}", e);
-                return;
-            }
-        };
-
-        self.buf.push_back(entry);
+    pub fn log_metric(&mut self, name: &str, value: isize, min: isize, max: isize, buckets: usize) {
+        self.log_metric_internal(name, value, min, max, buckets);
     }
 
     /// Write the MetricsLogger buffer to the MetricsLogger file.
@@ -121,33 +113,28 @@ impl MetricsLogger {
         let base_name = "Platform.Hibernate.IO.";
         // Convert the bytes to KiB for more manageable metric values.
         let io_kbytes = io_bytes / 1024;
-        let size_metric = MetricsSample {
-            name: &format!("{}{}.Size", base_name, histogram),
-            value: io_kbytes as isize,
-            min: 0,
-            max: MAX_IO_SIZE_KB,
-            buckets: 50,
-        };
 
-        let rate_metric = MetricsSample {
-            name: &format!("{}{}.Rate", base_name, histogram),
-            value: rate as isize,
-            min: 0,
-            max: 1024,
-            buckets: 50,
-        };
-
-        let duration_metric = MetricsSample {
-            name: &format!("{}{}.Duration", base_name, histogram),
-            value: duration.as_secs() as isize,
-            min: 0,
-            max: 120,
-            buckets: 50,
-        };
-
-        self.log_metric(size_metric);
-        self.log_metric(rate_metric);
-        self.log_metric(duration_metric);
+        self.log_metric(
+            &format!("{}{}.Size", base_name, histogram),
+            io_kbytes as isize,
+            0,
+            MAX_IO_SIZE_KB,
+            50,
+        );
+        self.log_metric(
+            &format!("{}{}.Rate", base_name, histogram),
+            rate as isize,
+            0,
+            1024,
+            50,
+        );
+        self.log_metric(
+            &format!("{}{}.Duration", base_name, histogram),
+            duration.as_secs() as isize,
+            0,
+            120,
+            50,
+        );
     }
 
     pub fn log_duration_sample(
@@ -169,15 +156,34 @@ impl MetricsLogger {
             DurationMetricUnit::Hours => duration.as_secs() / 3600,
         };
 
-        let duration_metric = MetricsSample {
-            name: histogram,
-            value: value as isize,
-            min: 0,
+        self.log_metric(histogram, value as isize, 0, max, num_buckets as usize);
+    }
+
+    fn log_metric_internal(
+        &mut self,
+        name: &str,
+        value: isize,
+        min: isize,
+        max: isize,
+        buckets: usize,
+    ) {
+        let sample = MetricsSample {
+            name,
+            value,
+            min,
             max,
-            buckets: num_buckets as usize,
+            buckets,
         };
 
-        self.log_metric(duration_metric);
+        let entry = match serde_json::to_string(&sample) {
+            Ok(s) => s,
+            Err(e) => {
+                warn!("Failed to make metric string, {}", e);
+                return;
+            }
+        };
+
+        self.buf.push_back(entry);
     }
 }
 
