@@ -359,8 +359,6 @@ uint8_t pinweaver_eal_get_current_pcr_digest(
   return get_current_pcr_digest(bitmask, sha256_of_selected_pcr);
 }
 
-#if BIOMETRICS_DEV
-
 namespace {
 constexpr char kPkPathPrefix[] = "pk";
 }
@@ -485,6 +483,4 @@ int pinweaver_eal_ecdh_derive(const struct pw_ba_ecc_pt_t* ecc_pt_in,
   memcpy(ecc_pt_out->y, out_y_blob.data(), out_y_blob.size());
   return 0;
 }
-
-#endif
 }
