@@ -6,11 +6,14 @@
 
 #include <string>
 
+#include <base/containers/span.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <brillo/hash/MurmurHash3.h>
 #include <libhwsec/error/tpm_error.h>
 
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/converter.h"
 
 namespace cryptohome {
 
@@ -144,6 +147,28 @@ void ReportCryptohomeError(const StatusChain<CryptohomeError>& err,
 void ReportCryptohomeOk(const std::string& error_bucket_name) {
   // 0 represents success in the mapping.
   ReportCryptohomeErrorLeafWithTPM(error_bucket_name, 0);
+}
+
+void ReportCryptohomeOk(base::span<const std::string> error_bucket_paths) {
+  ReportCryptohomeOk(base::JoinString(error_bucket_paths, "."));
+}
+
+void ReportOperationStatus(const StatusChain<CryptohomeError>& err,
+                           const std::string& error_bucket_name) {
+  if (err.ok()) {
+    ReportCryptohomeOk(error_bucket_name);
+    return;
+  }
+
+  user_data_auth::CryptohomeErrorCode legacy_ec;
+  auto info = CryptohomeErrorToUserDataAuthError(err, &legacy_ec);
+
+  ReportCryptohomeError(err, info, error_bucket_name);
+}
+
+void ReportOperationStatus(const StatusChain<CryptohomeError>& err,
+                           base::span<const std::string> error_bucket_paths) {
+  ReportOperationStatus(err, base::JoinString(error_bucket_paths, "."));
 }
 
 }  // namespace error

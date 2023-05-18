@@ -6,8 +6,11 @@
 #include "cryptohome/error/reap.h"
 
 #include <string>
+#include <utility>
 
+#include <base/containers/span.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 
 namespace cryptohome {
 
@@ -23,6 +26,12 @@ void ReapAndReportError(CryptohomeStatus status,
   user_data_auth::CryptohomeErrorCode legacy_ec;
   auto info = CryptohomeErrorToUserDataAuthError(status, &legacy_ec);
   ReportCryptohomeError(status, info, error_bucket_name);
+}
+
+void ReapAndReportError(CryptohomeStatus status,
+                        base::span<const std::string> error_bucket_paths) {
+  ReapAndReportError(std::move(status),
+                     base::JoinString(error_bucket_paths, "."));
 }
 
 void ReapWorkingAsIntendedError(CryptohomeStatus status) {

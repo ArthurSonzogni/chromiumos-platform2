@@ -290,17 +290,34 @@ CryptohomeStatus CleanUpAllBackupKeysets(
 
 void ReportRecreateAuthFactorError(CryptohomeStatus status,
                                    AuthFactorType auth_factor_type) {
-  std::string error_bucket_name =
-      std::string(kCryptohomeErrorRecreateAuthFactorErrorBucket) + "." +
-      AuthFactorTypeToCamelCaseString(auth_factor_type);
-  ReapAndReportError(std::move(status), std::move(error_bucket_name));
+  const std::array<std::string, 2> error_bucket_paths{
+      kCryptohomeErrorRecreateAuthFactorErrorBucket,
+      AuthFactorTypeToCamelCaseString(auth_factor_type)};
+  ReapAndReportError(std::move(status), error_bucket_paths);
 }
 
 void ReportRecreateAuthFactorOk(AuthFactorType auth_factor_type) {
-  std::string error_bucket_name =
-      std::string(kCryptohomeErrorRecreateAuthFactorErrorBucket) + "." +
-      AuthFactorTypeToCamelCaseString(auth_factor_type);
-  ReportCryptohomeOk(std::move(error_bucket_name));
+  const std::array<std::string, 2> error_bucket_paths{
+      kCryptohomeErrorRecreateAuthFactorErrorBucket,
+      AuthFactorTypeToCamelCaseString(auth_factor_type)};
+  ReportCryptohomeOk(error_bucket_paths);
+}
+
+void ReportAndExecuteCallback(StatusCallback callback,
+                              AuthFactorType auth_factor_type,
+                              const std::string& bucket_name,
+                              CryptohomeStatus status) {
+  const std::array<std::string, 2> error_bucket_paths{
+      bucket_name, AuthFactorTypeToCamelCaseString(auth_factor_type)};
+  ReportOperationStatus(status, error_bucket_paths);
+  std::move(callback).Run(std::move(status));
+}
+
+StatusCallback WrapCallbackWithMetricsReporting(StatusCallback callback,
+                                                AuthFactorType auth_factor_type,
+                                                std::string bucket_name) {
+  return base::BindOnce(&ReportAndExecuteCallback, std::move(callback),
+                        auth_factor_type, std::move(bucket_name));
 }
 
 }  // namespace
@@ -1140,6 +1157,10 @@ void AuthSession::AuthenticateAuthFactor(
     return;
   }
 
+  on_done = WrapCallbackWithMetricsReporting(
+      std::move(on_done), *request_auth_factor_type,
+      kCryptohomeErrorAuthenticateAuthFactorErrorBucket);
+
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(*request_auth_factor_type);
   AuthFactorLabelArity label_arity = factor_driver.GetAuthFactorLabelArity();
@@ -1487,6 +1508,10 @@ void AuthSession::RemoveAuthFactor(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
     return;
   }
+
+  on_done = WrapCallbackWithMetricsReporting(
+      std::move(on_done), stored_auth_factor->auth_factor().type(),
+      kCryptohomeErrorRemoveAuthFactorErrorBucket);
 
   if (auth_factor_map_.size() == 1) {
     LOG(ERROR) << "AuthSession: Cannot remove the last auth factor.";
@@ -2017,6 +2042,11 @@ void AuthSession::PrepareAuthFactor(
     std::move(on_done).Run(std::move(status));
     return;
   }
+
+  on_done = WrapCallbackWithMetricsReporting(
+      std::move(on_done), *auth_factor_type,
+      kCryptohomeErrorPrepareAuthFactorErrorBucket);
+
   AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(*auth_factor_type);
 
@@ -2892,6 +2922,10 @@ void AuthSession::AddAuthFactor(
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
+
+  on_done = WrapCallbackWithMetricsReporting(
+      std::move(on_done), auth_factor_type,
+      kCryptohomeErrorAddAuthFactorErrorBucket);
 
   CryptohomeStatusOr<AuthInput> auth_input_status = CreateAuthInputForAdding(
       request.auth_input(), auth_factor_type, auth_factor_metadata);

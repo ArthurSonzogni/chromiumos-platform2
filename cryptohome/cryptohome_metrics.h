@@ -323,6 +323,14 @@ inline constexpr char kCryptohomeErrorUssMigrationErrorBucket[] =
     "UssMigrationError";
 inline constexpr char kCryptohomeErrorRecreateAuthFactorErrorBucket[] =
     "RecreateAuthFactorError";
+inline constexpr char kCryptohomeErrorPrepareAuthFactorErrorBucket[] =
+    "PrepareAuthFactorError";
+inline constexpr char kCryptohomeErrorAddAuthFactorErrorBucket[] =
+    "AddAuthFactorError";
+inline constexpr char kCryptohomeErrorAuthenticateAuthFactorErrorBucket[] =
+    "AuthenticateAuthFactorError";
+inline constexpr char kCryptohomeErrorRemoveAuthFactorErrorBucket[] =
+    "RemoveAuthFactorError";
 
 // List of possible results of fetching the USS experiment config. If fetching
 // failed, the status is kFetchError. If parsing failed, the status is

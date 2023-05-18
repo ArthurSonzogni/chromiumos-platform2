@@ -70,8 +70,13 @@ TEST_F(ErrorReportingTest, SuccessNoReporting) {
 TEST_F(ErrorReportingTest, ReportSuccess) {
   EXPECT_CALL(metrics_,
               SendSparseToUMA(EndsWith(kCryptohomeErrorLeafWithTPMSuffix), 0))
-      .WillOnce(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
   ReportCryptohomeOk(kErrorBucketName);
+
+  auto success = OkStatus<CryptohomeError>();
+  // This should have the same effect as ReportCryptohomeOk.
+  ReportOperationStatus(success, kErrorBucketName);
 }
 
 TEST_F(ErrorReportingTest, NoTPMError) {
@@ -79,24 +84,29 @@ TEST_F(ErrorReportingTest, NoTPMError) {
   EXPECT_CALL(metrics_,
               SendSparseToUMA(EndsWith(kCryptohomeErrorAllLocationsSuffix),
                               kErrorLocationForTesting1.location()))
-      .WillOnce(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(metrics_,
               SendSparseToUMA(EndsWith(kCryptohomeErrorAllLocationsSuffix),
                               kErrorLocationForTesting2.location()))
-      .WillOnce(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(metrics_,
               SendSparseToUMA(EndsWith(kCryptohomeErrorLeafWithoutTPMSuffix),
                               kErrorLocationForTesting1.location()))
-      .WillOnce(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(metrics_,
               SendSparseToUMA(EndsWith(kCryptohomeErrorLeafWithTPMSuffix),
                               kErrorLocationForTesting1.location() << 16))
-      .WillOnce(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
   // HashedStack value is precomputed.
   EXPECT_CALL(
       metrics_,
       SendSparseToUMA(EndsWith(kCryptohomeErrorHashedStackSuffix), -960165467))
-      .WillOnce(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
 
   // Setup the errors.
   auto err1 = MakeStatus<CryptohomeError>(
@@ -115,6 +125,8 @@ TEST_F(ErrorReportingTest, NoTPMError) {
 
   // Make the call.
   ReportCryptohomeError(err2, info, kErrorBucketName);
+  // This should have the same effect as ReportCryptohomeError.
+  ReportOperationStatus(err2, kErrorBucketName);
 }
 
 TEST_F(ErrorReportingTest, DevCheckUnexpectedState) {

@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/containers/span.h>
+
 #include "cryptohome/error/cryptohome_error.h"
 
 namespace cryptohome {
@@ -19,6 +21,11 @@ namespace error {
 // disposed error will be reported to the Cryptohome.|error_bucket_name|.*
 // metrics.
 void ReapAndReportError(CryptohomeStatus status, std::string error_bucket_name);
+
+// Override of ReapAndReportError that takes several error bucket paths and
+// join them into the error bucket name.
+void ReapAndReportError(CryptohomeStatus status,
+                        base::span<const std::string> error_bucket_paths);
 
 // This function should be called when there's an error that is deemed to be
 // working as intended. The error's ownership should be transferred into this
