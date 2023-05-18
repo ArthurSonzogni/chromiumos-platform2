@@ -31,7 +31,7 @@ void VPNConnectionUnderTest::TriggerConnected(
 }
 
 void VPNConnectionUnderTest::TriggerFailure(Service::ConnectFailure reason,
-                                            const std::string& detail) {
+                                            base::StringPiece detail) {
   NotifyFailure(reason, detail);
 }
 

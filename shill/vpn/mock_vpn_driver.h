@@ -63,7 +63,7 @@ class MockVPNDriverEventHandler : public VPNDriver::EventHandler {
   MOCK_METHOD(void, OnDriverConnected, (const std::string&, int), (override));
   MOCK_METHOD(void,
               OnDriverFailure,
-              (Service::ConnectFailure, const std::string&),
+              (Service::ConnectFailure, base::StringPiece),
               (override));
   MOCK_METHOD(void, OnDriverReconnecting, (base::TimeDelta), (override));
 };

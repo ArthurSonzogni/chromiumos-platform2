@@ -105,7 +105,7 @@ void VPNConnection::NotifyConnected(
 }
 
 void VPNConnection::NotifyFailure(Service::ConnectFailure reason,
-                                  const std::string& detail) {
+                                  base::StringPiece detail) {
   CheckCallWithState(__func__, state_,
                      {State::kConnecting, State::kConnected,
                       State::kDisconnecting, State::kStopped});

@@ -104,7 +104,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // the failure reason to |failure|, sets its ErrorDetails property to
   // |error_details|, and disassociates from the service.
   void FailService(Service::ConnectFailure failure,
-                   const std::string& error_details);
+                   base::StringPiece error_details);
 
   void OnLinkReady(const std::string& link_name, int interface_index);
 

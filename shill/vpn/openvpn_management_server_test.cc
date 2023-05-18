@@ -21,6 +21,7 @@
 
 using testing::_;
 using testing::Assign;
+using testing::Eq;
 using testing::InSequence;
 using testing::Return;
 using testing::ReturnNew;
@@ -525,7 +526,7 @@ TEST_F(OpenVPNManagementServerTest, ProcessFailedPasswordMessage) {
   EXPECT_CALL(driver_,
               FailService(Service::kFailureConnect, Service::kErrorDetailsNone))
       .Times(3);
-  EXPECT_CALL(driver_, FailService(Service::kFailureConnect, "Revoked."));
+  EXPECT_CALL(driver_, FailService(Service::kFailureConnect, Eq("Revoked.")));
   EXPECT_TRUE(
       server_.ProcessFailedPasswordMessage(">PASSWORD:Verification Failed: ."));
   EXPECT_TRUE(server_.ProcessFailedPasswordMessage(

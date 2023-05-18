@@ -170,7 +170,7 @@ void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
 }
 
 void VPNService::OnDriverFailure(ConnectFailure failure,
-                                 const std::string& error_details) {
+                                 base::StringPiece error_details) {
   StopDriverConnectTimeout();
   CleanupDevice();
   SetErrorDetails(error_details);

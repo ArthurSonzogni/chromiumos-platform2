@@ -166,7 +166,7 @@ OpenVPNDriver::~OpenVPNDriver() {
 }
 
 void OpenVPNDriver::FailService(Service::ConnectFailure failure,
-                                const std::string& error_details) {
+                                base::StringPiece error_details) {
   SLOG(2) << __func__ << "(" << error_details << ")";
   Cleanup();
   if (event_handler_) {

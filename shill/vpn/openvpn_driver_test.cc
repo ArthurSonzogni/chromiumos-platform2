@@ -43,6 +43,7 @@
 
 using testing::_;
 using testing::DoAll;
+using testing::Eq;
 using testing::Field;
 using testing::Mock;
 using testing::NiceMock;
@@ -1124,7 +1125,7 @@ TEST_F(OpenVPNDriverTest, FailService) {
   static const char kErrorDetails[] = "Bad password.";
   SetEventHandler(&event_handler_);
   EXPECT_CALL(event_handler_,
-              OnDriverFailure(Service::kFailureConnect, kErrorDetails));
+              OnDriverFailure(Service::kFailureConnect, Eq(kErrorDetails)));
   driver_->FailService(Service::kFailureConnect, kErrorDetails);
 }
 

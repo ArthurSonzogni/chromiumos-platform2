@@ -66,7 +66,7 @@ class VPNService : public Service,
   // Inherited from VPNDriver::EventHandler. Callbacks from VPNDriver.
   void OnDriverConnected(const std::string& if_name, int if_index) override;
   void OnDriverFailure(ConnectFailure failure,
-                       const std::string& error_details) override;
+                       base::StringPiece error_details) override;
   void OnDriverReconnecting(base::TimeDelta timeout) override;
 
   const NetworkConfig& static_network_config_for_testing() {

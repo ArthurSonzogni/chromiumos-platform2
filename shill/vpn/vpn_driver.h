@@ -63,7 +63,7 @@ class VPNDriver {
     // event is supposed to be triggered only once before the next call of
     // ConnectAsync().
     virtual void OnDriverFailure(Service::ConnectFailure failure,
-                                 const std::string& error_details) = 0;
+                                 base::StringPiece error_details) = 0;
 
     // Indicates the driver is trying reconnecting now. Note that this event
     // might be triggered multiple times before OnConnected or OnFailure

@@ -24,7 +24,7 @@ class MockOpenVPNDriver : public OpenVPNDriver {
   MOCK_METHOD(void, OnReconnecting, (ReconnectReason), (override));
   MOCK_METHOD(void,
               FailService,
-              (Service::ConnectFailure, const std::string&),
+              (Service::ConnectFailure, base::StringPiece),
               (override));
   MOCK_METHOD(void, ReportCipherMetrics, (const std::string&), (override));
 };

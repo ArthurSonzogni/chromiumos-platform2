@@ -88,7 +88,7 @@ class WireGuardDriver : public VPNDriver {
   // Calls Cleanup(), and if there is a service associated through
   // ConnectAsync(), notifies it of the failure.
   void FailService(Service::ConnectFailure failure,
-                   const std::string& error_details);
+                   base::StringPiece error_details);
   // Resets states and deallocate all resources.
   void Cleanup();
 

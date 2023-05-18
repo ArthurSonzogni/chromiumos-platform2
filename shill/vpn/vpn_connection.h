@@ -112,7 +112,7 @@ class VPNConnection {
   // class (by a PostTask()), and thus the derived class don't need to do any
   // clean up other than calling this function on failures.
   mockable void NotifyFailure(Service::ConnectFailure reason,
-                              const std::string& detail);
+                              base::StringPiece detail);
   void NotifyStopped();
 
   EventDispatcher* dispatcher() { return dispatcher_; }

@@ -59,7 +59,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   // ErrorDetails property to |error_details|, and disassociates from the
   // service.
   virtual void FailService(Service::ConnectFailure failure,
-                           const std::string& error_details);
+                           base::StringPiece error_details);
 
   // Append zero-valued, single-valued and double-valued options to the
   // |options| array.

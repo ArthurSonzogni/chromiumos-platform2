@@ -635,7 +635,7 @@ bool WireGuardDriver::PopulateIPProperties() {
 }
 
 void WireGuardDriver::FailService(Service::ConnectFailure failure,
-                                  const std::string& error_details) {
+                                  base::StringPiece error_details) {
   LOG(ERROR) << "Driver error: " << error_details;
   Cleanup();
   if (event_handler_) {

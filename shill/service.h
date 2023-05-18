@@ -74,7 +74,7 @@ class Service : public base::RefCounted<Service> {
   static const char kCheckPortalFalse[];
   static const char kCheckPortalTrue[];
 
-  static const char kErrorDetailsNone[];
+  static constexpr base::StringPiece kErrorDetailsNone = "";
 
   // TODO(pstew): Storage constants shouldn't need to be public
   // crbug.com/208736
@@ -508,7 +508,7 @@ class Service : public base::RefCounted<Service> {
   void set_error(const std::string& error) { error_ = error; }
 
   const std::string& error_details() const { return error_details_; }
-  void SetErrorDetails(const std::string& details);
+  void SetErrorDetails(base::StringPiece details);
 
   static const char* ConnectFailureToString(const ConnectFailure& state);
   static const char* ConnectStateToString(const ConnectState& state);

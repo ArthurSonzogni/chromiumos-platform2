@@ -114,8 +114,6 @@ const char Service::kCheckPortalAuto[] = "auto";
 const char Service::kCheckPortalFalse[] = "false";
 const char Service::kCheckPortalTrue[] = "true";
 
-const char Service::kErrorDetailsNone[] = "";
-
 const int Service::kPriorityNone = 0;
 
 const char Service::kStorageAutoConnect[] = "AutoConnect";
@@ -2234,11 +2232,11 @@ void Service::SetStrength(uint8_t strength) {
   adaptor_->EmitUint8Changed(kSignalStrengthProperty, strength);
 }
 
-void Service::SetErrorDetails(const std::string& details) {
+void Service::SetErrorDetails(base::StringPiece details) {
   if (error_details_ == details) {
     return;
   }
-  error_details_ = details;
+  error_details_ = std::string(details);
   adaptor_->EmitStringChanged(kErrorDetailsProperty, error_details_);
 }
 
