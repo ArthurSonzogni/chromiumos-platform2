@@ -200,6 +200,18 @@ TEST(UploadsLogParserTest, PassThroughCreationTime) {
   EXPECT_EQ(result[1]->upload_info->creation_time, kCreationTime);
 }
 
+TEST(UploadsLogParserTest, MultipleDelimitersLogLineBreaksCorrectly) {
+  constexpr char kWhitespaces[] = {' ', '\n', '\t', '\r', '\f'};
+  std::ostringstream stream;
+  for (const auto delimiter : kWhitespaces) {
+    stream << kValidLogLine << delimiter;
+  }
+  const auto result = ParseUploadsLog(stream.str(), /*is_uploaded=*/true,
+                                      /*creation_time=*/base::Time(),
+                                      /*init_offset=*/kInitOffset);
+  EXPECT_EQ(result.size(), std::size(kWhitespaces));
+}
+
 // Tests invalid or blank lines.
 class UploadsLogParserInvalidTest
     : public ::testing::TestWithParam<
