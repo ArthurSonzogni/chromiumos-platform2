@@ -7,7 +7,8 @@
 #include <memory>
 #include <utility>
 
-#include "common/utils/cros_camera_mojo_utils.h"
+#include <hardware/gralloc.h>
+
 #include "cros-camera/common.h"
 #include "cutils/native_handle.h"
 
