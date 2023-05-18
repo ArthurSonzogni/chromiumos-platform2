@@ -186,7 +186,7 @@ class AttestationService : public AttestationInterface {
     hwsec_factory_ = hwsec_factory;
   }
 
-  void set_hwsec(hwsec::AttestationFrontend* hwsec) { hwsec_ = hwsec; }
+  void set_hwsec(const hwsec::AttestationFrontend* hwsec) { hwsec_ = hwsec; }
 
   void set_nvram_quoter(NvramQuoter* nvram_quoter) {
     nvram_quoter_ = nvram_quoter;
@@ -777,7 +777,7 @@ class AttestationService : public AttestationInterface {
   // is stopped/destroyed.
   TpmUtility* tpm_utility_{nullptr};
   hwsec::Factory* hwsec_factory_{nullptr};
-  hwsec::AttestationFrontend* hwsec_{nullptr};
+  const hwsec::AttestationFrontend* hwsec_{nullptr};
   NvramQuoter* nvram_quoter_{nullptr};
   std::string hwid_;
   CertRequestMap pending_cert_requests_;
@@ -814,7 +814,7 @@ class AttestationService : public AttestationInterface {
   // and is not available after the thread is stopped/destroyed.
   std::unique_ptr<TpmUtility> default_tpm_utility_;
   std::unique_ptr<hwsec::Factory> default_hwsec_factory_;
-  std::unique_ptr<hwsec::AttestationFrontend> default_hwsec_;
+  std::unique_ptr<const hwsec::AttestationFrontend> default_hwsec_;
   std::unique_ptr<NvramQuoter> default_nvram_quoter_;
 
   scoped_refptr<dbus::Bus> bus_;

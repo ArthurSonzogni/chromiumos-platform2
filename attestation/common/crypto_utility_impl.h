@@ -22,7 +22,8 @@ namespace attestation {
 class CryptoUtilityImpl : public CryptoUtility {
  public:
   // Does not take ownership of pointers.
-  CryptoUtilityImpl(TpmUtility* tpm_utility, hwsec::AttestationFrontend* hwsec);
+  CryptoUtilityImpl(TpmUtility* tpm_utility,
+                    const hwsec::AttestationFrontend* hwsec);
   ~CryptoUtilityImpl() override;
 
   // CryptoUtility methods.
@@ -202,7 +203,7 @@ class CryptoUtilityImpl : public CryptoUtility {
                            std::string* spkac);
 
   TpmUtility* tpm_utility_;
-  hwsec::AttestationFrontend* hwsec_;
+  const hwsec::AttestationFrontend* hwsec_;
 };
 
 }  // namespace attestation
