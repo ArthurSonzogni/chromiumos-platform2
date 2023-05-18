@@ -22,6 +22,7 @@ pkg_config("target_defaults_pkg_deps") {
     "libbrillo",
     "libchrome",
     "libcros_config",
+    "libsar",
     "re2",
   ]
 }
@@ -84,7 +85,10 @@ if (use.test) {
       ":libmems_setup",
       "//common-mk/testrunner",
     ]
-    pkg_deps = [ "libmems_test_support" ]
+    pkg_deps = [
+      "libmems_test_support",
+      "libsar_test_support",
+    ]
   }
 }
 if (use.fuzzer) {

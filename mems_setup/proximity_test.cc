@@ -28,7 +28,6 @@ static gid_t kIioserviceGroupId = 777;
 constexpr int kDeviceId = 1;
 
 constexpr char kSystemPath[] = "/proximity-sensor/semtech-config/0/file";
-constexpr char kSystemPathProperty[] = "system-path";
 
 constexpr char kFakeDevlink[] = "/dev/proximity_lte";
 constexpr char kProximityConfigPath[] =
@@ -56,7 +55,8 @@ class ProximityTest : public SensorTestBase, public ::testing::Test {
                                     kProximityConfigJson);
 
     mock_delegate_->GetFakeCrosConfig()->SetString(
-        kSystemPath, kSystemPathProperty, kProximityConfigPath);
+        kSystemPath, libsar::SarConfigReader::kSystemPathProperty,
+        kProximityConfigPath);
 
     mock_delegate_->SetMockDevlink(kFakeDevlink);
   }
@@ -143,7 +143,8 @@ class ProximityTestWithParam : public SensorTestBase,
                                     kProximityConfigJson);
 
     mock_delegate_->GetFakeCrosConfig()->SetString(
-        kSystemPath, kSystemPathProperty, proximity_config_path);
+        kSystemPath, libsar::SarConfigReader::kSystemPathProperty,
+        proximity_config_path);
 
     mock_delegate_->SetMockDevlink(
         base::StringPrintf(kDevlinkPrefix, std::get<0>(GetParam()).c_str()));

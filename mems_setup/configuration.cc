@@ -28,6 +28,7 @@
 #include <libmems/iio_context.h>
 #include <libmems/iio_device.h>
 #include <libmems/iio_device_impl.h>
+#include <libsar/sar_config_reader.h>
 
 #include "mems_setup/sensor_location.h"
 
@@ -61,11 +62,6 @@ constexpr char kCalibrationBias[] = "bias";
 constexpr char kCalibrationScale[] = "scale";
 constexpr char kSysfsTriggerPrefix[] = "sysfstrig";
 
-constexpr char kCellular[] = "cellular";
-// TODO(b/280013155): Drop it after all boards are updated.
-constexpr char kLte[] = "lte";
-constexpr char kWifi[] = "wifi";
-
 constexpr int kGyroMaxVpdCalibration = 16384;  // 16dps
 constexpr int kAccelMaxVpdCalibration = 256;   // .250g
 constexpr int kAccelSysfsTriggerId = 0;
@@ -81,8 +77,6 @@ constexpr std::initializer_list<const char*> kAccelAxes = {
 constexpr char kTriggerString[] = "trigger";
 
 constexpr char kDevlinkPrefix[] = "/dev/proximity";
-constexpr int kSystemPathIndexLimit = 100;
-constexpr char kSystemPathProperty[] = "system-path";
 
 constexpr char kFilesToSetReadAndOwnership[][28] = {
     "buffer/hwfifo_timeout", "buffer/hwfifo_watermark_max", "buffer/enable",
@@ -640,75 +634,21 @@ bool Configuration::ConfigProximity() {
       return false;
     }
 
-    bool isCellular = false, isWifi = false;
-    if (devlink_opt.value().find(kLte) != std::string::npos ||
-        devlink_opt.value().find(kCellular) != std::string::npos) {
-      isCellular = true;
-    }
-    if (devlink_opt.value().find(kWifi) != std::string::npos)
-      isWifi = true;
+    auto sar_config_reader =
+        libsar::SarConfigReader(cros_config, devlink_opt.value(),
+                                delegate_->GetSarConfigReaderDelegate());
 
-    if (!isCellular && !isWifi) {
+    if (!sar_config_reader.isCellular() && !sar_config_reader.isWifi()) {
       LOG(ERROR) << "Invalid devlink: " << devlink_opt.value()
                  << ", neither lte nor wifi";
       return false;
     }
 
-    std::string config_filename = "";
-    for (int i = 0; i < kSystemPathIndexLimit; ++i) {
-      std::string system_path;
-      if (!cros_config->GetString(
-              base::StringPrintf("/proximity-sensor/semtech-config/%i/file", i),
-              kSystemPathProperty, &system_path)) {
-        // Checked all system paths.
-        break;
-      }
-
-      // It should have the format of "/.../semtech_config_|xxx|.json" based on
-      // the type.
-      std::string system_path_base =
-          base::FilePath(system_path).BaseName().value();
-
-      if (isCellular) {
-        if (system_path_base.find(kCellular) == std::string::npos &&
-            system_path_base.find(kLte) == std::string::npos) {
-          break;
-        }
-      }
-
-      if (isWifi) {
-        if (system_path_base.find(kWifi) == std::string::npos)
-          break;
-      }
-
-      config_filename = system_path;
-    }
-
-    if (config_filename.empty()) {
-      LOG(ERROR) << "Failed to find the config in CrosConfig";
+    auto config_dict_opt = sar_config_reader.GetSarConfigDict();
+    if (!config_dict_opt.has_value())
       return false;
-    }
 
-    auto config_json_data =
-        delegate_->ReadFileToString(base::FilePath(config_filename));
-    if (!config_json_data.has_value()) {
-      LOG(ERROR) << "Failed to read config from " << config_filename;
-      return false;
-    }
-
-    auto config_root = base::JSONReader::ReadAndReturnValueWithError(
-        config_json_data.value(), base::JSON_PARSE_RFC);
-    if (!config_root.has_value()) {
-      LOG(ERROR) << "Failed to parse : " << config_json_data.value();
-      return false;
-    }
-    if (!config_root->is_dict()) {
-      LOG(ERROR) << "Failed to parse root dictionary from "
-                 << config_json_data.value();
-      return false;
-    }
-
-    const base::Value::Dict config_dict = std::move(*config_root).TakeDict();
+    const base::Value::Dict& config_dict = config_dict_opt.value();
 
     std::optional<double> sampling_frequency =
         config_dict.FindDouble("samplingFrequency");

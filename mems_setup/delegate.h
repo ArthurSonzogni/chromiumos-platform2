@@ -7,12 +7,15 @@
 
 #include <unistd.h>
 
+#include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <chromeos-config/libcros_config/cros_config_interface.h>
+#include <libsar/sar_config_reader.h>
 
 namespace mems_setup {
 
@@ -27,8 +30,10 @@ class Delegate {
   virtual bool Exists(const base::FilePath&) = 0;
   virtual std::vector<base::FilePath> EnumerateAllFiles(
       base::FilePath file_path) = 0;
-  virtual std::optional<std::string> ReadFileToString(
-      const base::FilePath&) = 0;
+
+  libsar::SarConfigReader::Delegate* GetSarConfigReaderDelegate() {
+    return sar_config_reader_delegate_.get();
+  }
 
   virtual std::optional<gid_t> FindGroupId(const char* group) = 0;
 
@@ -45,9 +50,14 @@ class Delegate {
   virtual brillo::CrosConfigInterface* GetCrosConfig() = 0;
 
  protected:
-  Delegate() = default;
+  Delegate(std::unique_ptr<libsar::SarConfigReader::Delegate>
+               sar_config_reader_delegate)
+      : sar_config_reader_delegate_(std::move(sar_config_reader_delegate)) {}
   Delegate(const Delegate&) = delete;
   Delegate& operator=(const Delegate&) = delete;
+
+  std::unique_ptr<libsar::SarConfigReader::Delegate>
+      sar_config_reader_delegate_;
 };
 
 }  // namespace mems_setup

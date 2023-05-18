@@ -21,6 +21,7 @@
 #include <base/process/launch.h>
 #include <base/strings/stringprintf.h>
 #include <libmems/common_types.h>
+#include <libsar/sar_config_reader_delegate_impl.h>
 
 #include "mems_setup/delegate_impl.h"
 
@@ -59,6 +60,9 @@ bool LoadVpdFromString(const std::string& vpd_data,
 
   return true;
 }
+
+DelegateImpl::DelegateImpl()
+    : Delegate(std::make_unique<libsar::SarConfigReaderDelegateImpl>()) {}
 
 void DelegateImpl::LoadVpdIfNeeded() {
   if (vpd_loaded_)
@@ -135,15 +139,6 @@ std::vector<base::FilePath> DelegateImpl::EnumerateAllFiles(
     files.push_back(file);
 
   return files;
-}
-
-std::optional<std::string> DelegateImpl::ReadFileToString(
-    const base::FilePath& fp) {
-  std::string data;
-  if (!base::ReadFileToString(fp, &data))
-    return std::nullopt;
-
-  return data;
 }
 
 std::optional<gid_t> DelegateImpl::FindGroupId(const char* group) {

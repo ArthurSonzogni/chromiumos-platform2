@@ -23,7 +23,7 @@ bool LoadVpdFromString(const std::string& vpd_data,
 
 class DelegateImpl : public Delegate {
  public:
-  DelegateImpl() = default;
+  DelegateImpl();
 
   std::optional<std::string> ReadVpdValue(const std::string& key) override;
   bool ProbeKernelModule(const std::string& module) override;
@@ -32,7 +32,6 @@ class DelegateImpl : public Delegate {
   bool Exists(const base::FilePath&) override;
   std::vector<base::FilePath> EnumerateAllFiles(
       base::FilePath file_path) override;
-  std::optional<std::string> ReadFileToString(const base::FilePath&) override;
 
   std::optional<gid_t> FindGroupId(const char* group) override;
 

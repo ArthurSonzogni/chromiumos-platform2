@@ -11,6 +11,10 @@
 namespace mems_setup {
 namespace fakes {
 
+FakeDelegate::FakeDelegate()
+    : Delegate(std::make_unique<libsar::fakes::FakeSarConfigReaderDelegate>()) {
+}
+
 std::optional<std::string> FakeDelegate::ReadVpdValue(const std::string& name) {
   auto k = vpd_.find(name);
   if (k == vpd_.end())
@@ -50,23 +54,15 @@ std::vector<base::FilePath> FakeDelegate::EnumerateAllFiles(
   return files;
 }
 
-std::optional<std::string> FakeDelegate::ReadFileToString(
-    const base::FilePath& fp) {
-  auto it = existing_files_with_data_.find(fp);
-  if (it == existing_files_with_data_.end())
-    return std::nullopt;
-
-  return it->second;
-}
-
 void FakeDelegate::CreateFile(const base::FilePath& fp) {
   existing_files_.emplace(fp);
 }
 
 void FakeDelegate::SetStringToFile(const base::FilePath& fp,
                                    const std::string& data) {
-  CreateFile(fp);
-  existing_files_with_data_.emplace(fp, data);
+  dynamic_cast<libsar::fakes::FakeSarConfigReaderDelegate*>(
+      sar_config_reader_delegate_.get())
+      ->SetStringToFile(fp, data);
 }
 
 std::optional<gid_t> FakeDelegate::FindGroupId(const char* group) {
