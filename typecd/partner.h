@@ -83,6 +83,18 @@ class Partner : public Peripheral {
   // |metrics_reported_| is true, we return immediately.
   void ReportMetrics(Metrics* metrics);
 
+  // Checks whether the partner supports DP alt mode.
+  bool SupportsDp();
+
+  // Checks whether the partner supports TBT alt mode.
+  bool SupportsTbt();
+
+  // Checks whether the partner supports USB4 mode.
+  bool SupportsUsb4();
+
+  // Checks whether the partner supports USB. (not USB4)
+  bool SupportsUsb();
+
  private:
   friend class MetricsTest;
   FRIEND_TEST(MetricsTest, CheckPartnerTypeUSB4Hub);

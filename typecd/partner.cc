@@ -169,40 +169,16 @@ void Partner::UpdateSupportsPD() {
 }
 
 PartnerTypeMetric Partner::GetPartnerTypeMetric() {
-  bool usb4 = false;
-  auto partner_cap = (GetProductTypeVDO1() >> kDeviceCapabilityBitOffset) &
-                     kDeviceCapabilityMask;
-  if (partner_cap & kDeviceCapabilityUSB4) {
-    usb4 = true;
-  }
-
-  // Check for TBT/DP.
-  bool tbt_present = false;
-  bool dp_present = false;
-  for (const auto& [index, mode] : alt_modes_) {
-    if (mode->GetSVID() == kTBTAltModeVID)
-      tbt_present = true;
-
-    if ((mode->GetSVID() == kDPAltModeSID) && (mode->GetVDO() & kDPModeSnk))
-      dp_present = true;
-  }
-
-  bool usb_present = false;
-  // For situations where the device is a "regular" USB peripheral, try to
-  // determine whether it at least supports anything other than billboard.
-  auto product_type = (GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
-                      kIDHeaderVDOProductTypeMask;
-  if (product_type == kIDHeaderVDOProductTypeUFPPeripheral ||
-      product_type == kIDHeaderVDOProductTypeUFPHub) {
-    auto device_cap = (GetProductTypeVDO1() >> kDeviceCapabilityBitOffset) &
-                      kDeviceCapabilityMask;
-    if (device_cap != kDeviceCapabilityBillboard)
-      usb_present = true;
-  }
+  bool usb4 = SupportsUsb4();
+  bool tbt_present = SupportsTbt();
+  bool dp_present = SupportsDp();
+  bool usb_present = SupportsUsb();
 
   // Determine whether it is a hub or peripheral.
   bool hub = false;
   bool peripheral = false;
+  auto product_type = (GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
+                      kIDHeaderVDOProductTypeMask;
   if (product_type == kIDHeaderVDOProductTypeUFPHub) {
     hub = true;
   } else if (product_type == kIDHeaderVDOProductTypeUFPPeripheral) {
@@ -307,6 +283,43 @@ void Partner::ReportMetrics(Metrics* metrics) {
   metrics->ReportPartnerType(GetPartnerTypeMetric());
 
   metrics_reported_ = true;
+}
+
+bool Partner::SupportsUsb() {
+  // For situations where the device is a "regular" USB peripheral, try to
+  // determine whether it at least supports anything other than billboard.
+  auto product_type = (GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
+                      kIDHeaderVDOProductTypeMask;
+  if (product_type == kIDHeaderVDOProductTypeUFPPeripheral ||
+      product_type == kIDHeaderVDOProductTypeUFPHub) {
+    auto device_cap = (GetProductTypeVDO1() >> kDeviceCapabilityBitOffset) &
+                      kDeviceCapabilityMask;
+    if (device_cap != kDeviceCapabilityBillboard)
+      return true;
+  }
+  return false;
+}
+
+bool Partner::SupportsDp() {
+  for (const auto& [index, mode] : alt_modes_) {
+    if ((mode->GetSVID() == kDPAltModeSID) && (mode->GetVDO() & kDPModeSnk))
+      return true;
+  }
+  return false;
+}
+
+bool Partner::SupportsTbt() {
+  for (const auto& [index, mode] : alt_modes_) {
+    if (mode->GetSVID() == kTBTAltModeVID)
+      return true;
+  }
+  return false;
+}
+
+bool Partner::SupportsUsb4() {
+  auto partner_cap = (GetProductTypeVDO1() >> kDeviceCapabilityBitOffset) &
+                     kDeviceCapabilityMask;
+  return (partner_cap & kDeviceCapabilityUSB4);
 }
 
 }  // namespace typecd

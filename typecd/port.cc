@@ -180,26 +180,15 @@ VerticalPosition Port::GetVerticalPosition() {
 }
 
 bool Port::CanEnterDPAltMode(bool* invalid_dpalt_cable_ptr) {
-  bool dp_alt_available = false;
   bool partner_is_receptacle = false;
-
   for (int i = 0; i < partner_->GetNumAltModes(); i++) {
     auto alt_mode = partner_->GetAltMode(i);
-    // Only enter DP if:
-    // - The DP SID is found.
-    // - The DP altmode VDO says it is DFP_D capable.
-    if (!alt_mode || alt_mode->GetSVID() != kDPAltModeSID)
-      continue;
-
-    if (alt_mode->GetVDO() & kDPModeSnk)
-      dp_alt_available = true;
-
     if (alt_mode->GetVDO() & kDPModeReceptacle)
       partner_is_receptacle = true;
   }
 
   // Partner does not support DPAltMode -> partner error
-  if (!dp_alt_available)
+  if (!partner_->SupportsDp())
     return false;
 
   // If the partner supports DPAltMode and an invalid cable flag is passed to
@@ -249,7 +238,7 @@ ModeEntryResult Port::CanEnterTBTCompatibilityMode() {
   }
 
   // Check if the partner supports TBT compatibility mode.
-  if (!IsPartnerAltModePresent(kTBTAltModeVID)) {
+  if (!partner_->SupportsTbt()) {
     LOG(INFO) << "TBT Compat mode not supported by partner.";
     return ModeEntryResult::kPartnerError;
   }
@@ -293,11 +282,7 @@ ModeEntryResult Port::CanEnterUSB4() {
     return ModeEntryResult::kPartnerError;
 
   // Product Type VDO1 is UFP VDO at this point.
-  // Check UFP VDO whether partner doesn't support USB4.
-  auto partner_cap =
-      (partner_->GetProductTypeVDO1() >> kDeviceCapabilityBitOffset) &
-      kDeviceCapabilityMask;
-  if (!(partner_cap & kDeviceCapabilityUSB4))
+  if (!partner_->SupportsUsb4())
     return ModeEntryResult::kPartnerError;
 
   if (!cable_) {
@@ -313,19 +298,6 @@ ModeEntryResult Port::CanEnterUSB4() {
   }
 
   return ModeEntryResult::kSuccess;
-}
-
-bool Port::IsPartnerAltModePresent(uint16_t altmode_sid) {
-  auto num_alt_modes = partner_->GetNumAltModes();
-  for (int i = 0; i < num_alt_modes; i++) {
-    AltMode* alt_mode = partner_->GetAltMode(i);
-    if (!alt_mode)
-      continue;
-    if (alt_mode->GetSVID() == altmode_sid)
-      return true;
-  }
-
-  return false;
 }
 
 bool Port::IsPartnerDiscoveryComplete() {
