@@ -20,7 +20,6 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cryptohome/data_migrator/migration_helper.h>
-#include <cryptohome/platform.h>
 #include <dbus/bus.h>
 
 extern "C" {
@@ -31,6 +30,7 @@ extern "C" {
 #include "arc/vm/data_migrator/dbus_adaptors/org.chromium.ArcVmDataMigrator.h"
 #include "arc/vm/data_migrator/logging.h"
 #include "arc/vm/data_migrator/metrics.h"
+#include "arc/vm/data_migrator/platform.h"
 
 // This is provided as macro because providing it as a function would cause the
 // line numbers emitted from FROM_HERE and logger(ERROR) to be the location of
@@ -343,7 +343,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
 
   std::unique_ptr<base::Thread> migration_thread_;
   std::unique_ptr<cryptohome::data_migrator::MigrationHelper> migration_helper_;
-  cryptohome::Platform platform_;
+  Platform platform_;
   base::Lock migration_helper_lock_;
 
   ArcVmDataMigratorMetrics metrics_;

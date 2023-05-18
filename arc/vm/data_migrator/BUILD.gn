@@ -41,10 +41,7 @@ executable("arcvm_data_migrator") {
     ":data_migrator_adaptors",
     ":libarcvm_data_migrator",
   ]
-  pkg_deps = [
-    "libcryptohome_data_migrator",
-    "libcryptohome_platform",
-  ]
+  pkg_deps = [ "libcryptohome_data_migrator" ]
 }
 
 static_library("libarcvm_data_migrator") {
@@ -52,9 +49,13 @@ static_library("libarcvm_data_migrator") {
     "arcvm_data_migration_helper_delegate.cc",
     "logging.cc",
     "metrics.cc",
+    "platform.cc",
   ]
   configs += [ ":target_defaults" ]
-  pkg_deps = [ "libmetrics" ]
+  pkg_deps = [
+    "libcryptohome_platform",
+    "libmetrics",
+  ]
 }
 
 install_config("install_init") {
@@ -77,6 +78,7 @@ if (use.test) {
     sources = [
       "arcvm_data_migration_helper_delegate_test.cc",
       "logging_test.cc",
+      "platform_test.cc",
     ]
     configs += [
       "//common-mk:test",
