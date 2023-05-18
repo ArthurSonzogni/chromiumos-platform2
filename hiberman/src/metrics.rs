@@ -52,6 +52,12 @@ pub enum DurationMetricUnit {
     Hours,
 }
 
+#[derive(Serialize, Deserialize)]
+enum HistogramType {
+    Exponential,
+    Linear,
+}
+
 /// A MetricSample represents a sample point for a Hibernate histogram in UMA.
 /// It requires the histogram name, the sample value, the minimum value,
 /// the maximum value, and the number of buckets.
@@ -62,6 +68,7 @@ struct MetricsSample<'a> {
     min: isize,
     max: isize,
     buckets: usize,
+    histogram_type: HistogramType,
 }
 
 /// Define the hibernate metrics logger.
@@ -78,7 +85,11 @@ impl MetricsLogger {
 
     /// Log a metric to the MetricsLogger buffer.
     pub fn log_metric(&mut self, name: &str, value: isize, min: isize, max: isize, buckets: usize) {
-        self.log_metric_internal(name, value, min, max, buckets);
+        self.log_metric_internal(HistogramType::Exponential, name, value, min, max, buckets);
+    }
+
+    pub fn log_enum_metric(&mut self, name: &str, value: isize, max: isize) {
+        self.log_metric_internal(HistogramType::Linear, name, value, -1, max, 0);
     }
 
     /// Write the MetricsLogger buffer to the MetricsLogger file.
@@ -161,6 +172,7 @@ impl MetricsLogger {
 
     fn log_metric_internal(
         &mut self,
+        histogram_type: HistogramType,
         name: &str,
         value: isize,
         min: isize,
@@ -171,8 +183,11 @@ impl MetricsLogger {
             name,
             value,
             min,
-            max,
+            // For some reason in UMA the max value is exclusive. The MetricsLogger API
+            // expects the actual max, so add 1 to convert it to an UMA max.
+            max: max + 1,
             buckets,
+            histogram_type,
         };
 
         let entry = match serde_json::to_string(&sample) {
@@ -212,6 +227,31 @@ fn metrics_send_sample(sample: &MetricsSample) -> Result<()> {
         )))
         .context("Failed to send metrics");
     }
+    Ok(())
+}
+
+fn metrics_send_enum_sample(sample: &MetricsSample) -> Result<()> {
+    let status = Command::new("metrics_client")
+        .arg("-e")
+        .arg("--")
+        .arg(sample.name)
+        .arg(sample.value.to_string())
+        .arg(sample.max.to_string())
+        .status()?;
+    if !status.success() {
+        warn!(
+            "Failed to send metric {} {} {}",
+            sample.name,
+            sample.value.to_string(),
+            sample.max.to_string(),
+        );
+        return Err(HibernateError::MetricsSendFailure(format!(
+            "Metrics failed to send with exit code: {:?}",
+            status.code()
+        )))
+        .context("Failed to send metrics");
+    }
+
     Ok(())
 }
 
@@ -271,7 +311,10 @@ pub fn read_and_send_metrics() {
             }
         };
 
-        let _ = metrics_send_sample(&sample);
+        let _ = match sample.histogram_type {
+            HistogramType::Exponential => metrics_send_sample(&sample),
+            HistogramType::Linear => metrics_send_enum_sample(&sample),
+        };
     }
 
     // All metrics have been processed, delete the metrics file.
