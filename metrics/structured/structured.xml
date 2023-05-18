@@ -885,6 +885,12 @@
         The device class of the USB device.
       </summary>
     </metric>
+    <metric name="InterfaceClass" type="int-array" max="20">
+      <summary>
+        The list of interface classes of the USB device. It is highly unlikely
+        that a single device has more than 20 interfaces, so max set to 20.
+      </summary>
+    </metric>
   </event>
 </project>
 
