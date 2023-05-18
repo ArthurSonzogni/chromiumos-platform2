@@ -43,12 +43,12 @@
 #ifdef GAMEPAD_SUPPORT
 #include "gaming-input-unstable-v2-client-protocol.h"  // NOLINT(build/include_directory)
 #endif
-#include "stylus-unstable-v2-client-protocol.h"  // NOLINT(build/include_directory)
 #include "keyboard-extension-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "linux-dmabuf-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "linux-explicit-synchronization-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "pointer-constraints-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "relative-pointer-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
+#include "stylus-unstable-v2-client-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-extension-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "text-input-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
