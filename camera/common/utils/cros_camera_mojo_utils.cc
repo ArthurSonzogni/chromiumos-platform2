@@ -182,17 +182,46 @@ ScopedCameraMetadata DeserializeCameraMetadata(
   if (metadata.is_null() || !metadata->entries.has_value()) {
     return result;
   }
-  camera_metadata_t* allocated_data = allocate_camera_metadata(
-      metadata->entry_capacity, metadata->data_capacity);
+
+  // Validates the entries to ensure they are self consistent.
+  const auto& entries = *metadata->entries;
+  size_t data_count = 0;
+  for (const auto& entry : entries) {
+    int type = get_camera_metadata_tag_type(static_cast<uint32_t>(entry->tag));
+    if (type == -1 || static_cast<int>(entry->type) != type) {
+      LOGF(ERROR) << "Inconsistent tag type";
+      return result;
+    }
+
+    size_t type_size = camera_metadata_type_size[type];
+    if (entry->data.size() % type_size != 0) {
+      LOGF(ERROR) << "Unexpected entry size";
+      return result;
+    }
+
+    size_t count = entry->data.size() / type_size;
+    if (count != entry->count) {
+      LOGF(ERROR) << "Inconsistent entry data count";
+      return result;
+    }
+
+    // This might be different from entry->data.size(), since small data could
+    // be inlined and the storage is 8 bytes aligned.
+    data_count += calculate_camera_metadata_entry_data_size(type, count);
+  }
+
+  camera_metadata_t* allocated_data =
+      allocate_camera_metadata(entries.size(), data_count);
   if (!allocated_data) {
     LOGF(ERROR) << "Failed to allocate camera metadata";
     return result;
   }
+
   result.reset(allocated_data);
-  for (size_t i = 0; i < metadata->entry_count; ++i) {
-    int ret = add_camera_metadata_entry(
-        result.get(), static_cast<uint32_t>((*metadata->entries)[i]->tag),
-        (*metadata->entries)[i]->data.data(), (*metadata->entries)[i]->count);
+  for (const auto& entry : entries) {
+    int ret = add_camera_metadata_entry(result.get(),
+                                        static_cast<uint32_t>(entry->tag),
+                                        entry->data.data(), entry->count);
     if (ret) {
       LOGF(ERROR) << "Failed to add camera metadata entry";
       result.reset();
