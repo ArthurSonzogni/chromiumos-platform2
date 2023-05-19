@@ -36,6 +36,9 @@ class SigningTpm2 : public Signing {
                                                const KeyTpm2& key_data,
                                                const brillo::Blob& data,
                                                const SigningOptions& options);
+  // Get the signing algorithm for |key_data|.
+  StatusOr<trunks::TPM_ALG_ID> GetSignAlgorithm(const KeyTpm2& key_data,
+                                                const SigningOptions& options);
 
  private:
   TrunksContext& context_;

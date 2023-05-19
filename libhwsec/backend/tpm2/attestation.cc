@@ -126,29 +126,18 @@ StatusOr<attestation::Quote> AttestationTpm2::Quote(
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       context_.GetTrunksFactory().GetPasswordAuthorization("");
 
-  const trunks::TPMT_PUBLIC& public_data = key_data.cache.public_area;
   trunks::TPMT_SIG_SCHEME scheme;
   scheme.details.any.hash_alg = trunks::TPM_ALG_SHA256;
-  switch (public_data.type) {
-    case trunks::TPM_ALG_RSA:
-      scheme.scheme = trunks::TPM_ALG_RSASSA;
-      break;
-    case trunks::TPM_ALG_ECC:
-      scheme.scheme = trunks::TPM_ALG_ECDSA;
-      break;
-    default:
-      return MakeStatus<TPMError>("Unknown TPM key type",
-                                  TPMRetryAction::kNoRetry);
-  }
-
-  ASSIGN_OR_RETURN(trunks::TPMS_PCR_SELECTION pcr_selection,
-                   config_.ToPcrSelection(device_configs),
-                   _.WithStatus<TPMError>(
-                       "Failed to convert device configs to PCR selection"));
+  ASSIGN_OR_RETURN(scheme.scheme,
+                   signing_.GetSignAlgorithm(key_data, SigningOptions{}),
+                   _.WithStatus<TPMError>("Failed to get signing algorithm"));
 
   trunks::TPML_PCR_SELECTION pcr_select;
   pcr_select.count = 1;
-  pcr_select.pcr_selections[0] = pcr_selection;
+  ASSIGN_OR_RETURN(pcr_select.pcr_selections[0],
+                   config_.ToPcrSelection(device_configs),
+                   _.WithStatus<TPMError>(
+                       "Failed to convert device configs to PCR selection"));
 
   const trunks::TPM_HANDLE& key_handle = key_data.key_handle;
   std::string key_name;

@@ -118,26 +118,9 @@ StatusOr<brillo::Blob> SigningTpm2::RawSign(Key key,
                    _.WithStatus<TPMError>("Failed to get the key data"));
   const trunks::TPMT_PUBLIC& public_area = key_data.cache.public_area;
 
-  trunks::TPM_ALG_ID sign_algorithm = trunks::TPM_ALG_NULL;
-  switch (public_area.type) {
-    case trunks::TPM_ALG_RSA:
-      switch (
-          options.rsa_padding_scheme.value_or(RsaPaddingScheme::kPkcs1v15)) {
-        case RsaPaddingScheme::kPkcs1v15:
-          sign_algorithm = trunks::TPM_ALG_RSASSA;
-          break;
-        case RsaPaddingScheme::kRsassaPss:
-          sign_algorithm = trunks::TPM_ALG_RSAPSS;
-          break;
-      }
-      break;
-    case trunks::TPM_ALG_ECC:
-      sign_algorithm = trunks::TPM_ALG_ECDSA;
-      break;
-    default:
-      return MakeStatus<TPMError>("Unknown TPM key type",
-                                  TPMRetryAction::kNoRetry);
-  }
+  ASSIGN_OR_RETURN(trunks::TPM_ALG_ID sign_algorithm,
+                   GetSignAlgorithm(key_data, options),
+                   _.WithStatus<TPMError>("Failed to get signing algorithm"));
 
   if (public_area.type == trunks::TPM_ALG_RSA &&
       public_area.object_attributes & trunks::kDecrypt) {
@@ -304,6 +287,25 @@ StatusOr<brillo::Blob> SigningTpm2::RawSignRsaWithDecrypt(
 
 Status SigningTpm2::Verify(Key key, const brillo::Blob& signed_data) {
   return MakeStatus<TPMError>("Unimplemented", TPMRetryAction::kNoRetry);
+}
+
+StatusOr<trunks::TPM_ALG_ID> SigningTpm2::GetSignAlgorithm(
+    const KeyTpm2& key_data, const SigningOptions& options) {
+  const trunks::TPMT_PUBLIC& public_area = key_data.cache.public_area;
+  switch (public_area.type) {
+    case trunks::TPM_ALG_RSA:
+      switch (
+          options.rsa_padding_scheme.value_or(RsaPaddingScheme::kPkcs1v15)) {
+        case RsaPaddingScheme::kPkcs1v15:
+          return trunks::TPM_ALG_RSASSA;
+        case RsaPaddingScheme::kRsassaPss:
+          return trunks::TPM_ALG_RSAPSS;
+      }
+      break;
+    case trunks::TPM_ALG_ECC:
+      return trunks::TPM_ALG_ECDSA;
+  }
+  return MakeStatus<TPMError>("Unknown TPM key type", TPMRetryAction::kNoRetry);
 }
 
 }  // namespace hwsec

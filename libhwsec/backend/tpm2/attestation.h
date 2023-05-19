@@ -10,6 +10,7 @@
 #include "libhwsec/backend/attestation.h"
 #include "libhwsec/backend/tpm2/config.h"
 #include "libhwsec/backend/tpm2/key_management.h"
+#include "libhwsec/backend/tpm2/signing.h"
 #include "libhwsec/backend/tpm2/trunks_context.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
@@ -21,8 +22,12 @@ class AttestationTpm2 : public Attestation {
  public:
   AttestationTpm2(TrunksContext& context,
                   ConfigTpm2& config,
-                  KeyManagementTpm2& key_management)
-      : context_(context), config_(config), key_management_(key_management) {}
+                  KeyManagementTpm2& key_management,
+                  SigningTpm2& signing)
+      : context_(context),
+        config_(config),
+        key_management_(key_management),
+        signing_(signing) {}
 
   StatusOr<attestation::Quote> Quote(DeviceConfigs device_configs,
                                      Key key) override;
@@ -33,6 +38,7 @@ class AttestationTpm2 : public Attestation {
   TrunksContext& context_;
   ConfigTpm2& config_;
   KeyManagementTpm2& key_management_;
+  SigningTpm2& signing_;
 };
 
 }  // namespace hwsec
