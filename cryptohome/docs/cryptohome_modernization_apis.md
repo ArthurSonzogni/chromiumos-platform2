@@ -137,7 +137,8 @@ that occurred. If the factor that is authenticated enables more intents than
 requested, the AuthSession will be authorized for those intents. Calling
 AuthenticateAuthFactor again on an already authenticated AuthSession will not
 downgrade the intents, but it may upgrade the authorized_for intents based
-on the factor used.
+on the factor used, and will reset timer for AuthSession to the default, five
+minutes.
     - *Input*:
       - auth_session_id - AuthSession used to identify users. The AuthSession
       needs to be authenticated for this call to be a success.
