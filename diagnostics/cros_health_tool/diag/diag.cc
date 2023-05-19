@@ -23,7 +23,6 @@
 #include <mojo/service_constants.h>
 
 #include "diagnostics/cros_health_tool/diag/diag_actions.h"
-#include "diagnostics/cros_health_tool/diag/diag_constants.h"
 #include "diagnostics/cros_health_tool/diag/observers/routine_observer.h"
 #include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/cros_health_tool/output_util.h"
@@ -34,7 +33,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 // Poll interval while waiting for a routine to finish.
 constexpr base::TimeDelta kRoutinePollIntervalTimeDelta =
@@ -44,39 +43,37 @@ constexpr base::TimeDelta kMaximumRoutineExecutionTimeDelta = base::Hours(1);
 
 const struct {
   const char* readable_name;
-  mojo_ipc::LedName name;
-} kLedNameSwitches[] = {{"battery", mojo_ipc::LedName::kBattery},
-                        {"power", mojo_ipc::LedName::kPower},
-                        {"adapter", mojo_ipc::LedName::kAdapter},
-                        {"left", mojo_ipc::LedName::kLeft},
-                        {"right", mojo_ipc::LedName::kRight}};
+  mojom::LedName name;
+} kLedNameSwitches[] = {{"battery", mojom::LedName::kBattery},
+                        {"power", mojom::LedName::kPower},
+                        {"adapter", mojom::LedName::kAdapter},
+                        {"left", mojom::LedName::kLeft},
+                        {"right", mojom::LedName::kRight}};
 
 const struct {
   const char* readable_color;
-  mojo_ipc::LedColor color;
-} kLedColorSwitches[] = {{"red", mojo_ipc::LedColor::kRed},
-                         {"green", mojo_ipc::LedColor::kGreen},
-                         {"blue", mojo_ipc::LedColor::kBlue},
-                         {"yellow", mojo_ipc::LedColor::kYellow},
-                         {"white", mojo_ipc::LedColor::kWhite},
-                         {"amber", mojo_ipc::LedColor::kAmber}};
+  mojom::LedColor color;
+} kLedColorSwitches[] = {
+    {"red", mojom::LedColor::kRed},     {"green", mojom::LedColor::kGreen},
+    {"blue", mojom::LedColor::kBlue},   {"yellow", mojom::LedColor::kYellow},
+    {"white", mojom::LedColor::kWhite}, {"amber", mojom::LedColor::kAmber}};
 
-mojo_ipc::LedName LedNameFromString(const std::string& str) {
+mojom::LedName LedNameFromString(const std::string& str) {
   for (const auto& item : kLedNameSwitches) {
     if (str == item.readable_name) {
       return item.name;
     }
   }
-  return mojo_ipc::LedName::kUnmappedEnumField;
+  return mojom::LedName::kUnmappedEnumField;
 }
 
-mojo_ipc::LedColor LedColorFromString(const std::string& str) {
+mojom::LedColor LedColorFromString(const std::string& str) {
   for (const auto& item : kLedColorSwitches) {
     if (str == item.readable_color) {
       return item.color;
     }
   }
-  return mojo_ipc::LedColor::kUnmappedEnumField;
+  return mojom::LedColor::kUnmappedEnumField;
 }
 
 void FormatJsonOutput(bool single_line_json, const base::Value::Dict& output) {
@@ -89,7 +86,7 @@ void FormatJsonOutput(bool single_line_json, const base::Value::Dict& output) {
   OutputJson(output);
 }
 
-int RunV2Routine(mojo_ipc::RoutineArgumentPtr argument, bool single_line_json) {
+int RunV2Routine(mojom::RoutineArgumentPtr argument, bool single_line_json) {
   mojo::Remote<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
       cros_healthd_routines_service_;
   RequestMojoServiceWithDisconnectHandler(
@@ -97,8 +94,8 @@ int RunV2Routine(mojo_ipc::RoutineArgumentPtr argument, bool single_line_json) {
       cros_healthd_routines_service_);
 
   base::RunLoop run_loop;
-  mojo::Remote<mojo_ipc::RoutineControl> routine_control;
-  mojo::PendingReceiver<mojo_ipc::RoutineControl> pending_receiver =
+  mojo::Remote<mojom::RoutineControl> routine_control;
+  mojo::PendingReceiver<mojom::RoutineControl> pending_receiver =
       routine_control.BindNewPipeAndPassReceiver();
   routine_control.set_disconnect_with_reason_handler(
       base::BindOnce(
@@ -124,387 +121,706 @@ int RunV2Routine(mojo_ipc::RoutineArgumentPtr argument, bool single_line_json) {
   return EXIT_SUCCESS;
 }
 
-}  // namespace
+#define COMMON_V2_ROUTINE_FLAGS        \
+  DEFINE_bool(single_line_json, false, \
+              "Whether to print JSON objects in a single line.");
 
-int diag_main(int argc, char** argv) {
-  DEFINE_bool(crosh_help, false, "Display help specific to crosh usage.");
-  DEFINE_string(action, "",
-                "Action to perform. Options are:\n\tget_routines - retrieve "
-                "available routines.\n\trun_routine - run specified routine.");
-  DEFINE_string(routine, "",
-                "Diagnostic routine to run. For a list of available routines, "
-                "run 'diag --action=get_routines'.");
-  DEFINE_uint32(force_cancel_at_percent, std::numeric_limits<uint32_t>::max(),
-                "If specified, will attempt to cancel the routine when its "
-                "progress exceeds the flag's value.\nValid range: [0, 100]");
+int AudioDriverMain(int argc, char** argv) {
+  COMMON_V2_ROUTINE_FLAGS
+  brillo::FlagHelper::Init(argc, argv, "Audio driver routine");
 
-  // Flags for the urandom routine:
-  DEFINE_uint32(urandom_length_seconds, 0,
-                "Number of seconds to run the urandom routine for.");
+  return RunV2Routine(mojom::RoutineArgument::NewAudioDriver(
+                          mojom::AudioDriverRoutineArgument::New()),
+                      FLAGS_single_line_json);
+}
 
-  // Flag shared by the CPU stress, CPU cache, floating point accuracy and prime
-  // search routines.
-  DEFINE_uint32(cpu_stress_length_seconds, 0,
-                "Number of seconds to run the {cpu_stress, cpu_cache, "
-                "floating_point_accuracy, prime_search} routine for.");
+int MemoryV2Main(int argc, char** argv) {
+  COMMON_V2_ROUTINE_FLAGS
+  DEFINE_uint32(max_testing_mem_kib, std::numeric_limits<uint32_t>::max(),
+                "Number of kib to run the memory test for.");
+  brillo::FlagHelper::Init(argc, argv, "Memory v2 routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
+  auto argument = mojom::MemoryRoutineArgument::New();
+  if (command_line->HasSwitch("max_testing_mem_kib")) {
+    argument->max_testing_mem_kib = FLAGS_max_testing_mem_kib;
+  }
+
+  return RunV2Routine(mojom::RoutineArgument::NewMemory(std::move(argument)),
+                      FLAGS_single_line_json);
+}
+
+int CpuStressV2Main(int argc, char** argv) {
+  COMMON_V2_ROUTINE_FLAGS
+  DEFINE_uint32(cpu_stress_length_seconds, 0, "Number of seconds to run.");
+  brillo::FlagHelper::Init(argc, argv, "Cpu stress v2 routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  auto argument = mojom::CpuStressRoutineArgument::New();
+  if (command_line->HasSwitch("cpu_stress_length_seconds")) {
+    argument->exec_duration = base::Seconds(FLAGS_cpu_stress_length_seconds);
+  }
+  return RunV2Routine(mojom::RoutineArgument::NewCpuStress(std::move(argument)),
+                      FLAGS_single_line_json);
+}
+
+int UfsLifetimeMain(int argc, char** argv) {
+  COMMON_V2_ROUTINE_FLAGS
+  brillo::FlagHelper::Init(argc, argv, "Ufs lifetime routine");
+
+  return RunV2Routine(mojom::RoutineArgument::NewUfsLifetime(
+                          mojom::UfsLifetimeRoutineArgument::New()),
+                      FLAGS_single_line_json);
+}
+
+int CpuCacheV2Main(int argc, char** argv) {
+  COMMON_V2_ROUTINE_FLAGS
   DEFINE_uint32(length_seconds, 10,
                 "Number of seconds to run the routine for.");
+  brillo::FlagHelper::Init(argc, argv, "Cpu cache V2 routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  auto argument = mojom::CpuCacheRoutineArgument::New();
+  if (command_line->HasSwitch("length_seconds")) {
+    argument->exec_duration = base::Seconds(FLAGS_length_seconds);
+  }
+
+  return RunV2Routine(mojom::RoutineArgument::NewCpuCache(std::move(argument)),
+                      FLAGS_single_line_json);
+}
+
+#define COMMON_LEGACY_ROUTINE_FLAGS                                            \
+  DEFINE_uint32(force_cancel_at_percent, std::numeric_limits<uint32_t>::max(), \
+                "If specified, will attempt to cancel the routine when its "   \
+                "progress exceeds the flag's value.\nValid range: [0, 100]");
+
+#define COMMON_LEGACY_ROUTINE(routine)                                      \
+  COMMON_LEGACY_ROUTINE_FLAGS                                               \
+  brillo::FlagHelper::Init(argc, argv, #routine);                           \
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess(); \
+  DiagActions actions{kRoutinePollIntervalTimeDelta,                        \
+                      kMaximumRoutineExecutionTimeDelta};                   \
+  if (command_line->HasSwitch("force_cancel_at_percent"))                   \
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);            \
+  auto result = actions.ActionRun##routine();                               \
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+
+int BatteryCapacityMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(BatteryCapacityRoutine)
+}
+
+int BatteryHealthMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(BatteryHealthRoutine)
+}
+
+int UrandomMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_uint32(urandom_length_seconds, 0, "Number of seconds to run.");
+  brillo::FlagHelper::Init(argc, argv, "Urandom routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunUrandomRoutine(
+      command_line->HasSwitch("urandom_length_seconds")
+          ? std::optional<uint32_t>(FLAGS_urandom_length_seconds)
+          : std::nullopt);
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int SmartctlCheckMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_uint32(percentage_used_threshold, 255,
+                "Threshold number in percentage which routine examines "
+                "percentage used against.");
+  brillo::FlagHelper::Init(argc, argv, "Smartctl check routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunSmartctlCheckRoutine(
+      command_line->HasSwitch("percentage_used_threshold")
+          ? std::optional<uint32_t>(FLAGS_percentage_used_threshold)
+          : std::nullopt);
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int AcPowerMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
   DEFINE_bool(ac_power_is_connected, true,
-              "Whether or not the AC power routine expects the power supply to "
-              "be connected.");
-  DEFINE_string(
-      expected_power_type, "",
-      "Optional type of power supply expected for the AC power routine.");
+              "Whether or not the routine expects the power supply to be"
+              "connected.");
+  DEFINE_string(expected_power_type, "",
+                "Optional type of power supply expected for the routine.");
+  brillo::FlagHelper::Init(argc, argv, "Ac power routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunAcPowerRoutine(
+      FLAGS_ac_power_is_connected ? mojom::AcPowerStatusEnum::kConnected
+                                  : mojom::AcPowerStatusEnum::kDisconnected,
+      (command_line->HasSwitch("expected_power_type"))
+          ? std::optional<std::string>{FLAGS_expected_power_type}
+          : std::nullopt);
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int CpuCacheMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_uint32(cpu_stress_length_seconds, 0, "Number of seconds to run.");
+  brillo::FlagHelper::Init(argc, argv, "Cpu cache routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunCpuCacheRoutine(
+      command_line->HasSwitch("cpu_stress_length_seconds")
+          ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
+          : std::nullopt);
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int CpuStressMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_uint32(cpu_stress_length_seconds, 0, "Number of seconds to run.");
+  brillo::FlagHelper::Init(argc, argv, "Cpu stress routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunCpuStressRoutine(
+      command_line->HasSwitch("cpu_stress_length_seconds")
+          ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
+          : std::nullopt);
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int FloatingPointAccuracyMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_uint32(cpu_stress_length_seconds, 0, "Number of seconds to run.");
+  brillo::FlagHelper::Init(argc, argv, "Floating point accuracy routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunFloatingPointAccuracyRoutine(
+      command_line->HasSwitch("cpu_stress_length_seconds")
+          ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
+          : std::nullopt);
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int NvmeWearLevelMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
   DEFINE_uint32(wear_level_threshold, 0,
                 "Threshold number in percentage which routine examines "
                 "wear level of NVMe against. If not specified, device "
                 "threshold set in cros-config will be used instead.");
+  brillo::FlagHelper::Init(argc, argv, "Nvme wear level routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunNvmeWearLevelRoutine(
+      command_line->HasSwitch("wear_level_threshold")
+          ? std::optional<std::uint32_t>{FLAGS_wear_level_threshold}
+          : std::nullopt);
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int NvmeSelfTestMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
   DEFINE_bool(nvme_self_test_long, false,
               "Long-time period self-test of NVMe would be performed with "
               "this flag being set.");
+  brillo::FlagHelper::Init(argc, argv, "Nvme self test routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunNvmeSelfTestRoutine(
+      FLAGS_nvme_self_test_long ? mojom::NvmeSelfTestTypeEnum::kLongSelfTest
+                                : mojom::NvmeSelfTestTypeEnum::kShortSelfTest);
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int DiskReadMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_uint32(length_seconds, 10,
+                "Number of seconds to run the routine for.");
   DEFINE_int32(file_size_mb, 1024,
                "Size (MB) of the test file for disk_read routine to pass.");
   DEFINE_string(disk_read_routine_type, "linear",
                 "Disk read routine type for the disk_read routine. Options are:"
                 "\n\tlinear - linear read.\n\trandom - random read.");
-  DEFINE_uint32(maximum_discharge_percent_allowed, 100,
-                "Upper bound for the battery discharge routine.");
-  DEFINE_uint32(minimum_charge_percent_required, 0,
-                "Lower bound for the battery charge routine.");
-  DEFINE_uint32(percentage_used_threshold, 255,
-                "Threshold number in percentage which routine examines "
-                "percentage used against.");
-
-  // Flag for the video conferencing routine.
-  DEFINE_string(stun_server_hostname, "",
-                "Optional custom STUN server hostname for the video "
-                "conferencing routine.");
-
-  // Flag for the privacy screen routine.
-  DEFINE_string(set_privacy_screen, "on", "Privacy screen target state.");
-
-  // Flags for the LED routine.
-  DEFINE_string(led_name, "",
-                "The target LED for the LED routine. Options are:"
-                "\n\tbattery, power, adapter, left, right.");
-  DEFINE_string(led_color, "",
-                "The target color for the LED routine. Options are:"
-                "\n\tred, green, blue, yellow, white, amber.");
-
-  // Flag for the audio set volume/gain routine.
-  DEFINE_uint64(node_id, 0, "Target node id.");
-  DEFINE_uint32(volume, 100, "Target volume. [0-100]");
-  DEFINE_uint32(gain, 100, "Target gain. [0-100]");
-  DEFINE_bool(mute_on, true, "Mute audio output device or not.");
-
-  // Flag for the Bluetooth pairing routine.
-  DEFINE_string(
-      peripheral_id, "",
-      "ID of Bluetooth peripheral device for the Bluetooth pairing routine.");
-
-  // Flag for the memory routine.
-  DEFINE_uint32(max_testing_mem_kib, std::numeric_limits<uint32_t>::max(),
-                "Number of kib to run the memory test for.");
-
-  // Flag for the output format of routine v2.
-  DEFINE_bool(single_line_json, false,
-              "Whether to print JSON objects in a single line.");
-
-  brillo::FlagHelper::Init(argc, argv, "diag - Device diagnostic tool.");
-
+  brillo::FlagHelper::Init(argc, argv, "Disk read routine");
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
-  if (FLAGS_crosh_help) {
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  mojom::DiskReadRoutineTypeEnum type;
+  if (FLAGS_disk_read_routine_type == "linear") {
+    type = mojom::DiskReadRoutineTypeEnum::kLinearRead;
+  } else if (FLAGS_disk_read_routine_type == "random") {
+    type = mojom::DiskReadRoutineTypeEnum::kRandomRead;
+  } else {
+    std::cout << "Unknown disk_read_routine_type: "
+              << FLAGS_disk_read_routine_type << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  auto result = actions.ActionRunDiskReadRoutine(type, FLAGS_length_seconds,
+                                                 FLAGS_file_size_mb);
+
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int PrimeSearchMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_uint32(cpu_stress_length_seconds, 0, "Number of seconds to run.");
+  brillo::FlagHelper::Init(argc, argv, "Prime search routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunPrimeSearchRoutine(
+      command_line->HasSwitch("cpu_stress_length_seconds")
+          ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
+          : std::nullopt);
+
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int BatteryDischargeMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_uint32(length_seconds, 10,
+                "Number of seconds to run the routine for.");
+  DEFINE_uint32(maximum_discharge_percent_allowed, 100,
+                "Upper bound for the battery discharge routine.");
+  brillo::FlagHelper::Init(argc, argv, "Battery discharge routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunBatteryDischargeRoutine(
+      FLAGS_length_seconds, FLAGS_maximum_discharge_percent_allowed);
+
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int BatteryChargeMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_uint32(length_seconds, 10,
+                "Number of seconds to run the routine for.");
+  DEFINE_uint32(minimum_charge_percent_required, 0,
+                "Lower bound for the battery charge routine.");
+  brillo::FlagHelper::Init(argc, argv, "Battery charge routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunBatteryChargeRoutine(
+      FLAGS_length_seconds, FLAGS_minimum_charge_percent_required);
+
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int LanConnectivityMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(LanConnectivityRoutine)
+}
+
+int SignalStrengthMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(SignalStrengthRoutine)
+}
+
+int MemoryMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_uint32(max_testing_mem_kib, std::numeric_limits<uint32_t>::max(),
+                "Number of kib to run the memory test for.");
+  brillo::FlagHelper::Init(argc, argv, "Memory routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunMemoryRoutine(
+      command_line->HasSwitch("max_testing_mem_kib")
+          ? std::optional<uint32_t>(FLAGS_max_testing_mem_kib)
+          : std::nullopt);
+
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int GatewayCanBePingedMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(GatewayCanBePingedRoutine)
+}
+
+int HasSecureWiFiConnectionMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(HasSecureWiFiConnectionRoutine)
+}
+
+int DnsResolverPresentMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(DnsResolverPresentRoutine)
+}
+
+int DnsLatencyMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(DnsLatencyRoutine)
+}
+
+int DnsResolutionMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(DnsResolutionRoutine)
+}
+
+int CaptivePortalMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(CaptivePortalRoutine)
+}
+
+int HttpFirewallMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(HttpFirewallRoutine)
+}
+
+int HttpsFirewallMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(HttpsFirewallRoutine)
+}
+
+int HttpsLatencyMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(HttpsLatencyRoutine)
+}
+
+int VideoConferencingMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_string(stun_server_hostname, "",
+                "Optional custom STUN server hostname.");
+  brillo::FlagHelper::Init(argc, argv, "Video conferencing routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunVideoConferencingRoutine(
+      (FLAGS_stun_server_hostname == "")
+          ? std::nullopt
+          : std::optional<std::string>{FLAGS_stun_server_hostname});
+
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int ArcHttpMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(ArcHttpRoutine)
+}
+
+int ArcPingMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(ArcPingRoutine)
+}
+
+int ArcDnsResolutionMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(ArcDnsResolutionRoutine)
+}
+
+int SensitiveSensorMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(SensitiveSensorRoutine)
+}
+
+int FingerprintMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(FingerprintRoutine)
+}
+
+int FingerprintAliveMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(FingerprintAliveRoutine)
+}
+
+int PrivacyScreenMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_string(set_privacy_screen, "on", "Privacy screen target state.");
+  brillo::FlagHelper::Init(argc, argv, "Privacy screen routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  bool target_state;
+  if (FLAGS_set_privacy_screen == "on") {
+    target_state = true;
+  } else if (FLAGS_set_privacy_screen == "off") {
+    target_state = false;
+  } else {
+    std::cout << "Invalid privacy screen target state: "
+              << FLAGS_set_privacy_screen << ". Should be on/off." << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  auto result = actions.ActionRunPrivacyScreenRoutine(target_state);
+
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int LedLitUpMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_string(led_name, "",
+                "The target LED name. Options are:"
+                "\n\tbattery, power, adapter, left, right.");
+  DEFINE_string(led_color, "",
+                "The target color. Options are:"
+                "\n\tred, green, blue, yellow, white, amber.");
+  brillo::FlagHelper::Init(argc, argv, "Led lit up routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  mojom::LedName name = LedNameFromString(FLAGS_led_name);
+  if (name == mojom::LedName::kUnmappedEnumField) {
+    std::cout << "Unknown led_name: " << FLAGS_led_name << std::endl;
+    return EXIT_FAILURE;
+  }
+  mojom::LedColor color = LedColorFromString(FLAGS_led_color);
+  if (color == mojom::LedColor::kUnmappedEnumField) {
+    std::cout << "Unknown led_color: " << FLAGS_led_color << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  auto result = actions.ActionRunLedRoutine(name, color);
+
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int EmmcLifetimeMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(EmmcLifetimeRoutine)
+}
+
+int AudioSetVolumeMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_uint64(node_id, 0, "Target node id.");
+  DEFINE_uint32(volume, 100, "Target volume. [0-100]");
+  DEFINE_bool(mute_on, true, "Mute audio output device or not.");
+  brillo::FlagHelper::Init(argc, argv, "Audio set volume routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunAudioSetVolumeRoutine(
+      FLAGS_node_id, FLAGS_volume, FLAGS_mute_on);
+
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int AudioSetGainMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_uint64(node_id, 0, "Target node id.");
+  DEFINE_uint32(gain, 100, "Target gain. [0-100]");
+  brillo::FlagHelper::Init(argc, argv, "Audio set gain routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunAudioSetGainRoutine(FLAGS_node_id, FLAGS_gain);
+
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int BluetoothPowerMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(BluetoothPowerRoutine)
+}
+
+int BluetoothDiscoveryMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(BluetoothDiscoveryRoutine)
+}
+
+int BluetoothScanningMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_uint32(length_seconds, 10,
+                "Number of seconds to run the routine for.");
+  brillo::FlagHelper::Init(argc, argv, "Bluetooth scanning routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  auto result = actions.ActionRunBluetoothScanningRoutine(
+      command_line->HasSwitch("length_seconds")
+          ? std::optional<uint32_t>(FLAGS_length_seconds)
+          : std::nullopt);
+
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int BluetoothPairingMain(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE_FLAGS
+  DEFINE_string(peripheral_id, "", "ID of Bluetooth peripheral device.");
+
+  brillo::FlagHelper::Init(argc, argv, "Bluetooth pairing routine");
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+  if (command_line->HasSwitch("force_cancel_at_percent"))
+    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+
+  if (FLAGS_peripheral_id.empty()) {
+    std::cout << "Invalid empty peripheral_id" << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  auto result = actions.ActionRunBluetoothPairingRoutine(FLAGS_peripheral_id);
+
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
+    // V2 routines.
+    {"audio_driver", AudioDriverMain},
+    {"memory_v2", MemoryV2Main},
+    {"cpu_stress_v2", CpuStressV2Main},
+    {"ufs_lifetime", UfsLifetimeMain},
+    {"cpu_cache_v2", CpuCacheV2Main},
+    // V1 routines.
+    {"battery_capacity", BatteryCapacityMain},
+    {"battery_health", BatteryHealthMain},
+    {"urandom", UrandomMain},
+    {"smartctl_check", SmartctlCheckMain},
+    {"smartctl_check_with_percentage_used", SmartctlCheckMain},
+    {"ac_power", AcPowerMain},
+    {"cpu_cache", CpuCacheMain},
+    {"cpu_stress", CpuStressMain},
+    {"floating_point_accuracy", FloatingPointAccuracyMain},
+    {"nvme_wear_level", NvmeWearLevelMain},
+    {"nvme_self_test", NvmeSelfTestMain},
+    {"disk_read", DiskReadMain},
+    {"prime_search", PrimeSearchMain},
+    {"battery_discharge", BatteryDischargeMain},
+    {"battery_charge", BatteryChargeMain},
+    {"lan_connectivity", LanConnectivityMain},
+    {"signal_strength", SignalStrengthMain},
+    {"memory", MemoryMain},
+    {"gateway_can_be_pinged", GatewayCanBePingedMain},
+    {"has_secure_wifi_connection", HasSecureWiFiConnectionMain},
+    {"dns_resolver_present", DnsResolverPresentMain},
+    {"dns_latency", DnsLatencyMain},
+    {"dns_resolution", DnsResolutionMain},
+    {"captive_portal", CaptivePortalMain},
+    {"http_firewall", HttpFirewallMain},
+    {"https_firewall", HttpsFirewallMain},
+    {"https_latency", HttpsLatencyMain},
+    {"video_conferencing", VideoConferencingMain},
+    {"arc_http", ArcHttpMain},
+    {"arc_ping", ArcPingMain},
+    {"arc_dns_resolution", ArcDnsResolutionMain},
+    {"sensitive_sensor", SensitiveSensorMain},
+    {"fingerprint", FingerprintMain},
+    {"fingerprint_alive", FingerprintAliveMain},
+    {"privacy_screen", PrivacyScreenMain},
+    {"led_lit_up", LedLitUpMain},
+    {"emmc_lifetime", EmmcLifetimeMain},
+    {"audio_set_volume", AudioSetVolumeMain},
+    {"audio_set_gain", AudioSetGainMain},
+    {"bluetooth_power", BluetoothPowerMain},
+    {"bluetooth_discovery", BluetoothDiscoveryMain},
+    {"bluetooth_scanning", BluetoothScanningMain},
+    {"bluetooth_pairing", BluetoothPairingMain},
+};
+
+void PrintHelp() {
+  std::stringstream ss;
+  ss << "[";
+  const char* sep = "";
+  for (const auto& [routine, unused_tmp] : routine_to_fp_mapping) {
+    ss << sep << routine;
+    sep = ", ";
+  }
+  ss << "]";
+
+  std::cout << "cros-health-tool diag" << std::endl;
+  std::cout << "    subtools: $routine, get_routines" << std::endl;
+  std::cout << "    Usage: cros-health-tool diag $routine" << std::endl;
+  std::cout << "    Usage: cros-health-tool diag $routine --help" << std::endl;
+  std::cout << "    Usage: cros-health-tool diag get_routines" << std::endl;
+  std::cout << "$routine: " << ss.str() << std::endl;
+}
+
+}  // namespace
+
+int diag_main(int argc, char** argv) {
+  if (argc < 2) {
+    PrintHelp();
+    return EXIT_SUCCESS;
+  }
+
+  std::string subtool = argv[1];
+  if (subtool == "help" || subtool == "--help" || subtool == "-h") {
+    PrintHelp();
+    return EXIT_SUCCESS;
+  } else if (subtool == "--crosh_help") {
     std::cout << "Usage: [list|routine]" << std::endl;
     return EXIT_SUCCESS;
   }
 
-  if (FLAGS_action == "") {
-    std::cout << "--action must be specified. Use --help for help on usage."
-              << std::endl;
-    return EXIT_FAILURE;
-  }
-
-  DiagActions actions{kRoutinePollIntervalTimeDelta,
-                      kMaximumRoutineExecutionTimeDelta};
-
-  if (FLAGS_action == "get_routines")
+  // We should deprecate this.
+  if (subtool == "get_routines") {
+    DiagActions actions{kRoutinePollIntervalTimeDelta,
+                        kMaximumRoutineExecutionTimeDelta};
     return actions.ActionGetRoutines() ? EXIT_SUCCESS : EXIT_FAILURE;
-
-  if (FLAGS_action == "run_routine") {
-    // This is the switch case for routines in CrosHealthdRoutineService
-    if (FLAGS_routine == "memory_v2") {
-      auto argument = mojo_ipc::MemoryRoutineArgument::New();
-      if (command_line->HasSwitch("max_testing_mem_kib")) {
-        argument->max_testing_mem_kib = FLAGS_max_testing_mem_kib;
-      }
-      return RunV2Routine(
-          mojo_ipc::RoutineArgument::NewMemory(std::move(argument)),
-          FLAGS_single_line_json);
-    }
-    if (FLAGS_routine == "cpu_stress_v2") {
-      auto argument = mojo_ipc::CpuStressRoutineArgument::New();
-      if (command_line->HasSwitch("cpu_stress_length_seconds")) {
-        argument->exec_duration =
-            base::Seconds(FLAGS_cpu_stress_length_seconds);
-      }
-      return RunV2Routine(
-          mojo_ipc::RoutineArgument::NewCpuStress(std::move(argument)),
-          FLAGS_single_line_json);
-    }
-    if (FLAGS_routine == "audio_driver") {
-      return RunV2Routine(mojo_ipc::RoutineArgument::NewAudioDriver(
-                              mojo_ipc::AudioDriverRoutineArgument::New()),
-                          FLAGS_single_line_json);
-    }
-    if (FLAGS_routine == "ufs_lifetime") {
-      return RunV2Routine(mojo_ipc::RoutineArgument::NewUfsLifetime(
-                              mojo_ipc::UfsLifetimeRoutineArgument::New()),
-                          FLAGS_single_line_json);
-    }
-    if (FLAGS_routine == "cpu_cache_v2") {
-      auto argument = mojo_ipc::CpuCacheRoutineArgument::New();
-      if (command_line->HasSwitch("length_seconds")) {
-        argument->exec_duration = base::Seconds(FLAGS_length_seconds);
-      }
-      return RunV2Routine(
-          mojo_ipc::RoutineArgument::NewCpuCache(std::move(argument)),
-          FLAGS_single_line_json);
-    }
-
-    std::map<std::string, mojo_ipc::DiagnosticRoutineEnum>
-        switch_to_diagnostic_routine;
-    for (const auto& item : kDiagnosticRoutineSwitches)
-      switch_to_diagnostic_routine[item.switch_name] = item.routine;
-    auto itr = switch_to_diagnostic_routine.find(FLAGS_routine);
-    if (itr == switch_to_diagnostic_routine.end()) {
-      std::cout << "Unknown routine: " << FLAGS_routine << std::endl;
-      return EXIT_FAILURE;
-    }
-
-    if (command_line->HasSwitch("force_cancel_at_percent"))
-      actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
-
-    bool routine_result;
-    switch (itr->second) {
-      case mojo_ipc::DiagnosticRoutineEnum::kBatteryCapacity:
-        routine_result = actions.ActionRunBatteryCapacityRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kBatteryHealth:
-        routine_result = actions.ActionRunBatteryHealthRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kUrandom:
-        routine_result = actions.ActionRunUrandomRoutine(
-            command_line->HasSwitch("urandom_length_seconds")
-                ? std::optional<uint32_t>(FLAGS_urandom_length_seconds)
-                : std::nullopt);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck:
-      case mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed:
-        routine_result = actions.ActionRunSmartctlCheckRoutine(
-            command_line->HasSwitch("percentage_used_threshold")
-                ? std::optional<uint32_t>(FLAGS_percentage_used_threshold)
-                : std::nullopt);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kAcPower:
-        routine_result = actions.ActionRunAcPowerRoutine(
-            FLAGS_ac_power_is_connected
-                ? mojo_ipc::AcPowerStatusEnum::kConnected
-                : mojo_ipc::AcPowerStatusEnum::kDisconnected,
-            (command_line->HasSwitch("expected_power_type"))
-                ? std::optional<std::string>{FLAGS_expected_power_type}
-                : std::nullopt);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kCpuCache:
-        routine_result = actions.ActionRunCpuCacheRoutine(
-            command_line->HasSwitch("cpu_stress_length_seconds")
-                ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
-                : std::nullopt);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kCpuStress:
-        routine_result = actions.ActionRunCpuStressRoutine(
-            command_line->HasSwitch("cpu_stress_length_seconds")
-                ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
-                : std::nullopt);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kFloatingPointAccuracy:
-        routine_result = actions.ActionRunFloatingPointAccuracyRoutine(
-            command_line->HasSwitch("cpu_stress_length_seconds")
-                ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
-                : std::nullopt);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel:
-        routine_result = actions.ActionRunNvmeWearLevelRoutine(
-            command_line->HasSwitch("wear_level_threshold")
-                ? std::optional<std::uint32_t>{FLAGS_wear_level_threshold}
-                : std::nullopt);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kNvmeSelfTest:
-        routine_result = actions.ActionRunNvmeSelfTestRoutine(
-            FLAGS_nvme_self_test_long
-                ? mojo_ipc::NvmeSelfTestTypeEnum::kLongSelfTest
-                : mojo_ipc::NvmeSelfTestTypeEnum::kShortSelfTest);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kDiskRead:
-        mojo_ipc::DiskReadRoutineTypeEnum type;
-        if (FLAGS_disk_read_routine_type == "linear") {
-          type = mojo_ipc::DiskReadRoutineTypeEnum::kLinearRead;
-        } else if (FLAGS_disk_read_routine_type == "random") {
-          type = mojo_ipc::DiskReadRoutineTypeEnum::kRandomRead;
-        } else {
-          std::cout << "Unknown disk_read_routine_type: "
-                    << FLAGS_disk_read_routine_type << std::endl;
-          return EXIT_FAILURE;
-        }
-        routine_result = actions.ActionRunDiskReadRoutine(
-            type, FLAGS_length_seconds, FLAGS_file_size_mb);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kPrimeSearch:
-        routine_result = actions.ActionRunPrimeSearchRoutine(
-            command_line->HasSwitch("cpu_stress_length_seconds")
-                ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
-                : std::nullopt);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kBatteryDischarge:
-        routine_result = actions.ActionRunBatteryDischargeRoutine(
-            FLAGS_length_seconds, FLAGS_maximum_discharge_percent_allowed);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kBatteryCharge:
-        routine_result = actions.ActionRunBatteryChargeRoutine(
-            FLAGS_length_seconds, FLAGS_minimum_charge_percent_required);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kLanConnectivity:
-        routine_result = actions.ActionRunLanConnectivityRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kSignalStrength:
-        routine_result = actions.ActionRunSignalStrengthRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kMemory:
-        routine_result = actions.ActionRunMemoryRoutine(
-            command_line->HasSwitch("max_testing_mem_kib")
-                ? std::optional<uint32_t>(FLAGS_max_testing_mem_kib)
-                : std::nullopt);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kGatewayCanBePinged:
-        routine_result = actions.ActionRunGatewayCanBePingedRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kHasSecureWiFiConnection:
-        routine_result = actions.ActionRunHasSecureWiFiConnectionRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kDnsResolverPresent:
-        routine_result = actions.ActionRunDnsResolverPresentRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kDnsLatency:
-        routine_result = actions.ActionRunDnsLatencyRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kDnsResolution:
-        routine_result = actions.ActionRunDnsResolutionRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kCaptivePortal:
-        routine_result = actions.ActionRunCaptivePortalRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kHttpFirewall:
-        routine_result = actions.ActionRunHttpFirewallRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kHttpsFirewall:
-        routine_result = actions.ActionRunHttpsFirewallRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kHttpsLatency:
-        routine_result = actions.ActionRunHttpsLatencyRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing:
-        routine_result = actions.ActionRunVideoConferencingRoutine(
-            (FLAGS_stun_server_hostname == "")
-                ? std::nullopt
-                : std::optional<std::string>{FLAGS_stun_server_hostname});
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kArcHttp:
-        routine_result = actions.ActionRunArcHttpRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kArcPing:
-        routine_result = actions.ActionRunArcPingRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution:
-        routine_result = actions.ActionRunArcDnsResolutionRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor:
-        routine_result = actions.ActionRunSensitiveSensorRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kFingerprint:
-        routine_result = actions.ActionRunFingerprintRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kFingerprintAlive:
-        routine_result = actions.ActionRunFingerprintAliveRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kPrivacyScreen:
-        bool target_state;
-        if (FLAGS_set_privacy_screen == "on") {
-          target_state = true;
-        } else if (FLAGS_set_privacy_screen == "off") {
-          target_state = false;
-        } else {
-          std::cout << "Invalid privacy screen target state: "
-                    << FLAGS_set_privacy_screen << ". Should be on/off."
-                    << std::endl;
-          return EXIT_FAILURE;
-        }
-        routine_result = actions.ActionRunPrivacyScreenRoutine(target_state);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kLedLitUp: {
-        mojo_ipc::LedName name = LedNameFromString(FLAGS_led_name);
-        if (name == mojo_ipc::LedName::kUnmappedEnumField) {
-          std::cout << "Unknown led_name: " << FLAGS_led_name << std::endl;
-          return EXIT_FAILURE;
-        }
-        mojo_ipc::LedColor color = LedColorFromString(FLAGS_led_color);
-        if (color == mojo_ipc::LedColor::kUnmappedEnumField) {
-          std::cout << "Unknown led_color: " << FLAGS_led_color << std::endl;
-          return EXIT_FAILURE;
-        }
-        routine_result = actions.ActionRunLedRoutine(name, color);
-      } break;
-      case mojo_ipc::DiagnosticRoutineEnum::kEmmcLifetime:
-        routine_result = actions.ActionRunEmmcLifetimeRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kAudioSetVolume:
-        routine_result = actions.ActionRunAudioSetVolumeRoutine(
-            FLAGS_node_id, FLAGS_volume, FLAGS_mute_on);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kAudioSetGain:
-        routine_result =
-            actions.ActionRunAudioSetGainRoutine(FLAGS_node_id, FLAGS_gain);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kBluetoothPower:
-        routine_result = actions.ActionRunBluetoothPowerRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kBluetoothDiscovery:
-        routine_result = actions.ActionRunBluetoothDiscoveryRoutine();
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kBluetoothScanning:
-        routine_result = actions.ActionRunBluetoothScanningRoutine(
-            command_line->HasSwitch("length_seconds")
-                ? std::optional<uint32_t>(FLAGS_length_seconds)
-                : std::nullopt);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kBluetoothPairing:
-        if (FLAGS_peripheral_id.empty()) {
-          std::cout << "Invalid empty peripheral_id" << std::endl;
-          return EXIT_FAILURE;
-        }
-        routine_result =
-            actions.ActionRunBluetoothPairingRoutine(FLAGS_peripheral_id);
-        break;
-      case mojo_ipc::DiagnosticRoutineEnum::kUnknown:
-        // Never map FLAGS_routine to kUnknown field.
-        NOTREACHED();
-        return EXIT_FAILURE;
-    }
-
-    return routine_result ? EXIT_SUCCESS : EXIT_FAILURE;
   }
 
-  std::cout << "Unknown action: " << FLAGS_action << std::endl;
+  std::string routine = argv[1];
+  auto it = routine_to_fp_mapping.find(routine);
+  if (it != routine_to_fp_mapping.end()) {
+    return it->second(argc, argv);
+  }
+
+  std::cout << "Unknown routine: " << routine << std::endl;
   return EXIT_FAILURE;
 }
 
