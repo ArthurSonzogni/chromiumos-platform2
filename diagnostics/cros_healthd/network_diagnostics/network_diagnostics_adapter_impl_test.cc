@@ -7,8 +7,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/run_loop.h>
-#include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
@@ -161,7 +159,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunLanConnectivityRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunLanConnectivity(_))
       .WillOnce(WithArg<0>(
           Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
@@ -173,16 +170,13 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunLanConnectivityRoutine) {
             std::move(callback).Run(std::move(result));
           })));
 
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunLanConnectivityRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict, kNoProblem);
-            EXPECT_EQ(result->problems->get_lan_connectivity_problems().size(),
-                      0);
-            run_loop.Quit();
-          }));
+      future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, kNoProblem);
+  EXPECT_EQ(result->problems->get_lan_connectivity_problems().size(), 0);
 }
 
 // Test that the SignalStrength routine can be run.
@@ -191,7 +185,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunSignalStrengthRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunSignalStrength(_))
       .WillOnce(WithArg<0>(
           Invoke([&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
@@ -203,17 +196,13 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunSignalStrengthRoutine) {
             std::move(callback).Run(std::move(result));
           })));
 
-  network_diagnostics_adapter()->RunSignalStrengthRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(result->problems->get_signal_strength_problems().size(),
-                      0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunSignalStrengthRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_signal_strength_problems().size(), 0);
 }
 
 // Test that the GatewayCanBePinged routine can be run.
@@ -222,7 +211,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunGatewayCanBePingedRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunGatewayCanBePinged(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
@@ -234,18 +222,14 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunGatewayCanBePingedRoutine) {
             std::move(callback).Run(std::move(result));
           }));
 
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunGatewayCanBePingedRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(
-                result->problems->get_gateway_can_be_pinged_problems().size(),
-                0);
-            run_loop.Quit();
-          }));
+      future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_gateway_can_be_pinged_problems().size(), 0);
 }
 
 // Test that the HasSecureWiFiConnection routine can be run.
@@ -254,7 +238,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHasSecureWiFiConnectionRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines,
               RunHasSecureWiFiConnection(testing::_))
       .WillOnce(testing::Invoke(
@@ -267,18 +250,15 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHasSecureWiFiConnectionRoutine) {
             std::move(callback).Run(std::move(result));
           }));
 
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunHasSecureWiFiConnectionRoutine(
-      base::BindLambdaForTesting([&](network_diagnostics_ipc::RoutineResultPtr
-                                         result) {
-        EXPECT_EQ(result->verdict,
-                  network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-        EXPECT_EQ(
-            result->problems->get_has_secure_wifi_connection_problems().size(),
-            0);
-        run_loop.Quit();
-      }));
+      future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_has_secure_wifi_connection_problems().size(),
+            0);
 }
 
 // Test that the DnsResolverPresent routine can be run.
@@ -287,7 +267,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolverPresentRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunDnsResolverPresent(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
@@ -299,18 +278,14 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolverPresentRoutine) {
             std::move(callback).Run(std::move(result));
           }));
 
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunDnsResolverPresentRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(
-                result->problems->get_dns_resolver_present_problems().size(),
-                0);
-            run_loop.Quit();
-          }));
+      future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_dns_resolver_present_problems().size(), 0);
 }
 
 // Test that the DnsLatency routine can be run.
@@ -319,7 +294,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsLatencyRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunDnsLatency(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
@@ -331,16 +305,13 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsLatencyRoutine) {
             std::move(callback).Run(std::move(result));
           }));
 
-  network_diagnostics_adapter()->RunDnsLatencyRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(result->problems->get_dns_latency_problems().size(), 0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunDnsLatencyRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_dns_latency_problems().size(), 0);
 }
 
 // Test that the DnsResolution routine can be run.
@@ -349,7 +320,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolutionRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunDnsResolution(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
@@ -361,17 +331,13 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolutionRoutine) {
             std::move(callback).Run(std::move(result));
           }));
 
-  network_diagnostics_adapter()->RunDnsResolutionRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(result->problems->get_dns_resolution_problems().size(),
-                      0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunDnsResolutionRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_dns_resolution_problems().size(), 0);
 }
 
 // Test that the CaptivePortal routine can be run.
@@ -380,7 +346,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunCaptivePortalRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunCaptivePortal(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
@@ -392,17 +357,13 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunCaptivePortalRoutine) {
             std::move(callback).Run(std::move(result));
           }));
 
-  network_diagnostics_adapter()->RunCaptivePortalRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(result->problems->get_captive_portal_problems().size(),
-                      0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunCaptivePortalRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_captive_portal_problems().size(), 0);
 }
 
 // Test that the HttpFirewall routine can be run.
@@ -411,7 +372,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpFirewallRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunHttpFirewall(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
@@ -423,16 +383,13 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpFirewallRoutine) {
             std::move(callback).Run(std::move(result));
           }));
 
-  network_diagnostics_adapter()->RunHttpFirewallRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(result->problems->get_http_firewall_problems().size(), 0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunHttpFirewallRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_http_firewall_problems().size(), 0);
 }
 
 // Test that the HttpsFirewall routine can be run.
@@ -441,7 +398,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsFirewallRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunHttpsFirewall(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
@@ -453,17 +409,13 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsFirewallRoutine) {
             std::move(callback).Run(std::move(result));
           }));
 
-  network_diagnostics_adapter()->RunHttpsFirewallRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(result->problems->get_https_firewall_problems().size(),
-                      0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunHttpsFirewallRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_https_firewall_problems().size(), 0);
 }
 
 // Test that the HttpsLatency routine can be run.
@@ -472,7 +424,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsLatencyRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunHttpsLatency(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
@@ -484,16 +435,13 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsLatencyRoutine) {
             std::move(callback).Run(std::move(result));
           }));
 
-  network_diagnostics_adapter()->RunHttpsLatencyRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(result->problems->get_https_latency_problems().size(), 0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunHttpsLatencyRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_https_latency_problems().size(), 0);
 }
 
 // Test that the VideoConferencing routine can be run.
@@ -502,7 +450,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunVideoConferencingRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunVideoConferencing(_, _))
       .WillOnce(testing::Invoke(
           [&](const std::optional<std::string>& stun_server_hostname,
@@ -515,18 +462,15 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunVideoConferencingRoutine) {
             std::move(callback).Run(std::move(result));
           }));
 
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunVideoConferencingRoutine(
       /*stun_server_hostname=*/"http://www.stunserverhostname.com/path?k=v",
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(
-                result->problems->get_video_conferencing_problems().size(), 0);
-            run_loop.Quit();
-          }));
+      future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_video_conferencing_problems().size(), 0);
 }
 
 // Test that the ARC HTTP routine can be run.
@@ -535,7 +479,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcHttpRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunArcHttp(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
@@ -547,15 +490,13 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcHttpRoutine) {
             std::move(callback).Run(std::move(result));
           }));
 
-  network_diagnostics_adapter()->RunArcHttpRoutine(base::BindLambdaForTesting(
-      [&](network_diagnostics_ipc::RoutineResultPtr result) {
-        EXPECT_EQ(result->verdict,
-                  network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-        EXPECT_EQ(result->problems->get_arc_http_problems().size(), 0);
-        run_loop.Quit();
-      }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunArcHttpRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_arc_http_problems().size(), 0);
 }
 
 // Test that the ARC Ping routine can be run.
@@ -564,7 +505,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcPingRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunArcPing(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
@@ -576,15 +516,13 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcPingRoutine) {
             std::move(callback).Run(std::move(result));
           }));
 
-  network_diagnostics_adapter()->RunArcPingRoutine(base::BindLambdaForTesting(
-      [&](network_diagnostics_ipc::RoutineResultPtr result) {
-        EXPECT_EQ(result->verdict,
-                  network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-        EXPECT_EQ(result->problems->get_arc_ping_problems().size(), 0);
-        run_loop.Quit();
-      }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunArcPingRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_arc_ping_problems().size(), 0);
 }
 
 // Test that the ARC Dns Resolution routine can be run.
@@ -593,7 +531,6 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcDnsResolutionRoutine) {
   network_diagnostics_adapter()->SetNetworkDiagnosticsRoutines(
       network_diagnostics_routines.pending_remote());
 
-  base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunArcDnsResolution(testing::_))
       .WillOnce(testing::Invoke(
           [&](network_diagnostics_ipc::NetworkDiagnosticsRoutines::
@@ -605,17 +542,14 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcDnsResolutionRoutine) {
             std::move(callback).Run(std::move(result));
           }));
 
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunArcDnsResolutionRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNoProblem);
-            EXPECT_EQ(
-                result->problems->get_arc_dns_resolution_problems().size(), 0);
-            run_loop.Quit();
-          }));
+      future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict,
+            network_diagnostics_ipc::RoutineVerdict::kNoProblem);
+  EXPECT_EQ(result->problems->get_arc_dns_resolution_problems().size(), 0);
 }
 
 // Test that the LanConnectivity routine returns RoutineVerdict::kNotRun if a
