@@ -459,37 +459,38 @@ void IPsecConnection::WriteStrongSwanConfig() {
 
   // See the following link for the format and descriptions for each field:
   // https://wiki.strongswan.org/projects/strongswan/wiki/strongswanconf
-  std::vector<std::string> lines = {
-      "charon {",
-      "  accept_unencrypted_mainmode_messages = yes",
-      "  ignore_routing_tables = 0",
-      "  install_routes = no",
-      "  install_virtual_ip = no",  // b/263688887
+  static constexpr char kTemplate[] =
+      "charon {\n"
+      "  accept_unencrypted_mainmode_messages = yes\n"
+      "  ignore_routing_tables = 0\n"
+      "  install_routes = no\n"
+      "  install_virtual_ip = no\n"  // b/263688887
       // Avoid that charon install a rule for 220 table. See b/277999673.
-      "  routing_table = 0",
-      "  syslog {",
-      "    daemon {",
-      "      ike = 2",  // Logs some traffic selector info.
-      "      cfg = 2",  // Logs algorithm proposals.
-      "      knl = 2",  // Logs high-level xfrm crypto parameters.
-      "    }",
-      "  }",
-      "  plugins {",
-      "    pkcs11 {",
-      "      modules {",
-      base::StringPrintf("        %s {", kSmartcardModuleName),
-      "          path = " + std::string{PKCS11_LIB},
-      "        }",
-      "      }",
-      "    }",
-      "    resolve {",
-      "      file = " + StrongSwanResolvConfPath().value(),
-      "    }",
-      "  }",
-      "}",
-  };
-
-  std::string contents = base::JoinString(lines, "\n");
+      "  routing_table = 0\n"
+      "  syslog {\n"
+      "    daemon {\n"
+      "      ike = 2\n"  // Logs some traffic selector info.
+      "      cfg = 2\n"  // Logs algorithm proposals.
+      "      knl = 2\n"  // Logs high-level xfrm crypto parameters.
+      "    }\n"
+      "  }\n"
+      "  plugins {\n"
+      "    pkcs11 {\n"
+      "      modules {\n"
+      "        %s {\n"
+      "          path = " PKCS11_LIB
+      "\n"
+      "        }\n"
+      "      }\n"
+      "    }\n"
+      "    resolve {\n"
+      "      file = %s\n"
+      "    }\n"
+      "  }\n"
+      "}";
+  const auto contents =
+      base::StringPrintf(kTemplate, kSmartcardModuleName,
+                         StrongSwanResolvConfPath().value().c_str());
   if (!vpn_util_->WriteConfigFile(strongswan_conf_path_, contents)) {
     NotifyFailure(Service::kFailureInternal,
                   base::StrCat({"Failed to write ", kStrongSwanConfFileName}));
