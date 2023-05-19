@@ -357,11 +357,13 @@ bool ArcService::Start(uint32_t id) {
     RefreshMacAddressesInConfigs();
 
     arc_device_ifname = ArcVethHostName(arc_device_->guest_ifname());
-    if (!datapath_->ConnectVethPair(pid, kArcNetnsName, arc_device_ifname,
-                                    arc_device_->guest_ifname(),
-                                    arc_device_->config().mac_addr(),
-                                    arc_device_->config().guest_ipv4_addr(), 30,
-                                    /*remote_multicast_flag=*/false)) {
+    const auto guest_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+        ConvertUint32ToIPv4Address(arc_device_->config().guest_ipv4_addr()),
+        30);
+    if (!datapath_->ConnectVethPair(
+            pid, kArcNetnsName, arc_device_ifname, arc_device_->guest_ifname(),
+            arc_device_->config().mac_addr(), guest_cidr,
+            /*remote_multicast_flag=*/false)) {
       LOG(ERROR) << "Cannot create virtual link for shill Device "
                  << arc_device_->phys_ifname();
       return false;
@@ -532,9 +534,12 @@ void ArcService::AddDevice(const std::string& ifname,
       return;
     }
     virtual_device_ifname = ArcVethHostName(device->guest_ifname());
+
+    const auto guest_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+        ConvertUint32ToIPv4Address(device->config().guest_ipv4_addr()), 30);
     if (!datapath_->ConnectVethPair(
             pid, kArcNetnsName, virtual_device_ifname, device->guest_ifname(),
-            device->config().mac_addr(), device->config().guest_ipv4_addr(), 30,
+            device->config().mac_addr(), guest_cidr,
             IsMulticastInterface(device->phys_ifname()))) {
       LOG(ERROR) << "Cannot create veth link for device " << *device;
       return;

@@ -82,7 +82,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   std::string ifname3 = provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
   std::string bridge = provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
   uint32_t addr = provider.ConsumeIntegral<uint32_t>();
-  std::string addr_str = IPv4AddressToString(addr);
   int prefix_len = provider.ConsumeIntegralInRange<int>(0, 31);
   const auto cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
       ConvertUint32ToIPv4Address(addr), prefix_len);
@@ -130,8 +129,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                              route_on_vpn);
   datapath.StartRoutingNamespace(nsinfo);
   datapath.StopRoutingNamespace(nsinfo);
-  datapath.ConnectVethPair(pid, netns_name, ifname, ifname2, mac, addr,
-                           prefix_len, provider.ConsumeBool());
+  datapath.ConnectVethPair(pid, netns_name, ifname, ifname2, mac, cidr,
+                           provider.ConsumeBool());
   datapath.RemoveInterface(ifname);
   datapath.AddTAP(ifname, &mac, &subnet_addr, "");
   datapath.RemoveTAP(ifname);

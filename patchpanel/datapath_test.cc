@@ -815,9 +815,9 @@ TEST(DatapathTest, ConnectVethPair) {
             "link set dev peer_foo up addr 01:02:03:04:05:06 multicast on");
   Verify_ip(*runner, "link set veth_foo up");
   Datapath datapath(runner, firewall, &system);
-  EXPECT_TRUE(datapath.ConnectVethPair(kTestPID, "netns_foo", "veth_foo",
-                                       "peer_foo", {1, 2, 3, 4, 5, 6},
-                                       Ipv4Addr(100, 115, 92, 169), 30, true));
+  EXPECT_TRUE(datapath.ConnectVethPair(
+      kTestPID, "netns_foo", "veth_foo", "peer_foo", {1, 2, 3, 4, 5, 6},
+      *IPv4CIDR::CreateFromCIDRString("100.115.92.169/30"), true));
 }
 
 TEST(DatapathTest, AddVirtualInterfacePair) {

@@ -786,8 +786,7 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
                                const std::string& veth_ifname,
                                const std::string& peer_ifname,
                                const MacAddress& remote_mac_addr,
-                               uint32_t remote_ipv4_addr,
-                               int remote_ipv4_prefix_len,
+                               const IPv4CIDR& remote_ipv4_cidr,
                                bool remote_multicast_flag) {
   // Set up the virtual pair across the current namespace and |netns_name|.
   if (!AddVirtualInterfacePair(netns_name, veth_ifname, peer_ifname)) {
@@ -805,14 +804,7 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
       return false;
     }
 
-    const auto remote_ipv4_cidr = IPv4CIDR::CreateFromAddressAndPrefix(
-        ConvertUint32ToIPv4Address(remote_ipv4_addr), remote_ipv4_prefix_len);
-    if (!remote_ipv4_cidr) {
-      LOG(ERROR) << "Cannot create IPv4CIDR: prefix length="
-                 << remote_ipv4_prefix_len;
-      return false;
-    }
-    if (!ConfigureInterface(peer_ifname, remote_mac_addr, *remote_ipv4_cidr,
+    if (!ConfigureInterface(peer_ifname, remote_mac_addr, remote_ipv4_cidr,
                             /*up=*/true, remote_multicast_flag)) {
       LOG(ERROR) << "Failed to configure interface " << peer_ifname;
       RemoveInterface(peer_ifname);
@@ -902,10 +894,17 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  if (!ConnectVethPair(
-          nsinfo.pid, nsinfo.netns_name, nsinfo.host_ifname, nsinfo.peer_ifname,
-          nsinfo.peer_mac_addr, nsinfo.peer_subnet->AddressAtOffset(1),
-          nsinfo.peer_subnet->PrefixLength(), /*enable_multicast=*/false)) {
+  const auto remote_cidr = IPv4CIDR::CreateFromAddressAndPrefix(
+      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1)),
+      nsinfo.peer_subnet->PrefixLength());
+  if (!remote_cidr) {
+    LOG(ERROR) << "Failed to create remote CIDR: prefix length="
+               << nsinfo.peer_subnet->PrefixLength();
+    return false;
+  }
+  if (!ConnectVethPair(nsinfo.pid, nsinfo.netns_name, nsinfo.host_ifname,
+                       nsinfo.peer_ifname, nsinfo.peer_mac_addr, *remote_cidr,
+                       /*enable_multicast=*/false)) {
     LOG(ERROR) << "Failed to create veth pair for"
                   " namespace pid "
                << nsinfo.pid;

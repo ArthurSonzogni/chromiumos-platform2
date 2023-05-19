@@ -59,8 +59,7 @@ class MockDatapath : public Datapath {
                const std::string& veth_ifname,
                const std::string& peer_ifname,
                const MacAddress& remote_mac_addr,
-               uint32_t remote_ipv4_addr,
-               int remote_ipv4_prefix_len,
+               const net_base::IPv4CIDR& remote_ipv4_cidr,
                bool remote_multicast_flag),
               (override));
   MOCK_METHOD(void, RemoveInterface, (const std::string& ifname), (override));
