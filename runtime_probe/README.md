@@ -215,8 +215,7 @@ runtime_probe  # or via D-Bus as described earlier
     * image-yyy.bin
   * xxx-channel\_yyy\_zzz\_ChromeOS-recovery-...tar.xz
     * recovery\_image.bin
-* Flash the dev-signed firmware, image-yyy.bin by either `flashrom` or servo
-  board.
+* Flash the dev-signed firmware, image-yyy.bin by using futility.
 * Flash to the USB and trigger a recovery install [ Ctrl + Alt + D ]
 * Switch to developer mode and login into console [ Ctrl + Alt + F2 ]
 * Disable rootfs verification
