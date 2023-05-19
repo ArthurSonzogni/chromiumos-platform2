@@ -76,6 +76,9 @@ class ArcVm final : public VmBaseImpl {
     std::unique_ptr<patchpanel::Client> network_client;
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
     std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy;
+    // The path to the history file of `VmmSwapUsagePolicy`. If vmm-swap is not
+    // enabled this should be `nullopt`, otherwise the file is created.
+    std::optional<base::FilePath> vmm_swap_usage_path;
     // `guest_memory_size` is the size of the guest memory in bytes which is
     // specified in VmBuilder.
     int64_t guest_memory_size;
