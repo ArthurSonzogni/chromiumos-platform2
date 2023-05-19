@@ -173,12 +173,6 @@ message StartVmRequest {
   // Any additional disks that should be mounted inside the VM.
   repeated DiskImage disks = 2;
 
-  // Path to a shared directory that will be mounted via NFS inside the VM.
-  // DEPRECATED: The server never did anything with this field.  Instead callers
-  // should use the |shared_dir_handle| field of the VmInfo message to get a
-  // server handle that can be used in requests to the seneschal system service.
-  string shared_directory = 3 [deprecated = true];
-
   // The human-readable name to be assigned to this VM.
   string name = 4;
 
@@ -348,9 +342,6 @@ message StartArcVmRequest {
   // The cryptohome id of the owner of this VM.
   string owner_id = 4;
 
-  // Parameters to pass to the ARCVM's init process.
-  repeated string params = 5 [deprecated = true];
-
   // Path to Android fstab.
   string fstab = 6;
 
@@ -386,10 +377,6 @@ message StartArcVmRequest {
   // The block size of the rootfs. The default block size is used when zero.
   uint32 rootfs_block_size = 15;
 
-  // Option to enable disable consumer auto update toggle.
-  // deprecated: exists in StartArcMiniInstanceRequest
-  bool enable_consumer_auto_update_toggle = 16 [deprecated = true];
-
   // Display orientation in clock-wise degrees. ORIENTATION_90 means the panel's
   // right side is the top side of the natural device orientation.
   enum DisplayOrientation {
@@ -409,27 +396,8 @@ message StartArcVmRequest {
   // Whether to lock guest memory (for the purpose of disabling host swap).
   bool lock_guest_memory = 18;
 
-  // Whether the file picker experiment feature is enabled.
-  // deprecated: exists in StartArcMiniInstanceRequest
-  bool enable_arc_file_picker_experiment = 19 [deprecated = true];
-
-  // Whether the custom tabs experiment feature is enabled.
-  // deprecated: exists in StartArcMiniInstanceRequest
-  bool enable_custom_tabs_experiment = 20 [deprecated = true];
-
   // Whether the keyboard shortcut helper integration feature is enabled.
   bool enable_keyboard_shortcut_helper_integration = 21;
-
-  // Whether the notifications refresh is enabled.
-  // deprecated: exists in StartArcMiniInstanceRequest
-  bool enable_notifications_refresh = 22 [deprecated = true];
-
-  // Whether the tts caching feature is enabled.
-  // deprecated: exists in StartArcMiniInstanceRequest
-  bool enable_tts_caching = 23 [deprecated = true];
-
-  // Whether gmscore lmk protection is enabled.
-  bool enable_gmscore_lmk_protection = 24 [deprecated = true];
 
   // Whether broadcast anr prenotify is enabled.
   bool enable_broadcast_anr_prenotify = 25;
@@ -442,18 +410,6 @@ message StartArcVmRequest {
 
   // ArcVM metrics memory PSI period, -1 if disabled
   int32 vm_memory_psi_period = 28;
-
-  // Whether media store maintenance is disabled
-  // deprecated: exists in StartArcMiniInstanceRequest
-  bool disable_media_store_maintenance = 29 [deprecated = true];
-
-  // Whether Play auto install is generated
-  // deprecated: exists in StartArcMiniInstanceRequest
-  bool arc_generate_play_auto_install = 30 [deprecated = true];
-
-  // Whether download provider is disabled
-  // deprecated: exists in StartArcMiniInstanceRequest
-  bool disable_download_provider = 31 [deprecated = true];
 
   // Size of Guest Zram in bytes
   int32 guest_zram_size = 32;
