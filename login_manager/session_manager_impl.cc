@@ -2009,8 +2009,6 @@ void SessionManagerImpl::BackupArcBugReport(const std::string& account_id) {
     return;
   }
 
-  const base::TimeTicks arc_bug_report_backup_time = base::TimeTicks::Now();
-
   dbus::MethodCall method_call(debugd::kDebugdInterface,
                                debugd::kBackupArcBugReport);
   dbus::MessageWriter writer(&method_call);
@@ -2020,10 +2018,7 @@ void SessionManagerImpl::BackupArcBugReport(const std::string& account_id) {
   std::unique_ptr<dbus::Response> response(debugd_proxy_->CallMethodAndBlock(
       &method_call, kBackupArcBugReportTimeout.InMilliseconds()));
 
-  if (response) {
-    login_metrics_->SendArcBugReportBackupTime(base::TimeTicks::Now() -
-                                               arc_bug_report_backup_time);
-  } else {
+  if (!response) {
     LOG(ERROR) << "Error contacting debugd to back up ARC bug report.";
   }
 }

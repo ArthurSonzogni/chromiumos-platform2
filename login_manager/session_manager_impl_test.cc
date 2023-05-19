@@ -2601,7 +2601,6 @@ TEST_F(SessionManagerImplTest,
   EXPECT_CALL(*arc_sideload_status_, IsAdbSideloadAllowed())
       .WillRepeatedly(Return(false));
 
-  EXPECT_CALL(metrics_, SendArcBugReportBackupTime(_)).Times(1);
   EXPECT_CALL(*debugd_proxy_, CallMethodAndBlock(_, _))
       .WillOnce(WithArg<0>(Invoke([](dbus::MethodCall* method_call) {
         EXPECT_EQ(method_call->GetInterface(), debugd::kDebugdInterface);

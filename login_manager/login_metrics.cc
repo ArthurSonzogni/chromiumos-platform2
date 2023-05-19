@@ -29,9 +29,6 @@ const char kChromeUptimeFile[] = "/tmp/uptime-chrome-exec";
 // process and when the browser process group exits (or killed via SIGABRT).
 const char kLoginBrowserShutdownTimeMetric[] = "Login.BrowserShutdownTime";
 
-// A metric to track the time taken to backup ARC bug report.
-const char kArcBugReportBackupTimeMetric[] = "Login.ArcBugReportBackupTime";
-
 // A metric to track the time taken to execute arc-boot-continue impulse.
 const char kArcContinueBootImpulseTime3Metric[] =
     "Login.ArcContinueBootImpulseTime3";
@@ -133,17 +130,6 @@ void LoginMetrics::SendBrowserShutdownTime(
       static_cast<int>(browser_shutdown_time.InMilliseconds()),
       static_cast<int>(base::Milliseconds(1).InMilliseconds()),
       static_cast<int>(base::Seconds(12).InMilliseconds()), 50);
-}
-
-void LoginMetrics::SendArcBugReportBackupTime(
-    base::TimeDelta arc_bug_report_backup_time) {
-  // ARC bug report back-up time is between 0 - 60s and split it up into 50
-  // buckets.
-  metrics_lib_.SendToUMA(
-      kArcBugReportBackupTimeMetric,
-      static_cast<int>(arc_bug_report_backup_time.InMilliseconds()),
-      static_cast<int>(base::Milliseconds(1).InMilliseconds()),
-      static_cast<int>(base::Seconds(60).InMilliseconds()), 50);
 }
 
 void LoginMetrics::SendArcContinueBootImpulseStatus(
