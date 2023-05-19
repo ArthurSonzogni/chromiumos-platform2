@@ -272,16 +272,6 @@ ModeEntryResult Port::CanEnterUSB4() {
     return ModeEntryResult::kPartnerError;
   }
 
-  // Only PDUSB hub or PDUSB peripheral provide UFP VDO.
-  // Otherwise, USB4 is not supported.
-  auto product_type =
-      (partner_->GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
-      kIDHeaderVDOProductTypeMask;
-  if (product_type != kIDHeaderVDOProductTypeUFPHub &&
-      product_type != kIDHeaderVDOProductTypeUFPPeripheral)
-    return ModeEntryResult::kPartnerError;
-
-  // Product Type VDO1 is UFP VDO at this point.
   if (!partner_->SupportsUsb4())
     return ModeEntryResult::kPartnerError;
 

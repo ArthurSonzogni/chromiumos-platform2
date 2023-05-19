@@ -317,6 +317,15 @@ bool Partner::SupportsTbt() {
 }
 
 bool Partner::SupportsUsb4() {
+  // Only PDUSB hub or PDUSB peripheral provide UFP VDO.
+  // Otherwise, USB4 is not supported.
+  auto product_type = (GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
+                      kIDHeaderVDOProductTypeMask;
+  if (product_type != kIDHeaderVDOProductTypeUFPHub &&
+      product_type != kIDHeaderVDOProductTypeUFPPeripheral)
+    return false;
+
+  // Product Type VDO1 is UFP VDO at this point.
   auto partner_cap = (GetProductTypeVDO1() >> kDeviceCapabilityBitOffset) &
                      kDeviceCapabilityMask;
   return (partner_cap & kDeviceCapabilityUSB4);
