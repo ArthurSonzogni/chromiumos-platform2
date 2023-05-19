@@ -276,6 +276,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "add_auth_factor",
                                     "authenticate_auth_factor",
                                     "authenticate_with_status_update",
+                                    "fetch_status_update",
                                     "update_auth_factor",
                                     "remove_auth_factor",
                                     "list_auth_factors",
@@ -365,6 +366,7 @@ enum ActionEnum {
   ACTION_ADD_AUTH_FACTOR,
   ACTION_AUTHENTICATE_AUTH_FACTOR,
   ACTION_AUTHENTICATE_WITH_STATUS_UPDATE,
+  ACTION_FETCH_STATUS_UPDATE,
   ACTION_UPDATE_AUTH_FACTOR,
   ACTION_REMOVE_AUTH_FACTOR,
   ACTION_LIST_AUTH_FACTORS,
@@ -1101,16 +1103,16 @@ int DoAddAuthFactor(
 }
 
 int DoAuthenticateAuthFactor(
-    Printer& printer,
+    Printer* printer,
     base::CommandLine* cl,
-    org::chromium::UserDataAuthInterfaceProxy& userdataauth_proxy,
-    org::chromium::CryptohomeMiscInterfaceProxy& misc_proxy) {
+    org::chromium::UserDataAuthInterfaceProxy* userdataauth_proxy,
+    org::chromium::CryptohomeMiscInterfaceProxy* misc_proxy) {
   user_data_auth::AuthenticateAuthFactorRequest req;
   user_data_auth::AuthenticateAuthFactorReply reply;
 
   std::string auth_session_id_hex, auth_session_id;
 
-  if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+  if (!GetAuthSessionId(*printer, cl, &auth_session_id_hex))
     return 1;
   base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
   req.set_auth_session_id(auth_session_id);
@@ -1118,7 +1120,7 @@ int DoAuthenticateAuthFactor(
   bool has_key_label_switch = cl->HasSwitch(switches::kKeyLabelSwitch);
   bool has_key_labels_switch = cl->HasSwitch(switches::kKeyLabelsSwitch);
   if (!(has_key_label_switch ^ has_key_labels_switch)) {
-    printer.PrintHumanOutput(
+    printer->PrintHumanOutput(
         "Exactly one of `key_label` and `key_labels` should be specified.\n");
     return 1;
   }
@@ -1130,28 +1132,28 @@ int DoAuthenticateAuthFactor(
   for (std::string& label : labels) {
     req.add_auth_factor_labels(std::move(label));
   }
-  if (!BuildAuthInput(printer, cl, &misc_proxy, req.mutable_auth_input())) {
+  if (!BuildAuthInput(*printer, cl, misc_proxy, req.mutable_auth_input())) {
     return 1;
   }
 
   brillo::ErrorPtr error;
   VLOG(1) << "Attempting to authenticate AuthFactor";
-  if (!userdataauth_proxy.AuthenticateAuthFactor(req, &reply, &error,
-                                                 kDefaultTimeoutMs) ||
+  if (!userdataauth_proxy->AuthenticateAuthFactor(req, &reply, &error,
+                                                  kDefaultTimeoutMs) ||
       error) {
-    printer.PrintFormattedHumanOutput(
+    printer->PrintFormattedHumanOutput(
         "AuthenticateAuthFactor call failed: %s.\n",
         BrilloErrorToString(error.get()).c_str());
     return 1;
   }
-  printer.PrintReplyProtobuf(reply);
+  printer->PrintReplyProtobuf(reply);
   if (reply.error() !=
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-    printer.PrintHumanOutput("Failed to authenticate AuthFactor.\n");
+    printer->PrintHumanOutput("Failed to authenticate AuthFactor.\n");
     return static_cast<int>(reply.error());
   }
 
-  printer.PrintHumanOutput("AuthFactor authenticated.\n");
+  printer->PrintHumanOutput("AuthFactor authenticated.\n");
   return 0;
 }
 
@@ -1167,9 +1169,7 @@ void OnAuthFactorStatusUpdateSignalConnected(
     base::RunLoop* run_loop,
     int* ret_code,
     Printer* printer,
-    base::CommandLine* cl,
-    org::chromium::UserDataAuthInterfaceProxy* proxy,
-    org::chromium::CryptohomeMiscInterfaceProxy* misc_proxy,
+    base::RepeatingCallback<int()> signal_connected_callback,
     const std::string&,
     const std::string&,
     bool success) {
@@ -1180,7 +1180,7 @@ void OnAuthFactorStatusUpdateSignalConnected(
     *ret_code = 1;
     return;
   }
-  *ret_code = DoAuthenticateAuthFactor(*printer, cl, *proxy, *misc_proxy);
+  *ret_code = signal_connected_callback.Run();
 }
 
 int DoAuthenticateWithStatusUpdate(
@@ -1200,7 +1200,23 @@ int DoAuthenticateWithStatusUpdate(
   proxy.RegisterAuthFactorStatusUpdateSignalHandler(
       base::BindRepeating(&OnAuthFactorStatusUpdateSignal, &printer, &run_loop),
       base::BindOnce(&OnAuthFactorStatusUpdateSignalConnected, &run_loop,
-                     &ret_code, &printer, cl, &proxy, &misc_proxy));
+                     &ret_code, &printer,
+                     base::BindRepeating(DoAuthenticateAuthFactor, &printer, cl,
+                                         &proxy, &misc_proxy)));
+  run_loop.Run();
+  return ret_code;
+}
+
+int FetchStatusUpdateSignal(Printer& printer,
+                            org::chromium::UserDataAuthInterfaceProxy& proxy) {
+  // A run loop is created to wait for the next signal.
+  int ret_code = 1;
+  base::RunLoop run_loop;
+  proxy.RegisterAuthFactorStatusUpdateSignalHandler(
+      base::BindRepeating(&OnAuthFactorStatusUpdateSignal, &printer, &run_loop),
+      base::BindOnce(&OnAuthFactorStatusUpdateSignalConnected, &run_loop,
+                     &ret_code, &printer,
+                     base::BindRepeating([] { return 0; })));
 
   run_loop.Run();
   return ret_code;
@@ -1328,7 +1344,7 @@ void AuthenticateAfterPrepareDone(
     base::RunLoop* run_loop,
     int* ret_code) {
   *ret_code =
-      DoAuthenticateAuthFactor(*printer, cl, *userdataauth_proxy, *misc_proxy);
+      DoAuthenticateAuthFactor(printer, cl, userdataauth_proxy, misc_proxy);
   // Currently the only auth factor type that utilizes this helper function is
   // fingerprint, and this is the easiest way to determine whether it needs to
   // keep the session open for retries. Switch to a more generic method in the
@@ -3507,13 +3523,16 @@ int main(int argc, char** argv) {
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_AUTHENTICATE_AUTH_FACTOR],
                  action.c_str())) {
-    return DoAuthenticateAuthFactor(printer, cl, userdataauth_proxy,
-                                    misc_proxy);
+    return DoAuthenticateAuthFactor(&printer, cl, &userdataauth_proxy,
+                                    &misc_proxy);
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_AUTHENTICATE_WITH_STATUS_UPDATE],
                      action.c_str())) {
     return DoAuthenticateWithStatusUpdate(printer, cl, userdataauth_proxy,
                                           misc_proxy);
+  } else if (!strcmp(switches::kActions[switches::ACTION_FETCH_STATUS_UPDATE],
+                     action.c_str())) {
+    return FetchStatusUpdateSignal(printer, userdataauth_proxy);
   } else if (!strcmp(switches::kActions[switches::ACTION_UPDATE_AUTH_FACTOR],
                      action.c_str())) {
     user_data_auth::UpdateAuthFactorRequest req;
