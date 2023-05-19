@@ -117,7 +117,7 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
 // KeyValueStore stores bool value as string "true" or "false". This function
 // converts it to bool type, or returns |default_value|.
 bool GetBool(const KeyValueStore& args,
-             const std::string& key,
+             base::StringPiece key,
              bool default_value) {
   if (args.Contains<std::string>(key)) {
     return args.Get<std::string>(key) == "true";
