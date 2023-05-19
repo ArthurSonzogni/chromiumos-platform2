@@ -253,28 +253,28 @@ pub fn prealloc_mem() -> Result<()> {
             "Platform.Hibernate.MemoryAvailable",
             available_mb as isize,
             0,
-            16384,
+            32768,
             50,
         );
         metrics_logger.log_metric(
             "Platform.Hibernate.MemoryAndSwapAvailable",
             total_avail as isize,
             0,
-            32768,
+            65536,
             50,
         );
         metrics_logger.log_metric(
             "Platform.Hibernate.AdditionalMemoryNeeded",
             shortfall_mb,
             0,
-            16384,
+            32768,
             50,
         );
         metrics_logger.log_metric(
             "Platform.Hibernate.ExcessMemoryAvailable",
             extra_mb,
             0,
-            16384,
+            65536,
             50,
         );
     }
