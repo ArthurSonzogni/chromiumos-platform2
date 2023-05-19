@@ -10,9 +10,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/run_loop.h>
-#include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 
@@ -31,6 +30,8 @@ namespace diagnostics {
 namespace {
 
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
+
+using base::test::TestFuture;
 
 constexpr char kRoutineDoesNotExistStatusMessage[] =
     "Specified routine does not exist.";
@@ -152,37 +153,19 @@ class CrosHealthdDiagnosticsServiceTest : public testing::Test {
   MockContext* mock_context() { return &mock_context_; }
 
   std::vector<mojo_ipc::DiagnosticRoutineEnum> ExecuteGetAvailableRoutines() {
-    base::RunLoop run_loop;
-    std::vector<mojo_ipc::DiagnosticRoutineEnum> available_routines;
-    service()->GetAvailableRoutines(base::BindLambdaForTesting(
-        [&](const std::vector<mojo_ipc::DiagnosticRoutineEnum>& response) {
-          available_routines = response;
-          run_loop.Quit();
-        }));
-
-    run_loop.Run();
-
-    return available_routines;
+    TestFuture<const std::vector<mojo_ipc::DiagnosticRoutineEnum>&> future;
+    service()->GetAvailableRoutines(future.GetCallback());
+    return future.Take();
   }
 
   mojo_ipc::RoutineUpdatePtr ExecuteGetRoutineUpdate(
       int32_t id,
       mojo_ipc::DiagnosticRoutineCommandEnum command,
       bool include_output) {
-    base::RunLoop run_loop;
-    mojo_ipc::RoutineUpdatePtr update;
-    service()->GetRoutineUpdate(
-        id, command, include_output,
-        base::BindLambdaForTesting([&](mojo_ipc::RoutineUpdatePtr response) {
-          update = mojo_ipc::RoutineUpdate::New(
-              response->progress_percent, std::move(response->output),
-              std::move(response->routine_update_union));
-          run_loop.Quit();
-        }));
-
-    run_loop.Run();
-
-    return update;
+    TestFuture<mojo_ipc::RoutineUpdatePtr> future;
+    service()->GetRoutineUpdate(id, command, include_output,
+                                future.GetCallback());
+    return future.Take();
   }
 
  private:
@@ -330,15 +313,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryCapacityRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunBatteryCapacityRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunBatteryCapacityRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -351,15 +329,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryHealthRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunBatteryHealthRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunBatteryHealthRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -372,17 +345,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunUrandomRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunUrandomRoutine(
       /*length_seconds=*/mojo_ipc::NullableUint32::New(120),
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -395,18 +363,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunSmartctlCheckRoutineWithoutParam) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   // Pass the threshold as nullptr to test interface's backward compatibility.
   service()->RunSmartctlCheckRoutine(
-      /*percentage_used_threshold=*/nullptr,
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      /*percentage_used_threshold=*/nullptr, future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -419,17 +381,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunSmartctlCheckRoutineWithParam) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunSmartctlCheckRoutine(
       /*percentage_used_threshold=*/mojo_ipc::NullableUint32::New(255),
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -442,15 +399,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunEmmcLifetimeRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunEmmcLifetimeRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunEmmcLifetimeRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -463,18 +415,13 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunAcPowerRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunAcPowerRoutine(
       /*expected_status=*/mojo_ipc::AcPowerStatusEnum::kConnected,
       /*expected_power_type=*/std::optional<std::string>{"power_type"},
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -484,17 +431,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunCpuCacheRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunCpuCacheRoutine(
       /*length_seconds=*/mojo_ipc::NullableUint32::New(120),
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -504,17 +446,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunCpuStressRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunCpuStressRoutine(
       /*length_seconds=*/mojo_ipc::NullableUint32::New(120),
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -527,17 +464,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunFloatingPointAccuracyRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunFloatingPointAccuracyRoutine(
       /*length_seconds=*/mojo_ipc::NullableUint32::New(120),
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -550,17 +482,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunNvmeWearLevelRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunNvmeWearLevelRoutine(
       /*wear_level_threshold=*/mojo_ipc::NullableUint32::New(30),
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -573,17 +500,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunNvmeSelfTestRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunNvmeSelfTestRoutine(
       /*nvme_self_test_type=*/mojo_ipc::NvmeSelfTestTypeEnum::kShortSelfTest,
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -596,18 +518,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunDiskReadRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunDiskReadRoutine(
       /*type*/ mojo_ipc::DiskReadRoutineTypeEnum::kLinearRead,
-      /*length_seconds=*/10, /*file_size_mb=*/1024,
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      /*length_seconds=*/10, /*file_size_mb=*/1024, future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -620,17 +536,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunPrimeSearchRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunPrimeSearchRoutine(
       /*length_seconds=*/mojo_ipc::NullableUint32::New(120),
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -644,18 +555,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryDischargeRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunBatteryDischargeRoutine(
       /*length_seconds=*/23,
-      /*maximum_discharge_percent_allowed=*/78,
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      /*maximum_discharge_percent_allowed=*/78, future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -669,18 +574,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryChargeRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunBatteryChargeRoutine(
       /*length_seconds=*/54,
-      /*minimum_charge_percent_required=*/56,
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      /*minimum_charge_percent_required=*/56, future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -693,17 +592,11 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunMemoryRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunMemoryRoutine(
-      /*max_testing_mem_kib=*/std::nullopt,
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      /*max_testing_mem_kib=*/std::nullopt, future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -716,15 +609,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunLanConnectivityRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunLanConnectivityRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunLanConnectivityRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -737,15 +625,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunSignalStrengthRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunSignalStrengthRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunSignalStrengthRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -758,15 +641,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunGatewayCanBePingedRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunGatewayCanBePingedRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunGatewayCanBePingedRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -779,15 +657,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunHasSecureWiFiConnectionRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunHasSecureWiFiConnectionRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunHasSecureWiFiConnectionRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -800,15 +673,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunDnsResolverPresentRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunDnsResolverPresentRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunDnsResolverPresentRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -821,15 +689,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunDnsLatencyRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunDnsLatencyRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunDnsLatencyRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -842,15 +705,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunDnsResolutionRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunDnsResolutionRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunDnsResolutionRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -863,15 +721,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunCaptivePortalRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunCaptivePortalRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunCaptivePortalRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -884,15 +737,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunHttpFirewallRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunHttpFirewallRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunHttpFirewallRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -905,15 +753,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunHttpsFirewallRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunHttpsFirewallRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunHttpsFirewallRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -926,15 +769,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunHttpsLatencyRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunHttpsLatencyRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunHttpsLatencyRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -947,18 +785,13 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunVideoConferencingRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunVideoConferencingRoutine(
       /*stun_server_hostname=*/std::optional<
           std::string>{"http://www.stunserverhostname.com/path?k=v"},
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -971,15 +804,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunArcHttpRoutine) {
       kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
-  service()->RunArcHttpRoutine(base::BindLambdaForTesting(
-      [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-        response = std::move(received_response);
-        run_loop.Quit();
-      }));
-  run_loop.Run();
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
+  service()->RunArcHttpRoutine(future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, 1);
   EXPECT_EQ(response->status, kExpectedStatus);
 }
@@ -990,17 +818,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, AccessStoppedRoutine) {
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, /*status_message=*/"",
       /*progress_percent=*/50, /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunSmartctlCheckRoutine(
       /*percentage_used_threshold=*/mojo_ipc::NullableUint32Ptr(),
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      future.GetCallback());
 
+  auto response = future.Take();
   ExecuteGetRoutineUpdate(response->id,
                           mojo_ipc::DiagnosticRoutineCommandEnum::kRemove,
                           /*include_output=*/false);
@@ -1024,17 +847,12 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunUnsupportedRoutine) {
       /*status_message=*/"", /*progress_percent=*/0,
       /*output=*/"");
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunSmartctlCheckRoutine(
       /*percentage_used_threshold=*/mojo_ipc::NullableUint32Ptr(),
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      future.GetCallback());
 
+  auto response = future.Take();
   EXPECT_EQ(response->id, mojo_ipc::kFailedToStartId);
   EXPECT_EQ(response->status,
             mojo_ipc::DiagnosticRoutineStatusEnum::kUnsupported);
@@ -1076,17 +894,12 @@ TEST_P(DiagnosticsUpdateCommandTest, SendCommand) {
                                              kExpectedProgressPercent,
                                              kExpectedOutput);
 
-  mojo_ipc::RunRoutineResponsePtr response;
-  base::RunLoop run_loop;
+  TestFuture<mojo_ipc::RunRoutineResponsePtr> future;
   service()->RunSmartctlCheckRoutine(
       /*percentage_used_threshold=*/mojo_ipc::NullableUint32Ptr(),
-      base::BindLambdaForTesting(
-          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
-            response = std::move(received_response);
-            run_loop.Quit();
-          }));
-  run_loop.Run();
+      future.GetCallback());
 
+  auto response = future.Take();
   auto update = ExecuteGetRoutineUpdate(response->id, params().command,
                                         /*include_output=*/true);
 
