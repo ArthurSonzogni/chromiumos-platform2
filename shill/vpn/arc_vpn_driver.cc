@@ -51,7 +51,7 @@ base::TimeDelta ArcVpnDriver::ConnectAsync(EventHandler* handler) {
 }
 
 void ArcVpnDriver::InvokeEventHandler(EventHandler* handler) {
-  std::string if_name = VPNProvider::kArcBridgeIfName;
+  std::string if_name(VPNProvider::kArcBridgeIfName);
   int if_index = manager()->device_info()->GetIndex(if_name);
   if (if_index == -1) {
     handler->OnDriverFailure(Service::kFailureInternal,

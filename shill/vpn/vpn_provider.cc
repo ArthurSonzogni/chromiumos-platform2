@@ -9,6 +9,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/containers/fixed_flat_map.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
@@ -111,19 +112,18 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
 
 }  // namespace
 
-const char VPNProvider::kArcBridgeIfName[] = "arcbr0";
-
 // static
 std::optional<VPNType> VPNProvider::VPNTypeStringToEnum(
-    const std::string& type) {
-  const std::map<std::string, VPNType> dict{
-      {kProviderArcVpn, VPNType::kARC},
-      {kProviderIKEv2, VPNType::kIKEv2},
-      {kProviderL2tpIpsec, VPNType::kL2TPIPsec},
-      {kProviderOpenVpn, VPNType::kOpenVPN},
-      {kProviderThirdPartyVpn, VPNType::kThirdParty},
-      {kProviderWireGuard, VPNType::kWireGuard},
-  };
+    base::StringPiece type) {
+  static constexpr auto dict =
+      base::MakeFixedFlatMap<base::StringPiece, VPNType>({
+          {kProviderArcVpn, VPNType::kARC},
+          {kProviderIKEv2, VPNType::kIKEv2},
+          {kProviderL2tpIpsec, VPNType::kL2TPIPsec},
+          {kProviderOpenVpn, VPNType::kOpenVPN},
+          {kProviderThirdPartyVpn, VPNType::kThirdParty},
+          {kProviderWireGuard, VPNType::kWireGuard},
+      });
   const auto it = dict.find(type);
   if (it == dict.end()) {
     return std::nullopt;

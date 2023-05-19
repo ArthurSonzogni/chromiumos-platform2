@@ -91,7 +91,8 @@ TEST_F(ArcVpnDriverTest, ConnectAsync) {
   LoadPropertiesFromStore(true);
   EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(event_handler_,
-              OnDriverConnected(VPNProvider::kArcBridgeIfName, kInterfaceIndex))
+              OnDriverConnected(std::string(VPNProvider::kArcBridgeIfName),
+                                kInterfaceIndex))
       .Times(1);
   driver_->ConnectAsync(&event_handler_);
   dispatcher_.task_environment().RunUntilIdle();
