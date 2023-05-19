@@ -3046,6 +3046,92 @@ TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultNoDun) {
             Cellular::TetheringOperationType::kReuseDefault);
 }
 
+TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultIsAlsoDun) {
+  CellularService* service = SetRegisteredWithService();
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  ASSERT_NE(device_->service(), nullptr);
+
+  SetMockMobileOperatorInfoObjects();
+  CHECK(mock_mobile_operator_info_);
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_allowed())
+      .WillRepeatedly(Return(true));
+
+  // Last good APN is also in the APN list
+  Stringmaps apn_list;
+  Stringmap apn;
+  apn[kApnProperty] = "apn";
+  apn[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn_list.push_back(apn);
+  device_->SetApnList(apn_list);
+  service->SetLastGoodApn(apn);
+
+  // Test only the operation type selection
+  EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
+            Cellular::TetheringOperationType::kReuseDefault);
+}
+
+TEST_F(CellularTest, AcquireTetheringNetwork_ReuseDefaultIsAlsoDunRequired) {
+  CellularService* service = SetRegisteredWithService();
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  ASSERT_NE(device_->service(), nullptr);
+
+  SetMockMobileOperatorInfoObjects();
+  CHECK(mock_mobile_operator_info_);
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_allowed())
+      .WillRepeatedly(Return(true));
+
+  // Last good APN is also in the APN list, and is flagged as required.
+  Stringmaps apn_list;
+  Stringmap apn;
+  apn[kApnProperty] = "apn";
+  apn[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
+  apn_list.push_back(apn);
+  device_->SetApnList(apn_list);
+  service->SetLastGoodApn(apn);
+
+  // Test only the operation type selection
+  EXPECT_EQ(device_->GetTetheringOperationType(nullptr),
+            Cellular::TetheringOperationType::kReuseDefault);
+}
+
+TEST_F(CellularTest, AcquireTetheringNetwork_NoReuseDefaultIsAlsoDun) {
+  CellularService* service = SetRegisteredWithService();
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  ASSERT_NE(device_->service(), nullptr);
+
+  SetMockMobileOperatorInfoObjects();
+  CHECK(mock_mobile_operator_info_);
+  EXPECT_CALL(*mock_mobile_operator_info_, tethering_allowed())
+      .WillRepeatedly(Return(true));
+
+  // Last good APN is NOT in the APN list (e.g. coming from UI), and there is
+  // another APN flagged as required, so the network cannot be reused.
+  Stringmap apn1;
+  apn1[kApnProperty] = "apn1";
+  apn1[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn1[kApnSourceProperty] = kApnSourceUi;
+  service->SetLastGoodApn(apn1);
+  Stringmaps apn_list;
+  Stringmap apn2;
+  apn2[kApnProperty] = "apn2";
+  apn2[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
+  apn_list.push_back(apn2);
+  device_->SetApnList(apn_list);
+
+  // Test only the operation type selection. It MUST NOT BE kReuseDefault.
+  EXPECT_NE(device_->GetTetheringOperationType(nullptr),
+            Cellular::TetheringOperationType::kReuseDefault);
+}
+
 TEST_F(CellularTest, ReleaseTetheringNetwork_NoOp) {
   SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kLinked);

@@ -1578,7 +1578,20 @@ Cellular::TetheringOperationType Cellular::GetTetheringOperationType(
     return TetheringOperationType::kReuseDefault;
   }
 
-  // TODO(b/283395729): reuse DEFAULT network as DUN if APN type DEFAULT+DUN
+  // The currently connected APN is also flagged as DUN. If this APN is also in
+  // the list of tethering APNs, we can reuse it. This additional check is done
+  // to ensure that a user-defined APN doesn't override the DUN APN explicitly
+  // required by the operator (i.e. is_required_by_carrier_spec).
+  const Stringmap* last_good_apn_info = service_->GetLastGoodApn();
+  if (last_good_apn_info && ApnList::IsTetheringApn(*last_good_apn_info) &&
+      std::find(tethering_apn_try_list.begin(), tethering_apn_try_list.end(),
+                *last_good_apn_info) != tethering_apn_try_list.end()) {
+    LOG(INFO)
+        << LoggingTag()
+        << ": Tethering network selection: reusing default APN for tethering.";
+    return TetheringOperationType::kReuseDefault;
+  }
+
   // TODO(b/283396208): use DUN APN as DEFAULT
   // TODO(b/283402454): connect DUN APN as additional multiplexed network
   return TetheringOperationType::kReuseDefaultFallback;
