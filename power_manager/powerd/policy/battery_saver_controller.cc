@@ -39,6 +39,14 @@ void BatterySaverController::OnServicePublished() {
   SendStateChangeSignal(BatterySaverModeState::CAUSE_STATE_RESTORED);
 }
 
+void BatterySaverController::AddObserver(Observer* observer) {
+  observer_list_.AddObserver(observer);
+}
+
+void BatterySaverController::RemoveObserver(Observer* observer) {
+  observer_list_.RemoveObserver(observer);
+}
+
 void BatterySaverController::OnGetStateCall(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
@@ -101,6 +109,9 @@ void BatterySaverController::SendStateChangeSignal(
     BatterySaverModeState::Cause cause) {
   BatterySaverModeState state = GetState();
   state.set_cause(cause);
+  for (auto& observer : observer_list_) {
+    observer.OnBatterySaverStateChanged(state);
+  }
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kBatterySaverModeStateChanged,
                                               state);
 }

@@ -14,9 +14,27 @@
 namespace power_manager::policy {
 namespace {
 
+class Observer : public BatterySaverController::Observer {
+ public:
+  Observer() = default;
+
+  void OnBatterySaverStateChanged(const BatterySaverModeState& state) override {
+    changed_count_++;
+    state_ = state;
+  };
+
+  const BatterySaverModeState& state() const { return state_; }
+  int changed_count() const { return changed_count_; }
+
+ private:
+  BatterySaverModeState state_;
+  int changed_count_{0};
+};
+
 class BatterySaverControllerTest : public TestEnvironment {
  public:
   BatterySaverControllerTest() {
+    controller_.AddObserver(&observer_);
     controller_.Init(dbus_);
     dbus_.PublishService();
   }
@@ -68,6 +86,7 @@ class BatterySaverControllerTest : public TestEnvironment {
  protected:
   system::DBusWrapperStub dbus_;
   BatterySaverController controller_;
+  Observer observer_;
 };
 
 TEST_F(BatterySaverControllerTest, EnableDisable) {
@@ -129,6 +148,9 @@ TEST_F(BatterySaverControllerTest, SignalSent) {
     EXPECT_EQ(state.cause(), BatterySaverModeState::CAUSE_STATE_RESTORED);
 
     dbus_.ClearSentSignals();
+
+    EXPECT_FALSE(observer_.state().enabled());
+    EXPECT_EQ(observer_.changed_count(), 1);
   }
 
   // Enable BSM.
@@ -143,12 +165,16 @@ TEST_F(BatterySaverControllerTest, SignalSent) {
     EXPECT_EQ(state.cause(), BatterySaverModeState::CAUSE_USER_ENABLED);
 
     dbus_.ClearSentSignals();
+
+    EXPECT_TRUE(observer_.state().enabled());
+    EXPECT_EQ(observer_.changed_count(), 2);
   }
 
   // Setting to the same state shouldn't send another signal.
   {
     CallSetBatterySaverModeState(/*enabled=*/true);
     EXPECT_EQ(dbus_.num_sent_signals(), 0);
+    EXPECT_EQ(observer_.changed_count(), 2);
   }
 
   // Disable BSM again.
@@ -163,6 +189,9 @@ TEST_F(BatterySaverControllerTest, SignalSent) {
     EXPECT_EQ(state.cause(), BatterySaverModeState::CAUSE_USER_DISABLED);
 
     dbus_.ClearSentSignals();
+
+    EXPECT_FALSE(observer_.state().enabled());
+    EXPECT_EQ(observer_.changed_count(), 3);
   }
 }
 

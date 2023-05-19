@@ -6,8 +6,10 @@
 #define POWER_MANAGER_POWERD_POLICY_BATTERY_SAVER_CONTROLLER_H_
 
 #include <memory>
+#include <unordered_set>
 #include <utility>
 
+#include <base/observer_list.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <power_manager/proto_bindings/battery_saver.pb.h>
@@ -24,6 +26,12 @@ namespace power_manager::policy {
 // BSM state.
 class BatterySaverController : public system::DBusWrapper::Observer {
  public:
+  class Observer : public base::CheckedObserver {
+   public:
+    virtual void OnBatterySaverStateChanged(
+        const BatterySaverModeState& state) = 0;
+  };
+
   BatterySaverController();
 
   // Disallow copy and move.
@@ -39,6 +47,9 @@ class BatterySaverController : public system::DBusWrapper::Observer {
 
   // `system::DBusWrapper::Observer` implementation
   void OnServicePublished() override;
+
+  void AddObserver(Observer* observer);
+  void RemoveObserver(Observer* observer);
 
  private:
   // Handle DBus requests to get/set the state of Battery Saver Mode.
@@ -59,8 +70,10 @@ class BatterySaverController : public system::DBusWrapper::Observer {
 
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // Owned elsewhere
 
-  base::WeakPtrFactory<BatterySaverController>
-      weak_ptr_factory_;  // must be last
+  base::ObserverList<Observer> observer_list_;
+
+  base::WeakPtrFactory<BatterySaverController> weak_ptr_factory_{
+      this};  // must be last
 };
 
 }  // namespace power_manager::policy
