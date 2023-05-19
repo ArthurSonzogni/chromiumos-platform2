@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
@@ -681,7 +682,7 @@ bool OpenVPNDriver::ParseIPv6RouteOption(const std::string& key,
 }
 
 // static
-bool OpenVPNDriver::SplitPortFromHost(const std::string& host,
+bool OpenVPNDriver::SplitPortFromHost(base::StringPiece host,
                                       std::string* name,
                                       std::string* port) {
   const auto tokens =
@@ -998,27 +999,28 @@ void OpenVPNDriver::InitLoggingOptions(
 }
 
 void OpenVPNDriver::AppendOption(
-    const std::string& option, std::vector<std::vector<std::string>>* options) {
-  options->push_back({option});
+    base::StringPiece option, std::vector<std::vector<std::string>>* options) {
+  options->push_back({std::string(option)});
 }
 
 void OpenVPNDriver::AppendOption(
-    const std::string& option,
-    const std::string& value,
+    base::StringPiece option,
+    base::StringPiece value,
     std::vector<std::vector<std::string>>* options) {
-  options->push_back({option, value});
+  options->push_back({std::string(option), std::string(value)});
 }
 
 void OpenVPNDriver::AppendOption(
-    const std::string& option,
-    const std::string& value0,
-    const std::string& value1,
+    base::StringPiece option,
+    base::StringPiece value0,
+    base::StringPiece value1,
     std::vector<std::vector<std::string>>* options) {
-  options->push_back({option, value0, value1});
+  options->push_back(
+      {std::string(option), std::string(value0), std::string(value1)});
 }
 
 void OpenVPNDriver::AppendRemoteOption(
-    const std::string& host, std::vector<std::vector<std::string>>* options) {
+    base::StringPiece host, std::vector<std::vector<std::string>>* options) {
   std::string host_name, host_port;
   if (SplitPortFromHost(host, &host_name, &host_port)) {
     DCHECK(!host_name.empty());
@@ -1030,8 +1032,8 @@ void OpenVPNDriver::AppendRemoteOption(
 }
 
 bool OpenVPNDriver::AppendValueOption(
-    const std::string& property,
-    const std::string& option,
+    base::StringPiece property,
+    base::StringPiece option,
     std::vector<std::vector<std::string>>* options) {
   const auto value = args()->Lookup<std::string>(property, "");
   if (!value.empty()) {
@@ -1238,11 +1240,12 @@ void OpenVPNDriver::ReportConnectionMetrics() {
 }
 
 void OpenVPNDriver::ReportCipherMetrics(const std::string& cipher) {
-  static const std::map<std::string, Metrics::VpnOpenVPNCipher> str2enum = {
-      {"BF-CBC", Metrics::kVpnOpenVPNCipher_BF_CBC},
-      {"AES-256-GCM", Metrics::kVpnOpenVPNCipher_AES_256_GCM},
-      {"AES-128-GCM", Metrics::kVpnOpenVPNCipher_AES_128_GCM},
-  };
+  static constexpr auto str2enum =
+      base::MakeFixedFlatMap<base::StringPiece, Metrics::VpnOpenVPNCipher>({
+          {"BF-CBC", Metrics::kVpnOpenVPNCipher_BF_CBC},
+          {"AES-256-GCM", Metrics::kVpnOpenVPNCipher_AES_256_GCM},
+          {"AES-128-GCM", Metrics::kVpnOpenVPNCipher_AES_128_GCM},
+      });
   Metrics::VpnOpenVPNCipher metric = Metrics::kVpnOpenVPNCipherUnknown;
   const auto it = str2enum.find(cipher);
   if (it != str2enum.end()) {

@@ -63,23 +63,23 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
 
   // Append zero-valued, single-valued and double-valued options to the
   // |options| array.
-  static void AppendOption(const std::string& option,
+  static void AppendOption(base::StringPiece option,
                            std::vector<std::vector<std::string>>* options);
-  static void AppendOption(const std::string& option,
-                           const std::string& value,
+  static void AppendOption(base::StringPiece option,
+                           base::StringPiece value,
                            std::vector<std::vector<std::string>>* options);
-  static void AppendOption(const std::string& option,
-                           const std::string& value0,
-                           const std::string& value1,
+  static void AppendOption(base::StringPiece option,
+                           base::StringPiece value0,
+                           base::StringPiece value1,
                            std::vector<std::vector<std::string>>* options);
 
   // Appends remote option to the |options| array.
-  void AppendRemoteOption(const std::string& host,
+  void AppendRemoteOption(base::StringPiece host,
                           std::vector<std::vector<std::string>>* options);
 
   // Returns true if an option was appended.
-  bool AppendValueOption(const std::string& property,
-                         const std::string& option,
+  bool AppendValueOption(base::StringPiece property,
+                         base::StringPiece option,
                          std::vector<std::vector<std::string>>* options);
 
   // If |property| exists, split its value up using |delimiter|.  Each element
@@ -169,7 +169,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
 
   // If |host| is in the "name:port" format, sets up |name| and |port|
   // appropriately and returns true. Otherwise, returns false.
-  static bool SplitPortFromHost(const std::string& host,
+  static bool SplitPortFromHost(base::StringPiece host,
                                 std::string* name,
                                 std::string* port);
 
