@@ -1368,16 +1368,16 @@ cmd_diag() (
   local action="$1"
   shift
   if [ "${action}" = "list" ]; then
-    cros-health-tool diag "--action=get_routines"
+    cros-health-tool diag "get_routines"
   else
     # Aside listing available routines, the only other valid option is running a
     # routine. This is a safe assumption to make, because diag will validate the
     # --routine flag and fail on any invalid routines.
-    cros-health-tool diag "--action=run_routine" "--routine=${action}" "$@"
+    cros-health-tool diag "${action}" "$@"
   fi
 )
 help_diag() (
-  cros-health-tool diag "--crosh_help=true"
+  cros-health-tool diag "--crosh_help"
 )
 
 # shellcheck disable=SC2034
