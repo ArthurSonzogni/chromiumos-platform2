@@ -22,6 +22,7 @@
 #include "libhwsec/overalls/overalls.h"
 #endif
 
+#include "libhwsec/platform/platform_impl.h"
 #include "libhwsec/proxy/proxy_impl.h"
 
 namespace {
@@ -46,6 +47,7 @@ struct ProxyImpl::InnerData {
   std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager;
   std::unique_ptr<org::chromium::TpmNvramProxy> tpm_nvram;
   std::unique_ptr<crossystem::Crossystem> crossystem;
+  std::unique_ptr<Platform> platform;
 };
 
 ProxyImpl::ProxyImpl() = default;
@@ -96,6 +98,7 @@ bool ProxyImpl::Init() {
       std::make_unique<org::chromium::TpmManagerProxy>(bus);
   inner_data_->tpm_nvram = std::make_unique<org::chromium::TpmNvramProxy>(bus);
   inner_data_->crossystem = std::make_unique<crossystem::Crossystem>();
+  inner_data_->platform = std::make_unique<PlatformImpl>();
 
   // Export the pointer to the proxy interface.
 
@@ -111,6 +114,7 @@ bool ProxyImpl::Init() {
   Proxy::SetTpmManager(inner_data_->tpm_manager.get());
   Proxy::SetTpmNvram(inner_data_->tpm_nvram.get());
   Proxy::SetCrossystem(inner_data_->crossystem.get());
+  Proxy::SetPlatform(inner_data_->platform.get());
 
   return true;
 }

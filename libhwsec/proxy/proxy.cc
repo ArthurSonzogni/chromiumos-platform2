@@ -20,6 +20,7 @@
 #endif
 
 #include "libhwsec/proxy/proxy.h"
+#include "libhwsec/platform/platform.h"
 
 namespace hwsec {
 
@@ -47,6 +48,10 @@ void Proxy::SetTpmNvram(org::chromium::TpmNvramProxyInterface* tpm_nvram) {
 
 void Proxy::SetCrossystem(crossystem::Crossystem* crossystem) {
   crossystem_ = crossystem;
+}
+
+void Proxy::SetPlatform(Platform* platform) {
+  platform_ = platform;
 }
 
 // A tricks to make the linkage failure if accessing wrong proxy on the
@@ -84,6 +89,11 @@ org::chromium::TpmNvramProxyInterface& Proxy::GetTpmNvram() const {
 crossystem::Crossystem& Proxy::GetCrossystem() const {
   CHECK(crossystem_);
   return *crossystem_;
+}
+
+Platform& Proxy::GetPlatform() const {
+  CHECK(platform_);
+  return *platform_;
 }
 
 }  // namespace hwsec

@@ -53,6 +53,7 @@
 #include "libhwsec/overalls/mock_overalls.h"
 #endif
 
+#include "libhwsec/platform/fake_platform.h"
 #include "libhwsec/proxy/proxy.h"
 
 namespace hwsec {
@@ -78,6 +79,7 @@ struct ProxyForTest::InnerData {
   testing::NiceMock<org::chromium::TpmNvramProxyMock> tpm_nvram;
   crossystem::Crossystem crossystem{
       std::make_unique<crossystem::fake::CrossystemFake>()};
+  testing::NiceMock<FakePlatform> platform;
 };
 
 ProxyForTest::ProxyForTest()
@@ -103,6 +105,7 @@ ProxyForTest::ProxyForTest()
   SetTpmManager(&inner_data_->tpm_manager);
   SetTpmNvram(&inner_data_->tpm_nvram);
   SetCrossystem(&inner_data_->crossystem);
+  SetPlatform(&inner_data_->platform);
 }
 
 ProxyForTest::~ProxyForTest() = default;
@@ -170,6 +173,10 @@ org::chromium::TpmNvramProxyMock& ProxyForTest::GetMockTpmNvramProxy() {
 
 crossystem::Crossystem& ProxyForTest::GetFakeCrossystem() {
   return inner_data_->crossystem;
+}
+
+FakePlatform& ProxyForTest::GetFakePlatform() {
+  return inner_data_->platform;
 }
 
 }  // namespace hwsec
