@@ -504,7 +504,6 @@ bool RotateAndCropStreamManipulator::ProcessCaptureResultOnThread(
   }
   DCHECK_EQ(ctx.hal_rc_mode, ANDROID_SCALER_ROTATE_AND_CROP_NONE);
 
-  std::vector<camera3_stream_buffer_t> output_buffers;
   for (auto& b : result.AcquireOutputBuffers()) {
     if (b.stream() == blob_stream_) {
       still_capture_processor_->QueuePendingAppsSegments(
