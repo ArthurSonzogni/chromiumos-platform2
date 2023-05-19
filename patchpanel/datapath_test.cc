@@ -766,7 +766,7 @@ TEST(DatapathTest, AddBridge) {
   Verify_ip(*runner, "link set br up");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.AddBridge("br", Ipv4Addr(1, 1, 1, 1), 30);
+  datapath.AddBridge("br", *IPv4CIDR::CreateFromCIDRString("1.1.1.1/30"));
 
   EXPECT_EQ(1, system.ioctl_reqs.size());
   EXPECT_EQ(SIOCBRADDBR, system.ioctl_reqs[0]);

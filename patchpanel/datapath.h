@@ -205,8 +205,7 @@ class Datapath {
   virtual bool NetnsDeleteName(const std::string& netns_name);
 
   virtual bool AddBridge(const std::string& ifname,
-                         uint32_t ipv4_addr,
-                         int ipv4_prefix_len);
+                         const net_base::IPv4CIDR& cidr);
   virtual void RemoveBridge(const std::string& ifname);
 
   virtual bool AddToBridge(const std::string& br_ifname,

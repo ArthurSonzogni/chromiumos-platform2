@@ -26,6 +26,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/sys_byteorder.h>
 #include <brillo/brillo_export.h>
+#include <net-base/ipv4_address.h>
 
 #include "patchpanel/mac_address_generator.h"
 
@@ -33,6 +34,12 @@
 #define PATCHPANEL_NET_UTIL_H_
 
 namespace patchpanel {
+
+// Returns the IPv4Address from the network-byte order uint32_t representation
+// of the IPv4 address.
+// TODO(b/279693340): Remove the function after all IPv4 address represented by
+// uint32_t are migrated to net_base::IPv4Address.
+net_base::IPv4Address ConvertUint32ToIPv4Address(uint32_t addr);
 
 // Returns the network-byte order int32 representation of the IPv4 address given
 // byte per byte, most significant bytes first.

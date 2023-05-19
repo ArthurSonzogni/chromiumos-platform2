@@ -53,6 +53,14 @@ const flags_info_t kRtentryRTF = {
 
 }  // namespace
 
+net_base::IPv4Address ConvertUint32ToIPv4Address(uint32_t addr) {
+  const uint32_t host_endian = ntohl(addr);
+  return net_base::IPv4Address(static_cast<uint8_t>((host_endian >> 24) & 0xff),
+                               static_cast<uint8_t>((host_endian >> 16) & 0xff),
+                               static_cast<uint8_t>((host_endian >> 8) & 0xff),
+                               static_cast<uint8_t>(host_endian & 0xff));
+}
+
 std::optional<uint32_t> Ipv4Addr(const std::string& bytes) {
   if (bytes.length() != 4) {
     return std::nullopt;

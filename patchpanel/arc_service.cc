@@ -374,9 +374,11 @@ bool ArcService::Start(uint32_t id) {
   }
   id_ = id;
 
+  // CreateFromAddressAndPrefix() is valid because 30 is a valid prefix.
+  const auto cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+      ConvertUint32ToIPv4Address(arc_device_->config().host_ipv4_addr()), 30);
   // Create the bridge for the management device arc0.
-  if (!datapath_->AddBridge(kArcBridge, arc_device_->config().host_ipv4_addr(),
-                            30)) {
+  if (!datapath_->AddBridge(kArcBridge, cidr)) {
     LOG(ERROR) << "Failed to setup bridge " << kArcBridge;
     return false;
   }
@@ -500,9 +502,11 @@ void ArcService::AddDevice(const std::string& ifname,
                                guest_ifname, std::move(config));
   LOG(INFO) << "Starting ARC Device " << *device;
 
+  // CreateFromAddressAndPrefix() is valid because 30 is a valid prefix.
+  const auto cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+      ConvertUint32ToIPv4Address(device->config().host_ipv4_addr()), 30);
   // Create the bridge.
-  if (!datapath_->AddBridge(device->host_ifname(),
-                            device->config().host_ipv4_addr(), 30)) {
+  if (!datapath_->AddBridge(device->host_ifname(), cidr)) {
     LOG(ERROR) << "Failed to setup bridge " << device->host_ifname();
     return;
   }

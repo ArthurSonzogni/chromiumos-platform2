@@ -151,16 +151,6 @@ std::string AutoDnatTargetChainName(AutoDnatTarget auto_dnat_target) {
   }
 }
 
-// TODO(b/279693340): Remove the function after all IPv4 address represented by
-// uint32_t are migrated to net_base::IPv4Address.
-IPv4Address ConvertUint32ToIPv4Address(uint32_t addr) {
-  const uint32_t host_endian = ntohl(addr);
-  return IPv4Address(static_cast<uint8_t>((host_endian >> 24) & 0xff),
-                     static_cast<uint8_t>((host_endian >> 16) & 0xff),
-                     static_cast<uint8_t>((host_endian >> 8) & 0xff),
-                     static_cast<uint8_t>(host_endian & 0xff));
-}
-
 }  // namespace
 
 std::string ArcVethHostName(const std::string& ifname) {
@@ -638,20 +628,17 @@ bool Datapath::NetnsDeleteName(const std::string& netns_name) {
   return process_runner_->ip_netns_delete(netns_name) == 0;
 }
 
-bool Datapath::AddBridge(const std::string& ifname,
-                         uint32_t ipv4_addr,
-                         int ipv4_prefix_len) {
+bool Datapath::AddBridge(const std::string& ifname, const IPv4CIDR& cidr) {
   if (!Ioctl(system_, SIOCBRADDBR, ifname.c_str())) {
     LOG(ERROR) << "Failed to create bridge " << ifname;
     return false;
   }
 
   // Configure the persistent Chrome OS bridge interface with static IP.
-  if (process_runner_->ip(
-          "addr", "add",
-          {IPv4AddressToCidrString(ipv4_addr, ipv4_prefix_len), "brd",
-           IPv4AddressToString(Ipv4BroadcastAddr(ipv4_addr, ipv4_prefix_len)),
-           "dev", ifname}) != 0) {
+  if (process_runner_->ip("addr", "add",
+                          {cidr.ToString(), "brd",
+                           cidr.GetBroadcast().ToString(), "dev", ifname}) !=
+      0) {
     RemoveBridge(ifname);
     return false;
   }

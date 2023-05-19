@@ -18,6 +18,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <net-base/ipv4_address.h>
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/firewall.h"
@@ -83,6 +84,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   uint32_t addr = provider.ConsumeIntegral<uint32_t>();
   std::string addr_str = IPv4AddressToString(addr);
   int prefix_len = provider.ConsumeIntegralInRange<int>(0, 31);
+  const auto cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+      ConvertUint32ToIPv4Address(addr), prefix_len);
   SubnetAddress subnet_addr(provider.ConsumeIntegral<uint32_t>(), prefix_len,
                             base::DoNothing());
   MacAddress mac;
@@ -118,7 +121,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   datapath.Stop();
   datapath.NetnsAttachName(netns_name, pid);
   datapath.NetnsDeleteName(netns_name);
-  datapath.AddBridge(ifname, addr, prefix_len);
+  datapath.AddBridge(ifname, cidr);
   datapath.RemoveBridge(ifname);
   datapath.AddToBridge(ifname, ifname2);
   datapath.StartRoutingDevice(ifname, ifname2, addr, TrafficSource::kUnknown,
