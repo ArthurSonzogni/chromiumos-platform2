@@ -10,6 +10,7 @@
 #include <base/run_loop.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -21,6 +22,7 @@
 namespace diagnostics {
 namespace {
 
+using base::test::TestFuture;
 using testing::_;
 using testing::Invoke;
 using testing::WithArg;
@@ -620,259 +622,180 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcDnsResolutionRoutine) {
 // valid NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest,
        RunLanConnectivityRoutineWithNoRemote) {
-  base::RunLoop run_loop;
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunLanConnectivityRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(result->problems->get_lan_connectivity_problems().size(),
-                      0);
-            run_loop.Quit();
-          }));
+      future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_lan_connectivity_problems().size(), 0);
 }
 
 // Test that the SignalStrength routine returns RoutineVerdict::kNotRun if a
 // valid NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest,
        RunSignalStrengthRoutineWithNoRemote) {
-  base::RunLoop run_loop;
-  network_diagnostics_adapter()->RunSignalStrengthRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(result->problems->get_signal_strength_problems().size(),
-                      0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunSignalStrengthRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_signal_strength_problems().size(), 0);
 }
 
 // Test that the GatewayCanBePinged routine returns RoutineVerdict::kNotRun if a
 // valid NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest,
        RunGatewayCanBePingedRoutineWithNoRemote) {
-  base::RunLoop run_loop;
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunGatewayCanBePingedRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(
-                result->problems->get_gateway_can_be_pinged_problems().size(),
-                0);
-            run_loop.Quit();
-          }));
+      future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_gateway_can_be_pinged_problems().size(), 0);
 }
 
 // Test that the HasSecureWiFiConnection routine returns RoutineVerdict::kNotRun
 // if a valid NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest,
        RunHasSecureWiFiConnectionRoutineWithNoRemote) {
-  base::RunLoop run_loop;
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunHasSecureWiFiConnectionRoutine(
-      base::BindLambdaForTesting([&](network_diagnostics_ipc::RoutineResultPtr
-                                         result) {
-        EXPECT_EQ(result->verdict,
-                  network_diagnostics_ipc::RoutineVerdict::kNotRun);
-        EXPECT_EQ(
-            result->problems->get_has_secure_wifi_connection_problems().size(),
-            0);
-        run_loop.Quit();
-      }));
+      future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_has_secure_wifi_connection_problems().size(),
+            0);
 }
 
 // Test that the DnsResolverPresent routine returns RoutineVerdict::kNotRun if a
 // valid NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest,
        RunDnsResolverPresentRoutineWithNoRemote) {
-  base::RunLoop run_loop;
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunDnsResolverPresentRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(
-                result->problems->get_dns_resolver_present_problems().size(),
-                0);
-            run_loop.Quit();
-          }));
+      future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_dns_resolver_present_problems().size(), 0);
 }
 
 // Test that the DnsLatency routine returns RoutineVerdict::kNotRun if a valid
 // NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsLatencyRoutineWithNoRemote) {
-  base::RunLoop run_loop;
-  network_diagnostics_adapter()->RunDnsLatencyRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(result->problems->get_dns_latency_problems().size(), 0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunDnsLatencyRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_dns_latency_problems().size(), 0);
 }
 
 // Test that the DnsResolution routine returns RoutineVerdict::kNotRun if a
 // valid NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest, RunDnsResolutionRoutineWithNoRemote) {
-  base::RunLoop run_loop;
-  network_diagnostics_adapter()->RunDnsResolutionRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(result->problems->get_dns_resolution_problems().size(),
-                      0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunDnsResolutionRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_dns_resolution_problems().size(), 0);
 }
 
 // Test that the CaptivePortal routine returns RoutineVerdict::kNotRun if a
 // valid NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest, RunCaptivePortalRoutineWithNoRemote) {
-  base::RunLoop run_loop;
-  network_diagnostics_adapter()->RunCaptivePortalRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(result->problems->get_captive_portal_problems().size(),
-                      0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunCaptivePortalRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_captive_portal_problems().size(), 0);
 }
 
 // Test that the HttpFirewall routine returns RoutineVerdict::kNotRun if a valid
 // NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpFirewallRoutineWithNoRemote) {
-  base::RunLoop run_loop;
-  network_diagnostics_adapter()->RunHttpFirewallRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(result->problems->get_http_firewall_problems().size(), 0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunHttpFirewallRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_http_firewall_problems().size(), 0);
 }
 
 // Test that the HttpsFirewall routine returns RoutineVerdict::kNotRun if a
 // valid NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsFirewallRoutineWithNoRemote) {
-  base::RunLoop run_loop;
-  network_diagnostics_adapter()->RunHttpsFirewallRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(result->problems->get_https_firewall_problems().size(),
-                      0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunHttpsFirewallRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_https_firewall_problems().size(), 0);
 }
 
 // Test that the HttpsLatency routine returns RoutineVerdict::kNotRun if a valid
 // NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest, RunHttpsLatencyRoutineWithNoRemote) {
-  base::RunLoop run_loop;
-  network_diagnostics_adapter()->RunHttpsLatencyRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(result->problems->get_https_latency_problems().size(), 0);
-            run_loop.Quit();
-          }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunHttpsLatencyRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_https_latency_problems().size(), 0);
 }
 
 // Test that the VideoConferencing routine returns RoutineVerdict::kNotRun if a
 // valid NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest,
        RunVideoConferencingRoutineWithNoRemote) {
-  base::RunLoop run_loop;
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunVideoConferencingRoutine(
       /*stun_server_hostname=*/"http://www.stunserverhostname.com/path?k=v",
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(
-                result->problems->get_video_conferencing_problems().size(), 0);
-            run_loop.Quit();
-          }));
+      future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_video_conferencing_problems().size(), 0);
 }
 
 // Test that the ArcHttp routine returns RoutineVerdict::kNotRun if a valid
 // NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcHttpRoutineWithNoRemote) {
-  base::RunLoop run_loop;
-  network_diagnostics_adapter()->RunArcHttpRoutine(base::BindLambdaForTesting(
-      [&](network_diagnostics_ipc::RoutineResultPtr result) {
-        EXPECT_EQ(result->verdict,
-                  network_diagnostics_ipc::RoutineVerdict::kNotRun);
-        EXPECT_EQ(result->problems->get_arc_http_problems().size(), 0);
-        run_loop.Quit();
-      }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunArcHttpRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_arc_http_problems().size(), 0);
 }
 
 // Test that the ArcPing routine returns RoutineVerdict::kNotRun if a valid
 // NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest, RunArcPingRoutineWithNoRemote) {
-  base::RunLoop run_loop;
-  network_diagnostics_adapter()->RunArcPingRoutine(base::BindLambdaForTesting(
-      [&](network_diagnostics_ipc::RoutineResultPtr result) {
-        EXPECT_EQ(result->verdict,
-                  network_diagnostics_ipc::RoutineVerdict::kNotRun);
-        EXPECT_EQ(result->problems->get_arc_ping_problems().size(), 0);
-        run_loop.Quit();
-      }));
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
+  network_diagnostics_adapter()->RunArcPingRoutine(future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_arc_ping_problems().size(), 0);
 }
 
 // Test that the ArcDnsResolution routine returns RoutineVerdict::kNotRun if a
 // valid NetworkDiagnosticsRoutines remote was never sent.
 TEST_F(NetworkDiagnosticsAdapterImplTest,
        RunArcDnsResolutionRoutineWithNoRemote) {
-  base::RunLoop run_loop;
+  TestFuture<network_diagnostics_ipc::RoutineResultPtr> future;
   network_diagnostics_adapter()->RunArcDnsResolutionRoutine(
-      base::BindLambdaForTesting(
-          [&](network_diagnostics_ipc::RoutineResultPtr result) {
-            EXPECT_EQ(result->verdict,
-                      network_diagnostics_ipc::RoutineVerdict::kNotRun);
-            EXPECT_EQ(
-                result->problems->get_arc_dns_resolution_problems().size(), 0);
-            run_loop.Quit();
-          }));
+      future.GetCallback());
 
-  run_loop.Run();
+  auto result = future.Take();
+  EXPECT_EQ(result->verdict, network_diagnostics_ipc::RoutineVerdict::kNotRun);
+  EXPECT_EQ(result->problems->get_arc_dns_resolution_problems().size(), 0);
 }
 
 // Test that the correct status of the bound remote is returned on request.
