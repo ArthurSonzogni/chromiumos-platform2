@@ -144,6 +144,11 @@ fn generate_protos(source_dir: &Path, protos: &[(&str, &str)]) -> Result<()> {
 }
 
 fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=dbus");
+    for (_, directory, _) in BINDINGS_TO_GENERATE {
+        println!("cargo:rerun-if-changed=../{}", directory);
+    }
     generate_module(Path::new(SOURCE_DIR), BINDINGS_TO_GENERATE).unwrap();
     generate_protos(Path::new(SOURCE_DIR), PROTOS_TO_GENERATE).unwrap();
 }
