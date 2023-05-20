@@ -10,6 +10,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/object_path.h>
 
 #include "patchpanel/net_util.h"
 
@@ -277,45 +278,40 @@ void ShillClient::RegisterIPv6NetworkChangedHandler(
 }
 
 void ShillClient::UpdateDevices(const brillo::Any& property_value) {
-  std::map<std::string, std::string> new_devices;
+  std::map<dbus::ObjectPath, std::string> current_devices;
   std::vector<std::string> added, removed;
-  for (const auto& path :
+  for (const auto& device_path :
        property_value.TryGet<std::vector<dbus::ObjectPath>>()) {
-    std::string device = path.value();
-    // Strip "/device/" prefix.
-    device = device.substr(device.find_last_of('/') + 1);
-    const std::string ifname = GetIfname(path);
+    const std::string ifname = GetIfname(device_path);
     if (ifname.empty()) {
-      LOG(WARNING) << "Found empty interface name for Device " << device;
       continue;
     }
 
-    new_devices[device] = ifname;
-    if (devices_.find(device) == devices_.end()) {
+    current_devices[device_path] = ifname;
+    if (devices_.find(device_path) == devices_.end()) {
       added.push_back(ifname);
     }
 
-    // Registers handler if we see this device for the first time.
-    if (known_device_paths_.insert(std::make_pair(device, path)).second) {
-      org::chromium::flimflam::DeviceProxy proxy(bus_, path);
+    // Registers handler if we see this shill Device for the first time.
+    if (known_device_paths_.insert(device_path).second) {
+      org::chromium::flimflam::DeviceProxy proxy(bus_, device_path);
       proxy.RegisterPropertyChangedSignalHandler(
           base::BindRepeating(&ShillClient::OnDevicePropertyChange,
-                              weak_factory_.GetWeakPtr(), device),
+                              weak_factory_.GetWeakPtr(), device_path),
           base::BindOnce(&ShillClient::OnDevicePropertyChangeRegistration,
                          weak_factory_.GetWeakPtr()));
-      known_device_paths_[device] = path;
     }
   }
 
   for (const auto& [d, ifname] : devices_) {
-    if (new_devices.find(d) == new_devices.end()) {
+    if (current_devices.find(d) == current_devices.end()) {
       removed.push_back(ifname);
       // Clear cached IPConfig for removed device.
       device_ipconfigs_.erase(d);
     }
   }
 
-  devices_ = new_devices;
+  devices_ = current_devices;
 
   // This can happen if the default network switched from one device to another.
   if (added.empty() && removed.empty())
@@ -329,10 +325,10 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
 }
 
 ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
-    const std::string& device, const brillo::Any& property_value) {
+    const dbus::ObjectPath& device, const brillo::Any& ipconfig_paths) {
   IPConfig ipconfig;
   for (const auto& path :
-       property_value.TryGet<std::vector<dbus::ObjectPath>>()) {
+       ipconfig_paths.TryGet<std::vector<dbus::ObjectPath>>()) {
     std::unique_ptr<org::chromium::flimflam::IPConfigProxy> ipconfig_proxy(
         new org::chromium::flimflam::IPConfigProxy(bus_, path));
     brillo::VariantDictionary ipconfig_props;
@@ -340,7 +336,7 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
     if (!ipconfig_proxy->GetProperties(&ipconfig_props, nullptr)) {
       // It is possible that an IPConfig object is removed after we know its
       // path, especially when the interface is going down.
-      LOG(WARNING) << "[" << device << "]: "
+      LOG(WARNING) << "[" << device.value() << "]: "
                    << "Unable to get properties for " << path.value();
       continue;
     }
@@ -348,7 +344,7 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
     // Gets the value of address, prefix_length, gateway, and dns_servers.
     auto it = ipconfig_props.find(shill::kAddressProperty);
     if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device
+      LOG(WARNING) << "[" << device.value()
                    << "]: IPConfig properties is missing Address";
       continue;
     }
@@ -362,7 +358,7 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
     }
     auto ip_family = GetIpFamily(address);
     if (ip_family != AF_INET && ip_family != AF_INET6) {
-      LOG(WARNING) << "[" << device
+      LOG(WARNING) << "[" << device.value()
                    << "]: IPConfig Address property was invalid: " << address;
       continue;
     }
@@ -370,47 +366,47 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
     const std::string method = is_ipv4 ? "IPv4" : "IPv6";
     if ((is_ipv4 && !ipconfig.ipv4_address.empty()) ||
         (!is_ipv4 && !ipconfig.ipv6_address.empty())) {
-      LOG(WARNING) << "[" << device << "]: "
+      LOG(WARNING) << "[" << device.value() << "]: "
                    << "Duplicated IPconfig for " << method;
       continue;
     }
 
     it = ipconfig_props.find(shill::kPrefixlenProperty);
     if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device << "]: " << method
+      LOG(WARNING) << "[" << device.value() << "]: " << method
                    << " IPConfig properties is missing Prefixlen";
       continue;
     }
     int prefix_length = it->second.TryGet<int>();
     if (prefix_length < 0 || (is_ipv4 && prefix_length > 32) ||
         prefix_length > 128) {
-      LOG(WARNING) << "[" << device << "]: " << method
+      LOG(WARNING) << "[" << device.value() << "]: " << method
                    << " IPConfig Prefixlen property was invalid: "
                    << prefix_length;
       continue;
     }
     if (prefix_length == 0) {
       LOG(WARNING)
-          << "[" << device << "]: " << method
+          << "[" << device.value() << "]: " << method
           << " IPConfig Prefixlen property is 0, may be an invalid setup";
     }
 
     it = ipconfig_props.find(shill::kGatewayProperty);
     if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device << "]: " << method
+      LOG(WARNING) << "[" << device.value() << "]: " << method
                    << " IPConfig properties is missing Gateway";
       continue;
     }
     const std::string& gateway = it->second.TryGet<std::string>();
     if (gateway.empty()) {
-      LOG(WARNING) << "[" << device << "]: " << method
+      LOG(WARNING) << "[" << device.value() << "]: " << method
                    << " IPConfig Gateway property was empty.";
       continue;
     }
 
     it = ipconfig_props.find(shill::kNameServersProperty);
     if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device << "]: " << method
+      LOG(WARNING) << "[" << device.value() << "]: " << method
                    << " IPConfig properties is missing NameServers";
       // Shill will emit this property with empty value if it has no dns for
       // this device, so missing this property indicates an error.
@@ -439,12 +435,18 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
 bool ShillClient::GetDeviceProperties(const std::string& ifname,
                                       Device* output) {
   DCHECK(output);
-  const auto& it = known_device_paths_.find(ifname);
-  if (it == known_device_paths_.end()) {
-    LOG(ERROR) << "No shill Device for interface name " << ifname;
-    return false;
+  for (const auto& kv : devices_) {
+    if (kv.second != ifname) {
+      continue;
+    }
+    const auto& it = known_device_paths_.find(kv.first);
+    if (it == known_device_paths_.end()) {
+      LOG(ERROR) << "No shill Device for interface name " << ifname;
+      return false;
+    }
+    return GetDeviceProperties(*it, output);
   }
-  return GetDeviceProperties(it->second, output);
+  return false;
 }
 
 bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
@@ -498,8 +500,7 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
                  << device_path.value();
     return false;
   }
-  output->ipconfig =
-      ParseIPConfigsProperty(output->ifname, ipconfigs_it->second);
+  output->ipconfig = ParseIPConfigsProperty(device_path, ipconfigs_it->second);
 
   // Optional property: a Device does not necessarily have a selected Service at
   // all time.
@@ -522,8 +523,8 @@ std::string ShillClient::GetIfname(const dbus::ObjectPath& device_path) {
 
   const auto& interface_it = props.find(shill::kInterfaceProperty);
   if (interface_it == props.end()) {
-    LOG(WARNING) << "shill Device properties is missing Interface for "
-                 << device_path.value();
+    LOG(WARNING) << "shill Device " << device_path.value()
+                 << " is missing property " << shill::kInterfaceProperty;
     return "";
   }
 
@@ -531,38 +532,40 @@ std::string ShillClient::GetIfname(const dbus::ObjectPath& device_path) {
 }
 
 void ShillClient::OnDevicePropertyChangeRegistration(
-    const std::string& interface,
+    const std::string& dbus_interface_name,
     const std::string& signal_name,
     bool success) {
   if (!success)
-    LOG(ERROR) << "[" << interface << "]: "
-               << "Unable to register listener for " << signal_name;
+    LOG(ERROR) << "Unable to register Device property listener for "
+               << signal_name;
 }
 
-void ShillClient::OnDevicePropertyChange(const std::string& device,
+void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
                                          const std::string& property_name,
                                          const brillo::Any& property_value) {
   if (property_name != shill::kIPConfigsProperty)
     return;
 
-  const auto& it = devices_.find(device);
+  const auto& it = devices_.find(device_path);
   if (it == devices_.end()) {
     LOG(WARNING) << "Failed to obtain interface name for shill Device "
-                 << device;
+                 << device_path.value();
     return;
   }
-  const IPConfig& ipconfig = ParseIPConfigsProperty(device, property_value);
-  const auto& old_ipconfig_it = device_ipconfigs_.find(device);
+  const IPConfig& ipconfig =
+      ParseIPConfigsProperty(device_path, property_value);
+  const auto& old_ipconfig_it = device_ipconfigs_.find(device_path);
   if (old_ipconfig_it != device_ipconfigs_.end() &&
       old_ipconfig_it->second == ipconfig) {
     // There is no IPConfig change, no need to run the handlers.
     return;
   }
-  LOG(INFO) << "[" << device << "]: IPConfig changed: " << ipconfig;
+  LOG(INFO) << "[" << device_path.value()
+            << "]: IPConfig changed: " << ipconfig;
   auto old_ipconfig = old_ipconfig_it != device_ipconfigs_.end()
                           ? old_ipconfig_it->second
                           : IPConfig{};
-  device_ipconfigs_[device] = ipconfig;
+  device_ipconfigs_[device_path] = ipconfig;
 
   for (const auto& handler : ipconfigs_handlers_)
     handler.Run(it->second, ipconfig);

@@ -18,6 +18,7 @@
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #pragma GCC diagnostic pop
+#include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -75,10 +76,10 @@ class FakeShillClient : public ShillClient {
     OnManagerPropertyChange(name, value);
   }
 
-  void NotifyDevicePropertyChange(const std::string& device,
+  void NotifyDevicePropertyChange(const dbus::ObjectPath& device_path,
                                   const std::string& name,
                                   const brillo::Any& value) {
-    OnDevicePropertyChange(device, name, value);
+    OnDevicePropertyChange(device_path, name, value);
   }
 
   bool GetDeviceProperties(const std::string& device, Device* output) override {

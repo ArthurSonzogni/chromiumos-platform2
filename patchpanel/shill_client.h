@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <dbus/object_path.h>
 #include <shill/dbus-proxies.h>
 
 #include "patchpanel/system.h"
@@ -164,10 +165,11 @@ class ShillClient {
   void OnManagerPropertyChange(const std::string& property_name,
                                const brillo::Any& property_value);
 
-  void OnDevicePropertyChangeRegistration(const std::string& interface,
-                                          const std::string& signal_name,
-                                          bool success);
-  void OnDevicePropertyChange(const std::string& device,
+  void OnDevicePropertyChangeRegistration(
+      const std::string& dbus_interface_name,
+      const std::string& signal_name,
+      bool success);
+  void OnDevicePropertyChange(const dbus::ObjectPath& device_path,
                               const std::string& property_name,
                               const brillo::Any& property_value);
 
@@ -191,11 +193,11 @@ class ShillClient {
   // network.
   void SetDefaultDevices(const std::pair<Device, Device>& devices);
 
-  // Parses the |property_value| as the IPConfigs property of the shill Device
-  // identified by |device|, which
-  // should be a list of object paths of IPConfigs.
-  IPConfig ParseIPConfigsProperty(const std::string& device,
-                                  const brillo::Any& property_value);
+  // Parses the |ipconfig_properties| as the IPConfigs property of the shill
+  // Device identified by |device_path|, which should be a list of object paths
+  // of IPConfigs.
+  IPConfig ParseIPConfigsProperty(const dbus::ObjectPath& device_path,
+                                  const brillo::Any& ipconfig_paths);
 
   // Tracks the system default logical network chosen by shill. This corresponds
   // to the physical or virtual shill Device associated with the default logical
@@ -204,17 +206,17 @@ class ShillClient {
   // Tracks the system default physical network chosen by shill.
   Device default_logical_device_;
   // Tracks all network interfaces managed by shill and maps shill Device
-  // identifiers to interface names.
-  std::map<std::string, std::string> devices_;
+  // DBus object paths to interface names.
+  std::map<dbus::ObjectPath, std::string> devices_;
   // Tracks all network interfaces managed by shill and maps shill Device
-  // identifiers to its IPConfig.
-  std::map<std::string, IPConfig> device_ipconfigs_;
-  // Stores the map from shill Device identifier to its object path in shill for
-  // all the shill Devices we have seen. Unlike |devices_|, entries in this map
-  // will never be removed during the lifetime of this class. We maintain this
-  // map mainly for keeping track of the shill Device object proxies we have
-  // created, to avoid registering the handler on the same object twice.
-  std::map<std::string, dbus::ObjectPath> known_device_paths_;
+  // DBus object paths to their IPConfig objects.
+  std::map<dbus::ObjectPath, IPConfig> device_ipconfigs_;
+  // Sets of shill Device Dbus object path for all the shill Devices we have
+  // seen. Unlike |devices_|, entries in this map will never be removed during
+  // the lifetime of this class. We maintain this map mainly for keeping track
+  // of the shill Device object proxies we have created, to avoid registering
+  // the handler on the same object twice.
+  std::set<dbus::ObjectPath> known_device_paths_;
   // A map used for remembering the interface index of an interface. This
   // information is necessary when cleaning up the state of various subsystems
   // in patchpanel that directly references the interface index. However after

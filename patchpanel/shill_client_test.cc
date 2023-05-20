@@ -224,11 +224,12 @@ TEST_F(ShillClientTest, ListenToDeviceChangeSignalOnNewDevices) {
 
 TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   // Adds a device.
-  std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("/device/wlan0")};
+  dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
+  std::vector<dbus::ObjectPath> devices = {wlan0_path};
   auto devices_value = brillo::Any(devices);
   client_->SetIfname("/device/wlan0", "wlan0");
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, devices_value);
-  client_->NotifyDevicePropertyChange("wlan0", shill::kIPConfigsProperty,
+  client_->NotifyDevicePropertyChange(wlan0_path, shill::kIPConfigsProperty,
                                       brillo::Any());
   ASSERT_EQ(ipconfig_change_calls_.size(), 1u);
   EXPECT_EQ(ipconfig_change_calls_.back().first, "wlan0");
@@ -236,7 +237,7 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   // Removes the device and adds it again.
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, brillo::Any());
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, devices_value);
-  client_->NotifyDevicePropertyChange("wlan0", shill::kIPConfigsProperty,
+  client_->NotifyDevicePropertyChange(wlan0_path, shill::kIPConfigsProperty,
                                       brillo::Any());
   ASSERT_EQ(ipconfig_change_calls_.size(), 2u);
   EXPECT_EQ(ipconfig_change_calls_.back().first, "wlan0");
