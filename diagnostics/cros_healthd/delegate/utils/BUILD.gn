@@ -22,6 +22,7 @@ source_set("utils") {
     "display_utils.cc",
     "edid.cc",
     "evdev_utils.cc",
+    "libevdev_wrapper_impl.cc",
     "psr_cmd.cc",
   ]
   configs += [ ":deps" ]
