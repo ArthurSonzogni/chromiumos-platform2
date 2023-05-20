@@ -96,17 +96,26 @@ class ShillClient {
       const Device& new_device, const Device& prev_device)>;
   // Client callback for learning which network interfaces start or stop being
   // managed by shill.
+  // TODO(b/273741099): Change this callback to take Device references as
+  // arguments because the interface name becomes ambiguous for multiplexed
+  // Cellular interfaces.
   using DevicesChangeHandler =
       base::RepeatingCallback<void(const std::vector<std::string>& added,
                                    const std::vector<std::string>& removed)>;
   // Client callback for listening to IPConfig changes on any shill Device with
   // interface name |ifname|.
+  // TODO(b/273741099): Change this callback to take a Device reference as
+  // argument because the interface name becomes ambiguous for multiplexed
+  // Cellular interfaces.
   using IPConfigsChangeHandler = base::RepeatingCallback<void(
       const std::string& ifname, const IPConfig& ipconfig)>;
 
   // Client callback for listening to IPv6 network changes on any shill Device
   // with interface name |ifname|. The changes are identified by IPv6 prefix
   // change.
+  // TODO(b/273741099): Change this callback to take a Device reference as
+  // argument because the interface name becomes ambiguous for multiplexed
+  // Cellular interfaces.
   using IPv6NetworkChangeHandler = base::RepeatingCallback<void(
       const std::string& ifname, const std ::string& ipv6_address)>;
 
@@ -138,14 +147,23 @@ class ShillClient {
   // Fetches Device dbus properties via dbus for the shill Device with interface
   // name |ifname|. Returns false if an error occurs. Notes that this method
   // will block the current thread.
+  // TODO(b/273741099): Migrate callers to use the overload taking the Device
+  // DBus path as an argument because the interface name becomes ambiguous for
+  // multiplexed Cellular interfaces.
   virtual bool GetDeviceProperties(const std::string& ifname, Device* output);
   bool GetDeviceProperties(const dbus::ObjectPath& device_path, Device* output);
 
   // Returns the cached interface name of the current default logical network;
   // does not initiate a property fetch.
+  // TODO(b/273741099): Migrate callers to use default_logical_device()
+  // because the interface name becomes ambiguous for multiplexed Cellular
+  // interfaces.
   virtual const std::string& default_logical_interface() const;
   // Returns the cached interface name of the current default physical network;
   // does not initiate a property fetch.
+  // TODO(b/273741099): Migrate callers to use default_logical_device()
+  // because the interface name becomes ambiguous for multiplexed Cellular
+  // interfaces.
   virtual const std::string& default_physical_interface() const;
   // Returns the cached default logical shill Device; does not initiate a
   // property fetch.
@@ -154,8 +172,14 @@ class ShillClient {
   // property fetch.
   virtual const Device& default_physical_device() const;
   // Returns interface names of all known shill Devices.
+  // TODO(b/273741099): Returns a list of Device reference instead of direct
+  // interface names because the interface name becomes ambiguous for
+  // multiplexed Cellular interfaces.
   const std::vector<std::string> get_interfaces() const;
   // Returns true if |ifname| is the interface name of a known shill Device.
+  // TODO(b/273741099): Migrate caller to use a Device reference or a Device
+  // Dbus path because the interface name becomes ambiguous for multiplexed
+  // Cellular interfaces.
   bool has_interface(const std::string& ifname) const;
 
  protected:

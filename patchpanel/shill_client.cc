@@ -432,6 +432,8 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
   return ipconfig;
 }
 
+// TODO(b/273741099) Migrate callers to use the DBus path of the Device because
+// the interface name becomes ambiguous for multiplexed Cellular interfaces.
 bool ShillClient::GetDeviceProperties(const std::string& ifname,
                                       Device* output) {
   DCHECK(output);
@@ -543,6 +545,9 @@ void ShillClient::OnDevicePropertyChangeRegistration(
 void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
                                          const std::string& property_name,
                                          const brillo::Any& property_value) {
+  // TODO(b/273741099) If kPrimaryMultiplexedInterfaceProperty changed, update
+  // the Cellular Device and advertise it as a new Device.
+
   if (property_name != shill::kIPConfigsProperty)
     return;
 
