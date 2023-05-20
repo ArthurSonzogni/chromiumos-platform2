@@ -4,7 +4,10 @@
 
 #include "patchpanel/shill_client.h"
 
+#include <algorithm>
+
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
@@ -93,14 +96,14 @@ const ShillClient::Device& ShillClient::default_physical_device() const {
 
 const std::vector<std::string> ShillClient::get_interfaces() const {
   std::vector<std::string> ifnames;
-  for (const auto& [_, ifname] : devices_) {
+  for (const auto& [_, ifname] : device_ifnames_) {
     ifnames.push_back(ifname);
   }
   return ifnames;
 }
 
 bool ShillClient::has_interface(const std::string& ifname) const {
-  for (const auto& kv : devices_) {
+  for (const auto& kv : device_ifnames_) {
     if (kv.second == ifname) {
       return true;
     }
@@ -288,7 +291,7 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
     }
 
     current_devices[device_path] = ifname;
-    if (devices_.find(device_path) == devices_.end()) {
+    if (!base::Contains(device_ifnames_, device_path)) {
       added.push_back(ifname);
     }
 
@@ -303,15 +306,28 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
     }
   }
 
-  for (const auto& [d, ifname] : devices_) {
-    if (current_devices.find(d) == current_devices.end()) {
+  // Find removed shill Device and clear its cached IPConfig and Device
+  // properties.
+  for (const auto& [d, ifname] : device_ifnames_) {
+    if (!base::Contains(current_devices, d)) {
       removed.push_back(ifname);
-      // Clear cached IPConfig for removed device.
       device_ipconfigs_.erase(d);
+      devices_.erase(d);
     }
   }
 
-  devices_ = current_devices;
+  // Populate ShillClient::Device properties for any new shill Device.
+  for (const auto& [d, ifname] : current_devices) {
+    if (!base::Contains(added, ifname)) {
+      continue;
+    }
+    if (!GetDeviceProperties(d, &devices_[d])) {
+      LOG(ERROR) << "Failed to add properties of Device " << d.value();
+      devices_.erase(d);
+    }
+  }
+
+  device_ifnames_ = current_devices;
 
   // This can happen if the default network switched from one device to another.
   if (added.empty() && removed.empty())
@@ -437,7 +453,7 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
 bool ShillClient::GetDeviceProperties(const std::string& ifname,
                                       Device* output) {
   DCHECK(output);
-  for (const auto& kv : devices_) {
+  for (const auto& kv : device_ifnames_) {
     if (kv.second == ifname) {
       return GetDeviceProperties(kv.first, output);
     }
@@ -546,12 +562,19 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
   if (property_name != shill::kIPConfigsProperty)
     return;
 
-  const auto& it = devices_.find(device_path);
-  if (it == devices_.end()) {
+  const auto& it = device_ifnames_.find(device_path);
+  if (it == device_ifnames_.end()) {
     LOG(WARNING) << "Failed to obtain interface name for shill Device "
                  << device_path.value();
     return;
   }
+
+  // Refresh all properties at once.
+  if (!GetDeviceProperties(device_path, &devices_[device_path])) {
+    LOG(ERROR) << "Failed to update properties of Device "
+               << device_path.value();
+  }
+
   const IPConfig& ipconfig =
       ParseIPConfigsProperty(device_path, property_value);
   const auto& old_ipconfig_it = device_ipconfigs_.find(device_path);

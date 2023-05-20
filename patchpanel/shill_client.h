@@ -103,7 +103,8 @@ class ShillClient {
       base::RepeatingCallback<void(const std::vector<std::string>& added,
                                    const std::vector<std::string>& removed)>;
   // Client callback for listening to IPConfig changes on any shill Device with
-  // interface name |ifname|.
+  // interface name |ifname|. Changes to the IP configuration of a VPN
+  // connection are not taken into account.
   // TODO(b/273741099): Change this callback to take a Device reference as
   // argument because the interface name becomes ambiguous for multiplexed
   // Cellular interfaces.
@@ -112,7 +113,8 @@ class ShillClient {
 
   // Client callback for listening to IPv6 network changes on any shill Device
   // with interface name |ifname|. The changes are identified by IPv6 prefix
-  // change.
+  // change. Changes to the IPv6 network of a VPN connection are not take into
+  // account.
   // TODO(b/273741099): Change this callback to take a Device reference as
   // argument because the interface name becomes ambiguous for multiplexed
   // Cellular interfaces.
@@ -171,12 +173,13 @@ class ShillClient {
   // Returns the cached default physical shill Device; does not initiate a
   // property fetch.
   virtual const Device& default_physical_device() const;
-  // Returns interface names of all known shill Devices.
+  // Returns interface names of all known shill physical Devices.
   // TODO(b/273741099): Returns a list of Device reference instead of direct
   // interface names because the interface name becomes ambiguous for
   // multiplexed Cellular interfaces.
   const std::vector<std::string> get_interfaces() const;
-  // Returns true if |ifname| is the interface name of a known shill Device.
+  // Returns true if |ifname| is the interface name of a known shill physical
+  // Device.
   // TODO(b/273741099): Migrate caller to use a Device reference or a Device
   // Dbus path because the interface name becomes ambiguous for multiplexed
   // Cellular interfaces.
@@ -207,14 +210,18 @@ class ShillClient {
   virtual std::string GetIfname(const dbus::ObjectPath& device_path);
 
  private:
+  // Updates the list of currently known shill Devices, adding or removing
+  // Device tracking entries accordingly. Listeners that have registered a
+  // DevicesChangeHandler callback gets notified about any new or old Device
+  // change.
   void UpdateDevices(const brillo::Any& property_value);
 
   // Sets the internal variable tracking the system default logical network and
-  // default physical network.
-  // Calls the registered client handlers if the default logical network or the
-  // default physical network changed.
-  // The arguments is a pair of default logical network and default physical
-  // network.
+  // default physical network. Calls the registered client handlers if the
+  // default logical network or the default physical network changed. The
+  // arguments is a pair of default logical network and default physical
+  // network. If a VPN is connected, the logical Device pertains to the
+  // VPN connection.
   void SetDefaultDevices(const std::pair<Device, Device>& devices);
 
   // Parses the |ipconfig_properties| as the IPConfigs property of the shill
@@ -223,23 +230,27 @@ class ShillClient {
   IPConfig ParseIPConfigsProperty(const dbus::ObjectPath& device_path,
                                   const brillo::Any& ipconfig_paths);
 
-  // Tracks the system default logical network chosen by shill. This corresponds
-  // to the physical or virtual shill Device associated with the default logical
-  // network service.
-  Device default_physical_device_;
   // Tracks the system default physical network chosen by shill.
+  Device default_physical_device_;
+  // Tracks the system default logical network chosen by shill. This corresponds
+  // to the physical or VPN shill Device associated with the default logical
+  // network service.
   Device default_logical_device_;
-  // Tracks all network interfaces managed by shill and maps shill Device
-  // DBus object paths to interface names.
-  std::map<dbus::ObjectPath, std::string> devices_;
-  // Tracks all network interfaces managed by shill and maps shill Device
-  // DBus object paths to their IPConfig objects.
+  // Maps of all current shill physical Devices, indexed by shill Device
+  // identifier. VPN Devices are ignored.
+  std::map<dbus::ObjectPath, Device> devices_;
+  // Tracks all physical network interfaces managed by shill and maps shill
+  // Device DBus object paths to interface names. Network interfaces of VPNs are
+  // not included.
+  std::map<dbus::ObjectPath, std::string> device_ifnames_;
+  // Tracks all physical network interfaces managed by shill and maps shill
+  // Device DBus object paths to their IPConfig objects.
   std::map<dbus::ObjectPath, IPConfig> device_ipconfigs_;
-  // Sets of shill Device Dbus object path for all the shill Devices we have
-  // seen. Unlike |devices_|, entries in this map will never be removed during
-  // the lifetime of this class. We maintain this map mainly for keeping track
-  // of the shill Device object proxies we have created, to avoid registering
-  // the handler on the same object twice.
+  // Sets of shill Device Dbus object path for all the shill physical Devices
+  // seen so far. Unlike |devices_|, entries in this set will never be
+  // removed during the lifetime of this class. We maintain this set mainly for
+  // keeping track of the shill Device object proxies we have created, to avoid
+  // registering the handler on the same object twice.
   std::set<dbus::ObjectPath> known_device_paths_;
   // A map used for remembering the interface index of an interface. This
   // information is necessary when cleaning up the state of various subsystems
