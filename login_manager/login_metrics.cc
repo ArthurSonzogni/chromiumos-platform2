@@ -35,7 +35,6 @@ const char kArcContinueBootImpulseTime3Metric[] =
 const char kArcContinueBootImpulseStatus[] =
     "Login.ArcContinueBootImpulseStatus";
 
-const char kLoginUserTypeMetric[] = "Login.UserType";
 const char kLoginStateKeyGenerationStatus[] = "Login.StateKeyGenerationStatus";
 const char kSessionExitTypeMetric[] = "Login.SessionExitType";
 const char kLoginDevicePolicyStateMetric[] = "Login.DevicePolicyState";
@@ -76,13 +75,6 @@ LoginMetrics::~LoginMetrics() {}
 
 void LoginMetrics::SendNamespaceCreationResult(bool status) {
   metrics_lib_.SendBoolToUMA(kLoginMountNamespaceMetric, status);
-}
-
-void LoginMetrics::SendLoginUserType(bool dev_mode,
-                                     bool incognito,
-                                     bool owner) {
-  int uma_code = LoginUserTypeCode(dev_mode, incognito, owner);
-  metrics_lib_.SendEnumToUMA(kLoginUserTypeMetric, uma_code, NUM_TYPES);
 }
 
 void LoginMetrics::SendStateKeyGenerationStatus(

@@ -124,10 +124,6 @@ class LoginMetrics {
   // failed.
   virtual void SendNamespaceCreationResult(bool status);
 
-  // Sends the type of user that logs in (guest, owner or other) and the mode
-  // (developer or normal) to UMA by using the metrics library.
-  virtual void SendLoginUserType(bool dev_mode, bool guest, bool owner);
-
   // Writes a histogram indicating the state key generation method used.
   virtual void SendStateKeyGenerationStatus(StateKeyGenerationStatus status);
 

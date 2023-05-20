@@ -1052,7 +1052,6 @@ class SessionManagerImplTest : public ::testing::Test,
           .WillRepeatedly(Return(false));
     }
 
-    EXPECT_CALL(metrics_, SendLoginUserType(false, guest, for_owner)).Times(1);
     EXPECT_CALL(*init_controller_,
                 TriggerImpulse(SessionManagerImpl::kStartUserSessionImpulse,
                                ElementsAre(StartsWith("CHROMEOS_USER=")),
@@ -1090,7 +1089,6 @@ class SessionManagerImplTest : public ::testing::Test,
     else
       EXPECT_CALL(key_gen_, Start(_, _)).Times(0);
 
-    EXPECT_CALL(metrics_, SendLoginUserType(false, false, false)).Times(1);
     EXPECT_CALL(*init_controller_,
                 TriggerImpulse(SessionManagerImpl::kStartUserSessionImpulse,
                                ElementsAre(StartsWith("CHROMEOS_USER=")),

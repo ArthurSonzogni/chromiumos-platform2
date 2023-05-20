@@ -756,15 +756,6 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
   // If all previous sessions were incognito (or no previous sessions exist).
   bool is_first_real_user = AllSessionsAreIncognito() && !is_incognito;
 
-  // Send each user login event to UMA (right before we start session
-  // since the metrics library does not log events in guest mode).
-  const DevModeState dev_mode_state = system_->GetDevModeState();
-  if (dev_mode_state != DevModeState::DEV_MODE_UNKNOWN) {
-    login_metrics_->SendLoginUserType(
-        dev_mode_state != DevModeState::DEV_MODE_OFF, is_incognito,
-        user_is_owner);
-  }
-
   // Make sure that Chrome's stdout and stderr, which may contain log messages
   // with user-specific data, don't get saved after the first user logs in:
   // https://crbug.com/904850.
