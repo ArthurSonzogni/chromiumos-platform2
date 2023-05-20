@@ -438,15 +438,9 @@ bool ShillClient::GetDeviceProperties(const std::string& ifname,
                                       Device* output) {
   DCHECK(output);
   for (const auto& kv : devices_) {
-    if (kv.second != ifname) {
-      continue;
+    if (kv.second == ifname) {
+      return GetDeviceProperties(kv.first, output);
     }
-    const auto& it = known_device_paths_.find(kv.first);
-    if (it == known_device_paths_.end()) {
-      LOG(ERROR) << "No shill Device for interface name " << ifname;
-      return false;
-    }
-    return GetDeviceProperties(*it, output);
   }
   return false;
 }
