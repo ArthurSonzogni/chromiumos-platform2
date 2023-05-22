@@ -53,11 +53,11 @@ void Device::Config::set_tap_ifname(const std::string& tap_ifname) {
 }
 
 net_base::IPv4Address Device::Config::host_ipv4_addr() const {
-  return ConvertUint32ToIPv4Address(host_ipv4_addr_->Address());
+  return host_ipv4_addr_->cidr().address();
 }
 
 net_base::IPv4Address Device::Config::guest_ipv4_addr() const {
-  return ConvertUint32ToIPv4Address(guest_ipv4_addr_->Address());
+  return guest_ipv4_addr_->cidr().address();
 }
 
 const std::string& Device::Config::tap_ifname() const {
@@ -72,9 +72,9 @@ std::ostream& operator<<(std::ostream& stream, const Device& device) {
   stream << "{ type: " << device.type() << ", ifname: " << device.phys_ifname()
          << ", bridge_ifname: " << device.host_ifname()
          << ", bridge_ipv4_addr: "
-         << device.config().host_ipv4_subnet_addr()->ToCidrString()
+         << device.config().host_ipv4_subnet_addr()->cidr().ToString()
          << ", guest_ifname: " << device.guest_ifname() << ", guest_ipv4_addr: "
-         << device.config().guest_ipv4_subnet_addr()->ToCidrString()
+         << device.config().guest_ipv4_subnet_addr()->cidr().ToString()
          << ", guest_mac_addr: "
          << MacAddressToString(device.config().mac_addr())
          << ", tap_ifname: " << device.config().tap_ifname() << '}';

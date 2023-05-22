@@ -36,8 +36,9 @@ TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
   auto lxd_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kLXDContainer);
-  auto expected_host_ipv4 = host_ipv4_addr->Address();
-  auto expected_guest_ipv4 = guest_ipv4_addr->Address();
+  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_guest_ipv4 =
+      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_base_ipv4 = ipv4_subnet->BaseAddress();
   auto expected_prefix_len = ipv4_subnet->PrefixLength();
 
@@ -70,8 +71,9 @@ TEST_F(ProtoUtilsTest, ConvertParallelsDevice) {
       AddressManager::GuestType::kParallelsVM, subnet_index);
   auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto expected_host_ipv4 = host_ipv4_addr->Address();
-  auto expected_guest_ipv4 = guest_ipv4_addr->Address();
+  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_guest_ipv4 =
+      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_base_ipv4 = ipv4_subnet->BaseAddress();
   auto expected_prefix_len = ipv4_subnet->PrefixLength();
 
@@ -103,8 +105,9 @@ TEST_F(ProtoUtilsTest, ConvertARCContainerDevice) {
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
   auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto expected_host_ipv4 = host_ipv4_addr->Address();
-  auto expected_guest_ipv4 = guest_ipv4_addr->Address();
+  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_guest_ipv4 =
+      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_base_ipv4 = ipv4_subnet->BaseAddress();
   auto expected_prefix_len = ipv4_subnet->PrefixLength();
 
@@ -138,8 +141,9 @@ TEST_F(ProtoUtilsTest, ConvertARCVMDevice) {
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
   auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto expected_host_ipv4 = host_ipv4_addr->Address();
-  auto expected_guest_ipv4 = guest_ipv4_addr->Address();
+  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_guest_ipv4 =
+      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_base_ipv4 = ipv4_subnet->BaseAddress();
   auto expected_prefix_len = ipv4_subnet->PrefixLength();
 
@@ -171,8 +175,9 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCContainer) {
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArc0, 0);
   auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto expected_host_ipv4 = host_ipv4_addr->Address();
-  auto expected_guest_ipv4 = guest_ipv4_addr->Address();
+  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_guest_ipv4 =
+      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_base_ipv4 = ipv4_subnet->BaseAddress();
   auto expected_prefix_len = ipv4_subnet->PrefixLength();
 
@@ -208,8 +213,9 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCVM) {
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArc0, 0);
   auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
   auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
-  auto expected_host_ipv4 = host_ipv4_addr->Address();
-  auto expected_guest_ipv4 = guest_ipv4_addr->Address();
+  auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
+  auto expected_guest_ipv4 =
+      guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_base_ipv4 = ipv4_subnet->BaseAddress();
   auto expected_prefix_len = ipv4_subnet->PrefixLength();
 

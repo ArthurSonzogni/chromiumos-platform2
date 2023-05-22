@@ -33,32 +33,11 @@ uint32_t AddOffset(uint32_t addr_no, uint32_t offset_ho) {
 
 namespace patchpanel {
 
-SubnetAddress::SubnetAddress(uint32_t addr,
-                             int prefix_length,
+SubnetAddress::SubnetAddress(const net_base::IPv4CIDR& cidr,
                              base::OnceClosure release_cb)
-    : addr_(addr),
-      prefix_length_(prefix_length),
-      release_cb_(std::move(release_cb)) {}
+    : cidr_(cidr), release_cb_(std::move(release_cb)) {}
 
-SubnetAddress::~SubnetAddress() {
-  std::move(release_cb_).Run();
-}
-
-uint32_t SubnetAddress::Address() const {
-  return addr_;
-}
-
-std::string SubnetAddress::ToCidrString() const {
-  return IPv4AddressToCidrString(addr_, prefix_length_);
-}
-
-std::string SubnetAddress::ToIPv4String() const {
-  return IPv4AddressToString(addr_);
-}
-
-uint32_t SubnetAddress::Netmask() const {
-  return Ipv4Netmask(prefix_length_);
-}
+SubnetAddress::~SubnetAddress() = default;
 
 Subnet::Subnet(uint32_t base_addr,
                int prefix_length,
@@ -97,7 +76,8 @@ std::unique_ptr<SubnetAddress> Subnet::AllocateAtOffset(uint32_t offset) {
 
   addrs_[offset + 1] = true;
   return std::make_unique<SubnetAddress>(
-      addr, prefix_length_,
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+          ConvertUint32ToIPv4Address(addr), prefix_length_),
       base::BindOnce(&Subnet::Free, weak_factory_.GetWeakPtr(), offset + 1));
 }
 

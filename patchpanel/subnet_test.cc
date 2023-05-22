@@ -180,61 +180,37 @@ TEST(SubtnetAddress, StringConversion) {
                           base::DoNothing());
   EXPECT_EQ("100.115.92.192/28", container_subnet.ToCidrString());
   {
-    EXPECT_EQ("100.115.92.193",
-              container_subnet.AllocateAtOffset(0)->ToIPv4String());
-    EXPECT_EQ("100.115.92.194",
-              container_subnet.AllocateAtOffset(1)->ToIPv4String());
-    EXPECT_EQ("100.115.92.205",
-              container_subnet.AllocateAtOffset(12)->ToIPv4String());
-    EXPECT_EQ("100.115.92.206",
-              container_subnet.AllocateAtOffset(13)->ToIPv4String());
-  }
-  {
-    EXPECT_EQ("100.115.92.193/28",
-              container_subnet.AllocateAtOffset(0)->ToCidrString());
-    EXPECT_EQ("100.115.92.194/28",
-              container_subnet.AllocateAtOffset(1)->ToCidrString());
-    EXPECT_EQ("100.115.92.205/28",
-              container_subnet.AllocateAtOffset(12)->ToCidrString());
-    EXPECT_EQ("100.115.92.206/28",
-              container_subnet.AllocateAtOffset(13)->ToCidrString());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.193/28"),
+              container_subnet.AllocateAtOffset(0)->cidr());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.194/28"),
+              container_subnet.AllocateAtOffset(1)->cidr());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.205/28"),
+              container_subnet.AllocateAtOffset(12)->cidr());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.206/28"),
+              container_subnet.AllocateAtOffset(13)->cidr());
   }
 
   Subnet vm_subnet(kVmBaseAddress, kVmSubnetPrefixLength, base::DoNothing());
   EXPECT_EQ("100.115.92.24/30", vm_subnet.ToCidrString());
   {
-    EXPECT_EQ("100.115.92.25", vm_subnet.AllocateAtOffset(0)->ToIPv4String());
-    EXPECT_EQ("100.115.92.26", vm_subnet.AllocateAtOffset(1)->ToIPv4String());
-  }
-  {
-    EXPECT_EQ("100.115.92.25/30",
-              vm_subnet.AllocateAtOffset(0)->ToCidrString());
-    EXPECT_EQ("100.115.92.26/30",
-              vm_subnet.AllocateAtOffset(1)->ToCidrString());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.25/30"),
+              vm_subnet.AllocateAtOffset(0)->cidr());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.26/30"),
+              vm_subnet.AllocateAtOffset(1)->cidr());
   }
 
   Subnet parallels_subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
                           base::DoNothing());
   EXPECT_EQ("100.115.92.128/28", parallels_subnet.ToCidrString());
   {
-    EXPECT_EQ("100.115.92.129",
-              parallels_subnet.AllocateAtOffset(0)->ToIPv4String());
-    EXPECT_EQ("100.115.92.130",
-              parallels_subnet.AllocateAtOffset(1)->ToIPv4String());
-    EXPECT_EQ("100.115.92.141",
-              parallels_subnet.AllocateAtOffset(12)->ToIPv4String());
-    EXPECT_EQ("100.115.92.142",
-              parallels_subnet.AllocateAtOffset(13)->ToIPv4String());
-  }
-  {
-    EXPECT_EQ("100.115.92.129/28",
-              parallels_subnet.AllocateAtOffset(0)->ToCidrString());
-    EXPECT_EQ("100.115.92.130/28",
-              parallels_subnet.AllocateAtOffset(1)->ToCidrString());
-    EXPECT_EQ("100.115.92.141/28",
-              parallels_subnet.AllocateAtOffset(12)->ToCidrString());
-    EXPECT_EQ("100.115.92.142/28",
-              parallels_subnet.AllocateAtOffset(13)->ToCidrString());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.129/28"),
+              parallels_subnet.AllocateAtOffset(0)->cidr());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.130/28"),
+              parallels_subnet.AllocateAtOffset(1)->cidr());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.141/28"),
+              parallels_subnet.AllocateAtOffset(12)->cidr());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.142/28"),
+              parallels_subnet.AllocateAtOffset(13)->cidr());
   }
 }
 
@@ -285,7 +261,8 @@ TEST(ParallelsSubnet, Allocate) {
     // Offset by one since the network id is not allocatable.
     auto addr = subnet.Allocate(AddOffset(kParallelsBaseAddress, offset + 1));
     EXPECT_TRUE(addr);
-    EXPECT_EQ(AddOffset(kParallelsBaseAddress, offset + 1), addr->Address());
+    EXPECT_EQ(AddOffset(kParallelsBaseAddress, offset + 1),
+              addr->cidr().address().ToInAddr().s_addr);
     addrs.emplace_back(std::move(addr));
   }
 }
@@ -301,7 +278,8 @@ TEST(ParallelsSubnet, AllocateAtOffset) {
   for (uint32_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
     auto addr = subnet.AllocateAtOffset(offset);
     EXPECT_TRUE(addr);
-    EXPECT_EQ(AddOffset(kParallelsBaseAddress, offset + 1), addr->Address());
+    EXPECT_EQ(AddOffset(kParallelsBaseAddress, offset + 1),
+              addr->cidr().address().ToInAddr().s_addr);
     addrs.emplace_back(std::move(addr));
   }
 }

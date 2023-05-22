@@ -729,10 +729,10 @@ std::string Datapath::AddTAP(const std::string& name,
     struct sockaddr_in* addr =
         reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_addr);
     addr->sin_family = AF_INET;
-    addr->sin_addr.s_addr = static_cast<in_addr_t>(ipv4_addr->Address());
+    addr->sin_addr = ipv4_addr->cidr().address().ToInAddr();
     if (system_->Ioctl(sock.get(), SIOCSIFADDR, &ifr) != 0) {
       PLOG(ERROR) << "Failed to set ip address for vmtap interface " << ifname
-                  << " {" << ipv4_addr->ToCidrString() << "}";
+                  << " {" << ipv4_addr->cidr().ToString() << "}";
       RemoveTAP(ifname);
       return "";
     }
@@ -740,10 +740,10 @@ std::string Datapath::AddTAP(const std::string& name,
     struct sockaddr_in* netmask =
         reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_netmask);
     netmask->sin_family = AF_INET;
-    netmask->sin_addr.s_addr = static_cast<in_addr_t>(ipv4_addr->Netmask());
+    netmask->sin_addr = ipv4_addr->cidr().ToNetmask().ToInAddr();
     if (system_->Ioctl(sock.get(), SIOCSIFNETMASK, &ifr) != 0) {
       PLOG(ERROR) << "Failed to set netmask for vmtap interface " << ifname
-                  << " {" << ipv4_addr->ToCidrString() << "}";
+                  << " {" << ipv4_addr->cidr().ToString() << "}";
       RemoveTAP(ifname);
       return "";
     }

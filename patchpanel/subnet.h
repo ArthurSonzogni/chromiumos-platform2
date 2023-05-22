@@ -12,8 +12,10 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/brillo_export.h>
+#include <net-base/ipv4_address.h>
 
 namespace patchpanel {
 
@@ -21,38 +23,20 @@ namespace patchpanel {
 // when this object is destroyed.
 class BRILLO_EXPORT SubnetAddress {
  public:
-  // Creates a new SubnetAddress with the given base address and prefix length.
-  // |base_addr| must be in network-byte order. |release_cb| runs in the
+  // Creates a new SubnetAddress with the given |cidr|. |release_cb| runs in the
   // destructor of this class and can be used to free other resources associated
   // with the subnet address.
-  SubnetAddress(uint32_t addr, int prefix_length, base::OnceClosure release_cb);
+  SubnetAddress(const net_base::IPv4CIDR& cidr, base::OnceClosure release_cb);
+  ~SubnetAddress();
+
   SubnetAddress(const SubnetAddress&) = delete;
   SubnetAddress& operator=(const SubnetAddress&) = delete;
 
-  ~SubnetAddress();
-
-  // Returns this address in network-byte order.
-  uint32_t Address() const;
-
-  // Returns the CIDR representation of this address, for instance
-  // 192.168.0.34/24.
-  std::string ToCidrString() const;
-
-  // Returns the IPv4 literal representation of this address, for instance
-  // 192.168.0.34.
-  std::string ToIPv4String() const;
-
-  // Returns the subnet etmask in network-byte order.
-  uint32_t Netmask() const;
+  const net_base::IPv4CIDR& cidr() const { return cidr_; }
 
  private:
-  // The address in network-byte order.
-  uint32_t addr_;
-  // The prefix length of the address.
-  int prefix_length_;
-
-  // Callback to run when this object is destroyed.
-  base::OnceClosure release_cb_;
+  net_base::IPv4CIDR cidr_;
+  base::ScopedClosureRunner release_cb_;
 };
 
 // Represents an allocated IPv4 subnet.
