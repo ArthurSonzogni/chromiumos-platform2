@@ -9,7 +9,7 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use anyhow::{bail, Context, Result};
-use libchromeos::sys::error;
+use libchromeos::sys::{error, warn};
 use once_cell::sync::Lazy;
 
 use crate::power;
@@ -81,20 +81,24 @@ pub fn set_game_mode(
         Err(_) => bail!("Failed to set game mode"),
     };
 
-    update_power_preferences(power_preference_manager)?;
-
-    #[cfg(target_arch = "x86_64")]
-    if mode == GameMode::Borealis {
-        match intel_device::run_active_gpu_tuning(GPU_TUNING_POLLING_INTERVAL_MS) {
-            Ok(_) => log::info!("Active GPU tuning running."),
-            Err(e) => log::warn!("Active GPU tuning not set. {:?}", e),
-        }
+    // Don't fail game mode settings if EPP can't be changed.
+    if let Err(e) = update_power_preferences(power_preference_manager) {
+        warn!(
+            "Unable to set EPP {:?}.  Continue setting other game mode options.",
+            e
+        );
     }
 
     const TUNED_SWAPPINESS_VALUE: u32 = 30;
     const DEFAULT_SWAPPINESS_VALUE: u32 = 60;
 
     if old_mode != GameMode::Borealis && mode == GameMode::Borealis {
+        #[cfg(target_arch = "x86_64")]
+        match intel_device::run_active_gpu_tuning(GPU_TUNING_POLLING_INTERVAL_MS) {
+            Ok(_) => log::info!("Active GPU tuning running."),
+            Err(e) => log::warn!("Active GPU tuning not set. {:?}", e),
+        }
+
         Ok(Some(TuneSwappiness {
             swappiness: TUNED_SWAPPINESS_VALUE,
         }))
