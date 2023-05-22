@@ -257,14 +257,6 @@
       "performInIntermediateNamespace": true
     },
     {
-      "destination": "/dev/input",
-      "source": "/dev/arc_input",
-      "type": "bind",
-      "options": [
-        "bind"
-      ]
-    },
-    {
       "destination": "/dev/pts",
       "type": "devpts",
       "source": "devpts",
@@ -741,15 +733,6 @@
         "gid": 0
       },
       {
-        "path": "/dev/uinput",
-        "type": "c",
-        "major": 10,
-        "minor": 223,
-        "fileMode": 432,
-        "uid": 3011,
-        "gid": 3011
-      },
-      {
         "path": "/dev/ashmem",
         "type": "c",
         "major": 10,
@@ -916,12 +899,6 @@
     ],
     "resources": {
       "devices": [
-        {
-          "allow": true,
-          "access": "rwm",
-          "type": "c",
-          "major": "13"
-        },
         {
           "allow": true,
           "access": "rw",
