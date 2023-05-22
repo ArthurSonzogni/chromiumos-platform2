@@ -13,7 +13,9 @@
 #include <base/json/json_reader.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/task/bind_post_task.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -29,7 +31,6 @@
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
-#include "missive/util/test_support_callbacks.h"
 
 using ::testing::_;
 using ::testing::Eq;
@@ -77,10 +78,12 @@ class ReportQueueImplTest : public testing::Test {
 
     ASSERT_OK(config_result) << config_result.status();
 
-    test::TestEvent<StatusOr<std::unique_ptr<ReportQueue>>> report_queue_event;
-    ReportQueueImpl::Create(std::move(config_result.ValueOrDie()),
-                            storage_module_, report_queue_event.cb());
-    auto report_queue_result = report_queue_event.result();
+    base::test::TestFuture<StatusOr<std::unique_ptr<ReportQueue>>>
+        report_queue_event;
+    ReportQueueImpl::Create(
+        std::move(config_result.ValueOrDie()), storage_module_,
+        base::BindPostTaskToCurrentDefault(report_queue_event.GetCallback()));
+    auto report_queue_result = report_queue_event.Take();
     ASSERT_OK(report_queue_result) << report_queue_result.status();
 
     report_queue_ = std::move(report_queue_result.ValueOrDie());
@@ -116,9 +119,10 @@ class ReportQueueImplTest : public testing::Test {
 // |StorageModuleInterface|.
 TEST_F(ReportQueueImplTest, SuccessfulStringRecord) {
   static constexpr char kTestString[] = "El-Chupacabra";
-  test::TestEvent<Status> a;
-  report_queue_->Enqueue(kTestString, priority_, a.cb());
-  const auto a_result = a.result();
+  base::test::TestFuture<Status> a;
+  report_queue_->Enqueue(kTestString, priority_,
+                         base::BindPostTaskToCurrentDefault(a.GetCallback()));
+  const auto a_result = a.Take();
   EXPECT_OK(a_result) << a_result;
   EXPECT_THAT(test_storage_module()->priority(), Eq(priority_));
   EXPECT_THAT(test_storage_module()->record().data(), StrEq(kTestString));
@@ -131,9 +135,10 @@ TEST_F(ReportQueueImplTest, SuccessfulBaseValueRecord) {
   static constexpr char kTestValue[] = "TEST_VALUE";
   base::Value test_dict(base::Value::Type::DICT);
   test_dict.SetStringKey(kTestKey, kTestValue);
-  test::TestEvent<Status> a;
-  report_queue_->Enqueue(test_dict.Clone(), priority_, a.cb());
-  const auto a_result = a.result();
+  base::test::TestFuture<Status> a;
+  report_queue_->Enqueue(test_dict.Clone(), priority_,
+                         base::BindPostTaskToCurrentDefault(a.GetCallback()));
+  const auto a_result = a.Take();
   EXPECT_OK(a_result) << a_result;
 
   EXPECT_THAT(test_storage_module()->priority(), Eq(priority_));
@@ -149,10 +154,11 @@ TEST_F(ReportQueueImplTest, SuccessfulBaseValueRecord) {
 TEST_F(ReportQueueImplTest, SuccessfulProtoRecord) {
   test::TestMessage test_message;
   test_message.set_test(kTestMessage);
-  test::TestEvent<Status> a;
+  base::test::TestFuture<Status> a;
   report_queue_->Enqueue(std::make_unique<test::TestMessage>(test_message),
-                         priority_, a.cb());
-  const auto a_result = a.result();
+                         priority_,
+                         base::BindPostTaskToCurrentDefault(a.GetCallback()));
+  const auto a_result = a.Take();
   EXPECT_OK(a_result) << a_result;
 
   EXPECT_THAT(test_storage_module()->priority(), Eq(priority_));
@@ -171,20 +177,23 @@ TEST_F(ReportQueueImplTest, SuccessfulProtoRecordWithReservedSpace) {
 
   ASSERT_OK(config_result) << config_result.status();
 
-  test::TestEvent<StatusOr<std::unique_ptr<ReportQueue>>> report_queue_event;
-  ReportQueueImpl::Create(std::move(config_result.ValueOrDie()),
-                          storage_module_, report_queue_event.cb());
-  auto report_queue_result = report_queue_event.result();
+  base::test::TestFuture<StatusOr<std::unique_ptr<ReportQueue>>>
+      report_queue_event;
+  ReportQueueImpl::Create(
+      std::move(config_result.ValueOrDie()), storage_module_,
+      base::BindPostTaskToCurrentDefault(report_queue_event.GetCallback()));
+  auto report_queue_result = report_queue_event.Take();
   ASSERT_OK(report_queue_result) << report_queue_result.status();
 
   report_queue_ = std::move(report_queue_result.ValueOrDie());
 
   test::TestMessage test_message;
   test_message.set_test(kTestMessage);
-  test::TestEvent<Status> a;
+  base::test::TestFuture<Status> a;
   report_queue_->Enqueue(std::make_unique<test::TestMessage>(test_message),
-                         priority_, a.cb());
-  const auto a_result = a.result();
+                         priority_,
+                         base::BindPostTaskToCurrentDefault(a.GetCallback()));
+  const auto a_result = a.Take();
   EXPECT_OK(a_result) << a_result;
 
   EXPECT_THAT(test_storage_module()->priority(), Eq(priority_));
@@ -209,10 +218,11 @@ TEST_F(ReportQueueImplTest, CallSuccessCallbackFailure) {
 
   test::TestMessage test_message;
   test_message.set_test(kTestMessage);
-  test::TestEvent<Status> a;
+  base::test::TestFuture<Status> a;
   report_queue_->Enqueue(std::make_unique<test::TestMessage>(test_message),
-                         priority_, a.cb());
-  const auto result = a.result();
+                         priority_,
+                         base::BindPostTaskToCurrentDefault(a.GetCallback()));
+  const auto result = a.Take();
   EXPECT_FALSE(result.ok());
   EXPECT_THAT(result.error_code(), Eq(error::UNKNOWN));
 }
@@ -221,9 +231,10 @@ TEST_F(ReportQueueImplTest, EnqueueStringFailsOnPolicy) {
   EXPECT_CALL(mocked_policy_check_, Call())
       .WillOnce(Return(Status(error::UNAUTHENTICATED, "Failing for tests")));
   static constexpr char kTestString[] = "El-Chupacabra";
-  test::TestEvent<Status> a;
-  report_queue_->Enqueue(std::string(kTestString), priority_, a.cb());
-  const auto result = a.result();
+  base::test::TestFuture<Status> a;
+  report_queue_->Enqueue(std::string(kTestString), priority_,
+                         base::BindPostTaskToCurrentDefault(a.GetCallback()));
+  const auto result = a.Take();
   EXPECT_FALSE(result.ok());
   EXPECT_THAT(result.error_code(), Eq(error::UNAUTHENTICATED));
 }
@@ -233,10 +244,11 @@ TEST_F(ReportQueueImplTest, EnqueueProtoFailsOnPolicy) {
       .WillOnce(Return(Status(error::UNAUTHENTICATED, "Failing for tests")));
   test::TestMessage test_message;
   test_message.set_test(kTestMessage);
-  test::TestEvent<Status> a;
+  base::test::TestFuture<Status> a;
   report_queue_->Enqueue(std::make_unique<test::TestMessage>(test_message),
-                         priority_, a.cb());
-  const auto result = a.result();
+                         priority_,
+                         base::BindPostTaskToCurrentDefault(a.GetCallback()));
+  const auto result = a.Take();
   EXPECT_FALSE(result.ok());
   EXPECT_THAT(result.error_code(), Eq(error::UNAUTHENTICATED));
 }
@@ -248,9 +260,10 @@ TEST_F(ReportQueueImplTest, EnqueueValueFailsOnPolicy) {
   static constexpr char kTestValue[] = "TEST_VALUE";
   base::Value test_dict(base::Value::Type::DICT);
   test_dict.SetStringKey(kTestKey, kTestValue);
-  test::TestEvent<Status> a;
-  report_queue_->Enqueue(test_dict.Clone(), priority_, a.cb());
-  const auto result = a.result();
+  base::test::TestFuture<Status> a;
+  report_queue_->Enqueue(test_dict.Clone(), priority_,
+                         base::BindPostTaskToCurrentDefault(a.GetCallback()));
+  const auto result = a.Take();
   EXPECT_FALSE(result.ok());
   EXPECT_THAT(result.error_code(), Eq(error::UNAUTHENTICATED));
 }
@@ -258,24 +271,27 @@ TEST_F(ReportQueueImplTest, EnqueueValueFailsOnPolicy) {
 TEST_F(ReportQueueImplTest, EnqueueAndFlushSuccess) {
   test::TestMessage test_message;
   test_message.set_test(kTestMessage);
-  test::TestEvent<Status> a;
+  base::test::TestFuture<Status> a;
   report_queue_->Enqueue(std::make_unique<test::TestMessage>(test_message),
-                         priority_, a.cb());
-  const auto a_result = a.result();
+                         priority_,
+                         base::BindPostTaskToCurrentDefault(a.GetCallback()));
+  const auto a_result = a.Take();
   EXPECT_OK(a_result) << a_result;
-  test::TestEvent<Status> f;
-  report_queue_->Flush(priority_, f.cb());
-  const auto f_result = f.result();
+  base::test::TestFuture<Status> f;
+  report_queue_->Flush(priority_,
+                       base::BindPostTaskToCurrentDefault(f.GetCallback()));
+  const auto f_result = f.Take();
   EXPECT_OK(f_result) << f_result;
 }
 
 TEST_F(ReportQueueImplTest, EnqueueSuccessFlushFailure) {
   test::TestMessage test_message;
   test_message.set_test(kTestMessage);
-  test::TestEvent<Status> a;
+  base::test::TestFuture<Status> a;
   report_queue_->Enqueue(std::make_unique<test::TestMessage>(test_message),
-                         priority_, a.cb());
-  const auto a_result = a.result();
+                         priority_,
+                         base::BindPostTaskToCurrentDefault(a.GetCallback()));
+  const auto a_result = a.Take();
   EXPECT_OK(a_result) << a_result;
 
   EXPECT_CALL(*test_storage_module(), Flush(Eq(priority_), _))
@@ -283,9 +299,10 @@ TEST_F(ReportQueueImplTest, EnqueueSuccessFlushFailure) {
           WithArg<1>(Invoke([](base::OnceCallback<void(Status)> callback) {
             std::move(callback).Run(Status(error::UNKNOWN, "Failing for Test"));
           })));
-  test::TestEvent<Status> f;
-  report_queue_->Flush(priority_, f.cb());
-  const auto result = f.result();
+  base::test::TestFuture<Status> f;
+  report_queue_->Flush(priority_,
+                       base::BindPostTaskToCurrentDefault(f.GetCallback()));
+  const auto result = f.Take();
   EXPECT_FALSE(result.ok());
   EXPECT_THAT(result.error_code(), Eq(error::UNKNOWN));
 }
@@ -295,15 +312,16 @@ TEST_F(ReportQueueImplTest, EnqueueSuccessFlushFailure) {
 // |StorageModuleInterface|.
 TEST_F(ReportQueueImplTest, SuccessfulSpeculativeStringRecord) {
   static constexpr char kTestString[] = "El-Chupacabra";
-  test::TestEvent<Status> a;
+  base::test::TestFuture<Status> a;
   auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
-  speculative_report_queue->Enqueue(std::string(kTestString), priority_,
-                                    a.cb());
+  speculative_report_queue->Enqueue(
+      std::string(kTestString), priority_,
+      base::BindPostTaskToCurrentDefault(a.GetCallback()));
 
   // Enqueue would not end until actual queue is attached.
   speculative_report_queue->PrepareToAttachActualQueue().Run(
       std::move(report_queue_));
-  const auto a_result = a.result();
+  const auto a_result = a.Take();
   EXPECT_OK(a_result) << a_result;
 
   // Let everything ongoing to finish.
@@ -322,24 +340,27 @@ TEST_F(ReportQueueImplTest,
 
   ASSERT_OK(config_result) << config_result.status();
 
-  test::TestEvent<StatusOr<std::unique_ptr<ReportQueue>>> report_queue_event;
-  ReportQueueImpl::Create(std::move(config_result.ValueOrDie()),
-                          storage_module_, report_queue_event.cb());
-  auto report_queue_result = report_queue_event.result();
+  base::test::TestFuture<StatusOr<std::unique_ptr<ReportQueue>>>
+      report_queue_event;
+  ReportQueueImpl::Create(
+      std::move(config_result.ValueOrDie()), storage_module_,
+      base::BindPostTaskToCurrentDefault(report_queue_event.GetCallback()));
+  auto report_queue_result = report_queue_event.Take();
   ASSERT_OK(report_queue_result) << report_queue_result.status();
 
   report_queue_ = std::move(report_queue_result.ValueOrDie());
 
   static constexpr char kTestString[] = "El-Chupacabra";
-  test::TestEvent<Status> a;
+  base::test::TestFuture<Status> a;
   auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
-  speculative_report_queue->Enqueue(std::string(kTestString), priority_,
-                                    a.cb());
+  speculative_report_queue->Enqueue(
+      std::string(kTestString), priority_,
+      base::BindPostTaskToCurrentDefault(a.GetCallback()));
 
   // Enqueue would not end until actual queue is attached.
   speculative_report_queue->PrepareToAttachActualQueue().Run(
       std::move(report_queue_));
-  const auto a_result = a.result();
+  const auto a_result = a.Take();
   EXPECT_OK(a_result) << a_result;
 
   // Let everything ongoing to finish.
@@ -361,18 +382,20 @@ TEST_F(ReportQueueImplTest, SpeculativeQueueMultipleRecordsAfterCreation) {
   // Let everything ongoing to finish.
   task_environment_.RunUntilIdle();
 
-  test::TestEvent<Status> test_event1;
-  speculative_report_queue->Enqueue(kTestString1, Priority::IMMEDIATE,
-                                    test_event1.cb());
-  const auto result1 = test_event1.result();
+  base::test::TestFuture<Status> test_event1;
+  speculative_report_queue->Enqueue(
+      kTestString1, Priority::IMMEDIATE,
+      base::BindPostTaskToCurrentDefault(test_event1.GetCallback()));
+  const auto result1 = test_event1.Take();
   ASSERT_OK(result1) << result1;
   EXPECT_THAT(test_storage_module()->priority(), Eq(Priority::IMMEDIATE));
   EXPECT_THAT(test_storage_module()->record().data(), StrEq(kTestString1));
 
-  test::TestEvent<Status> test_event2;
-  speculative_report_queue->Enqueue(kTestString2, Priority::SLOW_BATCH,
-                                    test_event2.cb());
-  const auto result2 = test_event2.result();
+  base::test::TestFuture<Status> test_event2;
+  speculative_report_queue->Enqueue(
+      kTestString2, Priority::SLOW_BATCH,
+      base::BindPostTaskToCurrentDefault(test_event2.GetCallback()));
+  const auto result2 = test_event2.Take();
   ASSERT_OK(result2) << result2;
   EXPECT_THAT(test_storage_module()->priority(), Eq(Priority::SLOW_BATCH));
   EXPECT_THAT(test_storage_module()->record().data(), StrEq(kTestString2));
@@ -380,7 +403,7 @@ TEST_F(ReportQueueImplTest, SpeculativeQueueMultipleRecordsAfterCreation) {
 
 TEST_F(ReportQueueImplTest, SpeculativeQueueCreationFailedToCreate) {
   static constexpr char kTestString[] = "record";
-  test::TestEvent<Status> test_event;
+  base::test::TestFuture<Status> test_event;
 
   {
     auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
@@ -390,24 +413,26 @@ TEST_F(ReportQueueImplTest, SpeculativeQueueCreationFailedToCreate) {
         Status(error::UNKNOWN, "Failed for Test"));
     task_environment_.RunUntilIdle();  // Let `AttachActualQueue` finish.
 
-    speculative_report_queue->Enqueue(kTestString, Priority::IMMEDIATE,
-                                      test_event.cb());
+    speculative_report_queue->Enqueue(
+        kTestString, Priority::IMMEDIATE,
+        base::BindPostTaskToCurrentDefault(test_event.GetCallback()));
   }  // Destructs `speculative_report_queue` now, fails all pending Enqueues.
 
   // Unfulfilled pending Enqueue returns the queue failure status.
-  const auto result = test_event.result();
+  const auto result = test_event.Take();
   ASSERT_FALSE(result.ok());
   EXPECT_THAT(result.code(), Eq(error::DATA_LOSS)) << result;
 }
 
 TEST_F(ReportQueueImplTest, SpeculativeQueueEnqueueAndCreationFailed) {
   static constexpr char kTestString[] = "record";
-  test::TestEvent<Status> test_event;
+  base::test::TestFuture<Status> test_event;
 
   auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
 
-  speculative_report_queue->Enqueue(kTestString, Priority::IMMEDIATE,
-                                    test_event.cb());
+  speculative_report_queue->Enqueue(
+      kTestString, Priority::IMMEDIATE,
+      base::BindPostTaskToCurrentDefault(test_event.GetCallback()));
 
   // Fail to attach queue after calling `Enqueue`.
   speculative_report_queue->PrepareToAttachActualQueue().Run(
@@ -415,23 +440,24 @@ TEST_F(ReportQueueImplTest, SpeculativeQueueEnqueueAndCreationFailed) {
   task_environment_.RunUntilIdle();  // Let `AttachActualQueue` finish.
 
   // Unfulfilled pending Enqueue returns the queue failure status.
-  const auto result = test_event.result();
+  const auto result = test_event.Take();
   ASSERT_FALSE(result.ok());
   EXPECT_THAT(result.code(), Eq(error::UNKNOWN)) << result;
 }
 
 TEST_F(ReportQueueImplTest, EnqueueRecordWithInvalidPriority) {
-  test::TestEvent<Status> event;
-  report_queue_->Enqueue(std::string(kTestMessage),
-                         Priority::UNDEFINED_PRIORITY, event.cb());
-  const auto result = event.result();
+  base::test::TestFuture<Status> event;
+  report_queue_->Enqueue(
+      std::string(kTestMessage), Priority::UNDEFINED_PRIORITY,
+      base::BindPostTaskToCurrentDefault(event.GetCallback()));
+  const auto result = event.Take();
 
   ASSERT_FALSE(result.ok());
   EXPECT_THAT(result.code(), Eq(error::INVALID_ARGUMENT));
 }
 
 TEST_F(ReportQueueImplTest, FlushSpeculativeReportQueue) {
-  test::TestEvent<Status> event;
+  base::test::TestFuture<Status> event;
 
   // Set up speculative report queue
   auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
@@ -445,24 +471,26 @@ TEST_F(ReportQueueImplTest, FlushSpeculativeReportQueue) {
             std::move(callback).Run(Status::StatusOK());
           })));
 
-  speculative_report_queue->Flush(priority_, event.cb());
-  const auto result = event.result();
+  speculative_report_queue->Flush(
+      priority_, base::BindPostTaskToCurrentDefault(event.GetCallback()));
+  const auto result = event.Take();
   ASSERT_OK(result);
 }
 
 TEST_F(ReportQueueImplTest, FlushUninitializedSpeculativeReportQueue) {
-  test::TestEvent<Status> event;
+  base::test::TestFuture<Status> event;
 
   auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
-  speculative_report_queue->Flush(priority_, event.cb());
+  speculative_report_queue->Flush(
+      priority_, base::BindPostTaskToCurrentDefault(event.GetCallback()));
 
-  const auto result = event.result();
+  const auto result = event.Take();
   ASSERT_FALSE(result.ok());
   EXPECT_THAT(result.error_code(), Eq(error::FAILED_PRECONDITION));
 }
 
 TEST_F(ReportQueueImplTest, FlushFailedSpeculativeReportQueue) {
-  test::TestEvent<Status> event;
+  base::test::TestFuture<Status> event;
 
   {
     auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
@@ -471,10 +499,11 @@ TEST_F(ReportQueueImplTest, FlushFailedSpeculativeReportQueue) {
         Status(error::UNKNOWN, "Failed for Test"));
     task_environment_.RunUntilIdle();  // Let `AttachActualQueue` finish.
 
-    speculative_report_queue->Flush(priority_, event.cb());
+    speculative_report_queue->Flush(
+        priority_, base::BindPostTaskToCurrentDefault(event.GetCallback()));
   }  // Destructs speculative
 
-  const auto result = event.result();
+  const auto result = event.Take();
   ASSERT_FALSE(result.ok());
   EXPECT_THAT(result.error_code(), Eq(error::FAILED_PRECONDITION)) << result;
 }
@@ -489,51 +518,57 @@ TEST_F(ReportQueueImplTest, AsyncProcessingReportQueue) {
         std::move(cb).Run(Status::StatusOK());
       });
 
-  test::TestEvent<Status> a_string;
-  mock_queue->Enqueue(std::string(kTestMessage), priority_, a_string.cb());
+  base::test::TestFuture<Status> a_string;
+  mock_queue->Enqueue(
+      std::string(kTestMessage), priority_,
+      base::BindPostTaskToCurrentDefault(a_string.GetCallback()));
 
-  test::TestEvent<Status> a_proto;
+  base::test::TestFuture<Status> a_proto;
   test::TestMessage test_message;
   test_message.set_test(kTestMessage);
-  mock_queue->Enqueue(std::make_unique<test::TestMessage>(test_message),
-                      priority_, a_proto.cb());
+  mock_queue->Enqueue(
+      std::make_unique<test::TestMessage>(test_message), priority_,
+      base::BindPostTaskToCurrentDefault(a_proto.GetCallback()));
 
-  test::TestEvent<Status> a_json;
+  base::test::TestFuture<Status> a_json;
   static constexpr char kTestKey[] = "TEST_KEY";
   static constexpr char kTestValue[] = "TEST_VALUE";
   base::Value test_dict(base::Value::Type::DICT);
   test_dict.SetStringKey(kTestKey, kTestValue);
-  mock_queue->Enqueue(std::move(test_dict), priority_, a_json.cb());
+  mock_queue->Enqueue(std::move(test_dict), priority_,
+                      base::BindPostTaskToCurrentDefault(a_json.GetCallback()));
 
-  const auto a_string_result = a_string.result();
+  const auto a_string_result = a_string.Take();
   EXPECT_OK(a_string_result) << a_string_result;
-  const auto a_proto_result = a_proto.result();
+  const auto a_proto_result = a_proto.Take();
   EXPECT_OK(a_proto_result) << a_proto_result;
-  const auto a_json_result = a_json.result();
+  const auto a_json_result = a_json.Take();
   EXPECT_OK(a_json_result) << a_json_result;
 }
 
 TEST_F(ReportQueueImplTest, AsyncProcessingSpeculativeReportQueue) {
   auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
 
-  test::TestEvent<Status> a_string;
-  speculative_report_queue->Enqueue(std::string(kTestMessage), priority_,
-                                    a_string.cb());
+  base::test::TestFuture<Status> a_string;
+  speculative_report_queue->Enqueue(
+      std::string(kTestMessage), priority_,
+      base::BindPostTaskToCurrentDefault(a_string.GetCallback()));
 
-  test::TestEvent<Status> a_proto;
+  base::test::TestFuture<Status> a_proto;
   test::TestMessage test_message;
   test_message.set_test(kTestMessage);
   speculative_report_queue->Enqueue(
       std::make_unique<test::TestMessage>(test_message), priority_,
-      a_proto.cb());
+      base::BindPostTaskToCurrentDefault(a_proto.GetCallback()));
 
-  test::TestEvent<Status> a_json;
+  base::test::TestFuture<Status> a_json;
   static constexpr char kTestKey[] = "TEST_KEY";
   static constexpr char kTestValue[] = "TEST_VALUE";
   base::Value test_dict(base::Value::Type::DICT);
   test_dict.SetStringKey(kTestKey, kTestValue);
-  speculative_report_queue->Enqueue(std::move(test_dict), priority_,
-                                    a_json.cb());
+  speculative_report_queue->Enqueue(
+      std::move(test_dict), priority_,
+      base::BindPostTaskToCurrentDefault(a_json.GetCallback()));
 
   auto mock_queue = std::make_unique<MockReportQueue>();
   EXPECT_CALL(*mock_queue, AddProducedRecord)
@@ -546,11 +581,11 @@ TEST_F(ReportQueueImplTest, AsyncProcessingSpeculativeReportQueue) {
   speculative_report_queue->PrepareToAttachActualQueue().Run(
       std::move(mock_queue));
 
-  const auto a_string_result = a_string.result();
+  const auto a_string_result = a_string.Take();
   EXPECT_OK(a_string_result) << a_string_result;
-  const auto a_proto_result = a_proto.result();
+  const auto a_proto_result = a_proto.Take();
   EXPECT_OK(a_proto_result) << a_proto_result;
-  const auto a_json_result = a_json.result();
+  const auto a_json_result = a_json.Take();
   EXPECT_OK(a_json_result) << a_json_result;
 }
 }  // namespace

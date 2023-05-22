@@ -11,9 +11,11 @@
 
 #include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -52,11 +54,13 @@ class UploadClientTest : public ::testing::Test {
         .Times(AtLeast(1))
         .WillRepeatedly(Return(true));
 
-    test::TestEvent<StatusOr<scoped_refptr<UploadClientImpl>>> client_waiter;
-    UploadClientImpl::Create(dbus_test_environment_.mock_bus(),
-                             dbus_test_environment_.mock_chrome_proxy().get(),
-                             client_waiter.cb());
-    auto client_result = client_waiter.result();
+    base::test::TestFuture<StatusOr<scoped_refptr<UploadClientImpl>>>
+        client_waiter;
+    UploadClientImpl::Create(
+        dbus_test_environment_.mock_bus(),
+        dbus_test_environment_.mock_chrome_proxy().get(),
+        base::BindPostTaskToCurrentDefault(client_waiter.GetCallback()));
+    auto client_result = client_waiter.Take();
     ASSERT_OK(client_result) << client_result.status();
     upload_client_ = client_result.ValueOrDie();
 

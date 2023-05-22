@@ -11,9 +11,11 @@
 
 #include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -22,8 +24,6 @@
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "missive/util/test_support_callbacks.h"
 
 using ::testing::Invoke;
 using ::testing::NiceMock;
@@ -34,11 +34,12 @@ namespace reporting::test {
 DBusTestEnvironment::DBusTestEnvironment()
     : dbus_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
           {base::TaskPriority::BEST_EFFORT, base::MayBlock()})) {
-  test::TestEvent<scoped_refptr<NiceMock<dbus::MockBus>>> dbus_waiter;
+  base::test::TestFuture<scoped_refptr<NiceMock<dbus::MockBus>>> dbus_waiter;
   dbus_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(&DBusTestEnvironment::CreateMockDBus, dbus_waiter.cb()));
-  mock_bus_ = dbus_waiter.result();
+      FROM_HERE, base::BindOnce(&DBusTestEnvironment::CreateMockDBus,
+                                base::BindPostTaskToCurrentDefault(
+                                    dbus_waiter.GetCallback())));
+  mock_bus_ = dbus_waiter.Take();
 
   EXPECT_CALL(*mock_bus_, GetDBusTaskRunner())
       .WillRepeatedly(Return(dbus_task_runner_.get()));

@@ -8,11 +8,11 @@
 
 #include <base/functional/bind.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "missive/util/statusor.h"
-#include "missive/util/test_support_callbacks.h"
 
 namespace reporting {
 
@@ -24,10 +24,11 @@ class EmptyDMTokenRetrieverTest : public ::testing::Test {
 };
 
 TEST_F(EmptyDMTokenRetrieverTest, GetDMToken) {
-  test::TestEvent<StatusOr<std::string>> dm_token_retrieved_event;
+  base::test::TestFuture<StatusOr<std::string>> dm_token_retrieved_event;
   EmptyDMTokenRetriever empty_dm_token_retriever;
-  empty_dm_token_retriever.RetrieveDMToken(dm_token_retrieved_event.cb());
-  const auto dm_token_result = dm_token_retrieved_event.result();
+  empty_dm_token_retriever.RetrieveDMToken(
+      dm_token_retrieved_event.GetCallback());
+  const auto dm_token_result = dm_token_retrieved_event.Take();
   ASSERT_OK(dm_token_result);
   EXPECT_THAT(dm_token_result.ValueOrDie(), ::testing::IsEmpty());
 }

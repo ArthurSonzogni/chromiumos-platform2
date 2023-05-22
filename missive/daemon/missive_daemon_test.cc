@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <brillo/message_loops/base_message_loop.h>
@@ -172,10 +173,10 @@ TEST_F(MissiveDaemonTest, EnqueueRecordTest) {
 
   auto response = std::make_unique<
       brillo::dbus_utils::MockDBusMethodResponse<EnqueueRecordResponse>>();
-  test::TestEvent<const EnqueueRecordResponse&> response_event;
-  response->set_return_callback(response_event.cb());
+  base::test::TestFuture<const EnqueueRecordResponse&> response_event;
+  response->set_return_callback(response_event.GetCallback());
   missive_daemon_->EnqueueRecord(std::move(response), request);
-  const auto& response_result = response_event.ref_result();
+  const auto& response_result = response_event.Get();
   EXPECT_THAT(response_result.status().code(), Eq(error::OK));
 }
 
@@ -196,10 +197,10 @@ TEST_F(MissiveDaemonTest, FlushPriorityTest) {
 
   auto response = std::make_unique<
       brillo::dbus_utils::MockDBusMethodResponse<FlushPriorityResponse>>();
-  test::TestEvent<const FlushPriorityResponse&> response_event;
-  response->set_return_callback(response_event.cb());
+  base::test::TestFuture<const FlushPriorityResponse&> response_event;
+  response->set_return_callback(response_event.GetCallback());
   missive_daemon_->FlushPriority(std::move(response), request);
-  const auto& response_result = response_event.ref_result();
+  const auto& response_result = response_event.Get();
   EXPECT_THAT(response_result.status().code(), Eq(error::OK));
 }
 
@@ -223,10 +224,10 @@ TEST_F(MissiveDaemonTest, ConfirmRecordUploadTest) {
 
   auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
       ConfirmRecordUploadResponse>>();
-  test::TestEvent<const ConfirmRecordUploadResponse&> response_event;
-  response->set_return_callback(response_event.cb());
+  base::test::TestFuture<const ConfirmRecordUploadResponse&> response_event;
+  response->set_return_callback(response_event.GetCallback());
   missive_daemon_->ConfirmRecordUpload(std::move(response), request);
-  const auto& response_result = response_event.ref_result();
+  const auto& response_result = response_event.Get();
   EXPECT_THAT(response_result.status().code(), Eq(error::OK));
 }
 
@@ -250,10 +251,10 @@ TEST_F(MissiveDaemonTest, UpdateEncryptionKeyTest) {
 
   auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
       UpdateEncryptionKeyResponse>>();
-  test::TestEvent<const UpdateEncryptionKeyResponse&> response_event;
-  response->set_return_callback(response_event.cb());
+  base::test::TestFuture<const UpdateEncryptionKeyResponse&> response_event;
+  response->set_return_callback(response_event.GetCallback());
   missive_daemon_->UpdateEncryptionKey(std::move(response), request);
-  const auto& response_result = response_event.ref_result();
+  const auto& response_result = response_event.Get();
   EXPECT_THAT(response_result.status().code(), Eq(error::OK));
 }
 
@@ -277,10 +278,10 @@ TEST_F(MissiveDaemonTest, ResponseWithErrorTest) {
 
   auto response = std::make_unique<
       brillo::dbus_utils::MockDBusMethodResponse<FlushPriorityResponse>>();
-  test::TestEvent<const FlushPriorityResponse&> response_event;
-  response->set_return_callback(response_event.cb());
+  base::test::TestFuture<const FlushPriorityResponse&> response_event;
+  response->set_return_callback(response_event.GetCallback());
   missive_daemon_->FlushPriority(std::move(response), request);
-  const auto& response_result = response_event.ref_result();
+  const auto& response_result = response_event.Get();
   EXPECT_THAT(response_result.status(),
               AllOf(Property(&StatusProto::code, Eq(error.error_code())),
                     Property(&StatusProto::error_message,
@@ -290,9 +291,9 @@ TEST_F(MissiveDaemonTest, ResponseWithErrorTest) {
 TEST_F(MissiveDaemonTest, UnavailableTest) {
   const Status failure_status =
       Status(error::UNAVAILABLE, "Test did not start daemon");
-  test::TestEvent<Status> failure_event;
-  StartUp(failure_status, failure_event.cb());
-  const auto result = failure_event.result();
+  base::test::TestFuture<Status> failure_event;
+  StartUp(failure_status, failure_event.GetCallback());
+  const auto result = failure_event.Take();
   ASSERT_THAT(
       result,
       AllOf(Property(&Status::error_code, Eq(error::UNAVAILABLE)),
@@ -307,10 +308,10 @@ TEST_F(MissiveDaemonTest, UnavailableTest) {
 
   auto response = std::make_unique<
       brillo::dbus_utils::MockDBusMethodResponse<FlushPriorityResponse>>();
-  test::TestEvent<const FlushPriorityResponse&> response_event;
-  response->set_return_callback(response_event.cb());
+  base::test::TestFuture<const FlushPriorityResponse&> response_event;
+  response->set_return_callback(response_event.GetCallback());
   missive_daemon_->FlushPriority(std::move(response), request);
-  const auto& response_result = response_event.ref_result();
+  const auto& response_result = response_event.Get();
   EXPECT_THAT(response_result.status(),
               AllOf(Property(&StatusProto::code, Eq(error::UNAVAILABLE)),
                     Property(&StatusProto::error_message,

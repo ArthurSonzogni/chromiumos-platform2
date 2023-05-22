@@ -3,11 +3,12 @@
 // found in the LICENSE file.
 
 #include "missive/util/test_support_callbacks.h"
+#include "base/task/sequenced_task_runner.h"
 
-namespace reporting {
-namespace test {
+namespace reporting::test {
 
-TestCallbackWaiter::TestCallbackWaiter() : signaled_cb_(cb()) {}
+TestCallbackWaiter::TestCallbackWaiter()
+    : sequenced_task_runner_(base::SequencedTaskRunner::GetCurrentDefault()) {}
 TestCallbackWaiter::~TestCallbackWaiter() = default;
 
 TestCallbackAutoWaiter::TestCallbackAutoWaiter() {
@@ -17,5 +18,4 @@ TestCallbackAutoWaiter::~TestCallbackAutoWaiter() {
   Wait();
 }
 
-}  // namespace test
-}  // namespace reporting
+}  // namespace reporting::test

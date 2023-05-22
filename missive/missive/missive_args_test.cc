@@ -6,9 +6,12 @@
 
 #include <utility>
 
+#include <base/task/bind_post_task.h>
 #include <base/time/time.h>
 #include <base/time/time_delta_from_string.h>
+#include <base/test/repeating_test_future.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <featured/fake_platform_features.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -42,10 +45,12 @@ TEST_F(MissiveArgsTest, DefaultCollectionValues) {
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
       std::move(fake_platform_features));
 
-  test::TestEvent<StatusOr<MissiveArgs::CollectionParameters>> get_collection;
+  base::test::TestFuture<StatusOr<MissiveArgs::CollectionParameters>>
+      get_collection;
   args.AsyncCall(&MissiveArgs::GetCollectionParameters)
-      .WithArgs(get_collection.cb());
-  const auto& collection = get_collection.result();
+      .WithArgs(
+          base::BindPostTaskToCurrentDefault(get_collection.GetCallback()));
+  const auto& collection = get_collection.Take();
   ASSERT_OK(collection) << collection.status();
   ASSERT_THAT(
       collection.ValueOrDie().enqueuing_record_tallier,
@@ -86,10 +91,12 @@ TEST_F(MissiveArgsTest, ExplicitCollectionValues) {
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
       std::move(fake_platform_features));
 
-  test::TestEvent<StatusOr<MissiveArgs::CollectionParameters>> get_collection;
+  base::test::TestFuture<StatusOr<MissiveArgs::CollectionParameters>>
+      get_collection;
   args.AsyncCall(&MissiveArgs::GetCollectionParameters)
-      .WithArgs(get_collection.cb());
-  const auto& collection = get_collection.result();
+      .WithArgs(
+          base::BindPostTaskToCurrentDefault(get_collection.GetCallback()));
+  const auto& collection = get_collection.Take();
   ASSERT_OK(collection) << collection.status();
   ASSERT_THAT(collection.ValueOrDie().enqueuing_record_tallier,
               Eq(base::Milliseconds(10)));
@@ -122,10 +129,12 @@ TEST_F(MissiveArgsTest, BadCollectionValues) {
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
       std::move(fake_platform_features));
 
-  test::TestEvent<StatusOr<MissiveArgs::CollectionParameters>> get_collection;
+  base::test::TestFuture<StatusOr<MissiveArgs::CollectionParameters>>
+      get_collection;
   args.AsyncCall(&MissiveArgs::GetCollectionParameters)
-      .WithArgs(get_collection.cb());
-  const auto& collection = get_collection.result();
+      .WithArgs(
+          base::BindPostTaskToCurrentDefault(get_collection.GetCallback()));
+  const auto& collection = get_collection.Take();
   ASSERT_OK(collection) << collection.status();
   ASSERT_THAT(
       collection.ValueOrDie().enqueuing_record_tallier,
@@ -156,11 +165,13 @@ TEST_F(MissiveArgsTest, ListeningForCollectionValuesUpdate) {
       std::move(fake_platform_features));
 
   // Get initial results
-  test::TestEvent<StatusOr<MissiveArgs::CollectionParameters>> get_collection;
+  base::test::TestFuture<StatusOr<MissiveArgs::CollectionParameters>>
+      get_collection;
   args.AsyncCall(&MissiveArgs::GetCollectionParameters)
-      .WithArgs(get_collection.cb());
+      .WithArgs(
+          base::BindPostTaskToCurrentDefault(get_collection.GetCallback()));
   {
-    const auto& collection = get_collection.result();
+    const auto& collection = get_collection.Take();
     ASSERT_OK(collection) << collection.status();
     ASSERT_THAT(collection.ValueOrDie().enqueuing_record_tallier,
                 Eq(base::TimeDeltaFromString(
@@ -181,13 +192,15 @@ TEST_F(MissiveArgsTest, ListeningForCollectionValuesUpdate) {
   }
 
   // Register update callback.
-  test::TestEvent<MissiveArgs::CollectionParameters> update_collection;
+  base::test::RepeatingTestFuture<MissiveArgs::CollectionParameters>
+      update_collection;
   {
     test::TestCallbackAutoWaiter waiter;
     args.AsyncCall(&MissiveArgs::OnCollectionParametersUpdate)
-        .WithArgs(update_collection.repeating_cb(),
-                  base::BindOnce(&test::TestCallbackAutoWaiter::Signal,
-                                 base::Unretained(&waiter)));
+        .WithArgs(
+            base::BindPostTaskToCurrentDefault(update_collection.GetCallback()),
+            base::BindOnce(&test::TestCallbackAutoWaiter::Signal,
+                           base::Unretained(&waiter)));
   }
 
   // Change parameters and refresh.
@@ -206,7 +219,7 @@ TEST_F(MissiveArgsTest, ListeningForCollectionValuesUpdate) {
   fake_platform_features_ptr->TriggerRefetchSignal();
 
   {
-    const auto& collection = update_collection.result();
+    const auto& collection = update_collection.Take();
     ASSERT_THAT(collection.enqueuing_record_tallier,
                 Eq(base::Milliseconds(10)));
     ASSERT_THAT(collection.cpu_collector_interval, Eq(base::Seconds(20)));
@@ -225,9 +238,10 @@ TEST_F(MissiveArgsTest, DefaultStorageValues) {
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
       std::move(fake_platform_features));
 
-  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
-  args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
-  const auto& storage = get_storage.result();
+  base::test::TestFuture<StatusOr<MissiveArgs::StorageParameters>> get_storage;
+  args.AsyncCall(&MissiveArgs::GetStorageParameters)
+      .WithArgs(base::BindPostTaskToCurrentDefault(get_storage.GetCallback()));
+  const auto& storage = get_storage.Take();
   ASSERT_OK(storage) << storage.status();
   ASSERT_THAT(storage.ValueOrDie().compression_enabled,
               Eq(MissiveArgs::kCompressionEnabledDefault));
@@ -261,9 +275,10 @@ TEST_F(MissiveArgsTest, ExplicitStorageValues) {
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
       std::move(fake_platform_features));
 
-  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
-  args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
-  const auto& storage = get_storage.result();
+  base::test::TestFuture<StatusOr<MissiveArgs::StorageParameters>> get_storage;
+  args.AsyncCall(&MissiveArgs::GetStorageParameters)
+      .WithArgs(base::BindPostTaskToCurrentDefault(get_storage.GetCallback()));
+  const auto& storage = get_storage.Take();
   ASSERT_OK(storage) << storage.status();
   ASSERT_FALSE(storage.ValueOrDie().compression_enabled);
   ASSERT_FALSE(storage.ValueOrDie().encryption_enabled);
@@ -292,9 +307,10 @@ TEST_F(MissiveArgsTest, BadStorageValues) {
       dbus_test_environment_.mock_bus()->GetDBusTaskRunner(),
       std::move(fake_platform_features));
 
-  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
-  args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
-  const auto& storage = get_storage.result();
+  base::test::TestFuture<StatusOr<MissiveArgs::StorageParameters>> get_storage;
+  args.AsyncCall(&MissiveArgs::GetStorageParameters)
+      .WithArgs(base::BindPostTaskToCurrentDefault(get_storage.GetCallback()));
+  const auto& storage = get_storage.Take();
   ASSERT_OK(storage) << storage.status();
   ASSERT_THAT(storage.ValueOrDie().compression_enabled,
               Eq(MissiveArgs::kCompressionEnabledDefault));
@@ -318,10 +334,11 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
       std::move(fake_platform_features));
 
   // Get initial results
-  test::TestEvent<StatusOr<MissiveArgs::StorageParameters>> get_storage;
-  args.AsyncCall(&MissiveArgs::GetStorageParameters).WithArgs(get_storage.cb());
+  base::test::TestFuture<StatusOr<MissiveArgs::StorageParameters>> get_storage;
+  args.AsyncCall(&MissiveArgs::GetStorageParameters)
+      .WithArgs(base::BindPostTaskToCurrentDefault(get_storage.GetCallback()));
   {
-    const auto& storage = get_storage.result();
+    const auto& storage = get_storage.Take();
     ASSERT_OK(storage) << storage.status();
     ASSERT_THAT(storage.ValueOrDie().compression_enabled,
                 Eq(MissiveArgs::kCompressionEnabledDefault));
@@ -334,13 +351,15 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
   }
 
   // Register update callback.
-  test::TestEvent<MissiveArgs::StorageParameters> update_storage;
+  base::test::RepeatingTestFuture<MissiveArgs::StorageParameters>
+      update_storage;
   {
     test::TestCallbackAutoWaiter waiter;
     args.AsyncCall(&MissiveArgs::OnStorageParametersUpdate)
-        .WithArgs(update_storage.repeating_cb(),
-                  base::BindOnce(&test::TestCallbackAutoWaiter::Signal,
-                                 base::Unretained(&waiter)));
+        .WithArgs(
+            base::BindPostTaskToCurrentDefault(update_storage.GetCallback()),
+            base::BindOnce(&test::TestCallbackAutoWaiter::Signal,
+                           base::Unretained(&waiter)));
   }
 
   // Change parameters.
@@ -361,7 +380,7 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
   fake_platform_features_ptr->TriggerRefetchSignal();
 
   {
-    const auto& storage = update_storage.result();
+    const auto& storage = update_storage.Take();
     ASSERT_FALSE(storage.compression_enabled);
     ASSERT_FALSE(storage.encryption_enabled);
     ASSERT_TRUE(storage.controlled_degradation);

@@ -25,6 +25,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/threading/sequence_bound.h>
 #include <base/time/time.h>
 #include <brillo/files/file_util.h>
@@ -632,10 +633,11 @@ class StorageQueueTest
   void CreateTestEncryptionModuleOrDie() {
     test_encryption_module_ =
         base::MakeRefCounted<test::TestEncryptionModule>(/*is_enabled=*/true);
-    test::TestEvent<Status> key_update_event;
-    test_encryption_module_->UpdateAsymmetricKey("DUMMY KEY", 0,
-                                                 key_update_event.cb());
-    const auto status = key_update_event.result();
+    base::test::TestFuture<Status> key_update_event;
+    test_encryption_module_->UpdateAsymmetricKey(
+        "DUMMY KEY", 0,
+        base::BindPostTaskToCurrentDefault(key_update_event.GetCallback()));
+    const auto status = key_update_event.Take();
     ASSERT_OK(status) << status;
   }
 
@@ -649,7 +651,7 @@ class StorageQueueTest
             return init_status;  // Do not allow initialization retries.
           })) {
     CreateTestEncryptionModuleOrDie();
-    test::TestEvent<StatusOr<scoped_refptr<StorageQueue>>>
+    base::test::TestFuture<StatusOr<scoped_refptr<StorageQueue>>>
         storage_queue_create_event;
     StorageQueue::Create(
         /*generation_guid=*/"GENERATION_GUID", options,
@@ -665,8 +667,10 @@ class StorageQueueTest
         test_encryption_module_,
         CompressionModule::Create(/*is_enabled=*/true, kCompressionThreshold,
                                   kCompressionType),
-        init_retry_cb, storage_queue_create_event.cb());
-    return storage_queue_create_event.result();
+        init_retry_cb,
+        base::BindPostTaskToCurrentDefault(
+            storage_queue_create_event.GetCallback()));
+    return storage_queue_create_event.Take();
   }
 
   void ResetTestStorageQueue() {
@@ -774,10 +778,11 @@ class StorageQueueTest
 
   Status WriteRecord(const Record record) {
     EXPECT_TRUE(storage_queue_) << "StorageQueue not created yet";
-    test::TestEvent<Status> write_event;
+    base::test::TestFuture<Status> write_event;
     LOG(ERROR) << "Write data='" << record.data() << "'";
-    storage_queue_->Write(std::move(record), write_event.cb());
-    return write_event.result();
+    storage_queue_->Write(std::move(record), base::BindPostTaskToCurrentDefault(
+                                                 write_event.GetCallback()));
+    return write_event.Take();
   }
 
   void WriteStringOrDie(base::StringPiece data) {
@@ -786,9 +791,10 @@ class StorageQueueTest
   }
 
   void FlushOrDie() {
-    test::TestEvent<Status> flush_event;
-    storage_queue_->Flush(flush_event.cb());
-    ASSERT_OK(flush_event.result());
+    base::test::TestFuture<Status> flush_event;
+    storage_queue_->Flush(
+        base::BindPostTaskToCurrentDefault(flush_event.GetCallback()));
+    ASSERT_OK(flush_event.Take());
   }
 
   void ConfirmOrDie(int64_t sequencing_id, bool force = false) {
@@ -799,9 +805,11 @@ class StorageQueueTest
     seq_info.set_sequencing_id(sequencing_id);
     seq_info.set_generation_id(last_upload_generation_id_.value());
     // Do not set priority!
-    test::TestEvent<Status> c;
-    storage_queue_->Confirm(std::move(seq_info), force, c.cb());
-    const Status c_result = c.result();
+    base::test::TestFuture<Status> c;
+    storage_queue_->Confirm(
+        std::move(seq_info), force,
+        base::BindPostTaskToCurrentDefault(c.GetCallback()));
+    const Status c_result = c.Take();
     ASSERT_OK(c_result) << c_result;
   }
 
@@ -1518,13 +1526,14 @@ TEST_P(StorageQueueTest, WriteAndUploadWithBadConfirmation) {
   }
 
   // Confirm #0 with bad generation.
-  test::TestEvent<Status> c;
+  base::test::TestFuture<Status> c;
   SequenceInformation seq_info;
   seq_info.set_sequencing_id(/*sequencing_id=*/0);
   // Do not set priority and generation!
   LOG(ERROR) << "Bad confirm seq=" << seq_info.sequencing_id();
-  storage_queue_->Confirm(std::move(seq_info), /*force=*/false, c.cb());
-  const Status c_result = c.result();
+  storage_queue_->Confirm(std::move(seq_info), /*force=*/false,
+                          base::BindPostTaskToCurrentDefault(c.GetCallback()));
+  const Status c_result = c.Take();
   ASSERT_FALSE(c_result.ok()) << c_result;
 }
 
@@ -2377,10 +2386,11 @@ TEST_P(StorageQueueTest, WrappedRecordWithInsufficientMemoryWithRetry) {
   if (!dm_token_.empty()) {
     record.set_dm_token(dm_token_);
   }
-  test::TestEvent<Status> write_event;
+  base::test::TestFuture<Status> write_event;
   LOG(ERROR) << "Write data='" << record.data() << "'";
-  storage_queue_->Write(std::move(record), write_event.cb());
-  Status write_result = write_event.result();
+  storage_queue_->Write(std::move(record), base::BindPostTaskToCurrentDefault(
+                                               write_event.GetCallback()));
+  Status write_result = write_event.Take();
   EXPECT_OK(write_result) << write_result;
   EXPECT_THAT(attempts, Eq(kAttempts));
   task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
@@ -2413,10 +2423,11 @@ TEST_P(StorageQueueTest, WrappedRecordWithInsufficientMemoryWithFailure) {
   if (!dm_token_.empty()) {
     record.set_dm_token(dm_token_);
   }
-  test::TestEvent<Status> write_event;
+  base::test::TestFuture<Status> write_event;
   LOG(ERROR) << "Write data='" << record.data() << "'";
-  storage_queue_->Write(std::move(record), write_event.cb());
-  Status write_result = write_event.result();
+  storage_queue_->Write(std::move(record), base::BindPostTaskToCurrentDefault(
+                                               write_event.GetCallback()));
+  Status write_result = write_event.Take();
   EXPECT_FALSE(write_result.ok());
   EXPECT_EQ(write_result.error_code(), error::RESOURCE_EXHAUSTED);
   task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
@@ -2454,10 +2465,11 @@ TEST_P(StorageQueueTest, EncryptedRecordWithInsufficientMemoryWithRetry) {
   if (!dm_token_.empty()) {
     record.set_dm_token(dm_token_);
   }
-  test::TestEvent<Status> write_event;
+  base::test::TestFuture<Status> write_event;
   LOG(ERROR) << "Write data='" << record.data() << "'";
-  storage_queue_->Write(std::move(record), write_event.cb());
-  Status write_result = write_event.result();
+  storage_queue_->Write(std::move(record), base::BindPostTaskToCurrentDefault(
+                                               write_event.GetCallback()));
+  Status write_result = write_event.Take();
   EXPECT_OK(write_result) << write_result;
   EXPECT_THAT(attempts, Eq(kAttempts));
   task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
@@ -2491,10 +2503,11 @@ TEST_P(StorageQueueTest, EncryptedRecordWithInsufficientMemoryWithFailure) {
   if (!dm_token_.empty()) {
     record.set_dm_token(dm_token_);
   }
-  test::TestEvent<Status> write_event;
+  base::test::TestFuture<Status> write_event;
   LOG(ERROR) << "Write data='" << record.data() << "'";
-  storage_queue_->Write(std::move(record), write_event.cb());
-  Status write_result = write_event.result();
+  storage_queue_->Write(std::move(record), base::BindPostTaskToCurrentDefault(
+                                               write_event.GetCallback()));
+  Status write_result = write_event.Take();
   EXPECT_FALSE(write_result.ok());
   EXPECT_EQ(write_result.error_code(), error::RESOURCE_EXHAUSTED);
   task_environment_.RunUntilIdle();  // For asynchronous UMA upload.

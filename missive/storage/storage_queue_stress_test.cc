@@ -16,9 +16,11 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <base/thread_annotations.h>
 #include <base/time/time.h>
 #include <crypto/sha2.h>
@@ -158,11 +160,12 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
     ASSERT_FALSE(storage_queue_) << "StorageQueue already assigned";
     auto test_encryption_module =
         base::MakeRefCounted<test::TestEncryptionModule>(/*is_enabled=*/true);
-    test::TestEvent<Status> key_update_event;
-    test_encryption_module->UpdateAsymmetricKey("DUMMY KEY", 0,
-                                                key_update_event.cb());
-    ASSERT_OK(key_update_event.result());
-    test::TestEvent<StatusOr<scoped_refptr<StorageQueue>>>
+    base::test::TestFuture<Status> key_update_event;
+    test_encryption_module->UpdateAsymmetricKey(
+        "DUMMY KEY", 0,
+        base::BindPostTaskToCurrentDefault(key_update_event.GetCallback()));
+    ASSERT_OK(key_update_event.Take());
+    base::test::TestFuture<StatusOr<scoped_refptr<StorageQueue>>>
         storage_queue_create_event;
     StorageQueue::Create(
         /*generation_guid=*/"GENERATION_GUID", options,
@@ -181,9 +184,10 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
                                 -> StatusOr<base::TimeDelta> {
           return init_status;  // Do not allow initialization retries.
         }),
-        storage_queue_create_event.cb());
+        base::BindPostTaskToCurrentDefault(
+            storage_queue_create_event.GetCallback()));
     StatusOr<scoped_refptr<StorageQueue>> storage_queue_result =
-        storage_queue_create_event.result();
+        storage_queue_create_event.Take();
     ASSERT_OK(storage_queue_result) << "Failed to create StorageQueue, error="
                                     << storage_queue_result.status();
     storage_queue_ = std::move(storage_queue_result.ValueOrDie());
@@ -237,9 +241,10 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
   }
 
   void FlushOrDie() {
-    test::TestEvent<Status> flush_event;
-    storage_queue_->Flush(flush_event.cb());
-    ASSERT_OK(flush_event.result());
+    base::test::TestFuture<Status> flush_event;
+    storage_queue_->Flush(
+        base::BindPostTaskToCurrentDefault(flush_event.GetCallback()));
+    ASSERT_OK(flush_event.Take());
   }
 
   base::test::TaskEnvironment task_environment_{
