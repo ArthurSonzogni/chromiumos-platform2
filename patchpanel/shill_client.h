@@ -153,7 +153,8 @@ class ShillClient {
   // DBus path as an argument because the interface name becomes ambiguous for
   // multiplexed Cellular interfaces.
   virtual bool GetDeviceProperties(const std::string& ifname, Device* output);
-  bool GetDeviceProperties(const dbus::ObjectPath& device_path, Device* output);
+  virtual bool GetDeviceProperties(const dbus::ObjectPath& device_path,
+                                   Device* output);
 
   // Returns the cached interface name of the current default logical network;
   // does not initiate a property fetch.
@@ -243,9 +244,6 @@ class ShillClient {
   // Device DBus object paths to interface names. Network interfaces of VPNs are
   // not included.
   std::map<dbus::ObjectPath, std::string> device_ifnames_;
-  // Tracks all physical network interfaces managed by shill and maps shill
-  // Device DBus object paths to their IPConfig objects.
-  std::map<dbus::ObjectPath, IPConfig> device_ipconfigs_;
   // Sets of shill Device Dbus object path for all the shill physical Devices
   // seen so far. Unlike |devices_|, entries in this set will never be
   // removed during the lifetime of this class. We maintain this set mainly for

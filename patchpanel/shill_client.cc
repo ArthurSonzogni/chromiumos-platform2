@@ -311,7 +311,6 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
   for (const auto& [d, ifname] : device_ifnames_) {
     if (!base::Contains(current_devices, d)) {
       removed.push_back(ifname);
-      device_ipconfigs_.erase(d);
       devices_.erase(d);
     }
   }
@@ -562,47 +561,46 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
   if (property_name != shill::kIPConfigsProperty)
     return;
 
-  const auto& it = device_ifnames_.find(device_path);
-  if (it == device_ifnames_.end()) {
-    LOG(WARNING) << "Failed to obtain interface name for shill Device "
-                 << device_path.value();
+  const auto& device_it = devices_.find(device_path);
+  if (device_it == devices_.end()) {
+    LOG(WARNING) << "Cannot update " << property_name
+                 << " property for unknown Device " << device_path.value();
     return;
   }
+
+  IPConfig old_ip_config = device_it->second.ipconfig;
 
   // Refresh all properties at once.
-  if (!GetDeviceProperties(device_path, &devices_[device_path])) {
+  if (!GetDeviceProperties(device_path, &device_it->second)) {
     LOG(ERROR) << "Failed to update properties of Device "
                << device_path.value();
-  }
-
-  const IPConfig& ipconfig =
-      ParseIPConfigsProperty(device_path, property_value);
-  const auto& old_ipconfig_it = device_ipconfigs_.find(device_path);
-  if (old_ipconfig_it != device_ipconfigs_.end() &&
-      old_ipconfig_it->second == ipconfig) {
-    // There is no IPConfig change, no need to run the handlers.
     return;
   }
-  LOG(INFO) << "[" << device_path.value()
-            << "]: IPConfig changed: " << ipconfig;
-  auto old_ipconfig = old_ipconfig_it != device_ipconfigs_.end()
-                          ? old_ipconfig_it->second
-                          : IPConfig{};
-  device_ipconfigs_[device_path] = ipconfig;
 
-  for (const auto& handler : ipconfigs_handlers_)
-    handler.Run(it->second, ipconfig);
+  // Do not run the IPConfigsChangeHandler and IPv6NetworkChangeHandler
+  // callbacks if there is no IPConfig change.
+  const IPConfig& new_ip_config = device_it->second.ipconfig;
+  if (old_ip_config == new_ip_config) {
+    return;
+  }
+
+  LOG(INFO) << "[" << device_path.value()
+            << "]: IPConfig changed: " << new_ip_config;
+  for (const auto& handler : ipconfigs_handlers_) {
+    handler.Run(device_it->second.ifname, new_ip_config);
+  }
 
   // Compares if the new IPv6 network is the same as the old one by checking
   // its prefix.
-  if (old_ipconfig.ipv6_prefix_length == ipconfig.ipv6_prefix_length &&
-      IsIPv6PrefixEqual(StringToIPv6Address(old_ipconfig.ipv6_address),
-                        StringToIPv6Address(ipconfig.ipv6_address),
-                        ipconfig.ipv6_prefix_length)) {
+  if (old_ip_config.ipv6_prefix_length == new_ip_config.ipv6_prefix_length &&
+      IsIPv6PrefixEqual(StringToIPv6Address(old_ip_config.ipv6_address),
+                        StringToIPv6Address(new_ip_config.ipv6_address),
+                        new_ip_config.ipv6_prefix_length)) {
     return;
   }
-  for (const auto& handler : ipv6_network_handlers_)
-    handler.Run(it->second, ipconfig.ipv6_address);
+  for (const auto& handler : ipv6_network_handlers_) {
+    handler.Run(device_it->second.ifname, new_ip_config.ipv6_address);
+  }
 }
 
 std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev) {

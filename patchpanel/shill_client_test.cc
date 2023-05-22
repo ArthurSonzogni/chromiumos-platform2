@@ -34,6 +34,8 @@ class ShillClientTest : public testing::Test {
         &ShillClientTest::DevicesChangedHandler, base::Unretained(this)));
     client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
         &ShillClientTest::IPConfigsChangedHandler, base::Unretained(this)));
+    client_->RegisterIPv6NetworkChangedHandler(base::BindRepeating(
+        &ShillClientTest::IPv6NetworkChangedHandler, base::Unretained(this)));
     default_logical_ifname_.clear();
     added_.clear();
     removed_.clear();
@@ -62,6 +64,12 @@ class ShillClientTest : public testing::Test {
     ipconfig_change_calls_.emplace_back(std::make_pair(device, ipconfig));
   }
 
+  void IPv6NetworkChangedHandler(const std::string& device,
+                                 const std::string& ipv6_address) {
+    ipv6_network_change_calls_.emplace_back(
+        std::make_pair(device, ipv6_address));
+  }
+
  protected:
   std::string default_logical_ifname_;
   std::string default_physical_ifname_;
@@ -69,6 +77,7 @@ class ShillClientTest : public testing::Test {
   std::vector<std::string> removed_;
   std::vector<std::pair<std::string, ShillClient::IPConfig>>
       ipconfig_change_calls_;
+  std::vector<std::pair<std::string, std::string>> ipv6_network_change_calls_;
   std::unique_ptr<FakeShillClient> client_;
   std::unique_ptr<FakeShillClientHelper> helper_;
 };
@@ -223,24 +232,159 @@ TEST_F(ShillClientTest, ListenToDeviceChangeSignalOnNewDevices) {
 }
 
 TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
-  // Adds a device.
+  // Adds a fake WiFi device.
   dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
+  ShillClient::Device wlan_dev;
+  wlan_dev.type = ShillClient::Device::Type::kWifi;
+  wlan_dev.ifindex = 1;
+  wlan_dev.ifname = "wlan0";
+  wlan_dev.service_path = "/service/1";
+  wlan_dev.ipconfig.ipv4_prefix_length = 24;
+  wlan_dev.ipconfig.ipv4_address = "192.168.10.48";
+  wlan_dev.ipconfig.ipv4_gateway = "192.168.10.1";
+  client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
   std::vector<dbus::ObjectPath> devices = {wlan0_path};
   auto devices_value = brillo::Any(devices);
   client_->SetIfname("/device/wlan0", "wlan0");
+
+  // The device will first appear before it acquires a new IP configuration.
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, devices_value);
+
+  // Spurious shill::kIPConfigsProperty update with no configuration change,
+  // listeners are not triggered.
+  client_->NotifyDevicePropertyChange(wlan0_path, shill::kIPConfigsProperty,
+                                      brillo::Any());
+  ASSERT_TRUE(ipconfig_change_calls_.empty());
+
+  // Update IP configuration
+  wlan_dev.ipconfig.ipv4_dns_addresses = {"1.1.1.1"};
+  client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
+
+  // A shill::kIPConfigsProperty update triggers listeners.
   client_->NotifyDevicePropertyChange(wlan0_path, shill::kIPConfigsProperty,
                                       brillo::Any());
   ASSERT_EQ(ipconfig_change_calls_.size(), 1u);
   EXPECT_EQ(ipconfig_change_calls_.back().first, "wlan0");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv4_prefix_length, 24);
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv4_address, "192.168.10.48");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv4_gateway, "192.168.10.1");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv4_dns_addresses,
+            std::vector<std::string>({"1.1.1.1"}));
 
-  // Removes the device and adds it again.
-  client_->NotifyManagerPropertyChange(shill::kDevicesProperty, brillo::Any());
-  client_->NotifyManagerPropertyChange(shill::kDevicesProperty, devices_value);
+  // Removes the device. The device will first lose its IP configuration before
+  // disappearing.
+  ShillClient::Device disconnected_dev = wlan_dev;
+  disconnected_dev.ipconfig = {};
+  client_->SetFakeDeviceProperties(wlan0_path, disconnected_dev);
   client_->NotifyDevicePropertyChange(wlan0_path, shill::kIPConfigsProperty,
                                       brillo::Any());
+  client_->NotifyManagerPropertyChange(shill::kDevicesProperty, brillo::Any());
   ASSERT_EQ(ipconfig_change_calls_.size(), 2u);
   EXPECT_EQ(ipconfig_change_calls_.back().first, "wlan0");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv4_prefix_length, 0);
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv4_address, "");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv4_gateway, "");
+  EXPECT_TRUE(ipconfig_change_calls_.back().second.ipv4_dns_addresses.empty());
+
+  // Adds the device again. The device will first appear before it acquires a
+  // new IP configuration.
+  client_->NotifyManagerPropertyChange(shill::kDevicesProperty, devices_value);
+  client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
+  client_->NotifyDevicePropertyChange(wlan0_path, shill::kIPConfigsProperty,
+                                      brillo::Any());
+  ASSERT_EQ(ipconfig_change_calls_.size(), 3u);
+  EXPECT_EQ(ipconfig_change_calls_.back().first, "wlan0");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv4_prefix_length, 24);
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv4_address, "192.168.10.48");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv4_gateway, "192.168.10.1");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv4_dns_addresses,
+            std::vector<std::string>({"1.1.1.1"}));
+}
+
+TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
+  // Adds a fake WiFi device.
+  dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
+  ShillClient::Device wlan_dev;
+  wlan_dev.type = ShillClient::Device::Type::kWifi;
+  wlan_dev.ifindex = 1;
+  wlan_dev.ifname = "wlan0";
+  wlan_dev.service_path = "/service/1";
+  wlan_dev.ipconfig.ipv6_prefix_length = 64;
+  wlan_dev.ipconfig.ipv6_address = "2001:db8::aabb:ccdd:1122:eeff";
+  wlan_dev.ipconfig.ipv6_gateway = "fe80::abcd:1234";
+  wlan_dev.ipconfig.ipv6_dns_addresses = {"2001:db8::1111"};
+  std::vector<dbus::ObjectPath> devices = {wlan0_path};
+  auto devices_value = brillo::Any(devices);
+  client_->SetIfname("/device/wlan0", "wlan0");
+
+  // The device will first appear before it acquires a new IP configuration. The
+  // listeners are triggered
+  client_->NotifyManagerPropertyChange(shill::kDevicesProperty, devices_value);
+  client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
+  client_->NotifyDevicePropertyChange(wlan0_path, shill::kIPConfigsProperty,
+                                      brillo::Any());
+  ASSERT_EQ(ipconfig_change_calls_.size(), 1u);
+  EXPECT_EQ(ipconfig_change_calls_.back().first, "wlan0");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv6_prefix_length, 64);
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv6_address,
+            "2001:db8::aabb:ccdd:1122:eeff");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv6_gateway,
+            "fe80::abcd:1234");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv6_dns_addresses,
+            std::vector<std::string>({"2001:db8::1111"}));
+  ASSERT_EQ(ipv6_network_change_calls_.size(), 1u);
+  EXPECT_EQ(ipv6_network_change_calls_.back().first, "wlan0");
+  EXPECT_EQ(ipv6_network_change_calls_.back().second,
+            "2001:db8::aabb:ccdd:1122:eeff");
+
+  // Removes the device. The device will first lose its IP configuration before
+  // disappearing.
+  ShillClient::Device disconnected_dev = wlan_dev;
+  disconnected_dev.ipconfig = {};
+  client_->SetFakeDeviceProperties(wlan0_path, disconnected_dev);
+  client_->NotifyDevicePropertyChange(wlan0_path, shill::kIPConfigsProperty,
+                                      brillo::Any());
+  client_->NotifyManagerPropertyChange(shill::kDevicesProperty, brillo::Any());
+  ASSERT_EQ(ipconfig_change_calls_.size(), 2u);
+  EXPECT_EQ(ipconfig_change_calls_.back().first, "wlan0");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv6_prefix_length, 0);
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv6_address, "");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv6_gateway, "");
+  EXPECT_TRUE(ipconfig_change_calls_.back().second.ipv6_dns_addresses.empty());
+  ASSERT_EQ(ipv6_network_change_calls_.size(), 2u);
+  EXPECT_EQ(ipv6_network_change_calls_.back().first, "wlan0");
+  EXPECT_EQ(ipv6_network_change_calls_.back().second, "");
+
+  // Adds the device again. The device will first appear before it acquires a
+  // new IP configuration, without DNS.
+  wlan_dev.ipconfig.ipv6_dns_addresses = {};
+  client_->NotifyManagerPropertyChange(shill::kDevicesProperty, devices_value);
+  client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
+  client_->NotifyDevicePropertyChange(wlan0_path, shill::kIPConfigsProperty,
+                                      brillo::Any());
+  ASSERT_EQ(ipconfig_change_calls_.size(), 3u);
+  EXPECT_EQ(ipconfig_change_calls_.back().first, "wlan0");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv6_prefix_length, 64);
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv6_address,
+            "2001:db8::aabb:ccdd:1122:eeff");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv6_gateway,
+            "fe80::abcd:1234");
+  EXPECT_TRUE(ipconfig_change_calls_.back().second.ipv6_dns_addresses.empty());
+  ASSERT_EQ(ipv6_network_change_calls_.size(), 3u);
+  EXPECT_EQ(ipv6_network_change_calls_.back().first, "wlan0");
+  EXPECT_EQ(ipv6_network_change_calls_.back().second,
+            "2001:db8::aabb:ccdd:1122:eeff");
+
+  // Adds IPv6 DNS, IPv6NetworkChangedHandler is not triggered.
+  wlan_dev.ipconfig.ipv6_dns_addresses = {"2001:db8::1111"};
+  client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
+  client_->NotifyDevicePropertyChange(wlan0_path, shill::kIPConfigsProperty,
+                                      brillo::Any());
+  ASSERT_EQ(ipconfig_change_calls_.size(), 4u);
+  EXPECT_EQ(ipconfig_change_calls_.back().first, "wlan0");
+  EXPECT_EQ(ipconfig_change_calls_.back().second.ipv6_dns_addresses,
+            std::vector<std::string>({"2001:db8::1111"}));
+  ASSERT_EQ(ipv6_network_change_calls_.size(), 3u);
 }
 
 }  // namespace

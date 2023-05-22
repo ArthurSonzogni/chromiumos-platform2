@@ -31,6 +31,8 @@ using testing::Return;
 
 namespace patchpanel {
 
+// TODO(b/273741099): Migrate all interface name arguments to device object path
+// arguments in this class.
 class FakeShillClient : public ShillClient {
  public:
   explicit FakeShillClient(scoped_refptr<dbus::Bus> bus, System* system)
@@ -67,8 +69,9 @@ class FakeShillClient : public ShillClient {
     return interface_names_[device_path.value()];
   }
 
-  void SetFakeDeviceProperties(const std::string& name, const Device& device) {
-    fake_device_properties_[name] = device;
+  void SetFakeDeviceProperties(const dbus::ObjectPath& device_path,
+                               const Device& device) {
+    fake_device_properties_[device_path] = device;
   }
 
   void NotifyManagerPropertyChange(const std::string& name,
@@ -82,15 +85,21 @@ class FakeShillClient : public ShillClient {
     OnDevicePropertyChange(device_path, name, value);
   }
 
-  bool GetDeviceProperties(const std::string& device, Device* output) override {
-    get_device_properties_calls_.insert(device);
-    if (fake_device_properties_.find(device) != fake_device_properties_.end()) {
-      *output = fake_device_properties_[device];
+  bool GetDeviceProperties(const std::string& ifname, Device* output) override {
+    return GetDeviceProperties(dbus::ObjectPath("/device/" + ifname), output);
+  }
+
+  bool GetDeviceProperties(const dbus::ObjectPath& device_path,
+                           Device* output) override {
+    get_device_properties_calls_.insert(device_path);
+    if (fake_device_properties_.find(device_path) !=
+        fake_device_properties_.end()) {
+      *output = fake_device_properties_[device_path];
     }
     return true;
   }
 
-  const std::set<std::string>& get_device_properties_calls() {
+  const std::set<dbus::ObjectPath>& get_device_properties_calls() {
     return get_device_properties_calls_;
   }
 
@@ -98,8 +107,8 @@ class FakeShillClient : public ShillClient {
   std::map<std::string, std::string> interface_names_;
   std::string fake_default_logical_ifname_;
   std::string fake_default_physical_ifname_;
-  std::map<std::string, Device> fake_device_properties_;
-  std::set<std::string> get_device_properties_calls_;
+  std::map<dbus::ObjectPath, Device> fake_device_properties_;
+  std::set<dbus::ObjectPath> get_device_properties_calls_;
 };
 
 class FakeShillClientHelper {

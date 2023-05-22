@@ -461,11 +461,11 @@ TEST_F(NetworkMonitorServiceTest, CallGetDevicePropertiesOnNewDevice) {
   devices.emplace_back(dbus::ObjectPath("/device/wlan0"));
   fake_shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty,
                                                   brillo::Any(devices));
-  const std::set<std::string>& calls =
+  const std::set<dbus::ObjectPath>& calls =
       fake_shill_client_->get_device_properties_calls();
   EXPECT_EQ(calls.size(), 2);
-  EXPECT_NE(calls.find("eth0"), calls.end());
-  EXPECT_NE(calls.find("wlan0"), calls.end());
+  EXPECT_NE(calls.find(dbus::ObjectPath("/device/eth0")), calls.end());
+  EXPECT_NE(calls.find(dbus::ObjectPath("/device/wlan0")), calls.end());
 }
 
 }  // namespace patchpanel

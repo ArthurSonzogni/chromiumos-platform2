@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -55,11 +56,13 @@ class GuestIPv6ServiceTest : public ::testing::Test {
   void SetUp() override {
     shill_client_ = shill_helper_.FakeClient();
     shill_client_->SetFakeDeviceProperties(
-        "up1", ShillClient::Device{
-                   ShillClient::Device::Type::kEthernet, 1, "up1", "", {}});
+        dbus::ObjectPath("/device/up1"),
+        ShillClient::Device{
+            ShillClient::Device::Type::kEthernet, 1, "up1", "", {}});
     shill_client_->SetFakeDeviceProperties(
-        "up2", ShillClient::Device{
-                   ShillClient::Device::Type::kEthernet, 2, "up2", "", {}});
+        dbus::ObjectPath("/device/up2"),
+        ShillClient::Device{
+            ShillClient::Device::Type::kEthernet, 2, "up2", "", {}});
 
     system_ = std::make_unique<FakeSystem>();
     datapath_ = std::make_unique<MockDatapath>();
