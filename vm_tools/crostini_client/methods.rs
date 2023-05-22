@@ -100,7 +100,6 @@ enum ChromeOSError {
         reason: String,
     },
     FailedUpdateContainerDevices(String),
-    FailedAggressiveBalloon(String),
     InvalidEmail,
     InvalidExportPath,
     InvalidImportPath,
@@ -213,9 +212,6 @@ impl fmt::Display for ChromeOSError {
             }
             FailedUpdateContainerDevices(reason) => {
                 write!(f, "Failed to update container devices: {}", reason)
-            }
-            FailedAggressiveBalloon(reason) => {
-                write!(f, "Failed to update aggressive balloon: {}", reason)
             }
             InvalidEmail => write!(f, "the active session has an invalid email address"),
             InvalidExportPath => write!(f, "disk export path is invalid"),
@@ -2601,34 +2597,5 @@ impl Methods {
             ProtoMessage::parse_from_bytes(&proxy.get_vm_logs(request.write_to_bytes()?)?)?;
 
         Ok(response.log)
-    }
-
-    pub fn aggressive_balloon(
-        &mut self,
-        vm_name: &str,
-        user_id_hash: &str,
-        enable: bool,
-    ) -> Result<(), Box<dyn Error>> {
-        self.start_vm_infrastructure(user_id_hash)?;
-        let mut request = AggressiveBalloonRequest::new();
-        request.owner_id = user_id_hash.to_owned();
-        request.name = vm_name.to_owned();
-        request.enable = enable;
-
-        let response: AggressiveBalloonResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                AGGRESSIVE_BALLOON_METHOD,
-            )?,
-            &request,
-        )?;
-
-        if response.success {
-            Ok(())
-        } else {
-            Err(FailedAggressiveBalloon(response.failure_reason).into())
-        }
     }
 }

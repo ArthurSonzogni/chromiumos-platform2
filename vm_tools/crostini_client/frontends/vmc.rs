@@ -33,7 +33,6 @@ enum VmcError {
     ExpectedU8Device,
     ExpectedU8Port,
     ExpectedUUID,
-    ExpectedVm,
     ExpectedVmAndContainer,
     ExpectedVmAndFileName,
     ExpectedVmAndMaybeFileName,
@@ -43,7 +42,6 @@ enum VmcError {
     ExpectedVmDeviceUpdates,
     ExpectedVmPort,
     UnexpectedSizeWithPluginVm,
-    InvalidCommand(String),
     InvalidPath(std::ffi::OsString),
     InvalidVmDevice(String),
     InvalidVmDeviceAction(String),
@@ -122,7 +120,6 @@ impl fmt::Display for VmcError {
             ExpectedName => write!(f, "expected <name>"),
             ExpectedPath => write!(f, "expected <path>"),
             ExpectedSize => write!(f, "expected <size>"),
-            ExpectedVm => write!(f, "expected <vm name>"),
             ExpectedVmAndContainer => write!(
                 f,
                 "expected <vm name> <container name> [ <image server> <image alias> ]"
@@ -149,7 +146,6 @@ impl fmt::Display for VmcError {
             UnexpectedSizeWithPluginVm => {
                 write!(f, "unexpected --size parameter; -p doesn't support --size")
             }
-            InvalidCommand(command) => write!(f, "invalid command: {}", command),
             InvalidPath(path) => write!(f, "invalid path: {:?}", path),
             InvalidVmDevice(v) => write!(f, "invalid vm device {}", v),
             InvalidVmDeviceAction(a) => write!(f, "invalid vm device action {}", a),
@@ -1011,24 +1007,6 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         println!("Problem report has been sent. Report ID: {}", report_id);
         Ok(())
     }
-
-    fn aggressive_balloon(&mut self) -> VmcResult {
-        if self.args.len() != 2 {
-            return Err(ExpectedVm.into());
-        }
-        let vm_name = self.args[1];
-        let user_id_hash = get_user_hash(self.environ)?;
-        let enable = match self.args[0] {
-            "enable" => true,
-            "disable" => false,
-            command => return Err(InvalidCommand(command.to_string()).into()),
-        };
-
-        try_command!(self
-            .methods
-            .aggressive_balloon(vm_name, &user_id_hash, enable,));
-        Ok(())
-    }
 }
 
 const USAGE: &str = r#"
@@ -1053,7 +1031,6 @@ const USAGE: &str = r#"
      usb-detach <vm name> <port> |
      usb-list <vm name> |
      pvm.send-problem-report [-n <vm name>] [-e <reporter's email>] <description of the problem> |
-     aggressive-balloon <enable/disable> <vm name> |
      --help | -h ]
 "#;
 
@@ -1116,7 +1093,6 @@ impl Frontend for Vmc {
             "usb-detach" => command.usb_detach(),
             "usb-list" => command.usb_list(),
             "pvm.send-problem-report" => command.pvm_send_problem_report(),
-            "aggressive-balloon" => command.aggressive_balloon(),
             _ => Err(UnknownSubcommand(command_name.to_owned()).into()),
         }
     }
@@ -1418,8 +1394,6 @@ mod tests {
                 "text",
                 "text2",
             ],
-            &["vmc", "aggressive-balloon", "enable", "termina"],
-            &["vmc", "aggressive-balloon", "disable", "termina"],
             &["vmc", "--help"],
             &["vmc", "-h"],
         ];
@@ -1521,15 +1495,6 @@ mod tests {
             &["vmc", "usb-list", "termina", "args"],
             &["vmc", "pvm.send-problem-report", "-e"],
             &["vmc", "pvm.send-problem-report", "-n"],
-            &["vmc", "aggressive-balloon", "enable"],
-            &["vmc", "aggressive-balloon", "invalid", "termina"],
-            &[
-                "vmc",
-                "aggressive-balloon",
-                "enable",
-                "termina",
-                "too_many_args",
-            ],
         ];
 
         let mut methods = mocked_methods();
