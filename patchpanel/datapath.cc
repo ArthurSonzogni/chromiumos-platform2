@@ -984,9 +984,15 @@ void Datapath::StopRoutingNamespace(const ConnectedNamespace& nsinfo) {
   StopRoutingDevice(nsinfo.outbound_ifname, nsinfo.host_ifname, nsinfo.source,
                     nsinfo.route_on_vpn);
   RemoveInterface(nsinfo.host_ifname);
-  DeleteIPv4Route(nsinfo.peer_subnet->AddressAtOffset(0),
-                  nsinfo.peer_subnet->BaseAddress(),
-                  Ipv4Netmask(nsinfo.peer_subnet->PrefixLength()));
+
+  const auto gateway =
+      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(0));
+  // nsinfo.peer_subnet->PrefixLength() must be a valid IPv4 prefix length, so
+  // CreateFromAddressAndPrefix() must return a valid IPv4CIDR value.
+  const auto subnet_cidr = *IPv4CIDR::CreateFromAddressAndPrefix(
+      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->BaseAddress()),
+      nsinfo.peer_subnet->PrefixLength());
+  DeleteIPv4Route(gateway, subnet_cidr);
   NetnsDeleteName(nsinfo.netns_name);
 }
 
@@ -2123,14 +2129,13 @@ bool Datapath::AddIPv4Route(const IPv4Address& gateway_addr,
   return ModifyRtentry(SIOCADDRT, &route);
 }
 
-bool Datapath::DeleteIPv4Route(uint32_t gateway_addr,
-                               uint32_t addr,
-                               uint32_t netmask) {
+bool Datapath::DeleteIPv4Route(const IPv4Address& gateway_addr,
+                               const IPv4CIDR& subnet_cidr) {
   struct rtentry route;
   memset(&route, 0, sizeof(route));
   SetSockaddrIn(&route.rt_gateway, gateway_addr);
-  SetSockaddrIn(&route.rt_dst, addr & netmask);
-  SetSockaddrIn(&route.rt_genmask, netmask);
+  SetSockaddrIn(&route.rt_dst, subnet_cidr.GetPrefixAddress());
+  SetSockaddrIn(&route.rt_genmask, subnet_cidr.ToNetmask());
   route.rt_flags = RTF_UP | RTF_GATEWAY;
   return ModifyRtentry(SIOCDELRT, &route);
 }

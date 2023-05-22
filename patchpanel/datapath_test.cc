@@ -1501,8 +1501,8 @@ TEST(DatapathTest, AddIPv4Route) {
 
   datapath.AddIPv4Route(IPv4Address(192, 168, 1, 1),
                         *IPv4CIDR::CreateFromCIDRString("100.115.93.0/24"));
-  datapath.DeleteIPv4Route(Ipv4Addr(192, 168, 1, 1), Ipv4Addr(100, 115, 93, 0),
-                           Ipv4Addr(255, 255, 255, 0));
+  datapath.DeleteIPv4Route(IPv4Address(192, 168, 1, 1),
+                           *IPv4CIDR::CreateFromCIDRString("100.115.93.0/24"));
   datapath.AddIPv4Route("eth0", Ipv4Addr(100, 115, 92, 8),
                         Ipv4Addr(255, 255, 255, 252));
   datapath.DeleteIPv4Route("eth0", Ipv4Addr(100, 115, 92, 8),
