@@ -92,6 +92,16 @@ libsegmentation::DeviceInfo_FeatureLevel HwComplianceVersionToFeatureLevel(
   }
 }
 
+libsegmentation::DeviceInfo_ScopeLevel HwComplianceVersionToScopeLevel(
+    bool is_chassis_x_branded) {
+  if (is_chassis_x_branded)
+    return libsegmentation::DeviceInfo_ScopeLevel::
+        DeviceInfo_ScopeLevel_SCOPE_LEVEL_1;
+
+  return libsegmentation::DeviceInfo_ScopeLevel::
+      DeviceInfo_ScopeLevel_SCOPE_LEVEL_0;
+}
+
 // Returns the device information parsed from the output of the GSC tool binary
 // on the device.
 std::optional<libsegmentation::DeviceInfo> GetDeviceInfoFromGSC() {
@@ -137,25 +147,29 @@ std::optional<libsegmentation::DeviceInfo> GetDeviceInfoFromGSC() {
     return std::nullopt;
   }
 
-  bool chassis_x_branded = gsc_tool_output.value().chassis_x_branded;
+  bool is_chassis_x_branded = gsc_tool_output.value().chassis_x_branded;
   int32_t hw_compliance_version = gsc_tool_output.value().hw_compliance_version;
 
-  if (chassis_x_branded || hw_compliance_version > 0) {
-    if (chassis_x_branded) {
+  if (is_chassis_x_branded || hw_compliance_version > 0) {
+    if (is_chassis_x_branded) {
       device_info.set_feature_level(
           HwComplianceVersionToFeatureLevel(hw_compliance_version));
+      device_info.set_scope_level(
+          HwComplianceVersionToScopeLevel(is_chassis_x_branded));
     } else {
       // TODO(abhishekbh): Read from PRODUCT_ALLOWLIST to determine the feature
       // level.
       device_info.set_feature_level(
           libsegmentation::DeviceInfo_FeatureLevel::
               DeviceInfo_FeatureLevel_FEATURE_LEVEL_0);
+      device_info.set_scope_level(HwComplianceVersionToScopeLevel(false));
     }
   } else {
     // TODO(abhishekbh): Read from PRODUCT_COMPONENT_ALLOWLIST to determine the
     // feature level.
     device_info.set_feature_level(libsegmentation::DeviceInfo_FeatureLevel::
                                       DeviceInfo_FeatureLevel_FEATURE_LEVEL_0);
+    device_info.set_scope_level(HwComplianceVersionToScopeLevel(false));
   }
 
   return device_info;
