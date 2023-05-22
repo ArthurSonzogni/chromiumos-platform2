@@ -1,0 +1,50 @@
+// Copyright 2023 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+option optimize_for = LITE_RUNTIME;
+
+import "arc_attestation_blob.proto";
+
+package arc_attestation;
+
+// This protobuf file is used by the arc-attestation-cmd tool to print its
+// output in a manner that can be easily parsed by tast tests.
+
+message PrintableAndroidStatus {
+  // Refer to interface.h's AndroidStatus class for these 3 fields.
+  int32 exception = 1;
+  int32 error_code = 2;
+  string msg = 3;
+}
+
+message ProvisionCmdResult {
+  // Result of the provisioning.
+  PrintableAndroidStatus status = 1;
+}
+
+message GetCertChainCmdResult {
+  // Result of the GetDkCertChain() call.
+  PrintableAndroidStatus status = 1;
+
+  // The certs if the operation is successful.
+  repeated bytes certs = 2;
+}
+
+message SignCmdResult {
+  // Result of the GetDkCertChain() call.
+  PrintableAndroidStatus status = 1;
+
+  // Signature by DK.
+  bytes signature = 2;
+}
+
+message QuoteCrOSBlobCmdResult {
+  // Result of the GetDkCertChain() call.
+  PrintableAndroidStatus status = 1;
+
+  // The CrOS-specific blob.
+  CrOSSpecificBlob blob = 2;
+}

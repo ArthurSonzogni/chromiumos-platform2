@@ -6,6 +6,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":arc-attestation-cmd",
     ":install_libarc-attestation_headers",
     ":libarc-attestation",
   ]
@@ -20,6 +21,47 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
   ]
+}
+
+config("local_print_proto_include") {
+  # This config is used when any build target used the print_proto.
+  include_dirs = [ "${target_gen_dir}/.." ]
+}
+
+action("print_proto_library_system") {
+  dbus_proto_path = "${sysroot}/usr/include/chromeos/dbus/libarc_attestation"
+  script = "../libhwsec-foundation/utility/proto_print.py"
+  inputs = [ "${dbus_proto_path}/arc_attestation_blob.proto" ]
+  outputs = [ "${target_gen_dir}/common/print_arc_attestation_blob_proto.cc" ]
+  args = [
+           "--package-dir",
+           "libarc-attestation",
+           "--subdir",
+           "common",
+           "--proto-include-override",
+           "libarc_attestation/proto_bindings",
+           "--output-dir",
+           "${target_gen_dir}/common",
+         ] + inputs
+}
+
+action("print_proto_library_local") {
+  dbus_proto_path = rebase_path("common")
+  script = "../libhwsec-foundation/utility/proto_print.py"
+  inputs = [ "${dbus_proto_path}/arc_attestation_cmd.proto" ]
+  outputs = [ "${target_gen_dir}/common/print_arc_attestation_cmd_proto.cc" ]
+  args = [
+           "--package-dir",
+           "libarc-attestation",
+           "--subdir",
+           "common",
+           "--proto-include",
+           "${sysroot}/usr/include/chromeos/dbus/libarc_attestation",
+           "--proto-include-override",
+           "libarc-attestation",
+           "--output-dir",
+           "${target_gen_dir}/common",
+         ] + inputs
 }
 
 shared_library("libarc-attestation") {
@@ -50,8 +92,41 @@ install_config("install_libarc-attestation_headers") {
 
 executable("arc-attestation-cmd") {
   sources = [ "cmd_client/arc_attestation_cmd.cc" ]
-  configs += [ ":target_defaults" ]
+  sources += get_target_outputs(":print_proto_library_system")
+  sources += get_target_outputs(":print_proto_library_local")
+  configs += [
+    ":target_defaults",
+    ":local_proto_include",
+    ":local_print_proto_include",
+  ]
   install_path = "bin"
+  include_dirs = [ "${target_gen_dir}/.." ]
+  deps = [
+    ":arc_attestation_cmd_proto",
+    ":libarc-attestation",
+    ":print_proto_library_local",
+    ":print_proto_library_system",
+  ]
+  pkg_deps = [
+    "protobuf",
+    "system_api",
+  ]
+}
+
+config("local_proto_include") {
+  # This config is used when any build target used the local protobufs.
+  # The local protobuf used some other protos in system_api, so we'll need
+  # to fix the include path so that it builds correctly.
+  include_dirs = [ "${sysroot}/usr/include/libarc_attestation/proto_bindings/" ]
+}
+
+proto_library("arc_attestation_cmd_proto") {
+  proto_in_dir = "common"
+  proto_out_dir = "include/libarc-attestation/"
+  proto_lib_dirs =
+      [ "${sysroot}/usr/include/chromeos/dbus/libarc_attestation/" ]
+  sources = [ "${proto_in_dir}/arc_attestation_cmd.proto" ]
+  configs = [ ":local_proto_include" ]
 }
 
 if (use.test) {
