@@ -85,7 +85,8 @@ class MockDatapath : public Datapath {
               (override));
   MOCK_METHOD(bool,
               AddIPv4Route,
-              (uint32_t gw, uint32_t dst, uint32_t netmask),
+              (const net_base::IPv4Address& gateway_addr,
+               const net_base::IPv4CIDR& cidr),
               (override));
   MOCK_METHOD(bool,
               SetConntrackHelpers,

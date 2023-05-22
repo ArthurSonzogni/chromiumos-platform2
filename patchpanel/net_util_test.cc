@@ -223,12 +223,13 @@ TEST(IPv4, SetSockaddrIn) {
   struct sockaddr_storage sockaddr = {};
   std::ostringstream stream;
 
-  SetSockaddrIn((struct sockaddr*)&sockaddr, 0);
+  SetSockaddrIn((struct sockaddr*)&sockaddr, {});
   stream << sockaddr;
   EXPECT_EQ("{family: AF_INET, port: 0, addr: 0.0.0.0}", stream.str());
 
   stream.str("");
-  SetSockaddrIn((struct sockaddr*)&sockaddr, Ipv4Addr(192, 168, 1, 37));
+  SetSockaddrIn((struct sockaddr*)&sockaddr,
+                net_base::IPv4Address(192, 168, 1, 37));
   stream << sockaddr;
   EXPECT_EQ("{family: AF_INET, port: 0, addr: 192.168.1.37}", stream.str());
 }
@@ -396,9 +397,9 @@ TEST(PrettyPrint, Rtentry) {
       "null, rt_flags: 0}",
       stream.str());
 
-  SetSockaddrIn(&route.rt_dst, Ipv4Addr(100, 115, 92, 128));
-  SetSockaddrIn(&route.rt_genmask, Ipv4Addr(255, 255, 255, 252));
-  SetSockaddrIn(&route.rt_gateway, Ipv4Addr(192, 168, 1, 1));
+  SetSockaddrIn(&route.rt_dst, net_base::IPv4Address(100, 115, 92, 128));
+  SetSockaddrIn(&route.rt_genmask, net_base::IPv4Address(255, 255, 255, 252));
+  SetSockaddrIn(&route.rt_gateway, net_base::IPv4Address(192, 168, 1, 1));
   std::string rt_dev = "eth0";
   route.rt_dev = const_cast<char*>(rt_dev.c_str());
   route.rt_flags =

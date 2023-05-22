@@ -70,7 +70,7 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
 
   EXPECT_CALL(*datapath_, AddTAP("", _, _, "crosvm"))
       .WillOnce(Return("vmtap0"));
-  EXPECT_CALL(*datapath_, AddIPv4Route(_, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, AddIPv4Route).WillOnce(Return(true));
   EXPECT_CALL(*datapath_,
               StartRoutingDevice("", "vmtap0", _, TrafficSource::kCrosVM, true,
                                  IPv4Address()));
@@ -113,7 +113,7 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
 
   EXPECT_CALL(*datapath_, AddTAP("", _, _, "crosvm"))
       .WillOnce(Return("vmtap0"));
-  EXPECT_CALL(*datapath_, AddIPv4Route(_, _, _)).Times(0);
+  EXPECT_CALL(*datapath_, AddIPv4Route).Times(0);
   EXPECT_CALL(*datapath_,
               StartRoutingDevice("", "vmtap0", _, TrafficSource::kParallelsVM,
                                  true, IPv4Address()));
@@ -161,7 +161,7 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
       .WillOnce(Return("vmtap0"))
       .WillOnce(Return("vmtap1"))
       .WillOnce(Return("vmtap2"));
-  EXPECT_CALL(*datapath_, AddIPv4Route(_, _, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*datapath_, AddIPv4Route).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_,
               StartRoutingDevice("", "vmtap0", _, TrafficSource::kCrosVM, true,
                                  IPv4Address()));

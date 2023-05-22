@@ -103,7 +103,12 @@ BRILLO_EXPORT bool GenerateEUI64Address(in6_addr* address,
                                         const in6_addr& prefix,
                                         const MacAddress& mac);
 
+// TODO(b/283369026) Remove this function when all the IPv4 address are
+// represented by net_base::IPv4Address.
 BRILLO_EXPORT void SetSockaddrIn(struct sockaddr* sockaddr, uint32_t addr);
+
+BRILLO_EXPORT void SetSockaddrIn(struct sockaddr* sockaddr,
+                                 const net_base::IPv4Address& addr);
 
 BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
                                        const struct in_addr& addr);

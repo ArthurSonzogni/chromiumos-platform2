@@ -33,6 +33,7 @@ executable("mcastd") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libnet-base",
   ]
   if (use.fuzzer) {
     pkg_deps += [ "protobuf" ]

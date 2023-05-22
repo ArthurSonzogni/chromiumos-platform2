@@ -20,6 +20,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libnet-base",
     "system_api",
   ]
 }

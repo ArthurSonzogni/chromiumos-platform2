@@ -363,10 +363,9 @@ class Datapath {
                                  const std::string& ipv6_addr);
 
   // Adds (or deletes) a route to direct to |gateway_addr| the traffic destined
-  // to the subnet defined by |addr| and |netmask|.
-  virtual bool AddIPv4Route(uint32_t gateway_addr,
-                            uint32_t addr,
-                            uint32_t netmask);
+  // to the subnet defined by |subnet_cidr|.
+  virtual bool AddIPv4Route(const net_base::IPv4Address& gateway_addr,
+                            const net_base::IPv4CIDR& subnet_cidr);
   virtual bool DeleteIPv4Route(uint32_t gateway_addr,
                                uint32_t addr,
                                uint32_t netmask);

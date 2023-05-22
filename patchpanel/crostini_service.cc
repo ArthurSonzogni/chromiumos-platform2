@@ -190,9 +190,15 @@ std::unique_ptr<Device> CrostiniService::AddTAP(CrostiniService::VMType vm_type,
 
   if (lxd_subnet) {
     // Setup lxd route for the container using the VM as a gateway.
-    if (!datapath_->AddIPv4Route(ipv4_subnet->AddressAtOffset(1),
-                                 lxd_subnet->AddressAtOffset(0),
-                                 lxd_subnet->Netmask())) {
+    // lxd_subnet->PrefixLength() must be a valid IPv4 prefix length, so
+    // CreateFromAddressAndPrefix() must return a valid IPv4CIDR value.
+    const auto lxd_subnet_cidr =
+        *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+            ConvertUint32ToIPv4Address(lxd_subnet->AddressAtOffset(0)),
+            lxd_subnet->PrefixLength());
+    if (!datapath_->AddIPv4Route(
+            ConvertUint32ToIPv4Address(ipv4_subnet->AddressAtOffset(1)),
+            lxd_subnet_cidr)) {
       LOG(ERROR) << "Failed to setup lxd route";
       return nullptr;
     }
