@@ -59,6 +59,8 @@ _IUSE = [
     "cfm_enabled_device",
     "cheets",
     "chromeless_tty",
+    "compdb_only",
+    "compilation_database",
     "containers",
     "coverage",
     "cpp20",
