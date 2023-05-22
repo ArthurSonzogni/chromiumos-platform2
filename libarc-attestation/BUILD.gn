@@ -23,13 +23,23 @@ pkg_config("target_defaults") {
 }
 
 shared_library("libarc-attestation") {
-  sources = [ "lib/interface.cc" ]
+  sources = [
+    "lib/interface.cc",
+    "lib/manager.cc",
+    "lib/provisioner.cc",
+    "lib/version_attester.cc",
+  ]
   configs += [ ":target_defaults" ]
   install_path = "lib"
 
   pkg_deps = [
+    "libattestation-client",
     "protobuf",
     "system_api",
+  ]
+  libs = [
+    "hwsec",
+    "hwsec-foundation",
   ]
 }
 
