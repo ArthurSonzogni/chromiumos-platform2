@@ -123,7 +123,6 @@ void CrostiniService::Stop(uint64_t vm_id) {
   device_changed_handler_.Run(*it->second, Device::ChangeEvent::kRemoved);
   const std::string tap_ifname = it->second->host_ifname();
   datapath_->StopRoutingDevice("", tap_ifname,
-                               it->second->config().host_ipv4_addr(),
                                TrafficSourceFromVMType(*vm_type),
                                /*route_on_vpn=*/true);
   if (adb_sideloading_enabled_) {

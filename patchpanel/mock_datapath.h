@@ -76,7 +76,6 @@ class MockDatapath : public Datapath {
               StopRoutingDevice,
               (const std::string& ext_ifname,
                const std::string& int_ifname,
-               uint32_t int_ipv4_addr,
                TrafficSource source,
                bool route_on_vpn),
               (override));

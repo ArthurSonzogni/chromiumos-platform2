@@ -588,7 +588,6 @@ void ArcService::RemoveDevice(const std::string& ifname) {
     datapath_->RemoveInterface(ArcVethHostName(device->phys_ifname()));
 
   datapath_->StopRoutingDevice(device->phys_ifname(), device->host_ifname(),
-                               device->config().guest_ipv4_addr(),
                                TrafficSource::kArc, /*route_on_vpn=*/false);
   datapath_->RemoveInboundIPv4DNAT(
       AutoDnatTarget::kArc, device->phys_ifname(),

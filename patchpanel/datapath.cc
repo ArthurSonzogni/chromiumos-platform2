@@ -974,8 +974,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
 }
 
 void Datapath::StopRoutingNamespace(const ConnectedNamespace& nsinfo) {
-  StopRoutingDevice(nsinfo.outbound_ifname, nsinfo.host_ifname,
-                    nsinfo.peer_subnet->AddressAtOffset(0), nsinfo.source,
+  StopRoutingDevice(nsinfo.outbound_ifname, nsinfo.host_ifname, nsinfo.source,
                     nsinfo.route_on_vpn);
   RemoveInterface(nsinfo.host_ifname);
   DeleteIPv4Route(nsinfo.peer_subnet->AddressAtOffset(0),
@@ -1330,7 +1329,6 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
 
 void Datapath::StopRoutingDevice(const std::string& ext_ifname,
                                  const std::string& int_ifname,
-                                 uint32_t int_ipv4_addr,
                                  TrafficSource source,
                                  bool route_on_vpn) {
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
@@ -1712,8 +1710,8 @@ void Datapath::StopVpnRouting(const std::string& vpn_ifname) {
     LOG(ERROR) << "Could not flush " << kVpnAcceptChain;
   }
   if (vpn_ifname != kArcBridge) {
-    StopRoutingDevice(vpn_ifname, kArcBridge, /*int_ipv4_addr=*/0,
-                      TrafficSource::kArc, /*route_on_vpn=*/false);
+    StopRoutingDevice(vpn_ifname, kArcBridge, TrafficSource::kArc,
+                      /*route_on_vpn=*/false);
   }
   if (!FlushChain(IpFamily::kDual, Iptables::Table::kMangle,
                   kApplyVpnMarkChain)) {
@@ -1862,8 +1860,7 @@ void Datapath::StopDownstreamNetwork(const DownstreamNetworkInfo& info) {
   // Skip unconfiguring the downstream interface: shill will either destroy it
   // or flip it back to client mode and restart a Network on top.
   const auto source = DownstreamNetworkInfoTrafficSource(info);
-  StopRoutingDevice(info.upstream_ifname, info.downstream_ifname,
-                    /*int_ipv4_addr=*/0, source,
+  StopRoutingDevice(info.upstream_ifname, info.downstream_ifname, source,
                     /*route_on_vpn=*/false);
   FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
              kAcceptDownstreamNetworkChain);

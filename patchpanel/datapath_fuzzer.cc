@@ -126,7 +126,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   datapath.AddToBridge(ifname, ifname2);
   datapath.StartRoutingDevice(ifname, ifname2, ipv4_addr,
                               TrafficSource::kUnknown, route_on_vpn);
-  datapath.StopRoutingDevice(ifname, ifname2, addr, TrafficSource::kUnknown,
+  datapath.StopRoutingDevice(ifname, ifname2, TrafficSource::kUnknown,
                              route_on_vpn);
   datapath.StartRoutingNamespace(nsinfo);
   datapath.StopRoutingNamespace(nsinfo);

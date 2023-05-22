@@ -1168,8 +1168,7 @@ TEST(DatapathTest, StopRoutingDevice_Arc) {
   Verify_iptables(*runner, IpFamily::kDual, "mangle -X PREROUTING_arc_eth0 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.StopRoutingDevice("eth0", "arc_eth0", Ipv4Addr(1, 2, 3, 4),
-                             TrafficSource::kArc, true);
+  datapath.StopRoutingDevice("eth0", "arc_eth0", TrafficSource::kArc, true);
 }
 
 TEST(DatapathTest, StopRoutingDevice_CrosVM) {
@@ -1186,8 +1185,7 @@ TEST(DatapathTest, StopRoutingDevice_CrosVM) {
   Verify_iptables(*runner, IpFamily::kDual, "mangle -X PREROUTING_vmtap0 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.StopRoutingDevice("", "vmtap0", Ipv4Addr(1, 2, 3, 4),
-                             TrafficSource::kCrosVM, true);
+  datapath.StopRoutingDevice("", "vmtap0", TrafficSource::kCrosVM, true);
 }
 
 TEST(DatapathTest, StartStopConnectionPinning) {
