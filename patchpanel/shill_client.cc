@@ -532,25 +532,6 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
   return true;
 }
 
-std::string ShillClient::GetIfname(const dbus::ObjectPath& device_path) {
-  org::chromium::flimflam::DeviceProxy device_proxy(bus_, device_path);
-  brillo::VariantDictionary props;
-  if (!device_proxy.GetProperties(&props, nullptr)) {
-    LOG(WARNING) << "Unable to get Device properties for "
-                 << device_path.value();
-    return "";
-  }
-
-  const auto& interface_it = props.find(shill::kInterfaceProperty);
-  if (interface_it == props.end()) {
-    LOG(WARNING) << "shill Device " << device_path.value()
-                 << " is missing property " << shill::kInterfaceProperty;
-    return "";
-  }
-
-  return interface_it->second.TryGet<std::string>();
-}
-
 void ShillClient::OnDevicePropertyChangeRegistration(
     const std::string& dbus_interface_name,
     const std::string& signal_name,

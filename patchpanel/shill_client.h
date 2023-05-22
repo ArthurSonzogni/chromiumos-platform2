@@ -206,10 +206,6 @@ class ShillClient {
   // default network.
   virtual std::pair<Device, Device> GetDefaultDevices();
 
-  // Returns the interface name of the shill Device identified by |device|, or
-  // returns the empty string if it fails.
-  virtual std::string GetIfname(const dbus::ObjectPath& device_path);
-
  private:
   // Updates the list of currently known shill Devices, adding or removing
   // Device tracking entries accordingly. Listeners that have registered a

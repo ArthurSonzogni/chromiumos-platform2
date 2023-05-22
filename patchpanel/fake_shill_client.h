@@ -65,10 +65,6 @@ class FakeShillClient : public ShillClient {
     interface_names_[device_path] = ifname;
   }
 
-  std::string GetIfname(const dbus::ObjectPath& device_path) override {
-    return interface_names_[device_path.value()];
-  }
-
   void SetFakeDeviceProperties(const dbus::ObjectPath& device_path,
                                const Device& device) {
     fake_device_properties_[device_path] = device;
