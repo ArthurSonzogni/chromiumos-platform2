@@ -447,25 +447,40 @@ TEST_F(NetworkMonitorServiceTest, StartRTNLHanlderOnServiceStart) {
 }
 
 TEST_F(NetworkMonitorServiceTest, CallGetDevicePropertiesOnNewDevice) {
-  fake_shill_client_->SetIfname("/device/wlan0", "wlan0");
-  fake_shill_client_->SetIfname("/device/eth0", "eth0");
+  dbus::ObjectPath eth0_path = dbus::ObjectPath("/device/eth0");
+  ShillClient::Device eth_dev;
+  eth_dev.type = ShillClient::Device::Type::kEthernet;
+  eth_dev.ifindex = 1;
+  eth_dev.ifname = "eth0";
+  eth_dev.service_path = "/service/2";
+  fake_shill_client_->SetFakeDeviceProperties(eth0_path, eth_dev);
+
+  dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
+  ShillClient::Device wlan_dev;
+  wlan_dev.type = ShillClient::Device::Type::kWifi;
+  wlan_dev.ifindex = 2;
+  wlan_dev.ifname = "wlan0";
+  wlan_dev.service_path = "/service/2";
+  fake_shill_client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
 
   monitor_svc_->rtnl_handler_ = mock_rtnl_handler_.get();
+
   // Device added before service starts.
-  std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("/device/eth0")};
+  std::vector<dbus::ObjectPath> devices = {eth0_path};
   fake_shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty,
                                                   brillo::Any(devices));
   monitor_svc_->Start();
 
   // Device added after service starts.
-  devices.emplace_back(dbus::ObjectPath("/device/wlan0"));
+  devices.push_back(wlan0_path);
   fake_shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty,
                                                   brillo::Any(devices));
+
   const std::set<dbus::ObjectPath>& calls =
       fake_shill_client_->get_device_properties_calls();
   EXPECT_EQ(calls.size(), 2);
-  EXPECT_NE(calls.find(dbus::ObjectPath("/device/eth0")), calls.end());
-  EXPECT_NE(calls.find(dbus::ObjectPath("/device/wlan0")), calls.end());
+  EXPECT_NE(calls.find(eth0_path), calls.end());
+  EXPECT_NE(calls.find(wlan0_path), calls.end());
 }
 
 }  // namespace patchpanel

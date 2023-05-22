@@ -240,10 +240,6 @@ class ShillClient {
   // Maps of all current shill physical Devices, indexed by shill Device
   // identifier. VPN Devices are ignored.
   std::map<dbus::ObjectPath, Device> devices_;
-  // Tracks all physical network interfaces managed by shill and maps shill
-  // Device DBus object paths to interface names. Network interfaces of VPNs are
-  // not included.
-  std::map<dbus::ObjectPath, std::string> device_ifnames_;
   // Sets of shill Device Dbus object path for all the shill physical Devices
   // seen so far. Unlike |devices_|, entries in this set will never be
   // removed during the lifetime of this class. We maintain this set mainly for

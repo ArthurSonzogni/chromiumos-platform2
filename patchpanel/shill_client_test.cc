@@ -83,14 +83,35 @@ class ShillClientTest : public testing::Test {
 };
 
 TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
-  std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("/device/eth0"),
-                                           dbus::ObjectPath("/device/wlan0")};
+  dbus::ObjectPath eth0_path = dbus::ObjectPath("/device/eth0");
+  ShillClient::Device eth0_dev;
+  eth0_dev.type = ShillClient::Device::Type::kEthernet;
+  eth0_dev.ifindex = 1;
+  eth0_dev.ifname = "eth0";
+  eth0_dev.service_path = "/service/1";
+  client_->SetFakeDeviceProperties(eth0_path, eth0_dev);
+
+  dbus::ObjectPath eth1_path = dbus::ObjectPath("/device/eth1");
+  ShillClient::Device eth1_dev;
+  eth1_dev.type = ShillClient::Device::Type::kEthernet;
+  eth1_dev.ifindex = 2;
+  eth1_dev.ifname = "eth1";
+  eth1_dev.service_path = "/service/2";
+  client_->SetFakeDeviceProperties(eth1_path, eth1_dev);
+
+  dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
+  ShillClient::Device wlan_dev;
+  wlan_dev.type = ShillClient::Device::Type::kWifi;
+  wlan_dev.ifindex = 3;
+  wlan_dev.ifname = "wlan0";
+  wlan_dev.service_path = "/service/3";
+  client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
+
+  std::vector<dbus::ObjectPath> devices = {eth0_path, wlan0_path};
   auto value = brillo::Any(devices);
   client_->SetFakeDefaultLogicalDevice("eth0");
   client_->SetFakeDefaultPhysicalDevice("eth0");
-  client_->SetIfname("/device/eth0", "eth0");
-  client_->SetIfname("/device/eth1", "eth1");
-  client_->SetIfname("/device/wlan0", "wlan0");
+
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_EQ(added_.size(), devices.size());
   EXPECT_NE(std::find(added_.begin(), added_.end(), "eth0"), added_.end());
@@ -104,7 +125,7 @@ TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
             added_.end());
 
   devices.pop_back();
-  devices.emplace_back(dbus::ObjectPath("/device/eth1"));
+  devices.emplace_back(eth1_path);
   value = brillo::Any(devices);
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_EQ(added_.size(), 1);
@@ -114,11 +135,18 @@ TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
 }
 
 TEST_F(ShillClientTest, VerifyDevicesPrefixStripped) {
-  std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("/device/eth0")};
+  dbus::ObjectPath eth0_path = dbus::ObjectPath("/device/eth0");
+  ShillClient::Device eth0_dev;
+  eth0_dev.type = ShillClient::Device::Type::kEthernet;
+  eth0_dev.ifindex = 1;
+  eth0_dev.ifname = "eth0";
+  eth0_dev.service_path = "/service/1";
+  client_->SetFakeDeviceProperties(eth0_path, eth0_dev);
+  std::vector<dbus::ObjectPath> devices = {eth0_path};
   auto value = brillo::Any(devices);
   client_->SetFakeDefaultLogicalDevice("eth0");
   client_->SetFakeDefaultPhysicalDevice("eth0");
-  client_->SetIfname("/device/eth0", "eth0");
+
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_EQ(added_.size(), 1);
   EXPECT_EQ(*added_.begin(), "eth0");
@@ -161,13 +189,27 @@ TEST_F(ShillClientTest, DefaultDeviceChangedHandlerNotCalledForSameDefault) {
 }
 
 TEST_F(ShillClientTest, DefaultDeviceChanges) {
+  dbus::ObjectPath eth0_path = dbus::ObjectPath("/device/eth0");
+  ShillClient::Device eth0_dev;
+  eth0_dev.type = ShillClient::Device::Type::kEthernet;
+  eth0_dev.ifindex = 1;
+  eth0_dev.ifname = "eth0";
+  eth0_dev.service_path = "/service/1";
+  client_->SetFakeDeviceProperties(eth0_path, eth0_dev);
+
+  dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
+  ShillClient::Device wlan_dev;
+  wlan_dev.type = ShillClient::Device::Type::kWifi;
+  wlan_dev.ifindex = 3;
+  wlan_dev.ifname = "wlan0";
+  wlan_dev.service_path = "/service/3";
+  client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
+
   // One network device appears.
-  std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("/device/wlan0")};
+  std::vector<dbus::ObjectPath> devices = {wlan0_path};
   auto value = brillo::Any(devices);
   client_->SetFakeDefaultLogicalDevice("wlan0");
   client_->SetFakeDefaultPhysicalDevice("wlan0");
-  client_->SetIfname("/device/eth0", "eth0");
-  client_->SetIfname("/device/wlan0", "wlan0");
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_EQ(default_logical_ifname_, "wlan0");
   EXPECT_EQ(default_physical_ifname_, "wlan0");
@@ -175,8 +217,7 @@ TEST_F(ShillClientTest, DefaultDeviceChanges) {
   // A second device appears.
   default_logical_ifname_.clear();
   default_physical_ifname_.clear();
-  devices = {dbus::ObjectPath("/device/eth0"),
-             dbus::ObjectPath("/device/wlan0")};
+  devices = {eth0_path, wlan0_path};
   value = brillo::Any(devices);
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_EQ(default_logical_ifname_, "");
@@ -191,7 +232,7 @@ TEST_F(ShillClientTest, DefaultDeviceChanges) {
   EXPECT_EQ(default_physical_ifname_, "eth0");
 
   // The first device disappears.
-  devices = {dbus::ObjectPath("/device/eth0")};
+  devices = {eth0_path};
   value = brillo::Any(devices);
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   // The default device is still the same.
@@ -209,20 +250,33 @@ TEST_F(ShillClientTest, DefaultDeviceChanges) {
 }
 
 TEST_F(ShillClientTest, ListenToDeviceChangeSignalOnNewDevices) {
+  dbus::ObjectPath eth0_path = dbus::ObjectPath("/device/eth0");
+  ShillClient::Device eth0_dev;
+  eth0_dev.type = ShillClient::Device::Type::kEthernet;
+  eth0_dev.ifindex = 1;
+  eth0_dev.ifname = "eth0";
+  eth0_dev.service_path = "/service/1";
+  client_->SetFakeDeviceProperties(eth0_path, eth0_dev);
+
+  dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
+  ShillClient::Device wlan_dev;
+  wlan_dev.type = ShillClient::Device::Type::kWifi;
+  wlan_dev.ifindex = 3;
+  wlan_dev.ifname = "wlan0";
+  wlan_dev.service_path = "/service/3";
+  client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
+
   // Adds a device.
-  std::vector<dbus::ObjectPath> devices = {dbus::ObjectPath("/device/wlan0")};
+  std::vector<dbus::ObjectPath> devices = {wlan0_path};
   auto value = brillo::Any(devices);
   EXPECT_CALL(*helper_->mock_proxy(),
               DoConnectToSignal(shill::kFlimflamDeviceInterface,
                                 shill::kMonitorPropertyChanged, _, _))
       .Times(1);
-  client_->SetIfname("/device/eth0", "eth0");
-  client_->SetIfname("/device/wlan0", "wlan0");
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
 
   // Adds another device. DoConnectToSignal() called only for the new added one.
-  devices = {dbus::ObjectPath("/device/wlan0"),
-             dbus::ObjectPath("/device/eth0")};
+  devices = {wlan0_path, eth0_path};
   value = brillo::Any(devices);
   EXPECT_CALL(*helper_->mock_proxy(),
               DoConnectToSignal(shill::kFlimflamDeviceInterface,
@@ -245,7 +299,6 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
   std::vector<dbus::ObjectPath> devices = {wlan0_path};
   auto devices_value = brillo::Any(devices);
-  client_->SetIfname("/device/wlan0", "wlan0");
 
   // The device will first appear before it acquires a new IP configuration.
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, devices_value);
@@ -315,7 +368,6 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   wlan_dev.ipconfig.ipv6_dns_addresses = {"2001:db8::1111"};
   std::vector<dbus::ObjectPath> devices = {wlan0_path};
   auto devices_value = brillo::Any(devices);
-  client_->SetIfname("/device/wlan0", "wlan0");
 
   // The device will first appear before it acquires a new IP configuration. The
   // listeners are triggered

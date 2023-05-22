@@ -96,15 +96,15 @@ const ShillClient::Device& ShillClient::default_physical_device() const {
 
 const std::vector<std::string> ShillClient::get_interfaces() const {
   std::vector<std::string> ifnames;
-  for (const auto& [_, ifname] : device_ifnames_) {
-    ifnames.push_back(ifname);
+  for (const auto& [_, device] : devices_) {
+    ifnames.push_back(device.ifname);
   }
   return ifnames;
 }
 
 bool ShillClient::has_interface(const std::string& ifname) const {
-  for (const auto& kv : device_ifnames_) {
-    if (kv.second == ifname) {
+  for (const auto& [_, device] : devices_) {
+    if (device.ifname == ifname) {
       return true;
     }
   }
@@ -281,20 +281,15 @@ void ShillClient::RegisterIPv6NetworkChangedHandler(
 }
 
 void ShillClient::UpdateDevices(const brillo::Any& property_value) {
-  std::map<dbus::ObjectPath, std::string> current_devices;
-  std::vector<std::string> added, removed;
+  std::set<dbus::ObjectPath> current, added, removed;
+
+  // Find all new Devices.
   for (const auto& device_path :
        property_value.TryGet<std::vector<dbus::ObjectPath>>()) {
-    const std::string ifname = GetIfname(device_path);
-    if (ifname.empty()) {
-      continue;
+    current.insert(device_path);
+    if (!base::Contains(devices_, device_path)) {
+      added.insert(device_path);
     }
-
-    current_devices[device_path] = ifname;
-    if (!base::Contains(device_ifnames_, device_path)) {
-      added.push_back(ifname);
-    }
-
     // Registers handler if we see this shill Device for the first time.
     if (known_device_paths_.insert(device_path).second) {
       org::chromium::flimflam::DeviceProxy proxy(bus_, device_path);
@@ -306,37 +301,50 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
     }
   }
 
-  // Find removed shill Device and clear its cached IPConfig and Device
-  // properties.
-  for (const auto& [d, ifname] : device_ifnames_) {
-    if (!base::Contains(current_devices, d)) {
-      removed.push_back(ifname);
-      devices_.erase(d);
+  // Find all removed Devices.
+  for (const auto& [device_path, _] : devices_) {
+    if (!base::Contains(current, device_path)) {
+      removed.insert(device_path);
     }
+  }
+
+  // This can happen if the default network switched from one device to another.
+  if (added.empty() && removed.empty()) {
+    return;
+  }
+
+  // Remove Devices removed by shill.
+  std::vector<std::string> removed_ifnames;
+  for (const auto& device_path : removed) {
+    const auto it = devices_.find(device_path);
+    if (it == devices_.end()) {
+      LOG(WARNING) << "Unknown removed Device " << device_path.value();
+      continue;
+    }
+    removed_ifnames.push_back(it->second.ifname);
+    devices_.erase(it);
   }
 
   // Populate ShillClient::Device properties for any new shill Device.
-  for (const auto& [d, ifname] : current_devices) {
-    if (!base::Contains(added, ifname)) {
+  std::vector<std::string> added_ifnames;
+  for (const auto& device_path : added) {
+    auto* new_device = &devices_[device_path];
+    if (!GetDeviceProperties(device_path, new_device)) {
+      LOG(WARNING) << "Failed to add properties of Device "
+                   << device_path.value();
+      devices_.erase(device_path);
       continue;
     }
-    if (!GetDeviceProperties(d, &devices_[d])) {
-      LOG(ERROR) << "Failed to add properties of Device " << d.value();
-      devices_.erase(d);
-    }
+    added_ifnames.push_back(new_device->ifname);
   }
 
-  device_ifnames_ = current_devices;
-
-  // This can happen if the default network switched from one device to another.
-  if (added.empty() && removed.empty())
-    return;
-
-  LOG(INFO) << "shill Devices changed: added={" << base::JoinString(added, ",")
-            << "}, removed={" << base::JoinString(removed, ",") << "}";
-
-  for (const auto& h : device_handlers_)
-    h.Run(added, removed);
+  LOG(INFO) << "shill Devices changed: added={"
+            << base::JoinString(added_ifnames, ",") << "}, removed={"
+            << base::JoinString(removed_ifnames, ",") << "}";
+  // Update DevicesChangeHandler listeners.
+  for (const auto& h : device_handlers_) {
+    h.Run(added_ifnames, removed_ifnames);
+  }
 }
 
 ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
@@ -452,9 +460,9 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
 bool ShillClient::GetDeviceProperties(const std::string& ifname,
                                       Device* output) {
   DCHECK(output);
-  for (const auto& kv : device_ifnames_) {
-    if (kv.second == ifname) {
-      return GetDeviceProperties(kv.first, output);
+  for (const auto& [device_path, device] : devices_) {
+    if (device.ifname == ifname) {
+      return GetDeviceProperties(device_path, output);
     }
   }
   return false;
