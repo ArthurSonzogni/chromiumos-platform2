@@ -115,6 +115,7 @@ _IUSE = [
     "ipu6se",
     "iwlwifi_dump",
     "jetstream_routing",
+    "keymint",
     "kvm_guest",
     "kvm_host",
     "libglvnd",

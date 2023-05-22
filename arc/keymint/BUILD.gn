@@ -5,6 +5,7 @@
 # TODO(b/280102444): Disable default visibility.
 # gnlint: disable=GnLintVisibilityFlags
 
+import("//common-mk/install_seccomp_policy.gni")
 import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
@@ -15,8 +16,18 @@ libbase_src = "../../../aosp/system/libbase"
 liblog_src = "../../../aosp/system/logging/liblog"
 libcutils_src = "../../../aosp/system/core/libcutils"
 
+# TODO(b/285181248): When keymint is unconditionally building and deploying for
+# ARC T+, stop building arc-keymintd for ARC P/R.
+
 group("all") {
   deps = [ ":arc-keymintd" ]
+  if (use.keymint) {
+    deps += [
+      ":install_arc_keymintd_policy",
+      ":install_dbus_config",
+      ":install_init",
+    ]
+  }
   if (use.test) {
     deps += [ ":arc-keymintd_testrunner" ]
   }
@@ -45,6 +56,10 @@ executable("arc-keymintd") {
     ":libkeymint-support",
     ":liblog",
   ]
+
+  if (use.keymint) {
+    install_path = "sbin"
+  }
 }
 
 # Mojo bindings
@@ -64,6 +79,9 @@ shared_library("libkeymint-support") {
     ":libcutils",
     ":liblog",
   ]
+  if (use.keymint) {
+    install_path = "lib"
+  }
 }
 
 # KeyMint Support Config
@@ -148,6 +166,9 @@ shared_library("libkeymint") {
     ":libcppbor_external",
     ":liblog",
   ]
+  if (use.keymint) {
+    install_path = "lib"
+  }
 }
 
 # KeyMint Config
@@ -337,4 +358,23 @@ if (use.test) {
       "//common-mk/testrunner:testrunner",
     ]
   }
+}
+
+# Install arc-keymintd.conf file.
+install_config("install_init") {
+  sources = [ "init/arc-keymintd.conf" ]
+  install_path = "/etc/init"
+}
+
+# Install dbus configuration file.
+install_config("install_dbus_config") {
+  sources = [ "dbus_permissions/org.chromium.ArcKeyMint.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+install_seccomp_policy("install_arc_keymintd_policy") {
+  arch = getenv("ARCH")
+  sources = [ "seccomp/arc-keymintd-seccomp-${arch}.policy" ]
+  outputs = [ "arc-keymintd-seccomp.policy" ]
+  install_path = "/usr/share/policy"
 }
