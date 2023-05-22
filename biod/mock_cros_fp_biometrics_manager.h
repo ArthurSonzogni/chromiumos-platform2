@@ -14,6 +14,7 @@
 
 #include <gmock/gmock.h>
 
+#include "base/memory/weak_ptr.h"
 #include "biod/cros_fp_biometrics_manager.h"
 #include "biod/mock_biod_metrics.h"
 #include "biod/power_button_filter.h"
@@ -23,6 +24,11 @@ namespace biod {
 class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
  public:
   using CrosFpBiometricsManager::CrosFpBiometricsManager;
+
+  base::WeakPtr<CrosFpBiometricsManager> GetWeakFactoryPtr() {
+    return weak_factory_.GetWeakPtr();
+  }
+
   ~MockCrosFpBiometricsManager() override = default;
 
   MOCK_METHOD(BiometricType, GetType, (), (override));

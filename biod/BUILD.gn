@@ -166,6 +166,7 @@ if (use.test) {
       "biod_metrics_test.cc",
       "biod_storage_test.cc",
       "biod_system_test.cc",
+      "biometrics_manager_record_test.cc",
       "biometrics_manager_wrapper_test.cc",
       "cros_fp_auth_stack_manager_test.cc",
       "cros_fp_biometrics_manager_test.cc",

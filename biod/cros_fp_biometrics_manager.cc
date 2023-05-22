@@ -325,10 +325,10 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
     std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
     BiodMetricsInterface* biod_metrics,
     std::unique_ptr<CrosFpRecordManagerInterface> record_manager)
-    : biod_metrics_(biod_metrics),
-      cros_dev_(std::move(cros_fp_device)),
-      session_weak_factory_(this),
+    : session_weak_factory_(this),
       weak_factory_(this),
+      biod_metrics_(biod_metrics),
+      cros_dev_(std::move(cros_fp_device)),
       power_button_filter_(std::move(power_button_filter)),
       record_manager_(std::move(record_manager)),
       maintenance_timer_(std::make_unique<base::OneShotTimer>()) {

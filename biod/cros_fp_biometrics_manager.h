@@ -103,6 +103,9 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   bool LoadRecord(const BiodStorage::Record record);
 
+  base::WeakPtrFactory<CrosFpBiometricsManager> session_weak_factory_;
+  base::WeakPtrFactory<CrosFpBiometricsManager> weak_factory_;
+
  private:
   // For testing.
   friend class CrosFpBiometricsManagerPeer;
@@ -151,9 +154,6 @@ class CrosFpBiometricsManager : public BiometricsManager {
   BiometricsManager::EnrollScanDoneCallback on_enroll_scan_done_;
   BiometricsManager::AuthScanDoneCallback on_auth_scan_done_;
   BiometricsManager::SessionFailedCallback on_session_failed_;
-
-  base::WeakPtrFactory<CrosFpBiometricsManager> session_weak_factory_;
-  base::WeakPtrFactory<CrosFpBiometricsManager> weak_factory_;
 
   std::unique_ptr<PowerButtonFilterInterface> power_button_filter_;
 
