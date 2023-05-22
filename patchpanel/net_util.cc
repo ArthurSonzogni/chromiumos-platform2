@@ -222,13 +222,6 @@ bool GenerateEUI64Address(in6_addr* address,
   return true;
 }
 
-void SetSockaddrIn(struct sockaddr* sockaddr, uint32_t addr) {
-  struct sockaddr_in* sockaddr_in =
-      reinterpret_cast<struct sockaddr_in*>(sockaddr);
-  sockaddr_in->sin_family = AF_INET;
-  sockaddr_in->sin_addr.s_addr = static_cast<in_addr_t>(addr);
-}
-
 void SetSockaddrIn(struct sockaddr* sockaddr,
                    const net_base::IPv4Address& addr) {
   struct sockaddr_in* sockaddr_in =

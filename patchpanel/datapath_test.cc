@@ -1503,13 +1503,8 @@ TEST(DatapathTest, AddIPv4Route) {
                         *IPv4CIDR::CreateFromCIDRString("100.115.93.0/24"));
   datapath.DeleteIPv4Route(IPv4Address(192, 168, 1, 1),
                            *IPv4CIDR::CreateFromCIDRString("100.115.93.0/24"));
-  datapath.AddIPv4Route("eth0", Ipv4Addr(100, 115, 92, 8),
-                        Ipv4Addr(255, 255, 255, 252));
-  datapath.DeleteIPv4Route("eth0", Ipv4Addr(100, 115, 92, 8),
-                           Ipv4Addr(255, 255, 255, 252));
 
-  std::vector<ioctl_req_t> expected_reqs = {SIOCADDRT, SIOCDELRT, SIOCADDRT,
-                                            SIOCDELRT};
+  std::vector<ioctl_req_t> expected_reqs = {SIOCADDRT, SIOCDELRT};
   EXPECT_EQ(expected_reqs, system.ioctl_reqs);
 
   std::string route1 =
@@ -1517,10 +1512,6 @@ TEST(DatapathTest, AddIPv4Route) {
       "{family: AF_INET, port: 0, addr: 255.255.255.0}, rt_gateway: {family: "
       "AF_INET, port: 0, addr: 192.168.1.1}, rt_dev: null, rt_flags: RTF_UP | "
       "RTF_GATEWAY}";
-  std::string route2 =
-      "{rt_dst: {family: AF_INET, port: 0, addr: 100.115.92.8}, rt_genmask: "
-      "{family: AF_INET, port: 0, addr: 255.255.255.252}, rt_gateway: {unset}, "
-      "rt_dev: eth0, rt_flags: RTF_UP | RTF_GATEWAY}";
   std::vector<std::string> captured_routes;
   for (const auto& route : system.ioctl_rtentry_args) {
     std::ostringstream stream;
@@ -1529,8 +1520,6 @@ TEST(DatapathTest, AddIPv4Route) {
   }
   EXPECT_EQ(route1, captured_routes[0]);
   EXPECT_EQ(route1, captured_routes[1]);
-  EXPECT_EQ(route2, captured_routes[2]);
-  EXPECT_EQ(route2, captured_routes[3]);
 }
 
 TEST(DatapathTest, RedirectDnsRules) {

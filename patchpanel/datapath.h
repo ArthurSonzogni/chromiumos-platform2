@@ -368,14 +368,6 @@ class Datapath {
                             const net_base::IPv4CIDR& subnet_cidr);
   virtual bool DeleteIPv4Route(const net_base::IPv4Address& gateway_addr,
                                const net_base::IPv4CIDR& subnet_cidr);
-  // Adds (or deletes) a route to direct to |ifname| the traffic destined to the
-  // subnet defined by |addr| and |netmask|.
-  virtual bool AddIPv4Route(const std::string& ifname,
-                            uint32_t addr,
-                            uint32_t netmask);
-  virtual bool DeleteIPv4Route(const std::string& ifname,
-                               uint32_t addr,
-                               uint32_t netmask);
 
   // Adds (or deletes) an iptables rule for ADB port forwarding.
   virtual bool AddAdbPortForwardRule(const std::string& ifname);

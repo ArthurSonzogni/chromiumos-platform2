@@ -2140,36 +2140,6 @@ bool Datapath::DeleteIPv4Route(const IPv4Address& gateway_addr,
   return ModifyRtentry(SIOCDELRT, &route);
 }
 
-bool Datapath::AddIPv4Route(const std::string& ifname,
-                            uint32_t addr,
-                            uint32_t netmask) {
-  struct rtentry route;
-  memset(&route, 0, sizeof(route));
-  SetSockaddrIn(&route.rt_dst, addr & netmask);
-  SetSockaddrIn(&route.rt_genmask, netmask);
-  char rt_dev[IFNAMSIZ];
-  strncpy(rt_dev, ifname.c_str(), IFNAMSIZ);
-  rt_dev[IFNAMSIZ - 1] = '\0';
-  route.rt_dev = rt_dev;
-  route.rt_flags = RTF_UP | RTF_GATEWAY;
-  return ModifyRtentry(SIOCADDRT, &route);
-}
-
-bool Datapath::DeleteIPv4Route(const std::string& ifname,
-                               uint32_t addr,
-                               uint32_t netmask) {
-  struct rtentry route;
-  memset(&route, 0, sizeof(route));
-  SetSockaddrIn(&route.rt_dst, addr & netmask);
-  SetSockaddrIn(&route.rt_genmask, netmask);
-  char rt_dev[IFNAMSIZ];
-  strncpy(rt_dev, ifname.c_str(), IFNAMSIZ);
-  rt_dev[IFNAMSIZ - 1] = '\0';
-  route.rt_dev = rt_dev;
-  route.rt_flags = RTF_UP | RTF_GATEWAY;
-  return ModifyRtentry(SIOCDELRT, &route);
-}
-
 bool Datapath::ModifyRtentry(ioctl_req_t op, struct rtentry* route) {
   DCHECK(route);
   if (op != SIOCADDRT && op != SIOCDELRT) {
