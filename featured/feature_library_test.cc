@@ -314,6 +314,50 @@ TEST_P(FeatureLibraryParameterizedTest, IsEnabledBlocking_Failure_Empty) {
   EXPECT_EQ(enabled, features_->IsEnabledBlocking(f));
 }
 
+TEST_P(FeatureLibraryParameterizedTest, IsEnabledBlockingWithTimeout_Success) {
+  int timeout = 100;
+  bool enabled = GetParam();
+
+  EXPECT_CALL(*mock_chrome_proxy_, CallMethodAndBlock(_, timeout))
+      .WillOnce(Invoke([this, enabled](dbus::MethodCall* call, int timeout_ms) {
+        return CreateIsEnabledResponse(call, enabled);
+      }));
+
+  VariationsFeature f{"Feature", FEATURE_DISABLED_BY_DEFAULT};
+  EXPECT_EQ(enabled, features_->IsEnabledBlockingWithTimeout(f, timeout));
+}
+
+TEST_P(FeatureLibraryParameterizedTest,
+       IsEnabledBlockingWithTimeout_Failure_Null) {
+  int timeout = 100;
+  EXPECT_CALL(*mock_chrome_proxy_, CallMethodAndBlock(_, timeout))
+      .WillOnce(Invoke(
+          [](dbus::MethodCall* call, int timeout_ms) { return nullptr; }));
+
+  bool enabled = GetParam();
+  FeatureState feature_state =
+      GetParam() ? FEATURE_ENABLED_BY_DEFAULT : FEATURE_DISABLED_BY_DEFAULT;
+  VariationsFeature f{"Feature", feature_state};
+
+  EXPECT_EQ(enabled, features_->IsEnabledBlockingWithTimeout(f, timeout));
+}
+
+TEST_P(FeatureLibraryParameterizedTest,
+       IsEnabledBlockingWithTimeout_Failure_Empty) {
+  int timeout = 100;
+  EXPECT_CALL(*mock_chrome_proxy_, CallMethodAndBlock(_, timeout))
+      .WillOnce(Invoke([](dbus::MethodCall* call, int timeout_ms) {
+        return dbus::Response::CreateEmpty();
+      }));
+
+  bool enabled = GetParam();
+  FeatureState feature_state =
+      GetParam() ? FEATURE_ENABLED_BY_DEFAULT : FEATURE_DISABLED_BY_DEFAULT;
+  VariationsFeature f{"Feature", feature_state};
+
+  EXPECT_EQ(enabled, features_->IsEnabledBlockingWithTimeout(f, timeout));
+}
+
 TEST_F(FeatureLibraryTest, GetParamsAndEnabled_Success) {
   // Will be enabled with params.
   VariationsFeature f1{"Feature1", FEATURE_DISABLED_BY_DEFAULT};
