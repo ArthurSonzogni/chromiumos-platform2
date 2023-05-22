@@ -15,6 +15,8 @@
 #include <chromeos/libminijail.h>
 #include <chromeos/scoped_minijail.h>
 
+#include <memory>
+
 #include "debugd/src/debugd_dbus_adaptor.h"
 
 namespace {
@@ -167,7 +169,7 @@ class Daemon : public brillo::DBusServiceDaemon {
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
-    adaptor_.reset(new debugd::DebugdDBusAdaptor(bus_, perf_logging_));
+    adaptor_ = std::make_unique<debugd::DebugdDBusAdaptor>(bus_, perf_logging_);
     adaptor_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() failed.", true));
   }
