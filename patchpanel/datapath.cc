@@ -965,10 +965,11 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  StartRoutingDevice(nsinfo.outbound_ifname, nsinfo.host_ifname,
-                     nsinfo.peer_subnet->AddressAtOffset(0), nsinfo.source,
-                     nsinfo.route_on_vpn,
-                     nsinfo.peer_subnet->AddressAtOffset(1));
+  StartRoutingDevice(
+      nsinfo.outbound_ifname, nsinfo.host_ifname,
+      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(0)),
+      nsinfo.source, nsinfo.route_on_vpn,
+      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1)));
   return true;
 }
 
@@ -1223,10 +1224,10 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
 
 void Datapath::StartRoutingDevice(const std::string& ext_ifname,
                                   const std::string& int_ifname,
-                                  uint32_t int_ipv4_addr,
+                                  const IPv4Address& int_ipv4_addr,
                                   TrafficSource source,
                                   bool route_on_vpn,
-                                  uint32_t peer_ipv4_addr) {
+                                  const IPv4Address& peer_ipv4_addr) {
   if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                       Iptables::Command::kA, "FORWARD", "ACCEPT", /*iif=*/"",
                       int_ifname)) {
@@ -1298,19 +1299,19 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
     // Explicitly bypass VPN fwmark tagging rules on returning traffic of a
     // connected namespace. This allows the return traffic to reach the local
     // source. Connected namespace interface can be identified by checking if
-    // the value of |peer_ipv4_addr| not equal to 0.
-    if (route_on_vpn && peer_ipv4_addr != 0 &&
+    // the value of |peer_ipv4_addr| is not zero.
+    if (route_on_vpn && !peer_ipv4_addr.IsZero() &&
         process_runner_->iptables(
             Iptables::Table::kMangle, Iptables::Command::kA,
-            {subchain, "-s", IPv4AddressToString(peer_ipv4_addr), "-d",
-             IPv4AddressToString(int_ipv4_addr), "-j", "ACCEPT", "-w"}) != 0) {
+            {subchain, "-s", peer_ipv4_addr.ToString(), "-d",
+             int_ipv4_addr.ToString(), "-j", "ACCEPT", "-w"}) != 0) {
       LOG(ERROR) << "Failed to add connected namespace IPv4 VPN bypass rule";
     }
 
     // The jump rule below should not be applied for traffic from a
     // ConnectNamespace traffic that needs DNS to go to the VPN
     // (ConnectNamespace of the DNS default instance).
-    if (route_on_vpn && peer_ipv4_addr == 0 &&
+    if (route_on_vpn && peer_ipv4_addr.IsZero() &&
         !ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
                         Iptables::Command::kA, subchain, kSkipApplyVpnMarkChain,
                         /*iif=*/"", /*oif=*/"")) {
@@ -1682,7 +1683,7 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
   // When the VPN client runs on the host, also route arcbr0 to that VPN so
   // that ARC can access the VPN network through arc0.
   if (vpn_ifname != kArcBridge) {
-    StartRoutingDevice(vpn_ifname, kArcBridge, /*int_ipv4_addr=*/0,
+    StartRoutingDevice(vpn_ifname, kArcBridge, /*int_ipv4_addr=*/{},
                        TrafficSource::kArc, /*route_on_vpn=*/true);
   }
   if (!ModifyRedirectDnsJumpRule(
@@ -1847,7 +1848,7 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
   // int_ipv4_addr is not necessary if route_on_vpn == false
   const auto source = DownstreamNetworkInfoTrafficSource(info);
   StartRoutingDevice(info.upstream_ifname, info.downstream_ifname,
-                     /*int_ipv4_addr=*/0, source,
+                     /*int_ipv4_addr=*/{}, source,
                      /*route_on_vpn=*/false);
   return true;
 }

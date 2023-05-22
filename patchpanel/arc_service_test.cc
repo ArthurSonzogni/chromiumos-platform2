@@ -24,6 +24,7 @@
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/net_util.h"
 
+using net_base::IPv4Address;
 using net_base::IPv4CIDR;
 using testing::_;
 using testing::AnyNumber;
@@ -42,7 +43,6 @@ namespace patchpanel {
 namespace {
 constexpr uint32_t kTestPID = 2;
 constexpr uint32_t kTestCID = 2;
-constexpr uint32_t kFirstEthGuestIP = Ipv4Addr(100, 115, 92, 6);
 constexpr MacAddress kArcVmArc0MacAddr = {0x42, 0x37, 0x05, 0x13, 0x17, 0x01};
 const IPv4CIDR kArcHostCIDR =
     *IPv4CIDR::CreateFromCIDRString("100.115.92.1/30");
@@ -50,8 +50,9 @@ const IPv4CIDR kArcGuestCIDR =
     *IPv4CIDR::CreateFromCIDRString("100.115.92.2/30");
 const IPv4CIDR kFirstEthHostCIDR =
     *IPv4CIDR::CreateFromCIDRString("100.115.92.5/30");
+const IPv4Address kFirstEthGuestIP = IPv4Address(100, 115, 92, 6);
 const IPv4CIDR kFirstEthGuestCIDR =
-    *IPv4CIDR::CreateFromCIDRString("100.115.92.6/30");
+    *IPv4CIDR::CreateFromAddressAndPrefix(kFirstEthGuestIP, 30);
 const IPv4CIDR kSecondEthHostCIDR =
     *IPv4CIDR::CreateFromCIDRString("100.115.92.9/30");
 const IPv4CIDR kFirstWifiHostCIDR =
@@ -647,7 +648,7 @@ TEST_F(ArcServiceTest, VmImpl_StartDevice) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap1")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
-                                             Ipv4Addr(100, 115, 92, 6),
+                                             IPv4Address(100, 115, 92, 6),
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
@@ -684,7 +685,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap1")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
-                                             Ipv4Addr(100, 115, 92, 6),
+                                             IPv4Address(100, 115, 92, 6),
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
@@ -699,7 +700,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_wlan0"), StrEq("vmtap3")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("wlan0"), StrEq("arc_wlan0"),
-                                             Ipv4Addr(100, 115, 92, 14),
+                                             IPv4Address(100, 115, 92, 14),
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("wlan0"),
@@ -714,7 +715,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth1"), StrEq("vmtap2")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth1"), StrEq("arc_eth1"),
-                                             Ipv4Addr(100, 115, 92, 10),
+                                             IPv4Address(100, 115, 92, 10),
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth1"),
@@ -788,7 +789,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap1")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
-                                             Ipv4Addr(100, 115, 92, 6),
+                                             IPv4Address(100, 115, 92, 6),
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
@@ -836,7 +837,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap1")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
-                                             Ipv4Addr(100, 115, 92, 6),
+                                             IPv4Address(100, 115, 92, 6),
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
@@ -873,7 +874,7 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap1")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, StartRoutingDevice(StrEq("eth0"), StrEq("arc_eth0"),
-                                             Ipv4Addr(100, 115, 92, 6),
+                                             IPv4Address(100, 115, 92, 6),
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),

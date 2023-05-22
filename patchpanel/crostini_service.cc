@@ -25,6 +25,7 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/device.h"
 #include "patchpanel/ipc.h"
+#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 namespace {
@@ -89,10 +90,11 @@ const Device* CrostiniService::Start(uint64_t vm_id,
     return nullptr;
   }
 
-  datapath_->StartRoutingDevice("", tap->host_ifname(),
-                                tap->config().host_ipv4_addr(),
-                                TrafficSourceFromVMType(vm_type),
-                                /*route_on_vpn=*/true);
+  datapath_->StartRoutingDevice(
+      "", tap->host_ifname(),
+      ConvertUint32ToIPv4Address(tap->config().host_ipv4_addr()),
+      TrafficSourceFromVMType(vm_type),
+      /*route_on_vpn=*/true);
   if (adb_sideloading_enabled_) {
     StartAdbPortForwarding(tap->phys_ifname());
   }

@@ -513,9 +513,10 @@ void ArcService::AddDevice(const std::string& ifname,
     return;
   }
 
-  datapath_->StartRoutingDevice(device->phys_ifname(), device->host_ifname(),
-                                device->config().guest_ipv4_addr(),
-                                TrafficSource::kArc, /*route_on_vpn=*/false);
+  datapath_->StartRoutingDevice(
+      device->phys_ifname(), device->host_ifname(),
+      ConvertUint32ToIPv4Address(device->config().guest_ipv4_addr()),
+      TrafficSource::kArc, /*route_on_vpn=*/false);
   datapath_->AddInboundIPv4DNAT(
       AutoDnatTarget::kArc, device->phys_ifname(),
       IPv4AddressToString(device->config().guest_ipv4_addr()));

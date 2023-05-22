@@ -1119,7 +1119,7 @@ TEST(DatapathTest, StartRoutingDevice_Arc) {
                   "0x03ea0000/0xffff0000 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.StartRoutingDevice("eth0", "arc_eth0", Ipv4Addr(1, 2, 3, 4),
+  datapath.StartRoutingDevice("eth0", "arc_eth0", IPv4Address(1, 2, 3, 4),
                               TrafficSource::kArc, false);
 }
 
@@ -1150,7 +1150,7 @@ TEST(DatapathTest, StartRoutingDevice_CrosVM) {
                   "mangle -A PREROUTING_vmtap0 -j apply_vpn_mark -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.StartRoutingDevice("", "vmtap0", Ipv4Addr(1, 2, 3, 4),
+  datapath.StartRoutingDevice("", "vmtap0", IPv4Address(1, 2, 3, 4),
                               TrafficSource::kCrosVM, true);
 }
 

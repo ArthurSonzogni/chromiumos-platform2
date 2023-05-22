@@ -280,13 +280,14 @@ class Datapath {
   // IPv4 VPN fwmark tagging bypass rule is needed to allow return traffic to
   // reach to the IPv4 local source. |peer_ipv4_addr| is the address of the
   // interface inside the connected namespace needed to create this rule. If
-  // |peer_ipv4_addr| is 0, no additional rule will be added.
-  virtual void StartRoutingDevice(const std::string& ext_ifname,
-                                  const std::string& int_ifname,
-                                  uint32_t int_ipv4_addr,
-                                  TrafficSource source,
-                                  bool route_on_vpn,
-                                  uint32_t peer_ipv4_addr = 0);
+  // |peer_ipv4_addr| is zero, no additional rule will be added.
+  virtual void StartRoutingDevice(
+      const std::string& ext_ifname,
+      const std::string& int_ifname,
+      const net_base::IPv4Address& int_ipv4_addr,
+      TrafficSource source,
+      bool route_on_vpn,
+      const net_base::IPv4Address& peer_ipv4_addr = {});
 
   // Removes IPv4 iptables, IP forwarding, and traffic marking rules for the
   // given downstream network interface |int_ifname|.
