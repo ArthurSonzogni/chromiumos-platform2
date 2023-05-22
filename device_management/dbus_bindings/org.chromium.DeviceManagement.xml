@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!--
+  Copyright 2023 The ChromiumOS Authors
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+
+<!--
+  The object and interface defined in this file is used with the service name
+  "org.chromium.DeviceManagement"
+
+  The protobufs specified in this file can be found in:
+  platform2/device_management/device_management_interface.proto
+--> 
+ 
+<node name="/org/chromium/DeviceManagement"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+
+    <interface name="org.chromium.DeviceManagement">
+    <method name="GetFirmwareManagementParameters">
+        <annotation name="org.chromium.DBus.Method.Kind"
+                    value="async"/>
+        <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::GetFirmwareManagementParametersRequest" />
+        </arg>
+        <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::GetFirmwareManagementParametersReply" />
+        </arg>
+    </method>
+
+    <method name="RemoveFirmwareManagementParameters">
+        <annotation name="org.chromium.DBus.Method.Kind"
+                    value="async"/>
+        <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::RemoveFirmwareManagementParametersRequest" />
+        </arg>
+        <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::RemoveFirmwareManagementParametersReply" />
+        </arg>
+    </method>
+
+    <method name="SetFirmwareManagementParameters">
+        <annotation name="org.chromium.DBus.Method.Kind"
+                    value="async"/>
+        <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::SetFirmwareManagementParametersRequest" />
+        </arg>
+        <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="device_management::SetFirmwareManagementParametersReply" />
+        </arg>
+    </method>
+    </interface>
+</node>
