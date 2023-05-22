@@ -39,19 +39,19 @@ void FillDeviceProto(const Device& virtual_device,
   }
 }
 
-// TODO(b/239559602) Introduce better types for IPv4 addr and IPv4 CIDR.
-void FillSubnetProto(const uint32_t base_addr,
-                     int prefix_length,
+void FillSubnetProto(const net_base::IPv4CIDR& cidr,
                      patchpanel::IPv4Subnet* output) {
-  output->set_addr(&base_addr, sizeof(base_addr));
-  output->set_base_addr(base_addr);
-  output->set_prefix_len(static_cast<uint32_t>(prefix_length));
+  output->set_addr(cidr.address().ToByteString());
+  output->set_base_addr(cidr.address().ToInAddr().s_addr);
+  output->set_prefix_len(static_cast<uint32_t>(cidr.prefix_length()));
 }
 
 void FillSubnetProto(const Subnet& virtual_subnet,
                      patchpanel::IPv4Subnet* output) {
-  FillSubnetProto(virtual_subnet.BaseAddress(), virtual_subnet.PrefixLength(),
-                  output);
+  const auto cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+      ConvertUint32ToIPv4Address(virtual_subnet.BaseAddress()),
+      virtual_subnet.PrefixLength());
+  FillSubnetProto(cidr, output);
 }
 
 void FillDeviceDnsProxyProto(
@@ -79,8 +79,7 @@ void FillDownstreamNetworkProto(
   output->set_downstream_ifname(downstream_network_info.downstream_ifname);
   output->set_ipv4_gateway_addr(
       downstream_network_info.ipv4_cidr.address().ToByteString());
-  FillSubnetProto(downstream_network_info.ipv4_base_addr,
-                  downstream_network_info.ipv4_cidr.prefix_length(),
+  FillSubnetProto(downstream_network_info.ipv4_cidr,
                   output->mutable_ipv4_subnet());
 }
 

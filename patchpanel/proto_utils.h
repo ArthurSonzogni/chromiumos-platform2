@@ -19,11 +19,9 @@ namespace patchpanel {
 // Fills a protobuf NetworkDevice object with the given |virtual_device| Device.
 void FillDeviceProto(const Device& virtual_device, NetworkDevice* output);
 
-// Fills a protobuf IPv4Subnet object with the IPv4 address |base_addr| in
-// network order and the prefix length |prefix_length|.
-void FillSubnetProto(const uint32_t base_addr,
-                     int prefix_length,
-                     IPv4Subnet* output);
+// Fills a protobuf IPv4Subnet object with the IPv4CIDR.
+void FillSubnetProto(const net_base::IPv4CIDR& cidr,
+                     patchpanel::IPv4Subnet* output);
 void FillSubnetProto(const Subnet& virtual_subnet, IPv4Subnet* output);
 
 void FillDeviceDnsProxyProto(

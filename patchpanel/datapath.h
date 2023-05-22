@@ -108,10 +108,6 @@ struct DownstreamNetworkInfo {
   // IPv4 CIDR of the DUT on the downstream network. This is the effective
   // gateway address for clients connected on the network.
   net_base::IPv4CIDR ipv4_cidr;
-  // Base address of the IPv4 subnet assigned to the downstream network in
-  // network order.
-  // TODO(b/279693340): Replace by ipv4_cidr.GetPrefixAddress().
-  uint32_t ipv4_base_addr;
   // The MTU of the upstream. std::nullopt means the MTU is set to the default
   // value (i.e. 1500).
   std::optional<int> mtu;
