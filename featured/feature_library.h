@@ -52,19 +52,23 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
                          IsEnabledCallback callback) = 0;
 
   // Like IsEnabled(), but blocks up to timeout_ms to wait for the dbus call to
-  // finish. If you have multiple related features you wish to look up, you MUST
-  // look them all up in the same call using GetParamsAndEnabled{,Blocking} --
-  // if you look them up across multiple calls, chrome may have restarted in
-  // between calls, giving inconsistent state. DO NOT CACHE the result of this
-  // call across chrome restarts, as it may change -- for example, when a user
-  // logs in or out or when they apply changes to chrome://flags. To determine
-  // when to refetch after a chrome restart, use ListenForRefetchNeeded(), or
-  // just re-fetch each time you use the experiment value. NOTE: As of 2021-12,
-  // Chrome only retrieves finch seeds after a first reboot (e.g. when logging
-  // in). So, if you need to run an experiment before this it should be set up
-  // as a client-side trial. Does *not* block waiting for the service to be
-  // available, so may have spurious fallbacks to the default value that could
-  // be avoided with IsEnabled(), especially soon after Chrome starts.
+  // finish.
+  // If you have multiple related features you wish to look up, you MUST look
+  // them all up in the same call using GetParamsAndEnabled{,Blocking} -- if you
+  // look them up across multiple calls, chrome may have restarted in between
+  // calls, giving inconsistent state.
+  // DO NOT CACHE the result of this call across chrome restarts, as it may
+  // change -- for example, when a user logs in or out or when they apply
+  // changes to chrome://flags.
+  // To determine when to refetch after a chrome restart, use
+  // ListenForRefetchNeeded(), or just re-fetch each time you use the experiment
+  // value.
+  // NOTE: As of 2021-12, Chrome only retrieves finch seeds after a first reboot
+  // (e.g. when logging in). So, if you need to run an experiment before this it
+  // should be set up as a client-side trial.
+  // Does *not* block waiting for the service to be available, so may have
+  // spurious fallbacks to the default value that could be avoided with
+  // IsEnabled(), especially soon after Chrome starts.
   // TODO(b/236009983): Fix this.
   virtual bool IsEnabledBlockingWithTimeout(const VariationsFeature& feature,
                                             int timeout_ms) = 0;
