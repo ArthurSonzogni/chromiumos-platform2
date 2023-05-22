@@ -3115,6 +3115,7 @@ void Cellular::EntitlementCheck(
   entitlement_check_callback_ = std::move(callback);
   // TODO(b/285242955): Use all available addresses instead of only primary one.
   carrier_entitlement_->Check(network_addresses[0], network()->GetDNSServers(),
+                              network()->interface_name(),
                               mobile_operator_info_->entitlement_config());
 }
 

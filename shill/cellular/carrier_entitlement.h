@@ -59,8 +59,11 @@ class CarrierEntitlement {
   // set to |kAllowed|, otherwise it will run the entitlement check
   // corresponding to the carrier and return |kAllowed| in the callback if and
   // only if the device is allowed to tether.
+  // TODO(b/287083906): Evaluate passing the Network object to reduce the
+  // number of arguments.
   void Check(const IPAddress& src_address,
              const std::vector<IPAddress>& dns_list,
+             const std::string& interface_name,
              const MobileOperatorMapper::EntitlementConfig& config);
 
   // Reset the cached entitlement check value.
@@ -93,7 +96,10 @@ class CarrierEntitlement {
   void HttpRequestErrorCallback(brillo::http::RequestID request_id,
                                 const brillo::Error* error);
 
-  void CheckInternal(const IPAddress& src_address, bool user_triggered);
+  void CheckInternal(const IPAddress& src_address,
+                     const std::vector<IPAddress>& dns_list,
+                     const std::string& interface_name,
+                     bool user_triggered);
 
   void PostBackgroundCheck();
   // Builds the request content
@@ -109,6 +115,8 @@ class CarrierEntitlement {
   brillo::http::RequestID request_id_;
   bool request_in_progress_;
   base::CancelableOnceClosure background_check_cancelable;
+  std::vector<IPAddress> last_dns_list_;
+  std::string last_interface_name_;
   IPAddress last_src_address_;
   Result last_result_ = Result::kGenericError;
   base::WeakPtrFactory<CarrierEntitlement> weak_ptr_factory_;

@@ -48,15 +48,20 @@ CarrierEntitlement::~CarrierEntitlement() {
 
 void CarrierEntitlement::Check(
     const IPAddress& src_address,
-    // TODO(b/275440439): pass the dns_list to brillo::http
     const std::vector<IPAddress>& dns_list,
+    const std::string& interface_name,
     const MobileOperatorMapper::EntitlementConfig& config) {
+  last_dns_list_ = dns_list;
+  last_interface_name_ = interface_name;
   last_src_address_ = src_address;
   config_ = config;
-  CheckInternal(src_address, /* user_triggered */ true);
+  CheckInternal(src_address, dns_list, last_interface_name_,
+                /* user_triggered */ true);
 }
 
 void CarrierEntitlement::CheckInternal(const IPAddress& src_address,
+                                       const std::vector<IPAddress>& dns_list,
+                                       const std::string& interface_name,
                                        bool user_triggered) {
   SLOG(3) << __func__;
   if (request_in_progress_) {
@@ -99,8 +104,18 @@ void CarrierEntitlement::CheckInternal(const IPAddress& src_address,
         Metrics::kCellularEntitlementCheckFailedToParseIp);
     return;
   }
-  // TODO(b/275440439): configure the dns address
+  std::vector<std::string> dns_list_str;
+  for (auto& ip : dns_list) {
+    dns_list_str.push_back(ip.ToString());
+  }
+  transport_->SetDnsServers(dns_list_str);
   transport_->SetLocalIpAddress(addr_string);
+  transport_->SetDnsInterface(interface_name);
+  if (src_address.family() == IPAddress::kFamilyIPv6) {
+    transport_->SetDnsLocalIPv6Address(addr_string);
+  } else {
+    transport_->SetDnsLocalIPv4Address(addr_string);
+  }
   transport_->UseCustomCertificate(brillo::http::Transport::Certificate::kNss);
 
   transport_->SetDefaultTimeout(kHttpRequestTimeout);
@@ -126,7 +141,8 @@ void CarrierEntitlement::CheckInternal(const IPAddress& src_address,
 void CarrierEntitlement::PostBackgroundCheck() {
   background_check_cancelable.Reset(base::BindOnce(
       &CarrierEntitlement::CheckInternal, weak_ptr_factory_.GetWeakPtr(),
-      last_src_address_, /* user_triggered */ false));
+      last_src_address_, last_dns_list_, last_interface_name_,
+      /* user_triggered */ false));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                background_check_cancelable.callback(),
                                kBackgroundCheckPeriod);
