@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# TODO(b/280102444): Disable default visibility.
+# gnlint: disable=GnLintVisibilityFlags
+
 import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
