@@ -22,25 +22,25 @@ constexpr char kLibraryName[] = "libcros_ml_core_internal.so";
 
 class EffectsPipelineImpl : public cros::EffectsPipeline {
  public:
-  virtual ~EffectsPipelineImpl() {
+  ~EffectsPipelineImpl() override {
     if (pipeline_ && delete_fn_) {
       delete_fn_(pipeline_);
     }
   }
 
-  virtual bool ProcessFrame(int64_t timestamp,
-                            GLuint frame_texture,
-                            uint32_t frame_width,
-                            uint32_t frame_height) {
+  bool ProcessFrame(int64_t timestamp,
+                    GLuint frame_texture,
+                    uint32_t frame_width,
+                    uint32_t frame_height) override {
     frames_started_ = true;
     return process_frame_fn_(pipeline_, timestamp, frame_texture, frame_width,
                              frame_height);
   }
 
-  virtual bool Wait() { return wait_fn_(pipeline_); }
+  bool Wait() override { return wait_fn_(pipeline_); }
 
-  virtual bool SetRenderedImageObserver(
-      std::unique_ptr<cros::ProcessedFrameObserver> observer) {
+  bool SetRenderedImageObserver(
+      std::unique_ptr<cros::ProcessedFrameObserver> observer) override {
     if (!frames_started_) {
       rendered_image_observer_ = std::move(observer);
       return true;
@@ -49,8 +49,8 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
   }
 
   // TODO(b:237964122) Consider converting effects_config to a protobuf
-  virtual void SetEffect(cros::EffectsConfig* effects_config,
-                         void (*callback)(bool)) {
+  void SetEffect(cros::EffectsConfig* effects_config,
+                 void (*callback)(bool)) override {
     set_effect_fn_(pipeline_, effects_config, callback);
   }
 
