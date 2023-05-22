@@ -62,6 +62,17 @@ std::string IPv4Address::ToString() const {
   return std::string(address_buf);
 }
 
+struct in_addr IPv4Address::ToInAddr() const {
+  const uint32_t host_endian = (static_cast<uint32_t>(data_[0]) << 24) |
+                               (static_cast<uint32_t>(data_[1]) << 16) |
+                               (static_cast<uint32_t>(data_[2]) << 8) |
+                               static_cast<uint32_t>(data_[3]);
+
+  struct in_addr ret;
+  ret.s_addr = htonl(host_endian);
+  return ret;
+}
+
 std::ostream& operator<<(std::ostream& os, const IPv4Address& address) {
   os << address.ToString();
   return os;

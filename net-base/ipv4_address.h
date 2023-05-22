@@ -22,7 +22,7 @@ namespace net_base {
 class NET_BASE_EXPORT IPv4Address {
  public:
   // The length in bytes of addresses.
-  static constexpr size_t kAddressLength = sizeof(in_addr);
+  static constexpr size_t kAddressLength = sizeof(struct in_addr);
   // The type of the internal address data. The address is stored in network
   // order (i.e. big endian).
   using DataType = std::array<uint8_t, kAddressLength>;
@@ -69,6 +69,9 @@ class NET_BASE_EXPORT IPv4Address {
 
   // Returns the address in the IPv4 dotted-decimal notation.
   std::string ToString() const;
+
+  // Returns the address in the in_addr type.
+  struct in_addr ToInAddr() const;
 
  private:
   // Stores the raw byte of address in network order.

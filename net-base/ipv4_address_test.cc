@@ -105,6 +105,13 @@ TEST(IPv4AddressTest, Order) {
   }
 }
 
+TEST(IPv4Address, ToInAddr) {
+  const auto ipv4_addr = IPv4Address(0x11, 0x22, 0x33, 0x44);
+  const uint32_t expected_s_addr = htonl(0x11223344);
+
+  EXPECT_EQ(ipv4_addr.ToInAddr().s_addr, expected_s_addr);
+}
+
 TEST(IPv4CIDR, CreateFromCIDRString) {
   const auto cidr1 = IPv4CIDR::CreateFromCIDRString("192.168.10.1/0");
   ASSERT_TRUE(cidr1);
