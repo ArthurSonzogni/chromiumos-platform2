@@ -11,8 +11,10 @@ void FillDeviceProto(const Device& virtual_device,
   output->set_ifname(virtual_device.host_ifname());
   output->set_phys_ifname(virtual_device.phys_ifname());
   output->set_guest_ifname(virtual_device.guest_ifname());
-  output->set_ipv4_addr(virtual_device.config().guest_ipv4_addr());
-  output->set_host_ipv4_addr(virtual_device.config().host_ipv4_addr());
+  output->set_ipv4_addr(
+      virtual_device.config().guest_ipv4_addr().ToInAddr().s_addr);
+  output->set_host_ipv4_addr(
+      virtual_device.config().host_ipv4_addr().ToInAddr().s_addr);
   switch (virtual_device.type()) {
     case Device::Type::kARC0:
       // The "arc0" legacy management device is not exposed in DBus

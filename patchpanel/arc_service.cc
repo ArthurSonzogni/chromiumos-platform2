@@ -358,8 +358,7 @@ bool ArcService::Start(uint32_t id) {
 
     arc_device_ifname = ArcVethHostName(arc_device_->guest_ifname());
     const auto guest_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-        ConvertUint32ToIPv4Address(arc_device_->config().guest_ipv4_addr()),
-        30);
+        arc_device_->config().guest_ipv4_addr(), 30);
     if (!datapath_->ConnectVethPair(
             pid, kArcNetnsName, arc_device_ifname, arc_device_->guest_ifname(),
             arc_device_->config().mac_addr(), guest_cidr,
@@ -378,7 +377,7 @@ bool ArcService::Start(uint32_t id) {
 
   // CreateFromAddressAndPrefix() is valid because 30 is a valid prefix.
   const auto cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-      ConvertUint32ToIPv4Address(arc_device_->config().host_ipv4_addr()), 30);
+      arc_device_->config().host_ipv4_addr(), 30);
   // Create the bridge for the management device arc0.
   if (!datapath_->AddBridge(kArcBridge, cidr)) {
     LOG(ERROR) << "Failed to setup bridge " << kArcBridge;
@@ -506,20 +505,18 @@ void ArcService::AddDevice(const std::string& ifname,
 
   // CreateFromAddressAndPrefix() is valid because 30 is a valid prefix.
   const auto cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-      ConvertUint32ToIPv4Address(device->config().host_ipv4_addr()), 30);
+      device->config().host_ipv4_addr(), 30);
   // Create the bridge.
   if (!datapath_->AddBridge(device->host_ifname(), cidr)) {
     LOG(ERROR) << "Failed to setup bridge " << device->host_ifname();
     return;
   }
 
-  datapath_->StartRoutingDevice(
-      device->phys_ifname(), device->host_ifname(),
-      ConvertUint32ToIPv4Address(device->config().guest_ipv4_addr()),
-      TrafficSource::kArc, /*route_on_vpn=*/false);
-  datapath_->AddInboundIPv4DNAT(
-      AutoDnatTarget::kArc, device->phys_ifname(),
-      IPv4AddressToString(device->config().guest_ipv4_addr()));
+  datapath_->StartRoutingDevice(device->phys_ifname(), device->host_ifname(),
+                                device->config().guest_ipv4_addr(),
+                                TrafficSource::kArc, /*route_on_vpn=*/false);
+  datapath_->AddInboundIPv4DNAT(AutoDnatTarget::kArc, device->phys_ifname(),
+                                device->config().guest_ipv4_addr().ToString());
 
   std::string virtual_device_ifname;
   if (arc_type_ == ArcType::kVM) {
@@ -537,7 +534,7 @@ void ArcService::AddDevice(const std::string& ifname,
     virtual_device_ifname = ArcVethHostName(device->guest_ifname());
 
     const auto guest_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-        ConvertUint32ToIPv4Address(device->config().guest_ipv4_addr()), 30);
+        device->config().guest_ipv4_addr(), 30);
     if (!datapath_->ConnectVethPair(
             pid, kArcNetnsName, virtual_device_ifname, device->guest_ifname(),
             device->config().mac_addr(), guest_cidr,
@@ -591,7 +588,7 @@ void ArcService::RemoveDevice(const std::string& ifname) {
                                TrafficSource::kArc, /*route_on_vpn=*/false);
   datapath_->RemoveInboundIPv4DNAT(
       AutoDnatTarget::kArc, device->phys_ifname(),
-      IPv4AddressToString(device->config().guest_ipv4_addr()));
+      device->config().guest_ipv4_addr().ToString());
   datapath_->RemoveBridge(device->host_ifname());
 
   if (IsAdbAllowed(type))

@@ -52,6 +52,14 @@ void Device::Config::set_tap_ifname(const std::string& tap_ifname) {
   tap_ = tap_ifname;
 }
 
+net_base::IPv4Address Device::Config::host_ipv4_addr() const {
+  return ConvertUint32ToIPv4Address(host_ipv4_addr_->Address());
+}
+
+net_base::IPv4Address Device::Config::guest_ipv4_addr() const {
+  return ConvertUint32ToIPv4Address(guest_ipv4_addr_->Address());
+}
+
 const std::string& Device::Config::tap_ifname() const {
   return tap_;
 }

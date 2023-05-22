@@ -18,6 +18,7 @@
 #include <base/functional/bind.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/ipv4_address.h>
 
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/subnet.h"
@@ -79,8 +80,8 @@ class Device {
     MacAddress mac_addr() const { return mac_addr_; }
     void set_mac_addr(const MacAddress& mac) { mac_addr_ = mac; }
 
-    uint32_t host_ipv4_addr() const { return host_ipv4_addr_->Address(); }
-    uint32_t guest_ipv4_addr() const { return guest_ipv4_addr_->Address(); }
+    net_base::IPv4Address host_ipv4_addr() const;
+    net_base::IPv4Address guest_ipv4_addr() const;
 
     const SubnetAddress* const host_ipv4_subnet_addr() const {
       return host_ipv4_addr_.get();

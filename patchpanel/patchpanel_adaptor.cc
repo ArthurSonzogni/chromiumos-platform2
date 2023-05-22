@@ -87,7 +87,7 @@ ArcVmStartupResponse PatchpanelAdaptor::ArcVmStartup(
     // TODO(hugobenichi) Use FillDeviceProto.
     auto* dev = response.add_devices();
     dev->set_ifname(config->tap_ifname());
-    dev->set_ipv4_addr(config->guest_ipv4_addr());
+    dev->set_ipv4_addr(config->guest_ipv4_addr().ToInAddr().s_addr);
     dev->set_guest_type(NetworkDevice::ARCVM);
   }
 
