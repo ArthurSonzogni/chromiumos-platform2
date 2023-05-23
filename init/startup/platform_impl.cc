@@ -21,6 +21,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/blkdev_utils/storage_utils.h>
 #include <brillo/files/file_util.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
@@ -217,6 +218,25 @@ void Platform::AddClobberCrashReport(const std::vector<std::string> args) {
 
   // TODO(sarthakkukreti): Delete this since clobbering handles things.
   sync();
+}
+
+std::optional<base::FilePath> Platform::GetRootDevicePartitionPath(
+    const std::string& partition_label) {
+  base::FilePath root_dev;
+  if (!utils::GetRootDevice(&root_dev, /*strip_partition=*/true)) {
+    LOG(WARNING) << "Unable to get root device";
+    return std::nullopt;
+  }
+
+  const int esp_partition_num =
+      utils::GetPartitionNumber(root_dev, partition_label);
+  if (esp_partition_num == -1) {
+    LOG(WARNING) << "Unable to get partition number for label "
+                 << partition_label;
+    return std::nullopt;
+  }
+
+  return brillo::AppendPartition(root_dev, esp_partition_num);
 }
 
 void Platform::ReplayExt4Journal(const base::FilePath& dev) {

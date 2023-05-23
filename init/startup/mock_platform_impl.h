@@ -56,6 +56,10 @@ class MockPlatform : public Platform {
               (const base::FilePath& output_file),
               (override));
   MOCK_METHOD(void, RunProcess, (const base::FilePath& cmd_path), (override));
+  MOCK_METHOD(std::optional<base::FilePath>,
+              GetRootDevicePartitionPath,
+              (const std::string& partition_label),
+              (override));
 };
 
 }  // namespace startup

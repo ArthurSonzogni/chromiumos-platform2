@@ -8,6 +8,7 @@
 #include <sys/statvfs.h>
 #include <sys/types.h>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -112,6 +113,10 @@ class Platform {
 
   // Runs crash_reporter with the given args.
   virtual void AddClobberCrashReport(const std::vector<std::string> args);
+
+  // Get the path of a partition on the root device with the given label.
+  virtual std::optional<base::FilePath> GetRootDevicePartitionPath(
+      const std::string& partition_label);
 
   // Runs e2fsck for the given device.
   void ReplayExt4Journal(const base::FilePath& dev);
