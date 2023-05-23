@@ -18,6 +18,8 @@
 #include <base/strings/string_util.h>
 #include <brillo/process/process.h>
 #include <rootdev/rootdev.h>
+#include <vboot/cgpt_params.h>
+#include <vboot/vboot_host.h>
 
 namespace {
 
@@ -42,6 +44,11 @@ int RestoreConLogCallback(int type, const char* fmt, ...) {
 
   return 0;
 }
+
+void CgptFindShowFunctionNoOp(struct CgptFindParams*,
+                              const char*,
+                              int,
+                              GptEntry*) {}
 
 }  // namespace
 
@@ -132,6 +139,85 @@ void Restorecon(const base::FilePath& path,
       (is_recursive ? recurse_flags : 0) | SELINUX_RESTORECON_REALPATH;
 
   selinux_restorecon(path.value().c_str(), base_flags);
+}
+
+int GetPartitionNumber(const base::FilePath& drive_name,
+                       const std::string& partition_label) {
+  // TODO(C++20): Switch to aggregate initialization once we require C++20.
+  CgptFindParams params = {};
+  params.set_label = 1;
+  params.label = partition_label.c_str();
+  params.drive_name = drive_name.value().c_str();
+  params.show_fn = &CgptFindShowFunctionNoOp;
+  CgptFind(&params);
+  if (params.hits != 1) {
+    LOG(ERROR) << "Could not find partition number for partition "
+               << partition_label;
+    return -1;
+  }
+  return params.match_partnum;
+}
+
+bool ReadPartitionMetadata(const base::FilePath& disk,
+                           int partition_number,
+                           bool* successful_out,
+                           int* priority_out) {
+  if (!successful_out || !priority_out)
+    return false;
+  // TODO(C++20): Switch to aggregate initialization once we require C++20.
+  CgptAddParams params = {};
+  params.drive_name = disk.value().c_str();
+  params.partition = partition_number;
+  if (CgptGetPartitionDetails(&params) == CGPT_OK) {
+    *successful_out = params.successful;
+    *priority_out = params.priority;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void EnsureKernelIsBootable(const base::FilePath root_disk,
+                            int kernel_partition) {
+  bool successful = false;
+  int priority = 0;
+  if (!ReadPartitionMetadata(root_disk, kernel_partition, &successful,
+                             &priority)) {
+    LOG(ERROR) << "Failed to read partition metadata from partition "
+               << kernel_partition << " on disk " << root_disk.value();
+    // If we couldn't read, we'll err on the side of caution and try to set the
+    // successful bit and priority anyways.
+  }
+
+  if (!successful) {
+    // TODO(C++20): Switch to aggregate initialization once we require C++20.
+    CgptAddParams params = {};
+    params.partition = kernel_partition;
+    params.set_successful = 1;
+    params.drive_name = root_disk.value().c_str();
+    params.successful = 1;
+    if (CgptAdd(&params) != CGPT_OK) {
+      LOG(ERROR) << "Failed to set sucessful for active kernel partition: "
+                 << kernel_partition;
+    }
+  }
+
+  if (priority < 1) {
+    // TODO(C++20): Switch to aggregate initialization once we require C++20.
+    CgptPrioritizeParams params = {};
+    params.set_partition = kernel_partition;
+    params.drive_name = root_disk.value().c_str();
+    // When reordering kernel priorities to set the active kernel to highest,
+    // use 3 as the highest value. Since there are only 3 kernel partitions,
+    // this ensures that all priorities are unique.
+    params.max_priority = 3;
+    if (CgptPrioritize(&params) != CGPT_OK) {
+      LOG(ERROR) << "Failed to prioritize active kernel partition: "
+                 << kernel_partition;
+    }
+  }
+
+  sync();
 }
 
 }  // namespace utils
