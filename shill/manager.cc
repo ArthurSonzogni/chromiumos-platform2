@@ -1715,9 +1715,6 @@ void Manager::SortServicesTask() {
   ServiceRefPtr new_physical;
   for (const auto& service : services_) {
     auto* network = FindActiveNetworkFromService(service);
-    if (!new_physical && service->technology() != Technology::kVPN) {
-      new_physical = service;
-    }
     if (network) {
       DCHECK(network->IsConnected());
       if (!found_dns && !network->dns_servers().empty()) {
@@ -1730,6 +1727,9 @@ void Manager::SortServicesTask() {
       if (!new_logical) {
         new_logical = service;
         new_logical_network = network;
+      }
+      if (!new_physical && service->technology() != Technology::kVPN) {
+        new_physical = service;
       }
 
       priority += Connection::kPriorityStep;
@@ -1804,7 +1804,7 @@ void Manager::ApplyAlwaysOnVpn(const ServiceRefPtr& physical_service) {
     return;
   }
 
-  if (!physical_service->IsOnline()) {
+  if (!physical_service || !physical_service->IsOnline()) {
     // No physical network, we can't connect a VPN.
     ResetAlwaysOnVpnBackoff();
     return;

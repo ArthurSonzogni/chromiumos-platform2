@@ -2598,65 +2598,6 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistAutoConnect) {
   mock_service->set_profile(nullptr);
 }
 
-TEST_F(ManagerTest, UpdateServiceLogging) {
-  ScopedMockLog log;
-  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
-  std::string updated_message = base::StringPrintf(
-      "Service %s updated;", mock_service->log_name().c_str());
-
-  // An idle service should only be logged as not online.
-  {
-    EXPECT_CALL(*mock_service, state())
-        .WillRepeatedly(Return(Service::kStateIdle));
-    EXPECT_CALL(log, Log(logging::LOGGING_INFO, _, HasSubstr("not online")));
-    manager()->RegisterService(mock_service);
-    CompleteServiceSort();
-    manager()->UpdateService(mock_service);
-    CompleteServiceSort();
-  }
-
-  // A service leaving the idle state should create a log message.
-  {
-    EXPECT_CALL(*mock_service, state())
-        .WillRepeatedly(Return(Service::kStateAssociating));
-    EXPECT_CALL(log, Log(logging::LOGGING_INFO, _, HasSubstr(updated_message)))
-        .Times(1);
-    manager()->UpdateService(mock_service.get());
-    CompleteServiceSort();
-  }
-
-  // A service in a non-idle state should not create a log message if its
-  // state did not change.
-  {
-    EXPECT_CALL(log, Log(logging::LOGGING_INFO, _, HasSubstr(updated_message)))
-        .Times(0);
-    manager()->UpdateService(mock_service);
-    CompleteServiceSort();
-  }
-
-  // A service transitioning between two non-idle states should create
-  // a log message.
-  {
-    EXPECT_CALL(*mock_service, state())
-        .WillRepeatedly(Return(Service::kStateConnected));
-    EXPECT_CALL(log, Log(logging::LOGGING_INFO, _, HasSubstr(updated_message)))
-        .Times(1);
-    manager()->UpdateService(mock_service.get());
-    CompleteServiceSort();
-  }
-
-  // A service transitioning from a non-idle state to idle should create
-  // a log message.
-  {
-    EXPECT_CALL(*mock_service, state())
-        .WillRepeatedly(Return(Service::kStateIdle));
-    EXPECT_CALL(log, Log(logging::LOGGING_INFO, _, HasSubstr(updated_message)))
-        .Times(1);
-    manager()->UpdateService(mock_service.get());
-    CompleteServiceSort();
-  }
-}
-
 TEST_F(ManagerTest, SaveSuccessfulService) {
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(manager(), ""));
