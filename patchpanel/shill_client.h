@@ -151,18 +151,6 @@ class ShillClient {
   virtual bool GetDeviceProperties(const dbus::ObjectPath& device_path,
                                    Device* output);
 
-  // Returns the cached interface name of the current default logical network;
-  // does not initiate a property fetch.
-  // TODO(b/273741099): Migrate callers to use default_logical_device()
-  // because the interface name becomes ambiguous for multiplexed Cellular
-  // interfaces.
-  virtual const std::string& default_logical_interface() const;
-  // Returns the cached interface name of the current default physical network;
-  // does not initiate a property fetch.
-  // TODO(b/273741099): Migrate callers to use default_logical_device()
-  // because the interface name becomes ambiguous for multiplexed Cellular
-  // interfaces.
-  virtual const std::string& default_physical_interface() const;
   // Returns the cached default logical shill Device; does not initiate a
   // property fetch.
   virtual const Device& default_logical_device() const;

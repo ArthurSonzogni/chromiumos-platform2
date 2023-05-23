@@ -313,7 +313,7 @@ void Manager::OnGuestDeviceChanged(const Device& virtual_device,
       (virtual_device.type() == Device::Type::kARCContainer ||
        virtual_device.type() == Device::Type::kARCVM)
           ? virtual_device.phys_ifname()
-          : shill_client_->default_logical_interface();
+          : shill_client_->default_logical_device().ifname;
   if (event == Device::ChangeEvent::kAdded) {
     // If device is ARC, only starts forwarding multicast traffic for WiFi
     // interfaces when multicast lock is held and device is interactive, but
@@ -608,10 +608,10 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   if (nsinfo.outbound_ifname.empty()) {
     if (nsinfo.route_on_vpn) {
       nsinfo.tracked_outbound_ifname =
-          shill_client_->default_logical_interface();
+          shill_client_->default_logical_device().ifname;
     } else {
       nsinfo.tracked_outbound_ifname =
-          shill_client_->default_physical_interface();
+          shill_client_->default_physical_device().ifname;
     }
   }
   // Start forwarding for IPv6.

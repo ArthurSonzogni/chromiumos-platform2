@@ -78,14 +78,6 @@ ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
   SetDefaultDevices(GetDefaultDevices());
 }
 
-const std::string& ShillClient::default_logical_interface() const {
-  return default_logical_device_.ifname;
-}
-
-const std::string& ShillClient::default_physical_interface() const {
-  return default_physical_device_.ifname;
-}
-
 const ShillClient::Device& ShillClient::default_logical_device() const {
   return default_logical_device_;
 }

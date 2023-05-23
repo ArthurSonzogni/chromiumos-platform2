@@ -45,13 +45,6 @@ class FakeShillClient : public ShillClient {
                                       .ifname = fake_default_physical_ifname_};
     return std::make_pair(default_logical_device, default_physical_device);
   }
-  const std::string& default_logical_interface() const override {
-    return fake_default_logical_ifname_;
-  }
-
-  const std::string& default_physical_interface() const override {
-    return fake_default_physical_ifname_;
-  }
 
   void SetFakeDefaultLogicalDevice(const std::string& ifname) {
     fake_default_logical_ifname_ = ifname;
