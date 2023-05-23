@@ -108,17 +108,17 @@ MissiveArgs::~MissiveArgs() {
 void MissiveArgs::OnParamResultInitially(
     feature::PlatformFeaturesInterface::ParamsResult result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(!responded_) << "Can only be called once";
-  responded_ = true;
 
-  OnParamResult(result);
-
-  // Now enable listening for the future updates.
-  EnableListeningForUpdates();
+  // Enable listening for the future updates and deliver result after that.
+  EnableListeningForUpdates(base::BindOnce(&MissiveArgs::OnParamResult,
+                                           weak_ptr_factory_.GetWeakPtr(),
+                                           std::move(result)));
 }
 
 void MissiveArgs::OnParamResult(
     feature::PlatformFeaturesInterface::ParamsResult result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
   // Update the parameters.
   UpdateParameters(result);
   for (auto& cb : delayed_response_cbs_) {
@@ -132,9 +132,9 @@ void MissiveArgs::OnParamResult(
   }
 }
 
-void MissiveArgs::EnableListeningForUpdates() {
+void MissiveArgs::EnableListeningForUpdates(base::OnceClosure done_cb) {
   feature_lib_->ListenForRefetchNeeded(
-      base::BindRepeating(
+      /*signal_callback=*/base::BindRepeating(
           [](base::WeakPtr<MissiveArgs> self) {
             if (!self) {
               return;
@@ -147,18 +147,25 @@ void MissiveArgs::EnableListeningForUpdates() {
                     base::BindOnce(&MissiveArgs::OnParamResult, self)));
           },
           weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(
-          [](base::WeakPtr<MissiveArgs> self, bool success) {
+      /*attached_callback=*/base::BindOnce(
+          [](base::WeakPtr<MissiveArgs> self, base::OnceClosure done_cb,
+             bool success) {
             if (!self) {
+              std::move(done_cb).Run();
               return;
             }
             DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
             if (!success) {
               // Retry if failed to listen.
-              self->EnableListeningForUpdates();
+              self->EnableListeningForUpdates(std::move(done_cb));
+              return;
             }
+            // Succeeded.
+            DCHECK(!self->responded_) << "Can only be called once";
+            self->responded_ = true;
+            std::move(done_cb).Run();
           },
-          weak_ptr_factory_.GetWeakPtr()));
+          weak_ptr_factory_.GetWeakPtr(), std::move(done_cb)));
 }
 
 void MissiveArgs::UpdateParameters(

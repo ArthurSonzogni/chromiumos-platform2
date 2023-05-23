@@ -99,7 +99,7 @@ class MissiveArgs {
   void UpdateParameters(
       feature::PlatformFeaturesInterface::ParamsResult result);
 
-  void EnableListeningForUpdates();
+  void EnableListeningForUpdates(base::OnceClosure done_cb);
 
   const std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib_;
 
