@@ -14,7 +14,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/compiler_specific.h>
 #include <base/functional/bind.h>
@@ -24,6 +23,9 @@
 #include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
 
+// TODO(b/187784160): don't include directly
+#include "featured/feature_library.h"
+#include "permission_broker/allow_external_tagged_usb_device_rule.h"
 #include "permission_broker/allow_group_tty_device_rule.h"
 #include "permission_broker/allow_hidraw_device_rule.h"
 #include "permission_broker/allow_tty_device_rule.h"
@@ -60,9 +62,14 @@ PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
       rule_engine_(udev_run_path, poll_interval),
       dbus_object_(
           nullptr, bus, dbus::ObjectPath(kPermissionBrokerServicePath)),
-      port_tracker_(),
       usb_control_(std::make_unique<UsbDeviceManager>()) {
+  if (!feature::PlatformFeatures::Initialize(bus)) {
+    LOG(WARNING) << "Unable to initialize PlatformFeatures framework, will not "
+                    "be able to check for system flags.";
+  }
+
   rule_engine_.AddRule(new AllowUsbDeviceRule());
+  rule_engine_.AddRule(new AllowExternalTaggedUsbDeviceRule());
   rule_engine_.AddRule(new AllowTtyDeviceRule());
   rule_engine_.AddRule(new DenyClaimedUsbDeviceRule());
   rule_engine_.AddRule(new DenyUninitializedDeviceRule());

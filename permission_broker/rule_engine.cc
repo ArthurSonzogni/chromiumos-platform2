@@ -26,7 +26,7 @@ RuleEngine::RuleEngine(const std::string& udev_run_path,
   CHECK(udev_) << "Could not create udev context, is sysfs mounted?";
 }
 
-RuleEngine::~RuleEngine() {}
+RuleEngine::~RuleEngine() = default;
 
 void RuleEngine::AddRule(Rule* rule) {
   CHECK(rule) << "Cannot add NULL as a rule.";

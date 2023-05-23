@@ -53,6 +53,7 @@ generate_dbus_adaptors("permission_broker_adaptors") {
 
 static_library("libpermission_broker") {
   sources = [
+    "allow_external_tagged_usb_device_rule.cc",
     "allow_group_tty_device_rule.cc",
     "allow_hidraw_device_rule.cc",
     "allow_tty_device_rule.cc",
@@ -81,7 +82,10 @@ static_library("libpermission_broker") {
   ]
   configs += [ ":target_defaults" ]
   libs = [ "policy" ]
-  deps = [ ":permission_broker_adaptors" ]
+  deps = [
+    ":permission_broker_adaptors",
+    "//featured:libfeatures",
+  ]
 }
 
 executable("permission_broker") {
@@ -99,6 +103,7 @@ if (use.test) {
   }
   executable("permission_broker_test") {
     sources = [
+      "allow_external_tagged_usb_device_rule_test.cc",
       "allow_tty_device_rule_test.cc",
       "allow_usb_device_rule_test.cc",
       "deny_claimed_hidraw_device_rule_test.cc",
@@ -123,6 +128,7 @@ if (use.test) {
     deps = [
       ":libpermission_broker",
       "../common-mk/testrunner:testrunner",
+      "//featured:libfake_platform_features",
     ]
   }
 }
