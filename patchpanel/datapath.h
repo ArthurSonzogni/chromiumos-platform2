@@ -391,7 +391,7 @@ class Datapath {
   // or Linux binaries listening on a network port inside Crostini.
   virtual void AddInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
                                   const std::string& ifname,
-                                  const std::string& ipv4_addr);
+                                  const net_base::IPv4Address& ipv4_addr);
   virtual void RemoveInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
                                      const std::string& ifname,
                                      const std::string& ipv4_addr);

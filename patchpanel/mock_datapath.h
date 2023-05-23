@@ -108,7 +108,7 @@ class MockDatapath : public Datapath {
               AddInboundIPv4DNAT,
               (AutoDnatTarget auto_dnat_target,
                const std::string& ifname,
-               const std::string& ipv4_addr),
+               const net_base::IPv4Address& ipv4_addr),
               (override));
   MOCK_METHOD(void,
               RemoveInboundIPv4DNAT,

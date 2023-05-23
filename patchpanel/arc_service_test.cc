@@ -294,7 +294,7 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
-                                 StrEq("100.115.92.6")));
+                                 IPv4Address(100, 115, 92, 6)));
 
   svc->AddDevice("eth0", ShillClient::Device::Type::kEthernet);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -421,7 +421,7 @@ TEST_F(ArcServiceTest, ContainerImpl_StartAfterDevice) {
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
-                                 StrEq("100.115.92.6")));
+                                 IPv4Address(100, 115, 92, 6)));
 
   auto svc = NewService(ArcService::ArcType::kContainer);
   svc->AddDevice("eth0", ShillClient::Device::Type::kEthernet);
@@ -550,7 +550,7 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
-                                 StrEq("100.115.92.6")));
+                                 IPv4Address(100, 115, 92, 6)));
   svc->AddDevice("eth0", ShillClient::Device::Type::kEthernet);
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -590,7 +590,7 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
-                                 StrEq("100.115.92.6")));
+                                 IPv4Address(100, 115, 92, 6)));
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -651,7 +651,7 @@ TEST_F(ArcServiceTest, VmImpl_StartDevice) {
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
-                                 StrEq("100.115.92.6")));
+                                 IPv4Address(100, 115, 92, 6)));
 
   svc->AddDevice("eth0", ShillClient::Device::Type::kEthernet);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -688,7 +688,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
-                                 StrEq("100.115.92.6")));
+                                 IPv4Address(100, 115, 92, 6)));
 
   svc->AddDevice("eth0", ShillClient::Device::Type::kEthernet);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -703,7 +703,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("wlan0"),
-                                 StrEq("100.115.92.14")));
+                                 IPv4Address(100, 115, 92, 14)));
 
   svc->AddDevice("wlan0", ShillClient::Device::Type::kWifi);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -718,7 +718,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth1"),
-                                 StrEq("100.115.92.10")));
+                                 IPv4Address(100, 115, 92, 10)));
 
   svc->AddDevice("eth1", ShillClient::Device::Type::kEthernet);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -792,7 +792,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
-                                 StrEq("100.115.92.6")));
+                                 IPv4Address(100, 115, 92, 6)));
   svc->AddDevice("eth0", ShillClient::Device::Type::kEthernet);
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -839,7 +839,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
-                                 StrEq("100.115.92.6")));
+                                 IPv4Address(100, 115, 92, 6)));
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -876,7 +876,7 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
                                              TrafficSource::kArc, false, _));
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
-                                 StrEq("100.115.92.6")));
+                                 IPv4Address(100, 115, 92, 6)));
 
   svc->AddDevice("eth0", ShillClient::Device::Type::kEthernet);
   Mock::VerifyAndClearExpectations(datapath_.get());

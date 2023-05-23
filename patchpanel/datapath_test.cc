@@ -1377,7 +1377,8 @@ TEST(DatapathTest, AddInboundIPv4DNATArc) {
                   "--to-destination 1.2.3.4 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kArc, "eth0", "1.2.3.4");
+  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kArc, "eth0",
+                              IPv4Address(1, 2, 3, 4));
 }
 
 TEST(DatapathTest, RemoveInboundIPv4DNATArc) {
@@ -1413,7 +1414,8 @@ TEST(DatapathTest, AddInboundIPv4DNATCrostini) {
                   "--to-destination 1.2.3.4 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kCrostini, "eth0", "1.2.3.4");
+  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kCrostini, "eth0",
+                              IPv4Address(1, 2, 3, 4));
 }
 
 TEST(DatapathTest, RemoveInboundIPv4DNATCrostini) {
@@ -1449,7 +1451,8 @@ TEST(DatapathTest, AddInboundIPv4DNATParallelsVm) {
                   "--to-destination 1.2.3.4 -w");
 
   Datapath datapath(runner, firewall, &system);
-  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kParallels, "eth0", "1.2.3.4");
+  datapath.AddInboundIPv4DNAT(AutoDnatTarget::kParallels, "eth0",
+                              IPv4Address(1, 2, 3, 4));
 }
 
 TEST(DatapathTest, RemoveInboundIPv4DNATParallelsVm) {

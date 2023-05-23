@@ -1361,7 +1361,8 @@ void Datapath::StopRoutingDevice(const std::string& ext_ifname,
 
 void Datapath::AddInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
                                   const std::string& ifname,
-                                  const std::string& ipv4_addr) {
+                                  const IPv4Address& ipv4_addr) {
+  const std::string ipv4_addr_str = ipv4_addr.ToString();
   const std::string chain = AutoDnatTargetChainName(auto_dnat_target);
   // Direct ingress IP traffic to existing sockets.
   bool success = true;
@@ -1374,19 +1375,21 @@ void Datapath::AddInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
   // Direct ingress TCP & UDP traffic to ARC interface for new connections.
   if (process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kA,
                                 {chain, "-i", ifname, "-p", "tcp", "-j", "DNAT",
-                                 "--to-destination", ipv4_addr, "-w"}) != 0) {
+                                 "--to-destination", ipv4_addr_str, "-w"}) !=
+      0) {
     success = false;
   }
   if (process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kA,
                                 {chain, "-i", ifname, "-p", "udp", "-j", "DNAT",
-                                 "--to-destination", ipv4_addr, "-w"}) != 0) {
+                                 "--to-destination", ipv4_addr_str, "-w"}) !=
+      0) {
     success = false;
   }
 
   if (!success) {
     LOG(ERROR) << "Failed to configure ingress DNAT rules on " << ifname
-               << " to " << ipv4_addr;
-    RemoveInboundIPv4DNAT(auto_dnat_target, ifname, ipv4_addr);
+               << " to " << ipv4_addr_str;
+    RemoveInboundIPv4DNAT(auto_dnat_target, ifname, ipv4_addr_str);
   }
 }
 
