@@ -169,6 +169,7 @@ if (use.test) {
       "memory_and_cpu/memory_v2_test.cc",
       "memory_and_cpu/prime_number_search.cc",
       "memory_and_cpu/prime_number_search_test.cc",
+      "memory_and_cpu/prime_search_v2_test.cc",
       "network/captive_portal_test.cc",
       "network/dns_latency_test.cc",
       "network/dns_resolution_test.cc",
