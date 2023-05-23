@@ -169,9 +169,8 @@ impl MetricsLogger {
             DurationMetricUnit::Hours => duration.as_secs() / 3600,
         };
 
-        let base_name = "Platform.Hibernate.Duration.";
         let duration_metric = MetricsSample {
-            name: &format!("{}{}", base_name, histogram),
+            name: histogram,
             value: value as isize,
             min: 0,
             max,
