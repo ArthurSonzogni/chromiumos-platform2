@@ -324,6 +324,7 @@ source_set("hardware_abstraction_internal_library") {
       "backend/tpm2/signature_sealing.cc",
       "backend/tpm2/signing.cc",
       "backend/tpm2/state.cc",
+      "backend/tpm2/static_utils.cc",
       "backend/tpm2/storage.cc",
       "backend/tpm2/u2f.cc",
       "backend/tpm2/vendor.cc",
