@@ -16,21 +16,23 @@ proto_library("patchpanel_ipc_protos") {
 }
 
 executable("ndproxyd") {
-  cflags = [ "-Wconversion" ]
   sources = [
+    "../iptables.cc",
     "../message_dispatcher.cc",
     "../minijailed_process_runner.cc",
-    "../iptables.cc",
     "../ndproxy.cc",
     "../net_util.cc",
+    "../rtnl_client.cc",
     "../system.cc",
     "main.cc",
   ]
+  cflags = [ "-Wconversion" ]
   install_path = "bin"
   deps = [ ":patchpanel_ipc_protos" ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libnet-base",
   ]
   if (use.fuzzer) {
     pkg_deps += [ "protobuf" ]

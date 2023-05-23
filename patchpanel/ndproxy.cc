@@ -172,19 +172,9 @@ base::ScopedFD NDProxy::PreparePacketSocket() {
 }
 
 bool NDProxy::Init() {
-  rtnl_fd_ = base::ScopedFD(
-      socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE));
-  if (!rtnl_fd_.is_valid()) {
-    PLOG(ERROR) << "socket() failed for rtnetlink socket";
-    return false;
-  }
-  sockaddr_nl local = {
-      .nl_family = AF_NETLINK,
-      .nl_groups = 0,
-  };
-  if (bind(rtnl_fd_.get(), reinterpret_cast<sockaddr*>(&local), sizeof(local)) <
-      0) {
-    PLOG(ERROR) << "bind() failed on rtnetlink socket";
+  rtnl_client_ = RTNLClient::Create();
+  if (!rtnl_client_) {
+    PLOG(ERROR) << "Failed to create rtnetlink client";
     return false;
   }
 
@@ -645,102 +635,16 @@ bool NDProxy::GetLocalMac(int if_id, MacAddress* mac_addr) {
 }
 
 bool NDProxy::GetNeighborMac(const in6_addr& ipv6_addr, MacAddress* mac_addr) {
-  sockaddr_nl kernel = {
-      .nl_family = AF_NETLINK,
-      .nl_groups = 0,
-  };
-  struct nl_req {
-    nlmsghdr hdr;
-    rtgenmsg gen;
-  } req = {
-      .hdr =
-          {
-              .nlmsg_len = NLMSG_LENGTH(sizeof(rtgenmsg)),
-              .nlmsg_type = RTM_GETNEIGH,
-              .nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP,
-              .nlmsg_seq = 1,
-          },
-      .gen =
-          {
-              .rtgen_family = AF_INET6,
-          },
-  };
-  iovec io_req = {
-      .iov_base = &req,
-      .iov_len = req.hdr.nlmsg_len,
-  };
-  msghdr rtnl_req = {
-      .msg_name = &kernel,
-      .msg_namelen = sizeof(kernel),
-      .msg_iov = &io_req,
-      .msg_iovlen = 1,
-  };
-  if (sendmsg(rtnl_fd_.get(), &rtnl_req, 0) < 0) {
-    PLOG(ERROR) << "sendmsg() failed on rtnetlink socket";
+  DCHECK(rtnl_client_);
+
+  const auto neighbor_mac_table = rtnl_client_->GetNeighborMacTable();
+  const auto it = neighbor_mac_table.find(net_base::IPv6Address(ipv6_addr));
+  if (it == neighbor_mac_table.end()) {
     return false;
   }
 
-  static constexpr size_t kRtnlReplyBufferSize = 32768;
-  char reply_buffer[kRtnlReplyBufferSize];
-  iovec io_reply = {
-      .iov_base = reply_buffer,
-      .iov_len = kRtnlReplyBufferSize,
-  };
-  msghdr rtnl_reply = {
-      .msg_name = &kernel,
-      .msg_namelen = sizeof(kernel),
-      .msg_iov = &io_reply,
-      .msg_iovlen = 1,
-  };
-
-  bool any_entry_matched = false;
-  bool done = false;
-  while (!done) {
-    ssize_t len;
-    if ((len = recvmsg(rtnl_fd_.get(), &rtnl_reply, 0)) < 0) {
-      PLOG(ERROR) << "recvmsg() failed on rtnetlink socket";
-      return false;
-    }
-    for (nlmsghdr* msg_ptr = reinterpret_cast<nlmsghdr*>(reply_buffer);
-         NLMSG_OK(msg_ptr, len); msg_ptr = NLMSG_NEXT(msg_ptr, len)) {
-      switch (msg_ptr->nlmsg_type) {
-        case NLMSG_DONE: {
-          done = true;
-          break;
-        }
-        case RTM_NEWNEIGH: {
-          // Bitmap - 0x1: Found IP match; 0x2: found MAC address;
-          uint8_t current_entry_status = 0x0;
-          uint8_t current_mac[ETHER_ADDR_LEN];
-          ndmsg* nd_msg = reinterpret_cast<ndmsg*>(NLMSG_DATA(msg_ptr));
-          rtattr* rt_attr = reinterpret_cast<rtattr*>(RTM_RTA(nd_msg));
-          size_t rt_attr_len = RTM_PAYLOAD(msg_ptr);
-          for (; RTA_OK(rt_attr, rt_attr_len);
-               rt_attr = RTA_NEXT(rt_attr, rt_attr_len)) {
-            if (rt_attr->rta_type == NDA_DST &&
-                memcmp(&ipv6_addr, RTA_DATA(rt_attr), sizeof(in6_addr)) == 0) {
-              current_entry_status |= 0x1;
-            } else if (rt_attr->rta_type == NDA_LLADDR) {
-              current_entry_status |= 0x2;
-              memcpy(current_mac, RTA_DATA(rt_attr), ETHER_ADDR_LEN);
-            }
-          }
-          if (current_entry_status == 0x3) {
-            memcpy(mac_addr->data(), current_mac, ETHER_ADDR_LEN);
-            any_entry_matched = true;
-          }
-          break;
-        }
-        default: {
-          LOG(WARNING) << "received unexpected rtnetlink message type "
-                       << msg_ptr->nlmsg_type << ", length "
-                       << msg_ptr->nlmsg_len;
-          break;
-        }
-      }
-    }
-  }
-  return any_entry_matched;
+  *mac_addr = it->second;
+  return true;
 }
 
 void NDProxy::RegisterOnGuestIpDiscoveryHandler(

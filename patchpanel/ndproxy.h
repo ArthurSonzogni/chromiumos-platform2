@@ -27,6 +27,7 @@
 #include "patchpanel/ipc.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/message_dispatcher.h"
+#include "patchpanel/rtnl_client.h"
 
 namespace patchpanel {
 
@@ -169,7 +170,8 @@ class NDProxy {
   // Socket used to communicate with kernel through ioctl. No real packet data
   // goes through this socket.
   base::ScopedFD dummy_fd_;
-  base::ScopedFD rtnl_fd_;
+
+  std::unique_ptr<RTNLClient> rtnl_client_;
 
   // Fixed buffers for receiving and sending IP packets.
   uint8_t* in_packet_buffer_[IP_MAXPACKET];
