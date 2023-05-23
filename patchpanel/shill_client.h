@@ -105,11 +105,8 @@ class ShillClient {
   // Client callback for listening to IPConfig changes on any shill Device with
   // interface name |ifname|. Changes to the IP configuration of a VPN
   // connection are not taken into account.
-  // TODO(b/273741099): Change this callback to take a Device reference as
-  // argument because the interface name becomes ambiguous for multiplexed
-  // Cellular interfaces.
-  using IPConfigsChangeHandler = base::RepeatingCallback<void(
-      const std::string& ifname, const IPConfig& ipconfig)>;
+  using IPConfigsChangeHandler =
+      base::RepeatingCallback<void(const Device& device)>;
 
   // Client callback for listening to IPv6 network changes on any shill physical
   // Device. The changes are identified by IPv6 prefix change. Note that any

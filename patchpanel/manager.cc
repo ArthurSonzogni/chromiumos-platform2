@@ -257,14 +257,15 @@ void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
   }
 }
 
-void Manager::OnIPConfigsChanged(const std::string& ifname,
-                                 const ShillClient::IPConfig& ipconfig) {
-  if (ipconfig.ipv4_dns_addresses.empty()) {
-    datapath_->RemoveRedirectDnsRule(ifname);
+void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
+  if (shill_device.ipconfig.ipv4_dns_addresses.empty()) {
+    datapath_->RemoveRedirectDnsRule(shill_device.ifname);
   } else {
-    datapath_->AddRedirectDnsRule(ifname, ipconfig.ipv4_dns_addresses.front());
+    datapath_->AddRedirectDnsRule(
+        shill_device.ifname, shill_device.ipconfig.ipv4_dns_addresses.front());
   }
-  ipv6_svc_->UpdateUplinkIPv6DNS(ifname, ipconfig.ipv6_dns_addresses);
+  ipv6_svc_->UpdateUplinkIPv6DNS(shill_device.ifname,
+                                 shill_device.ipconfig.ipv6_dns_addresses);
 }
 
 void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {

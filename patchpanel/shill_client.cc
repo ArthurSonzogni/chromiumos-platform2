@@ -576,7 +576,7 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
   LOG(INFO) << "[" << device_path.value()
             << "]: IPConfig changed: " << new_ip_config;
   for (const auto& handler : ipconfigs_handlers_) {
-    handler.Run(device_it->second.ifname, new_ip_config);
+    handler.Run(device_it->second);
   }
 
   // Compares if the new IPv6 network is the same as the old one by checking

@@ -431,12 +431,12 @@ void NetworkMonitorService::OnShillDevicesChanged(
 }
 
 void NetworkMonitorService::OnIPConfigsChanged(
-    const std::string& ifname, const ShillClient::IPConfig& ipconfig) {
-  const auto it = neighbor_link_monitors_.find(ifname);
+    const ShillClient::Device& device) {
+  const auto it = neighbor_link_monitors_.find(device.ifname);
   if (it == neighbor_link_monitors_.end())
     return;
 
-  it->second->OnIPConfigChanged(ipconfig);
+  it->second->OnIPConfigChanged(device.ipconfig);
 }
 
 }  // namespace patchpanel
