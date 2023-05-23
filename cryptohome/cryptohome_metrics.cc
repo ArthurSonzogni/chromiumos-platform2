@@ -22,6 +22,7 @@ namespace cryptohome {
 namespace {
 
 struct TimerHistogramParams {
+  TimerType timer_type;
   const char* metric_name;
   int min_sample;
   int max_sample;
@@ -130,91 +131,94 @@ constexpr char kNumUserHomeDirectories[] =
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
-const TimerHistogramParams kTimerHistogramParams[] = {
-    {"Cryptohome.TimeToMountAsync", 0, 4000, 50},
-    {"Cryptohome.TimeToMountSync", 0, 4000, 50},
-    {"Cryptohome.TimeToMountGuestAsync", 0, 4000, 50},
-    {"Cryptohome.TimeToMountGuestSync", 0, 4000, 50},
-    {"Cryptohome.TimeToTakeTpmOwnership", 0, 100000, 50},
+constexpr TimerHistogramParams kTimerHistogramParams[] = {
     // A note on the PKCS#11 initialization time:
     // Max sample for PKCS#11 initialization time is 100s; we are interested
     // in recording the very first PKCS#11 initialization time, which may be a
     // lengthy one. Subsequent initializations are fast (under 1s) because they
     // just check if PKCS#11 was previously initialized, returning immediately.
     // These will all fall into the first histogram bucket.
-    {"Cryptohome.TimeToInitPkcs11", 1000, 100000, 50},
-    {"Cryptohome.TimeToMountEx", 0, 4000, 50},
+    {kPkcs11InitTimer, "Cryptohome.TimeToInitPkcs11", 1000, 100000, 50},
+    {kMountExTimer, "Cryptohome.TimeToMountEx", 0, 4000, 50},
     // Ext4 crypto migration is expected to takes few minutes in a fast case,
     // and with many tens of thousands of files it may take hours.
-    {"Cryptohome.TimeToCompleteDircryptoMigration", 1000, 10 * 60 * 60 * 1000,
-     50},
+    {kDircryptoMigrationTimer, "Cryptohome.TimeToCompleteDircryptoMigration",
+     1000, 10 * 60 * 60 * 1000, 50},
     // Minimal migration is expected to take few seconds in a fast case,
     // and minutes in the worst case if we forgot to blocklist files.
-    {"Cryptohome.TimeToCompleteDircryptoMinimalMigration", 200, 2 * 60 * 1000,
+    {kDircryptoMinimalMigrationTimer,
+     "Cryptohome.TimeToCompleteDircryptoMinimalMigration", 200, 2 * 60 * 1000,
      50},
 
-    // OBSOLETE.
-    // The out-of-process mount operation will time out after 3 seconds.
-    {"Cryptohome.TimeToPerformOOPMountOperation", 0, 3000, 50},
-
-    // OBSOLETE.
-    // The out-of-process cleanup operation includes a call to waitpid(2) with
-    // a 1-second timeout, so make the max sample a bit higher than that.
-    {"Cryptohome.TimeToPerformOOPMountCleanup", 0, 1100, 50},
-
-    // Latency of the LegacyUserSession::Verify operation that gets invoked on
-    // session unlock.
-    {"Cryptohome.TimeSessionUnlock", 0, 4000, 50},
-    {"Cryptohome.TimeToMountGuestEx", 0, 4000, 50},
+    {kMountGuestExTimer, "Cryptohome.TimeToMountGuestEx", 0, 4000, 50},
     // This is only being reported from the out-of-process helper so it's
     // covered by the same 3-second timeout.
-    {"Cryptohome.TimeToPerformEphemeralMount", 0, 3000, 50},
+    {kPerformEphemeralMountTimer, "Cryptohome.TimeToPerformEphemeralMount", 0,
+     3000, 50},
     // Non-ephemeral mounts are currently mounted in-process but it makes sense
     // to keep the same scale for them as ephemeral mounts.
-    {"Cryptohome.TimeToPerformMount", 0, 3000, 50},
+    {kPerformMountTimer, "Cryptohome.TimeToPerformMount", 0, 3000, 50},
     // The time to generate the ECC auth value in TpmEccAuthBlock.
-    {"Cryptohome.TimeToGenerateEccAuthValue", 0, 5000, 50},
-    // The time for AuthSession to add a credential.
-    {"Cryptohome.TimetoAuthSessionAddCredentials", 0, 6000, 60},
+    {kGenerateEccAuthValueTimer, "Cryptohome.TimeToGenerateEccAuthValue", 0,
+     5000, 50},
     // The time for AuthSession to add an auth factor with VaultKeyset.
-    {"Cryptohome.TimeToAuthSessionAddAuthFactorVK", 0, 6000, 60},
+    {kAuthSessionAddAuthFactorVKTimer,
+     "Cryptohome.TimeToAuthSessionAddAuthFactorVK", 0, 6000, 60},
     // The time for AuthSession to add an auth factor with USS.
-    {"Cryptohome.TimeToAuthSessionAddAuthFactorUSS", 0, 6000, 60},
-    // The time for AuthSession to authenticate a credential.
-    {"Cryptohome.TimeToAuthSessionAuthenticate", 0, 6000, 60},
+    {kAuthSessionAddAuthFactorUSSTimer,
+     "Cryptohome.TimeToAuthSessionAddAuthFactorUSS", 0, 6000, 60},
     // The time for AuthSession to authenticate an auth factor with VaultKeyset.
-    {"Cryptohome.TimeToAuthSessionAuthenticateAuthFactorVK", 0, 6000, 60},
+    {kAuthSessionAuthenticateAuthFactorVKTimer,
+     "Cryptohome.TimeToAuthSessionAuthenticateAuthFactorVK", 0, 6000, 60},
     // The time for AuthSession to authenticate an auth factor with USS.
-    {"Cryptohome.TimeToAuthSessionAuthenticateAuthFactorUSS", 0, 6000, 60},
-    // The time for AuthSession to update a credential.
-    {"Cryptohome.TimeToAuthSessionUpdateCredentials", 0, 6000, 60},
+    {kAuthSessionAuthenticateAuthFactorUSSTimer,
+     "Cryptohome.TimeToAuthSessionAuthenticateAuthFactorUSS", 0, 6000, 60},
     // TODO(b/236415538, thomascedeno) - Add metric once UpdateAuthFactor is
     // implemented.
-    {"Cryptohome.TimeToAuthSessionUpdateAuthFactorVK", 0, 6000, 60},
-    {"Cryptohome.TimeToAuthSessionUpdateAuthFactorUSS", 0, 6000, 60},
+    {kAuthSessionUpdateAuthFactorVKTimer,
+     "Cryptohome.TimeToAuthSessionUpdateAuthFactorVK", 0, 6000, 60},
+    {kAuthSessionUpdateAuthFactorUSSTimer,
+     "Cryptohome.TimeToAuthSessionUpdateAuthFactorUSS", 0, 6000, 60},
     // TODO(b/236415640, thomascedeno) - Add metric once RemoveAuthFactor is
     // implemented.
-    {"Cryptohome.TimeToAuthSessionRemoveAuthFactorVK", 0, 6000, 60},
-    {"Cryptohome.TimeToAuthSessionRemoveAuthFactorUSS", 0, 6000, 60},
+    {kAuthSessionRemoveAuthFactorVKTimer,
+     "Cryptohome.TimeToAuthSessionRemoveAuthFactorVK", 0, 6000, 60},
+    {kAuthSessionRemoveAuthFactorUSSTimer,
+     "Cryptohome.TimeToAuthSessionRemoveAuthFactorUSS", 0, 6000, 60},
     // Time for User Data Auth class to create a persistent user.
-    {"Cryptohome.TimeToCreatePersistentUser", 0, 6000, 60},
+    {kCreatePersistentUserTimer, "Cryptohome.TimeToCreatePersistentUser", 0,
+     6000, 60},
     // Time for overall AuthSession lifetime, which
     // has a default of 5 minutes but can be optionally extended.
-    {"Cryptohome.AuthSessionTotalLifetime", 0, 3 * 5 * 60 * 1000, 60},
+    {kAuthSessionTotalLifetimeTimer, "Cryptohome.AuthSessionTotalLifetime", 0,
+     3 * 5 * 60 * 1000, 60},
     // Time AuthSession is alive after it is authenticated, does not
     // include time AuthSession is initialized but unauthenticated.
-    {"Cryptohome.AuthSessionAuthenticatedLifetime", 0, 3 * 5 * 60 * 1000, 60},
+    {kAuthSessionAuthenticatedLifetimeTimer,
+     "Cryptohome.AuthSessionAuthenticatedLifetime", 0, 3 * 5 * 60 * 1000, 60},
     // The time to Persist a User Secret Stash to system storage.
-    {"Cryptohome.TimeToUSSPersist", 0, 5000, 50},
+    {kUSSPersistTimer, "Cryptohome.TimeToUSSPersist", 0, 5000, 50},
     // The time to Load Persist a User Secret Stash from system storage.
-    {"Cryptohome.TimeToUSSLoadPersisted", 0, 5000, 50},
+    {kUSSLoadPersistedTimer, "Cryptohome.TimeToUSSLoadPersisted", 0, 5000, 50},
     // The time to migrate a VaultKeyset to UserSecretStash after authentication
     // or update is completed.
-    {"Cryptohome.TimeToMigrateVaultKeysetToUss", 0, 6000, 60},
+    {kUSSMigrationTimer, "Cryptohome.TimeToMigrateVaultKeysetToUss", 0, 6000,
+     60},
 };
 
 static_assert(std::size(kTimerHistogramParams) == kNumTimerTypes,
               "kTimerHistogramParams out of sync with enum TimerType");
+
+constexpr bool TestTimerHistogramParams() {
+  for (int i = 0; i < std::size(kTimerHistogramParams); i++) {
+    if (static_cast<int>(kTimerHistogramParams[i].timer_type) != i) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static_assert(TestTimerHistogramParams(), "TimerType value mapping mismatch");
 
 // List of strings for a patterned histogram for legacy locations.
 const char* kLegacyCodePathLocations[] = {".AddKeyResetSeedGeneration"};
@@ -228,8 +232,8 @@ static_assert(
 // DisableErrorMetricsReporting().
 bool g_disable_error_metrics = false;
 
-MetricsLibraryInterface* g_metrics = NULL;
-chromeos_metrics::TimerReporter* g_timers[kNumTimerTypes] = {NULL};
+MetricsLibraryInterface* g_metrics = nullptr;
+chromeos_metrics::TimerReporter* g_timers[kNumTimerTypes] = {nullptr};
 
 chromeos_metrics::TimerReporter* GetTimer(TimerType timer_type) {
   if (!g_timers[timer_type]) {
@@ -277,13 +281,13 @@ void InitializeMetrics() {
 
 void TearDownMetrics() {
   if (g_metrics) {
-    chromeos_metrics::TimerReporter::set_metrics_lib(NULL);
+    chromeos_metrics::TimerReporter::set_metrics_lib(nullptr);
     delete g_metrics;
-    g_metrics = NULL;
+    g_metrics = nullptr;
   }
-  for (int i = 0; i < kNumTimerTypes; ++i) {
-    if (g_timers[i]) {
-      delete g_timers[i];
+  for (auto& g_timer : g_timers) {
+    if (g_timer) {
+      delete g_timer;
     }
   }
 }

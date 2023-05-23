@@ -86,42 +86,32 @@ enum CryptohomeErrorMetric {
   kCryptohomeErrorNumBuckets  // Must be the last entry.
 };
 
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
+// These values are used to get the right param to send to metrics
+// server. Entries should not be renumbered without a corresponding change in
+// kTimerHistogramParams.
 enum TimerType {
-  kAsyncMountTimer = 0,       // Unused.
-  kSyncMountTimer = 1,        // Unused.
-  kAsyncGuestMountTimer = 2,  // Unused.
-  kSyncGuestMountTimer = 3,   // Unused.
-  kTpmTakeOwnershipTimer = 4,
-  kPkcs11InitTimer = 5,
-  kMountExTimer = 6,
-  kDircryptoMigrationTimer = 7,
-  kDircryptoMinimalMigrationTimer = 8,
-  kOOPMountOperationTimer = 9,  // Obsolete.
-  kOOPMountCleanupTimer = 10,   // Obsolete.
-  kSessionUnlockTimer = 11,
-  kMountGuestExTimer = 12,
-  kPerformEphemeralMountTimer = 13,
-  kPerformMountTimer = 14,
-  kGenerateEccAuthValueTimer = 15,
-  kAuthSessionAddCredentialsTimer = 16,  // Obsolete.
-  kAuthSessionAddAuthFactorVKTimer = 17,
-  kAuthSessionAddAuthFactorUSSTimer = 18,
-  kAuthSessionAuthenticateTimer = 19,
-  kAuthSessionAuthenticateAuthFactorVKTimer = 20,
-  kAuthSessionAuthenticateAuthFactorUSSTimer = 21,
-  kAuthSessionUpdateCredentialsTimer = 22,  // Obsolete.
-  kAuthSessionUpdateAuthFactorVKTimer = 23,
-  kAuthSessionUpdateAuthFactorUSSTimer = 24,
-  kAuthSessionRemoveAuthFactorVKTimer = 25,
-  kAuthSessionRemoveAuthFactorUSSTimer = 26,
-  kCreatePersistentUserTimer = 27,
-  kAuthSessionTotalLifetimeTimer = 28,
-  kAuthSessionAuthenticatedLifetimeTimer = 29,
-  kUSSPersistTimer = 30,
-  kUSSLoadPersistedTimer = 31,
-  kUSSMigrationTimer = 32,
+  kPkcs11InitTimer = 0,
+  kMountExTimer = 1,
+  kDircryptoMigrationTimer = 2,
+  kDircryptoMinimalMigrationTimer = 3,
+  kMountGuestExTimer = 4,
+  kPerformEphemeralMountTimer = 5,
+  kPerformMountTimer = 6,
+  kGenerateEccAuthValueTimer = 7,
+  kAuthSessionAddAuthFactorVKTimer = 8,
+  kAuthSessionAddAuthFactorUSSTimer = 9,
+  kAuthSessionAuthenticateAuthFactorVKTimer = 10,
+  kAuthSessionAuthenticateAuthFactorUSSTimer = 11,
+  kAuthSessionUpdateAuthFactorVKTimer = 12,
+  kAuthSessionUpdateAuthFactorUSSTimer = 13,
+  kAuthSessionRemoveAuthFactorVKTimer = 14,
+  kAuthSessionRemoveAuthFactorUSSTimer = 15,
+  kCreatePersistentUserTimer = 16,
+  kAuthSessionTotalLifetimeTimer = 17,
+  kAuthSessionAuthenticatedLifetimeTimer = 18,
+  kUSSPersistTimer = 19,
+  kUSSLoadPersistedTimer = 20,
+  kUSSMigrationTimer = 21,
   kNumTimerTypes  // For the number of timer types.
 };
 
