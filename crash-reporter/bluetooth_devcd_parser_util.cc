@@ -91,6 +91,10 @@ struct TlvAuxReg {
   uint8_t val[4][kAddrLen];
 } __attribute__((packed));
 
+struct TlvAuxRegExt {
+  uint8_t val[7][kAddrLen];
+} __attribute__((packed));
+
 struct TlvSubType {
   uint8_t val;
 } __attribute__((packed));
@@ -137,7 +141,8 @@ bool VerifyTlvLength(struct TlvHeader& tlv_header) {
     case kTlvBacktrace:
       return tlv_header.len == sizeof(struct TlvBacktrace);
     case kTlvAuxReg:
-      return tlv_header.len == sizeof(struct TlvAuxReg);
+      return tlv_header.len == sizeof(struct TlvAuxReg) ||
+             tlv_header.len == sizeof(struct TlvAuxRegExt);
     case kTlvSubType:
       return tlv_header.len == sizeof(struct TlvSubType);
     default:
@@ -273,6 +278,30 @@ bool ParseAuxRegisters(base::File& file, std::string* pc, std::string* line) {
   return true;
 }
 
+bool ParseAuxRegistersExtended(base::File& file,
+                               std::string* pc,
+                               std::string* line) {
+  struct TlvAuxRegExt reg;
+  int ret;
+
+  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&reg), sizeof(reg));
+  if (ret < sizeof(reg)) {
+    LOG(WARNING) << "Error reading Intel devcoredump Aux Registers";
+    return false;
+  }
+
+  *pc = base::HexEncode(&reg.val[1], kAddrLen);
+  *line = base::StrCat(
+      {CreateDumpEntry("BLINK", base::HexEncode(&reg.val[0], kAddrLen)),
+       CreateDumpEntry("PC", base::HexEncode(&reg.val[1], kAddrLen)),
+       CreateDumpEntry("ERSTATUS", base::HexEncode(&reg.val[2], kAddrLen)),
+       CreateDumpEntry("ECR", base::HexEncode(&reg.val[3], kAddrLen)),
+       CreateDumpEntry("EFA", base::HexEncode(&reg.val[4], kAddrLen)),
+       CreateDumpEntry("IRQ", base::HexEncode(&reg.val[5], kAddrLen)),
+       CreateDumpEntry("ICAUSE", base::HexEncode(&reg.val[6], kAddrLen))});
+  return true;
+}
+
 bool ParseExceptionSubtype(base::File& file, std::string* line) {
   struct TlvSubType sub_type;
   int ret;
@@ -390,7 +419,11 @@ bool ParseIntelDump(const base::FilePath& coredump_path,
         ret = ParseBacktrace(dump_file, &line);
         break;
       case kTlvAuxReg:
-        ret = ParseAuxRegisters(dump_file, pc, &line);
+        if (tlv_len == sizeof(struct TlvAuxReg)) {
+          ret = ParseAuxRegisters(dump_file, pc, &line);
+        } else {
+          ret = ParseAuxRegistersExtended(dump_file, pc, &line);
+        }
         break;
       case kTlvSubType:
         ret = ParseExceptionSubtype(dump_file, &line);
