@@ -542,7 +542,7 @@ void Ethernet::SetupWakeOnLan() {
   interface_command.ifr_data = &wake_on_lan_command;
 
   if (!RunEthtoolCmd(&interface_command)) {
-    LOG(WARNING) << "Failed to enable wake-on-lan ";
+    PLOG(WARNING) << "Failed to enable wake-on-lan";
     return;
   }
 }
@@ -976,7 +976,7 @@ void Ethernet::NotifyEthernetDriverName() {
   ifr.ifr_data = &drv;
 
   if (!RunEthtoolCmd(&ifr)) {
-    LOG(ERROR) << "Failed to get ethernet driver name";
+    PLOG(ERROR) << LoggingTag() << ": Failed to get ethernet driver name";
     driver = kEthernetDriverNameError;
   } else {
     strncpy(dvrname, drv.driver, sizeof(dvrname));
@@ -1042,6 +1042,8 @@ void Ethernet::NotifyEthernetDriverName() {
   } else if (driver == "error") {
     driver_enum = Metrics::kEthernetDriverError;
   } else {
+    LOG(WARNING) << LoggingTag() << ": Unknown ethernet driver name " << '"'
+                 << driver << '"';
     driver_enum = Metrics::kEthernetDriverUnknown;
   }
   metrics()->SendEnumToUMA(Metrics::kMetricEthernetDriver, driver_enum);
