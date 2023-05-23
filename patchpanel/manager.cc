@@ -267,26 +267,20 @@ void Manager::OnIPConfigsChanged(const std::string& ifname,
   ipv6_svc_->UpdateUplinkIPv6DNS(ifname, ipconfig.ipv6_dns_addresses);
 }
 
-void Manager::OnIPv6NetworkChanged(const std::string& ifname,
-                                   const std::string& ipv6_address) {
-  ShillClient::Device shill_device;
-  if (!shill_client_->GetDeviceProperties(ifname, &shill_device)) {
-    LOG(ERROR) << __func__ << ": unknown shill Device " << ifname;
-    return;
-  }
-
+void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
+  const std::string& ipv6_address = shill_device.ipconfig.ipv6_address;
   if (ipv6_address.empty()) {
     if (shill_device.type == ShillClient::Device::Type::kCellular) {
-      datapath_->UpdateSourceEnforcementIPv6Prefix(ifname,
+      datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device.ifname,
                                                    /*prefix=*/std::nullopt);
     }
     return;
   }
 
-  ipv6_svc_->OnUplinkIPv6Changed(ifname, ipv6_address);
+  ipv6_svc_->OnUplinkIPv6Changed(shill_device.ifname, ipv6_address);
 
   for (auto& [_, nsinfo] : connected_namespaces_) {
-    if (nsinfo.outbound_ifname != ifname) {
+    if (nsinfo.outbound_ifname != shill_device.ifname) {
       continue;
     }
 
@@ -303,7 +297,7 @@ void Manager::OnIPv6NetworkChanged(const std::string& ifname,
                  << "\"";
       return;
     }
-    datapath_->UpdateSourceEnforcementIPv6Prefix(ifname, prefix);
+    datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device.ifname, prefix);
   }
 }
 

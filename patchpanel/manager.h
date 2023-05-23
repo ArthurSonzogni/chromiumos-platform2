@@ -167,8 +167,7 @@ class Manager {
                              const std::vector<std::string>& removed);
   void OnIPConfigsChanged(const std::string& ifname,
                           const ShillClient::IPConfig& ipconfig);
-  void OnIPv6NetworkChanged(const std::string& ifname,
-                            const std::string& ipv6_address);
+  void OnIPv6NetworkChanged(const ShillClient::Device& shill_device);
 
   // Callback from |arc_svc_| or |cros_svc_|.
   void OnGuestDeviceChanged(const Device& virtual_device,

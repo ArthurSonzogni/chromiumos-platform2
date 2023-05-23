@@ -64,10 +64,8 @@ class ShillClientTest : public testing::Test {
     ipconfig_change_calls_.emplace_back(std::make_pair(device, ipconfig));
   }
 
-  void IPv6NetworkChangedHandler(const std::string& device,
-                                 const std::string& ipv6_address) {
-    ipv6_network_change_calls_.emplace_back(
-        std::make_pair(device, ipv6_address));
+  void IPv6NetworkChangedHandler(const ShillClient::Device& device) {
+    ipv6_network_change_calls_.push_back(device);
   }
 
  protected:
@@ -77,7 +75,7 @@ class ShillClientTest : public testing::Test {
   std::vector<std::string> removed_;
   std::vector<std::pair<std::string, ShillClient::IPConfig>>
       ipconfig_change_calls_;
-  std::vector<std::pair<std::string, std::string>> ipv6_network_change_calls_;
+  std::vector<ShillClient::Device> ipv6_network_change_calls_;
   std::unique_ptr<FakeShillClient> client_;
   std::unique_ptr<FakeShillClientHelper> helper_;
 };
@@ -385,8 +383,9 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   EXPECT_EQ(ipconfig_change_calls_.back().second.ipv6_dns_addresses,
             std::vector<std::string>({"2001:db8::1111"}));
   ASSERT_EQ(ipv6_network_change_calls_.size(), 1u);
-  EXPECT_EQ(ipv6_network_change_calls_.back().first, "wlan0");
-  EXPECT_EQ(ipv6_network_change_calls_.back().second,
+  EXPECT_EQ(ipv6_network_change_calls_.back().ifname, "wlan0");
+  EXPECT_EQ(ipv6_network_change_calls_.back().ipconfig.ipv6_prefix_length, 64);
+  EXPECT_EQ(ipv6_network_change_calls_.back().ipconfig.ipv6_address,
             "2001:db8::aabb:ccdd:1122:eeff");
 
   // Removes the device. The device will first lose its IP configuration before
@@ -404,8 +403,9 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   EXPECT_EQ(ipconfig_change_calls_.back().second.ipv6_gateway, "");
   EXPECT_TRUE(ipconfig_change_calls_.back().second.ipv6_dns_addresses.empty());
   ASSERT_EQ(ipv6_network_change_calls_.size(), 2u);
-  EXPECT_EQ(ipv6_network_change_calls_.back().first, "wlan0");
-  EXPECT_EQ(ipv6_network_change_calls_.back().second, "");
+  EXPECT_EQ(ipv6_network_change_calls_.back().ifname, "wlan0");
+  EXPECT_EQ(ipv6_network_change_calls_.back().ipconfig.ipv6_prefix_length, 0);
+  EXPECT_EQ(ipv6_network_change_calls_.back().ipconfig.ipv6_address, "");
 
   // Adds the device again. The device will first appear before it acquires a
   // new IP configuration, without DNS.
@@ -423,8 +423,9 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
             "fe80::abcd:1234");
   EXPECT_TRUE(ipconfig_change_calls_.back().second.ipv6_dns_addresses.empty());
   ASSERT_EQ(ipv6_network_change_calls_.size(), 3u);
-  EXPECT_EQ(ipv6_network_change_calls_.back().first, "wlan0");
-  EXPECT_EQ(ipv6_network_change_calls_.back().second,
+  EXPECT_EQ(ipv6_network_change_calls_.back().ifname, "wlan0");
+  EXPECT_EQ(ipv6_network_change_calls_.back().ipconfig.ipv6_prefix_length, 64);
+  EXPECT_EQ(ipv6_network_change_calls_.back().ipconfig.ipv6_address,
             "2001:db8::aabb:ccdd:1122:eeff");
 
   // Adds IPv6 DNS, IPv6NetworkChangedHandler is not triggered.

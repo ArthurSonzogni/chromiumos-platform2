@@ -588,7 +588,7 @@ void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
     return;
   }
   for (const auto& handler : ipv6_network_handlers_) {
-    handler.Run(device_it->second.ifname, new_ip_config.ipv6_address);
+    handler.Run(device_it->second);
   }
 }
 
