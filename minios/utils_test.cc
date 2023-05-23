@@ -3,8 +3,10 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <utility>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/mock_log.h>
@@ -188,6 +190,17 @@ TEST(UtilsTest, MountStatefulPartitionTest) {
       .WillOnce(::testing::Return(1));
   EXPECT_FALSE(MountStatefulPartition(mock_process_manager_.get()));
   EXPECT_FALSE(MountStatefulPartition(nullptr));
+}
+TEST(UtilsTest, CompressLogsTest) {
+  auto mock_process_manager = std::make_unique<MockProcessManager>();
+  const auto archive_path = "/path/to/store/archive";
+  std::vector<std::string> expected_cmd = {
+      "/usr/bin/tar",         "-czhf",
+      archive_path,           "/var/log/update_engine.log",
+      "/var/log/upstart.log", "/var/log/messages"};
+  EXPECT_CALL(*mock_process_manager, RunCommand(expected_cmd, _));
+
+  CompressLogs(std::move(mock_process_manager), base::FilePath{archive_path});
 }
 
 }  // namespace minios

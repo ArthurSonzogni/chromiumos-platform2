@@ -5,6 +5,7 @@
 #include "minios/utils.h"
 
 #include <cstdio>
+#include <memory>
 #include <tuple>
 #include <vector>
 
@@ -21,6 +22,14 @@ constexpr char kLogConsole[] = "/run/frecon/vt1";
 const char kMountStatefulCommand[] = "/usr/bin/stateful_partition_for_recovery";
 const char kMountFlag[] = "--mount";
 const char kStatefulPath[] = "/stateful";
+
+const char kTarCommand[] = "/usr/bin/tar";
+// Compress and archive. Also resolve symlinks.
+// Using `gzip` as it's the only installed compress utility on MiniOS.
+const char kTarCompressFlags[] = "-czhf";
+
+const std::vector<std::string> kFilesToCompress{
+    "/var/log/update_engine.log", "/var/log/upstart.log", "/var/log/messages"};
 }  // namespace
 
 namespace minios {
@@ -28,6 +37,8 @@ namespace minios {
 const char kCategoryInit[] = "init";
 const char kCategoryReboot[] = "reboot";
 const char kCategoryUpdate[] = "update";
+
+const base::FilePath kDefaultArchivePath{"/tmp/logs.tar"};
 
 std::tuple<bool, std::string> ReadFileContentWithinRange(
     const base::FilePath& file_path,
@@ -203,6 +214,21 @@ bool MountStatefulPartition(ProcessManagerInterface* process_manager) {
     return false;
   }
   return true;
+}
+int CompressLogs(std::unique_ptr<ProcessManagerInterface> process_manager,
+                 const base::FilePath& archive_path) {
+  // Note: These are the explicit set of logs that are approved by privacy team.
+  // Adding files to this list would require clearance from Privacy team.
+  std::vector<std::string> compress_command = {kTarCommand, kTarCompressFlags,
+                                               archive_path.value()};
+  compress_command.insert(compress_command.end(), kFilesToCompress.begin(),
+                          kFilesToCompress.end());
+  base::FilePath console = GetLogConsole();
+  return process_manager->RunCommand(compress_command,
+                                     ProcessManager::IORedirection{
+                                         .input = console.value(),
+                                         .output = console.value(),
+                                     });
 }
 
 }  // namespace minios

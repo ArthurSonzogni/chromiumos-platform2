@@ -5,6 +5,7 @@
 #ifndef MINIOS_UTILS_H_
 #define MINIOS_UTILS_H_
 
+#include <memory>
 #include <string>
 #include <tuple>
 
@@ -18,6 +19,8 @@ namespace minios {
 extern const char kCategoryInit[];
 extern const char kCategoryReboot[];
 extern const char kCategoryUpdate[];
+
+extern const base::FilePath kDefaultArchivePath;
 
 // Reads the content of `file_path` from `start_offset` to `end_offset` with
 // maximum characters per line being `max_columns` at max. If the file ends
@@ -69,8 +72,14 @@ inline std::string AlertLogTag(const std::string& category) {
   return base::StringPrintf("[CoreServicesAlert<%s>] ", category.c_str());
 }
 
+// Mount the stateful partition at `/stateful/` if its not currently mounted.
+// Returns true if successfully mounted, false otherwise.
 bool MountStatefulPartition(ProcessManagerInterface* process_manager);
 
-}  // namespace minios
+// Compress a pre-determined list of NBR logs and save it to the provided path.
+// Returns the result of running a `tar` command.
+int CompressLogs(std::unique_ptr<ProcessManagerInterface> process_manager,
+                 const base::FilePath& archive_path = kDefaultArchivePath);
 
+}  // namespace minios
 #endif  // MINIOS_UTILS_H__
