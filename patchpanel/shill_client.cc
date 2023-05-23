@@ -86,12 +86,13 @@ const ShillClient::Device& ShillClient::default_physical_device() const {
   return default_physical_device_;
 }
 
-const std::vector<std::string> ShillClient::get_interfaces() const {
-  std::vector<std::string> ifnames;
+const std::vector<ShillClient::Device> ShillClient::GetDevices() const {
+  std::vector<Device> devices;
+  devices.reserve(devices_.size());
   for (const auto& [_, device] : devices_) {
-    ifnames.push_back(device.ifname);
+    devices.push_back(device);
   }
-  return ifnames;
+  return devices;
 }
 
 bool ShillClient::has_interface(const std::string& ifname) const {
@@ -306,36 +307,35 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
   }
 
   // Remove Devices removed by shill.
-  std::vector<std::string> removed_ifnames;
+  std::vector<Device> removed_devices;
   for (const auto& device_path : removed) {
     const auto it = devices_.find(device_path);
     if (it == devices_.end()) {
       LOG(WARNING) << "Unknown removed Device " << device_path.value();
       continue;
     }
-    removed_ifnames.push_back(it->second.ifname);
+    LOG(INFO) << "Removed shill Device " << it->second;
+    removed_devices.push_back(it->second);
     devices_.erase(it);
   }
 
   // Populate ShillClient::Device properties for any new shill Device.
-  std::vector<std::string> added_ifnames;
+  std::vector<Device> added_devices;
   for (const auto& device_path : added) {
     auto* new_device = &devices_[device_path];
     if (!GetDeviceProperties(device_path, new_device)) {
-      LOG(WARNING) << "Failed to add properties of Device "
+      LOG(WARNING) << "Failed to add properties of new Device "
                    << device_path.value();
       devices_.erase(device_path);
       continue;
     }
-    added_ifnames.push_back(new_device->ifname);
+    LOG(INFO) << "New shill Device " << *new_device;
+    added_devices.push_back(*new_device);
   }
 
-  LOG(INFO) << "shill Devices changed: added={"
-            << base::JoinString(added_ifnames, ",") << "}, removed={"
-            << base::JoinString(removed_ifnames, ",") << "}";
   // Update DevicesChangeHandler listeners.
   for (const auto& h : device_handlers_) {
-    h.Run(added_ifnames, removed_ifnames);
+    h.Run(added_devices, removed_devices);
   }
 }
 

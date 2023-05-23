@@ -202,34 +202,37 @@ void Manager::RestartIPv6(const std::string& netns_name) {
   }
 }
 
-void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
-                                    const std::vector<std::string>& removed) {
+void Manager::OnShillDevicesChanged(
+    const std::vector<ShillClient::Device>& added,
+    const std::vector<ShillClient::Device>& removed) {
   // Rules for traffic counters should be installed at the first and removed at
   // the last to make sure every packet is counted.
-  for (const std::string& ifname : removed) {
+  for (const auto& device : removed) {
     for (auto& [_, nsinfo] : connected_namespaces_) {
-      if (nsinfo.outbound_ifname != ifname) {
+      if (nsinfo.outbound_ifname != device.ifname) {
         continue;
       }
       StopForwarding(nsinfo.outbound_ifname, nsinfo.host_ifname,
                      ForwardingSet{.ipv6 = true});
     }
-    StopForwarding(ifname, /*ifname_virtual=*/"");
-    datapath_->StopConnectionPinning(ifname);
-    datapath_->RemoveRedirectDnsRule(ifname);
-    arc_svc_->RemoveDevice(ifname);
-    counters_svc_->OnPhysicalDeviceRemoved(ifname);
+    StopForwarding(device.ifname, /*ifname_virtual=*/"");
+    datapath_->StopConnectionPinning(device.ifname);
+    datapath_->RemoveRedirectDnsRule(device.ifname);
+    arc_svc_->RemoveDevice(device.ifname);
+    counters_svc_->OnPhysicalDeviceRemoved(device.ifname);
 
     // We have no good way to tell whether the removed Device was cellular now,
     // so we always call this. StopSourcePrefixEnforcement will find out by
     // matching |ifname| with existing rules.
-    datapath_->StopSourceIPv6PrefixEnforcement(ifname);
+    // TODO(hugobenichi): fix the above problem now that the full Device
+    // information is  available.
+    datapath_->StopSourceIPv6PrefixEnforcement(device.ifname);
   }
 
-  for (const std::string& ifname : added) {
-    counters_svc_->OnPhysicalDeviceAdded(ifname);
+  for (const auto& device : added) {
+    counters_svc_->OnPhysicalDeviceAdded(device.ifname);
     for (auto& [_, nsinfo] : connected_namespaces_) {
-      if (nsinfo.outbound_ifname != ifname) {
+      if (nsinfo.outbound_ifname != device.ifname) {
         continue;
       }
       StartForwarding(nsinfo.outbound_ifname, nsinfo.host_ifname,
@@ -240,19 +243,17 @@ void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
                          nsinfo.netns_name),
           base::Milliseconds(kIPv6RestartDelayMs));
     }
-    datapath_->StartConnectionPinning(ifname);
-    ShillClient::Device shill_device;
-    if (!shill_client_->GetDeviceProperties(ifname, &shill_device))
-      continue;
+    datapath_->StartConnectionPinning(device.ifname);
 
-    if (!shill_device.ipconfig.ipv4_dns_addresses.empty())
-      datapath_->AddRedirectDnsRule(
-          ifname, shill_device.ipconfig.ipv4_dns_addresses.front());
+    if (!device.ipconfig.ipv4_dns_addresses.empty()) {
+      datapath_->AddRedirectDnsRule(device.ifname,
+                                    device.ipconfig.ipv4_dns_addresses.front());
+    }
 
-    arc_svc_->AddDevice(ifname, shill_device.type);
+    arc_svc_->AddDevice(device.ifname, device.type);
 
-    if (shill_device.type == ShillClient::Device::Type::kCellular) {
-      datapath_->StartSourceIPv6PrefixEnforcement(ifname);
+    if (device.type == ShillClient::Device::Type::kCellular) {
+      datapath_->StartSourceIPv6PrefixEnforcement(device.ifname);
     }
   }
 }

@@ -210,8 +210,8 @@ class NetworkMonitorService {
   void Start();
 
  private:
-  void OnShillDevicesChanged(const std::vector<std::string>& added,
-                             const std::vector<std::string>& removed);
+  void OnShillDevicesChanged(const std::vector<ShillClient::Device>& added,
+                             const std::vector<ShillClient::Device>& removed);
   void OnIPConfigsChanged(const ShillClient::Device& device);
 
   // ifname => NeighborLinkMonitor.

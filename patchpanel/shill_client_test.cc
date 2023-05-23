@@ -53,8 +53,8 @@ class ShillClientTest : public testing::Test {
     default_physical_ifname_ = new_device.ifname;
   }
 
-  void DevicesChangedHandler(const std::vector<std::string>& added,
-                             const std::vector<std::string>& removed) {
+  void DevicesChangedHandler(const std::vector<ShillClient::Device>& added,
+                             const std::vector<ShillClient::Device>& removed) {
     added_ = added;
     removed_ = removed;
   }
@@ -70,8 +70,8 @@ class ShillClientTest : public testing::Test {
  protected:
   std::string default_logical_ifname_;
   std::string default_physical_ifname_;
-  std::vector<std::string> added_;
-  std::vector<std::string> removed_;
+  std::vector<ShillClient::Device> added_;
+  std::vector<ShillClient::Device> removed_;
   std::vector<ShillClient::Device> ipconfig_change_calls_;
   std::vector<ShillClient::Device> ipv6_network_change_calls_;
   std::unique_ptr<FakeShillClient> client_;
@@ -110,14 +110,25 @@ TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
 
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_EQ(added_.size(), devices.size());
-  EXPECT_NE(std::find(added_.begin(), added_.end(), "eth0"), added_.end());
-  EXPECT_NE(std::find(added_.begin(), added_.end(), "wlan0"), added_.end());
+  EXPECT_NE(std::find_if(added_.begin(), added_.end(),
+                         [](const ShillClient::Device& dev) {
+                           return dev.ifname == "eth0";
+                         }),
+            added_.end());
+  EXPECT_NE(std::find_if(added_.begin(), added_.end(),
+                         [](const ShillClient::Device& dev) {
+                           return dev.ifname == "wlan0";
+                         }),
+            added_.end());
   EXPECT_EQ(removed_.size(), 0);
 
   // Implies the default callback was run;
   EXPECT_EQ(default_logical_ifname_, "eth0");
   EXPECT_EQ(default_physical_ifname_, "eth0");
-  EXPECT_NE(std::find(added_.begin(), added_.end(), default_logical_ifname_),
+  EXPECT_NE(std::find_if(added_.begin(), added_.end(),
+                         [this](const ShillClient::Device& dev) {
+                           return dev.ifname == default_logical_ifname_;
+                         }),
             added_.end());
 
   devices.pop_back();
@@ -125,9 +136,9 @@ TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
   value = brillo::Any(devices);
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_EQ(added_.size(), 1);
-  EXPECT_EQ(*added_.begin(), "eth1");
+  EXPECT_EQ(added_[0].ifname, "eth1");
   EXPECT_EQ(removed_.size(), 1);
-  EXPECT_EQ(*removed_.begin(), "wlan0");
+  EXPECT_EQ(removed_[0].ifname, "wlan0");
 }
 
 TEST_F(ShillClientTest, VerifyDevicesPrefixStripped) {
@@ -145,7 +156,7 @@ TEST_F(ShillClientTest, VerifyDevicesPrefixStripped) {
 
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, value);
   EXPECT_EQ(added_.size(), 1);
-  EXPECT_EQ(*added_.begin(), "eth0");
+  EXPECT_EQ(added_[0].ifname, "eth0");
   // Implies the default callback was run;
   EXPECT_EQ(default_logical_ifname_, "eth0");
   EXPECT_EQ(default_physical_ifname_, "eth0");

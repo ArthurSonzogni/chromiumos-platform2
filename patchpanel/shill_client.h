@@ -94,14 +94,10 @@ class ShillClient {
   // Client callback for learning when shill default logical network changes.
   using DefaultDeviceChangeHandler = base::RepeatingCallback<void(
       const Device& new_device, const Device& prev_device)>;
-  // Client callback for learning which network interfaces start or stop being
-  // managed by shill.
-  // TODO(b/273741099): Change this callback to take Device references as
-  // arguments because the interface name becomes ambiguous for multiplexed
-  // Cellular interfaces.
-  using DevicesChangeHandler =
-      base::RepeatingCallback<void(const std::vector<std::string>& added,
-                                   const std::vector<std::string>& removed)>;
+  // Client callback for learning which shill Devices were created or removed by
+  // shill.
+  using DevicesChangeHandler = base::RepeatingCallback<void(
+      const std::vector<Device>& added, const std::vector<Device>& removed)>;
   // Client callback for listening to IPConfig changes on any shill Device with
   // interface name |ifname|. Changes to the IP configuration of a VPN
   // connection are not taken into account.
@@ -158,10 +154,7 @@ class ShillClient {
   // property fetch.
   virtual const Device& default_physical_device() const;
   // Returns interface names of all known shill physical Devices.
-  // TODO(b/273741099): Returns a list of Device reference instead of direct
-  // interface names because the interface name becomes ambiguous for
-  // multiplexed Cellular interfaces.
-  const std::vector<std::string> get_interfaces() const;
+  const std::vector<Device> GetDevices() const;
   // Returns true if |ifname| is the interface name of a known shill physical
   // Device.
   // TODO(b/273741099): Migrate caller to use a Device reference or a Device

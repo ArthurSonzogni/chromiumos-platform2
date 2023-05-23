@@ -384,7 +384,7 @@ void NetworkMonitorService::Start() {
   // registering DevicesChangedHandler to make sure we see each shill Device
   // exactly once.
   shill_client_->ScanDevices();
-  OnShillDevicesChanged(shill_client_->get_interfaces(), /*removed=*/{});
+  OnShillDevicesChanged(shill_client_->GetDevices(), /*removed=*/{});
   shill_client_->RegisterDevicesChangedHandler(
       base::BindRepeating(&NetworkMonitorService::OnShillDevicesChanged,
                           weak_factory_.GetWeakPtr()));
@@ -394,18 +394,10 @@ void NetworkMonitorService::Start() {
 }
 
 void NetworkMonitorService::OnShillDevicesChanged(
-    const std::vector<std::string>& added,
-    const std::vector<std::string>& removed) {
+    const std::vector<ShillClient::Device>& added,
+    const std::vector<ShillClient::Device>& removed) {
   System system;
-  for (const auto& ifname : added) {
-    ShillClient::Device device;
-    if (!shill_client_->GetDeviceProperties(ifname, &device)) {
-      LOG(ERROR)
-          << "Get device props failed. Skipped creating neighbor monitor on "
-          << ifname;
-      continue;
-    }
-
+  for (const auto& device : added) {
     switch (device.type) {
       // Link monitoring is possible for physical local area networks on which
       // neighbor discovery is possible.
@@ -423,11 +415,12 @@ void NetworkMonitorService::OnShillDevicesChanged(
     auto link_monitor = std::make_unique<NeighborLinkMonitor>(
         device.ifindex, device.ifname, rtnl_handler_, &neighbor_event_handler_);
     link_monitor->OnIPConfigChanged(device.ipconfig);
-    neighbor_link_monitors_[ifname] = std::move(link_monitor);
+    neighbor_link_monitors_[device.ifname] = std::move(link_monitor);
   }
 
-  for (const auto& ifname : removed)
-    neighbor_link_monitors_.erase(ifname);
+  for (const auto& device : removed) {
+    neighbor_link_monitors_.erase(device.ifname);
+  }
 }
 
 void NetworkMonitorService::OnIPConfigsChanged(

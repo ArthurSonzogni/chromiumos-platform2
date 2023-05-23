@@ -163,8 +163,8 @@ class Manager {
   void OnShillDefaultPhysicalDeviceChanged(
       const ShillClient::Device& new_device,
       const ShillClient::Device& prev_device);
-  void OnShillDevicesChanged(const std::vector<std::string>& added,
-                             const std::vector<std::string>& removed);
+  void OnShillDevicesChanged(const std::vector<ShillClient::Device>& added,
+                             const std::vector<ShillClient::Device>& removed);
   void OnIPConfigsChanged(const ShillClient::Device& shill_device);
   void OnIPv6NetworkChanged(const ShillClient::Device& shill_device);
 
