@@ -135,8 +135,16 @@ base::FilePath GenerateArbitraryDescendant(
     const base::FilePath& ancestor,
     bool recursive,
     FuzzedDataProvider& fuzzed_data_provider) {
+  // Maximum size of a path to append to ancestor. We don't use unbounded random
+  // strings because sometimes those can be very large and FilePath operations
+  // (e.g. GetComponents) can scale very poorly with paths. Using double the max
+  // path size should make sure actual large paths get generated while still
+  // enforcing a cap on the size that FilePath will need to handle.
+  static constexpr size_t kMaxSize = 2 * PATH_MAX;
+  // Fallback path to use if for some reason the fuzzed path isn't usable.
   static constexpr char kFallbackPath[] = "foo";
-  base::FilePath to_append(fuzzed_data_provider.ConsumeRandomLengthString());
+  base::FilePath to_append(
+      fuzzed_data_provider.ConsumeRandomLengthString(kMaxSize));
   if (to_append.value().empty() || to_append.IsAbsolute() ||
       to_append.ReferencesParent() ||
       to_append != CanonicalizePath(to_append) ||
