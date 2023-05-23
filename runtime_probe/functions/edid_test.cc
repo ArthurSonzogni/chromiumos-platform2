@@ -51,7 +51,7 @@ TEST_F(EdidFunctionTest, ProbeEdid) {
       }
     ]
   )JSON");
-  ans[0].SetStringKey(
+  ans[0].GetDict().Set(
       "path", GetPathUnderRoot("sys/class/drm/card0-eDP-1/edid").value());
   EXPECT_EQ(result, ans);
 }

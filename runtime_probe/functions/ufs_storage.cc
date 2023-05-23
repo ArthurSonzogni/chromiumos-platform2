@@ -65,7 +65,7 @@ std::optional<base::Value> UfsStorageFunction::ProbeFromSysfs(
     return std::nullopt;
   }
   PrependToDVKey(&*ufs_res, kUfsPrefix);
-  ufs_res->SetStringKey("type", kUfsType);
+  ufs_res->GetDict().Set("type", kUfsType);
   return ufs_res;
 }
 

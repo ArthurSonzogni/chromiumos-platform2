@@ -104,7 +104,7 @@ bool ReadFileToDict(const base::FilePath& dir_path,
     return false;
   }
   base::StringPiece key_name = key.first;
-  result.SetStringKey(key_name, content);
+  result.GetDict().Set(key_name, content);
   return true;
 }
 

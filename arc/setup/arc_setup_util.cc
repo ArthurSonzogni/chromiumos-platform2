@@ -800,7 +800,7 @@ bool GetOciContainerState(const base::FilePath& path,
   }
 
   // Get the container PID and the rootfs path.
-  std::optional<int> pid = container_state->FindIntKey("pid");
+  std::optional<int> pid = container_state->GetDict().FindInt("pid");
   if (!pid) {
     LOG(ERROR) << "Failed to get PID from container state";
     return false;

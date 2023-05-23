@@ -71,7 +71,7 @@ std::optional<base::Value> AtaStorageFunction::ProbeFromSysfs(
     return std::nullopt;
   }
   PrependToDVKey(&*ata_res, kAtaPrefix);
-  ata_res->SetStringKey("type", kAtaType);
+  ata_res->GetDict().Set("type", kAtaType);
   return ata_res;
 }
 
@@ -80,7 +80,7 @@ std::optional<base::Value> AtaStorageFunction::ProbeFromStorageTool(
   base::Value result(base::Value::Type::DICT);
   auto storage_fw_version = GetStorageFwVersion(base::FilePath(node_path));
   if (!storage_fw_version.empty())
-    result.SetStringKey("storage_fw_version", storage_fw_version);
+    result.GetDict().Set("storage_fw_version", storage_fw_version);
   return result;
 }
 

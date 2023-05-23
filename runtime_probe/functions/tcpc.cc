@@ -56,12 +56,11 @@ TcpcFunction::DataType TcpcFunction::EvalImpl() const {
     if (RunCommandRetry(ec_dev, cmd.get()) != EC_RES_SUCCESS)
       break;
 
-    base::Value val{base::Value::Type::DICT};
-    val.SetStringKey("port", base::NumberToString(port));
-    val.SetStringKey("vendor_id", base::StringPrintf("0x%x", cmd->VendorId()));
-    val.SetStringKey("product_id",
-                     base::StringPrintf("0x%x", cmd->ProductId()));
-    val.SetStringKey("device_id", base::StringPrintf("0x%x", cmd->DeviceId()));
+    base::Value::Dict val;
+    val.Set("port", base::NumberToString(port));
+    val.Set("vendor_id", base::StringPrintf("0x%x", cmd->VendorId()));
+    val.Set("product_id", base::StringPrintf("0x%x", cmd->ProductId()));
+    val.Set("device_id", base::StringPrintf("0x%x", cmd->DeviceId()));
     result.Append(std::move(val));
   }
 

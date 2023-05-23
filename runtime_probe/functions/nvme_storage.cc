@@ -84,7 +84,7 @@ std::optional<base::Value> NvmeStorageFunction::ProbeFromSysfs(
   if (!nvme_res)
     return std::nullopt;
   PrependToDVKey(&*nvme_res, kNvmePrefix);
-  nvme_res->SetStringKey("type", kNvmeType);
+  nvme_res->GetDict().Set("type", kNvmeType);
   return nvme_res;
 }
 
@@ -107,11 +107,11 @@ std::optional<base::Value> NvmeStorageFunction::ProbeFromStorageTool(
       continue;
     const auto* firmware = device.FindStringKey("Firmware");
     if (firmware) {
-      result.SetStringKey("storage_fw_version", *firmware);
+      result.GetDict().Set("storage_fw_version", *firmware);
     }
     const auto* model = device.FindStringKey("ModelNumber");
     if (model) {
-      result.SetStringKey("nvme_model", *model);
+      result.GetDict().Set("nvme_model", *model);
     }
     break;
   }

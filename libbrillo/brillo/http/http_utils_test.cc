@@ -370,8 +370,9 @@ TEST(HttpUtils, PostPatchJson) {
   transport->AddHandler(kFakeUrl, "*", base::BindRepeating(JsonHandler));
 
   base::Value json(base::Value::Type::DICT);
-  json.SetStringKey("key1", "val1");
-  json.SetStringKey("key2", "val2");
+  auto& dict = json.GetDict();
+  dict.Set("key1", "val1");
+  dict.Set("key2", "val2");
   const std::string* value;
 
   // Test POST

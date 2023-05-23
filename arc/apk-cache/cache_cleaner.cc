@@ -70,7 +70,8 @@ bool IsAccessTimeValid(const base::StringPiece& json_message) {
     return false;
   }
 
-  const std::string* atime_str = root->FindStringPath(kKeyAttributesAtime);
+  const std::string* atime_str =
+      root->GetDict().FindStringByDottedPath(kKeyAttributesAtime);
   if (!atime_str) {
     LOG(ERROR) << "Could not read the value of the access time with the "
                << kKeyAttributesAtime << " key.";

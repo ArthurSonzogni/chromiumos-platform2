@@ -130,7 +130,7 @@ TEST_F(ReportQueueImplTest, SuccessfulBaseValueRecord) {
   static constexpr char kTestKey[] = "TEST_KEY";
   static constexpr char kTestValue[] = "TEST_VALUE";
   base::Value test_dict(base::Value::Type::DICT);
-  test_dict.SetStringKey(kTestKey, kTestValue);
+  test_dict.GetDict().Set(kTestKey, kTestValue);
   test::TestEvent<Status> a;
   report_queue_->Enqueue(test_dict.Clone(), priority_, a.cb());
   const auto a_result = a.result();
@@ -247,7 +247,7 @@ TEST_F(ReportQueueImplTest, EnqueueValueFailsOnPolicy) {
   static constexpr char kTestKey[] = "TEST_KEY";
   static constexpr char kTestValue[] = "TEST_VALUE";
   base::Value test_dict(base::Value::Type::DICT);
-  test_dict.SetStringKey(kTestKey, kTestValue);
+  test_dict.GetDict().Set(kTestKey, kTestValue);
   test::TestEvent<Status> a;
   report_queue_->Enqueue(test_dict.Clone(), priority_, a.cb());
   const auto result = a.result();
@@ -502,7 +502,7 @@ TEST_F(ReportQueueImplTest, AsyncProcessingReportQueue) {
   static constexpr char kTestKey[] = "TEST_KEY";
   static constexpr char kTestValue[] = "TEST_VALUE";
   base::Value test_dict(base::Value::Type::DICT);
-  test_dict.SetStringKey(kTestKey, kTestValue);
+  test_dict.GetDict().Set(kTestKey, kTestValue);
   mock_queue->Enqueue(std::move(test_dict), priority_, a_json.cb());
 
   const auto a_string_result = a_string.result();
@@ -531,7 +531,7 @@ TEST_F(ReportQueueImplTest, AsyncProcessingSpeculativeReportQueue) {
   static constexpr char kTestKey[] = "TEST_KEY";
   static constexpr char kTestValue[] = "TEST_VALUE";
   base::Value test_dict(base::Value::Type::DICT);
-  test_dict.SetStringKey(kTestKey, kTestValue);
+  test_dict.GetDict().Set(kTestKey, kTestValue);
   speculative_report_queue->Enqueue(std::move(test_dict), priority_,
                                     a_json.cb());
 

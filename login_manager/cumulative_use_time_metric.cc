@@ -152,19 +152,20 @@ bool CumulativeUseTimeMetric::AccumulatedActiveTime::ReadMetricsFile() {
     return false;
   }
 
-  auto os_version_hash = data->FindIntKey(kOsVersionHashKey);
+  auto& dict = data->GetDict();
+  auto os_version_hash = dict.FindInt(kOsVersionHashKey);
   if (!os_version_hash) {
     LOG(ERROR) << "OS version hash missing in " << metrics_file_.value();
     return false;
   }
 
-  auto start_day = data->FindIntKey(kStartDayKey);
+  auto start_day = dict.FindInt(kStartDayKey);
   if (!start_day) {
     LOG(ERROR) << "Start day missing in " << metrics_file_.value();
     return false;
   }
 
-  auto elapsed_milliseconds = data->FindIntKey(kElapsedMillisecondsKey);
+  auto elapsed_milliseconds = dict.FindInt(kElapsedMillisecondsKey);
   if (!elapsed_milliseconds) {
     LOG(ERROR) << "Elapsed milliseconds missing in " << metrics_file_.value();
     return false;

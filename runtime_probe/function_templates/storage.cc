@@ -94,19 +94,18 @@ StorageFunction::DataType StorageFunction::EvalImpl() const {
       continue;
 
     // Report the absolute path we probe the reported info from.
-    node_res->SetStringKey("path", node_path.value());
+    auto& dict = node_res->GetDict();
+    dict.Set("path", node_path.value());
 
     // Get size of storage.
     const auto sector_count = GetStorageSectorCount(node_path);
     if (!sector_count) {
-      node_res->SetStringKey("sectors", "-1");
-      node_res->SetStringKey("size", "-1");
+      dict.Set("sectors", "-1");
+      dict.Set("size", "-1");
     } else {
-      node_res->SetStringKey("sectors",
-                             base::NumberToString(sector_count.value()));
-      node_res->SetStringKey(
-          "size",
-          base::NumberToString(sector_count.value() * kDefaultBytesPerSector));
+      dict.Set("sectors", base::NumberToString(sector_count.value()));
+      dict.Set("size", base::NumberToString(sector_count.value() *
+                                            kDefaultBytesPerSector));
     }
 
     result.Append(std::move(*node_res));
@@ -118,14 +117,15 @@ StorageFunction::DataType StorageFunction::EvalImpl() const {
 void StorageFunction::PostHelperEvalImpl(
     StorageFunction::DataType* result) const {
   for (auto& storage_res : *result) {
-    auto* node_path = storage_res.GetDict().FindString("path");
+    auto& dict = storage_res.GetDict();
+    auto* node_path = dict.FindString("path");
     if (!node_path) {
       LOG(ERROR) << "No path in storage probe result";
       continue;
     }
     auto storage_aux_res = ProbeFromStorageTool(base::FilePath(*node_path));
     if (storage_aux_res)
-      storage_res.GetDict().Merge(std::move(storage_aux_res->GetDict()));
+      dict.Merge(std::move(storage_aux_res->GetDict()));
   }
 }
 

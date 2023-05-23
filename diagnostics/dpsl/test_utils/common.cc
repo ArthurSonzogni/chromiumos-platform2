@@ -36,9 +36,9 @@ bool PrintProto(const google::protobuf::Message& message) {
   }
 
   // Embed the body and name of the proto in a base::Value.
-  base::Value value(base::Value::Type::DICT);
-  value.SetStringKey("name", message.GetDescriptor()->name());
-  value.SetKey("body", std::move(*body));
+  base::Value::Dict value;
+  value.Set("name", message.GetDescriptor()->name());
+  value.Set("body", std::move(*body));
 
   // Serialize the base::Value back to JSON.
   std::string message_json;

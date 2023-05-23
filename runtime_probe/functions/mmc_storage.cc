@@ -210,7 +210,7 @@ std::optional<base::Value> MmcStorageFunction::ProbeFromSysfs(
     return std::nullopt;
   }
   PrependToDVKey(&*mmc_res, kMmcPrefix);
-  mmc_res->SetStringKey("type", kMmcType);
+  mmc_res->GetDict().Set("type", kMmcType);
   return mmc_res;
 }
 
@@ -219,7 +219,7 @@ std::optional<base::Value> MmcStorageFunction::ProbeFromStorageTool(
   base::Value result(base::Value::Type::DICT);
   auto storage_fw_version = GetStorageFwVersion(node_path);
   if (!storage_fw_version.empty())
-    result.SetStringKey("storage_fw_version", storage_fw_version);
+    result.GetDict().Set("storage_fw_version", storage_fw_version);
   return result;
 }
 

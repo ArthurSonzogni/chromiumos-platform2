@@ -668,8 +668,9 @@ bool DevicePolicyImpl::GetDeviceUpdateStagingSchedule(
   for (const auto& pair_value : list_val->GetList()) {
     if (!pair_value.is_dict())
       return false;
-    std::optional<int> days = pair_value.FindIntKey("days");
-    std::optional<int> percentage = pair_value.FindIntKey("percentage");
+    auto& dict = pair_value.GetDict();
+    std::optional<int> days = dict.FindInt("days");
+    std::optional<int> percentage = dict.FindInt("percentage");
     if (!days.has_value() || !percentage.has_value())
       return false;
     // Limit the percentage to [0, 100] and days to [1, 28];

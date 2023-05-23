@@ -1175,10 +1175,10 @@ void ClobberState::CreateLogicalVolumeStack() {
   int64_t thinpool_size = partition_size.value() * kThinpoolSizePercent / 100;
   int64_t thinpool_metadata_size =
       thinpool_size * kThinpoolMetadataSizePercent / 100;
-  thinpool_config.SetStringKey("name", kThinpool);
-  thinpool_config.SetStringKey("size", base::NumberToString(thinpool_size));
-  thinpool_config.SetStringKey("metadata_size",
-                               base::NumberToString(thinpool_metadata_size));
+  auto& dict = thinpool_config.GetDict();
+  dict.Set("name", kThinpool);
+  dict.Set("size", base::NumberToString(thinpool_size));
+  dict.Set("metadata_size", base::NumberToString(thinpool_metadata_size));
 
   std::optional<brillo::Thinpool> thinpool =
       lvm_->CreateThinpool(*vg, thinpool_config);

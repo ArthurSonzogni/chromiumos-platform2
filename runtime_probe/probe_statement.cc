@@ -21,7 +21,7 @@ void FilterValueByKey(base::Value* dv, const std::set<std::string>& keys) {
     }
   }
   for (const auto& k : keys_to_delete) {
-    dv->RemoveKey(k);
+    dv->GetDict().Remove(k);
   }
 }
 

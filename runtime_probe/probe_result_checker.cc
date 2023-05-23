@@ -138,7 +138,7 @@ bool ProbeResultCheckerDict::Apply(base::Value* probe_result) const {
     if (return_code != ReturnCode::OK) {
       VLOG(1) << "Optional field '" << key << "' has unexpected value, "
               << "remove it from probe result.";
-      probe_result->RemoveKey(key);
+      probe_result->GetDict().Remove(key);
     }
   }
 
