@@ -61,6 +61,7 @@
 #include "shill/http_url.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
+#include "shill/network/network_priority.h"
 #include "shill/profile.h"
 #include "shill/resolver.h"
 #include "shill/result_aggregator.h"
@@ -1707,50 +1708,39 @@ void Manager::SortServicesTask() {
 
   uint32_t priority = Connection::kDefaultPriority;
   bool found_dns = false;
-  ServiceRefPtr old_logical;
-  Network* old_logical_network;
-  int old_logical_priority;
   ServiceRefPtr new_logical;
-  Network* new_logical_network;
   ServiceRefPtr new_physical;
   for (const auto& service : services_) {
     auto* network = FindActiveNetworkFromService(service);
     if (network) {
       DCHECK(network->IsConnected());
+      bool use_dns;
       if (!found_dns && !network->dns_servers().empty()) {
         found_dns = true;
-        network->SetUseDNS(true);
+        use_dns = true;
       } else {
-        network->SetUseDNS(false);
+        use_dns = false;
       }
 
       if (!new_logical) {
         new_logical = service;
-        new_logical_network = network;
       }
       if (!new_physical && service->technology() != Technology::kVPN) {
         new_physical = service;
       }
 
       priority += Connection::kPriorityStep;
-      if (network->IsDefault()) {
-        old_logical = service;
-        old_logical_network = network;
-        old_logical_priority = priority;
-      } else {
-        network->SetPriority(priority, new_physical == service);
-      }
+      NetworkPriority network_priority = {
+          .is_primary_logical = (service == new_logical),
+          .is_primary_physical = (service == new_physical),
+          .is_primary_for_dns = use_dns,
+          .priority_value = priority};
+
+      network->SetPriority(network_priority);
     }
   }
 
-  if (old_logical && old_logical != new_logical) {
-    old_logical_network->SetPriority(old_logical_priority,
-                                     old_logical == new_physical);
-  }
   if (new_logical) {
-    bool is_primary_physical = new_logical == new_physical;
-    new_logical_network->SetPriority(Connection::kDefaultPriority,
-                                     is_primary_physical);
     auto device = FindDeviceFromService(new_logical);
     // Whenever the primary logical device is portalled (regardless of whether
     // it changed), restart portal detection. This will reset the backoff scheme

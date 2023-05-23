@@ -197,7 +197,7 @@ class ConnectionTest : public Test {
                            RoutingTableEntry::Create(*destination_address,
                                                      source_address,
                                                      gateway_ipv4_address_)
-                               .SetMetric(connection_->priority_)
+                               .SetMetric(connection_->priority_.priority_value)
                                .SetTable(connection_->table_id_)
                                .SetTag(connection_->interface_index_)))
           .WillOnce(Return(true));
@@ -225,7 +225,7 @@ class ConnectionTest : public Test {
           AddRoute(connection_->interface_index_,
                    RoutingTableEntry::Create(destination_address,
                                              source_address, gateway_address)
-                       .SetMetric(connection_->priority_)
+                       .SetMetric(connection_->priority_.priority_value)
                        .SetTable(connection_->table_id_)
                        .SetTag(connection_->interface_index_)))
           .WillOnce(Return(true));
@@ -399,7 +399,6 @@ TEST_F(ConnectionTest, InitState) {
   connection_ = CreateConnection(device);
 
   EXPECT_EQ(device->link_name(), connection_->interface_name());
-  EXPECT_FALSE(connection_->IsDefault());
 }
 
 TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
@@ -426,21 +425,20 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfig) {
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Set default priority and use DNS.
-  connection_->SetUseDNS(true);
   AddNonPhysicalRoutingPolicyExpectations(device, Connection::kDefaultPriority);
   EXPECT_CALL(resolver_, SetDNSFromLists(ipv4_properties_.dns_servers,
                                          ipv4_properties_.domain_search));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetPriority(Connection::kDefaultPriority, false);
-  EXPECT_TRUE(connection_->IsDefault());
+  connection_->SetPriority(
+      NetworkPriority{.is_primary_for_dns = true,
+                      .priority_value = Connection::kDefaultPriority});
   Mock::VerifyAndClearExpectations(&routing_table_);
 
   // Set non-default priority and do not use DNS.
-  connection_->SetUseDNS(false);
   AddNonPhysicalRoutingPolicyExpectations(device, Connection::kLeastPriority);
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetPriority(Connection::kLeastPriority, false);
-  EXPECT_FALSE(connection_->IsDefault());
+  connection_->SetPriority(
+      NetworkPriority{.priority_value = Connection::kLeastPriority});
 
   // Destruct cleanup.
   EXPECT_CALL(rtnl_handler_,
@@ -473,21 +471,21 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigIncludedRoutes) {
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Set default priority and use DNS.
-  connection_->SetUseDNS(true);
   AddNonPhysicalRoutingPolicyExpectations(device, Connection::kDefaultPriority);
   EXPECT_CALL(resolver_, SetDNSFromLists(ipv4_properties_.dns_servers,
                                          ipv4_properties_.domain_search));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetPriority(Connection::kDefaultPriority, false);
-  EXPECT_TRUE(connection_->IsDefault());
+  connection_->SetPriority(
+      NetworkPriority{.is_primary_for_dns = true,
+                      .priority_value = Connection::kDefaultPriority});
+
   Mock::VerifyAndClearExpectations(&routing_table_);
 
   // Set non-default priority and do not use DNS.
-  connection_->SetUseDNS(false);
   AddNonPhysicalRoutingPolicyExpectations(device, Connection::kLeastPriority);
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetPriority(Connection::kLeastPriority, false);
-  EXPECT_FALSE(connection_->IsDefault());
+  connection_->SetPriority(
+      NetworkPriority{.priority_value = Connection::kLeastPriority});
 
   // Destruct cleanup.
   EXPECT_CALL(rtnl_handler_,
@@ -520,23 +518,24 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfig) {
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Set default priority and use DNS.
-  connection_->SetUseDNS(true);
   AddPhysicalRoutingPolicyExpectations(device, Connection::kDefaultPriority,
                                        true);
   EXPECT_CALL(resolver_, SetDNSFromLists(ipv4_properties_.dns_servers,
                                          ipv4_properties_.domain_search));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetPriority(Connection::kDefaultPriority, true);
-  EXPECT_TRUE(connection_->IsDefault());
+  connection_->SetPriority(
+      NetworkPriority{.is_primary_physical = true,
+                      .is_primary_for_dns = true,
+                      .priority_value = Connection::kDefaultPriority});
+
   Mock::VerifyAndClearExpectations(&routing_table_);
 
   // Set non-default priority and do not use DNS.
-  connection_->SetUseDNS(false);
   AddPhysicalRoutingPolicyExpectations(device, Connection::kLeastPriority,
                                        false);
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetPriority(Connection::kLeastPriority, false);
-  EXPECT_FALSE(connection_->IsDefault());
+  connection_->SetPriority(
+      NetworkPriority{.priority_value = Connection::kLeastPriority});
 
   // Destruct cleanup.
   EXPECT_CALL(rtnl_handler_,
@@ -570,23 +569,23 @@ TEST_F(ConnectionTest, AddPhysicalDeviceConfigIncludedRoutes) {
   EXPECT_FALSE(connection_->IsIPv6());
 
   // Set default priority and use DNS.
-  connection_->SetUseDNS(true);
   AddPhysicalRoutingPolicyExpectations(device, Connection::kDefaultPriority,
                                        true);
   EXPECT_CALL(resolver_, SetDNSFromLists(ipv4_properties_.dns_servers,
                                          ipv4_properties_.domain_search));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetPriority(Connection::kDefaultPriority, true);
-  EXPECT_TRUE(connection_->IsDefault());
+  connection_->SetPriority(
+      NetworkPriority{.is_primary_physical = true,
+                      .is_primary_for_dns = true,
+                      .priority_value = Connection::kDefaultPriority});
   Mock::VerifyAndClearExpectations(&routing_table_);
 
   // Set non-default priority and do not use DNS.
-  connection_->SetUseDNS(false);
   AddPhysicalRoutingPolicyExpectations(device, Connection::kLeastPriority,
                                        false);
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetPriority(Connection::kLeastPriority, false);
-  EXPECT_FALSE(connection_->IsDefault());
+  connection_->SetPriority(
+      NetworkPriority{.priority_value = Connection::kLeastPriority});
 
   // Destruct cleanup.
   EXPECT_CALL(rtnl_handler_,
@@ -652,16 +651,16 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
   EXPECT_CALL(resolver_, SetDNSFromLists(ipv4_properties_.dns_servers,
                                          ipv4_properties_.domain_search));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetUseDNS(true);
-  connection_->SetPriority(Connection::kDefaultPriority, true);
+  connection_->SetPriority(
+      NetworkPriority{.is_primary_physical = true,
+                      .is_primary_for_dns = true,
+                      .priority_value = Connection::kDefaultPriority});
   Mock::VerifyAndClearExpectations(&routing_table_);
-  EXPECT_TRUE(connection_->IsDefault());
 
   AddNonPhysicalRoutingPolicyExpectations(device, Connection::kLeastPriority);
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetUseDNS(false);
-  connection_->SetPriority(Connection::kLeastPriority, false);
-  EXPECT_FALSE(connection_->IsDefault());
+  connection_->SetPriority(
+      NetworkPriority{.priority_value = Connection::kLeastPriority});
 
   // Destruct cleanup.
   EXPECT_CALL(rtnl_handler_,
@@ -782,8 +781,10 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   std::vector<std::string> empty_list;
   EXPECT_CALL(resolver_, SetDNSFromLists(empty_list, empty_list));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetUseDNS(true);
-  connection_->SetPriority(Connection::kDefaultPriority, true);
+  connection_->SetPriority(
+      NetworkPriority{.is_primary_physical = true,
+                      .is_primary_for_dns = true,
+                      .priority_value = Connection::kDefaultPriority});
   Mock::VerifyAndClearExpectations(&routing_table_);
 
   const auto table_id =
@@ -826,8 +827,10 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
   std::vector<std::string> domain_search_list = {kDomainName + "."};
   EXPECT_CALL(resolver_, SetDNSFromLists(_, domain_search_list));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetUseDNS(true);
-  connection_->SetPriority(Connection::kDefaultPriority, true);
+  connection_->SetPriority(
+      NetworkPriority{.is_primary_physical = true,
+                      .is_primary_for_dns = true,
+                      .priority_value = Connection::kDefaultPriority});
 
   // Destruct cleanup.
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _));
@@ -850,8 +853,9 @@ TEST_F(ConnectionTest, AddConfigWithFixedIpParams) {
   AddNonPhysicalRoutingPolicyExpectations(device, Connection::kDefaultPriority);
   EXPECT_CALL(resolver_, SetDNSFromLists(_, _));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection_->SetUseDNS(true);
-  connection_->SetPriority(Connection::kDefaultPriority, false);
+  connection_->SetPriority(
+      NetworkPriority{.is_primary_for_dns = true,
+                      .priority_value = Connection::kDefaultPriority});
 
   // Destruct cleanup.
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);

@@ -11,6 +11,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/connection.h"
+#include "shill/network/network_priority.h"
 
 namespace shill {
 
@@ -26,9 +27,7 @@ class MockConnection : public Connection {
               UpdateFromIPConfig,
               (const IPConfig::Properties& properties),
               (override));
-  MOCK_METHOD(bool, IsDefault, (), (const, override));
-  MOCK_METHOD(void, SetPriority, (uint32_t, bool), (override));
-  MOCK_METHOD(void, SetUseDNS, (bool), (override));
+  MOCK_METHOD(void, SetPriority, (NetworkPriority), (override));
   MOCK_METHOD(const std::string&, interface_name, (), (const, override));
   MOCK_METHOD(bool, IsIPv6, (), (override));
 };

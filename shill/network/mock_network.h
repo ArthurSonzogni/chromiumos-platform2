@@ -17,6 +17,7 @@
 
 #include "shill/ipconfig.h"
 #include "shill/network/network.h"
+#include "shill/network/network_priority.h"
 #include "shill/portal_detector.h"
 #include "shill/technology.h"
 
@@ -63,9 +64,7 @@ class MockNetwork : public Network {
 
   MOCK_METHOD(void, InvalidateIPv6Config, (), (override));
 
-  MOCK_METHOD(bool, IsDefault, (), (const, override));
-  MOCK_METHOD(void, SetPriority, (uint32_t, bool), (override));
-  MOCK_METHOD(void, SetUseDNS, (bool), (override));
+  MOCK_METHOD(void, SetPriority, (NetworkPriority), (override));
 
   MOCK_METHOD(std::vector<std::string>, dns_servers, (), (const, override));
   MOCK_METHOD(std::optional<IPAddress>, local, (), (const, override));

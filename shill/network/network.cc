@@ -25,6 +25,7 @@
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/routing_table.h"
@@ -723,29 +724,18 @@ void Network::EnableARPFiltering() {
                       ProcFsStub::kIPFlagArpIgnoreLocalOnly);
 }
 
-void Network::SetPriority(uint32_t priority, bool is_primary_physical) {
+void Network::SetPriority(NetworkPriority priority) {
   if (!connection_) {
     LOG(WARNING) << logging_tag_ << ": " << __func__
                  << " called but no connection exists";
     return;
   }
-  connection_->SetPriority(priority, is_primary_physical);
+  priority_ = priority;
+  connection_->SetPriority(priority);
 }
 
-bool Network::IsDefault() const {
-  if (!connection_) {
-    return false;
-  }
-  return connection_->IsDefault();
-}
-
-void Network::SetUseDNS(bool enable) {
-  if (!connection_) {
-    LOG(WARNING) << logging_tag_ << ": " << __func__
-                 << " called but no connection exists";
-    return;
-  }
-  connection_->SetUseDNS(enable);
+NetworkPriority Network::GetPriority() {
+  return priority_;
 }
 
 std::vector<IPAddress> Network::GetAddresses() const {

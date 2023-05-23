@@ -13,6 +13,7 @@
 
 #include "shill/ipconfig.h"
 #include "shill/net/ip_address.h"
+#include "shill/network/network_priority.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -72,14 +73,7 @@ class Connection {
   // priority". This call also updates the systemwide DNS configuration if
   // necessary, and triggers captive portal detection if the connection has
   // transitioned from non-default to default.
-  virtual void SetPriority(uint32_t priority, bool is_primary_physical);
-
-  // Returns true if this connection is currently the systemwide default.
-  virtual bool IsDefault() const;
-
-  // Determines whether this connection controls the system DNS settings.
-  // This should only be true for one connection at a time.
-  virtual void SetUseDNS(bool enable);
+  virtual void SetPriority(NetworkPriority priority);
 
   // Flush and (re)create routing policy rules for the connection.
   // Called by Network when it detects address changes (that were not applied
@@ -128,15 +122,14 @@ class Connection {
   // Send our DNS configuration to the resolver.
   void PushDNSConfig();
 
-  bool use_dns_;
-  // The base priority for rules corresponding to this Connection. Set by
-  // Manager through SetPriority. Note that this value is occasionally used as a
-  // route metric value (e.g., SetPriority passes the priority value to
-  // RoutingTable::SetDefaultMetric). This is simply done for convenience, such
-  // that one could do something like `ip route show table 0 0/0` be able to
-  // tell the rule priorities corresponding to the displayed default routes.
-  uint32_t priority_;
-  bool is_primary_physical_;
+  // The priority value for setting up routing rules and DNS corresponding to
+  // this Connection. Set by Manager through SetPriority.
+  // TODO(b/264963034): for legacy reason Manager directly calculates the
+  // routing rule priority and pass it to Connection. Instead, Manager should
+  // use a generic format and routing rule priority should be a Connection
+  // implementation detail.
+  NetworkPriority priority_;
+
   int interface_index_;
   const std::string interface_name_;
   Technology technology_;

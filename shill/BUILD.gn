@@ -333,6 +333,7 @@ static_library("libshill") {
     "network/dhcpv4_config.cc",
     "network/network.cc",
     "network/network_config.cc",
+    "network/network_priority.cc",
     "network/proc_fs_stub.cc",
     "network/slaac_controller.cc",
     "portal_detector.cc",

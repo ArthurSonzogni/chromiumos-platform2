@@ -24,6 +24,7 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
+#include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/portal_detector.h"
@@ -239,15 +240,10 @@ class Network {
   //
   // This function should only be called when the Network is connected,
   // otherwise the call is a no-op.
-  mockable void SetPriority(uint32_t priority, bool is_primary_physical);
+  mockable void SetPriority(NetworkPriority network_priority);
 
-  // Returns true if this Network is currently the systemwide default.
-  mockable bool IsDefault() const;
-
-  // Determines whether this Network controls the system DNS settings. This
-  // should only be true for one Network at a time. This function should only be
-  // called when the Network is connected, otherwise the call is a no-op.
-  mockable void SetUseDNS(bool enable);
+  // Returns the current priority of the Network.
+  NetworkPriority GetPriority();
 
   // Returns all known (global) addresses of the Network. That includes IPv4
   // address from link protocol, or from DHCPv4, or from static IPv4
@@ -442,6 +438,7 @@ class Network {
   std::unique_ptr<SLAACController> slaac_controller_;
   std::unique_ptr<IPConfig> ipconfig_;
   std::unique_ptr<IPConfig> ip6config_;
+  NetworkPriority priority_;
 
   base::RepeatingClosure current_ipconfig_change_handler_;
   // If not empty, |current_ipconfig_| should points to either |ipconfig_| or

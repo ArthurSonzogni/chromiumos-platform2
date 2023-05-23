@@ -21,6 +21,7 @@
 #include "shill/logging.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/network/network_priority.h"
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
@@ -73,10 +74,7 @@ Connection::Connection(int interface_index,
                        const std::string& interface_name,
                        bool fixed_ip_params,
                        Technology technology)
-    : use_dns_(false),
-      priority_(kLeastPriority),
-      is_primary_physical_(false),
-      interface_index_(interface_index),
+    : interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
       use_if_addrs_(false),
@@ -163,7 +161,7 @@ bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties,
 
     if (!routing_table_->AddRoute(interface_index_,
                                   RoutingTableEntry::Create(*dst, src, *gateway)
-                                      .SetMetric(priority_)
+                                      .SetMetric(priority_.priority_value)
                                       .SetTable(table_id_)
                                       .SetTag(interface_index_))) {
       ret = false;
@@ -369,6 +367,8 @@ void Connection::UpdateRoutingPolicy(
 }
 
 void Connection::UpdateRoutingPolicy() {
+  uint32_t rule_priority = priority_.priority_value;
+  bool is_primary_physical = priority_.is_primary_physical;
   routing_table_->FlushRules(interface_index_);
 
   // b/180521518: IPv6 routing rules are always omitted for a Cellular
@@ -376,9 +376,8 @@ void Connection::UpdateRoutingPolicy() {
   // applications from accidentally using the Cellular network and causing data
   // charges with IPv6 traffic when the primary physical connection is IPv4
   // only.
-  bool no_ipv6 = technology_ == Technology::kCellular && !is_primary_physical_;
+  bool no_ipv6 = technology_ == Technology::kCellular && !is_primary_physical;
 
-  uint32_t rule_priority = priority_;
   // TODO(b/264963034): kUnknown here is to adapt to legacy test code where
   // kUnknown instead of kVPN is used as test case for non-physical interfaces.
   // Remove this and use kVPN in test code instead when executing the refactor.
@@ -404,7 +403,7 @@ void Connection::UpdateRoutingPolicy() {
     }
   }
 
-  if (use_if_addrs_ && is_primary_physical_) {
+  if (use_if_addrs_ && is_primary_physical) {
     // Main routing table contains kernel-added routes for source address
     // selection. Sending traffic there before all other rules for physical
     // interfaces (but after any VPN rules) ensures that physical interface
@@ -501,7 +500,7 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
   }
 }
 
-void Connection::SetPriority(uint32_t priority, bool is_primary_physical) {
+void Connection::SetPriority(NetworkPriority priority) {
   SLOG(this, 2) << __func__ << " " << interface_name_ << " (index "
                 << interface_index_ << ")" << priority_ << " -> " << priority;
   if (priority == priority_) {
@@ -509,25 +508,13 @@ void Connection::SetPriority(uint32_t priority, bool is_primary_physical) {
   }
 
   priority_ = priority;
-  is_primary_physical_ = is_primary_physical;
   UpdateRoutingPolicy();
-
   PushDNSConfig();
   routing_table_->FlushCache();
 }
 
-bool Connection::IsDefault() const {
-  return priority_ == kDefaultPriority;
-}
-
-void Connection::SetUseDNS(bool enable) {
-  SLOG(this, 2) << __func__ << " " << interface_name_ << " (index "
-                << interface_index_ << ")" << use_dns_ << " -> " << enable;
-  use_dns_ = enable;
-}
-
 void Connection::PushDNSConfig() {
-  if (!use_dns_) {
+  if (!priority_.is_primary_for_dns) {
     return;
   }
 

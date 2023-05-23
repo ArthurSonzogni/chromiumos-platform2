@@ -44,6 +44,7 @@
 #include "shill/mock_throttler.h"
 #include "shill/mock_virtual_device.h"
 #include "shill/network/mock_network.h"
+#include "shill/network/network_priority.h"
 #include "shill/portal_detector.h"
 #include "shill/resolver.h"
 #include "shill/service_under_test.h"
@@ -2210,15 +2211,20 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // If both Services have Connections, the DefaultService follows
   // from ServiceOrderIs.  We notify others of the change in
   // DefaultService.
-  EXPECT_CALL(*mock_network0, SetUseDNS(true));
-  EXPECT_CALL(*mock_network0, SetPriority(Connection::kDefaultPriority +
-                                              Connection::kPriorityStep,
-                                          true));
-  EXPECT_CALL(*mock_network0, SetPriority(Connection::kDefaultPriority, true));
-  EXPECT_CALL(*mock_network1, SetUseDNS(false));
-  EXPECT_CALL(*mock_network1, SetPriority(Connection::kDefaultPriority +
-                                              2 * Connection::kPriorityStep,
-                                          false));
+  EXPECT_CALL(*mock_network0,
+              SetPriority(NetworkPriority{
+                  .is_primary_logical = true,
+                  .is_primary_physical = true,
+                  .is_primary_for_dns = true,
+                  .priority_value = Connection::kDefaultPriority +
+                                    Connection::kPriorityStep}));
+  EXPECT_CALL(*mock_network1,
+              SetPriority(NetworkPriority{
+                  .is_primary_logical = false,
+                  .is_primary_physical = false,
+                  .is_primary_for_dns = false,
+                  .priority_value = Connection::kDefaultPriority +
+                                    2 * Connection::kPriorityStep}));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
   manager()->SortServicesTask();
@@ -2230,15 +2236,20 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // Changing the ordering causes the DefaultService to change, and
   // appropriate notifications are sent.
   mock_service1->SetPriority(1, nullptr);
-  EXPECT_CALL(*mock_network0, SetUseDNS(false));
-  EXPECT_CALL(*mock_network0, SetPriority(Connection::kDefaultPriority +
-                                              2 * Connection::kPriorityStep,
-                                          false));
-  EXPECT_CALL(*mock_network1, SetUseDNS(true));
-  EXPECT_CALL(*mock_network1, SetPriority(Connection::kDefaultPriority +
-                                              Connection::kPriorityStep,
-                                          true));
-  EXPECT_CALL(*mock_network1, SetPriority(Connection::kDefaultPriority, true));
+  EXPECT_CALL(*mock_network0,
+              SetPriority(NetworkPriority{
+                  .is_primary_logical = false,
+                  .is_primary_physical = false,
+                  .is_primary_for_dns = false,
+                  .priority_value = Connection::kDefaultPriority +
+                                    2 * Connection::kPriorityStep}));
+  EXPECT_CALL(*mock_network1,
+              SetPriority(NetworkPriority{
+                  .is_primary_logical = true,
+                  .is_primary_physical = true,
+                  .is_primary_for_dns = true,
+                  .priority_value = Connection::kDefaultPriority +
+                                    Connection::kPriorityStep}));
   EXPECT_CALL(service_watcher, OnDefaultLogicalServiceChanged(_));
   EXPECT_CALL(service_watcher, OnDefaultPhysicalServiceChanged(_));
   EXPECT_CALL(*manager_adaptor_,
@@ -2255,11 +2266,13 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
 
   // Deregistering the current DefaultService causes the other Service
   // to become default.  Appropriate notifications are sent.
-  EXPECT_CALL(*mock_network0, SetUseDNS(true));
-  EXPECT_CALL(*mock_network0, SetPriority(Connection::kDefaultPriority +
-                                              Connection::kPriorityStep,
-                                          true));
-  EXPECT_CALL(*mock_network0, SetPriority(Connection::kDefaultPriority, true));
+  EXPECT_CALL(*mock_network0,
+              SetPriority(NetworkPriority{
+                  .is_primary_logical = true,
+                  .is_primary_physical = true,
+                  .is_primary_for_dns = true,
+                  .priority_value = Connection::kDefaultPriority +
+                                    Connection::kPriorityStep}));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
   // So DeregisterService works.
