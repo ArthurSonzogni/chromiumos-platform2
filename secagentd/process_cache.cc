@@ -21,6 +21,7 @@
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/functional/bind.h"
 #include "base/hash/md5.h"
 #include "base/logging.h"
 #include "base/strings/strcat.h"
@@ -299,7 +300,8 @@ absl::StatusOr<base::FilePath> ProcessCache::SafeAppendAbsolutePath(
 }
 
 ProcessCache::ProcessCache(const base::FilePath& root_path)
-    : process_cache_(
+    : weak_ptr_factory_(this),
+      process_cache_(
           std::make_unique<InternalProcessCacheType>(kProcessCacheMaxSize)),
       image_cache_(
           std::make_unique<InternalImageCacheType>(kImageCacheMaxSize)),
@@ -310,6 +312,15 @@ ProcessCache::ProcessCache() : ProcessCache(base::FilePath("/")) {}
 
 void ProcessCache::PutFromBpfExec(
     const bpf::cros_process_start& process_start) {
+  // Starts reporting of the cache fullness metric.
+  static bool started_reporting_cache_fullness = false;
+  if (!started_reporting_cache_fullness) {
+    MetricsSender::GetInstance().RegisterMetricOnFlushCallback(
+        base::BindRepeating(&ProcessCache::SendPolledMetrics,
+                            weak_ptr_factory_.GetWeakPtr()));
+    started_reporting_cache_fullness = true;
+  }
+
   InternalProcessKeyType key{
       LossyNsecToClockT(process_start.task_info.start_time),
       process_start.task_info.pid};
@@ -577,6 +588,13 @@ bool ProcessCache::IsEventFiltered(
   }
 
   return false;
+}
+
+void ProcessCache::SendPolledMetrics() {
+  MetricsSender::GetInstance().SendPercentageMetricToUMA(
+      metrics::kCacheFullness,
+      trunc(100 * (static_cast<double>(process_cache_->size()) /
+                   static_cast<double>(process_cache_->max_size()))));
 }
 
 void ProcessCache::InitializeFilter(bool underscorify) {

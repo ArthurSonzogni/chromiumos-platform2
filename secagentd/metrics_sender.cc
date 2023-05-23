@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/functional/bind.h"
+#include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "base/location.h"
 #include "base/logging.h"
@@ -36,6 +37,11 @@ void MetricsSender::Flush() {
   task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&MetricsSender::SendBatchedMetricsToUMA,
                                 weak_ptr_factory_.GetWeakPtr(), map_copy));
+
+  // Run registered callbacks.
+  for (auto cb : metric_callbacks_) {
+    cb.Run();
+  }
 }
 
 void MetricsSender::SendBatchedMetricsToUMA(metrics::MetricsMap map_copy) {
@@ -57,6 +63,11 @@ void MetricsSender::SendBatchedMetricsToUMA(metrics::MetricsMap map_copy) {
       LOG(ERROR) << "Failed to send batched metrics for " << metric_name;
     }
   }
+}
+
+void MetricsSender::RegisterMetricOnFlushCallback(
+    base::RepeatingCallback<void()> cb) {
+  metric_callbacks_.push_back(std::move(cb));
 }
 
 MetricsSender::MetricsSender()

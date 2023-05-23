@@ -17,6 +17,7 @@
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/synchronization/lock.h"
+#include "base/time/time.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
@@ -167,7 +168,10 @@ class ProcessCache : public ProcessCacheInterface {
   absl::StatusOr<base::FilePath> GetPathInCurrentMountNs(
       uint64_t pid_for_setns,
       const base::FilePath& image_path_in_pids_ns) const;
+  // Sends what percentage of process cache is full.
+  void SendPolledMetrics();
 
+  base::WeakPtrFactory<ProcessCache> weak_ptr_factory_;
   base::Lock process_cache_lock_;
   std::unique_ptr<InternalProcessCacheType> process_cache_;
   base::Lock image_cache_lock_;

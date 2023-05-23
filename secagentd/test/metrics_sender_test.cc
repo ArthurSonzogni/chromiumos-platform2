@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/test/task_environment.h"
@@ -120,6 +121,22 @@ TEST_F(MetricsSenderTestFixture, SendBatchedMetricsToUMA) {
 
   task_environment_.FastForwardBy(base::Seconds(metrics::kBatchTimer));
   EXPECT_EQ(0, GetBatchMapSize());
+}
+
+TEST_F(MetricsSenderTestFixture, RunRegisteredCallbacks) {
+  base::RunLoop run_loop;
+  metrics_sender_->RegisterMetricOnFlushCallback(base::BindRepeating(
+      [](base::RunLoop* run_loop) { run_loop->Quit(); }, &run_loop));
+
+  base::RunLoop run_loop_2;
+  metrics_sender_->RegisterMetricOnFlushCallback(base::BindRepeating(
+      [](base::RunLoop* run_loop_2) { run_loop_2->Quit(); }, &run_loop_2));
+
+  metrics_sender_->InitBatchedMetrics();
+  task_environment_.FastForwardBy(base::Seconds(metrics::kBatchTimer));
+
+  run_loop.Run();
+  run_loop_2.Run();
 }
 
 TEST_F(MetricsSenderTestFixture, EarlyFlushSaturatedMetric) {

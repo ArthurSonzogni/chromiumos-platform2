@@ -12,6 +12,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
@@ -135,6 +136,8 @@ enum class Cache {
 
 static constexpr EnumMetric<Cache> kCache = {.name = "Cache"};
 
+constexpr char kCacheFullness[] = "CacheFullness";
+
 enum class ProcessEvent {
   kFullEvent,
   kSpawnPidNotInCache,
@@ -169,6 +172,12 @@ class MetricsSender {
         base::StrCat({metrics::kMetricNamePrefix, metric.name}), sample);
   }
 
+  // Same as SendEnumMetricToUMA except sends percentage instead.
+  bool SendPercentageMetricToUMA(std::string_view name, int sample) {
+    return metrics_library_->SendPercentageToUMA(
+        base::StrCat({metrics::kMetricNamePrefix, name}), sample);
+  }
+
   // Creates a key with the given metric sample pair and increments the map
   // value by one.
   template <typename M>
@@ -200,6 +209,10 @@ class MetricsSender {
     metrics_library_ = std::move(metrics_library);
   }
 
+  // Registers the given callback that will be sent every
+  // 30 seconds by the flush timer.
+  void RegisterMetricOnFlushCallback(base::RepeatingCallback<void()> cb);
+
  private:
   friend class base::NoDestructor<MetricsSender>;
   friend class testing::MetricsSenderTestFixture;
@@ -224,11 +237,12 @@ class MetricsSender {
   explicit MetricsSender(
       std::unique_ptr<MetricsLibraryInterface> metrics_library);
 
-  base::RepeatingTimer flush_batched_metrics_timer_;
   base::WeakPtrFactory<MetricsSender> weak_ptr_factory_;
+  base::RepeatingTimer flush_batched_metrics_timer_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_ =
       base::ThreadPool::CreateSequencedTaskRunner({});
   std::unique_ptr<MetricsLibraryInterface> metrics_library_;
+  std::vector<base::RepeatingCallback<void()>> metric_callbacks_;
   metrics::MetricsMap batch_count_map_;
   const metrics::MetricsMap exclusive_max_map_ = {
       {metrics::kSendMessage.name,
