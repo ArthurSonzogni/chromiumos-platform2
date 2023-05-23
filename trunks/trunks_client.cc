@@ -26,6 +26,7 @@
 
 #include "trunks/error_codes.h"
 #include "trunks/hmac_session.h"
+#include "trunks/multiple_authorization_delegate.h"
 #include "trunks/password_authorization_delegate.h"
 #include "trunks/policy_session.h"
 #include "trunks/scoped_key_handle.h"
@@ -42,6 +43,7 @@ using trunks::AuthorizationDelegate;
 using trunks::CommandTransceiver;
 using trunks::CreateTrunksDBusProxyToTrunks;
 using trunks::CreateTrunksDBusProxyToVtpm;
+using trunks::MultipleAuthorizations;
 using trunks::TrunksDBusProxy;
 using trunks::TrunksFactory;
 using trunks::TrunksFactoryImpl;
@@ -199,83 +201,6 @@ trunks::TPM_RC CallTpmUtility(bool print_time,
                     << trunks::GetErrorString(rc);
   return rc;
 }
-
-// An authorization delegate to manage multiple authorization sessions for a
-// single command.
-// Copied from attestaion/common/tpm_utility_v2.cc
-class MultipleAuthorizations : public trunks::AuthorizationDelegate {
- public:
-  MultipleAuthorizations() = default;
-  ~MultipleAuthorizations() override = default;
-
-  void AddAuthorizationDelegate(trunks::AuthorizationDelegate* delegate) {
-    delegates_.push_back(delegate);
-  }
-
-  bool GetCommandAuthorization(const std::string& command_hash,
-                               bool is_command_parameter_encryption_possible,
-                               bool is_response_parameter_encryption_possible,
-                               std::string* authorization) override {
-    std::string combined_authorization;
-    for (auto delegate : delegates_) {
-      std::string authorization;
-      if (!delegate->GetCommandAuthorization(
-              command_hash, is_command_parameter_encryption_possible,
-              is_response_parameter_encryption_possible, &authorization)) {
-        return false;
-      }
-      combined_authorization += authorization;
-    }
-    *authorization = combined_authorization;
-    return true;
-  }
-
-  bool CheckResponseAuthorization(const std::string& response_hash,
-                                  const std::string& authorization) override {
-    std::string mutable_authorization = authorization;
-    for (auto delegate : delegates_) {
-      if (!delegate->CheckResponseAuthorization(
-              response_hash,
-              ExtractSingleAuthorizationResponse(&mutable_authorization))) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  bool EncryptCommandParameter(std::string* parameter) override {
-    for (auto delegate : delegates_) {
-      if (!delegate->EncryptCommandParameter(parameter)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  bool DecryptResponseParameter(std::string* parameter) override {
-    for (auto delegate : delegates_) {
-      if (!delegate->DecryptResponseParameter(parameter)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  bool GetTpmNonce(std::string* nonce) override { return false; }
-
- private:
-  std::string ExtractSingleAuthorizationResponse(std::string* all_responses) {
-    std::string response;
-    trunks::TPMS_AUTH_RESPONSE not_used;
-    if (trunks::TPM_RC_SUCCESS !=
-        trunks::Parse_TPMS_AUTH_RESPONSE(all_responses, &not_used, &response)) {
-      return std::string();
-    }
-    return response;
-  }
-
-  std::vector<trunks::AuthorizationDelegate*> delegates_;
-};
 
 int Startup(const TrunksFactory& factory) {
   factory.GetTpmUtility()->Shutdown();
