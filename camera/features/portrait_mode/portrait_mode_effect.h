@@ -69,6 +69,8 @@ class PortraitModeEffect : public base::SupportsWeakPtr<PortraitModeEffect> {
   //    |output_buffer|: output buffer
   // Returns:
   //    0 on success; corresponding error code on failure.
+  // TODO(julianachang): Rename the function after removing
+  // PortraitModeStreamManipulatorLegacy.
   int32_t ReprocessRequest(bool can_process_portrait,
                            buffer_handle_t input_buffer,
                            uint32_t orientation,

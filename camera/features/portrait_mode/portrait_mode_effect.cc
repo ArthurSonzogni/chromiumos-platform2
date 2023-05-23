@@ -169,6 +169,7 @@ int32_t PortraitModeEffect::ReprocessRequest(
       // Portrait processing finishes with non-zero result when there's no human
       // face in the image. Returns 0 here with the status set in the vendor tag
       // by |result_metadata_runner|.
+      LOGF(INFO) << "No human face detected.";
       return 0;
     }
 

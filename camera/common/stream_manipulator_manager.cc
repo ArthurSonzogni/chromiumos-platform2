@@ -53,7 +53,7 @@
 #endif
 
 #if USE_CAMERA_FEATURE_PORTRAIT_MODE
-#include "features/portrait_mode/portrait_mode_stream_manipulator_legacy.h"
+#include "features/portrait_mode/portrait_mode_stream_manipulator.h"
 #endif
 
 namespace cros {
@@ -164,10 +164,14 @@ StreamManipulatorManager::StreamManipulatorManager(
 #endif
 
 #if USE_CAMERA_FEATURE_PORTRAIT_MODE
+  std::unique_ptr<JpegCompressor> jpeg_compressor =
+      JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
+  std::unique_ptr<StillCaptureProcessor> still_capture_processor =
+      std::make_unique<StillCaptureProcessorImpl>(std::move(jpeg_compressor));
   stream_manipulators_.emplace_back(
-      std::make_unique<PortraitModeStreamManipulatorLegacy>(
-          mojo_manager_token));
-  LOGF(INFO) << "PortraitModeStreamManipulatorLegacy enabled";
+      std::make_unique<PortraitModeStreamManipulator>(
+          mojo_manager_token, std::move(still_capture_processor)));
+  LOGF(INFO) << "PortraitModeStreamManipulator enabled";
 #endif
 
   stream_manipulators_.emplace_back(
