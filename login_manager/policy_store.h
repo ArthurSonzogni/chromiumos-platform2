@@ -46,9 +46,6 @@ class PolicyStore {
   // Clobber the stored policy with new data.
   virtual void Set(const enterprise_management::PolicyFetchResponse& policy);
 
-  // Deletes the policy file at |policy_file_| and clears the stored policy.
-  virtual bool Delete();
-
   const base::FilePath policy_path() const { return policy_path_; }
 
   bool resilient_for_testing() const { return is_resilient_store_; }

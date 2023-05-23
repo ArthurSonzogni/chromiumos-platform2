@@ -95,11 +95,4 @@ void PolicyStore::Set(
   explicit_update_persist_pending_ = true;
 }
 
-bool PolicyStore::Delete() {
-  if (!brillo::DeleteFile(policy_path_))
-    return false;
-  policy_.Clear();
-  return true;
-}
-
 }  // namespace login_manager
