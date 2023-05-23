@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/timer/timer.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <spaced/proto_bindings/spaced.pb.h>
 
 namespace spaced {
