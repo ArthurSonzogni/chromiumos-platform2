@@ -10,6 +10,7 @@
 #include <base/functional/callback.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace ml {
 

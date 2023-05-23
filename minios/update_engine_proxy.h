@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/memory/weak_ptr.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <update_engine/proto_bindings/update_engine.pb.h>
 // NOLINTNEXTLINE(build/include_alpha)
 #include <update_engine/dbus-proxies.h>
