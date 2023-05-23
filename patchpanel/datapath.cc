@@ -1389,20 +1389,21 @@ void Datapath::AddInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
   if (!success) {
     LOG(ERROR) << "Failed to configure ingress DNAT rules on " << ifname
                << " to " << ipv4_addr_str;
-    RemoveInboundIPv4DNAT(auto_dnat_target, ifname, ipv4_addr_str);
+    RemoveInboundIPv4DNAT(auto_dnat_target, ifname, ipv4_addr);
   }
 }
 
 void Datapath::RemoveInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
                                      const std::string& ifname,
-                                     const std::string& ipv4_addr) {
+                                     const IPv4Address& ipv4_addr) {
+  const std::string ipv4_addr_str = ipv4_addr.ToString();
   const std::string chain = AutoDnatTargetChainName(auto_dnat_target);
   process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kD,
                             {chain, "-i", ifname, "-p", "udp", "-j", "DNAT",
-                             "--to-destination", ipv4_addr, "-w"});
+                             "--to-destination", ipv4_addr_str, "-w"});
   process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kD,
                             {chain, "-i", ifname, "-p", "tcp", "-j", "DNAT",
-                             "--to-destination", ipv4_addr, "-w"});
+                             "--to-destination", ipv4_addr_str, "-w"});
   process_runner_->iptables(Iptables::Table::kNat, Iptables::Command::kD,
                             {chain, "-i", ifname, "-m", "socket",
                              "--nowildcard", "-j", "ACCEPT", "-w"});

@@ -394,7 +394,7 @@ class Datapath {
                                   const net_base::IPv4Address& ipv4_addr);
   virtual void RemoveInboundIPv4DNAT(AutoDnatTarget auto_dnat_target,
                                      const std::string& ifname,
-                                     const std::string& ipv4_addr);
+                                     const net_base::IPv4Address& ipv4_addr);
 
   // Create (or delete) DNAT rules for redirecting DNS queries from system
   // services to the nameservers of a particular physical networks. These

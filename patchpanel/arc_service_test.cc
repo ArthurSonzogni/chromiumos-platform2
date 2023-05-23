@@ -513,7 +513,7 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
                                             TrafficSource::kArc, false));
   EXPECT_CALL(*datapath_,
               RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
-                                    StrEq("100.115.92.6")));
+                                    IPv4Address(100, 115, 92, 6)));
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0"))).Times(1);
 
   svc->RemoveDevice("eth0");
@@ -810,7 +810,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
                                             TrafficSource::kArc, false));
   EXPECT_CALL(*datapath_,
               RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
-                                    StrEq("100.115.92.6")));
+                                    IPv4Address(100, 115, 92, 6)));
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0")));
   svc->Stop(kTestPID);
   EXPECT_FALSE(svc->IsStarted());
@@ -886,7 +886,7 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
                                             TrafficSource::kArc, false));
   EXPECT_CALL(*datapath_,
               RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, StrEq("eth0"),
-                                    StrEq("100.115.92.6")));
+                                    IPv4Address(100, 115, 92, 6)));
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0")));
 
   svc->RemoveDevice("eth0");

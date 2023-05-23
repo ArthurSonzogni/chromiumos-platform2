@@ -586,9 +586,8 @@ void ArcService::RemoveDevice(const std::string& ifname) {
 
   datapath_->StopRoutingDevice(device->phys_ifname(), device->host_ifname(),
                                TrafficSource::kArc, /*route_on_vpn=*/false);
-  datapath_->RemoveInboundIPv4DNAT(
-      AutoDnatTarget::kArc, device->phys_ifname(),
-      device->config().guest_ipv4_addr().ToString());
+  datapath_->RemoveInboundIPv4DNAT(AutoDnatTarget::kArc, device->phys_ifname(),
+                                   device->config().guest_ipv4_addr());
   datapath_->RemoveBridge(device->host_ifname());
 
   if (IsAdbAllowed(type))
