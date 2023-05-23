@@ -149,9 +149,17 @@ void zcr_extended_text_input_v1_add_listener(
     const zcr_extended_text_input_v1_listener*,
     void* listener_data);
 
-#define ZCR_EXTENDED_TEXT_INPUT_V1_SET_SURROUNDING_TEXT_SUPPORT_SINCE_VERSION 9
-
 void zcr_extended_text_input_v1_destroy(zcr_extended_text_input_v1*);
+
+void zcr_extended_text_input_v1_set_input_type(
+    zcr_extended_text_input_v1*,
+    uint32_t input_type,
+    uint32_t input_mode,
+    uint32_t input_flags,
+    uint32_t learning_mode,
+    uint32_t inline_composition_support);
+
+#define ZCR_EXTENDED_TEXT_INPUT_V1_SET_SURROUNDING_TEXT_SUPPORT_SINCE_VERSION 9
 
 // |support| is a enum of type
 // |zcr_extended_text_input_v1_surrounding_text_support|.

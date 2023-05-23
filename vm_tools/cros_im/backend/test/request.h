@@ -28,6 +28,7 @@ class Request {
     kReset,
     kSetSurroundingText,
     kSetContentType,
+    kSetInputType,
     kSetCursorRectangle,
     // Requests on a text_input_extension object
     kExtensionDestroy,
@@ -58,6 +59,26 @@ class SetContentTypeRequest : public Request {
  private:
   uint32_t hints_;
   uint32_t purpose_;
+};
+
+class SetInputTypeRequest : public Request {
+ public:
+  SetInputTypeRequest(int text_input_id,
+                      uint32_t input_type,
+                      uint32_t input_mode,
+                      uint32_t input_flags,
+                      uint32_t learning_mode,
+                      uint32_t inline_composition_support);
+  ~SetInputTypeRequest() override;
+  bool RequestMatches(const Request& actual) const override;
+  void Print(std::ostream& stream) const override;
+
+ private:
+  uint32_t input_type_;
+  uint32_t input_mode_;
+  uint32_t input_flags_;
+  uint32_t learning_mode_;
+  uint32_t inline_composition_support_;
 };
 
 class SetSurroundingTextRequest : public Request {

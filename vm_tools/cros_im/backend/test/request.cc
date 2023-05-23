@@ -33,6 +33,8 @@ std::string RequestTypeToString(Request::RequestType type) {
       return "set_surrounding_text()";
     case Request::kSetContentType:
       return "set_content_type()";
+    case Request::kSetInputType:
+      return "set_input_type()";
     case Request::kSetCursorRectangle:
       return "set_cursor_rectangle()";
     case Request::kExtensionDestroy:
@@ -80,12 +82,52 @@ bool SetContentTypeRequest::RequestMatches(const Request& actual) const {
     FAILED() << "SetContentType request was not of type SetContentTypeRequest";
     return false;
   }
-
   return hints_ == other->hints_ && purpose_ == other->purpose_;
 }
 
 void SetContentTypeRequest::Print(std::ostream& stream) const {
   stream << "set_content_type(hints = " << hints_ << ", purpose = " << purpose_
+         << ")";
+}
+
+SetInputTypeRequest::SetInputTypeRequest(int text_input_id,
+                                         uint32_t input_type,
+                                         uint32_t input_mode,
+                                         uint32_t input_flags,
+                                         uint32_t learning_mode,
+                                         uint32_t inline_composition_support)
+    : Request(text_input_id, Request::kSetInputType),
+      input_type_(input_type),
+      input_mode_(input_mode),
+      input_flags_(input_flags),
+      learning_mode_(learning_mode),
+      inline_composition_support_(inline_composition_support) {}
+
+SetInputTypeRequest::~SetInputTypeRequest() = default;
+
+bool SetInputTypeRequest::RequestMatches(const Request& actual) const {
+  if (!Request::RequestMatches(actual))
+    return false;
+  const SetInputTypeRequest* other =
+      dynamic_cast<const SetInputTypeRequest*>(&actual);
+  if (!other) {
+    FAILED() << "SetInputType request was not of type SetInputTypeRequest";
+    return false;
+  }
+
+  return input_type_ == other->input_type_ &&
+         input_mode_ == other->input_mode_ &&
+         input_flags_ == other->input_flags_ &&
+         learning_mode_ == other->learning_mode_ &&
+         inline_composition_support_ == other->inline_composition_support_;
+}
+
+void SetInputTypeRequest::Print(std::ostream& stream) const {
+  stream << "set_input_type(input_type = " << input_type_
+         << ", input_mode = " << input_mode_
+         << ", input_flags = " << input_flags_
+         << ", learning_mode = " << learning_mode_
+         << ", inline_composition_support = " << inline_composition_support_
          << ")";
 }
 

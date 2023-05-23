@@ -147,11 +147,20 @@ void IMContextBackend::SetSurrounding(const char* text, int cursor_index) {
                                          cursor_index);
 }
 
-void IMContextBackend::SetContentType(ContentType content_type) {
+void IMContextBackend::SetContentTypeOld(ContentTypeOld content_type) {
   if (!text_input_)
     return;
   zwp_text_input_v1_set_content_type(text_input_, content_type.hints,
                                      content_type.purpose);
+}
+
+void IMContextBackend::SetContentType(ContentType content_type) {
+  if (!text_input_)
+    return;
+  zcr_extended_text_input_v1_set_input_type(
+      extended_text_input_, content_type.input_type, content_type.input_mode,
+      content_type.input_flags, content_type.learning_mode,
+      content_type.inline_composition_support);
 }
 
 void IMContextBackend::SetCursorLocation(int x, int y, int width, int height) {

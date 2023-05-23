@@ -57,9 +57,18 @@ class IMContextBackend {
                         uint32_t modifiers) = 0;
   };
 
-  struct ContentType {
+  struct ContentTypeOld {
     uint32_t hints;    // zwp_text_input_v1_content_hint
     uint32_t purpose;  // zwp_text_input_v1_content_purpose
+  };
+
+  struct ContentType {
+    zcr_extended_text_input_v1_input_type input_type;
+    zcr_extended_text_input_v1_input_mode input_mode;
+    uint32_t input_flags;  // zcr_extended_text_input_v1_input_flags
+    zcr_extended_text_input_v1_learning_mode learning_mode;
+    zcr_extended_text_input_v1_inline_composition_support
+        inline_composition_support;
   };
 
   explicit IMContextBackend(Observer* observer);
@@ -71,6 +80,7 @@ class IMContextBackend {
   void ShowInputPanel();
   void Reset();
   void SetSurrounding(const char* text, int cursor_index);
+  void SetContentTypeOld(ContentTypeOld content_type);
   void SetContentType(ContentType content_type);
   void SetCursorLocation(int x, int y, int width, int height);
   void SetSupportsSurrounding(bool is_supported);

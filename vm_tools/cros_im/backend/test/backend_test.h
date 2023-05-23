@@ -109,6 +109,7 @@ class BackendTest {
     Ignore<text_input_id>(Request::kSetCursorRectangle);
     Ignore<text_input_id>(Request::kSetSurroundingText);
     Ignore<text_input_id>(Request::kSetContentType);
+    Ignore<text_input_id>(Request::kSetInputType);
     Ignore<text_input_id>(Request::kShowInputPanel);
     Ignore<text_input_id>(Request::kHideInputPanel);
     Ignore<text_input_id>(Request::kDestroy);
@@ -120,6 +121,17 @@ class BackendTest {
   void ExpectSetContentType(uint32_t hints, uint32_t purpose) {
     actions_.emplace(
         std::make_unique<SetContentTypeRequest>(text_input_id, hints, purpose));
+  }
+
+  template <int text_input_id = 0>
+  void ExpectSetInputType(uint32_t input_type,
+                          uint32_t input_mode,
+                          uint32_t input_flags,
+                          uint32_t learning_mode,
+                          uint32_t inline_composition_support) {
+    actions_.emplace(std::make_unique<SetInputTypeRequest>(
+        text_input_id, input_type, input_mode, input_flags, learning_mode,
+        input_flags));
   }
 
   template <int text_input_id = 0>

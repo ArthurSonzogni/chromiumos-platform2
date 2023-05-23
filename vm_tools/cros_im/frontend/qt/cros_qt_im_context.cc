@@ -77,7 +77,7 @@ void CrosQtIMContext::Activate() {
   }
 
   backend_->SetSupportsSurrounding(false);
-  backend_->SetContentType(GetUpdatedHints());
+  backend_->SetContentTypeOld(GetUpdatedHints());
 
   // TODO(zihanchen): Dig deeper into Qt::AA_DisableNativeVirtualKeyboard
   // This is the only indication in Qt about whether to show a virtual keyboard,
@@ -144,7 +144,7 @@ void CrosQtIMContext::update(Qt::InputMethodQueries queries) {
   // surrounding text
   if (queries.testFlag(Qt::ImHints)) {
     backend_->SetSupportsSurrounding(false);
-    backend_->SetContentType(GetUpdatedHints());
+    backend_->SetContentTypeOld(GetUpdatedHints());
   }
 }
 
@@ -275,7 +275,9 @@ bool CrosQtIMContext::init() {
   }
 }
 
-IMContextBackend::ContentType CrosQtIMContext::GetUpdatedHints() {
+IMContextBackend::ContentTypeOld CrosQtIMContext::GetUpdatedHints() {
+  // TODO(b/232048947): Switch to using new set_input_type API.
+
   Q_ASSERT(inited_ && qApp);
 
   QObject* input_object = qApp->focusObject();

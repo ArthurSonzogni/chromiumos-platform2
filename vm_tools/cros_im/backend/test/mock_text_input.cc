@@ -133,6 +133,18 @@ void zcr_extended_text_input_v1_add_listener(
   extended_text_input->listener_data = listener_data;
 }
 
+void zcr_extended_text_input_v1_set_input_type(
+    zcr_extended_text_input_v1* extended_text_input,
+    uint32_t input_type,
+    uint32_t input_mode,
+    uint32_t input_flags,
+    uint32_t learning_mode,
+    uint32_t inline_composition_support) {
+  HandleRequest(cros_im::test::SetInputTypeRequest(
+      extended_text_input->id, input_type, input_mode, input_flags,
+      learning_mode, input_flags));
+}
+
 void zcr_extended_text_input_v1_destroy(
     zcr_extended_text_input_v1* extended_text_input) {
   HandleRequest(extended_text_input, Request::kExtensionDestroy);

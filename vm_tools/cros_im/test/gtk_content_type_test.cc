@@ -90,8 +90,6 @@ TEST_F(GtkContentTypeTest, ContentPurpose) {
   entry_.grab_focus_without_selecting();
   RunAndExpectBufferChangeTo(&entry_, "10");
 
-  // Hints are ignored with a PIN or PASSWORD purpose.
-  text_view_.set_input_hints(Gtk::INPUT_HINT_SPELLCHECK);
   text_view_.set_input_purpose(Gtk::INPUT_PURPOSE_PASSWORD);
   text_view_.grab_focus();
   RunAndExpectBufferChangeTo(&text_view_, "ace");

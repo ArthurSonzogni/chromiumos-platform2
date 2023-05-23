@@ -70,95 +70,89 @@ void cros_gtk_im_context_class_finalize(CrosGtkIMContextClass* klass) {}
 // end of GObject integration
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t GetZwpHintsFromGtk(GtkInputHints gtk_hints) {
-  uint32_t zwp_hints = ZWP_TEXT_INPUT_V1_CONTENT_HINT_NONE;
+IMContextBackend::ContentType ConvertContentType(GtkInputHints gtk_hints,
+                                                 GtkInputPurpose gtk_purpose) {
+  zcr_extended_text_input_v1_input_type input_type =
+      ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_TYPE_TEXT;
+  zcr_extended_text_input_v1_input_mode input_mode =
+      ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_MODE_DEFAULT;
+  uint32_t input_flags = ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_FLAGS_NONE;
+  zcr_extended_text_input_v1_learning_mode learning_mode =
+      ZCR_EXTENDED_TEXT_INPUT_V1_LEARNING_MODE_ENABLED;
+  // TODO(b/232048153): Listen to set_use_preedit and pass it through here.
+  zcr_extended_text_input_v1_inline_composition_support
+      inline_composition_support =
+          ZCR_EXTENDED_TEXT_INPUT_V1_INLINE_COMPOSITION_SUPPORT_SUPPORTED;
 
-  // Input hints are not often set so default to turning on auto completion and
-  // auto correction unless explicitly disabled.
-
-  // Don't require GTK_INPUT_HINT_SPELLCHECK
-  if (!(gtk_hints & GTK_INPUT_HINT_NO_SPELLCHECK))
-    zwp_hints |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_AUTO_CORRECTION;
-
-  // Don't require GTK_INPUT_HINT_WORD_COMPLETION
-  zwp_hints |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_AUTO_COMPLETION;
-
-  // TODO(timloh): Current TITLECASE and and AUTO_CAPITALIZATION seem to make
-  // text entirely uppercase, maybe due to lack of surrounding text support.
-  // Test this (e.g. <input autocapitalize="on"> in Firefox) when VK support
-  // is improved, and default to auto capitalize once this works.
-  if (gtk_hints & GTK_INPUT_HINT_LOWERCASE) {
-    zwp_hints |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_LOWERCASE;
-  } else if (gtk_hints & GTK_INPUT_HINT_UPPERCASE_CHARS) {
-    zwp_hints |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_UPPERCASE;
-  } else if (gtk_hints & GTK_INPUT_HINT_UPPERCASE_WORDS) {
-    zwp_hints |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_TITLECASE;
-  } else if (gtk_hints & GTK_INPUT_HINT_UPPERCASE_SENTENCES) {
-    zwp_hints |= ZWP_TEXT_INPUT_V1_CONTENT_HINT_AUTO_CAPITALIZATION;
-  }
-
-  // Handled explicitly in FocusIn():
-  // - GTK_INPUT_HINT_INHIBIT_OSK
-  // Not supported:
-  // - GTK_INPUT_HINT_VERTICAL_WRITING
-  // - GTK_INPUT_HINT_EMOJI
-  // - GTK_INPUT_HINT_NO_EMOJI
-  // - ZWP_TEXT_INPUT_V1_CONTENT_HINT_LATIN
-  // - ZWP_TEXT_INPUT_V1_CONTENT_HINT_MULTILINE
-  // GetZwpHintsPurposeFromGtk special-cases a PASSWORD or PIN purpose, ignoring
-  // any explicitly set hints and instead setting:
-  // - ZWP_TEXT_INPUT_V1_CONTENT_HINT_HIDDEN_TEXT
-  // - ZWP_TEXT_INPUT_V1_CONTENT_HINT_SENSITIVE_DATA
-  // - (aka ZWP_TEXT_INPUT_V1_CONTENT_HINT_PASSWORD)
-  return zwp_hints;
-}
-
-uint32_t GetZwpPurposeFromGtk(GtkInputPurpose gtk_purpose) {
   switch (gtk_purpose) {
     case GTK_INPUT_PURPOSE_FREE_FORM:
-      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_NORMAL;
     case GTK_INPUT_PURPOSE_ALPHA:
-      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_ALPHA;
-    case GTK_INPUT_PURPOSE_DIGITS:
-    case GTK_INPUT_PURPOSE_PIN:
-      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_DIGITS;
-    case GTK_INPUT_PURPOSE_NUMBER:
-      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_NUMBER;
-    case GTK_INPUT_PURPOSE_PHONE:
-      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_PHONE;
-    case GTK_INPUT_PURPOSE_URL:
-      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_URL;
-    case GTK_INPUT_PURPOSE_EMAIL:
-      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_EMAIL;
     case GTK_INPUT_PURPOSE_NAME:
-      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_NAME;
+    case GTK_INPUT_PURPOSE_TERMINAL:
+      // default case
+      break;
+    case GTK_INPUT_PURPOSE_PIN:
+      learning_mode = ZCR_EXTENDED_TEXT_INPUT_V1_LEARNING_MODE_DISABLED;
+      [[fallthrough]];
+    case GTK_INPUT_PURPOSE_DIGITS:
+    case GTK_INPUT_PURPOSE_NUMBER:
+      input_type = ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_TYPE_NUMBER;
+      input_mode = ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_MODE_NUMERIC;
+      break;
+    case GTK_INPUT_PURPOSE_PHONE:
+      input_type = ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_TYPE_TELEPHONE;
+      input_mode = ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_MODE_TEL;
+      break;
+    case GTK_INPUT_PURPOSE_URL:
+      input_type = ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_TYPE_URL;
+      input_mode = ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_MODE_URL;
+      break;
+    case GTK_INPUT_PURPOSE_EMAIL:
+      input_type = ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_TYPE_EMAIL;
+      input_mode = ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_MODE_EMAIL;
+      break;
     case GTK_INPUT_PURPOSE_PASSWORD:
-      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_PASSWORD;
+      input_type = ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_TYPE_PASSWORD;
+      learning_mode = ZCR_EXTENDED_TEXT_INPUT_V1_LEARNING_MODE_DISABLED;
+      break;
     default:
       g_warning("Unknown GtkInputPurpose %d", static_cast<int>(gtk_purpose));
-      return ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_NORMAL;
+      break;
   }
 
-  // Not supported:
-  // - ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_DATE
-  // - ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_TIME
-  // - ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_DATETIME
-  // - ZWP_TEXT_INPUT_V1_CONTENT_PURPOSE_TERMINAL
-}
-
-IMContextBackend::ContentType GetZwpHintsPurposeFromGtk(
-    GtkInputHints gtk_hints, GtkInputPurpose gtk_purpose) {
-  uint32_t zwp_purpose = GetZwpPurposeFromGtk(gtk_purpose);
-
-  uint32_t zwp_hints;
-  if (gtk_purpose == GTK_INPUT_PURPOSE_PASSWORD ||
-      gtk_purpose == GTK_INPUT_PURPOSE_PIN) {
-    zwp_hints = ZWP_TEXT_INPUT_V1_CONTENT_HINT_PASSWORD;
-  } else {
-    zwp_hints = GetZwpHintsFromGtk(gtk_hints);
+  if (gtk_hints & GTK_INPUT_HINT_SPELLCHECK) {
+    input_flags |= ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_FLAGS_SPELLCHECK_ON;
+  } else if (gtk_hints & GTK_INPUT_HINT_NO_SPELLCHECK) {
+    input_flags |= ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_FLAGS_SPELLCHECK_OFF;
   }
 
-  return {.hints = zwp_hints, .purpose = zwp_purpose};
+  if (gtk_hints & GTK_INPUT_HINT_WORD_COMPLETION) {
+    input_flags |= ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_FLAGS_AUTOCOMPLETE_ON;
+  }
+
+  if (gtk_hints & GTK_INPUT_HINT_LOWERCASE) {
+    input_flags |= ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_FLAGS_AUTOCAPITALIZE_NONE;
+  } else if (gtk_hints & GTK_INPUT_HINT_UPPERCASE_CHARS) {
+    input_flags |=
+        ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_FLAGS_AUTOCAPITALIZE_CHARACTERS;
+  } else if (gtk_hints & GTK_INPUT_HINT_UPPERCASE_WORDS) {
+    input_flags |= ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_FLAGS_AUTOCAPITALIZE_WORDS;
+  } else if (gtk_hints & GTK_INPUT_HINT_UPPERCASE_SENTENCES) {
+    input_flags |=
+        ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_FLAGS_AUTOCAPITALIZE_SENTENCES;
+  }
+
+  if (gtk_hints & GTK_INPUT_HINT_INHIBIT_OSK) {
+    input_mode = ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_MODE_NONE;
+  }
+
+  // GTK_INPUT_HINT_EMOJI and GTK_INPUT_HINT_NO_EMOJI are currently ignored.
+
+  return {.input_type = input_type,
+          .input_mode = input_mode,
+          .input_flags = input_flags,
+          .learning_mode = learning_mode,
+          .inline_composition_support = inline_composition_support};
 }
 
 PangoAttribute* ToPangoAttribute(const PreeditStyle& style) {
@@ -532,7 +526,7 @@ void CrosGtkIMContext::Activate() {
   GtkInputPurpose gtk_purpose = GTK_INPUT_PURPOSE_FREE_FORM;
   g_object_get(this, "input-hints", &gtk_hints, "input-purpose", &gtk_purpose,
                NULL);
-  backend_->SetContentType(GetZwpHintsPurposeFromGtk(gtk_hints, gtk_purpose));
+  backend_->SetContentType(ConvertContentType(gtk_hints, gtk_purpose));
 
   if (!(gtk_hints & GTK_INPUT_HINT_INHIBIT_OSK))
     backend_->ShowInputPanel();
