@@ -14,7 +14,7 @@ use std::{
 // shadercached user id
 const SHADERCACHED_USER: i32 = 333;
 // Disk quota () for shadercached when disk is not short in storage space
-const NORMAL_DISK_QUOTA: f64 = 0.05;
+const NORMAL_DISK_QUOTA: f64 = 0.10;
 const QUOTA_BLOCK_SIZE: u64 = 1024;
 
 fn get_device(path: &str) -> Result<String> {
