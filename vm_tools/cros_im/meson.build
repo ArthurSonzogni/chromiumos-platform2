@@ -62,7 +62,7 @@ gtk_sources = backend_sources + [
 
 gtk_args = ['-DDISABLE_SURROUNDING']
 
-libim_cros_gtk = shared_library('im_cros_gtk',
+libim_cros_gtk = shared_library('im-cros',
   sources: gtk_sources + wl_outs,
   dependencies: [
     meson.get_compiler('cpp').find_library('m'),
@@ -70,6 +70,11 @@ libim_cros_gtk = shared_library('im_cros_gtk',
     dependency('wayland-client'),
   ],
   cpp_args: gtk_args,
+
+  # No prefix on build result.
+  name_prefix: '',
+  install: true,
+  install_dir: get_option('libdir') / 'gtk-3.0/3.0.0/immodules',
 )
 
 qt_other_sources = [
@@ -90,7 +95,7 @@ qt5_deps = dependency('qt5', modules: ['Core', 'Gui', 'InputSupport', 'XkbCommon
 
 qt5_moc_output = qt5.preprocess(moc_headers: moc_headers, dependencies: qt5_deps)
 
-shared_library('crosplatforminputcontextplugin-qt5',
+shared_library('libcrosplatforminputcontextplugin',
   sources: backend_sources + qt_other_sources + qt5_moc_output + wl_outs,
   dependencies: [
     meson.get_compiler('cpp').find_library('m'),
@@ -99,6 +104,11 @@ shared_library('crosplatforminputcontextplugin-qt5',
     dependency('xkbcommon'),
     dependency('x11'),
   ],
+
+  # No prefix on build result.
+  name_prefix: '',
+  install: true,
+  install_dir: get_option('libdir') / 'qt5/plugins/platforminputcontexts',
 )
 
 

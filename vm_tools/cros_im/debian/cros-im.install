@@ -1,3 +1,0 @@
-#!/usr/bin/dh-exec
-obj-${DEB_BUILD_GNU_TYPE}/libim_cros_gtk.so => usr/lib/${DEB_BUILD_GNU_TYPE}/gtk-3.0/3.0.0/immodules/im-cros.so
-obj-${DEB_BUILD_GNU_TYPE}/libcrosplatforminputcontextplugin-qt5.so => usr/lib/${DEB_BUILD_GNU_TYPE}/qt5/plugins/platforminputcontexts/libcrosplatforminputcontextplugin.so
