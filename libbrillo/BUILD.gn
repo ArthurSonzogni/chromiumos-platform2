@@ -78,6 +78,7 @@ libbrillo_sublibs = [
       "brillo/files/safe_fd.cc",
       "brillo/flag_helper.cc",
       "brillo/hash/MurmurHash3.cc",
+      "brillo/kernel_config_utils.cc",
       "brillo/key_value_store.cc",
       "brillo/message_loops/base_message_loop.cc",
       "brillo/message_loops/message_loop.cc",
@@ -228,6 +229,12 @@ libbrillo_sublibs = [
       "brillo/grpc/rpc_state.cc",
       "brillo/grpc/time_util.cc",
     ]
+  },
+
+  {
+    library_name = "brillo-vboot"
+    all_dependent_pkg_deps = [ "vboot_host" ]
+    sources = [ "brillo/dump_kernel_config.cc" ]
   },
 ]
 
@@ -498,6 +505,7 @@ if (use.test) {
       "brillo/http/http_request_test.cc",
       "brillo/http/http_transport_curl_test.cc",
       "brillo/http/http_utils_test.cc",
+      "brillo/kernel_config_utils_test.cc",
       "brillo/key_value_store_test.cc",
       "brillo/map_utils_test.cc",
       "brillo/message_loops/base_message_loop_test.cc",
