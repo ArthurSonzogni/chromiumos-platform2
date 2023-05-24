@@ -96,7 +96,9 @@ const uint32_t kStadiaProduct = 0x9400;
 
 const uint32_t kSonyVendor = 0x54C;
 const uint32_t kDualSenseProduct = 0xCE6;
-const uint32_t kDualShock4Product = 0x9CC;
+const uint32_t kDualSenseEdgeProduct = 0xDF2;
+const uint32_t kDualShock4v1Product = 0x54C;
+const uint32_t kDualShock4v2Product = 0x9CC;
 
 const DeviceID kStadiaUSB = {
     .vendor = kStadiaVendor, .product = kStadiaProduct, .version = 0x111};
@@ -119,11 +121,26 @@ const DeviceID kDualSenseUSB = {
 const DeviceID kDualSenseBT = {
     .vendor = kSonyVendor, .product = kDualSenseProduct, .version = 0x100};
 
-const DeviceID kDualShock4USB = {
-    .vendor = kSonyVendor, .product = kDualShock4Product, .version = 0x8111};
+const DeviceID kDualSenseEdgeUSB = {
+    .vendor = kSonyVendor, .product = kDualSenseEdgeProduct, .version = 0x111};
 
-const DeviceID kDualShock4BT = {
-    .vendor = kSonyVendor, .product = kDualShock4Product, .version = 0x8100};
+const DeviceID kDualSenseEdgeBT = {
+    .vendor = kSonyVendor, .product = kDualSenseEdgeProduct, .version = 0x100};
+
+const DeviceID kDualShock4v1USB = {
+    .vendor = kSonyVendor, .product = kDualShock4v1Product, .version = 0x8111};
+
+const DeviceID kDualShock4v1BT = {
+    .vendor = kSonyVendor, .product = kDualShock4v1Product, .version = 0x8100};
+
+const DeviceID kDualShock4v2USB = {
+    .vendor = kSonyVendor, .product = kDualShock4v2Product, .version = 0x8111};
+
+const DeviceID kDualShock4v2BT = {
+    .vendor = kSonyVendor, .product = kDualShock4v2Product, .version = 0x8100};
+
+const DeviceID kDualShock3USB = {
+    .vendor = kSonyVendor, .product = 0x268, .version = 0x8111};
 
 const DeviceID kXboxSeriesXBT = {
     .vendor = kXboxVendor, .product = 0xB13, .version = 0x513};
@@ -200,6 +217,39 @@ const std::unordered_map<uint32_t, uint32_t> kDualShock4Mapping = {
     {BTN_B, BTN_B},
     {BTN_X, BTN_Y},
     {BTN_Y, BTN_X},
+    // Left bumper and trigger
+    {BTN_TL, BTN_TL},
+    {ABS_Z, ABS_Z},
+    // Right bumper and trigger
+    {BTN_TR, BTN_TR},
+    {ABS_RZ, ABS_RZ},
+    // Menu buttons
+    {BTN_SELECT, BTN_SELECT},
+    {BTN_START, BTN_START},
+    {BTN_MODE, BTN_MODE},
+};
+
+// DualShock3 (PS3).
+const std::unordered_map<uint32_t, uint32_t> kDualShock3Mapping = {
+    // Left Joystick
+    {ABS_X, ABS_X},
+    {ABS_Y, ABS_Y},
+    // Right Joystick
+    {ABS_RX, ABS_RX},
+    {ABS_RY, ABS_RY},
+    // Joystick press
+    {BTN_THUMBL, BTN_THUMBL},
+    {BTN_THUMBR, BTN_THUMBR},
+    // DPad
+    {BTN_DPAD_LEFT, ABS_HAT0X},
+    {BTN_DPAD_RIGHT, ABS_HAT0X},
+    {BTN_DPAD_UP, ABS_HAT0Y},
+    {BTN_DPAD_DOWN, ABS_HAT0Y},
+    // Face Buttons
+    {BTN_A, BTN_A},
+    {BTN_B, BTN_B},
+    {BTN_Y, BTN_X},
+    {BTN_X, BTN_Y},
     // Left bumper and trigger
     {BTN_TL, BTN_TL},
     {ABS_Z, ABS_Z},
@@ -328,8 +378,9 @@ const std::unordered_map<DeviceID,
         {kStratusPlusBT, &kAxisQuirkMapping},
         {kDualSenseUSB, &kDualSenseMapping},
         {kDualSenseBT, &kDualSenseMapping},
-        {kDualShock4USB, &kDualShock4Mapping},
-        {kDualShock4BT, &kDualShock4Mapping},
+        {kDualShock4v2USB, &kDualShock4Mapping},
+        {kDualShock4v2BT, &kDualShock4Mapping},
+        {kDualShock3USB, &kDualShock3Mapping},
         {kXboxSeriesXBT, &kAxisQuirkMapping},
         {kXboxOneSOldBT, &kXboxOneSOldMapping},
         {kXboxOneS2016BT, &kXboxOneS2016Mapping},
@@ -340,6 +391,10 @@ const std::unordered_map<DeviceID,
         // https://source.chromium.org/chromium/chromium/src/+/refs/heads/main:device/gamepad/gamepad_standard_mappings_linux.cc;l=968
         {kXboxAdaptiveBT, &kAxisQuirkMapping},
         {kXboxElite2BT, &kAxisQuirkMapping},
+        {kDualShock4v1USB, &kDualShock4Mapping},
+        {kDualShock4v1BT, &kDualShock4Mapping},
+        {kDualSenseEdgeUSB, &kDualSenseMapping},
+        {kDualSenseEdgeBT, &kDualSenseMapping},
 };
 
 // Note: the majority of protocol errors are treated as non-fatal, and
@@ -418,12 +473,30 @@ static void sl_internal_gamepad_button(void* data,
   if (host_gamepad->state != kStateActivated)
     return;
 
+  uint32_t original_button = button;
   if (!remap_input(host_gamepad, button))
     return;
 
   // Note: Exo wayland server always sends analog==0, only pay attention
   // to state.
   int value = (state == ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED) ? 1 : 0;
+
+  if (host_gamepad->mapping == &kDualShock3Mapping) {
+    // Convert button to axis if necessary.
+    if (original_button != button &&
+        (original_button == BTN_DPAD_UP || original_button == BTN_DPAD_LEFT ||
+         original_button == BTN_DPAD_DOWN ||
+         original_button == BTN_DPAD_RIGHT)) {
+      // BTN_DPAD_UP and BTN_DPAD_LEFT are the equivalent of negative DPAD axis
+      // events and we need to correct their pressed (1) values.
+      if (value == 1 &&
+          (original_button == BTN_DPAD_UP || original_button == BTN_DPAD_LEFT))
+        value = -1;
+      Libevdev::Get()->uinput_write_event(host_gamepad->uinput_dev, EV_ABS,
+                                          button, value);
+      return;
+    }
+  }
 
   // Note: incoming time is ignored, it will be regenerated from current time.
   Libevdev::Get()->uinput_write_event(host_gamepad->uinput_dev, EV_KEY, button,
@@ -460,7 +533,6 @@ static void sl_internal_gamepad_axis_added(void* data,
                                .fuzz = fuzz,
                                .flat = flat,
                                .resolution = resolution};
-
   if (host_gamepad->state != kStatePending) {
     fprintf(stderr, "error: %s invoked in unexpected state %d\n", __func__,
             host_gamepad->state);
@@ -549,6 +621,16 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
   auto it = kDeviceMappings.find(DeviceID{vendor_id, product_id, version});
   if (it != kDeviceMappings.end()) {
     host_gamepad->mapping = it->second;
+    if (it->first == kDualShock3USB) {
+      // The DualShock3 gamepad doesn't have any axes for its DPAD, we need to
+      // add them manually.
+      sl_internal_gamepad_axis_added(
+          host_gamepad, gamepad, BTN_DPAD_DOWN, /*min_value=*/-1,
+          /*max_value=*/1, /*flat=*/0, /*fuzz=*/0, /*resolution=*/0);
+      sl_internal_gamepad_axis_added(
+          host_gamepad, gamepad, BTN_DPAD_LEFT, /*min_value=*/-1,
+          /*max_value=*/1, /*flat=*/0, /*fuzz=*/0, /*resolution=*/0);
+    }
   }
 
   // Describe a common controller

@@ -309,6 +309,10 @@ TEST_F(GamepadTest, MappingsWorkCorrectly) {
 
   BindWLSeat(&ctx);
   for (auto& it : kDeviceMappings) {
+    // The DualShock3 (PS3) gamepad has special-case handling and we
+    // cover this in a separate test.
+    if (it.second == &kDualShock3Mapping)
+      continue;
     struct zcr_gamepad_v2* gamepad;
     struct libevdev* ev_dev;
     SetupGamepad(&ctx, gamepad, ev_dev, "Xbox",
@@ -347,6 +351,179 @@ TEST_F(GamepadTest, MappingsWorkCorrectly) {
 
     HostEventHandler(gamepad)->removed(host_gamepads[0], gamepad);
   }
+}
+
+// The DualShock3 gamepad is handled differently because it involves mapping
+// it's DPAD buttons to axes it doesn't have. We enable those axes
+// manually and special case it's DPAD buttons to output axis events, rather
+// than button events.
+TEST_F(GamepadTest, DualShock3MappingWorksCorrectly) {
+  BindWLSeat(&ctx);
+  struct zcr_gamepad_v2* gamepad;
+  struct libevdev* ev_dev;
+
+  // The DualShock3 gamepad doesn't have these axes so we manually enable them
+  // in Sommelier.
+  EXPECT_CALL(libevdevshim,
+              enable_event_code(::testing::_, EV_ABS, ABS_HAT0Y, ::testing::_));
+  EXPECT_CALL(libevdevshim,
+              enable_event_code(::testing::_, EV_ABS, ABS_HAT0X, ::testing::_));
+
+  SetupGamepad(&ctx, gamepad, ev_dev, "Xbox",
+               ZCR_GAMING_SEAT_V2_BUS_TYPE_BLUETOOTH, kDualShock3USB.vendor,
+               kDualShock3USB.product, kDualShock3USB.version);
+  std::vector<struct sl_host_gamepad*> host_gamepads = GetHostGamepads(&ctx);
+
+  EXPECT_EQ(host_gamepads.size(), 1);
+  EXPECT_EQ(host_gamepads[0]->mapping, &kDualShock3Mapping);
+
+  // This object forces all EXPECT_CALLs to occur in the order they are
+  // declared. This insures expectations are paired to the correct
+  // mappings and events.
+  testing::InSequence sequence;
+
+  // Add axes.
+  EXPECT_CALL(libevdevshim,
+              enable_event_code(ev_dev, EV_ABS, ABS_X, ::testing::_));
+  HostEventHandler(gamepad)->axis_added(host_gamepads[0], gamepad, ABS_X, 2, 3,
+                                        4, 5, 6);
+
+  EXPECT_CALL(libevdevshim,
+              enable_event_code(ev_dev, EV_ABS, ABS_Y, ::testing::_));
+  HostEventHandler(gamepad)->axis_added(host_gamepads[0], gamepad, ABS_Y, 2, 3,
+                                        4, 5, 6);
+
+  EXPECT_CALL(libevdevshim,
+              enable_event_code(ev_dev, EV_ABS, ABS_RX, ::testing::_));
+  HostEventHandler(gamepad)->axis_added(host_gamepads[0], gamepad, ABS_RX, 2, 3,
+                                        4, 5, 6);
+
+  EXPECT_CALL(libevdevshim,
+              enable_event_code(ev_dev, EV_ABS, ABS_RY, ::testing::_));
+  HostEventHandler(gamepad)->axis_added(host_gamepads[0], gamepad, ABS_RY, 2, 3,
+                                        4, 5, 6);
+
+  EXPECT_CALL(libevdevshim,
+              enable_event_code(ev_dev, EV_ABS, ABS_Z, ::testing::_));
+  HostEventHandler(gamepad)->axis_added(host_gamepads[0], gamepad, ABS_Z, 2, 3,
+                                        4, 5, 6);
+
+  EXPECT_CALL(libevdevshim,
+              enable_event_code(ev_dev, EV_ABS, ABS_RZ, ::testing::_));
+  HostEventHandler(gamepad)->axis_added(host_gamepads[0], gamepad, ABS_RZ, 2, 3,
+                                        4, 5, 6);
+
+  host_gamepads[0]->state = kStateActivated;
+
+  // Handle axis events.
+  EXPECT_CALL(libevdevshim,
+              uinput_write_event(host_gamepads[0]->uinput_dev, EV_ABS, ABS_X,
+                                 wl_fixed_to_double(250)));
+  HostEventHandler(gamepad)->axis(host_gamepads[0], gamepad, 1, ABS_X, 250);
+
+  EXPECT_CALL(libevdevshim,
+              uinput_write_event(host_gamepads[0]->uinput_dev, EV_ABS, ABS_Y,
+                                 wl_fixed_to_double(250)));
+  HostEventHandler(gamepad)->axis(host_gamepads[0], gamepad, 1, ABS_Y, 250);
+
+  EXPECT_CALL(libevdevshim,
+              uinput_write_event(host_gamepads[0]->uinput_dev, EV_ABS, ABS_RX,
+                                 wl_fixed_to_double(250)));
+  HostEventHandler(gamepad)->axis(host_gamepads[0], gamepad, 1, ABS_RX, 250);
+
+  EXPECT_CALL(libevdevshim,
+              uinput_write_event(host_gamepads[0]->uinput_dev, EV_ABS, ABS_RY,
+                                 wl_fixed_to_double(250)));
+  HostEventHandler(gamepad)->axis(host_gamepads[0], gamepad, 1, ABS_RY, 250);
+
+  EXPECT_CALL(libevdevshim,
+              uinput_write_event(host_gamepads[0]->uinput_dev, EV_ABS, ABS_Z,
+                                 wl_fixed_to_double(250)));
+  HostEventHandler(gamepad)->axis(host_gamepads[0], gamepad, 1, ABS_Z, 250);
+
+  EXPECT_CALL(libevdevshim,
+              uinput_write_event(host_gamepads[0]->uinput_dev, EV_ABS, ABS_RZ,
+                                 wl_fixed_to_double(250)));
+  HostEventHandler(gamepad)->axis(host_gamepads[0], gamepad, 1, ABS_RZ, 250);
+
+  // Handle buttons
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_KEY, BTN_THUMBL, 1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_THUMBL,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_KEY, BTN_THUMBR, 1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_THUMBR,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_KEY, BTN_A, 1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_A,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_KEY, BTN_B, 1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_B,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_KEY, BTN_X, 1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_Y,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_KEY, BTN_Y, 1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_X,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_KEY, BTN_TL, 1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_TL,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_KEY, BTN_TR, 1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_TR,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_KEY, BTN_SELECT, 1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_SELECT,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_KEY, BTN_START, 1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_START,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_KEY, BTN_MODE, 1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_MODE,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+
+  // These buttons involve converting a button event into an axis event.
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_ABS, ABS_HAT0X, -1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_DPAD_LEFT,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_ABS, ABS_HAT0X, 1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1,
+                                    BTN_DPAD_RIGHT,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_ABS, ABS_HAT0Y, -1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_DPAD_UP,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+  EXPECT_CALL(libevdevshim, uinput_write_event(host_gamepads[0]->uinput_dev,
+                                               EV_ABS, ABS_HAT0Y, 1));
+  HostEventHandler(gamepad)->button(host_gamepads[0], gamepad, 1, BTN_DPAD_DOWN,
+                                    ZCR_GAMEPAD_V2_BUTTON_STATE_PRESSED, 0);
+
+  EXPECT_CALL(libevdevshim, free(host_gamepads[0]->ev_dev));
+
+  HostEventHandler(gamepad)->removed(host_gamepads[0], gamepad);
 }
 
 }  // namespace sommelier
