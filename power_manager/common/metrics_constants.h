@@ -191,6 +191,11 @@ extern const char kAmbientLightOnResumeName[];
 extern const int kAmbientLightOnResumeMin;
 extern const int kAmbientLightOnResumeMax;
 
+extern const char kPeripheralReadLatencyMs[];
+extern const char kPeripheralReadErrorLatencyMs[];
+extern const int kPeripheralReadLatencyMsMin;
+extern const int kPeripheralReadLatencyMsMax;
+
 // Values for kBatteryInfoSampleName.
 enum class BatteryInfoSampleResult {
   READ,

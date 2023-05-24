@@ -16,13 +16,21 @@
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
+#include "power_manager/common/metrics_constants.h"
+#include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/mock_bluez_battery_provider.h"
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/peripheral_battery_status.pb.h"
+
+using ::testing::_;
+using ::testing::Gt;
+using ::testing::Return;
+using ::testing::StrictMock;
 
 namespace power_manager::system {
 
@@ -714,6 +722,23 @@ TEST_F(PeripheralBatteryWatcherTest, SpammyUdevEvents) {
 
   // Restore the original file count limit.
   setrlimit(RLIMIT_NOFILE, &rlim_orig);
+}
+
+TEST_F(PeripheralBatteryWatcherTest, ReadLatencyMetrics) {
+  StrictMock<MetricsLibraryMock> metrics_lib;
+  MetricsSender metrics_sender{metrics_lib};
+
+  EXPECT_CALL(metrics_lib, SendToUMA("Power.PeripheralReadLatencyMs", Gt(0),
+                                     metrics::kPeripheralReadLatencyMsMin,
+                                     metrics::kPeripheralReadLatencyMsMax,
+                                     metrics::kDefaultBuckets))
+      .Times(1)
+      .WillOnce(Return(true))
+      .RetiresOnSaturation();
+
+  WriteFile(peripheral_capacity_file_, base::NumberToString(50));
+  battery_.Init(&test_wrapper_, &udev_);
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 }
 
 }  // namespace power_manager::system

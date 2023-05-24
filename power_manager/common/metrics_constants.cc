@@ -227,4 +227,10 @@ const char kAmbientLightOnResumeName[] = "Power.AmbientLightOnResume";
 const int kAmbientLightOnResumeMin = 0;
 const int kAmbientLightOnResumeMax = 100000;
 
+const char kPeripheralReadLatencyMs[] = "Power.PeripheralReadLatencyMs";
+const char kPeripheralReadErrorLatencyMs[] =
+    "Power.PeripheralReadErrorLatencyMs";
+const int kPeripheralReadLatencyMsMin = 0;
+const int kPeripheralReadLatencyMsMax = 1000;
+
 }  // namespace power_manager::metrics

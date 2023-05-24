@@ -131,8 +131,11 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
                     int status,
                     const std::string& serial_number,
                     bool active_update,
+                    base::TimeTicks start_time,
                     const std::string& data);
-  void ErrorCallback(const base::FilePath& path, const std::string& model_name);
+  void ErrorCallback(const base::FilePath& path,
+                     const std::string& model_name,
+                     base::TimeTicks start_time);
 
   // Useful to pass mock BluezBatteryProvider in tests.
   void SetBluezBatteryProviderForTest(

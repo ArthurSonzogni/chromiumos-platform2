@@ -22,6 +22,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <re2/re2.h>
 
+#include "power_manager/common/metrics_constants.h"
+#include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/tracing.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/proto_bindings/peripheral_battery_status.pb.h"
@@ -248,12 +250,14 @@ void PeripheralBatteryWatcher::ReadBatteryStatus(const base::FilePath& path,
   battery_readers_[path] = std::make_unique<AsyncFileReader>();
   AsyncFileReader* reader = battery_readers_[path].get();
 
+  base::TimeTicks start_time = base::TimeTicks::Now();
   if (reader->Init(capacity_path)) {
-    reader->StartRead(base::BindOnce(&PeripheralBatteryWatcher::ReadCallback,
-                                     base::Unretained(this), path, model_name,
-                                     status, sn, active_update),
-                      base::BindOnce(&PeripheralBatteryWatcher::ErrorCallback,
-                                     base::Unretained(this), path, model_name));
+    reader->StartRead(
+        base::BindOnce(&PeripheralBatteryWatcher::ReadCallback,
+                       base::Unretained(this), path, model_name, status, sn,
+                       active_update, start_time),
+        base::BindOnce(&PeripheralBatteryWatcher::ErrorCallback,
+                       base::Unretained(this), path, model_name, start_time));
   } else {
     LOG(ERROR) << "Can't read battery capacity " << capacity_path.value();
   }
@@ -315,7 +319,9 @@ void PeripheralBatteryWatcher::ReadCallback(const base::FilePath& path,
                                             int status,
                                             const std::string& serial_number,
                                             bool active_update,
+                                            base::TimeTicks start_time,
                                             const std::string& data) {
+  base::TimeDelta latency = base::TimeTicks::Now() - start_time;
   std::string trimmed_data;
   base::TrimWhitespaceASCII(data, base::TRIM_ALL, &trimmed_data);
   int level = -1;
@@ -328,15 +334,25 @@ void PeripheralBatteryWatcher::ReadCallback(const base::FilePath& path,
   }
   base::SequencedTaskRunner::GetCurrentDefault()->DeleteSoon(
       FROM_HERE, std::move(battery_readers_.extract(path).mapped()));
+  SendMetric(metrics::kPeripheralReadLatencyMs,
+             static_cast<int>(round(latency.InMillisecondsF())),
+             metrics::kPeripheralReadLatencyMsMin,
+             metrics::kPeripheralReadLatencyMsMax, metrics::kDefaultBuckets);
 }
 
 void PeripheralBatteryWatcher::ErrorCallback(const base::FilePath& path,
-                                             const std::string& model_name) {
+                                             const std::string& model_name,
+                                             base::TimeTicks start_time) {
+  base::TimeDelta latency = base::TimeTicks::Now() - start_time;
   SendBatteryStatus(path, model_name, -1,
                     PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_UNKNOWN,
                     "", false);
   base::SequencedTaskRunner::GetCurrentDefault()->DeleteSoon(
       FROM_HERE, std::move(battery_readers_.extract(path).mapped()));
+  SendMetric(metrics::kPeripheralReadErrorLatencyMs,
+             static_cast<int>(round(latency.InMillisecondsF())),
+             metrics::kPeripheralReadLatencyMsMin,
+             metrics::kPeripheralReadLatencyMsMax, metrics::kDefaultBuckets);
 }
 
 void PeripheralBatteryWatcher::OnRefreshAllPeripheralBatteryMethodCall(
