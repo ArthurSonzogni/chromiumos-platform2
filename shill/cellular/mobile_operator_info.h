@@ -120,6 +120,9 @@ class MobileOperatorInfo {
   virtual const std::string& serving_mccmnc() const;
   const std::string& gid1() const;
 
+  // Gets the friendly name for the service based on the home and serving
+  // operators.
+  virtual std::string friendly_operator_name(bool is_roaming) const;
   // All access point names associated with this carrier entry.
   virtual const std::vector<MobileOperatorMapper::MobileAPN>& apn_list() const;
   // All Online Payment Portal URLs associated with this carrier entry. There

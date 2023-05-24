@@ -2958,21 +2958,8 @@ void Cellular::UpdateServingOperator() {
   service()->SetServingOperator(serving_operator);
 
   // Set friendly name of service.
-  std::string service_name;
-  if (base::Contains(serving_operator, kOperatorNameKey)) {
-    // If roaming, try to show "<home-provider> | <serving-operator>", per 3GPP
-    // rules (TS 31.102 and annex A of 122.101).
-    if (service()->roaming_state() == kRoamingStateRoaming &&
-        !mobile_operator_info_->operator_name().empty() &&
-        mobile_operator_info_->operator_name() !=
-            serving_operator.at(kOperatorNameKey)) {
-      service_name += mobile_operator_info_->operator_name() + " | ";
-    }
-    service_name += serving_operator.at(kOperatorNameKey);
-  } else if (base::Contains(serving_operator, kOperatorCodeKey)) {
-    // We could not get a name for the operator, just use the code.
-    service_name = "cellular_" + serving_operator.at(kOperatorCodeKey);
-  }
+  std::string service_name = mobile_operator_info_->friendly_operator_name(
+      service()->roaming_state() == kRoamingStateRoaming);
   if (service_name.empty()) {
     LOG(WARNING) << LoggingTag()
                  << ": No properties for setting friendly name for: "

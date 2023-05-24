@@ -91,6 +91,9 @@ int main(int argc, char* argv[]) {
 
   mobile_operator_info->IsServingMobileNetworkOperatorKnown();
 
+  mobile_operator_info->friendly_operator_name(/* is_roaming */ true);
+  mobile_operator_info->friendly_operator_name(/* is_roaming */ false);
+
   // Print a small summary that can be copy pasted into a CL message
   std::stringstream report;
   report << "\ncellular_mobile_operator_info_tester report:\n";
@@ -109,6 +112,10 @@ int main(int argc, char* argv[]) {
          << mobile_operator_info->IsMobileNetworkOperatorKnown() << "\n";
   report << "IsServingMobileNetworkOperatorKnown: " << std::boolalpha
          << mobile_operator_info->IsServingMobileNetworkOperatorKnown() << "\n";
+  report << "friendly_operator_name when roaming: "
+         << mobile_operator_info->friendly_operator_name(true) << "\n";
+  report << "friendly_operator_name when not roaming: "
+         << mobile_operator_info->friendly_operator_name(false) << "\n";
 
   shill::ApnList apn_list(/* merge_similar_apns */ false);
   apn_list.AddApns(mobile_operator_info->apn_list(),

@@ -168,6 +168,35 @@ MobileOperatorInfo::olp_list() const {
   return home_->olp_list();
 }
 
+std::string MobileOperatorInfo::friendly_operator_name(bool is_roaming) const {
+  std::string operator_name;
+  std::string mccmnc;
+  if (IsServingMobileNetworkOperatorKnown()) {
+    operator_name = serving_->operator_name();
+    mccmnc = serving_->mccmnc();
+  } else if (IsMobileNetworkOperatorKnown()) {
+    operator_name = home_->operator_name();
+    mccmnc = home_->mccmnc();
+  }
+
+  std::string service_name;
+  if (!operator_name.empty()) {
+    // If roaming, try to show "<home-provider> | <serving-operator>", per 3GPP
+    // rules (TS 31.102 and annex A of 122.101).
+    if (is_roaming && !home_->operator_name().empty() &&
+        home_->operator_name() != operator_name) {
+      service_name += home_->operator_name() + " | ";
+    }
+    service_name += operator_name;
+  } else if (!mccmnc.empty()) {
+    // We could not get a name for the operator, just use the code.
+    service_name = "cellular_" + mccmnc;
+  }
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << service_name
+          << "]. is_roaming:" << std::boolalpha << is_roaming;
+  return service_name;
+}
+
 bool MobileOperatorInfo::requires_roaming() const {
   if (!home_->IsMobileNetworkOperatorKnown() &&
       !home_->IsMobileVirtualNetworkOperatorKnown())

@@ -231,6 +231,70 @@ TEST_F(MobileOperatorInfoMainTest, serving_mccmnc) {
   EXPECT_EQ(operator_info_->serving_mccmnc(), mccmnc);
 }
 
+TEST_F(MobileOperatorInfoMainTest, FriendlyOperatorNameKnownOperatorName) {
+  const std::string serving_name = "serving";
+  const std::string home_name = "home";
+  const std::string serving_mccmnc = "001001";
+  const std::string home_mccmnc = "002002";
+  EXPECT_CALL(*serving_, operator_name())
+      .WillRepeatedly(ReturnRef(serving_name));
+  EXPECT_CALL(*serving_, mccmnc()).WillRepeatedly(ReturnRef(serving_mccmnc));
+  EXPECT_CALL(*home_, operator_name()).WillRepeatedly(ReturnRef(home_name));
+  EXPECT_CALL(*home_, mccmnc()).WillRepeatedly(ReturnRef(home_mccmnc));
+
+  // Serving mobile network operator known
+  // Roaming
+  EXPECT_CALL(*serving_, IsMobileNetworkOperatorKnown()).WillOnce(Return(true));
+  EXPECT_EQ(operator_info_->friendly_operator_name(true), "home | serving");
+  // Not roaming
+  EXPECT_CALL(*serving_, IsMobileNetworkOperatorKnown()).WillOnce(Return(true));
+  EXPECT_EQ(operator_info_->friendly_operator_name(false), "serving");
+
+  // Serving mobile network operator not known
+  // Roaming
+  EXPECT_CALL(*serving_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*home_, IsMobileNetworkOperatorKnown()).WillOnce(Return(true));
+  EXPECT_EQ(operator_info_->friendly_operator_name(true), "home");
+  // Not roaming
+  EXPECT_CALL(*serving_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*home_, IsMobileNetworkOperatorKnown()).WillOnce(Return(true));
+  EXPECT_EQ(operator_info_->friendly_operator_name(false), "home");
+}
+
+TEST_F(MobileOperatorInfoMainTest, FriendlyOperatorNameUnknownOperatorName) {
+  const std::string serving_name = "";
+  const std::string home_name = "";
+  const std::string serving_mccmnc = "001001";
+  const std::string home_mccmnc = "002002";
+  EXPECT_CALL(*serving_, operator_name())
+      .WillRepeatedly(ReturnRef(serving_name));
+  EXPECT_CALL(*serving_, mccmnc()).WillRepeatedly(ReturnRef(serving_mccmnc));
+  EXPECT_CALL(*home_, operator_name()).WillRepeatedly(ReturnRef(home_name));
+  EXPECT_CALL(*home_, mccmnc()).WillRepeatedly(ReturnRef(home_mccmnc));
+
+  // Serving mobile network operator known
+  // Roaming
+  EXPECT_CALL(*serving_, IsMobileNetworkOperatorKnown()).WillOnce(Return(true));
+  EXPECT_EQ(operator_info_->friendly_operator_name(true), "cellular_001001");
+  // Not roaming
+  EXPECT_CALL(*serving_, IsMobileNetworkOperatorKnown()).WillOnce(Return(true));
+  EXPECT_EQ(operator_info_->friendly_operator_name(false), "cellular_001001");
+
+  // Serving mobile network operator not known
+  // Roaming
+  EXPECT_CALL(*serving_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*home_, IsMobileNetworkOperatorKnown()).WillOnce(Return(true));
+  EXPECT_EQ(operator_info_->friendly_operator_name(true), "cellular_002002");
+  // Not roaming
+  EXPECT_CALL(*serving_, IsMobileNetworkOperatorKnown())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*home_, IsMobileNetworkOperatorKnown()).WillOnce(Return(true));
+  EXPECT_EQ(operator_info_->friendly_operator_name(false), "cellular_002002");
+}
+
 TEST_F(MobileOperatorInfoMainTest, apn_list) {
   MobileOperatorMapper::MobileAPN apn1;
   apn1.apn = "apn1";

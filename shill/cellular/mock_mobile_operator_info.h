@@ -42,6 +42,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
   MOCK_METHOD(const std::string&, serving_country, (), (const, override));
   MOCK_METHOD(const std::string&, serving_uuid, (), (const, override));
 
+  MOCK_METHOD(std::string, friendly_operator_name, (bool), (const, override));
   MOCK_METHOD(void, UpdateMCCMNC, (const std::string&), (override));
   MOCK_METHOD(void, UpdateIMSI, (const std::string&), (override));
   MOCK_METHOD(void, UpdateOperatorName, (const std::string&), (override));
