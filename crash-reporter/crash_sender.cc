@@ -88,6 +88,22 @@ void SetUpSandboxForDryRun(struct minijail* jail) {
       // Prevent UMA reporting
       "/var/lib");
   for (const char* dir : kReadOnlyDirs) {
+    if (!base::PathExists(base::FilePath(dir))) {
+      // Some of the dirs may not exist and we don't bind-mount it if it
+      // doesn't exist. This suppresses noisy warnings from minijail:
+      //
+      // WARNING crash_sender[10928]:
+      // libminijail[10928]: realpath(/home/chronos/crash) failed: No such file
+      // or directory
+      // WARNING crash_sender[10928]: libminijail[10928]: path
+      // '/home/chronos/crash' is not a canonical path
+      // WARNING crash_sender[10928]: libminijail[10928]: src
+      // '/home/chronos/crash' is not a valid bind mount path
+      //
+      // We don't use `base::DirectoryExists` because, if the path exists and is
+      // not a directory, likely something's wrong.
+      continue;
+    }
     minijail_bind(jail, dir, dir, /*writable=*/0);
   }
 }
