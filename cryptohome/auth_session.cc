@@ -34,6 +34,7 @@
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/auth_block_utility.h"
+#include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
@@ -804,11 +805,22 @@ void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
     StatusCallback on_done) {
   DCHECK(!key_label.empty());
 
-  AuthBlockState auth_state;
   // Identify the key via `key_label` instead of `key_data_.label()`, as the
   // latter can be empty for legacy keysets.
-  if (!auth_block_utility_->GetAuthBlockStateFromVaultKeyset(
-          key_label, obfuscated_username_, auth_state /*Out*/)) {
+  std::unique_ptr<VaultKeyset> vault_keyset =
+      keyset_management_->GetVaultKeyset(obfuscated_username_, key_label);
+  if (!vault_keyset) {
+    LOG(ERROR)
+        << "No vault keyset is found on disk for label " << key_label
+        << ". Cannot obtain AuthBlockState without vault keyset metadata.";
+    std::move(on_done).Run(MakeStatus<error::CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionVaultKeysetMissingInAuthViaVaultKey),
+        ErrorActionSet({error::PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
+    return;
+  }
+  AuthBlockState auth_state;
+  if (!GetAuthBlockState(*vault_keyset, auth_state)) {
     LOG(ERROR) << "Error in obtaining AuthBlock state for key derivation.";
     std::move(on_done).Run(MakeStatus<error::CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionBlockStateMissingInAuthViaVaultKey),

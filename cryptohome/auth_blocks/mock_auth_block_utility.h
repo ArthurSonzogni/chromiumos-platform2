@@ -59,16 +59,6 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               GetAuthBlockTypeFromState,
               (const AuthBlockState& auth_state),
               (const, override));
-  MOCK_METHOD(bool,
-              GetAuthBlockStateFromVaultKeyset,
-              (const std::string& label,
-               const ObfuscatedUsername& obfuscated_username,
-               AuthBlockState& out_state),
-              (const, override));
-  MOCK_METHOD(void,
-              AssignAuthBlockStateToVaultKeyset,
-              (const AuthBlockState& state, VaultKeyset& vault_keyset),
-              (const, override));
   MOCK_METHOD(CryptohomeStatus,
               PrepareAuthBlockForRemoval,
               (const AuthBlockState& auth_block_state),

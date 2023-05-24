@@ -246,50 +246,6 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(AuthBlockType auth_block_type,
   return auth_block;
 }
 
-bool AuthBlockUtilityImpl::GetAuthBlockStateFromVaultKeyset(
-    const std::string& label,
-    const ObfuscatedUsername& obfuscated_username,
-    AuthBlockState& out_state) const {
-  std::unique_ptr<VaultKeyset> vault_keyset =
-      keyset_management_->GetVaultKeyset(obfuscated_username, label);
-  // If there is no keyset on the disk for the given user and label (or for the
-  // empty label as a wildcard), AuthBlock state cannot be obtained.
-  if (vault_keyset == nullptr) {
-    LOG(ERROR)
-        << "No vault keyset is found on disk for the given label. Cannot "
-           "obtain AuthBlockState without vault keyset metadata.";
-    return false;
-  }
-
-  return GetAuthBlockState(*vault_keyset, out_state);
-}
-
-void AuthBlockUtilityImpl::AssignAuthBlockStateToVaultKeyset(
-    const AuthBlockState& auth_state, VaultKeyset& vault_keyset) const {
-  if (const auto* state =
-          std::get_if<TpmNotBoundToPcrAuthBlockState>(&auth_state.state)) {
-    vault_keyset.SetTpmNotBoundToPcrState(*state);
-  } else if (const auto* state =
-                 std::get_if<TpmBoundToPcrAuthBlockState>(&auth_state.state)) {
-    vault_keyset.SetTpmBoundToPcrState(*state);
-  } else if (const auto* state =
-                 std::get_if<PinWeaverAuthBlockState>(&auth_state.state)) {
-    vault_keyset.SetPinWeaverState(*state);
-  } else if (const auto* state =
-                 std::get_if<ScryptAuthBlockState>(&auth_state.state)) {
-    vault_keyset.SetScryptState(*state);
-  } else if (const auto* state = std::get_if<ChallengeCredentialAuthBlockState>(
-                 &auth_state.state)) {
-    vault_keyset.SetChallengeCredentialState(*state);
-  } else if (const auto* state =
-                 std::get_if<TpmEccAuthBlockState>(&auth_state.state)) {
-    vault_keyset.SetTpmEccState(*state);
-  } else {
-    LOG(ERROR) << "Invalid auth block state type";
-    return;
-  }
-}
-
 std::optional<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
     const AuthBlockState& auth_block_state) const {
   GenericAuthBlockFunctions generic(

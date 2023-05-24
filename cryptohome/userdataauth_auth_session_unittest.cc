@@ -162,11 +162,6 @@ void MockKeysetDerivation(const ObfuscatedUsername& obfuscated_username,
                           const SerializedVaultKeyset& serialized_vk,
                           CryptoError derivation_error,
                           MockAuthBlockUtility& auth_block_utility) {
-  EXPECT_CALL(auth_block_utility,
-              GetAuthBlockStateFromVaultKeyset(serialized_vk.key_data().label(),
-                                               obfuscated_username, _))
-      .WillOnce(Return(true));
-
   // Return an arbitrary auth block type from the mock.
   EXPECT_CALL(auth_block_utility, GetAuthBlockTypeFromState(_))
       .WillOnce(Return(AuthBlockType::kTpmEcc));

@@ -390,9 +390,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   void AuthenticateAndMigrate(AuthSession& auth_session,
                               const std::string& label,
                               const std::string& secret) {
-    EXPECT_CALL(mock_auth_block_utility_,
-                GetAuthBlockStateFromVaultKeyset(_, _, _))
-        .WillRepeatedly(Return(true));
     EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeFromState(_))
         .WillRepeatedly(Return(AuthBlockType::kTpmEcc));
 

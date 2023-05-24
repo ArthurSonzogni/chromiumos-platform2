@@ -88,17 +88,6 @@ class AuthBlockUtility {
   virtual std::optional<AuthBlockType> GetAuthBlockTypeFromState(
       const AuthBlockState& state) const = 0;
 
-  // This populates an AuthBlockState allocated by the caller.
-  [[nodiscard]] virtual bool GetAuthBlockStateFromVaultKeyset(
-      const std::string& label,
-      const ObfuscatedUsername& obfuscated_username,
-      AuthBlockState& out_state) const = 0;
-
-  // Reads an auth block state and update the given VaultKeyset with what it
-  // returns.
-  virtual void AssignAuthBlockStateToVaultKeyset(
-      const AuthBlockState& state, VaultKeyset& vault_keyset) const = 0;
-
   // Executes additional steps needed for auth block removal, using the given
   // auth block state.
   [[nodiscard]] virtual CryptohomeStatus PrepareAuthBlockForRemoval(

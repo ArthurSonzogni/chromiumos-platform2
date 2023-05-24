@@ -67,6 +67,7 @@
 #include "cryptohome/user_session/real_user_session.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/username.h"
+#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 namespace {
@@ -280,15 +281,17 @@ class AuthSessionTest : public ::testing::Test {
     auto make_vk_with_label = [label](auto...) {
       auto vk = std::make_unique<VaultKeyset>();
       vk->SetKeyDataLabel(label);
+      vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
+                   SerializedVaultKeyset::PCR_BOUND);
+      TpmBoundToPcrAuthBlockState state;
+      state.tpm_key = brillo::SecureBlob("");
+      state.extended_tpm_key = brillo::SecureBlob("");
+      vk->SetTpmBoundToPcrState(state);
       return vk;
     };
 
     EXPECT_CALL(keyset_management_, GetVaultKeyset(_, label))
         .WillRepeatedly(make_vk_with_label);
-
-    EXPECT_CALL(auth_block_utility_,
-                GetAuthBlockStateFromVaultKeyset(label, _, _))
-        .WillRepeatedly(Return(true));
     EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
         .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
     EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
@@ -610,9 +613,16 @@ TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
 
   // Set up VaultKeyset authentication mock.
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
-      .WillOnce(Return(true));
+      .WillRepeatedly([](auto...) {
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
+                     SerializedVaultKeyset::PCR_BOUND);
+        TpmBoundToPcrAuthBlockState state;
+        state.tpm_key = brillo::SecureBlob("");
+        state.extended_tpm_key = brillo::SecureBlob("");
+        vk->SetTpmBoundToPcrState(state);
+        return vk;
+      });
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
       .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
@@ -737,9 +747,10 @@ TEST_F(AuthSessionTest,
        .auth_factor_status_update_timer =
            std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
-       .auth_factor_map = AfMapBuilder()
-                              .AddPassword<ScryptAuthBlockState>(kFakeLabel)
-                              .Consume(),
+       .auth_factor_map =
+           AfMapBuilder()
+               .AddPassword<TpmNotBoundToPcrAuthBlockState>(kFakeLabel)
+               .Consume(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -747,20 +758,18 @@ TEST_F(AuthSessionTest,
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
-
-  // Called within the converter_.PopulateKeyDataForVK()
-  KeyData key_data;
-  key_data.set_label(kFakeLabel);
-  auto vk = std::make_unique<VaultKeyset>();
-  vk->SetKeyData(key_data);
-
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
-      .WillOnce(Return(ByMove(std::move(vk))));
-
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
-      .WillOnce(Return(true));
+      .WillRepeatedly([](auto...) {
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->SetKeyDataLabel(kFakeLabel);
+        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
+        TpmNotBoundToPcrAuthBlockState state;
+        state.tpm_key = brillo::SecureBlob("");
+        vk->SetTpmNotBoundToPcrState(state);
+        return vk;
+      });
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
-      .WillRepeatedly(Return(AuthBlockType::kScrypt));
+      .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
       .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
@@ -832,9 +841,10 @@ TEST_F(AuthSessionTest,
        .auth_factor_status_update_timer =
            std::make_unique<base::WallClockTimer>(),
        .user_exists = true,
-       .auth_factor_map = AfMapBuilder()
-                              .AddPassword<ScryptAuthBlockState>(kFakeLabel)
-                              .Consume(),
+       .auth_factor_map =
+           AfMapBuilder()
+               .AddPassword<TpmNotBoundToPcrAuthBlockState>(kFakeLabel)
+               .Consume(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -842,20 +852,18 @@ TEST_F(AuthSessionTest,
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
-
-  // Called within the converter_.PopulateKeyDataForVK()
-  KeyData key_data;
-  key_data.set_label(kFakeLabel);
-  auto vk = std::make_unique<VaultKeyset>();
-  vk->SetKeyData(key_data);
-
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
-      .WillOnce(Return(ByMove(std::move(vk))));
-
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
-      .WillOnce(Return(true));
+      .WillRepeatedly([](auto...) {
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->SetKeyDataLabel(kFakeLabel);
+        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
+        TpmNotBoundToPcrAuthBlockState state;
+        state.tpm_key = brillo::SecureBlob("");
+        vk->SetTpmNotBoundToPcrState(state);
+        return vk;
+      });
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
-      .WillRepeatedly(Return(AuthBlockType::kScrypt));
+      .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
       .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
@@ -937,19 +945,19 @@ TEST_F(AuthSessionTest,
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
-
-  // Called within the converter_.PopulateKeyDataForVK()
-  KeyData key_data;
-  key_data.set_label(kFakePinLabel);
-  key_data.mutable_policy()->set_low_entropy_credential(true);
-  auto vk = std::make_unique<VaultKeyset>();
-  vk->SetKeyData(key_data);
-
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakePinLabel))
-      .WillOnce(Return(ByMove(std::move(vk))));
-
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
-      .WillOnce(Return(true));
+      .WillRepeatedly([](auto...) {
+        auto vk = std::make_unique<VaultKeyset>();
+        KeyData key_data;
+        key_data.set_label(kFakePinLabel);
+        key_data.mutable_policy()->set_low_entropy_credential(true);
+        vk->SetKeyData(key_data);
+        vk->SetFlags(SerializedVaultKeyset::LE_CREDENTIAL);
+        PinWeaverAuthBlockState state;
+        state.le_label = 0x12345678;
+        vk->SetPinWeaverState(state);
+        return vk;
+      });
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
       .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _, _))
@@ -1661,9 +1669,16 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorWebAuthnIntent) {
       backing_apis_);
   // Set up VaultKeyset authentication mock.
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
-  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
-      .WillOnce(Return(true));
+      .WillRepeatedly([](auto...) {
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
+                     SerializedVaultKeyset::PCR_BOUND);
+        TpmBoundToPcrAuthBlockState state;
+        state.tpm_key = brillo::SecureBlob("");
+        state.extended_tpm_key = brillo::SecureBlob("");
+        vk->SetTpmBoundToPcrState(state);
+        return vk;
+      });
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
       .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
   EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
@@ -1738,12 +1753,21 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
   EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
 
   // Test that RemoveAuthFactor success removes the factor from the map.
+  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeOtherLabel))
+      .WillRepeatedly([](auto...) {
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->SetKeyDataLabel(kFakeOtherLabel);
+        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
+                     SerializedVaultKeyset::PCR_BOUND);
+        TpmBoundToPcrAuthBlockState state;
+        state.tpm_key = brillo::SecureBlob("");
+        state.extended_tpm_key = brillo::SecureBlob("");
+        vk->SetTpmBoundToPcrState(state);
+        return vk;
+      });
   user_data_auth::RemoveAuthFactorRequest remove_request;
   remove_request.set_auth_session_id(auth_session.serialized_token());
   remove_request.set_auth_factor_label(kFakeOtherLabel);
-  // RemoveauthFactor loads the VK to remove.
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeOtherLabel))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   TestFuture<CryptohomeStatus> remove_future;
   auth_session.RemoveAuthFactor(remove_request, remove_future.GetCallback());
 
@@ -4837,6 +4861,10 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
     auto vk = std::make_unique<VaultKeyset>();
     vk->Initialize(backing_apis_.platform, backing_apis_.crypto);
     vk->SetLegacyIndex(0);
+    vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
+    TpmNotBoundToPcrAuthBlockState state;
+    state.tpm_key = brillo::SecureBlob(32, 'T');
+    vk->SetTpmNotBoundToPcrState(state);
     return vk;
   };
   auto make_key_blobs = []() {
@@ -4851,9 +4879,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
   // good" everywhere.
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kLegacyLabel))
       .WillRepeatedly([&](auto...) { return make_vk(); });
-  EXPECT_CALL(auth_block_utility_,
-              GetAuthBlockStateFromVaultKeyset(kLegacyLabel, _, _))
-      .WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
       .WillRepeatedly(Return(AuthBlockType::kScrypt));
   EXPECT_CALL(auth_block_utility_,

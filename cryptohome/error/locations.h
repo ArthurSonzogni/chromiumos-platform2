@@ -1383,6 +1383,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionSingleLabelFullAuthNotSupportedAuthAuthFactor = 2118,
   /* ./auth_session.cc */
   kLocAuthSessionMultiLabelFullAuthNotSupportedAuthAuthFactor = 2119,
+  /* ./auth_session.cc */
+  kLocAuthSessionVaultKeysetMissingInAuthViaVaultKey = 2120,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.
