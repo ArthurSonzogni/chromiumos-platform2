@@ -154,6 +154,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
                    SetFanSpeedCallback callback) override;
   void SetAllFanAutoControl(SetAllFanAutoControlCallback callback) override;
   void GetEcThermalSensors(GetEcThermalSensorsCallback callback) override;
+  void GetTouchpadDevices(GetTouchpadDevicesCallback callback) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process

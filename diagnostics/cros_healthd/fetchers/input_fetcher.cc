@@ -9,9 +9,11 @@
 #include <utility>
 #include <vector>
 
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
@@ -48,6 +50,9 @@ class State {
 
   void HandleTouchpadLibraryName(const std::string& library_name);
 
+  void HandleTouchpadDevices(std::vector<mojom::TouchpadDevicePtr> devices,
+                             const std::optional<std::string>&);
+
   void HandleResult(InputFetcher::ResultCallback callback, bool success);
 
  private:
@@ -83,6 +88,15 @@ void State::HandleTouchpadLibraryName(const std::string& library_name) {
   info_->touchpad_library_name = library_name;
 }
 
+void State::HandleTouchpadDevices(std::vector<mojom::TouchpadDevicePtr> devices,
+                                  const std::optional<std::string>& err) {
+  if (err.has_value()) {
+    LOG(ERROR) << err.value();
+    return;
+  }
+  info_->touchpad_devices = std::move(devices);
+}
+
 void State::HandleResult(InputFetcher::ResultCallback callback, bool success) {
   if (success) {
     std::move(callback).Run(mojom::InputResult::NewInputInfo(std::move(info_)));
@@ -106,6 +120,8 @@ void InputFetcher::Fetch(ResultCallback callback) {
       &State::HandleTouchscreenDevice, base::Unretained(state_ptr))));
   collector->GetTouchpadLibraryName(barrier.Depend(base::BindOnce(
       &State::HandleTouchpadLibraryName, base::Unretained(state_ptr))));
+  context_->executor()->GetTouchpadDevices(barrier.Depend(base::BindOnce(
+      &State::HandleTouchpadDevices, base::Unretained(state_ptr))));
 }
 
 }  // namespace diagnostics

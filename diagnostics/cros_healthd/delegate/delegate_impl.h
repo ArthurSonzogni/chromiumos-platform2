@@ -74,6 +74,7 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
                    SetFanSpeedCallback callback) override;
   void SetAllFanAutoControl(SetAllFanAutoControlCallback callback) override;
   void GetEcThermalSensors(GetEcThermalSensorsCallback callback) override;
+  void GetTouchpadDevices(GetTouchpadDevicesCallback callback) override;
 
  private:
   void GetConnectedExternalDisplayConnectorsHelper(

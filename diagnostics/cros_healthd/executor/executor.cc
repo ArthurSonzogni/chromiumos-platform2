@@ -109,6 +109,8 @@ constexpr char kDrm[] = "drm-seccomp.policy";
 constexpr char kBtmon[] = "btmon-seccomp.policy";
 // SECCOMP policy for thermal related commands.
 constexpr char kThermal[] = "ec_thermal-seccomp.policy";
+// SECCOMP policy for udev
+constexpr char kTouchpadFetcher[] = "touchpad_fetcher-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -1022,6 +1024,22 @@ void Executor::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->SetAllFanAutoControl(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback), kFailToLaunchDelegate));
+  delegate_ptr->StartAsync();
+}
+void Executor::GetTouchpadDevices(GetTouchpadDevicesCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kTouchpadFetcher,
+      SandboxedProcess::Options{
+          .readonly_mount_points =
+              {// directories needed for udev to work properly
+               base::FilePath{"/dev/input/"}, base::FilePath{"/run/udev"},
+               base::FilePath{"/sys/devices"}, base::FilePath{"/sys/dev"},
+               base::FilePath{"/sys/bus"}, base::FilePath{"/sys/class"}},
+      });
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->GetTouchpadDevices(CreateOnceDelegateCallback(
+      std::move(delegate), std::move(callback),
+      std::vector<mojom::TouchpadDevicePtr>{}, std::nullopt));
   delegate_ptr->StartAsync();
 }
 

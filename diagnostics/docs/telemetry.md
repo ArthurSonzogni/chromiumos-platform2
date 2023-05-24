@@ -586,6 +586,7 @@ event --help`.
 | ----- | ---- | ----------- |
 | touchpad_library_name | string | The touchpad library name used by the input stack. |
 | touchscreen_devices | [array&lt;TouchscreenDevice&gt;](#TouchscreenDevice) | The touchscreen devices. |
+| touchpad_devices | [array&lt;TouchpadDevice&gt;?](#TouchpadDevice) | The internal touchpad devices. |
 
 ##### TouchscreenDevice
 | Field | Type | Description |
@@ -594,6 +595,12 @@ event --help`.
 | touch_points | int32 | Number of touch points this device supports (0 if unknown). |
 | has_stylus | bool | True if the specified touchscreen device is stylus capable. |
 | has_stylus_garage_switch | bool | True if there is a garage/dock switch associated with the stylus. |
+
+##### TouchpadDevice
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| input_device | [InputDevice](#InputDevice) | The input device of this internal touchpad. |
+| driver_name | string | The name of the kernel driver in use. |
 
 ##### InputDevice
 | Field | Type | Description |

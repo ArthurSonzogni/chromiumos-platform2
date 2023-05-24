@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -22,6 +23,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <brillo/udev/udev.h>
 #include <chromeos/ec/ec_commands.h>
 #include <libec/ec_command_factory.h>
 #include <libec/fingerprint/fp_frame_command.h>
@@ -44,6 +46,7 @@
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/display_fetcher.h"
+#include "diagnostics/cros_healthd/delegate/fetchers/touchpad_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/routines/floating_point_accuracy.h"
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search.h"
 #include "diagnostics/cros_healthd/delegate/utils/display_utils.h"
@@ -844,4 +847,19 @@ void DelegateImpl::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
   std::move(callback).Run(std::move(thermal_sensors), std::nullopt);
 }
 
+void DelegateImpl::GetTouchpadDevices(GetTouchpadDevicesCallback callback) {
+  std::unique_ptr<brillo::Udev> udev = brillo::Udev::Create();
+
+  if (udev == nullptr) {
+    std::move(callback).Run({}, "Error initializing udev");
+    return;
+  }
+
+  auto result = PopulateTouchpadDevices(std::move(udev), "/");
+  if (!result.has_value()) {
+    std::move(callback).Run({}, result.error());
+    return;
+  }
+  std::move(callback).Run(std::move(result.value()), std::nullopt);
+}
 }  // namespace diagnostics

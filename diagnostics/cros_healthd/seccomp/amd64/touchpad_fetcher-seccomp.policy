@@ -1,0 +1,91 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+readlink: 1
+read: 1
+newfstatat: 1
+close: 1
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+openat: 1
+getrandom: arg2 in ~GRND_RANDOM
+readlinkat: 1
+rt_sigaction: 1
+access: 1
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+fstatfs: 1
+gettid: 1
+epoll_wait: 1
+faccessat2: 1
+mkdir: 1
+sendto: 1
+epoll_ctl: 1
+recvmsg: 1
+write: 1
+rt_sigprocmask: 1
+brk: 1
+pread64: 1
+wait4: 1
+statfs: 1
+chown: 1
+fcntl: 1
+getpid: 1
+lseek: 1
+# ioctl values:
+#   0x5401 == TCGETS
+#   0x8913 == SIOCGIFFLAGS
+#   0x8914 == SIOCSIFFLAGS
+ioctl: arg1 == 0x5401 || arg1 == 0x8914 || arg1 == 0x8913
+getdents64: 1
+clock_nanosleep: 1
+geteuid: 1
+getuid: 1
+getegid: 1
+getgid: 1
+mknodat: 1
+symlinkat: 1
+set_robust_list: 1
+pipe2: 1
+unshare: 1
+umount2: 1
+signalfd4: 1
+capget: 1
+socketpair: 1
+# needed for fork
+clone: 1
+sendmsg: 1
+arch_prctl: 1
+set_tid_address: 1
+rseq: 1
+prlimit64: 1
+munmap: 1
+# need for communication
+socket: arg0 == AF_UNIX
+umask: 1
+chdir: 1
+fchdir: 1
+capset: 1
+uname: 1
+exit_group: 1
+dup2: 1
+setpgid: 1
+rt_sigtimedwait: 1
+mkdirat: 1
+rmdir: 1
+pivot_root: 1
+chroot: 1
+setgroups: 1
+setresgid: 1
+setresuid: 1
+connect: 1
+epoll_create1: 1
+memfd_create: 1
+eventfd2: 1
+waitid: 1
+restart_syscall: 1
+exit: 1
+rt_sigreturn: 1
+clock_getres: 1
+clock_gettime: 1
+gettimeofday: 1
+futex: 1

@@ -18,6 +18,7 @@ source_set("fetchers") {
   sources = [
     "boot_performance.cc",
     "display_fetcher.cc",
+    "touchpad_fetcher.cc",
   ]
   configs += [ ":target_default" ]
   libs = [ "bootstat" ]
@@ -37,7 +38,10 @@ if (use.test) {
   }
 
   source_set("test") {
-    sources = [ "boot_performance_test.cc" ]
+    sources = [
+      "boot_performance_test.cc",
+      "touchpad_fetcher_test.cc",
+    ]
     configs += [
       ":target_test",
       "//common-mk:test",

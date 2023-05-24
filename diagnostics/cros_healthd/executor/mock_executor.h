@@ -196,6 +196,10 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               GetEcThermalSensors,
               (GetEcThermalSensorsCallback),
               (override));
+  MOCK_METHOD(void,
+              GetTouchpadDevices,
+              (GetTouchpadDevicesCallback callback),
+              (override));
 };
 
 }  // namespace diagnostics

@@ -65,6 +65,7 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
     "${_arch}/prime_search-seccomp.policy",
     "${_arch}/psr-seccomp.policy",
     "${_arch}/readonly-fetchers-seccomp.policy",
+    "${_arch}/touchpad_fetcher-seccomp.policy",
   ]
   install_path = "seccomp_policy"
 

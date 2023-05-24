@@ -498,4 +498,11 @@ interface Executor {
   //                       sensor.
   // * |err| - Error message if existed.
   GetEcThermalSensors() => (array<ThermalSensorInfo> thermal_sensors, string? err);
+
+  // Get internal touchpad devices.
+  //
+  // The response:
+  // * |devices| - A list of TouchpadDevice pointers.
+  // * |err| - Error message if existed.
+  GetTouchpadDevices() => (array<TouchpadDevice> devices, string? err);
 };

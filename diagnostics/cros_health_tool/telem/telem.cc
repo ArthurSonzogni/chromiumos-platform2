@@ -113,6 +113,18 @@ void DisplayProcessInfo(const mojom::ProcessResultPtr& result) {
   OutputJson(output);
 }
 
+base::Value::Dict PopulateInputDeviceFields(
+    const mojom::InputDevicePtr& input_device) {
+  base::Value::Dict out_input_device;
+
+  SET_DICT(name, input_device, &out_input_device);
+  SET_DICT(connection_type, input_device, &out_input_device);
+  SET_DICT(physical_location, input_device, &out_input_device);
+  SET_DICT(is_enabled, input_device, &out_input_device);
+
+  return out_input_device;
+}
+
 void DisplayMultipleProcessInfo(const mojom::MultipleProcessResultPtr& result) {
   if (result.is_null())
     return;
@@ -1063,6 +1075,22 @@ void DisplayInputInfo(const mojom::InputResultPtr& input_result) {
   base::Value::Dict output;
   SET_DICT(touchpad_library_name, info, &output);
 
+  if (info->touchpad_devices.has_value()) {
+    base::Value::List out_touchpad_devices;
+
+    for (const auto& touchpad_device : *info->touchpad_devices) {
+      base::Value::Dict out_touchpad_device;
+      SET_DICT(driver_name, touchpad_device, &out_touchpad_device);
+
+      auto out_input_device =
+          PopulateInputDeviceFields(touchpad_device->input_device);
+
+      out_touchpad_device.Set("input_device", std::move(out_input_device));
+      out_touchpad_devices.Append(std::move(out_touchpad_device));
+    }
+    output.Set("touchpad_devices", std::move(out_touchpad_devices));
+  }
+
   base::Value::List out_touchscreen_devices;
   for (const auto& touchscreen_device : info->touchscreen_devices) {
     base::Value::Dict out_touchscreen_device;
@@ -1071,15 +1099,10 @@ void DisplayInputInfo(const mojom::InputResultPtr& input_result) {
     SET_DICT(has_stylus_garage_switch, touchscreen_device,
              &out_touchscreen_device);
 
-    base::Value::Dict out_input_device;
-    SET_DICT(name, touchscreen_device->input_device, &out_input_device);
-    SET_DICT(connection_type, touchscreen_device->input_device,
-             &out_input_device);
-    SET_DICT(physical_location, touchscreen_device->input_device,
-             &out_input_device);
-    SET_DICT(is_enabled, touchscreen_device->input_device, &out_input_device);
-    out_touchscreen_device.Set("input_device", std::move(out_input_device));
+    auto out_input_device =
+        PopulateInputDeviceFields(touchscreen_device->input_device);
 
+    out_touchscreen_device.Set("input_device", std::move(out_input_device));
     out_touchscreen_devices.Append(std::move(out_touchscreen_device));
   }
   output.Set("touchscreen_devices", std::move(out_touchscreen_devices));
