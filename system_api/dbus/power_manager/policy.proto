@@ -302,7 +302,11 @@ message PowerManagementPolicy {
   // the max delay until full charge for Adaptive Charging.
   optional double adaptive_charging_max_delay_percentile = 30;
 
-  // Next value to use: 31
+  // Unused unless Charge Limit is supported on the system. Charge Limit is
+  // supported if Adaptive Charging is supported.
+  optional bool charge_limit_enabled = 31;
+
+  // Next value to use: 32
 }
 
 // Message included in IdleActionImminent signals.
