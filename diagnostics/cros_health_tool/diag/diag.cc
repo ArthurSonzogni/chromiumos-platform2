@@ -215,7 +215,7 @@ int BatteryHealthMain(int argc, char** argv) {
 
 int UrandomMain(int argc, char** argv) {
   COMMON_LEGACY_ROUTINE_FLAGS
-  DEFINE_uint32(urandom_length_seconds, 0, "Number of seconds to run.");
+  DEFINE_uint32(length_seconds, 0, "Number of seconds to run.");
   brillo::FlagHelper::Init(argc, argv, "Urandom routine");
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
@@ -225,8 +225,8 @@ int UrandomMain(int argc, char** argv) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
 
   auto result = actions.ActionRunUrandomRoutine(
-      command_line->HasSwitch("urandom_length_seconds")
-          ? std::optional<uint32_t>(FLAGS_urandom_length_seconds)
+      command_line->HasSwitch("length_seconds")
+          ? std::optional<uint32_t>(FLAGS_length_seconds)
           : std::nullopt);
   return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -277,7 +277,7 @@ int AcPowerMain(int argc, char** argv) {
 
 int CpuCacheMain(int argc, char** argv) {
   COMMON_LEGACY_ROUTINE_FLAGS
-  DEFINE_uint32(cpu_stress_length_seconds, 0, "Number of seconds to run.");
+  DEFINE_uint32(length_seconds, 0, "Number of seconds to run.");
   brillo::FlagHelper::Init(argc, argv, "Cpu cache routine");
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
@@ -287,15 +287,15 @@ int CpuCacheMain(int argc, char** argv) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
 
   auto result = actions.ActionRunCpuCacheRoutine(
-      command_line->HasSwitch("cpu_stress_length_seconds")
-          ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
+      command_line->HasSwitch("length_seconds")
+          ? std::optional<uint32_t>(FLAGS_length_seconds)
           : std::nullopt);
   return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 int CpuStressMain(int argc, char** argv) {
   COMMON_LEGACY_ROUTINE_FLAGS
-  DEFINE_uint32(cpu_stress_length_seconds, 0, "Number of seconds to run.");
+  DEFINE_uint32(length_seconds, 0, "Number of seconds to run.");
   brillo::FlagHelper::Init(argc, argv, "Cpu stress routine");
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
@@ -305,15 +305,15 @@ int CpuStressMain(int argc, char** argv) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
 
   auto result = actions.ActionRunCpuStressRoutine(
-      command_line->HasSwitch("cpu_stress_length_seconds")
-          ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
+      command_line->HasSwitch("length_seconds")
+          ? std::optional<uint32_t>(FLAGS_length_seconds)
           : std::nullopt);
   return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 int FloatingPointAccuracyMain(int argc, char** argv) {
   COMMON_LEGACY_ROUTINE_FLAGS
-  DEFINE_uint32(cpu_stress_length_seconds, 0, "Number of seconds to run.");
+  DEFINE_uint32(length_seconds, 0, "Number of seconds to run.");
   brillo::FlagHelper::Init(argc, argv, "Floating point accuracy routine");
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
@@ -323,8 +323,8 @@ int FloatingPointAccuracyMain(int argc, char** argv) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
 
   auto result = actions.ActionRunFloatingPointAccuracyRoutine(
-      command_line->HasSwitch("cpu_stress_length_seconds")
-          ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
+      command_line->HasSwitch("length_seconds")
+          ? std::optional<uint32_t>(FLAGS_length_seconds)
           : std::nullopt);
   return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -405,7 +405,7 @@ int DiskReadMain(int argc, char** argv) {
 
 int PrimeSearchMain(int argc, char** argv) {
   COMMON_LEGACY_ROUTINE_FLAGS
-  DEFINE_uint32(cpu_stress_length_seconds, 0, "Number of seconds to run.");
+  DEFINE_uint32(length_seconds, 0, "Number of seconds to run.");
   brillo::FlagHelper::Init(argc, argv, "Prime search routine");
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
@@ -415,8 +415,8 @@ int PrimeSearchMain(int argc, char** argv) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
 
   auto result = actions.ActionRunPrimeSearchRoutine(
-      command_line->HasSwitch("cpu_stress_length_seconds")
-          ? std::optional<uint32_t>(FLAGS_cpu_stress_length_seconds)
+      command_line->HasSwitch("length_seconds")
+          ? std::optional<uint32_t>(FLAGS_length_seconds)
           : std::nullopt);
 
   return result ? EXIT_SUCCESS : EXIT_FAILURE;
