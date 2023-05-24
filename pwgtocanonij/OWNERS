@@ -1,1 +1,1 @@
-include chromiumos/platform2:main:/cups_proxy/OWNERS
+include chromiumos/owners:v1:/printscan/OWNERS.printscan
