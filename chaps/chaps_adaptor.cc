@@ -444,7 +444,7 @@ void ChapsAdaptor::OpenSession(const brillo::SecureVector& isolate_credential,
   *result = service_->OpenSession(isolate_credential_blob, slot_id, flags,
                                   session_id);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "session_id=" << session_id;
+                                << "session_id=" << *session_id;
 }
 
 uint32_t ChapsAdaptor::CloseSession(
@@ -556,7 +556,7 @@ void ChapsAdaptor::CreateObject(const brillo::SecureVector& isolate_credential,
   *result = service_->CreateObject(isolate_credential_blob, session_id,
                                    attributes, new_object_handle);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "new_object_handle=" << new_object_handle;
+                                << "new_object_handle=" << *new_object_handle;
 }
 
 void ChapsAdaptor::CopyObject(const brillo::SecureVector& isolate_credential,
@@ -578,7 +578,7 @@ void ChapsAdaptor::CopyObject(const brillo::SecureVector& isolate_credential,
   *result = service_->CopyObject(isolate_credential_blob, session_id,
                                  object_handle, attributes, new_object_handle);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "new_object_handle=" << new_object_handle;
+                                << "new_object_handle=" << *new_object_handle;
 }
 
 uint32_t ChapsAdaptor::DestroyObject(
@@ -613,7 +613,7 @@ void ChapsAdaptor::GetObjectSize(const brillo::SecureVector& isolate_credential,
   *result = service_->GetObjectSize(isolate_credential_blob, session_id,
                                     object_handle, object_size);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "object_size=" << object_size;
+                                << "object_size=" << *object_size;
 }
 
 void ChapsAdaptor::GetAttributeValue(
@@ -747,7 +747,7 @@ void ChapsAdaptor::Encrypt(const brillo::SecureVector& isolate_credential,
   *result = service_->Encrypt(isolate_credential_blob, session_id, data_in,
                               max_out_length, actual_out_length, data_out);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::EncryptUpdate(const brillo::SecureVector& isolate_credential,
@@ -769,7 +769,7 @@ void ChapsAdaptor::EncryptUpdate(const brillo::SecureVector& isolate_credential,
       service_->EncryptUpdate(isolate_credential_blob, session_id, data_in,
                               max_out_length, actual_out_length, data_out);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::EncryptFinal(const brillo::SecureVector& isolate_credential,
@@ -789,7 +789,7 @@ void ChapsAdaptor::EncryptFinal(const brillo::SecureVector& isolate_credential,
   *result = service_->EncryptFinal(isolate_credential_blob, session_id,
                                    max_out_length, actual_out_length, data_out);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::EncryptCancel(const brillo::SecureVector& isolate_credential,
@@ -841,7 +841,7 @@ void ChapsAdaptor::Decrypt(const brillo::SecureVector& isolate_credential,
   *result = service_->Decrypt(isolate_credential_blob, session_id, data_in,
                               max_out_length, actual_out_length, data_out);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::DecryptUpdate(const brillo::SecureVector& isolate_credential,
@@ -863,7 +863,7 @@ void ChapsAdaptor::DecryptUpdate(const brillo::SecureVector& isolate_credential,
       service_->DecryptUpdate(isolate_credential_blob, session_id, data_in,
                               max_out_length, actual_out_length, data_out);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::DecryptFinal(const brillo::SecureVector& isolate_credential,
@@ -883,7 +883,7 @@ void ChapsAdaptor::DecryptFinal(const brillo::SecureVector& isolate_credential,
   *result = service_->DecryptFinal(isolate_credential_blob, session_id,
                                    max_out_length, actual_out_length, data_out);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::DecryptCancel(const brillo::SecureVector& isolate_credential,
@@ -932,7 +932,7 @@ void ChapsAdaptor::Digest(const brillo::SecureVector& isolate_credential,
   *result = service_->Digest(isolate_credential_blob, session_id, data_in,
                              max_out_length, actual_out_length, digest);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 uint32_t ChapsAdaptor::DigestUpdate(
@@ -979,7 +979,7 @@ void ChapsAdaptor::DigestFinal(const brillo::SecureVector& isolate_credential,
   *result = service_->DigestFinal(isolate_credential_blob, session_id,
                                   max_out_length, actual_out_length, digest);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::DigestCancel(const brillo::SecureVector& isolate_credential,
@@ -1030,7 +1030,7 @@ void ChapsAdaptor::Sign(const brillo::SecureVector& isolate_credential,
   *result = service_->Sign(isolate_credential_blob, session_id, data,
                            max_out_length, actual_out_length, signature);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 uint32_t ChapsAdaptor::SignUpdate(
@@ -1063,7 +1063,7 @@ void ChapsAdaptor::SignFinal(const brillo::SecureVector& isolate_credential,
   *result = service_->SignFinal(isolate_credential_blob, session_id,
                                 max_out_length, actual_out_length, signature);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::SignCancel(const brillo::SecureVector& isolate_credential,
@@ -1116,7 +1116,7 @@ void ChapsAdaptor::SignRecover(const brillo::SecureVector& isolate_credential,
   *result = service_->SignRecover(isolate_credential_blob, session_id, data,
                                   max_out_length, actual_out_length, signature);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 uint32_t ChapsAdaptor::VerifyInit(
@@ -1231,7 +1231,7 @@ void ChapsAdaptor::VerifyRecover(const brillo::SecureVector& isolate_credential,
       service_->VerifyRecover(isolate_credential_blob, session_id, signature,
                               max_out_length, actual_out_length, data);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::DigestEncryptUpdate(
@@ -1254,7 +1254,7 @@ void ChapsAdaptor::DigestEncryptUpdate(
                                           data_in, max_out_length,
                                           actual_out_length, data_out);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::DecryptDigestUpdate(
@@ -1277,7 +1277,7 @@ void ChapsAdaptor::DecryptDigestUpdate(
                                           data_in, max_out_length,
                                           actual_out_length, data_out);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::SignEncryptUpdate(
@@ -1300,7 +1300,7 @@ void ChapsAdaptor::SignEncryptUpdate(
       service_->SignEncryptUpdate(isolate_credential_blob, session_id, data_in,
                                   max_out_length, actual_out_length, data_out);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::DecryptVerifyUpdate(
@@ -1323,7 +1323,7 @@ void ChapsAdaptor::DecryptVerifyUpdate(
                                           data_in, max_out_length,
                                           actual_out_length, data_out);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::GenerateKey(const brillo::SecureVector& isolate_credential,
@@ -1349,7 +1349,7 @@ void ChapsAdaptor::GenerateKey(const brillo::SecureVector& isolate_credential,
       service_->GenerateKey(isolate_credential_blob, session_id, mechanism_type,
                             mechanism_parameter, attributes, key_handle);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "key_handle=" << key_handle;
+                                << "key_handle=" << *key_handle;
 }
 
 void ChapsAdaptor::GenerateKeyPair(
@@ -1381,9 +1381,9 @@ void ChapsAdaptor::GenerateKeyPair(
                                       public_attributes, private_attributes,
                                       public_key_handle, private_key_handle);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "public_key_handle=" << public_key_handle;
+                                << "public_key_handle=" << *public_key_handle;
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "private_key_handle=" << private_key_handle;
+                                << "private_key_handle=" << *private_key_handle;
 }
 
 void ChapsAdaptor::WrapKey(const brillo::SecureVector& isolate_credential,
@@ -1417,7 +1417,7 @@ void ChapsAdaptor::WrapKey(const brillo::SecureVector& isolate_credential,
                         mechanism_parameter, wrapping_key_handle, key_handle,
                         max_out_length, actual_out_length, wrapped_key);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "actual_out_length=" << actual_out_length;
+                                << "actual_out_length=" << *actual_out_length;
 }
 
 void ChapsAdaptor::UnwrapKey(const brillo::SecureVector& isolate_credential,
@@ -1447,7 +1447,7 @@ void ChapsAdaptor::UnwrapKey(const brillo::SecureVector& isolate_credential,
       isolate_credential_blob, session_id, mechanism_type, mechanism_parameter,
       wrapping_key_handle, wrapped_key, attributes, key_handle);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "key_handle=" << key_handle;
+                                << "key_handle=" << *key_handle;
 }
 
 void ChapsAdaptor::DeriveKey(const brillo::SecureVector& isolate_credential,
@@ -1476,7 +1476,7 @@ void ChapsAdaptor::DeriveKey(const brillo::SecureVector& isolate_credential,
                                 mechanism_type, mechanism_parameter,
                                 base_key_handle, attributes, key_handle);
   VLOG_IF(2, *result == CKR_OK) << "OUT: "
-                                << "key_handle=" << key_handle;
+                                << "key_handle=" << *key_handle;
 }
 
 uint32_t ChapsAdaptor::SeedRandom(
