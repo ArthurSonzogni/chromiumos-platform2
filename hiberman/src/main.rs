@@ -343,6 +343,41 @@ fn hiberman_resume(args: &mut std::env::Args) -> std::result::Result<(), ()> {
     Ok(())
 }
 
+fn teardown_hiberimage_usage(error: bool, options: &Options) {
+    let brief = r#"Usage: hiberman teardown_iberimage
+Tear the hiberimage device down if it exists.
+"#;
+
+    print_usage(&options.usage(brief), error);
+}
+
+fn hiberman_teardown_hiberimage(args: &mut std::env::Args) -> std::result::Result<(), ()> {
+    init_logging()?;
+    let mut opts = Options::new();
+    opts.optflag("h", "help", "Print this help text");
+    let args: Vec<String> = args.collect();
+    let matches = match opts.parse(args) {
+        Ok(m) => m,
+        Err(e) => {
+            error!("Failed to parse arguments: {}", e);
+            teardown_hiberimage_usage(true, &opts);
+            return Err(());
+        }
+    };
+
+    if matches.opt_present("h") {
+        teardown_hiberimage_usage(false, &opts);
+        return Ok(());
+    }
+
+    if let Err(e) = hiberman::teardown_hiberimage() {
+        error!("Failed to tear down hiberimage: {:?}", e);
+        return Err(());
+    }
+
+    Ok(())
+}
+
 fn app_usage(error: bool) {
     let usage_msg = r#"Usage: hiberman subcommand [options]
 This application coordinates suspend-to-disk activities. Try
@@ -355,6 +390,7 @@ Valid subcommands are:
     resume -- Resume the system now.
     abort-resume -- Send an abort request to an in-progress resume.
     cookie -- Read or write the hibernate cookie.
+    teardown-hiberimage -- Tear the hiberimage device down if it exists.
 "#;
     print_usage(usage_msg, error);
 }
@@ -384,6 +420,7 @@ fn hiberman_main() -> std::result::Result<(), ()> {
         "hibernate" => hiberman_hibernate(&mut args),
         "resume-init" => hiberman_resume_init(&mut args),
         "resume" => hiberman_resume(&mut args),
+        "teardown-hiberimage" => hiberman_teardown_hiberimage(&mut args),
         _ => {
             eprintln!("Unknown subcommand: {}", subcommand);
             Err(())

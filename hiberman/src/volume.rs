@@ -258,6 +258,10 @@ impl VolumeManager {
     }
 
     pub fn teardown_hiberimage(&self) -> Result<()> {
+        if DeviceMapper::device_exists(Self::HIBERIMAGE) {
+            info!("Tearing down hiberimage");
+        }
+
         for dev in [
             Self::HIBERIMAGE,
             Self::HIBERIMAGE_INTEGRITY,

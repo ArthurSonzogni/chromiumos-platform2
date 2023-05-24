@@ -30,10 +30,13 @@ pub use hiberutil::HibernateOptions;
 pub use hiberutil::ResumeInitOptions;
 pub use hiberutil::ResumeOptions;
 
+use crate::snapdev::SnapshotDevice;
+use crate::snapdev::SnapshotMode;
 use anyhow::Result;
 use resume::ResumeConductor;
 use resume_init::ResumeInitConductor;
 use suspend::SuspendConductor;
+use volume::VolumeManager;
 
 /// Send an abort resume request to the hiberman process driving resume.
 pub fn abort_resume(options: AbortResumeOptions) -> Result<()> {
@@ -65,4 +68,19 @@ pub fn resume_init(options: ResumeInitOptions) -> Result<()> {
 pub fn resume(options: ResumeOptions) -> Result<()> {
     let mut conductor = ResumeConductor::new()?;
     conductor.resume(options)
+}
+
+/// Tear down the hiberimage DM device. This includes tearing down the
+/// underlying logical volume, as well as the integrity DM devices and
+/// logical volume.
+pub fn teardown_hiberimage() -> Result<()> {
+    let volume_manager = VolumeManager::new()?;
+
+    if volume_manager.hiberimage_exists() {
+        SnapshotDevice::new(SnapshotMode::Read)?.release_block_device()?;
+
+        volume_manager.teardown_hiberimage()?;
+    }
+
+    Ok(())
 }
