@@ -60,6 +60,9 @@ pub enum HibernateError {
     /// Failed to send metrics
     #[error("Failed to send metrics: {0}")]
     MetricsSendFailure(String),
+    /// Hiberimge is not set up.
+    #[error("'hiberimage' is not set up")]
+    NoHiberimageError(),
     /// Failed to lock process memory.
     #[error("Failed to mlockall: {0}")]
     MlockallError(libchromeos::sys::Error),

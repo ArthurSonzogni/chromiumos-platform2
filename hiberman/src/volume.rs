@@ -337,6 +337,11 @@ impl VolumeManager {
         get_free_thinpool_space(&self.vg_name)
     }
 
+    /// Check whether the 'hiberimage' DM device exists.
+    pub fn hiberimage_exists(&self) -> bool {
+        DeviceMapper::device_exists(Self::HIBERIMAGE)
+    }
+
     pub fn is_hiberimage_thickened(&self) -> Result<bool> {
         let usage_percent = get_thin_volume_usage_percent(&self.vg_name, HIBERIMAGE_VOLUME_NAME)?;
 

@@ -110,6 +110,12 @@ impl SuspendConductor {
             warn!("Failed to log hibernate attempt: \n {}", e);
         }
 
+        if !self.volume_manager.hiberimage_exists() {
+            // Self::log_suspend_abort(SuspendAbortReason::TODO);
+            info!("'hiberimage' does not exist, aborting hibernate attempt");
+            return Err(HibernateError::NoHiberimageError().into());
+        }
+
         if !self.volume_manager.is_hiberimage_thickened()? {
             let free_thinpool_space = self.volume_manager.get_free_thinpool_space()?;
             // The max image size is half of the system RAM, add a bit of margin.
