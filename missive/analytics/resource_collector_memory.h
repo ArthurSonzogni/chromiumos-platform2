@@ -15,7 +15,13 @@
 #include "missive/analytics/resource_collector.h"
 #include "missive/resources/resource_manager.h"
 
-namespace reporting::analytics {
+namespace reporting {
+
+// Forward declarations for `friend class` directives.
+class MissiveArgsTest;
+class MissiveImplTest;
+
+namespace analytics {
 
 class ResourceCollectorMemory : public ResourceCollector {
  public:
@@ -28,6 +34,8 @@ class ResourceCollectorMemory : public ResourceCollector {
   ~ResourceCollectorMemory() override;
 
  private:
+  friend class ::reporting::MissiveArgsTest;
+  friend class ::reporting::MissiveImplTest;
   friend class ResourceCollectorMemoryTest;
   FRIEND_TEST(ResourceCollectorMemoryTest, SuccessfullySend);
 
@@ -51,6 +59,7 @@ class ResourceCollectorMemory : public ResourceCollector {
       GUARDED_BY_CONTEXT(sequence_checker_);
 };
 
-}  // namespace reporting::analytics
+}  // namespace analytics
+}  // namespace reporting
 
 #endif  // MISSIVE_ANALYTICS_RESOURCE_COLLECTOR_MEMORY_H_

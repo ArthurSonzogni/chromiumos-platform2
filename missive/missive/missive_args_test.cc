@@ -49,6 +49,12 @@ class MissiveArgsTest : public ::testing::Test {
                 /*name=*/analytics::ResourceCollectorCpu::kUmaName,
                 /*sample=*/_))
         .WillByDefault(Return(true));
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendLinearToUMA(
+                /*name=*/analytics::ResourceCollectorMemory::kUmaName,
+                /*sample=*/_,
+                /*max=*/analytics::ResourceCollectorMemory::kUmaMax))
+        .WillByDefault(Return(true));
   }
 
   base::test::TaskEnvironment task_environment_;

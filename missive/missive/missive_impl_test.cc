@@ -94,6 +94,17 @@ class MissiveImplTest : public ::testing::Test {
                 /*nbuckets=*/
                 analytics::ResourceCollectorStorage::kUmaNumberOfBuckets))
         .WillByDefault(Return(true));
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendPercentageToUMA(
+                /*name=*/analytics::ResourceCollectorCpu::kUmaName,
+                /*sample=*/_))
+        .WillByDefault(Return(true));
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendLinearToUMA(
+                /*name=*/analytics::ResourceCollectorMemory::kUmaName,
+                /*sample=*/_,
+                /*max=*/analytics::ResourceCollectorMemory::kUmaMax))
+        .WillByDefault(Return(true));
 
     missive_ = std::make_unique<MissiveImpl>(
         base::BindOnce(
