@@ -21,7 +21,7 @@ crosh> diag list
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=get_routines
+$ cros-health-tool diag get_routines
 ```
 
 Sample output:
@@ -31,6 +31,22 @@ Available routine: battery_health
 ...
 Available routine: floating_point_accuracy
 Available routine: prime_search
+```
+
+## CLI(cros-health-tool) help message
+
+Users can use `cros-health-tool diag $routine --help` to understand more about a
+specific routine's parameters. Users can also use `cros-health-tool diag
+get_routines` to get all routines, though some of them may not be supported.
+
+```bash
+$ cros-health-tool diag --help
+cros-health-tool diag
+    subtools: $routine, get_routines
+    Usage: cros-health-tool diag $routine
+    Usage: cros-health-tool diag $routine --help
+    Usage: cros-health-tool diag get_routines
+$routine: [ac_power, arc_dns_resolution, ...]
 ```
 
 ## Routine Configuration
@@ -88,7 +104,7 @@ crosh> diag ac_power --expected_power_type="USB_PD"
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=ac_power --expected_power_type="USB_PD"
+$ cros-health-tool diag ac_power --expected_power_type="USB_PD"
 ```
 
 Sample output:
@@ -129,7 +145,7 @@ crosh> diag battery_capacity
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=battery_capacity
+$ cros-health-tool diag battery_capacity
 ```
 
 Sample output:
@@ -192,7 +208,7 @@ crosh> diag battery_charge --length_seconds=600 --minimum_charge_percent_require
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=battery_charge --length_seconds=600 --minimum_charge_percent_required=10
+$ cros-health-tool diag battery_charge --length_seconds=600 --minimum_charge_percent_required=10
 ```
 
 Sample output, if the battery were to charge 12.123456789012345% during the routine:
@@ -240,7 +256,7 @@ crosh> diag battery_discharge --length_seconds=600 --maximum_discharge_percent_a
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=battery_discharge --length_seconds=600 --maximum_discharge_percent_allowed=10
+$ cros-health-tool diag battery_discharge --length_seconds=600 --maximum_discharge_percent_allowed=10
 ```
 
 Sample output, if the battery were to discharge 1.123456789012345% during the routine:
@@ -288,7 +304,7 @@ crosh> diag battery_health
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=battery_health
+$ cros-health-tool diag battery_health
 ```
 
 Sample output:
@@ -339,7 +355,7 @@ crosh> diag cpu_cache --cpu_stress_length_seconds=600
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=cpu_cache --cpu_stress_length_seconds=600
+$ cros-health-tool diag cpu_cache --cpu_stress_length_seconds=600
 ```
 
 Sample output:
@@ -370,7 +386,7 @@ crosh> diag cpu_stress
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=cpu_stress
+$ cros-health-tool diag cpu_stress
 ```
 
 Sample output:
@@ -401,7 +417,7 @@ crosh> diag floating_point_accuracy --cpu_stress_length_seconds=300
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=floating_point_accuracy --cpu_stress_length_seconds=300
+$ cros-health-tool diag floating_point_accuracy --cpu_stress_length_seconds=300
 ```
 
 Sample output:
@@ -435,7 +451,7 @@ crosh> diag prime_search
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=prime_search
+$ cros-health-tool diag prime_search
 ```
 
 Sample output:
@@ -464,7 +480,7 @@ crosh> diag urandom --urandom_length_seconds=120
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=urandom --urandom_length_seconds=120
+$ cros-health-tool diag urandom --urandom_length_seconds=120
 ```
 
 Sample output:
@@ -489,7 +505,7 @@ crosh> diag memory
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=memory
+$ cros-health-tool diag memory
 ```
 
 Sample output:
@@ -557,7 +573,7 @@ crosh> diag disk_read --length_seconds=120 --disk_read_routine_type="random" --f
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=disk_read --length_seconds=120 --disk_read_routine_type="random" --file_size_mb=10
+$ cros-health-tool diag disk_read --length_seconds=120 --disk_read_routine_type="random" --file_size_mb=10
 ```
 
 Sample output:
@@ -587,7 +603,7 @@ crosh> diag nvme_self_test
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=nvme_self_test
+$ cros-health-tool diag nvme_self_test
 ```
 
 Sample output:
@@ -634,7 +650,7 @@ crosh> diag nvme_wear_level --wear_level_threshold=20
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=nvme_wear_level --wear_level_threshold=20
+$ cros-health-tool diag nvme_wear_level --wear_level_threshold=20
 ```
 
 Sample output:
@@ -680,7 +696,7 @@ crosh> diag smartctl_check --percentage_used_threshold=150
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=smartctl_check --percentage_used_threshold=150
+$ cros-health-tool diag smartctl_check --percentage_used_threshold=150
 ```
 
 Sample output:
@@ -718,7 +734,7 @@ crosh> diag ufs_lifetime
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=ufs_lifetime
+$ cros-health-tool diag ufs_lifetime
 ```
 
 Sample output:
@@ -755,7 +771,7 @@ crosh> diag lan_connectivity
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=lan_connectivity
+$ cros-health-tool diag lan_connectivity
 ```
 
 Sample output:
@@ -785,7 +801,7 @@ crosh> diag signal_strength
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=signal_strength
+$ cros-health-tool diag signal_strength
 ```
 
 Sample output:
@@ -814,7 +830,7 @@ crosh> diag gateway_can_be_pinged
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=gateway_can_be_pinged
+$ cros-health-tool diag gateway_can_be_pinged
 ```
 
 Sample output:
@@ -848,8 +864,7 @@ crosh> diag has_secure_wifi_connection
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine
---routine=has_secure_wifi_connection
+$ cros-health-tool diag has_secure_wifi_connection
 ```
 
 Sample output:
@@ -881,7 +896,7 @@ crosh> diag dns_resolver_present
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=dns_resolver_present
+$ cros-health-tool diag dns_resolver_present
 ```
 
 Sample output:
@@ -911,7 +926,7 @@ crosh> diag dns_latency
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=dns_latency
+$ cros-health-tool diag dns_latency
 ```
 
 Sample output:
@@ -942,8 +957,7 @@ crosh> diag dns_resolution
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine
---routine=dns_resolution
+$ cros-health-tool diag dns_resolution
 ```
 
 Sample output:
@@ -972,8 +986,7 @@ crosh> diag captive_portal
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine
---routine=captive_portal
+$ cros-health-tool diag captive_portal
 ```
 
 Sample output:
@@ -1007,8 +1020,7 @@ crosh> diag http_firewall
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine
---routine=http_firewall
+$ cros-health-tool diag http_firewall
 ```
 
 Sample output:
@@ -1039,7 +1051,7 @@ crosh> diag https_firewall
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=https_firewall
+$ cros-health-tool diag https_firewall
 ```
 
 Sample output:
@@ -1071,8 +1083,7 @@ crosh> diag https_latency
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine
---routine=https_latency
+$ cros-health-tool diag https_latency
 ```
 
 Sample output:
@@ -1110,7 +1121,7 @@ crosh> diag video_conferencing --stun_server_hostname="custom_stun_server.com"
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=video_conferencing --stun_server_hostname="custom_stun_server.com"
+$ cros-health-tool diag video_conferencing --stun_server_hostname="custom_stun_server.com"
 ```
 
 Sample output:
@@ -1151,8 +1162,7 @@ crosh> diag arc_http
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine
---routine=arc_http
+$ cros-health-tool diag arc_http
 ```
 
 Sample output:
@@ -1185,7 +1195,7 @@ crosh> diag arc_ping
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=arc_ping
+$ cros-health-tool diag arc_ping
 ```
 
 Sample output:
@@ -1220,8 +1230,7 @@ crosh> diag arc_dns_resolution
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine
---routine=arc_dns_resolution
+$ cros-health-tool diag arc_dns_resolution
 ```
 
 Sample output:
@@ -1259,7 +1268,7 @@ crosh> diag sensitive_sensor
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=sensitive_sensor
+$ cros-health-tool diag sensitive_sensor
 ```
 
 Sample output:
@@ -1362,7 +1371,7 @@ crosh> diag led_lit_up --led_name=battery --led_color=red
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=led_lit_up --led_name=battery --led_color=red
+$ cros-health-tool diag led_lit_up --led_name=battery --led_color=red
 ```
 
 Sample output:
@@ -1401,7 +1410,7 @@ crosh> diag bluetooth_power
 From cros-health-tool:
 
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=bluetooth_power
+$ cros-health-tool diag bluetooth_power
 ```
 
 Sample output:
@@ -1448,7 +1457,7 @@ crosh> diag bluetooth_discovery
 From cros-health-tool:
 
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=bluetooth_discovery
+$ cros-health-tool diag bluetooth_discovery
 ```
 
 Sample output:
@@ -1500,7 +1509,7 @@ crosh> diag bluetooth_scanning --length_seconds=5
 From cros-health-tool:
 
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=bluetooth_scanning --length_seconds=5
+$ cros-health-tool diag bluetooth_scanning --length_seconds=5
 ```
 
 Sample output:
@@ -1552,7 +1561,7 @@ crosh> diag bluetooth_pairing --peripheral_id=36974412
 From cros-health-tool:
 
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=bluetooth_pairing --peripheral_id=36974412
+$ cros-health-tool diag bluetooth_pairing --peripheral_id=36974412
 ```
 
 Sample output:
