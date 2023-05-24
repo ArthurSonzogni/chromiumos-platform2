@@ -297,4 +297,29 @@ bool DiskCleanupRoutines::DeleteDaemonStoreCache(
   return true;
 }
 
+bool DiskCleanupRoutines::DeleteDaemonStoreCacheMountedUsers() {
+  bool ret = true;
+
+  // Daemon store cache dirs that can be completely removed on low disk space.
+  const FilePath cache_dir = FilePath(kRunDaemonStoreCacheBaseDir);
+
+  std::unique_ptr<FileEnumerator> daemon_fe(platform_->GetFileEnumerator(
+      cache_dir, false, base::FileEnumerator::DIRECTORIES));
+
+  for (FilePath daemon_dir = daemon_fe->Next(); !daemon_dir.empty();
+       daemon_dir = daemon_fe->Next()) {
+    std::unique_ptr<FileEnumerator> user_fe(platform_->GetFileEnumerator(
+        daemon_dir, false, base::FileEnumerator::DIRECTORIES));
+    for (FilePath user_dir = user_fe->Next(); !user_dir.empty();
+         user_dir = user_fe->Next()) {
+      VLOG(1) << "Deleting mounted daemon-store-cache:" << user_dir.value();
+      if (!DeleteDirectoryContents(user_dir)) {
+        LOG(ERROR) << "Failed to remove Daemon Store Cache directory";
+        ret = false;
+      }
+    }
+  }
+  return ret;
+}
+
 }  // namespace cryptohome

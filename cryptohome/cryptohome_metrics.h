@@ -169,6 +169,8 @@ enum class DiskCleanupProgress {
   kSomeEphemeralUserProfilesCleaned = 13,
   kDaemonStoreCacheCleanedAboveTarget = 14,
   kDaemonStoreCacheCleanedAboveMinimum = 15,
+  kDaemonStoreCacheMountedUsersCleanedAboveTarget = 16,
+  kDaemonStoreCacheMountedUsersCleanedAboveMinimum = 17,
   kNumBuckets
 };
 
@@ -459,6 +461,10 @@ void ReportFreedGCacheDiskSpaceInMb(int mb);
 // Reports removed Daemon Store Cache size by cryptohome to the
 // "Cryptohome.FreedDaemonStoreCacheDiskSpaceInMb" histogram.
 void ReportFreedDaemonStoreCacheDiskSpaceInMb(int mb);
+
+// Reports removed Daemon Store Cache size by cryptohome for mounted users to
+// the "Cryptohome.FreedDaemonStoreCacheMountedUsersDiskSpaceInMb" histogram.
+void ReportFreedDaemonStoreCacheMountedUsersDiskSpaceInMb(int mb);
 
 // Reports removed Cache Vault size by cryptohome to the
 // "Cryptohome.FreedCacheVaultDiskSpaceInMb" histogram.

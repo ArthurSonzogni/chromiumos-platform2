@@ -30,6 +30,7 @@ class MockDiskCleanupRoutines : public DiskCleanupRoutines {
               DeleteDaemonStoreCache,
               (const ObfuscatedUsername&),
               (override));
+  MOCK_METHOD(bool, DeleteDaemonStoreCacheMountedUsers, (), (override));
 };
 }  // namespace cryptohome
 

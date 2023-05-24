@@ -35,6 +35,8 @@ class DiskCleanupRoutines {
   virtual bool DeleteUserProfile(const ObfuscatedUsername& obfuscated);
   // Remove daemon-store-cache directory contents.
   virtual bool DeleteDaemonStoreCache(const ObfuscatedUsername& obfuscated);
+  // Remove daemon-store-cache directory contents for mounted users.
+  virtual bool DeleteDaemonStoreCacheMountedUsers();
 
  private:
   base::FilePath GetShadowDir(const ObfuscatedUsername& obfuscated) const;

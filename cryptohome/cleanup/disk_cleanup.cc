@@ -359,7 +359,7 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
 
   bool early_stop = false;
 
-  // Purge up daemon store cache.
+  // Purge up daemon store cache
   old_free_disk_space = free_disk_space;
   for (auto dir = normal_cleanup_homedirs.rbegin();
        dir != normal_cleanup_homedirs.rend(); dir++) {
@@ -406,6 +406,41 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
       return false;
   }
 
+  // Purge up daemon store cache for the mounted (logged in) users.
+  if (!routines_->DeleteDaemonStoreCacheMountedUsers()) {
+    result = false;
+  }
+  old_free_disk_space = free_disk_space;
+  free_disk_space = AmountOfFreeDiskSpace();
+  const int64_t freed_daemon_store_cache_logged_in_space =
+      free_disk_space.value() - old_free_disk_space.value();
+  if (freed_daemon_store_cache_logged_in_space > 0) {
+    ReportFreedDaemonStoreCacheMountedUsersDiskSpaceInMb(
+        freed_daemon_store_cache_logged_in_space / 1024 / 1024);
+  }
+
+  switch (GetFreeDiskSpaceState(free_disk_space)) {
+    case DiskCleanup::FreeSpaceState::kAboveTarget:
+      ReportDiskCleanupProgress(
+          DiskCleanupProgress::kDaemonStoreCacheMountedUsersCleanedAboveTarget);
+      return result;
+    case DiskCleanup::FreeSpaceState::kAboveThreshold:
+    case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
+      cleaned_over_minimum = true;
+      ReportDiskCleanupProgress(
+          DiskCleanupProgress::
+              kDaemonStoreCacheMountedUsersCleanedAboveMinimum);
+      // Continue cleanup.
+      break;
+    case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
+    case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
+      // Continue cleanup.
+      break;
+    case DiskCleanup::FreeSpaceState::kError:
+      LOG(ERROR) << "Failed to get the amount of free space";
+      return false;
+  }
+
   // Purge Dmcrypt cache vaults.
   for (auto dir = normal_cleanup_homedirs.rbegin();
        dir != normal_cleanup_homedirs.rend(); dir++) {
@@ -442,8 +477,13 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
       return result;
     case DiskCleanup::FreeSpaceState::kAboveThreshold:
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
-      ReportDiskCleanupProgress(
-          DiskCleanupProgress::kCacheVaultsCleanedAboveMinimum);
+      // Do not call ReportDiskCleanupProgress if cleaned_over_minimum was set
+      // by previous clean up routine (i.e. daemon-store-cache cleanup for
+      // mounted users).
+      if (!cleaned_over_minimum) {
+        ReportDiskCleanupProgress(
+            DiskCleanupProgress::kCacheVaultsCleanedAboveMinimum);
+      }
       return result;
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
     case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:

@@ -307,6 +307,10 @@ TEST_F(DiskCleanupTest, AllMounted) {
   EXPECT_CALL(*cleanup_routines_, DeleteUserAndroidCache(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserProfile(_)).Times(0);
 
+  // Expect a single cleanup for mounted user
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
+
   cleanup_->FreeDiskSpace();
 }
 
@@ -352,6 +356,10 @@ TEST_F(DiskCleanupTest, OneMounted) {
       .Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserProfile(homedirs[2].obfuscated))
       .Times(0);
+
+  // One-time cleanup for mounted users
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
 
   cleanup_->FreeDiskSpace();
 }
@@ -455,6 +463,8 @@ TEST_F(DiskCleanupTest, AllCacheCleanup) {
     }
   }
 
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserAndroidCache(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserProfile(_)).Times(0);
@@ -467,7 +477,7 @@ TEST_F(DiskCleanupTest, AndroidCacheStopAfterOneUser) {
       .WillRepeatedly(Return(kTargetFreeSpaceAfterCleanup + 1));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
-      .Times(disk_space_queries(4) + 2)
+      .Times(disk_space_queries(4) + 3)
       .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerAggressiveCleanup - 1))
       .RetiresOnSaturation();
 
@@ -480,6 +490,8 @@ TEST_F(DiskCleanupTest, AndroidCacheStopAfterOneUser) {
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCache(_))
       .Times(GetTestHomedirs().size());
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_))
       .Times(GetTestHomedirs().size());
   // Only clean up the first user.
@@ -497,7 +509,7 @@ TEST_F(DiskCleanupTest, AndroidCache) {
       .WillRepeatedly(Return(kTargetFreeSpaceAfterCleanup + 1));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
-      .Times(disk_space_queries(5))
+      .Times(disk_space_queries(5) + 1)
       .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerAggressiveCleanup - 1))
       .RetiresOnSaturation();
 
@@ -510,6 +522,8 @@ TEST_F(DiskCleanupTest, AndroidCache) {
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCache(_))
       .Times(GetTestHomedirs().size());
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_))
       .Times(GetTestHomedirs().size());
 
@@ -541,6 +555,8 @@ TEST_F(DiskCleanupTest, NoOwner) {
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteUserGCache(_))
       .Times(GetTestHomedirs().size());
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
   EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCache(_))
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_))
@@ -557,7 +573,7 @@ TEST_F(DiskCleanupTest, RemoveOneProfile) {
       .WillRepeatedly(Return(kTargetFreeSpaceAfterCleanup + 1));
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
-      .Times(disk_space_queries(5) + 2)
+      .Times(disk_space_queries(5) + 3)
       .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerAggressiveCleanup - 1))
       .RetiresOnSaturation();
 
@@ -575,6 +591,8 @@ TEST_F(DiskCleanupTest, RemoveOneProfile) {
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCache(_))
       .Times(GetTestHomedirs().size());
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_))
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteUserAndroidCache(_))
@@ -605,6 +623,8 @@ TEST_F(DiskCleanupTest, KeepOwner) {
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteUserGCache(_))
       .Times(GetTestHomedirs().size());
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
   EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCache(_))
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_))
@@ -648,6 +668,8 @@ TEST_F(DiskCleanupTest, KeepLatest) {
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteUserGCache(_))
       .Times(GetTestHomedirs().size());
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
   EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCache(_))
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_))
@@ -695,6 +717,10 @@ TEST_F(DiskCleanupTest, NoRepeatedCacheCleanup) {
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteUserProfile(_)).Times(0);
 
+  // Expect mounted user cleanups to repeat
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(3);
+
   base::Time cleanup_time;
   ASSERT_TRUE(base::Time::FromUTCExploded({2020, 4, 5, 1}, &cleanup_time));
   EXPECT_CALL(platform_, GetCurrentTime).WillRepeatedly(Return(cleanup_time));
@@ -728,6 +754,8 @@ TEST_F(DiskCleanupTest, RepeatNormalCleanup) {
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCache(_))
       .Times(GetTestHomedirs().size());
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserAndroidCache(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserProfile(_)).Times(0);
@@ -771,6 +799,8 @@ TEST_F(DiskCleanupTest, RepeatAggressiveCleanup) {
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteUserGCache(_))
       .Times(GetTestHomedirs().size());
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
   EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCache(_))
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_))
@@ -795,6 +825,8 @@ TEST_F(DiskCleanupTest, RepeatAggressiveCleanup) {
               DeleteUserCache(GetTestHomedirs()[2].obfuscated));
   EXPECT_CALL(*cleanup_routines_,
               DeleteUserGCache(GetTestHomedirs()[2].obfuscated));
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
   EXPECT_CALL(*cleanup_routines_,
               DeleteDaemonStoreCache(GetTestHomedirs()[2].obfuscated));
   EXPECT_CALL(*cleanup_routines_,
@@ -824,6 +856,8 @@ TEST_F(DiskCleanupTest, FullAggressiveCleanupAfterNormal) {
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCache(_))
       .Times(GetTestHomedirs().size());
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserAndroidCache(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserProfile(_)).Times(0);
@@ -853,6 +887,8 @@ TEST_F(DiskCleanupTest, FullAggressiveCleanupAfterNormal) {
               DeleteUserGCache(GetTestHomedirs()[2].obfuscated));
   EXPECT_CALL(*cleanup_routines_,
               DeleteDaemonStoreCache(GetTestHomedirs()[2].obfuscated));
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
   EXPECT_CALL(*cleanup_routines_,
               DeleteCacheVault(GetTestHomedirs()[2].obfuscated));
 
@@ -880,6 +916,8 @@ TEST_F(DiskCleanupTest, RepeatNormalCleanupAfterEarlyStop) {
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteUserGCache(_)).Times(2);
   EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCache(_)).Times(0);
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserAndroidCache(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserProfile(_)).Times(0);
@@ -910,7 +948,7 @@ TEST_F(DiskCleanupTest, RepeatAggressiveCleanupAfterEarlyStop) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
       .WillRepeatedly(Return(kTargetFreeSpaceAfterCleanup + 1));
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
-      .Times(disk_space_queries(4) + 3)
+      .Times(disk_space_queries(4) + 4)
       .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerAggressiveCleanup - 1))
       .RetiresOnSaturation();
 
@@ -926,6 +964,8 @@ TEST_F(DiskCleanupTest, RepeatAggressiveCleanupAfterEarlyStop) {
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCache(_))
       .Times(GetTestHomedirs().size());
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_))
       .Times(GetTestHomedirs().size());
   EXPECT_CALL(*cleanup_routines_, DeleteUserAndroidCache(_)).Times(2);
@@ -944,6 +984,8 @@ TEST_F(DiskCleanupTest, RepeatAggressiveCleanupAfterEarlyStop) {
   EXPECT_CALL(*cleanup_routines_, DeleteUserCache(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserGCache(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCache(_)).Times(0);
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserAndroidCache(_))
       .Times(GetTestHomedirs().size());
@@ -1083,6 +1125,36 @@ TEST_F(DiskCleanupTest, DaemonStoreCacheCleanupEarlyStopAfterOneUser) {
   EXPECT_CALL(*cleanup_routines_,
               DeleteDaemonStoreCache(GetTestHomedirs()[0].obfuscated))
       .WillOnce(Return(true));
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(0);
+  EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_)).Times(0);
+  EXPECT_CALL(*cleanup_routines_, DeleteUserAndroidCache(_)).Times(0);
+  EXPECT_CALL(*cleanup_routines_, DeleteUserProfile(_)).Times(0);
+
+  cleanup_->FreeDiskSpace();
+}
+
+TEST_F(DiskCleanupTest, DaemonStoreCacheMountedUserCleanupEarlyStop) {
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
+      .WillRepeatedly(Return(kTargetFreeSpaceAfterCleanup + 1));
+
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
+      .Times(disk_space_queries(3) + 2)
+      .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerAggressiveCleanup - 1))
+      .RetiresOnSaturation();
+
+  EXPECT_CALL(homedirs_, GetHomeDirs())
+      .WillRepeatedly(Return(unmounted_homedirs()));
+
+  EXPECT_CALL(*cleanup_routines_, DeleteUserCache(_))
+      .Times(GetTestHomedirs().size());
+  EXPECT_CALL(*cleanup_routines_, DeleteUserGCache(_))
+      .Times(GetTestHomedirs().size());
+  // Only clean up the first user.
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCache(_))
+      .Times(GetTestHomedirs().size());
+  EXPECT_CALL(*cleanup_routines_, DeleteDaemonStoreCacheMountedUsers())
+      .Times(1);
   EXPECT_CALL(*cleanup_routines_, DeleteCacheVault(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserAndroidCache(_)).Times(0);
   EXPECT_CALL(*cleanup_routines_, DeleteUserProfile(_)).Times(0);

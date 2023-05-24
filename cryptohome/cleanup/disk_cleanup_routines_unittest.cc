@@ -399,4 +399,41 @@ TEST_P(DiskCleanupRoutinesTest, DeleteDaemonStoreCache) {
   routines_.DeleteDaemonStoreCache(kTestUser);
 }
 
+TEST_P(DiskCleanupRoutinesTest, DeleteDaemonStoreCacheMountedUsers) {
+  const FilePath cache_dir = FilePath(kRunDaemonStoreCacheBaseDir);
+  base::FilePath daemon_one = cache_dir.Append("daemon-one");
+  base::FilePath daemon_two = cache_dir.Append("daemon-two");
+
+  base::FilePath daemon_one_user = daemon_one.Append(kTestUser->c_str());
+  base::FilePath daemon_one_user_file = daemon_one_user.Append("some-file");
+  base::FilePath daemon_two_user = daemon_two.Append(kTestUser->c_str());
+  base::FilePath daemon_two_user_file = daemon_one_user.Append("another-file");
+
+  EXPECT_CALL(platform_, GetFileEnumerator(cache_dir, false, _))
+      .WillOnce(Return(
+          CreateMockFileEnumeratorWithEntries({daemon_one, daemon_two})));
+
+  EXPECT_CALL(platform_, GetFileEnumerator(daemon_one, false, _))
+      .WillOnce(Return(CreateMockFileEnumeratorWithEntries({daemon_one_user})));
+  EXPECT_CALL(platform_, GetFileEnumerator(daemon_one_user, false, _))
+      .WillOnce(
+          Return(CreateMockFileEnumeratorWithEntries({daemon_one_user_file})));
+
+  EXPECT_CALL(platform_, GetFileEnumerator(daemon_two, false, _))
+      .WillOnce(Return(CreateMockFileEnumeratorWithEntries({daemon_two_user})));
+  EXPECT_CALL(platform_, GetFileEnumerator(daemon_two_user, false, _))
+      .WillOnce(
+          Return(CreateMockFileEnumeratorWithEntries({daemon_two_user_file})));
+
+  // Don't delete anything else.
+  EXPECT_CALL(platform_, DeletePathRecursively(_)).Times(0);
+
+  EXPECT_CALL(platform_, DeletePathRecursively(daemon_one_user_file))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeletePathRecursively(daemon_two_user_file))
+      .WillOnce(Return(true));
+
+  routines_.DeleteDaemonStoreCacheMountedUsers();
+}
+
 }  // namespace cryptohome
