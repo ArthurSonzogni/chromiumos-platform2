@@ -18,7 +18,6 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
-#include <base/test/test_future.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -26,6 +25,7 @@
 
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
+#include "missive/util/test_support_callbacks.h"
 
 using ::testing::Eq;
 using ::testing::StrEq;
@@ -64,14 +64,14 @@ TEST_F(CompressionModuleTest, CompressRecordSnappy) {
   const std::string expected_output =
       BenchmarkCompressRecordSnappy(kTestString);
 
-  base::test::TestFuture<std::string, std::optional<CompressionInformation>>
+  test::TestMultiEvent<std::string, std::optional<CompressionInformation>>
       compressed_record_event;
   // Compress string with CompressionModule
-  test_compression_module->CompressRecord(
-      kTestString, memory_resource_, compressed_record_event.GetCallback());
+  test_compression_module->CompressRecord(kTestString, memory_resource_,
+                                          compressed_record_event.cb());
 
   const std::tuple<std::string, std::optional<CompressionInformation>>
-      compressed_record_tuple = compressed_record_event.Take();
+      compressed_record_tuple = compressed_record_event.result();
 
   const base::StringPiece compressed_string_callback =
       std::get<0>(compressed_record_tuple);
@@ -98,15 +98,15 @@ TEST_F(CompressionModuleTest, CompressPoorlyCompressibleRecordSnappy) {
   const std::string expected_output =
       BenchmarkCompressRecordSnappy(kPoorlyCompressibleTestString);
 
-  base::test::TestFuture<std::string, std::optional<CompressionInformation>>
+  test::TestMultiEvent<std::string, std::optional<CompressionInformation>>
       compressed_record_event;
   // Compress string with CompressionModule
-  test_compression_module->CompressRecord(
-      kPoorlyCompressibleTestString, memory_resource_,
-      compressed_record_event.GetCallback());
+  test_compression_module->CompressRecord(kPoorlyCompressibleTestString,
+                                          memory_resource_,
+                                          compressed_record_event.cb());
 
   const std::tuple<std::string, std::optional<CompressionInformation>>
-      compressed_record_tuple = compressed_record_event.Take();
+      compressed_record_tuple = compressed_record_event.result();
 
   const base::StringPiece compressed_string_callback =
       std::get<0>(compressed_record_tuple);
@@ -129,14 +129,14 @@ TEST_F(CompressionModuleTest, CompressRecordBelowThreshold) {
       CompressionModule::Create(/*is_enabled=*/true, 512,
                                 CompressionInformation::COMPRESSION_SNAPPY);
 
-  base::test::TestFuture<std::string, std::optional<CompressionInformation>>
+  test::TestMultiEvent<std::string, std::optional<CompressionInformation>>
       compressed_record_event;
   // Compress string with CompressionModule
-  test_compression_module->CompressRecord(
-      kTestString, memory_resource_, compressed_record_event.GetCallback());
+  test_compression_module->CompressRecord(kTestString, memory_resource_,
+                                          compressed_record_event.cb());
 
   const std::tuple<std::string, std::optional<CompressionInformation>>
-      compressed_record_tuple = compressed_record_event.Take();
+      compressed_record_tuple = compressed_record_event.result();
 
   const base::StringPiece compressed_string_callback =
       std::get<0>(compressed_record_tuple);
@@ -160,15 +160,15 @@ TEST_F(CompressionModuleTest, CompressRecordCompressionDisabled) {
       CompressionModule::Create(/*is_enabled=*/false, 0,
                                 CompressionInformation::COMPRESSION_SNAPPY);
 
-  base::test::TestFuture<std::string, std::optional<CompressionInformation>>
+  test::TestMultiEvent<std::string, std::optional<CompressionInformation>>
       compressed_record_event;
 
   // Compress string with CompressionModule
-  test_compression_module->CompressRecord(
-      kTestString, memory_resource_, compressed_record_event.GetCallback());
+  test_compression_module->CompressRecord(kTestString, memory_resource_,
+                                          compressed_record_event.cb());
 
   const std::tuple<std::string, std::optional<CompressionInformation>>
-      compressed_record_tuple = compressed_record_event.Take();
+      compressed_record_tuple = compressed_record_event.result();
 
   const base::StringPiece compressed_string_callback =
       std::get<0>(compressed_record_tuple);
@@ -188,14 +188,14 @@ TEST_F(CompressionModuleTest, CompressRecordCompressionNone) {
       CompressionModule::Create(/*is_enabled=*/true, 0,
                                 CompressionInformation::COMPRESSION_NONE);
 
-  base::test::TestFuture<std::string, std::optional<CompressionInformation>>
+  test::TestMultiEvent<std::string, std::optional<CompressionInformation>>
       compressed_record_event;
 
   // Compress string with CompressionModule
-  test_compression_module->CompressRecord(
-      kTestString, memory_resource_, compressed_record_event.GetCallback());
+  test_compression_module->CompressRecord(kTestString, memory_resource_,
+                                          compressed_record_event.cb());
   const std::tuple<std::string, std::optional<CompressionInformation>>
-      compressed_record_tuple = compressed_record_event.Take();
+      compressed_record_tuple = compressed_record_event.result();
 
   const base::StringPiece compressed_string_callback =
       std::get<0>(compressed_record_tuple);

@@ -8,10 +8,8 @@
 
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/strcat.h>
-#include <base/task/bind_post_task.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
-#include <base/test/test_future.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -110,13 +108,12 @@ TEST_F(HealthModuleTest, WriteAndReadData) {
     module_->PostHealthRecord(call);
   }
 
-  base::test::TestFuture<const ERPHealthData> read_event;
+  test::TestEvent<const ERPHealthData> read_event;
   EXPECT_CALL(*mock_delegate_, DoGetERPHealthData(_))
       .WillOnce(Invoke(
           [&ref_data](HealthCallback cb) { std::move(cb).Run(ref_data); }));
-  module_->GetHealthData(
-      base::BindPostTaskToCurrentDefault(read_event.GetCallback()));
-  EXPECT_THAT(read_event.Get(), EqualsProto(ref_data));
+  module_->GetHealthData(read_event.cb());
+  EXPECT_THAT(read_event.ref_result(), EqualsProto(ref_data));
 }
 
 TEST_F(HealthModuleTest, UseRecorder) {

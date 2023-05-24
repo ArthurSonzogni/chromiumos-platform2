@@ -13,7 +13,6 @@
 #include <base/task/thread_pool.h>
 #include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
-#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -163,14 +162,13 @@ TEST_F(ReportQueueProviderTest, CreateAndGetQueue) {
   provider_->ExpectCreateNewQueueAndReturnNewMockQueue(1);
   // Use it to asynchronously create ReportingQueue and then asynchronously
   // send the message.
-  base::test::TestFuture<Status> e;
+  test::TestEvent<Status> e;
   base::ThreadPool::PostTask(
       FROM_HERE,
       base::BindOnce(&CreateQueuePostData, kTestMessage, FAST_BATCH,
                      std::move(config_result.ValueOrDie()),
-                     base::SequencedTaskRunner::GetCurrentDefault(),
-                     base::BindPostTaskToCurrentDefault(e.GetCallback())));
-  const auto res = e.Take();
+                     base::SequencedTaskRunner::GetCurrentDefault(), e.cb()));
+  const auto res = e.result();
   EXPECT_OK(res) << res;
 }
 
@@ -279,11 +277,10 @@ TEST_F(ReportQueueProviderTest,
       EventType::kDevice, destination_, policy_checker_callback_);
   ASSERT_OK(config_result);
 
-  base::test::TestFuture<ReportQueueProvider::CreateReportQueueResponse> event;
-  ReportQueueProvider::CreateQueue(
-      std::move(config_result.ValueOrDie()),
-      base::BindPostTaskToCurrentDefault(event.GetCallback()));
-  const auto result = event.Take();
+  test::TestEvent<ReportQueueProvider::CreateReportQueueResponse> event;
+  ReportQueueProvider::CreateQueue(std::move(config_result.ValueOrDie()),
+                                   event.cb());
+  const auto result = event.result();
 
   ASSERT_FALSE(result.ok());
   EXPECT_EQ(result.status().code(), error::FAILED_PRECONDITION);

@@ -11,8 +11,6 @@
 
 #include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/task/bind_post_task.h>
-#include <base/test/test_future.h>
 #include <base/test/task_environment.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <dbus/bus.h>
@@ -30,9 +28,8 @@
 #include "missive/dbus/mock_upload_client.h"
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/storage/storage_module.h"
-#include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
-#include "missive/util/statusor.h"
+#include "missive/util/test_support_callbacks.h"
 #include "missive/util/test_util.h"
 
 using ::testing::_;
@@ -126,10 +123,10 @@ class MissiveImplTest : public ::testing::Test {
     fake_platform_features->SetEnabled(MissiveArgs::kStorageFeature.name, true);
     fake_platform_features_ptr_ = fake_platform_features.get();
 
-    base::test::TestFuture<Status> started;
+    test::TestEvent<Status> started;
     missive_->StartUp(dbus_test_environment_.mock_bus(),
-                      std::move(fake_platform_features), started.GetCallback());
-    ASSERT_OK(started.Take());
+                      std::move(fake_platform_features), started.cb());
+    ASSERT_OK(started.result());
     EXPECT_TRUE(compression_module_->is_enabled());
     EXPECT_TRUE(encryption_module_->is_enabled());
   }
@@ -157,26 +154,24 @@ class MissiveImplTest : public ::testing::Test {
 };
 
 TEST_F(MissiveImplTest, AsyncStartUploadTest) {
-  base::test::TestFuture<StatusOr<std::unique_ptr<UploaderInterface>>>
-      uploader_event;
+  test::TestEvent<StatusOr<std::unique_ptr<UploaderInterface>>> uploader_event;
   MissiveImpl::AsyncStartUpload(
       missive_->GetWeakPtr(), UploaderInterface::UploadReason::IMMEDIATE_FLUSH,
-      base::BindPostTaskToCurrentDefault(uploader_event.GetCallback()));
-  auto response_result = uploader_event.Take();
+      uploader_event.cb());
+  auto response_result = uploader_event.result();
   EXPECT_OK(response_result) << response_result.status();
   response_result.ValueOrDie()->Completed(
       Status(error::INTERNAL, "Failing for tests"));
 }
 
 TEST_F(MissiveImplTest, AsyncNoStartUploadTest) {
-  base::test::TestFuture<StatusOr<std::unique_ptr<UploaderInterface>>>
-      uploader_event;
+  test::TestEvent<StatusOr<std::unique_ptr<UploaderInterface>>> uploader_event;
   auto weak_ptr = missive_->GetWeakPtr();
   missive_.reset();
   MissiveImpl::AsyncStartUpload(
       weak_ptr, UploaderInterface::UploadReason::IMMEDIATE_FLUSH,
-      uploader_event.GetCallback());
-  auto response_result = uploader_event.Take();
+      uploader_event.cb());
+  auto response_result = uploader_event.result();
   EXPECT_THAT(response_result,
               Property(&StatusOr<std::unique_ptr<UploaderInterface>>::status,
                        Property(&Status::code, Eq(error::UNAVAILABLE))))
@@ -198,10 +193,10 @@ TEST_F(MissiveImplTest, EnqueueRecordTest) {
 
   auto response = std::make_unique<
       brillo::dbus_utils::MockDBusMethodResponse<EnqueueRecordResponse>>();
-  base::test::TestFuture<const EnqueueRecordResponse&> response_event;
-  response->set_return_callback(response_event.GetCallback());
+  test::TestEvent<const EnqueueRecordResponse&> response_event;
+  response->set_return_callback(response_event.cb());
   missive_->EnqueueRecord(request, std::move(response));
-  const auto& response_result = response_event.Get();
+  const auto& response_result = response_event.ref_result();
   EXPECT_THAT(response_result,
               Property(&EnqueueRecordResponse::status,
                        Property(&StatusProto::code, Eq(error::OK))));
@@ -218,10 +213,10 @@ TEST_F(MissiveImplTest, FlushPriorityTest) {
 
   auto response = std::make_unique<
       brillo::dbus_utils::MockDBusMethodResponse<FlushPriorityResponse>>();
-  base::test::TestFuture<const FlushPriorityResponse&> response_event;
-  response->set_return_callback(response_event.GetCallback());
+  test::TestEvent<const FlushPriorityResponse&> response_event;
+  response->set_return_callback(response_event.cb());
   missive_->FlushPriority(request, std::move(response));
-  const auto& response_result = response_event.Get();
+  const auto& response_result = response_event.ref_result();
   EXPECT_THAT(response_result,
               Property(&FlushPriorityResponse::status,
                        Property(&StatusProto::code, Eq(error::OK))));
@@ -241,10 +236,10 @@ TEST_F(MissiveImplTest, ConfirmRecordUploadTest) {
 
   auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
       ConfirmRecordUploadResponse>>();
-  base::test::TestFuture<const ConfirmRecordUploadResponse&> response_event;
-  response->set_return_callback(response_event.GetCallback());
+  test::TestEvent<const ConfirmRecordUploadResponse&> response_event;
+  response->set_return_callback(response_event.cb());
   missive_->ConfirmRecordUpload(request, std::move(response));
-  const auto& response_result = response_event.Get();
+  const auto& response_result = response_event.ref_result();
   EXPECT_THAT(response_result,
               Property(&ConfirmRecordUploadResponse::status,
                        Property(&StatusProto::code, Eq(error::OK))));
@@ -264,10 +259,10 @@ TEST_F(MissiveImplTest, UpdateEncryptionKeyTest) {
 
   auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
       UpdateEncryptionKeyResponse>>();
-  base::test::TestFuture<const UpdateEncryptionKeyResponse&> response_event;
-  response->set_return_callback(response_event.GetCallback());
+  test::TestEvent<const UpdateEncryptionKeyResponse&> response_event;
+  response->set_return_callback(response_event.cb());
   missive_->UpdateEncryptionKey(request, std::move(response));
-  const auto& response_result = response_event.Get();
+  const auto& response_result = response_event.ref_result();
   EXPECT_THAT(response_result,
               Property(&UpdateEncryptionKeyResponse::status,
                        Property(&StatusProto::code, Eq(error::OK))));
@@ -287,10 +282,10 @@ TEST_F(MissiveImplTest, ResponseWithErrorTest) {
 
   auto response = std::make_unique<
       brillo::dbus_utils::MockDBusMethodResponse<FlushPriorityResponse>>();
-  base::test::TestFuture<const FlushPriorityResponse&> response_event;
-  response->set_return_callback(response_event.GetCallback());
+  test::TestEvent<const FlushPriorityResponse&> response_event;
+  response->set_return_callback(response_event.cb());
   missive_->FlushPriority(request, std::move(response));
-  const auto& response_result = response_event.Get();
+  const auto& response_result = response_event.ref_result();
   EXPECT_THAT(
       response_result,
       Property(&FlushPriorityResponse::status,
@@ -313,10 +308,10 @@ TEST_F(MissiveImplTest, DisabledReportingTest) {
 
     auto response = std::make_unique<
         brillo::dbus_utils::MockDBusMethodResponse<EnqueueRecordResponse>>();
-    base::test::TestFuture<const EnqueueRecordResponse&> response_event;
-    response->set_return_callback(response_event.GetCallback());
+    test::TestEvent<const EnqueueRecordResponse&> response_event;
+    response->set_return_callback(response_event.cb());
     missive_->EnqueueRecord(request, std::move(response));
-    const auto& response_result = response_event.Get();
+    const auto& response_result = response_event.ref_result();
     EXPECT_THAT(response_result,
                 Property(&EnqueueRecordResponse::status,
                          AllOf(Property(&StatusProto::code,
@@ -333,10 +328,10 @@ TEST_F(MissiveImplTest, DisabledReportingTest) {
 
     auto response = std::make_unique<
         brillo::dbus_utils::MockDBusMethodResponse<FlushPriorityResponse>>();
-    base::test::TestFuture<const FlushPriorityResponse&> response_event;
-    response->set_return_callback(response_event.GetCallback());
+    test::TestEvent<const FlushPriorityResponse&> response_event;
+    response->set_return_callback(response_event.cb());
     missive_->FlushPriority(request, std::move(response));
-    const auto& response_result = response_event.Get();
+    const auto& response_result = response_event.ref_result();
     EXPECT_THAT(response_result,
                 Property(&FlushPriorityResponse::status,
                          AllOf(Property(&StatusProto::code,
@@ -356,10 +351,10 @@ TEST_F(MissiveImplTest, DisabledReportingTest) {
 
     auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
         ConfirmRecordUploadResponse>>();
-    base::test::TestFuture<const ConfirmRecordUploadResponse&> response_event;
-    response->set_return_callback(response_event.GetCallback());
+    test::TestEvent<const ConfirmRecordUploadResponse&> response_event;
+    response->set_return_callback(response_event.cb());
     missive_->ConfirmRecordUpload(request, std::move(response));
-    const auto& response_result = response_event.Get();
+    const auto& response_result = response_event.ref_result();
     EXPECT_THAT(response_result,
                 Property(&ConfirmRecordUploadResponse::status,
                          AllOf(Property(&StatusProto::code,
@@ -379,10 +374,10 @@ TEST_F(MissiveImplTest, DisabledReportingTest) {
 
     auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
         UpdateEncryptionKeyResponse>>();
-    base::test::TestFuture<const UpdateEncryptionKeyResponse&> response_event;
-    response->set_return_callback(response_event.GetCallback());
+    test::TestEvent<const UpdateEncryptionKeyResponse&> response_event;
+    response->set_return_callback(response_event.cb());
     missive_->UpdateEncryptionKey(request, std::move(response));
-    const auto& response_result = response_event.Get();
+    const auto& response_result = response_event.ref_result();
     EXPECT_THAT(response_result,
                 Property(&UpdateEncryptionKeyResponse::status,
                          AllOf(Property(&StatusProto::code,
@@ -392,13 +387,12 @@ TEST_F(MissiveImplTest, DisabledReportingTest) {
   }
 
   {
-    base::test::TestFuture<StatusOr<std::unique_ptr<UploaderInterface>>>
+    test::TestEvent<StatusOr<std::unique_ptr<UploaderInterface>>>
         uploader_event;
     MissiveImpl::AsyncStartUpload(
         missive_->GetWeakPtr(),
-        UploaderInterface::UploadReason::IMMEDIATE_FLUSH,
-        uploader_event.GetCallback());
-    auto response_result = uploader_event.Take();
+        UploaderInterface::UploadReason::IMMEDIATE_FLUSH, uploader_event.cb());
+    const auto& response_result = uploader_event.result();
     EXPECT_THAT(response_result,
                 Property(&StatusOr<std::unique_ptr<UploaderInterface>>::status,
                          AllOf(Property(&Status::error_code,

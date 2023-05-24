@@ -7,7 +7,6 @@
 #include <base/functional/bind.h>
 #include <base/strings/strcat.h>
 #include <base/test/task_environment.h>
-#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -18,6 +17,7 @@
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
+#include "missive/util/test_support_callbacks.h"
 
 using ::testing::_;
 using ::testing::Eq;
@@ -49,9 +49,9 @@ TEST_F(ReportQueueTest, EnqueueTest) {
               SendEnumToUMA(StrEq(ReportQueue::kEnqueueMetricsName),
                             Eq(error::OK), Eq(error::MAX_VALUE)))
       .WillOnce(Return(true));
-  base::test::TestFuture<Status> e;
-  queue.Enqueue("Record", FAST_BATCH, e.GetCallback());
-  ASSERT_OK(e.Take());
+  test::TestEvent<Status> e;
+  queue.Enqueue("Record", FAST_BATCH, e.cb());
+  ASSERT_OK(e.result());
   task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
 }
 
@@ -65,9 +65,9 @@ TEST_F(ReportQueueTest, EnqueueWithErrorTest) {
               SendEnumToUMA(StrEq(ReportQueue::kEnqueueMetricsName),
                             Eq(error::CANCELLED), Eq(error::MAX_VALUE)))
       .WillOnce(Return(true));
-  base::test::TestFuture<Status> e;
-  queue.Enqueue("Record", FAST_BATCH, e.GetCallback());
-  const auto result = e.Take();
+  test::TestEvent<Status> e;
+  queue.Enqueue("Record", FAST_BATCH, e.cb());
+  const auto result = e.result();
   ASSERT_FALSE(result.ok());
   ASSERT_THAT(result.error_code(), Eq(error::CANCELLED));
   task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
@@ -79,9 +79,9 @@ TEST_F(ReportQueueTest, FlushTest) {
       .WillOnce(WithArg<1>(Invoke([](ReportQueue::FlushCallback cb) {
         std::move(cb).Run(Status::StatusOK());
       })));
-  base::test::TestFuture<Status> e;
-  queue.Flush(MANUAL_BATCH, e.GetCallback());
-  ASSERT_OK(e.Take());
+  test::TestEvent<Status> e;
+  queue.Flush(MANUAL_BATCH, e.cb());
+  ASSERT_OK(e.result());
 }
 }  // namespace
 }  // namespace reporting

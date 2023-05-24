@@ -18,11 +18,9 @@
 #include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
-#include <base/test/test_future.h>
 #include <base/thread_annotations.h>
 #include <base/threading/sequence_bound.h>
 #include <base/time/time.h>
@@ -695,7 +693,7 @@ class LegacyStorageDegradationTest
       const StorageOptions& options,
       scoped_refptr<EncryptionModuleInterface> encryption_module) {
     // Initialize Storage with no key.
-    base::test::TestFuture<StatusOr<scoped_refptr<StorageInterface>>> e;
+    test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
     Storage::Create(
         options,
         base::BindRepeating(
@@ -703,8 +701,8 @@ class LegacyStorageDegradationTest
             base::Unretained(this)),
         QueuesContainer::Create(/*is_enabled=*/is_degradation_enabled()),
         encryption_module, base::MakeRefCounted<test::TestCompressionModule>(),
-        base::BindPostTaskToCurrentDefault(e.GetCallback()));
-    ASSIGN_OR_RETURN(auto storage, e.Take());
+        e.cb());
+    ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
 
@@ -797,16 +795,15 @@ class LegacyStorageDegradationTest
 
   Status WriteString(Priority priority, base::StringPiece data) {
     EXPECT_TRUE(storage_) << "Storage not created yet";
-    base::test::TestFuture<Status> w;
+    test::TestEvent<Status> w;
     Record record;
     record.set_data(std::string(data));
     record.set_destination(UPLOAD_EVENTS);
     record.set_dm_token("DM TOKEN");
     LOG(ERROR) << "Write priority=" << priority << " data='"
                << record.data().substr(0, kDebugDataPrintSize) << "'";
-    storage_->Write(priority, std::move(record),
-                    base::BindPostTaskToCurrentDefault(w.GetCallback()));
-    return w.Take();
+    storage_->Write(priority, std::move(record), w.cb());
+    return w.result();
   }
 
   void WriteStringOrDie(Priority priority, base::StringPiece data) {
@@ -825,18 +822,16 @@ class LegacyStorageDegradationTest
     seq_info.set_sequencing_id(sequencing_id);
     seq_info.set_generation_id(generation_it->second);
     seq_info.set_priority(priority);
-    base::test::TestFuture<Status> c;
-    storage_->Confirm(std::move(seq_info), force,
-                      base::BindPostTaskToCurrentDefault(c.GetCallback()));
-    const Status c_result = c.Take();
+    test::TestEvent<Status> c;
+    storage_->Confirm(std::move(seq_info), force, c.cb());
+    const Status c_result = c.result();
     ASSERT_OK(c_result) << c_result;
   }
 
   void FlushOrDie(Priority priority) {
-    base::test::TestFuture<Status> c;
-    storage_->Flush(priority,
-                    base::BindPostTaskToCurrentDefault(c.GetCallback()));
-    const Status c_result = c.Take();
+    test::TestEvent<Status> c;
+    storage_->Flush(priority, c.cb());
+    const Status c_result = c.result();
     ASSERT_OK(c_result) << c_result;
   }
 

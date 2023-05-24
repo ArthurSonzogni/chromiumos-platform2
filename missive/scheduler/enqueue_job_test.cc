@@ -10,11 +10,9 @@
 
 #include <base/functional/bind.h>
 #include <base/run_loop.h>
-#include <base/task/bind_post_task.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
-#include <base/test/test_future.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <gmock/gmock.h>
@@ -24,6 +22,7 @@
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/util/status.h"
+#include "missive/util/test_support_callbacks.h"
 #include "missive/util/test_util.h"
 
 namespace reporting {
@@ -104,9 +103,9 @@ TEST_F(EnqueueJobTest, CompletesSuccessfully) {
 
   auto job = EnqueueJob::Create(storage_module_, request, std::move(delegate));
 
-  base::test::TestFuture<Status> enqueued;
-  job->Start(base::BindPostTaskToCurrentDefault(enqueued.GetCallback()));
-  const Status status = enqueued.Take();
+  test::TestEvent<Status> enqueued;
+  job->Start(enqueued.cb());
+  const Status status = enqueued.result();
   EXPECT_OK(status) << status;
 }
 

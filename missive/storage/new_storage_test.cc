@@ -21,12 +21,10 @@
 #include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
-#include <base/test/test_future.h>
 #include <base/thread_annotations.h>
 #include <base/threading/sequence_bound.h>
 #include <base/time/time.h>
@@ -917,15 +915,14 @@ class NewStorageTest
       const StorageOptions& options,
       scoped_refptr<EncryptionModuleInterface> encryption_module) {
     // Initialize NewStorage with no key.
-    base::test::TestFuture<StatusOr<scoped_refptr<StorageInterface>>> e;
+    test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
     NewStorage::Create(
         options,
         base::BindRepeating(&NewStorageTest::AsyncStartMockUploader,
                             base::Unretained(this)),
         QueuesContainer::Create(/*is_enabled=*/false), encryption_module,
-        base::MakeRefCounted<test::TestCompressionModule>(),
-        base::BindPostTaskToCurrentDefault(e.GetCallback()));
-    ASSIGN_OR_RETURN(auto storage, e.Take());
+        base::MakeRefCounted<test::TestCompressionModule>(), e.cb());
+    ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
 
@@ -990,15 +987,14 @@ class NewStorageTest
               /*is_enabled=*/true,
               /*renew_encryption_key_period=*/base::Minutes(30))) {
     // Initialize NewStorage with no key.
-    base::test::TestFuture<StatusOr<scoped_refptr<StorageInterface>>> e;
+    test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
     NewStorage::Create(
         options,
         base::BindRepeating(&NewStorageTest::AsyncStartMockUploaderFailing,
                             base::Unretained(this)),
         QueuesContainer::Create(/*is_enabled=*/false), encryption_module,
-        base::MakeRefCounted<test::TestCompressionModule>(),
-        base::BindPostTaskToCurrentDefault(e.GetCallback()));
-    ASSIGN_OR_RETURN(auto storage, e.Take());
+        base::MakeRefCounted<test::TestCompressionModule>(), e.cb());
+    ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
 
@@ -1068,16 +1064,15 @@ class NewStorageTest
                      base::StringPiece data,
                      DMtoken dm_token) {
     EXPECT_TRUE(storage_) << "NewStorage not created yet";
-    base::test::TestFuture<Status> w;
+    test::TestEvent<Status> w;
     Record record;
     record.set_data(std::string(data));
     record.set_destination(UPLOAD_EVENTS);
     record.set_dm_token(dm_token);
     LOG(ERROR) << "Write priority=" << priority << " data='" << record.data()
                << "'";
-    storage_->Write(priority, std::move(record),
-                    base::BindPostTaskToCurrentDefault(w.GetCallback()));
-    return w.Take();
+    storage_->Write(priority, std::move(record), w.cb());
+    return w.result();
   }
 
   void WriteStringOrDie(Priority priority, base::StringPiece data) {
@@ -1105,18 +1100,16 @@ class NewStorageTest
     seq_info.set_generation_id(generation_id);
     seq_info.set_generation_guid(generation_guid);
     seq_info.set_priority(priority);
-    base::test::TestFuture<Status> c;
-    storage_->Confirm(std::move(seq_info), force,
-                      base::BindPostTaskToCurrentDefault(c.GetCallback()));
-    const Status c_result = c.Take();
+    test::TestEvent<Status> c;
+    storage_->Confirm(std::move(seq_info), force, c.cb());
+    const Status c_result = c.result();
     ASSERT_OK(c_result) << c_result;
   }
 
   void FlushOrDie(Priority priority) {
-    base::test::TestFuture<Status> c;
-    storage_->Flush(priority,
-                    base::BindPostTaskToCurrentDefault(c.GetCallback()));
-    const Status c_result = c.Take();
+    test::TestEvent<Status> c;
+    storage_->Flush(priority, c.cb());
+    const Status c_result = c.result();
     ASSERT_OK(c_result) << c_result;
   }
 
@@ -1127,12 +1120,12 @@ class NewStorageTest
     Encryptor::PublicKeyId public_key_id;
     uint8_t public_value[kKeySize];
     test::GenerateEncryptionKeyPair(private_key, public_value);
-    base::test::TestFuture<StatusOr<Encryptor::PublicKeyId>> prepare_key_pair;
+    test::TestEvent<StatusOr<Encryptor::PublicKeyId>> prepare_key_pair;
     decryptor_->RecordKeyPair(
         std::string(reinterpret_cast<const char*>(private_key), kKeySize),
         std::string(reinterpret_cast<const char*>(public_value), kKeySize),
-        base::BindPostTaskToCurrentDefault(prepare_key_pair.GetCallback()));
-    auto prepare_key_result = prepare_key_pair.Take();
+        prepare_key_pair.cb());
+    auto prepare_key_result = prepare_key_pair.result();
     DCHECK(prepare_key_result.ok());
     public_key_id = prepare_key_result.ValueOrDie();
     // Prepare signed encryption key to be delivered to NewStorage.
@@ -1722,16 +1715,15 @@ TEST_P(NewStorageTest, WriteAndUploadWithBadConfirmation) {
   }
 
   // Confirm #0 with bad generation.
-  base::test::TestFuture<Status> c;
+  test::TestEvent<Status> c;
   SequenceInformation seq_info;
   seq_info.set_priority(FAST_BATCH);
   seq_info.set_sequencing_id(/*sequencing_id=*/0);
   // Do not set generation!
   LOG(ERROR) << "Bad confirm priority=" << seq_info.priority()
              << " seq=" << seq_info.sequencing_id();
-  storage_->Confirm(std::move(seq_info), /*force=*/false,
-                    base::BindPostTaskToCurrentDefault(c.GetCallback()));
-  const Status c_result = c.Take();
+  storage_->Confirm(std::move(seq_info), /*force=*/false, c.cb());
+  const Status c_result = c.result();
   ASSERT_FALSE(c_result.ok()) << c_result;
 }
 
@@ -2103,11 +2095,10 @@ TEST_P(NewStorageTest, WriteEncryptFailure) {
   }
   auto test_encryption_module =
       base::MakeRefCounted<test::TestEncryptionModule>(/*is_enabled=*/true);
-  base::test::TestFuture<Status> key_update_event;
-  test_encryption_module->UpdateAsymmetricKey(
-      "DUMMY KEY", 0,
-      base::BindPostTaskToCurrentDefault(key_update_event.GetCallback()));
-  ASSERT_OK(key_update_event.Take());
+  test::TestEvent<Status> key_update_event;
+  test_encryption_module->UpdateAsymmetricKey("DUMMY KEY", 0,
+                                              key_update_event.cb());
+  ASSERT_OK(key_update_event.result());
   expect_to_need_key_ = false;
   CreateTestStorageOrDie(BuildTestStorageOptions(), test_encryption_module);
   EXPECT_CALL(*test_encryption_module, EncryptRecordImpl(_, _))

@@ -6,13 +6,12 @@
 
 #include <base/functional/callback_helpers.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/task/bind_post_task.h>
 #include <base/test/task_environment.h>
-#include <base/test/test_future.h>
 #include <gtest/gtest.h>
 
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module.h"
+#include "missive/util/test_support_callbacks.h"
 
 namespace reporting {
 
@@ -26,7 +25,7 @@ class StorageModuleTest : public ::testing::Test {
 };
 
 TEST_F(StorageModuleTest, NewStorageTest) {
-  base::test::TestFuture<StatusOr<scoped_refptr<StorageModule>>> module_event;
+  test::TestEvent<StatusOr<scoped_refptr<StorageModule>>> module_event;
   StorageModule::Create(
       StorageOptions(),
       /*legacy_storage_enabled=*/false, base::DoNothing(),
@@ -35,15 +34,15 @@ TEST_F(StorageModuleTest, NewStorageTest) {
       CompressionModule::Create(
           /*is_enabled=*/true, /*compression_threshold=*/0,
           /*compression_type=*/CompressionInformation::COMPRESSION_SNAPPY),
-      base::BindPostTaskToCurrentDefault(module_event.GetCallback()));
-  const auto res = module_event.Take();
+      module_event.cb());
+  const auto res = module_event.result();
   ASSERT_OK(res);
   EXPECT_TRUE(res.ValueOrDie().get());
   EXPECT_FALSE(res.ValueOrDie()->legacy_storage_enabled());
 }
 
 TEST_F(StorageModuleTest, LegacyStorageTest) {
-  base::test::TestFuture<StatusOr<scoped_refptr<StorageModule>>> module_event;
+  test::TestEvent<StatusOr<scoped_refptr<StorageModule>>> module_event;
   StorageModule::Create(
       StorageOptions(),
       /*legacy_storage_enabled=*/true, base::DoNothing(),
@@ -52,8 +51,8 @@ TEST_F(StorageModuleTest, LegacyStorageTest) {
       CompressionModule::Create(
           /*is_enabled=*/true, /*compression_threshold=*/0,
           /*compression_type=*/CompressionInformation::COMPRESSION_SNAPPY),
-      base::BindPostTaskToCurrentDefault(module_event.GetCallback()));
-  const auto res = module_event.Take();
+      module_event.cb());
+  const auto res = module_event.result();
   ASSERT_OK(res);
   EXPECT_TRUE(res.ValueOrDie().get());
   EXPECT_TRUE(res.ValueOrDie()->legacy_storage_enabled());

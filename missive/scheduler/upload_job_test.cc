@@ -9,11 +9,9 @@
 
 #include <base/run_loop.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/task/bind_post_task.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
-#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -21,6 +19,7 @@
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
+#include "missive/util/test_support_callbacks.h"
 #include "missive/util/test_util.h"
 
 using ::testing::_;
@@ -139,26 +138,25 @@ TEST_F(UploadJobTest, UploadsRecords) {
 
   TestRecordUploader record_uploader(std::move(records), memory_resource_);
 
-  base::test::TestFuture<StatusOr<UploadEncryptedRecordResponse>>
-      upload_responded;
-  auto job_result = UploadJob::Create(
-      upload_client_,
-      /*need_encryption_keys=*/false,
-      /*remaining_storage_capacity=*/3000U,
-      /*new_events_rate=*/300U,
-      base::BindOnce(&TestRecordUploader::StartUpload,
-                     base::Unretained(&record_uploader)),
-      base::BindPostTaskToCurrentDefault(upload_responded.GetCallback()));
+  test::TestEvent<StatusOr<UploadEncryptedRecordResponse>> upload_responded;
+  auto job_result =
+      UploadJob::Create(upload_client_,
+                        /*need_encryption_keys=*/false,
+                        /*remaining_storage_capacity=*/3000U,
+                        /*new_events_rate=*/300U,
+                        base::BindOnce(&TestRecordUploader::StartUpload,
+                                       base::Unretained(&record_uploader)),
+                        upload_responded.cb());
   ASSERT_TRUE(job_result.ok()) << job_result.status();
   Scheduler::Job::SmartPtr<Scheduler::Job> job =
       std::move(job_result.ValueOrDie());
 
-  base::test::TestFuture<Status> upload_started;
-  job->Start(base::BindPostTaskToCurrentDefault(upload_started.GetCallback()));
-  const Status status = upload_started.Take();
+  test::TestEvent<Status> upload_started;
+  job->Start(upload_started.cb());
+  const Status status = upload_started.result();
   EXPECT_OK(status) << status;
   // Let everything finish before record_uploader destructs.
-  const auto upload_result = upload_responded.Take();
+  const auto upload_result = upload_responded.result();
   EXPECT_OK(upload_result) << upload_result.status();
 }
 }  // namespace

@@ -14,7 +14,6 @@
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
-#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -135,11 +134,11 @@ TEST_F(JobTest, WillStartOnceWithOKStatusAndReportCompletion) {
   auto job = FakeJob::Create(std::move(delegate));
 
   {
-    base::test::TestFuture<Status> start_event;
+    test::TestEvent<Status> start_event;
     complete_waiter_.Attach();
-    job->Start(base::BindPostTaskToCurrentDefault(start_event.GetCallback()));
+    job->Start(start_event.cb());
     task_environment_.FastForwardBy(base::Seconds(1));
-    const auto status = start_event.Take();
+    const auto status = start_event.result();
     EXPECT_OK(status) << status;
     complete_waiter_.Wait();
   }
@@ -152,10 +151,10 @@ TEST_F(JobTest, WillStartOnceWithOKStatusAndReportCompletion) {
   // Now that the job has completed successfully, it shouldn't be startable, or
   // cancellable.
   {
-    base::test::TestFuture<Status> start_event;
-    job->Start(base::BindPostTaskToCurrentDefault(start_event.GetCallback()));
+    test::TestEvent<Status> start_event;
+    job->Start(start_event.cb());
     task_environment_.FastForwardBy(base::Seconds(1));
-    const auto status = start_event.Take();
+    const auto status = start_event.result();
     EXPECT_FALSE(status.ok());
   }
 
@@ -179,10 +178,10 @@ TEST_F(JobTest, CancelsWhenJobFails) {
 
   {
     complete_waiter_.Attach();
-    base::test::TestFuture<Status> start_event;
-    job->Start(base::BindPostTaskToCurrentDefault(start_event.GetCallback()));
+    test::TestEvent<Status> start_event;
+    job->Start(start_event.cb());
     task_environment_.FastForwardBy(base::Seconds(1));
-    const auto status = start_event.Take();
+    const auto status = start_event.result();
     EXPECT_OK(status) << status;
     complete_waiter_.Wait();
   }
@@ -199,10 +198,10 @@ TEST_F(JobTest, WillNotStartWithNonOKStatusAndCancels) {
 
   EXPECT_TRUE(job->Cancel(Status(error::INTERNAL, "Failing For Tests")).ok());
 
-  base::test::TestFuture<Status> start_event;
-  job->Start(base::BindPostTaskToCurrentDefault(start_event.GetCallback()));
+  test::TestEvent<Status> start_event;
+  job->Start(start_event.cb());
   task_environment_.FastForwardBy(base::Seconds(1));
-  const auto status = start_event.Take();
+  const auto status = start_event.result();
   EXPECT_FALSE(status.ok());
 }
 
