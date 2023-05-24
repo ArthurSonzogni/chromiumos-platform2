@@ -12,6 +12,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/task/sequenced_task_runner.h>
 #include <grpcpp/grpcpp.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <vm_protos/proto_bindings/vm_crash.grpc.pb.h>
 
 #include "metrics/metrics_library.h"
