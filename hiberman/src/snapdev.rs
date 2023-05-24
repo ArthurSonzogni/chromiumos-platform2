@@ -102,6 +102,7 @@ ioctl_ior_nr!(SNAPSHOT_GET_IMAGE_SIZE, SNAPSHOT_IOC_MAGIC, 14, u64);
 ioctl_iow_nr!(SNAPSHOT_CREATE_IMAGE, SNAPSHOT_IOC_MAGIC, 17, u32);
 ioctl_iow_nr!(SNAPSHOT_SET_BLOCK_DEVICE, SNAPSHOT_IOC_MAGIC, 40, u32);
 ioctl_io_nr!(SNAPSHOT_XFER_BLOCK_DEVICE, SNAPSHOT_IOC_MAGIC, 41);
+ioctl_io_nr!(SNAPSHOT_RELEASE_BLOCK_DEVICE, SNAPSHOT_IOC_MAGIC, 42);
 
 ioctl_iowr_nr!(
     SNAPSHOT_ENABLE_ENCRYPTION,
@@ -125,6 +126,7 @@ const CREATE_IMAGE: u64 = SNAPSHOT_CREATE_IMAGE();
 const ENABLE_ENCRYPTION: u64 = SNAPSHOT_ENABLE_ENCRYPTION();
 const SET_BLOCK_DEVICE: u64 = SNAPSHOT_SET_BLOCK_DEVICE();
 const XFER_BLOCK_DEVICE: u64 = SNAPSHOT_XFER_BLOCK_DEVICE();
+const RELEASE_BLOCK_DEVICE: u64 = SNAPSHOT_RELEASE_BLOCK_DEVICE();
 
 /// The SnapshotDevice is mostly a group of method functions that send ioctls to
 /// an open snapshot device file descriptor.
@@ -259,6 +261,12 @@ impl SnapshotDevice {
             let rc = ioctl_with_val(&self.file, SET_BLOCK_DEVICE, dev_id as c_ulong);
             self.evaluate_ioctl_return("SET_BLOCK_DEVICE", rc)
         }
+    }
+
+    pub fn release_block_device(&mut self) -> Result<()> {
+        // This is safe because the ioctl doesn't modify memory in a way that
+        // violates Rust's guarantees.
+        unsafe { self.simple_ioctl(RELEASE_BLOCK_DEVICE, "RELEASE_BLOCK_DEVICE") }
     }
 
     pub fn transfer_block_device(&mut self) -> Result<()> {
