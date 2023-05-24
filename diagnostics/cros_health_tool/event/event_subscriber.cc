@@ -16,6 +16,7 @@
 #include <mojo/service_constants.h>
 
 #include "diagnostics/cros_health_tool/mojo_util.h"
+#include "diagnostics/cros_health_tool/output_util.h"
 #include "diagnostics/mojom/external/network_health.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
@@ -175,35 +176,6 @@ std::string EnumToString(mojom::StylusGarageEventInfo::State state) {
     case mojom::StylusGarageEventInfo::State::kRemove:
       return "Remove";
   }
-}
-
-void OutputEventSupportStatus(base::OnceClosure run_loop_closure,
-                              const mojom::SupportStatusPtr status) {
-  base::Value::Dict output;
-
-  switch (status->which()) {
-    case mojom::SupportStatus::Tag::kUnmappedUnionField:
-      LOG(FATAL) << "Got mojom::SupportStatus::Tag::kUnmappedUnionField";
-      break;
-    case mojom::SupportStatus::Tag::kException:
-      output.Set("status", "Exception");
-      output.Set("debug_message", status->get_exception()->debug_message);
-      break;
-    case mojom::SupportStatus::Tag::kSupported:
-      output.Set("status", "Supported");
-      break;
-    case mojom::SupportStatus::Tag::kUnsupported:
-      output.Set("status", "Not supported");
-      output.Set("debug_message", status->get_unsupported()->debug_message);
-      break;
-  }
-
-  std::string json;
-  base::JSONWriter::WriteWithOptions(
-      output, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
-
-  std::cout << json << std::endl;
-  std::move(run_loop_closure).Run();
 }
 
 void OutputUsbEventInfo(const mojom::UsbEventInfoPtr& info) {
@@ -549,7 +521,7 @@ void EventSubscriber::IsEventSupported(base::OnceClosure run_loop_closure,
                                        mojom::EventCategoryEnum category) {
   event_service_->IsEventSupported(
       category,
-      base::BindOnce(&OutputEventSupportStatus, std::move(run_loop_closure)));
+      base::BindOnce(&OutputSupportStatus).Then(std::move(run_loop_closure)));
 }
 
 void EventSubscriber::SubscribeToEvents(

@@ -14,6 +14,7 @@
 
 #include "diagnostics/mojom/external/network_health_types.mojom.h"
 #include "diagnostics/mojom/external/network_types.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -126,6 +127,9 @@ void SetJsonDictValue(const std::string& key,
 void OutputJson(const base::Value::Dict& output);
 
 void OutputSingleLineJson(const base::Value::Dict& output);
+
+void OutputSupportStatus(
+    const ash::cros_healthd::mojom::SupportStatusPtr status);
 
 }  // namespace diagnostics
 

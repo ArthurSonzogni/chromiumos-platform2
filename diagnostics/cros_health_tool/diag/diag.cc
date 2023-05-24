@@ -16,6 +16,7 @@
 #include <string>
 #include <utility>
 
+#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/time/time.h>
@@ -27,6 +28,7 @@
 #include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/cros_health_tool/output_util.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -121,24 +123,68 @@ int RunV2Routine(mojom::RoutineArgumentPtr argument, bool single_line_json) {
   return EXIT_SUCCESS;
 }
 
-#define COMMON_V2_ROUTINE_FLAGS        \
-  DEFINE_bool(single_line_json, false, \
-              "Whether to print JSON objects in a single line.");
+int CheckV2RoutineSupportStatus(mojom::RoutineArgumentPtr argument) {
+  mojo::Remote<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
+      cros_healthd_routines_service_;
+  RequestMojoServiceWithDisconnectHandler(
+      chromeos::mojo_services::kCrosHealthdRoutines,
+      cros_healthd_routines_service_);
+
+  base::RunLoop run_loop;
+  cros_healthd_routines_service_->IsRoutineSupported(
+      std::move(argument),
+      base::BindOnce(&OutputSupportStatus).Then(run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return EXIT_SUCCESS;
+}
+
+#define COMMON_V2_ROUTINE_FLAGS(description)                              \
+  DEFINE_bool(single_line_json, false,                                    \
+              "Whether to print JSON objects in a single line.");         \
+  DEFINE_bool(check_supported, false,                                     \
+              "Check the support status of the routine. It won't run the" \
+              " routine.");                                               \
+  brillo::FlagHelper::Init(argc, argv, description);
+
+#define COMMON_V2_ROUTINE_MAIN(routine)                             \
+  if (FLAGS_check_supported) {                                      \
+    return CheckV2RoutineSupportStatus(                             \
+        mojom::RoutineArgument::New##routine(std::move(argument))); \
+  }                                                                 \
+  return RunV2Routine(                                              \
+      mojom::RoutineArgument::New##routine(std::move(argument)),    \
+      FLAGS_single_line_json);
+
+// Template of RoutineMain.
+//
+// int RoutineMain(int argc, char** argv) {
+//   // Step1: Define the exclusive flags.
+//   DEFINE_xxx(...);
+//
+//   // Step2: Define the common flags and the routine description.
+//   COMMON_V2_ROUTINE_FLAGS("...");
+//
+//   // Step3: Create the routine argument and configure it.
+//   auto argument = mojom::${routine}RoutineArgument::New();
+//   ...
+//
+//   // Step4: Put the common part at the end.
+//   COMMON_V2_ROUTINE_MAIN(${routine});
+// }
 
 int AudioDriverMain(int argc, char** argv) {
-  COMMON_V2_ROUTINE_FLAGS
-  brillo::FlagHelper::Init(argc, argv, "Audio driver routine");
+  COMMON_V2_ROUTINE_FLAGS("Audio driver routine");
 
-  return RunV2Routine(mojom::RoutineArgument::NewAudioDriver(
-                          mojom::AudioDriverRoutineArgument::New()),
-                      FLAGS_single_line_json);
+  auto argument = mojom::AudioDriverRoutineArgument::New();
+
+  COMMON_V2_ROUTINE_MAIN(AudioDriver);
 }
 
 int MemoryV2Main(int argc, char** argv) {
-  COMMON_V2_ROUTINE_FLAGS
   DEFINE_uint32(max_testing_mem_kib, std::numeric_limits<uint32_t>::max(),
                 "Number of kib to run the memory test for.");
-  brillo::FlagHelper::Init(argc, argv, "Memory v2 routine");
+  COMMON_V2_ROUTINE_FLAGS("Memory v2 routine");
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   auto argument = mojom::MemoryRoutineArgument::New();
@@ -146,38 +192,34 @@ int MemoryV2Main(int argc, char** argv) {
     argument->max_testing_mem_kib = FLAGS_max_testing_mem_kib;
   }
 
-  return RunV2Routine(mojom::RoutineArgument::NewMemory(std::move(argument)),
-                      FLAGS_single_line_json);
+  COMMON_V2_ROUTINE_MAIN(Memory);
 }
 
 int CpuStressV2Main(int argc, char** argv) {
-  COMMON_V2_ROUTINE_FLAGS
   DEFINE_uint32(length_seconds, 0, "Number of seconds to run.");
-  brillo::FlagHelper::Init(argc, argv, "Cpu stress v2 routine");
+  COMMON_V2_ROUTINE_FLAGS("Cpu stress v2 routine")
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   auto argument = mojom::CpuStressRoutineArgument::New();
   if (command_line->HasSwitch("length_seconds")) {
     argument->exec_duration = base::Seconds(FLAGS_length_seconds);
   }
-  return RunV2Routine(mojom::RoutineArgument::NewCpuStress(std::move(argument)),
-                      FLAGS_single_line_json);
+
+  COMMON_V2_ROUTINE_MAIN(CpuStress);
 }
 
 int UfsLifetimeMain(int argc, char** argv) {
-  COMMON_V2_ROUTINE_FLAGS
-  brillo::FlagHelper::Init(argc, argv, "Ufs lifetime routine");
+  COMMON_V2_ROUTINE_FLAGS("Ufs lifetime routine");
 
-  return RunV2Routine(mojom::RoutineArgument::NewUfsLifetime(
-                          mojom::UfsLifetimeRoutineArgument::New()),
-                      FLAGS_single_line_json);
+  auto argument = mojom::UfsLifetimeRoutineArgument::New();
+
+  COMMON_V2_ROUTINE_MAIN(UfsLifetime);
 }
 
 int CpuCacheV2Main(int argc, char** argv) {
-  COMMON_V2_ROUTINE_FLAGS
   DEFINE_uint32(length_seconds, 10,
                 "Number of seconds to run the routine for.");
-  brillo::FlagHelper::Init(argc, argv, "Cpu cache V2 routine");
+  COMMON_V2_ROUTINE_FLAGS("Cpu cache V2 routine");
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   auto argument = mojom::CpuCacheRoutineArgument::New();
@@ -185,8 +227,7 @@ int CpuCacheV2Main(int argc, char** argv) {
     argument->exec_duration = base::Seconds(FLAGS_length_seconds);
   }
 
-  return RunV2Routine(mojom::RoutineArgument::NewCpuCache(std::move(argument)),
-                      FLAGS_single_line_json);
+  COMMON_V2_ROUTINE_MAIN(CpuCache);
 }
 
 #define COMMON_LEGACY_ROUTINE_FLAGS                                            \

@@ -529,4 +529,27 @@ void OutputSingleLineJson(const base::Value::Dict& output) {
   std::cout << json << std::endl;
 }
 
+void OutputSupportStatus(const mojom::SupportStatusPtr status) {
+  base::Value::Dict output;
+
+  switch (status->which()) {
+    case mojom::SupportStatus::Tag::kUnmappedUnionField:
+      LOG(FATAL) << "Got mojom::SupportStatus::Tag::kUnmappedUnionField";
+      break;
+    case mojom::SupportStatus::Tag::kException:
+      output.Set("status", "Exception");
+      output.Set("debug_message", status->get_exception()->debug_message);
+      break;
+    case mojom::SupportStatus::Tag::kSupported:
+      output.Set("status", "Supported");
+      break;
+    case mojom::SupportStatus::Tag::kUnsupported:
+      output.Set("status", "Not supported");
+      output.Set("debug_message", status->get_unsupported()->debug_message);
+      break;
+  }
+
+  OutputJson(output);
+}
+
 }  // namespace diagnostics
