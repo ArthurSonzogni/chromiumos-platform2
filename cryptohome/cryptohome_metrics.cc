@@ -957,11 +957,13 @@ void ReportBackupKeysetCleanupSucessWithType(AuthFactorType auth_factor_type) {
   if (auth_factor_type == AuthFactorType::kPassword) {
     ReportBackupKeysetCleanupResult(
         BackupKeysetCleanupResult::kRemovedBackupPassword);
+    return;
   }
 
   if (auth_factor_type == AuthFactorType::kPin) {
     ReportBackupKeysetCleanupResult(
         BackupKeysetCleanupResult::kRemovedBackupPin);
+    return;
   }
 
   ReportBackupKeysetCleanupResult(
