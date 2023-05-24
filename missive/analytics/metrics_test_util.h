@@ -40,7 +40,8 @@ class Metrics::TestEnvironment {
   static void CleanUpMock();
 
   // Get the mock metrics library instance for test.
-  static MetricsLibraryMock& GetMockMetricsLibrary();
+  // NiceMock to allow silent default actions.
+  static ::testing::NiceMock<MetricsLibraryMock>& GetMockMetricsLibrary();
 
  private:
   // Pointers to the two methods that access hidden variables in metrics.cc.

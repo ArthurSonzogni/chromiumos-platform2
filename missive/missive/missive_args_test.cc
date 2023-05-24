@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <base/time/time.h>
 #include <base/time/time_delta_from_string.h>
 #include <base/test/task_environment.h>
@@ -13,23 +15,49 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "base/functional/bind.h"
-#include "base/functional/callback_forward.h"
+#include "missive/analytics/metrics_test_util.h"
+#include "missive/analytics/resource_collector_cpu.h"
+#include "missive/analytics/resource_collector_memory.h"
+#include "missive/analytics/resource_collector_storage.h"
 #include "missive/dbus/dbus_test_environment.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
 
+using ::testing::_;
 using ::testing::Eq;
+using ::testing::Return;
+using ::testing::StrEq;
 
 namespace reporting {
-namespace {
 
 class MissiveArgsTest : public ::testing::Test {
  protected:
+  void SetUp() override {
+    // Ignore collector UMA
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendToUMA(
+                /*name=*/analytics::ResourceCollectorStorage::kUmaName,
+                /*sample=*/_,
+                /*min=*/analytics::ResourceCollectorStorage::kMin,
+                /*max=*/analytics::ResourceCollectorStorage::kMax,
+                /*nbuckets=*/
+                analytics::ResourceCollectorStorage::kUmaNumberOfBuckets))
+        .WillByDefault(Return(true));
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendPercentageToUMA(
+                /*name=*/analytics::ResourceCollectorCpu::kUmaName,
+                /*sample=*/_))
+        .WillByDefault(Return(true));
+  }
+
   base::test::TaskEnvironment task_environment_;
   test::DBusTestEnvironment dbus_test_environment_;
   feature::FakePlatformFeatures* fake_platform_features_;
+
+  // Use the metrics test environment to prevent the real metrics from
+  // initializing.
+  analytics::Metrics::TestEnvironment metrics_test_environment_;
 };
 
 TEST_F(MissiveArgsTest, DefaultCollectionValues) {
@@ -368,5 +396,4 @@ TEST_F(MissiveArgsTest, ListeningForStorageValuesUpdate) {
     ASSERT_FALSE(storage.legacy_storage_enabled);
   }
 }
-}  // namespace
 }  // namespace reporting

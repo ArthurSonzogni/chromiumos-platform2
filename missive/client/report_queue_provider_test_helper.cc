@@ -4,16 +4,15 @@
 
 #include "missive/client/report_queue_provider_test_helper.h"
 
+#include "missive/analytics/metrics_test_util.h"
 #include "missive/client/mock_report_queue_provider.h"
 #include "missive/client/report_queue_nonchrome_provider.h"
 #include "missive/client/report_queue_provider.h"
 
-namespace reporting {
-namespace report_queue_provider_test_helper {
+namespace reporting::report_queue_provider_test_helper {
 
 void SetForTesting(MockReportQueueProvider* provider) {
   NonChromeReportQueueProvider::GetInstance()->SetForTesting(provider);
 }
 
-}  // namespace report_queue_provider_test_helper
-}  // namespace reporting
+}  // namespace reporting::report_queue_provider_test_helper

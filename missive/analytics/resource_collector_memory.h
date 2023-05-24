@@ -25,7 +25,7 @@ class ResourceCollectorMemory : public ResourceCollector {
   // |Storage| instance.
   ResourceCollectorMemory(base::TimeDelta interval,
                           scoped_refptr<ResourceManager> memory_resource);
-  virtual ~ResourceCollectorMemory();
+  ~ResourceCollectorMemory() override;
 
  private:
   friend class ResourceCollectorMemoryTest;

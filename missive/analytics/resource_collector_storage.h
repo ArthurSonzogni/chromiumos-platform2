@@ -13,15 +13,23 @@
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>
 
-namespace reporting::analytics {
+namespace reporting {
+
+// Forward declarations for `friend class` directives.
+class MissiveArgsTest;
+class MissiveImplTest;
+
+namespace analytics {
 
 class ResourceCollectorStorage : public ResourceCollector {
  public:
   ResourceCollectorStorage(base::TimeDelta interval,
                            const base::FilePath& storage_directory);
-  virtual ~ResourceCollectorStorage();
+  ~ResourceCollectorStorage() override;
 
  private:
+  friend class ::reporting::MissiveArgsTest;
+  friend class ::reporting::MissiveImplTest;
   friend class ResourceCollectorStorageTest;
   FRIEND_TEST(ResourceCollectorStorageTest, SuccessfullySend);
 
@@ -51,6 +59,7 @@ class ResourceCollectorStorage : public ResourceCollector {
   const base::FilePath storage_directory_;
 };
 
-}  // namespace reporting::analytics
+}  // namespace analytics
+}  // namespace reporting
 
 #endif  // MISSIVE_ANALYTICS_RESOURCE_COLLECTOR_STORAGE_H_

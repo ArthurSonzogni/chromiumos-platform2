@@ -17,16 +17,24 @@
 #include "missive/analytics/resource_collector.h"
 #include "missive/util/statusor.h"
 
-namespace reporting::analytics {
+namespace reporting {
+
+// Forward declarations for `friend class` directives.
+class MissiveArgsTest;
+class MissiveImplTest;
+
+namespace analytics {
 
 class ResourceCollectorCpu : public ResourceCollector {
  public:
   explicit ResourceCollectorCpu(base::TimeDelta interval);
   ResourceCollectorCpu(const ResourceCollectorCpu&) = delete;
   ResourceCollectorCpu& operator=(const ResourceCollectorCpu&) = delete;
-  virtual ~ResourceCollectorCpu();
+  ~ResourceCollectorCpu() override;
 
  private:
+  friend class ::reporting::MissiveArgsTest;
+  friend class ::reporting::MissiveImplTest;
   friend class ResourceCollectorCpuTest;
   friend class ResourceCollectorCpuTestWithCpuPercentageParams;
   FRIEND_TEST(ResourceCollectorCpuTest, SuccessfullySendRealCpu);
@@ -74,6 +82,7 @@ class ResourceCollectorCpu : public ResourceCollector {
       std::make_unique<CpuUsageTallier>()};
 };
 
-}  // namespace reporting::analytics
+}  // namespace analytics
+}  // namespace reporting
 
 #endif  // MISSIVE_ANALYTICS_RESOURCE_COLLECTOR_CPU_H_

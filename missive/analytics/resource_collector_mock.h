@@ -18,7 +18,7 @@ namespace reporting::analytics {
 class ResourceCollectorMock : public ResourceCollector {
  public:
   explicit ResourceCollectorMock(base::TimeDelta interval);
-  virtual ~ResourceCollectorMock();
+  ~ResourceCollectorMock() override;
 
   // Collect storage usage.
   MOCK_METHOD(void, Collect, (), (override));

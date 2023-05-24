@@ -37,7 +37,7 @@ void Metrics::TestEnvironment::InitializeMock() {
   GetMetricsTaskRunner() = base::SequencedTaskRunner::GetCurrentDefault();
   // Safe to modify GetMetricsLibrary here because it is attached to the current
   // thread.
-  GetMetricsLibrary() = new MetricsLibraryMock();
+  GetMetricsLibrary() = new ::testing::NiceMock<MetricsLibraryMock>();
 }
 
 // static
@@ -65,7 +65,9 @@ void Metrics::TestEnvironment::CleanUpMock() {
 }
 
 // static
-MetricsLibraryMock& Metrics::TestEnvironment::GetMockMetricsLibrary() {
-  return *static_cast<MetricsLibraryMock*>(GetMetricsLibrary());
+::testing::NiceMock<MetricsLibraryMock>&
+Metrics::TestEnvironment::GetMockMetricsLibrary() {
+  return *static_cast<::testing::NiceMock<MetricsLibraryMock>*>(
+      GetMetricsLibrary());
 }
 }  // namespace reporting::analytics

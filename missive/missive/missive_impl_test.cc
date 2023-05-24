@@ -27,6 +27,7 @@
 #include "missive/dbus/dbus_test_environment.h"
 #include "missive/dbus/mock_upload_client.h"
 #include "missive/encryption/test_encryption_module.h"
+#include "missive/missive/migration.h"
 #include "missive/storage/storage_module.h"
 #include "missive/util/status.h"
 #include "missive/util/test_support_callbacks.h"
@@ -77,6 +78,23 @@ class MissiveImplTest : public ::testing::Test {
 
  protected:
   void SetUp() override {
+    // Migration is expected to fail in the test.
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendEnumToUMA(kMigrationStatusUmaName, _,
+                          static_cast<int>(MigrationStatusForUma::kMaxValue)))
+        .WillByDefault(Return(true));
+
+    // Ignore collector UMA
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendToUMA(
+                /*name=*/analytics::ResourceCollectorStorage::kUmaName,
+                /*sample=*/_,
+                /*min=*/analytics::ResourceCollectorStorage::kMin,
+                /*max=*/analytics::ResourceCollectorStorage::kMax,
+                /*nbuckets=*/
+                analytics::ResourceCollectorStorage::kUmaNumberOfBuckets))
+        .WillByDefault(Return(true));
+
     missive_ = std::make_unique<MissiveImpl>(
         base::BindOnce(
             [](MissiveImplTest* self, scoped_refptr<dbus::Bus> bus,
