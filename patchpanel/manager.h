@@ -195,12 +195,12 @@ class Manager {
   // found.
   void OnLifelineFdClosed(int client_fd);
 
-  void StartForwarding(const std::string& ifname_physical,
+  void StartForwarding(const ShillClient::Device& shill_device,
                        const std::string& ifname_virtual,
                        const ForwardingSet& fs = {.ipv6 = true,
                                                   .multicast = true},
                        const std::optional<int>& mtu = std::nullopt);
-  void StopForwarding(const std::string& ifname_physical,
+  void StopForwarding(const ShillClient::Device& shill_device,
                       const std::string& ifname_virtual,
                       const ForwardingSet& fs = {.ipv6 = true,
                                                  .multicast = true});
