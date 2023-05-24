@@ -113,11 +113,6 @@ class AuthBlockUtility {
       const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
       brillo::SecureBlob* out_recovery_request,
       brillo::SecureBlob* out_ephemeral_pub_key) const = 0;
-
-  // Returns if the auth_input has valid fields to generate a
-  // KeyChallengeService.
-  virtual bool IsChallengeCredentialReady(
-      const AuthInput& auth_input) const = 0;
 };
 
 }  // namespace cryptohome

@@ -76,7 +76,7 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(
       challenge_credentials_helper_(challenge_credentials_helper),
       key_challenge_service_factory_(key_challenge_service_factory),
       bio_service_(bio_service) {
-  DCHECK(keyset_management);
+  DCHECK(keyset_management_);
   DCHECK(crypto_);
   DCHECK(platform_);
   DCHECK(features_);
@@ -244,14 +244,6 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(AuthBlockType auth_block_type,
         CryptoError::CE_OTHER_CRYPTO);
   }
   return auth_block;
-}
-
-bool AuthBlockUtilityImpl::IsChallengeCredentialReady(
-    const AuthInput& auth_input) const {
-  return (
-      challenge_credentials_helper_ && key_challenge_service_factory_ &&
-      auth_input.challenge_credential_auth_input &&
-      !auth_input.challenge_credential_auth_input->dbus_service_name.empty());
 }
 
 bool AuthBlockUtilityImpl::GetAuthBlockStateFromVaultKeyset(

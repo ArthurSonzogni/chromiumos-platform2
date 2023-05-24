@@ -99,8 +99,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       brillo::SecureBlob* out_recovery_request,
       brillo::SecureBlob* out_ephemeral_pub_key) const override;
 
-  bool IsChallengeCredentialReady(const AuthInput& auth_input) const override;
-
   // Factory function to construct an auth block of the given type.
   CryptoStatusOr<std::unique_ptr<AuthBlock>> GetAuthBlockWithType(
       AuthBlockType auth_block_type, const AuthInput& auth_input);

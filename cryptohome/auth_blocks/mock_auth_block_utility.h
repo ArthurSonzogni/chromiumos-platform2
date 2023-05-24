@@ -83,10 +83,6 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                brillo::SecureBlob* out_recovery_request,
                brillo::SecureBlob* out_ephemeral_pub_key),
               (const, override));
-  MOCK_METHOD(bool,
-              IsChallengeCredentialReady,
-              (const AuthInput& auth_input),
-              (const, override));
 };
 
 }  // namespace cryptohome
