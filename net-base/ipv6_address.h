@@ -22,7 +22,7 @@ namespace net_base {
 class NET_BASE_EXPORT IPv6Address {
  public:
   // The length in bytes of addresses.
-  static constexpr size_t kAddressLength = sizeof(in6_addr);
+  static constexpr size_t kAddressLength = sizeof(struct in6_addr);
   // The type of the internal address data. The address is stored in network
   // order (i.e. big endian).
   using DataType = std::array<uint8_t, kAddressLength>;
@@ -49,6 +49,7 @@ class NET_BASE_EXPORT IPv6Address {
   IPv6Address();
 
   explicit IPv6Address(const DataType& data);
+  explicit IPv6Address(const struct in6_addr& addr);
 
   // Returns true if the address is "::".
   bool IsZero() const;
@@ -63,6 +64,9 @@ class NET_BASE_EXPORT IPv6Address {
 
   // Returns the address in byte, stored in network order (i.e. big endian).
   std::string ToByteString() const;
+
+  // Returns the address in the in6_addr type.
+  struct in6_addr ToIn6Addr() const;
 
   // Returns the address in the IPv6 network address format.
   std::string ToString() const;

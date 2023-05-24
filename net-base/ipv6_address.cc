@@ -29,6 +29,10 @@ std::optional<IPv6Address> IPv6Address::CreateFromBytes(const uint8_t* bytes,
 }
 
 IPv6Address::IPv6Address() : data_(DataType{}) {}
+IPv6Address::IPv6Address(const struct in6_addr& addr) {
+  std::copy_n(reinterpret_cast<const uint8_t*>(&addr), kAddressLength,
+              data_.begin());
+}
 IPv6Address::IPv6Address(const DataType& data) : data_(data) {}
 
 bool IPv6Address::IsZero() const {
@@ -50,6 +54,12 @@ bool IPv6Address::operator<(const IPv6Address& rhs) const {
 
 std::string IPv6Address::ToByteString() const {
   return {reinterpret_cast<const char*>(data_.data()), kAddressLength};
+}
+
+struct in6_addr IPv6Address::ToIn6Addr() const {
+  struct in6_addr ret;
+  memcpy(&ret, data_.data(), kAddressLength);
+  return ret;
 }
 
 std::string IPv6Address::ToString() const {

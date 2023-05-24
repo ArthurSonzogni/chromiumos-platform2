@@ -67,6 +67,17 @@ TEST(IPv6AddressTest, ToByteString) {
   EXPECT_EQ(address.ToByteString(), expected);
 }
 
+TEST(IPv4Address, In6Addr) {
+  const struct in6_addr expected_addr = {
+      {{0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1a, 0xa9, 0x05, 0xff,
+        0x7e, 0xbf, 0x14, 0xc5}}};
+  const auto ipv6_addr = IPv6Address(expected_addr);
+  EXPECT_EQ(ipv6_addr.ToString(), "fe80::1aa9:5ff:7ebf:14c5");
+
+  const auto addr = ipv6_addr.ToIn6Addr();
+  EXPECT_EQ(memcmp(&addr, &expected_addr, sizeof(addr)), 0);
+}
+
 TEST(IPv6AddressTest, CreateFromBytes) {
   const auto expected = IPv6Address(kGoodData);
   EXPECT_EQ(*IPv6Address::CreateFromBytes(kGoodData.data(), kGoodData.size()),
