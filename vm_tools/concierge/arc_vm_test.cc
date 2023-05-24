@@ -822,6 +822,8 @@ TEST(ArcVmParamsTest, GetOemEtcSharedDataParam) {
 // Test fixture for actually testing the ArcVm functionality.
 class ArcVmTest : public ::testing::Test {
  protected:
+  static constexpr int64_t kGuestMemorySize = 1 << 30;  // 1GiB
+
   void SetUp() override {
     FakeCrosvmControl::Init();
 
@@ -831,7 +833,7 @@ class ArcVmTest : public ::testing::Test {
     // Allocate resources for the VM.
     uint32_t vsock_cid = vsock_cid_pool_.Allocate();
 
-    vmm_swap_tbw_policy_->SetTargetTbwPerDay(4096);
+    vmm_swap_tbw_policy_->SetTargetTbwPerDay(512 * MIB);
 
     // The following owned and destroyed by ArcVm class unique_ptr destructor.
     swap_policy_timer_ = new base::MockOneShotTimer();
@@ -843,6 +845,7 @@ class ArcVmTest : public ::testing::Test {
         .network_client = std::make_unique<patchpanel::FakeClient>(),
         .seneschal_server_proxy = nullptr,
         .vmm_swap_tbw_policy = vmm_swap_tbw_policy_,
+        .guest_memory_size = kGuestMemorySize,
         .runtime_dir = temp_dir_.GetPath(),
         .data_disk_path = base::FilePath("dummy"),
         .features = {},
@@ -899,6 +902,10 @@ class ArcVmTest : public ::testing::Test {
   void AddUsageLog(base::Time time, base::TimeDelta duration) {
     vm_->vmm_swap_usage_policy_.OnEnabled(time);
     vm_->vmm_swap_usage_policy_.OnDisabled(time + duration);
+  }
+
+  base::TimeDelta CalculateVmmSwapDurationTarget() {
+    return vm_->CalculateVmmSwapDurationTarget();
   }
 
  protected:
@@ -1080,6 +1087,19 @@ TEST_F(ArcVmTest, StopAggressiveBalloonReenableBalloonPolicy) {
   ASSERT_TRUE(vm_->GetBalloonPolicy(margins, "arcvm"));
 }
 
+TEST_F(ArcVmTest, CalculateVmmSwapDurationTarget) {
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(kGuestMemorySize);
+  EXPECT_EQ(CalculateVmmSwapDurationTarget(), base::Hours(24));
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(kGuestMemorySize / 2);
+  EXPECT_EQ(CalculateVmmSwapDurationTarget(), base::Hours(24) * 2);
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(0);
+  EXPECT_EQ(CalculateVmmSwapDurationTarget(), base::Days(28));
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(1);
+  EXPECT_EQ(CalculateVmmSwapDurationTarget(), base::Days(28));
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(((uint64_t)1) << 63);
+  EXPECT_EQ(CalculateVmmSwapDurationTarget(), base::Seconds(0));
+}
+
 TEST_F(ArcVmTest, EnableVmmSwap) {
   ASSERT_TRUE(EnableVmmSwap());
   ASSERT_TRUE(swap_policy_timer_->IsRunning());
@@ -1146,10 +1166,12 @@ TEST_F(ArcVmTest, EnableVmmSwapAgain24HoursAfterVmmSwapOut) {
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapAgainExceedsTbwTarget) {
-  vmm_swap_tbw_policy_->SetTargetTbwPerDay(base::GetPageSize());
+  const uint64_t target_size = 512 * MIB;
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(target_size);
   ASSERT_TRUE(EnableVmmSwap());
   swap_policy_timer_->Fire();
-  FakeCrosvmControl::Get()->vmm_swap_status_.metrics.staging_pages = 4;
+  FakeCrosvmControl::Get()->vmm_swap_status_.metrics.staging_pages =
+      4 * target_size / base::GetPageSize();
   FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
   swap_state_monitor_timer_->Fire();
   ProceedTimeAfterSwapOut(base::Hours(24));
@@ -1167,6 +1189,8 @@ TEST_F(ArcVmTest, EnableVmmSwapAgainExceedsTbwTarget) {
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapRejectedByUsagePolicy) {
+  // The usage prediction target is 2 days.
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(kGuestMemorySize / 2);
   // Invalidates the usage log.
   AddUsageLog(base::Time::Now() - base::Days(50), base::Seconds(1));
   AddUsageLog(base::Time::Now() - base::Days(28) - base::Hours(1),
@@ -1182,7 +1206,27 @@ TEST_F(ArcVmTest, EnableVmmSwapRejectedByUsagePolicy) {
   ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
 }
 
+TEST_F(ArcVmTest, EnableVmmSwapRejectedByUsagePolicy4DaysTarget) {
+  // The usage prediction target is 4 days.
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(kGuestMemorySize / 4);
+  // Invalidates the usage log.
+  AddUsageLog(base::Time::Now() - base::Days(50), base::Seconds(1));
+  AddUsageLog(base::Time::Now() - base::Days(28) - base::Hours(1),
+              base::Days(4));
+  AddUsageLog(base::Time::Now() - base::Days(21) - base::Hours(1),
+              base::Days(4));
+  AddUsageLog(base::Time::Now() - base::Days(14) - base::Hours(1),
+              base::Days(4));
+  AddUsageLog(base::Time::Now() - base::Days(7) - base::Hours(1),
+              base::Days(4));
+  FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
+  ASSERT_FALSE(EnableVmmSwap());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
+}
+
 TEST_F(ArcVmTest, EnableVmmSwapPassUsagePolicy) {
+  // The usage prediction target is 2 days.
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(kGuestMemorySize / 2);
   // Invalidates the usage log.
   AddUsageLog(base::Time::Now() - base::Days(50), base::Seconds(1));
   AddUsageLog(base::Time::Now() - base::Days(28) - base::Hours(1),
@@ -1194,6 +1238,39 @@ TEST_F(ArcVmTest, EnableVmmSwapPassUsagePolicy) {
   AddUsageLog(base::Time::Now() - base::Days(7) - base::Hours(1),
               base::Days(2) + base::Hours(2));
   ASSERT_TRUE(EnableVmmSwap());
+}
+
+TEST_F(ArcVmTest, EnableVmmSwapPassUsagePolicy4DaysTarget) {
+  // The usage prediction target is 4 days.
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(kGuestMemorySize / 4);
+  // Invalidates the usage log.
+  AddUsageLog(base::Time::Now() - base::Days(50), base::Seconds(1));
+  AddUsageLog(base::Time::Now() - base::Days(28) - base::Hours(1),
+              base::Days(4) + base::Hours(2));
+  AddUsageLog(base::Time::Now() - base::Days(21) - base::Hours(1),
+              base::Days(4) + base::Hours(2));
+  AddUsageLog(base::Time::Now() - base::Days(14) - base::Hours(1),
+              base::Days(4) + base::Hours(2));
+  AddUsageLog(base::Time::Now() - base::Days(7) - base::Hours(1),
+              base::Days(4) + base::Hours(2));
+  ASSERT_TRUE(EnableVmmSwap());
+}
+
+TEST_F(ArcVmTest, EnableVmmSwapZeroTbwTarget) {
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(0);
+  FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
+  // No exception
+  EXPECT_FALSE(EnableVmmSwap());
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
+}
+
+TEST_F(ArcVmTest, EnableVmmSwapSmallTbwTarget) {
+  // When the target is smaller than 1MiB.
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(1);
+  FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
+  // No exception
+  EXPECT_FALSE(EnableVmmSwap());
+  EXPECT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
 }
 
 TEST_F(ArcVmTest, MonitorSwapStateChangeStillTrimInProgress) {
@@ -1238,10 +1315,12 @@ TEST_F(ArcVmTest, ForceEnableVmmSwapFail) {
 }
 
 TEST_F(ArcVmTest, ForceEnableVmmSwapAgainExceedsTbwTarget) {
-  vmm_swap_tbw_policy_->SetTargetTbwPerDay(base::GetPageSize());
+  const uint64_t target_size = 512 * MIB;
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(target_size);
   ASSERT_TRUE(EnableVmmSwap());
   swap_policy_timer_->Fire();
-  FakeCrosvmControl::Get()->vmm_swap_status_.metrics.staging_pages = 4;
+  FakeCrosvmControl::Get()->vmm_swap_status_.metrics.staging_pages =
+      4 * target_size / base::GetPageSize();
   FakeCrosvmControl::Get()->vmm_swap_status_.state = SwapState::PENDING;
   swap_state_monitor_timer_->Fire();
   ASSERT_TRUE(ForceEnableVmmSwap());

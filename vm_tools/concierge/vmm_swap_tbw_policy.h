@@ -48,6 +48,8 @@ class VmmSwapTbwPolicy final {
 
   // Set the target tbw per day.
   void SetTargetTbwPerDay(uint64_t target_tbw_per_day);
+  // Get the target tbw per day.
+  uint64_t GetTargetTbwPerDay();
 
   // Restore the tbw history from the history file.
   //

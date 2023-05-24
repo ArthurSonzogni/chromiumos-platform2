@@ -18,6 +18,7 @@
 #include "vm_tools/common/naming.h"
 #include "vm_tools/common/pstore.h"
 #include "vm_tools/concierge/arc_vm.h"
+#include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/shared_data.h"
 #include "vm_tools/concierge/vm_util.h"
@@ -556,12 +557,9 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
-  const uint32_t memory_mib = request.memory_mib();
-  if (memory_mib > 0) {
-    vm_builder.SetMemory(std::to_string(memory_mib));
-  } else {
-    vm_builder.SetMemory(std::to_string(GetVmMemoryMiB()));
-  }
+  const int64_t memory_mib =
+      request.memory_mib() > 0 ? request.memory_mib() : GetVmMemoryMiB();
+  vm_builder.SetMemory(std::to_string(memory_mib));
 
   /* Enable THP if the VM has at least 7G of memory */
   if (base::SysInfo::AmountOfPhysicalMemoryMB() >= 7 * 1024) {
@@ -578,6 +576,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
                     .network_client = std::move(network_client),
                     .seneschal_server_proxy = std::move(server_proxy),
                     .vmm_swap_tbw_policy = vmm_swap_tbw_policy_,
+                    .guest_memory_size = memory_mib * MIB,
                     .runtime_dir = std::move(runtime_dir),
                     .data_disk_path = std::move(data_disk_path),
                     .features = features,

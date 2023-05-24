@@ -76,6 +76,9 @@ class ArcVm final : public VmBaseImpl {
     std::unique_ptr<patchpanel::Client> network_client;
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
     std::shared_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy;
+    // `guest_memory_size` is the size of the guest memory in bytes which is
+    // specified in VmBuilder.
+    int64_t guest_memory_size;
     base::FilePath runtime_dir;
     base::FilePath data_disk_path;
     ArcVmFeatures features;
@@ -200,6 +203,7 @@ class ArcVm final : public VmBaseImpl {
   // Handlers for aggressive balloon
   void InflateAggressiveBalloonOnTimer();
 
+  base::TimeDelta CalculateVmmSwapDurationTarget() const;
   void HandleSwapVmEnableRequest(SwapVmResponse& response);
   void HandleSwapVmForceEnableRequest(SwapVmResponse& response);
   void HandleSwapVmDisableRequest(SwapVmResponse& response);
@@ -265,6 +269,7 @@ class ArcVm final : public VmBaseImpl {
   VmmSwapUsagePolicy vmm_swap_usage_policy_
       GUARDED_BY_CONTEXT(sequence_checker_);
   bool skip_tbw_management_ = false;
+  const int64_t guest_memory_size_;
 
   uint64_t aggressive_balloon_target_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
   AggressiveBalloonCallback aggressive_balloon_callback_

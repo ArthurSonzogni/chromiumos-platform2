@@ -56,6 +56,11 @@ void VmmSwapTbwPolicy::SetTargetTbwPerDay(uint64_t target_tbw_per_day) {
   target_tbw_per_day_ = target_tbw_per_day;
 }
 
+uint64_t VmmSwapTbwPolicy::GetTargetTbwPerDay() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return target_tbw_per_day_;
+}
+
 bool VmmSwapTbwPolicy::Init(base::FilePath path, base::Time now) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (history_file_.IsValid()) {

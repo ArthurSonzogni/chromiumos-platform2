@@ -277,6 +277,7 @@ ArcVm::ArcVm(Config config)
       swap_policy_timer_(std::move(config.swap_policy_timer)),
       swap_state_monitor_timer_(std::move(config.swap_state_monitor_timer)),
       vmm_swap_tbw_policy_(std::move(config.vmm_swap_tbw_policy)),
+      guest_memory_size_(config.guest_memory_size),
       aggressive_balloon_timer_(std::move(config.aggressive_balloon_timer)) {}
 
 ArcVm::~ArcVm() {
@@ -1086,6 +1087,24 @@ void ArcVm::InflateAggressiveBalloonOnTimer() {
   }
 }
 
+base::TimeDelta ArcVm::CalculateVmmSwapDurationTarget() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  double tbw_target_per_day =
+      static_cast<double>(vmm_swap_tbw_policy_->GetTargetTbwPerDay());
+  if (tbw_target_per_day <= 0) {
+    return base::Days(28);
+  }
+  double factor = static_cast<double>(guest_memory_size_) / tbw_target_per_day;
+  if (factor < 0) {
+    LOG(ERROR) << "VmmSwapDurationTarget is negative: factor:" << factor;
+    return base::TimeDelta::FiniteMax();
+  } else if (factor > 28) {
+    return base::Days(28);
+  }
+  double target_seconds = factor * base::Hours(24).InSecondsF();
+  return base::Seconds(static_cast<int64_t>(target_seconds));
+}
+
 void ArcVm::HandleSwapVmEnableRequest(SwapVmResponse& response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   bool satisfies_policy = true;
@@ -1101,13 +1120,16 @@ void ArcVm::HandleSwapVmEnableRequest(SwapVmResponse& response) {
           "Requires cooling down period after last vmm-swap out");
     }
   } else {
+    base::TimeDelta min_vmm_swap_duration_target =
+        CalculateVmmSwapDurationTarget();
     base::TimeDelta next_disable_duration =
         vmm_swap_usage_policy_.PredictDuration();
-    // TODO(b/265386289): Set duration target dynamically
-    if (!skip_tbw_management_ && next_disable_duration < base::Days(2)) {
+    if (!skip_tbw_management_ &&
+        next_disable_duration < min_vmm_swap_duration_target) {
       LOG(INFO) << "Enabling vmm-swap is rejected by usage prediction. "
                    "Predict duration: "
-                << next_disable_duration << " should be longer than 2 days";
+                << next_disable_duration << " should be longer than "
+                << min_vmm_swap_duration_target;
       satisfies_policy = false;
       response.set_success(false);
       response.set_failure_reason("Predicted disable soon");
