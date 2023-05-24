@@ -15,6 +15,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/logging.h>
 
+#include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/delegate/utils/libevdev_wrapper_impl.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
@@ -97,7 +98,7 @@ EvdevUtil::EvdevUtil(std::unique_ptr<Delegate> delegate,
 EvdevUtil::~EvdevUtil() = default;
 
 void EvdevUtil::Initialize(LibevdevWrapperFactoryMethod factory_method) {
-  base::FileEnumerator file_enum(base::FilePath(kDevInputPath),
+  base::FileEnumerator file_enum(GetRootedPath(kDevInputPath),
                                  /*recursive=*/false,
                                  base::FileEnumerator::FILES);
   for (auto path = file_enum.Next(); !path.empty(); path = file_enum.Next()) {
