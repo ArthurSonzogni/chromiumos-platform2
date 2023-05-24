@@ -392,8 +392,8 @@ bool ArcService::Start(uint32_t id) {
   LOG(INFO) << "Started ARC management Device " << *arc_device_.get();
 
   // Start already known shill <-> ARC mapped devices.
-  for (const auto& [ifname, type] : shill_devices_)
-    AddDevice(ifname, type);
+  for (const auto& [_, shill_device] : shill_devices_)
+    AddDevice(shill_device);
 
   // Enable conntrack helpers needed for processing through SNAT the IPv4 GRE
   // packets sent by Android PPTP client (b/172214190).
@@ -430,8 +430,8 @@ void ArcService::Stop(uint32_t id) {
   // Make a copy of |shill_devices_| to avoid invalidating any iterator over
   // |shill_devices_| while removing device from it and resetting it afterwards.
   auto shill_devices = shill_devices_;
-  for (const auto& [ifname, _] : shill_devices) {
-    RemoveDevice(ifname);
+  for (const auto& [_, shill_device] : shill_devices) {
+    RemoveDevice(shill_device);
   }
   shill_devices_ = shill_devices;
 
@@ -459,25 +459,26 @@ void ArcService::Stop(uint32_t id) {
   RecordEvent(metrics_, ArcServiceUmaEvent::kStopSuccess);
 }
 
-void ArcService::AddDevice(const std::string& ifname,
-                           ShillClient::Device::Type type) {
-  shill_devices_[ifname] = type;
+void ArcService::AddDevice(const ShillClient::Device& shill_device) {
+  shill_devices_[shill_device.ifname] = shill_device;
   if (!IsStarted())
     return;
 
-  if (ifname.empty())
+  if (shill_device.ifname.empty())
     return;
 
   RecordEvent(metrics_, ArcServiceUmaEvent::kAddDevice);
 
-  if (devices_.find(ifname) != devices_.end()) {
-    LOG(DFATAL) << "Attemping to add already tracked shill Device: " << ifname;
+  if (devices_.find(shill_device.ifname) != devices_.end()) {
+    LOG(DFATAL) << "Attemping to add already tracked shill Device "
+                << shill_device;
     return;
   }
 
-  auto config = AcquireConfig(type);
+  auto config = AcquireConfig(shill_device.type);
   if (!config) {
-    LOG(ERROR) << "Cannot acquire a Config for " << ifname;
+    LOG(ERROR) << "Cannot acquire an ARC IPv4 config for shill Device "
+               << shill_device;
     return;
   }
 
@@ -486,11 +487,12 @@ void ArcService::AddDevice(const std::string& ifname,
   //  - ARC container: the veth interface created inside ARC has the same name
   //  as the physical interface that this ARC virtual device is attached to.
   //  - ARCVM: the interfaces created by virtio-net follow the pattern eth%d.
-  auto guest_ifname = ifname;
+  auto guest_ifname = shill_device.ifname;
   if (arc_type_ == ArcType::kVM) {
     const auto it = arcvm_guest_ifnames_.find(config->tap_ifname());
     if (it == arcvm_guest_ifnames_.end()) {
-      LOG(ERROR) << "Cannot acquire a ARCVM guest ifname for " << ifname;
+      LOG(ERROR) << "Cannot acquire a ARCVM guest ifname for shill Device "
+                 << shill_device;
     } else {
       guest_ifname = it->second;
     }
@@ -498,9 +500,9 @@ void ArcService::AddDevice(const std::string& ifname,
 
   auto device_type = arc_type_ == ArcType::kVM ? Device::Type::kARCVM
                                                : Device::Type::kARCContainer;
-  auto device =
-      std::make_unique<Device>(device_type, ifname, ArcBridgeName(ifname),
-                               guest_ifname, std::move(config));
+  auto device = std::make_unique<Device>(device_type, shill_device.ifname,
+                                         ArcBridgeName(shill_device.ifname),
+                                         guest_ifname, std::move(config));
   LOG(INFO) << "Starting ARC Device " << *device;
 
   // CreateFromAddressAndPrefix() is valid because 30 is a valid prefix.
@@ -554,24 +556,24 @@ void ArcService::AddDevice(const std::string& ifname,
     return;
   }
 
-  if (IsAdbAllowed(type) && !datapath_->AddAdbPortAccessRule(ifname)) {
+  if (IsAdbAllowed(shill_device.type) &&
+      !datapath_->AddAdbPortAccessRule(shill_device.ifname)) {
     LOG(ERROR) << "Failed to add ADB port access rule";
   }
 
   device_changed_handler_.Run(*device, Device::ChangeEvent::kAdded);
-  devices_.emplace(ifname, std::move(device));
+  devices_.emplace(shill_device.ifname, std::move(device));
   RecordEvent(metrics_, ArcServiceUmaEvent::kAddDeviceSuccess);
 }
 
-void ArcService::RemoveDevice(const std::string& ifname) {
-  ShillClient::Device::Type type = shill_devices_[ifname];
-  shill_devices_.erase(ifname);
+void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
+  shill_devices_.erase(shill_device.ifname);
   if (!IsStarted())
     return;
 
-  const auto it = devices_.find(ifname);
+  const auto it = devices_.find(shill_device.ifname);
   if (it == devices_.end()) {
-    LOG(WARNING) << "Unknown shill Device " << ifname;
+    LOG(WARNING) << "Unknown shill Device " << shill_device;
     return;
   }
 
@@ -590,12 +592,12 @@ void ArcService::RemoveDevice(const std::string& ifname) {
                                    device->config().guest_ipv4_addr());
   datapath_->RemoveBridge(device->host_ifname());
 
-  if (IsAdbAllowed(type))
-    datapath_->DeleteAdbPortAccessRule(ifname);
+  if (IsAdbAllowed(shill_device.type))
+    datapath_->DeleteAdbPortAccessRule(shill_device.ifname);
 
   // Once the upstream shill Device is gone it may not be possible to retrieve
   // the Device type from shill DBus interface by interface name.
-  ReleaseConfig(type, it->second->release_config());
+  ReleaseConfig(shill_device.type, it->second->release_config());
   devices_.erase(it);
 }
 

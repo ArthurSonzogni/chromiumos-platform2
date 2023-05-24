@@ -218,7 +218,7 @@ void Manager::OnShillDevicesChanged(
     StopForwarding(device.ifname, /*ifname_virtual=*/"");
     datapath_->StopConnectionPinning(device.ifname);
     datapath_->RemoveRedirectDnsRule(device.ifname);
-    arc_svc_->RemoveDevice(device.ifname);
+    arc_svc_->RemoveDevice(device);
     counters_svc_->OnPhysicalDeviceRemoved(device.ifname);
 
     // We have no good way to tell whether the removed Device was cellular now,
@@ -250,7 +250,7 @@ void Manager::OnShillDevicesChanged(
                                     device.ipconfig.ipv4_dns_addresses.front());
     }
 
-    arc_svc_->AddDevice(device.ifname, device.type);
+    arc_svc_->AddDevice(device);
 
     if (device.type == ShillClient::Device::Type::kCellular) {
       datapath_->StartSourceIPv6PrefixEnforcement(device.ifname);

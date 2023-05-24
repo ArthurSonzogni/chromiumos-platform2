@@ -60,11 +60,11 @@ class ArcService {
 
   // Build and configure the ARC datapath for the upstream network interface
   // |ifname| managed by Shill.
-  void AddDevice(const std::string& ifname, ShillClient::Device::Type type);
+  void AddDevice(const ShillClient::Device& shill_device);
 
   // Teardown the ARC datapath associated with the upstream network interface
   // |ifname|.
-  void RemoveDevice(const std::string& ifname);
+  void RemoveDevice(const ShillClient::Device& shill_device);
 
  private:
   // Creates ARC interface configurations for all available IPv4 subnets which
@@ -115,7 +115,7 @@ class ArcService {
   // The PID of the ARC container instance or the CID of ARCVM instance.
   uint32_t id_;
   // All shill Devices currently managed by shill, keyed by host interface name.
-  std::map<std::string, ShillClient::Device::Type> shill_devices_;
+  std::map<std::string, ShillClient::Device> shill_devices_;
 
   base::WeakPtrFactory<ArcService> weak_factory_{this};
 };
