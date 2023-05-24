@@ -152,13 +152,13 @@ int MemoryV2Main(int argc, char** argv) {
 
 int CpuStressV2Main(int argc, char** argv) {
   COMMON_V2_ROUTINE_FLAGS
-  DEFINE_uint32(cpu_stress_length_seconds, 0, "Number of seconds to run.");
+  DEFINE_uint32(length_seconds, 0, "Number of seconds to run.");
   brillo::FlagHelper::Init(argc, argv, "Cpu stress v2 routine");
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   auto argument = mojom::CpuStressRoutineArgument::New();
-  if (command_line->HasSwitch("cpu_stress_length_seconds")) {
-    argument->exec_duration = base::Seconds(FLAGS_cpu_stress_length_seconds);
+  if (command_line->HasSwitch("length_seconds")) {
+    argument->exec_duration = base::Seconds(FLAGS_length_seconds);
   }
   return RunV2Routine(mojom::RoutineArgument::NewCpuStress(std::move(argument)),
                       FLAGS_single_line_json);
