@@ -8,8 +8,6 @@
 #include <memory>
 
 #include <brillo/daemons/dbus_daemon.h>
-#include <mojo/core/embedder/scoped_ipc_support.h>
-#include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
 #include "printscanmgr/daemon/dbus_adaptor.h"
 
@@ -17,7 +15,7 @@ namespace printscanmgr {
 
 class Daemon final : public brillo::DBusServiceDaemon {
  public:
-  explicit Daemon(mojo::PlatformChannelEndpoint endpoint);
+  Daemon();
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
   ~Daemon() override;
@@ -27,8 +25,6 @@ class Daemon final : public brillo::DBusServiceDaemon {
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
  private:
-  // For mojo thread initialization.
-  mojo::core::ScopedIPCSupport ipc_support_;
   std::unique_ptr<DbusAdaptor> dbus_adaptor_;
 };
 

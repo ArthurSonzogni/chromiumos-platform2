@@ -5,13 +5,10 @@
 #include <unistd.h>
 
 #include <cstdlib>
-#include <utility>
 
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
-#include <mojo/core/embedder/embedder.h>
-#include <mojo/public/cpp/platform/platform_channel.h>
 
 #include "printscanmgr/daemon/daemon.h"
 #include "printscanmgr/executor/executor.h"
@@ -19,16 +16,6 @@
 
 int main(int arg, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-
-  // Init the Mojo Embedder API here, since both the executor and printscanmgr
-  // use it.
-  mojo::core::Init();
-
-  // The parent and child processes will each keep one end of this message pipe
-  // and use it to bootstrap a Mojo connection to each other.
-  mojo::PlatformChannel channel;
-  auto printscanmgr_endpoint = channel.TakeLocalEndpoint();
-  auto executor_endpoint = channel.TakeRemoteEndpoint();
 
   // The root-level parent process will continue on as the executor, and the
   // child will become the sandboxed printscanmgr daemon.
@@ -44,14 +31,12 @@ int main(int arg, char** argv) {
 
     printscanmgr::EnterExecutorMinijail();
 
-    printscanmgr_endpoint.reset();
-    return printscanmgr::Executor(std::move(executor_endpoint)).Run();
+    return printscanmgr::Executor().Run();
   }
 
   LOG(INFO) << "Starting printscanmgr daemon.";
 
   printscanmgr::EnterDaemonMinijail();
 
-  executor_endpoint.reset();
-  return printscanmgr::Daemon(std::move(printscanmgr_endpoint)).Run();
+  return printscanmgr::Daemon().Run();
 }

@@ -26,7 +26,6 @@ pkg_config("printscanmgr_pkg_deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
-    "libmojo",
   ]
 }
 

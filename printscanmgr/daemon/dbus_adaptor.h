@@ -10,13 +10,10 @@
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>
 #include <dbus/bus.h>
-#include <mojo/public/cpp/bindings/pending_remote.h>
 #include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 #include "printscanmgr/daemon/cups_tool.h"
-#include "printscanmgr/daemon/printscan_tool.h"
 #include "printscanmgr/dbus_adaptors/org.chromium.printscanmgr.h"
-#include "printscanmgr/mojom/executor.mojom.h"
 
 namespace printscanmgr {
 
@@ -24,8 +21,7 @@ namespace printscanmgr {
 class DbusAdaptor final : public org::chromium::printscanmgrAdaptor,
                           public org::chromium::printscanmgrInterface {
  public:
-  DbusAdaptor(scoped_refptr<dbus::Bus> bus,
-              mojo::PendingRemote<mojom::Executor> remote);
+  explicit DbusAdaptor(scoped_refptr<dbus::Bus> bus);
   DbusAdaptor(const DbusAdaptor&) = delete;
   DbusAdaptor& operator=(const DbusAdaptor&) = delete;
   ~DbusAdaptor() override;
@@ -49,7 +45,6 @@ class DbusAdaptor final : public org::chromium::printscanmgrAdaptor,
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
   CupsTool cups_tool_;
-  PrintscanTool printscan_tool_;
 };
 
 }  // namespace printscanmgr
