@@ -245,8 +245,8 @@ void PeripheralBatteryWatcher::ReadBatteryStatus(const base::FilePath& path,
   status = ReadChargeStatus(path);
   sn = ReadSerialNumber(path);
 
-  battery_readers_.push_back(std::make_unique<AsyncFileReader>());
-  AsyncFileReader* reader = battery_readers_.back().get();
+  battery_readers_[path] = std::make_unique<AsyncFileReader>();
+  AsyncFileReader* reader = battery_readers_[path].get();
 
   if (reader->Init(capacity_path)) {
     reader->StartRead(base::BindOnce(&PeripheralBatteryWatcher::ReadCallback,
@@ -326,6 +326,8 @@ void PeripheralBatteryWatcher::ReadCallback(const base::FilePath& path,
     LOG(ERROR) << "Invalid battery level reading : [" << data << "]"
                << " from " << path.value();
   }
+  base::SequencedTaskRunner::GetCurrentDefault()->DeleteSoon(
+      FROM_HERE, std::move(battery_readers_.extract(path).mapped()));
 }
 
 void PeripheralBatteryWatcher::ErrorCallback(const base::FilePath& path,
@@ -333,6 +335,8 @@ void PeripheralBatteryWatcher::ErrorCallback(const base::FilePath& path,
   SendBatteryStatus(path, model_name, -1,
                     PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_UNKNOWN,
                     "", false);
+  base::SequencedTaskRunner::GetCurrentDefault()->DeleteSoon(
+      FROM_HERE, std::move(battery_readers_.extract(path).mapped()));
 }
 
 void PeripheralBatteryWatcher::OnRefreshAllPeripheralBatteryMethodCall(

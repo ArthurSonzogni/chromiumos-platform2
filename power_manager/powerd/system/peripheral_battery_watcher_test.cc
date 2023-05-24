@@ -5,6 +5,7 @@
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 
 #include <string>
+#include <sys/resource.h>
 
 #include <base/check.h>
 #include <base/compiler_specific.h>
@@ -12,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
@@ -47,6 +49,25 @@ constexpr char kPeripheralChargerBatterySysname[] = "peripheral0";
 // TODO(b/215381232): Temporarily support both 'PCHG' name and 'peripheral' name
 // till upstream kernel driver is merged.
 constexpr char kPeripheralChargerBatteryPCHGSysname[] = "PCHG0";
+
+int GetNumberOfOpenFiles() {
+  std::string status;
+  CHECK(base::ReadFileToString(base::FilePath("/proc/self/status"), &status));
+  base::StringPairs pairs;
+  base::SplitStringIntoKeyValuePairs(status, ':', '\n', &pairs);
+  for (const auto& pair : pairs) {
+    const auto& key = pair.first;
+    if (key == "FDSize") {
+      const auto value_str =
+          base::TrimWhitespaceASCII(pair.second, base::TRIM_ALL);
+      int value;
+      CHECK(base::StringToInt(value_str, &value));
+      return value;
+    }
+  }
+  NOTREACHED();
+  return 0;
+}
 
 class TestWrapper : public DBusWrapperStub {
  public:
@@ -139,6 +160,11 @@ class PeripheralBatteryWatcherTest : public TestEnvironment {
         device_dir.Append(PeripheralBatteryWatcher::kCapacityFile);
 
     battery_.set_battery_path_for_testing(temp_dir_.GetPath());
+  }
+
+  void TearDown() override {
+    // Make sure async file readers are cleaned up.
+    task_env()->RunUntilIdle();
   }
 
  protected:
@@ -657,6 +683,37 @@ TEST_F(PeripheralBatteryWatcherTest, UdevEventsWithSerial) {
                                   UdevEvent::Action::REMOVE});
   // A REMOVE event should not trigger battery update signal.
   EXPECT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
+}
+
+TEST_F(PeripheralBatteryWatcherTest, SpammyUdevEvents) {
+  // This is a regression test to make sure we don't keep opening new file
+  // descriptors in response to the same udev device being reconnected many
+  // times.
+  WriteFile(peripheral_capacity_file_, base::NumberToString(50));
+  battery_.Init(&test_wrapper_, &udev_);
+  ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
+
+  const size_t kDevicesToAdd = 128;
+  int fd_count = GetNumberOfOpenFiles();
+  rlimit rlim_orig;
+  getrlimit(RLIMIT_NOFILE, &rlim_orig);
+
+  // Temporarily drop the open file count limit.
+  rlimit rlim = rlim_orig;
+  rlim.rlim_cur = fd_count + kDevicesToAdd / 2;
+  setrlimit(RLIMIT_NOFILE, &rlim);
+
+  for (size_t i = 0; i < kDevicesToAdd; i++) {
+    udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem,
+                                     "", kPeripheralBatterySysname, ""},
+                                    UdevEvent::Action::ADD});
+  }
+
+  // Make sure we didn't leak file descriptors and can still open a file.
+  WriteFile(peripheral_capacity_file_, base::NumberToString(40));
+
+  // Restore the original file count limit.
+  setrlimit(RLIMIT_NOFILE, &rlim_orig);
 }
 
 }  // namespace power_manager::system

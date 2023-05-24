@@ -5,6 +5,7 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_PERIPHERAL_BATTERY_WATCHER_H_
 #define POWER_MANAGER_POWERD_SYSTEM_PERIPHERAL_BATTERY_WATCHER_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -155,7 +156,7 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
   base::RepeatingTimer poll_timer_;
 
   // AsyncFileReaders for different peripheral batteries.
-  std::vector<std::unique_ptr<AsyncFileReader>> battery_readers_;
+  std::map<base::FilePath, std::unique_ptr<AsyncFileReader>> battery_readers_;
 
   std::unique_ptr<BluezBatteryProvider> bluez_battery_provider_;
 
