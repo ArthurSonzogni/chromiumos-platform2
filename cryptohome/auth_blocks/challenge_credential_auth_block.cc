@@ -65,7 +65,7 @@ CryptoStatus ChallengeCredentialAuthBlock::IsSupported(Crypto& crypto) {
 
 std::unique_ptr<AuthBlock> ChallengeCredentialAuthBlock::New(
     const AuthInput& auth_input,
-    ChallengeCredentialsHelper* challenge_credentials_helper,
+    AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory) {
   if (challenge_credentials_helper && key_challenge_service_factory &&
       auth_input.challenge_credential_auth_input &&
@@ -73,7 +73,7 @@ std::unique_ptr<AuthBlock> ChallengeCredentialAuthBlock::New(
     auto key_challenge_service = key_challenge_service_factory->New(
         auth_input.challenge_credential_auth_input->dbus_service_name);
     return std::make_unique<ChallengeCredentialAuthBlock>(
-        challenge_credentials_helper, std::move(key_challenge_service),
+        challenge_credentials_helper.get(), std::move(key_challenge_service),
         auth_input.username);
   }
   LOG(ERROR) << "No valid ChallengeCredentialsHelper, KeyChallengeService, or "

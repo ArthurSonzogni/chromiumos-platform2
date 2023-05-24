@@ -463,6 +463,15 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
       base::BindRepeating(&UserDataAuth::OnFingerprintScanResult,
                           base::Unretained(this)));
 
+  AsyncInitPtr<ChallengeCredentialsHelper> async_cc_helper(base::BindRepeating(
+      [](UserDataAuth* uda) -> ChallengeCredentialsHelper* {
+        uda->AssertOnMountThread();
+        if (uda->challenge_credentials_helper_initialized_) {
+          return uda->challenge_credentials_helper_;
+        }
+        return nullptr;
+      },
+      base::Unretained(this)));
   AsyncInitPtr<BiometricsAuthBlockService> async_biometrics_service(
       base::BindRepeating(
           [](UserDataAuth* uda) {
@@ -473,6 +482,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   if (!auth_block_utility_) {
     default_auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_, crypto_, platform_, &async_init_features_,
+        async_cc_helper, key_challenge_service_factory_,
         async_biometrics_service);
     auth_block_utility_ = default_auth_block_utility_.get();
   }
@@ -486,18 +496,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   if (!auth_factor_driver_manager_) {
     default_auth_factor_driver_manager_ =
         std::make_unique<AuthFactorDriverManager>(
-            platform_, crypto_,
-            AsyncInitPtr<ChallengeCredentialsHelper>(base::BindRepeating(
-                [](UserDataAuth* uda) -> ChallengeCredentialsHelper* {
-                  uda->AssertOnMountThread();
-                  if (uda->challenge_credentials_helper_initialized_) {
-                    return uda->challenge_credentials_helper_;
-                  }
-                  return nullptr;
-                },
-                base::Unretained(this))),
-            key_challenge_service_factory_, fingerprint_service_.get(),
-            async_biometrics_service);
+            platform_, crypto_, async_cc_helper, key_challenge_service_factory_,
+            fingerprint_service_.get(), async_biometrics_service);
     auth_factor_driver_manager_ = default_auth_factor_driver_manager_.get();
   }
 
@@ -660,9 +660,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
                                        base::Unretained(this)));
 
   PostTaskToMountThread(
-      FROM_HERE,
-      base::BindOnce(&UserDataAuth::InitializeChallengeCredentialsHelper,
-                     base::Unretained(this)));
+      FROM_HERE, base::BindOnce(&UserDataAuth::InitForChallengeResponseAuth,
+                                base::Unretained(this)));
 
   PostTaskToMountThread(FROM_HERE,
                         base::BindOnce(&UserDataAuth::InitializeFeatureLibrary,
@@ -708,14 +707,6 @@ void UserDataAuth::InitializeFeatureLibrary() {
 
 Features* UserDataAuth::GetFeatures() {
   return features_;
-}
-
-void UserDataAuth::InitializeChallengeCredentialsHelper() {
-  AssertOnMountThread();
-  CryptohomeStatus status = InitForChallengeResponseAuth();
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to initialize challenge_credentials_helper_.";
-  }
 }
 
 void UserDataAuth::CreateFingerprintManager() {
@@ -1450,11 +1441,11 @@ void UserDataAuth::RemoveInactiveUserSession(const Username& username) {
   }
 }
 
-CryptohomeStatus UserDataAuth::InitForChallengeResponseAuth() {
+void UserDataAuth::InitForChallengeResponseAuth() {
   AssertOnMountThread();
   if (challenge_credentials_helper_initialized_) {
     // Already successfully initialized.
-    return OkStatus<CryptohomeError>();
+    return;
   }
 
   if (!challenge_credentials_helper_) {
@@ -1467,19 +1458,11 @@ CryptohomeStatus UserDataAuth::InitForChallengeResponseAuth() {
 
   if (!mount_thread_bus_) {
     LOG(ERROR) << "Cannot do challenge-response mount without system D-Bus bus";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoDBusInInitChalRespAuth),
-        ErrorActionSet({PossibleAction::kReboot,
-                        PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+    return;
   }
   key_challenge_service_factory_->SetMountThreadBus(mount_thread_bus_);
 
-  auth_block_utility_->InitializeChallengeCredentialsHelper(
-      challenge_credentials_helper_, key_challenge_service_factory_);
-
   challenge_credentials_helper_initialized_ = true;
-  return OkStatus<CryptohomeError>();
 }
 
 user_data_auth::ListKeysReply UserDataAuth::ListKeys(

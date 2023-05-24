@@ -21,6 +21,7 @@
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/username.h"
+#include "cryptohome/util/async_init.h"
 
 namespace cryptohome {
 
@@ -35,7 +36,7 @@ class ChallengeCredentialAuthBlock : public AuthBlock {
   static CryptoStatus IsSupported(Crypto& crypto);
   static std::unique_ptr<AuthBlock> New(
       const AuthInput& auth_input,
-      ChallengeCredentialsHelper* challenge_credentials_helper,
+      AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory);
 
   ChallengeCredentialAuthBlock(

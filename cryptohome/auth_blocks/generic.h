@@ -147,7 +147,7 @@ class GenericAuthBlockFunctions {
   GenericAuthBlockFunctions(
       Platform* platform,
       AsyncInitFeatures* features,
-      ChallengeCredentialsHelper* challenge_credentials_helper,
+      AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory,
       AsyncInitPtr<BiometricsAuthBlockService> bio_service,
       Crypto* crypto)
@@ -200,7 +200,7 @@ class GenericAuthBlockFunctions {
   // check it for null and gracefully (i.e. no CHECK) fail.
   std::tuple<Platform&,
              AsyncInitFeatures&,
-             ChallengeCredentialsHelper*,
+             AsyncInitPtr<ChallengeCredentialsHelper>,
              KeyChallengeServiceFactory*,
              AsyncInitPtr<BiometricsAuthBlockService>,
              Crypto&,

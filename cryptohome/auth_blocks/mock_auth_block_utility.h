@@ -83,11 +83,6 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                brillo::SecureBlob* out_recovery_request,
                brillo::SecureBlob* out_ephemeral_pub_key),
               (const, override));
-  MOCK_METHOD(void,
-              InitializeChallengeCredentialsHelper,
-              (ChallengeCredentialsHelper * challenge_credentials_helper,
-               KeyChallengeServiceFactory* key_challenge_service_factory),
-              (override));
   MOCK_METHOD(bool,
               IsChallengeCredentialReady,
               (const AuthInput& auth_input),

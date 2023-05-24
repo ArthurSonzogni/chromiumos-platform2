@@ -138,6 +138,9 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   void MakeAuthBlockUtilityImpl() {
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_.get(), &crypto_, &platform_, &features_.async,
+        AsyncInitPtr<ChallengeCredentialsHelper>(
+            &challenge_credentials_helper_),
+        &key_challenge_service_factory_,
         AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
             &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this))));
   }
@@ -844,8 +847,6 @@ TEST_F(AuthBlockUtilityImplTest, ChallengeCredentialCreate) {
         return std::make_unique<MockKeyChallengeService>();
       });
   MakeAuthBlockUtilityImpl();
-  auth_block_utility_impl_->InitializeChallengeCredentialsHelper(
-      &challenge_credentials_helper_, &key_challenge_service_factory_);
 
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
       [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
@@ -975,8 +976,6 @@ TEST_F(AuthBlockUtilityImplTest, ChallengeCredentialDerive) {
             ChallengeCredentialsHelper::GenerateNewOrDecryptResult(
                 nullptr, std::move(passkey)));
       });
-  auth_block_utility_impl_->InitializeChallengeCredentialsHelper(
-      &challenge_credentials_helper_, &key_challenge_service_factory_);
   // Test.
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
       [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
@@ -1029,6 +1028,8 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   // Insert MockKeysetManagement into AuthBlockUtility
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       &keyset_management, &crypto_, &platform_, &features_.async,
+      AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
+      &key_challenge_service_factory_,
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
   // Test
   AuthBlockState out_state;
@@ -1501,8 +1502,6 @@ TEST_F(AuthBlockUtilityImplTest, GetAuthBlockWithTypeChallengeCredential) {
   crypto_.Init();
 
   MakeAuthBlockUtilityImpl();
-  auth_block_utility_impl_->InitializeChallengeCredentialsHelper(
-      &challenge_credentials_helper_, &key_challenge_service_factory_);
   EXPECT_CALL(key_challenge_service_factory_, New(kKeyDelegateDBusService))
       .WillOnce([](const std::string& bus_name) {
         return std::make_unique<MockKeyChallengeService>();

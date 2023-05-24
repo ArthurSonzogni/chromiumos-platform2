@@ -144,8 +144,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
         std::make_unique<MockLECredentialManager>());
     crypto_.Init();
 
-    auth_block_utility_.InitializeChallengeCredentialsHelper(
-        &challenge_credentials_helper_, &key_challenge_service_factory_);
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
         &crypto_, &platform_, &user_session_map_, &keyset_management_,
         &auth_block_utility_, &auth_factor_driver_manager_,
@@ -537,10 +535,17 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   KeysetManagement keyset_management_{&platform_, &crypto_,
                                       CreateMockVaultKeysetFactory()};
   FakeFeaturesForTesting features_;
+  NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
+  NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{
       FingerprintAuthBlockService::MakeNullService()};
   AuthBlockUtilityImpl auth_block_utility_{
-      &keyset_management_, &crypto_, &platform_, &features_.async,
+      &keyset_management_,
+      &crypto_,
+      &platform_,
+      &features_.async,
+      AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
+      &key_challenge_service_factory_,
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   NiceMock<MockAuthBlockUtility> mock_auth_block_utility_;
   AuthFactorDriverManager auth_factor_driver_manager_{
@@ -569,8 +574,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   MockVaultKeysetFactory* mock_vault_keyset_factory_;
   NiceMock<MockHomeDirs> homedirs_;
   NiceMock<MockUserSessionFactory> user_session_factory_;
-  NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
-  NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
 
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   NiceMock<MockUserOldestActivityTimestampManager>

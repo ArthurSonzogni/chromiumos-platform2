@@ -26,6 +26,7 @@
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service.h"
+#include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
@@ -41,15 +42,17 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // |keyset_management|, |crypto| and |platform| are non-owned objects. Caller
   // must ensure that these objects are valid for the lifetime of
   // AuthBlockUtilityImpl.
-  AuthBlockUtilityImpl(KeysetManagement* keyset_management,
-                       Crypto* crypto,
-                       Platform* platform,
-                       AsyncInitFeatures* features,
-                       AsyncInitPtr<BiometricsAuthBlockService> bio_service);
+  AuthBlockUtilityImpl(
+      KeysetManagement* keyset_management,
+      Crypto* crypto,
+      Platform* platform,
+      AsyncInitFeatures* features,
+      AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
+      KeyChallengeServiceFactory* key_challenge_service_factory,
+      AsyncInitPtr<BiometricsAuthBlockService> bio_service);
 
   AuthBlockUtilityImpl(const AuthBlockUtilityImpl&) = delete;
   AuthBlockUtilityImpl& operator=(const AuthBlockUtilityImpl&) = delete;
-  ~AuthBlockUtilityImpl() override;
 
   bool GetLockedToSingleUser() const override;
 
@@ -96,10 +99,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       brillo::SecureBlob* out_recovery_request,
       brillo::SecureBlob* out_ephemeral_pub_key) const override;
 
-  void InitializeChallengeCredentialsHelper(
-      ChallengeCredentialsHelper* challenge_credentials_helper,
-      KeyChallengeServiceFactory* key_challenge_service_factory) override;
-
   bool IsChallengeCredentialReady(const AuthInput& auth_input) const override;
 
   // Factory function to construct an auth block of the given type.
@@ -128,13 +127,13 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   // Challenge credential helper utility object. This object is required
   // for using a challenge response authblock.
-  ChallengeCredentialsHelper* challenge_credentials_helper_ = nullptr;
+  AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper_;
 
   // Factory of key challenge service used to generate a key_challenge_service
   // for Challenge Credentials. KeyChallengeService is tasked with contacting
   // the challenge response D-Bus service that'll provide the response once
   // we send the challenge.
-  KeyChallengeServiceFactory* key_challenge_service_factory_ = nullptr;
+  KeyChallengeServiceFactory* key_challenge_service_factory_;
 
   // Biometrics service, used by operations that need to interact with biod.
   // TODO(b/276453357): Replace with BiometricsAuthBlockService* once that

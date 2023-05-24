@@ -593,6 +593,7 @@ bool DoCreateVaultKeyset(const Username& username,
 
   AuthBlockUtilityImpl auth_block_utility(
       &keyset_management, &crypto, platform, &async_features,
+      AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
 
   // Manipulate or drop fields as necessary from KeyData.

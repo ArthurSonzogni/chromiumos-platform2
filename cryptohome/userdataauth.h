@@ -776,15 +776,9 @@ class UserDataAuth {
   // Removes an inactive user session.
   void RemoveInactiveUserSession(const Username& username);
 
-  // Performs the lazy part of the initialization that is required for
-  // performing operations with challenge-response keys. Returns whether
-  // succeeded.
-  CryptohomeStatus InitForChallengeResponseAuth();
-
   // Called on Mount Thread, initializes the challenge_credentials_helper_
-  // and the key_challenge_service_factory_, and forwards these
-  // arguments to AuthBlockUtility.
-  void InitializeChallengeCredentialsHelper();
+  // and the key_challenge_service_factory_.
+  void InitForChallengeResponseAuth();
 
   void GetAuthSessionStatusImpl(
       AuthSession* auth_session,

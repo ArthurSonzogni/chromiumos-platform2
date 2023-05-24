@@ -939,7 +939,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthCantQueryROCAVulnInInitChalRespAuth = 556,
   /* =Obsolete= */
   kLocUserDataAuthROCAVulnerableInInitChalRespAuth = 557,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoDBusInInitChalRespAuth = 558,
   /* =Obsolete= */
   kLocUserDataAuthNoDelegateInInitChalRespAuth = 559,
@@ -1771,7 +1771,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockNoLabelInPrepareForRemoval = 3530,
   /* ./userdataauth.cc */
   kLocUserDataAuthNoAuthSessionInUpdateAuthFactorMetadata = 3531,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoAuthFactorInUpdateAuthFactorMetadata = 3532,
   /* ./userdataauth.cc */
   kLocUserDataAuthProtoFailureInReplyWithAuthFactorStatus = 3533,

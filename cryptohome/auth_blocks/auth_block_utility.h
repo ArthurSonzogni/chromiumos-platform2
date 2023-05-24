@@ -22,12 +22,9 @@
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_intent.h"
-#include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-#include "cryptohome/key_challenge_service.h"
-#include "cryptohome/key_challenge_service_factory_impl.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/username.h"
 
@@ -116,12 +113,6 @@ class AuthBlockUtility {
       const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
       brillo::SecureBlob* out_recovery_request,
       brillo::SecureBlob* out_ephemeral_pub_key) const = 0;
-
-  // Sets challenge_credentials_helper_ and key_challenge_factory_callback_
-  // in AuthBlockUtility.
-  virtual void InitializeChallengeCredentialsHelper(
-      ChallengeCredentialsHelper* challenge_credentials_helper,
-      KeyChallengeServiceFactory* key_challenge_service_factory) = 0;
 
   // Returns if the auth_input has valid fields to generate a
   // KeyChallengeService.

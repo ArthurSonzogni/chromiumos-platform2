@@ -44,6 +44,7 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/credential_verifier_test_utils.h"
 #include "cryptohome/crypto_error.h"
@@ -1036,6 +1037,7 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
   FakeFeaturesForTesting features;
   AuthBlockUtilityImpl real_auth_block_utility(
       &keyset_management_, &crypto_, &platform_, &features.async,
+      AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
   auto test_backing_apis = backing_apis_;
   test_backing_apis.auth_block_utility = &real_auth_block_utility;
