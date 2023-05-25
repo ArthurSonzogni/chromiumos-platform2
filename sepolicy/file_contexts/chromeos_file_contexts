@@ -450,7 +450,7 @@ has_arc(`
 /run/cryptohome/ephemeral_mount u:object_r:cros_ephemeral_mount:s0
 /run/cups(/.*)?                 u:object_r:cros_run_cups:s0
 /run/cups_proxy(/.*)?           u:object_r:cros_run_cups_proxy:s0
-/run/daemon-store               u:object_r:cros_run_daemon_store:s0
+/run/daemon-store(-cache)?      u:object_r:cros_run_daemon_store:s0
 /run/dbus                       u:object_r:cros_run_dbus:s0
 /run/dbus.pid                   u:object_r:cros_dbus_pid_file:s0
 /run/dbus/system_bus_socket     u:object_r:cros_system_bus_socket:s0
@@ -592,19 +592,19 @@ has_arc(`
 has_arc(`
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/data/media(/.*)?   u:object_r:media_rw_data_file:s0
 ')
-/home/.shadow/[0-9a-z]{40}/mount/root/authpolicyd(/.*)?   u:object_r:cros_home_shadow_uid_root_authpolicyd:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/cdm-oemcrypto(/.*)?   u:object_r:cros_home_shadow_uid_root_cdm-oemcrypto:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/chaps(/.*)?   u:object_r:cros_home_shadow_uid_root_chaps:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/crash(/.*)?   u:object_r:cros_home_shadow_uid_root_crash:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/crosvm(/.*)?   u:object_r:cros_home_shadow_uid_root_crosvm:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/debugd(/.*)?   u:object_r:cros_home_shadow_uid_root_debugd:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/kerberosd(/.*)?   u:object_r:cros_home_shadow_uid_root_kerberosd:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/pvm(/.*)?   u:object_r:cros_home_shadow_uid_root_pvm:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/pvm-dispatcher(/.*)?   u:object_r:cros_home_shadow_uid_root_pvm-dispatcher:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/secagentd(/.*)?   u:object_r:cros_home_shadow_uid_root_secagentd:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/session_manager(/.*)?   u:object_r:cros_home_shadow_uid_root_session_manager:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/shill(/.*)?   u:object_r:cros_home_shadow_uid_root_shill:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/shill_logs(/.*)?   u:object_r:cros_home_shadow_uid_root_shill_logs:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/smbfs(/.*)?   u:object_r:cros_home_shadow_uid_root_smbfs:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/smbproviderd(/.*)?   u:object_r:cros_home_shadow_uid_root_smbproviderd:s0
-/home/.shadow/[0-9a-z]{40}/mount/root/usb_bouncer(/.*)?   u:object_r:cros_home_shadow_uid_root_usb_bouncer:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/authpolicyd(/.*)?   u:object_r:cros_home_shadow_uid_root_authpolicyd:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/cdm-oemcrypto(/.*)?   u:object_r:cros_home_shadow_uid_root_cdm-oemcrypto:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/chaps(/.*)?   u:object_r:cros_home_shadow_uid_root_chaps:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/crash(/.*)?   u:object_r:cros_home_shadow_uid_root_crash:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/crosvm(/.*)?   u:object_r:cros_home_shadow_uid_root_crosvm:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/debugd(/.*)?   u:object_r:cros_home_shadow_uid_root_debugd:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/kerberosd(/.*)?   u:object_r:cros_home_shadow_uid_root_kerberosd:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/pvm(/.*)?   u:object_r:cros_home_shadow_uid_root_pvm:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/pvm-dispatcher(/.*)?   u:object_r:cros_home_shadow_uid_root_pvm-dispatcher:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/secagentd(/.*)?   u:object_r:cros_home_shadow_uid_root_secagentd:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/session_manager(/.*)?   u:object_r:cros_home_shadow_uid_root_session_manager:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/shill(/.*)?   u:object_r:cros_home_shadow_uid_root_shill:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/shill_logs(/.*)?   u:object_r:cros_home_shadow_uid_root_shill_logs:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/smbfs(/.*)?   u:object_r:cros_home_shadow_uid_root_smbfs:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/smbproviderd(/.*)?   u:object_r:cros_home_shadow_uid_root_smbproviderd:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/.cache)?/usb_bouncer(/.*)?   u:object_r:cros_home_shadow_uid_root_usb_bouncer:s0
