@@ -25,6 +25,7 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/common/fake_prefs.h"
+#include "power_manager/common/metrics_constants.h"
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/input_watcher_stub.h"
@@ -106,6 +107,7 @@ class AdaptiveChargingControllerTest : public TestEnvironment {
     platform_features_ =
         std::make_unique<feature::FakePlatformFeatures>(dbus_wrapper_.GetBus());
     prefs_.SetInt64(kAdaptiveChargingHoldPercentPref, kDefaultTestPercent);
+    prefs_.SetBool(kChargeLimitEnabledPref, false);
     EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
     EXPECT_TRUE(temp_dir_.IsValid());
     charge_history_dir_ = temp_dir_.GetPath().Append("charge_history");
@@ -208,6 +210,20 @@ class AdaptiveChargingControllerTest : public TestEnvironment {
   void InitFullCharge() {
     CreateDefaultChargeHistory();
     InitFullChargeNoHistory();
+  }
+
+  void InitChargeLimitPref() {
+    CreateDefaultChargeHistory();
+    prefs_.SetBool(kChargeLimitEnabledPref, true);
+    adaptive_charging_controller_.Init(
+        &delegate_, &backlight_controller_, &input_watcher_, &power_supply_,
+        &dbus_wrapper_, platform_features_.get(), &prefs_);
+    power_supply_.NotifyObservers();
+
+    EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
+              metrics::AdaptiveChargingState::USER_DISABLED);
+    EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+    EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
   }
 
   void DisconnectCharger() {
@@ -1478,6 +1494,67 @@ TEST_F(AdaptiveChargingControllerTest,
   base::TimeDelta time_spent_slow_charging =
       ObtainPredictionOutcome({3.0, 2.0, 1.5, 1.0, 0.5});
   EXPECT_EQ(time_spent_slow_charging, base::TimeDelta(base::Hours(1)));
+}
+
+// Test that Charge Limit can be enabled via policy.
+TEST_F(AdaptiveChargingControllerTest, ChargeLimitEnabledViaPolicy) {
+  Init();
+
+  PowerManagementPolicy policy;
+  policy.set_charge_limit_enabled(true);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+
+  // Adaptive Charging is always disabled when Charge Limit is enabled.
+  EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
+            metrics::AdaptiveChargingState::USER_DISABLED);
+  EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+  EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+}
+
+// Test that enabling both Adaptive Charging and Charge Limit enables just
+// Charge Limit, since the features cannot both be enabled.
+TEST_F(AdaptiveChargingControllerTest, ChargeLimitExcludesAdaptiveCharging) {
+  Init();
+  delegate_.fake_result = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0};
+
+  PowerManagementPolicy policy;
+  policy.set_adaptive_charging_enabled(true);
+  policy.set_charge_limit_enabled(true);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+  base::RunLoop().RunUntilIdle();
+
+  EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
+            metrics::AdaptiveChargingState::USER_DISABLED);
+  EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+  EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+}
+
+// Test that Charge Limit state is maintained after suspend and resume.
+TEST_F(AdaptiveChargingControllerTest, ChargeLimitAfterResume) {
+  InitChargeLimitPref();
+
+  adaptive_charging_controller_.PrepareForSuspendAttempt();
+  EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
+            metrics::AdaptiveChargingState::USER_DISABLED);
+  EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+  EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+
+  adaptive_charging_controller_.HandleFullResume();
+  EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
+            metrics::AdaptiveChargingState::USER_DISABLED);
+  EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+  EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+}
+
+// Test that Charge Limit state is maintained after shutdown is initiated.
+TEST_F(AdaptiveChargingControllerTest, ChargeLimitAfterShutdown) {
+  InitChargeLimitPref();
+
+  adaptive_charging_controller_.HandleShutdown();
+  EXPECT_EQ(adaptive_charging_controller_.get_state_for_testing(),
+            metrics::AdaptiveChargingState::SHUTDOWN);
+  EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+  EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
 }
 
 }  // namespace power_manager::policy

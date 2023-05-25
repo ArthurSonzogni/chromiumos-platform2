@@ -848,6 +848,7 @@ void AdaptiveChargingController::Init(
   prefs_->GetInt64(kAdaptiveChargingHoldDeltaPercentPref, &hold_delta_percent_);
   prefs_->GetDouble(kAdaptiveChargingMinProbabilityPref, &min_probability_);
   prefs_->GetBool(kAdaptiveChargingEnabledPref, &adaptive_charging_enabled_);
+  prefs_->GetBool(kChargeLimitEnabledPref, &charge_limit_enabled_);
   CHECK(hold_percent_ < 100 && hold_percent_ > 0);
   CHECK(hold_delta_percent_ < 100 && hold_delta_percent_ >= 0);
   CHECK(min_probability_ >= 0 && min_probability_ <= 1.0);
@@ -855,6 +856,13 @@ void AdaptiveChargingController::Init(
   // Check if the EC supports setting a charge limit, and simultaneously remove
   // any existing limit that may already be in place.
   slow_charging_supported_ = SetChargeLimit(kSlowChargingDisabled);
+
+  if (charge_limit_enabled_ && adaptive_charging_enabled_) {
+    LOG(ERROR) << "Charge Limit and Adaptive Charging are enabled at Init. The "
+               << "features are mutually exclusive, so Adaptive Charging will "
+               << "be disabled.";
+    adaptive_charging_enabled_ = false;
+  }
 
   // Check if setting meaningless battery sustain values works. If the battery
   // sustain functionality is not supported on this system, we will still run ML
@@ -872,6 +880,17 @@ void AdaptiveChargingController::Init(
     state_ = AdaptiveChargingState::USER_DISABLED;
   }
 
+  power_supply_->SetAdaptiveChargingSupported(adaptive_charging_supported_);
+
+  // TODO(b/222620437): Always disable the Battery Sustainer before setting new
+  // limits due to an issue with some firmware.
+  SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
+
+  // Adaptive Charging and Charge Limit state is reset during Init. If either of
+  // the features were enabled or disabled via `HandlePolicyChange`, another
+  // call to `HandlePolicyChange` (usually from Chrome initiating it) is needed
+  // to restored that state. The state according to the prefs will be set at the
+  // end of this function or on the first update for the `system::PowerStatus`.
   LOG(INFO) << "Adaptive Charging is "
             << (adaptive_charging_supported_ ? "supported" : "not supported")
             << " and " << (adaptive_charging_enabled_ ? "enabled" : "disabled")
@@ -879,8 +898,11 @@ void AdaptiveChargingController::Init(
             << hold_percent_ - hold_delta_percent_ << ", " << hold_percent_
             << "), Minimum ML probability value: " << min_probability_;
 
-  SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
-  power_supply_->SetAdaptiveChargingSupported(adaptive_charging_supported_);
+  LOG(INFO) << "Charge Limit is "
+            << (charge_limit_enabled_ ? "enabled" : "disabled");
+  if (charge_limit_enabled_) {
+    StartChargeLimit();
+  }
 }
 
 void AdaptiveChargingController::HandlePolicyChange(
@@ -926,12 +948,48 @@ void AdaptiveChargingController::HandlePolicyChange(
     }
   }
 
+  if (policy.has_charge_limit_enabled() &&
+      policy.charge_limit_enabled() != charge_limit_enabled_) {
+    // Adaptive Charging and Charge Limit have the same platform feature
+    // requirements (battery sustainer), so check if Adaptive Charging is
+    // supported.
+    if (adaptive_charging_supported_) {
+      charge_limit_enabled_ = policy.charge_limit_enabled();
+      if (charge_limit_enabled_) {
+        // Call `StartChargeLimit` after Adaptive Charging is stopped.
+        LOG(INFO) << "Policy update enabling Charge Limit";
+      } else {
+        LOG(INFO) << "Policy update disabling Charge Limit";
+        StopChargeLimit();
+      }
+    } else {
+      LOG(ERROR) << "Policy Change attempted to enable Charge Limit without "
+                 << "platform support.";
+    }
+  }
+
+  if (adaptive_charging_enabled_ && charge_limit_enabled_) {
+    LOG(ERROR) << "Policy update enabled both Adaptive Charging and Charge "
+               << "Limit, which are mutually exclusive features. Disabling "
+               << "Adaptive Charging in favor of Charge Limit.";
+    adaptive_charging_enabled_ = false;
+    state_ = AdaptiveChargingState::USER_DISABLED;
+    // Restart Adaptive Charging to handle bookkeeping for our metrics, even
+    // though it will just be disabled.
+    restart_adaptive = true;
+  }
+
   if (!restart_adaptive)
     return;
 
   // Stop adaptive charging, then restart it with the new values.
   StopAdaptiveCharging();
   StartAdaptiveCharging(UserChargingEvent::Event::PERIODIC_LOG);
+
+  // If Charge Limit is enabled, we need to make sure it's enabled after
+  // the battery sustainer is disabled in StopAdaptiveCharging.
+  if (charge_limit_enabled_)
+    StartChargeLimit();
 }
 
 void AdaptiveChargingController::PrepareForSuspendAttempt() {
@@ -1488,6 +1546,26 @@ void AdaptiveChargingController::StartSlowCharging() {
   power_supply_->ClearAdaptiveChargingChargeDelay();
 }
 
+void AdaptiveChargingController::StartChargeLimit() {
+  // Adaptive Charging should always be stopped before starting Charge Limit.
+  DCHECK(state_ != AdaptiveChargingState::ACTIVE);
+  LOG(INFO) << "Starting Charge Limit.";
+  if (!is_sustain_set_ &&
+      !SetSustain(hold_percent_ - hold_delta_percent_, hold_percent_)) {
+    LOG(ERROR) << "Failed to set battery sustain for Charge Limit.";
+    charge_limit_enabled_ = false;
+    return;
+  }
+  is_sustain_set_ = true;
+  display_percent_ = hold_percent_;
+}
+
+void AdaptiveChargingController::StopChargeLimit() {
+  LOG(INFO) << "Stopping Charge Limit.";
+  SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
+  is_sustain_set_ = false;
+}
+
 void AdaptiveChargingController::StopAdaptiveCharging() {
   TRACE_EVENT("power", "AdaptiveChargingController::StopAdaptiveCharging");
   base::TimeTicks now = clock_.GetCurrentBootTime();
@@ -1510,7 +1588,11 @@ void AdaptiveChargingController::StopAdaptiveCharging() {
 
   recheck_alarm_->Stop();
   charge_alarm_->Stop();
-  if (is_sustain_set_) {
+  // We can still call `StopAdaptiveCharging` if Charge Limit is enabled. This
+  // may happen with `HandlePolicyChange` if it disables Adaptive Charging and
+  // enables Charge Limit in the same call. We also call StopAdaptiveCharging
+  // for keeping track of metrics, even if Adaptive Charging is disabled.
+  if (is_sustain_set_ && !charge_limit_enabled_) {
     SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
   }
 

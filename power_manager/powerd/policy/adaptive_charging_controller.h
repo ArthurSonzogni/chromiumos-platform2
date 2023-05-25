@@ -485,6 +485,8 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
     return target_full_charge_time_;
   }
 
+  AdaptiveChargingState get_state_for_testing() { return state_; }
+
   void set_recheck_delay_for_testing(base::TimeDelta delay) {
     StartRecheckAlarm(delay);
   }
@@ -547,12 +549,28 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // capacity).
   void StartSlowCharging();
 
+  // Starts Charge Limit on the system, which prevents charging over
+  // `adaptive_charging_hold_percent_` at all times, even after shutdown.
+  //
+  // Charge Limit is a separate feature from Adaptive Charging, but due to
+  // significant functionality overlap and exclusivity (both features can't be
+  // enabled at the same time), it makes sense to have both features implemented
+  // in the same class.
+  // TODO(b/285412932): Refactor AdaptiveChargingController into
+  // ChargeController.
+  void StartChargeLimit();
+
   // Stops Adaptive Charging from delaying charge anymore. The `recheck_alarm_`
   // and `charge_alarm_` will no longer run unless `StartAdaptiveCharging` is
   // called. When slow charging is enabled, the battery charge current limit
   // will also be reset so if the battery is not fully charged yet, it will now
   // be charged as quickly as possible.
   void StopAdaptiveCharging();
+
+  // Stops Charge Limit, which will allow the system to charge over
+  // `adaptive_charging_hold_percent_` again. Adaptive Charging may be enabled
+  // after this is called as well.
+  void StopChargeLimit();
 
   // Indicates that the prediction code will periodically run for re-evaluating
   // charging delays.
@@ -740,6 +758,10 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // Explicitly checked for during `Init`. Slow charging in Adaptive Charging
   // cannot be enabled unless this is true.
   bool slow_charging_supported_;
+
+  // Whether Charge Limit is enabled. Note that Charge Limit and Adaptive
+  // Charging are mutually exclusive.
+  bool charge_limit_enabled_;
 
   base::WeakPtrFactory<AdaptiveChargingController> weak_ptr_factory_;
 };
