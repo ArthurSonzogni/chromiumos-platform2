@@ -4,7 +4,6 @@
 
 pub mod disk;
 pub mod frontends;
-pub mod lsb_release;
 pub mod methods;
 pub mod proto;
 pub mod unsafe_misc;
