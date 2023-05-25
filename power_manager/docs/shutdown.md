@@ -35,6 +35,17 @@ these near the end of the file:
 [0425/211426:INFO:daemon.cc(1046)] Got RequestRestart message from :1.33 with reason system-update (update_engine applying update)
 ```
 
+#### Sending DBus Method Calls from the CLI
+
+Shutdown and reboot DBus method calls can be triggered in the CLI with:
+
+* `powerd_dbus_shutdown`
+* `powerd_dbus_reboot`
+
+These executables send the `RequestShutdown` or `RequestRestart` method calls,
+respectively, and can be used to test `powerd` or gracefully shutdown/reboot the
+device.
+
 ### Requests within `powerd`
 
 `powerd` may also decide to shut the system down without input from other

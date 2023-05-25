@@ -24,6 +24,8 @@ group("all") {
     ":memory_suspend_test",
     ":power_supply_info",
     ":powerd",
+    ":powerd_dbus_reboot",
+    ":powerd_dbus_shutdown",
     ":powerd_dbus_suspend",
     ":powerd_setuid_helper",
     ":send_debug_power_status",
@@ -434,6 +436,18 @@ executable("inject_powerd_input_event") {
 executable("memory_suspend_test") {
   sources = [ "tools/memory_suspend_test.cc" ]
   configs += [ ":target_defaults" ]
+}
+
+executable("powerd_dbus_reboot") {
+  sources = [ "tools/powerd_dbus_reboot.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libutil" ]
+}
+
+executable("powerd_dbus_shutdown") {
+  sources = [ "tools/powerd_dbus_shutdown.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libutil" ]
 }
 
 executable("powerd_dbus_suspend") {

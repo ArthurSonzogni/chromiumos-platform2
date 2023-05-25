@@ -41,6 +41,18 @@ The `powerd_dbus_suspend` program can be run from crosh or an SSH session to
 exercise the normal suspend path; it sends a D-Bus message to powerd asking it
 to suspend the system. See also `memory_suspend_test` and `suspend_stress_test`.
 
+## How do I trigger a reboot manually?
+
+The `powerd_dbus_reboot` program can be run from crosh or an SSH session to
+exercise the normal reboot path; it sends a D-Bus message to powerd asking it
+to reboot the system.
+
+## How do I trigger a shutdown manually?
+
+The `powerd_dbus_shutdown` program can be run from crosh or an SSH session to
+exercise the normal shut down path; it sends a D-Bus message to powerd asking it
+to shut down the system.
+
 ## How do I change power management timeouts for development or testing?
 
 There are several different techniques that can be used to temporarily override
