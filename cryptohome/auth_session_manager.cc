@@ -107,6 +107,7 @@ InUseAuthSession AuthSessionManager::AddAuthSession(
   if (auth_factor_status_update_callback_) {
     in_use->SetAuthFactorStatusUpdateCallback(
         base::BindRepeating(auth_factor_status_update_callback_));
+    in_use->SendAuthFactorStatusUpdateSignal();
   }
 
   return in_use;

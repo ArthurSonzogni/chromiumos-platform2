@@ -490,7 +490,7 @@ void AuthSession::SetTimeoutTimer(const base::TimeDelta& delay) {
                                        base::Unretained(this)));
 }
 
-void AuthSession::AuthFactorStatusUpdateTimer() {
+void AuthSession::SendAuthFactorStatusUpdateSignal() {
   // If the auth session is timed out we won't need to send another signal.
   if (status_ == AuthStatus::kAuthStatusTimedOut) {
     return;
@@ -543,7 +543,7 @@ void AuthSession::AuthFactorStatusUpdateTimer() {
           std::min(*delay, kAuthFactorStatusUpdateDelay);
       auth_factor_status_update_timer_->Start(
           FROM_HERE, base::Time::Now() + next_signal_delay,
-          base::BindOnce(&AuthSession::AuthFactorStatusUpdateTimer,
+          base::BindOnce(&AuthSession::SendAuthFactorStatusUpdateSignal,
                          base::Unretained(this)));
     }
   }
@@ -3214,7 +3214,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     // auth session is timed out.
     if (callback_error->local_legacy_error() ==
         user_data_auth::CRYPTOHOME_ERROR_CREDENTIAL_LOCKED) {
-      AuthFactorStatusUpdateTimer();
+      SendAuthFactorStatusUpdateSignal();
     }
     LOG(ERROR) << "KeyBlob derivation failed before loading USS";
     std::move(on_done).Run(

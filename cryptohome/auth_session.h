@@ -308,6 +308,10 @@ class AuthSession final {
   void SetOnTimeoutCallback(
       base::OnceCallback<void(const base::UnguessableToken&)> on_timeout);
 
+  // Send the auth factor status update signal and also set the timer for the
+  // next signal based on |kAuthFactorStatusUpdateDelay|.
+  void SendAuthFactorStatusUpdateSignal();
+
   // Set the auth factor status update callback.
   void SetAuthFactorStatusUpdateCallback(
       const AuthFactorStatusUpdateCallback& callback);
@@ -382,10 +386,6 @@ class AuthSession final {
 
   // Set the timeout timer to now + delay
   void SetTimeoutTimer(const base::TimeDelta& delay);
-
-  // Send the auth factor status update signal and also set the timer for the
-  // next signal based on |kAuthFactorStatusUpdateDelay|.
-  void AuthFactorStatusUpdateTimer();
 
   // Helper function to update a keyset on disk on KeyBlobs generated. If update
   // succeeds |vault_keyset_| is also updated. Failure doesn't return error and
