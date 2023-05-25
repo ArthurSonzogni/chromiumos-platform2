@@ -104,6 +104,7 @@ enum CryptohomeErrorCode {
   CRYPTOHOME_ERROR_RECOVERY_FATAL = 57;
   CRYPTOHOME_ERROR_BIOMETRICS_BUSY = 58;
   CRYPTOHOME_ERROR_CREDENTIAL_LOCKED = 59;
+  CRYPTOHOME_ERROR_CREDENTIAL_EXPIRED = 60;
   // Note: After adding new fields to this enum, the new enum should be added
   // to ash/components/login/auth/auth_session_authenticator.cc's
   // AuthSessionAuthenticator::ProcessCryptohomeError() so that Chromium
@@ -158,10 +159,16 @@ enum PrimaryAction {
   PRIMARY_INCORRECT_AUTH = 8;
 
   // PRIMARY_LE_LOCKED_OUT indicates that authentication is attempted towards a
-  // locked out LE credential. Therefore, the caller should try another
-  // authentication methods that reset the LE credential, or wait until the LE
-  // credential is available.
+  // locked out LE credential, or that its auth is incorrect and made a LE
+  // credential locked.
+  // Therefore, the caller should try another authentication method that resets
+  // the LE credential, or wait until the LE credential is available.
   PRIMARY_LE_LOCKED_OUT = 9;
+
+  // PRIMARY_LE_EXPIRED indicates that authentication is attempted towards an
+  // expired LE credential. Therefore, the caller should try another
+  // authentication method that resets the LE credential.
+  PRIMARY_LE_EXPIRED = 10;
 }
 
 // PossibleAction is used to indicate that cryptohomed believies some actions

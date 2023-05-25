@@ -149,6 +149,7 @@ enum MountError {
   // locks them out). If the user attempts to log in while they are locked out,
   // the error should be set to MOUNT_ERROR_TPM_DEFEND_LOCK.
   MOUNT_ERROR_CREDENTIAL_LOCKED = 24,
+  MOUNT_ERROR_CREDENTIAL_EXPIRED = 25,
   MOUNT_ERROR_USER_DOES_NOT_EXIST = 32,
   MOUNT_ERROR_TPM_NEEDS_REBOOT = 64,
   // Encrypted in old method, need migration before mounting.

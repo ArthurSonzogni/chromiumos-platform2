@@ -743,7 +743,6 @@ LECredStatus LECredentialManagerImpl::ConvertTpmError(
                           PossibleAction::kAuth, PossibleAction::kReboot,
                           PossibleAction::kPowerwash}),
           conv_err);
-
     case LE_CRED_ERROR_HASH_TREE:
       // In usual operation, we don't expect the hash tree to go bad, so
       // kDevCheckUnexpectedState is specified. The user can always try to use
@@ -754,7 +753,10 @@ LECredStatus LECredentialManagerImpl::ConvertTpmError(
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
                           PossibleAction::kAuth, PossibleAction::kDeleteVault}),
           conv_err);
-
+    case LE_CRED_ERROR_EXPIRED:
+      return MakeStatus<CryptohomeLECredError>(
+          CRYPTOHOME_ERR_LOC(kLocLECredManExpiredInConvertTpmError),
+          ErrorActionSet(PrimaryAction::kLeExpired), conv_err);
     default:
       ErrorActionSet action_set;
       return MakeStatus<CryptohomeLECredError>(
@@ -778,6 +780,8 @@ LECredError LECredentialManagerImpl::BackendErrorToCredError(
       return LE_CRED_ERROR_HASH_TREE;
     case CredentialTreeResult::ErrorCode::kPolicyNotMatch:
       return LE_CRED_ERROR_PCR_NOT_MATCH;
+    case CredentialTreeResult::ErrorCode::kExpired:
+      return LE_CRED_ERROR_EXPIRED;
     default:
       return LE_CRED_ERROR_HASH_TREE;
   }

@@ -31,6 +31,8 @@ enum LECredError {
   LE_CRED_ERROR_LE_LOCKED,
   // Unexpected PCR state.
   LE_CRED_ERROR_PCR_NOT_MATCH,
+  // Check failed due to credential expired.
+  LE_CRED_ERROR_EXPIRED,
   // Sentinel value.
   LE_CRED_ERROR_MAX,
 };

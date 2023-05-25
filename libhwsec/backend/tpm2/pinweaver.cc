@@ -70,6 +70,8 @@ ErrorCode ConvertPWStatus(uint32_t pinweaver_status) {
     // error as like an invalid PIN was provided.
     case PW_ERR_PCR_NOT_MATCH:
       return ErrorCode::kPolicyNotMatch;
+    case PW_ERR_EXPIRED:
+      return ErrorCode::kExpired;
   }
 
   return ErrorCode::kUnknown;

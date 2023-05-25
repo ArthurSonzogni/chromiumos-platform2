@@ -402,6 +402,9 @@ TEST_F(LECredentialManagerImplUnitTest, BiometricsLockedOutRateLimiter) {
       PrimaryActionIs(reply.status(), error::PrimaryAction::kLeLockedOut));
 }
 
+// TODO(b/283182607): Add rate-limiter expiration tests after we can
+// fast-forward time in TPM simulator.
+
 // Insert a label. Then ensure that a CheckCredential on another non-existent
 // label fails.
 TEST_F(LECredentialManagerImplUnitTest, InvalidLabelCheck) {

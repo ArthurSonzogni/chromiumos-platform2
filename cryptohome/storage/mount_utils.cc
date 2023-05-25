@@ -133,6 +133,9 @@ MountError CryptoErrorToMountError(CryptoError crypto_error) {
     case CryptoError::CE_RECOVERY_FATAL:
       local_error = MOUNT_ERROR_RECOVERY_FATAL;
       break;
+    case CryptoError::CE_LE_EXPIRED:
+      local_error = MOUNT_ERROR_CREDENTIAL_EXPIRED;
+      break;
     default:
       local_error = MOUNT_ERROR_KEY_FAILURE;
       break;
@@ -159,6 +162,8 @@ user_data_auth::CryptohomeErrorCode MountErrorToCryptohomeError(
       return user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK;
     case MOUNT_ERROR_CREDENTIAL_LOCKED:
       return user_data_auth::CRYPTOHOME_ERROR_CREDENTIAL_LOCKED;
+    case MOUNT_ERROR_CREDENTIAL_EXPIRED:
+      return user_data_auth::CRYPTOHOME_ERROR_CREDENTIAL_EXPIRED;
     case MOUNT_ERROR_TPM_UPDATE_REQUIRED:
       return user_data_auth::CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED;
     case MOUNT_ERROR_USER_DOES_NOT_EXIST:

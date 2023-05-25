@@ -842,11 +842,21 @@ static_assert(
         static_cast<int>(cryptohome::CRYPTOHOME_ERROR_BIOMETRICS_BUSY),
     "Enum member CRYPTOHOME_ERROR_BIOMETRICS_BUSY differs between "
     "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_CREDENTIAL_LOCKED) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_CREDENTIAL_LOCKED),
+    "Enum member CRYPTOHOME_ERROR_CREDENTIAL_LOCKED differs between "
+    "user_data_auth:: and cryptohome::");
+static_assert(
+    static_cast<int>(user_data_auth::CRYPTOHOME_ERROR_CREDENTIAL_EXPIRED) ==
+        static_cast<int>(cryptohome::CRYPTOHOME_ERROR_CREDENTIAL_EXPIRED),
+    "Enum member CRYPTOHOME_ERROR_CREDENTIAL_EXPIRED differs between "
+    "user_data_auth:: and cryptohome::");
 
 static_assert(
-    user_data_auth::CryptohomeErrorCode_MAX == 59,
+    user_data_auth::CryptohomeErrorCode_MAX == 60,
     "user_data_auth::CryptohomeErrorCode's element count is incorrect");
-static_assert(cryptohome::CryptohomeErrorCode_MAX == 59,
+static_assert(cryptohome::CryptohomeErrorCode_MAX == 60,
               "cryptohome::CryptohomeErrorCode's element count is incorrect");
 }  // namespace CryptohomeErrorCodeEquivalenceTest
 

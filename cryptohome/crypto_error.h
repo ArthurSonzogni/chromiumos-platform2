@@ -38,6 +38,8 @@ enum class CryptoError {
   CE_RECOVERY_TRANSIENT = 14,
   // Cryptohome recovery failed with a fatal error.
   CE_RECOVERY_FATAL = 15,
+  // The LE credential has expired.
+  CE_LE_EXPIRED = 16,
   // Add any new values above this one.
   CE_MAX_VALUE,
 };

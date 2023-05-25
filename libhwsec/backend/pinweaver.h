@@ -44,6 +44,9 @@ class PinWeaver {
       // proceed from here is to
       // reboot the device.
       kPolicyNotMatch,
+      // Failed since the credential has been locked out due to expiration time
+      // reached.
+      kExpired,
       // Unknown error.
       kUnknown,
     };

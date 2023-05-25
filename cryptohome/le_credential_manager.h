@@ -155,6 +155,7 @@ class LECredentialManager {
   // LE_CRED_ERROR_INVALID_METADATA for invalid credential metadata.
   // LE_CRED_ERROR_PCR_NOT_MATCH if the PCR registers from TPM have unexpected
   // values, in which case only reboot will allow this user to authenticate.
+  // LE_CRED_EXPIRED for expired credential.
   virtual LECredStatusOr<StartBiometricsAuthReply> StartBiometricsAuth(
       uint8_t auth_channel,
       uint64_t label,

@@ -55,6 +55,8 @@ user_data_auth::PrimaryAction PrimaryActionToProto(PrimaryAction action) {
       return user_data_auth::PrimaryAction::PRIMARY_INCORRECT_AUTH;
     case PrimaryAction::kLeLockedOut:
       return user_data_auth::PrimaryAction::PRIMARY_LE_LOCKED_OUT;
+    case PrimaryAction::kLeExpired:
+      return user_data_auth::PrimaryAction::PRIMARY_LE_EXPIRED;
   }
 }
 
@@ -88,6 +90,8 @@ std::string PrimaryActionToString(PrimaryAction action) {
       return "Incorrect Auth";
     case PrimaryAction::kLeLockedOut:
       return "LE Locked Out";
+    case PrimaryAction::kLeExpired:
+      return "LE Expired";
   }
 }
 

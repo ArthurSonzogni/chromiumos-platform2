@@ -33,6 +33,8 @@ CryptoError LECredErrorToCryptoError(LECredError le_error) {
       // reboot.
       LOG(ERROR) << "PCR in unexpected state.";
       return CryptoError::CE_LE_INVALID_SECRET;
+    case LE_CRED_ERROR_EXPIRED:
+      return CryptoError::CE_LE_EXPIRED;
     default:
       return CryptoError::CE_OTHER_CRYPTO;
   }
