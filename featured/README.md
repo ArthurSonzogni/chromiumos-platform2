@@ -69,3 +69,35 @@ We are actively working (in 2023) on support for "early boot" features in
 featured. To support "early boot" features, featured startup will be moved
 earlier to start during
 [basic services](https://www.chromium.org/chromium-os/chromiumos-design-docs/boot-design/#basic-services-startup).
+
+### PlatformFeatures
+`PlatformFeatures` is a handle to `feature_library` and allows users to query
+feature state and associated parameters, if there are any.
+
+`PlatformFeatures` is implemented as a singleton class and is thread-safe.
+Here is an example of how to initialize and obtain an instance:
+
+```
+dbus::Bus::Options options;
+options.bus_type = dbus::Bus::SYSTEM;
+scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+
+// |Initialize| must be called before calling |Get| and the return value must
+// be used since it has the [[nodiscard]] attribute.
+CHECK(feature::PlatformFeatures::Initialize(bus));
+
+// |Get| will return a valid handle if |Initialize| succeeds.
+// Note that |Get| and subsequent calls can happen much later than |Initialize|
+// since the object pointer remains valid until program exit.
+feature::PlatformFeatures* feature_lib = feature::PlatformFeatures::Get();
+
+// Use the handle to query feature state.
+feature_lib->GetParamsAndEnabled(...);
+```
+
+Note that no shutdown call is necessary. The initialized instance will get
+automatically cleaned up on program exit.
+
+[platform2/featured/cpp_feature_check_example.cc](https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/featured/cpp_feature_check_example.cc)
+provides another example on how to use `PlatformFeatures` and associated
+functions like `IsEnabled{,Blocking}`, and `GetParamsAndEnabled{,Blocking}`.
