@@ -129,7 +129,7 @@ bool DHCPServerController::Start(const Config& config,
   }
   for (const auto& [tag, content] : config.dhcp_options()) {
     dnsmasq_args.push_back(
-        base::StringPrintf("--dhcp-option=%u,%s", tag, content.c_str()));
+        base::StringPrintf("--dhcp-option-force=%u,%s", tag, content.c_str()));
   }
 
   shill::ProcessManager::MinijailOptions minijail_options = {};

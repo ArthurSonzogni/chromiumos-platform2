@@ -138,7 +138,7 @@ TEST_F(DHCPServerControllerTest, StartSuccessfulAtFirstTime) {
       "--dhcp-option=option:dns-server,1.2.3.4,5.6.7.8",
       "--dhcp-option=option:domain-search,domain.local0,domain.local1",
       "--dhcp-option=option:mtu,2000",
-      "--dhcp-option=43,ANDROID_METERED",
+      "--dhcp-option-force=43,ANDROID_METERED",
   };
   constexpr pid_t pid = 5;
 
