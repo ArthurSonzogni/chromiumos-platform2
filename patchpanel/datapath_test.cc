@@ -688,7 +688,7 @@ TEST(DatapathTest, AddTAP) {
   MacAddress mac = {1, 2, 3, 4, 5, 6};
   Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::DoNothing());
   auto addr = subnet.AllocateAtOffset(0);
-  auto ifname = datapath.AddTAP("foo0", &mac, addr.get(), "");
+  auto ifname = datapath.AddTAP("foo0", &mac, &(addr->cidr()), "");
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {
@@ -706,7 +706,7 @@ TEST(DatapathTest, AddTAPWithOwner) {
   MacAddress mac = {1, 2, 3, 4, 5, 6};
   Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::DoNothing());
   auto addr = subnet.AllocateAtOffset(0);
-  auto ifname = datapath.AddTAP("foo0", &mac, addr.get(), "root");
+  auto ifname = datapath.AddTAP("foo0", &mac, &(addr->cidr()), "root");
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {

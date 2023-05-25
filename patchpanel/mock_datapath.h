@@ -49,7 +49,7 @@ class MockDatapath : public Datapath {
               AddTAP,
               (const std::string& name,
                const MacAddress* mac_addr,
-               const SubnetAddress* ipv4_addr,
+               const net_base::IPv4CIDR* ipv4_cidr,
                const std::string& user),
               (override));
   MOCK_METHOD(bool,

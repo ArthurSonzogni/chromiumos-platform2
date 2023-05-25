@@ -212,12 +212,12 @@ class Datapath {
   // it may be a template (e.g. vmtap%d), in which case the kernel will
   // generate the name; or it may be fully defined. In all cases, upon success,
   // the function returns the actual name of the interface.
-  // |mac_addr| and |ipv4_addr| should be null if this interface will be later
-  // bridged.
-  // If |user| is empty, no owner will be set
+  // |mac_addr| and |ipv4_cidr| should be nullptr if this interface will be
+  // later bridged.
+  // If |user| is empty, no owner will be set.
   virtual std::string AddTAP(const std::string& name,
                              const MacAddress* mac_addr,
-                             const SubnetAddress* ipv4_addr,
+                             const net_base::IPv4CIDR* ipv4_cidr,
                              const std::string& user);
 
   // |ifname| must be the actual name of the interface.

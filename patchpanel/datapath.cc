@@ -674,7 +674,7 @@ bool Datapath::AddToBridge(const std::string& br_ifname,
 
 std::string Datapath::AddTAP(const std::string& name,
                              const MacAddress* mac_addr,
-                             const SubnetAddress* ipv4_addr,
+                             const net_base::IPv4CIDR* ipv4_cidr,
                              const std::string& user) {
   base::ScopedFD dev = system_->OpenTunDev();
   if (!dev.is_valid()) {
@@ -725,14 +725,14 @@ std::string Datapath::AddTAP(const std::string& name,
     return "";
   }
 
-  if (ipv4_addr) {
+  if (ipv4_cidr) {
     struct sockaddr_in* addr =
         reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_addr);
     addr->sin_family = AF_INET;
-    addr->sin_addr = ipv4_addr->cidr().address().ToInAddr();
+    addr->sin_addr = ipv4_cidr->address().ToInAddr();
     if (system_->Ioctl(sock.get(), SIOCSIFADDR, &ifr) != 0) {
       PLOG(ERROR) << "Failed to set ip address for vmtap interface " << ifname
-                  << " {" << ipv4_addr->cidr().ToString() << "}";
+                  << " {" << ipv4_cidr->ToString() << "}";
       RemoveTAP(ifname);
       return "";
     }
@@ -740,10 +740,10 @@ std::string Datapath::AddTAP(const std::string& name,
     struct sockaddr_in* netmask =
         reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_netmask);
     netmask->sin_family = AF_INET;
-    netmask->sin_addr = ipv4_addr->cidr().ToNetmask().ToInAddr();
+    netmask->sin_addr = ipv4_cidr->ToNetmask().ToInAddr();
     if (system_->Ioctl(sock.get(), SIOCSIFNETMASK, &ifr) != 0) {
       PLOG(ERROR) << "Failed to set netmask for vmtap interface " << ifname
-                  << " {" << ipv4_addr->cidr().ToString() << "}";
+                  << " {" << ipv4_cidr->ToString() << "}";
       RemoveTAP(ifname);
       return "";
     }
