@@ -7,8 +7,10 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <base/containers/contains.h>
+#include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
 #include <base/memory/page_size.h>
@@ -23,11 +25,17 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libcrossystem/crossystem_fake.h>
+#include <spaced/dbus-proxies.h>
+#include <spaced/dbus-proxy-mocks.h>
+#include <spaced/disk_usage_proxy.h>
 #include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/fake_crosvm_control.h"
+#include "vm_tools/concierge/vmm_swap_low_disk_policy.h"
 #include "vm_tools/concierge/vmm_swap_tbw_policy.h"
+
+using ::testing::_;
 
 namespace vm_tools {
 namespace concierge {
@@ -843,10 +851,26 @@ class ArcVmTest : public ::testing::Test {
     swap_state_monitor_timer_ = new base::MockRepeatingTimer();
     aggressive_balloon_timer_ = new base::MockRepeatingTimer();
 
+    spaced_proxy_ = new org::chromium::SpacedProxyMock();
+    ON_CALL(*spaced_proxy_, GetFreeDiskSpaceAsync(_, _, _, _))
+        .WillByDefault(
+            [](const std::string& in_path,
+               base::OnceCallback<void(int64_t)> success_callback,
+               base::OnceCallback<void(brillo::Error*)> error_callback,
+               int timeout_ms) {
+              std::move(success_callback).Run(10LL << 30);  // 10GiB
+            });
+
+    disk_usage_proxy_ = std::make_unique<spaced::DiskUsageProxy>(
+        std::unique_ptr<org::chromium::SpacedProxyMock>(spaced_proxy_));
+
     vm_ = std::unique_ptr<ArcVm>(new ArcVm(ArcVm::Config{
         .vsock_cid = vsock_cid,
         .network_client = std::make_unique<patchpanel::FakeClient>(),
         .seneschal_server_proxy = nullptr,
+        .vmm_swap_low_disk_policy = std::make_unique<VmmSwapLowDiskPolicy>(
+            base::FilePath("dummy"),
+            raw_ref<spaced::DiskUsageProxy>::from_ptr(disk_usage_proxy_.get())),
         .vmm_swap_tbw_policy =
             raw_ref<VmmSwapTbwPolicy>::from_ptr(vmm_swap_tbw_policy_.get()),
         .guest_memory_size = kGuestMemorySize,
@@ -931,6 +955,8 @@ class ArcVmTest : public ::testing::Test {
 
   std::unique_ptr<VmmSwapTbwPolicy> vmm_swap_tbw_policy_ =
       std::make_unique<VmmSwapTbwPolicy>();
+  org::chromium::SpacedProxyMock* spaced_proxy_;
+  std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy_;
 
  private:
   // Temporary directory where we will store our socket.
@@ -1267,6 +1293,24 @@ TEST_F(ArcVmTest, EnableVmmSwapPassUsagePolicy4DaysTarget) {
   AddUsageLog(base::Time::Now() - base::Days(7) - base::Hours(1),
               base::Days(4) + base::Hours(2));
   ASSERT_TRUE(EnableVmmSwap());
+}
+
+TEST_F(ArcVmTest, EnableVmmSwapRejectedByLowDiskPolicy) {
+  // The usage prediction target is 2 days.
+  vmm_swap_tbw_policy_->SetTargetTbwPerDay(kGuestMemorySize);
+  ON_CALL(*spaced_proxy_, GetFreeDiskSpaceAsync(_, _, _, _))
+      .WillByDefault([](const std::string& in_path,
+                        base::OnceCallback<void(int64_t)> success_callback,
+                        base::OnceCallback<void(brillo::Error*)> error_callback,
+                        int timeout_ms) {
+        std::move(success_callback)
+            .Run(VmmSwapLowDiskPolicy::kTargetMinimumFreeDiskSpace +
+                 kGuestMemorySize - 1);
+      });
+
+  FakeCrosvmControl::Get()->count_enable_vmm_swap_ = 0;
+  ASSERT_FALSE(EnableVmmSwap());
+  ASSERT_EQ(FakeCrosvmControl::Get()->count_enable_vmm_swap_, 0);
 }
 
 TEST_F(ArcVmTest, EnableVmmSwapZeroTbwTarget) {

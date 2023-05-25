@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <stdlib.h>
 
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -24,6 +25,7 @@
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/shared_data.h"
 #include "vm_tools/concierge/vm_util.h"
+#include "vm_tools/concierge/vmm_swap_low_disk_policy.h"
 
 namespace vm_tools {
 namespace concierge {
@@ -570,9 +572,15 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
+  base::FilePath swap_dir = GetCryptohomePath(request.owner_id());
+  std::unique_ptr<VmmSwapLowDiskPolicy> vmm_swap_low_disk_policy =
+      std::make_unique<VmmSwapLowDiskPolicy>(
+          swap_dir,
+          raw_ref<spaced::DiskUsageProxy>::from_ptr(disk_usage_proxy_.get()));
+
   std::optional<base::FilePath> vmm_swap_usage_path;
   if (request.enable_vmm_swap()) {
-    vm_builder.SetVmmSwapDir(GetCryptohomePath(request.owner_id()));
+    vm_builder.SetVmmSwapDir(swap_dir);
     vmm_swap_usage_path = GetVmmSwapUsageHistoryPath(request.owner_id());
   }
 
@@ -581,6 +589,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       .vsock_cid = vsock_cid,
       .network_client = std::move(network_client),
       .seneschal_server_proxy = std::move(server_proxy),
+      .vmm_swap_low_disk_policy = std::move(vmm_swap_low_disk_policy),
       .vmm_swap_tbw_policy =
           raw_ref<VmmSwapTbwPolicy>::from_ptr(vmm_swap_tbw_policy_.get()),
       .vmm_swap_usage_path = std::move(vmm_swap_usage_path),

@@ -147,6 +147,9 @@ constexpr base::TimeDelta kBalloonRefreshTime = base::Seconds(60);
 
 // The vmm-swap out should be skipped for 24 hours once it's done.
 constexpr base::TimeDelta kVmmSwapOutCoolingDownPeriod = base::Hours(24);
+// Vmm-swap trim should be triggered 10 minutes after enable to let hot pages of
+// the guest move back to the guest memory.
+constexpr base::TimeDelta kVmmSwapTrimWaitPeriod = base::Minutes(10);
 
 // The default initialization parameters for ARCVM's LimitCacheBalloonPolicy
 static constexpr LimitCacheBalloonPolicy::Params kArcVmLimitCachePolicyParams =
@@ -277,6 +280,7 @@ ArcVm::ArcVm(Config config)
       balloon_refresh_time_(base::Time::Now() + kBalloonRefreshTime),
       swap_policy_timer_(std::move(config.swap_policy_timer)),
       swap_state_monitor_timer_(std::move(config.swap_state_monitor_timer)),
+      vmm_swap_low_disk_policy_(std::move(config.vmm_swap_low_disk_policy)),
       vmm_swap_tbw_policy_(config.vmm_swap_tbw_policy),
       guest_memory_size_(config.guest_memory_size),
       aggressive_balloon_timer_(std::move(config.aggressive_balloon_timer)) {
@@ -838,8 +842,8 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
   switch (request.operation()) {
     case SwapOperation::ENABLE:
       LOG(INFO) << "Enable vmm-swap";
-      HandleSwapVmEnableRequest(response);
-      break;
+      HandleSwapVmEnableRequest(std::move(callback));
+      return;
 
     case SwapOperation::FORCE_ENABLE:
       LOG(INFO) << "Force enable vmm-swap";
@@ -1101,19 +1105,18 @@ base::TimeDelta ArcVm::CalculateVmmSwapDurationTarget() const {
   return base::Seconds(static_cast<int64_t>(target_seconds));
 }
 
-void ArcVm::HandleSwapVmEnableRequest(SwapVmResponse& response) {
+void ArcVm::HandleSwapVmEnableRequest(SwapVmCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  bool satisfies_policy = true;
   vmm_swap_usage_policy_.OnEnabled();
+
   if (is_vmm_swap_enabled_) {
     if ((base::Time::Now() - last_vmm_swap_out_at_) <
         kVmmSwapOutCoolingDownPeriod) {
       LOG(INFO) << "Skip enabling vmm-swap for maintenance for "
                 << kVmmSwapOutCoolingDownPeriod;
-      satisfies_policy = false;
-      response.set_success(false);
-      response.set_failure_reason(
-          "Requires cooling down period after last vmm-swap out");
+      ApplyVmmSwapPolicyResult(std::move(callback),
+                               VmmSwapPolicyResult::kCoolDown);
+      return;
     }
   } else {
     base::TimeDelta min_vmm_swap_duration_target =
@@ -1126,45 +1129,90 @@ void ArcVm::HandleSwapVmEnableRequest(SwapVmResponse& response) {
                    "Predict duration: "
                 << next_disable_duration << " should be longer than "
                 << min_vmm_swap_duration_target;
-      satisfies_policy = false;
-      response.set_success(false);
-      response.set_failure_reason("Predicted disable soon");
+      ApplyVmmSwapPolicyResult(std::move(callback),
+                               VmmSwapPolicyResult::kUsagePrediction);
+      return;
     }
   }
-  if (satisfies_policy && !skip_tbw_management_ &&
-      !vmm_swap_tbw_policy_->CanSwapOut()) {
+  if (!skip_tbw_management_ && !vmm_swap_tbw_policy_->CanSwapOut()) {
     LOG(WARNING) << "Enabling vmm-swap is rejected by TBW limit";
-    satisfies_policy = false;
-    response.set_success(false);
-    response.set_failure_reason("TBW (total bytes written) reached target");
+    ApplyVmmSwapPolicyResult(
+        std::move(callback),
+        VmmSwapPolicyResult::kExceededTotalBytesWrittenLimit);
+    return;
   }
 
-  // Even if it is not allowed to vmm-swap out memory to swap file, it worth
-  // doing vmm-swap trim. The trim command drops the zero/static pages
-  // faulted into the guest memory since the last vmm-swap out.
-  bool trim_vmm_swap_only = !satisfies_policy && is_vmm_swap_enabled_ &&
-                            !swap_policy_timer_->IsRunning();
-  if (!satisfies_policy && !trim_vmm_swap_only) {
-    return;
-  }
-  if (!CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
-    LOG(ERROR) << "Failure on crosvm swap command for enable";
-    response.set_success(false);
-    response.set_failure_reason("Failure on crosvm swap command for enable");
-    return;
-  }
-  if (trim_vmm_swap_only) {
-    // When `trim_vmm_swap_only` is `true`, `suffice_policy` is always `false`
-    // which means it already failed on policy stage and
-    // `response.set_success()` is already set as `false` with failure reason.
-    swap_policy_timer_->Start(FROM_HERE, base::Minutes(10), this,
-                              &ArcVm::TrimVmmSwapMemory);
+  if (!is_vmm_swap_enabled_) {
+    auto start_vmm_swap_enable =
+        base::BindOnce(&ArcVm::ApplyVmmSwapPolicyResult, base::Unretained(this),
+                       std::move(callback));
+    vmm_swap_low_disk_policy_->CanEnable(
+        guest_memory_size_,
+        base::BindOnce(
+            [](base::OnceCallback<void(VmmSwapPolicyResult)>
+                   start_vmm_swap_enable,
+               bool can_enable) {
+              if (!can_enable) {
+                LOG(INFO) << "Enabling vmm-swap is rejected by low disk mode.";
+              }
+              std::move(start_vmm_swap_enable)
+                  .Run(can_enable ? VmmSwapPolicyResult::kPass
+                                  : VmmSwapPolicyResult::kLowDisk);
+            },
+            std::move(start_vmm_swap_enable)));
   } else {
-    is_vmm_swap_enabled_ = true;
-    response.set_success(true);
-    swap_policy_timer_->Start(FROM_HERE, base::Minutes(10), this,
-                              &ArcVm::StartVmmSwapOut);
+    ApplyVmmSwapPolicyResult(std::move(callback), VmmSwapPolicyResult::kPass);
   }
+}
+
+void ArcVm::ApplyVmmSwapPolicyResult(SwapVmCallback callback,
+                                     VmmSwapPolicyResult policy_result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  SwapVmResponse response;
+  if (policy_result == VmmSwapPolicyResult::kPass ||
+      (is_vmm_swap_enabled_ && !swap_policy_timer_->IsRunning())) {
+    if (!CrosvmControl::Get()->EnableVmmSwap(GetVmSocketPath().c_str())) {
+      LOG(ERROR) << "Failure on crosvm swap command for enable";
+      response.set_failure_reason("Failure on crosvm swap command for enable");
+      std::move(callback).Run(response);
+      return;
+    }
+    if (policy_result == VmmSwapPolicyResult::kPass) {
+      is_vmm_swap_enabled_ = true;
+      swap_policy_timer_->Start(FROM_HERE, kVmmSwapTrimWaitPeriod, this,
+                                &ArcVm::StartVmmSwapOut);
+    } else {
+      // Even if it is not allowed to vmm-swap out memory to swap file, it worth
+      // doing vmm-swap trim. The trim command drops the zero/static pages
+      // faulted into the guest memory since the last vmm-swap out.
+      swap_policy_timer_->Start(FROM_HERE, kVmmSwapTrimWaitPeriod, this,
+                                &ArcVm::TrimVmmSwapMemory);
+    }
+  }
+  switch (policy_result) {
+    case VmmSwapPolicyResult::kPass:
+      response.set_success(true);
+      break;
+    case VmmSwapPolicyResult::kCoolDown:
+      response.set_failure_reason(
+          "Requires cooling down period after last vmm-swap out");
+      break;
+    case VmmSwapPolicyResult::kUsagePrediction:
+      response.set_failure_reason("Predicted disable soon");
+      break;
+    case VmmSwapPolicyResult::kExceededTotalBytesWrittenLimit:
+      response.set_failure_reason("TBW (total bytes written) reached target");
+      break;
+    case VmmSwapPolicyResult::kLowDisk:
+      response.set_failure_reason("Low disk mode");
+      break;
+    default:
+      LOG(ERROR) << "Unexpected policy result: " << policy_result;
+      response.set_failure_reason("Unexpected reason");
+      break;
+  }
+  std::move(callback).Run(response);
 }
 
 void ArcVm::HandleSwapVmForceEnableRequest(SwapVmResponse& response) {

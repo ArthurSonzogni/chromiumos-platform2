@@ -32,6 +32,7 @@
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_util.h"
+#include "vm_tools/concierge/vmm_swap_low_disk_policy.h"
 #include "vm_tools/concierge/vmm_swap_tbw_policy.h"
 #include "vm_tools/concierge/vmm_swap_usage_policy.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
@@ -75,6 +76,7 @@ class ArcVm final : public VmBaseImpl {
     uint32_t vsock_cid;
     std::unique_ptr<patchpanel::Client> network_client;
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
+    std::unique_ptr<VmmSwapLowDiskPolicy> vmm_swap_low_disk_policy;
     const raw_ref<VmmSwapTbwPolicy> vmm_swap_tbw_policy;
     // The path to the history file of `VmmSwapUsagePolicy`. If vmm-swap is not
     // enabled this should be `nullopt`, otherwise the file is created.
@@ -187,6 +189,22 @@ class ArcVm final : public VmBaseImpl {
   using VmmSwapStateChangeCallback =
       base::OnceCallback<void(SwapState new_state)>;
 
+  // Indicates which policy rejects to enable vmm-swap.
+  enum VmmSwapPolicyResult {
+    // All policies allow vmm-swap enable
+    kPass,
+    // Vmm-swap moved memory to disk recently.
+    kCoolDown,
+    // VmmSwapUsagePolicy: vmm-swap is predicted to be disabled soon.
+    kUsagePrediction,
+    // VmmSwapTbwPolicy: vmm-swap have written too much pages into disk last
+    // 28 days.
+    kExceededTotalBytesWrittenLimit,
+    // VmmSwapLowDiskPolicy: The device does not have enough disk space
+    // available.
+    kLowDisk,
+  };
+
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
 
@@ -207,9 +225,11 @@ class ArcVm final : public VmBaseImpl {
   void InflateAggressiveBalloonOnTimer();
 
   base::TimeDelta CalculateVmmSwapDurationTarget() const;
-  void HandleSwapVmEnableRequest(SwapVmResponse& response);
+  void HandleSwapVmEnableRequest(SwapVmCallback callback);
   void HandleSwapVmForceEnableRequest(SwapVmResponse& response);
   void HandleSwapVmDisableRequest(SwapVmResponse& response);
+  void ApplyVmmSwapPolicyResult(SwapVmCallback callback,
+                                VmmSwapPolicyResult policy_result);
   void TrimVmmSwapMemory();
   void StartVmmSwapOut();
   void RunVmmSwapOutAfterTrim();
@@ -266,6 +286,8 @@ class ArcVm final : public VmBaseImpl {
   std::unique_ptr<base::OneShotTimer> swap_policy_timer_
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<base::RepeatingTimer> swap_state_monitor_timer_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  std::unique_ptr<VmmSwapLowDiskPolicy> vmm_swap_low_disk_policy_
       GUARDED_BY_CONTEXT(sequence_checker_);
   const raw_ref<VmmSwapTbwPolicy> vmm_swap_tbw_policy_
       GUARDED_BY_CONTEXT(sequence_checker_);
