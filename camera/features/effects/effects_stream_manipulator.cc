@@ -948,6 +948,7 @@ void EffectsStreamManipulatorImpl::RenderEffect(
     metrics_.RecordError(CameraEffectError::kYUVConversionFailed);
     return;
   }
+  glFinish();
 
   // Mediapipe requires timestamps to be strictly increasing for a given
   // pipeline. If we receive non-monotonic timestamps or render the pipeline
