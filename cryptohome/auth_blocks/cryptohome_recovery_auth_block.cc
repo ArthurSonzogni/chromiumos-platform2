@@ -28,6 +28,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/proto_bindings/rpc.pb.h"
@@ -448,8 +449,8 @@ void CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
                           std::move(key_blobs), std::nullopt);
 }
 
-CryptohomeStatus CryptohomeRecoveryAuthBlock::PrepareForRemoval(
-    const AuthBlockState& state) {
+void CryptohomeRecoveryAuthBlock::PrepareForRemoval(const AuthBlockState& state,
+                                                    StatusCallback callback) {
   CryptoStatus crypto_err = PrepareForRemovalInternal(state);
   if (!crypto_err.ok()) {
     LOG(WARNING) << "PrepareForRemoval failed for cryptohome recovery auth "
@@ -463,7 +464,7 @@ CryptohomeStatus CryptohomeRecoveryAuthBlock::PrepareForRemoval(
                                   CryptoError::CE_NONE);
   }
 
-  return OkStatus<CryptohomeCryptoError>();
+  std::move(callback).Run(OkStatus<CryptohomeCryptoError>());
 }
 
 CryptoStatus CryptohomeRecoveryAuthBlock::PrepareForRemovalInternal(

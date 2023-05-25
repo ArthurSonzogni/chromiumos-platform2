@@ -11,6 +11,7 @@
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/le_credential_manager.h"
@@ -49,7 +50,8 @@ class PinWeaverAuthBlock : public AuthBlock {
 
   // Removing the underlying Pinweaver leaf node before the AuthFactor is
   // removed.
-  CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) override;
+  void PrepareForRemoval(const AuthBlockState& state,
+                         StatusCallback callback) override;
 
   uint32_t GetLockoutDelay(uint64_t label);
 

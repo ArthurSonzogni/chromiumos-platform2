@@ -254,24 +254,26 @@ std::optional<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
   return generic.GetAuthBlockTypeFromState(auth_block_state);
 }
 
-CryptohomeStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
-    const AuthBlockState& auth_block_state) {
+void AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
+    const AuthBlockState& auth_block_state, CryptohomeStatusCallback callback) {
   std::optional<AuthBlockType> auth_block_type =
       GetAuthBlockTypeFromState(auth_block_state);
   if (!auth_block_type) {
     LOG(ERROR) << "Unsupported auth factor type.";
-    return MakeStatus<CryptohomeCryptoError>(
+    std::move(callback).Run(MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocAuthBlockUtilUnsupportedInPrepareAuthBlockForRemoval),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
+        CryptoError::CE_OTHER_CRYPTO));
+    return;
   }
 
   // Should not create ChallengeCredential AuthBlock, no underlying
   // removal of the AuthBlock needed. Because of this, auth_input
   // can be an empty input.
   if (auth_block_type == AuthBlockType::kChallengeCredential) {
-    return OkStatus<CryptohomeError>();
+    std::move(callback).Run(OkStatus<CryptohomeError>());
+    return;
   }
 
   AuthInput auth_input;
@@ -279,13 +281,14 @@ CryptohomeStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
       GetAuthBlockWithType(*auth_block_type, auth_input);
   if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocAuthBlockUtilNoAuthBlockInPrepareForRemoval))
-        .Wrap(std::move(auth_block).err_status());
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilNoAuthBlockInPrepareForRemoval))
+            .Wrap(std::move(auth_block).err_status()));
+    return;
   }
 
-  return auth_block.value()->PrepareForRemoval(auth_block_state);
+  auth_block.value()->PrepareForRemoval(auth_block_state, std::move(callback));
 }
 
 CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(

@@ -3660,9 +3660,10 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
                            user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD));
 
   // Remove an auth factor, we should still be able to list the remaining one.
-  ASSERT_THAT(manager.RemoveAuthFactor(kObfuscatedUser, *pin_factor,
-                                       &auth_block_utility_),
-              IsOk());
+  TestFuture<CryptohomeStatus> remove_result;
+  manager.RemoveAuthFactor(kObfuscatedUser, *pin_factor, &auth_block_utility_,
+                           remove_result.GetCallback());
+  EXPECT_THAT(remove_result.Take(), IsOk());
   TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_3;
   userdataauth_->ListAuthFactors(
       list_request,

@@ -84,9 +84,11 @@ class AuthBlock {
 
   // This is optionally implemented by concrete auth factor methods which need
   // to execute additional steps before removal of the AuthFactor from disk.
-  virtual CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) {
+  virtual void PrepareForRemoval(const AuthBlockState& state,
+                                 StatusCallback callback) {
     // By default, do nothing. Subclasses can provide custom behavior.
-    return hwsec_foundation::status::OkStatus<error::CryptohomeCryptoError>();
+    return std::move(callback).Run(
+        hwsec_foundation::status::OkStatus<error::CryptohomeCryptoError>());
   }
 
   // If the operation succeeds, |auth_input| will contain the constructed

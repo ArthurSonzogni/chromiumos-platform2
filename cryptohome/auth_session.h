@@ -642,8 +642,25 @@ class AuthSession final {
 
   // Removes the key block with the provided `auth_factor_label` from the USS
   // and removes the `auth_factor` from disk.
-  CryptohomeStatus RemoveAuthFactorViaUserSecretStash(
-      const std::string& auth_factor_label, const AuthFactor& auth_factor);
+  void RemoveAuthFactorViaUserSecretStash(const std::string& auth_factor_label,
+                                          const AuthFactor& auth_factor,
+                                          StatusCallback on_done);
+
+  // Removes the auth factor from the in-memory map, the existing keyset and
+  // verifier indexed by the `auth_factor_label`.
+  void ClearAuthFactorInMemoryObjects(
+      const std::string& auth_factor_label,
+      const AuthFactorMap::ValueView& stored_auth_factor,
+      const base::TimeTicks& remove_timer_start,
+      StatusCallback on_done,
+      CryptohomeStatus status);
+
+  // Re-persists the USS and removes in memory objects related to the
+  // removed auth factor.
+  void ResaveUssWithFactorRemoved(const std::string& auth_factor_label,
+                                  const AuthFactor& auth_factor,
+                                  StatusCallback on_done,
+                                  CryptohomeStatus status);
 
   // Remove the factor from the USS in-memory.
   CryptohomeStatus RemoveAuthFactorFromUssInMemory(
@@ -662,6 +679,17 @@ class AuthSession final {
       CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
+
+  // Persists the updated USS and
+  // re-creates the related credential verifier if applicable.
+  void ResaveUssWithFactorUpdated(AuthFactorType auth_factor_type,
+                                  std::unique_ptr<AuthFactor> auth_factor,
+                                  const AuthInput& auth_input,
+                                  std::unique_ptr<AuthSessionPerformanceTimer>
+                                      auth_session_performance_timer,
+                                  const brillo::Blob& encrypted_uss_container,
+                                  StatusCallback on_done,
+                                  CryptohomeStatus status);
 
   // Handles the completion of an async PrepareAuthFactor call. Captures the
   // token and forwards the result to the given status callback.

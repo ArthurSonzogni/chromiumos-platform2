@@ -1450,8 +1450,11 @@ TEST_F(AuthBlockUtilityImplTest,
 
   MakeAuthBlockUtilityImpl();
 
-  EXPECT_TRUE(
-      auth_block_utility_impl_->PrepareAuthBlockForRemoval(auth_state).ok());
+  TestFuture<CryptohomeStatus> result;
+  auth_block_utility_impl_->PrepareAuthBlockForRemoval(auth_state,
+                                                       result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  ASSERT_THAT(result.Take(), IsOk());
 }
 
 // Test that PrepareAuthBlockForRemoval succeeds for CryptohomeRecoveryAuthBlock
@@ -1485,8 +1488,11 @@ TEST_F(AuthBlockUtilityImplTest,
 
   MakeAuthBlockUtilityImpl();
 
-  EXPECT_TRUE(
-      auth_block_utility_impl_->PrepareAuthBlockForRemoval(auth_state).ok());
+  TestFuture<CryptohomeStatus> result;
+  auth_block_utility_impl_->PrepareAuthBlockForRemoval(auth_state,
+                                                       result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  ASSERT_THAT(result.Take(), IsOk());
 }
 
 TEST_F(AuthBlockUtilityImplTest, EmptyAuthBlockState) {

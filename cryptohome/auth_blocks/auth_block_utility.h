@@ -90,8 +90,9 @@ class AuthBlockUtility {
 
   // Executes additional steps needed for auth block removal, using the given
   // auth block state.
-  [[nodiscard]] virtual CryptohomeStatus PrepareAuthBlockForRemoval(
-      const AuthBlockState& auth_block_state) = 0;
+  virtual void PrepareAuthBlockForRemoval(
+      const AuthBlockState& auth_block_state,
+      CryptohomeStatusCallback callback) = 0;
 
   // Generates a payload for cryptohome recovery AuthFactor authentication.
   [[nodiscard]] virtual CryptoStatus GenerateRecoveryRequest(

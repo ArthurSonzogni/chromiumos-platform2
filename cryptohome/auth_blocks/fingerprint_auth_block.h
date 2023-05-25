@@ -15,6 +15,7 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/util/async_init.h"
@@ -43,7 +44,8 @@ class FingerprintAuthBlock : public AuthBlock {
               const AuthBlockState& state,
               DeriveCallback callback) override;
 
-  CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) override;
+  void PrepareForRemoval(const AuthBlockState& state,
+                         StatusCallback callback) override;
 
   void SelectFactor(const AuthInput& auth_input,
                     std::vector<AuthFactor> auth_factors,

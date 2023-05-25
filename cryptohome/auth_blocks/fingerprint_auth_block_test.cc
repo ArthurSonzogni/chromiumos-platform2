@@ -876,7 +876,10 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalSuccess) {
   EXPECT_CALL(mock_le_manager_, RemoveCredential(kFakeCredLabel))
       .WillOnce(ReturnOk<CryptohomeLECredError>());
 
-  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
+  TestFuture<CryptohomeStatus> result;
+  auth_block_->PrepareForRemoval(auth_state, result.GetCallback());
+  EXPECT_TRUE(result.IsReady());
+  EXPECT_THAT(result.Take(), IsOk());
 }
 
 TEST_F(FingerprintAuthBlockTest, PrepareForRemovalEmptyTemplateId) {
@@ -888,7 +891,10 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalEmptyTemplateId) {
       .WillOnce(ReturnOk<CryptohomeLECredError>());
   // Prepare for removal should continue to delete the PinWeaver leaf if the
   // template ID doesn't exist.
-  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
+  TestFuture<CryptohomeStatus> result;
+  auth_block_->PrepareForRemoval(auth_state, result.GetCallback());
+  EXPECT_TRUE(result.IsReady());
+  EXPECT_THAT(result.Take(), IsOk());
 }
 
 TEST_F(FingerprintAuthBlockTest, PrepareForRemovalNullGscLabel) {
@@ -898,7 +904,10 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalNullGscLabel) {
   auth_state.state = fingerprint_auth_state;
 
   // Prepare for removal should still succeed when the label doesn't exist.
-  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
+  TestFuture<CryptohomeStatus> result;
+  auth_block_->PrepareForRemoval(auth_state, result.GetCallback());
+  EXPECT_TRUE(result.IsReady());
+  EXPECT_THAT(result.Take(), IsOk());
 }
 
 TEST_F(FingerprintAuthBlockTest, PrepareForRemovalPinWeaverRemoveFailed) {
@@ -915,10 +924,16 @@ TEST_F(FingerprintAuthBlockTest, PrepareForRemovalPinWeaverRemoveFailed) {
           kErrorLocationPlaceholder, ErrorActionSet(),
           LE_CRED_ERROR_INVALID_LABEL));
 
-  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), NotOk());
+  TestFuture<CryptohomeStatus> result;
+  auth_block_->PrepareForRemoval(auth_state, result.GetCallback());
+  EXPECT_TRUE(result.IsReady());
+  EXPECT_THAT(result.Take(), NotOk());
   // Prepare for removal should still succeed when the label doesn't exist in
   // the tree.
-  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
+  TestFuture<CryptohomeStatus> second_result;
+  auth_block_->PrepareForRemoval(auth_state, second_result.GetCallback());
+  EXPECT_TRUE(second_result.IsReady());
+  EXPECT_THAT(second_result.Take(), IsOk());
 }
 
 }  // namespace

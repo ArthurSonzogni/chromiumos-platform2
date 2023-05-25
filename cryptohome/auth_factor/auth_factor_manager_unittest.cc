@@ -4,8 +4,12 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <absl/types/variant.h>
+#include <base/functional/callback_forward.h>
+#include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -20,10 +24,12 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state_test_utils.h"
 #include "cryptohome/mock_platform.h"
 
+using base::test::TestFuture;
 using brillo::SecureBlob;
 using cryptohome::error::CryptohomeError;
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
 using testing::ElementsAre;
 using testing::IsEmpty;
@@ -71,6 +77,10 @@ class AuthFactorManagerTest : public ::testing::Test {
 
   MockPlatform platform_;
   AuthFactorManager auth_factor_manager_{&platform_};
+  base::test::SingleThreadTaskEnvironment task_environment_ = {
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  scoped_refptr<base::SequencedTaskRunner> task_runner_ =
+      base::SequencedTaskRunner::GetCurrentDefault();
 };
 
 // Test the `SaveAuthFactor()` method correctly serializes the factor into a
@@ -275,9 +285,12 @@ TEST_F(AuthFactorManagerTest, RemoveSuccess) {
   NiceMock<MockAuthBlockUtility> auth_block_utility;
 
   // Delete auth factor.
-  EXPECT_THAT(auth_factor_manager_.RemoveAuthFactor(
-                  kObfuscatedUsername, *auth_factor, &auth_block_utility),
-              IsOk());
+  TestFuture<CryptohomeStatus> remove_result;
+  auth_factor_manager_.RemoveAuthFactor(kObfuscatedUsername, *auth_factor,
+                                        &auth_block_utility,
+                                        remove_result.GetCallback());
+  EXPECT_TRUE(remove_result.IsReady());
+  EXPECT_THAT(remove_result.Take(), IsOk());
 
   // Try to load the auth factor.
   CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor_1 =
@@ -290,7 +303,7 @@ TEST_F(AuthFactorManagerTest, RemoveSuccess) {
           .AddExtension(cryptohome::kChecksumExtension)));
 }
 
-TEST_F(AuthFactorManagerTest, RemoveFailure) {
+TEST_F(AuthFactorManagerTest, RemoveFailureWithAuthBlock) {
   const CryptohomeError::ErrorLocationPair
       error_location_for_testing_auth_factor =
           CryptohomeError::ErrorLocationPair(
@@ -310,23 +323,103 @@ TEST_F(AuthFactorManagerTest, RemoveFailure) {
   EXPECT_THAT(loaded_auth_factor, IsOk());
 
   NiceMock<MockAuthBlockUtility> auth_block_utility;
-  EXPECT_CALL(auth_block_utility, PrepareAuthBlockForRemoval(_))
-      .WillOnce([&](const AuthBlockState& auth_state) {
-        return MakeStatus<error::CryptohomeCryptoError>(
+
+  // Intentionally fail the PrepareAuthBlockForRemoval for password factor.
+  EXPECT_CALL(auth_block_utility, PrepareAuthBlockForRemoval(_, _))
+      .WillOnce([&](const AuthBlockState& auth_state,
+                    AuthBlockUtility::CryptohomeStatusCallback callback) {
+        std::move(callback).Run(MakeStatus<error::CryptohomeCryptoError>(
             error_location_for_testing_auth_factor,
             error::ErrorActionSet(
                 {error::PossibleAction::kDevCheckUnexpectedState}),
-            CryptoError::CE_OTHER_CRYPTO);
+            CryptoError::CE_OTHER_CRYPTO));
       });
 
   // Try to delete auth factor.
-  EXPECT_THAT(auth_factor_manager_.RemoveAuthFactor(
-                  kObfuscatedUsername, *auth_factor, &auth_block_utility),
-              Not(IsOk()));
+  TestFuture<CryptohomeStatus> remove_result;
+  auth_factor_manager_.RemoveAuthFactor(kObfuscatedUsername, *auth_factor,
+                                        &auth_block_utility,
+                                        remove_result.GetCallback());
+  EXPECT_TRUE(remove_result.IsReady());
+  EXPECT_THAT(remove_result.Take(), Not(IsOk()));
   EXPECT_TRUE(platform_.FileExists(
       AuthFactorPath(kObfuscatedUsername,
                      /*auth_factor_type_string=*/"password", kSomeIdpLabel)
           .AddExtension(cryptohome::kChecksumExtension)));
+}
+
+TEST_F(AuthFactorManagerTest, RemoveFailureWithFactorFile) {
+  std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
+
+  // Persist the auth factor.
+  EXPECT_THAT(
+      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor),
+      IsOk());
+  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor =
+      auth_factor_manager_.LoadAuthFactor(
+          kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
+  EXPECT_THAT(loaded_auth_factor, IsOk());
+
+  NiceMock<MockAuthBlockUtility> auth_block_utility;
+
+  // Intentionally fail the auth factor file removal.
+  auto auth_factor_file_path =
+      AuthFactorPath(kObfuscatedUsername,
+                     /*auth_factor_type_string=*/"password", kSomeIdpLabel);
+  EXPECT_CALL(platform_, DeleteFileSecurely(auth_factor_file_path))
+      .WillOnce(Return(false));
+  EXPECT_CALL(platform_, DeleteFile(auth_factor_file_path))
+      .WillOnce(Return(false));
+
+  // Try to delete auth factor.
+  TestFuture<CryptohomeStatus> remove_result;
+  auth_factor_manager_.RemoveAuthFactor(kObfuscatedUsername, *auth_factor,
+                                        &auth_block_utility,
+                                        remove_result.GetCallback());
+  EXPECT_TRUE(remove_result.IsReady());
+  EXPECT_THAT(remove_result.Take(), Not(IsOk()));
+  EXPECT_TRUE(platform_.FileExists(
+      AuthFactorPath(kObfuscatedUsername,
+                     /*auth_factor_type_string=*/"password", kSomeIdpLabel)
+          .AddExtension(cryptohome::kChecksumExtension)));
+}
+
+TEST_F(AuthFactorManagerTest, RemoveOkWithChecksumFileRemovalFailure) {
+  std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
+
+  // Persist the auth factor.
+  EXPECT_THAT(
+      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor),
+      IsOk());
+  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor =
+      auth_factor_manager_.LoadAuthFactor(
+          kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
+  EXPECT_THAT(loaded_auth_factor, IsOk());
+
+  NiceMock<MockAuthBlockUtility> auth_block_utility;
+
+  auto auth_factor_file_path =
+      AuthFactorPath(kObfuscatedUsername,
+                     /*auth_factor_type_string=*/"password", kSomeIdpLabel);
+  auto auth_factor_checksum_file_path =
+      auth_factor_file_path.AddExtension(kChecksumExtension);
+  // Removes the auth factor file.
+  EXPECT_CALL(platform_, DeleteFileSecurely(auth_factor_file_path))
+      .WillOnce(Return(true));
+  // Intentionally fail the auth factor checksum removal.
+  EXPECT_CALL(platform_, DeleteFileSecurely(auth_factor_checksum_file_path))
+      .WillOnce(Return(false));
+  EXPECT_CALL(platform_, DeleteFile(auth_factor_checksum_file_path))
+      .WillOnce(Return(false));
+
+  // Try to delete auth factor and it should still succeed.
+  TestFuture<CryptohomeStatus> remove_result;
+  auth_factor_manager_.RemoveAuthFactor(kObfuscatedUsername, *auth_factor,
+                                        &auth_block_utility,
+                                        remove_result.GetCallback());
+  EXPECT_TRUE(remove_result.IsReady());
+  EXPECT_THAT(remove_result.Take(), IsOk());
+  EXPECT_TRUE(platform_.FileExists(auth_factor_checksum_file_path));
 }
 
 TEST_F(AuthFactorManagerTest, Update) {
@@ -352,11 +445,13 @@ TEST_F(AuthFactorManagerTest, Update) {
   AuthBlockState new_state = CreatePasswordAuthBlockState("new auth factor");
   AuthFactor new_auth_factor(auth_factor->type(), auth_factor->label(),
                              auth_factor->metadata(), new_state);
+  TestFuture<CryptohomeStatus> update_result;
   // Update the auth factor.
-  EXPECT_TRUE(auth_factor_manager_
-                  .UpdateAuthFactor(kObfuscatedUsername, auth_factor->label(),
-                                    new_auth_factor, &auth_block_utility)
-                  .ok());
+  auth_factor_manager_.UpdateAuthFactor(
+      kObfuscatedUsername, auth_factor->label(), new_auth_factor,
+      &auth_block_utility, update_result.GetCallback());
+  EXPECT_TRUE(update_result.IsReady());
+  EXPECT_THAT(update_result.Take(), IsOk());
   EXPECT_TRUE(platform_.FileExists(
       AuthFactorPath(kObfuscatedUsername,
                      /*auth_factor_type_string=*/"password", kSomeIdpLabel)));
@@ -372,14 +467,66 @@ TEST_F(AuthFactorManagerTest, Update) {
             auth_factor->auth_block_state());
 }
 
+// Test that UpdateAuthFactor fails if the removal of
+// the old auth block state failed.
+TEST_F(AuthFactorManagerTest, UpdateFailureWithRemoval) {
+  NiceMock<MockAuthBlockUtility> auth_block_utility;
+  // Intentionally fail the PrepareAuthBlockForRemoval for password factor.
+  const CryptohomeError::ErrorLocationPair
+      error_location_for_testing_auth_factor =
+          CryptohomeError::ErrorLocationPair(
+              static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(
+                  1),
+              std::string("MockErrorLocationAuthFactor"));
+  EXPECT_CALL(auth_block_utility, PrepareAuthBlockForRemoval(_, _))
+      .WillOnce([&](const AuthBlockState& auth_state,
+                    AuthBlockUtility::CryptohomeStatusCallback callback) {
+        std::move(callback).Run(MakeStatus<error::CryptohomeCryptoError>(
+            error_location_for_testing_auth_factor,
+            error::ErrorActionSet(
+                {error::PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO));
+      });
+  std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
+  // Persist the auth factor.
+  EXPECT_TRUE(
+      auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername, *auth_factor)
+          .ok());
+  EXPECT_TRUE(platform_.FileExists(
+      AuthFactorPath(kObfuscatedUsername,
+                     /*auth_factor_type_string=*/"password", kSomeIdpLabel)));
+
+  // Load the auth factor and verify it's the same.
+  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> loaded_auth_factor =
+      auth_factor_manager_.LoadAuthFactor(
+          kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
+  ASSERT_TRUE(loaded_auth_factor.ok());
+  ASSERT_TRUE(loaded_auth_factor.value());
+  EXPECT_EQ(loaded_auth_factor.value()->auth_block_state(),
+            auth_factor->auth_block_state());
+
+  AuthBlockState new_state = CreatePasswordAuthBlockState("new auth factor");
+  AuthFactor new_auth_factor(auth_factor->type(), auth_factor->label(),
+                             auth_factor->metadata(), new_state);
+  TestFuture<CryptohomeStatus> update_result;
+  // Update the auth factor.
+  auth_factor_manager_.UpdateAuthFactor(
+      kObfuscatedUsername, auth_factor->label(), new_auth_factor,
+      &auth_block_utility, update_result.GetCallback());
+  EXPECT_TRUE(update_result.IsReady());
+  EXPECT_THAT(update_result.Take(), Not(IsOk()));
+}
+
 TEST_F(AuthFactorManagerTest, UpdateFailsWhenNoAuthFactor) {
   NiceMock<MockAuthBlockUtility> auth_block_utility;
   std::unique_ptr<AuthFactor> auth_factor = CreatePasswordAuthFactor();
   // Try to update the auth factor.
-  EXPECT_FALSE(auth_factor_manager_
-                   .UpdateAuthFactor(kObfuscatedUsername, auth_factor->label(),
-                                     *auth_factor, &auth_block_utility)
-                   .ok());
+  TestFuture<CryptohomeStatus> update_result;
+  auth_factor_manager_.UpdateAuthFactor(
+      kObfuscatedUsername, auth_factor->label(), *auth_factor,
+      &auth_block_utility, update_result.GetCallback());
+  EXPECT_TRUE(update_result.IsReady());
+  EXPECT_THAT(update_result.Take(), Not(IsOk()));
 }
 
 }  // namespace cryptohome

@@ -685,14 +685,20 @@ TEST_F(PinWeaverAuthBlockTest, PrepareForRemovalSuccess) {
   EXPECT_CALL(le_cred_manager_, RemoveCredential(kLabel))
       .WillOnce(ReturnOk<CryptohomeLECredError>());
 
-  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
+  TestFuture<CryptohomeStatus> result;
+  auth_block_->PrepareForRemoval(auth_state, result.GetCallback());
+  EXPECT_TRUE(result.IsReady());
+  EXPECT_THAT(result.Take(), IsOk());
 }
 
 TEST_F(PinWeaverAuthBlockTest, PrepareForRemovalNoState) {
   AuthBlockState auth_state;
 
   // Prepare for removal should still succeed when there is no valid auth state.
-  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
+  TestFuture<CryptohomeStatus> result;
+  auth_block_->PrepareForRemoval(auth_state, result.GetCallback());
+  EXPECT_TRUE(result.IsReady());
+  EXPECT_THAT(result.Take(), IsOk());
 }
 
 TEST_F(PinWeaverAuthBlockTest, PrepareForRemovalRemoveError) {
@@ -714,10 +720,16 @@ TEST_F(PinWeaverAuthBlockTest, PrepareForRemovalRemoveError) {
           kErrorLocationForTesting1, ErrorActionSet(),
           LE_CRED_ERROR_INVALID_LABEL));
 
-  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), NotOk());
-  // Prepare for removal should still succeed when the label doesn't exist in
-  // the tree.
-  EXPECT_THAT(auth_block_->PrepareForRemoval(auth_state), IsOk());
+  TestFuture<CryptohomeStatus> result;
+  auth_block_->PrepareForRemoval(auth_state, result.GetCallback());
+  EXPECT_TRUE(result.IsReady());
+  EXPECT_THAT(result.Take(), NotOk());
+  // Prepare for removal again should still succeed when the label doesn't exist
+  // in the tree.
+  TestFuture<CryptohomeStatus> retry_result;
+  auth_block_->PrepareForRemoval(auth_state, retry_result.GetCallback());
+  EXPECT_TRUE(retry_result.IsReady());
+  EXPECT_THAT(retry_result.Take(), IsOk());
 }
 
 }  // namespace cryptohome

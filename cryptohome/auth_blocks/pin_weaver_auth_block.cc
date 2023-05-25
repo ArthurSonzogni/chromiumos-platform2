@@ -31,6 +31,7 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/features.h"
@@ -464,15 +465,16 @@ void PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
                           std::move(key_blobs), suggested_action);
 }
 
-CryptohomeStatus PinWeaverAuthBlock::PrepareForRemoval(
-    const AuthBlockState& auth_block_state) {
+void PinWeaverAuthBlock::PrepareForRemoval(
+    const AuthBlockState& auth_block_state, StatusCallback callback) {
   // Read supported_intents only for AuthFactors with a PinWeaver backend.
   auto* state = std::get_if<PinWeaverAuthBlockState>(&auth_block_state.state);
   if (!state) {
     LOG(ERROR) << "Failed to get AuthBlockState in pinweaver auth block.";
     // This error won't be solved by retrying, go ahead and delete the auth
     // factor anyway.
-    return OkStatus<CryptohomeCryptoError>();
+    std::move(callback).Run(OkStatus<CryptohomeCryptoError>());
+    return;
   }
 
   // Ensure that the AuthFactor has le_label.
@@ -480,7 +482,8 @@ CryptohomeStatus PinWeaverAuthBlock::PrepareForRemoval(
     LOG(ERROR) << "PinWeaver AuthBlockState does not have le_label.";
     // This error won't be solved by retrying, go ahead and delete the auth
     // factor anyway.
-    return OkStatus<CryptohomeCryptoError>();
+    std::move(callback).Run(OkStatus<CryptohomeCryptoError>());
+    return;
   }
   LECredStatus status = le_manager_->RemoveCredential(state->le_label.value());
   if (!status.ok()) {
@@ -489,13 +492,20 @@ CryptohomeStatus PinWeaverAuthBlock::PrepareForRemoval(
       LOG(ERROR) << "Invalid le_label in pinweaver auth block: " << status;
       // This error won't be solved by retrying, go ahead and delete the auth
       // factor anyway.
-      return OkStatus<CryptohomeCryptoError>();
+      std::move(callback).Run(OkStatus<CryptohomeCryptoError>());
+      return;
     }
     // Other LE errors might be resolved by retrying, so fail the remove
     // operation here.
-    return std::move(status);
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockRemoveCredential),
+            ErrorActionSet({PossibleAction::kRetry}))
+            .Wrap(std::move(status)));
+    return;
   }
-  return OkStatus<CryptohomeError>();
+  std::move(callback).Run(OkStatus<CryptohomeCryptoError>());
+  return;
 }
 
 uint32_t PinWeaverAuthBlock::GetLockoutDelay(uint64_t label) {

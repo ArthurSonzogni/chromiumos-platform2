@@ -602,58 +602,121 @@ AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(
   return label_to_type_map;
 }
 
-CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
+void AuthFactorManager::RemoveAuthFactor(
     const ObfuscatedUsername& obfuscated_username,
     const AuthFactor& auth_factor,
-    AuthBlockUtility* auth_block_utility) {
+    AuthBlockUtility* auth_block_utility,
+    StatusCallback callback) {
   CryptohomeStatusOr<base::FilePath> file_path = GetAuthFactorPath(
       obfuscated_username, auth_factor.type(), auth_factor.label());
   if (!file_path.ok()) {
     LOG(ERROR) << "Failed to get auth factor path in Remove.";
-    return MakeStatus<CryptohomeError>(
+    std::move(callback).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerGetPathFailedInRemove),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
   }
 
-  CryptohomeStatus status = auth_block_utility->PrepareAuthBlockForRemoval(
-      auth_factor.auth_block_state());
+  auth_block_utility->PrepareAuthBlockForRemoval(
+      auth_factor.auth_block_state(),
+      base::BindOnce(&AuthFactorManager::RemoveAuthFactorFiles,
+                     base::Unretained(this), obfuscated_username, auth_factor,
+                     file_path.value(), std::move(callback)));
+}
+
+void AuthFactorManager::UpdateAuthFactor(
+    const ObfuscatedUsername& obfuscated_username,
+    const std::string& auth_factor_label,
+    AuthFactor& auth_factor,
+    AuthBlockUtility* auth_block_utility,
+    StatusCallback callback) {
+  // 1. Load the old auth factor state from disk.
+  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> existing_auth_factor =
+      LoadAuthFactor(obfuscated_username, auth_factor.type(),
+                     auth_factor_label);
+  if (!existing_auth_factor.ok()) {
+    LOG(ERROR) << "Failed to load persisted auth factor " << auth_factor_label
+               << " of type " << AuthFactorTypeToString(auth_factor.type())
+               << " for " << obfuscated_username << " in Update.";
+    std::move(callback).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerLoadFailedInUpdate),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+            .Wrap(std::move(existing_auth_factor).err_status()));
+    return;
+  }
+
+  // 2. Save auth factor to disk - the old auth factor state will be overridden
+  // and accessible only from `existing_auth_factor` object.
+  CryptohomeStatus save_result =
+      SaveAuthFactor(obfuscated_username, auth_factor);
+  if (!save_result.ok()) {
+    LOG(ERROR) << "Failed to save auth factor " << auth_factor.label()
+               << " of type " << AuthFactorTypeToString(auth_factor.type())
+               << " for " << obfuscated_username << " in Update.";
+    std::move(callback).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerSaveFailedInUpdate),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+            .Wrap(std::move(save_result)));
+    return;
+  }
+
+  // 3. The old auth factor state was removed from disk. Call
+  // `PrepareForRemoval()` to complete the removal.
+  auth_block_utility->PrepareAuthBlockForRemoval(
+      existing_auth_factor.value()->auth_block_state(),
+      base::BindOnce(&AuthFactorManager::LogPrepareForRemovalStatus,
+                     base::Unretained(this), obfuscated_username, auth_factor,
+                     std::move(callback)));
+}
+
+void AuthFactorManager::RemoveAuthFactorFiles(
+    const ObfuscatedUsername& obfuscated_username,
+    const AuthFactor& auth_factor,
+    const base::FilePath& file_path,
+    base::OnceCallback<void(CryptohomeStatus)> callback,
+    CryptohomeStatus status) {
   if (!status.ok()) {
     LOG(WARNING) << "Failed to prepare for removal for auth factor "
                  << auth_factor.label() << " of type "
                  << AuthFactorTypeToString(auth_factor.type()) << " for "
                  << obfuscated_username;
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocAuthFactorManagerPrepareForRemovalFailedInRemove),
-               ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
-        .Wrap(std::move(status));
+    std::move(callback).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthFactorManagerPrepareForRemovalFailedInRemove),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}))
+            .Wrap(std::move(status)));
+    return;
   }
 
   // Remove the file.
-  if (!platform_->DeleteFileSecurely(file_path.value())) {
+  if (!platform_->DeleteFileSecurely(file_path)) {
     LOG(WARNING) << "Failed to securely delete from disk auth factor "
                  << auth_factor.label() << " of type "
                  << AuthFactorTypeToString(auth_factor.type()) << " for "
                  << obfuscated_username
                  << ". Attempting to delete without zeroization.";
-    if (!platform_->DeleteFile(file_path.value())) {
+    if (!platform_->DeleteFile(file_path)) {
       LOG(ERROR) << "Failed to delete from disk auth factor "
                  << auth_factor.label() << " of type "
                  << AuthFactorTypeToString(auth_factor.type()) << " for "
                  << obfuscated_username;
-      return MakeStatus<CryptohomeError>(
+      std::move(callback).Run(MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerDeleteFailedInRemove),
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
                           PossibleAction::kRetry, PossibleAction::kReboot}),
-          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+      return;
     }
   }
   LOG(INFO) << "Deleted from disk auth factor label: " << auth_factor.label();
 
-  // Remove the checksum file.
+  // Remove the checksum file and only log warnings if the removal failed.
   base::FilePath auth_factor_checksum_path =
-      file_path.value().AddExtension(kChecksumExtension);
+      file_path.AddExtension(kChecksumExtension);
   if (!platform_->DeleteFileSecurely(auth_factor_checksum_path)) {
     LOG(WARNING)
         << "Failed to securely delete checksum file from disk for auth factor "
@@ -668,59 +731,29 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
           << obfuscated_username;
     }
   }
-  return OkStatus<CryptohomeError>();
+  std::move(callback).Run(OkStatus<CryptohomeError>());
 }
 
-CryptohomeStatus AuthFactorManager::UpdateAuthFactor(
+void AuthFactorManager::LogPrepareForRemovalStatus(
     const ObfuscatedUsername& obfuscated_username,
-    const std::string& auth_factor_label,
-    AuthFactor& auth_factor,
-    AuthBlockUtility* auth_block_utility) {
-  // 1. Load the old auth factor state from disk.
-  CryptohomeStatusOr<std::unique_ptr<AuthFactor>> existing_auth_factor =
-      LoadAuthFactor(obfuscated_username, auth_factor.type(),
-                     auth_factor_label);
-  if (!existing_auth_factor.ok()) {
-    LOG(ERROR) << "Failed to load persisted auth factor " << auth_factor_label
-               << " of type " << AuthFactorTypeToString(auth_factor.type())
-               << " for " << obfuscated_username << " in Update.";
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerLoadFailedInUpdate),
-               user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
-        .Wrap(std::move(existing_auth_factor).err_status());
-  }
-
-  // 2. Save auth factor to disk - the old auth factor state will be overridden
-  // and accessible only from `existing_auth_factor` object.
-  CryptohomeStatus save_result =
-      SaveAuthFactor(obfuscated_username, auth_factor);
-  if (!save_result.ok()) {
-    LOG(ERROR) << "Failed to save auth factor " << auth_factor.label()
-               << " of type " << AuthFactorTypeToString(auth_factor.type())
-               << " for " << obfuscated_username << " in Update.";
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerSaveFailedInUpdate),
-               user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
-        .Wrap(std::move(save_result));
-  }
-
-  // 3. The old auth factor state was removed from disk. Call
-  // `PrepareForRemoval()` to complete the removal.
-  CryptohomeStatus status = auth_block_utility->PrepareAuthBlockForRemoval(
-      existing_auth_factor.value()->auth_block_state());
+    const AuthFactor& auth_factor,
+    StatusCallback callback,
+    CryptohomeStatus status) {
   if (!status.ok()) {
     LOG(WARNING) << "PrepareForRemoval failed for auth factor "
                  << auth_factor.label() << " of type "
                  << AuthFactorTypeToString(auth_factor.type()) << " for "
                  << obfuscated_username << " in Update.";
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocAuthFactorManagerPrepareForRemovalFailedInUpdate),
-               user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT)
-        .Wrap(std::move(status));
+    std::move(callback).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthFactorManagerPrepareForRemovalFailedInUpdate),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT)
+            .Wrap(std::move(status)));
+    return;
   }
 
-  return OkStatus<CryptohomeError>();
+  std::move(callback).Run(OkStatus<CryptohomeError>());
 }
 
 }  // namespace cryptohome

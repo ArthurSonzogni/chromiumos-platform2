@@ -13,6 +13,7 @@
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/vault_keyset.h"
@@ -61,7 +62,8 @@ class CryptohomeRecoveryAuthBlock : public AuthBlock {
               const AuthBlockState& state,
               DeriveCallback callback) override;
 
-  CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) override;
+  void PrepareForRemoval(const AuthBlockState& state,
+                         StatusCallback callback) override;
 
  private:
   CryptoStatus PrepareForRemovalInternal(const AuthBlockState& state);

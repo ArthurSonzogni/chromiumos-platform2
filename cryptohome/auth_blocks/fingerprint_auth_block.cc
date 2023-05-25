@@ -388,19 +388,20 @@ void FingerprintAuthBlock::SelectFactor(const AuthInput& auth_input,
                      std::move(auth_factors), *auth_input.rate_limiter_label));
 }
 
-CryptohomeStatus FingerprintAuthBlock::PrepareForRemoval(
-    const AuthBlockState& state) {
+void FingerprintAuthBlock::PrepareForRemoval(const AuthBlockState& state,
+                                             StatusCallback callback) {
   auto* fp_state = std::get_if<FingerprintAuthBlockState>(&state.state);
   if (!fp_state) {
     LOG(ERROR) << "Failed to get AuthBlockState in fingerprint auth block.";
     // This error won't be solved by retrying, go ahead and delete the auth
     // factor anyway.
-    return OkStatus<CryptohomeCryptoError>();
+    std::move(callback).Run(OkStatus<CryptohomeCryptoError>());
+    return;
   }
 
   // Ensure that the auth block state has template_id.
   if (fp_state->template_id.empty()) {
-    // This error won't be solved by retrying, go ahead and delete the
+    // This error won't be solved by retrying, continue to delete the
     // credential leaf.
     LOG(ERROR) << "FingerprintAuthBlockState does not have template_id";
   } else {
@@ -415,7 +416,8 @@ CryptohomeStatus FingerprintAuthBlock::PrepareForRemoval(
     LOG(ERROR) << "FingerprintAuthBlockState does not have gsc_secret_label";
     // This error won't be solved by retrying, go ahead and delete the auth
     // factor anyway.
-    return OkStatus<CryptohomeCryptoError>();
+    std::move(callback).Run(OkStatus<CryptohomeCryptoError>());
+    return;
   }
 
   LECredStatus status =
@@ -427,18 +429,20 @@ CryptohomeStatus FingerprintAuthBlock::PrepareForRemoval(
                  << status;
       // This error won't be solved by retrying, go ahead and delete the auth
       // factor anyway.
-      return OkStatus<CryptohomeCryptoError>();
+      std::move(callback).Run(OkStatus<CryptohomeCryptoError>());
+      return;
     }
     // Other LE errors might be resolved by retrying, so fail the remove
     // operation here.
-    return std::move(status);
+    std::move(callback).Run(std::move(status));
+    return;
   }
 
   // Rate limiter leaf is not removed since it is shared among all fingerprint
   // auth factors. Also, even if all fingerprint auth factors are removed,
   // we still keep the rate limiter leaf so in the future new fingerprint
   // auth factors can be added more efficiently.
-  return OkStatus<CryptohomeError>();
+  std::move(callback).Run(OkStatus<CryptohomeCryptoError>());
 }
 
 CryptoStatusOr<uint64_t> FingerprintAuthBlock::CreateRateLimiter(

@@ -20,6 +20,7 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/username.h"
@@ -28,7 +29,7 @@ namespace cryptohome {
 
 class MockAuthBlockUtility : public AuthBlockUtility {
  public:
-  MockAuthBlockUtility() = default;
+  MockAuthBlockUtility();
 
   MOCK_METHOD(bool, GetLockedToSingleUser, (), (const, override));
   MOCK_METHOD(void,
@@ -59,9 +60,9 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               GetAuthBlockTypeFromState,
               (const AuthBlockState& auth_state),
               (const, override));
-  MOCK_METHOD(CryptohomeStatus,
+  MOCK_METHOD(void,
               PrepareAuthBlockForRemoval,
-              (const AuthBlockState& auth_block_state),
+              (const AuthBlockState& auth_block_state, StatusCallback callback),
               (override));
   MOCK_METHOD(CryptoStatus,
               GenerateRecoveryRequest,
