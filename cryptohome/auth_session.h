@@ -214,9 +214,9 @@ class AuthSession final {
   void RemoveAuthFactor(const user_data_auth::RemoveAuthFactorRequest& request,
                         StatusCallback on_done);
 
-  // PrepareAllAuthFactorsForRemoval is called to prepare all auth factors for
-  // removal before removing a user.
-  void PrepareAllAuthFactorsForRemoval();
+  // PrepareUserForRemoval is called to perform the necessary steps before
+  // removing a user, like preparing each auth factor for removal.
+  void PrepareUserForRemoval();
 
   // UpdateAuthFactor is called when the user wants to update auth factor
   // provided in the `request`.
@@ -671,6 +671,11 @@ class AuthSession final {
 
   // Prepares the WebAuthn secret using file_system_keyset.
   CryptohomeStatus PrepareWebAuthnSecret();
+
+  // RemoveRateLimiters remove all rate-limiter leaves in the UserMetadata. This
+  // doesn't leave the USS with a consistent state, and should only be called
+  // during PrepareUserForRemoval.
+  void RemoveRateLimiters();
 
   Username username_;
   ObfuscatedUsername obfuscated_username_;

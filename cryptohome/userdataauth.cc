@@ -1565,7 +1565,7 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
     auth_session = std::move(auth_session_status).value();
   }
 
-  auth_session->PrepareAllAuthFactorsForRemoval();
+  auth_session->PrepareUserForRemoval();
 
   Username account_id = auth_session->username();
   if (account_id->empty()) {
