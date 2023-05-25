@@ -26,6 +26,7 @@
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/network/network_applier.h"
 #include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/slaac_controller.h"
@@ -64,7 +65,8 @@ Network::Network(int interface_index,
       metrics_(metrics),
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
-      rtnl_handler_(RTNLHandler::GetInstance()) {}
+      rtnl_handler_(RTNLHandler::GetInstance()),
+      network_applier_(NetworkApplier::GetInstance()) {}
 
 Network::~Network() {
   for (auto* ev : event_handlers_) {
@@ -216,6 +218,7 @@ void Network::SetupConnection(IPConfig* ipconfig) {
   }
   connection_->UpdateFromIPConfig(ipconfig->properties());
   connection_->UpdateRoutingPolicy(GetAddresses());
+  network_applier_->ApplyDNS(priority_, ipconfig->properties());
   if (state_ != State::kConnected && technology_ != Technology::kVPN) {
     // The Network becomes connected, wait for 30 seconds to report its IP type.
     // Skip VPN since it's already reported separately in VPNService.
@@ -299,6 +302,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   }
   state_ = State::kIdle;
   connection_ = nullptr;
+  priority_ = NetworkPriority{};
   if (should_trigger_callback) {
     for (auto* ev : event_handlers_) {
       ev->OnNetworkStopped(interface_index_, is_failure);
@@ -731,8 +735,12 @@ void Network::SetPriority(NetworkPriority priority) {
                  << " called but no connection exists";
     return;
   }
-  priority_ = priority;
+  if (priority_ == priority) {
+    return;
+  }
   connection_->SetPriority(priority);
+  network_applier_->ApplyDNS(priority, GetCurrentIPConfig()->properties());
+  priority_ = priority;
 }
 
 NetworkPriority Network::GetPriority() {

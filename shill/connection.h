@@ -24,8 +24,10 @@ class RTNLHandler;
 class Resolver;
 class RoutingTable;
 
-// The Connection maintains the implemented state of an IPConfig, e.g,
-// the IP address, routing table and DNS table entries.
+// The Connection maintains the implemented state of an IPConfig.
+// TODO(b/264963034): in progress of migrating to NetworkApplier. Currently
+// Connection maintains IPv4 address, routing table and routing policies.
+
 class Connection {
  public:
   Connection(int interface_index,
@@ -48,11 +50,8 @@ class Connection {
   // priority value, the lower the priority of the rule. 0 is the highest rule
   // priority and is generally reserved for the kernel.
   //
-  // Updates the kernel's routing policy rule database such that policy rules
-  // corresponding to this Connection will use |priority| as the "base
-  // priority". This call also updates the systemwide DNS configuration if
-  // necessary, and triggers captive portal detection if the connection has
-  // transitioned from non-default to default.
+  // Updates the kernel's routing policy rule database base on |priority| of
+  // current Network, determined by Manager by sorting all Networks.
   virtual void SetPriority(NetworkPriority priority);
 
   // Flush and (re)create routing policy rules for the connection.
@@ -127,19 +126,15 @@ class Connection {
                            uint32_t base_priority,
                            bool no_ipv6);
 
-  // Send our DNS configuration to the resolver.
-  void PushDNSConfig();
-
-  // The priority value for setting up routing rules and DNS corresponding to
-  // this Connection. Set by Manager through SetPriority.
+  // The priority of the Network calculated by Manager, used to calculate the
+  // priority value for setting up routing rules.
+  // TODO(b/264963034): remove this cached value in Connection and use the one
+  // in Network.
   NetworkPriority priority_;
 
   int interface_index_;
   const std::string interface_name_;
   Technology technology_;
-  std::vector<std::string> dns_servers_;
-  std::vector<std::string> dns_domain_search_;
-  std::string dns_domain_name_;
 
   // Cache for the addresses added earlier by Connection. Note that current
   // Connection implementation only supports adding at most one IPv4 and one
@@ -163,7 +158,6 @@ class Connection {
   IPAddress gateway_;
 
   // Store cached copies of singletons for speed/ease of testing
-  Resolver* resolver_;
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
 };

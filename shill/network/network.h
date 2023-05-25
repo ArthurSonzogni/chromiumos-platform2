@@ -24,6 +24,7 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
+#include "shill/network/network_applier.h"
 #include "shill/network/network_priority.h"
 #include "shill/network/proc_fs_stub.h"
 #include "shill/network/slaac_controller.h"
@@ -518,6 +519,7 @@ class Network {
   DHCPProvider* dhcp_provider_;
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
+  NetworkApplier* network_applier_;
 
   // All the weak pointers created by this factory will be invalidated when the
   // Network state becomes kIdle. Can be useful when the concept of a connected

@@ -21,7 +21,6 @@
 #include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/network_priority.h"
-#include "shill/resolver.h"
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
 #include "shill/technology.h"
@@ -63,7 +62,6 @@ Connection::Connection(int interface_index,
       table_id_(RoutingTable::GetInterfaceTableId(interface_index)),
       local_(IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown)),
       gateway_(IPAddress::CreateFromFamily(IPAddress::kFamilyUnknown)),
-      resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
   SLOG(this, 2) << __func__ << "(" << interface_index << ", " << interface_name
@@ -316,21 +314,6 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
 
   UpdateRoutingPolicy();
 
-  // Save a copy of the last non-null DNS config.
-  if (!properties.dns_servers.empty()) {
-    dns_servers_ = properties.dns_servers;
-  }
-
-  if (!properties.domain_search.empty()) {
-    dns_domain_search_ = properties.domain_search;
-  }
-
-  if (!properties.domain_name.empty()) {
-    dns_domain_name_ = properties.domain_name;
-  }
-
-  PushDNSConfig();
-
   local_ = *local;
   if (gateway.has_value()) {
     gateway_ = *gateway;
@@ -490,22 +473,7 @@ void Connection::SetPriority(NetworkPriority priority) {
 
   priority_ = priority;
   UpdateRoutingPolicy();
-  PushDNSConfig();
   routing_table_->FlushCache();
-}
-
-void Connection::PushDNSConfig() {
-  if (!priority_.is_primary_for_dns) {
-    return;
-  }
-
-  auto domain_search = dns_domain_search_;
-  if (domain_search.empty() && !dns_domain_name_.empty()) {
-    SLOG(this, 2) << "Setting domain search to domain name "
-                  << dns_domain_name_;
-    domain_search.push_back(dns_domain_name_ + ".");
-  }
-  resolver_->SetDNSFromLists(dns_servers_, domain_search);
 }
 
 bool Connection::FixGatewayReachability(
