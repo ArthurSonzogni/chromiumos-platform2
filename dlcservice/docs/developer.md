@@ -68,7 +68,7 @@ The following variables must/can be set:
           (dash).
      *    The first letter cannot be dash.
      *    No underscore.
-     *    It has a maximum length of 40 characters.
+     *    It has a maximum length of 80 characters.
      (Note: Should almost never be manually set, unless the intent is to create
      a multi-package DLC, which is not recommended)
     (Default is `${PN}`)
