@@ -415,10 +415,15 @@ void CrosHealthdDiagnosticsService::RunPrimeSearchRoutine(
     mojom::NullableUint32Ptr length_seconds,
     RunPrimeSearchRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
-  if (!length_seconds.is_null())
+  if (!length_seconds.is_null()) {
     exec_duration = base::Seconds(length_seconds->value);
-  RunRoutine(routine_factory_->MakePrimeSearchRoutine(exec_duration),
-             mojom::DiagnosticRoutineEnum::kPrimeSearch, std::move(callback));
+  }
+
+  auto args = mojom::RoutineArgument::NewPrimeSearch(
+      mojom::PrimeSearchRoutineArgument::New(exec_duration));
+  RunRoutineWithAdapter(std::move(args),
+                        mojom::DiagnosticRoutineEnum::kPrimeSearch,
+                        std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunSignalStrengthRoutine(

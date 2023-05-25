@@ -540,10 +540,7 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunDiskReadRoutine) {
 // Test that the prime search routine can be run.
 TEST_F(CrosHealthdDiagnosticsServiceTest, RunPrimeSearchRoutine) {
   constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
-      mojom::DiagnosticRoutineStatusEnum::kWaiting;
-  routine_factory()->SetNonInteractiveStatus(
-      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
-      /*output=*/"");
+      mojom::DiagnosticRoutineStatusEnum::kRunning;
 
   TestFuture<mojom::RunRoutineResponsePtr> future;
   service()->RunPrimeSearchRoutine(
