@@ -4,7 +4,6 @@
 
 #include "patchpanel/multicast_forwarder.h"
 
-#include <arpa/inet.h>
 #include <errno.h>
 #include <net/if.h>
 #include <netinet/ip.h>
@@ -57,7 +56,7 @@ struct in_addr GetInterfaceIp(int fd, const std::string& ifname) {
 void SetSockaddr(struct sockaddr_storage* saddr_storage,
                  sa_family_t sa_family,
                  uint16_t port,
-                 char* addr) {
+                 const char* addr) {
   struct sockaddr* saddr = reinterpret_cast<sockaddr*>(saddr_storage);
   if (sa_family == AF_INET) {
     struct sockaddr_in* saddr4 = reinterpret_cast<struct sockaddr_in*>(saddr);
@@ -94,13 +93,13 @@ std::unique_ptr<MulticastForwarder::Socket> MulticastForwarder::CreateSocket(
 }
 
 MulticastForwarder::MulticastForwarder(const std::string& lan_ifname,
-                                       uint32_t mcast_addr,
-                                       const std::string& mcast_addr6,
+                                       const net_base::IPv4Address& mcast_addr,
+                                       const net_base::IPv6Address& mcast_addr6,
                                        uint16_t port)
-    : lan_ifname_(lan_ifname), port_(port) {
-  mcast_addr_.s_addr = mcast_addr;
-  CHECK(inet_pton(AF_INET6, mcast_addr6.c_str(), mcast_addr6_.s6_addr));
-}
+    : lan_ifname_(lan_ifname),
+      port_(port),
+      mcast_addr_(mcast_addr),
+      mcast_addr6_(mcast_addr6) {}
 
 void MulticastForwarder::Init() {
   base::ScopedFD lan_fd(Bind(AF_INET, lan_ifname_));
@@ -122,11 +121,8 @@ void MulticastForwarder::Init() {
 
 base::ScopedFD MulticastForwarder::Bind(sa_family_t sa_family,
                                         const std::string& ifname) {
-  char mcast_addr[INET6_ADDRSTRLEN];
-  inet_ntop(sa_family,
-            sa_family == AF_INET ? reinterpret_cast<const void*>(&mcast_addr_)
-                                 : reinterpret_cast<const void*>(&mcast_addr6_),
-            mcast_addr, INET6_ADDRSTRLEN);
+  const std::string mcast_addr =
+      (sa_family == AF_INET) ? mcast_addr_.ToString() : mcast_addr6_.ToString();
 
   base::ScopedFD fd(socket(sa_family, SOCK_DGRAM, 0));
   if (!fd.is_valid()) {
@@ -160,7 +156,7 @@ base::ScopedFD MulticastForwarder::Bind(sa_family_t sa_family,
   if (sa_family == AF_INET) {
     struct ip_mreqn mreqn;
     memset(&mreqn, 0, sizeof(mreqn));
-    mreqn.imr_multiaddr = mcast_addr_;
+    mreqn.imr_multiaddr = mcast_addr_.ToInAddr();
     mreqn.imr_address.s_addr = htonl(INADDR_ANY);
     mreqn.imr_ifindex = ifindex;
     if (setsockopt(fd.get(), IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreqn,
@@ -175,7 +171,7 @@ base::ScopedFD MulticastForwarder::Bind(sa_family_t sa_family,
   } else if (sa_family == AF_INET6) {
     struct ipv6_mreq mreqn;
     memset(&mreqn, 0, sizeof(mreqn));
-    mreqn.ipv6mr_multiaddr = mcast_addr6_;
+    mreqn.ipv6mr_multiaddr = mcast_addr6_.ToIn6Addr();
     mreqn.ipv6mr_interface = static_cast<uint32_t>(ifindex);
     if (setsockopt(fd.get(), IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreqn,
                    sizeof(mreqn)) < 0) {
@@ -326,9 +322,12 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd,
         reinterpret_cast<const struct sockaddr_in6*>(fromaddr);
     src_port = ntohs(addr6->sin6_port);
   }
+  const auto mcast_in_addr = mcast_addr_.ToInAddr();
+  const auto mcast_in6_addr = mcast_addr6_.ToIn6Addr();
   SetSockaddr(&dst_storage, sa_family, port_,
-              sa_family == AF_INET ? reinterpret_cast<char*>(&mcast_addr_)
-                                   : reinterpret_cast<char*>(&mcast_addr6_));
+              sa_family == AF_INET
+                  ? reinterpret_cast<const char*>(&mcast_in_addr)
+                  : reinterpret_cast<const char*>(&mcast_in6_addr));
 
   // Forward ingress traffic to all guests.
   const auto& lan_socket = lan_socket_.find(sa_family);

@@ -17,13 +17,13 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
-
-#include "patchpanel/net_util.h"
+#include <net-base/ipv4_address.h>
 
 namespace patchpanel {
 
-constexpr const struct in_addr kLanIp = {.s_addr = Ipv4Addr(192, 168, 1, 1)};
-constexpr const struct in_addr kGuestIp = {.s_addr = Ipv4Addr(100, 115, 92, 2)};
+const struct in_addr kLanIp = net_base::IPv4Address(192, 168, 1, 1).ToInAddr();
+const struct in_addr kGuestIp =
+    net_base::IPv4Address(100, 115, 92, 2).ToInAddr();
 
 namespace {
 
@@ -32,8 +32,8 @@ namespace {
 class TestMulticastForwarder : public MulticastForwarder {
  public:
   TestMulticastForwarder(const std::string& lan_ifname,
-                         uint32_t mcast_addr,
-                         const std::string& mcast_addr6,
+                         const net_base::IPv4Address& mcast_addr,
+                         const net_base::IPv6Address& mcast_addr6,
                          uint16_t port)
       : MulticastForwarder(lan_ifname, mcast_addr, mcast_addr6, port) {}
   TestMulticastForwarder(const TestMulticastForwarder&) = delete;
@@ -108,15 +108,19 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   std::string lan_ifname = provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
   std::string guest_ifname1 = provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
   std::string guest_ifname2 = provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
-  uint32_t mcast_addr = provider.ConsumeIntegral<uint32_t>();
-  struct in6_addr ipv6_addr;
-  memset(&ipv6_addr, 0, sizeof(ipv6_addr));
-  std::vector<uint8_t> ipv6_addr_bytes =
-      provider.ConsumeBytes<uint8_t>(sizeof(ipv6_addr.s6_addr));
-  std::copy(ipv6_addr_bytes.begin(), ipv6_addr_bytes.end(), ipv6_addr.s6_addr);
-  std::string mcast_addr6 = IPv6AddressToString(ipv6_addr);
 
-  TestMulticastForwarder mcast_forwarder(lan_ifname, mcast_addr, mcast_addr6,
+  const net_base::IPv4Address mcast_addr(
+      provider.ConsumeIntegral<uint8_t>(), provider.ConsumeIntegral<uint8_t>(),
+      provider.ConsumeIntegral<uint8_t>(), provider.ConsumeIntegral<uint8_t>());
+  const net_base::IPv6Address ipv6_addr(provider.ConsumeIntegral<uint16_t>(),
+                                        provider.ConsumeIntegral<uint16_t>(),
+                                        provider.ConsumeIntegral<uint16_t>(),
+                                        provider.ConsumeIntegral<uint16_t>(),
+                                        provider.ConsumeIntegral<uint16_t>(),
+                                        provider.ConsumeIntegral<uint16_t>(),
+                                        provider.ConsumeIntegral<uint16_t>(),
+                                        provider.ConsumeIntegral<uint16_t>());
+  TestMulticastForwarder mcast_forwarder(lan_ifname, mcast_addr, ipv6_addr,
                                          kMdnsPort);
   mcast_forwarder.Init();
   mcast_forwarder.AddGuest(guest_ifname1);

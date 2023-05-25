@@ -16,17 +16,20 @@
 #include <utility>
 
 #include <base/files/scoped_file.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 
 #include "patchpanel/file_descriptor_watcher_posix.h"
-#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 
-constexpr uint32_t kMdnsMcastAddress = Ipv4Addr(224, 0, 0, 251);
-constexpr char kMdnsMcastAddress6[] = "ff02::fb";
+constexpr net_base::IPv4Address kMdnsMcastAddress(224, 0, 0, 251);
+constexpr net_base::IPv6Address kMdnsMcastAddress6(
+    0xff02, 0, 0, 0, 0, 0, 0, 0xfb);
 constexpr uint16_t kMdnsPort = 5353;
-constexpr uint32_t kSsdpMcastAddress = Ipv4Addr(239, 255, 255, 250);
-constexpr char kSsdpMcastAddress6[] = "ff02::c";
+constexpr net_base::IPv4Address kSsdpMcastAddress(239, 255, 255, 250);
+constexpr net_base::IPv6Address kSsdpMcastAddress6(
+    0xff02, 0, 0, 0, 0, 0, 0, 0xc);
 constexpr uint16_t kSsdpPort = 1900;
 
 // Listens on a well-known port and forwards multicast messages between
@@ -36,8 +39,8 @@ constexpr uint16_t kSsdpPort = 1900;
 class MulticastForwarder {
  public:
   MulticastForwarder(const std::string& lan_ifname,
-                     uint32_t mcast_addr,
-                     const std::string& mcast_addr6,
+                     const net_base::IPv4Address& mcast_addr,
+                     const net_base::IPv6Address& mcast_addr6,
                      uint16_t port);
   MulticastForwarder(const MulticastForwarder&) = delete;
   MulticastForwarder& operator=(const MulticastForwarder&) = delete;
@@ -113,9 +116,9 @@ class MulticastForwarder {
   // UDP port of the protocol that this forwarder is processing.
   uint16_t port_;
   // IPv4 multicast address of the protocol that this forwarder is processing.
-  struct in_addr mcast_addr_;
+  net_base::IPv4Address mcast_addr_;
   // IPv6 multicast address of the protocol that this forwarder is processing.
-  struct in6_addr mcast_addr6_;
+  net_base::IPv6Address mcast_addr6_;
   // IPv4 and IPv6 sockets bound by this forwarder onto |lan_ifname_|.
   std::map<sa_family_t, std::unique_ptr<Socket>> lan_socket_;
   // Mapping from internal interface names to internal sockets.
