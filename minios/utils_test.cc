@@ -2,20 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
+#include <vector>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/mock_log.h>
 #include <gtest/gtest.h>
 
+#include "gmock/gmock.h"
 #include "minios/mock_process_manager.h"
 #include "minios/utils.h"
-
-using testing::_;
 
 namespace minios {
 
 using ::testing::_;
 using ::testing::HasSubstr;
+using ::testing::StrictMock;
 
 class UtilTest : public ::testing::Test {
  public:
@@ -167,6 +170,24 @@ TEST(UtilsTest, AlertLogTagLogTest) {
               Log(::logging::LOGGING_ERROR, _, _, _, HasSubstr(expected_log)));
 
   LOG(ERROR) << AlertLogTag(category) << test_msg << test_id;
+}
+
+TEST(UtilsTest, MountStatefulPartitionTest) {
+  std::unique_ptr<MockProcessManager> mock_process_manager_ =
+      std::make_unique<StrictMock<MockProcessManager>>();
+
+  std::vector<std::string> expected_args = {
+      "/usr/bin/stateful_partition_for_recovery", "--mount"};
+
+  EXPECT_CALL(*mock_process_manager_, RunCommand(expected_args, _))
+      .WillOnce(::testing::Return(0));
+  EXPECT_TRUE(MountStatefulPartition(mock_process_manager_.get()));
+
+  // Verify error results.
+  EXPECT_CALL(*mock_process_manager_, RunCommand)
+      .WillOnce(::testing::Return(1));
+  EXPECT_FALSE(MountStatefulPartition(mock_process_manager_.get()));
+  EXPECT_FALSE(MountStatefulPartition(nullptr));
 }
 
 }  // namespace minios

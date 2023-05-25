@@ -7,6 +7,7 @@
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 
@@ -41,16 +42,8 @@ void MetricsReporter::RecordNBRStart() {
 }
 
 void MetricsReporter::ReportNBRComplete() {
-  base::FilePath console = GetLogConsole();
-  if (!process_manager_ ||
-      process_manager_->RunCommand(
-          {"/usr/bin/stateful_partition_for_recovery", "--mount"},
-          ProcessManager::IORedirection{
-              .input = console.value(),
-              .output = console.value(),
-          })) {
-    PLOG(WARNING)
-        << "Failed to mount stateful partition, skip metrics reporting.";
+  if (!MountStatefulPartition(process_manager_)) {
+    PLOG(WARNING) << "Stateful mounting failed, skipping metrics reporting.";
     return;
   }
 

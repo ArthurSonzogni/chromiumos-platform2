@@ -18,6 +18,9 @@
 
 namespace {
 constexpr char kLogConsole[] = "/run/frecon/vt1";
+const char kMountStatefulCommand[] = "/usr/bin/stateful_partition_for_recovery";
+const char kMountFlag[] = "--mount";
+const char kStatefulPath[] = "/stateful";
 }  // namespace
 
 namespace minios {
@@ -179,6 +182,27 @@ base::FilePath GetLogConsole() {
   }
 
   return target;
+}
+
+bool MountStatefulPartition(ProcessManagerInterface* process_manager) {
+  if (base::PathExists(base::FilePath{kStatefulPath})) {
+    LOG(INFO) << "Stateful already mounted";
+    return true;
+  }
+  if (!process_manager) {
+    PLOG(WARNING) << "Invalid process manager";
+    return false;
+  }
+  base::FilePath console = GetLogConsole();
+  if (process_manager->RunCommand({kMountStatefulCommand, kMountFlag},
+                                  ProcessManager::IORedirection{
+                                      .input = console.value(),
+                                      .output = console.value(),
+                                  }) != 0) {
+    PLOG(WARNING) << "Failed to mount stateful partition";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace minios

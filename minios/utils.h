@@ -69,6 +69,8 @@ inline std::string AlertLogTag(const std::string& category) {
   return base::StringPrintf("[CoreServicesAlert<%s>] ", category.c_str());
 }
 
+bool MountStatefulPartition(ProcessManagerInterface* process_manager);
+
 }  // namespace minios
 
 #endif  // MINIOS_UTILS_H__
