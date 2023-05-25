@@ -391,96 +391,13 @@ void AuthPolicy::OnUserKerberosFilesChanged() {
   SendUserKerberosFilesChangedSignal();
 }
 
+// TODO(b:263367348): Remove the callers and the method.
 void AuthPolicy::StorePolicy(
     std::unique_ptr<protos::GpoPolicyData> gpo_policy_data,
     const std::string* account_id_key,
     std::unique_ptr<ScopedTimerReporter> timer,
     PolicyResponseCallback callback) {
-  // Build descriptor that specifies where the policy is stored.
-  PolicyDescriptor descriptor;
-  const bool is_refresh_user_policy = account_id_key != nullptr;
-  const char* policy_type = nullptr;
-  if (is_refresh_user_policy) {
-    DCHECK(!account_id_key->empty());
-    descriptor.set_account_type(login_manager::ACCOUNT_TYPE_USER);
-    descriptor.set_account_id(*account_id_key);
-    policy_type = kChromeUserPolicyType;
-  } else {
-    descriptor.set_account_type(login_manager::ACCOUNT_TYPE_DEVICE);
-    policy_type = kChromeDevicePolicyType;
-  }
-
-  // Query IDs of extension policy stored by Session Manager.
-  descriptor.set_domain(login_manager::POLICY_DOMAIN_EXTENSIONS);
-  std::vector<std::string> existing_extension_ids;
-  if (!session_manager_client_->ListStoredComponentPolicies(
-          SerializeProto(descriptor), &existing_extension_ids)) {
-    // If this call fails, worst thing that can happen is stale extension
-    // policy. Still seems better than not pushing policy at all, so keep going.
-    existing_extension_ids.clear();
-    LOG(WARNING) << "Cannot clean up stale extension policies: "
-                    "Failed to get list of stored extension policies.";
-  }
-
-  // Extension policies that are no longer coming down from Active Directory
-  // have to be deleted. Those are (IDs in Session Manager) - (IDs from AD).
-  std::unordered_set<std::string> extension_ids_to_delete;
-  extension_ids_to_delete.insert(existing_extension_ids.begin(),
-                                 existing_extension_ids.end());
-  for (int n = 0; n < gpo_policy_data->extension_policies_size(); ++n)
-    extension_ids_to_delete.erase(gpo_policy_data->extension_policies(n).id());
-
-  // Count total number of StorePolicy responses we're expecting and create a
-  // tracker object that counts the number of outstanding responses and keeps
-  // some unique pointers.
-  const int num_extensions_to_store =
-      gpo_policy_data->extension_policies_size();
-  const int num_extensions_to_delete =
-      static_cast<int>(extension_ids_to_delete.size());
-  const int num_store_policy_calls =
-      1 + num_extensions_to_store + num_extensions_to_delete;
-  LOG(INFO) << "Sending " << (is_refresh_user_policy ? "user" : "device")
-            << " policy to Session Manager (Chrome policy, "
-            << num_extensions_to_store << " extensions). Deleting "
-            << num_extensions_to_delete << " stale extensions.";
-
-  scoped_refptr<ResponseTracker> response_tracker =
-      new ResponseTracker(is_refresh_user_policy, num_store_policy_calls,
-                          metrics_, std::move(timer), std::move(callback));
-
-  // For double checking we counted the number of store calls right.
-  int store_policy_call_count = 0;
-
-  // Store the user or device policy.
-  descriptor.set_domain(login_manager::POLICY_DOMAIN_CHROME);
-  StoreSinglePolicy(descriptor, policy_type,
-                    &gpo_policy_data->user_or_device_policy(),
-                    response_tracker);
-  store_policy_call_count++;
-
-  // Store extension policies.
-  descriptor.set_domain(login_manager::POLICY_DOMAIN_EXTENSIONS);
-  for (int n = 0; n < num_extensions_to_store; ++n) {
-    const protos::ExtensionPolicy& extension_policy =
-        gpo_policy_data->extension_policies(n);
-    descriptor.set_component_id(extension_policy.id());
-    StoreSinglePolicy(descriptor, kChromeExtensionPolicyType,
-                      &extension_policy.json_data(), response_tracker);
-    store_policy_call_count++;
-  }
-
-  // Remove policies for extensions that are no longer coming down from AD.
-  descriptor.set_domain(login_manager::POLICY_DOMAIN_EXTENSIONS);
-  for (const std::string& extension_id : extension_ids_to_delete) {
-    descriptor.set_component_id(extension_id);
-    StoreSinglePolicy(descriptor, kChromeExtensionPolicyType,
-                      nullptr /* policy_blob */, response_tracker);
-    store_policy_call_count++;
-  }
-
-  // Don't use DCHECK here since bad policy store call counting could have
-  // security implications.
-  CHECK(store_policy_call_count == num_store_policy_calls);
+  LOG(ERROR) << "Unexpected call to StorePolicy. Authpolicy is deprecated.";
 }
 
 void AuthPolicy::StoreSinglePolicy(

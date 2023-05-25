@@ -39,10 +39,6 @@ class SessionManagerClient {
   // Exposed Session Manager methods.
   // See Session Manager for a description of the arguments.
 
-  // Blocking for convenience / code simplicity.
-  bool ListStoredComponentPolicies(const std::vector<uint8_t>& descriptor_blob,
-                                   std::vector<std::string>* component_ids);
-
   // Connect to the signal invoked when the session state changes. See
   // session_manager_impl.cc for a list of possible states.
   void ConnectToSessionStateChangedSignal(

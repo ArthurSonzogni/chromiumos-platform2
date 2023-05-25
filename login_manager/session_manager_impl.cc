@@ -952,25 +952,6 @@ bool SessionManagerImpl::RetrievePolicyEx(
   return true;
 }
 
-bool SessionManagerImpl::ListStoredComponentPolicies(
-    brillo::ErrorPtr* error,
-    const std::vector<uint8_t>& in_descriptor_blob,
-    std::vector<std::string>* out_component_ids) {
-  PolicyDescriptor descriptor;
-  if (!ParseAndValidatePolicyDescriptor(in_descriptor_blob,
-                                        PolicyDescriptorUsage::kList,
-                                        &descriptor, error)) {
-    return false;
-  }
-
-  PolicyService* policy_service = GetPolicyService(descriptor, error);
-  if (!policy_service)
-    return false;
-
-  *out_component_ids = policy_service->ListComponentIds(descriptor.domain());
-  return true;
-}
-
 std::string SessionManagerImpl::RetrieveSessionState() {
   if (!session_started_)
     return kStopped;

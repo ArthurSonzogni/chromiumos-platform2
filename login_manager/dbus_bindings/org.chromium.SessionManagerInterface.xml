@@ -271,22 +271,6 @@
     </method>
 
     <!--
-        ListStoredComponentPolicies:
-        @descriptor_blob: Serialized PolicyDescriptor protobuf specifying the
-            account (e.g. user, device) and the policy domain for which stored
-            policies should be listed. The domain must support component ids
-            (e.g. extensions, but not not Chrome policy). The component id field
-            must be empty.
-
-        Lists stored component policies for a given account (e.g. user, device)
-        and policy domain (e.g. extensions).
-    -->
-    <method name="ListStoredComponentPolicies">
-      <arg type="ay" name="descriptor_blob" direction="in" />
-      <arg type="as" name="component_ids" direction="out" />
-    </method>
-
-    <!--
         RetrievePolicyEx:
         @descriptor_blob: Serialized PolicyDescriptor protobuf containing
             metadata about the policy (user vs device policy).

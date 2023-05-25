@@ -47,19 +47,6 @@ SessionManagerClient::SessionManagerClient(
 
 SessionManagerClient::~SessionManagerClient() = default;
 
-bool SessionManagerClient::ListStoredComponentPolicies(
-    const std::vector<uint8_t>& descriptor_blob,
-    std::vector<std::string>* component_ids) {
-  brillo::ErrorPtr error;
-  if (!proxy_->ListStoredComponentPolicies(descriptor_blob, component_ids,
-                                           &error)) {
-    PrintError(login_manager::kSessionManagerListStoredComponentPolicies,
-               error.get());
-    return false;
-  }
-  return true;
-}
-
 void SessionManagerClient::ConnectToSessionStateChangedSignal(
     const base::RepeatingCallback<void(const std::string& state)>& callback) {
   proxy_->RegisterSessionStateChangedSignalHandler(
