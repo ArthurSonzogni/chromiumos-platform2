@@ -458,6 +458,7 @@ TEST_F(ImageLoaderTest, ValidIdTest) {
   EXPECT_TRUE(ImageLoaderImpl::IsIdValid("underscore_id_0123"));
   EXPECT_TRUE(ImageLoaderImpl::IsIdValid("0123-a_dash-id"));
   EXPECT_TRUE(ImageLoaderImpl::IsIdValid("unicode_id"));
+  EXPECT_TRUE(ImageLoaderImpl::IsIdValid(std::string(80, 'a')));
   // first char is illegal:
   EXPECT_FALSE(ImageLoaderImpl::IsIdValid("-non-alpha"));
   EXPECT_FALSE(ImageLoaderImpl::IsIdValid("_non-alpha"));
@@ -467,8 +468,7 @@ TEST_F(ImageLoaderTest, ValidIdTest) {
   EXPECT_FALSE(ImageLoaderImpl::IsIdValid("../../../../evilid"));
   EXPECT_FALSE(ImageLoaderImpl::IsIdValid("unicode_id_#"));
   // ID is too long.
-  EXPECT_FALSE(
-      ImageLoaderImpl::IsIdValid("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+  EXPECT_FALSE(ImageLoaderImpl::IsIdValid(std::string(81, 'a')));
 }
 
 TEST_F(ImageLoaderTest, NoSignatureOfficialImage) {

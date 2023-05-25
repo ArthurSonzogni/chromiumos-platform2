@@ -36,7 +36,7 @@ constexpr char kLatestVersionFile[] = "latest-version";
 // The maximum size of the latest-version file.
 constexpr int kMaximumLatestVersionSize = 4096;
 // Maximum ID length.
-constexpr size_t kMaxIdLength = 40;
+constexpr size_t kMaxIdLength = 80;
 // Default DLC package name.
 constexpr char kDefaultPackage[] = "package";
 
