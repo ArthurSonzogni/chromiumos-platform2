@@ -46,12 +46,13 @@ class NET_BASE_EXPORT IPv4Address {
                                                     size_t bytes_length);
 
   // Constructs an instance with the "0.0.0.0" address.
-  IPv4Address();
+  constexpr IPv4Address() : data_(DataType{}) {}
 
   // Constructs an instance by bytes in network order.
   // i.e. |b0| is the MSB and |b3| is the LSB.
-  IPv4Address(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3);
-  explicit IPv4Address(const DataType& data);
+  constexpr IPv4Address(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3)
+      : IPv4Address(DataType{b0, b1, b2, b3}) {}
+  constexpr explicit IPv4Address(const DataType& data) : data_(data) {}
 
   // Returns true if the address is "0.0.0.0".
   bool IsZero() const;

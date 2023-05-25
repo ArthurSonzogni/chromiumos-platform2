@@ -13,27 +13,32 @@
 
 namespace net_base {
 namespace {
-const char kGoodString[] = "fe80::1aa9:5ff:7ebf:14c5";
-const IPv6Address::DataType kGoodData = {0xfe, 0x80, 0x00, 0x00, 0x00, 0x00,
-                                         0x00, 0x00, 0x1a, 0xa9, 0x05, 0xff,
-                                         0x7e, 0xbf, 0x14, 0xc5};
+
+constexpr char kGoodString[] = "fe80::1aa9:5ff:7ebf:14c5";
+constexpr IPv6Address::DataType kGoodData = {0xfe, 0x80, 0x00, 0x00, 0x00, 0x00,
+                                             0x00, 0x00, 0x1a, 0xa9, 0x05, 0xff,
+                                             0x7e, 0xbf, 0x14, 0xc5};
 
 TEST(IPv6AddressTest, DefaultConstructor) {
-  const IPv6Address default_addr;
-  const IPv6Address::DataType data{0, 0, 0, 0, 0, 0, 0, 0,
-                                   0, 0, 0, 0, 0, 0, 0, 0};
+  constexpr IPv6Address default_addr;
+  constexpr IPv6Address::DataType data{0, 0, 0, 0, 0, 0, 0, 0,
+                                       0, 0, 0, 0, 0, 0, 0, 0};
 
   EXPECT_EQ(default_addr.data(), data);
 }
 
 TEST(IPv6AddressTest, Constructor) {
   // Constructed from std::array.
-  const IPv6Address address1(kGoodData);
+  constexpr IPv6Address address1(kGoodData);
   // Constructed from other instance.
-  const IPv6Address address2(address1);
+  constexpr IPv6Address address2(address1);
 
   EXPECT_EQ(address1.data(), kGoodData);
   EXPECT_EQ(address1, address2);
+
+  constexpr IPv6Address address3(0xfe80, 0, 0, 0, 0x1aa9, 0x05ff, 0x7ebf,
+                                 0x14c5);
+  EXPECT_EQ(address3.ToString(), "fe80::1aa9:5ff:7ebf:14c5");
 }
 
 TEST(IPv6AddressTest, CreateFromString_Success) {

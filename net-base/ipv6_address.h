@@ -46,9 +46,37 @@ class NET_BASE_EXPORT IPv6Address {
                                                     size_t bytes_length);
 
   // Constructs an instance with the "::" address.
-  IPv6Address();
+  constexpr IPv6Address() : data_(DataType{}) {}
 
-  explicit IPv6Address(const DataType& data);
+  // Constructs an instance by the list of uint16_t, similar to the IPv6 network
+  // address format.
+  // e.g. IPv6Address(0x2401, 0xfa00, 0, 0, 0, 0, 0, 0x1) means "2401:fa00::1".
+  constexpr IPv6Address(uint16_t n0,
+                        uint16_t n1,
+                        uint16_t n2,
+                        uint16_t n3,
+                        uint16_t n4,
+                        uint16_t n5,
+                        uint16_t n6,
+                        uint16_t n7)
+      : data_({static_cast<uint8_t>((n0 >> 8) & 0xff),
+               static_cast<uint8_t>(n0 & 0xff),
+               static_cast<uint8_t>((n1 >> 8) & 0xff),
+               static_cast<uint8_t>(n1 & 0xff),
+               static_cast<uint8_t>((n2 >> 8) & 0xff),
+               static_cast<uint8_t>(n2 & 0xff),
+               static_cast<uint8_t>((n3 >> 8) & 0xff),
+               static_cast<uint8_t>(n3 & 0xff),
+               static_cast<uint8_t>((n4 >> 8) & 0xff),
+               static_cast<uint8_t>(n4 & 0xff),
+               static_cast<uint8_t>((n5 >> 8) & 0xff),
+               static_cast<uint8_t>(n5 & 0xff),
+               static_cast<uint8_t>((n6 >> 8) & 0xff),
+               static_cast<uint8_t>(n6 & 0xff),
+               static_cast<uint8_t>((n7 >> 8) & 0xff),
+               static_cast<uint8_t>(n7 & 0xff)}) {}
+
+  constexpr explicit IPv6Address(const DataType& data) : data_(data) {}
   explicit IPv6Address(const struct in6_addr& addr);
 
   // Returns true if the address is "::".

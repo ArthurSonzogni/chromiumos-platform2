@@ -15,21 +15,21 @@ namespace net_base {
 namespace {
 
 TEST(IPv4AddressTest, DefaultConstructor) {
-  const IPv4Address default_addr;
-  IPv4Address::DataType data{0, 0, 0, 0};
+  constexpr IPv4Address default_addr;
+  constexpr IPv4Address::DataType data{0, 0, 0, 0};
 
   EXPECT_EQ(default_addr.data(), data);
   EXPECT_EQ(default_addr, IPv4Address(0, 0, 0, 0));
 }
 
 TEST(IPv4AddressTest, Constructor) {
-  const std::array<uint8_t, 4> data{192, 168, 10, 1};
+  constexpr std::array<uint8_t, 4> data{192, 168, 10, 1};
   // Constructed from raw number.
-  const IPv4Address address1(192, 168, 10, 1);
+  constexpr IPv4Address address1(192, 168, 10, 1);
   // Constructed from std::array.
-  const IPv4Address address2(data);
+  constexpr IPv4Address address2(data);
   // Constructed from other instance.
-  const IPv4Address address3(address1);
+  constexpr IPv4Address address3(address1);
 
   EXPECT_EQ(address1.data(), data);
   EXPECT_EQ(address1, address2);

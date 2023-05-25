@@ -28,11 +28,6 @@ std::optional<IPv4Address> IPv4Address::CreateFromBytes(const uint8_t* bytes,
   return CreateAddressFromBytes<IPv4Address>(bytes, byte_length);
 }
 
-IPv4Address::IPv4Address() : data_(DataType{}) {}
-IPv4Address::IPv4Address(uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3)
-    : IPv4Address(DataType{b0, b1, b2, b3}) {}
-IPv4Address::IPv4Address(const DataType& data) : data_(data) {}
-
 bool IPv4Address::IsZero() const {
   return std::all_of(data_.begin(), data_.end(),
                      [](uint8_t byte) { return byte == 0; });
