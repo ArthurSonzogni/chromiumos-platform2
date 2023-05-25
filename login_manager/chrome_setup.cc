@@ -339,7 +339,8 @@ void AddBorealisFlags(ChromiumCommandBuilder* builder) {
     if (base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK",
                                           &channel_string) &&
         channel_string != "beta-channel" &&
-        channel_string != "stable-channel") {
+        channel_string != "stable-channel" && channel_string != "ltc-channel" &&
+        channel_string != "lts-channel") {
       builder->AddFeatureEnableOverride("ExoPointerLock");
     }
   }
