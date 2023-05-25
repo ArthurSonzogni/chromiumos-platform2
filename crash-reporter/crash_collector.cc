@@ -1521,6 +1521,15 @@ static void IgnoreErrorResponsePointer(base::OnceCallback<void()> callback,
   std::move(callback).Run();
 }
 
+// TODO(b/285611845): Add full logic to stub implementation.
+CrashCollector::ComputedCrashSeverity CrashCollector::ComputeSeverity(
+    const std::string& exec_name) {
+  return CrashCollector::ComputedCrashSeverity{
+      .crash_severity = CrashSeverity::kUnspecified,
+      .product_group = Product::kUnspecified,
+  };
+}
+
 void CrashCollector::FinishCrash(const FilePath& meta_path,
                                  const std::string& exec_name,
                                  const std::string& payload_name) {

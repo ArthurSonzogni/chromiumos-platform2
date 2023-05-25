@@ -83,6 +83,33 @@ class CrashCollector {
     kErrorCore2MinidumpConversion,
   };
 
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class CrashSeverity {
+    kUnspecified = 0,
+    kFatal = 1,
+    kError = 2,
+    kWarning = 3,
+    kInfo = 4,
+    kMaxValue = kInfo,
+  };
+
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class Product {
+    kUnspecified = 0,
+    kUi = 1,
+    kPlatform = 2,
+    kArc = 3,
+    kLacros = 4,
+    kMaxValue = kLacros,
+  };
+
+  struct ComputedCrashSeverity {
+    CrashSeverity crash_severity;
+    Product product_group;
+  };
+
   explicit CrashCollector(const std::string& collector_name,
                           const std::string& tag = "");
 
@@ -281,6 +308,7 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, GetNewFileHandle_Symlink);
   FRIEND_TEST(CrashCollectorTest, WriteNewCompressedFile);
   FRIEND_TEST(CrashCollectorTest, WriteNewCompressedFileFailsIfFileExists);
+  FRIEND_TEST(CrashCollectorTest, ComputeSeverity_DefaultUnspecified);
   FRIEND_TEST(UserCollectorTest, HandleSyscall);
 
   // Default value if OS version/description cannot be determined.
@@ -492,6 +520,9 @@ class CrashCollector {
 
   // Returns the enrollment status written to the metadata file.
   std::optional<bool> IsEnterpriseEnrolled();
+
+  // Returns the severity level and product group of the crash.
+  virtual ComputedCrashSeverity ComputeSeverity(const std::string& exec_name);
 
   // Called after all files have been written and we want to send out this
   // crash. Write a file of metadata about crash and, if in crash-loop mode,

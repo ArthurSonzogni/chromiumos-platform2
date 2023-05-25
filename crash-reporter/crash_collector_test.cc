@@ -2493,3 +2493,13 @@ TEST_F(CrashCollectorTest,
            FinishCrashInCrashLoopModeErrorResponse)) {
   TestFinishCrashInCrashLoopMode(false);
 }
+
+TEST_F(CrashCollectorTest, ComputeSeverity_DefaultUnspecified) {
+  CrashCollector::ComputedCrashSeverity computed_severity =
+      collector_.ComputeSeverity("test");
+
+  EXPECT_EQ(computed_severity.crash_severity,
+            CrashCollector::CrashSeverity::kUnspecified);
+  EXPECT_EQ(computed_severity.product_group,
+            CrashCollector::Product::kUnspecified);
+}
