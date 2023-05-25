@@ -258,7 +258,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
         &crypto_, &platform_, &user_session_map_, &keyset_management_,
         auth_block_utility, &auth_factor_driver_manager_, &auth_factor_manager_,
-        &user_secret_stash_storage_);
+        &user_secret_stash_storage_, &user_metadata_reader_);
     auth_session_manager_->set_features(&features_.async);
     userdataauth_.set_auth_session_manager(auth_session_manager_.get());
   }
@@ -290,6 +290,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
+  UserMetadataReader user_metadata_reader_{&user_secret_stash_storage_};
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   NiceMock<MockUserOldestActivityTimestampManager>

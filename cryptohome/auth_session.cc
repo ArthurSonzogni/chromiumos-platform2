@@ -399,6 +399,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       auth_factor_driver_manager_(backing_apis.auth_factor_driver_manager),
       auth_factor_manager_(backing_apis.auth_factor_manager),
       user_secret_stash_storage_(backing_apis.user_secret_stash_storage),
+      user_metadata_reader_(backing_apis.user_metadata_reader),
       features_(backing_apis.features),
       converter_(keyset_management_),
       token_(platform_->CreateUnguessableToken()),
@@ -2479,20 +2480,9 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForSelectFactor(
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
   if (factor_driver.NeedsRateLimiter()) {
-    // Load the USS container with the encrypted payload.
-    CryptohomeStatusOr<brillo::Blob> encrypted_uss =
-        user_secret_stash_storage_->LoadPersisted(obfuscated_username_);
-    if (!encrypted_uss.ok()) {
-      LOG(ERROR) << "Failed to load the user secret stash.";
-      return MakeStatus<CryptohomeError>(
-                 CRYPTOHOME_ERR_LOC(
-                     kLocAuthSessionLoadUSSFailedInAuthInputForSelect),
-                 user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
-          .Wrap(std::move(encrypted_uss).err_status());
-    }
-
+    // Load the user metadata directly.
     CryptohomeStatusOr<UserMetadata> user_metadata =
-        UserSecretStash::GetUserMetadata(encrypted_uss.value());
+        user_metadata_reader_->Load(obfuscated_username_);
     if (!user_metadata.ok()) {
       LOG(ERROR) << "Failed to load the user metadata.";
       return MakeStatus<CryptohomeError>(

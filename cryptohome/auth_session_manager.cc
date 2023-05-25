@@ -21,6 +21,7 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/user_secret_stash/user_metadata.h"
 #include "cryptohome/user_session/user_session_map.h"
 
 namespace cryptohome {
@@ -43,7 +44,8 @@ AuthSessionManager::AuthSessionManager(
     AuthBlockUtility* auth_block_utility,
     AuthFactorDriverManager* auth_factor_driver_manager,
     AuthFactorManager* auth_factor_manager,
-    UserSecretStashStorage* user_secret_stash_storage)
+    UserSecretStashStorage* user_secret_stash_storage,
+    UserMetadataReader* user_metadata_reader)
     : crypto_(crypto),
       platform_(platform),
       user_session_map_(user_session_map),
@@ -52,6 +54,7 @@ AuthSessionManager::AuthSessionManager(
       auth_factor_driver_manager_(auth_factor_driver_manager),
       auth_factor_manager_(auth_factor_manager),
       user_secret_stash_storage_(user_secret_stash_storage),
+      user_metadata_reader_(user_metadata_reader),
       features_(nullptr) {
   // Preconditions
   DCHECK(crypto_);
@@ -62,6 +65,7 @@ AuthSessionManager::AuthSessionManager(
   DCHECK(auth_factor_driver_manager_);
   DCHECK(auth_factor_manager_);
   DCHECK(user_secret_stash_storage_);
+  DCHECK(user_metadata_reader_);
 }
 
 CryptohomeStatusOr<InUseAuthSession> AuthSessionManager::CreateAuthSession(
@@ -71,7 +75,7 @@ CryptohomeStatusOr<InUseAuthSession> AuthSessionManager::CreateAuthSession(
       account_id, flags, auth_intent,
       {crypto_, platform_, user_session_map_, keyset_management_,
        auth_block_utility_, auth_factor_driver_manager_, auth_factor_manager_,
-       user_secret_stash_storage_, features_});
+       user_secret_stash_storage_, user_metadata_reader_, features_});
   return AddAuthSession(std::move(auth_session));
 }
 

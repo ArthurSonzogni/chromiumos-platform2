@@ -46,6 +46,7 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/user_secret_stash/user_metadata.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/username.h"
@@ -108,6 +109,7 @@ class AuthSession final {
     AuthFactorDriverManager* auth_factor_driver_manager = nullptr;
     AuthFactorManager* auth_factor_manager = nullptr;
     UserSecretStashStorage* user_secret_stash_storage = nullptr;
+    UserMetadataReader* user_metadata_reader = nullptr;
     AsyncInitFeatures* features = nullptr;
   };
 
@@ -708,6 +710,7 @@ class AuthSession final {
   AuthFactorDriverManager* const auth_factor_driver_manager_;
   AuthFactorManager* const auth_factor_manager_;
   UserSecretStashStorage* const user_secret_stash_storage_;
+  UserMetadataReader* const user_metadata_reader_;
   // Unowned pointer.
   AsyncInitFeatures* const features_;
   // A stateless object to convert AuthFactor API to VaultKeyset KeyData and

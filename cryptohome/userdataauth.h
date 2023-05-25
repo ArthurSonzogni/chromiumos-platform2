@@ -55,6 +55,7 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_factory.h"
 #include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/user_secret_stash/user_metadata.h"
 #include "cryptohome/user_session/user_session.h"
 #include "cryptohome/user_session/user_session_factory.h"
 #include "cryptohome/user_session/user_session_map.h"
@@ -1128,6 +1129,9 @@ class UserDataAuth {
   // Usually set to |default_user_secret_stash_storage_|, but can be overridden
   // for tests.
   UserSecretStashStorage* user_secret_stash_storage_ = nullptr;
+
+  // User metadata helper, wrapped around the USS storage.
+  std::unique_ptr<UserMetadataReader> user_metadata_reader_;
 
   // Records the UserSession objects associated with each username.
   // This and its content should only be accessed from the mount thread.

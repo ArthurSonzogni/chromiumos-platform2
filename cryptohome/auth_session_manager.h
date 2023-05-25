@@ -23,6 +23,7 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/user_secret_stash/user_metadata.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/username.h"
 
@@ -41,7 +42,8 @@ class AuthSessionManager {
       AuthBlockUtility* auth_block_utility,
       AuthFactorDriverManager* auth_factor_driver_manager,
       AuthFactorManager* auth_factor_manager,
-      UserSecretStashStorage* user_secret_stash_storage);
+      UserSecretStashStorage* user_secret_stash_storage,
+      UserMetadataReader* user_metadata_reader);
 
   AuthSessionManager(AuthSessionManager&) = delete;
   AuthSessionManager& operator=(AuthSessionManager&) = delete;
@@ -93,6 +95,7 @@ class AuthSessionManager {
   AuthFactorDriverManager* const auth_factor_driver_manager_;
   AuthFactorManager* const auth_factor_manager_;
   UserSecretStashStorage* const user_secret_stash_storage_;
+  UserMetadataReader* const user_metadata_reader_;
   // This holds the object that checks for feature enabled.
   AsyncInitFeatures* features_;
 

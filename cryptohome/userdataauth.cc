@@ -78,6 +78,7 @@
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/user_secret_stash/user_metadata.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
 #include "cryptohome/user_session/user_session.h"
@@ -506,12 +507,14 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
         std::make_unique<UserSecretStashStorage>(platform_);
     user_secret_stash_storage_ = default_user_secret_stash_storage_.get();
   }
+  user_metadata_reader_ =
+      std::make_unique<UserMetadataReader>(user_secret_stash_storage_);
 
   if (!auth_session_manager_) {
     default_auth_session_manager_ = std::make_unique<AuthSessionManager>(
         crypto_, platform_, sessions_, keyset_management_, auth_block_utility_,
         auth_factor_driver_manager_, auth_factor_manager_,
-        user_secret_stash_storage_);
+        user_secret_stash_storage_, user_metadata_reader_.get());
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 

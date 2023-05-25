@@ -147,7 +147,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
         &crypto_, &platform_, &user_session_map_, &keyset_management_,
         &auth_block_utility_, &auth_factor_driver_manager_,
-        &auth_factor_manager_, &user_secret_stash_storage_);
+        &auth_factor_manager_, &user_secret_stash_storage_,
+        &user_metadata_reader_);
     auth_session_manager_->set_features(&features_.async);
     // Initializing UserData class.
     userdataauth_.set_platform(&platform_);
@@ -554,6 +555,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
+  UserMetadataReader user_metadata_reader_{&user_secret_stash_storage_};
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
                                          &user_session_map_,
@@ -562,6 +564,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
                                          &user_secret_stash_storage_,
+                                         &user_metadata_reader_,
                                          &features_.async};
 
   // An AuthSession manager for testing managed creation.
@@ -804,6 +807,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       &auth_factor_driver_manager_,
       &auth_factor_manager_,
       &user_secret_stash_storage_,
+      &user_metadata_reader_,
       &features_.async};
   backing_apis_ = std::move(backing_api_with_mock_km);
 
@@ -1209,7 +1213,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
   auto auth_session_manager_mock = std::make_unique<AuthSessionManager>(
       &crypto_, &platform_, &user_session_map_, &keyset_management_,
       &mock_auth_block_utility_, &auth_factor_driver_manager_,
-      &auth_factor_manager_, &user_secret_stash_storage_);
+      &auth_factor_manager_, &user_secret_stash_storage_,
+      &user_metadata_reader_);
   auth_session_manager_mock->set_features(&features_.async);
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       auth_session_manager_mock->CreateAuthSession(Username(kUsername), flags,

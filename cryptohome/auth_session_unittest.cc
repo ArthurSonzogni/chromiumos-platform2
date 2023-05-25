@@ -62,6 +62,7 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/user_secret_stash/storage.h"
+#include "cryptohome/user_secret_stash/user_metadata.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/real_user_session.h"
@@ -374,6 +375,7 @@ class AuthSessionTest : public ::testing::Test {
   AuthFactorManager auth_factor_manager_{&platform_};
   FakeFeaturesForTesting fake_features_;
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
+  UserMetadataReader user_metadata_reader_{&user_secret_stash_storage_};
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
                                          &user_session_map_,
@@ -382,6 +384,7 @@ class AuthSessionTest : public ::testing::Test {
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
                                          &user_secret_stash_storage_,
+                                         &user_metadata_reader_,
                                          &fake_features_.async};
 
   // Mocks and fakes for UserSession to use.

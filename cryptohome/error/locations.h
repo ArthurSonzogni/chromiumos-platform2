@@ -1687,7 +1687,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionMultiLabelInvalidStorageType = 3380,
   /* ./auth_session.cc */
   kLocAuthSessionAuthInputParseFailed4InAuthAuthFactor = 3381,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionLoadUSSFailedInAuthInputForSelect = 3382,
   /* ./auth_session.cc */
   kLocAuthSessionGetMetadataFailedInAuthInputForSelect = 3383,

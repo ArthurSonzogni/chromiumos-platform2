@@ -355,6 +355,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
+  UserMetadataReader user_metadata_reader_{&user_secret_stash_storage_};
 
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,
@@ -364,6 +365,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
                                          &auth_factor_driver_manager_,
                                          &auth_factor_manager_,
                                          &user_secret_stash_storage_,
+                                         &user_metadata_reader_,
                                          &features_.async};
 };
 
