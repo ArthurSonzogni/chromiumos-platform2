@@ -4,8 +4,12 @@
 
 #include "diagnostics/cros_healthd/executor/utils/file.h"
 
+#include <algorithm>
+
 #include <base/check.h>
+#include <base/files/file.h>
 #include <base/logging.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/time/time.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -41,5 +45,48 @@ bool GetCreationTime(const base::FilePath& file_path, base::Time& out) {
 
   out = ConvertStatxTimestampToTime(statx_result.stx_btime);
   return true;
+}
+
+std::optional<std::string> ReadFilePart(const base::FilePath& file_path,
+                                        uint64_t begin,
+                                        uint64_t size) {
+  base::File file(file_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
+  if (!file.IsValid()) {
+    PLOG(ERROR) << "Failed to open file " << file_path;
+    return std::nullopt;
+  }
+
+  base::File::Info info;
+  if (!file.GetInfo(&info)) {
+    PLOG(ERROR) << "Failed to obtain the info of " << file_path;
+    return std::nullopt;
+  }
+
+  if (info.is_directory) {
+    LOG(ERROR) << "Reading a directory " << file_path << " is unsupported.";
+    return std::nullopt;
+  }
+
+  if (info.size < begin) {
+    // We would get a negative read_size.
+    LOG(ERROR) << "Can't read from a location larger than the file size.";
+    return std::nullopt;
+  }
+
+  const int read_size = std::min(
+      base::checked_cast<int>(info.size) - base::checked_cast<int>(begin),
+      base::checked_cast<int>(size));
+  if (read_size == 0) {
+    // No need to actually do the IO and read the file.
+    return "";
+  }
+  std::string content(read_size, '\0');
+  if (file.Read(base::checked_cast<int64_t>(begin), content.data(),
+                read_size) != read_size) {
+    PLOG(ERROR) << "Failed to read file " << file_path << " from " << begin
+                << " for size " << size;
+    return std::nullopt;
+  }
+  return content;
 }
 }  // namespace diagnostics

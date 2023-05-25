@@ -268,8 +268,6 @@ Executor::Executor(
 
 Executor::~Executor() = default;
 
-// TODO(b/266018436): Improve this function to support reading only part of a
-// file.
 void Executor::ReadFile(File file_enum, ReadFileCallback callback) {
   base::FilePath file = FileEnumToFilePath(file_enum);
   std::string content = "";
@@ -279,6 +277,14 @@ void Executor::ReadFile(File file_enum, ReadFileCallback callback) {
     return;
   }
   std::move(callback).Run(content);
+}
+
+void Executor::ReadFilePart(File file_enum,
+                            uint64_t begin,
+                            uint64_t size,
+                            ReadFilePartCallback callback) {
+  std::move(callback).Run(
+      diagnostics::ReadFilePart(FileEnumToFilePath(file_enum), begin, size));
 }
 
 void Executor::GetFileInfo(File file_enum, GetFileInfoCallback callback) {
