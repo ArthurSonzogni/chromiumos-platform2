@@ -425,11 +425,40 @@ bool ESPPostInstall(const InstallConfig& install_config) {
   // Mount the EFI system partition.
   LOG(INFO) << "mount " << install_config.boot.device() << " to "
             << install_config.boot.mount();
-  if (mount(install_config.boot.device().value().c_str(),
-            install_config.boot.mount().value().c_str(), "vfat",
-            MS_NODEV | MS_NOEXEC | MS_NOSUID, nullptr) != 0) {
+
+  bool mount_success = false;
+
+  // As of switching to Linux v5.15, the `udev_settle` call may be ran
+  // before all disk operations. Given there isn't a fully synchronous
+  // mechanism we can rely on, we're retrying with another settle attempt.
+
+  for (int attempts = 0; attempts < 5; ++attempts) {
+    LOG(INFO) << "Mount attempt " << attempts + 1 << " of 5";
+
+    // Wait for partitions to be re-read, else the mount will race.
+    int settle_result = RunCommand({"udevadm", "settle", "--timeout=10"});
+    if (settle_result < 0) {
+      LOG(INFO) << "Failed to run udevadm settle --timeout=10. "
+                << "Returned value is " << settle_result << ".";
+    }
+
+    int mount_result = mount(install_config.boot.device().value().c_str(),
+                             install_config.boot.mount().value().c_str(),
+                             "vfat", MS_NODEV | MS_NOEXEC | MS_NOSUID, nullptr);
+
+    if (mount_result == 0) {
+      mount_success = true;
+      break;
+    } else {
+      LOG(WARNING) << "Mount operation failed with err code " << mount_result
+                   << ". Retrying in 1sec";
+      sleep(1);
+    }
+  }
+
+  if (!mount_success) {
     PLOG(ERROR) << "Failed to mount " << install_config.boot.device() << " to "
-                << install_config.boot.mount();
+                << install_config.boot.mount() << ". See above for err code";
     return false;
   }
 
@@ -584,17 +613,6 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
         return false;
       }
 
-      // Wait for partitions to be re-read after calling UpdatePartitionTable
-      // otherwise the mount call in ESPPostInstall races with udevd.
-      int settle_result = RunCommand({"udevadm", "settle", "--timeout=10"});
-      if (settle_result < 0) {
-        LOG(INFO) << "Failed to run udevadm settle --timeout=10. "
-                  << "Returned value is " << settle_result << ". "
-                  << "Continuing with the post install process because a "
-                     "failure here does not necessarily prevent the post "
-                     "install from succeeding.";
-      }
-
       // For Chromebook firmware (`BiosType::kSecure`) the new partition has now
       // been marked bootable (for most devices, see Note below) and a reboot
       // will boot into it. Thus, it's important that any future errors in this
@@ -608,7 +626,6 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       // bootable until `cgpt_manager.Finalize` is called or cgpt_manager is
       // destructed. b/260606556
 
-      // This is a no-op for Chromebook firmware/CrOS-only devices.
       if (!ESPPostInstall(install_config)) {
         LOG(ERROR) << "ESPPostInstall failed.";
         // ESPPostInstall has failed. We don't know which changes have been made
