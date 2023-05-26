@@ -173,9 +173,15 @@ pkg_config("libarckeymint_context_config") {
 shared_library("libarckeymint_context") {
   sources = [
     # TODO(b/274723555): Add AOSP sources from KeyMint for KeyMint Context.
+    "${keymint_src}/contexts/pure_soft_keymaster_context.cpp",
+    "${keymint_src}/contexts/pure_soft_remote_provisioning_context.cpp",
+    "${keymint_src}/contexts/soft_attestation_cert.cpp",
+    "${keymint_src}/contexts/soft_attestation_context.cpp",
+    "${keymint_src}/km_openssl/soft_keymaster_enforcement.cpp",
     "context/arc_keymint_context.cc",
     "context/context_adaptor.cc",
     "context/cros_key.cc",
+    "context/crypto_operation.cc",
   ]
   public_configs = [ ":libarckeymint_context_config" ]
   configs += [
@@ -197,7 +203,9 @@ shared_library("libarckeymint_context") {
   deps = [
     ":context_proto",
     ":keymint_mojo_bindings",
+    ":libcppbor_external",
     ":libkeymint",
+    ":liblog",
   ]
 }
 
@@ -313,6 +321,7 @@ if (use.test) {
   }
   executable("arc-keymintd_testrunner") {
     sources = [
+      "context/crypto_operation_test.cc",
       "conversion.cc",
       "conversion_test.cc",
     ]
@@ -323,6 +332,7 @@ if (use.test) {
     ]
     deps = [
       ":keymint_mojo_bindings",
+      ":libarckeymint_context",
       ":libkeymint",
       "//common-mk/testrunner:testrunner",
     ]
