@@ -475,4 +475,13 @@ void DelegateImpl::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
   std::move(callback).Run(GetDisplayInfo());
 }
 
+void DelegateImpl::MonitorPowerButton(
+    mojo::PendingRemote<mojom::PowerButtonObserver> observer) {
+  auto delegate =
+      std::make_unique<EvdevPowerButtonObserver>(std::move(observer));
+  // Long-run method. The following object keeps alive until the process
+  // terminates.
+  new EvdevUtil(std::move(delegate));
+}
+
 }  // namespace diagnostics

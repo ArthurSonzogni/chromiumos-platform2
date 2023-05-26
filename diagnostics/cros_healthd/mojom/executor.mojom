@@ -146,6 +146,19 @@ union FioJobArgument {
   ReadJobArgument read@1;
 };
 
+// Implemented by clients who desire power button notifications.
+interface PowerButtonObserver {
+  enum ButtonState {
+    // The button is up.
+    kUp,
+    // The button is down.
+    kDown,
+    // The button is hold down.
+    kRepeat,
+  };
+  OnEvent(ButtonState button_state);
+};
+
 // Root-level executor interface exposed to the cros_healthd daemon. In
 // production, this is implemented by the Executor daemon.
 interface Executor {
@@ -382,4 +395,12 @@ interface Executor {
   // The response:
   // * |result| - contains information received from running crash_sender.
   FetchCrashFromCrashSender() => (ExecutedProcessResult result);
+
+  // Monitor power button events.
+  //
+  // The request:
+  // * |observer| - The observer to notify client.
+  // * |process_control| - Used to stop the monitor process.
+  MonitorPowerButton(pending_remote<PowerButtonObserver> observer,
+                     pending_receiver<ProcessControl> process_control);
 };

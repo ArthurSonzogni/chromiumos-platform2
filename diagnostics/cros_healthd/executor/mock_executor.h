@@ -148,6 +148,13 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               (GetPrivacyScreenInfoCallback),
               (override));
   MOCK_METHOD(void, FetchDisplayInfo, (FetchDisplayInfoCallback), (override));
+  MOCK_METHOD(void,
+              MonitorPowerButton,
+              (mojo::PendingRemote<
+                   ash::cros_healthd::mojom::PowerButtonObserver> observer,
+               mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+                   process_control),
+              (override));
 };
 
 }  // namespace diagnostics

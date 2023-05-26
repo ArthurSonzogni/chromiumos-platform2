@@ -28,6 +28,7 @@ class LibevdevWrapperImpl final : public LibevdevWrapper {
   bool HasEventType(unsigned int type) override;
   bool HasEventCode(unsigned int type, unsigned int code) override;
   std::string GetName() override;
+  int GetIdBustype() override;
   int GetAbsMaximum(unsigned int code) override;
   int GetEventValue(unsigned int type, unsigned int code) override;
   int GetNumSlots() override;

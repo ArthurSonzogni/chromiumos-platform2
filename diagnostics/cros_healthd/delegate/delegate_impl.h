@@ -55,6 +55,9 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
       GetConnectedHdmiConnectorsCallback callback) override;
   void GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) override;
   void FetchDisplayInfo(FetchDisplayInfoCallback callback) override;
+  void MonitorPowerButton(
+      mojo::PendingRemote<ash::cros_healthd::mojom::PowerButtonObserver>
+          observer) override;
 };
 
 }  // namespace diagnostics

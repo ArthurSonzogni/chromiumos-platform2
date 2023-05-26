@@ -125,4 +125,10 @@ interface Delegate {
   // The response:
   // * |result| - Struct containing display info.
   FetchDisplayInfo() => (DisplayResult result);
+
+  // Monitor power button events.
+  //
+  // The request:
+  // * |observer| - The observer to notify client.
+  MonitorPowerButton(pending_remote<PowerButtonObserver> observer);
 };

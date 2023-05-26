@@ -790,6 +790,27 @@ void Executor::GetFioTestDirectoryFreeSpace(
   delegate_ptr->StartAsync();
 }
 
+void Executor::MonitorPowerButton(
+    mojo::PendingRemote<mojom::PowerButtonObserver> observer,
+    mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kEvdev, user::kEvdev, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{"/dev/input"}},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{});
+
+  delegate->remote()->MonitorPowerButton(std::move(observer));
+  auto controller =
+      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
+
+  base::SequencedTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Executor::RunLongRunningDelegate,
+                     weak_factory_.GetWeakPtr(), std::move(controller),
+                     std::move(process_control_receiver)));
+}
+
 void Executor::RunAndWaitProcess(
     std::unique_ptr<brillo::ProcessImpl> process,
     base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback,

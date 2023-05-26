@@ -46,6 +46,10 @@ std::string LibevdevWrapperImpl::GetName() {
   return std::string(libevdev_get_name(dev_));
 }
 
+int LibevdevWrapperImpl::GetIdBustype() {
+  return libevdev_get_id_bustype(dev_);
+}
+
 int LibevdevWrapperImpl::GetAbsMaximum(unsigned int code) {
   return libevdev_get_abs_maximum(dev_, code);
 }

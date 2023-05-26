@@ -79,6 +79,7 @@ class MockLibevdevWrapper : public LibevdevWrapper {
               (override));
   // No need to mock |GetName| since it's only for logging.
   std::string GetName() override { return "Mock device name"; }
+  MOCK_METHOD(int, GetIdBustype, (), (override));
   MOCK_METHOD(int, GetAbsMaximum, (unsigned int code), (override));
   MOCK_METHOD(int,
               GetEventValue,

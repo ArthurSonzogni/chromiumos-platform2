@@ -121,6 +121,11 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       GetConnectedHdmiConnectorsCallback callback) override;
   void GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) override;
   void FetchDisplayInfo(FetchDisplayInfoCallback callback) override;
+  void MonitorPowerButton(
+      mojo::PendingRemote<ash::cros_healthd::mojom::PowerButtonObserver>
+          observer,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+          process_control_receiver) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process

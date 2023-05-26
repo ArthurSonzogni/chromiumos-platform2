@@ -23,6 +23,8 @@ class LibevdevWrapper {
   virtual bool HasEventCode(unsigned int type, unsigned int code) = 0;
   // Wrapper of |libevdev_get_name|.
   virtual std::string GetName() = 0;
+  // Wrapper of |libevdev_get_id_bustype|.
+  virtual int GetIdBustype() = 0;
   // Wrapper of |libevdev_get_abs_maximum|.
   virtual int GetAbsMaximum(unsigned int code) = 0;
   // Wrapper of |libevdev_get_event_value|.
