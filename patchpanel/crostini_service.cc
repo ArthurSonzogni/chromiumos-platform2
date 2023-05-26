@@ -158,12 +158,12 @@ std::unique_ptr<Device> CrostiniService::AddTAP(CrostiniService::VMType vm_type,
     LOG(ERROR) << "Subnet already in use or unavailable.";
     return nullptr;
   }
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
   if (!host_ipv4_addr) {
     LOG(ERROR) << "Host address already in use or unavailable.";
     return nullptr;
   }
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
   if (!guest_ipv4_addr) {
     LOG(ERROR) << "VM address already in use or unavailable.";
     return nullptr;
@@ -193,10 +193,10 @@ std::unique_ptr<Device> CrostiniService::AddTAP(CrostiniService::VMType vm_type,
     // CreateFromAddressAndPrefix() must return a valid IPv4CIDR value.
     const auto lxd_subnet_cidr =
         *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-            ConvertUint32ToIPv4Address(lxd_subnet->AddressAtOffset(0)),
+            ConvertUint32ToIPv4Address(lxd_subnet->AddressAtOffset(1)),
             lxd_subnet->PrefixLength());
     if (!datapath_->AddIPv4Route(
-            ConvertUint32ToIPv4Address(ipv4_subnet->AddressAtOffset(1)),
+            ConvertUint32ToIPv4Address(ipv4_subnet->AddressAtOffset(2)),
             lxd_subnet_cidr)) {
       LOG(ERROR) << "Failed to setup lxd route";
       return nullptr;

@@ -687,7 +687,7 @@ TEST(DatapathTest, AddTAP) {
   Datapath datapath(runner, firewall, &system);
   MacAddress mac = {1, 2, 3, 4, 5, 6};
   Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::DoNothing());
-  auto addr = subnet.AllocateAtOffset(0);
+  auto addr = subnet.AllocateAtOffset(1);
   auto ifname = datapath.AddTAP("foo0", &mac, &(addr->cidr()), "");
 
   EXPECT_EQ(ifname, "foo0");
@@ -705,7 +705,7 @@ TEST(DatapathTest, AddTAPWithOwner) {
   Datapath datapath(runner, firewall, &system);
   MacAddress mac = {1, 2, 3, 4, 5, 6};
   Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::DoNothing());
-  auto addr = subnet.AllocateAtOffset(0);
+  auto addr = subnet.AllocateAtOffset(1);
   auto ifname = datapath.AddTAP("foo0", &mac, &(addr->cidr()), "root");
 
   EXPECT_EQ(ifname, "foo0");

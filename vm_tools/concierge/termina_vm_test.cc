@@ -396,9 +396,9 @@ void TerminaVmTest::SetUp() {
 
   ASSERT_TRUE(subnet);
 
-  ASSERT_TRUE(IPv4AddressToString(subnet->AddressAtOffset(1), &address_));
+  ASSERT_TRUE(IPv4AddressToString(subnet->AddressAtOffset(2), &address_));
   ASSERT_TRUE(IPv4AddressToString(subnet->Netmask(), &netmask_));
-  ASSERT_TRUE(IPv4AddressToString(subnet->AddressAtOffset(0), &gateway_));
+  ASSERT_TRUE(IPv4AddressToString(subnet->AddressAtOffset(1), &gateway_));
 
   std::string stateful_device = "/dev/vdb";
   uint64_t stateful_size = (uint64_t)20 * 1024 * 1024 * 1024;

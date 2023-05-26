@@ -161,13 +161,13 @@ std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
     return nullptr;
   }
 
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
   if (!host_ipv4_addr) {
     LOG(ERROR) << "Bridge address already in use or unavailable";
     return nullptr;
   }
 
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
   if (!guest_ipv4_addr) {
     LOG(ERROR) << "ARC address already in use or unavailable";
     return nullptr;
@@ -230,12 +230,12 @@ void ArcService::AllocateAddressConfigs() {
       continue;
     }
     // For here out, use the same slices.
-    auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
+    auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
     if (!host_ipv4_addr) {
       LOG(ERROR) << "Bridge address already in use or unavailable";
       continue;
     }
-    auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+    auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
     if (!guest_ipv4_addr) {
       LOG(ERROR) << "ARC address already in use or unavailable";
       continue;

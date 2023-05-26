@@ -895,7 +895,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   }
 
   const auto remote_cidr = IPv4CIDR::CreateFromAddressAndPrefix(
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1)),
+      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(2)),
       nsinfo.peer_subnet->PrefixLength());
   if (!remote_cidr) {
     LOG(ERROR) << "Failed to create remote CIDR: prefix length="
@@ -913,7 +913,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   }
 
   const auto peer_cidr = IPv4CIDR::CreateFromAddressAndPrefix(
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(0)),
+      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1)),
       nsinfo.peer_subnet->PrefixLength());
   if (!peer_cidr) {
     LOG(ERROR) << "Cannot create IPv4CIDR: prefix length="
@@ -938,7 +938,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     }
 
     const auto gateway =
-        ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(0));
+        ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1));
     if (!AddIPv4Route(gateway, /*subnet_cidr=*/{})) {
       LOG(ERROR) << "Failed to add default /0 route to " << nsinfo.host_ifname
                  << " inside namespace pid " << nsinfo.pid;
@@ -959,7 +959,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   // both ways between client namespace and other guest containers and VMs.
 
   const auto gateway =
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(0));
+      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1));
   // nsinfo.peer_subnet->PrefixLength() must be a valid IPv4 prefix length, so
   // CreateFromAddressAndPrefix() must return a valid IPv4CIDR value.
   const auto subnet_cidr = *IPv4CIDR::CreateFromAddressAndPrefix(
@@ -974,9 +974,9 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
 
   StartRoutingDevice(
       nsinfo.outbound_ifname, nsinfo.host_ifname,
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(0)),
+      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1)),
       nsinfo.source, nsinfo.route_on_vpn,
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1)));
+      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(2)));
   return true;
 }
 
@@ -986,7 +986,7 @@ void Datapath::StopRoutingNamespace(const ConnectedNamespace& nsinfo) {
   RemoveInterface(nsinfo.host_ifname);
 
   const auto gateway =
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(0));
+      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1));
   // nsinfo.peer_subnet->PrefixLength() must be a valid IPv4 prefix length, so
   // CreateFromAddressAndPrefix() must return a valid IPv4CIDR value.
   const auto subnet_cidr = *IPv4CIDR::CreateFromAddressAndPrefix(

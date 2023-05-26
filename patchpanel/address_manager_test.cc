@@ -8,12 +8,10 @@
 #include <utility>
 #include <vector>
 
-#include <arpa/inet.h>
-
-#include "patchpanel/net_util.h"
-
 #include <base/rand_util.h>
 #include <gtest/gtest.h>
+
+#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 
@@ -32,9 +30,7 @@ TEST(AddressManager, BaseAddresses) {
   for (const auto a : addrs) {
     auto subnet = mgr.AllocateIPv4Subnet(a.first);
     ASSERT_TRUE(subnet != nullptr);
-    // The first address (offset 0) returned by Subnet is not the base address,
-    // rather it's the first usable IP address... so the base is 1 less.
-    EXPECT_EQ(a.second, htonl(ntohl(subnet->AddressAtOffset(0)) - 1));
+    EXPECT_EQ(a.second, subnet->BaseAddress());
   }
 }
 

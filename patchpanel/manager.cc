@@ -597,9 +597,9 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
 
   // Prepare the response before storing ConnectedNamespace.
   response.set_peer_ifname(nsinfo.peer_ifname);
-  response.set_peer_ipv4_address(nsinfo.peer_subnet->AddressAtOffset(1));
+  response.set_peer_ipv4_address(nsinfo.peer_subnet->AddressAtOffset(2));
   response.set_host_ifname(nsinfo.host_ifname);
-  response.set_host_ipv4_address(nsinfo.peer_subnet->AddressAtOffset(0));
+  response.set_host_ipv4_address(nsinfo.peer_subnet->AddressAtOffset(1));
   response.set_netns_name(nsinfo.netns_name);
   auto* response_subnet = response.mutable_ipv4_subnet();
   response_subnet->set_base_addr(nsinfo.peer_subnet->BaseAddress());

@@ -133,8 +133,8 @@ TEST_P(VmSubnetTest, AddressAtOffset) {
   Subnet subnet(AddOffset(kVmBaseAddress, index * 4), kVmSubnetPrefixLength,
                 base::DoNothing());
 
-  for (uint32_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
-    uint32_t address = AddOffset(kVmBaseAddress, index * 4 + offset + 1);
+  for (uint32_t offset = 1; offset <= subnet.AvailableCount(); ++offset) {
+    uint32_t address = AddOffset(kVmBaseAddress, index * 4 + offset);
     EXPECT_EQ(address, subnet.AddressAtOffset(offset));
   }
 }
@@ -148,9 +148,8 @@ TEST_P(ContainerSubnetTest, AddressAtOffset) {
   Subnet subnet(AddOffset(kContainerBaseAddress, index * 16),
                 kContainerSubnetPrefixLength, base::DoNothing());
 
-  for (uint32_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
-    uint32_t address =
-        AddOffset(kContainerBaseAddress, index * 16 + offset + 1);
+  for (uint32_t offset = 1; offset <= subnet.AvailableCount(); ++offset) {
+    uint32_t address = AddOffset(kContainerBaseAddress, index * 16 + offset);
     EXPECT_EQ(address, subnet.AddressAtOffset(offset));
   }
 }
@@ -181,22 +180,22 @@ TEST(SubtnetAddress, StringConversion) {
   EXPECT_EQ("100.115.92.192/28", container_subnet.ToCidrString());
   {
     EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.193/28"),
-              container_subnet.AllocateAtOffset(0)->cidr());
-    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.194/28"),
               container_subnet.AllocateAtOffset(1)->cidr());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.194/28"),
+              container_subnet.AllocateAtOffset(2)->cidr());
     EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.205/28"),
-              container_subnet.AllocateAtOffset(12)->cidr());
-    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.206/28"),
               container_subnet.AllocateAtOffset(13)->cidr());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.206/28"),
+              container_subnet.AllocateAtOffset(14)->cidr());
   }
 
   Subnet vm_subnet(kVmBaseAddress, kVmSubnetPrefixLength, base::DoNothing());
   EXPECT_EQ("100.115.92.24/30", vm_subnet.ToCidrString());
   {
     EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.25/30"),
-              vm_subnet.AllocateAtOffset(0)->cidr());
-    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.26/30"),
               vm_subnet.AllocateAtOffset(1)->cidr());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.26/30"),
+              vm_subnet.AllocateAtOffset(2)->cidr());
   }
 
   Subnet parallels_subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
@@ -204,13 +203,13 @@ TEST(SubtnetAddress, StringConversion) {
   EXPECT_EQ("100.115.92.128/28", parallels_subnet.ToCidrString());
   {
     EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.129/28"),
-              parallels_subnet.AllocateAtOffset(0)->cidr());
-    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.130/28"),
               parallels_subnet.AllocateAtOffset(1)->cidr());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.130/28"),
+              parallels_subnet.AllocateAtOffset(2)->cidr());
     EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.141/28"),
-              parallels_subnet.AllocateAtOffset(12)->cidr());
-    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.142/28"),
               parallels_subnet.AllocateAtOffset(13)->cidr());
+    EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.142/28"),
+              parallels_subnet.AllocateAtOffset(14)->cidr());
   }
 }
 
@@ -233,10 +232,10 @@ TEST(ParallelsSubnet, AllocateAtOffset) {
   std::vector<std::unique_ptr<SubnetAddress>> addrs;
   addrs.reserve(subnet.AvailableCount());
 
-  for (uint32_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
+  for (uint32_t offset = 1; offset <= subnet.AvailableCount(); ++offset) {
     auto addr = subnet.AllocateAtOffset(offset);
     EXPECT_TRUE(addr);
-    EXPECT_EQ(AddOffset(kParallelsBaseAddress, offset + 1),
+    EXPECT_EQ(AddOffset(kParallelsBaseAddress, offset),
               addr->cidr().address().ToInAddr().s_addr);
     addrs.emplace_back(std::move(addr));
   }

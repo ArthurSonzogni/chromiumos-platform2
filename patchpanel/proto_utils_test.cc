@@ -32,8 +32,8 @@ TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
       AddressManager::GuestType::kTerminaVM, subnet_index);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
   auto lxd_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kLXDContainer);
   auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
@@ -69,8 +69,8 @@ TEST_F(ProtoUtilsTest, ConvertParallelsDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(subnet_index);
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(
       AddressManager::GuestType::kParallelsVM, subnet_index);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
   auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
       guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
@@ -103,8 +103,8 @@ TEST_F(ProtoUtilsTest, ConvertARCContainerDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
   auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
       guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
@@ -139,8 +139,8 @@ TEST_F(ProtoUtilsTest, ConvertARCVMDevice) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(3);
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArcNet, 0);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
   auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
       guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
@@ -173,8 +173,8 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCContainer) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArc0, 0);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
   auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
       guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
@@ -211,8 +211,8 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCVM) {
   const auto mac_addr = addr_mgr_->GenerateMacAddress(0);
   auto ipv4_subnet =
       addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kArc0, 0);
-  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(0);
-  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto host_ipv4_addr = ipv4_subnet->AllocateAtOffset(1);
+  auto guest_ipv4_addr = ipv4_subnet->AllocateAtOffset(2);
   auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
       guest_ipv4_addr->cidr().address().ToInAddr().s_addr;

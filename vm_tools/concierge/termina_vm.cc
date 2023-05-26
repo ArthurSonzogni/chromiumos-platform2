@@ -73,11 +73,11 @@ constexpr int64_t kDefaultTimeoutSeconds = 10;
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
 
-// Offset in a subnet of the gateway/host.
-constexpr size_t kHostAddressOffset = 0;
-
-// Offset in a subnet of the client/guest.
-constexpr size_t kGuestAddressOffset = 1;
+// By convention, the IPv4 address of the gateway is always the first unicast
+// address in the IPv4 subnet, and VM guest is always the second unicast
+// address in the IPv4 subnet assigned to the guest.
+constexpr size_t kHostAddressOffset = 1;
+constexpr size_t kGuestAddressOffset = 2;
 
 // The maximum GPU shader cache disk usage, interpreted by Mesa. For details
 // see MESA_GLSL_CACHE_MAX_SIZE at https://docs.mesa3d.org/envvars.html.
@@ -1095,7 +1095,7 @@ size_t TerminaVm::ContainerPrefixLength() const {
 
 uint32_t TerminaVm::ContainerSubnet() const {
   if (container_subnet_)
-    return container_subnet_->AddressAtOffset(0);
+    return container_subnet_->AddressAtOffset(kHostAddressOffset);
 
   return INADDR_ANY;
 }

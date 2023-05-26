@@ -53,14 +53,14 @@ class BRILLO_EXPORT Subnet {
   ~Subnet();
 
   // Allocates the address at |offset|. Returns nullptr if |offset| is invalid
-  // (exceeds available IPs in the subnet) or is already allocated.
-  // |offset| is relative to the first usable host address; e.g. network + 1
+  // or the address is already allocated. Note: |offset| is relative to the base
+  // address.
   std::unique_ptr<SubnetAddress> AllocateAtOffset(uint32_t offset);
 
   // Returns the address at the given |offset| in network-byte order. Returns
   // INADDR_ANY if the offset exceeds the available IPs in the subnet.
   // Available IPs do not include the network id or the broadcast address.
-  // |offset| is relative to the first usable host address; e.g. network + 1
+  // |offset| is relative to the base address.
   uint32_t AddressAtOffset(uint32_t offset) const;
 
   // Returns the number of available IPs in this subnet.
@@ -83,6 +83,12 @@ class BRILLO_EXPORT Subnet {
   std::string ToCidrString() const;
 
  private:
+  // Returns true if the address that is relative to the base address by
+  // |offset| is in the subnet.
+  // Note: the base address and the broadcast address are considered invalid.
+  // So IsValidOffset(0) and IsValidOffset(addrs_.size() - 1) are false.
+  bool IsValidOffset(uint32_t offset) const;
+
   // Marks the address at |offset| as free.
   void Free(uint32_t offset);
 

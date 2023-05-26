@@ -52,29 +52,30 @@ Subnet::~Subnet() {
 }
 
 std::unique_ptr<SubnetAddress> Subnet::AllocateAtOffset(uint32_t offset) {
-  uint32_t addr = AddressAtOffset(offset);
-  if (addr == INADDR_ANY) {
+  if (!IsValidOffset(offset)) {
     return nullptr;
   }
 
-  if (addrs_[offset + 1]) {
+  if (addrs_[offset]) {
     // Address is already allocated.
     return nullptr;
   }
+  addrs_[offset] = true;
 
-  addrs_[offset + 1] = true;
+  const uint32_t addr = AddressAtOffset(offset);
   return std::make_unique<SubnetAddress>(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
           ConvertUint32ToIPv4Address(addr), prefix_length_),
-      base::BindOnce(&Subnet::Free, weak_factory_.GetWeakPtr(), offset + 1));
+      base::BindOnce(&Subnet::Free, weak_factory_.GetWeakPtr(), offset));
 }
 
 uint32_t Subnet::AddressAtOffset(uint32_t offset) const {
-  if (offset < 0 || offset >= AvailableCount())
+  if (!IsValidOffset(offset)) {
     return INADDR_ANY;
+  }
 
   // The first usable IP is after the base address.
-  return AddOffset(base_addr_, 1 + offset);
+  return AddOffset(base_addr_, offset);
 }
 
 uint32_t Subnet::AvailableCount() const {
@@ -104,10 +105,15 @@ std::string Subnet::ToCidrString() const {
 }
 
 void Subnet::Free(uint32_t offset) {
-  DCHECK_NE(offset, 0);
-  DCHECK_LT(offset, addrs_.size() - 1);
+  DCHECK(IsValidOffset(offset));
 
   addrs_[offset] = false;
+}
+
+bool Subnet::IsValidOffset(uint32_t offset) const {
+  // The base address and broadcast address are considered invalid, so the range
+  // of the valid offset is (0, addrs_.size() - 1).
+  return 0 < offset && offset < addrs_.size() - 1;
 }
 
 }  // namespace patchpanel

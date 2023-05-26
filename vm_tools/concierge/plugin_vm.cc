@@ -48,8 +48,9 @@ constexpr base::TimeDelta kVmSuspendTimeout = base::Seconds(25);
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
 
-// Offset in a subnet of the client/guest.
-constexpr size_t kGuestAddressOffset = 1;
+// By convention, the IPv4 address of the VM guest is always the second unicast
+// address in the IPv4 subnet assigned to the guest.
+constexpr size_t kGuestAddressOffset = 2;
 
 std::unique_ptr<patchpanel::Subnet> MakeSubnet(
     const patchpanel::Client::IPv4Subnet& subnet) {
