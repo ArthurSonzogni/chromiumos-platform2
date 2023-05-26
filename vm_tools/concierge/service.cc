@@ -1913,9 +1913,15 @@ StartVmResponse Service::StartVmInternal(
       return response;
     }
 
+    bool writable = false;
+    int mode = fcntl(raw_fd, F_GETFL);
+    if (mode & O_RDWR || mode & O_WRONLY) {
+      writable = true;
+    }
+
     disks.push_back(Disk{.path = base::FilePath(kProcFileDescriptorsPath)
                                      .Append(base::NumberToString(raw_fd)),
-                         .writable = true,
+                         .writable = writable,
                          .block_id = "cr-extra-disk"});
   }
 
