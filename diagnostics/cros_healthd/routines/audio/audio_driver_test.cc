@@ -92,12 +92,11 @@ class AudioDriverRoutineTest : public testing::Test {
         base::BindOnce([](uint32_t error, const std::string& reason) {
           CHECK(false) << "An exception has occurred when it shouldn't have.";
         }));
-    auto observer = std::make_unique<RoutineObserverForTesting>(
-        base::BindOnce(run_loop.QuitClosure()));
-    routine_->AddObserver(observer->receiver_.BindNewPipeAndPassRemote());
+    RoutineObserverForTesting observer{run_loop.QuitClosure()};
+    routine_->AddObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     run_loop.Run();
-    return std::move(observer->state_);
+    return std::move(observer.state_);
   }
 
   void RunRoutineAndWaitForException() {

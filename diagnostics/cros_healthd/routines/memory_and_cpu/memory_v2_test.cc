@@ -264,12 +264,11 @@ class MemoryRoutineV2Test : public MemoryRoutineV2TestBase {
         base::BindOnce([](uint32_t error, const std::string& reason) {
           CHECK(false) << "An exception has occurred when it shouldn't have.";
         }));
-    auto observer = std::make_unique<RoutineObserverForTesting>(
-        base::BindOnce(run_loop.QuitClosure()));
-    routine_->AddObserver(observer->receiver_.BindNewPipeAndPassRemote());
+    RoutineObserverForTesting observer{run_loop.QuitClosure()};
+    routine_->AddObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     run_loop.Run();
-    return std::move(observer->state_);
+    return std::move(observer.state_);
   }
 
   void RunRoutineAndWaitForException() {
@@ -585,27 +584,26 @@ TEST_F(MemoryRoutineV2Test, IncrementalProgress) {
       base::BindOnce([](uint32_t error, const std::string& reason) {
         CHECK(false) << "An exception has occurred when it shouldn't have.";
       }));
-  auto observer =
-      std::make_unique<RoutineObserverForTesting>(base::DoNothing());
-  routine_->AddObserver(observer->receiver_.BindNewPipeAndPassRemote());
+  RoutineObserverForTesting observer{base::DoNothing()};
+  routine_->AddObserver(observer.receiver_.BindNewPipeAndPassRemote());
   routine_->Start();
 
   // Fast forward for observer to update percentage.
   task_environment_.FastForwardBy(kMemoryRoutineUpdatePeriod);
-  EXPECT_EQ(observer->state_->percentage, 0);
+  EXPECT_EQ(observer.state_->percentage, 0);
 
   SetExecutorOutputFromTestFile("progress_bit_flip_output");
 
   // Fast forward for observer to update percentage.
   task_environment_.FastForwardBy(kMemoryRoutineUpdatePeriod);
-  EXPECT_EQ(observer->state_->percentage, kBitFlipPercentage);
+  EXPECT_EQ(observer.state_->percentage, kBitFlipPercentage);
 
   SetExecutorOutputFromTestFile("all_test_passed_output");
   SetExecutorReturnCode(EXIT_SUCCESS);
 
   // Fast forward for observer to set finished state.
   task_environment_.FastForwardBy(kMemoryRoutineUpdatePeriod);
-  EXPECT_EQ(observer->state_->percentage, 100);
+  EXPECT_EQ(observer.state_->percentage, 100);
 }
 
 // Test that the memory routine is able to detect incremental progress.

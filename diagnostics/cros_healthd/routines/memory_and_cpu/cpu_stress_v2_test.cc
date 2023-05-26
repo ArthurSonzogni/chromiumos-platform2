@@ -97,12 +97,11 @@ class CpuStressRoutineV2Test : public CpuStressRoutineV2TestBase {
           EXPECT_TRUE(false)
               << "An exception has occurred when it shouldn't have.";
         }));
-    auto observer =
-        std::make_unique<RoutineObserverForTesting>(run_loop.QuitClosure());
-    routine_->AddObserver(observer->receiver_.BindNewPipeAndPassRemote());
+    RoutineObserverForTesting observer{run_loop.QuitClosure()};
+    routine_->AddObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->Start();
     run_loop.Run();
-    return std::move(observer->state_);
+    return std::move(observer.state_);
   }
 
   void RunRoutineAndWaitForException() {
@@ -263,26 +262,25 @@ TEST_F(CpuStressRoutineV2Test, IncrementalProgress) {
             EXPECT_TRUE(false)
                 << "An exception has occurred when it shouldn't have.";
           }));
-  auto observer =
-      std::make_unique<RoutineObserverForTesting>(base::DoNothing());
-  routine_->AddObserver(observer->receiver_.BindNewPipeAndPassRemote());
+  RoutineObserverForTesting observer{base::DoNothing()};
+  routine_->AddObserver(observer.receiver_.BindNewPipeAndPassRemote());
   routine_->Start();
-  observer->receiver_.FlushForTesting();
-  EXPECT_EQ(observer->state_->percentage, 0);
-  EXPECT_TRUE(observer->state_->state_union->is_running());
+  observer.receiver_.FlushForTesting();
+  EXPECT_EQ(observer.state_->percentage, 0);
+  EXPECT_TRUE(observer.state_->state_union->is_running());
 
   // Fast forward for observer to update percentage.
   task_environment_.FastForwardBy(base::Seconds(30));
-  observer->receiver_.FlushForTesting();
-  EXPECT_EQ(observer->state_->percentage, 50);
-  EXPECT_TRUE(observer->state_->state_union->is_running());
+  observer.receiver_.FlushForTesting();
+  EXPECT_EQ(observer.state_->percentage, 50);
+  EXPECT_TRUE(observer.state_->state_union->is_running());
 
   task_environment_.FastForwardBy(base::Seconds(30));
   SetExecutorReturnCode(EXIT_SUCCESS);
   fake_process_control_.receiver().FlushForTesting();
-  observer->receiver_.FlushForTesting();
-  EXPECT_EQ(observer->state_->percentage, 100);
-  EXPECT_TRUE(observer->state_->state_union->is_finished());
+  observer.receiver_.FlushForTesting();
+  EXPECT_EQ(observer.state_->percentage, 100);
+  EXPECT_TRUE(observer.state_->state_union->is_finished());
 }
 
 TEST_F(CpuStressRoutineV2AdapterTest, IncrementalProgress) {

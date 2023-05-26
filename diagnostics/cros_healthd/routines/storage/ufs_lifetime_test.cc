@@ -73,16 +73,15 @@ class UfsLifetimeRoutineTest : public BaseFileTest {
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
     TestFuture<void> signal;
-    auto observer =
-        std::make_unique<RoutineObserverForTesting>(signal.GetCallback());
-    routine_->AddObserver(observer->receiver_.BindNewPipeAndPassRemote());
+    RoutineObserverForTesting observer{signal.GetCallback()};
+    routine_->AddObserver(observer.receiver_.BindNewPipeAndPassRemote());
     routine_->SetOnExceptionCallback(
         base::BindOnce([](uint32_t error, const std::string& reason) {
           CHECK(false) << "An exception has occurred when it shouldn't have.";
         }));
     routine_->Start();
     EXPECT_TRUE(signal.Wait());
-    return std::move(observer->state_);
+    return std::move(observer.state_);
   }
 
   void RunRoutineAndWaitForException(const std::string& expected_reason) {
