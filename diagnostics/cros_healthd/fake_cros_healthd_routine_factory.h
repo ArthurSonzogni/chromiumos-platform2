@@ -124,6 +124,8 @@ class FakeCrosHealthdRoutineFactory final : public CrosHealthdRoutineFactory {
       const std::optional<base::TimeDelta>& exec_duration) override;
   std::unique_ptr<DiagnosticRoutine> MakeBluetoothPairingRoutine(
       const std::string& peripheral_id) override;
+  std::unique_ptr<DiagnosticRoutine> MakePowerButtonRoutine(
+      uint32_t timeout_seconds) override;
 
  private:
   // The routine that will be returned by any calls to MakeSomeRoutine.

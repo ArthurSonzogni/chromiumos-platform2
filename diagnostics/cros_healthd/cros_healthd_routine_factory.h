@@ -199,6 +199,11 @@ class CrosHealthdRoutineFactory {
   // routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeBluetoothPairingRoutine(
       const std::string& peripheral_id) = 0;
+  // Constructs a new instance of the power button routine. See
+  // diagnostics/routines/power_button/power_button for details on the routine
+  // itself.
+  virtual std::unique_ptr<DiagnosticRoutine> MakePowerButtonRoutine(
+      uint32_t timeout_seconds) = 0;
 };
 
 }  // namespace diagnostics

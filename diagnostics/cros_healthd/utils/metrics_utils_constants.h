@@ -141,6 +141,8 @@ inline constexpr char kDiagnosticResultBluetoothScanning[] =
     "ChromeOS.Healthd.DiagnosticResult.BluetoothScanning";
 inline constexpr char kDiagnosticResultBluetoothPairing[] =
     "ChromeOS.Healthd.DiagnosticResult.BluetoothPairing";
+inline constexpr char kDiagnosticResultPowerButton[] =
+    "ChromeOS.Healthd.DiagnosticResult.PowerButton";
 
 }  // namespace metrics_name
 }  // namespace diagnostics

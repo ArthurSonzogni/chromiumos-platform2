@@ -585,6 +585,13 @@ void CrosHealthdDiagnosticsService::RunBluetoothPairingRoutine(
              std::move(callback));
 }
 
+void CrosHealthdDiagnosticsService::RunPowerButtonRoutine(
+    uint32_t timeout_seconds, RunPowerButtonRoutineCallback callback) {
+  RunRoutine(routine_factory_->MakePowerButtonRoutine(timeout_seconds),
+             mojo_ipc::DiagnosticRoutineEnum::kPowerButton,
+             std::move(callback));
+}
+
 void CrosHealthdDiagnosticsService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
     mojo_ipc::DiagnosticRoutineEnum routine_enum,
@@ -672,6 +679,7 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
       mojo_ipc::DiagnosticRoutineEnum::kBluetoothDiscovery,
       mojo_ipc::DiagnosticRoutineEnum::kBluetoothScanning,
       mojo_ipc::DiagnosticRoutineEnum::kBluetoothPairing,
+      mojo_ipc::DiagnosticRoutineEnum::kPowerButton,
   };
 
   if (context_->system_config()->HasBattery()) {

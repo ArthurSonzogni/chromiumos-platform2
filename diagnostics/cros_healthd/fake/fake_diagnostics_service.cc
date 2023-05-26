@@ -276,4 +276,9 @@ void FakeDiagnosticsService::RunBluetoothPairingRoutine(
   NOTIMPLEMENTED();
 }
 
+void FakeDiagnosticsService::RunPowerButtonRoutine(
+    uint32_t timeout_seconds, RunPowerButtonRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

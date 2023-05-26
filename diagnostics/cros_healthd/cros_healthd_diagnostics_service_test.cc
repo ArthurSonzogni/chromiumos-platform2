@@ -90,6 +90,7 @@ std::set<mojo_ipc::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojo_ipc::DiagnosticRoutineEnum::kBluetoothDiscovery,
       mojo_ipc::DiagnosticRoutineEnum::kBluetoothScanning,
       mojo_ipc::DiagnosticRoutineEnum::kBluetoothPairing,
+      mojo_ipc::DiagnosticRoutineEnum::kPowerButton,
   };
 }
 

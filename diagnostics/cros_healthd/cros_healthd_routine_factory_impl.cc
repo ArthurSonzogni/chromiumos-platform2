@@ -50,6 +50,7 @@
 #include "diagnostics/cros_healthd/routines/network/video_conferencing.h"
 #include "diagnostics/cros_healthd/routines/nvme_self_test/nvme_self_test.h"
 #include "diagnostics/cros_healthd/routines/nvme_wear_level/nvme_wear_level.h"
+#include "diagnostics/cros_healthd/routines/power_button/power_button.h"
 #include "diagnostics/cros_healthd/routines/privacy_screen/privacy_screen.h"
 #include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor.h"
 #include "diagnostics/cros_healthd/routines/smartctl_check/smartctl_check.h"
@@ -348,6 +349,12 @@ std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeBluetoothPairingRoutine(
     const std::string& peripheral_id) {
   return std::make_unique<BluetoothPairingRoutine>(context_, peripheral_id);
+}
+
+std::unique_ptr<DiagnosticRoutine>
+CrosHealthdRoutineFactoryImpl::MakePowerButtonRoutine(
+    uint32_t timeout_seconds) {
+  return std::make_unique<PowerButtonRoutine>(context_, timeout_seconds);
 }
 
 }  // namespace diagnostics

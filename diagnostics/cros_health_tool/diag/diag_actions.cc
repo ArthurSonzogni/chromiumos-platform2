@@ -542,6 +542,13 @@ bool DiagActions::ActionRunBluetoothPairingRoutine(
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
+bool DiagActions::ActionRunPowerButtonRoutine(uint32_t timeout_seconds) {
+  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
+  cros_healthd_diagnostics_service_->RunPowerButtonRoutine(
+      timeout_seconds, waiter.CreateCallback());
+  return ProcessRoutineResponse(waiter.WaitForResponse());
+}
+
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   CHECK_LE(percent, 100) << "Percent must be <= 100.";
   force_cancel_ = true;

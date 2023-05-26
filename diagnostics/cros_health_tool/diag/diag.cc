@@ -774,6 +774,21 @@ int BluetoothPairingMain(int argc, char** argv) {
   return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+int PowerButtonMain(int argc, char** argv) {
+  DEFINE_uint32(length_seconds, 0,
+                "Number of seconds to listen for the power button events. "
+                "Range: [1, 600].");
+
+  brillo::FlagHelper::Init(argc, argv, "Power button routine");
+
+  DiagActions actions{kRoutinePollIntervalTimeDelta,
+                      kMaximumRoutineExecutionTimeDelta};
+
+  auto result = actions.ActionRunPowerButtonRoutine(FLAGS_length_seconds);
+
+  return result ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
 const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     // V2 routines.
     {"audio_driver", AudioDriverMain},
@@ -826,7 +841,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"bluetooth_discovery", BluetoothDiscoveryMain},
     {"bluetooth_scanning", BluetoothScanningMain},
     {"bluetooth_pairing", BluetoothPairingMain},
-};
+    {"power_button", PowerButtonMain}};
 
 void PrintHelp() {
   std::stringstream ss;

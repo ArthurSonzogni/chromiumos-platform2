@@ -449,4 +449,10 @@ FakeCrosHealthdRoutineFactory::MakeBluetoothPairingRoutine(
   return std::move(next_routine_);
 }
 
+std::unique_ptr<DiagnosticRoutine>
+FakeCrosHealthdRoutineFactory::MakePowerButtonRoutine(
+    uint32_t timeout_seconds) {
+  return std::move(next_routine_);
+}
+
 }  // namespace diagnostics

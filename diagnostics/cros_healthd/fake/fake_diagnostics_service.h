@@ -142,6 +142,8 @@ class FakeDiagnosticsService final
   void RunBluetoothPairingRoutine(
       const std::string& peripheral_id,
       RunBluetoothPairingRoutineCallback callback) override;
+  void RunPowerButtonRoutine(uint32_t timeout_seconds,
+                             RunPowerButtonRoutineCallback callback) override;
 };
 
 }  // namespace diagnostics

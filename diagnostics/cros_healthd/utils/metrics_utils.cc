@@ -160,6 +160,8 @@ std::optional<std::string> GetMetricName(mojom::DiagnosticRoutineEnum routine) {
       return metrics_name::kDiagnosticResultBluetoothScanning;
     case mojom::DiagnosticRoutineEnum::kBluetoothPairing:
       return metrics_name::kDiagnosticResultBluetoothPairing;
+    case mojom::DiagnosticRoutineEnum::kPowerButton:
+      return metrics_name::kDiagnosticResultPowerButton;
   }
 }
 
