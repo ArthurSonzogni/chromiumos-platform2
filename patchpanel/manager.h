@@ -290,7 +290,7 @@ class Manager {
 
   // Whether device is interactive, used to decide whether to start/stop
   // forwarding multicast traffic to ARC on all multicast enabled networks.
-  bool is_arc_interactive_ = false;
+  bool is_arc_interactive_ = true;
 
   base::WeakPtrFactory<Manager> weak_factory_{this};
 };
