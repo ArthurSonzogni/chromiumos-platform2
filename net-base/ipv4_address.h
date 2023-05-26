@@ -54,6 +54,8 @@ class NET_BASE_EXPORT IPv4Address {
       : IPv4Address(DataType{b0, b1, b2, b3}) {}
   constexpr explicit IPv4Address(const DataType& data) : data_(data) {}
 
+  explicit IPv4Address(const struct in_addr& addr);
+
   // Returns true if the address is "0.0.0.0".
   bool IsZero() const;
 

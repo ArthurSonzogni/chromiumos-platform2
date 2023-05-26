@@ -105,11 +105,16 @@ TEST(IPv4AddressTest, Order) {
   }
 }
 
-TEST(IPv4Address, ToInAddr) {
+TEST(IPv4Address, InAddr) {
+  // Convert from IPv4Address to in_addr.
   const auto ipv4_addr = IPv4Address(0x11, 0x22, 0x33, 0x44);
   const uint32_t expected_s_addr = htonl(0x11223344);
-
   EXPECT_EQ(ipv4_addr.ToInAddr().s_addr, expected_s_addr);
+
+  // Convert from in_addr to IPv4Address.
+  in_addr addr;
+  addr.s_addr = expected_s_addr;
+  EXPECT_EQ(IPv4Address(addr), ipv4_addr);
 }
 
 TEST(IPv4CIDR, CreateFromCIDRString) {

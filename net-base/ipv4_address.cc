@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 
 #include <base/check.h>
+#include <base/sys_byteorder.h>
 
 namespace net_base {
 
@@ -26,6 +27,14 @@ std::optional<IPv4Address> IPv4Address::CreateFromString(
 std::optional<IPv4Address> IPv4Address::CreateFromBytes(const uint8_t* bytes,
                                                         size_t byte_length) {
   return CreateAddressFromBytes<IPv4Address>(bytes, byte_length);
+}
+
+IPv4Address::IPv4Address(const struct in_addr& addr) {
+  const uint32_t host_endian = base::NetToHost32(addr.s_addr);
+  data_[0] = static_cast<uint8_t>((host_endian >> 24) & 0xff);
+  data_[1] = static_cast<uint8_t>((host_endian >> 16) & 0xff);
+  data_[2] = static_cast<uint8_t>((host_endian >> 8) & 0xff);
+  data_[3] = static_cast<uint8_t>(host_endian & 0xff);
 }
 
 bool IPv4Address::IsZero() const {
