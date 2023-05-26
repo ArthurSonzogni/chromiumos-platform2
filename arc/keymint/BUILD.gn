@@ -200,6 +200,7 @@ shared_library("libarckeymint_context") {
     "${keymint_src}/contexts/soft_attestation_context.cpp",
     "${keymint_src}/km_openssl/soft_keymaster_enforcement.cpp",
     "context/arc_keymint_context.cc",
+    "context/chaps_client.cc",
     "context/context_adaptor.cc",
     "context/cros_key.cc",
     "context/crypto_operation.cc",
@@ -342,6 +343,7 @@ if (use.test) {
   }
   executable("arc-keymintd_testrunner") {
     sources = [
+      "context/chaps_client_test.cc",
       "context/crypto_operation_test.cc",
       "conversion.cc",
       "conversion_test.cc",
