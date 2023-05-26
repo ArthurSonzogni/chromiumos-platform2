@@ -67,12 +67,6 @@ class TpmUtilityV2 : public TpmUtilityCommon {
             const std::string& data_to_sign,
             std::string* signature) override;
   bool ReadPCR(uint32_t pcr_index, std::string* pcr_value) override;
-  bool GetNVDataSize(uint32_t nv_index, uint16_t* nv_size) const override;
-  bool CertifyNV(uint32_t nv_index,
-                 int nv_size,
-                 const std::string& key_blob,
-                 std::string* quoted_data,
-                 std::string* quote) override;
   bool GetEndorsementPublicKeyModulus(KeyType key_type,
                                       std::string* ekm) override;
   bool GetEndorsementPublicKeyBytes(KeyType key_type,

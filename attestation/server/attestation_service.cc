@@ -483,7 +483,7 @@ void AttestationService::InitializeTask(InitializeCompleteCallback callback) {
     hwsec_ = default_hwsec_.get();
   }
   if (!nvram_quoter_) {
-    default_nvram_quoter_.reset(NvramQuoterFactory::New(*tpm_utility_));
+    default_nvram_quoter_.reset(NvramQuoterFactory::New(*hwsec_));
     nvram_quoter_ = default_nvram_quoter_.get();
   }
   if (!crypto_utility_) {
@@ -3410,21 +3410,31 @@ void AttestationService::GetCertifiedNvIndexTask(
     return;
   }
 
-  std::string certified_value;
-  std::string signature;
+  // TODO(b/284426896): we should not expose the NV index logic outside of
+  // libhwsec. Remove this workaround once we refactor this function and u2f.
+  constexpr uint32_t kG2FCertNvIndex = 0x013fff02;
+  NVRAMQuoteType type;
+  switch (request.nv_index()) {
+    // Currently only nv index in use for the function is g2f cert.
+    case kG2FCertNvIndex:
+      type = G2F_CERT;
+      break;
+    default:
+      LOG(WARNING) << "Invalid NV index: " << request.nv_index();
+      result->set_status(STATUS_INVALID_PARAMETER);
+      return;
+  }
 
-  if (!tpm_utility_->CertifyNV(request.nv_index(), request.nv_size(),
-                               key.key_blob(), &certified_value, &signature)) {
-    LOG(WARNING) << "Attestation: Failed to certify NV data of size "
-                 << request.nv_size() << " at index " << std::hex
-                 << std::showbase << request.nv_index()
-                 << ", using key with label: " << request.key_label();
+  Quote quote;
+  if (!nvram_quoter_->Certify(type, key.key_blob(), quote)) {
+    LOG(WARNING) << __func__ << ": Failed to certify NV by key with label: "
+                 << request.key_label();
     result->set_status(STATUS_INVALID_PARAMETER);
     return;
   }
 
-  result->set_certified_data(certified_value);
-  result->set_signature(signature);
+  result->set_certified_data(quote.quoted_data());
+  result->set_signature(quote.quote());
   result->set_key_certificate(key.certified_key_credential());
   result->set_status(STATUS_SUCCESS);
 }

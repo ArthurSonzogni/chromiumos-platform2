@@ -10,25 +10,27 @@
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/attestation/mock_frontend.h>
+#include <libhwsec/structures/space.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <trunks/tpm_utility.h>
-extern "C" {
-#include <trunks/cr50_headers/virtual_nvmem.h>
-}
 
-#include "attestation/common/mock_tpm_utility.h"
+using brillo::BlobFromString;
+using hwsec::TPMError;
+using hwsec::TPMRetryAction;
+using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnValue;
+using testing::_;
+using testing::DoAll;
+using testing::ElementsAre;
+using testing::Return;
+using testing::SetArgPointee;
+using testing::StrictMock;
 
 namespace attestation {
 
 namespace {
 
-using ::testing::_;
-using ::testing::DoAll;
-using ::testing::ElementsAre;
-using ::testing::Return;
-using ::testing::SetArgPointee;
-using ::testing::StrictMock;
-
-constexpr uint16_t kFakeNvSize = 123;
 constexpr char kFakeSigningKey[] = "signing key";
 constexpr char kFakeQuote[] = "quote";
 constexpr char kFakeQuotedData[] = "quoted data";
@@ -39,8 +41,8 @@ class GscNvramQuoterTest : public ::testing::Test {
   ~GscNvramQuoterTest() override = default;
 
  protected:
-  MockTpmUtility mock_tpm_utility_;
-  StrictMock<GscNvramQuoter> quoter_{mock_tpm_utility_};
+  StrictMock<hwsec::MockAttestationFrontend> mock_hwsec_;
+  GscNvramQuoter quoter_{mock_hwsec_};
 };
 
 TEST_F(GscNvramQuoterTest, GetListForIdentity) {
@@ -57,12 +59,13 @@ TEST_F(GscNvramQuoterTest, GetListForEnrollmentCertificate) {
 }
 
 TEST_F(GscNvramQuoterTest, CertifySuccessBoardId) {
-  EXPECT_CALL(mock_tpm_utility_, GetNVDataSize(VIRTUAL_NV_INDEX_BOARD_ID, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kFakeNvSize), Return(true)));
-  EXPECT_CALL(mock_tpm_utility_, CertifyNV(VIRTUAL_NV_INDEX_BOARD_ID,
-                                           kFakeNvSize, kFakeSigningKey, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(kFakeQuotedData),
-                      SetArgPointee<4>(kFakeQuote), Return(true)));
+  Quote expected_quote;
+  expected_quote.set_quote(kFakeQuote);
+  expected_quote.set_quoted_data(kFakeQuotedData);
+  EXPECT_CALL(mock_hwsec_, CertifyNV(hwsec::RoSpace::kBoardId,
+                                     BlobFromString(kFakeSigningKey)))
+      .WillOnce(ReturnValue(expected_quote));
+
   Quote quote;
   EXPECT_TRUE(quoter_.Certify(BOARD_ID, kFakeSigningKey, quote));
   EXPECT_EQ(quote.quote(), kFakeQuote);
@@ -70,12 +73,13 @@ TEST_F(GscNvramQuoterTest, CertifySuccessBoardId) {
 }
 
 TEST_F(GscNvramQuoterTest, CertifySuccessSnBits) {
-  EXPECT_CALL(mock_tpm_utility_, GetNVDataSize(VIRTUAL_NV_INDEX_SN_DATA, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kFakeNvSize), Return(true)));
-  EXPECT_CALL(mock_tpm_utility_, CertifyNV(VIRTUAL_NV_INDEX_SN_DATA,
-                                           kFakeNvSize, kFakeSigningKey, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(kFakeQuotedData),
-                      SetArgPointee<4>(kFakeQuote), Return(true)));
+  Quote expected_quote;
+  expected_quote.set_quote(kFakeQuote);
+  expected_quote.set_quoted_data(kFakeQuotedData);
+  EXPECT_CALL(mock_hwsec_, CertifyNV(hwsec::RoSpace::kSNData,
+                                     BlobFromString(kFakeSigningKey)))
+      .WillOnce(ReturnValue(expected_quote));
+
   Quote quote;
   EXPECT_TRUE(quoter_.Certify(SN_BITS, kFakeSigningKey, quote));
   EXPECT_EQ(quote.quote(), kFakeQuote);
@@ -83,12 +87,13 @@ TEST_F(GscNvramQuoterTest, CertifySuccessSnBits) {
 }
 
 TEST_F(GscNvramQuoterTest, CertifySuccessRsuDevceId) {
-  EXPECT_CALL(mock_tpm_utility_, GetNVDataSize(VIRTUAL_NV_INDEX_RSU_DEV_ID, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kFakeNvSize), Return(true)));
-  EXPECT_CALL(mock_tpm_utility_, CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID,
-                                           kFakeNvSize, kFakeSigningKey, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(kFakeQuotedData),
-                      SetArgPointee<4>(kFakeQuote), Return(true)));
+  Quote expected_quote;
+  expected_quote.set_quote(kFakeQuote);
+  expected_quote.set_quoted_data(kFakeQuotedData);
+  EXPECT_CALL(mock_hwsec_, CertifyNV(hwsec::RoSpace::kRsuDeviceId,
+                                     BlobFromString(kFakeSigningKey)))
+      .WillOnce(ReturnValue(expected_quote));
+
   Quote quote;
   EXPECT_TRUE(quoter_.Certify(RSU_DEVICE_ID, kFakeSigningKey, quote));
   EXPECT_EQ(quote.quote(), kFakeQuote);
@@ -96,33 +101,27 @@ TEST_F(GscNvramQuoterTest, CertifySuccessRsuDevceId) {
 }
 
 TEST_F(GscNvramQuoterTest, CertifySuccessRsaEkCertificate) {
-  EXPECT_CALL(mock_tpm_utility_,
-              GetNVDataSize(trunks::kRsaEndorsementCertificateIndex, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kFakeNvSize), Return(true)));
-  EXPECT_CALL(mock_tpm_utility_,
-              CertifyNV(trunks::kRsaEndorsementCertificateIndex, kFakeNvSize,
-                        kFakeSigningKey, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(kFakeQuotedData),
-                      SetArgPointee<4>(kFakeQuote), Return(true)));
+  Quote expected_quote;
+  expected_quote.set_quote(kFakeQuote);
+  expected_quote.set_quoted_data(kFakeQuotedData);
+  EXPECT_CALL(mock_hwsec_, CertifyNV(hwsec::RoSpace::kEndorsementRsaCert,
+                                     BlobFromString(kFakeSigningKey)))
+      .WillOnce(ReturnValue(expected_quote));
+
   Quote quote;
   EXPECT_TRUE(quoter_.Certify(RSA_PUB_EK_CERT, kFakeSigningKey, quote));
   EXPECT_EQ(quote.quote(), kFakeQuote);
   EXPECT_EQ(quote.quoted_data(), kFakeQuotedData);
 }
 
-TEST_F(GscNvramQuoterTest, CertifyFailureCertifyNV) {
-  EXPECT_CALL(mock_tpm_utility_, GetNVDataSize(VIRTUAL_NV_INDEX_SN_DATA, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kFakeNvSize), Return(true)));
-  EXPECT_CALL(mock_tpm_utility_, CertifyNV(VIRTUAL_NV_INDEX_SN_DATA,
-                                           kFakeNvSize, kFakeSigningKey, _, _))
-      .WillOnce(Return(false));
-  Quote quote;
-  EXPECT_FALSE(quoter_.Certify(SN_BITS, kFakeSigningKey, quote));
-}
+TEST_F(GscNvramQuoterTest, CertifyFailure) {
+  Quote expected_quote;
+  expected_quote.set_quote(kFakeQuote);
+  expected_quote.set_quoted_data(kFakeQuotedData);
+  EXPECT_CALL(mock_hwsec_, CertifyNV(hwsec::RoSpace::kSNData,
+                                     BlobFromString(kFakeSigningKey)))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
-TEST_F(GscNvramQuoterTest, CertifyFailureGetNVDataSize) {
-  EXPECT_CALL(mock_tpm_utility_, GetNVDataSize(VIRTUAL_NV_INDEX_SN_DATA, _))
-      .WillOnce(Return(false));
   Quote quote;
   EXPECT_FALSE(quoter_.Certify(SN_BITS, kFakeSigningKey, quote));
 }

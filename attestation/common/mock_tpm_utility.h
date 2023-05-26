@@ -86,11 +86,6 @@ class MockTpmUtility : public TpmUtility {
               Sign,
               (const std::string&, const std::string&, std::string*),
               (override));
-  MOCK_METHOD(bool, GetNVDataSize, (uint32_t, uint16_t*), (const, override));
-  MOCK_METHOD(bool,
-              CertifyNV,
-              (uint32_t, int, const std::string&, std::string*, std::string*),
-              (override));
   MOCK_METHOD(bool, ReadPCR, (uint32_t, std::string*), (override));
   MOCK_METHOD(bool, RemoveOwnerDependency, (), (override));
   MOCK_METHOD(bool,

@@ -570,20 +570,6 @@ bool TpmUtilityV1::ReadPCR(uint32_t pcr_index, std::string* pcr_value) {
   return true;
 }
 
-bool TpmUtilityV1::GetNVDataSize(uint32_t nv_index, uint16_t* nv_size) const {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
-}
-
-bool TpmUtilityV1::CertifyNV(uint32_t nv_index,
-                             int nv_size,
-                             const std::string& key_blob,
-                             std::string* quoted_data,
-                             std::string* quote) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
-}
-
 bool TpmUtilityV1::ConnectContextAsUser(ScopedTssContext* context,
                                         TSS_HTPM* tpm) {
   *tpm = 0;

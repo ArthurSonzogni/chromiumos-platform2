@@ -73,16 +73,6 @@ class TpmUtilityStub : public TpmUtility {
             std::string* signature) override {
     return false;
   }
-  bool GetNVDataSize(uint32_t nv_index, uint16_t* nv_size) const override {
-    return false;
-  }
-  bool CertifyNV(uint32_t nv_index,
-                 int nv_size,
-                 const std::string& key_blob,
-                 std::string* quoted_data,
-                 std::string* quote) override {
-    return false;
-  }
   bool ReadPCR(uint32_t pcr_index, std::string* pcr_value) override {
     return false;
   }

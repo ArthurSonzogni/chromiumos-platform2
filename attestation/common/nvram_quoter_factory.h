@@ -7,13 +7,13 @@
 
 #include "attestation/common/nvram_quoter.h"
 
-#include "attestation/common/tpm_utility.h"
+#include <libhwsec/frontend/attestation/frontend.h>
 
 namespace attestation {
 
 class NvramQuoterFactory {
  public:
-  static NvramQuoter* New(TpmUtility& tpm_utility);
+  static NvramQuoter* New(const hwsec::AttestationFrontend& hwsec);
 };
 
 }  // namespace attestation

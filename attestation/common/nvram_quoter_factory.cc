@@ -13,9 +13,9 @@
 namespace attestation {
 
 // static
-NvramQuoter* NvramQuoterFactory::New(TpmUtility& tpm_utility) {
+NvramQuoter* NvramQuoterFactory::New(const hwsec::AttestationFrontend& hwsec) {
 #if USE_CR50_ONBOARD || USE_TI50_ONBOARD
-  return new GscNvramQuoter(tpm_utility);
+  return new GscNvramQuoter(hwsec);
 #else
   return new NullNvramQuoter();
 #endif

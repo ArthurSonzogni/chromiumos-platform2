@@ -10,13 +10,13 @@
 #include <string>
 #include <vector>
 
-#include "attestation/common/tpm_utility.h"
+#include <libhwsec/frontend/attestation/frontend.h>
 
 namespace attestation {
 
 class GscNvramQuoter : public NvramQuoter {
  public:
-  explicit GscNvramQuoter(TpmUtility& tpm_utility);
+  explicit GscNvramQuoter(const hwsec::AttestationFrontend& hwsec);
   ~GscNvramQuoter() override = default;
   GscNvramQuoter(const GscNvramQuoter&) = delete;
   GscNvramQuoter(GscNvramQuoter&&) = delete;
@@ -28,7 +28,7 @@ class GscNvramQuoter : public NvramQuoter {
                Quote& quote) override;
 
  private:
-  TpmUtility& tpm_utility_;
+  const hwsec::AttestationFrontend& hwsec_;
 };
 
 }  // namespace attestation

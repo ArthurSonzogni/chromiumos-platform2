@@ -9,12 +9,13 @@
 
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <libhwsec/frontend/attestation/frontend.h>
+#include <libhwsec/structures/space.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 #include <trunks/tpm_utility.h>
-extern "C" {
-#include <trunks/cr50_headers/virtual_nvmem.h>
-}
 
-#include "attestation/common/tpm_utility.h"
+using brillo::BlobFromString;
+using hwsec::TPMError;
 
 namespace attestation {
 
@@ -23,15 +24,16 @@ namespace {
 struct NvramQuoteMetadata {
   NVRAMQuoteType type;
   const char* name;
-  uint32_t index;
+  hwsec::RoSpace space;
 };
 
 constexpr NvramQuoteMetadata kNvramQuoteMetadata[] = {
-    {BOARD_ID, "BOARD_ID", VIRTUAL_NV_INDEX_BOARD_ID},
-    {SN_BITS, "SN_BITS", VIRTUAL_NV_INDEX_SN_DATA},
-    {RSA_PUB_EK_CERT, "RSA_PUB_EK_CERT",
-     trunks::kRsaEndorsementCertificateIndex},
-    {RSU_DEVICE_ID, "RSU_DEVICE_ID", VIRTUAL_NV_INDEX_RSU_DEV_ID},
+    {BOARD_ID, "BOARD_ID", hwsec::RoSpace::kBoardId},
+    {SN_BITS, "SN_BITS", hwsec::RoSpace::kSNData},
+    {RSA_PUB_EK_CERT, "RSA_PUB_EK_CERT", hwsec::RoSpace::kEndorsementRsaCert},
+    {RSU_DEVICE_ID, "RSU_DEVICE_ID", hwsec::RoSpace::kRsuDeviceId},
+    {RMA_BYTES, "RMA_BYTES", hwsec::RoSpace::kRmaBytes},
+    {G2F_CERT, "G2F_CERT", hwsec::RoSpace::kG2fCert},
 };
 
 constexpr bool VerifyMedataListOrder() {
@@ -46,15 +48,10 @@ constexpr bool VerifyMedataListOrder() {
 static_assert(VerifyMedataListOrder(),
               "List order should be aligned with enum in protobuf message");
 
-std::string NvramQuoteTypeToString(NVRAMQuoteType type) {
-  // No boundarty check, for the caller is responsible for that.
-  return kNvramQuoteMetadata[type].name;
-}
-
 }  // namespace
 
-GscNvramQuoter::GscNvramQuoter(TpmUtility& tpm_utility)
-    : tpm_utility_(tpm_utility) {}
+GscNvramQuoter::GscNvramQuoter(const hwsec::AttestationFrontend& hwsec)
+    : hwsec_(hwsec) {}
 
 std::vector<NVRAMQuoteType> GscNvramQuoter::GetListForIdentity() const {
   return {BOARD_ID, SN_BITS};
@@ -75,29 +72,16 @@ bool GscNvramQuoter::Certify(NVRAMQuoteType type,
                              Quote& quote) {
   CHECK_LT(static_cast<uint32_t>(type), std::size(kNvramQuoteMetadata))
       << "Unexpected type: " << static_cast<uint32_t>(type) << ".";
-  const uint32_t nv_index =
-      kNvramQuoteMetadata[static_cast<uint32_t>(type)].index;
-  uint16_t nv_size;
 
-  if (!tpm_utility_.GetNVDataSize(nv_index, &nv_size)) {
-    LOG(ERROR) << __func__ << ": Failed to obtain NV data size for "
-               << NvramQuoteTypeToString(type) << ".";
-    return false;
-  }
+  NvramQuoteMetadata metadata =
+      kNvramQuoteMetadata[static_cast<uint32_t>(type)];
 
-  std::string certified_value;
-  std::string signature;
-
-  if (!tpm_utility_.CertifyNV(nv_index, nv_size, signing_key_blob,
-                              &certified_value, &signature)) {
-    LOG(WARNING) << __func__ << ": Failed to certify "
-                 << NvramQuoteTypeToString(type) << " NV data of size "
-                 << nv_size << " at index " << std::hex << std::showbase
-                 << nv_index << ".";
-    return false;
-  }
-  quote.set_quote(signature);
-  quote.set_quoted_data(certified_value);
+  ASSIGN_OR_RETURN(
+      quote, hwsec_.CertifyNV(metadata.space, BlobFromString(signing_key_blob)),
+      _.WithStatus<TPMError>(
+           base::StringPrintf("Failed to certify %s", metadata.name))
+          .LogError()
+          .As(false));
   return true;
 }
 
