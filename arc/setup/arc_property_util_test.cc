@@ -94,6 +94,31 @@ TEST_F(ArcPropertyUtilTest, TestPropertyExpansionsRecursive) {
   EXPECT_EQ("ro.a=alphabet soup\n", expanded);
 }
 
+// Verify that tagged forward declarations are not expanded
+TEST_F(ArcPropertyUtilTest, TestPropertyExpansionIgnoresTags) {
+  std::string expanded;
+  EXPECT_TRUE(ExpandPropertyContentsForTesting(
+      "ro.a={crosbuild:a}\nro.b={crosconfig:b}\nro.c={envvar:c}\nro.d={lsb:d}\n"
+      "ro.e={placeholder:space}",
+      config(), /*debuggable=*/false, &expanded));
+  EXPECT_EQ(
+      "ro.a={crosbuild:a}\nro.b={crosconfig:b}\nro.c={envvar:c}\nro.d={lsb:d}\n"
+      "ro.e={placeholder:space}\n",
+      expanded);
+}
+
+// Verify that recursive expansion works with tagged declarations
+TEST_F(ArcPropertyUtilTest, TestPropertyExpansionRecursiveWithTags) {
+  config()->SetString("/arc/build-properties", "brand", "alphabet");
+  config()->SetString("/arc/build-properties", "model", "{brand} soup");
+
+  std::string expanded;
+  EXPECT_TRUE(ExpandPropertyContentsForTesting(
+      "ro.a={lsb:foo}{model}{crosconfig:bar}", config(), /*debuggable=*/false,
+      &expanded));
+  EXPECT_EQ("ro.a={lsb:foo}alphabet soup{crosconfig:bar}\n", expanded);
+}
+
 TEST_F(ArcPropertyUtilTest, TestPropertyExpansionsMissingProperty) {
   config()->SetString("/arc/build-properties", "model", "{brand} soup");
 
@@ -103,6 +128,14 @@ TEST_F(ArcPropertyUtilTest, TestPropertyExpansionsMissingProperty) {
       "ro.a={missing-property}", config(), /*debuggable=*/false, &expanded));
   EXPECT_FALSE(ExpandPropertyContentsForTesting(
       "ro.a={model}", config(), /*debuggable=*/false, &expanded));
+}
+
+TEST_F(ArcPropertyUtilTest, TestPropertyExpansionsNonexistentTag) {
+  std::string expanded;
+  EXPECT_FALSE(ExpandPropertyContentsForTesting(
+      "ro.a={cros:foo}", config(), /*debuggable=*/false, &expanded));
+  EXPECT_FALSE(ExpandPropertyContentsForTesting(
+      "ro.a={cros_config:foo}", config(), /*debuggable=*/false, &expanded));
 }
 
 // Verify that ro.product.board gets copied to ro.oem.key1 as well.

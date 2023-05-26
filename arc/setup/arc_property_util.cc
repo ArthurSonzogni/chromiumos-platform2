@@ -5,6 +5,7 @@
 #include "arc/setup/arc_property_util.h"
 
 #include <algorithm>
+#include <array>
 #include <memory>
 #include <tuple>
 #include <vector>
@@ -154,6 +155,18 @@ bool IsComment(const std::string& line) {
       base::CompareCase::SENSITIVE);
 }
 
+bool IsForwardDeclaration(const std::string& term) {
+  static constexpr std::array<const char*, 5> kFwdDecSrcTags{
+      "crosbuild:", "crosconfig:", "envvar:", "lsb:", "placeholder:"};
+
+  for (const char* tag : kFwdDecSrcTags) {
+    if (base::StartsWith(term, tag, base::CompareCase::SENSITIVE)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool ExpandPropertyContents(const std::string& content,
                             brillo::CrosConfigInterface* config,
                             scoped_refptr<::dbus::Bus> bus,
@@ -207,6 +220,8 @@ bool ExpandPropertyContents(const std::string& content,
                               &replacement)) {
           expanded += replacement;
           inserted = true;
+        } else if (IsForwardDeclaration(keyword)) {
+          expanded += line.substr(match_start, match_end - match_start + 1);
         } else {
           LOG(ERROR) << "Did not find a value for " << keyword
                      << " while expanding " << line;
