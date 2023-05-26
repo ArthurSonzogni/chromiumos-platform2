@@ -30,7 +30,7 @@ class MockRoData : public RoData {
 
   MOCK_METHOD(StatusOr<bool>, IsReady, (RoSpace space), (override));
   MOCK_METHOD(StatusOr<brillo::Blob>, Read, (RoSpace space), (override));
-  MOCK_METHOD(StatusOr<brillo::Blob>,
+  MOCK_METHOD(StatusOr<attestation::Quote>,
               Certify,
               (RoSpace space, Key key),
               (override));

@@ -13,6 +13,7 @@
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/operation_policy.h"
+#include "libhwsec/structures/space.h"
 
 namespace hwsec {
 
@@ -64,6 +65,17 @@ StatusOr<bool> AttestationFrontendImpl::IsQuoted(
 StatusOr<DeviceConfigSettings::BootModeSetting::Mode>
 AttestationFrontendImpl::GetCurrentBootMode() const {
   return middleware_.CallSync<&Backend::Config::GetCurrentBootMode>();
+}
+
+StatusOr<attestation::Quote> AttestationFrontendImpl::CertifyNV(
+    RoSpace space, const brillo::Blob& key_blob) const {
+  ASSIGN_OR_RETURN(
+      ScopedKey key,
+      middleware_.CallSync<&Backend::KeyManagement::LoadKey>(
+          OperationPolicy{}, key_blob,
+          Backend::KeyManagement::LoadKeyOptions{.auto_reload = true}));
+
+  return middleware_.CallSync<&Backend::RoData::Certify>(space, key.GetKey());
 }
 
 }  // namespace hwsec

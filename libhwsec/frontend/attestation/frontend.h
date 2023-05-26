@@ -12,6 +12,7 @@
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/operation_policy.h"
+#include "libhwsec/structures/space.h"
 
 namespace hwsec {
 
@@ -28,6 +29,8 @@ class AttestationFrontend : public Frontend {
                                   const attestation::Quote& quote) const = 0;
   virtual StatusOr<DeviceConfigSettings::BootModeSetting::Mode>
   GetCurrentBootMode() const = 0;
+  virtual StatusOr<attestation::Quote> CertifyNV(
+      RoSpace space, const brillo::Blob& key_blob) const = 0;
 };
 
 }  // namespace hwsec

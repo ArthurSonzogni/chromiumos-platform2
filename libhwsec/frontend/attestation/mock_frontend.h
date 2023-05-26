@@ -40,6 +40,10 @@ class MockAttestationFrontend : public MockFrontend,
               GetCurrentBootMode,
               (),
               (const override));
+  MOCK_METHOD(StatusOr<attestation::Quote>,
+              CertifyNV,
+              (RoSpace space, const brillo::Blob& key_blob),
+              (const override));
 };
 
 }  // namespace hwsec

@@ -5,6 +5,7 @@
 #ifndef LIBHWSEC_BACKEND_RO_DATA_H_
 #define LIBHWSEC_BACKEND_RO_DATA_H_
 
+#include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/status.h"
@@ -23,7 +24,7 @@ class RoData {
   virtual StatusOr<brillo::Blob> Read(RoSpace space) = 0;
 
   // Certifies data the |space| with a |key|.
-  virtual StatusOr<brillo::Blob> Certify(RoSpace space, Key key) = 0;
+  virtual StatusOr<attestation::Quote> Certify(RoSpace space, Key key) = 0;
 
  protected:
   RoData() = default;
