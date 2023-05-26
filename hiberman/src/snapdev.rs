@@ -188,27 +188,33 @@ impl SnapshotDevice {
                 .write(&buf)
                 .context("Failed to transfer snapshot image to kernel")?;
 
-            if res.is_err() {
-                if bytes_written == 0 {
-                    // When the end of the hiberimage is reached the read above returns
-                    // an I/O error due to invalid dm-integrity metadata. The underlying
-                    // snapshot device also detects when a complete hibernate image has
-                    // been written, successive writes return 0 to indicate an EOF
-                    // condition. So a read error followed by an EOF when writing tells
-                    // us that the transfer of the hiberimage has completed successfully.
-                    break;
-                }
-
-                return Err(Error::from(res.err().unwrap()));
+            if bytes_written == 0 {
+                // A complete hibernation image has been written.
+                break;
             }
 
-            if bytes_written != HIBERIMAGE_BLOCK_SIZE {
+            if res.is_err() {
+                // When the end of the hiberimage is reached the read() above
+                // *may* return an I/O error due to invalid dm-integrity
+                // metadata. However the read() doesn't fail always when the
+                // end of the image is reached, because an earlier hibernate
+                // cycle could have written a larger hiberimage. In that case
+                // read() returns data from the old image with valid
+                // integrity data.
+                //
+                // write() returns 0 when a complete hibernation image has
+                // been written. A value other than 0 means that the read
+                // error was an actual error, not an EOF condition.
+                return Err(Error::from(res.err().unwrap())).context("Failed to read image file");
+            }
+
+            if bytes_written < HIBERIMAGE_BLOCK_SIZE {
                 let bytes_read = res.ok().unwrap();
 
                 return Err(anyhow!(
                     "unexpectedly short write transfer to snapshot \
-                                    device ({bytes_written} bytes). Got {bytes_read} \
-                                    bytes from previous read."
+                     device ({bytes_written} bytes). Got {bytes_read} \
+                     bytes from previous read."
                 ));
             }
 
