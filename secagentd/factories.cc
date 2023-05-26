@@ -26,7 +26,7 @@ namespace secagentd {
 namespace pb = cros_xdr::reporting;
 
 std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
-    Types::BpfSkeleton type, BpfCallbacks cbs) {
+    Types::BpfSkeleton type, BpfCallbacks cbs, uint32_t batch_interval_s) {
   std::unique_ptr<BpfSkeletonInterface> rv{nullptr};
   switch (type) {
     case Types::BpfSkeleton::kProcess:
@@ -44,11 +44,7 @@ std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
       if (di_.network) {
         rv = std::move(di_.network);
       } else {
-        SkeletonCallbacks<network_bpf> skel_cbs;
-        skel_cbs.destroy = base::BindRepeating(network_bpf__destroy);
-        skel_cbs.open = base::BindRepeating(network_bpf__open);
-        skel_cbs.open_opts = base::BindRepeating(network_bpf__open_opts);
-        rv = std::make_unique<BpfSkeleton<network_bpf>>("network", skel_cbs);
+        rv = std::make_unique<NetworkBpfSkeleton>(batch_interval_s);
       }
       break;
     default:

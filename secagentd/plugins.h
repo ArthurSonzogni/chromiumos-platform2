@@ -95,6 +95,7 @@ class BpfPlugin : public PluginInterface {
       uint32_t batch_interval_s)
       : device_user_(device_user),
         process_cache_(process_cache),
+        batch_interval_s_(batch_interval_s),
         message_sender_(message_sender),
         policies_features_broker_(policies_features_broker),
         weak_ptr_factory_(this) {
@@ -118,8 +119,8 @@ class BpfPlugin : public PluginInterface {
     callbacks.ring_buffer_read_ready_callback =
         base::BindRepeating(&BpfPlugin::HandleBpfRingBufferReadReady,
                             weak_ptr_factory_.GetWeakPtr());
-    skeleton_wrapper_ =
-        factory_->Create(Config::skeleton_type, std::move(callbacks));
+    skeleton_wrapper_ = factory_->Create(
+        Config::skeleton_type, std::move(callbacks), batch_interval_s_);
     if (skeleton_wrapper_ == nullptr) {
       return absl::InternalError(
           absl::StrFormat("%s BPF program loading error.", GetName()));
@@ -152,6 +153,7 @@ class BpfPlugin : public PluginInterface {
       std::unique_ptr<BatchSenderInterfaceType> given) {
     batch_sender_ = std::move(given);
   }
+  uint32_t batch_interval_s_;
   scoped_refptr<BpfSkeletonFactoryInterface> factory_;
   scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;

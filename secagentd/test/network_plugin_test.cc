@@ -94,7 +94,8 @@ class NetworkPluginTestFixture : public ::testing::Test {
     EXPECT_NE(nullptr, plugin_);
     SetPluginBatchSenderForTesting(plugin_.get(), std::move(batch_sender));
 
-    EXPECT_CALL(*skel_factory_, Create(Types::BpfSkeleton::kNetwork, _))
+    EXPECT_CALL(*skel_factory_,
+                Create(Types::BpfSkeleton::kNetwork, _, kBatchInterval))
         .WillOnce(
             DoAll(SaveArg<1>(&cbs_), Return(ByMove(std::move(bpf_skeleton)))));
     EXPECT_CALL(*batch_sender_, Start());
@@ -122,7 +123,8 @@ TEST_F(NetworkPluginTestFixture, TestActivationFailureBadSkeleton) {
   SetPluginBatchSenderForTesting(plugin.get(),
                                  std::make_unique<BatchSenderType>());
 
-  EXPECT_CALL(*skel_factory_, Create(Types::BpfSkeleton::kNetwork, _))
+  EXPECT_CALL(*skel_factory_,
+              Create(Types::BpfSkeleton::kNetwork, _, kBatchInterval))
       .WillOnce(Return(ByMove(nullptr)));
   EXPECT_FALSE(plugin->Activate().ok());
 }

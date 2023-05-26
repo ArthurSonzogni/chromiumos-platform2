@@ -5,7 +5,9 @@
 #ifndef SECAGENTD_BPF_SKELETON_WRAPPERS_H_
 #define SECAGENTD_BPF_SKELETON_WRAPPERS_H_
 
+#include <arpa/inet.h>
 #include <bpf/libbpf.h>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -167,15 +169,33 @@ class BpfSkeleton : public BpfSkeletonInterface {
     return std::make_pair(absl::OkStatus(), metrics::BpfAttachResult::kSuccess);
   }
   void RegisterCallbacks(BpfCallbacks cbs) override { callbacks_ = cbs; }
-
   SkeletonType* skel_{nullptr};
+  BpfCallbacks callbacks_;
 
  private:
-  BpfCallbacks callbacks_;
   std::string name_;
   const SkeletonCallbacks<SkeletonType> skel_cbs_;
   struct ring_buffer* rb_{nullptr};
   std::unique_ptr<base::FileDescriptorWatcher::Controller> rb_watch_readable_;
+};
+
+class NetworkBpfSkeleton : public BpfSkeletonInterface {
+ public:
+  explicit NetworkBpfSkeleton(uint32_t batch_interval_s);
+  int ConsumeEvent() override;
+
+ protected:
+  std::pair<absl::Status, metrics::BpfAttachResult> LoadAndAttach() override;
+  void ScanFlowMap();
+  void RegisterCallbacks(BpfCallbacks cbs) override;
+
+ private:
+  uint32_t batch_interval_s_;
+  std::unique_ptr<BpfSkeleton<network_bpf>> default_bpf_skeleton_;
+  // Timer to periodically scan the BPF map and generate synthetic flow
+  // events.
+  base::RepeatingTimer scan_bpf_maps_timer_;
+  base::WeakPtrFactory<NetworkBpfSkeleton> weak_ptr_factory_;
 };
 
 class BpfSkeletonFactoryInterface
@@ -189,8 +209,8 @@ class BpfSkeletonFactoryInterface
   // Creates a BPF Handler class that loads and attaches a BPF application.
   // The passed in callback will be invoked when an event is available from the
   // BPF application.
-  virtual std::unique_ptr<BpfSkeletonInterface> Create(Types::BpfSkeleton type,
-                                                       BpfCallbacks cbs) = 0;
+  virtual std::unique_ptr<BpfSkeletonInterface> Create(
+      Types::BpfSkeleton type, BpfCallbacks cbs, uint32_t batch_interval_s) = 0;
   virtual ~BpfSkeletonFactoryInterface() = default;
 };
 
@@ -199,8 +219,10 @@ class BpfSkeletonFactory : public BpfSkeletonFactoryInterface {
   BpfSkeletonFactory() = default;
   explicit BpfSkeletonFactory(SkeletonInjections di) : di_(std::move(di)) {}
 
-  std::unique_ptr<BpfSkeletonInterface> Create(Types::BpfSkeleton type,
-                                               BpfCallbacks cbs) override;
+  std::unique_ptr<BpfSkeletonInterface> Create(
+      Types::BpfSkeleton type,
+      BpfCallbacks cbs,
+      uint32_t batch_interval_s) override;
 
  private:
   SkeletonInjections di_;

@@ -81,7 +81,7 @@ class ProcessPluginTestFixture : public ::testing::Test {
     EXPECT_NE(nullptr, plugin_);
     SetPluginBatchSenderForTesting(plugin_.get(), std::move(batch_sender));
 
-    EXPECT_CALL(*skel_factory_, Create(Types::BpfSkeleton::kProcess, _))
+    EXPECT_CALL(*skel_factory_, Create(Types::BpfSkeleton::kProcess, _, _))
         .WillOnce(
             DoAll(SaveArg<1>(&cbs_), Return(ByMove(std::move(bpf_skeleton_)))));
     EXPECT_CALL(*batch_sender_, Start());
@@ -123,7 +123,7 @@ TEST_F(ProcessPluginTestFixture, TestActivationFailureBadSkeleton) {
   SetPluginBatchSenderForTesting(plugin.get(),
                                  std::make_unique<BatchSenderType>());
 
-  EXPECT_CALL(*skel_factory_, Create(Types::BpfSkeleton::kProcess, _))
+  EXPECT_CALL(*skel_factory_, Create(Types::BpfSkeleton::kProcess, _, _))
       .WillOnce(Return(ByMove(nullptr)));
   EXPECT_FALSE(plugin->Activate().ok());
 }

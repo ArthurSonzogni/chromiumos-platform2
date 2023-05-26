@@ -165,7 +165,7 @@ absl::Status ProcessPlugin::Activate() {
       base::BindRepeating(&ProcessPlugin::HandleBpfRingBufferReadReady,
                           weak_ptr_factory_.GetWeakPtr());
   skeleton_wrapper_ =
-      factory_->Create(Types::BpfSkeleton::kProcess, std::move(callbacks));
+      factory_->Create(Types::BpfSkeleton::kProcess, std::move(callbacks), 0);
   if (skeleton_wrapper_ == nullptr) {
     return absl::InternalError("Process BPF program loading error.");
   }

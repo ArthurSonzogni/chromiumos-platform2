@@ -58,7 +58,7 @@ TEST_P(BpfSkeletonFactoryTestFixture, TestSuccessfulBPFAttach) {
         .WillOnce(Return(std::make_pair(absl::OkStatus(),
                                         metrics::BpfAttachResult::kSuccess)));
   }
-  EXPECT_TRUE(skel_factory->Create(type, cbs));
+  EXPECT_TRUE(skel_factory->Create(type, cbs, 0));
 }
 
 TEST_P(BpfSkeletonFactoryTestFixture, TestFailedBPFAttach) {
@@ -70,7 +70,7 @@ TEST_P(BpfSkeletonFactoryTestFixture, TestFailedBPFAttach) {
             Return(std::make_pair(absl::InternalError("Load and Attach Failed"),
                                   metrics::BpfAttachResult::kErrorAttach)));
   }
-  EXPECT_EQ(skel_factory->Create(type, cbs), nullptr);
+  EXPECT_EQ(skel_factory->Create(type, cbs, 0), nullptr);
 }
 
 INSTANTIATE_TEST_SUITE_P(

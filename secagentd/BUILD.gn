@@ -84,6 +84,7 @@ pkg_config("target_defaults") {
 static_library("libsecagent") {
   sources = [
     "agent_plugin.cc",
+    "bpf_skeletons.cc",
     "common.cc",
     "daemon.cc",
     "device_user.cc",
