@@ -203,7 +203,7 @@ impl ShaderCacheMount {
         success
     }
 
-    fn dequeue_mount(&mut self, steam_app_id: &SteamAppId) -> bool {
+    pub fn dequeue_mount(&mut self, steam_app_id: &SteamAppId) -> bool {
         debug!("Dequeue mount {}: {:?}", steam_app_id, self.mount_queue);
         self.mount_queue.remove(steam_app_id)
     }

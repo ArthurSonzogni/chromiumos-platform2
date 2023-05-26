@@ -159,8 +159,6 @@ pub async fn handle_disk_space_update(
         }
     } else if state == StatefulDiskSpaceState::NORMAL {
         debug!("Normal disk space, recovering if required");
-        // TODO(b/271776528): Ditto as above
-        let _mount_map = mount_map.write().await;
 
         if *is_purged {
             *is_purged = false;

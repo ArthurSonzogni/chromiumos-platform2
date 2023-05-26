@@ -14,6 +14,11 @@ use std::{
 pub type SteamAppId = u64;
 
 pub const UNMOUNTER_INTERVAL: Duration = Duration::from_millis(1000);
+
+pub const DLC_HANDLER_INTERVAL: Duration = Duration::from_millis(1000);
+pub const MAX_CONCURRENT_DLC_INSTALLS: usize = 1;
+pub const MAX_INSTALL_QUEUE_SIZE: usize = 5;
+
 pub const CRYPTO_HOME: &str = "/run/daemon-store/shadercached";
 pub const PRECOMPILED_CACHE_DIR: &str = "precompiled_cache";
 

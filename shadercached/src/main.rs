@@ -7,6 +7,7 @@ extern crate lazy_static;
 
 mod common;
 mod dbus_constants;
+mod dlc_queue;
 mod service;
 mod shader_cache_mount;
 
@@ -52,6 +53,8 @@ pub async fn main() -> Result<()> {
     // Ex. user_id -> cryptohome
     //     cryptohome.get(vm_id) -> ShaderCacheMount
     let mount_map = shader_cache_mount::new_mount_map();
+    // TODO(b/271776528): Export dlc queue before exiting
+    let dlc_queue = dlc_queue::new_queue();
 
     debug!(
         "GPU PCI device ID is {:04x}, DLC variant {}",
@@ -84,8 +87,9 @@ pub async fn main() -> Result<()> {
 
     // D-Bus interface for ShaderCache service
     let iface_token = cr.register(dbus_constants::INTERFACE_NAME, |builder| {
-        let c_clone1 = c.clone();
-        let mount_map_clone1 = mount_map.clone();
+        let c_handle_install = c.clone();
+        let mount_map_handle_install = mount_map.clone();
+        let dlc_queue_handle_install = dlc_queue.clone();
         // Method Install
         builder.method_with_cr_async(
             dbus_constants::INSTALL_METHOD,
@@ -93,8 +97,12 @@ pub async fn main() -> Result<()> {
             (),
             move |mut ctx, _, (raw_bytes,): (Vec<u8>,)| {
                 debug!("Received install request");
-                let handler =
-                    service::handle_install(raw_bytes, mount_map_clone1.clone(), c_clone1.clone());
+                let handler = service::handle_install(
+                    raw_bytes,
+                    mount_map_handle_install.clone(),
+                    dlc_queue_handle_install.clone(),
+                    c_handle_install.clone(),
+                );
                 async move {
                     match handler.await.map_err(to_method_err) {
                         Ok(result) => ctx.reply(Ok(result)),
@@ -104,8 +112,7 @@ pub async fn main() -> Result<()> {
             },
         );
 
-        let c_clone2 = c.clone();
-        let mount_map_clone2 = mount_map.clone();
+        let dlc_queue_handle_uninstall = dlc_queue.clone();
         // Method Uninstall
         builder.method_with_cr_async(
             dbus_constants::UNINSTALL_METHOD,
@@ -113,11 +120,8 @@ pub async fn main() -> Result<()> {
             (),
             move |mut ctx, _, (raw_bytes,): (Vec<u8>,)| {
                 debug!("Received uninstall request");
-                let handler = service::handle_uninstall(
-                    raw_bytes,
-                    mount_map_clone2.clone(),
-                    c_clone2.clone(),
-                );
+                let handler =
+                    service::handle_uninstall(raw_bytes, dlc_queue_handle_uninstall.clone());
                 async move {
                     match handler.await.map_err(to_method_err) {
                         Ok(result) => ctx.reply(Ok(result)),
@@ -214,6 +218,29 @@ pub async fn main() -> Result<()> {
         }
     });
 
+    // DLC handler
+    let c_clone_dlc_handler = c.clone();
+    let mount_map_dlc_handler = mount_map.clone();
+    let dlc_queue_dlc_handler = dlc_queue.clone();
+    tokio::spawn(async move {
+        // Periodically install or uninstall DLCs
+        debug!(
+            "Periodic dlc handler thread stated with interval {:?}",
+            DLC_HANDLER_INTERVAL
+        );
+        loop {
+            tokio::time::sleep(DLC_HANDLER_INTERVAL).await;
+            {
+                service::periodic_dlc_handler(
+                    mount_map_dlc_handler.clone(),
+                    dlc_queue_dlc_handler.clone(),
+                    c_clone_dlc_handler.clone(),
+                )
+                .await;
+            }
+        }
+    });
+
     // We need to create a new connection to receive signals explicitly.
     // Reusing existing connection rejects the D-Bus signals.
     let mount_map_listener = mount_map.clone();
@@ -239,6 +266,7 @@ pub async fn main() -> Result<()> {
     // service name.
     let c_send = c.clone();
     let mount_map_dlc_listener = mount_map.clone();
+    let dlc_queue_dlc_listener = dlc_queue.clone();
     // |msg_match| should remain in this scope to serve
     let dlc_service_match = c_listen
         .add_match(mr_dlc_service_dlc_state_changed)
@@ -247,6 +275,7 @@ pub async fn main() -> Result<()> {
             tokio::spawn(service::handle_dlc_state_changed(
                 raw_bytes,
                 mount_map_dlc_listener.clone(),
+                dlc_queue_dlc_listener.clone(),
                 c_send.clone(),
             ));
             true

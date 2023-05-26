@@ -14,6 +14,7 @@ pub mod signal;
 mod spaced;
 
 use crate::common::*;
+use crate::dlc_queue::DlcQueuePtr;
 use crate::shader_cache_mount::{ShaderCacheMount, ShaderCacheMountMapPtr, VmId};
 use helper::unsafe_quota::set_quota_normal;
 
@@ -33,6 +34,7 @@ use system_api::shadercached::{
 pub use concierge::add_shader_cache_group_permission;
 pub use concierge::handle_vm_stopped;
 pub use dlc::handle_dlc_state_changed;
+pub use dlc::periodic_dlc_handler;
 pub use spaced::handle_disk_space_update;
 
 pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(10);
@@ -40,6 +42,7 @@ pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(10);
 pub async fn handle_install(
     raw_bytes: Vec<u8>,
     mount_map: ShaderCacheMountMapPtr,
+    dlc_queue: DlcQueuePtr,
     conn: Arc<SyncConnection>,
 ) -> Result<()> {
     let request: InstallRequest = Message::parse_from_bytes(&raw_bytes)?;
@@ -81,28 +84,16 @@ pub async fn handle_install(
         shader_cache_mount.enqueue_mount(request.steam_app_id);
     }
 
-    dlc::install_shader_cache_dlc(request.steam_app_id, conn.clone()).await?;
+    let mut dlc_queue = dlc_queue.write().await;
+    dlc_queue.queue_install(&request.steam_app_id);
 
     Ok(())
 }
 
-pub async fn handle_uninstall(
-    raw_bytes: Vec<u8>,
-    mount_map: ShaderCacheMountMapPtr,
-    conn: Arc<SyncConnection>,
-) -> Result<()> {
+pub async fn handle_uninstall(raw_bytes: Vec<u8>, dlc_queue: DlcQueuePtr) -> Result<()> {
     let request: UninstallRequest = protobuf::Message::parse_from_bytes(&raw_bytes)?;
-
-    // Instead of queueing unmount, we attempt to unmount directly here.
-    // Uninstall should only succeed if umounting succeeds immediately
-    // (ie. nothing is using this game's shader cache DLC).
-    dlc::unmount_dlc(request.steam_app_id, mount_map.clone()).await?;
-    mount_map
-        .wait_unmount_completed(Some(request.steam_app_id), UNMOUNTER_INTERVAL * 2)
-        .await?;
-    // TODO(b/270262568): Queue DLC uninstallations instead of waiting for
-    // unmounts.
-    dlc::uninstall_shader_cache_dlc(request.steam_app_id, conn.clone()).await?;
+    let mut dlc_queue = dlc_queue.write().await;
+    dlc_queue.queue_uninstall(&request.steam_app_id);
     Ok(())
 }
 
