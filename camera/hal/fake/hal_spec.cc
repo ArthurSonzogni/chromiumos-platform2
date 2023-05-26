@@ -27,6 +27,11 @@ constexpr char kHeightKey[] = "height";
 constexpr char kFrameRatesKey[] = "frame_rates";
 constexpr char kFramesKey[] = "frames";
 constexpr char kPathKey[] = "path";
+constexpr char kScaleModeKey[] = "scale_mode";
+
+constexpr char kScaleModeStretch[] = "stretch";
+constexpr char kScaleModeCover[] = "cover";
+constexpr char kScaleModeContain[] = "contain";
 
 // Default fps ranges, this conform to the minimal required fps ranges as in
 // https://developer.android.com/reference/android/hardware/camera2/CameraCharacteristics#CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES
@@ -34,7 +39,20 @@ const std::vector<std::pair<int, int>> kDefaultFpsRanges = {{15, 60}, {60, 60}};
 
 FramesSpec ParseFramesSpec(const DictWithPath& frames_value) {
   if (auto path = GetRequiredValue<std::string>(frames_value, kPathKey)) {
-    return FramesFileSpec{base::FilePath(*path)};
+    ScaleMode scale_mode = ScaleMode::kStretch;
+    if (auto scale_mode_str =
+            GetValue<std::string>(frames_value, kScaleModeKey)) {
+      if (*scale_mode_str == kScaleModeCover) {
+        scale_mode = ScaleMode::kCover;
+      } else if (*scale_mode_str == kScaleModeContain) {
+        scale_mode = ScaleMode::kContain;
+      } else if (*scale_mode_str != kScaleModeStretch) {
+        LOGF(WARNING) << "invalid scale mode " << *scale_mode_str << " at "
+                      << frames_value.path << "." << kScaleModeKey
+                      << ", fallback to stretch";
+      }
+    }
+    return FramesFileSpec{base::FilePath(*path), scale_mode};
   }
   return FramesTestPatternSpec();
 }

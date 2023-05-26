@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/bits.h>
 #include <libyuv.h>
 
 #include "cros-camera/jpeg_compressor.h"
@@ -83,10 +84,20 @@ FrameBuffer::FrameBuffer() = default;
 FrameBuffer::~FrameBuffer() = default;
 
 // static
-bool FrameBuffer::ScaleInto(FrameBuffer& buffer, FrameBuffer& output_buffer) {
+bool FrameBuffer::ScaleInto(FrameBuffer& buffer,
+                            FrameBuffer& output_buffer,
+                            ScaleMode scale_mode) {
   if (buffer.GetFourcc() != V4L2_PIX_FMT_NV12 ||
       output_buffer.GetFourcc() != V4L2_PIX_FMT_NV12) {
     LOGF(WARNING) << "Only V4L2_PIX_FMT_NV12 is supported for resize";
+    return false;
+  }
+
+  Size size = buffer.GetSize();
+  Size output_size = output_buffer.GetSize();
+
+  if (output_size.width % 2 != 0 || output_size.height % 2 != 0) {
+    LOGF(WARNING) << "Output width and height should both be even";
     return false;
   }
 
@@ -108,20 +119,89 @@ bool FrameBuffer::ScaleInto(FrameBuffer& buffer, FrameBuffer& output_buffer) {
   auto output_y_plane = mapped_output_buffer->plane(0);
   auto output_uv_plane = mapped_output_buffer->plane(1);
 
-  auto size = output_buffer.GetSize();
+  switch (scale_mode) {
+    case ScaleMode::kStretch: {
+      int ret = libyuv::NV12Scale(
+          y_plane.addr, y_plane.stride, uv_plane.addr, uv_plane.stride,
+          size.width, size.height, output_y_plane.addr, output_y_plane.stride,
+          output_uv_plane.addr, output_uv_plane.stride, output_size.width,
+          output_size.height, libyuv::kFilterBilinear);
+      if (ret != 0) {
+        LOGF(WARNING) << "NV12Scale() failed with " << ret;
+        return false;
+      }
+      return true;
+    }
+    case ScaleMode::kContain: {
+      double aspect_ratio = size.aspect_ratio();
+      uint32_t target_width = std::min(
+          output_size.width,
+          base::bits::AlignUp(static_cast<uint32_t>(
+                                  std::ceil(output_size.height * aspect_ratio)),
+                              2u));
+      uint32_t target_height = std::min(
+          output_size.height,
+          base::bits::AlignUp(static_cast<uint32_t>(
+                                  std::ceil(output_size.width / aspect_ratio)),
+                              2u));
+      uint32_t target_x =
+          base::bits::AlignDown((output_size.width - target_width) / 2, 2u);
+      uint32_t target_y =
+          base::bits::AlignDown((output_size.height - target_height) / 2, 2u);
 
-  // TODO(pihsun): Support "object-fit" for different scaling method.
-  int ret = libyuv::NV12Scale(
-      y_plane.addr, y_plane.stride, uv_plane.addr, uv_plane.stride,
-      buffer.GetSize().width, buffer.GetSize().height, output_y_plane.addr,
-      output_y_plane.stride, output_uv_plane.addr, output_uv_plane.stride,
-      size.width, size.height, libyuv::kFilterBilinear);
-  if (ret != 0) {
-    LOGF(WARNING) << "NV12Scale() failed with " << ret;
-    return false;
+      // Sets the output buffer to black (y = 0, u = v = 128).
+      // TODO(pihsun): Support setting other colors.
+      libyuv::SetPlane(output_y_plane.addr, output_y_plane.stride,
+                       output_size.width, output_size.height, 0);
+      libyuv::SetPlane(output_uv_plane.addr, output_uv_plane.stride,
+                       output_size.width, output_size.height / 2, 128);
+
+      int ret = libyuv::NV12Scale(
+          y_plane.addr, y_plane.stride, uv_plane.addr, uv_plane.stride,
+          size.width, size.height,
+          output_y_plane.addr + target_x + target_y * output_y_plane.stride,
+          output_y_plane.stride,
+          output_uv_plane.addr + target_x +
+              target_y / 2 * output_uv_plane.stride,
+          output_uv_plane.stride, target_width, target_height,
+          libyuv::kFilterBilinear);
+      if (ret != 0) {
+        LOGF(WARNING) << "NV12Scale() failed with " << ret;
+        return false;
+      }
+      return true;
+    }
+    case ScaleMode::kCover: {
+      double aspect_ratio = output_size.aspect_ratio();
+      uint32_t src_width = std::min(
+          size.width,
+          base::bits::AlignUp(
+              static_cast<uint32_t>(std::ceil(size.height * aspect_ratio)),
+              2u));
+      uint32_t src_height = std::min(
+          size.height,
+          base::bits::AlignUp(
+              static_cast<uint32_t>(std::ceil(size.width / aspect_ratio)), 2u));
+      uint32_t src_x = base::bits::AlignDown((size.width - src_width) / 2, 2u);
+      uint32_t src_y =
+          base::bits::AlignDown((size.height - src_height) / 2, 2u);
+
+      int ret = libyuv::NV12Scale(
+          y_plane.addr + src_x + src_y * y_plane.stride, y_plane.stride,
+          uv_plane.addr + src_x + src_y / 2 * uv_plane.stride, uv_plane.stride,
+          src_width, src_height, output_y_plane.addr, output_y_plane.stride,
+          output_uv_plane.addr, output_uv_plane.stride, output_size.width,
+          output_size.height, libyuv::kFilterBilinear);
+      if (ret != 0) {
+        LOGF(WARNING) << "NV12Scale() failed with " << ret;
+        return false;
+      }
+      return true;
+    }
+    default:
+      NOTREACHED() << "Unknown scale mode " << static_cast<int>(scale_mode);
+      return false;
   }
-
-  return true;
 }
 
 // static

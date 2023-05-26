@@ -16,6 +16,20 @@
 
 namespace cros {
 
+// Specify how to scale the given frame image into target resolution.
+enum class ScaleMode {
+  // Stretch the image to the target resolution.
+  kStretch,
+  // Resize the image to the largest size that will fit in the target
+  // resolution while maintaining the aspect ratio. The result image will be
+  // center aligned and outside area filled by black.
+  kContain,
+  // Resize the image to the smallest size that will cover the target
+  // resolution while maintaining the aspect ratio. The result image will be
+  // center aligned and the excessive area trimmed.
+  kCover,
+};
+
 struct SupportedFormatSpec {
   int width = 0;
   int height = 0;
@@ -32,8 +46,11 @@ struct SupportedFormatSpec {
 
 struct FramesFileSpec {
   base::FilePath path;
+  ScaleMode scale_mode;
 
-  bool operator==(const FramesFileSpec& rhs) const { return path == rhs.path; }
+  bool operator==(const FramesFileSpec& rhs) const {
+    return path == rhs.path && scale_mode == rhs.scale_mode;
+  }
   bool operator!=(const FramesFileSpec& rhs) const { return !(*this == rhs); }
 };
 

@@ -39,8 +39,9 @@ static const char kY4mHeaderMagic[] = "YUV4MPEG2";
 
 }  // namespace
 
-Y4mFakeStream::Y4mFakeStream(const base::FilePath& file_path)
-    : file_path_(file_path) {}
+Y4mFakeStream::Y4mFakeStream(const base::FilePath& file_path,
+                             ScaleMode scale_mode)
+    : file_path_(file_path), scale_mode_(scale_mode) {}
 
 bool Y4mFakeStream::ParseY4mHeader(const std::string& header) {
   auto tokenizer = base::StringTokenizer(header, " ");
@@ -267,7 +268,8 @@ bool Y4mFakeStream::FillBuffer(buffer_handle_t output_buffer_handle) {
     return false;
   }
 
-  auto buffer = FrameBuffer::Scale<GrallocFrameBuffer>(*temp_buffer, size_);
+  auto buffer =
+      FrameBuffer::Scale<GrallocFrameBuffer>(*temp_buffer, size_, scale_mode_);
   if (buffer == nullptr) {
     LOGF(WARNING) << "Failed to resize frame";
     return false;

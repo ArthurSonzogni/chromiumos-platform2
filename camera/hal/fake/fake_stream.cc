@@ -24,8 +24,8 @@
 namespace cros {
 
 namespace {
-std::unique_ptr<GrallocFrameBuffer> ReadMJPGFromFile(const base::FilePath& path,
-                                                     Size size) {
+std::unique_ptr<GrallocFrameBuffer> ReadAndScaleMJPGFromFile(
+    const base::FilePath& path, Size size, ScaleMode scale_mode) {
   auto bytes = base::ReadFileToBytes(path);
   if (!bytes.has_value()) {
     LOGF(WARNING) << "Failed to read file: " << path;
@@ -66,7 +66,7 @@ std::unique_ptr<GrallocFrameBuffer> ReadMJPGFromFile(const base::FilePath& path,
     return nullptr;
   }
 
-  return FrameBuffer::Scale<GrallocFrameBuffer>(*temp_buffer, size);
+  return FrameBuffer::Scale<GrallocFrameBuffer>(*temp_buffer, size, scale_mode);
 }
 }  // namespace
 
@@ -100,11 +100,13 @@ std::unique_ptr<FakeStream> FakeStream::Create(Size size,
                 extension == ".mjpg" || extension == ".mjpeg") {
               // TODO(pihsun): This only reads a single frame now, read and
               // convert the whole stream on fly.
-              auto input_buffer = ReadMJPGFromFile(spec.path, size);
+              auto input_buffer =
+                  ReadAndScaleMJPGFromFile(spec.path, size, spec.scale_mode);
               return base::WrapUnique(
                   new StaticFakeStream(std::move(input_buffer)));
             } else if (extension == ".y4m") {
-              return base::WrapUnique(new Y4mFakeStream(spec.path));
+              return base::WrapUnique(
+                  new Y4mFakeStream(spec.path, spec.scale_mode));
             } else {
               LOGF(WARNING) << "Unknown file extension: " << extension;
               return nullptr;

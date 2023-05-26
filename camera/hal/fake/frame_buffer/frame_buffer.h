@@ -17,6 +17,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/common.h"
 #include "cros-camera/common_types.h"
+#include "hal/fake/hal_spec.h"
 
 namespace cros {
 
@@ -65,7 +66,9 @@ class FrameBuffer {
   // V4L2_PIX_FMT_NV12 for now. Returns nullptr when there's an error.
   template <typename T,
             typename = std::enable_if_t<std::is_base_of_v<FrameBuffer, T>>>
-  static std::unique_ptr<T> Scale(FrameBuffer& buffer, Size size);
+  static std::unique_ptr<T> Scale(FrameBuffer& buffer,
+                                  Size size,
+                                  ScaleMode scale_mode = ScaleMode::kStretch);
 
   // Convert the content of the buffer to output buffer. The resolution of the
   // input and output buffer should be the same, and the input buffer should be
@@ -88,7 +91,8 @@ class FrameBuffer {
   // Scales to the given size. Both the input and output buffer should be
   // V4L2_PIX_FMT_NV12 for now.
   [[nodiscard]] static bool ScaleInto(FrameBuffer& buffer,
-                                      FrameBuffer& output_buffer);
+                                      FrameBuffer& output_buffer,
+                                      ScaleMode scale_mode);
 
   // Resolution of the frame.
   // If |fourcc_| is V4L2_PIX_FMT_JPEG, then this will be (jpeg_size x 1).
@@ -110,13 +114,15 @@ std::unique_ptr<T> FrameBuffer::Create(Size size, uint32_t fourcc) {
 
 // static
 template <typename T, typename>
-std::unique_ptr<T> FrameBuffer::Scale(FrameBuffer& buffer, Size size) {
+std::unique_ptr<T> FrameBuffer::Scale(FrameBuffer& buffer,
+                                      Size size,
+                                      ScaleMode scale_mode) {
   auto output_buffer = FrameBuffer::Create<T>(size, V4L2_PIX_FMT_NV12);
   if (output_buffer == nullptr) {
     LOGF(WARNING) << "Failed to create buffer";
     return nullptr;
   }
-  if (!FrameBuffer::ScaleInto(buffer, *output_buffer)) {
+  if (!FrameBuffer::ScaleInto(buffer, *output_buffer, scale_mode)) {
     LOGF(WARNING) << "Failed to resize buffer";
     return nullptr;
   }

@@ -78,6 +78,9 @@ struct Size {
   std::string ToString() const {
     return base::StringPrintf("%ux%u", width, height);
   }
+  double aspect_ratio() const {
+    return static_cast<double>(width) / static_cast<double>(height);
+  }
 };
 
 template <typename T>

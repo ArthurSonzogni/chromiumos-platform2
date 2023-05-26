@@ -23,7 +23,7 @@ namespace cros {
 class Y4mFakeStream : public FakeStream {
  protected:
   friend class FakeStream;
-  explicit Y4mFakeStream(const base::FilePath& file_path);
+  explicit Y4mFakeStream(const base::FilePath& file_path, ScaleMode scale_mode);
 
   [[nodiscard]] bool Initialize(Size size, const FramesSpec& spec) override;
 
@@ -45,6 +45,9 @@ class Y4mFakeStream : public FakeStream {
 
   // Frame size of the Y4M video.
   Size video_size_;
+
+  // How each frame should be scaled to the output size.
+  ScaleMode scale_mode_;
 
   // The byte offset in the video file of the first frame.
   size_t first_frame_byte_index_;
