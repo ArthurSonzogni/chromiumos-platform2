@@ -33,7 +33,7 @@ void NetworkPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
     return;
   }
   const bpf::cros_network_event& ne = bpf_event.data.network_event;
-  if (ne.type == bpf::kNetworkFlow) {
+  if (ne.type == bpf::kSyntheticNetworkFlow) {
     // TODO(b:264550046): Fill out the network flow event using the process
     // cache etc..
   } else if (ne.type == bpf::kNetworkSocketListen) {

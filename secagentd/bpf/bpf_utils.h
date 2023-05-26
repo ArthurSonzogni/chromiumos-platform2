@@ -6,6 +6,7 @@
 #define SECAGENTD_BPF_BPF_UTILS_H_
 #include "secagentd/bpf/bpf_types.h"
 
+#define CROS_ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 static inline __attribute__((always_inline)) bool is_kthread(
     const struct task_struct* t) {
   // From sched.h:
