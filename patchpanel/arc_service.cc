@@ -192,12 +192,12 @@ ArcService::ArcService(Datapath* datapath,
                        AddressManager* addr_mgr,
                        ArcType arc_type,
                        MetricsLibraryInterface* metrics,
-                       Device::ChangeEventHandler device_changed_handler)
+                       ArcDeviceChangeHandler arc_device_change_handler)
     : datapath_(datapath),
       addr_mgr_(addr_mgr),
       arc_type_(arc_type),
       metrics_(metrics),
-      device_changed_handler_(device_changed_handler),
+      arc_device_change_handler_(arc_device_change_handler),
       id_(kInvalidId) {
   arc_device_ = MakeArc0Device(addr_mgr, arc_type_);
   AllocateAddressConfigs();
@@ -561,7 +561,8 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     LOG(ERROR) << "Failed to add ADB port access rule";
   }
 
-  device_changed_handler_.Run(*device, Device::ChangeEvent::kAdded);
+  arc_device_change_handler_.Run(shill_device, *device,
+                                 Device::ChangeEvent::kAdded);
   devices_.emplace(shill_device.ifname, std::move(device));
   RecordEvent(metrics_, ArcServiceUmaEvent::kAddDeviceSuccess);
 }
@@ -580,7 +581,8 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
   const auto* device = it->second.get();
   LOG(INFO) << "Removing ARC Device " << *device;
 
-  device_changed_handler_.Run(*device, Device::ChangeEvent::kRemoved);
+  arc_device_change_handler_.Run(shill_device, *device,
+                                 Device::ChangeEvent::kRemoved);
 
   // ARCVM TAP devices are removed in VmImpl::Stop() when the service stops
   if (arc_type_ == ArcType::kContainer)

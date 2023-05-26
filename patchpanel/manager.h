@@ -168,9 +168,13 @@ class Manager {
   void OnIPConfigsChanged(const ShillClient::Device& shill_device);
   void OnIPv6NetworkChanged(const ShillClient::Device& shill_device);
 
-  // Callback from |arc_svc_| or |cros_svc_|.
-  void OnGuestDeviceChanged(const Device& virtual_device,
-                            Device::ChangeEvent event);
+  // Callbacks from |arc_svc_| and |cros_svc_| to notify Manager about new
+  // or removed virtual Devices.
+  void OnArcDeviceChanged(const ShillClient::Device& shill_device,
+                          const Device& virtual_device,
+                          Device::ChangeEvent event);
+  void OnCrostiniDeviceChanged(const Device& virtual_device,
+                               Device::ChangeEvent event);
 
   // Callback from |network_monitor_svc_|.
   void OnNeighborReachabilityEvent(

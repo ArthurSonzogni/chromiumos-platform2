@@ -92,7 +92,9 @@ class ArcServiceTest : public testing::Test {
                             base::Unretained(this)));
   }
 
-  void DeviceHandler(const Device& device, Device::ChangeEvent event) {
+  void DeviceHandler(const ShillClient::Device& shill_device,
+                     const Device& device,
+                     Device::ChangeEvent event) {
     guest_devices_[device.host_ifname()] = event;
   }
 

@@ -32,12 +32,15 @@ class ArcService {
     kVM,
   };
 
+  using ArcDeviceChangeHandler = base::RepeatingCallback<void(
+      const ShillClient::Device&, const Device&, Device::ChangeEvent)>;
+
   // All pointers are required, cannot be null, and are owned by the caller.
   ArcService(Datapath* datapath,
              AddressManager* addr_mgr,
              ArcType arc_type,
              MetricsLibraryInterface* metrics,
-             Device::ChangeEventHandler device_changed_handler);
+             ArcDeviceChangeHandler arc_device_change_handler);
   ArcService(const ArcService&) = delete;
   ArcService& operator=(const ArcService&) = delete;
 
@@ -92,9 +95,9 @@ class ArcService {
   ArcType arc_type_;
   // UMA metrics client, owned by Manager.
   MetricsLibraryInterface* metrics_;
-  // Manager callback used for notifying about virtual device creation and
+  // Manager callback used for notifying about ARC virtual device creation and
   // removal events.
-  Device::ChangeEventHandler device_changed_handler_;
+  ArcDeviceChangeHandler arc_device_change_handler_;
   // A set of preallocated ARC interface configurations keyed by technology type
   // and used for setting up ARCVM TAP devices at VM booting time.
   std::map<ShillClient::Device::Type,

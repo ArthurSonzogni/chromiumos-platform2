@@ -59,11 +59,11 @@ Manager::Manager(const base::FilePath& cmd_path,
       USE_ARCVM ? ArcService::ArcType::kVM : ArcService::ArcType::kContainer;
   arc_svc_ = std::make_unique<ArcService>(
       datapath_.get(), &addr_mgr_, arc_type, metrics,
-      base::BindRepeating(&Manager::OnGuestDeviceChanged,
+      base::BindRepeating(&Manager::OnArcDeviceChanged,
                           weak_factory_.GetWeakPtr()));
   cros_svc_ = std::make_unique<CrostiniService>(
       &addr_mgr_, datapath_.get(),
-      base::BindRepeating(&Manager::OnGuestDeviceChanged,
+      base::BindRepeating(&Manager::OnCrostiniDeviceChanged,
                           weak_factory_.GetWeakPtr()));
 
   network_monitor_svc_ = std::make_unique<NetworkMonitorService>(
@@ -303,31 +303,41 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
   }
 }
 
-void Manager::OnGuestDeviceChanged(const Device& virtual_device,
-                                   Device::ChangeEvent event) {
+void Manager::OnArcDeviceChanged(const ShillClient::Device& shill_device,
+                                 const Device& virtual_device,
+                                 Device::ChangeEvent event) {
   // The legacy "arc0" Device is ignored for "NetworkDeviceChanged" signals
   // and is never included in multicast forwarding or GuestIPv6Service.
   if (virtual_device.type() == Device::Type::kARC0) {
     return;
   }
-  const std::string& upstream_device =
-      (virtual_device.type() == Device::Type::kARCContainer ||
-       virtual_device.type() == Device::Type::kARCVM)
-          ? virtual_device.phys_ifname()
-          : shill_client_->default_logical_device().ifname;
+  const std::string& upstream_device = virtual_device.phys_ifname();
   if (event == Device::ChangeEvent::kAdded) {
-    // If device is ARC, only starts forwarding multicast traffic for WiFi
-    // interfaces when multicast lock is held and device is interactive, but
-    // always start GuestIPv6Service for all interfaces and multicast
-    // traffic for non-WiFi interfaces.
-    ForwardingSet fwd_set = {.ipv6 = true, .multicast = true};
-    if ((virtual_device.type() == Device::Type::kARCContainer ||
-         virtual_device.type() == Device::Type::kARCVM) &&
-        (!is_arc_interactive_ || (Manager::IsWifiInterface(upstream_device) &&
-                                  !android_wifi_multicast_lock_held_))) {
-      fwd_set.multicast = false;
+    // Only start forwarding multicast traffic if ARC is in an interactive
+    // state.
+    bool forward_multicast = is_arc_interactive_;
+    // In addition, only start forwarding multicast traffic on WiFi if the
+    // Android WiFi multicast lock is held.
+    if (shill_device.type == ShillClient::Device::Type::kWifi &&
+        !android_wifi_multicast_lock_held_) {
+      forward_multicast = false;
     }
-    StartForwarding(upstream_device, virtual_device.host_ifname(), fwd_set);
+    StartForwarding(upstream_device, virtual_device.host_ifname(),
+                    {.ipv6 = true, .multicast = forward_multicast});
+  } else if (event == Device::ChangeEvent::kRemoved) {
+    StopForwarding(upstream_device, virtual_device.host_ifname());
+  }
+
+  client_notifier_->OnNetworkDeviceChanged(virtual_device, event);
+}
+
+void Manager::OnCrostiniDeviceChanged(const Device& virtual_device,
+                                      Device::ChangeEvent event) {
+  const std::string& upstream_device =
+      shill_client_->default_logical_device().ifname;
+  if (event == Device::ChangeEvent::kAdded) {
+    StartForwarding(upstream_device, virtual_device.host_ifname(),
+                    {.ipv6 = true, .multicast = true});
   } else if (event == Device::ChangeEvent::kRemoved) {
     StopForwarding(upstream_device, virtual_device.host_ifname());
   }
