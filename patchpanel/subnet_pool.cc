@@ -16,6 +16,8 @@
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "patchpanel/net_util.h"
+
 using std::string;
 
 namespace patchpanel {
@@ -70,10 +72,18 @@ std::unique_ptr<Subnet> SubnetPool::Allocate(uint32_t index) {
   subnets_.set(index);
   uint32_t subnet_addr =
       htonl(ntohl(base_addr_) + (index - 1) * addr_per_index_);
+  const auto subnet_cidr = net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+      ConvertUint32ToIPv4Address(subnet_addr),
+      static_cast<int>(prefix_length_));
+  if (!subnet_cidr) {
+    LOG(WARNING) << "Failed to create subnet CIDR. prefix_length_="
+                 << prefix_length_;
+    return nullptr;
+  }
+
   return std::make_unique<Subnet>(
-      subnet_addr, prefix_length_,
-      base::BindOnce(&SubnetPool::Release, weak_ptr_factory_.GetWeakPtr(),
-                     index));
+      *subnet_cidr, base::BindOnce(&SubnetPool::Release,
+                                   weak_ptr_factory_.GetWeakPtr(), index));
 }
 
 void SubnetPool::Release(uint32_t index) {

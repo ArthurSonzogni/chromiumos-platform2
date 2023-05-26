@@ -42,11 +42,10 @@ class BRILLO_EXPORT SubnetAddress {
 // Represents an allocated IPv4 subnet.
 class BRILLO_EXPORT Subnet {
  public:
-  // Creates a new Subnet with the given base address and prefix length.
-  // |base_addr| must be in network-byte order. |release_cb| runs in the
-  // destructor of this class and can be used to free other resources associated
-  // with the subnet.
-  Subnet(uint32_t base_addr, int prefix_length, base::OnceClosure release_cb);
+  // Creates a new Subnet with the given base CIDR.
+  // |release_cb| runs in the destructor of this class and can be used to free
+  // other resources associated with the subnet.
+  Subnet(const net_base::IPv4CIDR& base_cidr, base::OnceClosure release_cb);
   Subnet(const Subnet&) = delete;
   Subnet& operator=(const Subnet&) = delete;
 
@@ -92,19 +91,16 @@ class BRILLO_EXPORT Subnet {
   // Marks the address at |offset| as free.
   void Free(uint32_t offset);
 
-  // Base address of the subnet, in network-byte order.
-  uint32_t base_addr_;
+  // Base CIDR of the subnet.
+  net_base::IPv4CIDR base_cidr_;
 
-  // Prefix length.
-  int prefix_length_;
+  // Callback to run when this object is deleted.
+  base::ScopedClosureRunner release_cb_;
 
   // Keeps track of allocated addresses.
   std::vector<bool> addrs_;
 
-  // Callback to run when this object is deleted.
-  base::OnceClosure release_cb_;
-
-  base::WeakPtrFactory<Subnet> weak_factory_;
+  base::WeakPtrFactory<Subnet> weak_factory_{this};
 };
 
 }  // namespace patchpanel

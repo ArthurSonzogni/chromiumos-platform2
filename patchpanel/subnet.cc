@@ -31,25 +31,18 @@ SubnetAddress::SubnetAddress(const net_base::IPv4CIDR& cidr,
 
 SubnetAddress::~SubnetAddress() = default;
 
-Subnet::Subnet(uint32_t base_addr,
-               int prefix_length,
+Subnet::Subnet(const net_base::IPv4CIDR& base_cidr,
                base::OnceClosure release_cb)
-    : base_addr_(base_addr),
-      prefix_length_(prefix_length),
-      release_cb_(std::move(release_cb)),
-      weak_factory_(this) {
-  CHECK_LT(prefix_length, 32);
-
-  addrs_.resize(1ul << (32 - prefix_length), false);
+    : base_cidr_(base_cidr), release_cb_(std::move(release_cb)) {
+  addrs_.resize(1ul << (32 - base_cidr_.prefix_length()), false);
 
   // Mark the base address and broadcast address as allocated.
+  CHECK_GE(addrs_.size(), 2);
   addrs_.front() = true;
   addrs_.back() = true;
 }
 
-Subnet::~Subnet() {
-  std::move(release_cb_).Run();
-}
+Subnet::~Subnet() = default;
 
 std::unique_ptr<SubnetAddress> Subnet::AllocateAtOffset(uint32_t offset) {
   if (!IsValidOffset(offset)) {
@@ -65,7 +58,7 @@ std::unique_ptr<SubnetAddress> Subnet::AllocateAtOffset(uint32_t offset) {
   const uint32_t addr = AddressAtOffset(offset);
   return std::make_unique<SubnetAddress>(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-          ConvertUint32ToIPv4Address(addr), prefix_length_),
+          ConvertUint32ToIPv4Address(addr), base_cidr_.prefix_length()),
       base::BindOnce(&Subnet::Free, weak_factory_.GetWeakPtr(), offset));
 }
 
@@ -75,7 +68,7 @@ uint32_t Subnet::AddressAtOffset(uint32_t offset) const {
   }
 
   // The first usable IP is after the base address.
-  return AddOffset(base_addr_, offset);
+  return AddOffset(base_cidr_.address().ToInAddr().s_addr, offset);
 }
 
 uint32_t Subnet::AvailableCount() const {
@@ -85,23 +78,23 @@ uint32_t Subnet::AvailableCount() const {
 }
 
 uint32_t Subnet::BaseAddress() const {
-  return base_addr_;
+  return base_cidr_.address().ToInAddr().s_addr;
 }
 
 uint32_t Subnet::Netmask() const {
-  return Ipv4Netmask(prefix_length_);
+  return base_cidr_.ToNetmask().ToInAddr().s_addr;
 }
 
 uint32_t Subnet::Prefix() const {
-  return base_addr_ & Netmask();
+  return base_cidr_.GetPrefixAddress().ToInAddr().s_addr;
 }
 
 int Subnet::PrefixLength() const {
-  return prefix_length_;
+  return base_cidr_.prefix_length();
 }
 
 std::string Subnet::ToCidrString() const {
-  return IPv4AddressToCidrString(base_addr_, prefix_length_);
+  return base_cidr_.ToString();
 }
 
 void Subnet::Free(uint32_t offset) {

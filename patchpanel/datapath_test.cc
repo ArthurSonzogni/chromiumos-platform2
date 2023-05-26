@@ -686,7 +686,9 @@ TEST(DatapathTest, AddTAP) {
 
   Datapath datapath(runner, firewall, &system);
   MacAddress mac = {1, 2, 3, 4, 5, 6};
-  Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::DoNothing());
+  Subnet subnet(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
+      base::DoNothing());
   auto addr = subnet.AllocateAtOffset(1);
   auto ifname = datapath.AddTAP("foo0", &mac, &(addr->cidr()), "");
 
@@ -704,7 +706,9 @@ TEST(DatapathTest, AddTAPWithOwner) {
 
   Datapath datapath(runner, firewall, &system);
   MacAddress mac = {1, 2, 3, 4, 5, 6};
-  Subnet subnet(Ipv4Addr(100, 115, 92, 4), 30, base::DoNothing());
+  Subnet subnet(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
+      base::DoNothing());
   auto addr = subnet.AllocateAtOffset(1);
   auto ifname = datapath.AddTAP("foo0", &mac, &(addr->cidr()), "root");
 
@@ -923,8 +927,9 @@ TEST(DatapathTest, StartRoutingNamespace) {
   nsinfo.route_on_vpn = true;
   nsinfo.host_ifname = "arc_ns0";
   nsinfo.peer_ifname = "veth0";
-  nsinfo.peer_subnet = std::make_unique<Subnet>(Ipv4Addr(100, 115, 92, 128), 30,
-                                                base::DoNothing());
+  nsinfo.peer_subnet = std::make_unique<Subnet>(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 128}, 30),
+      base::DoNothing());
   nsinfo.peer_mac_addr = peer_mac;
   nsinfo.host_mac_addr = host_mac;
   Datapath datapath(runner, firewall, &system);
@@ -955,8 +960,9 @@ TEST(DatapathTest, StopRoutingNamespace) {
   nsinfo.route_on_vpn = true;
   nsinfo.host_ifname = "arc_ns0";
   nsinfo.peer_ifname = "veth0";
-  nsinfo.peer_subnet = std::make_unique<Subnet>(Ipv4Addr(100, 115, 92, 128), 30,
-                                                base::DoNothing());
+  nsinfo.peer_subnet = std::make_unique<Subnet>(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 128}, 30),
+      base::DoNothing());
   Datapath datapath(runner, firewall, &system);
   datapath.StopRoutingNamespace(nsinfo);
 }
@@ -1088,8 +1094,9 @@ TEST(DatapathTest, StartRoutingNewNamespace) {
   nsinfo.route_on_vpn = true;
   nsinfo.host_ifname = "arc_ns0";
   nsinfo.peer_ifname = "veth0";
-  nsinfo.peer_subnet = std::make_unique<Subnet>(Ipv4Addr(100, 115, 92, 128), 30,
-                                                base::DoNothing());
+  nsinfo.peer_subnet = std::make_unique<Subnet>(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 128}, 30),
+      base::DoNothing());
   nsinfo.peer_mac_addr = mac;
   Datapath datapath(runner, firewall, &system);
   datapath.StartRoutingNamespace(nsinfo);

@@ -113,16 +113,22 @@ void SetTrue(bool* value) {
 
 TEST_P(VmSubnetTest, Prefix) {
   uint32_t index = GetParam();
-  Subnet subnet(AddOffset(kVmBaseAddress, index * 4), kVmSubnetPrefixLength,
-                base::DoNothing());
+  Subnet subnet(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+          ConvertUint32ToIPv4Address(AddOffset(kVmBaseAddress, index * 4)),
+          kVmSubnetPrefixLength),
+      base::DoNothing());
 
   EXPECT_EQ(kExpectedPrefix[index], subnet.Prefix());
 }
 
 TEST_P(VmSubnetTest, CidrString) {
   uint32_t index = GetParam();
-  Subnet subnet(AddOffset(kVmBaseAddress, index * 4), kVmSubnetPrefixLength,
-                base::DoNothing());
+  Subnet subnet(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+          ConvertUint32ToIPv4Address(AddOffset(kVmBaseAddress, index * 4)),
+          kVmSubnetPrefixLength),
+      base::DoNothing());
 
   EXPECT_EQ(std::string(kExpectedCidrString[index]), subnet.ToCidrString());
   EXPECT_EQ(kExpectedCidrString[index], subnet.ToCidrString());
@@ -130,8 +136,11 @@ TEST_P(VmSubnetTest, CidrString) {
 
 TEST_P(VmSubnetTest, AddressAtOffset) {
   uint32_t index = GetParam();
-  Subnet subnet(AddOffset(kVmBaseAddress, index * 4), kVmSubnetPrefixLength,
-                base::DoNothing());
+  Subnet subnet(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+          ConvertUint32ToIPv4Address(AddOffset(kVmBaseAddress, index * 4)),
+          kVmSubnetPrefixLength),
+      base::DoNothing());
 
   for (uint32_t offset = 1; offset <= subnet.AvailableCount(); ++offset) {
     uint32_t address = AddOffset(kVmBaseAddress, index * 4 + offset);
@@ -145,8 +154,11 @@ INSTANTIATE_TEST_SUITE_P(AllValues,
 
 TEST_P(ContainerSubnetTest, AddressAtOffset) {
   uint32_t index = GetParam();
-  Subnet subnet(AddOffset(kContainerBaseAddress, index * 16),
-                kContainerSubnetPrefixLength, base::DoNothing());
+  Subnet subnet(*net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+                    ConvertUint32ToIPv4Address(
+                        AddOffset(kContainerBaseAddress, index * 16)),
+                    kContainerSubnetPrefixLength),
+                base::DoNothing());
 
   for (uint32_t offset = 1; offset <= subnet.AvailableCount(); ++offset) {
     uint32_t address = AddOffset(kContainerBaseAddress, index * 16 + offset);
@@ -161,21 +173,27 @@ INSTANTIATE_TEST_SUITE_P(AllValues,
 TEST_P(PrefixTest, AvailableCount) {
   int prefix_length = GetParam();
 
-  Subnet subnet(0, prefix_length, base::DoNothing());
+  Subnet subnet(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix({}, prefix_length),
+      base::DoNothing());
   EXPECT_EQ(kExpectedAvailableCount[prefix_length], subnet.AvailableCount());
 }
 
 TEST_P(PrefixTest, Netmask) {
   int prefix_length = GetParam();
 
-  Subnet subnet(0, prefix_length, base::DoNothing());
+  Subnet subnet(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix({}, prefix_length),
+      base::DoNothing());
   EXPECT_EQ(kExpectedNetmask[prefix_length], subnet.Netmask());
 }
 
 INSTANTIATE_TEST_SUITE_P(AllValues, PrefixTest, ::testing::Range(8, 32));
 
 TEST(SubtnetAddress, StringConversion) {
-  Subnet container_subnet(kContainerBaseAddress, kContainerSubnetPrefixLength,
+  Subnet container_subnet(*net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+                              ConvertUint32ToIPv4Address(kContainerBaseAddress),
+                              kContainerSubnetPrefixLength),
                           base::DoNothing());
   EXPECT_EQ("100.115.92.192/28", container_subnet.ToCidrString());
   {
@@ -189,7 +207,10 @@ TEST(SubtnetAddress, StringConversion) {
               container_subnet.AllocateAtOffset(14)->cidr());
   }
 
-  Subnet vm_subnet(kVmBaseAddress, kVmSubnetPrefixLength, base::DoNothing());
+  Subnet vm_subnet(
+      *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+          ConvertUint32ToIPv4Address(kVmBaseAddress), kVmSubnetPrefixLength),
+      base::DoNothing());
   EXPECT_EQ("100.115.92.24/30", vm_subnet.ToCidrString());
   {
     EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.25/30"),
@@ -198,7 +219,9 @@ TEST(SubtnetAddress, StringConversion) {
               vm_subnet.AllocateAtOffset(2)->cidr());
   }
 
-  Subnet parallels_subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
+  Subnet parallels_subnet(*net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+                              ConvertUint32ToIPv4Address(kParallelsBaseAddress),
+                              kParallelsSubnetPrefixLength),
                           base::DoNothing());
   EXPECT_EQ("100.115.92.128/28", parallels_subnet.ToCidrString());
   {
@@ -218,7 +241,10 @@ TEST(SubtnetAddress, StringConversion) {
 TEST(Subnet, Cleanup) {
   bool called = false;
 
-  { Subnet subnet(0, 24, base::BindOnce(&SetTrue, &called)); }
+  {
+    Subnet subnet(*net_base::IPv4CIDR::CreateFromAddressAndPrefix({}, 24),
+                  base::BindOnce(&SetTrue, &called));
+  }
 
   EXPECT_TRUE(called);
 }
@@ -226,7 +252,9 @@ TEST(Subnet, Cleanup) {
 // Tests that the subnet allows allocating all addresses in the subnet's range
 // using an offset.
 TEST(ParallelsSubnet, AllocateAtOffset) {
-  Subnet subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
+  Subnet subnet(*net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+                    ConvertUint32ToIPv4Address(kParallelsBaseAddress),
+                    kParallelsSubnetPrefixLength),
                 base::DoNothing());
 
   std::vector<std::unique_ptr<SubnetAddress>> addrs;
@@ -243,7 +271,9 @@ TEST(ParallelsSubnet, AllocateAtOffset) {
 
 // Tests that the subnet frees addresses when they are destroyed.
 TEST(ParallelsSubnet, Free) {
-  Subnet subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
+  Subnet subnet(*net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+                    ConvertUint32ToIPv4Address(kParallelsBaseAddress),
+                    kParallelsSubnetPrefixLength),
                 base::DoNothing());
 
   {

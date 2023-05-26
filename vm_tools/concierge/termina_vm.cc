@@ -36,6 +36,7 @@
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/patchpanel/net_util.h>
 #include <grpcpp/grpcpp.h>
+#include <net-base/ipv4_address.h>
 #include <sys/epoll.h>
 #include <vm_concierge/concierge_service.pb.h>
 
@@ -96,14 +97,18 @@ constexpr int kInvalidDiskIndex = -1;
 
 std::unique_ptr<patchpanel::Subnet> MakeSubnet(
     const patchpanel::Client::IPv4Subnet& subnet) {
-  if (subnet.base_addr.size() != 4) {
+  const std::optional<net_base::IPv4Address> addr =
+      net_base::IPv4Address::CreateFromBytes(subnet.base_addr.data(),
+                                             subnet.base_addr.size());
+  if (!addr) {
     return nullptr;
   }
-  uint32_t addr =
-      patchpanel::Ipv4Addr(subnet.base_addr[0], subnet.base_addr[1],
-                           subnet.base_addr[2], subnet.base_addr[3]);
-  return std::make_unique<patchpanel::Subnet>(addr, subnet.prefix_len,
-                                              base::DoNothing());
+  const std::optional<net_base::IPv4CIDR> cidr =
+      net_base::IPv4CIDR::CreateFromAddressAndPrefix(*addr, subnet.prefix_len);
+  if (!cidr) {
+    return nullptr;
+  }
+  return std::make_unique<patchpanel::Subnet>(*cidr, base::DoNothing());
 }
 
 }  // namespace
