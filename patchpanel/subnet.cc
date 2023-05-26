@@ -16,14 +16,6 @@
 #include "patchpanel/net_util.h"
 
 namespace {
-// Returns the offset from the base address given in network-byte order for
-// the address given in network-byte order, or 0 if the second address is
-// lower than the base address. Returns the offset in host-byte order.
-uint32_t OffsetFromBaseAddress(uint32_t base_no, uint32_t addr_no) {
-  if (ntohl(addr_no) < ntohl(base_no))
-    return 0;
-  return ntohl(addr_no) - ntohl(base_no);
-}
 // Adds a positive offset given in host order to the address given in
 // network byte order. Returns the address in network-byte order.
 uint32_t AddOffset(uint32_t addr_no, uint32_t offset_ho) {
@@ -57,10 +49,6 @@ Subnet::Subnet(uint32_t base_addr,
 
 Subnet::~Subnet() {
   std::move(release_cb_).Run();
-}
-
-std::unique_ptr<SubnetAddress> Subnet::Allocate(uint32_t addr) {
-  return AllocateAtOffset(OffsetFromBaseAddress(base_addr_, addr) - 1);
 }
 
 std::unique_ptr<SubnetAddress> Subnet::AllocateAtOffset(uint32_t offset) {

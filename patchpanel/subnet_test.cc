@@ -224,48 +224,6 @@ TEST(Subnet, Cleanup) {
   EXPECT_TRUE(called);
 }
 
-// Tests that the subnet rejects attempts to allocate addresses outside its
-// range.
-TEST(ParallelsSubnet, OutOfBounds) {
-  Subnet subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
-                base::DoNothing());
-
-  EXPECT_FALSE(subnet.Allocate(htonl(ntohl(kParallelsBaseAddress) - 1)));
-  EXPECT_FALSE(subnet.Allocate(kParallelsBaseAddress));
-  EXPECT_FALSE(subnet.Allocate(
-      AddOffset(kParallelsBaseAddress,
-                (1ull << (32 - kParallelsSubnetPrefixLength)) - 1)));
-  EXPECT_FALSE(subnet.Allocate(AddOffset(
-      kParallelsBaseAddress, (1ull << (32 - kParallelsSubnetPrefixLength)))));
-}
-
-// Tests that the subnet rejects attempts to allocate the same address twice.
-TEST(ParallelsSubnet, DuplicateAddress) {
-  Subnet subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
-                base::DoNothing());
-
-  auto addr = subnet.Allocate(AddOffset(kParallelsBaseAddress, 1));
-  EXPECT_TRUE(addr);
-  EXPECT_FALSE(subnet.Allocate(AddOffset(kParallelsBaseAddress, 1)));
-}
-
-// Tests that the subnet allows allocating all addresses in the subnet's range.
-TEST(ParallelsSubnet, Allocate) {
-  Subnet subnet(kParallelsBaseAddress, kParallelsSubnetPrefixLength,
-                base::DoNothing());
-
-  std::vector<std::unique_ptr<SubnetAddress>> addrs;
-  addrs.reserve(subnet.AvailableCount());
-
-  for (uint32_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
-    // Offset by one since the network id is not allocatable.
-    auto addr = subnet.Allocate(AddOffset(kParallelsBaseAddress, offset + 1));
-    EXPECT_TRUE(addr);
-    EXPECT_EQ(AddOffset(kParallelsBaseAddress, offset + 1),
-              addr->cidr().address().ToInAddr().s_addr);
-    addrs.emplace_back(std::move(addr));
-  }
-}
 // Tests that the subnet allows allocating all addresses in the subnet's range
 // using an offset.
 TEST(ParallelsSubnet, AllocateAtOffset) {
@@ -290,11 +248,11 @@ TEST(ParallelsSubnet, Free) {
                 base::DoNothing());
 
   {
-    auto addr = subnet.Allocate(AddOffset(kParallelsBaseAddress, 1));
+    auto addr = subnet.AllocateAtOffset(1);
     EXPECT_TRUE(addr);
   }
 
-  EXPECT_TRUE(subnet.Allocate(AddOffset(kParallelsBaseAddress, 1)));
+  EXPECT_TRUE(subnet.AllocateAtOffset(1));
 }
 
 }  // namespace patchpanel

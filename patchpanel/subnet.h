@@ -52,12 +52,6 @@ class BRILLO_EXPORT Subnet {
 
   ~Subnet();
 
-  // Marks |addr| as allocated. |addr| must be in network-byte order. Returns
-  // nullptr if |addr| has already been allocated or if |addr| is not contained
-  // within this subnet. Otherwise, the allocated address is automatically
-  // freed when the returned SubnetAddress is destroyed.
-  std::unique_ptr<SubnetAddress> Allocate(uint32_t addr);
-
   // Allocates the address at |offset|. Returns nullptr if |offset| is invalid
   // (exceeds available IPs in the subnet) or is already allocated.
   // |offset| is relative to the first usable host address; e.g. network + 1
