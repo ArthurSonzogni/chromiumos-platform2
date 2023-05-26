@@ -5,9 +5,13 @@
 #include "lorgnette/dbus_service_adaptor.h"
 
 #include <signal.h>
+
+#include <memory>
 #include <utility>
 
 #include <chromeos/dbus/service_constants.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
+#include <dlcservice/dbus-proxies.h>  // NOLINT (build/include_alpha)
 
 #include "lorgnette/firewall_manager.h"
 
@@ -66,8 +70,9 @@ void DBusServiceAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(!dbus_object_) << "Already registered";
-  scoped_refptr<dbus::Bus> bus =
-      object_manager ? object_manager->GetBus() : nullptr;
+  CHECK(object_manager);
+  scoped_refptr<dbus::Bus> bus = object_manager->GetBus();
+  CHECK(bus) << "Bus not found";
   dbus_object_.reset(new brillo::dbus_utils::DBusObject(
       object_manager, bus, dbus::ObjectPath(kManagerServicePath)));
   RegisterWithDBusObject(dbus_object_.get());
@@ -79,6 +84,11 @@ void DBusServiceAdaptor::RegisterAsync(
       std::make_unique<org::chromium::PermissionBrokerProxy>(bus));
   manager_->SetFirewallManager(firewall_manager_.get());
   device_tracker_->SetFirewallManager(firewall_manager_.get());
+
+  dlc_client_ = std::make_unique<DlcClient>();
+  dlc_client_->Init(
+      std::make_unique<org::chromium::DlcServiceInterfaceProxy>(bus));
+  device_tracker_->SetDlcClient(dlc_client_.get());
 }
 
 bool DBusServiceAdaptor::ListScanners(brillo::ErrorPtr* error,

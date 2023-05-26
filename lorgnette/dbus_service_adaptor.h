@@ -76,6 +76,7 @@ class DBusServiceAdaptor : public org::chromium::lorgnette::ManagerAdaptor,
   std::unique_ptr<Manager> manager_ GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<FirewallManager> firewall_manager_
       GUARDED_BY_CONTEXT(sequence_checker_);
+  std::unique_ptr<DlcClient> dlc_client_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Not owned.
   DeviceTracker* device_tracker_ GUARDED_BY_CONTEXT(sequence_checker_);

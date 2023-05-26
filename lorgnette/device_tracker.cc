@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/containers/contains.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
@@ -88,7 +89,10 @@ DeviceTracker::ScanBuffer::~ScanBuffer() {
 DeviceTracker::DeviceTracker(SaneClient* sane_client, LibusbWrapper* libusb)
     : cache_dir_(kDefaultCacheDirectory),
       sane_client_(sane_client),
-      libusb_(libusb) {
+      libusb_(libusb),
+      dlc_client_(nullptr),
+      dlc_started_(false),
+      dlc_completed_successfully_(false) {
   DCHECK(sane_client_);
   DCHECK(libusb_);
 }
@@ -104,6 +108,13 @@ void DeviceTracker::SetScannerListChangedSignalSender(
 
 void DeviceTracker::SetFirewallManager(FirewallManager* firewall_manager) {
   firewall_manager_ = firewall_manager;
+}
+
+void DeviceTracker::SetDlcClient(DlcClient* dlc_client) {
+  dlc_client_ = dlc_client;
+  dlc_client_->SetCallbacks(
+      base::BindOnce(&DeviceTracker::OnDlcSuccess, weak_factory_.GetWeakPtr()),
+      base::BindOnce(&DeviceTracker::OnDlcFailure, weak_factory_.GetWeakPtr()));
 }
 
 size_t DeviceTracker::NumActiveDiscoverySessions() const {
@@ -166,9 +177,12 @@ StartScannerDiscoveryResponse DeviceTracker::StartScannerDiscovery(
   session.client_id = client_id;
   session.start_time = base::Time::Now();
   session.dlc_policy = request.download_policy();
-  session.dlc_started = false;
   session.local_only = request.local_only();
   session.preferred_only = request.preferred_only();
+
+  // if (!dlc_client_) {
+  //   LOG(ERROR) << __func__ << ": DlcClient not set";
+  // }
 
   // Close any open scanner handles owned by the same client.  This needs to be
   // done whether the session is new or not because the client could have opened
@@ -326,11 +340,6 @@ void DeviceTracker::StartDiscoverySessionInternal(std::string session_id) {
     }
   }
 
-  if (session->dlc_policy == BackendDownloadPolicy::DOWNLOAD_ALWAYS) {
-    // TODO(rishabhagr): Kick off background DLC download.
-    session->dlc_started = true;
-  }
-
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&DeviceTracker::EnumerateUSBDevices,
                                 weak_factory_.GetWeakPtr(), session_id));
@@ -348,10 +357,21 @@ void DeviceTracker::EnumerateUSBDevices(std::string session_id) {
 
   LOG(INFO) << __func__ << ": Enumerating USB devices for " << session_id;
 
+  if (!dlc_completed_successfully_ &&
+      session->dlc_policy == BackendDownloadPolicy::DOWNLOAD_ALWAYS) {
+    dlc_pending_sessions_.insert(session_id);
+    dlc_started_ = true;
+    dlc_client_->InstallDlc();
+  }
+
   for (auto& device : libusb_->GetDevices()) {
-    if (!session->dlc_started && device->NeedsNonBundledBackend()) {
-      // TODO(rishabhagr): Kick off background DLC download.
-      session->dlc_started = true;
+    if (!dlc_completed_successfully_ && device->NeedsNonBundledBackend() &&
+        session->dlc_policy != BackendDownloadPolicy::DOWNLOAD_NEVER) {
+      dlc_pending_sessions_.insert(session_id);
+      if (!dlc_started_) {
+        dlc_started_ = true;
+        dlc_client_->InstallDlc();
+      }
     }
     if (device->SupportsIppUsb()) {
       LOG(INFO) << __func__ << ": Device " << device->Description()
@@ -363,10 +383,13 @@ void DeviceTracker::EnumerateUSBDevices(std::string session_id) {
     }
   }
 
-  if (session->dlc_started) {
+  // If DLC download still running
+  if (dlc_started_) {
     LOG(INFO) << __func__ << ": Waiting for DLC to finish";
-    // TODO(rishabhagr): Track that DLC completion needs to run
-    // EnumerateSANEDevices to continue.
+    if (!base::Contains(dlc_pending_sessions_, session_id)) {
+      // Sanity check, should never enter here
+      dlc_pending_sessions_.insert(session_id);
+    }
   } else {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&DeviceTracker::EnumerateSANEDevices,
@@ -590,7 +613,7 @@ void DeviceTracker::SendEnumerationCompletedSignal(std::string session_id) {
   // When devices have all been enumerated, persist the current list so it can
   // be reused for future sessions.  Nothing else will update or access the set
   // of devices until another discovery session starts, so this saved state will
-  // remain accurate indefinitely.
+  // remain accurate indefinitel
   SaveDeviceCache();
 
   auto maybe_session = GetSession(session_id);
@@ -1116,4 +1139,33 @@ ReadScanDataResponse DeviceTracker::ReadScanData(
   return response;
 }
 
+void DeviceTracker::OnDlcSuccess(const base::FilePath& file_path) {
+  LOG(INFO) << "DLC install completed";
+  dlc_root_path_ = file_path;
+  dlc_started_ = false;
+  dlc_completed_successfully_ = true;
+  for (const std::string& session_id : dlc_pending_sessions_) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(&DeviceTracker::EnumerateSANEDevices,
+                                  weak_factory_.GetWeakPtr(), session_id));
+  }
+  dlc_pending_sessions_.clear();
+}
+
+void DeviceTracker::OnDlcFailure(const std::string& error_msg) {
+  LOG(ERROR) << "DLC install failed with message: " << error_msg;
+  dlc_root_path_ = base::FilePath();
+  dlc_started_ = false;
+  dlc_completed_successfully_ = false;
+  for (std::string session_id : dlc_pending_sessions_) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(&DeviceTracker::EnumerateSANEDevices,
+                                  weak_factory_.GetWeakPtr(), session_id));
+  }
+  dlc_pending_sessions_.clear();
+}
+
+base::FilePath DeviceTracker::GetDlcRootPath() {
+  return dlc_root_path_;
+}
 }  // namespace lorgnette

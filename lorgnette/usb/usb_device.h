@@ -8,16 +8,20 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
+#include <utility>
 
 #include <libusb.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 
 namespace lorgnette {
 
+using VidPid = std::pair<uint16_t, uint16_t>;
+
 class UsbDevice {
  public:
-  UsbDevice() = default;
+  UsbDevice();
   UsbDevice(const UsbDevice&) = delete;
   UsbDevice& operator=(const UsbDevice&) = delete;
   UsbDevice(UsbDevice&&) = default;
@@ -76,10 +80,22 @@ class UsbDevice {
   // before it will be recognized by `sane_get_devices`.
   bool NeedsNonBundledBackend() const;
 
+  // Setter for `dlc_backend_scanners_`
+  // Pointer passed in can not be nullptr and needs to outlive this object
+  void SetDlcBackendScanners(std::set<VidPid>* dlc_backend_scanners);
+
+  // Returns the current set of VidPid pairs that need DLC for their backend
+  std::set<VidPid>* GetDlcBackendScanners();
+
  private:
   uint16_t vid_;
   uint16_t pid_;
   std::string vid_pid_;  // Cached copy of formatted VID:PID for logging.
+
+  // Pointer to the list of all scanners that need a the DLC backend.
+  // Default value is set to the real scanners that need the DLC backend.
+  // Not owned.
+  std::set<VidPid>* dlc_backend_scanners_;
 };
 
 }  // namespace lorgnette

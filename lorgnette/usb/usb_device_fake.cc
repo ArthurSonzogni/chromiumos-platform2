@@ -44,6 +44,7 @@ std::unique_ptr<UsbDeviceFake> UsbDeviceFake::Clone(UsbDevice& source) {
   device->SetStringDescriptors(strings);
   device->SetBusNumber(source.GetBusNumber());
   device->SetDeviceAddress(source.GetDeviceAddress());
+  device->SetDlcBackendScanners(source.GetDlcBackendScanners());
 
   device->Init();
   return device;

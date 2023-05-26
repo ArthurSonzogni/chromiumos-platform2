@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -25,6 +26,7 @@
 #include <metrics/metrics_library.h>
 
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
+#include "lorgnette/dlc_client.h"
 #include "lorgnette/firewall_manager.h"
 #include "lorgnette/scanner_match.h"
 
@@ -60,6 +62,8 @@ class DeviceTracker {
 
   void SetScannerListChangedSignalSender(ScannerListChangedSignalSender sender);
   void SetFirewallManager(FirewallManager* firewall_manager);
+  void SetDlcClient(DlcClient* dlc_client);
+  base::FilePath GetDlcRootPath();
   size_t NumActiveDiscoverySessions() const;
   base::Time LastDiscoverySessionActivity() const;
   size_t NumOpenScanners() const;
@@ -77,7 +81,8 @@ class DeviceTracker {
   //        support.  If it supports eSCL, add an entry and send a scanner
   //        added signal.
   //    3b. If a device requires a DLC backend and DLC isn't already
-  //        downloading, start downloading the backend DLC in the background.
+  //        downloading and dlc policy is not set to never,
+  //        start downloading the backend DLC in the background.
   // 4. Wait for DLC to be downloaded and mounted as needed.
   // 5. Enumerate the SANE devices
   //    5a. For each device, post a task to try to match it to one of the
@@ -134,7 +139,6 @@ class DeviceTracker {
     base::Time start_time;
     BackendDownloadPolicy dlc_policy;
     std::vector<std::unique_ptr<PortToken>> port_tokens;
-    bool dlc_started;
     bool local_only;
     bool preferred_only;
   };
@@ -186,6 +190,9 @@ class DeviceTracker {
   void SendEnumerationCompletedSignal(std::string session_id);
   void SendSessionEndingSignal(std::string session_id);
 
+  void OnDlcSuccess(const base::FilePath& file_path);
+  void OnDlcFailure(const std::string& error_msg);
+
   SEQUENCE_CHECKER(sequence_checker_);
 
   // Directory where known_devices_ cache will be written and read.
@@ -211,6 +218,23 @@ class DeviceTracker {
   // A callback to call when we attempt to send a D-Bus signal. This is used
   // for testing in order to track the signals sent from StartScan.
   ScannerListChangedSignalSender signal_sender_;
+
+  // Manages connection to DLC for downloading more scanner software.
+  DlcClient* dlc_client_;
+
+  // The DLC root path where the scanner software is installed.
+  base::FilePath dlc_root_path_;
+
+  // Indication to know if DLC download has already begun so we don't trigger it
+  // multiple times (due to multiple sessions).
+  bool dlc_started_;
+
+  // Indication to know if DLC has already been successfully downloaded so it
+  // isn't downloaded multiple times.
+  bool dlc_completed_successfully_;
+
+  // List of all the sessions currently waiting for DLC download to complete
+  std::set<std::string> dlc_pending_sessions_;
 
   // Mapping from discovery session IDs to session state.
   // The session_id is passed around instead of a pointer to avoid creating

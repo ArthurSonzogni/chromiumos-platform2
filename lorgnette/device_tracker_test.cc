@@ -23,12 +23,15 @@
 #include <base/strings/stringprintf.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <base/files/file_path.h>
 #include <brillo/files/file_util.h>
 
+#include "lorgnette/dlc_client_fake.h"
 #include "lorgnette/firewall_manager.h"
 #include "lorgnette/sane_client_fake.h"
 #include "lorgnette/test_util.h"
 #include "lorgnette/usb/libusb_wrapper_fake.h"
+#include "lorgnette/usb/usb_device.h"
 #include "lorgnette/usb/usb_device_fake.h"
 
 using ::testing::_;
@@ -115,6 +118,129 @@ UsbDeviceBundle MakeIPPUSBDevice(const std::string& model) {
 
   return result;
 }
+
+class DlcDeviceTrackerTest : public testing::Test {
+ protected:
+  std::unique_ptr<DeviceTracker> DlcMinimalDiscoverySetup(
+      base::RunLoop* run_loop, bool add_dlc_device = false) {
+    std::vector<std::unique_ptr<UsbDevice>> device_list;
+
+    // Scanners that need DLC backend
+    VidPid device1 = {0x832, 0x231};
+    VidPid device2 = {0x832, 0x342};
+    VidPid device3 = {0x432, 0x342};
+    dlc_backend_scanners_ = {device1, device2, device3};
+
+    device_desc_.bDeviceClass = LIBUSB_CLASS_PER_INTERFACE;
+    device_desc_.bNumConfigurations = 1;
+    device_desc_.iManufacturer = 1;
+    device_desc_.iProduct = 2;
+    usb_printer_->SetStringDescriptors({"", "GoogleTest", "USB Scanner 3000"});
+
+    printer_altsetting_->bInterfaceProtocol = 0;
+    printer_interface_->num_altsetting = 1;
+    printer_interface_->altsetting = printer_altsetting_.get();
+
+    memset(&descriptor_, 0, sizeof(descriptor_));
+    descriptor_.bLength = sizeof(descriptor_);
+    descriptor_.bDescriptorType = LIBUSB_DT_CONFIG;
+    descriptor_.wTotalLength = sizeof(descriptor_);
+    descriptor_.bNumInterfaces = 1;
+    descriptor_.interface = interface_.get();
+
+    usb_printer_->SetDlcBackendScanners(&dlc_backend_scanners_);
+    usb_printer_->SetDeviceDescriptor(device_desc_);
+    usb_printer_->SetConfigDescriptors({descriptor_});
+    usb_printer_->SetBusNumber(1);
+    usb_printer_->SetDeviceAddress(1);
+    usb_printer_->Init();
+
+    // USB printer with no DLC download required (wrong vid pid)
+    auto no_dlc_usb_printer = UsbDeviceFake::Clone(*usb_printer_.get());
+    no_dlc_usb_printer->MutableConfigDescriptor(0).interface =
+        printer_interface_.get();
+    no_dlc_usb_printer->SetStringDescriptors(
+        {"", "GoogleTest", "USB Printer 1000"});
+    no_dlc_usb_printer->MutableDeviceDescriptor().idProduct = 0x987;
+    no_dlc_usb_printer->MutableDeviceDescriptor().idVendor = 0x123;
+
+    // USB printer with no DLC download required (wrong vid, right pid)
+    auto no_dlc_usb_printer2 = UsbDeviceFake::Clone(*usb_printer_.get());
+    no_dlc_usb_printer2->MutableConfigDescriptor(0).interface =
+        printer_interface_.get();
+    no_dlc_usb_printer2->SetStringDescriptors(
+        {"", "GoogleTest", "USB Printer 1500"});
+    no_dlc_usb_printer2->MutableDeviceDescriptor().idProduct = 0x231;
+    no_dlc_usb_printer2->MutableDeviceDescriptor().idVendor = 0x432;
+
+    // USB printer with DLC required (Correct vid pid)
+    auto dlc_usb_printer = UsbDeviceFake::Clone(*usb_printer_.get());
+    dlc_usb_printer->MutableConfigDescriptor(0).interface =
+        printer_interface_.get();
+    dlc_usb_printer->SetStringDescriptors(
+        {"", "GoogleTest", "USB Printer 2000"});
+    dlc_usb_printer->MutableDeviceDescriptor().idProduct = 0x231;
+    dlc_usb_printer->MutableDeviceDescriptor().idVendor = 0x832;
+
+    device_list.emplace_back(std::move(usb_printer_));
+    device_list.emplace_back(std::move(no_dlc_usb_printer));
+    device_list.emplace_back(std::move(no_dlc_usb_printer2));
+    if (add_dlc_device) {
+      device_list.emplace_back(std::move(dlc_usb_printer));
+    }
+    libusb_->SetDevices(std::move(device_list));
+
+    sane_client_->SetListDevicesResult(true);
+
+    auto tracker =
+        std::make_unique<DeviceTracker>(sane_client_.get(), libusb_.get());
+
+    // Signal handler that tracks all the events of interest.
+    std::set<std::unique_ptr<ScannerInfo>> scanners;
+    // Set signal handler
+    auto signal_handler =
+        base::BindLambdaForTesting([run_loop, &tracker, &scanners](
+                                       const ScannerListChangedSignal& signal) {
+          if (signal.event_type() == ScannerListChangedSignal::ENUM_COMPLETE) {
+            StopScannerDiscoveryRequest stop_request;
+            stop_request.set_session_id(signal.session_id());
+            tracker->StopScannerDiscovery(stop_request);
+          }
+          if (signal.event_type() == ScannerListChangedSignal::SESSION_ENDING) {
+            run_loop->Quit();
+          }
+          if (signal.event_type() == ScannerListChangedSignal::SCANNER_ADDED) {
+            std::unique_ptr<ScannerInfo> info(signal.scanner().New());
+            info->CopyFrom(signal.scanner());
+            scanners.insert(std::move(info));
+          }
+        });
+    tracker->SetScannerListChangedSignalSender(signal_handler);
+
+    return tracker;
+  }
+  std::unique_ptr<LibusbWrapperFake> libusb_ =
+      std::make_unique<LibusbWrapperFake>();
+  // Scanner that supports eSCL over IPP-USB.
+  std::unique_ptr<UsbDeviceFake> usb_printer_ =
+      std::make_unique<UsbDeviceFake>();
+  // One config descriptor containing the interface.
+  libusb_config_descriptor descriptor_;
+  std::unique_ptr<libusb_interface_descriptor> printer_altsetting_ =
+      MakeIppUsbInterfaceDescriptor();
+  std::unique_ptr<libusb_interface> printer_interface_ =
+      std::make_unique<libusb_interface>();
+  libusb_device_descriptor device_desc_ = MakeMinimalDeviceDescriptor();
+  // One interface containing the altsetting.
+  std::unique_ptr<libusb_interface> interface_ =
+      std::make_unique<libusb_interface>();
+  std::unique_ptr<SaneClientFake> sane_client_ =
+      std::make_unique<SaneClientFake>();
+  std::set<VidPid> dlc_backend_scanners_;
+
+  // Test root path set in dlc_client_fake.cc
+  const base::FilePath root_path_ = base::FilePath("/test/path/to/dlc");
+};
 
 class MockFirewallManager : public FirewallManager {
  public:
@@ -360,6 +486,149 @@ TEST_F(DeviceTrackerTest, StopSessionMissingID) {
   EXPECT_FALSE(response.stopped());
   EXPECT_TRUE(closed_sessions_.empty());
   EXPECT_EQ(tracker_->NumActiveDiscoverySessions(), 0);
+}
+
+// Policy: Download never
+// Will not install, even though DLC requiring devices are found.
+TEST_F(DlcDeviceTrackerTest, TestNeverDownloadDlcPolicy) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+  base::RunLoop run_loop;
+  // Add dlc requiring devices
+  auto tracker = DlcMinimalDiscoverySetup(&run_loop, true);
+
+  MockFirewallManager firewall_manager(/*interface=*/"test");
+  tracker->SetFirewallManager(&firewall_manager);
+  EXPECT_CALL(firewall_manager, RequestPortsForDiscovery()).WillRepeatedly([] {
+    std::vector<PortToken> retval;
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+    return retval;
+  });
+
+  // Set fake DLC client
+  auto dlc_client = std::make_unique<DlcClientFake>();
+  tracker->SetDlcClient(dlc_client.get());
+
+  StartScannerDiscoveryRequest start_request;
+
+  // DOWNLOAD_NEVER Policy
+  start_request.set_client_id("dlc_client");
+  start_request.set_download_policy(BackendDownloadPolicy::DOWNLOAD_NEVER);
+  StartScannerDiscoveryResponse response1 =
+      tracker->StartScannerDiscovery(start_request);
+  EXPECT_TRUE(response1.started());
+  EXPECT_FALSE(response1.session_id().empty());
+
+  run_loop.Run();
+  EXPECT_TRUE(tracker->GetDlcRootPath().empty());
+}
+
+// Policy: Download if needed
+// Will not install DLC because no DLC requiring devices detected.
+TEST_F(DlcDeviceTrackerTest, TestDownloadIfNeededDlcPolicyWithoutDlcDevices) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+  base::RunLoop run_loop;
+  auto tracker = DlcMinimalDiscoverySetup(&run_loop);
+
+  MockFirewallManager firewall_manager(/*interface=*/"test");
+  tracker->SetFirewallManager(&firewall_manager);
+  EXPECT_CALL(firewall_manager, RequestPortsForDiscovery()).WillRepeatedly([] {
+    std::vector<PortToken> retval;
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+    return retval;
+  });
+
+  // Set fake DLC client
+  auto dlc_client = std::make_unique<DlcClientFake>();
+  tracker->SetDlcClient(dlc_client.get());
+
+  StartScannerDiscoveryRequest start_request;
+
+  // DOWNLOAD_IF_NEEDED Policy
+  start_request.set_client_id("dlc_client");
+  start_request.set_download_policy(BackendDownloadPolicy::DOWNLOAD_IF_NEEDED);
+  StartScannerDiscoveryResponse response1 =
+      tracker->StartScannerDiscovery(start_request);
+  EXPECT_TRUE(response1.started());
+  EXPECT_FALSE(response1.session_id().empty());
+
+  run_loop.Run();
+  // DLC not installed because no devices needed it.
+  EXPECT_TRUE(tracker->GetDlcRootPath().empty());
+}
+
+// Policy: Download if needed
+// Will install DLC since DLC devices are detected.
+TEST_F(DlcDeviceTrackerTest, TestDownloadIfNeededDlcPolicyWithDlcDevices) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+  base::RunLoop run_loop;
+  // Add DLC requiring devices
+  auto tracker = DlcMinimalDiscoverySetup(&run_loop, true);
+
+  MockFirewallManager firewall_manager(/*interface=*/"test");
+  tracker->SetFirewallManager(&firewall_manager);
+  EXPECT_CALL(firewall_manager, RequestPortsForDiscovery()).WillRepeatedly([] {
+    std::vector<PortToken> retval;
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+    return retval;
+  });
+
+  // Set fake DLC client
+  auto dlc_client = std::make_unique<DlcClientFake>();
+  tracker->SetDlcClient(dlc_client.get());
+
+  StartScannerDiscoveryRequest start_request;
+
+  // DOWNLOAD_IF_NEEDED Policy
+  start_request.set_client_id("dlc_client");
+  start_request.set_download_policy(BackendDownloadPolicy::DOWNLOAD_IF_NEEDED);
+  StartScannerDiscoveryResponse response1 =
+      tracker->StartScannerDiscovery(start_request);
+  EXPECT_TRUE(response1.started());
+  EXPECT_FALSE(response1.session_id().empty());
+
+  run_loop.Run();
+  // DLC installed because 1 device needed it.
+  EXPECT_FALSE(tracker->GetDlcRootPath().empty());
+  EXPECT_EQ(tracker->GetDlcRootPath(), root_path_);
+}
+
+// Policy: Always download
+// Should install DLC even if DLC requiring devices aren't present/detected.
+TEST_F(DlcDeviceTrackerTest, TestAlwaysDownloadDlcPolicy) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+  base::RunLoop run_loop;
+  // DLC devices shouldn't be required to prompt download in this policy
+  auto tracker = DlcMinimalDiscoverySetup(&run_loop);
+
+  MockFirewallManager firewall_manager(/*interface=*/"test");
+  tracker->SetFirewallManager(&firewall_manager);
+  EXPECT_CALL(firewall_manager, RequestPortsForDiscovery()).WillRepeatedly([] {
+    std::vector<PortToken> retval;
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+    return retval;
+  });
+
+  // Set fake DLC client
+  auto dlc_client = std::make_unique<DlcClientFake>();
+  tracker->SetDlcClient(dlc_client.get());
+
+  StartScannerDiscoveryRequest start_request;
+
+  // DOWNLOAD_ALWAYS Policy
+  start_request.set_client_id("dlc_client");
+  start_request.set_download_policy(BackendDownloadPolicy::DOWNLOAD_ALWAYS);
+  StartScannerDiscoveryResponse response1 =
+      tracker->StartScannerDiscovery(start_request);
+  EXPECT_TRUE(response1.started());
+  EXPECT_FALSE(response1.session_id().empty());
+
+  run_loop.Run();
+  EXPECT_FALSE(tracker->GetDlcRootPath().empty());
+  EXPECT_EQ(tracker->GetDlcRootPath(), root_path_);
 }
 
 // Test the whole flow with several fake USB devices.  Confirm that

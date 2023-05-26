@@ -29,10 +29,12 @@ pkg_config("target_defaults_deps") {
     "absl",
     "libbrillo",
     "libchrome",
+    "libdlcservice-client",
     "libjpeg",
     "libmetrics",
     "libpng",
     "libusb-1.0",
+    "protobuf",
     "protobuf-lite",
     "re2",
     "sane-backends",
@@ -71,6 +73,8 @@ static_library("liblorgnette") {
     "dbus_service_adaptor.cc",
     "debug_log.cc",
     "device_tracker.cc",
+    "dlc_client.cc",
+    "dlc_client_fake.cc",
     "enums.cc",
     "epson_probe.cc",
     "firewall_manager.cc",
@@ -154,7 +158,11 @@ install_config("install_minijail_config") {
 
 if (use.test) {
   pkg_config("liblorgnette_config_test") {
-    pkg_deps = [ "libpermission_broker-client-test" ]
+    pkg_deps = [
+      "libchrome-test",
+      "libdlcservice-client-test",
+      "libpermission_broker-client-test",
+    ]
   }
 
   executable("lorgnette_unittest") {
@@ -162,6 +170,7 @@ if (use.test) {
       "dbus_service_adaptor_test.cc",
       "debug_log_test.cc",
       "device_tracker_test.cc",
+      "dlc_client_test.cc",
       "firewall_manager_test.cc",
       "image_readers/jpeg_reader_test.cc",
       "image_readers/png_reader_test.cc",

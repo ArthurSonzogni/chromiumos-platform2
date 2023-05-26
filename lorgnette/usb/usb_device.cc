@@ -4,12 +4,11 @@
 
 #include "lorgnette/usb/usb_device.h"
 
-#include <cstdint>
-
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <libusb.h>
+#include <set>
 
 #include "lorgnette/ippusb_device.h"
 #include "lorgnette/scanner_match.h"
@@ -20,7 +19,12 @@ namespace {
 
 const char kScannerTypeMFP[] = "multi-function peripheral";  // Matches SANE.
 
+// TODO(rishabhagr) Change this to actual values
+std::set<VidPid> kScannersRequiringDlc = {};
+
 }  // namespace
+
+UsbDevice::UsbDevice() : dlc_backend_scanners_(&kScannersRequiringDlc) {}
 
 uint16_t UsbDevice::GetVid() const {
   return vid_;
@@ -140,10 +144,19 @@ std::optional<ScannerInfo> UsbDevice::IppUsbScannerInfo() {
   return info;
 }
 
+std::set<VidPid>* UsbDevice::GetDlcBackendScanners() {
+  return dlc_backend_scanners_;
+}
+
+void UsbDevice::SetDlcBackendScanners(std::set<VidPid>* dlc_backend_scanners) {
+  CHECK(dlc_backend_scanners);
+  dlc_backend_scanners_ = dlc_backend_scanners;
+}
+
 bool UsbDevice::NeedsNonBundledBackend() const {
-  // TODO(rishabhagr): Look up USB VID/PID somewhere and decide if this
-  // device needs a DLC backend.
-  return false;
+  VidPid curr_device = {GetVid(), GetPid()};
+  return dlc_backend_scanners_->find(curr_device) !=
+         dlc_backend_scanners_->end();
 }
 
 }  // namespace lorgnette
