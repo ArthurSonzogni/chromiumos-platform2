@@ -79,30 +79,6 @@ std::optional<int64_t> GetStorageSectorCount(const base::FilePath& node_path) {
   return sector_int;
 }
 
-// Get the logical block size of the storage given the |node_path|.
-int32_t GetStorageLogicalBlockSize(const base::FilePath& node_path) {
-  std::string block_size_str;
-  if (!base::ReadFileToString(
-          node_path.Append("queue").Append("logical_block_size"),
-          &block_size_str)) {
-    LOG(WARNING) << "The storage driver does not specify its logical block "
-                    "size in sysfs. Use default value instead.";
-    return kDefaultBytesPerSector;
-  }
-  int32_t logical_block_size;
-  if (!StringToInt(block_size_str, &logical_block_size)) {
-    LOG(WARNING) << "Failed to convert retrieved block size to integer. Use "
-                    "default value instead";
-    return kDefaultBytesPerSector;
-  }
-  if (logical_block_size <= 0) {
-    LOG(WARNING) << "The value of logical block size " << logical_block_size
-                 << " seems erroneous. Use default value instead.";
-    return kDefaultBytesPerSector;
-  }
-  return logical_block_size;
-}
-
 }  // namespace
 
 StorageFunction::DataType StorageFunction::EvalImpl() const {
@@ -122,15 +98,15 @@ StorageFunction::DataType StorageFunction::EvalImpl() const {
 
     // Get size of storage.
     const auto sector_count = GetStorageSectorCount(node_path);
-    const int32_t logical_block_size = GetStorageLogicalBlockSize(node_path);
     if (!sector_count) {
       node_res->SetStringKey("sectors", "-1");
       node_res->SetStringKey("size", "-1");
     } else {
       node_res->SetStringKey("sectors",
                              base::NumberToString(sector_count.value()));
-      node_res->SetStringKey("size", base::NumberToString(sector_count.value() *
-                                                          logical_block_size));
+      node_res->SetStringKey(
+          "size",
+          base::NumberToString(sector_count.value() * kDefaultBytesPerSector));
     }
 
     result.Append(std::move(*node_res));

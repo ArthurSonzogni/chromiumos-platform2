@@ -17,7 +17,6 @@ namespace runtime_probe {
 namespace {
 
 constexpr auto kStorageDirPath("sys/class/block/");
-constexpr auto kDefaultBytesPerSector = 512;
 
 class FakeStorageFunction : public StorageFunction {
   using StorageFunction::StorageFunction;
@@ -55,10 +54,8 @@ TEST_F(StorageFunctionTest, ProbeStorage) {
 
   SetFile({kStorageDirPath, "blk1/removable"}, "0");
   SetFile({kStorageDirPath, "blk1/size"}, "100");
-  SetFile({kStorageDirPath, "blk1/queue/logical_block_size"}, "5");
   SetFile({kStorageDirPath, "blk2/removable"}, "0");
   SetFile({kStorageDirPath, "blk2/size"}, "200");
-  SetFile({kStorageDirPath, "blk2/queue/logical_block_size"}, "10");
 
   const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
   probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
@@ -85,7 +82,7 @@ TEST_F(StorageFunctionTest, ProbeStorage) {
         "field_2": "value_2",
         "path": "%s",
         "sectors": "100",
-        "size": "500"
+        "size": "51200"
       },
       {
         "field_3": "value_3",
@@ -93,7 +90,7 @@ TEST_F(StorageFunctionTest, ProbeStorage) {
         "field_5": "value_5",
         "path": "%s",
         "sectors": "200",
-        "size": "2000"
+        "size": "102400"
       }
     ]
   )JSON",
@@ -108,7 +105,6 @@ TEST_F(StorageFunctionTest, RemovableStorage) {
   // The storage device is removable.
   SetFile({kStorageDirPath, "blk1/removable"}, "1");
   SetFile({kStorageDirPath, "blk1/size"}, "100");
-  SetFile({kStorageDirPath, "blk1/queue/logical_block_size"}, "5");
 
   const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
   probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
@@ -128,7 +124,6 @@ TEST_F(StorageFunctionTest, NoRemovableProperty) {
 
   // No file for removable property.
   SetFile({kStorageDirPath, "blk1/size"}, "100");
-  SetFile({kStorageDirPath, "blk1/queue/logical_block_size"}, "5");
 
   const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
   probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
@@ -148,7 +143,6 @@ TEST_F(StorageFunctionTest, LoopbackDevice) {
 
   SetFile({kStorageDirPath, "loop0/removable"}, "0");
   SetFile({kStorageDirPath, "loop0/size"}, "100");
-  SetFile({kStorageDirPath, "loop0/queue/logical_block_size"}, "5");
 
   const auto loop0_path = GetPathUnderRoot({kStorageDirPath, "loop0"});
   probe_function->sysfs_map[loop0_path] = *base::JSONReader::Read(R"({
@@ -168,7 +162,6 @@ TEST_F(StorageFunctionTest, DmVerityDevice) {
 
   SetFile({kStorageDirPath, "dm-0/removable"}, "0");
   SetFile({kStorageDirPath, "dm-0/size"}, "100");
-  SetFile({kStorageDirPath, "dm-0/queue/logical_block_size"}, "5");
 
   const auto dm0_path = GetPathUnderRoot({kStorageDirPath, "dm-0"});
   probe_function->sysfs_map[dm0_path] = *base::JSONReader::Read(R"({
@@ -188,10 +181,8 @@ TEST_F(StorageFunctionTest, NoSysfsResult) {
 
   SetFile({kStorageDirPath, "blk1/removable"}, "0");
   SetFile({kStorageDirPath, "blk1/size"}, "100");
-  SetFile({kStorageDirPath, "blk1/queue/logical_block_size"}, "5");
   SetFile({kStorageDirPath, "blk2/removable"}, "0");
   SetFile({kStorageDirPath, "blk2/size"}, "200");
-  SetFile({kStorageDirPath, "blk2/queue/logical_block_size"}, "10");
 
   // No sysfs probe result for blk2.
   const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
@@ -208,7 +199,7 @@ TEST_F(StorageFunctionTest, NoSysfsResult) {
         "field_1": "value_1",
         "path": "%s",
         "sectors": "100",
-        "size": "500"
+        "size": "51200"
       }
     ]
   )JSON",
@@ -221,7 +212,6 @@ TEST_F(StorageFunctionTest, NoSectorCount) {
 
   // No file for storage sector count.
   SetFile({kStorageDirPath, "blk1/removable"}, "0");
-  SetFile({kStorageDirPath, "blk1/queue/logical_block_size"}, "5");
 
   const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
   probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
@@ -251,7 +241,6 @@ TEST_F(StorageFunctionTest, InvalidSectorCount) {
   // Invalid format for storage sector count.
   SetFile({kStorageDirPath, "blk1/removable"}, "0");
   SetFile({kStorageDirPath, "blk1/size"}, "invalid format");
-  SetFile({kStorageDirPath, "blk1/queue/logical_block_size"}, "5");
 
   const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
   probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
@@ -272,98 +261,6 @@ TEST_F(StorageFunctionTest, InvalidSectorCount) {
     ]
   )JSON",
       blk1_path.value().c_str()));
-  EXPECT_EQ(result, ans);
-}
-
-TEST_F(StorageFunctionTest, NoLogicalBlockSize) {
-  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
-
-  // No file for storage logical block size.
-  SetFile({kStorageDirPath, "blk1/removable"}, "0");
-  SetFile({kStorageDirPath, "blk1/size"}, "100");
-
-  const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
-  probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
-      "field_1": "value_1"
-  })");
-
-  auto result = probe_function->Eval();
-  // For results without logical block size, get |kDefaultBytesPerSector| for
-  // logical block size.
-  auto ans = CreateProbeResultFromJson(base::StringPrintf(
-      R"JSON(
-    [
-      {
-        "field_1": "value_1",
-        "path": "%s",
-        "sectors": "100",
-        "size": "%d"
-      }
-    ]
-  )JSON",
-      blk1_path.value().c_str(), kDefaultBytesPerSector * 100));
-  EXPECT_EQ(result, ans);
-}
-
-TEST_F(StorageFunctionTest, InvalidLogicalBlockSize) {
-  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
-
-  // Invalid format for storage logical block size.
-  SetFile({kStorageDirPath, "blk1/removable"}, "0");
-  SetFile({kStorageDirPath, "blk1/size"}, "100");
-  SetFile({kStorageDirPath, "blk1/queue/logical_block_size"}, "invalid format");
-
-  const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
-  probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
-      "field_1": "value_1"
-  })");
-
-  auto result = probe_function->Eval();
-  // For results with invalid logical block size, get |kDefaultBytesPerSector|
-  // for logical block size.
-  auto ans = CreateProbeResultFromJson(base::StringPrintf(
-      R"JSON(
-    [
-      {
-        "field_1": "value_1",
-        "path": "%s",
-        "sectors": "100",
-        "size": "%d"
-      }
-    ]
-  )JSON",
-      blk1_path.value().c_str(), kDefaultBytesPerSector * 100));
-  EXPECT_EQ(result, ans);
-}
-
-TEST_F(StorageFunctionTest, NonpositiveLogicalBlockSize) {
-  auto probe_function = CreateProbeFunction<FakeStorageFunction>();
-
-  // Nonpositive number for storage logical block size.
-  SetFile({kStorageDirPath, "blk1/removable"}, "0");
-  SetFile({kStorageDirPath, "blk1/size"}, "100");
-  SetFile({kStorageDirPath, "blk1/queue/logical_block_size"}, "-1");
-
-  const auto blk1_path = GetPathUnderRoot({kStorageDirPath, "blk1"});
-  probe_function->sysfs_map[blk1_path] = *base::JSONReader::Read(R"({
-      "field_1": "value_1"
-  })");
-
-  auto result = probe_function->Eval();
-  // For results with nonpositive logical block size, get
-  // |kDefaultBytesPerSector| for logical block size.
-  auto ans = CreateProbeResultFromJson(base::StringPrintf(
-      R"JSON(
-    [
-      {
-        "field_1": "value_1",
-        "path": "%s",
-        "sectors": "100",
-        "size": "%d"
-      }
-    ]
-  )JSON",
-      blk1_path.value().c_str(), kDefaultBytesPerSector * 100));
   EXPECT_EQ(result, ans);
 }
 
