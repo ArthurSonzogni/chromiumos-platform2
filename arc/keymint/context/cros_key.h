@@ -17,7 +17,9 @@
 #include <keymaster/key_factory.h>
 #include <keymaster/operation.h>
 
+#include "arc/keymint/context/chaps_client.h"
 #include "arc/keymint/context/context_adaptor.h"
+#include "arc/keymint/context/crypto_operation.h"
 #include "arc/keymint/key_data.pb.h"
 
 namespace arc::keymint::context {
@@ -105,6 +107,7 @@ class CrosKeyFactory : public ::keymaster::KeyFactory {
 // Base class for ChromeOS keys.
 class CrosKey : public ::keymaster::Key {
  public:
+  CrosKey() = delete;
   CrosKey(::keymaster::AuthorizationSet&& hw_enforced,
           ::keymaster::AuthorizationSet&& sw_enforced,
           const CrosKeyFactory* key_factory,
@@ -183,6 +186,45 @@ class CrosOperationFactory : public ::keymaster::OperationFactory {
  private:
   keymaster_algorithm_t algorithm_;
   keymaster_purpose_t purpose_;
+};
+
+class CrosOperation : public ::keymaster::Operation {
+ public:
+  explicit CrosOperation(keymaster_purpose_t purpose, ChapsKey&& key);
+  CrosOperation() = delete;
+  ~CrosOperation() override;
+  // Not copyable nor assignable.
+  CrosOperation(const CrosOperation&) = delete;
+  CrosOperation& operator=(const CrosOperation&) = delete;
+
+  // Begins the operation.
+  keymaster_error_t Begin(
+      const ::keymaster::AuthorizationSet& /* input_params */,
+      ::keymaster::AuthorizationSet* /* output_params */) override;
+
+  // Updates the operation with intermediate input and maybe produces
+  // intermediate output.
+  keymaster_error_t Update(
+      const ::keymaster::AuthorizationSet& /* input_params */,
+      const ::keymaster::Buffer& input,
+      ::keymaster::AuthorizationSet* /* output_params */,
+      ::keymaster::Buffer* /* output */,
+      size_t* input_consumed) override;
+
+  // Finishes the operation, possibly given a last piece of input and producing
+  // the final output.
+  keymaster_error_t Finish(
+      const ::keymaster::AuthorizationSet& /* input_params */,
+      const ::keymaster::Buffer& input,
+      const ::keymaster::Buffer& /* signature */,
+      ::keymaster::AuthorizationSet* /* output_params */,
+      ::keymaster::Buffer* output) override;
+
+  // Aborts the operation.
+  keymaster_error_t Abort() override;
+
+ private:
+  std::unique_ptr<CryptoOperation> operation_;
 };
 
 }  // namespace arc::keymint::context

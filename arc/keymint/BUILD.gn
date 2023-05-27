@@ -346,6 +346,7 @@ if (use.test) {
     sources = [
       "context/chaps_client_test.cc",
       "context/chaps_crypto_operation_test.cc",
+      "context/cros_key_test.cc",
       "context/crypto_operation_test.cc",
       "conversion.cc",
       "conversion_test.cc",
