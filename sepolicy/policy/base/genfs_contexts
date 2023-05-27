@@ -52,6 +52,7 @@ genfscon proc /sys/vm/mmap_rnd_bits u:object_r:proc_security:s0
 genfscon proc /sys/vm/mmap_rnd_compat_bits u:object_r:proc_security:s0
 genfscon proc /sys/vm/page-cluster u:object_r:proc_page_cluster:s0
 genfscon proc /sysrq-trigger u:object_r:proc_sysrq:s0
+genfscon proc /timer_highres u:object_r:proc_timer:s0
 genfscon proc /timer_list u:object_r:proc_timer:s0
 genfscon proc /timer_stats u:object_r:proc_timer:s0
 genfscon proc /uid_cputime/remove_uid_range u:object_r:proc_uid_cputime_removeuid:s0
