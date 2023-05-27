@@ -1234,4 +1234,23 @@ TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadDeviceId) {
       SerializeAsBlob(data), em::PolicyFetchRequest::SHA1_RSA));
 }
 
+TEST_F(DevicePolicyServiceTest, MayUpdateSystemSettings) {
+  MockNssUtil nss;
+  InitService(&nss, true);
+  EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
+
+  // We shouldn't update system settings if kMainfwType isn't set.
+  EXPECT_FALSE(service_->MayUpdateSystemSettings());
+
+  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType,
+                                        Crossystem::kMainfwTypeNonchrome);
+  // We shouldn't update system settings if the device is non chrome.
+  EXPECT_FALSE(service_->MayUpdateSystemSettings());
+
+  // Any FW type that's not "nonchrome" is a valid FW to update.
+  crossystem_.VbSetSystemPropertyString(Crossystem::kMainfwType, "normal");
+  // We should update a "normal" ChromeOS FW.
+  EXPECT_TRUE(service_->MayUpdateSystemSettings());
+}
+
 }  // namespace login_manager

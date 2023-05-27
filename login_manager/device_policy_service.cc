@@ -491,9 +491,12 @@ bool DevicePolicyService::MayUpdateSystemSettings() {
   }
 
   // Check whether device is running on ChromeOS firmware.
-  char buffer[Crossystem::kVbMaxStringProperty];
+  // This null clean up is just workaround to pass the unittests that is set up
+  // a fake working differently from the real one.
+  // TODO(spothire): get rid of the workaround.
+  char buffer[Crossystem::kVbMaxStringProperty] = {'\0'};
   if (crossystem_->VbGetSystemPropertyString(Crossystem::kMainfwType, buffer,
-                                             sizeof(buffer) != 0) ||
+                                             sizeof(buffer)) != 0 ||
       strcmp(Crossystem::kMainfwTypeNonchrome, buffer) == 0) {
     return false;
   }
