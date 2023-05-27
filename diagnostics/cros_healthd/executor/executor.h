@@ -26,7 +26,6 @@
 #include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/cros_healthd/process/process_with_output.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace org::chromium {

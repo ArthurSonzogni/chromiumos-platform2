@@ -25,7 +25,6 @@ source_set("libcros_healthd_executor") {
     "//diagnostics/base",
     "//diagnostics/cros_healthd/executor/utils",
     "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
-    "//diagnostics/cros_healthd/process:libcros_healthd_process",
     "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
   ]
 }
