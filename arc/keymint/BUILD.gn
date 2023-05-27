@@ -205,6 +205,7 @@ shared_library("libarckeymint_context") {
     "context/context_adaptor.cc",
     "context/cros_key.cc",
     "context/crypto_operation.cc",
+    "context/openssl_utils.cc",
   ]
   public_configs = [ ":libarckeymint_context_config" ]
   configs += [
@@ -348,6 +349,7 @@ if (use.test) {
       "context/chaps_crypto_operation_test.cc",
       "context/cros_key_test.cc",
       "context/crypto_operation_test.cc",
+      "context/openssl_utils_test.cc",
       "conversion.cc",
       "conversion_test.cc",
     ]
