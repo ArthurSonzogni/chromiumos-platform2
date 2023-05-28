@@ -59,6 +59,7 @@ pkg_config("target_defaults") {
     "USE_CHEETS=${use.cheets}",
     "USE_NSS_CERTS=1",
     "USE_SYSTEMD=${use.systemd}",
+    "USE_APPLY_LANDLOCK_POLICY=0",
     "USE_USER_SESSION_ISOLATION=${use.user_session_isolation}",
   ]
 }
@@ -92,6 +93,7 @@ static_library("libsession_manager") {
     "file_checker.cc",
     "generator_job.cc",
     "key_generator.cc",
+    "landlock_policy.cc",
     "liveness_checker_impl.cc",
     "login_metrics.cc",
     "login_screen_storage.cc",
@@ -187,6 +189,7 @@ if (use.test) {
       "feature_flags_util_test.cc",
       "key_generator_test.cc",
       "keygen_worker.cc",
+      "landlock_policy_test.cc",
       "liveness_checker_impl_test.cc",
       "login_metrics_test.cc",
       "login_screen_storage_test.cc",
