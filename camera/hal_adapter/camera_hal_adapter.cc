@@ -103,10 +103,18 @@ CameraHalAdapter::~CameraHalAdapter() {
   set_camera_metadata_vendor_ops(nullptr);
 }
 
-bool CameraHalAdapter::Start(GpuResources* gpu_resources) {
+bool CameraHalAdapter::Start() {
   TRACE_HAL_ADAPTER();
 
-  gpu_resources_ = gpu_resources;
+  if (GpuResources::IsSupported()) {
+    root_gpu_resources_ = std::make_unique<GpuResources>(
+        GpuResourcesOptions{.name = "RootGpuResources"});
+    if (!root_gpu_resources_->Initialize()) {
+      LOGF(ERROR) << "Failed to initialize root GPU resources";
+      root_gpu_resources_ = nullptr;
+    }
+    DCHECK(root_gpu_resources_);
+  }
 
   if (!camera_module_thread_.Start()) {
     LOGF(ERROR) << "Failed to start CameraModuleThread";
@@ -296,7 +304,7 @@ int32_t CameraHalAdapter::OpenDevice(
               .set_face_detection_result_callback =
                   std::move(set_face_detection_result_callback),
               .sw_privacy_switch_stream_manipulator_enabled = false},
-          &stream_manipulator_runtime_options_, gpu_resources_,
+          &stream_manipulator_runtime_options_, root_gpu_resources_.get(),
           mojo_manager_token_),
       do_notify_invalid_capture_request);
 
@@ -993,8 +1001,8 @@ void CameraHalAdapter::CloseDevice(int32_t camera_id,
   camera_metrics_->SendSessionDuration(session_timer_map_[camera_id].Elapsed());
   session_timer_map_.erase(camera_id);
 
-  if (gpu_resources_) {
-    gpu_resources_->gpu_task_runner()->PostTask(
+  if (root_gpu_resources_) {
+    root_gpu_resources_->gpu_task_runner()->PostTask(
         FROM_HERE, base::BindOnce([]() {
           // To end the last event posted by the camera device on the GPU thread
           // properly.

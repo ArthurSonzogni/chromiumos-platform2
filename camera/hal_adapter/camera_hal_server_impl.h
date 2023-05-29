@@ -23,7 +23,6 @@
 #include "camera/mojo/cros_camera_service.mojom.h"
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
 #include "cros-camera/cros_camera_hal.h"
-#include "gpu/gpu_resources.h"
 #include "hal_adapter/camera_hal_adapter.h"
 
 namespace cros {
@@ -154,8 +153,6 @@ class CameraHalServerImpl {
   // adapter serves two clients: Chrome VideoCaptureDeviceFactory and Android
   // cameraserver process.
   std::unique_ptr<CameraHalAdapter> camera_hal_adapter_;
-
-  std::unique_ptr<GpuResources> root_gpu_resources_;
 
   THREAD_CHECKER(thread_checker_);
 };
