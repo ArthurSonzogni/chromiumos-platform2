@@ -258,9 +258,16 @@ void CrosHealthdDiagnosticsService::RunCpuCacheRoutine(
     mojo_ipc::NullableUint32Ptr length_seconds,
     RunCpuCacheRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
-  if (!length_seconds.is_null())
+  if (!length_seconds.is_null()) {
     exec_duration = base::Seconds(length_seconds->value);
-  RunRoutine(routine_factory_->MakeCpuCacheRoutine(exec_duration),
+  }
+  auto cpu_cache_routine_v2 = std::make_unique<RoutineAdapter>(
+      mojo_ipc::RoutineArgument::Tag::kCpuCache);
+  routine_service_->CreateRoutine(
+      mojo_ipc::RoutineArgument::NewCpuCache(
+          mojo_ipc::CpuCacheRoutineArgument::New(exec_duration)),
+      cpu_cache_routine_v2->BindNewPipeAndPassReceiver());
+  RunRoutine(std::move(cpu_cache_routine_v2),
              mojo_ipc::DiagnosticRoutineEnum::kCpuCache, std::move(callback));
 }
 

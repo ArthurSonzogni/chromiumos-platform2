@@ -483,9 +483,6 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunAcPowerRoutine) {
 TEST_F(CrosHealthdDiagnosticsServiceTest, RunCpuCacheRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
-  routine_factory()->SetNonInteractiveStatus(
-      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
-      /*output=*/"");
 
   mojo_ipc::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
