@@ -1181,6 +1181,10 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
     } else if (gpu_api == "opencl") {
       new_config.segmentation_gpu_api = GpuApi::kOpenCL;
       new_config.relighting_gpu_api = GpuApi::kOpenCL;
+    } else if (gpu_api == "vulkan") {
+      new_config.segmentation_gpu_api = GpuApi::kVulkan;
+      // Relighting stays as OpenCL in the Vulkan case
+      new_config.relighting_gpu_api = GpuApi::kOpenCL;
     } else if (gpu_api == "any") {
       new_config.segmentation_gpu_api = GpuApi::kAny;
       new_config.relighting_gpu_api = GpuApi::kAny;
@@ -1222,7 +1226,11 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
     LOGF(INFO) << "Segmentation Model Type: " << segmentation_model_type;
   }
 
-  SetEffect(std::move(new_config));
+  // Only apply the effect if something changed, as sometimes this function
+  // can get called several times after one file save which is expensive.
+  if (new_config != last_set_effect_config_) {
+    SetEffect(std::move(new_config));
+  }
 }
 
 void EffectsStreamManipulatorImpl::SetEffect(EffectsConfig new_config) {
