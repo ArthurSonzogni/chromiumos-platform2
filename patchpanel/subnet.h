@@ -68,19 +68,6 @@ class BRILLO_EXPORT Subnet {
   // Returns the base CIDR of the subnet.
   const net_base::IPv4CIDR& base_cidr() const { return base_cidr_; }
 
-  // Returns the netmask in network-byte order.
-  uint32_t Netmask() const;
-
-  // Returns the prefix in network-byte order.
-  uint32_t Prefix() const;
-
-  // Returns the prefix length.
-  int PrefixLength() const;
-
-  // Returns the CIDR representation of this subnet, for instance
-  // 192.168.0.0/24.
-  std::string ToCidrString() const;
-
  private:
   // Returns true if the address that is relative to the base address by
   // |offset| is in the subnet.

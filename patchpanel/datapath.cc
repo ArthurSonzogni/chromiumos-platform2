@@ -894,16 +894,13 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  const auto remote_cidr = IPv4CIDR::CreateFromAddressAndPrefix(
+  // nsinfo.peer_subnet->base_cidr().prefix_length() must be a valid IPv4 prefix
+  // length, so CreateFromAddressAndPrefix() must return a valid IPv4CIDR.
+  const auto remote_cidr = *IPv4CIDR::CreateFromAddressAndPrefix(
       ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(2)),
-      nsinfo.peer_subnet->PrefixLength());
-  if (!remote_cidr) {
-    LOG(ERROR) << "Failed to create remote CIDR: prefix length="
-               << nsinfo.peer_subnet->PrefixLength();
-    return false;
-  }
+      nsinfo.peer_subnet->base_cidr().prefix_length());
   if (!ConnectVethPair(nsinfo.pid, nsinfo.netns_name, nsinfo.host_ifname,
-                       nsinfo.peer_ifname, nsinfo.peer_mac_addr, *remote_cidr,
+                       nsinfo.peer_ifname, nsinfo.peer_mac_addr, remote_cidr,
                        /*enable_multicast=*/false)) {
     LOG(ERROR) << "Failed to create veth pair for"
                   " namespace pid "
@@ -912,15 +909,12 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  const auto peer_cidr = IPv4CIDR::CreateFromAddressAndPrefix(
+  // nsinfo.peer_subnet->base_cidr().prefix_length() must be a valid IPv4 prefix
+  // length, so CreateFromAddressAndPrefix() must return a valid IPv4CIDR.
+  const auto peer_cidr = *IPv4CIDR::CreateFromAddressAndPrefix(
       ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1)),
-      nsinfo.peer_subnet->PrefixLength());
-  if (!peer_cidr) {
-    LOG(ERROR) << "Cannot create IPv4CIDR: prefix length="
-               << nsinfo.peer_subnet->PrefixLength();
-    return false;
-  }
-  if (!ConfigureInterface(nsinfo.host_ifname, nsinfo.host_mac_addr, *peer_cidr,
+      nsinfo.peer_subnet->base_cidr().prefix_length());
+  if (!ConfigureInterface(nsinfo.host_ifname, nsinfo.host_mac_addr, peer_cidr,
                           /*up=*/true, /*enable_multicast=*/false)) {
     LOG(ERROR) << "Cannot configure host interface " << nsinfo.host_ifname;
     RemoveInterface(nsinfo.host_ifname);
@@ -2372,7 +2366,7 @@ std::ostream& operator<<(std::ostream& stream,
   stream << ", route_on_vpn: " << nsinfo.route_on_vpn
          << ", host_ifname: " << nsinfo.host_ifname
          << ", peer_ifname: " << nsinfo.peer_ifname
-         << ", peer_subnet: " << nsinfo.peer_subnet->ToCidrString() << '}';
+         << ", peer_subnet: " << nsinfo.peer_subnet->base_cidr() << '}';
   return stream;
 }
 

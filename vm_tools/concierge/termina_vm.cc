@@ -1081,19 +1081,19 @@ uint32_t TerminaVm::IPv4Address() const {
 }
 
 uint32_t TerminaVm::Netmask() const {
-  return subnet_->Netmask();
+  return subnet_->base_cidr().ToNetmask().ToInAddr().s_addr;
 }
 
 uint32_t TerminaVm::ContainerNetmask() const {
   if (container_subnet_)
-    return container_subnet_->Netmask();
+    return container_subnet_->base_cidr().ToNetmask().ToInAddr().s_addr;
 
   return INADDR_ANY;
 }
 
 size_t TerminaVm::ContainerPrefixLength() const {
   if (container_subnet_)
-    return container_subnet_->PrefixLength();
+    return container_subnet_->base_cidr().prefix_length();
 
   return 0;
 }

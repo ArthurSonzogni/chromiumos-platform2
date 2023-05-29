@@ -44,63 +44,6 @@ constexpr uint32_t kExpectedAvailableCount[] = {
     0x2,        0x0,
 };
 
-// kExpectedNetmask[i] == Netmask() for subnet with prefix_length i.
-constexpr uint32_t kExpectedNetmask[] = {
-    Ipv4Addr(0, 0, 0, 0),         Ipv4Addr(128, 0, 0, 0),
-    Ipv4Addr(192, 0, 0, 0),       Ipv4Addr(224, 0, 0, 0),
-    Ipv4Addr(240, 0, 0, 0),       Ipv4Addr(248, 0, 0, 0),
-    Ipv4Addr(252, 0, 0, 0),       Ipv4Addr(254, 0, 0, 0),
-    Ipv4Addr(255, 0, 0, 0),       Ipv4Addr(255, 128, 0, 0),
-    Ipv4Addr(255, 192, 0, 0),     Ipv4Addr(255, 224, 0, 0),
-    Ipv4Addr(255, 240, 0, 0),     Ipv4Addr(255, 248, 0, 0),
-    Ipv4Addr(255, 252, 0, 0),     Ipv4Addr(255, 254, 0, 0),
-    Ipv4Addr(255, 255, 0, 0),     Ipv4Addr(255, 255, 128, 0),
-    Ipv4Addr(255, 255, 192, 0),   Ipv4Addr(255, 255, 224, 0),
-    Ipv4Addr(255, 255, 240, 0),   Ipv4Addr(255, 255, 248, 0),
-    Ipv4Addr(255, 255, 252, 0),   Ipv4Addr(255, 255, 254, 0),
-    Ipv4Addr(255, 255, 255, 0),   Ipv4Addr(255, 255, 255, 128),
-    Ipv4Addr(255, 255, 255, 192), Ipv4Addr(255, 255, 255, 224),
-    Ipv4Addr(255, 255, 255, 240), Ipv4Addr(255, 255, 255, 248),
-    Ipv4Addr(255, 255, 255, 252), Ipv4Addr(255, 255, 255, 254),
-};
-
-// kExpectedPrefix[i] == Prefix() for subnet with 4 * i offset to
-// |kVmBaseAddress|.
-constexpr uint32_t kExpectedPrefix[] = {
-    Ipv4Addr(100, 115, 92, 24),  Ipv4Addr(100, 115, 92, 28),
-    Ipv4Addr(100, 115, 92, 32),  Ipv4Addr(100, 115, 92, 36),
-    Ipv4Addr(100, 115, 92, 40),  Ipv4Addr(100, 115, 92, 44),
-    Ipv4Addr(100, 115, 92, 48),  Ipv4Addr(100, 115, 92, 52),
-    Ipv4Addr(100, 115, 92, 56),  Ipv4Addr(100, 115, 92, 60),
-    Ipv4Addr(100, 115, 92, 64),  Ipv4Addr(100, 115, 92, 68),
-    Ipv4Addr(100, 115, 92, 72),  Ipv4Addr(100, 115, 92, 76),
-    Ipv4Addr(100, 115, 92, 80),  Ipv4Addr(100, 115, 92, 84),
-    Ipv4Addr(100, 115, 92, 88),  Ipv4Addr(100, 115, 92, 92),
-    Ipv4Addr(100, 115, 92, 96),  Ipv4Addr(100, 115, 92, 100),
-    Ipv4Addr(100, 115, 92, 104), Ipv4Addr(100, 115, 92, 108),
-    Ipv4Addr(100, 115, 92, 112), Ipv4Addr(100, 115, 92, 116),
-    Ipv4Addr(100, 115, 92, 120), Ipv4Addr(100, 115, 92, 124),
-    Ipv4Addr(100, 115, 92, 128), Ipv4Addr(100, 115, 92, 132),
-    Ipv4Addr(100, 115, 92, 136), Ipv4Addr(100, 115, 92, 140),
-    Ipv4Addr(100, 115, 92, 144), Ipv4Addr(100, 115, 92, 148),
-};
-
-// kExpectedCidrString[i] == ToCidrString() for subnet with 4 * i offset to
-// |kVmBaseAddress|.
-const char* kExpectedCidrString[] = {
-    "100.115.92.24/30",  "100.115.92.28/30",  "100.115.92.32/30",
-    "100.115.92.36/30",  "100.115.92.40/30",  "100.115.92.44/30",
-    "100.115.92.48/30",  "100.115.92.52/30",  "100.115.92.56/30",
-    "100.115.92.60/30",  "100.115.92.64/30",  "100.115.92.68/30",
-    "100.115.92.72/30",  "100.115.92.76/30",  "100.115.92.80/30",
-    "100.115.92.84/30",  "100.115.92.88/30",  "100.115.92.92/30",
-    "100.115.92.96/30",  "100.115.92.100/30", "100.115.92.104/30",
-    "100.115.92.108/30", "100.115.92.112/30", "100.115.92.116/30",
-    "100.115.92.120/30", "100.115.92.124/30", "100.115.92.128/30",
-    "100.115.92.132/30", "100.115.92.136/30", "100.115.92.140/30",
-    "100.115.92.144/30", "100.115.92.148/30",
-};
-
 class VmSubnetTest : public ::testing::TestWithParam<uint32_t> {};
 class ContainerSubnetTest : public ::testing::TestWithParam<uint32_t> {};
 class PrefixTest : public ::testing::TestWithParam<int> {};
@@ -110,29 +53,6 @@ void SetTrue(bool* value) {
 }
 
 }  // namespace
-
-TEST_P(VmSubnetTest, Prefix) {
-  uint32_t index = GetParam();
-  Subnet subnet(
-      *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-          ConvertUint32ToIPv4Address(AddOffset(kVmBaseAddress, index * 4)),
-          kVmSubnetPrefixLength),
-      base::DoNothing());
-
-  EXPECT_EQ(kExpectedPrefix[index], subnet.Prefix());
-}
-
-TEST_P(VmSubnetTest, CidrString) {
-  uint32_t index = GetParam();
-  Subnet subnet(
-      *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-          ConvertUint32ToIPv4Address(AddOffset(kVmBaseAddress, index * 4)),
-          kVmSubnetPrefixLength),
-      base::DoNothing());
-
-  EXPECT_EQ(std::string(kExpectedCidrString[index]), subnet.ToCidrString());
-  EXPECT_EQ(kExpectedCidrString[index], subnet.ToCidrString());
-}
 
 TEST_P(VmSubnetTest, AddressAtOffset) {
   uint32_t index = GetParam();
@@ -179,15 +99,6 @@ TEST_P(PrefixTest, AvailableCount) {
   EXPECT_EQ(kExpectedAvailableCount[prefix_length], subnet.AvailableCount());
 }
 
-TEST_P(PrefixTest, Netmask) {
-  int prefix_length = GetParam();
-
-  Subnet subnet(
-      *net_base::IPv4CIDR::CreateFromAddressAndPrefix({}, prefix_length),
-      base::DoNothing());
-  EXPECT_EQ(kExpectedNetmask[prefix_length], subnet.Netmask());
-}
-
 INSTANTIATE_TEST_SUITE_P(AllValues, PrefixTest, ::testing::Range(8, 32));
 
 TEST(SubtnetAddress, StringConversion) {
@@ -195,7 +106,7 @@ TEST(SubtnetAddress, StringConversion) {
                               ConvertUint32ToIPv4Address(kContainerBaseAddress),
                               kContainerSubnetPrefixLength),
                           base::DoNothing());
-  EXPECT_EQ("100.115.92.192/28", container_subnet.ToCidrString());
+  EXPECT_EQ("100.115.92.192/28", container_subnet.base_cidr().ToString());
   {
     EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.193/28"),
               container_subnet.AllocateAtOffset(1)->cidr());
@@ -211,7 +122,7 @@ TEST(SubtnetAddress, StringConversion) {
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
           ConvertUint32ToIPv4Address(kVmBaseAddress), kVmSubnetPrefixLength),
       base::DoNothing());
-  EXPECT_EQ("100.115.92.24/30", vm_subnet.ToCidrString());
+  EXPECT_EQ("100.115.92.24/30", vm_subnet.base_cidr().ToString());
   {
     EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.25/30"),
               vm_subnet.AllocateAtOffset(1)->cidr());
@@ -223,7 +134,7 @@ TEST(SubtnetAddress, StringConversion) {
                               ConvertUint32ToIPv4Address(kParallelsBaseAddress),
                               kParallelsSubnetPrefixLength),
                           base::DoNothing());
-  EXPECT_EQ("100.115.92.128/28", parallels_subnet.ToCidrString());
+  EXPECT_EQ("100.115.92.128/28", parallels_subnet.base_cidr().ToString());
   {
     EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("100.115.92.129/28"),
               parallels_subnet.AllocateAtOffset(1)->cidr());

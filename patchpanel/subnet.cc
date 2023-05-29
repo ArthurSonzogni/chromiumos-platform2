@@ -77,22 +77,6 @@ uint32_t Subnet::AvailableCount() const {
   return static_cast<uint32_t>(addrs_.size()) - 2;
 }
 
-uint32_t Subnet::Netmask() const {
-  return base_cidr_.ToNetmask().ToInAddr().s_addr;
-}
-
-uint32_t Subnet::Prefix() const {
-  return base_cidr_.GetPrefixAddress().ToInAddr().s_addr;
-}
-
-int Subnet::PrefixLength() const {
-  return base_cidr_.prefix_length();
-}
-
-std::string Subnet::ToCidrString() const {
-  return base_cidr_.ToString();
-}
-
 void Subnet::Free(uint32_t offset) {
   DCHECK(IsValidOffset(offset));
 
