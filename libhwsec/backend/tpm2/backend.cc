@@ -35,7 +35,8 @@ BackendTpm2::BackendTpm2(Proxy& proxy,
       recovery_crypto_(context_, config_, key_management_, session_management_),
       u2f_(context_),
       attestation_(context_, config_, key_management_),
-      ro_data_(tpm_nvram_) {}
+      ro_data_(tpm_nvram_),
+      version_attestation_() {}
 
 BackendTpm2::~BackendTpm2() = default;
 

@@ -27,6 +27,7 @@
 #include "libhwsec/backend/storage.h"
 #include "libhwsec/backend/u2f.h"
 #include "libhwsec/backend/vendor.h"
+#include "libhwsec/backend/version_attestation.h"
 
 #if !defined(BUILD_LIBHWSEC) && !defined(LIBHWSEC_MOCK_BACKEND)
 #error "Don't include this file outside libhwsec!"
@@ -61,6 +62,7 @@ class Backend {
   using RecoveryCrypto = ::hwsec::RecoveryCrypto;
   using U2f = ::hwsec::U2f;
   using Attestation = ::hwsec::Attestation;
+  using VersionAttestation = ::hwsec::VersionAttestation;
 
   virtual ~Backend() = default;
 
@@ -103,6 +105,8 @@ class Backend {
       return GetU2f();
     else if constexpr (std::is_same_v<SubClass, Attestation>)
       return GetAttestation();
+    else if constexpr (std::is_same_v<SubClass, VersionAttestation>)
+      return GetVersionAttestation();
     NOTREACHED() << "Should not reach here.";
   }
 
@@ -125,6 +129,7 @@ class Backend {
   virtual RecoveryCrypto* GetRecoveryCrypto() = 0;
   virtual U2f* GetU2f() = 0;
   virtual Attestation* GetAttestation() = 0;
+  virtual VersionAttestation* GetVersionAttestation() = 0;
 };
 
 }  // namespace hwsec

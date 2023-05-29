@@ -29,6 +29,7 @@
 #include "libhwsec/backend/tpm2/trunks_context.h"
 #include "libhwsec/backend/tpm2/u2f.h"
 #include "libhwsec/backend/tpm2/vendor.h"
+#include "libhwsec/backend/tpm2/version_attestation.h"
 #include "libhwsec/middleware/middleware_derivative.h"
 #include "libhwsec/proxy/proxy.h"
 
@@ -64,6 +65,9 @@ class BackendTpm2 : public Backend {
   RecoveryCryptoTpm2& GetRecoveryCryptoTpm2() { return recovery_crypto_; }
   U2fTpm2& GetU2fTpm2() { return u2f_; }
   AttestationTpm2& GetAttestationTpm2() { return attestation_; }
+  VersionAttestationTpm2& GetVersionAttestationTpm2() {
+    return version_attestation_;
+  }
 
   void set_middleware_derivative_for_test(
       MiddlewareDerivative middleware_derivative) {
@@ -93,6 +97,9 @@ class BackendTpm2 : public Backend {
   RecoveryCrypto* GetRecoveryCrypto() override { return &recovery_crypto_; }
   U2f* GetU2f() override { return &u2f_; }
   Attestation* GetAttestation() override { return &attestation_; }
+  VersionAttestation* GetVersionAttestation() override {
+    return &version_attestation_;
+  }
 
   Proxy& proxy_;
   org::chromium::TpmManagerProxyInterface& tpm_manager_;
@@ -121,6 +128,7 @@ class BackendTpm2 : public Backend {
   U2fTpm2 u2f_;
   AttestationTpm2 attestation_;
   RoDataTpm2 ro_data_;
+  VersionAttestationTpm2 version_attestation_;
 };
 
 }  // namespace hwsec
