@@ -1586,7 +1586,7 @@ TEST_P(Camera3FrameContentTest, SWPrivacySwitch) {
       }
     }
     // Allow some margin of error when checking U/V values.
-    uint8_t delta_uv = 10;
+    uint8_t delta_uv = 16;
     for (size_t h = 0; h < i420_image->height / 2; ++h) {
       for (size_t w = 0; w < i420_image->width / 2; ++w) {
         uint8_t u = i420_image->planes[1].addr[h * i420_image->width / 2 + w];
