@@ -18,6 +18,9 @@
 
 #include "patchpanel/net_util.h"
 
+// TODO(akahuang): Change the unittest to concrete test cases, instead of using
+// lots of calculation and for loop inside the test. (go/tott/643)
+
 namespace patchpanel {
 namespace {
 
@@ -54,7 +57,7 @@ void SetTrue(bool* value) {
 
 }  // namespace
 
-TEST_P(VmSubnetTest, AddressAtOffset) {
+TEST_P(VmSubnetTest, CIDRAtOffset) {
   uint32_t index = GetParam();
   Subnet subnet(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
@@ -63,8 +66,11 @@ TEST_P(VmSubnetTest, AddressAtOffset) {
       base::DoNothing());
 
   for (uint32_t offset = 1; offset <= subnet.AvailableCount(); ++offset) {
-    uint32_t address = AddOffset(kVmBaseAddress, index * 4 + offset);
-    EXPECT_EQ(address, subnet.AddressAtOffset(offset));
+    const auto expected_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+        ConvertUint32ToIPv4Address(
+            AddOffset(kVmBaseAddress, index * 4 + offset)),
+        kVmSubnetPrefixLength);
+    EXPECT_EQ(expected_cidr, subnet.CIDRAtOffset(offset));
   }
 }
 
@@ -72,7 +78,7 @@ INSTANTIATE_TEST_SUITE_P(AllValues,
                          VmSubnetTest,
                          ::testing::Range(uint32_t{0}, uint32_t{26}));
 
-TEST_P(ContainerSubnetTest, AddressAtOffset) {
+TEST_P(ContainerSubnetTest, CIDRAtOffset) {
   uint32_t index = GetParam();
   Subnet subnet(*net_base::IPv4CIDR::CreateFromAddressAndPrefix(
                     ConvertUint32ToIPv4Address(
@@ -81,8 +87,11 @@ TEST_P(ContainerSubnetTest, AddressAtOffset) {
                 base::DoNothing());
 
   for (uint32_t offset = 1; offset <= subnet.AvailableCount(); ++offset) {
-    uint32_t address = AddOffset(kContainerBaseAddress, index * 16 + offset);
-    EXPECT_EQ(address, subnet.AddressAtOffset(offset));
+    const auto expected_cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+        ConvertUint32ToIPv4Address(
+            AddOffset(kContainerBaseAddress, index * 16 + offset)),
+        kContainerSubnetPrefixLength);
+    EXPECT_EQ(expected_cidr, subnet.CIDRAtOffset(offset));
   }
 }
 

@@ -56,11 +56,11 @@ class BRILLO_EXPORT Subnet {
   // address.
   std::unique_ptr<SubnetAddress> AllocateAtOffset(uint32_t offset);
 
-  // Returns the address at the given |offset| in network-byte order. Returns
-  // INADDR_ANY if the offset exceeds the available IPs in the subnet.
-  // Available IPs do not include the network id or the broadcast address.
-  // |offset| is relative to the base address.
-  uint32_t AddressAtOffset(uint32_t offset) const;
+  // Returns the CIDR which address is at the given |offset| and the same prefix
+  // length as |base_cidr_|. Returns std::nullopt if the offset exceeds the
+  // available IPs in the subnet. Available IPs do not include the subnet base
+  // address or the broadcast address. |offset| is relative to the base address.
+  std::optional<net_base::IPv4CIDR> CIDRAtOffset(uint32_t offset) const;
 
   // Returns the number of available IPs in this subnet.
   uint32_t AvailableCount() const;

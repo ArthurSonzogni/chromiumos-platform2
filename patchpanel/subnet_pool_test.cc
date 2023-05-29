@@ -75,8 +75,7 @@ TEST(SubnetPool, Release) {
   subnets.pop_front();
 
   // Store the gateway and address for testing later.
-  uint32_t gateway = subnet->AddressAtOffset(1);
-  uint32_t address = subnet->AddressAtOffset(2);
+  const auto base_cidr = subnet->base_cidr();
 
   // Release the subnet.
   subnet.reset();
@@ -85,8 +84,7 @@ TEST(SubnetPool, Release) {
   subnet = pool->Allocate();
   ASSERT_TRUE(subnet);
 
-  EXPECT_EQ(gateway, subnet->AddressAtOffset(1));
-  EXPECT_EQ(address, subnet->AddressAtOffset(2));
+  EXPECT_EQ(base_cidr, subnet->base_cidr());
 }
 
 TEST(SubnetPool, Index) {

@@ -16,11 +16,17 @@
 #include "patchpanel/net_util.h"
 
 namespace {
-// Adds a positive offset given in host order to the address given in
-// network byte order. Returns the address in network-byte order.
-uint32_t AddOffset(uint32_t addr_no, uint32_t offset_ho) {
-  return htonl(ntohl(addr_no) + offset_ho);
+
+// Adds a positive offset of the IPv4Address.
+net_base::IPv4Address AddOffset(const net_base::IPv4Address& addr,
+                                uint32_t offset) {
+  const uint32_t host_endian = ntohl(addr.ToInAddr().s_addr) + offset;
+
+  in_addr new_addr;
+  new_addr.s_addr = htonl(host_endian);
+  return net_base::IPv4Address(new_addr);
 }
+
 }  // namespace
 
 namespace patchpanel {
@@ -55,20 +61,18 @@ std::unique_ptr<SubnetAddress> Subnet::AllocateAtOffset(uint32_t offset) {
   }
   addrs_[offset] = true;
 
-  const uint32_t addr = AddressAtOffset(offset);
   return std::make_unique<SubnetAddress>(
-      *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-          ConvertUint32ToIPv4Address(addr), base_cidr_.prefix_length()),
+      *CIDRAtOffset(offset),
       base::BindOnce(&Subnet::Free, weak_factory_.GetWeakPtr(), offset));
 }
 
-uint32_t Subnet::AddressAtOffset(uint32_t offset) const {
+std::optional<net_base::IPv4CIDR> Subnet::CIDRAtOffset(uint32_t offset) const {
   if (!IsValidOffset(offset)) {
-    return INADDR_ANY;
+    return std::nullopt;
   }
 
-  // The first usable IP is after the base address.
-  return AddOffset(base_cidr_.address().ToInAddr().s_addr, offset);
+  return net_base::IPv4CIDR::CreateFromAddressAndPrefix(
+      AddOffset(base_cidr_.address(), offset), base_cidr_.prefix_length());
 }
 
 uint32_t Subnet::AvailableCount() const {

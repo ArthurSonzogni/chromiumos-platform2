@@ -894,13 +894,16 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  // nsinfo.peer_subnet->base_cidr().prefix_length() must be a valid IPv4 prefix
-  // length, so CreateFromAddressAndPrefix() must return a valid IPv4CIDR.
-  const auto remote_cidr = *IPv4CIDR::CreateFromAddressAndPrefix(
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(2)),
-      nsinfo.peer_subnet->base_cidr().prefix_length());
+  const auto peer_cidr = nsinfo.peer_subnet->CIDRAtOffset(1);
+  const auto remote_cidr = nsinfo.peer_subnet->CIDRAtOffset(2);
+  if (!peer_cidr || !remote_cidr) {
+    LOG(ERROR) << "Failed to create CIDR from peer_subnet: "
+               << nsinfo.peer_subnet->base_cidr();
+    return false;
+  }
+
   if (!ConnectVethPair(nsinfo.pid, nsinfo.netns_name, nsinfo.host_ifname,
-                       nsinfo.peer_ifname, nsinfo.peer_mac_addr, remote_cidr,
+                       nsinfo.peer_ifname, nsinfo.peer_mac_addr, *remote_cidr,
                        /*enable_multicast=*/false)) {
     LOG(ERROR) << "Failed to create veth pair for"
                   " namespace pid "
@@ -909,12 +912,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     return false;
   }
 
-  // nsinfo.peer_subnet->base_cidr().prefix_length() must be a valid IPv4 prefix
-  // length, so CreateFromAddressAndPrefix() must return a valid IPv4CIDR.
-  const auto peer_cidr = *IPv4CIDR::CreateFromAddressAndPrefix(
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1)),
-      nsinfo.peer_subnet->base_cidr().prefix_length());
-  if (!ConfigureInterface(nsinfo.host_ifname, nsinfo.host_mac_addr, peer_cidr,
+  if (!ConfigureInterface(nsinfo.host_ifname, nsinfo.host_mac_addr, *peer_cidr,
                           /*up=*/true, /*enable_multicast=*/false)) {
     LOG(ERROR) << "Cannot configure host interface " << nsinfo.host_ifname;
     RemoveInterface(nsinfo.host_ifname);
@@ -931,9 +929,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
       return false;
     }
 
-    const auto gateway =
-        ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1));
-    if (!AddIPv4Route(gateway, /*subnet_cidr=*/{})) {
+    if (!AddIPv4Route(peer_cidr->address(), /*subnet_cidr=*/{})) {
       LOG(ERROR) << "Failed to add default /0 route to " << nsinfo.host_ifname
                  << " inside namespace pid " << nsinfo.pid;
       RemoveInterface(nsinfo.host_ifname);
@@ -952,20 +948,16 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   // TODO(hugobenichi) If allow_user_traffic is false, then prevent forwarding
   // both ways between client namespace and other guest containers and VMs.
 
-  const auto gateway =
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1));
-  if (!AddIPv4Route(gateway, nsinfo.peer_subnet->base_cidr())) {
+  if (!AddIPv4Route(peer_cidr->address(), nsinfo.peer_subnet->base_cidr())) {
     LOG(ERROR) << "Failed to set route to client namespace";
     RemoveInterface(nsinfo.host_ifname);
     NetnsDeleteName(nsinfo.netns_name);
     return false;
   }
 
-  StartRoutingDevice(
-      nsinfo.outbound_ifname, nsinfo.host_ifname,
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1)),
-      nsinfo.source, nsinfo.route_on_vpn,
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(2)));
+  StartRoutingDevice(nsinfo.outbound_ifname, nsinfo.host_ifname,
+                     peer_cidr->address(), nsinfo.source, nsinfo.route_on_vpn,
+                     remote_cidr->address());
   return true;
 }
 
@@ -974,9 +966,13 @@ void Datapath::StopRoutingNamespace(const ConnectedNamespace& nsinfo) {
                     nsinfo.route_on_vpn);
   RemoveInterface(nsinfo.host_ifname);
 
-  const auto gateway =
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1));
-  DeleteIPv4Route(gateway, nsinfo.peer_subnet->base_cidr());
+  const auto peer_cidr = nsinfo.peer_subnet->CIDRAtOffset(1);
+  if (peer_cidr) {
+    DeleteIPv4Route(peer_cidr->address(), nsinfo.peer_subnet->base_cidr());
+  } else {
+    LOG(ERROR) << "Failed to create CIDR from subnet:"
+               << nsinfo.peer_subnet->base_cidr();
+  }
   NetnsDeleteName(nsinfo.netns_name);
 }
 

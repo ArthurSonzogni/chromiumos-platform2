@@ -205,7 +205,11 @@ bool PluginVm::Shutdown() {
 
 VmBaseImpl::Info PluginVm::GetInfo() {
   VmBaseImpl::Info info = {
-      .ipv4_address = subnet_->AddressAtOffset(kGuestAddressOffset),
+      .ipv4_address = subnet_->CIDRAtOffset(kGuestAddressOffset)
+                          .value_or(net_base::IPv4CIDR())
+                          .address()
+                          .ToInAddr()
+                          .s_addr,
       .pid = process_.pid(),
       .cid = 0,
       .seneschal_server_handle = seneschal_server_handle(),

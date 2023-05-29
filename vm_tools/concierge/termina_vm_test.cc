@@ -396,10 +396,12 @@ void TerminaVmTest::SetUp() {
 
   ASSERT_TRUE(subnet);
 
-  ASSERT_TRUE(IPv4AddressToString(subnet->AddressAtOffset(2), &address_));
+  ASSERT_TRUE(IPv4AddressToString(
+      subnet->CIDRAtOffset(2)->address().ToInAddr().s_addr, &address_));
   ASSERT_TRUE(IPv4AddressToString(
       subnet->base_cidr().ToNetmask().ToInAddr().s_addr, &netmask_));
-  ASSERT_TRUE(IPv4AddressToString(subnet->AddressAtOffset(1), &gateway_));
+  ASSERT_TRUE(IPv4AddressToString(
+      subnet->CIDRAtOffset(1)->address().ToInAddr().s_addr, &gateway_));
 
   std::string stateful_device = "/dev/vdb";
   uint64_t stateful_size = (uint64_t)20 * 1024 * 1024 * 1024;

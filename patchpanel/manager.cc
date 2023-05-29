@@ -602,10 +602,17 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   }
 
   // Prepare the response before storing ConnectedNamespace.
+  const auto host_cidr = nsinfo.peer_subnet->CIDRAtOffset(1);
+  const auto peer_cidr = nsinfo.peer_subnet->CIDRAtOffset(2);
+  if (!host_cidr || !peer_cidr) {
+    LOG(ERROR) << "Failed to create CIDR from subnet: "
+               << nsinfo.peer_subnet->base_cidr();
+    return response;
+  }
   response.set_peer_ifname(nsinfo.peer_ifname);
-  response.set_peer_ipv4_address(nsinfo.peer_subnet->AddressAtOffset(2));
+  response.set_peer_ipv4_address(peer_cidr->address().ToInAddr().s_addr);
   response.set_host_ifname(nsinfo.host_ifname);
-  response.set_host_ipv4_address(nsinfo.peer_subnet->AddressAtOffset(1));
+  response.set_host_ipv4_address(host_cidr->address().ToInAddr().s_addr);
   response.set_netns_name(nsinfo.netns_name);
   auto* response_subnet = response.mutable_ipv4_subnet();
   FillSubnetProto(*nsinfo.peer_subnet, response_subnet);

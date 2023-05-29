@@ -1073,11 +1073,13 @@ void TerminaVm::HandleStatefulUpdate(
 }
 
 uint32_t TerminaVm::GatewayAddress() const {
-  return subnet_->AddressAtOffset(kHostAddressOffset);
+  const auto gateway_cidr = subnet_->CIDRAtOffset(kHostAddressOffset);
+  return gateway_cidr ? gateway_cidr->address().ToInAddr().s_addr : INADDR_ANY;
 }
 
 uint32_t TerminaVm::IPv4Address() const {
-  return subnet_->AddressAtOffset(kGuestAddressOffset);
+  const auto guest_cidr = subnet_->CIDRAtOffset(kGuestAddressOffset);
+  return guest_cidr ? guest_cidr->address().ToInAddr().s_addr : INADDR_ANY;
 }
 
 uint32_t TerminaVm::Netmask() const {
@@ -1099,8 +1101,10 @@ size_t TerminaVm::ContainerPrefixLength() const {
 }
 
 uint32_t TerminaVm::ContainerSubnet() const {
-  if (container_subnet_)
-    return container_subnet_->AddressAtOffset(kHostAddressOffset);
+  if (container_subnet_) {
+    const auto cidr = container_subnet_->CIDRAtOffset(kHostAddressOffset);
+    return cidr ? cidr->address().ToInAddr().s_addr : INADDR_ANY;
+  }
 
   return INADDR_ANY;
 }
