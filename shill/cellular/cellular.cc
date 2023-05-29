@@ -1368,9 +1368,13 @@ void Cellular::Connect(CellularService* service, Error* error) {
     return;
   }
 
+  // Build default APN list, guaranteed to never be empty.
+  std::deque<Stringmap> apn_try_list = BuildDefaultApnTryList();
+  CHECK(!apn_try_list.empty());
+
   OnConnecting();
   capability_->Connect(
-      apn_type,
+      apn_type, apn_try_list,
       base::BindOnce(&Cellular::OnConnectReply, weak_ptr_factory_.GetWeakPtr(),
                      service->iccid(), service->is_in_user_connect()));
 

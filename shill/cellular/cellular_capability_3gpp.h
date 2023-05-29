@@ -194,9 +194,11 @@ class CellularCapability3gpp {
   // -------------------------------------------------------------------------
 
   // Connects the modem to a network, specifying the relevant APN type
-  // associated to this connection. Only one connection of a given APN type is
-  // expected for now.
-  void Connect(ApnList::ApnType apn_type, ResultCallback callback);
+  // associated to this connection, as well as the APN list to try. Only one
+  // connection of a given APN type is expected for now.
+  void Connect(ApnList::ApnType apn_type,
+               const std::deque<Stringmap>& apn_try_list,
+               ResultCallback callback);
 
   // Disconnects the modem from all networks.
   void DisconnectAll(ResultCallback callback);

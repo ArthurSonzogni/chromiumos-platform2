@@ -631,22 +631,11 @@ bool CellularCapability3gpp::ConnectionAttemptInitialize(
 }
 
 void CellularCapability3gpp::Connect(ApnList::ApnType apn_type,
+                                     const std::deque<Stringmap>& apn_try_list,
                                      ResultCallback callback) {
   SLOG(this, 3) << "Connection attempt (" << ApnList::GetApnTypeString(apn_type)
                 << ") requested";
   DCHECK(callback);
-
-  std::deque<Stringmap> apn_try_list;
-  if (apn_type == ApnList::ApnType::kDefault) {
-    // The default APN try list is ensured to have at least the fallback
-    // empty APN
-    apn_try_list = cellular()->BuildDefaultApnTryList();
-    CHECK(!apn_try_list.empty());
-  } else if (apn_type == ApnList::ApnType::kDun) {
-    apn_try_list = cellular()->BuildTetheringApnTryList();
-  } else {
-    NOTREACHED_NORETURN();
-  }
 
   if (!ConnectionAttemptInitialize(apn_type, apn_try_list,
                                    std::move(callback))) {
