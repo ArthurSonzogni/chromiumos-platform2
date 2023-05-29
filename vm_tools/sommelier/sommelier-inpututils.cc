@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"            // NOLINT(build/include_directory)
-#include "sommelier-transform.h"  // NOLINT(build/include_directory)
-#include "sommelier-inpututils.h"
+#include "sommelier.h"             // NOLINT(build/include_directory)
+#include "sommelier-inpututils.h"  // NOLINT(build/include_directory)
+#include "sommelier-transform.h"   // NOLINT(build/include_directory)
 
 #include <algorithm>
 #include <assert.h>

@@ -75,8 +75,8 @@ struct WaylandBufferCreateOutput {
 
 class WaylandChannel {
  public:
-  WaylandChannel() {}
-  virtual ~WaylandChannel() {}
+  WaylandChannel() = default;
+  virtual ~WaylandChannel() = default;
 
   // Initializes the Wayland Channel.  Returns 0 on success, -errno on failure.
   virtual int32_t init() = 0;
@@ -84,7 +84,7 @@ class WaylandChannel {
   // Returns true if the Wayland channel supports dmabuf, false otherwise.  If
   // dmabuf is supported, Sommelier will use the `zwp_linux_dmabuf_v1`
   // protocol.
-  virtual bool supports_dmabuf(void) = 0;
+  virtual bool supports_dmabuf() = 0;
 
   // Creates a new context for handling the wayland command stream.  Returns 0
   // on success, and a pollable `out_channel_fd`.  This fd represents the
@@ -159,13 +159,13 @@ class WaylandChannel {
 
   // Returns the maximum size of opaque data that the channel is able to handle
   // in the `send` function.  Must be less than or equal to DEFAULT_BUFFER_SIZE.
-  virtual size_t max_send_size(void) = 0;
+  virtual size_t max_send_size() = 0;
 };
 
 class VirtWaylandChannel : public WaylandChannel {
  public:
   VirtWaylandChannel() : virtwl_{-1}, supports_dmabuf_(false) {}
-  ~VirtWaylandChannel();
+  ~VirtWaylandChannel() override;
 
   int32_t init() override;
   bool supports_dmabuf() override;
@@ -181,7 +181,7 @@ class VirtWaylandChannel : public WaylandChannel {
 
   int32_t sync(int dmabuf_fd, uint64_t flags) override;
   int32_t handle_pipe(int read_fd, bool readable, bool& hang_up) override;
-  size_t max_send_size(void) override;
+  size_t max_send_size() override;
 
  private:
   // virtwl device file descriptor
@@ -197,7 +197,7 @@ class VirtGpuChannel : public WaylandChannel {
         ring_handle_{0},
         supports_dmabuf_(false),
         descriptor_id_{1} {}
-  ~VirtGpuChannel();
+  ~VirtGpuChannel() override;
 
   int32_t init() override;
   bool supports_dmabuf() override;
@@ -213,7 +213,7 @@ class VirtGpuChannel : public WaylandChannel {
 
   int32_t sync(int dmabuf_fd, uint64_t flags) override;
   int32_t handle_pipe(int read_fd, bool readable, bool& hang_up) override;
-  size_t max_send_size(void) override;
+  size_t max_send_size() override;
 
  private:
   /*
@@ -246,7 +246,7 @@ class VirtGpuChannel : public WaylandChannel {
                      uint32_t size,
                      uint32_t ring_idx,
                      bool wait);
-  int32_t channel_poll(void);
+  int32_t channel_poll();
   int32_t close_gem_handle(uint32_t gem_handle);
   int32_t create_host_blob(uint64_t blob_id, uint64_t size, int& out_fd);
 
@@ -265,7 +265,7 @@ class VirtGpuChannel : public WaylandChannel {
                          struct WaylandSendReceive& receive,
                          int& out_read_pipe);
 
-  int32_t handle_read(void);
+  int32_t handle_read();
 
   int32_t pipe_lookup(uint32_t identifier_type,
                       uint32_t& identifier,

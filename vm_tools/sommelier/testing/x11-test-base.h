@@ -100,7 +100,7 @@ class X11DirectScaleTest : public X11TestBase {
  public:
   void InitContext() override {
     X11TestBase::InitContext();
-    ctx.use_direct_scale = 1;
+    ctx.use_direct_scale = true;
   }
 
   void Connect() override {

@@ -108,4 +108,4 @@ struct CrossDomainReadWrite {
   uint32_t pad;
 };
 
-#endif
+#endif  // VM_TOOLS_SOMMELIER_VIRTUALIZATION_VIRTGPU_CROSS_DOMAIN_PROTOCOL_H_

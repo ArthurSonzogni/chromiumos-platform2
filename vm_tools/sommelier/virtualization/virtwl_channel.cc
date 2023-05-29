@@ -53,7 +53,7 @@ int32_t VirtWaylandChannel::init() {
   return 0;
 }
 
-bool VirtWaylandChannel::supports_dmabuf(void) {
+bool VirtWaylandChannel::supports_dmabuf() {
   return supports_dmabuf_;
 }
 
@@ -220,6 +220,6 @@ int32_t VirtWaylandChannel::handle_pipe(int read_fd,
   return 0;
 }
 
-size_t VirtWaylandChannel::max_send_size(void) {
+size_t VirtWaylandChannel::max_send_size() {
   return MAX_SEND_SIZE;
 }

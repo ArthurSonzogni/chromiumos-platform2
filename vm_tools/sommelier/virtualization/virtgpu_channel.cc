@@ -4,19 +4,19 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <gbm.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <xf86drm.h>
-#include <gbm.h>
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
-#include "virtgpu_cross_domain_protocol.h"  // NOLINT(build/include_directory)
 #include "linux-headers/virtgpu_drm.h"      // NOLINT(build/include_directory)
+#include "virtgpu_cross_domain_protocol.h"  // NOLINT(build/include_directory)
 #include "wayland_channel.h"                // NOLINT(build/include_directory)
 
 // The size of a page for the guest kernel
@@ -150,11 +150,11 @@ int32_t VirtGpuChannel::init() {
       PARAM(VIRTGPU_PARAM_SUPPORTED_CAPSET_IDs),
   };
 
-  for (uint32_t i = 0; i < REQUIRED_PARAMS_SIZE; i++) {
+  for (const auto& param : params) {
     struct drm_virtgpu_getparam get_param = {0};
 
-    get_param.param = params[i].param;
-    get_param.value = (uint64_t)(uintptr_t)&params[i].value;
+    get_param.param = param.param;
+    get_param.value = (uint64_t)(uintptr_t)&param.value;
     ret = drmIoctl(virtgpu_, DRM_IOCTL_VIRTGPU_GETPARAM, &get_param);
     if (ret < 0) {
       fprintf(stderr, "DRM_IOCTL_VIRTGPU_GET_PARAM failed with %s\n",
@@ -164,15 +164,15 @@ int32_t VirtGpuChannel::init() {
       return -EINVAL;
     }
 
-    if (params[i].param == VIRTGPU_PARAM_SUPPORTED_CAPSET_IDs) {
-      if ((params[i].value & (1 << CAPSET_CROSS_DOMAIN)) == 0)
+    if (param.param == VIRTGPU_PARAM_SUPPORTED_CAPSET_IDs) {
+      if ((param.value & (1 << CAPSET_CROSS_DOMAIN)) == 0)
         return -ENOTSUP;
     }
   }
 
   args.cap_set_id = CAPSET_CROSS_DOMAIN;
   args.size = sizeof(struct CrossDomainCapabilities);
-  args.addr = (unsigned long long)&cross_domain_caps;
+  args.addr = (uint64_t)&cross_domain_caps;
 
   ret = drmIoctl(virtgpu_, DRM_IOCTL_VIRTGPU_GET_CAPS, &args);
   if (ret) {
@@ -195,7 +195,7 @@ int32_t VirtGpuChannel::init() {
   return 0;
 }
 
-bool VirtGpuChannel::supports_dmabuf(void) {
+bool VirtGpuChannel::supports_dmabuf() {
   return supports_dmabuf_;
 }
 
@@ -216,7 +216,7 @@ int32_t VirtGpuChannel::create_context(int& out_channel_fd) {
   ctx_set_params[2].param = VIRTGPU_CONTEXT_PARAM_POLL_RINGS_MASK;
   ctx_set_params[2].value = 1 << CROSS_DOMAIN_CHANNEL_RING;
 
-  init.ctx_set_params = (unsigned long long)&ctx_set_params[0];
+  init.ctx_set_params = (uint64_t)&ctx_set_params[0];
   init.num_params = 3;
   ret = drmIoctl(virtgpu_, DRM_IOCTL_VIRTGPU_CONTEXT_INIT, &init);
   if (ret) {
@@ -248,8 +248,8 @@ int32_t VirtGpuChannel::create_context(int& out_channel_fd) {
     return ret;
   }
 
-  ring_addr_ = mmap(0, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, virtgpu_,
-                    map.offset);
+  ring_addr_ = mmap(nullptr, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED,
+                    virtgpu_, map.offset);
 
   if (ring_addr_ == MAP_FAILED) {
     fprintf(stderr, "mmap failed with %s\n", strerror(errno));
@@ -568,7 +568,7 @@ int32_t VirtGpuChannel::close_gem_handle(uint32_t gem_handle) {
   return 0;
 }
 
-int32_t VirtGpuChannel::channel_poll(void) {
+int32_t VirtGpuChannel::channel_poll() {
   int32_t ret;
   struct CrossDomainPoll cmd_poll = {{0}};
 
@@ -834,6 +834,6 @@ int32_t VirtGpuChannel::pipe_lookup(uint32_t identifier_type,
   return -EINVAL;
 }
 
-size_t VirtGpuChannel::max_send_size(void) {
+size_t VirtGpuChannel::max_send_size() {
   return MAX_SEND_SIZE;
 }

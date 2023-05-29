@@ -3573,7 +3573,7 @@ int sl_run_parent(int argc,
   rv = sigaction(SIGCHLD, &sa, nullptr);
   errno_assert(rv >= 0);
 
-  do {
+  while (true) {
     struct ucred ucred;
     socklen_t length = sizeof(addr);
 
@@ -3635,7 +3635,7 @@ int sl_run_parent(int argc,
       _exit(EXIT_FAILURE);
     }
     close(client_fd);
-  } while (1);
+  }
 
   // Control should never reach here.
   assert(false);
@@ -4127,7 +4127,7 @@ int real_main(int argc, char** argv) {
 
   wl_client_add_destroy_listener(ctx.client, &client_destroy_listener);
 
-  do {
+  while (true) {
     wl_display_flush_clients(ctx.host_display);
     if (ctx.connection) {
       if (ctx.needs_set_input_focus) {
@@ -4144,7 +4144,7 @@ int real_main(int argc, char** argv) {
       if (errno != EINTR)
         return EXIT_FAILURE;
     }
-  } while (1);
+  }
 
   return EXIT_SUCCESS;
 }  // NOLINT(readability/fn_size)

@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 #include "sommelier.h"                // NOLINT(build/include_directory)
-#include "sommelier-transform.h"      // NOLINT(build/include_directory)
 #include "sommelier-inpututils.h"     // NOLINT(build/include_directory)
 #include "sommelier-stylus-tablet.h"  // NOLINT(build/include_directory)
+#include "sommelier-transform.h"      // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <math.h>

@@ -27,7 +27,7 @@ using ::testing::PrintToString;
 // Mock of Sommelier's Wayland connection to the host compositor.
 class MockWaylandChannel : public WaylandChannel {
  public:
-  MockWaylandChannel() {}
+  MockWaylandChannel() = default;
 
   MOCK_METHOD(int32_t, init, (), (override));
   MOCK_METHOD(bool, supports_dmabuf, (), (override));
@@ -67,7 +67,7 @@ class MockWaylandChannel : public WaylandChannel {
   MOCK_METHOD(size_t, max_send_size, (), (override));
 
  protected:
-  ~MockWaylandChannel() override {}
+  ~MockWaylandChannel() override = default;
 };
 
 // Match a WaylandSendReceive buffer containing exactly one Wayland message

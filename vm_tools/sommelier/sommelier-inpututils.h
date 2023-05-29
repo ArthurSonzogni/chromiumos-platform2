@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_TOOLS_SOMMELIER_SOMMELIER_INPUTUTIL_H_
-#define VM_TOOLS_SOMMELIER_SOMMELIER_INPUTUTIL_H_
+#ifndef VM_TOOLS_SOMMELIER_SOMMELIER_INPUTUTILS_H_
+#define VM_TOOLS_SOMMELIER_SOMMELIER_INPUTUTILS_H_
 
 #include <sys/types.h>
 #include <wayland-client.h>
@@ -48,4 +48,4 @@ void sl_touchrecorder_replay_to_listener(struct sl_touchrecorder* recorder,
                                          void* data);
 void sl_touchrecorder_purge_id(struct sl_touchrecorder* recorder, int32_t id);
 
-#endif  // VM_TOOLS_SOMMELIER_SOMMELIER_INPUTUTIL_H_
+#endif  // VM_TOOLS_SOMMELIER_SOMMELIER_INPUTUTILS_H_
