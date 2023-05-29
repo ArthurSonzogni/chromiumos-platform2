@@ -65,8 +65,8 @@ class BRILLO_EXPORT Subnet {
   // Returns the number of available IPs in this subnet.
   uint32_t AvailableCount() const;
 
-  // Returns the base address in network-byte order.
-  uint32_t BaseAddress() const;
+  // Returns the base CIDR of the subnet.
+  const net_base::IPv4CIDR& base_cidr() const { return base_cidr_; }
 
   // Returns the netmask in network-byte order.
   uint32_t Netmask() const;

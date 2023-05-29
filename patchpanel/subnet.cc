@@ -77,10 +77,6 @@ uint32_t Subnet::AvailableCount() const {
   return static_cast<uint32_t>(addrs_.size()) - 2;
 }
 
-uint32_t Subnet::BaseAddress() const {
-  return base_cidr_.address().ToInAddr().s_addr;
-}
-
 uint32_t Subnet::Netmask() const {
   return base_cidr_.ToNetmask().ToInAddr().s_addr;
 }

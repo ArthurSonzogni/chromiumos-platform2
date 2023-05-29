@@ -960,12 +960,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
 
   const auto gateway =
       ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1));
-  // nsinfo.peer_subnet->PrefixLength() must be a valid IPv4 prefix length, so
-  // CreateFromAddressAndPrefix() must return a valid IPv4CIDR value.
-  const auto subnet_cidr = *IPv4CIDR::CreateFromAddressAndPrefix(
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->BaseAddress()),
-      nsinfo.peer_subnet->PrefixLength());
-  if (!AddIPv4Route(gateway, subnet_cidr)) {
+  if (!AddIPv4Route(gateway, nsinfo.peer_subnet->base_cidr())) {
     LOG(ERROR) << "Failed to set route to client namespace";
     RemoveInterface(nsinfo.host_ifname);
     NetnsDeleteName(nsinfo.netns_name);
@@ -987,12 +982,7 @@ void Datapath::StopRoutingNamespace(const ConnectedNamespace& nsinfo) {
 
   const auto gateway =
       ConvertUint32ToIPv4Address(nsinfo.peer_subnet->AddressAtOffset(1));
-  // nsinfo.peer_subnet->PrefixLength() must be a valid IPv4 prefix length, so
-  // CreateFromAddressAndPrefix() must return a valid IPv4CIDR value.
-  const auto subnet_cidr = *IPv4CIDR::CreateFromAddressAndPrefix(
-      ConvertUint32ToIPv4Address(nsinfo.peer_subnet->BaseAddress()),
-      nsinfo.peer_subnet->PrefixLength());
-  DeleteIPv4Route(gateway, subnet_cidr);
+  DeleteIPv4Route(gateway, nsinfo.peer_subnet->base_cidr());
   NetnsDeleteName(nsinfo.netns_name);
 }
 

@@ -39,7 +39,7 @@ TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {
   auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
       guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
-  auto expected_base_ipv4 = ipv4_subnet->BaseAddress();
+  auto expected_base_cidr = ipv4_subnet->base_cidr();
   auto expected_prefix_len = ipv4_subnet->PrefixLength();
 
   auto config = std::make_unique<Device::Config>(
@@ -58,8 +58,12 @@ TEST_F(ProtoUtilsTest, ConvertTerminaDevice) {
   ASSERT_EQ("", proto_device.guest_ifname());
   ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
-  ASSERT_EQ(expected_base_ipv4, Ipv4Addr(proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_ipv4, proto_device.ipv4_subnet().base_addr());
+  ASSERT_EQ(expected_base_cidr.address(),
+            net_base::IPv4Address::CreateFromBytes(
+                proto_device.ipv4_subnet().addr().c_str(),
+                proto_device.ipv4_subnet().addr().size()));
+  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
+            proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_prefix_len, proto_device.ipv4_subnet().prefix_len());
   ASSERT_EQ(NetworkDevice::TERMINA_VM, proto_device.guest_type());
 }
@@ -74,7 +78,7 @@ TEST_F(ProtoUtilsTest, ConvertParallelsDevice) {
   auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
       guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
-  auto expected_base_ipv4 = ipv4_subnet->BaseAddress();
+  auto expected_base_cidr = ipv4_subnet->base_cidr();
   auto expected_prefix_len = ipv4_subnet->PrefixLength();
 
   auto config = std::make_unique<Device::Config>(
@@ -93,8 +97,12 @@ TEST_F(ProtoUtilsTest, ConvertParallelsDevice) {
   ASSERT_EQ("", proto_device.guest_ifname());
   ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
-  ASSERT_EQ(expected_base_ipv4, Ipv4Addr(proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_ipv4, proto_device.ipv4_subnet().base_addr());
+  ASSERT_EQ(expected_base_cidr.address(),
+            net_base::IPv4Address::CreateFromBytes(
+                proto_device.ipv4_subnet().addr().c_str(),
+                proto_device.ipv4_subnet().addr().size()));
+  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
+            proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_prefix_len, proto_device.ipv4_subnet().prefix_len());
   ASSERT_EQ(NetworkDevice::PARALLELS_VM, proto_device.guest_type());
 }
@@ -108,7 +116,7 @@ TEST_F(ProtoUtilsTest, ConvertARCContainerDevice) {
   auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
       guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
-  auto expected_base_ipv4 = ipv4_subnet->BaseAddress();
+  auto expected_base_cidr = ipv4_subnet->base_cidr();
   auto expected_prefix_len = ipv4_subnet->PrefixLength();
 
   auto config = std::make_unique<Device::Config>(
@@ -129,8 +137,12 @@ TEST_F(ProtoUtilsTest, ConvertARCContainerDevice) {
   ASSERT_EQ("wlan0", proto_device.guest_ifname());
   ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
-  ASSERT_EQ(expected_base_ipv4, Ipv4Addr(proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_ipv4, proto_device.ipv4_subnet().base_addr());
+  ASSERT_EQ(expected_base_cidr.address(),
+            net_base::IPv4Address::CreateFromBytes(
+                proto_device.ipv4_subnet().addr().c_str(),
+                proto_device.ipv4_subnet().addr().size()));
+  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
+            proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_prefix_len, proto_device.ipv4_subnet().prefix_len());
   ASSERT_EQ(NetworkDevice::ARC, proto_device.guest_type());
 }
@@ -144,7 +156,7 @@ TEST_F(ProtoUtilsTest, ConvertARCVMDevice) {
   auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
       guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
-  auto expected_base_ipv4 = ipv4_subnet->BaseAddress();
+  auto expected_base_cidr = ipv4_subnet->base_cidr();
   auto expected_prefix_len = ipv4_subnet->PrefixLength();
 
   auto config = std::make_unique<Device::Config>(
@@ -163,8 +175,12 @@ TEST_F(ProtoUtilsTest, ConvertARCVMDevice) {
   ASSERT_EQ("eth3", proto_device.guest_ifname());
   ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
-  ASSERT_EQ(expected_base_ipv4, Ipv4Addr(proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_ipv4, proto_device.ipv4_subnet().base_addr());
+  ASSERT_EQ(expected_base_cidr.address(),
+            net_base::IPv4Address::CreateFromBytes(
+                proto_device.ipv4_subnet().addr().c_str(),
+                proto_device.ipv4_subnet().addr().size()));
+  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
+            proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_prefix_len, proto_device.ipv4_subnet().prefix_len());
   ASSERT_EQ(NetworkDevice::ARCVM, proto_device.guest_type());
 }
@@ -178,7 +194,7 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCContainer) {
   auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
       guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
-  auto expected_base_ipv4 = ipv4_subnet->BaseAddress();
+  auto expected_base_cidr = ipv4_subnet->base_cidr();
   auto expected_prefix_len = ipv4_subnet->PrefixLength();
 
   auto config = std::make_unique<Device::Config>(
@@ -201,8 +217,12 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCContainer) {
   ASSERT_EQ("arc0", proto_device.guest_ifname());
   ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
-  ASSERT_EQ(expected_base_ipv4, Ipv4Addr(proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_ipv4, proto_device.ipv4_subnet().base_addr());
+  ASSERT_EQ(expected_base_cidr.address(),
+            net_base::IPv4Address::CreateFromBytes(
+                proto_device.ipv4_subnet().addr().c_str(),
+                proto_device.ipv4_subnet().addr().size()));
+  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
+            proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_prefix_len, proto_device.ipv4_subnet().prefix_len());
   ASSERT_EQ(NetworkDevice::UNKNOWN, proto_device.guest_type());
 }
@@ -216,7 +236,7 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCVM) {
   auto expected_host_ipv4 = host_ipv4_addr->cidr().address().ToInAddr().s_addr;
   auto expected_guest_ipv4 =
       guest_ipv4_addr->cidr().address().ToInAddr().s_addr;
-  auto expected_base_ipv4 = ipv4_subnet->BaseAddress();
+  auto expected_base_cidr = ipv4_subnet->base_cidr();
   auto expected_prefix_len = ipv4_subnet->PrefixLength();
 
   auto config = std::make_unique<Device::Config>(
@@ -239,8 +259,12 @@ TEST_F(ProtoUtilsTest, ConvertARC0ForARCVM) {
   ASSERT_EQ("arc0", proto_device.guest_ifname());
   ASSERT_EQ(expected_guest_ipv4, proto_device.ipv4_addr());
   ASSERT_EQ(expected_host_ipv4, proto_device.host_ipv4_addr());
-  ASSERT_EQ(expected_base_ipv4, Ipv4Addr(proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_ipv4, proto_device.ipv4_subnet().base_addr());
+  ASSERT_EQ(expected_base_cidr.address(),
+            net_base::IPv4Address::CreateFromBytes(
+                proto_device.ipv4_subnet().addr().c_str(),
+                proto_device.ipv4_subnet().addr().size()));
+  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
+            proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_prefix_len, proto_device.ipv4_subnet().prefix_len());
   ASSERT_EQ(NetworkDevice::UNKNOWN, proto_device.guest_type());
 }

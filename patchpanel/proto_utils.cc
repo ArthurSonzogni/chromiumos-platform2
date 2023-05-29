@@ -50,10 +50,7 @@ void FillSubnetProto(const net_base::IPv4CIDR& cidr,
 
 void FillSubnetProto(const Subnet& virtual_subnet,
                      patchpanel::IPv4Subnet* output) {
-  const auto cidr = *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-      ConvertUint32ToIPv4Address(virtual_subnet.BaseAddress()),
-      virtual_subnet.PrefixLength());
-  FillSubnetProto(cidr, output);
+  FillSubnetProto(virtual_subnet.base_cidr(), output);
 }
 
 void FillDeviceDnsProxyProto(

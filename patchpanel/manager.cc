@@ -608,7 +608,8 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   response.set_host_ipv4_address(nsinfo.peer_subnet->AddressAtOffset(1));
   response.set_netns_name(nsinfo.netns_name);
   auto* response_subnet = response.mutable_ipv4_subnet();
-  response_subnet->set_base_addr(nsinfo.peer_subnet->BaseAddress());
+  response_subnet->set_base_addr(
+      nsinfo.peer_subnet->base_cidr().address().ToInAddr().s_addr);
   response_subnet->set_prefix_len(
       static_cast<uint32_t>(nsinfo.peer_subnet->PrefixLength()));
 

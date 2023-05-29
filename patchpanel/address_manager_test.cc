@@ -18,19 +18,19 @@ namespace patchpanel {
 using GuestType = AddressManager::GuestType;
 
 TEST(AddressManager, BaseAddresses) {
-  std::map<GuestType, size_t> addrs = {
-      {GuestType::kArc0, Ipv4Addr(100, 115, 92, 0)},
-      {GuestType::kArcNet, Ipv4Addr(100, 115, 92, 4)},
-      {GuestType::kTerminaVM, Ipv4Addr(100, 115, 92, 24)},
-      {GuestType::kParallelsVM, Ipv4Addr(100, 115, 93, 0)},
-      {GuestType::kLXDContainer, Ipv4Addr(100, 115, 92, 192)},
-      {GuestType::kNetns, Ipv4Addr(100, 115, 92, 128)},
+  std::map<GuestType, net_base::IPv4Address> addrs = {
+      {GuestType::kArc0, net_base::IPv4Address(100, 115, 92, 0)},
+      {GuestType::kArcNet, net_base::IPv4Address(100, 115, 92, 4)},
+      {GuestType::kTerminaVM, net_base::IPv4Address(100, 115, 92, 24)},
+      {GuestType::kParallelsVM, net_base::IPv4Address(100, 115, 93, 0)},
+      {GuestType::kLXDContainer, net_base::IPv4Address(100, 115, 92, 192)},
+      {GuestType::kNetns, net_base::IPv4Address(100, 115, 92, 128)},
   };
   AddressManager mgr;
   for (const auto a : addrs) {
     auto subnet = mgr.AllocateIPv4Subnet(a.first);
     ASSERT_TRUE(subnet != nullptr);
-    EXPECT_EQ(a.second, subnet->BaseAddress());
+    EXPECT_EQ(a.second, subnet->base_cidr().address());
   }
 }
 
