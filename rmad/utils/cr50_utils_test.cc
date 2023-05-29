@@ -27,11 +27,10 @@ using testing::StrictMock;
 
 namespace {
 
-constexpr char kChallengeCodeResponse[] = R"(
-Challenge:
- AAAAA BBBBB
- CCCCC DDDDD
-)";
+constexpr char kChallengeCodeResponse[] =
+    "CHALLENGE="
+    "AAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHH"
+    "1111122222333334444455555666667777788888\n";
 constexpr char kFactoryModeEnabledResponse[] = R"(
 State: Locked
 ---
@@ -71,7 +70,9 @@ TEST_F(Cr50UtilsTest, GetRsuChallengeCode_Success) {
 
   std::string challenge_code;
   EXPECT_TRUE(cr50_utils->GetRsuChallengeCode(&challenge_code));
-  EXPECT_EQ(challenge_code, "AAAAABBBBBCCCCCDDDDD");
+  EXPECT_EQ(challenge_code,
+            "AAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHH"
+            "1111122222333334444455555666667777788888");
 }
 
 TEST_F(Cr50UtilsTest, GetRsuChallengeCode_Fail) {

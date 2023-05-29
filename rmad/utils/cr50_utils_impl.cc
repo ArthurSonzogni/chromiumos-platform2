@@ -20,15 +20,21 @@ namespace rmad {
 namespace {
 
 constexpr char kGsctoolCmd[] = "gsctool";
+// Constants for RSU.
+const std::vector<std::string> kGetRsuChallengeArgv{kGsctoolCmd, "-a", "-r",
+                                                    "-M"};
+const std::vector<std::string> kSendRsuResponseArgv{kGsctoolCmd, "-a", "-r"};
+constexpr char kRsuChallengeRegexp[] = R"(CHALLENGE=([[:alnum:]]{80}))";
+// Constants for CCD info.
+const std::vector<std::string> kGetCcdInfoArgv{kGsctoolCmd, "-a", "-I"};
 constexpr char kFactoryModeMatchStr[] = "Capabilities are modified.";
-const std::vector<std::string> kRsuArgv{kGsctoolCmd, "-a", "-r"};
-const std::vector<std::string> kCcdInfoArgv{kGsctoolCmd, "-a", "-I"};
+// Constants for factory mode.
 const std::vector<std::string> kEnableFactoryModeArgv{kGsctoolCmd, "-a", "-F",
                                                       "enable"};
 const std::vector<std::string> kDisableFactoryModeArgv{kGsctoolCmd, "-a", "-F",
                                                        "disable"};
+// Constants for board ID.
 const std::vector<std::string> kGetBoardIdArgv{kGsctoolCmd, "-a", "-i", "-M"};
-
 constexpr char kSetBoardIdCmd[] = "/usr/share/cros/cr50-set-board-id.sh";
 constexpr char kBoardIdTypeRegexp[] = R"(BID_TYPE=([[:xdigit:]]{8}))";
 constexpr char kBoardIdFlagsRegexp[] = R"(BID_FLAGS=([[:xdigit:]]{8}))";
@@ -46,26 +52,33 @@ bool Cr50UtilsImpl::GetRsuChallengeCode(std::string* challenge_code) const {
   // TODO(chenghan): Check with cr50 team if we can expose a tpm_managerd API
   //                 for this, so we don't need to depend on `gsctool` output
   //                 format to do extra string parsing.
-  if (cmd_utils_->GetOutput(kRsuArgv, challenge_code)) {
-    base::RemoveChars(*challenge_code, base::kWhitespaceASCII, challenge_code);
-    base::ReplaceFirstSubstringAfterOffset(challenge_code, 0, "Challenge:", "");
-    DLOG(INFO) << "Challenge code: " << *challenge_code;
-    return true;
+  std::string output;
+  if (!cmd_utils_->GetOutput(kGetRsuChallengeArgv, &output)) {
+    LOG(ERROR) << "Failed to get RSU challenge code";
+    LOG(ERROR) << output;
+    return false;
   }
-  return false;
+  re2::StringPiece string_piece(output);
+  re2::RE2 regexp(kRsuChallengeRegexp);
+  if (!RE2::PartialMatch(string_piece, regexp, challenge_code)) {
+    LOG(ERROR) << "Failed to parse RSU challenge code";
+    LOG(ERROR) << output;
+    return false;
+  }
+  DLOG(INFO) << "Challenge code: " << *challenge_code;
+  return true;
 }
 
 bool Cr50UtilsImpl::PerformRsu(const std::string& unlock_code) const {
-  std::vector<std::string> argv(kRsuArgv);
+  std::vector<std::string> argv(kSendRsuResponseArgv);
   argv.push_back(unlock_code);
-  std::string output;
-  if (cmd_utils_->GetOutput(argv, &output)) {
-    DLOG(INFO) << "RSU succeeded.";
-    return true;
+  if (std::string output; !cmd_utils_->GetOutput(argv, &output)) {
+    DLOG(ERROR) << "RSU failed.";
+    DLOG(ERROR) << output;
+    return false;
   }
-  DLOG(ERROR) << "RSU failed.";
-  DLOG(ERROR) << output;
-  return false;
+  DLOG(INFO) << "RSU succeeded.";
+  return true;
 }
 
 bool Cr50UtilsImpl::EnableFactoryMode() const {
@@ -86,7 +99,7 @@ bool Cr50UtilsImpl::DisableFactoryMode() const {
 
 bool Cr50UtilsImpl::IsFactoryModeEnabled() const {
   std::string output;
-  cmd_utils_->GetOutput(kCcdInfoArgv, &output);
+  cmd_utils_->GetOutput(kGetCcdInfoArgv, &output);
   return output.find(kFactoryModeMatchStr) != std::string::npos;
 }
 
