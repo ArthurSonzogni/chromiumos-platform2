@@ -56,7 +56,7 @@ static void sl_host_callback_destroy(struct wl_resource* resource) {
       static_cast<sl_host_callback*>(wl_resource_get_user_data(resource));
 
   wl_callback_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -69,8 +69,8 @@ static void sl_display_sync(struct wl_client* client,
 
   host_callback->resource =
       wl_resource_create(client, &wl_callback_interface, 1, id);
-  wl_resource_set_implementation(host_callback->resource, NULL, host_callback,
-                                 sl_host_callback_destroy);
+  wl_resource_set_implementation(host_callback->resource, nullptr,
+                                 host_callback, sl_host_callback_destroy);
   host_callback->proxy = wl_display_sync(ctx->display);
   wl_callback_add_listener(host_callback->proxy, &sl_sync_callback_listener,
                            host_callback);
@@ -119,7 +119,7 @@ static enum wl_iterator_result sl_set_implementation(
 
   if (strcmp(wl_resource_get_class(resource), "wl_display") == 0) {
     wl_resource_set_implementation(resource, &sl_display_implementation, ctx,
-                                   NULL);
+                                   nullptr);
     return WL_ITERATOR_STOP;
   }
 

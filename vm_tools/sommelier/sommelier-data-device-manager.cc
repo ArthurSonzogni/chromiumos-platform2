@@ -179,7 +179,7 @@ static void sl_data_offer_receive(struct wl_client* client,
   struct sl_host_data_offer* host =
       static_cast<sl_host_data_offer*>(wl_resource_get_user_data(resource));
 
-  if (host->ctx->channel == NULL) {
+  if (host->ctx->channel == nullptr) {
     // Running in noop mode, without virtualization.
     wl_data_offer_receive(host->proxy, mime_type, fd);
     close(fd);
@@ -245,7 +245,7 @@ static void sl_destroy_host_data_offer(struct wl_resource* resource) {
       static_cast<sl_host_data_offer*>(wl_resource_get_user_data(resource));
 
   wl_data_offer_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -321,7 +321,7 @@ static void sl_destroy_host_data_source(struct wl_resource* resource) {
       static_cast<sl_host_data_source*>(wl_resource_get_user_data(resource));
 
   wl_data_source_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -336,21 +336,21 @@ static void sl_data_device_start_drag(struct wl_client* client,
   struct sl_host_data_source* host_source =
       source_resource ? static_cast<sl_host_data_source*>(
                             wl_resource_get_user_data(source_resource))
-                      : NULL;
+                      : nullptr;
   struct sl_host_surface* host_origin =
       origin_resource ? static_cast<sl_host_surface*>(
                             wl_resource_get_user_data(origin_resource))
-                      : NULL;
+                      : nullptr;
   struct sl_host_surface* host_icon =
       icon_resource ? static_cast<sl_host_surface*>(
                           wl_resource_get_user_data(icon_resource))
-                    : NULL;
+                    : nullptr;
   host_icon->has_role = 1;
 
   wl_data_device_start_drag(host->proxy,
-                            host_source ? host_source->proxy : NULL,
-                            host_origin ? host_origin->proxy : NULL,
-                            host_icon ? host_icon->proxy : NULL, serial);
+                            host_source ? host_source->proxy : nullptr,
+                            host_origin ? host_origin->proxy : nullptr,
+                            host_icon ? host_icon->proxy : nullptr, serial);
 }  // NOLINT(whitespace/indent)
 
 static void sl_data_device_release(struct wl_client* client,
@@ -412,7 +412,7 @@ static void sl_data_device_leave(void* data,
   struct sl_host_data_device* host = static_cast<sl_host_data_device*>(
       wl_data_device_get_user_data(data_device));
 
-  host->focus_surface = NULL;
+  host->focus_surface = nullptr;
   wl_data_device_send_leave(host->resource);
 }
 
@@ -435,7 +435,7 @@ static void sl_data_device_drop(void* data,
   struct sl_host_data_device* host = static_cast<sl_host_data_device*>(
       wl_data_device_get_user_data(data_device));
 
-  host->focus_surface = NULL;
+  host->focus_surface = nullptr;
   wl_data_device_send_drop(host->resource);
 }
 
@@ -467,7 +467,7 @@ static void sl_destroy_host_data_device(struct wl_resource* resource) {
   } else {
     wl_data_device_destroy(host->proxy);
   }
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -502,7 +502,7 @@ static void sl_data_device_manager_get_data_device(
   struct sl_host_data_device* host_data_device = new sl_host_data_device();
 
   host_data_device->ctx = host->ctx;
-  host_data_device->focus_surface = NULL;
+  host_data_device->focus_surface = nullptr;
   host_data_device->resource = wl_resource_create(
       client, &wl_data_device_interface, wl_resource_get_version(resource), id);
   wl_resource_set_implementation(host_data_device->resource,
@@ -525,7 +525,7 @@ static void sl_destroy_host_data_device_manager(struct wl_resource* resource) {
           wl_resource_get_user_data(resource));
 
   wl_data_device_manager_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 

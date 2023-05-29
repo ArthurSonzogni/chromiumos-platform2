@@ -127,7 +127,7 @@ VirtGpuChannel::~VirtGpuChannel() {
 
 int32_t VirtGpuChannel::init() {
   int32_t ret;
-  char* drm_device = NULL;
+  char* drm_device = nullptr;
   uint32_t supports_wayland;
   struct drm_virtgpu_get_caps args = {0};
   struct CrossDomainCapabilities cross_domain_caps = {0};

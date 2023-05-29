@@ -266,7 +266,7 @@ static void sl_destroy_host_text_input(struct wl_resource* resource) {
       static_cast<sl_host_text_input*>(wl_resource_get_user_data(resource));
 
   zwp_text_input_v1_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -297,7 +297,7 @@ static void sl_destroy_host_text_input_manager(struct wl_resource* resource) {
           wl_resource_get_user_data(resource));
 
   zwp_text_input_manager_v1_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -435,7 +435,7 @@ static void sl_destroy_host_extended_text_input(struct wl_resource* resource) {
           wl_resource_get_user_data(resource));
 
   zcr_extended_text_input_v1_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -474,7 +474,7 @@ static void sl_destroy_host_text_input_extension(struct wl_resource* resource) {
           wl_resource_get_user_data(resource));
 
   zcr_text_input_extension_v1_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 

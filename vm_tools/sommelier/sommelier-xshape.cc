@@ -27,7 +27,7 @@ static void sl_attach_shape_region(struct sl_context* ctx,
   reply = xcb_shape_get_rectangles_reply(
       ctx->connection,
       xcb_shape_get_rectangles(ctx->connection, window, XCB_SHAPE_SK_BOUNDING),
-      NULL);
+      nullptr);
 
   if (!reply)
     return;
@@ -87,7 +87,8 @@ void sl_shape_query(struct sl_context* ctx, xcb_window_t xwindow) {
     return;
 
   reply = xcb_shape_query_extents_reply(
-      ctx->connection, xcb_shape_query_extents(ctx->connection, xwindow), NULL);
+      ctx->connection, xcb_shape_query_extents(ctx->connection, xwindow),
+      nullptr);
 
   if (!reply)
     return;
@@ -184,7 +185,7 @@ void sl_xshape_generate_argb_image(struct sl_context* ctx,
   pixman_image_fill_boxes(PIXMAN_OP_SRC, dst_image, &clear, 1, &dstbox);
 
   for (int i = 0; i < nrects; i++) {
-    pixman_image_composite(PIXMAN_OP_SRC, src, NULL, dst_image, rects[i].x1,
+    pixman_image_composite(PIXMAN_OP_SRC, src, nullptr, dst_image, rects[i].x1,
                            rects[i].y1, 0, 0, rects[i].x1, rects[i].y1,
                            (rects[i].x2 - rects[i].x1),
                            (rects[i].y2 - rects[i].y1));

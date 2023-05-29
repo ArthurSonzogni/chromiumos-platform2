@@ -215,7 +215,7 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
       // to map failure, where the buffer is relayed onto the host,
       // we should not release the buffer. That is the responsibility
       // of the host. The fallback path/non shape path takes care of this
-      // by setting the host_surface contents_shm_mmap to NULL.
+      // by setting the host_surface contents_shm_mmap to nullptr.
       host_buffer->shm_mmap->buffer_resource = host_buffer->resource;
     }
   } else {
@@ -235,7 +235,7 @@ static void sl_destroy_host_drm(struct wl_resource* resource) {
 
   zwp_linux_dmabuf_v1_destroy(host->linux_dmabuf_proxy);
   wl_callback_destroy(host->callback);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -310,7 +310,7 @@ struct sl_global* sl_drm_global_create(struct sl_context* ctx) {
 
   // Early out if DMABuf protocol version is not sufficient.
   if (ctx->linux_dmabuf->version < 2)
-    return NULL;
+    return nullptr;
 
   return sl_global_create(ctx, &wl_drm_interface, 2, ctx, sl_bind_host_drm);
 }

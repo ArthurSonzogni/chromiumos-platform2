@@ -27,7 +27,7 @@
     struct sl_host_##NAME* host =                                          \
         static_cast<sl_host_##NAME*>(wl_resource_get_user_data(resource)); \
     INTERFACE##_destroy(host->proxy);                                      \
-    wl_resource_set_user_data(resource, NULL);                             \
+    wl_resource_set_user_data(resource, nullptr);                          \
     delete host;                                                           \
   }                                                                        \
   static void sl_##NAME##_destroy(struct wl_client* client,                \
@@ -119,7 +119,7 @@ static void sl_pointer_constraints_lock_pointer(struct wl_client* client,
       static_cast<sl_host_pointer*>(wl_resource_get_user_data(pointer));
   struct sl_host_region* host_region =
       region ? static_cast<sl_host_region*>(wl_resource_get_user_data(region))
-             : NULL;
+             : nullptr;
 
   struct sl_host_locked_pointer* locked_pointer_host =
       new sl_host_locked_pointer();
@@ -127,7 +127,7 @@ static void sl_pointer_constraints_lock_pointer(struct wl_client* client,
   locked_pointer_host->ctx = host->ctx;
   locked_pointer_host->proxy = zwp_pointer_constraints_v1_lock_pointer(
       host->proxy, host_surface->proxy, host_pointer->proxy,
-      host_region ? host_region->proxy : NULL, lifetime);
+      host_region ? host_region->proxy : nullptr, lifetime);
   wl_resource_set_implementation(
       locked_pointer_resource, &sl_locked_pointer_implementation,
       locked_pointer_host, sl_destroy_host_locked_pointer);
@@ -155,7 +155,7 @@ static void sl_pointer_constraints_confine_pointer(struct wl_client* client,
       static_cast<sl_host_pointer*>(wl_resource_get_user_data(pointer));
   struct sl_host_region* host_region =
       region ? static_cast<sl_host_region*>(wl_resource_get_user_data(region))
-             : NULL;
+             : nullptr;
 
   struct sl_host_confined_pointer* confined_pointer_host =
       new sl_host_confined_pointer();
@@ -163,7 +163,7 @@ static void sl_pointer_constraints_confine_pointer(struct wl_client* client,
   confined_pointer_host->ctx = host->ctx;
   confined_pointer_host->proxy = zwp_pointer_constraints_v1_confine_pointer(
       host->proxy, host_surface->proxy, host_pointer->proxy,
-      host_region ? host_region->proxy : NULL, lifetime);
+      host_region ? host_region->proxy : nullptr, lifetime);
   wl_resource_set_implementation(
       confined_pointer_resource, &sl_confined_pointer_implementation,
       confined_pointer_host, sl_destroy_host_confined_pointer);

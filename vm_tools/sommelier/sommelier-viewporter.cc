@@ -62,7 +62,7 @@ static void sl_destroy_host_viewport(struct wl_resource* resource) {
   struct sl_host_viewport* host =
       static_cast<sl_host_viewport*>(wl_resource_get_user_data(resource));
 
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   wl_list_remove(&host->viewport.link);
   delete host;
 }
@@ -103,7 +103,7 @@ static void sl_destroy_host_viewporter(struct wl_resource* resource) {
       static_cast<sl_host_viewporter*>(wl_resource_get_user_data(resource));
 
   wp_viewporter_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 

@@ -208,7 +208,7 @@ static void sl_internal_xdg_surface_configure(void* data,
     window->next_config.serial = 0;
   } else if (!window->pending_config.serial) {
     struct wl_resource* host_resource;
-    struct sl_host_surface* host_surface = NULL;
+    struct sl_host_surface* host_surface = nullptr;
 
     host_resource =
         wl_client_get_object(window->ctx->client, window->host_surface_id);
@@ -352,7 +352,7 @@ static void sl_internal_toplevel_configure(struct sl_window* window,
 
   if (activated != window->activated) {
     if (activated != (window->ctx->host_focus_window == window)) {
-      window->ctx->host_focus_window = activated ? window : NULL;
+      window->ctx->host_focus_window = activated ? window : nullptr;
       window->ctx->needs_set_input_focus = 1;
     }
     window->activated = activated;
@@ -545,10 +545,10 @@ void sl_update_application_id(struct sl_context* ctx,
 
 void sl_window_update(struct sl_window* window) {
   TRACE_EVENT("surface", "sl_window_update", "id", window->id);
-  struct wl_resource* host_resource = NULL;
+  struct wl_resource* host_resource = nullptr;
   struct sl_host_surface* host_surface;
   struct sl_context* ctx = window->ctx;
-  struct sl_window* parent = NULL;
+  struct sl_window* parent = nullptr;
 
   if (window->host_surface_id) {
     host_resource = wl_client_get_object(ctx->client, window->host_surface_id);
@@ -561,25 +561,25 @@ void sl_window_update(struct sl_window* window) {
     wl_list_remove(&window->link);
     wl_list_insert(&ctx->unpaired_windows, &window->link);
     window->unpaired = 1;
-    window->paired_surface = NULL;
+    window->paired_surface = nullptr;
   }
 
   if (!host_resource) {
     if (window->aura_surface) {
       zaura_surface_destroy(window->aura_surface);
-      window->aura_surface = NULL;
+      window->aura_surface = nullptr;
     }
     if (window->xdg_toplevel) {
       xdg_toplevel_destroy(window->xdg_toplevel);
-      window->xdg_toplevel = NULL;
+      window->xdg_toplevel = nullptr;
     }
     if (window->xdg_popup) {
       xdg_popup_destroy(window->xdg_popup);
-      window->xdg_popup = NULL;
+      window->xdg_popup = nullptr;
     }
     if (window->xdg_surface) {
       xdg_surface_destroy(window->xdg_surface);
-      window->xdg_surface = NULL;
+      window->xdg_surface = nullptr;
     }
     window->realized = 0;
     return;
@@ -652,7 +652,8 @@ void sl_window_update(struct sl_window* window) {
 
   if (!window->depth) {
     xcb_get_geometry_reply_t* geometry_reply = xcb_get_geometry_reply(
-        ctx->connection, xcb_get_geometry(ctx->connection, window->id), NULL);
+        ctx->connection, xcb_get_geometry(ctx->connection, window->id),
+        nullptr);
     if (geometry_reply) {
       window->depth = geometry_reply->depth;
       free(geometry_reply);
@@ -751,7 +752,7 @@ void sl_window_update(struct sl_window* window) {
       xdg_toplevel_set_maximized(window->xdg_toplevel);
     }
     if (window->fullscreen) {
-      xdg_toplevel_set_fullscreen(window->xdg_toplevel, NULL);
+      xdg_toplevel_set_fullscreen(window->xdg_toplevel, nullptr);
     }
   } else if (!window->xdg_popup) {
     struct xdg_positioner* positioner;

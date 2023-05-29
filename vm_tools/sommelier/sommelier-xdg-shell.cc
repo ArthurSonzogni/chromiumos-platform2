@@ -155,7 +155,7 @@ static void sl_destroy_host_xdg_popup(struct wl_resource* resource) {
       static_cast<sl_host_xdg_popup*>(wl_resource_get_user_data(resource));
 
   xdg_popup_shim()->destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -175,12 +175,12 @@ static void sl_xdg_toplevel_show_window_menu(struct wl_client* client,
   struct sl_host_seat* host_seat =
       seat_resource
           ? static_cast<sl_host_seat*>(wl_resource_get_user_data(seat_resource))
-          : NULL;
+          : nullptr;
 
   // TODO(mrisaacb): There was no scaling performed here in the original code.
   // Figure out why this was.
   xdg_toplevel_shim()->show_window_menu(
-      host->proxy, host_seat ? host_seat->proxy : NULL, serial, x, y);
+      host->proxy, host_seat ? host_seat->proxy : nullptr, serial, x, y);
 }  // NOLINT(whitespace/indent)
 
 static void sl_xdg_toplevel_set_app_id(struct wl_client* client,
@@ -251,7 +251,7 @@ static void sl_destroy_host_xdg_toplevel(struct wl_resource* resource) {
       static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
 
   xdg_toplevel_shim()->destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -290,7 +290,7 @@ static void sl_xdg_surface_get_popup(struct wl_client* client,
   struct sl_host_xdg_surface* host_parent =
       parent_resource ? static_cast<sl_host_xdg_surface*>(
                             wl_resource_get_user_data(parent_resource))
-                      : NULL;
+                      : nullptr;
   struct sl_host_xdg_positioner* host_positioner =
       static_cast<sl_host_xdg_positioner*>(
           wl_resource_get_user_data(positioner_resource));
@@ -303,7 +303,7 @@ static void sl_xdg_surface_get_popup(struct wl_client* client,
                                  &sl_xdg_popup_implementation, host_xdg_popup,
                                  sl_destroy_host_xdg_popup);
   host_xdg_popup->proxy = xdg_surface_shim()->get_popup(
-      host->proxy, host_parent ? host_parent->proxy : NULL,
+      host->proxy, host_parent ? host_parent->proxy : nullptr,
       host_positioner->proxy);
   host_xdg_popup->originator = host_parent;
 
@@ -353,7 +353,7 @@ static void sl_destroy_host_xdg_surface(struct wl_resource* resource) {
       static_cast<sl_host_xdg_surface*>(wl_resource_get_user_data(resource));
 
   xdg_surface_shim()->destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -429,7 +429,7 @@ static void sl_destroy_host_xdg_shell(struct wl_resource* resource) {
       static_cast<sl_host_xdg_shell*>(wl_resource_get_user_data(resource));
 
   xdg_wm_base_shim()->destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 

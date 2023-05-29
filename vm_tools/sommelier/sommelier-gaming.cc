@@ -412,9 +412,9 @@ static void sl_internal_gamepad_removed(void* data,
          host_gamepad->state == kStateActivated ||
          host_gamepad->state == kStateError);
 
-  if (host_gamepad->uinput_dev != NULL)
+  if (host_gamepad->uinput_dev != nullptr)
     Libevdev::Get()->uinput_destroy(host_gamepad->uinput_dev);
-  if (host_gamepad->ev_dev != NULL)
+  if (host_gamepad->ev_dev != nullptr)
     Libevdev::Get()->free(host_gamepad->ev_dev);
 
   zcr_gamepad_v2_destroy(gamepad);
@@ -607,10 +607,10 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
   host_gamepad->ctx = ctx;
   host_gamepad->state = kStatePending;
   host_gamepad->ev_dev = Libevdev::Get()->new_evdev();
-  host_gamepad->uinput_dev = NULL;
+  host_gamepad->uinput_dev = nullptr;
   host_gamepad->mapping = nullptr;
 
-  if (host_gamepad->ev_dev == NULL) {
+  if (host_gamepad->ev_dev == nullptr) {
     fprintf(stderr, "error: libevdev_new failed\n");
     host_gamepad->state = kStateError;
     return;
@@ -643,7 +643,7 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
   // Enable common set of buttons
   for (unsigned int i = 0; i < ARRAY_SIZE(kButtons); i++)
     Libevdev::Get()->enable_event_code(host_gamepad->ev_dev, EV_KEY,
-                                       kButtons[i], NULL);
+                                       kButtons[i], nullptr);
 }  // NOLINT(whitespace/indent), lint bug b/173143790
 
 // Note: not currently implemented by Exo.

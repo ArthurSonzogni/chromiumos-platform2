@@ -95,7 +95,7 @@ void dump_trace(const char* trace_filename) {
   close(fd);
 }
 
-// Returns NULL if atom is not recognized.
+// Returns nullptr if atom is not recognized.
 static const char* xcb_atom_to_string(uint32_t atom) {
   switch (atom) {
     case XCB_ATOM_NONE:
@@ -237,7 +237,7 @@ static const char* xcb_atom_to_string(uint32_t atom) {
     case XCB_ATOM_WM_TRANSIENT_FOR:
       return "XCB_ATOM_WM_TRANSIENT_FOR";
     default:
-      return NULL;
+      return nullptr;
   }
 }
 
@@ -308,7 +308,7 @@ void perfetto_annotate_window(struct sl_context* ctx,
   dbg->set_name(event_name);
   struct sl_window* window = sl_lookup_window(ctx, window_id);
   std::ostringstream value;
-  if (window != NULL && window->name != NULL) {
+  if (window != nullptr && window->name != nullptr) {
     value << window->name << " <window #";
   } else {
     value << "<unknown window #";

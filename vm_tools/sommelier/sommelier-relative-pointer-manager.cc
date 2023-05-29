@@ -68,7 +68,7 @@ static void sl_destroy_host_relative_pointer(struct wl_resource* resource) {
           wl_resource_get_user_data(resource));
 
   zwp_relative_pointer_v1_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -93,7 +93,7 @@ static void sl_destroy_host_relative_pointer_manager(
           wl_resource_get_user_data(resource));
 
   zwp_relative_pointer_manager_v1_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 

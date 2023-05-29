@@ -110,15 +110,15 @@ static void sl_host_surface_attach(struct wl_client* client,
               "buffer_id", buffer_id);
   struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
-  if (host->ctx->timing != NULL) {
+  if (host->ctx->timing != nullptr) {
     host->ctx->timing->UpdateLastAttach(resource_id, buffer_id);
   }
   struct sl_host_buffer* host_buffer =
       buffer_resource ? static_cast<sl_host_buffer*>(
                             wl_resource_get_user_data(buffer_resource))
-                      : NULL;
-  struct wl_buffer* buffer_proxy = NULL;
-  struct sl_window* window = NULL;
+                      : nullptr;
+  struct wl_buffer* buffer_proxy = nullptr;
+  struct sl_window* window = nullptr;
   bool window_shaped = false;
 
   // The window_shaped flag should only be set if the xshape functionality
@@ -127,10 +127,10 @@ static void sl_host_surface_attach(struct wl_client* client,
   if (window && host->ctx->enable_xshape)
     window_shaped = window->shaped;
 
-  host->current_buffer = NULL;
+  host->current_buffer = nullptr;
   if (host->contents_shm_mmap) {
     sl_mmap_unref(host->contents_shm_mmap);
-    host->contents_shm_mmap = NULL;
+    host->contents_shm_mmap = nullptr;
   }
 
   if (host_buffer) {
@@ -149,7 +149,7 @@ static void sl_host_surface_attach(struct wl_client* client,
       } else {
         // A fallback if for some reason the DRM PRIME mmap container was
         // not created (or if this is not a shaped window)
-        host->contents_shm_mmap = NULL;
+        host->contents_shm_mmap = nullptr;
         window_shaped = false;
       }
     }
@@ -185,7 +185,7 @@ static void sl_host_surface_attach(struct wl_client* client,
       }
 
       sl_output_buffer_destroy(host->current_buffer);
-      host->current_buffer = NULL;
+      host->current_buffer = nullptr;
     }
 
     // Allocate new output buffer.
@@ -212,11 +212,11 @@ static void sl_host_surface_attach(struct wl_client* client,
 
       if (window_shaped) {
         host->current_buffer->shape_image = pixman_image_create_bits_no_clear(
-            PIXMAN_a8r8g8b8, width, height, NULL, 0);
+            PIXMAN_a8r8g8b8, width, height, nullptr, 0);
 
         assert(host->current_buffer->shape_image);
       } else {
-        host->current_buffer->shape_image = NULL;
+        host->current_buffer->shape_image = nullptr;
       }
 
       if (host->ctx->channel->supports_dmabuf()) {
@@ -326,7 +326,7 @@ static void sl_host_surface_attach(struct wl_client* client,
           // export sync file ioctl not implemented. Revert to previous method
           // of guest side sync going forward.
           zwp_linux_surface_synchronization_v1_destroy(host->surface_sync);
-          host->surface_sync = NULL;
+          host->surface_sync = nullptr;
           fprintf(stderr,
                   "DMA_BUF_IOCTL_EXPORT_SYNC_FILE not implemented, defaulting "
                   "to implicit fence for synchronization.\n");
@@ -471,7 +471,7 @@ static void sl_host_surface_damage_buffer(struct wl_client* client,
   // conversion.
   double scale_x, scale_y;
   wl_fixed_t offset_x, offset_y;
-  struct sl_viewport* viewport = NULL;
+  struct sl_viewport* viewport = nullptr;
   if (!wl_list_empty(&host->contents_viewport))
     viewport = wl_container_of(host->contents_viewport.next, viewport, link);
 
@@ -508,7 +508,7 @@ static void sl_host_callback_destroy(struct wl_resource* resource) {
       static_cast<sl_host_callback*>(wl_resource_get_user_data(resource));
 
   wl_callback_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -523,8 +523,8 @@ static void sl_host_surface_frame(struct wl_client* client,
 
   host_callback->resource =
       wl_resource_create(client, &wl_callback_interface, 1, callback);
-  wl_resource_set_implementation(host_callback->resource, NULL, host_callback,
-                                 sl_host_callback_destroy);
+  wl_resource_set_implementation(host_callback->resource, nullptr,
+                                 host_callback, sl_host_callback_destroy);
   host_callback->proxy = wl_surface_frame(host->proxy);
   wl_callback_add_listener(host_callback->proxy, &sl_frame_callback_listener,
                            host_callback);
@@ -603,10 +603,10 @@ static void sl_host_surface_commit(struct wl_client* client,
       [&](perfetto::EventContext p) { perfetto_annotate_time_sync(p); });
   struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
-  if (host->ctx->timing != NULL) {
+  if (host->ctx->timing != nullptr) {
     host->ctx->timing->UpdateLastCommit(resource_id);
   }
-  struct sl_viewport* viewport = NULL;
+  struct sl_viewport* viewport = nullptr;
 
   if (!wl_list_empty(&host->contents_viewport))
     viewport = wl_container_of(host->contents_viewport.next, viewport, link);
@@ -628,12 +628,12 @@ static void sl_host_surface_commit(struct wl_client* client,
         sl_mmap_unref(host->contents_shm_mmap);
 
         // Release the allocated output buffer back to the queue
-        host->contents_shm_mmap = NULL;
+        host->contents_shm_mmap = nullptr;
         host->contents_shaped = false;
         pixman_region32_clear(&host->contents_shape);
-        sl_output_buffer_release(NULL, host->current_buffer->internal);
+        sl_output_buffer_release(nullptr, host->current_buffer->internal);
 
-        // Attach the original buffer back, ensure proxy_buffer is not NULL
+        // Attach the original buffer back, ensure proxy_buffer is not nullptr
         assert(host->proxy_buffer);
         wl_surface_attach(host->proxy, host->proxy_buffer,
                           host->contents_x_offset, host->contents_y_offset);
@@ -794,7 +794,7 @@ static void sl_host_surface_commit(struct wl_client* client,
     }
     sl_mmap_end_access(host->contents_shm_mmap);
     sl_mmap_unref(host->contents_shm_mmap);
-    host->contents_shm_mmap = NULL;
+    host->contents_shm_mmap = nullptr;
   }
 }
 
@@ -824,7 +824,7 @@ static void sl_destroy_host_surface(struct wl_resource* resource) {
               try_wl_resource_get_id(resource));
   struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
-  struct sl_window *window, *surface_window = NULL;
+  struct sl_window *window, *surface_window = nullptr;
   struct sl_output_buffer* buffer;
 
   wl_list_for_each(window, &host->ctx->windows, link) {
@@ -856,10 +856,10 @@ static void sl_destroy_host_surface(struct wl_resource* resource) {
   if (host->viewport)
     wp_viewport_destroy(host->viewport);
   wl_surface_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   if (host->surface_sync) {
     zwp_linux_surface_synchronization_v1_destroy(host->surface_sync);
-    host->surface_sync = NULL;
+    host->surface_sync = nullptr;
   }
 
   pixman_region32_fini(&host->contents_shape);
@@ -879,7 +879,7 @@ static void sl_surface_enter(void* data,
   host->has_output = 1;
   host->output = host_output;
   sl_transform_reset_surface_scale(host->ctx, host);
-  struct sl_window* window = NULL;
+  struct sl_window* window = nullptr;
   window = sl_context_lookup_window_for_surface(host->ctx, host->resource);
   if (window) {
     sl_transform_try_window_scale(host->ctx, host, window->width,
@@ -964,7 +964,7 @@ static void sl_destroy_host_region(struct wl_resource* resource) {
       static_cast<sl_host_region*>(wl_resource_get_user_data(resource));
 
   wl_region_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -974,7 +974,7 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
   TRACE_EVENT("surface", "sl_compositor_create_host_surface");
   struct sl_host_compositor* host =
       static_cast<sl_host_compositor*>(wl_resource_get_user_data(resource));
-  struct sl_window *window, *unpaired_window = NULL;
+  struct sl_window *window, *unpaired_window = nullptr;
   struct sl_host_surface* host_surface = new sl_host_surface();
 
   host_surface->ctx = host->compositor->ctx;
@@ -985,7 +985,7 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
   host_surface->contents_shm_format = 0;
   host_surface->contents_scale = 1;
   wl_list_init(&host_surface->contents_viewport);
-  host_surface->contents_shm_mmap = NULL;
+  host_surface->contents_shm_mmap = nullptr;
   host_surface->has_role = 0;
   host_surface->has_output = 0;
   host_surface->has_own_scale = 0;
@@ -994,10 +994,10 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
   host_surface->scale_round_on_x = false;
   host_surface->scale_round_on_y = false;
   host_surface->last_event_serial = 0;
-  host_surface->current_buffer = NULL;
-  host_surface->proxy_buffer = NULL;
+  host_surface->current_buffer = nullptr;
+  host_surface->proxy_buffer = nullptr;
   host_surface->contents_shaped = false;
-  host_surface->output = NULL;
+  host_surface->output = nullptr;
   pixman_region32_init(&host_surface->contents_shape);
   wl_list_init(&host_surface->released_buffers);
   wl_list_init(&host_surface->busy_buffers);
@@ -1016,9 +1016,9 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
             host_surface->ctx->linux_explicit_synchronization->internal,
             host_surface->proxy);
   } else {
-    host_surface->surface_sync = NULL;
+    host_surface->surface_sync = nullptr;
   }
-  host_surface->viewport = NULL;
+  host_surface->viewport = nullptr;
   if (host_surface->ctx->viewporter) {
     host_surface->viewport = wp_viewporter_get_viewport(
         host_surface->ctx->viewporter->internal, host_surface->proxy);
@@ -1060,7 +1060,7 @@ static void sl_destroy_host_compositor(struct wl_resource* resource) {
       static_cast<sl_host_compositor*>(wl_resource_get_user_data(resource));
 
   wl_compositor_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 

@@ -133,7 +133,7 @@ static void sl_host_shm_pool_create_host_buffer(struct wl_client* client,
   struct sl_host_shm_pool* host =
       static_cast<sl_host_shm_pool*>(wl_resource_get_user_data(resource));
 
-  if (host->shm->ctx->channel == NULL) {
+  if (host->shm->ctx->channel == nullptr) {
     // Running in noop mode, without virtualization.
     assert(host->proxy);
     sl_create_host_buffer(host->shm->ctx, client, id,
@@ -144,7 +144,7 @@ static void sl_host_shm_pool_create_host_buffer(struct wl_client* client,
   }
 
   struct sl_host_buffer* host_buffer = sl_create_host_buffer(
-      host->shm->ctx, client, id, NULL, width, height, /*is_drm=*/false);
+      host->shm->ctx, client, id, nullptr, width, height, /*is_drm=*/false);
 
   host_buffer->shm_format = format;
   host_buffer->shm_mmap = sl_mmap_create(
@@ -191,7 +191,7 @@ static void sl_destroy_host_shm_pool(struct wl_resource* resource) {
     close(host->fd);
   if (host->proxy)
     wl_shm_pool_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -206,14 +206,14 @@ static void sl_shm_create_host_pool(struct wl_client* client,
 
   host_shm_pool->shm = host->shm;
   host_shm_pool->fd = -1;
-  host_shm_pool->proxy = NULL;
+  host_shm_pool->proxy = nullptr;
   host_shm_pool->resource =
       wl_resource_create(client, &wl_shm_pool_interface, 1, id);
   wl_resource_set_implementation(host_shm_pool->resource,
                                  &sl_shm_pool_implementation, host_shm_pool,
                                  sl_destroy_host_shm_pool);
 
-  if (host->shm->ctx->channel == NULL) {
+  if (host->shm->ctx->channel == nullptr) {
     // Running in noop mode, without virtualization.
     host_shm_pool->proxy = wl_shm_create_pool(host->shm_proxy, fd, size);
     wl_shm_pool_set_user_data(host_shm_pool->proxy, host_shm_pool);
@@ -292,7 +292,7 @@ static void sl_destroy_host_shm(struct wl_resource* resource) {
     wl_shm_destroy(host->shm_proxy);
   if (host->linux_dmabuf_proxy)
     zwp_linux_dmabuf_v1_destroy(host->linux_dmabuf_proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -303,13 +303,13 @@ static void sl_bind_host_shm(struct wl_client* client,
   struct sl_context* ctx = (struct sl_context*)data;
   struct sl_host_shm* host = new sl_host_shm();
   host->shm = ctx->shm;
-  host->shm_proxy = NULL;
-  host->linux_dmabuf_proxy = NULL;
+  host->shm_proxy = nullptr;
+  host->linux_dmabuf_proxy = nullptr;
   host->resource = wl_resource_create(client, &wl_shm_interface, 1, id);
   wl_resource_set_implementation(host->resource, &sl_shm_implementation, host,
                                  sl_destroy_host_shm);
 
-  if (ctx->channel != NULL && ctx->channel->supports_dmabuf()) {
+  if (ctx->channel != nullptr && ctx->channel->supports_dmabuf()) {
     assert(ctx->linux_dmabuf);
     host->linux_dmabuf_proxy = static_cast<zwp_linux_dmabuf_v1*>(
         wl_registry_bind(wl_display_get_registry(ctx->display),

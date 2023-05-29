@@ -245,7 +245,7 @@ TEST_F(X11Test, UpdatesApplicationIdFromXid) {
 }
 
 TEST_F(X11Test, NonExistentWindowDoesNotCrash) {
-  // This test is testing cases where sl_lookup_window returns NULL
+  // This test is testing cases where sl_lookup_window returns nullptr
 
   // sl_handle_destroy_notify
   xcb_destroy_notify_event_t destroy_event;
@@ -544,7 +544,7 @@ TEST_F(X11Test,
   window->size_flags = 0;  // no hinted position or size
   const int width = 1024;
   const int height = 768;
-  struct sl_host_output* output = NULL;
+  struct sl_host_output* output = nullptr;
   output = wl_container_of(ctx.host_outputs.next->next, output, link);
   HostEventHandler(window->paired_surface->proxy)
       ->enter(nullptr, window->paired_surface->proxy, output->proxy);

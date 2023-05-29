@@ -86,7 +86,7 @@ static void sl_destroy_host_shell_surface(struct wl_resource* resource) {
       static_cast<sl_host_shell_surface*>(wl_resource_get_user_data(resource));
 
   wl_shell_surface_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -123,7 +123,7 @@ static void sl_destroy_host_shell(struct wl_resource* resource) {
       static_cast<sl_host_shell*>(wl_resource_get_user_data(resource));
 
   wl_shell_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 

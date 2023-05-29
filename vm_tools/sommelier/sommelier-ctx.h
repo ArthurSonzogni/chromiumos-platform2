@@ -216,7 +216,7 @@ struct sl_context {
 // values: If `atoms[i].value = j`, i is the ATOM_ enum value and j is the
 // X protocol atom.
 //
-// If the given value is out of range of the ATOM_ enum, returns NULL.
+// If the given value is out of range of the ATOM_ enum, returns nullptr.
 const char* sl_context_atom_name(int atom_enum);
 
 void sl_context_init_default(struct sl_context* ctx);

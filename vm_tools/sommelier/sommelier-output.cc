@@ -257,7 +257,7 @@ void sl_output_get_dimensions_original(struct sl_host_output* host,
         int internal_width;
         int internal_height;
 
-        sl_output_get_host_output_state(output, NULL, &physical_width,
+        sl_output_get_host_output_state(output, nullptr, &physical_width,
                                         &physical_height, &internal_width,
                                         &internal_height);
 
@@ -584,7 +584,7 @@ static void sl_destroy_host_output(struct wl_resource* resource) {
   } else {
     wl_output_destroy(host->proxy);
   }
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   wl_list_remove(&host->link);
   free(host->make);
   free(host->model);
@@ -641,14 +641,14 @@ static void sl_bind_host_output(struct wl_client* client,
   host->ctx = ctx;
   host->resource = wl_resource_create(client, &wl_output_interface,
                                       MIN(version, output->version), id);
-  wl_resource_set_implementation(host->resource, NULL, host,
+  wl_resource_set_implementation(host->resource, nullptr, host,
                                  sl_destroy_host_output);
   host->proxy = static_cast<wl_output*>(wl_registry_bind(
       wl_display_get_registry(ctx->display), output->id, &wl_output_interface,
       wl_resource_get_version(host->resource)));
   wl_output_add_listener(host->proxy, &sl_output_listener, host);
   output->host_output = host;
-  host->aura_output = NULL;
+  host->aura_output = nullptr;
   // We assume that first output is internal by default.
   host->internal = wl_list_empty(&ctx->host_outputs);
   host->x = 0;

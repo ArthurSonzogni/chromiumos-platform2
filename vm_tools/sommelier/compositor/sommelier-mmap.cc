@@ -26,8 +26,8 @@ struct sl_mmap* sl_mmap_create(int fd,
   map->fd = fd;
   map->size = size;
   map->map_type = SL_MMAP_SHM;
-  map->gbm_map_data = NULL;
-  map->gbmbo = NULL;
+  map->gbm_map_data = nullptr;
+  map->gbmbo = nullptr;
   map->num_planes = num_planes;
   map->bpp = bpp;
   map->offset[0] = offset0;
@@ -36,11 +36,11 @@ struct sl_mmap* sl_mmap_create(int fd,
   map->stride[1] = stride1;
   map->y_ss[0] = y_ss0;
   map->y_ss[1] = y_ss1;
-  map->begin_write = NULL;
-  map->end_write = NULL;
-  map->buffer_resource = NULL;
+  map->begin_write = nullptr;
+  map->end_write = nullptr;
+  map->buffer_resource = nullptr;
   map->addr =
-      mmap(NULL, size + offset0, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+      mmap(nullptr, size + offset0, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   errno_assert(map->addr != MAP_FAILED);
 
   return map;
@@ -68,13 +68,13 @@ struct sl_mmap* sl_drm_prime_mmap_create(gbm_device* device,
   map->stride[1] = 0;
   map->y_ss[0] = 1;
   map->y_ss[1] = 1;
-  map->begin_write = NULL;
-  map->end_write = NULL;
-  map->buffer_resource = NULL;
+  map->begin_write = nullptr;
+  map->end_write = nullptr;
+  map->buffer_resource = nullptr;
   map->map_type = SL_MMAP_DRM_PRIME;
-  map->gbm_map_data = NULL;
-  map->addr = NULL;
-  map->gbmbo = NULL;
+  map->gbm_map_data = nullptr;
+  map->addr = nullptr;
+  map->gbmbo = nullptr;
 
   // Prefill in the gbm_import_data structure
   map->gbm_import_data.fd = fd;
@@ -116,7 +116,7 @@ bool sl_mmap_begin_access(struct sl_mmap* map) {
     return false;
   }
 
-  map->gbm_map_data = NULL;
+  map->gbm_map_data = nullptr;
   map->addr = gbm_bo_map(map->gbmbo, 0, 0, map->gbm_import_data.width,
                          map->gbm_import_data.height, GBM_BO_TRANSFER_READ,
                          &ret_stride, &map->gbm_map_data);
@@ -137,13 +137,13 @@ void sl_mmap_end_access(struct sl_mmap* map) {
 
   if (map->addr && map->gbm_map_data) {
     gbm_bo_unmap(map->gbmbo, map->gbm_map_data);
-    map->addr = NULL;
-    map->gbm_map_data = NULL;
+    map->addr = nullptr;
+    map->gbm_map_data = nullptr;
   }
 
   if (map->gbmbo) {
     gbm_bo_destroy(map->gbmbo);
-    map->gbmbo = NULL;
+    map->gbmbo = nullptr;
   }
 }
 

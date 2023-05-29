@@ -67,7 +67,7 @@ static void sl_destroy_host_gtk_surface(struct wl_resource* resource) {
 
   zaura_surface_destroy(host->proxy);
   wl_list_remove(&host->link);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -103,7 +103,7 @@ static void sl_gtk_shell_set_startup_id(struct wl_client* client,
   struct sl_host_gtk_surface* surface;
 
   free(host->startup_id);
-  host->startup_id = startup_id ? strdup(startup_id) : NULL;
+  host->startup_id = startup_id ? strdup(startup_id) : nullptr;
 
   wl_list_for_each(surface, &host->surfaces, link)
       zaura_surface_set_startup_id(surface->proxy, host->startup_id);
@@ -124,7 +124,7 @@ static void sl_destroy_host_gtk_shell(struct wl_resource* resource) {
   free(host->startup_id);
   wl_callback_destroy(host->callback);
   zaura_shell_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -148,7 +148,7 @@ static void sl_bind_host_gtk_shell(struct wl_client* client,
   struct sl_context* ctx = (struct sl_context*)data;
   struct sl_host_gtk_shell* host = new sl_host_gtk_shell();
   host->aura_shell = ctx->aura_shell;
-  host->startup_id = NULL;
+  host->startup_id = nullptr;
   wl_list_init(&host->surfaces);
   host->resource = wl_resource_create(client, &gtk_shell1_interface, 1, id);
   wl_resource_set_implementation(host->resource, &sl_gtk_shell_implementation,

@@ -54,7 +54,7 @@ static void sl_destroy_host_subsurface(struct wl_resource* resource) {
       static_cast<sl_host_subsurface*>(wl_resource_get_user_data(resource));
 
   wl_subsurface_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -97,7 +97,7 @@ static void sl_destroy_host_subcompositor(struct wl_resource* resource) {
       static_cast<sl_host_subcompositor*>(wl_resource_get_user_data(resource));
 
   wl_subcompositor_destroy(host->proxy);
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 

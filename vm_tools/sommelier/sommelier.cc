@@ -154,7 +154,7 @@ struct sl_sync_point* sl_sync_point_create(int fd) {
   TRACE_EVENT("sync", "sl_sync_point_create");
   struct sl_sync_point* sync_point = new sl_sync_point();
   sync_point->fd = fd;
-  sync_point->sync = NULL;
+  sync_point->sync = nullptr;
 
   return sync_point;
 }
@@ -250,8 +250,8 @@ void sl_restack_windows(struct sl_context* ctx, uint32_t focus_resource_id) {
 void sl_roundtrip(struct sl_context* ctx) {
   TRACE_EVENT("other", "sl_roundtrip", "id",
               ctx->application_id != nullptr ? ctx->application_id : "<null>");
-  free(xcb_get_input_focus_reply(ctx->connection,
-                                 xcb_get_input_focus(ctx->connection), NULL));
+  free(xcb_get_input_focus_reply(
+      ctx->connection, xcb_get_input_focus(ctx->connection), nullptr));
 }
 
 static void sl_window_set_wm_state(struct sl_window* window, int state) {
@@ -282,7 +282,7 @@ static void sl_buffer_release(void* data, struct wl_buffer* buffer) {
 
   auto resource_id = host->resource ? wl_resource_get_id(host->resource) : -1;
   TRACE_EVENT("surface", "sl_buffer_release", "resource_id", resource_id);
-  if (host->ctx->timing != NULL) {
+  if (host->ctx->timing != nullptr) {
     host->ctx->timing->UpdateLastRelease(resource_id);
   }
   wl_buffer_send_release(host->resource);
@@ -299,13 +299,13 @@ static void sl_destroy_host_buffer(struct wl_resource* resource) {
   if (host->proxy)
     wl_buffer_destroy(host->proxy);
   if (host->shm_mmap) {
-    host->shm_mmap->buffer_resource = NULL;
+    host->shm_mmap->buffer_resource = nullptr;
     sl_mmap_unref(host->shm_mmap);
   }
   if (host->sync_point) {
     sl_sync_point_destroy(host->sync_point);
   }
-  wl_resource_set_user_data(resource, NULL);
+  wl_resource_set_user_data(resource, nullptr);
   delete host;
 }
 
@@ -327,14 +327,14 @@ struct sl_host_buffer* sl_create_host_buffer(struct sl_context* ctx,
   wl_resource_set_implementation(host_buffer->resource,
                                  &sl_buffer_implementation, host_buffer,
                                  sl_destroy_host_buffer);
-  host_buffer->shm_mmap = NULL;
+  host_buffer->shm_mmap = nullptr;
   host_buffer->shm_format = 0;
   host_buffer->proxy = proxy;
   if (host_buffer->proxy) {
     wl_buffer_add_listener(host_buffer->proxy, &sl_buffer_listener,
                            host_buffer);
   }
-  host_buffer->sync_point = NULL;
+  host_buffer->sync_point = nullptr;
   host_buffer->is_drm = is_drm;
 
   return host_buffer;
@@ -353,7 +353,7 @@ static void sl_set_selection(struct sl_context* ctx,
   TRACE_EVENT("other", "sl_set_selection");
   if (ctx->selection_data_offer) {
     sl_internal_data_offer_destroy(ctx->selection_data_offer);
-    ctx->selection_data_offer = NULL;
+    ctx->selection_data_offer = nullptr;
   }
 
   if (ctx->clipboard_manager) {
@@ -376,7 +376,7 @@ static void sl_set_selection(struct sl_context* ctx,
           (reinterpret_cast<xcb_intern_atom_cookie_t*>(
               data_offer->cookies.data))[i];
       xcb_intern_atom_reply_t* reply =
-          xcb_intern_atom_reply(ctx->connection, cookie, NULL);
+          xcb_intern_atom_reply(ctx->connection, cookie, nullptr);
       if (reply) {
         (reinterpret_cast<xcb_atom_t*>(data_offer->atoms.data))[i + 2] =
             reply->atom;
@@ -460,7 +460,7 @@ static void sl_internal_data_device_selection(
   struct sl_data_offer* host_data_offer =
       data_offer
           ? static_cast<sl_data_offer*>(wl_data_offer_get_user_data(data_offer))
-          : NULL;
+          : nullptr;
 
   sl_set_selection(ctx, host_data_offer);
 }
@@ -494,7 +494,7 @@ void sl_host_seat_added(struct sl_host_seat* host) {
 void sl_host_seat_removed(struct sl_host_seat* host) {
   TRACE_EVENT("other", "sl_host_seat_removed");
   if (host->seat->ctx->default_seat == host)
-    host->seat->ctx->default_seat = NULL;
+    host->seat->ctx->default_seat = nullptr;
 }
 
 bool sl_client_supports_interface(const sl_context* ctx,
@@ -622,8 +622,8 @@ void sl_registry_handler(void* data,
     data_device_manager->ctx = ctx;
     data_device_manager->id = id;
     data_device_manager->version = MIN(3, version);
-    data_device_manager->internal = NULL;
-    data_device_manager->host_global = NULL;
+    data_device_manager->internal = nullptr;
+    data_device_manager->host_global = nullptr;
     assert(!ctx->data_device_manager);
     ctx->data_device_manager = data_device_manager;
     if (ctx->xwayland) {
@@ -640,15 +640,15 @@ void sl_registry_handler(void* data,
     assert(xdg_shell);
     xdg_shell->ctx = ctx;
     xdg_shell->id = id;
-    xdg_shell->internal = NULL;
-    xdg_shell->host_global = NULL;
+    xdg_shell->internal = nullptr;
+    xdg_shell->host_global = nullptr;
     assert(!ctx->xdg_shell);
     ctx->xdg_shell = xdg_shell;
     if (ctx->xwayland) {
       xdg_shell->internal = static_cast<xdg_wm_base*>(wl_registry_bind(
           registry, id, &xdg_wm_base_interface, XDG_SHELL_VERSION));
       xdg_wm_base_add_listener(xdg_shell->internal,
-                               &sl_internal_xdg_shell_listener, NULL);
+                               &sl_internal_xdg_shell_listener, nullptr);
     } else {
       xdg_shell->host_global = sl_xdg_shell_global_create(ctx);
     }
@@ -660,7 +660,7 @@ void sl_registry_handler(void* data,
       aura_shell->ctx = ctx;
       aura_shell->id = id;
       aura_shell->version = MIN(MAX_AURA_SHELL_VERSION, version);
-      aura_shell->host_gtk_shell_global = NULL;
+      aura_shell->host_gtk_shell_global = nullptr;
       aura_shell->internal = static_cast<zaura_shell*>(wl_registry_bind(
           registry, id, &zaura_shell_interface, aura_shell->version));
       assert(!ctx->aura_shell);
@@ -673,7 +673,7 @@ void sl_registry_handler(void* data,
     assert(viewporter);
     viewporter->ctx = ctx;
     viewporter->id = id;
-    viewporter->host_viewporter_global = NULL;
+    viewporter->host_viewporter_global = nullptr;
     viewporter->internal = static_cast<wp_viewporter*>(
         wl_registry_bind(registry, id, &wp_viewporter_interface, 1));
     assert(!ctx->viewporter);
@@ -803,26 +803,26 @@ void sl_registry_remover(void* data,
     sl_global_destroy(ctx->compositor->host_global);
     wl_compositor_destroy(ctx->compositor->internal);
     free(ctx->compositor);
-    ctx->compositor = NULL;
+    ctx->compositor = nullptr;
     return;
   }
   if (ctx->subcompositor && ctx->subcompositor->id == id) {
     sl_global_destroy(ctx->subcompositor->host_global);
     wl_shm_destroy(ctx->shm->internal);
     free(ctx->subcompositor);
-    ctx->subcompositor = NULL;
+    ctx->subcompositor = nullptr;
     return;
   }
   if (ctx->shm && ctx->shm->id == id) {
     sl_global_destroy(ctx->shm->host_global);
     free(ctx->shm);
-    ctx->shm = NULL;
+    ctx->shm = nullptr;
     return;
   }
   if (ctx->shell && ctx->shell->id == id) {
     sl_global_destroy(ctx->shell->host_global);
     free(ctx->shell);
-    ctx->shell = NULL;
+    ctx->shell = nullptr;
     return;
   }
   if (ctx->data_device_manager && ctx->data_device_manager->id == id) {
@@ -831,7 +831,7 @@ void sl_registry_remover(void* data,
     if (ctx->data_device_manager->internal)
       wl_data_device_manager_destroy(ctx->data_device_manager->internal);
     free(ctx->data_device_manager);
-    ctx->data_device_manager = NULL;
+    ctx->data_device_manager = nullptr;
     return;
   }
   if (ctx->xdg_shell && ctx->xdg_shell->id == id) {
@@ -840,7 +840,7 @@ void sl_registry_remover(void* data,
     if (ctx->xdg_shell->internal)
       xdg_wm_base_destroy(ctx->xdg_shell->internal);
     free(ctx->xdg_shell);
-    ctx->xdg_shell = NULL;
+    ctx->xdg_shell = nullptr;
     return;
   }
   if (ctx->aura_shell && ctx->aura_shell->id == id) {
@@ -848,7 +848,7 @@ void sl_registry_remover(void* data,
       sl_global_destroy(ctx->aura_shell->host_gtk_shell_global);
     zaura_shell_destroy(ctx->aura_shell->internal);
     free(ctx->aura_shell);
-    ctx->aura_shell = NULL;
+    ctx->aura_shell = nullptr;
     return;
   }
   if (ctx->viewporter && ctx->viewporter->id == id) {
@@ -856,7 +856,7 @@ void sl_registry_remover(void* data,
       sl_global_destroy(ctx->viewporter->host_viewporter_global);
     wp_viewporter_destroy(ctx->viewporter->internal);
     free(ctx->viewporter);
-    ctx->viewporter = NULL;
+    ctx->viewporter = nullptr;
     return;
   }
   if (ctx->linux_dmabuf && ctx->linux_dmabuf->id == id) {
@@ -864,7 +864,7 @@ void sl_registry_remover(void* data,
       sl_global_destroy(ctx->linux_dmabuf->host_drm_global);
     zwp_linux_dmabuf_v1_destroy(ctx->linux_dmabuf->internal);
     free(ctx->linux_dmabuf);
-    ctx->linux_dmabuf = NULL;
+    ctx->linux_dmabuf = nullptr;
     return;
   }
   if (ctx->linux_explicit_synchronization &&
@@ -872,51 +872,51 @@ void sl_registry_remover(void* data,
     zwp_linux_explicit_synchronization_v1_destroy(
         ctx->linux_explicit_synchronization->internal);
     free(ctx->linux_explicit_synchronization);
-    ctx->linux_explicit_synchronization = NULL;
+    ctx->linux_explicit_synchronization = nullptr;
     return;
   }
   if (ctx->keyboard_extension && ctx->keyboard_extension->id == id) {
     zcr_keyboard_extension_v1_destroy(ctx->keyboard_extension->internal);
     free(ctx->keyboard_extension);
-    ctx->keyboard_extension = NULL;
+    ctx->keyboard_extension = nullptr;
     return;
   }
   if (ctx->text_input_manager && ctx->text_input_manager->id == id) {
     sl_global_destroy(ctx->text_input_manager->host_global);
     free(ctx->text_input_manager);
-    ctx->text_input_manager = NULL;
+    ctx->text_input_manager = nullptr;
     return;
   }
   if (ctx->text_input_extension && ctx->text_input_extension->id == id) {
     sl_global_destroy(ctx->text_input_extension->host_global);
     free(ctx->text_input_extension);
-    ctx->text_input_extension = NULL;
+    ctx->text_input_extension = nullptr;
     return;
   }
 #ifdef GAMEPAD_SUPPORT
   if (ctx->gaming_input_manager && ctx->gaming_input_manager->id == id) {
     zcr_gaming_input_v2_destroy(ctx->gaming_input_manager->internal);
     free(ctx->gaming_input_manager);
-    ctx->gaming_input_manager = NULL;
+    ctx->gaming_input_manager = nullptr;
     return;
   }
 #endif
   if (ctx->stylus_input_manager && ctx->stylus_input_manager->id == id) {
     sl_global_destroy(ctx->stylus_input_manager->tablet_host_global);
     free(ctx->stylus_input_manager);
-    ctx->stylus_input_manager = NULL;
+    ctx->stylus_input_manager = nullptr;
   }
   if (ctx->relative_pointer_manager &&
       ctx->relative_pointer_manager->id == id) {
     sl_global_destroy(ctx->relative_pointer_manager->host_global);
     free(ctx->relative_pointer_manager);
-    ctx->relative_pointer_manager = NULL;
+    ctx->relative_pointer_manager = nullptr;
     return;
   }
   if (ctx->pointer_constraints && ctx->pointer_constraints->id == id) {
     sl_global_destroy(ctx->pointer_constraints->host_global);
     free(ctx->pointer_constraints);
-    ctx->pointer_constraints = NULL;
+    ctx->pointer_constraints = nullptr;
     return;
   }
   wl_list_for_each(output, &ctx->outputs, link) {
@@ -1028,7 +1028,7 @@ struct sl_window* sl_lookup_window(struct sl_context* ctx, xcb_window_t id) {
     if (sl_is_window(window, id))
       return window;
   }
-  return NULL;
+  return nullptr;
 }
 
 int sl_is_our_window(struct sl_context* ctx, xcb_window_t id) {
@@ -1077,7 +1077,7 @@ void sl_handle_reparent_notify(struct sl_context* ctx,
 
     xcb_get_geometry_reply_t* geometry_reply = xcb_get_geometry_reply(
         ctx->connection, xcb_get_geometry(ctx->connection, event->window),
-        NULL);
+        nullptr);
 
     if (geometry_reply) {
       width = geometry_reply->width;
@@ -1175,7 +1175,7 @@ void sl_handle_map_request(struct sl_context* ctx,
 
   if (window->frame_id == XCB_WINDOW_NONE) {
     xcb_get_geometry_reply_t* geometry_reply =
-        xcb_get_geometry_reply(ctx->connection, geometry_cookie, NULL);
+        xcb_get_geometry_reply(ctx->connection, geometry_cookie, nullptr);
     if (geometry_reply) {
       window->x = geometry_reply->x;
       window->y = geometry_reply->y;
@@ -1187,11 +1187,11 @@ void sl_handle_map_request(struct sl_context* ctx,
   }
 
   free(window->name);
-  window->name = NULL;
+  window->name = nullptr;
   free(window->clazz);
-  window->clazz = NULL;
+  window->clazz = nullptr;
   free(window->startup_id);
-  window->startup_id = NULL;
+  window->startup_id = nullptr;
   window->transient_for = XCB_WINDOW_NONE;
   window->client_leader = XCB_WINDOW_NONE;
   window->decorated = 1;
@@ -1200,7 +1200,7 @@ void sl_handle_map_request(struct sl_context* ctx,
 
   for (unsigned i = 0; i < ARRAY_SIZE(properties); ++i) {
     xcb_get_property_reply_t* reply =
-        xcb_get_property_reply(ctx->connection, property_cookies[i], NULL);
+        xcb_get_property_reply(ctx->connection, property_cookies[i], nullptr);
 
     if (!reply)
       continue;
@@ -1378,7 +1378,7 @@ void sl_handle_map_request(struct sl_context* ctx,
         xcb_get_property(ctx->connection, 0, window->client_leader,
                          ctx->atoms[ATOM_NET_STARTUP_ID].value, XCB_ATOM_ANY, 0,
                          2048),
-        NULL);
+        nullptr);
     if (reply) {
       if (reply->type != XCB_ATOM_NONE) {
         window->startup_id =
@@ -1483,7 +1483,7 @@ void sl_handle_unmap_notify(struct sl_context* ctx,
     return;
 
   if (ctx->host_focus_window == window) {
-    ctx->host_focus_window = NULL;
+    ctx->host_focus_window = nullptr;
     ctx->needs_set_input_focus = 1;
   }
 
@@ -1629,7 +1629,7 @@ static void sl_handle_configure_notify(struct sl_context* ctx,
   if (event->window == ctx->screen->root) {
     xcb_get_geometry_reply_t* geometry_reply = xcb_get_geometry_reply(
         ctx->connection, xcb_get_geometry(ctx->connection, event->window),
-        NULL);
+        nullptr);
     int width = ctx->screen->width_in_pixels;
     int height = ctx->screen->height_in_pixels;
 
@@ -1730,7 +1730,7 @@ void sl_handle_client_message(struct sl_context* ctx,
     perfetto_annotate_window(ctx, p, "event->window", event->window);
   });
   if (event->type == ctx->atoms[ATOM_WL_SURFACE_ID].value) {
-    struct sl_window *window, *unpaired_window = NULL;
+    struct sl_window *window, *unpaired_window = nullptr;
 
     wl_list_for_each(window, &ctx->unpaired_windows, link) {
       if (sl_is_window(window, event->window)) {
@@ -1789,7 +1789,7 @@ void sl_handle_client_message(struct sl_context* ctx,
         if (action == NET_WM_STATE_ADD) {
           window->fullscreen = 1;
           if (window->xdg_toplevel && !window->iconified) {
-            xdg_toplevel_set_fullscreen(window->xdg_toplevel, NULL);
+            xdg_toplevel_set_fullscreen(window->xdg_toplevel, nullptr);
           } else {
             window->pending_fullscreen_change = true;
           }
@@ -1892,7 +1892,7 @@ void sl_handle_focus_in(struct sl_context* ctx, xcb_focus_in_event_t* event) {
   if (window) {
     if (window->xdg_toplevel && window->pending_fullscreen_change) {
       if (window->fullscreen) {
-        xdg_toplevel_set_fullscreen(window->xdg_toplevel, NULL);
+        xdg_toplevel_set_fullscreen(window->xdg_toplevel, nullptr);
       } else {
         xdg_toplevel_unset_fullscreen(window->xdg_toplevel);
       }
@@ -1919,7 +1919,7 @@ int sl_begin_data_source_send(struct sl_context* ctx,
                               xcb_intern_atom_cookie_t cookie,
                               struct sl_data_source* data_source) {
   xcb_intern_atom_reply_t* reply =
-      xcb_intern_atom_reply(ctx->connection, cookie, NULL);
+      xcb_intern_atom_reply(ctx->connection, cookie, nullptr);
 
   if (!reply) {
     close(fd);
@@ -1984,7 +1984,7 @@ static int sl_handle_selection_fd_writable(int fd, uint32_t mask, void* data) {
   }
 
   free(ctx->selection_property_reply);
-  ctx->selection_property_reply = NULL;
+  ctx->selection_property_reply = nullptr;
   if (ctx->selection_send_event_source) {
     ctx->selection_send_event_source.reset();
   }
@@ -2129,7 +2129,7 @@ void sl_handle_property_notify(struct sl_context* ctx,
 
     if (window->name) {
       free(window->name);
-      window->name = NULL;
+      window->name = nullptr;
       window->has_net_wm_name = false;
     }
 
@@ -2145,7 +2145,7 @@ void sl_handle_property_notify(struct sl_context* ctx,
           ctx->connection,
           xcb_get_property(ctx->connection, 0, window->id, atom, XCB_ATOM_ANY,
                            0, 2048),
-          NULL);
+          nullptr);
       if (reply) {
         window->name =
             strndup(static_cast<char*>(xcb_get_property_value(reply)),
@@ -2175,7 +2175,7 @@ void sl_handle_property_notify(struct sl_context* ctx,
         xcb_get_property(ctx->connection, 0, window->id, XCB_ATOM_WM_CLASS,
                          XCB_ATOM_ANY, 0, 2048);
     xcb_get_property_reply_t* reply =
-        xcb_get_property_reply(ctx->connection, cookie, NULL);
+        xcb_get_property_reply(ctx->connection, cookie, nullptr);
     if (reply) {
       sl_decode_wm_class(window, reply);
       free(reply);
@@ -2193,7 +2193,7 @@ void sl_handle_property_notify(struct sl_context* ctx,
         ctx->connection, 0, window->id, ctx->application_id_property_atom,
         XCB_ATOM_CARDINAL, 0, 1);
     xcb_get_property_reply_t* reply =
-        xcb_get_property_reply(ctx->connection, cookie, NULL);
+        xcb_get_property_reply(ctx->connection, cookie, nullptr);
     if (reply) {
       sl_set_application_id_from_atom(ctx, window, reply);
       sl_update_application_id(ctx, window);
@@ -2213,7 +2213,7 @@ void sl_handle_property_notify(struct sl_context* ctx,
           xcb_get_property(ctx->connection, 0, window->id,
                            XCB_ATOM_WM_NORMAL_HINTS, XCB_ATOM_ANY, 0,
                            sizeof(size_hints)),
-          NULL);
+          nullptr);
       if (reply) {
         memcpy(&size_hints, xcb_get_property_value(reply), sizeof(size_hints));
         free(reply);
@@ -2270,7 +2270,7 @@ void sl_handle_property_notify(struct sl_context* ctx,
         ctx->connection,
         xcb_get_property(ctx->connection, 0, window->id, XCB_ATOM_WM_HINTS,
                          XCB_ATOM_ANY, 0, sizeof(wm_hints)),
-        NULL);
+        nullptr);
 
     if (!reply)
       return;
@@ -2295,7 +2295,7 @@ void sl_handle_property_notify(struct sl_context* ctx,
           xcb_get_property(ctx->connection, 0, window->id,
                            ctx->atoms[ATOM_MOTIF_WM_HINTS].value, XCB_ATOM_ANY,
                            0, sizeof(mwm_hints)),
-          NULL);
+          nullptr);
       if (reply) {
         if (xcb_get_property_value_length(reply) >=
             static_cast<int>(sizeof(mwm_hints))) {
@@ -2335,7 +2335,7 @@ void sl_handle_property_notify(struct sl_context* ctx,
           xcb_get_property(ctx->connection, 0, window->id,
                            ctx->atoms[ATOM_GTK_THEME_VARIANT].value,
                            XCB_ATOM_ANY, 0, 2048),
-          NULL);
+          nullptr);
       if (reply) {
         if (xcb_get_property_value_length(reply) >= 4)
           window->dark_frame = !strcmp(
@@ -2363,7 +2363,7 @@ void sl_handle_property_notify(struct sl_context* ctx,
                   perfetto_annotate_window(ctx, p, "window", event->window);
 
                   xcb_get_property_reply_t* reply =
-                      xcb_get_property_reply(ctx->connection, cookie, NULL);
+                      xcb_get_property_reply(ctx->connection, cookie, nullptr);
                   perfetto_annotate_cardinal_list(p, "value", reply);
                   free(reply);
                 });
@@ -2376,7 +2376,7 @@ void sl_handle_property_notify(struct sl_context* ctx,
           xcb_get_property(ctx->connection, 0, ctx->selection_window,
                            ctx->atoms[ATOM_WL_SELECTION].value,
                            XCB_GET_PROPERTY_TYPE_ANY, 0, 0x1fffffff),
-          NULL);
+          nullptr);
 
       if (!reply)
         return;
@@ -2461,7 +2461,7 @@ static void sl_internal_data_source_cancelled(
   struct sl_data_source* host = static_cast<sl_data_source*>(data);
 
   if (host->ctx->selection_data_source == host)
-    host->ctx->selection_data_source = NULL;
+    host->ctx->selection_data_source = nullptr;
 
   wl_data_source_destroy(data_source);
 }
@@ -2484,7 +2484,7 @@ char* sl_copy_atom_name(xcb_get_atom_name_reply_t* reply) {
 
 static void sl_get_selection_targets(struct sl_context* ctx) {
   TRACE_EVENT("other", "sl_get_selection_targets");
-  struct sl_data_source* data_source = NULL;
+  struct sl_data_source* data_source = nullptr;
   xcb_get_property_reply_t* reply;
   xcb_atom_t* value;
   uint32_t i;
@@ -2494,7 +2494,7 @@ static void sl_get_selection_targets(struct sl_context* ctx) {
       xcb_get_property(ctx->connection, 1, ctx->selection_window,
                        ctx->atoms[ATOM_WL_SELECTION].value,
                        XCB_GET_PROPERTY_TYPE_ANY, 0, DEFAULT_BUFFER_SIZE),
-      NULL);
+      nullptr);
   if (!reply)
     return;
 
@@ -2528,8 +2528,8 @@ static void sl_get_selection_targets(struct sl_context* ctx) {
       atom_name_cookies[i] = xcb_get_atom_name(ctx->connection, value[i]);
     }
     for (i = 0; i < reply->value_len; i++) {
-      xcb_get_atom_name_reply_t* atom_name_reply =
-          xcb_get_atom_name_reply(ctx->connection, atom_name_cookies[i], NULL);
+      xcb_get_atom_name_reply_t* atom_name_reply = xcb_get_atom_name_reply(
+          ctx->connection, atom_name_cookies[i], nullptr);
       if (atom_name_reply) {
         char* name = sl_copy_atom_name(atom_name_reply);
         wl_data_source_offer(data_source->internal, name);
@@ -2562,7 +2562,7 @@ static void sl_get_selection_data(struct sl_context* ctx) {
       xcb_get_property(ctx->connection, 1, ctx->selection_window,
                        ctx->atoms[ATOM_WL_SELECTION].value,
                        XCB_GET_PROPERTY_TYPE_ANY, 0, 0x1fffffff),
-      NULL);
+      nullptr);
   if (!reply)
     return;
 
@@ -2630,7 +2630,7 @@ static void sl_send_data(struct sl_context* ctx, xcb_atom_t data_type) {
   wl_array_init(&ctx->selection_data);
   ctx->selection_data_ack_pending = 0;
 
-  if (ctx->channel == NULL) {
+  if (ctx->channel == nullptr) {
     // Running in noop mode, without virtualization.
     int p[2];
 
@@ -2654,7 +2654,7 @@ static void sl_send_data(struct sl_context* ctx, xcb_atom_t data_type) {
   }
 
   xcb_get_atom_name_reply_t* atom_name_reply =
-      xcb_get_atom_name_reply(ctx->connection, atom_name_cookie, NULL);
+      xcb_get_atom_name_reply(ctx->connection, atom_name_cookie, nullptr);
   if (atom_name_reply) {
     // If we got the atom name, then send the request to wayland and add our end
     // of the pipe to the wayland event loop.
@@ -2719,10 +2719,10 @@ static void sl_handle_xfixes_selection_notify(
     return;
 
   if (event->owner == XCB_WINDOW_NONE) {
-    // If client selection is gone. Set NULL selection for each seat.
+    // If client selection is gone. Set nullptr selection for each seat.
     if (ctx->selection_owner != ctx->selection_window) {
       if (ctx->selection_data_device && ctx->default_seat) {
-        wl_data_device_set_selection(ctx->selection_data_device, NULL,
+        wl_data_device_set_selection(ctx->selection_data_device, nullptr,
                                      ctx->default_seat->seat->last_serial);
       }
     }
@@ -2930,7 +2930,7 @@ static void sl_connect(struct sl_context* ctx) {
 
   set_xcb_shim(new XcbShim());
 
-  ctx->connection = xcb_connect_to_fd(ctx->wm_fd, NULL);
+  ctx->connection = xcb_connect_to_fd(ctx->wm_fd, nullptr);
   assert(!xcb_connection_has_error(ctx->connection));
 
   xcb_prefetch_extension_data(ctx->connection, &xcb_xfixes_id);
@@ -2973,7 +2973,7 @@ static void sl_connect(struct sl_context* ctx) {
       ctx->connection,
       xcb_xfixes_query_version(ctx->connection, XCB_XFIXES_MAJOR_VERSION,
                                XCB_XFIXES_MINOR_VERSION),
-      NULL);
+      nullptr);
   assert(xfixes_query_version_reply);
   assert(xfixes_query_version_reply->major_version >= 5);
   free(xfixes_query_version_reply);
@@ -2990,7 +2990,7 @@ static void sl_connect(struct sl_context* ctx) {
         xcb_get_extension_data(ctx->connection, &xcb_shape_id);
 
     xshape_query_version_reply = xcb_shape_query_version_reply(
-        ctx->connection, xcb_shape_query_version(ctx->connection), NULL);
+        ctx->connection, xcb_shape_query_version(ctx->connection), nullptr);
 
     assert(xshape_query_version_reply);
     assert(xshape_query_version_reply->major_version >=
@@ -2998,7 +2998,7 @@ static void sl_connect(struct sl_context* ctx) {
     assert(xshape_query_version_reply->minor_version >=
            XCB_SHAPE_MINOR_VERSION);
     free(xshape_query_version_reply);
-    xshape_query_version_reply = NULL;
+    xshape_query_version_reply = nullptr;
   }
 
   redirect_subwindows_cookie = xcb_composite_redirect_subwindows_checked(
@@ -3015,7 +3015,7 @@ static void sl_connect(struct sl_context* ctx) {
   ctx->window = xcb_generate_id(ctx->connection);
   xcb_create_window(ctx->connection, 0, ctx->window, ctx->screen->root, 0, 0, 1,
                     1, 0, XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, 0,
-                    NULL);
+                    nullptr);
 
   // Wait on results for all the atom intern requests we sent above.
   for (i = 0; i < ARRAY_SIZE(ctx->atoms); ++i) {
@@ -3069,7 +3069,7 @@ static void sl_connect(struct sl_context* ctx) {
         XCB_XFIXES_SELECTION_EVENT_MASK_SET_SELECTION_OWNER |
             XCB_XFIXES_SELECTION_EVENT_MASK_SELECTION_WINDOW_DESTROY |
             XCB_XFIXES_SELECTION_EVENT_MASK_SELECTION_CLIENT_CLOSE);
-    sl_set_selection(ctx, NULL);
+    sl_set_selection(ctx, nullptr);
   }
 
   xcb_change_property(ctx->connection, XCB_PROP_MODE_REPLACE, ctx->window,
@@ -3166,7 +3166,7 @@ static int sl_handle_sigusr1(int signal_number, void* data) {
   struct sl_context* ctx = (struct sl_context*)data;
   fprintf(stderr, "dumping trace %s\n", ctx->trace_filename);
   dump_trace(ctx->trace_filename);
-  if (ctx->timing != NULL) {
+  if (ctx->timing != nullptr) {
     ctx->timing->OutputLog();
   }
   return 1;
@@ -3320,7 +3320,7 @@ static int sl_handle_display_ready_event(int fd, uint32_t mask, void* data) {
 }
 
 static void sl_sigchld_handler(int signal) {
-  while (waitpid(-1, NULL, WNOHANG) > 0)
+  while (waitpid(-1, nullptr, WNOHANG) > 0)
     continue;
 }
 
@@ -3559,7 +3559,7 @@ int sl_run_parent(int argc,
       sl_execvp(ctx->runprog[0], ctx->runprog, -1);
       _exit(EXIT_FAILURE);
     }
-    while (waitpid(-1, NULL, WNOHANG) != pid)
+    while (waitpid(-1, nullptr, WNOHANG) != pid)
       continue;
   }
 
@@ -3570,7 +3570,7 @@ int sl_run_parent(int argc,
   sa.sa_handler = sl_sigchld_handler;
   sigemptyset(&sa.sa_mask);
   sa.sa_flags = SA_RESTART;
-  rv = sigaction(SIGCHLD, &sa, NULL);
+  rv = sigaction(SIGCHLD, &sa, nullptr);
   errno_assert(rv >= 0);
 
   do {
@@ -3629,7 +3629,7 @@ int sl_run_parent(int argc,
         }
       }
 
-      args[i++] = NULL;
+      args[i++] = nullptr;
 
       execvp(args[0], const_cast<char* const*>(args));
       _exit(EXIT_FAILURE);
@@ -3713,7 +3713,7 @@ void sl_spawn_xwayland(sl_context* ctx,
       args[i++] = "-fp";
       args[i++] = sl_xasprintf("%s", xfont_path);
     }
-    args[i++] = NULL;
+    args[i++] = nullptr;
 
     // If a path is explicitly specified via command line or environment
     // use that instead of the compiled in default.  In either case, only
@@ -3759,7 +3759,7 @@ int real_main(int argc, char** argv) {
   const char* frame_color = getenv("SOMMELIER_FRAME_COLOR");
   const char* dark_frame_color = getenv("SOMMELIER_DARK_FRAME_COLOR");
   const char* support_damage_buffer = getenv("SOMMELIER_SUPPORT_DAMAGE_BUFFER");
-  const char* force_drm_device = NULL;
+  const char* force_drm_device = nullptr;
   const char* glamor = getenv("SOMMELIER_GLAMOR");
   const char* fullscreen_mode = getenv("SOMMELIER_FULLSCREEN_MODE");
   const char* peer_cmd_prefix = getenv("SOMMELIER_PEER_CMD_PREFIX");
@@ -3983,7 +3983,7 @@ int real_main(int argc, char** argv) {
   assert(ctx.host_display);
 
   if (noop_driver) {
-    ctx.channel = NULL;
+    ctx.channel = nullptr;
   } else if (ctx.use_virtgpu_channel) {
     ctx.channel = new VirtGpuChannel();
   } else {
@@ -3996,8 +3996,8 @@ int real_main(int argc, char** argv) {
   }
 
   int drm_fd = -1;
-  char* drm_device = NULL;
-  if (force_drm_device != NULL) {
+  char* drm_device = nullptr;
+  if (force_drm_device != nullptr) {
     // Use DRM device specified on the command line.
     drm_fd = open(force_drm_device, O_RDWR | O_CLOEXEC);
     if (drm_fd == -1) {
@@ -4030,7 +4030,7 @@ int real_main(int argc, char** argv) {
       p = static_cast<int*>(wl_array_add(&ctx.dpi, sizeof *p));
       assert(p);
       *p = MAX(MIN_DPI, MIN(atoi(token), MAX_DPI));
-      token = strtok(NULL, ",");  // NOLINT(runtime/threadsafe_fn)
+      token = strtok(nullptr, ",");  // NOLINT(runtime/threadsafe_fn)
     }
     free(str);
   }
@@ -4045,9 +4045,9 @@ int real_main(int argc, char** argv) {
   if (ctx.virtwl_display_fd != -1) {
     ctx.display = wl_display_connect_to_fd(ctx.virtwl_display_fd);
   } else {
-    if (display == NULL)
+    if (display == nullptr)
       display = getenv("WAYLAND_DISPLAY");
-    if (display == NULL)
+    if (display == nullptr)
       display = "wayland-0";
 
     ctx.display = wl_display_connect(display);
