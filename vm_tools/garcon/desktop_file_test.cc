@@ -645,7 +645,7 @@ TEST_F(DesktopFileTest, DontPassDesktopFileWithOnlyShowIn) {
 }
 
 TEST_F(DesktopFileTest, PassCheckTerminalDesktopFiles) {
-  EXPECT_FALSE(
+  EXPECT_TRUE(
       ShouldPassDesktopFileContents("[Desktop Entry]\n"
                                     "Type=Application\n"
                                     "Exec=mybinary\n"

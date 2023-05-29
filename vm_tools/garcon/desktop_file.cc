@@ -437,13 +437,12 @@ bool DesktopFile::ShouldPassToHost() const {
   // -Don't pass hidden.
   // -Don't pass without an exec entry.
   // -Don't pass no_display that also have no mime types.
-  // -Don't pass terminal apps (e.g. apps that run in a terminal like vim).
   // -Don't pass if in the Settings category.
   // -Don't pass if OnlyShowIn exists and doesn't contain kDesktopType.
   // -Don't pass if NotShowIn exists and contains kDesktopType.
   // -Don't pass if TryExec doesn't resolve to a valid executable file.
   if (!IsApplication() || hidden_ || exec_.empty() ||
-      (no_display_ && mime_types_.empty()) || terminal_) {
+      (no_display_ && mime_types_.empty())) {
     return false;
   }
 
