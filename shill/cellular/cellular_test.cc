@@ -2160,6 +2160,34 @@ TEST_F(CellularTest, DefaultLinkUpToDown) {
   EXPECT_EQ(Cellular::State::kRegistered, device_->state());
 }
 
+TEST_F(CellularTest, DefaultLinkUpToDownAlreadyDisconnecting) {
+  SetRegisteredWithService();
+  device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
+  device_->set_state_for_testing(Cellular::State::kLinked);
+
+  auto network = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
+
+  // Expect one single proxy->Disconnect() call, the one explicitly triggered by
+  // the device->Disconnect(). There must be no additional call due to the link
+  // down event.
+  EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _)).Times(1);
+  SetCapability3gppModemSimpleProxy();
+
+  device_->Disconnect(nullptr, "in test");
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor,
+              EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, ""))
+      .Times(0);
+  EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, _, _)).Times(0);
+  device_->DefaultLinkDown();
+  dispatcher_.DispatchPendingEvents();
+}
+
 TEST_F(CellularTest, DefaultLinkAlreadyDown) {
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);

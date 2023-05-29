@@ -1592,6 +1592,11 @@ void Cellular::DefaultLinkUp() {
 }
 
 void Cellular::DefaultLinkDown() {
+  if (explicit_disconnect_) {
+    SLOG(3) << LoggingTag() << ": Default link is down during disconnection";
+    return;
+  }
+
   LinkState old_state = default_pdn_->link_state();
   default_pdn_->SetLinkState(LinkState::kDown);
 
