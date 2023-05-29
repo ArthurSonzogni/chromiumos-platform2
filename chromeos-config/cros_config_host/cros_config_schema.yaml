@@ -806,6 +806,10 @@ properties:
                       type: string
                       description: Specifies the list of Zephyr-based firmware
                         targets to build.
+                    zephyr-detachable-base:
+                      type: string
+                      description: Specifies the detachable base of Zephyr-based firmware
+                        target to build.
                   additionalProperties: false
                 detachable-ui:
                   description: Enables the firmware detachable UI.

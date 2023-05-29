@@ -797,6 +797,7 @@ In the tables below,
 | ish | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | libpayload | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | u-boot | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
+| zephyr-detachable-base | string |  | False |  | True | Specifies the detachable base of Zephyr-based firmware target to build. |
 | zephyr-ec | string |  | False |  | True | Specifies the list of Zephyr-based firmware targets to build. |
 
 ### firmware-signing

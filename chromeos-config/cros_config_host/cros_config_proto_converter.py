@@ -1939,6 +1939,11 @@ def _build_firmware(config):
         fw_build_config.build_targets.libpayload, build_targets, "libpayload"
     )
     _upsert(fw_build_config.build_targets.zephyr_ec, build_targets, "zephyr-ec")
+    _upsert(
+        fw_build_config.build_targets.zephyr_detachable_base,
+        build_targets,
+        "zephyr-detachable-base",
+    )
 
     if not build_targets:
         return None
