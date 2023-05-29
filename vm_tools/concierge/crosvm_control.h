@@ -135,6 +135,14 @@ class CrosvmControl {
                             struct BalloonStatsFfi* stats,
                             uint64_t* actual) = 0;
 
+  // Returns guest working set of the crosvm instance whose control socket is
+  // listening on `socket_path`.
+  //
+  // The function returns true on success or false if an error occurred.
+  virtual bool BalloonWorkingSet(const char* socket_path,
+                                 struct BalloonWSSFfi* wss,
+                                 uint64_t* actual) = 0;
+
   // Enable vmm-swap of crosvm and move all the guest memory to the staging
   // memory.
   //

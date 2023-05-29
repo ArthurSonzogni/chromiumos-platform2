@@ -331,6 +331,17 @@ std::optional<BalloonStats> GetBalloonStats(std::string socket_path) {
   return stats;
 }
 
+std::optional<BalloonWorkingSet> GetBalloonWorkingSet(std::string socket_path) {
+  BalloonWorkingSet ws;
+  if (!CrosvmControl::Get()->BalloonWorkingSet(
+          socket_path.c_str(), &ws.working_set_ffi, &ws.balloon_actual)) {
+    LOG(ERROR) << "Failed to retrieve balloon working set";
+    return std::nullopt;
+  }
+
+  return ws;
+}
+
 std::optional<BalloonStats> ParseBalloonStats(
     const base::Value::Dict& balloon_stats) {
   auto additional_stats = balloon_stats.FindDict("stats");

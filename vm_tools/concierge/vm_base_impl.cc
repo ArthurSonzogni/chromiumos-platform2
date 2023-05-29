@@ -33,6 +33,10 @@ std::optional<BalloonStats> VmBaseImpl::GetBalloonStats() {
   return vm_tools::concierge::GetBalloonStats(GetVmSocketPath());
 }
 
+std::optional<BalloonWorkingSet> VmBaseImpl::GetBalloonWorkingSet() {
+  return vm_tools::concierge::GetBalloonWorkingSet(GetVmSocketPath());
+}
+
 bool VmBaseImpl::SetBalloonSize(int64_t byte_size) {
   if (byte_size < 0) {
     LOG(ERROR) << "Skipping setting a negative balloon size: " << byte_size;

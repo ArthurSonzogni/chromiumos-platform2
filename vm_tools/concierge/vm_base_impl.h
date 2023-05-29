@@ -127,6 +127,9 @@ class VmBaseImpl {
   // Returns balloon stats info retrieved from virtio-balloon device.
   virtual std::optional<BalloonStats> GetBalloonStats();
 
+  // Returns guest working set info retrieved from virtio-balloon device.
+  virtual std::optional<BalloonWorkingSet> GetBalloonWorkingSet();
+
   // Resize the balloon size.
   virtual bool SetBalloonSize(int64_t byte_size);
 

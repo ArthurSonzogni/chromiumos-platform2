@@ -604,5 +604,48 @@ TEST(VMUtilTest, GetBalloonStats) {
   CrosvmControl::Reset();
 }
 
+// Exercise retrieval of WorkingSet from CrosvmControl wrapper.
+TEST(VMUtilTest, GetBalloonWorkingSet) {
+  FakeCrosvmControl::Init();
+  FakeCrosvmControl::Get()->actual_balloon_size_ = 100;
+  WSSBucketFfi wsb1 = {
+      .age = 100,
+      .bytes = {10, 20},
+  };
+  WSSBucketFfi wsb2 = {
+      .age = 200,
+      .bytes = {11, 21},
+  };
+  WSSBucketFfi wsb3 = {
+      .age = 300,
+      .bytes = {12, 22},
+  };
+  WSSBucketFfi wsb4 = {
+      .age = 400,
+      .bytes = {13, 23},
+  };
+  FakeCrosvmControl::Get()->balloon_working_set_ = {
+      .wss = {wsb1, wsb2, wsb3, wsb4}};
+
+  std::optional<BalloonWorkingSet> ws = GetBalloonWorkingSet("/run/nothing");
+  ASSERT_TRUE(ws);
+
+  // Test that the returned working set has the expected values in all fields.
+  ASSERT_EQ(ws->balloon_actual, 100);
+  ASSERT_EQ(ws->working_set_ffi.wss[0].age, 100);
+  ASSERT_EQ(ws->working_set_ffi.wss[0].bytes[0], 10);
+  ASSERT_EQ(ws->working_set_ffi.wss[0].bytes[1], 20);
+  ASSERT_EQ(ws->working_set_ffi.wss[1].age, 200);
+  ASSERT_EQ(ws->working_set_ffi.wss[1].bytes[0], 11);
+  ASSERT_EQ(ws->working_set_ffi.wss[1].bytes[1], 21);
+  ASSERT_EQ(ws->working_set_ffi.wss[2].age, 300);
+  ASSERT_EQ(ws->working_set_ffi.wss[2].bytes[0], 12);
+  ASSERT_EQ(ws->working_set_ffi.wss[2].bytes[1], 22);
+  ASSERT_EQ(ws->working_set_ffi.wss[3].age, 400);
+  ASSERT_EQ(ws->working_set_ffi.wss[3].bytes[0], 13);
+  ASSERT_EQ(ws->working_set_ffi.wss[3].bytes[1], 23);
+  CrosvmControl::Reset();
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

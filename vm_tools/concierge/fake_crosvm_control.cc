@@ -95,6 +95,15 @@ bool FakeCrosvmControl::BalloonStats(const char* socket_path,
   return result_balloon_stats_;
 }
 
+bool FakeCrosvmControl::BalloonWorkingSet(const char* socket_path,
+                                          struct BalloonWSSFfi* wss,
+                                          uint64_t* actual) {
+  target_socket_path_ = socket_path;
+  *actual = actual_balloon_size_;
+  *wss = balloon_working_set_;
+  return result_balloon_working_set_;
+}
+
 bool FakeCrosvmControl::EnableVmmSwap(const char* socket_path) {
   target_socket_path_ = socket_path;
   count_enable_vmm_swap_ += 1;

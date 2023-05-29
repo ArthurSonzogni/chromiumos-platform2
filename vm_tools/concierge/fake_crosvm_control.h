@@ -56,6 +56,10 @@ class FakeCrosvmControl : public CrosvmControl {
                     struct BalloonStatsFfi* stats,
                     uint64_t* actual) override;
 
+  bool BalloonWorkingSet(const char* socket_path,
+                         struct BalloonWSSFfi* stats,
+                         uint64_t* actual) override;
+
   bool EnableVmmSwap(const char* socket_path) override;
 
   bool VmmSwapOut(const char* socket_path) override;
@@ -77,6 +81,7 @@ class FakeCrosvmControl : public CrosvmControl {
 
   bool result_set_balloon_size_ = true;
   bool result_balloon_stats_ = true;
+  bool result_balloon_working_set_ = true;
   bool result_enable_vmm_swap_ = true;
   bool result_vmm_swap_out_ = true;
   bool result_vmm_swap_trim_ = true;
@@ -85,8 +90,9 @@ class FakeCrosvmControl : public CrosvmControl {
 
   uint64_t target_balloon_size_ = 0;
   uint64_t actual_balloon_size_ = 0;
-  struct BalloonStatsFfi balloon_stats_;
-  struct SwapStatus vmm_swap_status_;
+  BalloonStatsFfi balloon_stats_;
+  BalloonWSSFfi balloon_working_set_;
+  SwapStatus vmm_swap_status_;
 };
 
 }  // namespace vm_tools::concierge

@@ -139,6 +139,9 @@ bool CheckProcessExists(pid_t pid);
 // Returns balloon stats info retrieved from virtio-balloon device.
 std::optional<BalloonStats> GetBalloonStats(std::string socket_path);
 
+// Returns the guest working set from the virtio-balloon device.
+std::optional<BalloonWorkingSet> GetBalloonWorkingSet(std::string socket_path);
+
 // Parses balloon stats info from a JSON value.
 std::optional<BalloonStats> ParseBalloonStats(
     const base::Value::Dict& balloon_stats);
