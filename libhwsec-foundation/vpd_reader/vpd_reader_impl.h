@@ -22,18 +22,15 @@ class HWSEC_FOUNDATION_EXPORT VpdReaderImpl : public VpdReader {
  public:
   VpdReaderImpl();
   // Constructor with injection for testing.
-  VpdReaderImpl(std::unique_ptr<brillo::Process> process,
-                const std::string& vpd_path);
+  explicit VpdReaderImpl(const std::string& vpd_path);
 
   std::optional<std::string> Get(const std::string& key) override;
 
  private:
-  void Prepare();
-
   // The `Process` used to run `vpd_path_`.
   const std::unique_ptr<brillo::Process> process_;
   // The executable path of vpd.
-  const std::string vpd_path_;
+  const std::string vpd_ro_path_;
   // The parsed key-value pairs of the output of `vpd -l`.
   std::optional<std::unordered_map<std::string, std::string>> table_;
 };

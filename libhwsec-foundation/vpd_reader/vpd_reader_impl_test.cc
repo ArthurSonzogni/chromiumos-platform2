@@ -7,8 +7,9 @@
 #include <optional>
 #include <string>
 
-#include <base/logging.h>
-#include <brillo/process/process_mock.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -16,126 +17,60 @@ namespace hwsec_foundation {
 
 namespace {
 
-using ::testing::Return;
-using ::testing::StrictMock;
+constexpr char kFakeKey[] = "vpd_key";
+constexpr char kFakeMissingKey[] = "missing_vpd_key";
+constexpr char kFakeValue[] = "vpd_value";
 
-const char kFakeVpdPath[] = "/fake/pvd/path";
-const char kVpdListOption[] = "-l";
+class ScopedFakeVpdEntry {
+ public:
+  ScopedFakeVpdEntry(const std::string& key, const std::string& value) {
+    [this](const std::string& key, const std::string& value) {
+      ASSERT_TRUE(dir_.CreateUniqueTempDir());
+      path_ = dir_.GetPath().Append(key);
+      ASSERT_TRUE(base::WriteFile(path_, value));
+    }(key, value);
+  }
+  ~ScopedFakeVpdEntry() = default;
+  base::FilePath path() const { return path_; }
 
-// Prefer to call `GetFakeVpdOutput()` since the extra newline at head.
-constexpr char kFakeVpdOutput[] = R"(
-"ABC"="DEF"
-"JFK"="XYZ"
-"QQQ"="""""
-"EEE"="==="
-)";
-
-// Returns the string formatted as `vpd -l` would dump.
-const std::string GetFakeVpdOutput() {
-  // Offset by 1 to skip the first newline.
-  return std::string(kFakeVpdOutput + 1);
-}
+ private:
+  base::ScopedTempDir dir_;
+  base::FilePath path_;
+};
 
 }  // namespace
 
-class VpdReaderImplTest : public ::testing::Test {
- public:
-  VpdReaderImplTest() {
-    ON_CALL(*process_mock_, GetOutputString(STDOUT_FILENO))
-        .WillByDefault(Return(fake_output_));
-  }
-
- protected:
-  // The mock process that is owned and used by the object under test later.
-  StrictMock<brillo::ProcessMock>* process_mock_ =
-      new StrictMock<brillo::ProcessMock>();
-  std::string fake_output_ = GetFakeVpdOutput();
-};
-
 namespace {
 
-TEST_F(VpdReaderImplTest, GetSuccess) {
-  EXPECT_CALL(*process_mock_, AddArg(kFakeVpdPath));
-  EXPECT_CALL(*process_mock_, AddArg(kVpdListOption));
-  EXPECT_CALL(*process_mock_, RedirectUsingMemory(STDOUT_FILENO));
-  EXPECT_CALL(*process_mock_, RedirectUsingMemory(STDERR_FILENO));
-  EXPECT_CALL(*process_mock_, Run()).WillOnce(Return(0));
-  EXPECT_CALL(*process_mock_, GetOutputString(STDOUT_FILENO));
-  VpdReaderImpl reader(std::unique_ptr<brillo::Process>(process_mock_),
-                       kFakeVpdPath);
-  std::optional<std::string> output = reader.Get("ABC");
-  ASSERT_TRUE(output.has_value());
-  EXPECT_EQ(output.value(), "DEF");
-  // Query another entry should not invoke the vpd process again; the strict
-  // mock will verify.
-  output = reader.Get("JFK");
-  ASSERT_TRUE(output.has_value());
-  EXPECT_EQ(output.value(), "XYZ");
-  // The value with double quotes should be supported.
-  output = reader.Get("QQQ");
-  ASSERT_TRUE(output.has_value());
-  EXPECT_EQ(output.value(), "\"\"\"");
-  // The value with '=' quoshould be supported.
-  output = reader.Get("EEE");
-  ASSERT_TRUE(output.has_value());
-  EXPECT_EQ(output.value(), "===");
+TEST(VpdReaderImplTest, GetSuccess) {
+  ScopedFakeVpdEntry entry(kFakeKey, kFakeValue);
+  VpdReaderImpl reader(entry.path().DirName().value());
+  const std::optional<std::string> result = reader.Get(kFakeKey);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result.value(), kFakeValue);
 }
 
-TEST_F(VpdReaderImplTest, GetFailureAbsentKey) {
-  EXPECT_CALL(*process_mock_, AddArg(kFakeVpdPath));
-  EXPECT_CALL(*process_mock_, AddArg(kVpdListOption));
-  EXPECT_CALL(*process_mock_, RedirectUsingMemory(STDOUT_FILENO));
-  EXPECT_CALL(*process_mock_, RedirectUsingMemory(STDERR_FILENO));
-  EXPECT_CALL(*process_mock_, Run()).WillOnce(Return(0));
-  EXPECT_CALL(*process_mock_, GetOutputString(STDOUT_FILENO));
-  VpdReaderImpl reader(std::unique_ptr<brillo::Process>(process_mock_),
-                       kFakeVpdPath);
-  std::optional<std::string> output = reader.Get("a non-existent key");
-  EXPECT_FALSE(output.has_value());
+TEST(VpdReaderImplTest, GetSuccessEmptyValue) {
+  ScopedFakeVpdEntry entry(kFakeKey, "");
+  VpdReaderImpl reader(entry.path().DirName().value());
+  const std::optional<std::string> result = reader.Get(kFakeKey);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result.value(), "");
 }
 
-TEST_F(VpdReaderImplTest, GetFailureKeyValueFormatError) {
-  EXPECT_CALL(*process_mock_, AddArg(kFakeVpdPath));
-  EXPECT_CALL(*process_mock_, AddArg(kVpdListOption));
-  EXPECT_CALL(*process_mock_, RedirectUsingMemory(STDOUT_FILENO));
-  EXPECT_CALL(*process_mock_, RedirectUsingMemory(STDERR_FILENO));
-  EXPECT_CALL(*process_mock_, Run()).WillOnce(Return(0));
-
-  fake_output_.erase(fake_output_.find('='), 1);
-  EXPECT_CALL(*process_mock_, GetOutputString(STDOUT_FILENO))
-      .WillOnce(Return(fake_output_));
-
-  VpdReaderImpl reader(std::unique_ptr<brillo::Process>(process_mock_),
-                       kFakeVpdPath);
-  std::optional<std::string> output = reader.Get("ABC");
-  EXPECT_FALSE(output.has_value());
+TEST(VpdReaderImplTest, GetErrorNoKey) {
+  ScopedFakeVpdEntry entry(kFakeKey, kFakeValue);
+  VpdReaderImpl reader(entry.path().DirName().value());
+  const std::optional<std::string> result = reader.Get(kFakeMissingKey);
+  EXPECT_FALSE(result.has_value());
 }
 
-TEST_F(VpdReaderImplTest, GetFailureMissingExpectedDoubleQuote) {
-  size_t double_quote_pos = 0;
-  for (int i = 0; i < 4; ++i) {
-    // Make the number of iteration verbose for debugging.
-    LOG(INFO) << "Removing \"; iteration " << i;
-    EXPECT_CALL(*process_mock_, AddArg(kFakeVpdPath));
-    EXPECT_CALL(*process_mock_, AddArg(kVpdListOption));
-    EXPECT_CALL(*process_mock_, RedirectUsingMemory(STDOUT_FILENO));
-    EXPECT_CALL(*process_mock_, RedirectUsingMemory(STDERR_FILENO));
-    EXPECT_CALL(*process_mock_, Run()).WillOnce(Return(0));
-
-    fake_output_ = GetFakeVpdOutput();
-    double_quote_pos = fake_output_.find('\"', double_quote_pos);
-    fake_output_.erase(double_quote_pos, 1);
-    ++double_quote_pos;
-    EXPECT_CALL(*process_mock_, GetOutputString(STDOUT_FILENO))
-        .WillOnce(Return(fake_output_));
-
-    VpdReaderImpl reader(std::unique_ptr<brillo::Process>(process_mock_),
-                         kFakeVpdPath);
-    std::optional<std::string> output = reader.Get("ABC");
-    EXPECT_FALSE(output.has_value());
-    // AS a workaround, re-create the process mock.
-    process_mock_ = new StrictMock<brillo::ProcessMock>();
-  }
+TEST(VpdReaderImplTest, GetErrorRead) {
+  ScopedFakeVpdEntry entry(kFakeKey, kFakeValue);
+  ASSERT_TRUE(base::SetPosixFilePermissions(entry.path(), 0));
+  VpdReaderImpl reader(entry.path().DirName().value());
+  const std::optional<std::string> result = reader.Get(kFakeKey);
+  ASSERT_FALSE(result.has_value());
 }
 
 }  // namespace
