@@ -163,8 +163,29 @@ bool JpegCompressorImpl::CompressImageFromHandle(buffer_handle_t input,
     return false;
   }
 
-  cros::CameraBufferManager* buffer_manager =
-      cros::CameraBufferManager::GetInstance();
+  ScopedMapping input_mapping(input);
+  if (!input_mapping.is_valid()) {
+    LOGF(ERROR) << "Failed to map input buffer";
+    return false;
+  }
+  if (input_mapping.v4l2_format() != V4L2_PIX_FMT_NV12 &&
+      input_mapping.v4l2_format() != V4L2_PIX_FMT_NV12M) {
+    LOGF(ERROR) << "Unexpected input buffer format: "
+                << FormatToString(input_mapping.v4l2_format());
+    return false;
+  }
+
+  ScopedMapping output_mapping(output);
+  if (!output_mapping.is_valid()) {
+    LOGF(ERROR) << "Failed to map output buffer";
+    return false;
+  }
+  if (output_mapping.num_planes() != 1) {
+    LOGF(ERROR) << "Unexpected output buffer format: "
+                << FormatToString(output_mapping.v4l2_format());
+    return false;
+  }
+
   auto method_used = [&]() -> const char* {
     if (enable_hw_encode) {
       // Try HW encode.
@@ -178,35 +199,19 @@ bool JpegCompressorImpl::CompressImageFromHandle(buffer_handle_t input,
       LOGF(WARNING) << "Tried HW encode but failed. Fall back to SW encode";
     }
 
-    struct android_ycbcr mapped_input;
-    void* output_ptr;
-    auto status =
-        buffer_manager->LockYCbCr(input, 0, 0, 0, 0, 0, &mapped_input);
-    if (status != 0) {
-      LOGF(WARNING) << "Failed to lock input buffer handle for sw encode.";
-      return nullptr;
-    }
-    status = buffer_manager->Lock(output, 0, 0, 0, 0, 0, &output_ptr);
-    if (status != 0) {
-      LOGF(WARNING) << "Failed to lock output buffer handle for sw encode.";
-      return nullptr;
-    }
-
-    auto input_format = buffer_manager->GetV4L2PixelFormat(input);
-    auto output_buffer_size = buffer_manager->GetPlaneSize(output, 0);
+    android_ycbcr input_ycbcr = {
+        .y = input_mapping.plane(0).addr,
+        .cb = input_mapping.plane(1).addr,
+        .cr = input_mapping.plane(1).addr + 1,
+        .ystride = input_mapping.plane(0).stride,
+        .cstride = input_mapping.plane(1).stride,
+        .chroma_step = 2,
+    };
     // Try SW encode.
     bool is_success =
-        EncodeSw(mapped_input, input_format, output_ptr, output_buffer_size,
+        EncodeSw(input_ycbcr, input_mapping.v4l2_format(),
+                 output_mapping.plane(0).addr, output_mapping.plane(0).size,
                  width, height, quality, app1_ptr, app1_size, out_data_size);
-
-    status = buffer_manager->Unlock(input);
-    if (status != 0) {
-      LOGF(WARNING) << "Failed to unlock input buffer handle for sw encode.";
-    }
-    status = buffer_manager->Unlock(output);
-    if (status != 0) {
-      LOGF(WARNING) << "Failed to unlock output buffer handle for sw encode.";
-    }
 
     if (is_success) {
       return "software";
