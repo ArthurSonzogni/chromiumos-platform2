@@ -30,6 +30,7 @@ source_set("hdrnet_processor_test_fixture") {
       [ "//camera/features/hdrnet/tests/hdrnet_processor_test_fixture.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
+    "//camera/common:tracing",
     "//camera/features/hdrnet",
     "//camera/gpu:gpu_test_support",
   ]
@@ -58,6 +59,7 @@ executable("hdrnet_stream_manipulator_test") {
   configs += [ ":target_defaults" ]
   install_path = "bin"
   deps = [
+    "//camera/common:tracing",
     "//camera/common/test_support",
     "//camera/features/hdrnet",
   ]
