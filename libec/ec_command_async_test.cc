@@ -244,5 +244,20 @@ TYPED_TEST(EcCommandAsyncTest, Run_SecondBaseCmdResponseSizeLarge) {
   EXPECT_FALSE(mock_cmd.Run(kDummyFd));
 }
 
+TYPED_TEST(EcCommandAsyncTest, Run_FirstBaseCmdFail) {
+  TypeParam mock_cmd({.poll_for_result_num_attempts = 2,
+                      .poll_interval = base::Milliseconds(1)});
+  EXPECT_CALL(mock_cmd, ioctl)
+      .Times(1)
+      // First call to ioctl() to start the command; EC returns error.
+      .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
+        data->cmd.result = EC_RES_ERROR;
+        EXPECT_EQ(data->cmd.insize, 0);
+        return data->cmd.insize;
+      });
+
+  EXPECT_FALSE(mock_cmd.Run(kDummyFd));
+}
+
 }  // namespace
 }  // namespace ec
