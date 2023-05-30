@@ -17,12 +17,13 @@ import subprocess
 import tempfile
 from typing import Dict, List, Optional, Tuple
 
+import jinja2
 import requests
 import yaml
 
 
 SCRIPT_PATH = pathlib.Path(__file__).parent
-DISK_CONFIG = SCRIPT_PATH / "disk_config"
+DISK_CONFIG_TEMPLATE = SCRIPT_PATH / "disk_config.tpl"
 SETUP_SCRIPT = SCRIPT_PATH / "setup.sh"
 DATA_PATH = SCRIPT_PATH / "data"
 LVM_VG_NAME = "refvm"
@@ -60,6 +61,11 @@ def main():
         default="bookworm",
         help="OS version to be installed (default: %(default)s)",
     )
+    ap.add_argument(
+        "--vg-name",
+        default="refvm",
+        help="name of LVM VG in installed OS (default: %(default)s)",
+    )
     args = ap.parse_args()
 
     cache_dir = pathlib.Path(args.cache_dir) if args.cache_dir else None
@@ -87,8 +93,10 @@ def main():
         image.seek(image_size - 1)
         image.write(b"\0")
         image.seek(0)
-        with setup_loop(image_path) as loop:
-            disk_vars, fstab = setup_storage(temp_dir, loop)
+        with setup_loop(loop_file=image_path, vg_name=args.vg_name) as loop:
+            disk_vars, fstab = setup_storage(
+                temp_dir=temp_dir, target_device=loop, vg_name=args.vg_name
+            )
 
             target = temp_dir / "target"
             with mount_target(target, disk_vars):
@@ -130,7 +138,7 @@ def get_latest_cros_version(bucket: str) -> int:
 
 
 @contextlib.contextmanager
-def setup_loop(loop_file: pathlib.Path):
+def setup_loop(loop_file: pathlib.Path, vg_name: str):
     res = subprocess.run(
         ["losetup", "--show", "-f", loop_file],
         capture_output=True,
@@ -143,15 +151,23 @@ def setup_loop(loop_file: pathlib.Path):
     try:
         yield loop_device
     finally:
-        subprocess.run(["vgchange", "-an", LVM_VG_NAME], check=True)
+        subprocess.run(["vgchange", "-an", vg_name], check=True)
         subprocess.run(["losetup", "-d", loop_device], check=True)
 
 
 def setup_storage(
-    temp_dir: pathlib.Path, target_device: pathlib.Path
+    temp_dir: pathlib.Path, target_device: pathlib.Path, vg_name: str
 ) -> Tuple[Dict[str, str], str]:
+    jinja_env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader("/"),
+        autoescape=False,
+        keep_trailing_newline=True,
+    )
+    template = jinja_env.get_template(str(DISK_CONFIG_TEMPLATE))
+    disk_config = template.render(vg_name=vg_name)
+
     ignored_vgs = [
-        vg for vg in list_volume_groups() if not vg.startswith(LVM_VG_NAME)
+        vg for vg in list_volume_groups() if not vg.startswith(vg_name)
     ]
 
     subprocess.run(
@@ -162,12 +178,14 @@ def setup_storage(
             "-L",
             temp_dir,
             "-f",
-            DISK_CONFIG,
+            "-",
             "-D",
             target_device.relative_to(pathlib.Path("/dev")),
         ],
         check=True,
         env={"SS_IGNORE_VG": ",".join(ignored_vgs), **os.environ},
+        input=disk_config,
+        text=True,
     )
 
     with open(temp_dir / "disk_var.yml") as f:

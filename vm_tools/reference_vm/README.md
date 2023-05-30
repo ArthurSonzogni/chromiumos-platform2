@@ -8,8 +8,8 @@ integrations.
 Debian:
 
 ```sh
-sudo apt install eatmydata fai-setup-storage lvm2 ovmf python3-requests \
-  python3-yaml qemu-system-x86
+sudo apt install eatmydata fai-setup-storage lvm2 ovmf python3-jinja2 \
+  python3-requests python3-yaml
 ```
 
 For creating the UEFI variables image:

@@ -18,6 +18,7 @@ PACKAGES=(
   dkms
   dosfstools
   efibootmgr
+  fai-setup-storage
   gpg
   grub-efi-amd64
   grub-efi-amd64-signed
@@ -98,6 +99,11 @@ EOF
   install -D -m 0440 -t /etc/sudoers.d \
     "${DATA_ROOT}/etc/sudoers.d/10-no-password"
 
+  install -D -m 0755 -t /usr/local/bin \
+    "${DATA_ROOT}/usr/local/bin/install-refvm"
+  install -D -m 0644 -t /usr/local/share/refvm \
+    "${DATA_ROOT}/usr/local/share/refvm/disk_config.tpl"
+
   # Find the installed, not running, kernel version.
   kernel="$(dpkg-query -Wf '${Package}\n' 'linux-image-*-amd64' | tail -n 1 | \
     sed -E -e 's/linux-image-//')"
@@ -114,6 +120,8 @@ EOF
   # dummy files for installation
   mkdir -p /opt/google/cros-containers/bin
   touch /opt/google/cros-containers/bin/sommelier
+  # Required for boot with R/O rootfs
+  mkdir -p /mnt/shared
 
   apt-get update
   apt-get -y install "${CROS_PACKAGES[@]}"
@@ -126,6 +134,14 @@ EOF
   chpasswd <<< chronos:test0000
   mkdir -p /var/lib/systemd/linger
   touch /var/lib/systemd/linger/chronos
+
+  # Run the refvm installer on startup, if the appropriate OEM string is set.
+  # We do this in bashrc so that install messages are shown in the terminal.
+  cat << EOF >> /home/chronos/.bashrc
+if sudo dmidecode -t 11 -q | grep -q refvm:install=true; then
+  exec sudo /usr/local/bin/install-refvm
+fi
+EOF
 
   # Disable garcon auto-updates.
   sed -i -E \

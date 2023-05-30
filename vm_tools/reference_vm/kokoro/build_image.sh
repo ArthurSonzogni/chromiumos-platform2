@@ -22,6 +22,7 @@ main() {
   image_path="refvm-${suffix}.img"
   sudo "${src_root}/build.py" \
     --debian-release=bookworm \
+    --vg-name="refvm_${suffix}" \
     -o "${image_path}"
 
   sudo virt-sparsify --in-place --machine-readable "${image_path}"
@@ -36,8 +37,8 @@ install_deps() {
   # to be disabled.
   sudo apt-get update
   sudo DEBIAN_FRONTEND=noninteractive apt-get -q -y install \
-    eatmydata fai-setup-storage lvm2 python3-requests python3-yaml \
-    libguestfs-tools
+    eatmydata fai-setup-storage lvm2 python3-jinja2 python3-requests \
+    python3-yaml libguestfs-tools
 
   # TODO(b/280695675): Remove this once the VM image has a newer OS.
   # shellcheck disable=SC2154

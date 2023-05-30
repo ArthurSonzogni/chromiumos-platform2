@@ -1,4 +1,3 @@
-#!/bin/bash
 # Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -8,6 +7,6 @@ primary /boot/efi 2GB vfat iversion,umask=0077
 primary /boot 2GB ext2 iversion
 primary - 0- - -
 disk_config lvm fstabkey:uuid
-vg refvm disk1.3
-refvm-root / 15GB- ext4 errors=remount-ro,iversion
-refvm-swap swap 2GB swap sw
+vg {{ vg_name }} disk1.3
+{{ vg_name }}-root / 10GB ext4 errors=remount-ro,iversion
+{{ vg_name }}-swap swap 2GB swap sw
