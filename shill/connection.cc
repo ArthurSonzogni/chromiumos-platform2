@@ -161,7 +161,6 @@ bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties,
 
     if (!routing_table_->AddRoute(interface_index_,
                                   RoutingTableEntry::Create(*dst, src, *gateway)
-                                      .SetMetric(priority_.priority_value)
                                       .SetTable(table_id_)
                                       .SetTag(interface_index_))) {
       ret = false;

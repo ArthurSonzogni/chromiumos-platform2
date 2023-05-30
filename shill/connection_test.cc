@@ -197,7 +197,6 @@ class ConnectionTest : public Test {
                            RoutingTableEntry::Create(*destination_address,
                                                      source_address,
                                                      gateway_ipv4_address_)
-                               .SetMetric(connection_->priority_.priority_value)
                                .SetTable(connection_->table_id_)
                                .SetTag(connection_->interface_index_)))
           .WillOnce(Return(true));
@@ -225,7 +224,6 @@ class ConnectionTest : public Test {
           AddRoute(connection_->interface_index_,
                    RoutingTableEntry::Create(destination_address,
                                              source_address, gateway_address)
-                       .SetMetric(connection_->priority_.priority_value)
                        .SetTable(connection_->table_id_)
                        .SetTag(connection_->interface_index_)))
           .WillOnce(Return(true));
