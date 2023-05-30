@@ -23,6 +23,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
+#include <base/threading/platform_thread.h>
 #include <brillo/flag_helper.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <netlink/attr.h>
@@ -78,6 +79,9 @@
 #define NL80211_SAR_ATTR_SPECS 2
 #define NL80211_SAR_ATTR_SPECS_POWER 1
 #define NL80211_SAR_ATTR_SPECS_RANGE_INDEX 2
+
+// Implementation constants
+#define MAX_ATTEMPTS 3
 
 namespace {
 
@@ -768,7 +772,8 @@ class PowerSetter {
   bool SendModeSwitch(const std::string& dev_name,
                       bool tablet,
                       power_manager::WifiRegDomain domain,
-                      power_manager::TriggerSource tr_source) {
+                      power_manager::TriggerSource tr_source,
+                      int attempt = 0) {
     const uint32_t index = if_nametoindex(dev_name.c_str());
     if (!index) {
       LOG(ERROR) << "Failed to find wireless device index for " << dev_name;
@@ -839,8 +844,20 @@ class PowerSetter {
     while (err_ > 0)
       nl_recvmsgs(nl_sock_, cb_);
 
+    // Mediatek chips have a command queue. It's possible that this is full
+    // when the request to change modes was sent. This should not be a fatal
+    // error, it should be retried.
+    if (driver == WirelessDriver::MTK && err_ == -ENOMEM &&
+        attempt <= MAX_ATTEMPTS) {
+      LOG(WARNING) << "Retrying as a result of ENOMEM error attempt: "
+                   << attempt;
+      base::PlatformThread::Sleep(base::Milliseconds(10 << attempt));
+      return SendModeSwitch(dev_name, tablet, domain, tr_source, ++attempt);
+    }
+
     CHECK(err_ == 0) << "netlink command failed: " << strerror(-err_);
 
+    LOG(INFO) << "Succeeded after " << attempt << " retries";
     nlmsg_free(msg);
     return err_ == 0;
   }
