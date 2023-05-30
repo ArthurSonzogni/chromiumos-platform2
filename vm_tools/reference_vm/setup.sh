@@ -13,21 +13,28 @@ CROS_PACKAGES=(
 )
 PACKAGES=(
   bash-completion
+  ca-certificates
   curl
   dkms
   dosfstools
+  efibootmgr
+  gpg
   grub-efi-amd64
   grub-efi-amd64-signed
+  linux-headers-amd64
   linux-image-amd64
   locales
   lvm2
   network-manager
   pciutils
+  rsync
+  shim-signed
   tpm2-tools
   usbutils
-  vim
+  vim-tiny
   sudo
   systemd-timesyncd
+  zstd
 )
 DATA_ROOT="/tmp/data"
 
@@ -36,8 +43,17 @@ main() {
 
   echo localhost > /etc/hostname
 
+  # Use minimal initramfs settings.
+  mkdir -p /etc/initramfs-tools/conf.d
+  echo "MODULES=list" > /etc/initramfs-tools/conf.d/10-refvm.conf
+  cat << EOF >> /etc/initramfs-tools/modules
+ext4
+virtio_blk
+virtio-pci
+EOF
+
   apt-get update
-  apt-get -y install "${PACKAGES[@]}"
+  apt-get -y install "${PACKAGES[@]}" --no-install-recommends
 
   rm -f /etc/locale.gen
   debconf-set-selections << EOF
@@ -101,6 +117,9 @@ EOF
 
   apt-get update
   apt-get -y install "${CROS_PACKAGES[@]}"
+
+  # Provide "vim" binary using vim-tiny with low priority.
+  update-alternatives --install /usr/bin/vim vim /usr/bin/vim.tiny 10
 
   # test user for debugging
   useradd -m -s /bin/bash -G sudo,tss chronos
