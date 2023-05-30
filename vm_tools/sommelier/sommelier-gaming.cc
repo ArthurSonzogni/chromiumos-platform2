@@ -97,7 +97,7 @@ const uint32_t kStadiaProduct = 0x9400;
 const uint32_t kSonyVendor = 0x54C;
 const uint32_t kDualSenseProduct = 0xCE6;
 const uint32_t kDualSenseEdgeProduct = 0xDF2;
-const uint32_t kDualShock4v1Product = 0x54C;
+const uint32_t kDualShock4v1Product = 0x5C4;
 const uint32_t kDualShock4v2Product = 0x9CC;
 
 const DeviceID kStadiaUSB = {
