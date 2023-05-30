@@ -181,7 +181,7 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   bool GenerateHostSideCode(const base::FilePath& host_dalvik_cache_directory);
 
   // Calls InstallHostSideCodeInternal() for each isa the device supports.
-  bool InstallLinksToHostSideCode();
+  void InstallLinksToHostSideCode();
 
   // Installs links to *boot*.{art,oat} files to |dest_isa_directory|. Returns
   // false when |src_isa_directory| is empty.

@@ -1069,7 +1069,6 @@ bool ArcSetup::GenerateHostSideCodeInternal(
     const base::FilePath& host_dalvik_cache_directory,
     ArcCodeRelocationResult* result) {
   *result = ArcCodeRelocationResult::ERROR_UNABLE_TO_RELOCATE;
-  base::ElapsedTimer timer;
   std::unique_ptr<ArtContainer> art_container =
       ArtContainer::CreateContainer(arc_mounter_.get(), GetSdkVersion());
   if (!art_container) {
@@ -1089,7 +1088,6 @@ bool ArcSetup::GenerateHostSideCodeInternal(
     return false;
   }
   *result = ArcCodeRelocationResult::SUCCESS;
-  arc_setup_metrics_->SendCodeRelocationTime(timer.Elapsed());
   return true;
 }
 
@@ -1106,7 +1104,6 @@ bool ArcSetup::GenerateHostSideCode(
   base::TimeDelta time_delta = timer.Elapsed();
   LOG(INFO) << "GenerateHostSideCode took "
             << time_delta.InMillisecondsRoundedUp() << "ms";
-  arc_setup_metrics_->SendCodeRelocationResult(result);
 
   return result == ArcCodeRelocationResult::SUCCESS;
 }
@@ -1158,8 +1155,7 @@ bool ArcSetup::InstallLinksToHostSideCodeInternal(
   return src_file_exists;
 }
 
-bool ArcSetup::InstallLinksToHostSideCode() {
-  bool result = true;
+void ArcSetup::InstallLinksToHostSideCode() {
   base::ElapsedTimer timer;
   const base::FilePath& src_directory = arc_paths_->art_dalvik_cache_directory;
   const base::FilePath dest_directory =
@@ -1180,7 +1176,6 @@ bool ArcSetup::InstallLinksToHostSideCode() {
     const std::string isa = src_isa_directory.BaseName().value();
     if (!InstallLinksToHostSideCodeInternal(src_isa_directory,
                                             dest_directory.Append(isa), isa)) {
-      result = false;
       LOG(ERROR) << "InstallLinksToHostSideCodeInternal() for " << isa
                  << " failed. "
                  << "Deleting container's /data/dalvik-cache...";
@@ -1192,7 +1187,6 @@ bool ArcSetup::InstallLinksToHostSideCode() {
 
   LOG(INFO) << "InstallLinksToHostSideCode() took "
             << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
-  return result;
 }
 
 void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
@@ -1213,7 +1207,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   // will see these files, but other than that, the /data and /cache
   // directories are empty and read-only which is the best for security.
 
-  base::ElapsedTimer timer;
   if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P) {
     // Unconditionally generate host-side code here for P.
     EXIT_IF(!GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory));
@@ -1224,11 +1217,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   // Remove the file zygote may have created.
   IGNORE_ERRORS(brillo::DeleteFile(
       arc_paths_->art_dalvik_cache_directory.Append(kZygotePreloadDoneFile)));
-
-  // For now, integrity checking time is the time needed to relocate
-  // boot*.art files because of b/67912719. Once TPM is enabled, this will
-  // report the total time spend on code verification + [relocation + sign]
-  arc_setup_metrics_->SendCodeIntegrityCheckingTotalTime(timer.Elapsed());
 
   // Make sure directories for all ISA are there just to make config.json happy.
   for (const auto* isa : {"arm", "arm64", "x86", "x86_64"}) {
@@ -2321,13 +2309,7 @@ void ArcSetup::OnBootContinue() {
   // don't exist, this has to be done before calling ShareAndroidData().
   SetUpAndroidData(arc_paths_->android_mutable_source);
 
-  if (!InstallLinksToHostSideCode()) {
-    arc_setup_metrics_->SendBootContinueCodeInstallationResult(
-        ArcBootContinueCodeInstallationResult::ERROR_CANNOT_INSTALL_HOST_CODE);
-  } else {
-    arc_setup_metrics_->SendBootContinueCodeInstallationResult(
-        ArcBootContinueCodeInstallationResult::SUCCESS);
-  }
+  InstallLinksToHostSideCode();
 
   // Set up /run/arc/shared_mounts/{cache,data,demo_apps} to expose the user's
   // data to the container. Demo apps are setup only for demo sessions.

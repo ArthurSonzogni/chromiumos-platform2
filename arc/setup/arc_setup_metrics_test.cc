@@ -32,58 +32,6 @@ class ArcSetupMetricsTest : public testing::Test {
   ArcSetupMetrics arc_setup_metrics_;
 };
 
-TEST_F(ArcSetupMetricsTest, SendCodeVerificationResult) {
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(_, static_cast<int>(ArcCodeVerificationResult::SUCCESS), _))
-      .Times(1);
-  arc_setup_metrics_.SendCodeVerificationResult(
-      ArcCodeVerificationResult::SUCCESS);
-}
-
-TEST_F(ArcSetupMetricsTest, SendCodeRelocationResult) {
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(_, static_cast<int>(ArcCodeRelocationResult::SUCCESS), _))
-      .Times(1);
-  arc_setup_metrics_.SendCodeRelocationResult(ArcCodeRelocationResult::SUCCESS);
-}
-
-TEST_F(ArcSetupMetricsTest, SendBootContinueCodeInstallationResult) {
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(
-          _, static_cast<int>(ArcBootContinueCodeInstallationResult::SUCCESS),
-          _))
-      .Times(1);
-  arc_setup_metrics_.SendBootContinueCodeInstallationResult(
-      ArcBootContinueCodeInstallationResult::SUCCESS);
-}
-
-TEST_F(ArcSetupMetricsTest, SendCodeVerificationTime) {
-  base::TimeDelta t = base::Milliseconds(1234);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(_, 1234, _, _, _)).Times(1);
-  arc_setup_metrics_.SendCodeVerificationTime(t);
-}
-
-TEST_F(ArcSetupMetricsTest, SendCodeRelocationTime) {
-  base::TimeDelta t = base::Milliseconds(4321);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(_, 4321, _, _, _)).Times(1);
-  arc_setup_metrics_.SendCodeRelocationTime(t);
-}
-
-TEST_F(ArcSetupMetricsTest, SendCodeSigningTime) {
-  base::TimeDelta t = base::Milliseconds(3214);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(_, 3214, _, _, _)).Times(1);
-  arc_setup_metrics_.SendCodeSigningTime(t);
-}
-
-TEST_F(ArcSetupMetricsTest, SendCodeIntegrityCheckingTotalTime) {
-  base::TimeDelta t = base::Milliseconds(3333);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(_, 3333, _, _, _)).Times(1);
-  arc_setup_metrics_.SendCodeIntegrityCheckingTotalTime(t);
-}
-
 TEST_F(ArcSetupMetricsTest, SendSdkVersionUpgradeType) {
   EXPECT_CALL(
       *GetMetricsLibraryMock(),
