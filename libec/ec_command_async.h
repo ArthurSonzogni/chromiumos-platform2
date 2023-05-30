@@ -76,11 +76,12 @@ class EcCommandAsync : public EcCommand<O, I> {
       base::PlatformThread::Sleep(options_.poll_interval);
 
       BaseCmd::Req()->action = async_result_action_;
-      BaseCmd::Run(fd);
-      auto ret = BaseCmd::Result();
-      if (ret == EC_RES_SUCCESS) {
+
+      if (BaseCmd::Run(fd)) {
         return true;
       }
+
+      auto ret = BaseCmd::Result();
 
       if (options_.validate_poll_result && ret != EC_RES_BUSY) {
         LOG(ERROR) << "Failed to get command result, ret: " << ret;

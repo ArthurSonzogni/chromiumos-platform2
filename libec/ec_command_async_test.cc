@@ -215,5 +215,34 @@ TYPED_TEST(EcCommandAsyncTest, DefaultOptions) {
   EXPECT_EQ(options.poll_interval, base::Milliseconds(100));
 }
 
+// It's possible for the implementation of the command to incorrectly return
+// the wrong size. The kernel driver does not check for this, but Run() should
+// return an error since the data returned is not what was requested.
+TYPED_TEST(EcCommandAsyncTest, Run_SecondBaseCmdResponseSizeLarge) {
+  TypeParam mock_cmd({// With the number of attempts set to 2, there will be at
+                      // most 3 ioctl calls (the extra one starts the command).
+                      // In this test case, we're validating that the last
+                      // ioctl() call will not be performed because we got a
+                      // success on the second ioctl() call.
+                      .poll_for_result_num_attempts = 2,
+                      .poll_interval = base::Milliseconds(1)});
+  EXPECT_CALL(mock_cmd, ioctl)
+      .Times(2)
+      // First call to ioctl() to start the command; EC returns success.
+      .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        EXPECT_EQ(data->cmd.insize, 0);
+        return data->cmd.insize;
+      })
+      // Second call to ioctl() to get the result; EC returns success. However,
+      // the size is different from the expected command size.
+      .WillOnce([](int, uint32_t, typename TypeParam::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        return data->cmd.insize + 1;
+      });
+
+  EXPECT_FALSE(mock_cmd.Run(kDummyFd));
+}
+
 }  // namespace
 }  // namespace ec
