@@ -81,6 +81,38 @@ mno {
       type: DUN
     }
   }
+  # IoT Wholesale APN
+  mvno {
+    mvno_filter {
+      type : IMSI
+      range {
+        start: 311882030000000
+        end:   311882039999999
+      }
+      range {
+        start: 310240200000000
+        end:   310240209999999
+      }
+    }
+    data {
+      uuid : "ea77b4fc-befa-4cd7-980f-710c6c32a991"
+      country : "us"
+      localized_name {
+        name : "T-Mobile"
+      }
+      mccmnc : "311882"
+      mccmnc : "310240"
+      tethering_allowed: true
+      mobile_apn {
+        apn : "iot.tmowholesale"
+        localized_name {
+          name : "IOT"
+        }
+        ip_type: IPV4V6
+        type : DEFAULT
+      }
+    }
+  }
 }
 
 mno {
