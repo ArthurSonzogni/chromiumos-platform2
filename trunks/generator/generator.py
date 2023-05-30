@@ -619,6 +619,7 @@ TPM_RC Parse_%(union_type)s(
 
 std::string StringFrom_%(type)s(
     const %(type)s& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.%(buffer_name)s));
   const char* char_buffer = reinterpret_cast<const char*>(
       tpm2b.%(buffer_name)s);
   return std::string(char_buffer, tpm2b.size);

@@ -1171,6 +1171,7 @@ TPM2B_DIGEST Make_TPM2B_DIGEST(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_DIGEST(const TPM2B_DIGEST& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -2441,6 +2442,7 @@ TPM2B_DATA Make_TPM2B_DATA(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_DATA(const TPM2B_DATA& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -2499,6 +2501,7 @@ TPM2B_EVENT Make_TPM2B_EVENT(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_EVENT(const TPM2B_EVENT& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -2558,6 +2561,7 @@ TPM2B_MAX_BUFFER Make_TPM2B_MAX_BUFFER(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_MAX_BUFFER(const TPM2B_MAX_BUFFER& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -2617,6 +2621,7 @@ TPM2B_MAX_NV_BUFFER Make_TPM2B_MAX_NV_BUFFER(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_MAX_NV_BUFFER(const TPM2B_MAX_NV_BUFFER& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -2676,6 +2681,7 @@ TPM2B_TIMEOUT Make_TPM2B_TIMEOUT(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_TIMEOUT(const TPM2B_TIMEOUT& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -2734,6 +2740,7 @@ TPM2B_IV Make_TPM2B_IV(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_IV(const TPM2B_IV& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -2792,6 +2799,7 @@ TPM2B_NAME Make_TPM2B_NAME(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_NAME(const TPM2B_NAME& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.name));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.name);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -3520,6 +3528,7 @@ TPM2B_DIGEST_VALUES Make_TPM2B_DIGEST_VALUES(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_DIGEST_VALUES(const TPM2B_DIGEST_VALUES& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -4556,6 +4565,7 @@ TPM2B_ATTEST Make_TPM2B_ATTEST(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_ATTEST(const TPM2B_ATTEST& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.attestation_data));
   const char* char_buffer =
       reinterpret_cast<const char*>(tpm2b.attestation_data);
   return std::string(char_buffer, tpm2b.size);
@@ -4977,6 +4987,7 @@ TPM2B_SYM_KEY Make_TPM2B_SYM_KEY(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_SYM_KEY(const TPM2B_SYM_KEY& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -5061,6 +5072,7 @@ TPM2B_SENSITIVE_DATA Make_TPM2B_SENSITIVE_DATA(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_SENSITIVE_DATA(const TPM2B_SENSITIVE_DATA& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -6053,6 +6065,7 @@ TPM2B_PUBLIC_KEY_RSA Make_TPM2B_PUBLIC_KEY_RSA(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_PUBLIC_KEY_RSA(const TPM2B_PUBLIC_KEY_RSA& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -6113,6 +6126,7 @@ TPM2B_PRIVATE_KEY_RSA Make_TPM2B_PRIVATE_KEY_RSA(const std::string& bytes) {
 
 std::string StringFrom_TPM2B_PRIVATE_KEY_RSA(
     const TPM2B_PRIVATE_KEY_RSA& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -6172,6 +6186,7 @@ TPM2B_ECC_PARAMETER Make_TPM2B_ECC_PARAMETER(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_ECC_PARAMETER(const TPM2B_ECC_PARAMETER& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -6756,6 +6771,7 @@ TPM2B_ENCRYPTED_SECRET Make_TPM2B_ENCRYPTED_SECRET(const std::string& bytes) {
 
 std::string StringFrom_TPM2B_ENCRYPTED_SECRET(
     const TPM2B_ENCRYPTED_SECRET& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.secret));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.secret);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -7300,6 +7316,7 @@ TPM2B_PRIVATE_VENDOR_SPECIFIC Make_TPM2B_PRIVATE_VENDOR_SPECIFIC(
 
 std::string StringFrom_TPM2B_PRIVATE_VENDOR_SPECIFIC(
     const TPM2B_PRIVATE_VENDOR_SPECIFIC& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -7587,6 +7604,7 @@ TPM2B_PRIVATE Make_TPM2B_PRIVATE(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_PRIVATE(const TPM2B_PRIVATE& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -7680,6 +7698,7 @@ TPM2B_ID_OBJECT Make_TPM2B_ID_OBJECT(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_ID_OBJECT(const TPM2B_ID_OBJECT& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.credential));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.credential);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -7859,6 +7878,7 @@ TPM2B_CONTEXT_SENSITIVE Make_TPM2B_CONTEXT_SENSITIVE(const std::string& bytes) {
 
 std::string StringFrom_TPM2B_CONTEXT_SENSITIVE(
     const TPM2B_CONTEXT_SENSITIVE& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
@@ -7954,6 +7974,7 @@ TPM2B_CONTEXT_DATA Make_TPM2B_CONTEXT_DATA(const std::string& bytes) {
 }
 
 std::string StringFrom_TPM2B_CONTEXT_DATA(const TPM2B_CONTEXT_DATA& tpm2b) {
+  CHECK(tpm2b.size <= std::size(tpm2b.buffer));
   const char* char_buffer = reinterpret_cast<const char*>(tpm2b.buffer);
   return std::string(char_buffer, tpm2b.size);
 }
