@@ -34,13 +34,8 @@ reality.
       retrieve all current existing processes on the device; setting
       `ignore_single_process_error` to true will ignore any errors if occurred.
 - `CrosHealthdEventService` interface
-    - `AddBluetoothObserver(observer)` for bluetooth events.
-    - `AddLidObserver(observer)` for lid events.
-    - `AddPowerObserver(observer)` for power events.
-    - `AddNetworkObserver(observer)` for network events.
-    - `AddAudioObserver(observer)` for audio events.
-    - `AddThunderboltObserver(observer)` for thunderbolt events.
-    - `AddUsbObserver(observer)` for USB events.
+    - `AddEventObserver(category, observer)` for category(`EventCategoryEnum`)
+      events.
 
 See the Mojo interface comment for the detail.
 
@@ -1256,85 +1251,7 @@ event --help`.
 
 ## Events
 
-### Audio
-| Interface | Additional data | Description |
-| --------- | --------------- | ----------- |
-| OnUnderrun | - | Fired when the audio underrun happens. |
-| OnSevereUnderrun | - | Fired when the audio severe underrun happens. |
-
-### Bluetooth
-| Interface | Additional data | Description |
-| --------- | --------------- | ----------- |
-| OnAdapterAdded | - | Fired when a Bluetooth adapter is added. |
-| OnAdapterRemoved | - | Fired when a Bluetooth adapter is removed. |
-| OnAdapterPropertyChanged | - | Fired when a property of a Bluetooth adapter is changed. |
-| OnDeviceAdded | - | Fired when a Bluetooth device is added. |
-| OnDeviceRemoved | - | Fired when a Bluetooth device is removed. |
-| OnDevicePropertyChanged | - | Fired when a property of a Bluetooth device is changed. |
-
-### Crashes
-
-| Interface | Additional data | Description |
-| --------- | --------------- | ----------- |
-| OnEvent | [CrashEventInfo](#CrashEventInfo) | Fired when a crash occurs, with up to 20min delay. |
-
-#### CrashEventInfo
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| crash_type | CrashEventInfo::CrashType | Type of the crash. Corresponding to "fatal_crash_type" in uploads.log. |
-| local_id | string | ID that represents crash locally. Corresponding to "path_hash" in uploads.log. |
-| capture_time | ash.cros_healthd.external.mojo_base.mojom.Time | The time at which the crash event is captured by the system. Corresponding to "capture_time" in uploads.log. |
-| upload_info | CrashUploadInfo? | Information available for uploaded crash events only. Missing if the crash hasn't been uploaded by crash_sender yet. |
-
-##### CrashEventInfo::CrashType
-| Enum | Description |
-| ---- | ----------- |
-| kUnknown | Unknown crash type. |
-| kKernel | Kernel crashes. |
-| kEmbeddedController | EC crashes. |
-
-#### CrashUploadInfo
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| crash_report_id | string | Corresponding to "upload_id" in uploads.log. |
-| creation_time | ash.cros_healthd.external.mojo_base.mojom.Time | The creation time of the uploads.log file. Used to distinguish uploads.log file in case it has been deleted and recreated. |
-| offset | uint64 | Number of valid logs before this event in uploads.log. Useful when need to distinguish whether a crash event has been encountered before. |
-
-### Lid
-| Interface | Additional data | Description |
-| --------- | --------------- | ----------- |
-| OnLidClosed | - | Fired when the device's lid is closed. |
-| OnLidOpened | - | Fired when the device's lid is opened. |
-
-### Network
-| Interface | Additional data | Description |
-| --------- | --------------- | ----------- |
-| OnConnectionStateChanged | string guid <br />[NetworkState](#NetworkState) state | Fired when a network’s connection state changes. |
-| OnSignalStrengthChanged | string guid <br />uint32 signal_strength | Fired when a wireless network’s signal strength changes by ten or more percent. See the definition of &#124;signal_strength&#124; in [Network](#network-health-struct). |
-
-### Power
-| Interface | Additional data | Description |
-| --------- | --------------- | ----------- |
-| OnAcInserted | - | Fired when the device begins consuming from an external power source. |
-| OnAcRemoved | - | Fired when the device stops consuming from an external power source. |
-| OnOsSuspend | -  | Fired when the system receives a suspend request. |
-| OnOsResume | - | Fired when the system completes a suspend request. |
-
-### Thunderbolt
-| Interface | Additional data | Description |
-| --------- | --------------- | ----------- |
-| OnAdd | - | Fired when the Thunderbolt plug in. |
-| OnRemove | - | Fired when the Thunderbolt plug out. |
-| OnAuthorized | - | Fired when the Thunderbolt device is authorized. |
-| OnUnAuthorized | - | Fired when the Thunderbolt device is unauthorized. |
-
-### USB
-| Interface | Additional data | Description |
-| --------- | --------------- | ----------- |
-| OnAdd | [UsbEventInfo](#UsbEventInfo) info | Fired when the USB plug in. |
-| OnRemove | [UsbEventInfo](#UsbEventInfo) info | Fired when the USB plug out. |
-
-##### UsbEventInfo
+### Usb
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | vendor | string | Vendor name. |
@@ -1342,3 +1259,143 @@ event --help`.
 | vid | uint16 | Vendor ID. |
 | pid | uint16 | Product ID. |
 | categories | array&lt;string&gt; | USB device categories. https://www.usb.org/defined-class-codes. |
+| state | State | Indicate `kAdd`, `kRemove` event. |
+
+### Thunderbolt
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| state | State | Indicate `kAdd`, `kRemove`, `kAuthorized`, `kUnAuthorized` event. |
+
+### Lid
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| state | State | Indicate `kClosed`, `kOpened` event. |
+
+### Bluetooth
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| state | State | Indicate `kAdapterAdded`, `kAdapterRemoved`, `kAdapterPropertyChanged`, `kDeviceAdded`, `kDeviceRemoved`, `kDevicePropertyChanged` event. |
+
+### Power
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| state | State | Indicate `kAcInserted`, `kAcRemoved`, `kOsSuspend`, `kOsResume` event. |
+
+### Audio
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| state | State | Indicate `kUnderrun`, `kSevereUnderrun` event. |
+
+### Audio jack
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| state | State | Indicate `kAdd`, `kRemove` event. |
+| device_type | DeviceType | Indicate `kHeadphone`, `kMicrophone` type. |
+
+### SD card reader
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| state | State | Indicate `kAdd`, `kRemove` event. |
+
+### Touchpad
+
+##### Touchpad button event
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| button | [InputTouchButton](#InputTouchButton) | The button corresponds to this event. |
+| pressed | bool | True when if the button is pressed. False if the button is released. |
+
+##### InputTouchButton
+| Field | Description |
+| ----- | ----------- |
+| kLeft | Left key. |
+| kMiddle | Middle key. |
+| kRight | Right key. |
+
+##### Touchpad touch event
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| touch_points | [array&lt;TouchPointInfo&gt;](#TouchPointInfo) | The touch points reported by the touchpad. |
+
+##### TouchPointInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| tracking_id | uint32 | An id to track an initiated contact throughout its life cycle. |
+| x | uint32 | The x position. |
+| y | uint32 | The y position. |
+| pressure | uint32? | The pressure applied to the touch contact. |
+| touch_major | uint32? | The length of the longer dimension of the touch contact. |
+| touch_minor | uint32? | The length of the shorter dimension of the touch contact. |
+
+##### Touch connected event
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| max_x | uint32 | The maximum possible x position of touch points. |
+| max_y | uint32 | The maximum possible y position of touch points. |
+| max_pressure | uint32 | The maximum possible pressure of touch points, or 0 if pressure is not supported. |
+| buttons | [array&lt;InputTouchButton&gt;](#InputTouchButton)
+
+### HDMI
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| state | State | Indicate `kAdd`, `kRemove` event. |
+| display_info | [ExternalDisplayInfo?](#ExternalDisplayInfo) | On Hdmi plug in event, also report information about the newly added display. |
+
+### Touchscreen
+
+##### Touchscreen event
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| touch_event | [TouchscreenTouchEvent](#TouchscreenTouchEvent) | |
+| connected_event | [TouchscreenConnectedEvent](#TouchscreenConnectedEvent) | |
+
+##### TouchscreenTouchEvent
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| touch_points | [array&lt;TouchPointInfo&gt;](#TouchPointInfo) | The touch points reported by the touchscreen. |
+
+##### TouchscreenConnectedEvent
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| max_x | uint32 | The maximum possible x position of touch points. |
+| max_y | uint32 | The maximum possible y position of touch points. |
+| max_pressure | uint32 | The maximum possible pressure of touch points, or 0 if pressure is not supported. |
+
+### Stylus garage
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| state | State | Indicate `kInsert`, `kRemove` event. |
+
+### Stylus
+
+##### Stylus event
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| touch_event | [StylusTouchEvent](#StylusTouchEvent) | |
+| connected_event | [StylusConnectedEvent](#StylusConnectedEvent) | |
+
+##### StylusTouchEvent
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| touch_point | [StylusTouchPointInfo?](#StylusTouchPointInfo) | The info of the stylus touch point. A null touch point means the stylus leaves the contact. |
+
+##### StylusTouchPointInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| x | uint32 | The x position. |
+| y | uint32 | The y position. |
+| pressure | uint32? | The pressure applied to the touch contact. |
+
+##### StylusConnectedEvent
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| max_x | uint32 | The maximum possible x position of touch points. |
+| max_y | uint32 | The maximum possible y position of touch points. |
+| max_pressure | uint32 | The maximum possible pressure of touch points, or 0 if pressure is not supported. |
+
+### Crash
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| crash_report_id | string | Corresponding to "upload_id" in uploads.log. |
+| creation_time | ash.cros_healthd.external.mojo_base.mojom.Time | The creation time of the uploads.log file. Used to distinguish uploads.log file in case it has been deleted and recreated. |
+| offset | uint64 | Number of valid logs before this event in uploads.log. Useful to inform subscribers that need to distinguish whether a crash event has been encountered before. |
