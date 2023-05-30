@@ -440,7 +440,7 @@ NvramSpace* Tpm::GetLockboxSpace() {
     return lockbox_space_.get();
   }
 
-  lockbox_space_.reset(new NvramSpace(this, kLockboxIndex));
+  lockbox_space_ = std::make_unique<NvramSpace>(this, kLockboxIndex);
 
   // Reading the NVRAM takes 40ms. Instead of querying the NVRAM area for its
   // size (which takes time), just read the expected size. If it fails, then
@@ -464,7 +464,7 @@ NvramSpace* Tpm::GetEncStatefulSpace() {
     return encstateful_space_.get();
   }
 
-  encstateful_space_.reset(new NvramSpace(this, kEncStatefulIndex));
+  encstateful_space_ = std::make_unique<NvramSpace>(this, kEncStatefulIndex);
 
   if (encstateful_space_->Read(kEncStatefulSize) == RESULT_SUCCESS) {
     LOG(INFO) << "Found encstateful NVRAM area.";

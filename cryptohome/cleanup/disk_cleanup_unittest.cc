@@ -64,9 +64,9 @@ class DiskCleanupTest : public ::testing::Test {
  public:
   DiskCleanupTest() = default;
 
-  void SetUp() {
-    cleanup_.reset(
-        new DiskCleanup(&platform_, &homedirs_, &timestamp_manager_));
+  void SetUp() override {
+    cleanup_ = std::make_unique<DiskCleanup>(&platform_, &homedirs_,
+                                             &timestamp_manager_);
 
     cleanup_routines_ = new StrictMock<MockDiskCleanupRoutines>;
     cleanup_->set_routines_for_testing(cleanup_routines_);

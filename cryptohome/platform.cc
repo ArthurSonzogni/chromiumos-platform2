@@ -1759,7 +1759,7 @@ const base::stat_wrapper_t& FileEnumerator::FileInfo::stat() const {
 
 void FileEnumerator::FileInfo::Assign(
     const base::FileEnumerator::FileInfo& file_info) {
-  info_.reset(new base::FileEnumerator::FileInfo(file_info));
+  info_ = std::make_unique<base::FileEnumerator::FileInfo>(file_info);
   memset(&stat_, 0, sizeof(stat_));
 }
 
@@ -1768,7 +1768,8 @@ FileEnumerator::FileEnumerator(const FilePath& root_path,
                                int file_type) {
   DCHECK(root_path.IsAbsolute()) << "root_path=" << root_path;
 
-  enumerator_.reset(new base::FileEnumerator(root_path, recursive, file_type));
+  enumerator_ =
+      std::make_unique<base::FileEnumerator>(root_path, recursive, file_type);
 }
 
 FileEnumerator::FileEnumerator(const FilePath& root_path,
@@ -1777,12 +1778,12 @@ FileEnumerator::FileEnumerator(const FilePath& root_path,
                                const std::string& pattern) {
   DCHECK(root_path.IsAbsolute()) << "root_path=" << root_path;
 
-  enumerator_.reset(
-      new base::FileEnumerator(root_path, recursive, file_type, pattern));
+  enumerator_ = std::make_unique<base::FileEnumerator>(root_path, recursive,
+                                                       file_type, pattern);
 }
 
-FileEnumerator::FileEnumerator() {}
-FileEnumerator::~FileEnumerator() {}
+FileEnumerator::FileEnumerator() = default;
+FileEnumerator::~FileEnumerator() = default;
 
 FilePath FileEnumerator::Next() {
   if (!enumerator_.get())

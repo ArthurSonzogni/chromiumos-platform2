@@ -43,24 +43,24 @@ class UserDataAuthDaemon : public brillo::DBusServiceDaemon {
         nullptr, bus_,
         dbus::ObjectPath(::user_data_auth::kUserDataAuthServicePath));
 
-    userdataauth_adaptor_.reset(
-        new UserDataAuthAdaptor(bus_, dbus_object_.get(), service_.get()));
+    userdataauth_adaptor_ = std::make_unique<UserDataAuthAdaptor>(
+        bus_, dbus_object_.get(), service_.get());
     userdataauth_adaptor_->RegisterAsync();
 
-    arc_quota_adaptor_.reset(
-        new ArcQuotaAdaptor(bus_, dbus_object_.get(), service_.get()));
+    arc_quota_adaptor_ = std::make_unique<ArcQuotaAdaptor>(
+        bus_, dbus_object_.get(), service_.get());
     arc_quota_adaptor_->RegisterAsync();
 
-    pkcs11_adaptor_.reset(
-        new Pkcs11Adaptor(bus_, dbus_object_.get(), service_.get()));
+    pkcs11_adaptor_ = std::make_unique<Pkcs11Adaptor>(bus_, dbus_object_.get(),
+                                                      service_.get());
     pkcs11_adaptor_->RegisterAsync();
 
-    install_attributes_adaptor_.reset(
-        new InstallAttributesAdaptor(bus_, dbus_object_.get(), service_.get()));
+    install_attributes_adaptor_ = std::make_unique<InstallAttributesAdaptor>(
+        bus_, dbus_object_.get(), service_.get());
     install_attributes_adaptor_->RegisterAsync();
 
-    misc_adaptor_.reset(
-        new CryptohomeMiscAdaptor(bus_, dbus_object_.get(), service_.get()));
+    misc_adaptor_ = std::make_unique<CryptohomeMiscAdaptor>(
+        bus_, dbus_object_.get(), service_.get());
     misc_adaptor_->RegisterAsync();
 
     dbus_object_->RegisterAsync(

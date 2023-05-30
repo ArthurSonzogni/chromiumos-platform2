@@ -141,15 +141,14 @@ void FakePlatform::FakeExtendedAttributes::Remove(const std::string& name) {
 // Constructor/destructor
 
 FakePlatform::FakePlatform()
-    : Platform(),
-      fake_loop_device_manager_(
+    : fake_loop_device_manager_(
           std::make_unique<brillo::fake::FakeLoopDeviceManager>()),
       mock_lvm_(std::make_unique<brillo::MockLogicalVolumeManager>()) {
   CHECK(base::GetTempDir(&tmpfs_rootfs_));
   CHECK(tmpfs_rootfs_.IsAbsolute()) << "tmpfs_rootfs_=" << tmpfs_rootfs_;
   tmpfs_rootfs_ = tmpfs_rootfs_.Append(GetRandomSuffix());
   CHECK(real_platform_.CreateDirectory(tmpfs_rootfs_));
-  fake_mount_mapper_.reset(new FakeMountMapper(tmpfs_rootfs_));
+  fake_mount_mapper_ = std::make_unique<FakeMountMapper>(tmpfs_rootfs_);
   brillo::SecureBlob system_salt;
   InitializeFilesystemLayout(this, &system_salt);
   SetSystemSaltForLibbrillo(system_salt);

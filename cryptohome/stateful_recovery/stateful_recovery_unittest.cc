@@ -39,22 +39,18 @@ struct MountSuccessParams {
 // StatefulRecoveryTest is a test fixture for all Stateful Recovery unit tests.
 class StatefulRecoveryTest : public ::testing::Test {
  public:
-  StatefulRecoveryTest() {}
-
-  ~StatefulRecoveryTest() override = default;
-
   void SetUp() override {
-    platform_.reset(new MockPlatform());
-    userdataauth_proxy_.reset(new testing::StrictMock<
-                              org::chromium::UserDataAuthInterfaceProxyMock>());
-    policy_provider_.reset(
-        new testing::StrictMock<policy::MockPolicyProvider>());
+    platform_ = std::make_unique<MockPlatform>();
+    userdataauth_proxy_ = std::make_unique<
+        testing::StrictMock<org::chromium::UserDataAuthInterfaceProxyMock>>();
+    policy_provider_ =
+        std::make_unique<testing::StrictMock<policy::MockPolicyProvider>>();
   }
 
   void Initialize() {
-    recovery_.reset(new StatefulRecovery(platform_.get(),
-                                         userdataauth_proxy_.get(),
-                                         policy_provider_.get(), flag_file_));
+    recovery_ = std::make_unique<StatefulRecovery>(
+        platform_.get(), userdataauth_proxy_.get(), policy_provider_.get(),
+        flag_file_);
   }
 
  protected:

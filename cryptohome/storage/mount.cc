@@ -79,11 +79,11 @@ Mount::Mount(Platform* platform,
       bind_mount_downloads_(bind_mount_downloads),
       dircrypto_migration_stopped_condition_(&active_dircrypto_migrator_lock_) {
   if (use_local_mounter) {
-    active_mounter_.reset(
-        new MountHelper(legacy_mount_, bind_mount_downloads_, platform_));
+    active_mounter_ = std::make_unique<MountHelper>(
+        legacy_mount_, bind_mount_downloads_, platform_);
   } else {
-    active_mounter_.reset(new OutOfProcessMountHelper(
-        legacy_mount_, bind_mount_downloads_, platform_));
+    active_mounter_ = std::make_unique<OutOfProcessMountHelper>(
+        legacy_mount_, bind_mount_downloads_, platform_);
   }
 }
 

@@ -207,7 +207,7 @@ class UserDataAuthTestBase : public ::testing::Test {
       // class (such as UserDataAuthTestThreaded) need to have the constructor
       // of UserDataAuth run on a specific thread, and therefore will construct
       // |userdataauth_| before calling UserDataAuthTestBase::SetUp().
-      userdataauth_.reset(new UserDataAuth());
+      userdataauth_ = std::make_unique<UserDataAuth>();
     }
 
     userdataauth_->set_user_activity_timestamp_manager(
@@ -2545,9 +2545,10 @@ class UserDataAuthExTest : public UserDataAuthTest {
 
  protected:
   void PrepareArguments() {
-    list_keys_req_.reset(new user_data_auth::ListKeysRequest);
-    remove_homedir_req_.reset(new user_data_auth::RemoveRequest);
-    start_auth_session_req_.reset(new user_data_auth::StartAuthSessionRequest);
+    list_keys_req_ = std::make_unique<user_data_auth::ListKeysRequest>();
+    remove_homedir_req_ = std::make_unique<user_data_auth::RemoveRequest>();
+    start_auth_session_req_ =
+        std::make_unique<user_data_auth::StartAuthSessionRequest>();
   }
 
   template <class ProtoBuf>
@@ -4066,7 +4067,7 @@ class UserDataAuthTestThreaded : public UserDataAuthTestBase {
 
   void SetUpInOrigin() {
     // Create the |userdataauth_| object.
-    userdataauth_.reset(new UserDataAuth());
+    userdataauth_ = std::make_unique<UserDataAuth>();
 
     // Setup the usual stuff
     UserDataAuthTestBase::SetUp();

@@ -411,8 +411,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   // because it may have been set to an overridden value during unit testing
   // before Initialize() is called.
   if (!cryptohome_keys_manager_) {
-    default_cryptohome_keys_manager_.reset(
-        new CryptohomeKeysManager(hwsec_, platform_));
+    default_cryptohome_keys_manager_ =
+        std::make_unique<CryptohomeKeysManager>(hwsec_, platform_);
     cryptohome_keys_manager_ = default_cryptohome_keys_manager_.get();
   }
 
@@ -2073,8 +2073,8 @@ UserDataAuth::SetFirmwareManagementParameters(
   std::unique_ptr<std::vector<uint8_t>> hash;
 
   if (!fwmp.developer_key_hash().empty()) {
-    hash.reset(new std::vector<uint8_t>(fwmp.developer_key_hash().begin(),
-                                        fwmp.developer_key_hash().end()));
+    hash = std::make_unique<std::vector<uint8_t>>(
+        fwmp.developer_key_hash().begin(), fwmp.developer_key_hash().end());
   }
 
   if (!firmware_management_parameters_->Store(flags, hash.get())) {

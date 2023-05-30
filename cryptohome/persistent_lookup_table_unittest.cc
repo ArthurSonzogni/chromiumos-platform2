@@ -86,7 +86,7 @@ TEST(PersistentLookupTableTest, RestoreTable) {
   // Destroy old object, now instantiate a new table object and restore old
   // table.
   lookup_table.reset();
-  platform.reset(new Platform());
+  platform = std::make_unique<Platform>();
   lookup_table = std::make_unique<PersistentLookupTable>(platform.get(),
                                                          temp_dir.GetPath());
   lookup_table->InitOnBoot();
@@ -98,7 +98,7 @@ TEST(PersistentLookupTableTest, RestoreTable) {
 
   // Destroy it one last time, then reload it.
   lookup_table.reset();
-  platform.reset(new Platform());
+  platform = std::make_unique<Platform>();
   lookup_table = std::make_unique<PersistentLookupTable>(platform.get(),
                                                          temp_dir.GetPath());
   lookup_table->InitOnBoot();

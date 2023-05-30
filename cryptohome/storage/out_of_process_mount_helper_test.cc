@@ -54,19 +54,12 @@ namespace cryptohome {
 
 class OutOfProcessMountHelperTest : public ::testing::Test {
  public:
-  OutOfProcessMountHelperTest() {}
-  OutOfProcessMountHelperTest(const OutOfProcessMountHelperTest&) = delete;
-  OutOfProcessMountHelperTest& operator=(const OutOfProcessMountHelperTest&) =
-      delete;
-
-  virtual ~OutOfProcessMountHelperTest() {}
-
-  void SetUp() {
-    out_of_process_mounter_.reset(new OutOfProcessMountHelper(
-        true /* legacy_mount */, true /* bind_mount_downloads */, &platform_));
+  void SetUp() override {
+    out_of_process_mounter_ = std::make_unique<OutOfProcessMountHelper>(
+        true /* legacy_mount */, true /* bind_mount_downloads */, &platform_);
   }
 
-  void TearDown() { out_of_process_mounter_ = nullptr; }
+  void TearDown() override { out_of_process_mounter_ = nullptr; }
 
   bool CreatePipe(base::ScopedFD* read_end, base::ScopedFD* write_end) {
     int pipe[2];
@@ -169,8 +162,8 @@ TEST_F(OutOfProcessMountHelperTest, MountGuestUserDirOOPNonRootMountNamespace) {
   EXPECT_CALL(*process, pid()).WillRepeatedly(Return(kOOPHelperPid));
   EXPECT_CALL(*process, Kill(SIGTERM, _)).WillOnce(Return(true));
 
-  out_of_process_mounter_.reset(new OutOfProcessMountHelper(
-      true /* legacy_mount */, true /* bind_mount_downloads */, &platform_));
+  out_of_process_mounter_ = std::make_unique<OutOfProcessMountHelper>(
+      true /* legacy_mount */, true /* bind_mount_downloads */, &platform_);
 
   // Reading from the helper always succeeds.
   base::ScopedFD dev_zero = GetDevZeroFd();
