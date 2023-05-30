@@ -482,7 +482,7 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
     if_nametoindex_[output->ifname] = output->ifindex;
   } else {
     const auto it = if_nametoindex_.find(output->ifname);
-    if (it != if_nametoindex_.end()) {
+    if (it == if_nametoindex_.end()) {
       LOG(WARNING) << "Could not obtain the interface index of "
                    << output->ifname;
       return false;
