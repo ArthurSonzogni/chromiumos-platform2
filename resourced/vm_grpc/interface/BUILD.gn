@@ -1,0 +1,39 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":libresourceD",
+    ":resourced-protos",
+  ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [ "libchrome" ]
+}
+
+proto_library("resourced-protos") {
+  proto_in_dir = "./../../src/vm_grpc/proto/"
+  proto_out_dir = "include/proto_bindings"
+  gen_grpc = true
+  use_pic = true
+  sources = [ "${proto_in_dir}/resourced_bridge.proto" ]
+  standalone = true
+}
+
+shared_library("libresourceD") {
+  sources = [
+    "./resourced_chromium_grpc_client.cc",
+    "./resourced_chromium_grpc_server.cc",
+    "./resourced_interface.c",
+  ]
+  configs += [ ":target_defaults" ]
+  pkg_deps = [
+    "grpc++",
+    "protobuf",
+  ]
+}
