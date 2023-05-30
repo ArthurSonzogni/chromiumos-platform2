@@ -2305,6 +2305,8 @@ TEST_F(WiFiProviderTest, MultipleCredentialsMatches) {
 
 TEST_F(WiFiProviderTest, RegisterAndDeregisterWiFiDevice) {
   const uint32_t phy_index = 0;
+
+  EXPECT_CALL(manager_, device_info()).Times(1);
   scoped_refptr<MockWiFi> device = new NiceMock<MockWiFi>(
       &manager_, "null0", "addr0", 0, phy_index, new MockWakeOnWiFi());
 

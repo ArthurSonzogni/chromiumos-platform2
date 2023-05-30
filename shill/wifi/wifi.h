@@ -145,6 +145,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   void Start(EnabledStateChangedCallback callback) override;
   void Stop(EnabledStateChangedCallback callback) override;
+  std::string GetStorageIdentifier() const override;
   void Scan(Error* error, const std::string& reason) override;
   void EnsureScanAndConnectToBestService(Error* error);
   // Callback for system suspend.
@@ -338,6 +339,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, DisconnectReasonUpdated);
   FRIEND_TEST(WiFiMainTest, DisconnectReasonCleared);
   FRIEND_TEST(WiFiMainTest, CurrentAuthModeChanged);  // supplicant_auth_mode_
+  FRIEND_TEST(WiFiMainTest, GetStorageIdentifier);
   FRIEND_TEST(WiFiMainTest, GetSuffixFromAuthMode);
   FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
   FRIEND_TEST(WiFiMainTest, FullScanConnectingToConnected);
@@ -951,6 +953,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Phy interface index of this WiFi device.
   uint32_t phy_index_;
+
+  // Permanent MAC address of this WiFi device.
+  std::string perm_address_;
 
   // Used to access connection quality monitor features.
   std::unique_ptr<WiFiCQM> wifi_cqm_;

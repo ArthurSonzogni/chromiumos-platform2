@@ -236,6 +236,13 @@ WiFi::WiFi(Manager* manager,
                           &WiFi::GetInterworkingSelectEnabled,
                           &WiFi::SetInterworkingSelectEnabled);
 
+  auto perm_mac = manager->device_info()->GetPermAddress(interface_index);
+  if (perm_mac) {
+    perm_address_ = perm_mac->ToHexString();
+  } else {
+    LOG(WARNING) << "WiFi device with missing perm MAC: " << link_name();
+  }
+
   if (wake_on_wifi_) {
     wake_on_wifi_->InitPropertyStore(store);
   }
@@ -342,6 +349,16 @@ void WiFi::Stop(EnabledStateChangedCallback callback) {
                 << endpoint_by_rpcid_.size() << " EndpointMap entries.";
 
   std::move(callback).Run(Error(Error::kSuccess));
+}
+
+std::string WiFi::GetStorageIdentifier() const {
+  std::string ret{"device_"};
+  if (perm_address_.empty()) {
+    ret += mac_address();
+  } else {
+    ret += perm_address_;
+  }
+  return ret;
 }
 
 void WiFi::Scan(Error* /*error*/, const std::string& reason) {

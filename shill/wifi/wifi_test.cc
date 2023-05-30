@@ -28,6 +28,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 
 #include "base/time/time.h"
+#include "crypto/random.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -108,6 +109,8 @@ namespace {
 const uint16_t kNl80211FamilyId = 0x13;
 const int kInterfaceIndex = 1234;
 const uint32_t kPhyIndex = 5678;
+const std::array<uint8_t, ETH_ALEN> kPermDeviceAddress{0x01, 0x23, 0x45,
+                                                       0x67, 0x89, 0xab};
 
 // Bytes representing a NL80211_CMD_NEW_WIPHY message reporting the WiFi
 // capabilities of a NIC with wiphy index |kNewWiphyNlMsg_PhyIndex| which
@@ -587,12 +590,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
       : event_dispatcher_(std::move(dispatcher)),
         manager_(&control_interface_, event_dispatcher_.get(), &metrics_),
         power_manager_(new MockPowerManager(control_interface())),
-        wifi_(new WiFi(&manager_,
-                       kDeviceName,
-                       kDeviceAddress,
-                       kInterfaceIndex,
-                       kPhyIndex,
-                       std::make_unique<MockWakeOnWiFi>())),
         wifi_provider_(&manager_),
         bss_counter_(0),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
@@ -604,6 +601,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()),
         supplicant_network_proxy_(new NiceMock<MockSupplicantNetworkProxy>()) {
+    ON_CALL(*device_info(), GetPermAddress(kInterfaceIndex))
+        .WillByDefault(
+            Return(net_base::MacAddress::CreateFromBytes(kPermDeviceAddress)));
+    wifi_ = new WiFi(&manager_, kDeviceName, kDeviceAddress, kInterfaceIndex,
+                     kPhyIndex, std::make_unique<MockWakeOnWiFi>());
     manager_.supplicant_manager()->set_proxy(supplicant_process_proxy_);
     ON_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
         .WillByDefault(DoAll(SetArgPointee<1>(RpcIdentifier("/default/path")),
@@ -1383,6 +1385,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->supported_cipher_suites_.erase(WiFi::kWEP104CipherCode);
   }
 
+  std::string perm_address() const { return wifi_->perm_address_; }
+  void SetMacAddress(const std::string& addr) { wifi_->set_mac_address(addr); }
+  std::string GetStorageIdentifier() const {
+    return wifi_->GetStorageIdentifier();
+  }
+
   std::unique_ptr<EventDispatcher> event_dispatcher_;
   MockWakeOnWiFi* wake_on_wifi_;  // Owned by |wifi_|.
   NiceMock<MockRTNLHandler> rtnl_handler_;
@@ -1582,6 +1590,22 @@ class WiFiMainTest : public WiFiObjectTest {
     EXPECT_CALL(*metrics(), ResetConnectTimer(_)).RetiresOnSaturation();
   }
 };
+
+TEST_F(WiFiMainTest, GetStorageIdentifier) {
+  // First test the base line - that the stored hardware MAC is what we expect.
+  EXPECT_EQ(perm_address(),
+            base::ToLowerASCII(base::HexEncode(kPermDeviceAddress.data(),
+                                               kPermDeviceAddress.size())));
+  auto storage_id = GetStorageIdentifier();
+  // Now check the expected storage ID and that it does no change when MAC
+  // address changes.
+  EXPECT_EQ(storage_id, std::string("device_") + perm_address());
+  std::array<uint8_t, ETH_ALEN> bytes;
+  crypto::RandBytes(bytes.data(), bytes.size());
+  SetMacAddress(
+      base::ToLowerASCII(base::HexEncode(bytes.data(), bytes.size())));
+  EXPECT_EQ(storage_id, GetStorageIdentifier());
+}
 
 TEST_F(WiFiMainTest, ProxiesSetUpDuringStart) {
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxyFromWiFi());
