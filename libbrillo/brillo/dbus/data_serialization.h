@@ -7,37 +7,12 @@
 
 // The main functionality provided by this header file is methods to serialize
 // native C++ data over D-Bus. This includes three major parts:
-// - Methods to get the D-Bus signature for a given C++ type:
-//     std::string GetDBusSignature<T>();
 // - Methods to write arbitrary C++ data to D-Bus MessageWriter:
 //     void AppendValueToWriter(dbus::MessageWriter* writer, const T& value);
 //     void AppendValueToWriterAsVariant(dbus::MessageWriter*, const T&);
 // - Methods to read arbitrary C++ data from D-Bus MessageReader:
 //     bool PopValueFromReader(dbus::MessageReader* reader, T* value);
 //     bool PopVariantValueFromReader(dbus::MessageReader* reader, T* value);
-//
-// There are a number of overloads to handle C++ equivalents of basic D-Bus
-// types:
-//   D-Bus Type  | D-Bus Signature | Native C++ type
-//  --------------------------------------------------
-//   BYTE        |        y        |  uint8_t
-//   BOOL        |        b        |  bool
-//   INT16       |        n        |  int16_t
-//   UINT16      |        q        |  uint16_t
-//   INT32       |        i        |  int32_t (int)
-//   UINT32      |        u        |  uint32_t (unsigned)
-//   INT64       |        x        |  int64_t
-//   UINT64      |        t        |  uint64_t
-//   DOUBLE      |        d        |  double
-//   STRING      |        s        |  std::string
-//   OBJECT_PATH |        o        |  dbus::ObjectPath
-//   ARRAY       |        aT       |  std::vector<T>
-//   STRUCT      |       (UV)      |  std::pair<U,V>
-//               |     (UVW...)    |  std::tuple<U,V,W,...>
-//   DICT        |       a{KV}     |  std::map<K,V>
-//   VARIANT     |        v        |  brillo::Any
-//   UNIX_FD     |        h        |  base::ScopedFD
-//   SIGNATURE   |        g        |  (unsupported)
 
 #include <map>
 #include <memory>
@@ -49,6 +24,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <brillo/brillo_export.h>
+#include <brillo/dbus/dbus_signature.h>
 #include <brillo/type_name_undecorate.h>
 #include <dbus/message.h>
 
@@ -122,17 +98,6 @@ void AppendValueToWriter(::dbus::MessageWriter* writer, float value) = delete;
 void PopValueFromReader(::dbus::MessageReader* reader, char* value) = delete;
 void PopValueFromReader(::dbus::MessageReader* reader, float* value) = delete;
 
-//----------------------------------------------------------------------------
-// Get D-Bus data signature from C++ data types.
-// Specializations of a generic GetDBusSignature<T>() provide signature strings
-// for native C++ types. This function is available only for type supported
-// by D-Bus.
-template <typename T>
-inline typename std::enable_if<IsTypeSupported<T>::value, std::string>::type
-GetDBusSignature() {
-  return DBusType<T>::GetSignature();
-}
-
 namespace details {
 // Helper method used by the many overloads of PopValueFromReader().
 // If the current value in the reader is of Variant type, the method descends
@@ -149,22 +114,6 @@ inline bool DescendIntoVariantIfPresent(::dbus::MessageReader** reader_ref,
   return true;
 }
 
-// Helper method to format the type string of an array.
-// Essentially it adds "a" in front of |element_signature|.
-inline std::string GetArrayDBusSignature(const std::string& element_signature) {
-  return DBUS_TYPE_ARRAY_AS_STRING + element_signature;
-}
-
-// Helper method to get a signature string for DICT_ENTRY.
-// Returns "{KV}", where "K" and "V" are the type signatures for types
-// KEY/VALUE. For example, GetDBusDictEntryType<std::string, int>() would return
-// "{si}".
-template <typename KEY, typename VALUE>
-inline std::string GetDBusDictEntryType() {
-  return DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING + GetDBusSignature<KEY>() +
-         GetDBusSignature<VALUE>() + DBUS_DICT_ENTRY_END_CHAR_AS_STRING;
-}
-
 }  // namespace details
 
 //=============================================================================
@@ -179,9 +128,6 @@ BRILLO_EXPORT bool PopValueFromReader(::dbus::MessageReader* reader,
 
 template <>
 struct DBusType<bool> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_BOOLEAN_AS_STRING;
-  }
   inline static void Write(::dbus::MessageWriter* writer, bool value) {
     AppendValueToWriter(writer, value);
   }
@@ -198,7 +144,6 @@ BRILLO_EXPORT bool PopValueFromReader(::dbus::MessageReader* reader,
 
 template <>
 struct DBusType<uint8_t> {
-  inline static std::string GetSignature() { return DBUS_TYPE_BYTE_AS_STRING; }
   inline static void Write(::dbus::MessageWriter* writer, uint8_t value) {
     AppendValueToWriter(writer, value);
   }
@@ -215,7 +160,6 @@ BRILLO_EXPORT bool PopValueFromReader(::dbus::MessageReader* reader,
 
 template <>
 struct DBusType<int16_t> {
-  inline static std::string GetSignature() { return DBUS_TYPE_INT16_AS_STRING; }
   inline static void Write(::dbus::MessageWriter* writer, int16_t value) {
     AppendValueToWriter(writer, value);
   }
@@ -232,9 +176,6 @@ BRILLO_EXPORT bool PopValueFromReader(::dbus::MessageReader* reader,
 
 template <>
 struct DBusType<uint16_t> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_UINT16_AS_STRING;
-  }
   inline static void Write(::dbus::MessageWriter* writer, uint16_t value) {
     AppendValueToWriter(writer, value);
   }
@@ -251,7 +192,6 @@ BRILLO_EXPORT bool PopValueFromReader(::dbus::MessageReader* reader,
 
 template <>
 struct DBusType<int32_t> {
-  inline static std::string GetSignature() { return DBUS_TYPE_INT32_AS_STRING; }
   inline static void Write(::dbus::MessageWriter* writer, int32_t value) {
     AppendValueToWriter(writer, value);
   }
@@ -268,9 +208,6 @@ BRILLO_EXPORT bool PopValueFromReader(::dbus::MessageReader* reader,
 
 template <>
 struct DBusType<uint32_t> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_UINT32_AS_STRING;
-  }
   inline static void Write(::dbus::MessageWriter* writer, uint32_t value) {
     AppendValueToWriter(writer, value);
   }
@@ -287,7 +224,6 @@ BRILLO_EXPORT bool PopValueFromReader(::dbus::MessageReader* reader,
 
 template <>
 struct DBusType<int64_t> {
-  inline static std::string GetSignature() { return DBUS_TYPE_INT64_AS_STRING; }
   inline static void Write(::dbus::MessageWriter* writer, int64_t value) {
     AppendValueToWriter(writer, value);
   }
@@ -304,9 +240,6 @@ BRILLO_EXPORT bool PopValueFromReader(::dbus::MessageReader* reader,
 
 template <>
 struct DBusType<uint64_t> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_UINT64_AS_STRING;
-  }
   inline static void Write(::dbus::MessageWriter* writer, uint64_t value) {
     AppendValueToWriter(writer, value);
   }
@@ -323,9 +256,6 @@ BRILLO_EXPORT bool PopValueFromReader(::dbus::MessageReader* reader,
 
 template <>
 struct DBusType<double> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_DOUBLE_AS_STRING;
-  }
   inline static void Write(::dbus::MessageWriter* writer, double value) {
     AppendValueToWriter(writer, value);
   }
@@ -342,9 +272,6 @@ BRILLO_EXPORT bool PopValueFromReader(::dbus::MessageReader* reader,
 
 template <>
 struct DBusType<std::string> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_STRING_AS_STRING;
-  }
   inline static void Write(::dbus::MessageWriter* writer,
                            const std::string& value) {
     AppendValueToWriter(writer, value);
@@ -360,9 +287,6 @@ BRILLO_EXPORT void AppendValueToWriter(::dbus::MessageWriter* writer,
 
 template <>
 struct DBusType<const char*> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_STRING_AS_STRING;
-  }
   inline static void Write(::dbus::MessageWriter* writer, const char* value) {
     AppendValueToWriter(writer, value);
   }
@@ -371,9 +295,6 @@ struct DBusType<const char*> {
 // const char[]
 template <>
 struct DBusType<const char[]> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_STRING_AS_STRING;
-  }
   inline static void Write(::dbus::MessageWriter* writer, const char* value) {
     AppendValueToWriter(writer, value);
   }
@@ -387,9 +308,6 @@ BRILLO_EXPORT bool PopValueFromReader(::dbus::MessageReader* reader,
 
 template <>
 struct DBusType<::dbus::ObjectPath> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_OBJECT_PATH_AS_STRING;
-  }
   inline static void Write(::dbus::MessageWriter* writer,
                            const ::dbus::ObjectPath& value) {
     AppendValueToWriter(writer, value);
@@ -408,9 +326,6 @@ BRILLO_EXPORT bool PopValueFromReader(::dbus::MessageReader* reader,
 
 template <>
 struct DBusType<base::ScopedFD> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_UNIX_FD_AS_STRING;
-  }
   inline static void Write(::dbus::MessageWriter* writer,
                            const base::ScopedFD& value) {
     AppendValueToWriter(writer, value);
@@ -429,9 +344,6 @@ BRILLO_EXPORT bool PopValueFromReader(::dbus::MessageReader* reader,
 
 template <>
 struct DBusType<brillo::Any> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_VARIANT_AS_STRING;
-  }
   inline static void Write(::dbus::MessageWriter* writer,
                            const brillo::Any& value) {
     AppendValueToWriter(writer, value);
@@ -480,14 +392,10 @@ PopValueFromReader(::dbus::MessageReader* reader,
 
 namespace details {
 // DBusArrayType<> is a helper base class for DBusType<vector<T>> that provides
-// GetSignature/Write/Read methods for T types that are supported by D-Bus
+// Write/Read methods for T types that are supported by D-Bus
 // and not having those methods for types that are not supported by D-Bus.
 template <bool inner_type_supported, typename T, typename ALLOC>
 struct DBusArrayType {
-  // Returns "aT", where "T" is the signature string for type T.
-  inline static std::string GetSignature() {
-    return GetArrayDBusSignature(GetDBusSignature<T>());
-  }
   inline static void Write(::dbus::MessageWriter* writer,
                            const std::vector<T, ALLOC>& value) {
     AppendValueToWriter(writer, value);
@@ -509,37 +417,6 @@ struct DBusType<std::vector<T, ALLOC>>
     : public details::DBusArrayType<IsTypeSupported<T>::value, T, ALLOC> {};
 
 // std::pair = D-Bus STRUCT with two elements. --------------------------------
-namespace details {
-
-// Helper class to get a D-Bus signature of a list of types.
-// For example, TupleTraits<int32_t, bool, std::string>::GetSignature() will
-// return "ibs".
-template <typename... Types>
-struct TupleTraits;
-
-template <typename FirstType, typename... RestOfTypes>
-struct TupleTraits<FirstType, RestOfTypes...> {
-  static std::string GetSignature() {
-    return GetDBusSignature<FirstType>() +
-           TupleTraits<RestOfTypes...>::GetSignature();
-  }
-};
-
-template <>
-struct TupleTraits<> {
-  static std::string GetSignature() { return std::string{}; }
-};
-
-}  // namespace details
-
-template <typename... Types>
-inline std::string GetStructDBusSignature() {
-  // Returns "(T...)", where "T..." is the signature strings for types T...
-  return DBUS_STRUCT_BEGIN_CHAR_AS_STRING +
-         details::TupleTraits<Types...>::GetSignature() +
-         DBUS_STRUCT_END_CHAR_AS_STRING;
-}
-
 template <typename U, typename V>
 typename std::enable_if<IsTypeSupported<U, V>::value>::type AppendValueToWriter(
     ::dbus::MessageWriter* writer, const std::pair<U, V>& value) {
@@ -571,14 +448,10 @@ PopValueFromReader(::dbus::MessageReader* reader, std::pair<U, V>* value) {
 namespace details {
 
 // DBusArrayType<> is a helper base class for DBusType<pair<U, V>> that provides
-// GetSignature/Write/Read methods for types that are supported by D-Bus
+// Write/Read methods for types that are supported by D-Bus
 // and not having those methods for types that are not supported by D-Bus.
 template <bool inner_type_supported, typename U, typename V>
 struct DBusPairType {
-  // Returns "(UV)", where "U" and "V" are the signature strings for types U, V.
-  inline static std::string GetSignature() {
-    return GetStructDBusSignature<U, V>();
-  }
   inline static void Write(::dbus::MessageWriter* writer,
                            const std::pair<U, V>& value) {
     AppendValueToWriter(writer, value);
@@ -669,14 +542,10 @@ PopValueFromReader(::dbus::MessageReader* reader, std::tuple<T...>* value) {
 namespace details {
 
 // DBusTupleType<> is a helper base class for DBusType<tuple<T...>> that
-// provides GetSignature/Write/Read methods for types that are supported by
+// provides Write/Read methods for types that are supported by
 // D-Bus and not having those methods for types that are not supported by D-Bus.
 template <bool inner_type_supported, typename... T>
 struct DBusTupleType {
-  // Returns "(T...)", where "T..." are the signature strings for types T...
-  inline static std::string GetSignature() {
-    return GetStructDBusSignature<T...>();
-  }
   inline static void Write(::dbus::MessageWriter* writer,
                            const std::tuple<T...>& value) {
     AppendValueToWriter(writer, value);
@@ -703,7 +572,10 @@ typename std::enable_if<IsTypeSupported<KEY, VALUE>::value>::type
 AppendValueToWriter(::dbus::MessageWriter* writer,
                     const std::map<KEY, VALUE, PRED, ALLOC>& value) {
   ::dbus::MessageWriter dict_writer(nullptr);
-  writer->OpenArray(details::GetDBusDictEntryType<KEY, VALUE>(), &dict_writer);
+  writer->OpenArray(internal::StrJoin("{", DBusSignature<KEY>::kValue,
+                                      DBusSignature<VALUE>::kValue, "}")
+                        .data(),
+                    &dict_writer);
   for (const auto& pair : value) {
     ::dbus::MessageWriter entry_writer(nullptr);
     dict_writer.OpenDictEntry(&entry_writer);
@@ -747,7 +619,7 @@ PopValueFromReader(::dbus::MessageReader* reader,
 namespace details {
 
 // DBusArrayType<> is a helper base class for DBusType<map<K, V>> that provides
-// GetSignature/Write/Read methods for T types that are supported by D-Bus
+// Write/Read methods for T types that are supported by D-Bus
 // and not having those methods for types that are not supported by D-Bus.
 template <bool inner_types_supported,
           typename KEY,
@@ -755,11 +627,6 @@ template <bool inner_types_supported,
           typename PRED,
           typename ALLOC>
 struct DBusMapType {
-  // Returns "a{KV}", where "K" and "V" are the signature strings for types
-  // KEY/VALUE.
-  inline static std::string GetSignature() {
-    return GetArrayDBusSignature(GetDBusDictEntryType<KEY, VALUE>());
-  }
   inline static void Write(::dbus::MessageWriter* writer,
                            const std::map<KEY, VALUE, PRED, ALLOC>& value) {
     AppendValueToWriter(writer, value);
@@ -810,9 +677,6 @@ using is_protobuf = std::is_base_of<google::protobuf::MessageLite, T>;
 // remove this particular specialization from name resolution context.
 template <typename T>
 struct DBusType<T, typename std::enable_if<is_protobuf<T>::value>::type> {
-  inline static std::string GetSignature() {
-    return GetDBusSignature<std::vector<uint8_t>>();
-  }
   inline static void Write(::dbus::MessageWriter* writer, const T& value) {
     AppendValueToWriter(writer, value);
   }
@@ -828,9 +692,8 @@ struct DBusType<T, typename std::enable_if<is_protobuf<T>::value>::type> {
 template <typename T>
 typename std::enable_if<IsTypeSupported<T>::value>::type
 AppendValueToWriterAsVariant(::dbus::MessageWriter* writer, const T& value) {
-  std::string data_type = GetDBusSignature<T>();
   ::dbus::MessageWriter variant_writer(nullptr);
-  writer->OpenVariant(data_type, &variant_writer);
+  writer->OpenVariant(GetDBusSignature<T>(), &variant_writer);
   // Use DBusType<T>::Write() instead of AppendValueToWriter() to delay
   // binding to AppendValueToWriter() to the point of instantiation of this
   // template.

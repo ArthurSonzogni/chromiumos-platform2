@@ -534,6 +534,7 @@ if (use.test) {
         "brillo/dbus/dbus_param_reader_test.cc",
         "brillo/dbus/dbus_param_writer_test.cc",
         "brillo/dbus/dbus_signal_handler_test.cc",
+        "brillo/dbus/dbus_signature_test.cc",
         "brillo/dbus/exported_object_manager_test.cc",
         "brillo/dbus/exported_property_set_test.cc",
         "brillo/http/http_proxy_test.cc",
