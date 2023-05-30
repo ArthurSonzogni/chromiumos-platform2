@@ -10,6 +10,8 @@ class ControlInterface;
 class EventDispatcher;
 class Manager;
 
+using testing::WithArg;
+
 MockWiFiService::MockWiFiService(Manager* manager,
                                  WiFiProvider* provider,
                                  const std::vector<uint8_t>& ssid,
@@ -26,6 +28,10 @@ MockWiFiService::MockWiFiService(Manager* manager,
                   hidden_ssid) {
   ON_CALL(*this, GetSupplicantConfigurationParameters())
       .WillByDefault(testing::Return(KeyValueStore()));
+  // For SetState() by default just call the implementation.
+  ON_CALL(*this, SetState).WillByDefault(WithArg<0>([this](auto state) {
+    this->WiFiService::SetState(state);
+  }));
 }
 
 MockWiFiService::~MockWiFiService() = default;
