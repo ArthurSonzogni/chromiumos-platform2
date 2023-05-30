@@ -31,7 +31,6 @@
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
 
-#include "cryptohome/attestation.pb.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"

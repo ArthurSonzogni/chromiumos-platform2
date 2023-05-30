@@ -414,8 +414,6 @@ if (use.test) {
 
     pkg_deps = [
       "dbus-1",
-      "libattestation-client",
-      "libattestation-client-test",
       "libbrillo-test",
       "libchrome-test",
       "libecryptfs",

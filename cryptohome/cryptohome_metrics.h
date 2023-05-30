@@ -228,11 +228,6 @@ enum class DownloadsBindMountMigrationStatus {
   kMaxValue = kFailedMovingToMyFiles
 };
 
-// Cros events emitted by cryptohome.
-const char kAttestationOriginSpecificIdentifiersExhausted[] =
-    "Attestation.OriginSpecificExhausted";
-const char kCryptohomeDoubleMount[] = "Cryptohome.DoubleMountRequest";
-
 // Constants related to LE Credential UMA logging.
 inline constexpr char kLEOpResetTree[] = ".ResetTree";
 inline constexpr char kLEOpInsert[] = ".Insert";

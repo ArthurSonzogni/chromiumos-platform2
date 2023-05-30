@@ -26,8 +26,6 @@
 #include "cryptohome/userdataauth.h"
 
 namespace switches {
-static const char* kAttestationMode = "attestation_mode";
-static const char* kDistributedModeOption = "dbus";
 // Keeps std* open for debugging.
 static const char* kNoCloseOnDaemonize = "noclose";
 static const char* kNoLegacyMount = "nolegacymount";
@@ -74,16 +72,6 @@ int main(int argc, char** argv) {
   hwsec_foundation::SetUpProfiling();
 
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  // Validity check of attestation mode. Historically we had monolithic and
-  // distributed mode, and now the monolithic mode has been obsoleted, so we
-  // expect either the switch is missing or explicitly set to distributed mode.
-  if (cl->HasSwitch(switches::kAttestationMode) &&
-      cl->GetSwitchValueASCII(switches::kAttestationMode) !=
-          switches::kDistributedModeOption) {
-    LOG(FATAL) << "Unrecognized or obsoleted " << switches::kAttestationMode
-               << " option: "
-               << cl->GetSwitchValueASCII(switches::kAttestationMode);
-  }
   int noclose = cl->HasSwitch(switches::kNoCloseOnDaemonize);
   bool nolegacymount = cl->HasSwitch(switches::kNoLegacyMount);
   bool nodownloadsbind = cl->HasSwitch(switches::kNoDownloadsBindMount);

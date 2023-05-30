@@ -21,8 +21,6 @@
 #include <string>
 #include <vector>
 
-#include <attestation/proto_bindings/interface.pb.h>
-#include <attestation-client/attestation/dbus-proxies.h>
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/compiler_specific.h>
@@ -51,7 +49,6 @@
 #include <google/protobuf/message_lite.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
-#include "cryptohome/attestation.pb.h"
 #include "cryptohome/common/print_UserDataAuth_proto.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
@@ -171,18 +168,6 @@ class Printer {
 namespace switches {
 namespace {
 constexpr char kSyslogSwitch[] = "syslog";
-constexpr char kAttestationServerSwitch[] = "attestation-server";
-constexpr struct {
-  const char* name;
-  const attestation::ACAType aca_type;
-} kAttestationServers[] = {{"default", attestation::DEFAULT_ACA},
-                           {"test", attestation::TEST_ACA}};
-constexpr char kVaServerSwitch[] = "va-server";
-constexpr struct {
-  const char* name;
-  const attestation::VAType va_type;
-} kVaServers[] = {{"default", attestation::DEFAULT_VA},
-                  {"test", attestation::TEST_VA}};
 constexpr struct {
   const char* name;
   const OutputFormat format;
@@ -214,27 +199,6 @@ constexpr const char* kActions[] = {"unmount",
                                     "pkcs11_is_user_token_ok",
                                     "pkcs11_terminate",
                                     "pkcs11_restore_tpm_tokens",
-                                    "tpm_verify_attestation",
-                                    "tpm_verify_ek",
-                                    "tpm_attestation_status",
-                                    "tpm_attestation_more_status",
-                                    "tpm_attestation_start_enroll",
-                                    "tpm_attestation_finish_enroll",
-                                    "tpm_attestation_enroll",
-                                    "tpm_attestation_start_cert_request",
-                                    "tpm_attestation_finish_cert_request",
-                                    "tpm_attestation_get_certificate",
-                                    "tpm_attestation_key_status",
-                                    "tpm_attestation_register_key",
-                                    "tpm_attestation_enterprise_challenge",
-                                    "tpm_attestation_simple_challenge",
-                                    "tpm_attestation_get_key_payload",
-                                    "tpm_attestation_set_key_payload",
-                                    "tpm_attestation_delete_keys",
-                                    "tpm_attestation_delete_key",
-                                    "tpm_attestation_get_ek",
-                                    "tpm_attestation_reset_identity",
-                                    "tpm_attestation_reset_identity_result",
                                     "sign_lockbox",
                                     "verify_lockbox",
                                     "finalize_lockbox",
@@ -248,7 +212,6 @@ constexpr const char* kActions[] = {"unmount",
                                     "remove_firmware_management_parameters",
                                     "migrate_to_dircrypto",
                                     "needs_dircrypto_migration",
-                                    "get_enrollment_id",
                                     "get_supported_key_policies",
                                     "get_account_disk_usage",
                                     "lock_to_single_user_mount_until_reboot",
@@ -301,27 +264,6 @@ enum ActionEnum {
   ACTION_PKCS11_IS_USER_TOKEN_OK,
   ACTION_PKCS11_TERMINATE,
   ACTION_PKCS11_RESTORE_TPM_TOKENS,
-  ACTION_TPM_VERIFY_ATTESTATION,
-  ACTION_TPM_VERIFY_EK,
-  ACTION_TPM_ATTESTATION_STATUS,
-  ACTION_TPM_ATTESTATION_MORE_STATUS,
-  ACTION_TPM_ATTESTATION_START_ENROLL,
-  ACTION_TPM_ATTESTATION_FINISH_ENROLL,
-  ACTION_TPM_ATTESTATION_ENROLL,
-  ACTION_TPM_ATTESTATION_START_CERTREQ,
-  ACTION_TPM_ATTESTATION_FINISH_CERTREQ,
-  ACTION_TPM_ATTESTATION_GET_CERTIFICATE,
-  ACTION_TPM_ATTESTATION_KEY_STATUS,
-  ACTION_TPM_ATTESTATION_REGISTER_KEY,
-  ACTION_TPM_ATTESTATION_ENTERPRISE_CHALLENGE,
-  ACTION_TPM_ATTESTATION_SIMPLE_CHALLENGE,
-  ACTION_TPM_ATTESTATION_GET_KEY_PAYLOAD,
-  ACTION_TPM_ATTESTATION_SET_KEY_PAYLOAD,
-  ACTION_TPM_ATTESTATION_DELETE_KEYS,
-  ACTION_TPM_ATTESTATION_DELETE_KEY,
-  ACTION_TPM_ATTESTATION_GET_EK,
-  ACTION_TPM_ATTESTATION_RESET_IDENTITY,
-  ACTION_TPM_ATTESTATION_RESET_IDENTITY_RESULT,
   ACTION_SIGN_LOCKBOX,
   ACTION_VERIFY_LOCKBOX,
   ACTION_FINALIZE_LOCKBOX,
@@ -335,7 +277,6 @@ enum ActionEnum {
   ACTION_REMOVE_FIRMWARE_MANAGEMENT_PARAMETERS,
   ACTION_MIGRATE_TO_DIRCRYPTO,
   ACTION_NEEDS_DIRCRYPTO_MIGRATION,
-  ACTION_GET_ENROLLMENT_ID,
   ACTION_GET_SUPPORTED_KEY_POLICIES,
   ACTION_GET_ACCOUNT_DISK_USAGE,
   ACTION_LOCK_TO_SINGLE_USER_MOUNT_UNTIL_REBOOT,
@@ -370,20 +311,16 @@ constexpr char kKeyLabelsSwitch[] = "key_labels";
 constexpr char kNewKeyLabelSwitch[] = "new_key_label";
 constexpr char kForceSwitch[] = "force";
 constexpr char kAttrNameSwitch[] = "name";
-constexpr char kAttrPrefixSwitch[] = "prefix";
 constexpr char kAttrValueSwitch[] = "value";
 constexpr char kFileSwitch[] = "file";
 constexpr char kInputFileSwitch[] = "input";
 constexpr char kOutputFileSwitch[] = "output";
 constexpr char kEnsureEphemeralSwitch[] = "ensure_ephemeral";
-constexpr char kCrosCoreSwitch[] = "cros_core";
 constexpr char kFlagsSwitch[] = "flags";
 constexpr char kDevKeyHashSwitch[] = "developer_key_hash";
 constexpr char kEcryptfsSwitch[] = "ecryptfs";
 constexpr char kMinimalMigration[] = "minimal_migration";
 constexpr char kPublicMount[] = "public_mount";
-constexpr char kProfileSwitch[] = "profile";
-constexpr char kIgnoreCache[] = "ignore_cache";
 constexpr char kUseDBus[] = "use_dbus";
 constexpr char kAuthSessionId[] = "auth_session_id";
 constexpr char kChallengeAlgorithm[] = "challenge_alg";
@@ -402,9 +339,6 @@ constexpr char kRecoveryLedgerPublicKeyHashSwitch[] =
 constexpr char kRecoveryLedgerPublicKeySwitch[] = "recovery_ledger_pub_key";
 constexpr char kAuthIntentSwitch[] = "auth_intent";
 constexpr char kApplicationName[] = "application_name";
-constexpr char kDeviceSetupCertId[] = "device_setup_cert_id";
-constexpr char kDeviceSetupCertContentBinding[] =
-    "device_setup_cert_content_binding";
 constexpr char kFingerprintSwitch[] = "fingerprint";
 constexpr char kPreparePurposeAddSwitch[] = "add";
 constexpr char kPreparePurposeAuthSwitch[] = "auth";
@@ -516,71 +450,6 @@ bool IsMixingOldAndNewFileSwitches(const base::CommandLine* cl) {
   return cl->HasSwitch(switches::kFileSwitch) &&
          (cl->HasSwitch(switches::kInputFileSwitch) ||
           cl->HasSwitch(switches::kOutputFileSwitch));
-}
-
-FilePath GetFile(const base::CommandLine* cl) {
-  const char kDefaultFilePath[] = "/tmp/__cryptohome";
-  FilePath file_path(cl->GetSwitchValueASCII(switches::kFileSwitch));
-  if (file_path.empty()) {
-    return FilePath(kDefaultFilePath);
-  }
-  return file_path;
-}
-
-FilePath GetInputFile(const base::CommandLine* cl) {
-  FilePath file_path(cl->GetSwitchValueASCII(switches::kInputFileSwitch));
-  if (file_path.empty()) {
-    return GetFile(cl);
-  }
-  return file_path;
-}
-
-FilePath GetOutputFile(const base::CommandLine* cl) {
-  FilePath file_path(cl->GetSwitchValueASCII(switches::kOutputFileSwitch));
-  if (file_path.empty()) {
-    return GetFile(cl);
-  }
-  return file_path;
-}
-
-bool GetProfile(Printer& printer,
-                const base::CommandLine* cl,
-                attestation::CertificateProfile* profile) {
-  const std::string profile_str =
-      cl->GetSwitchValueASCII(switches::kProfileSwitch);
-  if (profile_str.empty() || profile_str == "enterprise_user" ||
-      profile_str == "user" || profile_str == "u") {
-    *profile = attestation::CertificateProfile::ENTERPRISE_USER_CERTIFICATE;
-  } else if (profile_str == "enterprise_machine" || profile_str == "machine" ||
-             profile_str == "m") {
-    *profile = attestation::CertificateProfile::ENTERPRISE_MACHINE_CERTIFICATE;
-  } else if (profile_str == "enterprise_enrollment" ||
-             profile_str == "enrollment" || profile_str == "e") {
-    *profile =
-        attestation::CertificateProfile::ENTERPRISE_ENROLLMENT_CERTIFICATE;
-  } else if (profile_str == "content_protection" || profile_str == "content" ||
-             profile_str == "c") {
-    *profile = attestation::CertificateProfile::CONTENT_PROTECTION_CERTIFICATE;
-  } else if (profile_str == "content_protection_with_stable_id" ||
-             profile_str == "cpsi") {
-    *profile = attestation::CertificateProfile::
-        CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID;
-  } else if (profile_str == "cast") {
-    *profile = attestation::CertificateProfile::CAST_CERTIFICATE;
-  } else if (profile_str == "gfsc") {
-    *profile = attestation::CertificateProfile::GFSC_CERTIFICATE;
-  } else if (profile_str == "jetstream") {
-    *profile = attestation::CertificateProfile::JETSTREAM_CERTIFICATE;
-  } else if (profile_str == "soft_bind") {
-    *profile = attestation::CertificateProfile::SOFT_BIND_CERTIFICATE;
-  } else if (profile_str == "device_setup") {
-    *profile = attestation::CertificateProfile::DEVICE_SETUP_CERTIFICATE;
-  } else {
-    printer.PrintFormattedHumanOutput("Unknown certificate profile: %s.\n",
-                                      profile_str.c_str());
-    return false;
-  }
-  return true;
 }
 
 bool ConfirmRemove(Printer& printer, const cryptohome::Username& user) {
@@ -858,20 +727,6 @@ bool BuildAuthInput(Printer& printer,
   }
   printer.PrintHumanOutput("No auth input specified\n");
   return false;
-}
-
-std::string GetPCAName(int pca_type) {
-  switch (pca_type) {
-    case attestation::DEFAULT_ACA:
-      return "the default ACA";
-    case attestation::TEST_ACA:
-      return "the test ACA";
-    default: {
-      std::ostringstream stream;
-      stream << "ACA " << pca_type;
-      return stream.str();
-    }
-  }
 }
 
 bool GetAuthFactorType(Printer& printer,
@@ -1394,46 +1249,6 @@ int main(int argc, char** argv) {
   }
   Printer printer(output_format);
 
-  attestation::ACAType pca_type = attestation::DEFAULT_ACA;
-  if (cl->HasSwitch(switches::kAttestationServerSwitch)) {
-    std::string server =
-        cl->GetSwitchValueASCII(switches::kAttestationServerSwitch);
-    bool aca_valid = false;
-    for (int i = 0; switches::kAttestationServers[i].name; ++i) {
-      if (server == switches::kAttestationServers[i].name) {
-        pca_type = switches::kAttestationServers[i].aca_type;
-        aca_valid = true;
-        break;
-      }
-    }
-    if (!aca_valid) {
-      printer.PrintFormattedHumanOutput("Invalid attestation server: %s\n",
-                                        server.c_str());
-      return 1;
-    }
-  }
-
-  attestation::VAType va_type = attestation::DEFAULT_VA;
-  std::string va_server(
-      cl->HasSwitch(switches::kVaServerSwitch)
-          ? cl->GetSwitchValueASCII(switches::kVaServerSwitch)
-          : cl->GetSwitchValueASCII(switches::kAttestationServerSwitch));
-  if (va_server.size()) {
-    bool va_valid = false;
-    for (int i = 0; switches::kVaServers[i].name; ++i) {
-      if (va_server == switches::kVaServers[i].name) {
-        va_type = switches::kVaServers[i].va_type;
-        va_valid = true;
-        break;
-      }
-    }
-    if (!va_valid) {
-      printer.PrintFormattedHumanOutput("Invalid Verified Access server: %s\n",
-                                        va_server.c_str());
-      return 1;
-    }
-  }
-
   if (IsMixingOldAndNewFileSwitches(cl)) {
     printer.PrintFormattedHumanOutput(
         "Use either --%s and --%s together, or --%s only.\n",
@@ -1453,7 +1268,6 @@ int main(int argc, char** argv) {
   scoped_refptr<dbus::Bus> bus = connection.Connect();
   DCHECK(bus) << "Failed to connect to system bus through libbrillo";
 
-  org::chromium::AttestationProxy attestation_proxy(bus);
   org::chromium::UserDataAuthInterfaceProxy userdataauth_proxy(bus);
   org::chromium::CryptohomePkcs11InterfaceProxy pkcs11_proxy(bus);
   org::chromium::InstallAttributesInterfaceProxy install_attributes_proxy(bus);
@@ -2138,696 +1952,6 @@ int main(int argc, char** argv) {
           "PKCS #11 restore TPM tokens call failed: %s.\n",
           BrilloErrorToString(error.get()).c_str());
     }
-  } else if (!strcmp(
-                 switches::kActions[switches::ACTION_TPM_VERIFY_ATTESTATION],
-                 action.c_str())) {
-    attestation::VerifyRequest req;
-
-    bool is_cros_core = cl->HasSwitch(switches::kCrosCoreSwitch);
-    req.set_cros_core(is_cros_core);
-    req.set_ek_only(false);
-
-    attestation::VerifyReply reply;
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.Verify(req, &reply, &error, timeout_ms) || error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmVerifyAttestationData call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "TpmVerifyAttestationData call failed: status %d.\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-    if (reply.verified()) {
-      printer.PrintHumanOutput(
-          "TPM attestation data is not valid or is not available.\n");
-      return 1;
-    }
-  } else if (!strcmp(switches::kActions[switches::ACTION_TPM_VERIFY_EK],
-                     action.c_str())) {
-    attestation::VerifyRequest req;
-
-    bool is_cros_core = cl->HasSwitch(switches::kCrosCoreSwitch);
-    req.set_cros_core(is_cros_core);
-    req.set_ek_only(true);
-
-    attestation::VerifyReply reply;
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.Verify(req, &reply, &error, timeout_ms) || error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmVerifyEK call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput("TpmVerifyEK call failed: status %d.\n",
-                                        static_cast<int>(reply.status()));
-      return 1;
-    }
-    if (reply.verified()) {
-      printer.PrintHumanOutput(
-          "TPM endorsement key is not valid or is not available.\n");
-      return 1;
-    }
-  } else if (!strcmp(
-                 switches::kActions[switches::ACTION_TPM_ATTESTATION_STATUS],
-                 action.c_str())) {
-    attestation::GetEnrollmentPreparationsRequest prepare_req;
-    attestation::GetEnrollmentPreparationsReply prepare_reply;
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.GetEnrollmentPreparations(
-            prepare_req, &prepare_reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmIsAttestationPrepared call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-    } else {
-      bool result = false;
-      for (const auto& preparation : prepare_reply.enrollment_preparations()) {
-        if (preparation.second) {
-          result = true;
-          break;
-        }
-      }
-      printer.PrintFormattedHumanOutput("Attestation Prepared: %s\n",
-                                        (result ? "true" : "false"));
-    }
-
-    attestation::GetStatusRequest req;
-    attestation::GetStatusReply reply;
-    req.set_extended_status(false);
-    error.reset();
-    if (!attestation_proxy.GetStatus(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmIsAttestationEnrolled call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-    } else if (reply.status() !=
-               attestation::AttestationStatus::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "TpmIsAttestationEnrolled call failed: status %d.\n",
-          static_cast<int>(reply.status()));
-    } else {
-      printer.PrintFormattedHumanOutput("Attestation Enrolled: %s\n",
-                                        (reply.enrolled() ? "true" : "false"));
-    }
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_MORE_STATUS],
-                     action.c_str())) {
-    attestation::GetEnrollmentPreparationsRequest prepare_req;
-    attestation::GetEnrollmentPreparationsReply prepare_reply;
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.GetEnrollmentPreparations(
-            prepare_req, &prepare_reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationGetEnrollmentPreparationsEx call failed: %s\n",
-          BrilloErrorToString(error.get()).c_str());
-    } else if (prepare_reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationGetEnrollmentPreparationsEx call failed: status %d\n",
-          static_cast<int>(prepare_reply.status()));
-    } else {
-      auto map = prepare_reply.enrollment_preparations();
-      bool prepared = false;
-      for (auto it = map.cbegin(), end = map.cend(); it != end; ++it) {
-        prepared |= it->second;
-      }
-      printer.PrintFormattedHumanOutput("Attestation Prepared: %s\n",
-                                        prepared ? "true" : "false");
-      for (auto it = map.cbegin(), end = map.cend(); it != end; ++it) {
-        printer.PrintFormattedHumanOutput("    Prepared for %s: %s\n",
-                                          GetPCAName(it->first).c_str(),
-                                          (it->second ? "true" : "false"));
-      }
-    }
-
-    // TODO(crbug.com/922062): Replace with a call listing all identity certs.
-
-    attestation::GetStatusRequest req;
-    attestation::GetStatusReply reply;
-    req.set_extended_status(false);
-    error.reset();
-    if (!attestation_proxy.GetStatus(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmIsAttestationEnrolled call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-    } else if (reply.status() !=
-               attestation::AttestationStatus::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "TpmIsAttestationEnrolled call failed: status %d.\n",
-          static_cast<int>(reply.status()));
-    } else {
-      printer.PrintFormattedHumanOutput("Attestation Enrolled: %s\n",
-                                        (reply.enrolled() ? "true" : "false"));
-    }
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_START_ENROLL],
-                     action.c_str())) {
-    attestation::CreateEnrollRequestRequest req;
-    attestation::CreateEnrollRequestReply reply;
-    req.set_aca_type(pca_type);
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.CreateEnrollRequest(req, &reply, &error,
-                                               timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationCreateEnrollRequest call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationCreateEnrollRequest call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-
-    const std::string& response_data = reply.pca_request();
-    base::WriteFile(GetOutputFile(cl), response_data.data(),
-                    response_data.length());
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_FINISH_ENROLL],
-                     action.c_str())) {
-    std::string contents;
-    if (!base::ReadFileToString(GetInputFile(cl), &contents)) {
-      printer.PrintHumanOutput("Failed to read input file.\n");
-      return 1;
-    }
-
-    attestation::FinishEnrollRequest req;
-    attestation::FinishEnrollReply reply;
-    req.set_pca_response(contents);
-    req.set_aca_type(pca_type);
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.FinishEnroll(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationEnroll call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationEnroll call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-  } else if (!strcmp(
-                 switches::kActions[switches::ACTION_TPM_ATTESTATION_ENROLL],
-                 action.c_str())) {
-    CHECK(false) << "Not implemented.";
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_START_CERTREQ],
-                     action.c_str())) {
-    attestation::CertificateProfile profile;
-    if (!GetProfile(printer, cl, &profile)) {
-      return 1;
-    }
-
-    attestation::CreateCertificateRequestRequest req;
-    attestation::CreateCertificateRequestReply reply;
-    req.set_certificate_profile(profile);
-    req.set_username("");
-    req.set_request_origin("");
-    req.set_aca_type(pca_type);
-
-    if (profile == attestation::CertificateProfile::DEVICE_SETUP_CERTIFICATE) {
-      if (!cl->HasSwitch(switches::kDeviceSetupCertId)) {
-        printer.PrintFormattedHumanOutput(
-            "DEVICE_SETUP_CERTIFICATE requires device_setup_cert_id to be "
-            "provided.\n");
-        return 1;
-      }
-
-      if (!cl->HasSwitch(switches::kDeviceSetupCertContentBinding)) {
-        printer.PrintFormattedHumanOutput(
-            "DEVICE_SETUP_CERTIFICATE requires "
-            "device_setup_cert_content_binding to be provided.\n");
-        return 1;
-      }
-
-      req.mutable_device_setup_certificate_request_metadata()->set_id(
-          cl->GetSwitchValueASCII(switches::kDeviceSetupCertId));
-      req.mutable_device_setup_certificate_request_metadata()
-          ->set_content_binding(cl->GetSwitchValueASCII(
-              switches::kDeviceSetupCertContentBinding));
-    }
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.CreateCertificateRequest(req, &reply, &error,
-                                                    timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationCreateCertRequest call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationCreateCertRequest call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-
-    const std::string& response_data = reply.pca_request();
-    base::WriteFile(GetOutputFile(cl), response_data.data(),
-                    response_data.length());
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_FINISH_CERTREQ],
-                     action.c_str())) {
-    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
-    if (key_name.length() == 0) {
-      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
-                                        switches::kAttrNameSwitch);
-      return 1;
-    }
-    std::string contents;
-    if (!base::ReadFileToString(GetInputFile(cl), &contents)) {
-      printer.PrintHumanOutput("Failed to read input file.\n");
-      return 1;
-    }
-
-    attestation::FinishCertificateRequestRequest req;
-    attestation::FinishCertificateRequestReply reply;
-    req.set_pca_response(contents);
-    req.set_key_label(key_name);
-    if (!account_id.empty()) {
-      req.set_username(account_id);
-    }
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.FinishCertificateRequest(req, &reply, &error,
-                                                    timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationFinishCertRequest call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationFinishCertRequest call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-
-    const std::string& cert_data = reply.certificate();
-    base::WriteFile(GetOutputFile(cl), cert_data.data(), cert_data.length());
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_GET_CERTIFICATE],
-                     action.c_str())) {
-    CHECK(false) << "Not implemented.";
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_KEY_STATUS],
-                     action.c_str())) {
-    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
-    if (key_name.length() == 0) {
-      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
-                                        switches::kAttrNameSwitch);
-      return 1;
-    }
-
-    attestation::GetKeyInfoRequest req;
-    attestation::GetKeyInfoReply reply;
-    req.set_key_label(key_name);
-    if (!account_id.empty()) {
-      req.set_username(account_id);
-    }
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.GetKeyInfo(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationGetCertificate call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() == attestation::STATUS_INVALID_PARAMETER) {
-      printer.PrintFormattedHumanOutput("Key does not exist.\n");
-      return 0;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationGetCertificate call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-
-    const std::string& cert_pem = reply.certificate();
-    const std::string public_key_hex =
-        base::HexEncode(reply.public_key().data(), reply.public_key().size());
-    printer.PrintFormattedHumanOutput("Public Key:\n%s\n\nCertificate:\n%s\n",
-                                      public_key_hex.c_str(), cert_pem.c_str());
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_REGISTER_KEY],
-                     action.c_str())) {
-    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
-    if (key_name.length() == 0) {
-      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
-                                        switches::kAttrNameSwitch);
-      return 1;
-    }
-
-    attestation::RegisterKeyWithChapsTokenRequest req;
-    attestation::RegisterKeyWithChapsTokenReply reply;
-    req.set_key_label(key_name);
-    if (!account_id.empty()) {
-      req.set_username(account_id);
-    }
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.RegisterKeyWithChapsToken(req, &reply, &error,
-                                                     timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationRegisterKey call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationRegisterKey call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-
-    printer.PrintHumanOutput("Result: Success\n");
-  } else if (!strcmp(
-                 switches::kActions
-                     [switches::ACTION_TPM_ATTESTATION_ENTERPRISE_CHALLENGE],
-                 action.c_str())) {
-    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
-    if (key_name.length() == 0) {
-      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
-                                        switches::kAttrNameSwitch);
-      return 1;
-    }
-    std::string contents;
-    if (!base::ReadFileToString(GetInputFile(cl), &contents)) {
-      printer.PrintFormattedHumanOutput("Failed to read input file: %s\n",
-                                        GetInputFile(cl).value().c_str());
-      return 1;
-    }
-    const std::string device_id_str = "fake_device_id";
-
-    attestation::SignEnterpriseChallengeRequest req;
-    attestation::SignEnterpriseChallengeReply reply;
-    req.set_va_type(va_type);
-    req.set_key_label(key_name);
-    if (!account_id.empty()) {
-      req.set_username(account_id);
-    }
-    req.set_domain(account_id);
-    *req.mutable_device_id() = {device_id_str.begin(), device_id_str.end()};
-    req.set_include_signed_public_key(true);
-    *req.mutable_challenge() = {contents.begin(), contents.end()};
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.SignEnterpriseChallenge(req, &reply, &error,
-                                                   timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "AsyncTpmAttestationSignEnterpriseVaChallenge call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "AsyncTpmAttestationSignEnterpriseVaChallenge call failed: status "
-          "%d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-
-    base::WriteFileDescriptor(STDOUT_FILENO, reply.challenge_response());
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_SIMPLE_CHALLENGE],
-                     action.c_str())) {
-    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
-    if (key_name.length() == 0) {
-      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
-                                        switches::kAttrNameSwitch);
-      return 1;
-    }
-    std::string contents = "challenge";
-
-    attestation::SignSimpleChallengeRequest req;
-    attestation::SignSimpleChallengeReply reply;
-    req.set_key_label(key_name);
-    if (!account_id.empty()) {
-      req.set_username(account_id);
-    }
-    *req.mutable_challenge() = {contents.begin(), contents.end()};
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.SignSimpleChallenge(req, &reply, &error,
-                                               timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "AsyncTpmAttestationSignSimpleChallenge call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "AsyncTpmAttestationSignSimpleChallenge call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-
-    base::WriteFileDescriptor(STDOUT_FILENO, reply.challenge_response());
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_GET_KEY_PAYLOAD],
-                     action.c_str())) {
-    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
-    if (key_name.length() == 0) {
-      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
-                                        switches::kAttrNameSwitch);
-      return 1;
-    }
-
-    attestation::GetKeyInfoRequest req;
-    attestation::GetKeyInfoReply reply;
-    req.set_key_label(key_name);
-    if (!account_id.empty()) {
-      req.set_username(account_id);
-    }
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.GetKeyInfo(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "AsyncTpmAttestationGetKetPayload call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "AsyncTpmAttestationGetKetPayload call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-
-    base::WriteFile(GetOutputFile(cl), reply.payload().data(),
-                    reply.payload().size());
-    base::WriteFileDescriptor(STDOUT_FILENO, reply.payload());
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_SET_KEY_PAYLOAD],
-                     action.c_str())) {
-    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
-    std::string value = cl->GetSwitchValueASCII(switches::kAttrValueSwitch);
-    if (key_name.length() == 0) {
-      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
-                                        switches::kAttrNameSwitch);
-      return 1;
-    }
-    if (value.length() == 0) {
-      printer.PrintFormattedHumanOutput(
-          "No payload specified (--%s=<payload>)\n",
-          switches::kAttrValueSwitch);
-      return 1;
-    }
-
-    attestation::SetKeyPayloadRequest req;
-    attestation::SetKeyPayloadReply reply;
-    req.set_key_label(key_name);
-    if (!account_id.empty()) {
-      req.set_username(account_id);
-    }
-    *req.mutable_payload() = {value.begin(), value.end()};
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.SetKeyPayload(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "AsyncTpmAttestationSetKetPayload call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "AsyncTpmAttestationSetKetPayload call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_DELETE_KEYS],
-                     action.c_str())) {
-    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    std::string key_prefix =
-        cl->GetSwitchValueASCII(switches::kAttrPrefixSwitch);
-    if (key_prefix.empty()) {
-      printer.PrintFormattedHumanOutput(
-          "No key prefix specified (--%s=<prefix>)\n",
-          switches::kAttrPrefixSwitch);
-      return 1;
-    }
-
-    attestation::DeleteKeysRequest req;
-    attestation::DeleteKeysReply reply;
-    req.set_key_label_match(key_prefix);
-    req.set_match_behavior(
-        attestation::DeleteKeysRequest::MATCH_BEHAVIOR_PREFIX);
-    if (!account_id.empty()) {
-      req.set_username(account_id);
-    }
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.DeleteKeys(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "AsyncTpmAttestationDeleteKeys call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "AsyncTpmAttestationDeleteKeys call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_DELETE_KEY],
-                     action.c_str())) {
-    std::string account_id = cl->GetSwitchValueASCII(switches::kUserSwitch);
-    std::string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
-    if (key_name.empty()) {
-      printer.PrintFormattedHumanOutput("No key name specified (--%s=<name>)\n",
-                                        switches::kAttrNameSwitch);
-      return 1;
-    }
-
-    attestation::DeleteKeysRequest req;
-    attestation::DeleteKeysReply reply;
-    req.set_key_label_match(key_name);
-    req.set_match_behavior(
-        attestation::DeleteKeysRequest::MATCH_BEHAVIOR_EXACT);
-    if (!account_id.empty()) {
-      req.set_username(account_id);
-    }
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.DeleteKeys(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "AsyncTpmAttestationDeleteKeys call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "AsyncTpmAttestationDeleteKeys call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-  } else if (!strcmp(
-                 switches::kActions[switches::ACTION_TPM_ATTESTATION_GET_EK],
-                 action.c_str())) {
-    attestation::GetEndorsementInfoRequest req;
-    attestation::GetEndorsementInfoReply reply;
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.GetEndorsementInfo(req, &reply, &error,
-                                              timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "GetEndorsementInfo call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "GetEndorsementInfo call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-
-    printer.PrintFormattedHumanOutput("%s\n", reply.ek_info().c_str());
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY],
-                     action.c_str())) {
-    attestation::ResetIdentityRequest req;
-    attestation::ResetIdentityReply reply;
-
-    std::string token = cl->GetSwitchValueASCII(switches::kPasswordSwitch);
-    req.set_reset_token(token);
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.ResetIdentity(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationResetIdentity call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "TpmAttestationResetIdentity call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-
-    base::WriteFile(GetOutputFile(cl), reply.reset_request().data(),
-                    reply.reset_request().size());
-  } else if (!strcmp(
-                 switches::kActions
-                     [switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY_RESULT],
-                 action.c_str())) {
-    std::string contents;
-    if (!base::ReadFileToString(GetInputFile(cl), &contents)) {
-      printer.PrintFormattedHumanOutput("Failed to read input file: %s\n",
-                                        GetInputFile(cl).value().c_str());
-      return 1;
-    }
-    cryptohome::AttestationResetResponse response;
-    if (!response.ParseFromString(contents)) {
-      printer.PrintHumanOutput("Failed to parse response.\n");
-      return 1;
-    }
-    switch (response.status()) {
-      case cryptohome::OK:
-        printer.PrintHumanOutput("Identity reset successful.\n");
-        break;
-      case cryptohome::SERVER_ERROR:
-        printer.PrintFormattedHumanOutput("Identity reset server error: %s\n",
-                                          response.detail().c_str());
-        break;
-      case cryptohome::BAD_REQUEST:
-        printer.PrintFormattedHumanOutput("Identity reset data error: %s\n",
-                                          response.detail().c_str());
-        break;
-      case cryptohome::REJECT:
-        printer.PrintFormattedHumanOutput("Identity reset request denied: %s\n",
-                                          response.detail().c_str());
-        break;
-      case cryptohome::QUOTA_LIMIT_EXCEEDED:
-        printer.PrintFormattedHumanOutput("Identity reset quota exceeded: %s\n",
-                                          response.detail().c_str());
-        break;
-      default:
-        printer.PrintFormattedHumanOutput("Identity reset unknown error: %s\n",
-                                          response.detail().c_str());
-    }
   } else if (!strcmp(switches::kActions[switches::ACTION_SIGN_LOCKBOX],
                      action.c_str())) {
     CHECK(false) << "Not implemented.";
@@ -3056,29 +2180,6 @@ int main(int argc, char** argv) {
       printer.PrintHumanOutput("Yes\n");
     else
       printer.PrintHumanOutput("No\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_GET_ENROLLMENT_ID],
-                     action.c_str())) {
-    attestation::GetEnrollmentIdRequest req;
-    attestation::GetEnrollmentIdReply reply;
-    req.set_ignore_cache(cl->HasSwitch(switches::kIgnoreCache));
-
-    brillo::ErrorPtr error;
-    if (!attestation_proxy.GetEnrollmentId(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "GetEnrollmentId call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    } else if (reply.status() != attestation::STATUS_SUCCESS) {
-      printer.PrintFormattedHumanOutput(
-          "GetEnrollmentId call failed: status %d\n",
-          static_cast<int>(reply.status()));
-      return 1;
-    }
-
-    std::string eid_str = base::ToLowerASCII(base::HexEncode(
-        reply.enrollment_id().data(), reply.enrollment_id().size()));
-    printer.PrintFormattedHumanOutput("%s\n", eid_str.c_str());
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_GET_SUPPORTED_KEY_POLICIES],
                      action.c_str())) {

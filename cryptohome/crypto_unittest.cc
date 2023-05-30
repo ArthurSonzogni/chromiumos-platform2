@@ -26,7 +26,6 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <vector>
 
-#include "cryptohome/attestation.pb.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"

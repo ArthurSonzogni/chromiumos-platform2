@@ -376,7 +376,6 @@ proto_library("cryptohome-proto") {
   proto_lib_dirs = [ "${sysroot}/usr/include/chromeos/dbus/cryptohome/" ]
 
   sources = [
-    "${proto_in_dir}/attestation.proto",
     "${proto_in_dir}/cryptorecovery/cryptorecovery.proto",
     "${proto_in_dir}/cryptorecovery/recovery_id_container.proto",
     "${proto_in_dir}/hash_tree_leaf_data.proto",
@@ -637,7 +636,6 @@ static_library("libcryptohome") {
   ]
 
   libs = [
-    "attestation",
     "biod_proxy",
     "chaps",
     "fake_platform_features",
