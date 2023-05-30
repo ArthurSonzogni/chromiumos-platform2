@@ -199,14 +199,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "pkcs11_is_user_token_ok",
                                     "pkcs11_terminate",
                                     "pkcs11_restore_tpm_tokens",
-                                    "sign_lockbox",
-                                    "verify_lockbox",
-                                    "finalize_lockbox",
-                                    "get_boot_attribute",
-                                    "set_boot_attribute",
-                                    "flush_and_sign_boot_attributes",
                                     "get_login_status",
-                                    "initialize_cast_key",
                                     "get_firmware_management_parameters",
                                     "set_firmware_management_parameters",
                                     "remove_firmware_management_parameters",
@@ -264,14 +257,7 @@ enum ActionEnum {
   ACTION_PKCS11_IS_USER_TOKEN_OK,
   ACTION_PKCS11_TERMINATE,
   ACTION_PKCS11_RESTORE_TPM_TOKENS,
-  ACTION_SIGN_LOCKBOX,
-  ACTION_VERIFY_LOCKBOX,
-  ACTION_FINALIZE_LOCKBOX,
-  ACTION_GET_BOOT_ATTRIBUTE,
-  ACTION_SET_BOOT_ATTRIBUTE,
-  ACTION_FLUSH_AND_SIGN_BOOT_ATTRIBUTES,
   ACTION_GET_LOGIN_STATUS,
-  ACTION_INITIALIZE_CAST_KEY,
   ACTION_GET_FIRMWARE_MANAGEMENT_PARAMETERS,
   ACTION_SET_FIRMWARE_MANAGEMENT_PARAMETERS,
   ACTION_REMOVE_FIRMWARE_MANAGEMENT_PARAMETERS,
@@ -1952,25 +1938,6 @@ int main(int argc, char** argv) {
           "PKCS #11 restore TPM tokens call failed: %s.\n",
           BrilloErrorToString(error.get()).c_str());
     }
-  } else if (!strcmp(switches::kActions[switches::ACTION_SIGN_LOCKBOX],
-                     action.c_str())) {
-    CHECK(false) << "Not implemented.";
-  } else if (!strcmp(switches::kActions[switches::ACTION_VERIFY_LOCKBOX],
-                     action.c_str())) {
-    CHECK(false) << "Not implemented.";
-  } else if (!strcmp(switches::kActions[switches::ACTION_FINALIZE_LOCKBOX],
-                     action.c_str())) {
-    CHECK(false) << "Not implemented.";
-  } else if (!strcmp(switches::kActions[switches::ACTION_GET_BOOT_ATTRIBUTE],
-                     action.c_str())) {
-    CHECK(false) << "Not implemented.";
-  } else if (!strcmp(switches::kActions[switches::ACTION_SET_BOOT_ATTRIBUTE],
-                     action.c_str())) {
-    CHECK(false) << "Not implemented.";
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_FLUSH_AND_SIGN_BOOT_ATTRIBUTES],
-                     action.c_str())) {
-    CHECK(false) << "Not implemented.";
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_LOGIN_STATUS],
                      action.c_str())) {
     user_data_auth::GetLoginStatusRequest req;
@@ -2002,9 +1969,6 @@ int main(int argc, char** argv) {
     }
 
     printer.PrintHumanOutput("GetLoginStatus success.\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_INITIALIZE_CAST_KEY],
-                     action.c_str())) {
-    CHECK(false) << "Not implemented.";
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_GET_FIRMWARE_MANAGEMENT_PARAMETERS],
                      action.c_str())) {
