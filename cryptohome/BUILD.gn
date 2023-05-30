@@ -105,7 +105,6 @@ executable("cryptohome") {
     "keyutils",
     "policy",
     "pthread",
-    "tpm_manager",
   ]
   deps = [
     ":print_proto_library",

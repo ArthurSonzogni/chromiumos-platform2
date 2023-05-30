@@ -50,8 +50,6 @@
 #include <dbus/cryptohome/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
-#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "cryptohome/attestation.pb.h"
 #include "cryptohome/common/print_UserDataAuth_proto.h"
@@ -81,12 +79,6 @@ constexpr base::TimeDelta kSetCurrentUserOldOffset = base::Days(92);
 
 // Five minutes is enough to wait for any TPM operations, sync() calls, etc.
 const int kDefaultTimeoutMs = 300000;
-
-// We've 100 seconds to wait for TakeOwnership(), should be rather generous.
-constexpr base::TimeDelta kWaitOwnershipTimeout = base::Seconds(100);
-
-// Poll once every 0.2s.
-constexpr base::TimeDelta kWaitOwnershipPollInterval = base::Milliseconds(200);
 
 // Converts a brillo::Error* to string for printing.
 std::string BrilloErrorToString(brillo::Error* err) {
@@ -191,7 +183,6 @@ constexpr struct {
   const attestation::VAType va_type;
 } kVaServers[] = {{"default", attestation::DEFAULT_VA},
                   {"test", attestation::TEST_VA}};
-constexpr char kWaitOwnershipTimeoutSwitch[] = "wait-ownership-timeout";
 constexpr struct {
   const char* name;
   const OutputFormat format;
@@ -209,9 +200,6 @@ constexpr const char* kActions[] = {"unmount",
                                     "dump_keyset",
                                     "dump_last_activity",
                                     "set_current_user_old",
-                                    "tpm_take_ownership",
-                                    "tpm_clear_stored_password",
-                                    "tpm_wait_ownership",
                                     "install_attributes_set",
                                     "install_attributes_get",
                                     "install_attributes_finalize",
@@ -299,9 +287,6 @@ enum ActionEnum {
   ACTION_DUMP_KEYSET,
   ACTION_DUMP_LAST_ACTIVITY,
   ACTION_SET_CURRENT_USER_OLD,
-  ACTION_TPM_TAKE_OWNERSHIP,
-  ACTION_TPM_CLEAR_STORED_PASSWORD,
-  ACTION_TPM_WAIT_OWNERSHIP,
   ACTION_INSTALL_ATTRIBUTES_SET,
   ACTION_INSTALL_ATTRIBUTES_GET,
   ACTION_INSTALL_ATTRIBUTES_FINALIZE,
@@ -1469,8 +1454,6 @@ int main(int argc, char** argv) {
   DCHECK(bus) << "Failed to connect to system bus through libbrillo";
 
   org::chromium::AttestationProxy attestation_proxy(bus);
-  org::chromium::TpmManagerProxy tpm_ownership_proxy(bus);
-  org::chromium::TpmNvramProxy tpm_nvram_proxy(bus);
   org::chromium::UserDataAuthInterfaceProxy userdataauth_proxy(bus);
   org::chromium::CryptohomePkcs11InterfaceProxy pkcs11_proxy(bus);
   org::chromium::InstallAttributesInterfaceProxy install_attributes_proxy(bus);
@@ -1780,32 +1763,6 @@ int main(int argc, char** argv) {
           "Timestamp successfully updated. You may verify it with "
           "--action=dump_keyset --user=...\n");
     }
-  } else if (!strcmp(switches::kActions[switches::ACTION_TPM_TAKE_OWNERSHIP],
-                     action.c_str())) {
-    tpm_manager::TakeOwnershipRequest req;
-    req.set_is_async(true);
-    tpm_manager::TakeOwnershipReply reply;
-    brillo::ErrorPtr error;
-    if (!tpm_ownership_proxy.TakeOwnership(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmCanAttemptOwnership call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-    }
-  } else if (!strcmp(
-                 switches::kActions[switches::ACTION_TPM_CLEAR_STORED_PASSWORD],
-                 action.c_str())) {
-    tpm_manager::ClearStoredOwnerPasswordRequest req;
-    tpm_manager::ClearStoredOwnerPasswordReply reply;
-
-    brillo::ErrorPtr error;
-    if (!tpm_ownership_proxy.ClearStoredOwnerPassword(req, &reply, &error,
-                                                      timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "TpmClearStoredPassword call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-    }
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_GET],
                  action.c_str())) {
@@ -2090,41 +2047,6 @@ int main(int argc, char** argv) {
 
     printer.PrintFormattedHumanOutput("InstallAttributesIsFirstInstall(): %d\n",
                                       static_cast<int>(result));
-  } else if (!strcmp(switches::kActions[switches::ACTION_TPM_WAIT_OWNERSHIP],
-                     action.c_str())) {
-    // Note that this is a rather hackish implementation that will be replaced
-    // once the refactor to distributed mode is over. It'll be replaced with an
-    // implementation that does one synchronous call to tpm_manager's
-    // TakeOwnership(), then check if it's owned.
-    base::TimeDelta timeout = kWaitOwnershipTimeout;
-    int timeout_in_switch;
-    if (cl->HasSwitch(switches::kWaitOwnershipTimeoutSwitch) &&
-        base::StringToInt(
-            cl->GetSwitchValueASCII(switches::kWaitOwnershipTimeoutSwitch),
-            &timeout_in_switch)) {
-      timeout = base::Seconds(timeout_in_switch);
-    }
-
-    auto deadline = base::Time::Now() + timeout;
-    while (base::Time::Now() < deadline) {
-      base::PlatformThread::Sleep(kWaitOwnershipPollInterval);
-      tpm_manager::GetTpmStatusRequest req;
-      tpm_manager::GetTpmStatusReply reply;
-      brillo::ErrorPtr error;
-      if (!tpm_ownership_proxy.GetTpmStatus(req, &reply, &error, timeout_ms) ||
-          error) {
-        printer.PrintFormattedHumanOutput(
-            "TpmIsOwned call failed: %s.\n",
-            BrilloErrorToString(error.get()).c_str());
-      }
-      if (reply.owned()) {
-        // This is the condition we are waiting for.
-        printer.PrintHumanOutput("TPM is now owned.\n");
-        return 0;
-      }
-    }
-    printer.PrintHumanOutput("Fail to own TPM.\n");
-    return 1;
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_PKCS11_GET_USER_TOKEN_INFO],
                      action.c_str())) {
