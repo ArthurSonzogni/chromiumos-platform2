@@ -40,11 +40,11 @@ TEST_F(NetworkApplierTest, ApplyDNS) {
 
   EXPECT_CALL(resolver_, SetDNSFromLists(ipv4_properties.dns_servers,
                                          ipv4_properties.domain_search));
-  network_applier_->ApplyDNS(priority, ipv4_properties);
+  network_applier_->ApplyDNS(priority, &ipv4_properties, nullptr);
 
   priority.is_primary_for_dns = false;
   EXPECT_CALL(resolver_, SetDNSFromLists(_, _)).Times(0);
-  network_applier_->ApplyDNS(priority, ipv4_properties);
+  network_applier_->ApplyDNS(priority, &ipv4_properties, nullptr);
 }
 
 TEST_F(NetworkApplierTest, ApplyDNSDomainAdded) {
@@ -57,7 +57,40 @@ TEST_F(NetworkApplierTest, ApplyDNSDomainAdded) {
 
   std::vector<std::string> expected_domain_search_list = {kDomainName + "."};
   EXPECT_CALL(resolver_, SetDNSFromLists(_, expected_domain_search_list));
-  network_applier_->ApplyDNS(priority, ipv4_properties);
+  network_applier_->ApplyDNS(priority, &ipv4_properties, nullptr);
+}
+
+TEST_F(NetworkApplierTest, ApplyDNSDualStack) {
+  NetworkPriority priority;
+  priority.is_primary_for_dns = true;
+  IPConfig::Properties ipv4_properties;
+  ipv4_properties.dns_servers = {"8.8.8.8"};
+  ipv4_properties.domain_search = {"domain1", "domain2"};
+  IPConfig::Properties ipv6_properties;
+  ipv6_properties.dns_servers = {"2001:4860:4860:0:0:0:0:8888"};
+  ipv6_properties.domain_search = {"domain3", "domain4"};
+
+  std::vector<std::string> expected_dns = {"2001:4860:4860:0:0:0:0:8888",
+                                           "8.8.8.8"};
+  std::vector<std::string> expected_dnssl = {"domain3", "domain4", "domain1",
+                                             "domain2"};
+  EXPECT_CALL(resolver_, SetDNSFromLists(expected_dns, expected_dnssl));
+  network_applier_->ApplyDNS(priority, &ipv4_properties, &ipv6_properties);
+}
+
+TEST_F(NetworkApplierTest, ApplyDNSDualStackSearchListDedup) {
+  NetworkPriority priority;
+  priority.is_primary_for_dns = true;
+  IPConfig::Properties ipv4_properties;
+  ipv4_properties.dns_servers = {"8.8.8.8"};
+  ipv4_properties.domain_search = {"domain1", "domain2"};
+  IPConfig::Properties ipv6_properties;
+  ipv6_properties.dns_servers = {"2001:4860:4860:0:0:0:0:8888"};
+  ipv6_properties.domain_search = {"domain1", "domain2"};
+
+  std::vector<std::string> expected_dnssl = {"domain1", "domain2"};
+  EXPECT_CALL(resolver_, SetDNSFromLists(_, expected_dnssl));
+  network_applier_->ApplyDNS(priority, &ipv4_properties, &ipv6_properties);
 }
 
 }  // namespace shill

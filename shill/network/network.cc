@@ -218,7 +218,9 @@ void Network::SetupConnection(IPConfig* ipconfig) {
   }
   connection_->UpdateFromIPConfig(ipconfig->properties());
   connection_->UpdateRoutingPolicy(GetAddresses());
-  network_applier_->ApplyDNS(priority_, ipconfig->properties());
+  network_applier_->ApplyDNS(priority_,
+                             ipconfig_ ? &ipconfig_->properties() : nullptr,
+                             ip6config_ ? &ip6config_->properties() : nullptr);
   if (state_ != State::kConnected && technology_ != Technology::kVPN) {
     // The Network becomes connected, wait for 30 seconds to report its IP type.
     // Skip VPN since it's already reported separately in VPNService.
@@ -666,13 +668,19 @@ void Network::OnIPv6ConfigUpdated() {
     ip6config()->UpdateSearchDomains(*search_domains);
   }
 
-  // Setup connection using IPv6 configuration only if the IPv6 configuration is
-  // ready for connection (contained both IP address and DNS servers), and there
-  // is no existing IPv4 connection. We always prefer IPv4 configuration over
-  // IPv6.
-  if (ip6config()->properties().HasIPAddressAndDNS() &&
-      (!IsConnected() || connection_->IsIPv6())) {
-    SetupConnection(ip6config());
+  if (ip6config()->properties().HasIPAddressAndDNS()) {
+    // Setup connection using IPv6 configuration only if the IPv6 configuration
+    // is ready for connection (contained both IP address and DNS servers), and
+    // there is no existing IPv4 connection. We always prefer IPv4 configuration
+    // over IPv6.
+    if (!IsConnected() || connection_->IsIPv6()) {
+      SetupConnection(ip6config());
+    } else {
+      // Still apply IPv6 DNS even if the Connection is setup with IPv4.
+      network_applier_->ApplyDNS(
+          priority_, ipconfig_ ? &ipconfig_->properties() : nullptr,
+          ip6config_ ? &ip6config_->properties() : nullptr);
+    }
   }
 }
 
@@ -739,7 +747,9 @@ void Network::SetPriority(NetworkPriority priority) {
     return;
   }
   connection_->SetPriority(priority);
-  network_applier_->ApplyDNS(priority, GetCurrentIPConfig()->properties());
+  network_applier_->ApplyDNS(priority,
+                             ipconfig_ ? &ipconfig_->properties() : nullptr,
+                             ip6config_ ? &ip6config_->properties() : nullptr);
   priority_ = priority;
 }
 

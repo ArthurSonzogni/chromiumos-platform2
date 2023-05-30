@@ -31,9 +31,10 @@ class NetworkApplier {
   // Apply the DNS configuration by writing into /etc/resolv.conf.
   // TODO(b/259354228): dnsproxy will take the ownership of resolv.conf file
   // after b/207657239 is resolved.
-  // TODO(b/265680125#comment11): DNS setting from both IPv4 and IPv6 should be
-  // applied.
-  void ApplyDNS(NetworkPriority priority, IPConfig::Properties properties);
+  // TODO(b/269401899): Use NetworkConfig as parameter.
+  void ApplyDNS(NetworkPriority priority,
+                const IPConfig::Properties* ipv4_properties,
+                const IPConfig::Properties* ipv6_properties);
 
  protected:
   NetworkApplier();
