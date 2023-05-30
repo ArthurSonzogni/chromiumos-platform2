@@ -774,6 +774,10 @@ int PowerButtonMain(int argc, char** argv) {
   return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+int AudioDriverV1Main(int argc, char** argv) {
+  COMMON_LEGACY_ROUTINE(AudioDriverRoutine)
+}
+
 const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     // V2 routines.
     {"audio_driver", AudioDriverMain},
@@ -827,7 +831,9 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"bluetooth_discovery", BluetoothDiscoveryMain},
     {"bluetooth_scanning", BluetoothScanningMain},
     {"bluetooth_pairing", BluetoothPairingMain},
-    {"power_button", PowerButtonMain}};
+    {"power_button", PowerButtonMain},
+    {"audio_driver_v1", AudioDriverV1Main},
+};
 
 void PrintHelp() {
   std::stringstream ss;

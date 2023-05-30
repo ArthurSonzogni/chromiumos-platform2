@@ -144,6 +144,7 @@ class FakeDiagnosticsService final
       RunBluetoothPairingRoutineCallback callback) override;
   void RunPowerButtonRoutine(uint32_t timeout_seconds,
                              RunPowerButtonRoutineCallback callback) override;
+  void RunAudioDriverRoutine(RunAudioDriverRoutineCallback callback) override;
 };
 
 }  // namespace diagnostics

@@ -577,6 +577,18 @@ void CrosHealthdDiagnosticsService::RunPowerButtonRoutine(
              mojom::DiagnosticRoutineEnum::kPowerButton, std::move(callback));
 }
 
+void CrosHealthdDiagnosticsService::RunAudioDriverRoutine(
+    RunAudioDriverRoutineCallback callback) {
+  auto audio_driver_routine = std::make_unique<RoutineAdapter>(
+      mojom::RoutineArgument::Tag::kAudioDriver);
+  routine_service_->CreateRoutine(
+      mojom::RoutineArgument::NewAudioDriver(
+          mojom::AudioDriverRoutineArgument::New()),
+      audio_driver_routine->BindNewPipeAndPassReceiver());
+  RunRoutine(std::move(audio_driver_routine),
+             mojom::DiagnosticRoutineEnum::kAudioDriver, std::move(callback));
+}
+
 void CrosHealthdDiagnosticsService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
     mojom::DiagnosticRoutineEnum routine_enum,
@@ -665,6 +677,7 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
       mojom::DiagnosticRoutineEnum::kBluetoothScanning,
       mojom::DiagnosticRoutineEnum::kBluetoothPairing,
       mojom::DiagnosticRoutineEnum::kPowerButton,
+      mojom::DiagnosticRoutineEnum::kAudioDriver,
   };
 
   if (context_->system_config()->HasBattery()) {

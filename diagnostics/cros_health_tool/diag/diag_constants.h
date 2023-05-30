@@ -94,6 +94,8 @@ constexpr struct {
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kBluetoothPairing},
     {"power_button",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kPowerButton},
+    {"audio_driver",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kAudioDriver},
 };
 
 }  // namespace diagnostics

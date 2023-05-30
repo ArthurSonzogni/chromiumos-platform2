@@ -281,4 +281,9 @@ void FakeDiagnosticsService::RunPowerButtonRoutine(
   NOTIMPLEMENTED();
 }
 
+void FakeDiagnosticsService::RunAudioDriverRoutine(
+    RunAudioDriverRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics
