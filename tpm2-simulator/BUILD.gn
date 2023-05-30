@@ -8,6 +8,7 @@ group("all") {
   deps = [
     ":install_init_scripts",
     ":install_seccomp_policy",
+    ":install_tmpfiles_config",
     ":tpm2-simulator",
     ":tpm2-simulator-init",
     ":tpm2-simulator-stop",
@@ -115,4 +116,9 @@ install_config("install_seccomp_policy") {
   sources = [ "seccomp/tpm2-simulator-" + getenv("ARCH") + ".policy" ]
   install_path = "/usr/share/policy"
   outputs = [ "tpm2-simulator.policy" ]
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/tpm2-simulator.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
 }
