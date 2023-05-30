@@ -502,7 +502,8 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
   // all time.
   const auto& selected_service_it = props.find(shill::kSelectedServiceProperty);
   if (selected_service_it != props.end()) {
-    output->service_path = selected_service_it->second.TryGet<std::string>();
+    output->service_path =
+        selected_service_it->second.TryGet<dbus::ObjectPath>().value();
   }
 
   return true;
