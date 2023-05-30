@@ -72,6 +72,15 @@ flatbuffer("auth-block-state-flatbuffers-binding-binary") {
   sources = [ "../flatbuffer_schemas/auth_block_state.fbs" ]
 }
 
+flatbuffer("enumerations-flatbuffers-binding-binary") {
+  flatc_out_dir = "bfbs"
+  flatc_args = [
+    "--binary",
+    "--schema",
+  ]
+  sources = [ "../flatbuffer_schemas/enumerations.fbs" ]
+}
+
 flatbuffer("structures-flatbuffers-binding-binary") {
   flatc_out_dir = "bfbs"
   flatc_args = [
@@ -79,6 +88,15 @@ flatbuffer("structures-flatbuffers-binding-binary") {
     "--schema",
   ]
   sources = [ "../flatbuffer_schemas/structures.fbs" ]
+}
+
+flatbuffer("user-policy-flatbuffers-binding-binary") {
+  flatc_out_dir = "bfbs"
+  flatc_args = [
+    "--binary",
+    "--schema",
+  ]
+  sources = [ "../flatbuffer_schemas/user_policy.fbs" ]
 }
 
 flatbuffer("user-secret-stash-flatbuffers-binding-binary") {
@@ -148,6 +166,38 @@ action("auth-block-state-flatbuffers-binding-generate") {
   ]
 }
 
+action("enumerations-flatbuffers-binding-generate") {
+  script = "${root_gen_dir}/python/flatbuffer_cpp_binding_generator.py"
+  inputs = [ "../flatbuffer_schemas/enumerations.fbs" ]
+  outputs = [
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/enumerations.h",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/enumerations_flatbuffer.h",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/enumerations.cc",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/enumerations_test_utils.h",
+  ]
+  args = [
+    "--output_dir=${root_gen_dir}/include/cryptohome/flatbuffer_schemas",
+    "--guard_prefix=CRYPTOHOME_FLATBUFFER_SCHEMAS_ENUMERATIONS",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/flatbuffer_schemas/enumerations.h",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/enumerations_generated.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/enumerations.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/enumerations_flatbuffer.h",
+    "--test_utils_header_include_path",
+    "cryptohome/flatbuffer_schemas/enumerations.h",
+    "${root_gen_dir}/bfbs/enumerations.bfbs",
+    "--filter_by_namespace",
+    "cryptohome::structure",
+  ]
+  deps = [
+    ":enumerations-flatbuffers-binding-binary",
+    ":flatbuffers-binding-generator",
+  ]
+}
+
 action("structures-flatbuffers-binding-generate") {
   script = "${root_gen_dir}/python/flatbuffer_cpp_binding_generator.py"
   inputs = [ "../flatbuffer_schemas/structures.fbs" ]
@@ -187,6 +237,51 @@ action("structures-flatbuffers-binding-generate") {
   deps = [
     ":flatbuffers-binding-generator",
     ":structures-flatbuffers-binding-binary",
+  ]
+}
+
+action("user-policy-flatbuffers-binding-generate") {
+  script = "${root_gen_dir}/python/flatbuffer_cpp_binding_generator.py"
+  inputs = [ "../flatbuffer_schemas/user_policy.fbs" ]
+  outputs = [
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_policy.h",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_policy_flatbuffer.h",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_policy.cc",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_policy_test_utils.h",
+  ]
+  args = [
+    "--output_dir=${root_gen_dir}/include/cryptohome/flatbuffer_schemas",
+    "--guard_prefix=CRYPTOHOME_FLATBUFFER_SCHEMAS_USER_POLICY",
+    "--header_include_paths",
+    "cryptohome/flatbuffer_schemas/enumerations.h",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/user_policy_generated.h",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/flatbuffer_schemas/user_policy.h",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/flatbuffer_schemas/enumerations_flatbuffer.h",
+    "--flatbuffer_header_include_paths",
+    "libhwsec-foundation/flatbuffers/basic_objects.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/user_policy.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/user_policy_flatbuffer.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/enumerations_flatbuffer.h",
+    "--impl_include_paths",
+    "libhwsec-foundation/flatbuffers/flatbuffer_secure_allocator_bridge.h",
+    "--test_utils_header_include_path",
+    "cryptohome/flatbuffer_schemas/user_policy.h",
+    "--test_utils_header_include_path",
+    "cryptohome/flatbuffer_schemas/enumerations_test_utils.h",
+    "${root_gen_dir}/bfbs/user_policy.bfbs",
+    "--filter_by_namespace",
+    "cryptohome",
+  ]
+  deps = [
+    ":enumerations-flatbuffers-binding-generate",
+    ":flatbuffers-binding-generator",
+    ":user-policy-flatbuffers-binding-binary",
   ]
 }
 
@@ -236,14 +331,18 @@ action("user-secret-stash-flatbuffers-binding-generate") {
 source_set("cryptohome-flatbuffers-binding") {
   sources = [
     "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/auth_block_state.cc",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/enumerations.cc",
     "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/structures.cc",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_policy.cc",
     "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_secret_stash_container.cc",
     "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_secret_stash_payload.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [
     ":auth-block-state-flatbuffers-binding-generate",
+    ":enumerations-flatbuffers-binding-generate",
     ":structures-flatbuffers-binding-generate",
+    ":user-policy-flatbuffers-binding-generate",
     ":user-secret-stash-flatbuffers-binding-generate",
   ]
 }
@@ -261,7 +360,9 @@ flatbuffer("cryptohome-flatbuffers") {
   sources = [
     "../flatbuffer_schemas/auth_block_state.fbs",
     "../flatbuffer_schemas/auth_factor.fbs",
+    "../flatbuffer_schemas/enumerations.fbs",
     "../flatbuffer_schemas/structures.fbs",
+    "../flatbuffer_schemas/user_policy.fbs",
     "../flatbuffer_schemas/user_secret_stash_container.fbs",
     "../flatbuffer_schemas/user_secret_stash_payload.fbs",
   ]
