@@ -8,7 +8,6 @@
 #include <linux/rtnetlink.h>
 #include <unistd.h>
 
-#include <limits>
 #include <utility>
 
 #include <base/check.h>
@@ -51,24 +50,6 @@ RoutingPolicyEntry::FwMark GetFwmarkRoutingTag(int interface_index) {
 }
 
 }  // namespace
-
-// static
-const uint32_t Connection::kDefaultPriority = 10;
-// Allowed dsts rules are added right before the catchall rule. In this way,
-// existing traffic from a different interface will not be "stolen" by these
-// rules and sent out of the wrong interface, but the routes added to
-// |table_id| will not be ignored.
-const uint32_t Connection::kDstRulePriority =
-    RoutingTable::kRulePriorityMain - 3;
-const uint32_t Connection::kVpnUidRulePriority =
-    RoutingTable::kRulePriorityMain - 2;
-const uint32_t Connection::kCatchallPriority =
-    RoutingTable::kRulePriorityMain - 1;
-// UINT_MAX is also a valid priority, but we reserve this as a sentinel
-// value, as in RoutingTable::GetDefaultRouteInternal.
-const uint32_t Connection::kLeastPriority =
-    std::numeric_limits<uint32_t>::max() - 1;
-const uint32_t Connection::kPriorityStep = 10;
 
 Connection::Connection(int interface_index,
                        const std::string& interface_name,
@@ -366,7 +347,8 @@ void Connection::UpdateRoutingPolicy(
 }
 
 void Connection::UpdateRoutingPolicy() {
-  uint32_t rule_priority = priority_.priority_value;
+  uint32_t rule_priority =
+      kDefaultPriority + priority_.ranking_order * kPriorityStep;
   bool is_primary_physical = priority_.is_primary_physical;
   routing_table_->FlushRules(interface_index_);
 

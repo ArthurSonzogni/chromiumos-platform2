@@ -1706,7 +1706,7 @@ void Manager::SortServicesTask() {
              .first;
        });
 
-  uint32_t priority = Connection::kDefaultPriority;
+  uint32_t ranking_order = 0;
   bool found_dns = false;
   ServiceRefPtr new_logical;
   ServiceRefPtr new_physical;
@@ -1729,14 +1729,13 @@ void Manager::SortServicesTask() {
         new_physical = service;
       }
 
-      priority += Connection::kPriorityStep;
       NetworkPriority network_priority = {
           .is_primary_logical = (service == new_logical),
           .is_primary_physical = (service == new_physical),
           .is_primary_for_dns = use_dns,
-          .priority_value = priority};
-
+          .ranking_order = ranking_order};
       network->SetPriority(network_priority);
+      ++ranking_order;
     }
   }
 

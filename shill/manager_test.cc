@@ -2212,19 +2212,15 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // from ServiceOrderIs.  We notify others of the change in
   // DefaultService.
   EXPECT_CALL(*mock_network0,
-              SetPriority(NetworkPriority{
-                  .is_primary_logical = true,
-                  .is_primary_physical = true,
-                  .is_primary_for_dns = true,
-                  .priority_value = Connection::kDefaultPriority +
-                                    Connection::kPriorityStep}));
+              SetPriority(NetworkPriority{.is_primary_logical = true,
+                                          .is_primary_physical = true,
+                                          .is_primary_for_dns = true,
+                                          .ranking_order = 0}));
   EXPECT_CALL(*mock_network1,
-              SetPriority(NetworkPriority{
-                  .is_primary_logical = false,
-                  .is_primary_physical = false,
-                  .is_primary_for_dns = false,
-                  .priority_value = Connection::kDefaultPriority +
-                                    2 * Connection::kPriorityStep}));
+              SetPriority(NetworkPriority{.is_primary_logical = false,
+                                          .is_primary_physical = false,
+                                          .is_primary_for_dns = false,
+                                          .ranking_order = 1}));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
   manager()->SortServicesTask();
@@ -2237,19 +2233,15 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // appropriate notifications are sent.
   mock_service1->SetPriority(1, nullptr);
   EXPECT_CALL(*mock_network0,
-              SetPriority(NetworkPriority{
-                  .is_primary_logical = false,
-                  .is_primary_physical = false,
-                  .is_primary_for_dns = false,
-                  .priority_value = Connection::kDefaultPriority +
-                                    2 * Connection::kPriorityStep}));
+              SetPriority(NetworkPriority{.is_primary_logical = false,
+                                          .is_primary_physical = false,
+                                          .is_primary_for_dns = false,
+                                          .ranking_order = 1}));
   EXPECT_CALL(*mock_network1,
-              SetPriority(NetworkPriority{
-                  .is_primary_logical = true,
-                  .is_primary_physical = true,
-                  .is_primary_for_dns = true,
-                  .priority_value = Connection::kDefaultPriority +
-                                    Connection::kPriorityStep}));
+              SetPriority(NetworkPriority{.is_primary_logical = true,
+                                          .is_primary_physical = true,
+                                          .is_primary_for_dns = true,
+                                          .ranking_order = 0}));
   EXPECT_CALL(service_watcher, OnDefaultLogicalServiceChanged(_));
   EXPECT_CALL(service_watcher, OnDefaultPhysicalServiceChanged(_));
   EXPECT_CALL(*manager_adaptor_,
@@ -2267,12 +2259,10 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // Deregistering the current DefaultService causes the other Service
   // to become default.  Appropriate notifications are sent.
   EXPECT_CALL(*mock_network0,
-              SetPriority(NetworkPriority{
-                  .is_primary_logical = true,
-                  .is_primary_physical = true,
-                  .is_primary_for_dns = true,
-                  .priority_value = Connection::kDefaultPriority +
-                                    Connection::kPriorityStep}));
+              SetPriority(NetworkPriority{.is_primary_logical = true,
+                                          .is_primary_physical = true,
+                                          .is_primary_for_dns = true,
+                                          .ranking_order = 0}));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
   // So DeregisterService works.

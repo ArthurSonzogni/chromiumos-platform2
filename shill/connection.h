@@ -5,6 +5,7 @@
 #ifndef SHILL_CONNECTION_H_
 #define SHILL_CONNECTION_H_
 
+#include <limits>
 #include <map>
 #include <string>
 #include <vector>
@@ -14,6 +15,7 @@
 #include "shill/ipconfig.h"
 #include "shill/net/ip_address.h"
 #include "shill/network/network_priority.h"
+#include "shill/routing_table.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -26,28 +28,6 @@ class RoutingTable;
 // the IP address, routing table and DNS table entries.
 class Connection {
  public:
-  // The routing rule priority used for the default service, whether physical or
-  // VPN.
-  static const uint32_t kDefaultPriority;
-  // Priority for rules corresponding to IPConfig::Properties::routes.
-  static const uint32_t kDstRulePriority;
-  // Priority for VPN rules routing traffic or specific uids with the routing
-  // table of a VPN connection.
-  static const uint32_t kVpnUidRulePriority;
-  // Priority for the rule sending any remaining traffic to the default physical
-  // interface.
-  static const uint32_t kCatchallPriority;
-  // The lowest priority value that is still valid.
-  static const uint32_t kLeastPriority;
-  // Space between the priorities of services. The Nth highest priority service
-  // (starting from N=0) will have a rule priority of
-  // |kDefaultPriority| + N*|kPriorityStep|.
-  static const uint32_t kPriorityStep;
-
-  // An offset added to the priority of non-VPN services, so their rules comes
-  // after the main table rule.
-  static constexpr uint32_t kPhysicalPriorityOffset = 1000;
-
   Connection(int interface_index,
              const std::string& interface_name,
              bool fixed_ip_params,
@@ -86,6 +66,34 @@ class Connection {
   virtual const std::string& interface_name() const { return interface_name_; }
 
  private:
+  // The routing rule priority used for the default service, whether physical or
+  // VPN.
+  static constexpr uint32_t kDefaultPriority = 10;
+  // Space between the priorities of services. The Nth highest priority service
+  // (starting from N=0) will have a rule priority of
+  // |kDefaultPriority| + N*|kPriorityStep|.
+  static constexpr uint32_t kPriorityStep = 10;
+
+  // An offset added to the priority of non-VPN services, so their rules comes
+  // after the main table rule.
+  static constexpr uint32_t kPhysicalPriorityOffset = 1000;
+
+  // Priority for rules corresponding to IPConfig::Properties::routes.
+  // Allowed dsts rules are added right before the catchall rule. In this way,
+  // existing traffic from a different interface will not be "stolen" by these
+  // rules and sent out of the wrong interface, but the routes added to
+  // |table_id| will not be ignored.
+  static constexpr uint32_t kDstRulePriority =
+      RoutingTable::kRulePriorityMain - 3;
+  // Priority for VPN rules routing traffic or specific uids with the routing
+  // table of a VPN connection.
+  static constexpr uint32_t kVpnUidRulePriority =
+      RoutingTable::kRulePriorityMain - 2;
+  // Priority for the rule sending any remaining traffic to the default physical
+  // interface.
+  static constexpr uint32_t kCatchallPriority =
+      RoutingTable::kRulePriorityMain - 1;
+
   friend class ConnectionTest;
 
   // Create a link route to the gateway when the gateway is in a separate
@@ -124,10 +132,6 @@ class Connection {
 
   // The priority value for setting up routing rules and DNS corresponding to
   // this Connection. Set by Manager through SetPriority.
-  // TODO(b/264963034): for legacy reason Manager directly calculates the
-  // routing rule priority and pass it to Connection. Instead, Manager should
-  // use a generic format and routing rule priority should be a Connection
-  // implementation detail.
   NetworkPriority priority_;
 
   int interface_index_;

@@ -175,11 +175,6 @@ std::vector<uint32_t> ComputeUserTrafficUids() {
 // These don't have named constants in the system header files, but they
 // are documented in ip-rule(8) and hardcoded in net/ipv4/fib_rules.c.
 
-// static
-const uint32_t RoutingTable::kRulePriorityLocal = 0;
-// static
-const uint32_t RoutingTable::kRulePriorityMain = 32766;
-
 RoutingTable::RoutingTable() : rtnl_handler_(RTNLHandler::GetInstance()) {
   SLOG(2) << __func__;
 }

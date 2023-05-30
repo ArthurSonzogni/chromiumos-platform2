@@ -39,9 +39,9 @@ class RoutingTable {
       int interface_index, const RoutingTableEntry& entry)>;
 
   // Priority of the rule sending all traffic to the local routing table.
-  static const uint32_t kRulePriorityLocal;
+  static constexpr uint32_t kRulePriorityLocal = 0;
   // Priority of the rule sending all traffic to the main routing table.
-  static const uint32_t kRulePriorityMain;
+  static constexpr uint32_t kRulePriorityMain = 32766;
 
   // Used to detect default route added by kernel when receiving RA.
   // Note that since 5.18 kernel this value will become configurable through

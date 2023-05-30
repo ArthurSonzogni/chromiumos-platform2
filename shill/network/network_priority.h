@@ -14,6 +14,7 @@ namespace shill {
 // A representation of Manager SortServices() result that Network uses to apply
 // its configuration accordingly.
 struct NetworkPriority {
+  static constexpr uint32_t kMaxRankingOrder = 31;
   // Whether current Network is the primary one. Is true for either VPN or the
   // primary physical network if a VPN network is not present.
   bool is_primary_logical = false;
@@ -23,10 +24,10 @@ struct NetworkPriority {
   // default. Is true when all the networks with a higher rank do not have a
   // proper DNS configuration.
   bool is_primary_for_dns = false;
-  // A unique priority value assigned by Manager according to the service order.
-  // TODO(b/264963034): Use a generic value decoupled from routing rule table
-  // implementation details.
-  uint32_t priority_value = std::numeric_limits<uint32_t>::max() - 1;
+  // A unique value among networks specifying the ranking order of the networks.
+  // Primary logical network has a value of 0, secondary network has a value of
+  // 1, etc.
+  uint32_t ranking_order = kMaxRankingOrder;
 };
 
 bool operator==(const NetworkPriority& lhs, const NetworkPriority& rhs);
