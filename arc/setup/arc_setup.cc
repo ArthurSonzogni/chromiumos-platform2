@@ -311,6 +311,14 @@ ArcSdkVersionUpgradeType GetUpgradeType(AndroidSdkVersion system_sdk_version,
       system_sdk_version == AndroidSdkVersion::ANDROID_R) {
     return ArcSdkVersionUpgradeType::P_TO_R;
   }
+  if (data_sdk_version == AndroidSdkVersion::ANDROID_P &&
+      system_sdk_version == AndroidSdkVersion::ANDROID_TIRAMISU) {
+    return ArcSdkVersionUpgradeType::P_TO_T;
+  }
+  if (data_sdk_version == AndroidSdkVersion::ANDROID_R &&
+      system_sdk_version == AndroidSdkVersion::ANDROID_TIRAMISU) {
+    return ArcSdkVersionUpgradeType::R_TO_T;
+  }
   if (data_sdk_version < system_sdk_version) {
     LOG(ERROR) << "Unexpected Upgrade: data_sdk_version="
                << static_cast<int>(data_sdk_version) << " system_sdk_version="
