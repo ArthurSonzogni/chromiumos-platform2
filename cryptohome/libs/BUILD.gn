@@ -564,6 +564,7 @@ static_library("libcrostpm") {
     "../auth_session_flatbuffer.cc",
     "../auth_session_manager.cc",
     "../auth_session_protobuf.cc",
+    "../create_vault_keyset_rpc_impl.cc",
     "../crypto.cc",
     "../crypto_error.cc",
     "../cryptohome_key_loader.cc",

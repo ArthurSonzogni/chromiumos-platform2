@@ -489,6 +489,21 @@ do.
       </arg>
     </method>
 
+    <!-- Create a VaultKeyset for legacy testing purposes. The functionality
+    is used from the cryptohome-test-tool CLI for testing only. -->
+    <method name="CreateVaultKeyset">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::CreateVaultKeysetRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::CreateVaultKeysetReply"/>
+      </arg>
+    </method>
+
     <!-- Emitted to update the remaining time on an authfactor lockout time -->
     <signal name="AuthFactorStatusUpdate">
       <annotation name="org.chromium.DBus.Method.Kind"

@@ -16,21 +16,20 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
-#include <base/strings/string_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/cryptohome.h>
+#include <brillo/dbus/dbus_connection.h>
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec/factory/factory.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
-#include "cryptohome/auth_blocks/auth_block_utility_impl.h"
-#include "cryptohome/auth_blocks/auth_block_utils.h"
-#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/types/password.h"
-#include "cryptohome/crypto.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
@@ -39,15 +38,11 @@
 #include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/username.h"
-#include "cryptohome/vault_keyset_factory.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
-using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::cryptorecovery::CryptoRecoveryEpochResponse;
 using cryptohome::cryptorecovery::CryptoRecoveryRpcRequest;
 using cryptohome::cryptorecovery::CryptoRecoveryRpcResponse;
@@ -437,176 +432,27 @@ bool DoRecoveryCryptoGetFakeMediatorPublicKeyAction(
   return WriteHexFileLogged(mediator_pub_key_out_file_path, mediator_pub_key);
 }
 
-// PersistVaultKeyset is as a functional callback for
-// AuthBlockUtility::CreateKeyBlobsWithAuthBlock, which populates
-// |key_blobs| and |auth_state| parameters. These parameters are used to write
-// freshly created VaultKeysets to disk.
-void PersistVaultKeyset(KeysetManagement* keyset_management,
-                        const KeyData& key_data,
-                        std::unique_ptr<VaultKeyset> old_vault_keyset,
-                        const ObfuscatedUsername& obfuscated_username,
-                        bool enable_key_data,
-                        CryptohomeStatus callback_error,
-                        std::unique_ptr<KeyBlobs> key_blobs,
-                        std::unique_ptr<AuthBlockState> auth_state) {
-  // callback_error, key_blobs and auth_state are returned by
-  // AuthBlock::CreateCallback.
-  if (!callback_error.ok() || key_blobs == nullptr || auth_state == nullptr) {
-    LOG(ERROR) << "KeyBlobs derivation failed before adding keyset.";
-    return;
-  }
-
-  if (old_vault_keyset) {  // Add VaultKeyset.
-    CryptohomeStatus status = keyset_management->AddKeyset(
-        VaultKeysetIntent{.backup = false}, obfuscated_username,
-        key_data.label(), key_data, *old_vault_keyset, std::move(*key_blobs),
-        std::move(auth_state),
-        /*clobber=*/false);
-    if (!status.ok()) {
-      LOG(ERROR) << "Adding Keyset failed: " << status;
-      return;
-    }
-    LOG(INFO) << "Added additional keyset :\"" << key_data.label() << "\".";
-    // If flagged, remove KeyBlobs from the VaultKeyset and resave,
-    // as the keyset_managements flags need a valid KeyBlobs to operate.
-    if (!enable_key_data) {
-      // In this case load the freshly created VaultKeyset.
-      std::unique_ptr<VaultKeyset> created_vk =
-          keyset_management->GetVaultKeyset(obfuscated_username,
-                                            key_data.label());
-      if (created_vk) {
-        created_vk->ClearKeyData();
-        if (!created_vk->Save(created_vk->GetSourceFile())) {
-          LOG(ERROR) << "Failed to clear key blobs from the vault_keyset.";
-          return;
-        }
-      }
-    }
-  } else {  // Add Initial VaultKeyset.
-    CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        keyset_management->AddInitialKeyset(
-            VaultKeysetIntent{.backup = false}, obfuscated_username, key_data,
-            /*challenge_credentials_keyset_info=*/std::nullopt,
-            FileSystemKeyset::CreateRandom(), std::move(*key_blobs),
-            std::move(auth_state));
-    if (!vk_status.ok()) {
-      LOG(ERROR) << "Adding initial keyset failed.";
-      return;
-    }
-    LOG(INFO) << "Added initial keyset :\"" << key_data.label() << "\".";
-    // If flagged, remove KeyBlobs from the VaultKeyset and resave,
-    // as the keyset_managements flags need a valid KeyBlobs to operate.
-    if (!enable_key_data) {
-      vk_status.value()->ClearKeyData();
-      LOG(ERROR) << vk_status.value()->GetSourceFile();
-      // Assume keyset is saved at the initial index, implementation should
-      // mirror KeysetManagement::AddInitialKeysetImpl.
-      if (!vk_status.value()->Save(
-              VaultKeysetPath(obfuscated_username, kInitialKeysetIndex))) {
-        LOG(ERROR) << "Failed to clear key blobs from the vault_keyset.";
-        return;
-      }
-    }
-  }
-}
-
-// DeriveExistingVaultKeyset is as a functional callback for
-// AuthBlockUtility::DeriveKeyBlobsWithAuthBlock, which populates
-// |key_blobs| parameter. This parameter used to load VaultKeysets
-// from disk, and then starts a new callback to save a new
-// Vaultkeyset to disk
-void DeriveExistingVaultKeyset(
-    KeysetManagement* keyset_management,
-    AuthBlockUtility* auth_block_utility,
-    const KeyData& key_data,
-    AuthInput& auth_input,
-    std::unique_ptr<VaultKeyset> old_vault_keyset,
-    const ObfuscatedUsername& obfuscated_username,
-    bool enable_key_data,
-    CryptohomeStatus callback_error,
-    std::unique_ptr<KeyBlobs> key_blobs,
-    std::optional<AuthBlock::SuggestedAction> suggested_action) {
-  if (!callback_error.ok() || key_blobs == nullptr) {
-    LOG(ERROR) << "KeyBlobs derivation failed before adding keyset.";
-    return;
-  }
-
-  // Loaded VaultKeyset fields are in encrypted form (e.g. wrapped_reset_seed).
-  // Convert them to a serialized vault keyset and then decrypt. VaultKeyset
-  // object members that carry the plain secrets are set after the decryption
-  // operation (e.g. reset_seed).
-  CryptoStatus status = old_vault_keyset->DecryptEx(*key_blobs);
-  if (!status.ok()) {
-    LOG(ERROR) << "Unable to decrypt loaded VaultKeyset: " << status;
-    return;
-  }
-
-  // Copy Reset Seed field for PinWeaver based VaultKeysets.
-  auth_input.reset_seed = old_vault_keyset->GetResetSeed();
-
-  PasswordAuthFactorDriver password_driver;
-  AuthFactorDriver& factor_driver = password_driver;
-  CryptoStatusOr<AuthBlockType> auth_block_type =
-      auth_block_utility->SelectAuthBlockTypeForCreation(
-          factor_driver.block_types());
-  if (!auth_block_type.ok()) {
-    LOG(ERROR) << "Cannot determinte AuthBlockType of requested VaultKeyset.";
-    return;
-  }
-
-  // Create AuthBlock and corresponding KeyBlobs for the new VaultKeyset, after
-  // deriving the relevant fields from the existing VaultKeyset.
-  auto create_callback = base::BindOnce(&PersistVaultKeyset, keyset_management,
-                                        key_data, std::move(old_vault_keyset),
-                                        obfuscated_username, enable_key_data);
-  auth_block_utility->CreateKeyBlobsWithAuthBlock(
-      auth_block_type.value(), auth_input, std::move(create_callback));
-}
-
-bool DoCreateVaultKeyset(const Username& username,
+bool DoCreateVaultKeyset(const std::string& auth_session_id_hex,
                          const std::string& key_data_label,
-                         const std::string& password,
-                         bool enable_key_data,
+                         const std::string& raw_password,
+                         bool disable_key_data,
                          bool use_public_mount_salt,
                          Platform* platform) {
-  // Initialize all class helper functions for creating and saving a
-  // VaultKeyset.
-  const ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
-  hwsec::FactoryImpl hwsec_factory;
-  auto hwsec = hwsec_factory.GetCryptohomeFrontend();
-  auto pinweaver = hwsec_factory.GetPinWeaverFrontend();
-  auto recovery_crypto = hwsec_factory.GetRecoveryCryptoFrontend();
-  CryptohomeKeysManager cryptohome_keys_manager(hwsec.get(), platform);
-  if (!cryptohome_keys_manager.HasAnyCryptohomeKey()) {
-    cryptohome_keys_manager.Init();
-  }
-  Crypto crypto(hwsec.get(), pinweaver.get(), &cryptohome_keys_manager,
-                recovery_crypto.get());
-  crypto.Init();
-  KeysetManagement keyset_management(platform, &crypto,
-                                     std::make_unique<VaultKeysetFactory>());
-  // We do not support using live features in the test tool. The async tool
-  // wrapped around a never-available features will just report the default
-  // features.
-  AsyncInitFeatures async_features(
-      base::BindRepeating([]() -> Features* { return nullptr; }));
+  brillo::DBusConnection connection;
+  scoped_refptr<dbus::Bus> bus = connection.Connect();
+  DCHECK(bus) << "Failed to connect to system bus through libbrillo";
 
-  AuthBlockUtilityImpl auth_block_utility(
-      &keyset_management, &crypto, platform, &async_features,
-      AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
+  auto cryptohome_proxy = org::chromium::UserDataAuthInterfaceProxy(bus);
 
-  // Manipulate or drop fields as necessary from KeyData.
-  KeyData key_data;
-  if (!key_data_label.empty()) {
-    key_data.set_label(key_data_label);
-  }
+  // Format auth_session_id to match cryptohome.cc command line
+  std::string auth_session_id;
+  base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
 
-  // Trim passkey to match formatting done in cryptohome.cc
+  // Format passkey to match cryptohome.cc command line
   std::string trimmed_password;
-  base::TrimString(password, "/r/n", &trimmed_password);
-  SecureBlob passkey;
-  SecureBlob salt;
+  base::TrimString(raw_password, "/r/n", &trimmed_password);
+  brillo::SecureBlob passkey;
+  brillo::SecureBlob salt;
   if (use_public_mount_salt) {
     GetPublicMountSalt(platform, &salt);
   } else {
@@ -614,69 +460,28 @@ bool DoCreateVaultKeyset(const Username& username,
   }
   Crypto::PasswordToPasskey(trimmed_password.c_str(), salt, &passkey);
 
-  // Create and initialize AuthInput.
-  AuthInput auth_input = {.user_input = passkey,
-                          .locked_to_single_user = std::nullopt,
-                          .username = username,
-                          .obfuscated_username = obfuscated_username};
+  user_data_auth::CreateVaultKeysetRequest request;
+  request.set_auth_session_id(auth_session_id);
+  request.set_key_label(key_data_label);
+  request.set_passkey(passkey.to_string());
+  request.set_disable_key_data(disable_key_data);
+  user_data_auth::CreateVaultKeysetReply reply;
+  brillo::ErrorPtr error;
 
-  // Before persisting, check if there is an existing labeled credential.
-  std::vector<int> keyset_indices;
-  if (!keyset_management.GetVaultKeysets(obfuscated_username,
-                                         &keyset_indices)) {
-    LOG(WARNING) << "No valid keysets on disk for " << obfuscated_username;
+  if (!cryptohome_proxy.CreateVaultKeyset(
+          request, &reply, &error,
+          user_data_auth::kUserDataAuthServiceTimeoutInMs) ||
+      error) {
+    LOG(ERROR)
+        << "Failed to create or persist the VaultKeyset from cryptohomed: "
+        << error->GetMessage();
+    return false;
   }
 
-  // Find the existing VaultKeyset for the given user.
-  std::unique_ptr<VaultKeyset> existing_vault_keyset;
-  for (int index : keyset_indices) {
-    existing_vault_keyset =
-        keyset_management.LoadVaultKeysetForUser(obfuscated_username, index);
-    if (existing_vault_keyset) {
-      break;
-    }
-  }
-
-  if (!existing_vault_keyset) {  // Add Initial VaultKeyset case.
-    PasswordAuthFactorDriver password_driver;
-    AuthFactorDriver& factor_driver = password_driver;
-    CryptoStatusOr<AuthBlockType> auth_block_type =
-        auth_block_utility.SelectAuthBlockTypeForCreation(
-            factor_driver.block_types());
-    if (!auth_block_type.ok()) {
-      LOG(ERROR) << "Cannot determinte AuthBlockType of requested VaultKeyset.";
-      return false;
-    }
-    auto create_callback = base::BindOnce(
-        &PersistVaultKeyset, &keyset_management, key_data,
-        /*old_vault_keyset=*/nullptr, obfuscated_username, enable_key_data);
-    auth_block_utility.CreateKeyBlobsWithAuthBlock(
-        auth_block_type.value(), auth_input, std::move(create_callback));
-  } else {  // Add additional VaultKeyset case.
-    AuthBlockState auth_state;
-    if (!GetAuthBlockState(*existing_vault_keyset,
-                           /*out_state=*/auth_state)) {
-      LOG(ERROR) << "Error in obtaining AuthBlock state for key derivation.";
-      return false;
-    }
-    // Determine the auth block type to use.
-    std::optional<AuthBlockType> auth_block_type =
-        auth_block_utility.GetAuthBlockTypeFromState(auth_state);
-    if (!auth_block_type) {
-      LOG(ERROR) << "Failed to determine auth block type from auth block state";
-      return false;
-    }
-    // Case where initial VaultKeyset already exists, derive the key blobs from
-    // this VaultKeyset.
-    // Derive KeyBlobs from the existing VaultKeyset, using GetValidKeyset
-    // as a callback that loads |vault_keyset_| and resaves if needed.
-    auto derive_callback = base::BindOnce(
-        &DeriveExistingVaultKeyset, &keyset_management, &auth_block_utility,
-        key_data, std::ref(auth_input), std::move(existing_vault_keyset),
-        obfuscated_username, enable_key_data);
-
-    auth_block_utility.DeriveKeyBlobsWithAuthBlock(
-        *auth_block_type, auth_input, auth_state, std::move(derive_callback));
+  if (reply.error() !=
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "CreateVaultKeyset failed: " << reply.error();
+    return false;
   }
 
   return true;
@@ -793,14 +598,15 @@ int main(int argc, char* argv[]) {
   DEFINE_string(
       recovery_id_file, "",
       "Path to the file containing serialized data to generate recovery_id.");
-  DEFINE_string(username, "",
-                "Requeseted username to generate a custom vault keyset.");
+  DEFINE_string(auth_session_id, "",
+                "AuthSessionID, which must be authenticated, used to generate "
+                "a custom vault keyset.");
   DEFINE_string(key_data_label, "",
-                "Requeseted key data label to generate a custom vault keyset.");
+                "Requested key data label to generate a custom vault keyset.");
   DEFINE_string(passkey, "",
                 "User passkey input, or password used to generate a custom "
                 "vault keyset.");
-  DEFINE_bool(enable_key_data, true,
+  DEFINE_bool(disable_key_data, false,
               "Boolean to enable or disable adding a KeyData object to "
               "the VaultKeyset during creation.");
   DEFINE_bool(use_public_mount_salt, false,
@@ -813,12 +619,11 @@ int main(int argc, char* argv[]) {
   if (FLAGS_action.empty()) {
     LOG(ERROR) << "--action is required.";
   } else if (FLAGS_action == "create_vault_keyset") {
-    if (CheckMandatoryFlag("username", FLAGS_username) &&
+    if (CheckMandatoryFlag("auth_session_id", FLAGS_auth_session_id) &&
         CheckMandatoryFlag("passkey", FLAGS_passkey)) {
       success = cryptohome::DoCreateVaultKeyset(
-          cryptohome::Username(FLAGS_username), FLAGS_key_data_label,
-          FLAGS_passkey, FLAGS_enable_key_data, FLAGS_use_public_mount_salt,
-          &platform);
+          FLAGS_auth_session_id, FLAGS_key_data_label, FLAGS_passkey,
+          FLAGS_disable_key_data, FLAGS_use_public_mount_salt, &platform);
     }
   } else if (FLAGS_action == "recovery_crypto_create_hsm_payload") {
     if (CheckMandatoryFlag("rsa_priv_key_out_file",

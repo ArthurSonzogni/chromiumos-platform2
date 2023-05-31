@@ -338,6 +338,16 @@ class UserDataAuthAdaptor
           user_data_auth::GetRecoveryRequestReply>> response,
       const user_data_auth::GetRecoveryRequestRequest& in_request);
 
+  void CreateVaultKeyset(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::CreateVaultKeysetReply>> response,
+      const user_data_auth::CreateVaultKeysetRequest& in_request) override;
+
+  void DoCreateVaultKeyset(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::CreateVaultKeysetReply>> response,
+      const user_data_auth::CreateVaultKeysetRequest& in_request);
+
   void ResetApplicationContainer(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::ResetApplicationContainerReply>> response,

@@ -580,6 +580,34 @@ void UserDataAuthAdaptor::DoGetRecoveryRequest(
           std::move(response)));
 }
 
+void UserDataAuthAdaptor::CreateVaultKeyset(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::CreateVaultKeysetReply>> response,
+    const user_data_auth::CreateVaultKeysetRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoCreateVaultKeyset, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<user_data_auth::CreateVaultKeysetReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void UserDataAuthAdaptor::DoCreateVaultKeyset(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::CreateVaultKeysetReply>> response,
+    const user_data_auth::CreateVaultKeysetRequest& in_request) {
+  service_->CreateVaultKeyset(
+      in_request,
+      base::BindOnce(
+          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                 user_data_auth::CreateVaultKeysetReply>> local_response,
+             const user_data_auth::CreateVaultKeysetReply& reply) {
+            local_response->Return(reply);
+          },
+          std::move(response)));
+}
+
 void UserDataAuthAdaptor::Remove(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::RemoveReply>> response,

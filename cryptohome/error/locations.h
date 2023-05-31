@@ -1417,6 +1417,26 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionManagerAuthSessionNotFound = 2310,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockCheckCredTPMLockedInDerive = 2311,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoAuthSessionInCreateVaultKeyset = 2312,
+  /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplUnauthedInCreateVaultKeyset = 2314,
+  /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplyInvalidBlockType = 2315,
+  /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplNullParamInCallbackInAddKeyset = 2316,
+  /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplCreateFailedInAddKeyset = 2317,
+  /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplAddVaultKeysetFailed = 2318,
+  /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplClearKeyDataFromInitialKeysetFailed = 2320,
+  /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplAddInitialFailedInAddKeyset = 2321,
+  /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplNoVkInAddKeyset = 2322,
+  /* ./create_vault_keyset_rpc_impl.cc */
+  kLocCreateVaultKeysetRpcImplAddFailedInAddKeyset = 2323,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2500
   //// See location_db.py for more info.

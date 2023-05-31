@@ -717,6 +717,11 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
           on_done);
 
+  void CreateVaultKeyset(
+      user_data_auth::CreateVaultKeysetRequest request,
+      base::OnceCallback<void(const user_data_auth::CreateVaultKeysetReply&)>
+          on_done);
+
  private:
   // base::Thread subclass so we can implement CleanUp.
   class MountThread : public base::Thread {

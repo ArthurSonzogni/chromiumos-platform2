@@ -62,6 +62,7 @@
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
+#include "cryptohome/create_vault_keyset_rpc_impl.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
@@ -3384,6 +3385,32 @@ void UserDataAuth::GetRecoveryRequest(
     return;
   }
   auth_session->GetRecoveryRequest(request, std::move(on_done));
+}
+
+void UserDataAuth::CreateVaultKeyset(
+    user_data_auth::CreateVaultKeysetRequest request,
+    base::OnceCallback<void(const user_data_auth::CreateVaultKeysetReply&)>
+        on_done) {
+  user_data_auth::CreateVaultKeysetReply reply;
+  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+      GetAuthenticatedAuthSession(request.auth_session_id());
+  if (!auth_session_status.ok()) {
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocUserDataAuthNoAuthSessionInCreateVaultKeyset))
+                       .Wrap(std::move(auth_session_status).err_status()));
+    return;
+  }
+
+  CreateVaultKeysetRpcImpl create_vault_keyset_impl(
+      keyset_management_, auth_block_utility_, auth_factor_driver_manager_,
+      std::move(auth_session_status.value()));
+
+  create_vault_keyset_impl.CreateVaultKeyset(
+      request,
+      base::BindOnce(&ReplyWithStatus<user_data_auth::CreateVaultKeysetReply>,
+                     std::move(on_done)));
 }
 
 }  // namespace cryptohome
