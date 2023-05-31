@@ -181,9 +181,28 @@ mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
                                 storage_type),
           nullptr));
     }
-    // To be designed, set to supported first.
-    case mojom::RoutineArgument::Tag::kDiskRead:
+    // Need to check the routine arguments.
+    case mojom::RoutineArgument::Tag::kDiskRead: {
+      auto& arg = routine_arg->get_disk_read();
+      if (arg->disk_read_duration.InSeconds() <= 0) {
+        return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+            "Disk read duration should not be zero after rounding towards zero "
+            "to the nearest second",
+            nullptr));
+      }
+
+      if (arg->file_size_mib == 0) {
+        return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+            "Test file size should not be zero", nullptr));
+      }
+
+      if (arg->type == mojom::DiskReadTypeEnum::kUnmappedEnumField) {
+        return mojom::SupportStatus::NewUnsupported(
+            mojom::Unsupported::New("Unexpected disk read type", nullptr));
+      }
+
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+    }
   }
 }
 

@@ -356,5 +356,41 @@ TEST_F(GroundTruthTest, UfsLifetimeRoutine) {
   }
 }
 
+TEST_F(GroundTruthTest, DiskReadRoutine) {
+  auto arg = mojom::DiskReadRoutineArgument::New();
+  arg->type = mojom::DiskReadTypeEnum::kLinearRead;
+  arg->disk_read_duration = base::Seconds(1);
+  arg->file_size_mib = 1;
+
+  ExpectRoutineSupported(mojom::RoutineArgument::NewDiskRead(std::move(arg)));
+}
+
+TEST_F(GroundTruthTest, DiskReadRoutineUnknownType) {
+  auto arg = mojom::DiskReadRoutineArgument::New();
+  arg->type = mojom::DiskReadTypeEnum::kUnmappedEnumField;
+  arg->disk_read_duration = base::Seconds(1);
+  arg->file_size_mib = 1;
+
+  ExpectRoutineUnsupported(mojom::RoutineArgument::NewDiskRead(std::move(arg)));
+}
+
+TEST_F(GroundTruthTest, DiskReadRoutineZeroDuration) {
+  auto arg = mojom::DiskReadRoutineArgument::New();
+  arg->type = mojom::DiskReadTypeEnum::kLinearRead;
+  arg->disk_read_duration = base::Seconds(0);
+  arg->file_size_mib = 1;
+
+  ExpectRoutineUnsupported(mojom::RoutineArgument::NewDiskRead(std::move(arg)));
+}
+
+TEST_F(GroundTruthTest, DiskReadRoutineZeroFileSize) {
+  auto arg = mojom::DiskReadRoutineArgument::New();
+  arg->type = mojom::DiskReadTypeEnum::kLinearRead;
+  arg->disk_read_duration = base::Seconds(1);
+  arg->file_size_mib = 0;
+
+  ExpectRoutineUnsupported(mojom::RoutineArgument::NewDiskRead(std::move(arg)));
+}
+
 }  // namespace
 }  // namespace diagnostics

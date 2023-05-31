@@ -72,6 +72,38 @@ to set it up.
 
 ### Disk read
 
+It's supported only when the routine parameters are well provided.
+
+| Field | Type | Description | Rule |
+| ----- | ---- | ----------- | ---- |
+| type | DiskReadTypeEnum | Type of how disk reading is performed. | Only accept one of the ["linear", "random"]. |
+| disk_read_duration | ash.cros_healthd.external.mojo_base.mojom.TimeDelta | Expected duration to read the test file in the routine. | Should greater than or equal to `1` second. |
+| file_size_mib | uint32 | Test file size, in megabytes (MiB). | Should greater than or equal to `1`. |
+
+You can run the following commands on your DUT:
+1. `cros-health-tool diag disk_read_v2 {parameters...} --check_supported` Use
+   this to see if healthd reports the correct support status.
+
+Some examples:
+```
+# cros-health-tool diag disk_read_v2 --type=ab --check_supported
+{
+  "debug_message": "Unexpected disk read type",
+  "status": "Not supported"
+}
+
+# cros-health-tool diag disk_read_v2 --file_size_mib=0 --check_supported
+{
+  "debug_message": "Test file size should not be zero",
+  "status": "Not supported"
+}
+
+# cros-health-tool diag disk_read_v2 --file_size_mib=1 --check_supported
+{
+  "status": "Supported"
+}
+```
+
 ### Cpu cache
 
 This is always supported.
