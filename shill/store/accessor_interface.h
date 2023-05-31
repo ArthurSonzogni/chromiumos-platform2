@@ -5,6 +5,7 @@
 #ifndef SHILL_STORE_ACCESSOR_INTERFACE_H_
 #define SHILL_STORE_ACCESSOR_INTERFACE_H_
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -66,7 +67,7 @@ using Uint64Accessor = std::unique_ptr<AccessorInterface<uint64_t>>;
 
 template <typename T>
 using AccessorMap =
-    std::map<std::string, std::unique_ptr<AccessorInterface<T>>>;
+    std::map<std::string, std::unique_ptr<AccessorInterface<T>>, std::less<>>;
 
 }  // namespace shill
 
