@@ -412,7 +412,7 @@ bool PropertyStore::ClearProperty(base::StringPiece name, Error* error) {
   }
   if (error->IsSuccess()) {
     if (!property_changed_callback_.is_null()) {
-      property_changed_callback_.Run(std::string(name));
+      property_changed_callback_.Run(name);
     }
   }
   return error->IsSuccess();
@@ -801,7 +801,7 @@ bool PropertyStore::SetProperty(base::StringPiece name,
       return false;
     }
     if (!property_changed_callback_.is_null()) {
-      property_changed_callback_.Run(std::string(name));
+      property_changed_callback_.Run(name);
     }
     return true;
   }

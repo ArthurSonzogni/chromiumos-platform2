@@ -54,6 +54,7 @@ using testing::AnyNumber;
 using testing::AtLeast;
 using testing::DefaultValue;
 using testing::DoAll;
+using testing::Eq;
 using testing::HasSubstr;
 using testing::Mock;
 using testing::NiceMock;
@@ -2118,7 +2119,7 @@ class ServiceWithMockOnPropertyChanged : public ServiceUnderTest {
  public:
   explicit ServiceWithMockOnPropertyChanged(Manager* manager)
       : ServiceUnderTest(manager) {}
-  MOCK_METHOD(void, OnPropertyChanged, (const std::string&), (override));
+  MOCK_METHOD(void, OnPropertyChanged, (base::StringPiece), (override));
 };
 
 TEST_F(ServiceTest, ConfigureServiceTriggersOnPropertyChanged) {
@@ -2130,8 +2131,9 @@ TEST_F(ServiceTest, ConfigureServiceTriggersOnPropertyChanged) {
 
   // Calling Configure with different values from before triggers a single
   // OnPropertyChanged call per property.
-  EXPECT_CALL(*service, OnPropertyChanged(kUIDataProperty)).Times(1);
-  EXPECT_CALL(*service, OnPropertyChanged(kSaveCredentialsProperty)).Times(1);
+  EXPECT_CALL(*service, OnPropertyChanged(Eq(kUIDataProperty))).Times(1);
+  EXPECT_CALL(*service, OnPropertyChanged(Eq(kSaveCredentialsProperty)))
+      .Times(1);
   {
     Error error;
     service->Configure(args, &error);

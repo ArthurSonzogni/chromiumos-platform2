@@ -61,7 +61,7 @@ class PropertyStoreTest : public testing::TestWithParam<brillo::Any> {
 
   void SetUp() override;
 
-  MOCK_METHOD(void, TestCallback, (const std::string&));
+  MOCK_METHOD(void, TestCallback, (base::StringPiece));
   MOCK_METHOD(KeyValueStore, GetKeyValueStoreCallback, (Error*));
   MOCK_METHOD(KeyValueStores, GetKeyValueStoresCallback, (Error*));
   MOCK_METHOD(bool, SetKeyValueStoreCallback, (const KeyValueStore&, Error*));

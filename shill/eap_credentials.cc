@@ -284,7 +284,7 @@ void EapCredentials::InitPropertyStore(PropertyStore* store) {
 }
 
 // static
-bool EapCredentials::IsEapAuthenticationProperty(const std::string property) {
+bool EapCredentials::IsEapAuthenticationProperty(base::StringPiece property) {
   return property == kEapAnonymousIdentityProperty ||
          property == kEapCertIdProperty || property == kEapIdentityProperty ||
          property == kEapKeyIdProperty || property == kEapKeyMgmtProperty ||

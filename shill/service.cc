@@ -20,6 +20,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/variant_dictionary.h>
@@ -1686,7 +1687,7 @@ void Service::SetProfile(const ProfileRefPtr& p) {
   adaptor_->EmitStringChanged(kProfileProperty, profile_rpc_id);
 }
 
-void Service::OnPropertyChanged(const std::string& property) {
+void Service::OnPropertyChanged(base::StringPiece property) {
   SLOG(this, 1) << __func__ << " " << property;
   if (Is8021x() && EapCredentials::IsEapAuthenticationProperty(property)) {
     OnEapCredentialsChanged(kReasonPropertyUpdate);

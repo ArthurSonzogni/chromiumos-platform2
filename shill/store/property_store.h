@@ -26,7 +26,7 @@ class Error;
 class PropertyStore {
  public:
   using PropertyChangeCallback =
-      base::RepeatingCallback<void(const std::string&)>;
+      base::RepeatingCallback<void(base::StringPiece)>;
   PropertyStore();
   explicit PropertyStore(PropertyChangeCallback property_change_callback);
   PropertyStore(const PropertyStore&) = delete;

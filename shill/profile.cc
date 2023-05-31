@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -89,7 +90,7 @@ Profile::Profile(Manager* manager,
 
 Profile::~Profile() = default;
 
-void Profile::OnPropertyChanged(const std::string& /*name*/) {
+void Profile::OnPropertyChanged(base::StringPiece /*name*/) {
   manager()->OnProfileChanged(this);
 }
 

@@ -17,6 +17,7 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -559,7 +560,7 @@ class Service : public base::RefCounted<Service> {
 
   // Notification that occurs when a single property has been changed via
   // the RPC adaptor.
-  mockable void OnPropertyChanged(const std::string& property);
+  mockable void OnPropertyChanged(base::StringPiece property);
 
   // Notification that occurs when an EAP credential property has been
   // changed.  Some service subclasses can choose to respond to this

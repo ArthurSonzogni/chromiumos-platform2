@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/strings/string_piece.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/refptr_types.h"
@@ -246,7 +247,7 @@ class Profile : public base::RefCounted<Profile> {
                                  std::string (Profile::*get)(Error* error),
                                  bool (Profile::*set)(const std::string&,
                                                       Error*));
-  void OnPropertyChanged(const std::string& name);
+  void OnPropertyChanged(base::StringPiece name);
   std::string DBusGetAlwaysOnVpnMode(Error* error);
   bool DBusSetAlwaysOnVpnMode(const std::string& mode, Error* error);
   RpcIdentifier DBusGetAlwaysOnVpnService(Error* error);
