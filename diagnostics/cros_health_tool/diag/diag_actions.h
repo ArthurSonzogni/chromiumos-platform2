@@ -13,7 +13,6 @@
 
 #include <base/time/default_tick_clock.h>
 #include <base/time/tick_clock.h>
-#include <base/time/time.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/cros_health_tool/diag/repliers/led_lit_up_routine_replier.h"
@@ -26,13 +25,7 @@ namespace diagnostics {
 // routine at a time.
 class DiagActions final {
  public:
-  // The two TimeDelta inputs are used to configure this instance's polling
-  // behavior - the time between polls, and the maximum time before giving up on
-  // a running routine.
-  // Override |tick_clock| for testing only.
-  DiagActions(base::TimeDelta polling_interval,
-              base::TimeDelta maximum_execution_time,
-              const base::TickClock* tick_clock = nullptr);
+  DiagActions();
   DiagActions(const DiagActions&) = delete;
   DiagActions& operator=(const DiagActions&) = delete;
   ~DiagActions();
@@ -157,11 +150,6 @@ class DiagActions final {
   // progress is greater than or equal to |cancellation_percent_|.
   bool force_cancel_ = false;
   uint32_t cancellation_percent_ = 0;
-
-  // Polling interval.
-  const base::TimeDelta kPollingInterval;
-  // Maximum time we're willing to wait for a routine to finish.
-  const base::TimeDelta kMaximumExecutionTime;
 
   // Tracks the passage of time.
   std::unique_ptr<base::DefaultTickClock> default_tick_clock_;

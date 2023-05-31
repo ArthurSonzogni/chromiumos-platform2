@@ -35,6 +35,11 @@ namespace {
 
 namespace mojom = ash::cros_healthd::mojom;
 
+// Poll interval while waiting for a routine to finish.
+constexpr base::TimeDelta kRoutinePollInterval = base::Milliseconds(100);
+// Maximum time we're willing to wait for a routine to finish.
+constexpr base::TimeDelta kMaximumRoutineExecution = base::Hours(1);
+
 const struct {
   const char* readable_status;
   mojom::DiagnosticRoutineStatusEnum status;
@@ -116,22 +121,14 @@ void PrintStatusMessage(const std::string& status_message) {
 
 }  // namespace
 
-DiagActions::DiagActions(base::TimeDelta polling_interval,
-                         base::TimeDelta maximum_execution_time,
-                         const base::TickClock* tick_clock)
-    : kPollingInterval(polling_interval),
-      kMaximumExecutionTime(maximum_execution_time) {
+DiagActions::DiagActions() {
   // Bind the Diagnostics Service.
   RequestMojoServiceWithDisconnectHandler(
       chromeos::mojo_services::kCrosHealthdDiagnostics,
       cros_healthd_diagnostics_service_);
 
-  if (tick_clock) {
-    tick_clock_ = tick_clock;
-  } else {
-    default_tick_clock_ = std::make_unique<base::DefaultTickClock>();
-    tick_clock_ = default_tick_clock_.get();
-  }
+  default_tick_clock_ = std::make_unique<base::DefaultTickClock>();
+  tick_clock_ = default_tick_clock_.get();
   DCHECK(tick_clock_);
 }
 
@@ -606,14 +603,14 @@ bool DiagActions::PollRoutineAndProcessResult() {
 
     base::RunLoop run_loop;
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE, run_loop.QuitClosure(), kPollingInterval);
+        FROM_HERE, run_loop.QuitClosure(), kRoutinePollInterval);
     run_loop.Run();
   } while (
       !response.is_null() &&
       response->routine_update_union->is_noninteractive_update() &&
       response->routine_update_union->get_noninteractive_update()->status ==
           mojom::DiagnosticRoutineStatusEnum::kRunning &&
-      tick_clock_->NowTicks() < start_time + kMaximumExecutionTime);
+      tick_clock_->NowTicks() < start_time + kMaximumRoutineExecution);
 
   if (response.is_null()) {
     std::cout << '\n' << "No GetRoutineUpdateResponse received." << std::endl;
