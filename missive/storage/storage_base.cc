@@ -17,17 +17,21 @@
 
 #include <base/barrier_closure.h>
 #include <base/files/file.h>
+#include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <base/location.h>
 #include <base/memory/ref_counted.h>
 #include <base/task/thread_pool.h>
 #include <base/containers/adapters.h>
 #include <base/functional/callback_forward.h>
+#include <base/memory/ptr_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/timer/timer.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
+#include "base/sequence_checker.h"
 #include "missive/analytics/metrics.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/primitives.h"
@@ -42,6 +46,20 @@
 #include "missive/util/status_macros.h"
 
 namespace reporting {
+
+StorageInterface::StorageInterface(
+    scoped_refptr<QueuesContainer> queues_container,
+    const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
+    : queues_container_(queues_container),
+      sequenced_task_runner_(sequenced_task_runner) {}
+
+StorageInterface::~StorageInterface() {
+  // Drop all queues inside `queues_container_`. This will
+  // destroy them soon, once all other references (if any) are dropped too.
+  sequenced_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&QueuesContainer::DropAllQueues,
+                                queues_container_->GetWeakPtr()));
+}
 
 QueueUploaderInterface::QueueUploaderInterface(
     Priority priority,
@@ -230,13 +248,13 @@ void QueuesContainer::GetDegradationCandidates(
     return;
   }
 
-  // Degradation enabled, populate the result from lowest to highest priority up
-  // to (but not including) the one referenced by `queue`.
+  // Degradation enabled, populate the result from lowest to highest
+  // priority up to (but not including) the one referenced by `queue`.
   // Note: base::NoDestruct<QueueComparator> does not compile.
   static const QueueComparator comparator;
 
-  // Collect queues with lower or same priorities as `queue` except the `queue`
-  // itself.
+  // Collect queues with lower or same priorities as `queue` except the
+  // `queue` itself.
   std::vector<std::pair<Priority, scoped_refptr<StorageQueue>>>
       candidate_queues;
   const auto writing_queue_pair = std::make_pair(priority, queue);
@@ -269,6 +287,16 @@ void QueuesContainer::RegisterCompletionCallback(base::OnceClosure callback) {
     // Copy the callback as base::OnceClosure.
     queue.second->RegisterCompletionCallback(queue_callback);
   }
+}
+
+void QueuesContainer::DropAllQueues() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  queues_.clear();
+}
+
+bool QueuesContainer::IsEmpty() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return queues_.empty();
 }
 
 base::WeakPtr<QueuesContainer> QueuesContainer::GetWeakPtr() {
@@ -595,8 +623,8 @@ void KeyInStorage::EnumerateKeyFiles(
 std::optional<std::pair<base::FilePath, SignedEncryptionInfo>>
 KeyInStorage::LocateValidKeyAndParse(
     const std::map<uint64_t, base::FilePath, std::greater<>>& found_key_files) {
-  // Try to unserialize the key from each found file (latest firs, since the map
-  // is reverse-ordered).
+  // Try to unserialize the key from each found file (latest first, since the
+  // map is reverse-ordered).
   for (const auto& [index, file_path] : found_key_files) {
     base::File key_file(file_path,
                         base::File::FLAG_OPEN | base::File::FLAG_READ);

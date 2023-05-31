@@ -21,7 +21,8 @@
 #include <base/strings/string_piece.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/thread_annotations.h>
-#include "base/time/time.h"
+#include <base/time/time.h>
+
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/verification.h"
@@ -35,6 +36,9 @@
 #include "missive/util/statusor.h"
 
 namespace reporting {
+
+// Name of this implementation of storage. Used for testing.
+static constexpr char kNewStorageName[] = "New Storage";
 
 // NewStorage is a newer implementation of Storage that allows for multiple
 // generations for a given priority. In this implementation, a queue is uniquely
@@ -71,6 +75,8 @@ class NewStorage : public StorageInterface {
           signature_verification_dev_flag,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageInterface>>)>
           completion_cb);
+
+  const char* ImplNameForTesting() const override;
 
   // Wraps and serializes Record (taking ownership of it), encrypts and writes
   // the resulting blob into the NewStorage (the last file of it) according to
@@ -182,14 +188,7 @@ class NewStorage : public StorageInterface {
   // Immutable options, stored at the time of creation.
   const StorageOptions options_;
 
-  // Task runner for storage-wide operations (initialization, queues selection).
-  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
-
-  // Queues container and storage degradation controller. If degradation is
-  // enabled, in case of disk space pressure it facilitates dropping low
-  // priority events to free up space for the higher priority ones.
-  const scoped_refptr<QueuesContainer> queues_container_;
 
   // Encryption module.
   const scoped_refptr<EncryptionModuleInterface> encryption_module_;

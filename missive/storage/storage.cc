@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -19,6 +20,7 @@
 #include <base/files/platform_file.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
@@ -222,9 +224,9 @@ Storage::Storage(
     scoped_refptr<CompressionModule> compression_module,
     scoped_refptr<SignatureVerificationDevFlag> signature_verification_dev_flag,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb)
-    : options_(options),
-      sequenced_task_runner_(queues_container->sequenced_task_runner()),
-      queues_container_(queues_container),
+    : StorageInterface(queues_container,
+                       queues_container->sequenced_task_runner()),
+      options_(options),
       encryption_module_(encryption_module),
       key_delivery_(
           KeyDelivery::Create(encryption_module, async_start_upload_cb)),
@@ -235,6 +237,10 @@ Storage::Storage(
           options.directory())),
       async_start_upload_cb_(async_start_upload_cb) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
+}
+
+const char* Storage::ImplNameForTesting() const {
+  return kLegacyStorageName;
 }
 
 void Storage::Write(Priority priority,

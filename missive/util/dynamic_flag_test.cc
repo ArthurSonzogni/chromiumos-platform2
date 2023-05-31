@@ -15,7 +15,7 @@ class TestFlagDerived : public DynamicFlag {
   explicit TestFlagDerived(bool is_enabled)
       : DynamicFlag("test_flag", is_enabled) {}
 
-  MOCK_METHOD(void, OnValueUpdate, (bool is_enabled), (const override));
+  MOCK_METHOD(void, OnValueUpdate, (bool is_enabled), (override));
 };
 
 class TestFlagAggregated {
@@ -40,7 +40,7 @@ class TestFlagAggregated {
     }
 
    private:
-    void OnValueUpdate(bool is_enabled) const override {
+    void OnValueUpdate(bool is_enabled) override {
       owner_->OnEmbeddedValueUpdate(is_enabled);
     }
 

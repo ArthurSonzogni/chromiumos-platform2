@@ -4,12 +4,14 @@
 
 #include "missive/missive/missive_impl.h"
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
@@ -28,6 +30,7 @@
 #include "missive/dbus/mock_upload_client.h"
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/missive/migration.h"
+#include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module.h"
 #include "missive/util/status.h"
 #include "missive/util/test_support_callbacks.h"
@@ -49,7 +52,14 @@ class MockStorageModule : public StorageModule {
   // call factory method - it is created directly by constructor. The
   // `legacy_storage_enabled` parameter can be any value since this is a feature
   // flag that only affects internal implementation details.
-  MockStorageModule() : StorageModule(/*legacy_storage_enabled=*/true) {}
+  MockStorageModule()
+      : StorageModule(StorageOptions(),
+                      /*legacy_storage_enabled=*/true,
+                      /*async_start_upload_cb=*/base::DoNothing(),
+                      QueuesContainer::Create(/*is_enabled=*/false),
+                      /*encryption_module=*/nullptr,
+                      /*compression_module=*/nullptr,
+                      /*signature_verification_dev_flag=*/nullptr) {}
 
   MOCK_METHOD(void,
               AddRecord,

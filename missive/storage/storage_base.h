@@ -24,6 +24,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/memory/scoped_refptr.h>
 
+#include "base/functional/callback_forward.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/verification.h"
 #include "missive/proto/record.pb.h"
@@ -39,10 +40,102 @@
 // class: new_storage.cc and storage.cc
 namespace reporting {
 
+// Helper class keeps all `StorageQueue`s and manages controlled degradation
+// if is is enabled. The queues are indexed by priority and generation, even
+// though legacy Storage does not actually use generation.
+// Note: Destruction of `Storage` will  trigger destruction of all
+// `StorageQueues` inside `QueuesContainer`, but may not destroy
+// `QueuesContainer` itself since components besides `Storage` may hold the
+// references to `QueuesContainer`. Destruction of `QueuesContainer` will happen
+// when its reference count reaches zero.
+class QueuesContainer
+    : public DynamicFlag,
+      public base::RefCountedDeleteOnSequence<QueuesContainer> {
+ public:
+  // Factory method creates task runner and the container.
+  static scoped_refptr<QueuesContainer> Create(bool is_enabled);
+  QueuesContainer(const QueuesContainer&) = delete;
+  QueuesContainer& operator=(const QueuesContainer) = delete;
+
+  Status AddQueue(Priority priority, scoped_refptr<StorageQueue> queue);
+
+  // Helper method that selects queue by priority. Returns error
+  // if priority does not match any queue.
+  StatusOr<scoped_refptr<StorageQueue>> GetQueue(
+      Priority priority, GenerationGuid generation_guid) const;
+
+  // Helper method that enumerates all queue with given priority and runs action
+  // on each. Returns total count of found queues.
+  size_t RunActionOnAllQueues(
+      Priority priority,
+      base::RepeatingCallback<void(scoped_refptr<StorageQueue>)> action) const;
+
+  // Asynchronously constructs references to all storage queues to consider
+  // for degradation for the sake of the current `queue` (candidates queue is
+  // empty if degradation is disabled). The candidate queues are ordered from
+  // lowest priority to the one below the current one. The method is made
+  // `static` so that even if weak pointer is null, we still can respond (with
+  // an empty result).
+  static void GetDegradationCandidates(
+      base::WeakPtr<QueuesContainer> container,
+      Priority priority,
+      const scoped_refptr<StorageQueue> queue,
+      base::OnceCallback<void(std::queue<scoped_refptr<StorageQueue>>)>
+          result_cb);
+
+  void RegisterCompletionCallback(base::OnceClosure callback);
+
+  // Removes references to all queues inside `queues_`.
+  void DropAllQueues();
+
+  bool IsEmpty() const;
+
+  base::WeakPtr<QueuesContainer> GetWeakPtr();
+
+  scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner() const;
+
+ protected:
+  ~QueuesContainer() override;
+
+ private:
+  friend base::RefCountedDeleteOnSequence<QueuesContainer>;
+  friend class base::DeleteHelper<QueuesContainer>;
+
+  // Map used to retrieve queues for writes, confirms, and flushes.
+  struct Hash {
+    size_t operator()(
+        const std::tuple<Priority, GenerationGuid>& v) const noexcept {
+      const auto& [priority, guid] = v;
+      static constexpr std::hash<Priority> priority_hasher;
+      static constexpr std::hash<GenerationGuid> guid_hasher;
+      return priority_hasher(priority) ^ guid_hasher(guid);
+    }
+  };
+  using QueuesMap = std::unordered_map<std::tuple<Priority, GenerationGuid>,
+                                       scoped_refptr<StorageQueue>,
+                                       Hash>;
+
+  QueuesContainer(
+      bool is_enabled,
+      scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
+
+  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
+  SEQUENCE_CHECKER(sequence_checker_);
+
+  QueuesMap queues_ GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Weak ptr factory.
+  base::WeakPtrFactory<QueuesContainer> weak_ptr_factory_{this};
+};
+
 class StorageInterface : public base::RefCountedThreadSafe<StorageInterface> {
  public:
   StorageInterface(const StorageInterface& other) = delete;
   StorageInterface& operator=(const StorageInterface& other) = delete;
+
+  // Returns the name of the implementation. Used for testing in
+  // `StorageModule`.
+  virtual const char* ImplNameForTesting() const = 0;
 
   // Wraps and serializes Record (taking ownership of it), encrypts and writes
   // the resulting blob into the StorageInterface (the last file of it)
@@ -85,93 +178,22 @@ class StorageInterface : public base::RefCountedThreadSafe<StorageInterface> {
 
  protected:
   // No constructor. Only instantiated via implementation/subclass constructors
-  StorageInterface() = default;
-
-  virtual ~StorageInterface() = default;
-
-  friend class base::RefCountedThreadSafe<StorageInterface>;
-};
-
-// Helper class keeps all `StorageQueue`s and manages controlled degradation
-// if is is enabled. The queues are indexed by priority and generation, even
-// though legacy Storage does not actually use generation.
-// Note: no component but `Storage` itself may hold the reference to
-// `QueuesContainer` (weak pointers are OK) - otherwise destruction of
-// `Storage` will not trigger destruction of `QueuesContainer` and thus
-// `StorageQueues`.
-class QueuesContainer
-    : public DynamicFlag,
-      public base::RefCountedDeleteOnSequence<QueuesContainer> {
- public:
-  // Factory method creates task runner and the container.
-  static scoped_refptr<QueuesContainer> Create(bool is_enabled);
-  QueuesContainer(const QueuesContainer&) = delete;
-  QueuesContainer& operator=(const QueuesContainer) = delete;
-
-  Status AddQueue(Priority priority, scoped_refptr<StorageQueue> queue);
-
-  // Helper method that selects queue by priority. Returns error
-  // if priority does not match any queue.
-  StatusOr<scoped_refptr<StorageQueue>> GetQueue(
-      Priority priority, GenerationGuid generation_guid) const;
-
-  // Helper method that enumerates all queue with given priority and runs action
-  // on each. Returns total count of found queues.
-  size_t RunActionOnAllQueues(
-      Priority priority,
-      base::RepeatingCallback<void(scoped_refptr<StorageQueue>)> action) const;
-
-  // Asynchronously constructs references to all storage queues to consider
-  // for degradation for the sake of the current `queue` (candidates queue is
-  // empty if degradation is disabled). The candidate queues are ordered from
-  // lowest priority to the one below the current one. The method is made
-  // `static` so that even if weak pointer is null, we still can respond (with
-  // an empty result).
-  static void GetDegradationCandidates(
-      base::WeakPtr<QueuesContainer> container,
-      Priority priority,
-      const scoped_refptr<StorageQueue> queue,
-      base::OnceCallback<void(std::queue<scoped_refptr<StorageQueue>>)>
-          result_cb);
-
-  void RegisterCompletionCallback(base::OnceClosure callback);
-
-  base::WeakPtr<QueuesContainer> GetWeakPtr();
-
-  scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner() const;
-
- protected:
-  ~QueuesContainer() override;
-
- private:
-  friend base::RefCountedDeleteOnSequence<QueuesContainer>;
-  friend class base::DeleteHelper<QueuesContainer>;
-
-  // Map used to retrieve queues for writes, confirms, and flushes.
-  struct Hash {
-    size_t operator()(
-        const std::tuple<Priority, GenerationGuid>& v) const noexcept {
-      const auto& [priority, guid] = v;
-      static constexpr std::hash<Priority> priority_hasher;
-      static constexpr std::hash<GenerationGuid> guid_hasher;
-      return priority_hasher(priority) ^ guid_hasher(guid);
-    }
-  };
-  using QueuesMap = std::unordered_map<std::tuple<Priority, GenerationGuid>,
-                                       scoped_refptr<StorageQueue>,
-                                       Hash>;
-
-  QueuesContainer(
-      bool is_enabled,
+  StorageInterface(
+      scoped_refptr<QueuesContainer> queues_container,
       scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
 
+  virtual ~StorageInterface();
+
+  friend class base::RefCountedThreadSafe<StorageInterface>;
+
+  // Queues container and storage degradation controller. If degradation is
+  // enabled, in case of disk space pressure it facilitates dropping low
+  // priority events to free up space for the higher priority ones.
+  const scoped_refptr<QueuesContainer> queues_container_;
+
+  // Task runner for storage-wide operations (initialized in
+  // `queues_container_`).
   const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
-  SEQUENCE_CHECKER(sequence_checker_);
-
-  QueuesMap queues_ GUARDED_BY_CONTEXT(sequence_checker_);
-
-  // Weak ptr factory.
-  base::WeakPtrFactory<QueuesContainer> weak_ptr_factory_{this};
 };
 
 // Bridge class for uploading records from a queue to storage.

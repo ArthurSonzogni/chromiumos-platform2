@@ -23,7 +23,7 @@ bool DynamicFlag::is_enabled() const {
   return is_enabled_.load();
 }
 
-void DynamicFlag::OnValueUpdate(bool is_enabled) const {
+void DynamicFlag::OnValueUpdate(bool is_enabled) {
   // Do nothing.
 }
 

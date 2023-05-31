@@ -36,6 +36,9 @@
 
 namespace reporting {
 
+// Name of this implementation of storage. Used for testing.
+static constexpr char kLegacyStorageName[] = "Legacy Storage";
+
 // Storage represents the data to be collected, stored persistently and uploaded
 // according to the priority.
 class Storage : public StorageInterface {
@@ -55,6 +58,8 @@ class Storage : public StorageInterface {
 
   Storage(const Storage& other) = delete;
   Storage& operator=(const Storage& other) = delete;
+
+  const char* ImplNameForTesting() const override;
 
   // Wraps and serializes Record (taking ownership of it), encrypts and writes
   // the resulting blob into the Storage (the last file of it) according to the
@@ -122,14 +127,7 @@ class Storage : public StorageInterface {
   // Immutable options, stored at the time of creation.
   const StorageOptions options_;
 
-  // Task runner for storage-wide operations (initialization, queues selection).
-  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
-
-  // Queues container and storage degradation controller. If degradation is
-  // enabled, in case of disk space pressure it facilitates dropping low
-  // priority events to free up space for the higher priority ones.
-  const scoped_refptr<QueuesContainer> queues_container_;
 
   // Encryption module.
   const scoped_refptr<EncryptionModuleInterface> encryption_module_;

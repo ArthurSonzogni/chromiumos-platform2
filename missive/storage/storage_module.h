@@ -7,12 +7,15 @@
 
 #include <memory>
 #include <queue>
+#include <string>
 
 #include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/task/sequenced_task_runner.h>
 
-#include "base/functional/callback_forward.h"
+#include "base/functional/callback_helpers.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/verification.h"
@@ -77,18 +80,88 @@ class StorageModule : public StorageModuleInterface, public DynamicFlag {
 
  protected:
   // Constructor can only be called by |Create| factory method.
-  explicit StorageModule(bool legacy_storage_enabled);
+  explicit StorageModule(
+      const StorageOptions& options,
+      bool legacy_storage_enabled,
+      UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
+      scoped_refptr<QueuesContainer> queues_container,
+      scoped_refptr<EncryptionModuleInterface> encryption_module,
+      scoped_refptr<CompressionModule> compression_module,
+      scoped_refptr<SignatureVerificationDevFlag>
+          signature_verification_dev_flag);
 
   // Refcounted object must have destructor declared protected or private.
   ~StorageModule() override;
 
+  // Returns a callback that verifies that `instance->queues_container_`
+  // contains no queue references and then initializes `instance->storage_`.
+  [[nodiscard("Call .Run() on return value.")]] static base::OnceClosure
+  InitAsync(scoped_refptr<StorageModule> instance,
+            bool legacy_storage_enabled,
+            base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
+                callback);
+
+  // Returns a callback that checks (on `queues_container`s task runner)
+  // whether `queues_container` holds any references to any `StorageQueue`.
+  [[nodiscard("Call .Run() on return value.")]] static base::OnceClosure
+  VerifyQueuesAreEmptyAsync(scoped_refptr<QueuesContainer> queues_container);
+
+  // Returns a callback that initializes `instance->storage_`.
+  [[nodiscard("Call .Run() on return value.")]] static base::OnceClosure
+  InitStorageAsync(
+      scoped_refptr<StorageModule> instance,
+      bool legacy_storage_enabled,
+      base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
+          callback);
+
+  // Sets `storage_` to a valid `StorageInterface` or returns error status via
+  // `callback`.
+  void SetStorage(
+      base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback,
+      StatusOr<scoped_refptr<StorageInterface>> storage);
+
+  // Stores `callback` to be called when `StorageModule::InitStorageAsync` is
+  // complete. Used only for testing.
+  void RegisterOnStorageSetCallbackForTesting(
+      base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
+          callback);
+
+  // Returns the name of the implementation of `storage_` via `callback`. Used
+  // for testing.
+  void GetStorageImplNameForTesting(
+      base::OnceCallback<void(const char*)> callback) const;
+
  private:
+  friend class StorageModuleTest;
   friend base::RefCountedThreadSafe<StorageModule>;
 
-  // Called when DynamicFlag flips.
-  void OnValueUpdate(bool is_enabled) const override;
+  // Task runner for serializing storage operations and setting internal
+  // state.
+  const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
+  SEQUENCE_CHECKER(sequence_checker_);
 
-  scoped_refptr<StorageInterface> storage_;
+  // Called when DynamicFlag flips.
+  void OnValueUpdate(bool is_enabled) override;
+
+  // Reference to `Storage` object.
+  // Note: all accesses to `storage_` should be done on StorageModule's
+  // sequenced task runner since via StorageModule::AsyncSetStorage may change
+  // the object `storage_` points to.
+  scoped_refptr<StorageInterface> storage_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Parameters used to create Storage
+  const StorageOptions options_;
+  const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
+  const scoped_refptr<QueuesContainer> queues_container_;
+  const scoped_refptr<EncryptionModuleInterface> encryption_module_;
+  const scoped_refptr<CompressionModule> compression_module_;
+  const scoped_refptr<SignatureVerificationDevFlag>
+      signature_verification_dev_flag_;
+
+  // Callback for testing the result of `AsyncSetStorage` function.
+  base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
+      on_storage_set_cb_for_testing_;
 };
 
 }  // namespace reporting

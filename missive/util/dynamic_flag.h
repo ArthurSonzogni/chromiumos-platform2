@@ -36,7 +36,7 @@ class DynamicFlag {
   // return different values, if `SetValue` happened to be called in a meantime.
   // For this reason it is recommended to either use `is_enabled()` or
   // `OnValueUpdate` but not both in the same class.
-  virtual void OnValueUpdate(bool is_enabled) const;
+  virtual void OnValueUpdate(bool is_enabled);
 
   const std::string name_;
   std::atomic<bool> is_enabled_;
