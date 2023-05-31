@@ -371,42 +371,39 @@ void PropertyStore::SetRpcIdentifierProperty(base::StringPiece name,
               "an rpc_identifier");
 }
 
+namespace {
+// Helper function used in ClearProperty(). Returns true if |name| is found in
+// |property_map|.
+template <class V>
+bool TryClearProperty(base::StringPiece name, Error* error, V* property_map) {
+  const auto it = property_map->find(name);
+  if (it == property_map->end()) {
+    return false;
+  }
+  it->second->Clear(error);
+  return true;
+}
+}  // namespace
+
 bool PropertyStore::ClearProperty(base::StringPiece name, Error* error) {
   SLOG(2) << "Clearing " << name << ".";
 
-  if (base::Contains(bool_properties_, name)) {
-    bool_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(int16_properties_, name)) {
-    int16_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(int32_properties_, name)) {
-    int32_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(key_value_store_properties_, name)) {
-    key_value_store_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(key_value_stores_properties_, name)) {
-    key_value_stores_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(string_properties_, name)) {
-    string_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(stringmap_properties_, name)) {
-    stringmap_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(stringmaps_properties_, name)) {
-    stringmaps_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(strings_properties_, name)) {
-    strings_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(uint8_properties_, name)) {
-    uint8_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(uint16_properties_, name)) {
-    uint16_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(uint16s_properties_, name)) {
-    uint16s_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(uint32_properties_, name)) {
-    uint32_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(uint64_properties_, name)) {
-    uint64_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(rpc_identifier_properties_, name)) {
-    rpc_identifier_properties_[std::string(name)]->Clear(error);
-  } else if (base::Contains(rpc_identifiers_properties_, name)) {
-    rpc_identifiers_properties_[std::string(name)]->Clear(error);
-  } else {
+  if (!(TryClearProperty(name, error, &bool_properties_) ||
+        TryClearProperty(name, error, &int16_properties_) ||
+        TryClearProperty(name, error, &int32_properties_) ||
+        TryClearProperty(name, error, &key_value_store_properties_) ||
+        TryClearProperty(name, error, &key_value_stores_properties_) ||
+        TryClearProperty(name, error, &string_properties_) ||
+        TryClearProperty(name, error, &stringmap_properties_) ||
+        TryClearProperty(name, error, &stringmaps_properties_) ||
+        TryClearProperty(name, error, &strings_properties_) ||
+        TryClearProperty(name, error, &uint8_properties_) ||
+        TryClearProperty(name, error, &uint16_properties_) ||
+        TryClearProperty(name, error, &uint16s_properties_) ||
+        TryClearProperty(name, error, &uint32_properties_) ||
+        TryClearProperty(name, error, &uint64_properties_) ||
+        TryClearProperty(name, error, &rpc_identifier_properties_) ||
+        TryClearProperty(name, error, &rpc_identifiers_properties_))) {
     error->Populate(Error::kInvalidProperty,
                     base::StrCat({"Property ", name, " does not exist."}));
   }
