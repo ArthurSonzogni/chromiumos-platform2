@@ -15,6 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/no_destructor.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 
@@ -222,6 +223,7 @@ const char* GetPreferredPath(udev_device* dev) {
     return udev_device_get_devnode(dev);
   }
 
+  const char* found_entry_name = nullptr;
   for (udev_list_entry* entry = udev_device_get_devlinks_list_entry(dev);
        entry != nullptr; entry = udev_list_entry_get_next(entry)) {
     const char* name = udev_list_entry_get_name(entry);
@@ -235,14 +237,23 @@ const char* GetPreferredPath(udev_device* dev) {
     // 60-persistent-v4l.rules, and supposed to be persistent for built-in
     // cameras so we can safely reuse it across suspend/resume cycles, without
     // updating |path_to_id_| for them.
-    // TODO(shik): Fix https://github.com/systemd/systemd/issues/10683 in the
-    // upstream udev.
-    if (base::StartsWith(name, "/dev/v4l/by-path/",
-                         base::CompareCase::SENSITIVE)) {
-      return name;
+    if (!base::StartsWith(name, "/dev/v4l/by-path/",
+                          base::CompareCase::SENSITIVE)) {
+      continue;
+    }
+
+    // There are two kinds of ID path.
+    // 1. With USB revision (e.g. {PATH}-usbv{REVISION}-0:{PORT})
+    // 2. Without USB revision (e.g. {PATH}-usb-0:{PORT})
+    // Always prefer the former one if it presents.
+    if (found_entry_name == nullptr ||
+        base::StringPiece(name).find("-usbv") != base::StringPiece::npos) {
+      found_entry_name = name;
     }
   }
-
+  if (found_entry_name != nullptr) {
+    return found_entry_name;
+  }
   return udev_device_get_devnode(dev);
 }
 
