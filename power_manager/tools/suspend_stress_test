@@ -452,6 +452,10 @@ while true; do
       fi
     fi
     echo ""
+    # Output the current time (in UTC) to make it easier to correlate the
+    # failure with the device logs.
+    date --utc
+    echo ""
     break
   fi
   wake_time=$(( ( $(random) % wake_interval ) + FLAGS_wake_min ))
