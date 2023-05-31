@@ -1419,6 +1419,38 @@ message GetRecoveryRequestReply {
   bytes recovery_request = 3;
 }
 
+// CreateVaultKeysetRequest is built when a user is trying to get the
+// recovery payload for CryptohomeRecoveryAuthFactor for a user. When the call
+// is made, AuthSession is in an unauthenticated state. After the operation the
+// AuthSession would still be in an unauthenticated state.
+message CreateVaultKeysetRequest {
+  // Serialized form of token that is used to identify Auth Session that needs
+  // to be extended.
+  bytes auth_session_id = 1;
+  // The secret or password used to create the VaultKeyset.
+  bytes passkey = 2;
+  // Label to identify the VaultKeyset. An empty label is for legacy keys,
+  // for which the label has a fallback of being inferred as "legacy-n".
+  string key_label = 3;
+  // AuthFactorType will help us determine the type and subsequently help us
+  // create the right AuthBlock for derivation or authentication.
+  AuthFactorType type = 4;
+  // A flag to disable the creation of KeyData with the VaultKeyset. Used to
+  // emulate legacy VaultKeysets before M91.
+  bool disable_key_data = 5;
+}
+
+message CreateVaultKeysetReply {
+  // Return the status of the request.
+  CryptohomeErrorCode error = 1;
+
+  // Indicate an error if this field exists.
+  // This field is replacing the |error| field above, for more information on
+  // which field to use and the process on the migration, see comment in
+  // CryptohomeErrorInfo.
+  CryptohomeErrorInfo error_info = 2;
+}
+
 message PrepareAuthFactorRequest {
   // The id of a running AuthSession.
   // Async AuthFactor preparation must be associated with an ongoing
