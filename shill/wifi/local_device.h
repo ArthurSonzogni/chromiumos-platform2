@@ -10,6 +10,7 @@
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <gtest/gtest_prod.h>
 
 #include "shill/mac_address.h"
 #include "shill/mockable.h"

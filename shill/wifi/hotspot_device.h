@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <gtest/gtest_prod.h>
 
 #include "shill/mockable.h"
 #include "shill/store/key_value_store.h"

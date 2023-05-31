@@ -16,6 +16,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <google/protobuf/text_format.h>
+#include <gtest/gtest_prod.h>
 
 #include "shill/data_types.h"
 #include "shill/event_dispatcher.h"

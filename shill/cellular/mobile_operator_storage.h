@@ -11,6 +11,7 @@
 
 #include <base/files/file_util.h>
 #include <base/no_destructor.h>
+#include <gtest/gtest_prod.h>
 
 #include "shill/mobile_operator_db/mobile_operator_db.pb.h"
 

@@ -15,6 +15,7 @@
 #include <base/time/time.h>
 #include <chaps/threading_mode.h>
 #include <chaps/token_manager_client.h>
+#include <gtest/gtest_prod.h>
 
 #include <shill/store/pkcs11_util.h>
 
