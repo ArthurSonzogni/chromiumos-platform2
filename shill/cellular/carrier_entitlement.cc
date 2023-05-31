@@ -49,7 +49,7 @@ CarrierEntitlement::~CarrierEntitlement() {
 void CarrierEntitlement::Check(
     const IPAddress& src_address,
     // TODO(b/275440439): pass the dns_list to brillo::http
-    const std::vector<std::string>& dns_list,
+    const std::vector<IPAddress>& dns_list,
     const MobileOperatorMapper::EntitlementConfig& config) {
   last_src_address_ = src_address;
   config_ = config;

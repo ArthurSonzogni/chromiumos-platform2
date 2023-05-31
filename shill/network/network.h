@@ -248,7 +248,10 @@ class Network {
   // Returns all known (global) addresses of the Network. That includes IPv4
   // address from link protocol, or from DHCPv4, or from static IPv4
   // configuration; and IPv6 address from SLAAC and/or from link protocol.
-  std::vector<IPAddress> GetAddresses() const;
+  mockable std::vector<IPAddress> GetAddresses() const;
+
+  // Return all (both IPv4 and IPv6) DNS servers configured for the Network.
+  mockable std::vector<IPAddress> GetDNSServers() const;
 
   // Responds to a neighbor reachability event from patchpanel.
   mockable void OnNeighborReachabilityEvent(
@@ -283,15 +286,6 @@ class Network {
   // test.
   mockable void StartConnectivityTest(
       PortalDetector::ProbingConfiguration probe_config);
-
-  // Properties of the current IP config. Returns IPv4 properties if the Network
-  // is dual-stack, and default (empty) values if the Network is not connected.
-  // TODO(b/269401899): These getters should be deprecated. Instead, callers
-  // should use getters like GetAddresses() to get properties of all IP families
-  // at the same time.
-  mockable std::vector<std::string> dns_servers() const;
-  mockable std::optional<IPAddress> local() const;
-  std::optional<IPAddress> gateway() const;
 
   // TODO(b/232177767): This group of getters and setters are only exposed for
   // the purpose of refactor. New code outside Device should not use these.
@@ -425,6 +419,15 @@ class Network {
 
   // Report the current IP type metrics (v4, v6 or dual-stack) to UMA.
   void ReportIPType();
+
+  // Properties of the current IP config. Returns IPv4 properties if the Network
+  // is dual-stack, and default (empty) values if the Network is not connected.
+  // TODO(b/269401899): These getters should be deprecated. Instead, callers
+  // should use getters like GetAddresses() to get properties of all IP families
+  // at the same time.
+  std::vector<std::string> dns_servers() const;
+  std::optional<IPAddress> local() const;
+  std::optional<IPAddress> gateway() const;
 
   const int interface_index_;
   const std::string interface_name_;

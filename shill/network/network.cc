@@ -21,6 +21,7 @@
 
 #include "shill/connection.h"
 #include "shill/event_dispatcher.h"
+#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
@@ -764,6 +765,31 @@ std::vector<IPAddress> Network::GetAddresses() const {
                 ipconfig()->properties().subnet_prefix);
   }
   // link_protocol_ipv4_properties_ should already be reflected in ipconfig_
+  return result;
+}
+
+std::vector<IPAddress> Network::GetDNSServers() const {
+  std::vector<IPAddress> result;
+  if (ipconfig_) {
+    for (const auto& dns4 : ipconfig_->properties().dns_servers) {
+      auto addr = IPAddress::CreateFromString(dns4);
+      if (!addr.has_value()) {
+        LOG(ERROR) << logging_tag_ << ": Invalid DNS address: " << dns4;
+        continue;
+      }
+      result.push_back(*addr);
+    }
+  }
+  if (ip6config_) {
+    for (const auto& dns6 : ip6config_->properties().dns_servers) {
+      auto addr = IPAddress::CreateFromString(dns6);
+      if (!addr.has_value()) {
+        LOG(ERROR) << logging_tag_ << ": Invalid DNS address: " << dns6;
+        continue;
+      }
+      result.push_back(*addr);
+    }
+  }
   return result;
 }
 

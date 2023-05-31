@@ -60,7 +60,7 @@ class CarrierEntitlement {
   // corresponding to the carrier and return |kAllowed| in the callback if and
   // only if the device is allowed to tether.
   void Check(const IPAddress& src_address,
-             const std::vector<std::string>& dns_list,
+             const std::vector<IPAddress>& dns_list,
              const MobileOperatorMapper::EntitlementConfig& config);
 
   // Reset the cached entitlement check value.

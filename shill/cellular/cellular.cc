@@ -3076,7 +3076,8 @@ void Cellular::EntitlementCheck(
     return;
   }
 
-  if (!network()->local()) {
+  auto network_addresses = network()->GetAddresses();
+  if (network_addresses.empty()) {
     LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix << "no IP address.";
     metrics()->NotifyCellularEntitlementCheckResult(
         Metrics::kCellularEntitlementCheckNoIp);
@@ -3088,7 +3089,8 @@ void Cellular::EntitlementCheck(
   }
 
   entitlement_check_callback_ = std::move(callback);
-  carrier_entitlement_->Check(*network()->local(), network()->dns_servers(),
+  // TODO(b/285242955): Use all available addresses instead of only primary one.
+  carrier_entitlement_->Check(network_addresses[0], network()->GetDNSServers(),
                               mobile_operator_info_->entitlement_config());
 }
 

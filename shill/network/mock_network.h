@@ -55,6 +55,9 @@ class MockNetwork : public Network {
               (override));
   MOCK_METHOD(IPConfig*, GetCurrentIPConfig, (), (const, override));
 
+  MOCK_METHOD(std::vector<IPAddress>, GetAddresses, (), (const, override));
+  MOCK_METHOD(std::vector<IPAddress>, GetDNSServers, (), (const, override));
+
   MOCK_METHOD(bool, RenewDHCPLease, (), (override));
   MOCK_METHOD(void, DestroyDHCPLease, (const std::string&), (override));
   MOCK_METHOD(std::optional<base::TimeDelta>,
@@ -66,8 +69,6 @@ class MockNetwork : public Network {
 
   MOCK_METHOD(void, SetPriority, (NetworkPriority), (override));
 
-  MOCK_METHOD(std::vector<std::string>, dns_servers, (), (const, override));
-  MOCK_METHOD(std::optional<IPAddress>, local, (), (const, override));
   MOCK_METHOD(void,
               OnNeighborReachabilityEvent,
               (const patchpanel::Client::NeighborReachabilityEvent&));

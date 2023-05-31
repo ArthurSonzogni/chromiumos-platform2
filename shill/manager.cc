@@ -1714,7 +1714,7 @@ void Manager::SortServicesTask() {
     if (network) {
       DCHECK(network->IsConnected());
       bool use_dns;
-      if (!found_dns && !network->dns_servers().empty()) {
+      if (!found_dns && !network->GetDNSServers().empty()) {
         found_dns = true;
         use_dns = true;
       } else {

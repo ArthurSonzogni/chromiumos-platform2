@@ -470,15 +470,15 @@ class ManagerTest : public PropertyStoreTest {
 
   NiceMock<MockNetwork>* CreateMockNetwork(MockDevice* mock_device) {
     static const IPAddress ip_addr = *IPAddress::CreateFromString("1.2.3.4");
-    const std::vector<std::string> kDNSServers;
     auto mock_network = std::make_unique<NiceMock<MockNetwork>>(
         mock_device->interface_index(), mock_device->link_name(),
         mock_device->technology());
     auto* mock_network_ptr = mock_network.get();
     EXPECT_CALL(*mock_network, IsConnected()).WillRepeatedly(Return(true));
-    EXPECT_CALL(*mock_network, local()).WillRepeatedly(Return(ip_addr));
-    EXPECT_CALL(*mock_network, dns_servers())
-        .WillRepeatedly(Return(kDNSServers));
+    EXPECT_CALL(*mock_network, GetAddresses())
+        .WillRepeatedly(Return(std::vector<IPAddress>{ip_addr}));
+    EXPECT_CALL(*mock_network, GetDNSServers())
+        .WillRepeatedly(Return(std::vector<IPAddress>{}));
     mock_device->set_network_for_testing(std::move(mock_network));
     return mock_network_ptr;
   }
@@ -2198,14 +2198,15 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   SelectServiceForDevice(mock_service0, mock_devices_[0]);
   SelectServiceForDevice(mock_service1, mock_devices_[1]);
 
-  // Add an entry to the dns_servers() list to test the logic in
+  // Add an entry to the GetDNSServers() list to test the logic in
   // SortServicesTask() which figures out which connection owns the system
   // DNS configuration.
-  std::vector<std::string> dns_servers;
-  dns_servers.push_back("8.8.8.8");
-  EXPECT_CALL(*mock_network0, dns_servers())
+  std::vector<IPAddress> dns_servers;
+  dns_servers.push_back(*IPAddress::CreateFromString("8.8.8.8"));
+
+  EXPECT_CALL(*mock_network0, GetDNSServers())
       .WillRepeatedly(Return(dns_servers));
-  EXPECT_CALL(*mock_network1, dns_servers())
+  EXPECT_CALL(*mock_network1, GetDNSServers())
       .WillRepeatedly(Return(dns_servers));
 
   // If both Services have Connections, the DefaultService follows
