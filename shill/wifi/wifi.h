@@ -497,6 +497,13 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // actual connections or disconnections.
   bool IsStateTransitionConnectionMaintenance(const WiFiService& service) const;
 
+  // Make the difference between a failure to connect to a service and a
+  // disconnection from a service we were connected to. Checking for
+  // |pending_service_| is not necessarily sufficient, since it could be the
+  // case that we were connected and were disconnected intentionally to attempt
+  // to connect to another service, which would be pending.
+  bool IsConnectionAttemptFailure(const WiFiService& service) const;
+
   void HandleDisconnect();
   // Update failure and state for disconnected service.
   // Set failure for disconnected service if disconnect is not user-initiated

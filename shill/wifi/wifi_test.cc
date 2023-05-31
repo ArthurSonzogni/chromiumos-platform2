@@ -3434,6 +3434,68 @@ TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnUnexpectedAP) {
   ReportDisconnectReasonChanged(reason);
 }
 
+TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnAttemptFailureInAssoc) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectingService(RpcIdentifier(""), nullptr, nullptr);
+  EXPECT_EQ(service, GetPendingService());
+  EXPECT_EQ(nullptr, GetCurrentService());
+  // For the failure during a connection attempt, shill should not emit the
+  // disconnection event. During a connection attempt, |pending_service_| could
+  // be valid or set to nullptr, depending on the stage. Association failure
+  // reflects the case when |pending_service_| is still valid.
+  int32_t reason = IEEE_80211::kReasonCodeNonAssociated;
+  EXPECT_CALL(*service,
+              EmitDisconnectionEvent(
+                  Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
+                  IEEE_80211::kReasonCodeNonAssociated))
+      .Times(0);
+  ReportDisconnectReasonChanged(reason);
+}
+
+TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnAttemptFailureIn4WayHandshake) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectingService(RpcIdentifier(""), nullptr, nullptr);
+  ReportStateChanged(WPASupplicant::kInterfaceState4WayHandshake);
+  EXPECT_EQ(service, GetPendingService());
+  EXPECT_EQ(nullptr, GetCurrentService());
+  // For the failure during a connection attempt, shill should not emit the
+  // disconnection event. During a connection attempt, |pending_service_| could
+  // be valid or set to nullptr, depending on the stage. 4-way handshake timeout
+  // reflects the case when |pending_service_| is set to nullptr. In addition,
+  // some connection failure reason code is shared by both attempt failure and
+  // disconnection, and 4-way handshake timeout is one of the examples. Failure
+  // in a connection attempt accompanied by 4-way handshake timeout reason code
+  // should not trigger a Disconnection event.
+  int32_t reason = IEEE_80211::kReasonCode4WayTimeout;
+  EXPECT_CALL(*service,
+              EmitDisconnectionEvent(
+                  Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
+                  IEEE_80211::kReasonCode4WayTimeout))
+      .Times(0);
+  ReportDisconnectReasonChanged(reason);
+}
+
+TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnDisconnectionInRekey) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  ReportStateChanged(WPASupplicant::kInterfaceState4WayHandshake);
+  EXPECT_EQ(nullptr, GetPendingService());
+  // Some connection failure reason code is shared by both attempt failure and
+  // disconnection, and 4-way handshake timeout is one of the examples. Failure
+  // during rekey process accompanied by 4-way handshake timeout reason code
+  // should trigger a Disconnection event.
+  int32_t reason = IEEE_80211::kReasonCode4WayTimeout;
+  EXPECT_CALL(*service,
+              EmitDisconnectionEvent(
+                  Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
+                  IEEE_80211::kReasonCode4WayTimeout))
+      .Times(1);
+  ReportDisconnectReasonChanged(reason);
+}
+
 TEST_F(WiFiMainTest, GetSuffixFromAuthMode) {
   EXPECT_EQ("PSK", wifi()->GetSuffixFromAuthMode("WPA-PSK"));
   EXPECT_EQ("PSK", wifi()->GetSuffixFromAuthMode("WPA2-PSK"));

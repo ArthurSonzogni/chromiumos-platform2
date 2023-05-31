@@ -1204,6 +1204,18 @@ void WiFi::DisconnectReasonChanged(const int32_t new_value) {
                   << " connected or connecting";
     return;
   }
+
+  // wpa_supplicant does not distinguish if a reason code is associated with
+  // a connection attempt failure or disconnection from a connected service. The
+  // metrics for attempt failure is handled in |ServiceDisconnected| so here
+  // only emit a disconnection event when the reason code change is not
+  // associated with a connection attempt failure.
+  if (IsConnectionAttemptFailure(*affected_service)) {
+    SLOG(this, 2) << "WiFi " << link_name()
+                  << " received a disconnection reason change associated with"
+                  << " a connection attempt failure";
+    return;
+  }
   // The case where the device is roaming is handled separately in
   // |HandleRoam()|.
   Metrics::WiFiDisconnectionType disconnect_type =
@@ -1239,6 +1251,30 @@ bool WiFi::IsStateTransitionConnectionMaintenance(
   return service.is_rekey_in_progress();
 }
 
+bool WiFi::IsConnectionAttemptFailure(const WiFiService& service) const {
+  bool is_attempt_failure =
+      pending_service_ && (&service != current_service_.get());
+  // In some cases (for example when the 4-way handshake is still ongoing),
+  // |pending_service_| has already been reset to |nullptr| since we had already
+  // gone through Auth+Assoc stages. It is still a failure to attempt to connect
+  // when we fail then, for example during the handshake. Because of that we
+  // also have to check the state of wpa_supplicant to see if it was in the
+  // middle of e.g. the 4-way handshake when it reported a failure. However, to
+  // ensure that we don't incorrectly classify "maintenance" operations (e.g.
+  // rekeying) as connection *attempt* failures rather than disconnections, we
+  // also need to verify that we're not currently performing a "maintenance"
+  // operation that would temporarily move the state back from "connected" to
+  // "handshake" (rekeying case) or "associating" (roaming case) or similar.
+  // If all those conditions (state is compatible with in-progress connection
+  // and there is no ongoing "maintenance" operation) then a failure implies
+  // a failed *attempted* connection rather than a disconnection.
+  if (!is_attempt_failure) {
+    is_attempt_failure = IsWPAStateConnectionInProgress(supplicant_state_) &&
+                         !IsStateTransitionConnectionMaintenance(service);
+  }
+  return is_attempt_failure;
+}
+
 void WiFi::HandleDisconnect() {
   // Identify the affected service. We expect to get a disconnect
   // event when we fall off a Service that we were connected
@@ -1262,33 +1298,7 @@ void WiFi::HandleDisconnect() {
     // set service state to idle.
     affected_service->SetState(Service::kStateIdle);
   } else {
-    // Make the difference between a failure to connect to a service and a
-    // disconnection from a service we were connected to. Checking for
-    // |pending_service_| is not necessarily sufficient, since it could be the
-    // case that we were connected and were disconnected intentionally to
-    // attempt to connect to another service, which would be pending.
-    bool is_attempt_failure =
-        pending_service_ && (affected_service != current_service_.get());
-    // In some cases (for example when the 4-way handshake is still ongoing),
-    // |pending_service_| has already been reset to |nullptr| since we had
-    // already gone through Auth+Assoc stages. It is still a failure to
-    // attempt to connect when we fail then, for example during the handshake.
-    // Because of that we also have to check the state of wpa_supplicant to see
-    // if it was in the middle of e.g. the 4-way handshake when it reported a
-    // failure. However, to ensure that we don't incorrectly classify
-    // "maintenance" operations (e.g. rekeying) as connection *attempt* failures
-    // rather than disconnections, we also need to verify that we're not
-    // currently performing a "maintenance" operation that would temporarily
-    // move the state back from "connected" to "handshake" (rekeying case) or
-    // "associating" (roaming case) or similar.
-    // If all those conditions (state is compatible with in-progress connection
-    // and there is no ongoing "maintenance" operation) then a failure implies
-    // a failed *attempted* connection rather than a disconnection.
-    if (!is_attempt_failure) {
-      is_attempt_failure =
-          IsWPAStateConnectionInProgress(supplicant_state_) &&
-          !IsStateTransitionConnectionMaintenance(*affected_service);
-    }
+    bool is_attempt_failure = IsConnectionAttemptFailure(*affected_service);
     // Perform necessary handling for disconnected service.
     ServiceDisconnected(affected_service, is_attempt_failure);
   }
