@@ -163,6 +163,12 @@ mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
       return mojom::SupportStatus::NewException(mojom::Exception::New(
           mojom::Exception::Reason::kUnexpected, "Got kUnrecognizedArgument"));
+    // Always supported. There is no rule on the routine arguments.
+    case mojom::RoutineArgument::Tag::kMemory:
+    case mojom::RoutineArgument::Tag::kAudioDriver:
+    case mojom::RoutineArgument::Tag::kCpuStress:
+    case mojom::RoutineArgument::Tag::kCpuCache:
+      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     // Need to be determined by boxster/cros_config.
     case mojom::RoutineArgument::Tag::kUfsLifetime: {
       auto storage_type = StorageType();
@@ -176,15 +182,7 @@ mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
           nullptr));
     }
     // To be designed, set to supported first.
-    case mojom::RoutineArgument::Tag::kMemory:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-    case mojom::RoutineArgument::Tag::kAudioDriver:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-    case mojom::RoutineArgument::Tag::kCpuStress:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     case mojom::RoutineArgument::Tag::kDiskRead:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-    case mojom::RoutineArgument::Tag::kCpuCache:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
   }
 }

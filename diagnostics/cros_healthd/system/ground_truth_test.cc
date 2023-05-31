@@ -83,12 +83,23 @@ class GroundTruthTest : public testing::Test {
   GroundTruth ground_truth_{&mock_context_};
 };
 
-TEST_F(GroundTruthTest, AlwaysSupported) {
+TEST_F(GroundTruthTest, AlwaysSupportedEvents) {
   ExpectEventSupported(mojom::EventCategoryEnum::kUsb);
   ExpectEventSupported(mojom::EventCategoryEnum::kThunderbolt);
   ExpectEventSupported(mojom::EventCategoryEnum::kBluetooth);
   ExpectEventSupported(mojom::EventCategoryEnum::kPower);
   ExpectEventSupported(mojom::EventCategoryEnum::kAudio);
+}
+
+TEST_F(GroundTruthTest, AlwaysSupportedRoutines) {
+  ExpectRoutineSupported(
+      mojom::RoutineArgument::NewMemory(mojom::MemoryRoutineArgument::New()));
+  ExpectRoutineSupported(mojom::RoutineArgument::NewAudioDriver(
+      mojom::AudioDriverRoutineArgument::New()));
+  ExpectRoutineSupported(mojom::RoutineArgument::NewCpuStress(
+      mojom::CpuStressRoutineArgument::New()));
+  ExpectRoutineSupported(mojom::RoutineArgument::NewCpuCache(
+      mojom::CpuCacheRoutineArgument::New()));
 }
 
 TEST_F(GroundTruthTest, CurrentUnsupported) {
