@@ -340,7 +340,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
                                        .tss_key = std::move(pcr_bound_key),
                                        .tss_policy = std::move(auth_policy),
                                    },
-                                   /*reload_data=*/std::nullopt),
+                                   reload_data),
                    _.WithStatus<TPMError>("Failed to load created RSA key"));
 
   return CreateKeyResult{
