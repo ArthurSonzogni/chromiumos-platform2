@@ -22,6 +22,7 @@ group("all") {
     ":system_api-chaps-protos",
     ":system_api-chunneld-protos",
     ":system_api-cryptohome-goprotos",
+    ":system_api-device_management-protos",
     ":system_api-dlcservice-goprotos",
     ":system_api-dlcservice-protos",
     ":system_api-dlp-protos",
@@ -214,6 +215,13 @@ goproto_library("system_api-biod-goprotos") {
     "${proto_in_dir}/constants.proto",
     "${proto_in_dir}/messages.proto",
   ]
+}
+
+proto_library("system_api-device_management-protos") {
+  proto_in_dir = "dbus/device_management"
+  proto_out_dir = "include/device_management/proto_bindings"
+  sources = [ "${proto_in_dir}/device_management_interface.proto" ]
+  standalone = true
 }
 
 proto_library("system_api-kerberos-protos") {

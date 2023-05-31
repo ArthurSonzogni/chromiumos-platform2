@@ -1,0 +1,83 @@
+// Copyright 2023 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// The messages in this file comprise the DBus/Proto interface for
+// the new set of device_management daemon after the refactor, and the
+// associated messages that's used by those interfaces.
+// All input parameter to a call is named with a "Request" suffix,
+// and all output parameter to a call is named with a "Reply" suffix.
+
+syntax = "proto3";
+
+option optimize_for = LITE_RUNTIME;
+
+package device_management;
+option go_package = "chromiumos/system_api/device_management_proto";
+
+///////////////////////////////////////////////////////////////////////////////
+// Messages that's used by the actual request/reply goes below
+///////////////////////////////////////////////////////////////////////////////
+
+// Error codes do not need to be sequential per-call.
+// Prefixes by Request/Reply type should be used to help
+// callers know if specialized errors apply.
+enum DeviceManagementErrorCode {
+  // No error: the operation succeeded.
+  DEVICE_MANAGEMENT_ERROR_NOT_SET = 0;
+
+  DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_INVALID = 1;
+  DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_STORE = 2;
+  DEVICE_MANAGEMENT_ERROR_FIRMWARE_MANAGEMENT_PARAMETERS_CANNOT_REMOVE = 3;
+  DEVICE_MANAGEMENT_ERROR_INSTALL_ATTRIBUTES_GET_FAILED = 4;
+  DEVICE_MANAGEMENT_ERROR_INSTALL_ATTRIBUTES_SET_FAILED = 5;
+  DEVICE_MANAGEMENT_ERROR_INSTALL_ATTRIBUTES_FINALIZE_FAILED = 6;
+}
+
+// ----------------- Firmware Management Parameters Interface -----------------
+
+// This represents the content of Firmware Management Parameters
+message FirmwareManagementParameters {
+  // The Developer Flags, this is part of the FWMP.
+  uint32 flags = 1;
+
+  // Developer Key Hash, this is part of the FWMP.
+  // For current version of the FWMP (V1.0), this is the size of SHA256.
+  bytes developer_key_hash = 2;
+}
+
+// Input parameters to GetFirmwareManagementParameters()
+message GetFirmwareManagementParametersRequest {}
+
+// Output parameters for GetFirmwareManagementParameters()
+message GetFirmwareManagementParametersReply {
+  // If there's a problem retrieving the FWMP, then this will be set.
+  DeviceManagementErrorCode error = 1;
+
+  // The firmware management parameters that is retrieved.
+  FirmwareManagementParameters fwmp = 2;
+}
+
+// Input parameters to RemoveFirmwareManagementParameters()
+message RemoveFirmwareManagementParametersRequest {
+  // Note that calling this function will destroy the NVRAM space that
+  // stores the FWMP (if defined).
+}
+
+// Output parameters for RemoveFirmwareManagementParameters()
+message RemoveFirmwareManagementParametersReply {
+  // If there's a problem removing the FWMP, then this will be set.
+  DeviceManagementErrorCode error = 1;
+}
+
+// Input parameters to SetFirmwareManagementParameters()
+message SetFirmwareManagementParametersRequest {
+  // The firmware management parameters to set.
+  FirmwareManagementParameters fwmp = 1;
+}
+
+// Output parameters for SetFirmwareManagementParameters()
+message SetFirmwareManagementParametersReply {
+  // If there's a problem setting the FWMP, then this will be set.
+  DeviceManagementErrorCode error = 1;
+}
