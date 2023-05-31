@@ -41,6 +41,7 @@ class GroundTruth final {
   std::string HasHdmi();
   std::string HasAudioJack();
   std::string HasSdReader();
+  std::string StorageType();
 
  private:
   std::string ReadCrosConfig(const std::string& path,

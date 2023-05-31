@@ -37,6 +37,15 @@ class GroundTruthTest : public testing::Test {
     ExpectEventStatus(category, mojom::SupportStatus::Tag::kException);
   }
 
+  void ExpectRoutineSupported(mojom::RoutineArgumentPtr arg) {
+    ExpectRoutineStatus(std::move(arg), mojom::SupportStatus::Tag::kSupported);
+  }
+
+  void ExpectRoutineUnsupported(mojom::RoutineArgumentPtr arg) {
+    ExpectRoutineStatus(std::move(arg),
+                        mojom::SupportStatus::Tag::kUnsupported);
+  }
+
   void SetCrosConfig(const std::string& path,
                      const std::string& property,
                      const std::string& value) {
@@ -61,6 +70,12 @@ class GroundTruthTest : public testing::Test {
   void ExpectEventStatus(mojom::EventCategoryEnum category,
                          mojom::SupportStatus::Tag expect_status) {
     auto status = ground_truth_.GetEventSupportStatus(category);
+    EXPECT_EQ(TagToString(status->which()), TagToString(expect_status));
+  }
+
+  void ExpectRoutineStatus(mojom::RoutineArgumentPtr arg,
+                           mojom::SupportStatus::Tag expect_status) {
+    auto status = ground_truth_.GetRoutineSupportStatus(std::move(arg));
     EXPECT_EQ(TagToString(status->which()), TagToString(expect_status));
   }
 
@@ -297,6 +312,35 @@ TEST_F(GroundTruthTest, SdCardEvent) {
       ExpectEventSupported(mojom::EventCategoryEnum::kSdCard);
     } else {
       ExpectEventUnsupported(mojom::EventCategoryEnum::kSdCard);
+    }
+  }
+}
+
+TEST_F(GroundTruthTest, UfsLifetimeRoutine) {
+  std::vector<std::pair</*storage-type=*/std::string, /*supported=*/bool>>
+      test_combinations = {
+          {cros_config_value::kStorageTypeUfs, true},
+          {cros_config_value::kStorageTypeUnknown, false},
+          {cros_config_value::kStorageTypeEmmc, false},
+          {cros_config_value::kStorageTypeNvme, false},
+          {cros_config_value::kStorageTypeSata, false},
+          {cros_config_value::kStorageTypeBridgedEmmc, false},
+          {"Others", false},
+      };
+  mojom::UfsLifetimeRoutineArgument arg;
+
+  // Test not set the cros_config first to simulate file not found.
+  ExpectRoutineUnsupported(mojom::RoutineArgument::NewUfsLifetime(arg.Clone()));
+
+  for (const auto& [storage_type, supported] : test_combinations) {
+    SetCrosConfig(cros_config_path::kHardwareProperties,
+                  cros_config_property::kStorageType, storage_type);
+    if (supported) {
+      ExpectRoutineSupported(
+          mojom::RoutineArgument::NewUfsLifetime(arg.Clone()));
+    } else {
+      ExpectRoutineUnsupported(
+          mojom::RoutineArgument::NewUfsLifetime(arg.Clone()));
     }
   }
 }

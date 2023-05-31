@@ -159,21 +159,33 @@ void GroundTruth::IsEventSupported(
 mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
     mojom::RoutineArgumentPtr routine_arg) {
   switch (routine_arg->which()) {
+    // UnrecognizedArgument.
+    case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
+      return mojom::SupportStatus::NewException(mojom::Exception::New(
+          mojom::Exception::Reason::kUnexpected, "Got kUnrecognizedArgument"));
+    // Need to be determined by boxster/cros_config.
+    case mojom::RoutineArgument::Tag::kUfsLifetime: {
+      auto storage_type = StorageType();
+      if (storage_type == cros_config_value::kStorageTypeUfs) {
+        return mojom::SupportStatus::NewSupported(mojom::Supported::New());
+      }
+
+      return mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+          WrapUnsupportedString(cros_config_property::kStorageType,
+                                storage_type),
+          nullptr));
+    }
+    // To be designed, set to supported first.
     case mojom::RoutineArgument::Tag::kMemory:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     case mojom::RoutineArgument::Tag::kAudioDriver:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     case mojom::RoutineArgument::Tag::kCpuStress:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-    case mojom::RoutineArgument::Tag::kUfsLifetime:
-      return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     case mojom::RoutineArgument::Tag::kDiskRead:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     case mojom::RoutineArgument::Tag::kCpuCache:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
-    case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
-      return mojom::SupportStatus::NewException(mojom::Exception::New(
-          mojom::Exception::Reason::kUnexpected, "Got kUnrecognizedArgument"));
   }
 }
 
@@ -212,6 +224,11 @@ std::string GroundTruth::HasAudioJack() {
 std::string GroundTruth::HasSdReader() {
   return ReadCrosConfig(cros_config_path::kHardwareProperties,
                         cros_config_property::kHasSdReader);
+}
+
+std::string GroundTruth::StorageType() {
+  return ReadCrosConfig(cros_config_path::kHardwareProperties,
+                        cros_config_property::kStorageType);
 }
 
 std::string GroundTruth::ReadCrosConfig(const std::string& path,
