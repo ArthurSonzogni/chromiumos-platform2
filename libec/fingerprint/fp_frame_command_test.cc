@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -67,6 +68,7 @@ class FpFrameCommandTest : public testing::Test {
     MOCK_METHOD(bool, EcCommandRun, (int fd), (override));
     MOCK_METHOD(FpFramePacket*, Resp, (), (override));
     MOCK_METHOD(uint32_t, Result, (), (const, override));
+    MOCK_METHOD(void, Sleep, (base::TimeDelta duration), (override));
   };
 
  protected:
