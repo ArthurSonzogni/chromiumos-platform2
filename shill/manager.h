@@ -756,11 +756,6 @@ class Manager {
   // Returns the names of all of the claimed devices by ClaimDevice().
   std::vector<std::string> ClaimedDevices(Error* error);
 
-  void StartConnectivityTest(const DeviceRefPtr& device);
-  void ConnectivityTestCallback(const std::string& interface_name,
-                                const std::string& logging_tag,
-                                const PortalDetector::Result& result);
-
   EventDispatcher* dispatcher_;
   ControlInterface* control_interface_;
   Metrics* metrics_;
@@ -894,11 +889,6 @@ class Manager {
   bool network_throttling_enabled_;
   uint32_t download_rate_kbits_;
   uint32_t upload_rate_kbits_;
-
-  // Map of active portal detectors for CreateConnectivityReport, indexed by
-  // the Connection interface name.
-  std::map<std::string, std::unique_ptr<PortalDetector>>
-      connectivity_test_portal_detectors_;
 
   // Tethering manager to manage tethering related state machine, properties
   // and session.

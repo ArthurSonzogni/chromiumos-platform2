@@ -1054,6 +1054,35 @@ std::unique_ptr<ConnectionDiagnostics> Network::CreateConnectionDiagnostics(
       dispatcher_, metrics_, base::DoNothing());
 }
 
+void Network::StartConnectivityTest(
+    PortalDetector::ProbingConfiguration probe_config) {
+  connectivity_test_portal_detector_ = std::make_unique<PortalDetector>(
+      dispatcher_, probe_config,
+      base::BindRepeating(&Network::ConnectivityTestCallback,
+                          weak_factory_.GetWeakPtr(), logging_tag_));
+  auto local_addr = local();
+  if (!local_addr) {
+    LOG(DFATAL) << logging_tag_ << ": Does not have a valid address";
+    return;
+  }
+  if (connectivity_test_portal_detector_->Start(interface_name_, *local_addr,
+                                                dns_servers(), logging_tag_)) {
+    LOG(WARNING) << logging_tag_ << ": Failed to start connectivity test";
+  } else {
+    LOG(INFO) << logging_tag_ << ": Started connectivity test";
+  }
+}
+
+void Network::ConnectivityTestCallback(const std::string& device_logging_tag,
+                                       const PortalDetector::Result& result) {
+  LOG(INFO) << device_logging_tag
+            << ": Completed connectivity test. HTTP probe phase="
+            << result.http_phase << ", status=" << result.http_status
+            << ". HTTPS probe phase=" << result.https_phase
+            << ", status=" << result.https_status;
+  connectivity_test_portal_detector_.reset();
+}
+
 bool Network::IsConnectedViaTether() const {
   if (!ipconfig_) {
     return false;

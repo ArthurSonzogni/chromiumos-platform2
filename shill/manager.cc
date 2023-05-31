@@ -277,8 +277,6 @@ Manager::~Manager() {
   // Clear Device references.
   device_geolocation_info_.clear();
 
-  connectivity_test_portal_detectors_.clear();
-
   // Log an error if Service references beyond |services_| still exist.
   for (ServiceRefPtr& service : services_) {
     if (!service->HasOneRef()) {
@@ -2122,11 +2120,14 @@ void Manager::ConnectToBestServicesForTechnologies(bool is_wifi) {
 void Manager::CreateConnectivityReport(Error* /*error*/) {
   LOG(INFO) << "Creating Connectivity Report";
 
-  // Abort any pending connectivity tests and clear results.
-  connectivity_test_portal_detectors_.clear();
-
   for (const auto& device : devices_) {
-    StartConnectivityTest(device);
+    if (!device->network()->IsConnected()) {
+      LOG(INFO) << device->LoggingTag()
+                << ": Skipping connectivity test: no Network connection";
+      return;
+    }
+    device->network()->StartConnectivityTest(
+        GetPortalDetectorProbingConfiguration());
   }
 }
 
@@ -3064,47 +3065,6 @@ DeviceRefPtr Manager::GetDeviceConnectedToService(ServiceRefPtr service) {
     }
   }
   return nullptr;
-}
-
-void Manager::StartConnectivityTest(const DeviceRefPtr& device) {
-  if (!device->network()->IsConnected()) {
-    LOG(INFO) << device->LoggingTag()
-              << ": Skipping connectivity test: no Network connection";
-    return;
-  }
-
-  auto portal_detector = std::make_unique<PortalDetector>(
-      dispatcher(), GetPortalDetectorProbingConfiguration(),
-      base::BindRepeating(&Manager::ConnectivityTestCallback,
-                          weak_factory_.GetWeakPtr(), device->link_name(),
-                          device->LoggingTag()));
-  auto iter = connectivity_test_portal_detectors_
-                  .insert(std::make_pair(device->link_name(),
-                                         std::move(portal_detector)))
-                  .first;
-  auto local_addr = device->network()->local();
-  if (!local_addr) {
-    LOG(DFATAL) << device->LoggingTag() << ": Does not have a valid address";
-    return;
-  }
-  if (!iter->second->Start(device->link_name(), *local_addr,
-                           device->network()->dns_servers(),
-                           device->LoggingTag())) {
-    LOG(WARNING) << device->LoggingTag()
-                 << ": Failed to start connectivity test";
-  } else {
-    LOG(INFO) << device->LoggingTag() << ": Started connectivity test";
-  }
-}
-
-void Manager::ConnectivityTestCallback(const std::string& interface_name,
-                                       const std::string& logging_tag,
-                                       const PortalDetector::Result& result) {
-  LOG(INFO) << logging_tag << ": Completed connectivity test. HTTP probe phase="
-            << result.http_phase << ", status=" << result.http_status
-            << ". HTTPS probe phase=" << result.https_phase
-            << ", status=" << result.https_status;
-  connectivity_test_portal_detectors_.erase(interface_name);
 }
 
 void Manager::SetLOHSEnabled(

@@ -279,6 +279,11 @@ class Network {
   // Initiates connection diagnostics on this Network.
   mockable void StartConnectionDiagnostics();
 
+  // Start a separate PortalDetector instance for the purpose of connectivity
+  // test.
+  mockable void StartConnectivityTest(
+      PortalDetector::ProbingConfiguration probe_config);
+
   // Properties of the current IP config. Returns IPv4 properties if the Network
   // is dual-stack, and default (empty) values if the Network is not connected.
   // TODO(b/269401899): These getters should be deprecated. Instead, callers
@@ -388,6 +393,9 @@ class Network {
   // Stop connection diagnostics if it is running.
   void StopConnectionDiagnostics();
 
+  void ConnectivityTestCallback(const std::string& device_logging_tag,
+                                const PortalDetector::Result& result);
+
   // Functions for IPv4.
   // Triggers a reconfiguration on connection for an IPv4 config change.
   void OnIPv4ConfigUpdated();
@@ -493,6 +501,8 @@ class Network {
   // current network connection.
   std::optional<PortalDetector::Result> network_validation_result_;
   std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
+  // Another instance of PortalDetector used for CreateConnectivityReport.
+  std::unique_ptr<PortalDetector> connectivity_test_portal_detector_;
 
   std::vector<EventHandler*> event_handlers_;
 
