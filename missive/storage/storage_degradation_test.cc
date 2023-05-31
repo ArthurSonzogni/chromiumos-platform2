@@ -856,8 +856,10 @@ class LegacyStorageDegradationTest
   // Sequenced task runner where all EXPECTs will happen - main thread.
   const scoped_refptr<base::SequencedTaskRunner> main_task_runner_{
       base::SequencedTaskRunner::GetCurrentDefault()};
-
   SEQUENCE_CHECKER(sequence_checker_);
+
+  analytics::Metrics::TestEnvironment metrics_test_environment_;
+
   base::ScopedTempDir location_;
   TestStorageOptions options_;
   scoped_refptr<test::Decryptor> decryptor_;
@@ -909,6 +911,10 @@ TEST_P(LegacyStorageDegradationTest, WriteAttemptWithRecordsSheddingFailure) {
 
   // Write records on a higher priority queue to see if records shedding has any
   // effect.
+  EXPECT_CALL(
+      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+      SendSparseToUMA(StrEq(StorageQueue::kStorageDegradationAmount), _))
+      .Times(0);
   const Status write_result = WriteString(IMMEDIATE, kData[2]);
   ASSERT_FALSE(write_result.ok());
 
@@ -941,6 +947,10 @@ TEST_P(LegacyStorageDegradationTest, WriteAttemptWithRecordsSheddingSuccess) {
   // effect.
   if (is_degradation_enabled()) {
     LOG(ERROR) << "Feature Enabled >> RecordSheddingSuccessTest";
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendSparseToUMA(StrEq(StorageQueue::kStorageDegradationAmount), Gt(0)))
+        .WillOnce(Return(true));
     // Write and expect immediate upload.
     test::TestCallbackAutoWaiter waiter;
     EXPECT_CALL(set_mock_uploader_expectations_,
@@ -956,6 +966,10 @@ TEST_P(LegacyStorageDegradationTest, WriteAttemptWithRecordsSheddingSuccess) {
     WriteStringOrDie(IMMEDIATE, kData[2]);
   } else {
     LOG(ERROR) << "Feature Disabled >> RecordSheddingSuccessTest";
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendSparseToUMA(StrEq(StorageQueue::kStorageDegradationAmount), _))
+        .Times(0);
     const Status write_result_immediate = WriteString(IMMEDIATE, kData[2]);
     ASSERT_FALSE(write_result_immediate.ok());
   }
@@ -1002,6 +1016,10 @@ TEST_P(LegacyStorageDegradationTest, RecordsSheddingSecurityCantShedRecords) {
   // effect. Expect upload even with failure, since there are other records in
   // the queue.
   {
+    EXPECT_CALL(
+        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendSparseToUMA(StrEq(StorageQueue::kStorageDegradationAmount), _))
+        .Times(0);
     test::TestCallbackAutoWaiter waiter;
     EXPECT_CALL(set_mock_uploader_expectations_,
                 Call(Eq(UploaderInterface::UploadReason::IMMEDIATE_FLUSH)))

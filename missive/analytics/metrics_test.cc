@@ -41,6 +41,16 @@ TEST_F(MetricsTest, SendBoolToUMA) {
   task_environment_.RunUntilIdle();
 }
 
+TEST_F(MetricsTest, SendSparseToUMA) {
+  static constexpr const char* kName = "test";
+  static constexpr int sample = 12345;
+  EXPECT_CALL(Metrics::TestEnvironment::GetMockMetricsLibrary(),
+              SendSparseToUMA(kName, sample))
+      .Times(1);
+  Metrics::SendSparseToUMA(kName, sample);
+  task_environment_.RunUntilIdle();
+}
+
 TEST_F(MetricsTest, SendEnumToUMA) {
   enum Test {
     Unknown = 0,

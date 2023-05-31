@@ -64,6 +64,9 @@ class Metrics {
   // Proxy of `MetricsLibraryInterface::SendLinearToUMA`.
   static bool SendLinearToUMA(const std::string& name, int sample, int max);
 
+  // Proxy of `MetricsLibraryInterface::SendSparseToUMA`.
+  static bool SendSparseToUMA(const std::string& name, int sample);
+
   // Proxy of `MetricsLibraryInterface::SendToUMA`.
   static bool SendToUMA(
       const std::string& name, int sample, int min, int max, int nbuckets);

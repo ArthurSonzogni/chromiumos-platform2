@@ -104,9 +104,11 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   using InitRetryCb = base::RepeatingCallback<StatusOr<base::TimeDelta>(
       Status init_status, size_t retry_count)>;
 
-  // UMA name
+  // UMA names
   static constexpr char kResourceExhaustedCaseUmaName[] =
       "Platform.Missive.ResourceExhaustedCase";
+  static constexpr char kStorageDegradationAmount[] =
+      "Platform.Missive.StorageDegradationAmount";
 
   // Creates StorageQueue instance with the specified options, and returns it
   // with the |completion_cb| callback. |async_start_upload_cb| is a factory

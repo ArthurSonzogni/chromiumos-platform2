@@ -5,6 +5,7 @@
 #include "missive/storage/storage_queue.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <iterator>
 #include <limits>
@@ -24,6 +25,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/hash/hash.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -2061,9 +2063,23 @@ void StorageQueue::ShedOriginalQueueRecords(
 
 bool StorageQueue::ShedFiles(size_t space_to_recover) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
-  if (!active_read_operations_ && options_.can_shed_records()) {
-    while (files_.size() > 1) {  // At least one file must remain.
+  if (!active_read_operations_ && options_.can_shed_records() &&
+      files_.size() > 1  // At least one file must remain after shedding.
+  ) {
+    uint64_t total_shed_size = 0u;
+    base::ScopedClosureRunner report(base::BindOnce(
+        [](const uint64_t* total_shed_size) {
+          const auto res = analytics::Metrics::SendSparseToUMA(
+              /*name=*/kStorageDegradationAmount,
+              static_cast<int>(std::ceil(*total_shed_size / 1024u)));  // In KiB
+          LOG_IF(ERROR, !res)
+              << "Send degradation UMA failure, " << kStorageDegradationAmount
+              << " " << *total_shed_size;
+        },
+        base::Unretained(&total_shed_size)));
+    do {
       // Delete the first file and discard reserved space.
+      total_shed_size += files_.begin()->second->size();
       files_.begin()->second->DeleteWarnIfFailed();
       files_.erase(files_.begin());
       // Reset first available seq_id to the file that became the first.
@@ -2073,7 +2089,7 @@ bool StorageQueue::ShedFiles(size_t space_to_recover) {
           options_.disk_space_resource()->GetTotal()) {
         return true;
       }
-    }
+    } while (files_.size() > 1);  // At least one file must remain.
   }
   return false;
 }

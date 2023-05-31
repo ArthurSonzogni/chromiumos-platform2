@@ -76,6 +76,11 @@ bool Metrics::SendBoolToUMA(const std::string& name, bool sample) {
 }
 
 // static
+bool Metrics::SendSparseToUMA(const std::string& name, int sample) {
+  return PostUMATask(&MetricsLibraryInterface::SendSparseToUMA, name, sample);
+}
+
+// static
 bool Metrics::SendEnumToUMA(const std::string& name,
                             int sample,
                             int exclusive_max) {
