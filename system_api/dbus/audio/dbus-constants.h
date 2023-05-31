@@ -58,6 +58,7 @@ const char kSetFlossEnabled[] = "SetFlossEnabled";
 const char kSetSpeakOnMuteDetection[] = "SetSpeakOnMuteDetection";
 const char kSpeakOnMuteDetectionEnabled[] = "SpeakOnMuteDetectionEnabled";
 const char kSetForceRespectUiGains[] = "SetForceRespectUiGains";
+const char kGetNumStreamIgnoreUiGains[] = "GetNumStreamIgnoreUiGains";
 
 // Names of properties returned by GetNodes() and GetNodeInfos()
 const char kIsInputProperty[] = "IsInput";
@@ -117,6 +118,7 @@ const char kHotwordTriggered[] = "HotwordTriggered";
 const char kBluetoothBatteryChanged[] = "BluetoothBatteryChanged";
 const char kSurveyTrigger[] = "SurveyTrigger";
 const char kSpeakOnMuteDetected[] = "SpeakOnMuteDetected";
+const char kNumStreamIgnoreUiGainsChanged[] = "NumStreamIgnoreUiGainsChanged";
 }  // namespace cras
 
 #endif  // SYSTEM_API_DBUS_AUDIO_DBUS_CONSTANTS_H_
