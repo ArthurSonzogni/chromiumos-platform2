@@ -17,6 +17,7 @@
 #include <base/notreached.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -939,14 +940,14 @@ void WiFiService::SendPostReadyStateMetrics(
 
 // private methods
 void WiFiService::HelpRegisterConstDerivedString(
-    const std::string& name, std::string (WiFiService::*get)(Error*)) {
+    base::StringPiece name, std::string (WiFiService::*get)(Error*)) {
   mutable_store()->RegisterDerivedString(
       name, StringAccessor(new CustomAccessor<WiFiService, std::string>(
                 this, get, nullptr)));
 }
 
 void WiFiService::HelpRegisterDerivedString(
-    const std::string& name,
+    base::StringPiece name,
     std::string (WiFiService::*get)(Error* error),
     bool (WiFiService::*set)(const std::string&, Error*)) {
   mutable_store()->RegisterDerivedString(
@@ -955,7 +956,7 @@ void WiFiService::HelpRegisterDerivedString(
 }
 
 void WiFiService::HelpRegisterDerivedStrings(
-    const std::string& name,
+    base::StringPiece name,
     Strings (WiFiService::*get)(Error* error),
     bool (WiFiService::*set)(const Strings&, Error*)) {
   mutable_store()->RegisterDerivedStrings(
@@ -964,7 +965,7 @@ void WiFiService::HelpRegisterDerivedStrings(
 }
 
 void WiFiService::HelpRegisterWriteOnlyDerivedString(
-    const std::string& name,
+    base::StringPiece name,
     bool (WiFiService::*set)(const std::string&, Error*),
     void (WiFiService::*clear)(Error* error),
     const std::string* default_value) {
@@ -975,7 +976,7 @@ void WiFiService::HelpRegisterWriteOnlyDerivedString(
 }
 
 void WiFiService::HelpRegisterDerivedUint16(
-    const std::string& name,
+    base::StringPiece name,
     uint16_t (WiFiService::*get)(Error* error),
     bool (WiFiService::*set)(const uint16_t& value, Error* error),
     void (WiFiService::*clear)(Error* error)) {
@@ -985,7 +986,7 @@ void WiFiService::HelpRegisterDerivedUint16(
 }
 
 void WiFiService::HelpRegisterConstDerivedInt32(
-    const std::string& name, int32_t (WiFiService::*get)(Error* error)) {
+    base::StringPiece name, int32_t (WiFiService::*get)(Error* error)) {
   mutable_store()->RegisterDerivedInt32(
       name, Int32Accessor(
                 new CustomAccessor<WiFiService, int32_t>(this, get, nullptr)));

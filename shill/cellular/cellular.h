@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -554,12 +555,12 @@ class Cellular : public Device,
   // Reads of the property will be handled by invoking |get|.
   // Writes to the property will be handled by invoking |set|.
   // Clearing the property will be handled by PropertyStore.
-  void HelpRegisterDerivedBool(const std::string& name,
+  void HelpRegisterDerivedBool(base::StringPiece name,
                                bool (Cellular::*get)(Error* error),
                                bool (Cellular::*set)(const bool& value,
                                                      Error* error));
   void HelpRegisterConstDerivedString(
-      const std::string& name, std::string (Cellular::*get)(Error* error));
+      base::StringPiece name, std::string (Cellular::*get)(Error* error));
 
   void OnConnectReply(std::string iccid,
                       bool is_user_triggered,

@@ -474,13 +474,13 @@ bool Profile::UpdateDevice(const DeviceRefPtr& device) {
 }
 
 void Profile::HelpRegisterConstDerivedRpcIdentifiers(
-    const std::string& name, RpcIdentifiers (Profile::*get)(Error* error)) {
+    base::StringPiece name, RpcIdentifiers (Profile::*get)(Error* error)) {
   store_.RegisterDerivedRpcIdentifiers(
       name, RpcIdentifiersAccessor(new CustomAccessor<Profile, RpcIdentifiers>(
                 this, get, nullptr)));
 }
 
-void Profile::HelpRegisterConstDerivedStrings(const std::string& name,
+void Profile::HelpRegisterConstDerivedStrings(base::StringPiece name,
                                               Strings (Profile::*get)(Error*)) {
   store_.RegisterDerivedStrings(
       name, StringsAccessor(
@@ -488,7 +488,7 @@ void Profile::HelpRegisterConstDerivedStrings(const std::string& name,
 }
 
 void Profile::HelpRegisterDerivedRpcIdentifier(
-    const std::string& name,
+    base::StringPiece name,
     RpcIdentifier (Profile::*get)(Error*),
     bool (Profile::*set)(const RpcIdentifier&, Error*)) {
   store_.RegisterDerivedRpcIdentifier(
@@ -497,7 +497,7 @@ void Profile::HelpRegisterDerivedRpcIdentifier(
 }
 
 void Profile::HelpRegisterDerivedString(
-    const std::string& name,
+    base::StringPiece name,
     std::string (Profile::*get)(Error* error),
     bool (Profile::*set)(const std::string&, Error*)) {
   store_.RegisterDerivedString(

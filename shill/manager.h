@@ -18,6 +18,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
+#include <base/strings/string_piece.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -657,20 +658,20 @@ class Manager {
   void LoadDeviceFromProfiles(const DeviceRefPtr& device);
 
   void HelpRegisterConstDerivedRpcIdentifier(
-      const std::string& name, RpcIdentifier (Manager::*get)(Error*));
+      base::StringPiece name, RpcIdentifier (Manager::*get)(Error*));
   void HelpRegisterConstDerivedRpcIdentifiers(
-      const std::string& name, RpcIdentifiers (Manager::*get)(Error*));
-  void HelpRegisterDerivedString(const std::string& name,
+      base::StringPiece name, RpcIdentifiers (Manager::*get)(Error*));
+  void HelpRegisterDerivedString(base::StringPiece name,
                                  std::string (Manager::*get)(Error* error),
                                  bool (Manager::*set)(const std::string&,
                                                       Error*));
-  void HelpRegisterConstDerivedStrings(const std::string& name,
+  void HelpRegisterConstDerivedStrings(base::StringPiece name,
                                        Strings (Manager::*get)(Error*));
   void HelpRegisterDerivedKeyValueStore(
-      const std::string& name,
+      base::StringPiece name,
       KeyValueStore (Manager::*get)(Error* error),
       bool (Manager::*set)(const KeyValueStore& value, Error* error));
-  void HelpRegisterDerivedBool(const std::string& name,
+  void HelpRegisterDerivedBool(base::StringPiece name,
                                bool (Manager::*get)(Error* error),
                                bool (Manager::*set)(const bool& value,
                                                     Error* error));

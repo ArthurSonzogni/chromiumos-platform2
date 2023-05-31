@@ -6,6 +6,7 @@
 
 #include <base/files/file_path.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include <string>
@@ -84,7 +85,7 @@ DefaultProfile::DefaultProfile(Manager* manager,
 DefaultProfile::~DefaultProfile() = default;
 
 void DefaultProfile::HelpRegisterConstDerivedBool(
-    const std::string& name, bool (DefaultProfile::*get)(Error*)) {
+    base::StringPiece name, bool (DefaultProfile::*get)(Error*)) {
   this->mutable_store()->RegisterDerivedBool(
       name, BoolAccessor(new CustomAccessor<DefaultProfile, bool>(
                 this, get, nullptr, nullptr)));

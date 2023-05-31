@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/strings/string_piece.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/event_dispatcher.h"
@@ -68,7 +69,7 @@ class DefaultProfile : public Profile {
   static const char kStorageWifiGlobalFTEnabled[];
   static constexpr char kStorageEnableRFC8925[] = "RFC8925";
 
-  void HelpRegisterConstDerivedBool(const std::string& name,
+  void HelpRegisterConstDerivedBool(base::StringPiece name,
                                     bool (DefaultProfile::*get)(Error* error));
 
   const std::string profile_id_;

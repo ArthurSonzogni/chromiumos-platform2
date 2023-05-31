@@ -707,28 +707,28 @@ class Service : public base::RefCounted<Service> {
   // Reads of the property will be handled by invoking |get|.
   // Writes to the property will be handled by invoking |set|.
   // Clearing the property will be handled by PropertyStore.
-  void HelpRegisterDerivedBool(const std::string& name,
+  void HelpRegisterDerivedBool(base::StringPiece name,
                                bool (Service::*get)(Error* error),
                                bool (Service::*set)(const bool& value,
                                                     Error* error),
                                void (Service::*clear)(Error* error));
-  void HelpRegisterDerivedInt32(const std::string& name,
+  void HelpRegisterDerivedInt32(base::StringPiece name,
                                 int32_t (Service::*get)(Error* error),
                                 bool (Service::*set)(const int32_t& value,
                                                      Error* error));
-  void HelpRegisterDerivedString(const std::string& name,
+  void HelpRegisterDerivedString(base::StringPiece name,
                                  std::string (Service::*get)(Error* error),
                                  bool (Service::*set)(const std::string& value,
                                                       Error* error));
   void HelpRegisterConstDerivedRpcIdentifier(
-      const std::string& name, RpcIdentifier (Service::*get)(Error*) const);
-  void HelpRegisterConstDerivedStrings(const std::string& name,
+      base::StringPiece name, RpcIdentifier (Service::*get)(Error*) const);
+  void HelpRegisterConstDerivedStrings(base::StringPiece name,
                                        Strings (Service::*get)(Error* error)
                                            const);
-  void HelpRegisterConstDerivedString(const std::string& name,
+  void HelpRegisterConstDerivedString(base::StringPiece name,
                                       std::string (Service::*get)(Error* error)
                                           const);
-  void HelpRegisterConstDerivedUint64(const std::string& name,
+  void HelpRegisterConstDerivedUint64(base::StringPiece name,
                                       uint64_t (Service::*get)(Error* error)
                                           const);
 

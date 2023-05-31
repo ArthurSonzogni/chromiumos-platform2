@@ -13,6 +13,7 @@
 #include <base/notreached.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -858,7 +859,7 @@ RpcIdentifier CellularService::GetDeviceRpcId(Error* error) const {
 }
 
 void CellularService::HelpRegisterDerivedString(
-    const std::string& name,
+    base::StringPiece name,
     std::string (CellularService::*get)(Error* error),
     bool (CellularService::*set)(const std::string& value, Error* error)) {
   mutable_store()->RegisterDerivedString(
@@ -867,7 +868,7 @@ void CellularService::HelpRegisterDerivedString(
 }
 
 void CellularService::HelpRegisterDerivedStringmap(
-    const std::string& name,
+    base::StringPiece name,
     Stringmap (CellularService::*get)(Error* error),
     bool (CellularService::*set)(const Stringmap& value, Error* error)) {
   mutable_store()->RegisterDerivedStringmap(
@@ -876,7 +877,7 @@ void CellularService::HelpRegisterDerivedStringmap(
 }
 
 void CellularService::HelpRegisterDerivedStringmaps(
-    const std::string& name,
+    base::StringPiece name,
     Stringmaps (CellularService::*get)(Error* error),
     bool (CellularService::*set)(const Stringmaps& value, Error* error),
     void (CellularService::*clear)(Error*)) {
@@ -886,7 +887,7 @@ void CellularService::HelpRegisterDerivedStringmaps(
 }
 
 void CellularService::HelpRegisterDerivedBool(
-    const std::string& name,
+    base::StringPiece name,
     bool (CellularService::*get)(Error* error),
     bool (CellularService::*set)(const bool&, Error*)) {
   mutable_store()->RegisterDerivedBool(

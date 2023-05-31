@@ -15,6 +15,7 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -397,16 +398,16 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // Avoids showing a failure mole in the UI.
   virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
-  void HelpRegisterConstDerivedString(const std::string& name,
+  void HelpRegisterConstDerivedString(base::StringPiece name,
                                       std::string (Device::*get)(Error*));
 
   void HelpRegisterConstDerivedRpcIdentifier(
-      const std::string& name, RpcIdentifier (Device::*get)(Error*));
+      base::StringPiece name, RpcIdentifier (Device::*get)(Error*));
 
   void HelpRegisterConstDerivedRpcIdentifiers(
-      const std::string& name, RpcIdentifiers (Device::*get)(Error*));
+      base::StringPiece name, RpcIdentifiers (Device::*get)(Error*));
 
-  void HelpRegisterConstDerivedUint64(const std::string& name,
+  void HelpRegisterConstDerivedUint64(base::StringPiece name,
                                       uint64_t (Device::*get)(Error*));
 
   // Property getters reserved for subclasses

@@ -17,6 +17,7 @@
 #include <base/functional/bind.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 
@@ -1195,7 +1196,7 @@ const char* TetheringManager::StopReasonToString(StopReason reason) {
 
 void TetheringManager::HelpRegisterDerivedBool(
     PropertyStore* store,
-    const std::string& name,
+    base::StringPiece name,
     bool (TetheringManager::*get)(Error* error),
     bool (TetheringManager::*set)(const bool&, Error*)) {
   store->RegisterDerivedBool(

@@ -29,6 +29,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/notreached.h>
 #include <base/strings/pattern.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -1634,21 +1635,21 @@ std::vector<DeviceRefPtr> Manager::FilterByTechnology(Technology tech) const {
 }
 
 void Manager::HelpRegisterConstDerivedRpcIdentifier(
-    const std::string& name, RpcIdentifier (Manager::*get)(Error* error)) {
+    base::StringPiece name, RpcIdentifier (Manager::*get)(Error* error)) {
   store_.RegisterDerivedRpcIdentifier(
       name, RpcIdentifierAccessor(new CustomAccessor<Manager, RpcIdentifier>(
                 this, get, nullptr)));
 }
 
 void Manager::HelpRegisterConstDerivedRpcIdentifiers(
-    const std::string& name, RpcIdentifiers (Manager::*get)(Error* error)) {
+    base::StringPiece name, RpcIdentifiers (Manager::*get)(Error* error)) {
   store_.RegisterDerivedRpcIdentifiers(
       name, RpcIdentifiersAccessor(new CustomAccessor<Manager, RpcIdentifiers>(
                 this, get, nullptr)));
 }
 
 void Manager::HelpRegisterDerivedString(
-    const std::string& name,
+    base::StringPiece name,
     std::string (Manager::*get)(Error* error),
     bool (Manager::*set)(const std::string&, Error*)) {
   store_.RegisterDerivedString(
@@ -1656,7 +1657,7 @@ void Manager::HelpRegisterDerivedString(
       StringAccessor(new CustomAccessor<Manager, std::string>(this, get, set)));
 }
 
-void Manager::HelpRegisterConstDerivedStrings(const std::string& name,
+void Manager::HelpRegisterConstDerivedStrings(base::StringPiece name,
                                               Strings (Manager::*get)(Error*)) {
   store_.RegisterDerivedStrings(
       name, StringsAccessor(
@@ -1664,7 +1665,7 @@ void Manager::HelpRegisterConstDerivedStrings(const std::string& name,
 }
 
 void Manager::HelpRegisterDerivedKeyValueStore(
-    const std::string& name,
+    base::StringPiece name,
     KeyValueStore (Manager::*get)(Error* error),
     bool (Manager::*set)(const KeyValueStore& store, Error* error)) {
   store_.RegisterDerivedKeyValueStore(
@@ -1672,7 +1673,7 @@ void Manager::HelpRegisterDerivedKeyValueStore(
                 new CustomAccessor<Manager, KeyValueStore>(this, get, set)));
 }
 
-void Manager::HelpRegisterDerivedBool(const std::string& name,
+void Manager::HelpRegisterDerivedBool(base::StringPiece name,
                                       bool (Manager::*get)(Error* error),
                                       bool (Manager::*set)(const bool&,
                                                            Error* error)) {

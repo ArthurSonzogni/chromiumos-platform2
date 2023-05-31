@@ -1883,7 +1883,7 @@ bool Service::IsPortalDetectionDisabled() const {
           !manager_->IsPortalDetectionEnabled(technology()));
 }
 
-void Service::HelpRegisterDerivedBool(const std::string& name,
+void Service::HelpRegisterDerivedBool(base::StringPiece name,
                                       bool (Service::*get)(Error* error),
                                       bool (Service::*set)(const bool&, Error*),
                                       void (Service::*clear)(Error*)) {
@@ -1892,7 +1892,7 @@ void Service::HelpRegisterDerivedBool(const std::string& name,
       BoolAccessor(new CustomAccessor<Service, bool>(this, get, set, clear)));
 }
 
-void Service::HelpRegisterDerivedInt32(const std::string& name,
+void Service::HelpRegisterDerivedInt32(base::StringPiece name,
                                        int32_t (Service::*get)(Error* error),
                                        bool (Service::*set)(const int32_t&,
                                                             Error*)) {
@@ -1902,7 +1902,7 @@ void Service::HelpRegisterDerivedInt32(const std::string& name,
 }
 
 void Service::HelpRegisterDerivedString(
-    const std::string& name,
+    base::StringPiece name,
     std::string (Service::*get)(Error* error),
     bool (Service::*set)(const std::string&, Error*)) {
   store_.RegisterDerivedString(
@@ -1911,28 +1911,28 @@ void Service::HelpRegisterDerivedString(
 }
 
 void Service::HelpRegisterConstDerivedRpcIdentifier(
-    const std::string& name, RpcIdentifier (Service::*get)(Error*) const) {
+    base::StringPiece name, RpcIdentifier (Service::*get)(Error*) const) {
   store_.RegisterDerivedRpcIdentifier(
       name, RpcIdentifierAccessor(
                 new CustomReadOnlyAccessor<Service, RpcIdentifier>(this, get)));
 }
 
 void Service::HelpRegisterConstDerivedStrings(
-    const std::string& name, Strings (Service::*get)(Error* error) const) {
+    base::StringPiece name, Strings (Service::*get)(Error* error) const) {
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomReadOnlyAccessor<Service, Strings>(this, get)));
 }
 
 void Service::HelpRegisterConstDerivedString(
-    const std::string& name, std::string (Service::*get)(Error* error) const) {
+    base::StringPiece name, std::string (Service::*get)(Error* error) const) {
   store_.RegisterDerivedString(
       name, StringAccessor(
                 new CustomReadOnlyAccessor<Service, std::string>(this, get)));
 }
 
 void Service::HelpRegisterConstDerivedUint64(
-    const std::string& name, uint64_t (Service::*get)(Error* error) const) {
+    base::StringPiece name, uint64_t (Service::*get)(Error* error) const) {
   store_.RegisterDerivedUint64(
       name,
       Uint64Accessor(new CustomReadOnlyAccessor<Service, uint64_t>(this, get)));

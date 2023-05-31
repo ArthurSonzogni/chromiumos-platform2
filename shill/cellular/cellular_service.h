@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 
+#include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -199,19 +200,19 @@ class CellularService : public Service {
   static const char kAutoConnNoDevice[];
 
   void HelpRegisterDerivedString(
-      const std::string& name,
+      base::StringPiece name,
       std::string (CellularService::*get)(Error* error),
       bool (CellularService::*set)(const std::string& value, Error* error));
   void HelpRegisterDerivedStringmap(
-      const std::string& name,
+      base::StringPiece name,
       Stringmap (CellularService::*get)(Error* error),
       bool (CellularService::*set)(const Stringmap& value, Error* error));
   void HelpRegisterDerivedStringmaps(
-      const std::string& name,
+      base::StringPiece name,
       Stringmaps (CellularService::*get)(Error* error),
       bool (CellularService::*set)(const Stringmaps& value, Error* error),
       void (CellularService::*clear)(Error*));
-  void HelpRegisterDerivedBool(const std::string& name,
+  void HelpRegisterDerivedBool(base::StringPiece name,
                                bool (CellularService::*get)(Error* error),
                                bool (CellularService::*set)(const bool&,
                                                             Error*));

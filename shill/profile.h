@@ -236,14 +236,14 @@ class Profile : public base::RefCounted<Profile> {
   static bool IsValidIdentifierToken(const std::string& token);
 
   void HelpRegisterConstDerivedRpcIdentifiers(
-      const std::string& name, RpcIdentifiers (Profile::*get)(Error* error));
-  void HelpRegisterConstDerivedStrings(const std::string& name,
+      base::StringPiece name, RpcIdentifiers (Profile::*get)(Error* error));
+  void HelpRegisterConstDerivedStrings(base::StringPiece name,
                                        Strings (Profile::*get)(Error* error));
   void HelpRegisterDerivedRpcIdentifier(
-      const std::string& name,
+      base::StringPiece name,
       RpcIdentifier (Profile::*get)(Error* error),
       bool (Profile::*set)(const RpcIdentifier&, Error*));
-  void HelpRegisterDerivedString(const std::string& name,
+  void HelpRegisterDerivedString(base::StringPiece name,
                                  std::string (Profile::*get)(Error* error),
                                  bool (Profile::*set)(const std::string&,
                                                       Error*));

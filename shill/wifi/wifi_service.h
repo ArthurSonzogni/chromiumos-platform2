@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/strings/string_piece.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
 #include <base/time/default_clock.h>
@@ -372,26 +373,26 @@ class WiFiService : public Service {
   // Override the base clase implementation, because we need to allow
   // arguments that aren't base class methods.
   void HelpRegisterConstDerivedString(
-      const std::string& name, std::string (WiFiService::*get)(Error* error));
+      base::StringPiece name, std::string (WiFiService::*get)(Error* error));
   void HelpRegisterDerivedString(
-      const std::string& name,
+      base::StringPiece name,
       std::string (WiFiService::*get)(Error* error),
       bool (WiFiService::*set)(const std::string& value, Error* error));
-  void HelpRegisterDerivedStrings(const std::string& name,
+  void HelpRegisterDerivedStrings(base::StringPiece name,
                                   Strings (WiFiService::*get)(Error* error),
                                   bool (WiFiService::*set)(const Strings& value,
                                                            Error* error));
   void HelpRegisterWriteOnlyDerivedString(
-      const std::string& name,
+      base::StringPiece name,
       bool (WiFiService::*set)(const std::string& value, Error* error),
       void (WiFiService::*clear)(Error* error),
       const std::string* default_value);
-  void HelpRegisterDerivedUint16(const std::string& name,
+  void HelpRegisterDerivedUint16(base::StringPiece name,
                                  uint16_t (WiFiService::*get)(Error* error),
                                  bool (WiFiService::*set)(const uint16_t& value,
                                                           Error* error),
                                  void (WiFiService::*clear)(Error* error));
-  void HelpRegisterConstDerivedInt32(const std::string& name,
+  void HelpRegisterConstDerivedInt32(base::StringPiece name,
                                      int32_t (WiFiService::*get)(Error* error));
 
   RpcIdentifier GetDeviceRpcId(Error* error) const override;

@@ -606,7 +606,7 @@ bool EapCredentials::ClientAuthenticationUsesCryptoToken() const {
 
 void EapCredentials::HelpRegisterDerivedString(
     PropertyStore* store,
-    const std::string& name,
+    base::StringPiece name,
     std::string (EapCredentials::*get)(Error* error),
     bool (EapCredentials::*set)(const std::string&, Error*)) {
   store->RegisterDerivedString(
@@ -616,7 +616,7 @@ void EapCredentials::HelpRegisterDerivedString(
 
 void EapCredentials::HelpRegisterWriteOnlyDerivedString(
     PropertyStore* store,
-    const std::string& name,
+    base::StringPiece name,
     bool (EapCredentials::*set)(const std::string&, Error*),
     void (EapCredentials::*clear)(Error* error),
     const std::string* default_value) {

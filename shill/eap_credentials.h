@@ -196,7 +196,7 @@ class EapCredentials {
   // Writes to the property will be handled by invoking |set|.
   void HelpRegisterDerivedString(
       PropertyStore* store,
-      const std::string& name,
+      base::StringPiece name,
       std::string (EapCredentials::*get)(Error* error),
       bool (EapCredentials::*set)(const std::string& value, Error* error));
 
@@ -210,7 +210,7 @@ class EapCredentials {
   // |default_value| non-NULL.
   void HelpRegisterWriteOnlyDerivedString(
       PropertyStore* store,
-      const std::string& name,
+      base::StringPiece name,
       bool (EapCredentials::*set)(const std::string& value, Error* error),
       void (EapCredentials::*clear)(Error* error),
       const std::string* default_value);
