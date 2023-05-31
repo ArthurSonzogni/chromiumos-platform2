@@ -33,18 +33,18 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 using OnTerminalStatusCallback =
-    base::OnceCallback<void(mojo_ipc::DiagnosticRoutineStatusEnum)>;
+    base::OnceCallback<void(mojom::DiagnosticRoutineStatusEnum)>;
 
 void SetErrorRoutineUpdate(const std::string& status_message,
-                           mojo_ipc::RoutineUpdate* response) {
-  auto noninteractive_update = mojo_ipc::NonInteractiveRoutineUpdate::New();
-  noninteractive_update->status = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+                           mojom::RoutineUpdate* response) {
+  auto noninteractive_update = mojom::NonInteractiveRoutineUpdate::New();
+  noninteractive_update->status = mojom::DiagnosticRoutineStatusEnum::kError;
   noninteractive_update->status_message = status_message;
   response->routine_update_union =
-      mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(
+      mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(
           std::move(noninteractive_update));
   response->progress_percent = 0;
 }
@@ -70,33 +70,32 @@ WrapOnTerminalStatusCallbackAsStatusChangedCallback(
     OnTerminalStatusCallback on_terminal_status_callback) {
   return base::BindRepeating(
       [](OnTerminalStatusCallback& on_terminal_status_cb,
-         mojo_ipc::DiagnosticRoutineStatusEnum new_status) {
-        std::optional<mojo_ipc::DiagnosticRoutineStatusEnum> status_to_report;
+         mojom::DiagnosticRoutineStatusEnum new_status) {
+        std::optional<mojom::DiagnosticRoutineStatusEnum> status_to_report;
         switch (new_status) {
           // Non-terminal status.
-          case mojo_ipc::DiagnosticRoutineStatusEnum::kUnknown:
-          case mojo_ipc::DiagnosticRoutineStatusEnum::kReady:
-          case mojo_ipc::DiagnosticRoutineStatusEnum::kRunning:
-          case mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting: {
+          case mojom::DiagnosticRoutineStatusEnum::kUnknown:
+          case mojom::DiagnosticRoutineStatusEnum::kReady:
+          case mojom::DiagnosticRoutineStatusEnum::kRunning:
+          case mojom::DiagnosticRoutineStatusEnum::kWaiting: {
             status_to_report = std::nullopt;
             break;
           }
           // A workaround for |SubprocRoutine|. The routine is supposed to be
           // kCancelled eventually.
-          case mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling: {
-            status_to_report =
-                mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled;
+          case mojom::DiagnosticRoutineStatusEnum::kCancelling: {
+            status_to_report = mojom::DiagnosticRoutineStatusEnum::kCancelled;
             break;
           }
           // Terminal status.
-          case mojo_ipc::DiagnosticRoutineStatusEnum::kPassed:
-          case mojo_ipc::DiagnosticRoutineStatusEnum::kFailed:
-          case mojo_ipc::DiagnosticRoutineStatusEnum::kError:
-          case mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled:
-          case mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart:
-          case mojo_ipc::DiagnosticRoutineStatusEnum::kRemoved:
-          case mojo_ipc::DiagnosticRoutineStatusEnum::kUnsupported:
-          case mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun: {
+          case mojom::DiagnosticRoutineStatusEnum::kPassed:
+          case mojom::DiagnosticRoutineStatusEnum::kFailed:
+          case mojom::DiagnosticRoutineStatusEnum::kError:
+          case mojom::DiagnosticRoutineStatusEnum::kCancelled:
+          case mojom::DiagnosticRoutineStatusEnum::kFailedToStart:
+          case mojom::DiagnosticRoutineStatusEnum::kRemoved:
+          case mojom::DiagnosticRoutineStatusEnum::kUnsupported:
+          case mojom::DiagnosticRoutineStatusEnum::kNotRun: {
             status_to_report = new_status;
             break;
           }
@@ -109,20 +108,20 @@ WrapOnTerminalStatusCallbackAsStatusChangedCallback(
       base::OwnedRef(std::move(on_terminal_status_callback)));
 }
 
-void SendResultToUMA(mojo_ipc::DiagnosticRoutineEnum routine,
-                     mojo_ipc::DiagnosticRoutineStatusEnum status) {
+void SendResultToUMA(mojom::DiagnosticRoutineEnum routine,
+                     mojom::DiagnosticRoutineStatusEnum status) {
   MetricsLibrary metrics;
   SendDiagnosticResultToUMA(&metrics, routine, status);
 }
 
-mojo_ipc::DiskReadTypeEnum Convert(mojo_ipc::DiskReadRoutineTypeEnum type) {
+mojom::DiskReadTypeEnum Convert(mojom::DiskReadRoutineTypeEnum type) {
   switch (type) {
-    case mojo_ipc::DiskReadRoutineTypeEnum::kLinearRead:
-      return mojo_ipc::DiskReadTypeEnum::kLinearRead;
-    case mojo_ipc::DiskReadRoutineTypeEnum::kRandomRead:
-      return mojo_ipc::DiskReadTypeEnum::kRandomRead;
-    case mojo_ipc::DiskReadRoutineTypeEnum::kUnmappedEnumField:
-      return mojo_ipc::DiskReadTypeEnum::kUnmappedEnumField;
+    case mojom::DiskReadRoutineTypeEnum::kLinearRead:
+      return mojom::DiskReadTypeEnum::kLinearRead;
+    case mojom::DiskReadRoutineTypeEnum::kRandomRead:
+      return mojom::DiskReadTypeEnum::kRandomRead;
+    case mojom::DiskReadRoutineTypeEnum::kUnmappedEnumField:
+      return mojom::DiskReadTypeEnum::kUnmappedEnumField;
   }
 }
 
@@ -148,23 +147,23 @@ CrosHealthdDiagnosticsService::~CrosHealthdDiagnosticsService() = default;
 
 void CrosHealthdDiagnosticsService::GetAvailableRoutines(
     GetAvailableRoutinesCallback callback) {
-  std::move(callback).Run(std::vector<mojo_ipc::DiagnosticRoutineEnum>(
+  std::move(callback).Run(std::vector<mojom::DiagnosticRoutineEnum>(
       available_routines_.begin(), available_routines_.end()));
 }
 
 void CrosHealthdDiagnosticsService::GetRoutineUpdate(
     int32_t id,
-    mojo_ipc::DiagnosticRoutineCommandEnum command,
+    mojom::DiagnosticRoutineCommandEnum command,
     bool include_output,
     GetRoutineUpdateCallback callback) {
-  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                              mojom::RoutineUpdateUnionPtr()};
 
   auto itr = active_routines_.find(id);
   if (itr == active_routines_.end()) {
     LOG(ERROR) << "Bad id in GetRoutineUpdateRequest: " << id;
     SetErrorRoutineUpdate("Specified routine does not exist.", &update);
-    std::move(callback).Run(mojo_ipc::RoutineUpdate::New(
+    std::move(callback).Run(mojom::RoutineUpdate::New(
         update.progress_percent, std::move(update.output),
         std::move(update.routine_update_union)));
     return;
@@ -172,51 +171,51 @@ void CrosHealthdDiagnosticsService::GetRoutineUpdate(
 
   auto* routine = itr->second.get();
   switch (command) {
-    case mojo_ipc::DiagnosticRoutineCommandEnum::kContinue:
+    case mojom::DiagnosticRoutineCommandEnum::kContinue:
       routine->Resume();
       break;
-    case mojo_ipc::DiagnosticRoutineCommandEnum::kCancel:
+    case mojom::DiagnosticRoutineCommandEnum::kCancel:
       routine->Cancel();
       break;
-    case mojo_ipc::DiagnosticRoutineCommandEnum::kGetStatus:
+    case mojom::DiagnosticRoutineCommandEnum::kGetStatus:
       // Retrieving the status and output of a routine is handled below.
       break;
-    case mojo_ipc::DiagnosticRoutineCommandEnum::kRemove:
+    case mojom::DiagnosticRoutineCommandEnum::kRemove:
       routine->PopulateStatusUpdate(&update, include_output);
       if (update.routine_update_union->is_noninteractive_update()) {
         update.routine_update_union->get_noninteractive_update()->status =
-            mojo_ipc::DiagnosticRoutineStatusEnum::kRemoved;
+            mojom::DiagnosticRoutineStatusEnum::kRemoved;
       }
       active_routines_.erase(itr);
       // |routine| is invalid at this point!
-      std::move(callback).Run(mojo_ipc::RoutineUpdate::New(
+      std::move(callback).Run(mojom::RoutineUpdate::New(
           update.progress_percent, std::move(update.output),
           std::move(update.routine_update_union)));
       return;
-    case mojo_ipc::DiagnosticRoutineCommandEnum::kUnknown:
+    case mojom::DiagnosticRoutineCommandEnum::kUnknown:
       LOG(ERROR) << "Get unknown command";
       break;
   }
 
   routine->PopulateStatusUpdate(&update, include_output);
-  std::move(callback).Run(mojo_ipc::RoutineUpdate::New(
+  std::move(callback).Run(mojom::RoutineUpdate::New(
       update.progress_percent, std::move(update.output),
       std::move(update.routine_update_union)));
 }
 
 void CrosHealthdDiagnosticsService::RunAcPowerRoutine(
-    mojo_ipc::AcPowerStatusEnum expected_status,
+    mojom::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type,
     RunAcPowerRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeAcPowerRoutine(expected_status,
                                                   expected_power_type),
-             mojo_ipc::DiagnosticRoutineEnum::kAcPower, std::move(callback));
+             mojom::DiagnosticRoutineEnum::kAcPower, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunBatteryCapacityRoutine(
     RunBatteryCapacityRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeBatteryCapacityRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kBatteryCapacity,
+             mojom::DiagnosticRoutineEnum::kBatteryCapacity,
              std::move(callback));
 }
 
@@ -227,7 +226,7 @@ void CrosHealthdDiagnosticsService::RunBatteryChargeRoutine(
   RunRoutine(
       routine_factory_->MakeBatteryChargeRoutine(
           base::Seconds(length_seconds), minimum_charge_percent_required),
-      mojo_ipc::DiagnosticRoutineEnum::kBatteryCharge, std::move(callback));
+      mojom::DiagnosticRoutineEnum::kBatteryCharge, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunBatteryDischargeRoutine(
@@ -237,59 +236,57 @@ void CrosHealthdDiagnosticsService::RunBatteryDischargeRoutine(
   RunRoutine(
       routine_factory_->MakeBatteryDischargeRoutine(
           base::Seconds(length_seconds), maximum_discharge_percent_allowed),
-      mojo_ipc::DiagnosticRoutineEnum::kBatteryDischarge, std::move(callback));
+      mojom::DiagnosticRoutineEnum::kBatteryDischarge, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunBatteryHealthRoutine(
     RunBatteryHealthRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeBatteryHealthRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kBatteryHealth,
-             std::move(callback));
+             mojom::DiagnosticRoutineEnum::kBatteryHealth, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunCaptivePortalRoutine(
     RunCaptivePortalRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeCaptivePortalRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kCaptivePortal,
-             std::move(callback));
+             mojom::DiagnosticRoutineEnum::kCaptivePortal, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunCpuCacheRoutine(
-    mojo_ipc::NullableUint32Ptr length_seconds,
+    mojom::NullableUint32Ptr length_seconds,
     RunCpuCacheRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null()) {
     exec_duration = base::Seconds(length_seconds->value);
   }
-  auto cpu_cache_routine_v2 = std::make_unique<RoutineAdapter>(
-      mojo_ipc::RoutineArgument::Tag::kCpuCache);
+  auto cpu_cache_routine_v2 =
+      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kCpuCache);
   routine_service_->CreateRoutine(
-      mojo_ipc::RoutineArgument::NewCpuCache(
-          mojo_ipc::CpuCacheRoutineArgument::New(exec_duration)),
+      mojom::RoutineArgument::NewCpuCache(
+          mojom::CpuCacheRoutineArgument::New(exec_duration)),
       cpu_cache_routine_v2->BindNewPipeAndPassReceiver());
   RunRoutine(std::move(cpu_cache_routine_v2),
-             mojo_ipc::DiagnosticRoutineEnum::kCpuCache, std::move(callback));
+             mojom::DiagnosticRoutineEnum::kCpuCache, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunCpuStressRoutine(
-    mojo_ipc::NullableUint32Ptr length_seconds,
+    mojom::NullableUint32Ptr length_seconds,
     RunCpuStressRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null()) {
     exec_duration = base::Seconds(length_seconds->value);
   }
-  auto cpu_stress_routine_v2 = std::make_unique<RoutineAdapter>(
-      mojo_ipc::RoutineArgument::Tag::kCpuStress);
+  auto cpu_stress_routine_v2 =
+      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kCpuStress);
   routine_service_->CreateRoutine(
-      mojo_ipc::RoutineArgument::NewCpuStress(
-          mojo_ipc::CpuStressRoutineArgument::New(exec_duration)),
+      mojom::RoutineArgument::NewCpuStress(
+          mojom::CpuStressRoutineArgument::New(exec_duration)),
       cpu_stress_routine_v2->BindNewPipeAndPassReceiver());
   RunRoutine(std::move(cpu_stress_routine_v2),
-             mojo_ipc::DiagnosticRoutineEnum::kCpuStress, std::move(callback));
+             mojom::DiagnosticRoutineEnum::kCpuStress, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunDiskReadRoutine(
-    mojo_ipc::DiskReadRoutineTypeEnum type,
+    mojom::DiskReadRoutineTypeEnum type,
     uint32_t length_seconds,
     uint32_t file_size_mb,
     RunDiskReadRoutineCallback callback) {
@@ -298,91 +295,86 @@ void CrosHealthdDiagnosticsService::RunDiskReadRoutine(
   if (context_->system_config()->FioSupported()) {
     RunRoutine(routine_factory_->MakeDiskReadRoutine(
                    type, base::Seconds(length_seconds), file_size_mb),
-               mojo_ipc::DiagnosticRoutineEnum::kDiskRead, std::move(callback));
+               mojom::DiagnosticRoutineEnum::kDiskRead, std::move(callback));
     return;
   }
 
-  auto disk_read_routine_v2 = std::make_unique<RoutineAdapter>(
-      mojo_ipc::RoutineArgument::Tag::kDiskRead);
+  auto disk_read_routine_v2 =
+      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kDiskRead);
   routine_service_->CreateRoutine(
-      mojo_ipc::RoutineArgument::NewDiskRead(
-          mojo_ipc::DiskReadRoutineArgument::New(
-              Convert(type), base::Seconds(length_seconds), file_size_mb)),
+      mojom::RoutineArgument::NewDiskRead(mojom::DiskReadRoutineArgument::New(
+          Convert(type), base::Seconds(length_seconds), file_size_mb)),
       disk_read_routine_v2->BindNewPipeAndPassReceiver());
   RunRoutine(std::move(disk_read_routine_v2),
-             mojo_ipc::DiagnosticRoutineEnum::kDiskRead, std::move(callback));
+             mojom::DiagnosticRoutineEnum::kDiskRead, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunDnsLatencyRoutine(
     RunDnsLatencyRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeDnsLatencyRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kDnsLatency, std::move(callback));
+             mojom::DiagnosticRoutineEnum::kDnsLatency, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunDnsResolutionRoutine(
     RunDnsResolutionRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeDnsResolutionRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kDnsResolution,
-             std::move(callback));
+             mojom::DiagnosticRoutineEnum::kDnsResolution, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunDnsResolverPresentRoutine(
     RunDnsResolverPresentRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeDnsResolverPresentRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kDnsResolverPresent,
+             mojom::DiagnosticRoutineEnum::kDnsResolverPresent,
              std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunFloatingPointAccuracyRoutine(
-    mojo_ipc::NullableUint32Ptr length_seconds,
+    mojom::NullableUint32Ptr length_seconds,
     RunFloatingPointAccuracyRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
     exec_duration = base::Seconds(length_seconds->value);
   RunRoutine(routine_factory_->MakeFloatingPointAccuracyRoutine(exec_duration),
-             mojo_ipc::DiagnosticRoutineEnum::kFloatingPointAccuracy,
+             mojom::DiagnosticRoutineEnum::kFloatingPointAccuracy,
              std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunGatewayCanBePingedRoutine(
     RunGatewayCanBePingedRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeGatewayCanBePingedRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kGatewayCanBePinged,
+             mojom::DiagnosticRoutineEnum::kGatewayCanBePinged,
              std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunHasSecureWiFiConnectionRoutine(
     RunHasSecureWiFiConnectionRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeHasSecureWiFiConnectionRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kHasSecureWiFiConnection,
+             mojom::DiagnosticRoutineEnum::kHasSecureWiFiConnection,
              std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunHttpFirewallRoutine(
     RunHttpFirewallRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeHttpFirewallRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kHttpFirewall,
-             std::move(callback));
+             mojom::DiagnosticRoutineEnum::kHttpFirewall, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunHttpsFirewallRoutine(
     RunHttpsFirewallRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeHttpsFirewallRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kHttpsFirewall,
-             std::move(callback));
+             mojom::DiagnosticRoutineEnum::kHttpsFirewall, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunHttpsLatencyRoutine(
     RunHttpsLatencyRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeHttpsLatencyRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kHttpsLatency,
-             std::move(callback));
+             mojom::DiagnosticRoutineEnum::kHttpsLatency, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunLanConnectivityRoutine(
     RunLanConnectivityRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeLanConnectivityRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kLanConnectivity,
+             mojom::DiagnosticRoutineEnum::kLanConnectivity,
              std::move(callback));
 }
 
@@ -390,22 +382,21 @@ void CrosHealthdDiagnosticsService::RunMemoryRoutine(
     std::optional<uint32_t> max_testing_mem_kib,
     RunMemoryRoutineCallback callback) {
   auto memory_routine_v2 =
-      std::make_unique<RoutineAdapter>(mojo_ipc::RoutineArgument::Tag::kMemory);
+      std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kMemory);
   routine_service_->CreateRoutine(
-      mojo_ipc::RoutineArgument::NewMemory(
-          mojo_ipc::MemoryRoutineArgument::New(max_testing_mem_kib)),
+      mojom::RoutineArgument::NewMemory(
+          mojom::MemoryRoutineArgument::New(max_testing_mem_kib)),
       memory_routine_v2->BindNewPipeAndPassReceiver());
   RunRoutine(std::move(memory_routine_v2),
-             mojo_ipc::DiagnosticRoutineEnum::kMemory, std::move(callback));
+             mojom::DiagnosticRoutineEnum::kMemory, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunNvmeSelfTestRoutine(
-    mojo_ipc::NvmeSelfTestTypeEnum nvme_self_test_type,
+    mojom::NvmeSelfTestTypeEnum nvme_self_test_type,
     RunNvmeSelfTestRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeNvmeSelfTestRoutine(context_->debugd_proxy(),
                                                        nvme_self_test_type),
-             mojo_ipc::DiagnosticRoutineEnum::kNvmeSelfTest,
-             std::move(callback));
+             mojom::DiagnosticRoutineEnum::kNvmeSelfTest, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::DEPRECATED_RunNvmeWearLevelRoutine(
@@ -414,7 +405,7 @@ void CrosHealthdDiagnosticsService::DEPRECATED_RunNvmeWearLevelRoutine(
       routine_factory_->MakeNvmeWearLevelRoutine(
           context_->debugd_proxy(),
           ash::cros_healthd::mojom::NullableUint32::New(wear_level_threshold)),
-      mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel, std::move(callback));
+      mojom::DiagnosticRoutineEnum::kNvmeWearLevel, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunNvmeWearLevelRoutine(
@@ -422,42 +413,40 @@ void CrosHealthdDiagnosticsService::RunNvmeWearLevelRoutine(
     RunNvmeWearLevelRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeNvmeWearLevelRoutine(
                  context_->debugd_proxy(), std::move(wear_level_threshold)),
-             mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel,
-             std::move(callback));
+             mojom::DiagnosticRoutineEnum::kNvmeWearLevel, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunPrimeSearchRoutine(
-    mojo_ipc::NullableUint32Ptr length_seconds,
+    mojom::NullableUint32Ptr length_seconds,
     RunPrimeSearchRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
     exec_duration = base::Seconds(length_seconds->value);
   RunRoutine(routine_factory_->MakePrimeSearchRoutine(exec_duration),
-             mojo_ipc::DiagnosticRoutineEnum::kPrimeSearch,
-             std::move(callback));
+             mojom::DiagnosticRoutineEnum::kPrimeSearch, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunSignalStrengthRoutine(
     RunSignalStrengthRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeSignalStrengthRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kSignalStrength,
+             mojom::DiagnosticRoutineEnum::kSignalStrength,
              std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunSmartctlCheckRoutine(
-    mojo_ipc::NullableUint32Ptr percentage_used_threshold,
+    mojom::NullableUint32Ptr percentage_used_threshold,
     RunSmartctlCheckRoutineCallback callback) {
   RunRoutine(
       routine_factory_->MakeSmartctlCheckRoutine(
           context_->debugd_proxy(), std::move(percentage_used_threshold)),
-      mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck, std::move(callback));
+      mojom::DiagnosticRoutineEnum::kSmartctlCheck, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunUrandomRoutine(
-    mojo_ipc::NullableUint32Ptr length_seconds,
+    mojom::NullableUint32Ptr length_seconds,
     RunUrandomRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeUrandomRoutine(std::move(length_seconds)),
-             mojo_ipc::DiagnosticRoutineEnum::kUrandom, std::move(callback));
+             mojom::DiagnosticRoutineEnum::kUrandom, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunVideoConferencingRoutine(
@@ -465,71 +454,69 @@ void CrosHealthdDiagnosticsService::RunVideoConferencingRoutine(
     RunVideoConferencingRoutineCallback callback) {
   RunRoutine(
       routine_factory_->MakeVideoConferencingRoutine(stun_server_hostname),
-      mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing, std::move(callback));
+      mojom::DiagnosticRoutineEnum::kVideoConferencing, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunArcHttpRoutine(
     RunArcHttpRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeArcHttpRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kArcHttp, std::move(callback));
+             mojom::DiagnosticRoutineEnum::kArcHttp, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunArcPingRoutine(
     RunArcPingRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeArcPingRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kArcPing, std::move(callback));
+             mojom::DiagnosticRoutineEnum::kArcPing, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunArcDnsResolutionRoutine(
     RunArcDnsResolutionRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeArcDnsResolutionRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution,
+             mojom::DiagnosticRoutineEnum::kArcDnsResolution,
              std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunSensitiveSensorRoutine(
     RunSensitiveSensorRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeSensitiveSensorRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor,
+             mojom::DiagnosticRoutineEnum::kSensitiveSensor,
              std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunFingerprintRoutine(
     RunFingerprintRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeFingerprintRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kFingerprint,
-             std::move(callback));
+             mojom::DiagnosticRoutineEnum::kFingerprint, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunFingerprintAliveRoutine(
     RunFingerprintAliveRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeFingerprintAliveRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kFingerprintAlive,
+             mojom::DiagnosticRoutineEnum::kFingerprintAlive,
              std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunPrivacyScreenRoutine(
     bool target_state, RunPrivacyScreenRoutineCallback callback) {
   RunRoutine(routine_factory_->MakePrivacyScreenRoutine(target_state),
-             mojo_ipc::DiagnosticRoutineEnum::kPrivacyScreen,
-             std::move(callback));
+             mojom::DiagnosticRoutineEnum::kPrivacyScreen, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunLedLitUpRoutine(
-    mojo_ipc::LedName name,
-    mojo_ipc::LedColor color,
-    mojo::PendingRemote<mojo_ipc::LedLitUpRoutineReplier> replier,
+    mojom::LedName name,
+    mojom::LedColor color,
+    mojo::PendingRemote<mojom::LedLitUpRoutineReplier> replier,
     RunLedLitUpRoutineCallback callback) {
   RunRoutine(
       routine_factory_->MakeLedLitUpRoutine(name, color, std::move(replier)),
-      mojo_ipc::DiagnosticRoutineEnum::kLedLitUp, std::move(callback));
+      mojom::DiagnosticRoutineEnum::kLedLitUp, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunEmmcLifetimeRoutine(
     RunEmmcLifetimeRoutineCallback callback) {
   RunRoutine(
       routine_factory_->MakeEmmcLifetimeRoutine(context_->debugd_proxy()),
-      mojo_ipc::DiagnosticRoutineEnum::kEmmcLifetime, std::move(callback));
+      mojom::DiagnosticRoutineEnum::kEmmcLifetime, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunAudioSetVolumeRoutine(
@@ -539,7 +526,7 @@ void CrosHealthdDiagnosticsService::RunAudioSetVolumeRoutine(
     RunAudioSetVolumeRoutineCallback callback) {
   RunRoutine(
       routine_factory_->MakeAudioSetVolumeRoutine(node_id, volume, mute_on),
-      mojo_ipc::DiagnosticRoutineEnum::kAudioSetVolume, std::move(callback));
+      mojom::DiagnosticRoutineEnum::kAudioSetVolume, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunAudioSetGainRoutine(
@@ -548,32 +535,31 @@ void CrosHealthdDiagnosticsService::RunAudioSetGainRoutine(
     bool deprecated_mute_on,
     RunAudioSetGainRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeAudioSetGainRoutine(node_id, gain),
-             mojo_ipc::DiagnosticRoutineEnum::kAudioSetGain,
-             std::move(callback));
+             mojom::DiagnosticRoutineEnum::kAudioSetGain, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunBluetoothPowerRoutine(
     RunBluetoothPowerRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeBluetoothPowerRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kBluetoothPower,
+             mojom::DiagnosticRoutineEnum::kBluetoothPower,
              std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunBluetoothDiscoveryRoutine(
     RunBluetoothDiscoveryRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeBluetoothDiscoveryRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kBluetoothDiscovery,
+             mojom::DiagnosticRoutineEnum::kBluetoothDiscovery,
              std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunBluetoothScanningRoutine(
-    mojo_ipc::NullableUint32Ptr length_seconds,
+    mojom::NullableUint32Ptr length_seconds,
     RunBluetoothScanningRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
     exec_duration = base::Seconds(length_seconds->value);
   RunRoutine(routine_factory_->MakeBluetoothScanningRoutine(exec_duration),
-             mojo_ipc::DiagnosticRoutineEnum::kBluetoothScanning,
+             mojom::DiagnosticRoutineEnum::kBluetoothScanning,
              std::move(callback));
 }
 
@@ -581,30 +567,29 @@ void CrosHealthdDiagnosticsService::RunBluetoothPairingRoutine(
     const std::string& peripheral_id,
     RunBluetoothPairingRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeBluetoothPairingRoutine(peripheral_id),
-             mojo_ipc::DiagnosticRoutineEnum::kBluetoothPairing,
+             mojom::DiagnosticRoutineEnum::kBluetoothPairing,
              std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunPowerButtonRoutine(
     uint32_t timeout_seconds, RunPowerButtonRoutineCallback callback) {
   RunRoutine(routine_factory_->MakePowerButtonRoutine(timeout_seconds),
-             mojo_ipc::DiagnosticRoutineEnum::kPowerButton,
-             std::move(callback));
+             mojom::DiagnosticRoutineEnum::kPowerButton, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
-    mojo_ipc::DiagnosticRoutineEnum routine_enum,
-    base::OnceCallback<void(mojo_ipc::RunRoutineResponsePtr)> callback) {
+    mojom::DiagnosticRoutineEnum routine_enum,
+    base::OnceCallback<void(mojom::RunRoutineResponsePtr)> callback) {
   DCHECK(routine);
 
   if (!available_routines_.count(routine_enum)) {
     LOG(ERROR) << routine_enum << " is not supported on this device";
     SendResultToUMA(routine_enum,
-                    mojo_ipc::DiagnosticRoutineStatusEnum::kUnsupported);
-    std::move(callback).Run(mojo_ipc::RunRoutineResponse::New(
-        mojo_ipc::kFailedToStartId,
-        mojo_ipc::DiagnosticRoutineStatusEnum::kUnsupported));
+                    mojom::DiagnosticRoutineStatusEnum::kUnsupported);
+    std::move(callback).Run(mojom::RunRoutineResponse::New(
+        mojom::kFailedToStartId,
+        mojom::DiagnosticRoutineStatusEnum::kUnsupported));
     return;
   }
 
@@ -623,13 +608,13 @@ void CrosHealthdDiagnosticsService::RunRoutine(
   ++next_id_;
 
   std::move(callback).Run(
-      mojo_ipc::RunRoutineResponse::New(id, active_routines_[id]->GetStatus()));
+      mojom::RunRoutineResponse::New(id, active_routines_[id]->GetStatus()));
 }
 
 void CrosHealthdDiagnosticsService::HandleNvmeSelfTestSupportedResponse(
     bool supported) {
   if (supported) {
-    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kNvmeSelfTest);
+    available_routines_.insert(mojom::DiagnosticRoutineEnum::kNvmeSelfTest);
   }
 }
 
@@ -649,52 +634,49 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
 
   // Routines that are supported on all devices.
   available_routines_ = {
-      mojo_ipc::DiagnosticRoutineEnum::kUrandom,
-      mojo_ipc::DiagnosticRoutineEnum::kAcPower,
-      mojo_ipc::DiagnosticRoutineEnum::kCpuCache,
-      mojo_ipc::DiagnosticRoutineEnum::kCpuStress,
-      mojo_ipc::DiagnosticRoutineEnum::kFloatingPointAccuracy,
-      mojo_ipc::DiagnosticRoutineEnum::kPrimeSearch,
-      mojo_ipc::DiagnosticRoutineEnum::kDiskRead,
-      mojo_ipc::DiagnosticRoutineEnum::kMemory,
-      mojo_ipc::DiagnosticRoutineEnum::kLanConnectivity,
-      mojo_ipc::DiagnosticRoutineEnum::kSignalStrength,
-      mojo_ipc::DiagnosticRoutineEnum::kGatewayCanBePinged,
-      mojo_ipc::DiagnosticRoutineEnum::kHasSecureWiFiConnection,
-      mojo_ipc::DiagnosticRoutineEnum::kDnsResolverPresent,
-      mojo_ipc::DiagnosticRoutineEnum::kDnsLatency,
-      mojo_ipc::DiagnosticRoutineEnum::kDnsResolution,
-      mojo_ipc::DiagnosticRoutineEnum::kCaptivePortal,
-      mojo_ipc::DiagnosticRoutineEnum::kHttpFirewall,
-      mojo_ipc::DiagnosticRoutineEnum::kHttpsFirewall,
-      mojo_ipc::DiagnosticRoutineEnum::kHttpsLatency,
-      mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing,
-      mojo_ipc::DiagnosticRoutineEnum::kArcHttp,
-      mojo_ipc::DiagnosticRoutineEnum::kArcPing,
-      mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution,
-      mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor,
-      mojo_ipc::DiagnosticRoutineEnum::kAudioSetVolume,
-      mojo_ipc::DiagnosticRoutineEnum::kAudioSetGain,
-      mojo_ipc::DiagnosticRoutineEnum::kBluetoothPower,
-      mojo_ipc::DiagnosticRoutineEnum::kBluetoothDiscovery,
-      mojo_ipc::DiagnosticRoutineEnum::kBluetoothScanning,
-      mojo_ipc::DiagnosticRoutineEnum::kBluetoothPairing,
-      mojo_ipc::DiagnosticRoutineEnum::kPowerButton,
+      mojom::DiagnosticRoutineEnum::kUrandom,
+      mojom::DiagnosticRoutineEnum::kAcPower,
+      mojom::DiagnosticRoutineEnum::kCpuCache,
+      mojom::DiagnosticRoutineEnum::kCpuStress,
+      mojom::DiagnosticRoutineEnum::kFloatingPointAccuracy,
+      mojom::DiagnosticRoutineEnum::kPrimeSearch,
+      mojom::DiagnosticRoutineEnum::kDiskRead,
+      mojom::DiagnosticRoutineEnum::kMemory,
+      mojom::DiagnosticRoutineEnum::kLanConnectivity,
+      mojom::DiagnosticRoutineEnum::kSignalStrength,
+      mojom::DiagnosticRoutineEnum::kGatewayCanBePinged,
+      mojom::DiagnosticRoutineEnum::kHasSecureWiFiConnection,
+      mojom::DiagnosticRoutineEnum::kDnsResolverPresent,
+      mojom::DiagnosticRoutineEnum::kDnsLatency,
+      mojom::DiagnosticRoutineEnum::kDnsResolution,
+      mojom::DiagnosticRoutineEnum::kCaptivePortal,
+      mojom::DiagnosticRoutineEnum::kHttpFirewall,
+      mojom::DiagnosticRoutineEnum::kHttpsFirewall,
+      mojom::DiagnosticRoutineEnum::kHttpsLatency,
+      mojom::DiagnosticRoutineEnum::kVideoConferencing,
+      mojom::DiagnosticRoutineEnum::kArcHttp,
+      mojom::DiagnosticRoutineEnum::kArcPing,
+      mojom::DiagnosticRoutineEnum::kArcDnsResolution,
+      mojom::DiagnosticRoutineEnum::kSensitiveSensor,
+      mojom::DiagnosticRoutineEnum::kAudioSetVolume,
+      mojom::DiagnosticRoutineEnum::kAudioSetGain,
+      mojom::DiagnosticRoutineEnum::kBluetoothPower,
+      mojom::DiagnosticRoutineEnum::kBluetoothDiscovery,
+      mojom::DiagnosticRoutineEnum::kBluetoothScanning,
+      mojom::DiagnosticRoutineEnum::kBluetoothPairing,
+      mojom::DiagnosticRoutineEnum::kPowerButton,
   };
 
   if (context_->system_config()->HasBattery()) {
-    available_routines_.insert(
-        mojo_ipc::DiagnosticRoutineEnum::kBatteryCapacity);
-    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kBatteryHealth);
-    available_routines_.insert(
-        mojo_ipc::DiagnosticRoutineEnum::kBatteryDischarge);
-    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kBatteryCharge);
+    available_routines_.insert(mojom::DiagnosticRoutineEnum::kBatteryCapacity);
+    available_routines_.insert(mojom::DiagnosticRoutineEnum::kBatteryHealth);
+    available_routines_.insert(mojom::DiagnosticRoutineEnum::kBatteryDischarge);
+    available_routines_.insert(mojom::DiagnosticRoutineEnum::kBatteryCharge);
   }
 
   if (context_->system_config()->NvmeSupported()) {
     if (context_->system_config()->IsWilcoDevice()) {
-      available_routines_.insert(
-          mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel);
+      available_routines_.insert(mojom::DiagnosticRoutineEnum::kNvmeWearLevel);
     }
     auto nvme_self_test_supported_callback = base::BindOnce(
         &CrosHealthdDiagnosticsService::HandleNvmeSelfTestSupportedResponse,
@@ -704,27 +686,26 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
   }
 
   if (context_->system_config()->SmartCtlSupported()) {
-    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck);
+    available_routines_.insert(mojom::DiagnosticRoutineEnum::kSmartctlCheck);
     available_routines_.insert(
-        mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed);
+        mojom::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed);
   }
 
   if (context_->system_config()->FingerprintDiagnosticSupported()) {
-    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kFingerprint);
-    available_routines_.insert(
-        mojo_ipc::DiagnosticRoutineEnum::kFingerprintAlive);
+    available_routines_.insert(mojom::DiagnosticRoutineEnum::kFingerprint);
+    available_routines_.insert(mojom::DiagnosticRoutineEnum::kFingerprintAlive);
   }
 
   if (context_->system_config()->HasPrivacyScreen()) {
-    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kPrivacyScreen);
+    available_routines_.insert(mojom::DiagnosticRoutineEnum::kPrivacyScreen);
   }
 
   if (context_->system_config()->MmcSupported()) {
-    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kEmmcLifetime);
+    available_routines_.insert(mojom::DiagnosticRoutineEnum::kEmmcLifetime);
   }
 
   if (context_->system_config()->HasChromiumEC()) {
-    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kLedLitUp);
+    available_routines_.insert(mojom::DiagnosticRoutineEnum::kLedLitUp);
   }
 }
 

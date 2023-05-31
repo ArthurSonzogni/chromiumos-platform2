@@ -21,12 +21,12 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 bool TestWearPercentage(
     const power_manager::PowerSupplyProperties& power_supply_proto,
     uint8_t percent_battery_wear_allowed,
-    mojo_ipc::DiagnosticRoutineStatusEnum* status,
+    mojom::DiagnosticRoutineStatusEnum* status,
     std::string* status_message,
     base::Value::Dict* result_dict) {
   DCHECK(status);
@@ -38,14 +38,14 @@ bool TestWearPercentage(
 
   if (percent_battery_wear_allowed > 100) {
     *status_message = kBatteryHealthInvalidParametersMessage;
-    *status = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+    *status = mojom::DiagnosticRoutineStatusEnum::kError;
     return false;
   }
 
   if (!power_supply_proto.has_battery_charge_full() ||
       !power_supply_proto.has_battery_charge_full_design()) {
     *status_message = kBatteryHealthFailedCalculatingWearPercentageMessage;
-    *status = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+    *status = mojom::DiagnosticRoutineStatusEnum::kError;
     return false;
   }
 
@@ -58,7 +58,7 @@ bool TestWearPercentage(
   result_dict->Set("wearPercentage", static_cast<int>(wear_percentage));
   if (wear_percentage > percent_battery_wear_allowed) {
     *status_message = kBatteryHealthExcessiveWearMessage;
-    *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
+    *status = mojom::DiagnosticRoutineStatusEnum::kFailed;
     return false;
   }
 
@@ -68,7 +68,7 @@ bool TestWearPercentage(
 bool TestCycleCount(
     const power_manager::PowerSupplyProperties& power_supply_proto,
     uint32_t maximum_cycle_count,
-    mojo_ipc::DiagnosticRoutineStatusEnum* status,
+    mojom::DiagnosticRoutineStatusEnum* status,
     std::string* status_message,
     base::Value::Dict* result_dict) {
   DCHECK(status);
@@ -79,14 +79,14 @@ bool TestCycleCount(
       power_supply_proto.battery_cycle_count();
   if (!power_supply_proto.has_battery_cycle_count()) {
     *status_message = kBatteryHealthFailedReadingCycleCountMessage;
-    *status = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+    *status = mojom::DiagnosticRoutineStatusEnum::kError;
     return false;
   }
 
   result_dict->Set("cycleCount", static_cast<int>(cycle_count));
   if (cycle_count > maximum_cycle_count) {
     *status_message = kBatteryHealthExcessiveCycleCountMessage;
-    *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
+    *status = mojom::DiagnosticRoutineStatusEnum::kFailed;
     return false;
   }
 
@@ -104,12 +104,12 @@ SimpleRoutine::RoutineResult GetBatteryHealthResult(
   if (!response.has_value()) {
     LOG(ERROR) << kPowerdPowerSupplyPropertiesFailedMessage;
     return {
-        .status = mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+        .status = mojom::DiagnosticRoutineStatusEnum::kError,
         .status_message = kPowerdPowerSupplyPropertiesFailedMessage,
     };
   }
 
-  mojo_ipc::DiagnosticRoutineStatusEnum status;
+  mojom::DiagnosticRoutineStatusEnum status;
   std::string status_message;
   base::Value::Dict output_dict;
 
@@ -136,7 +136,7 @@ SimpleRoutine::RoutineResult GetBatteryHealthResult(
       TestCycleCount(power_supply_proto, maximum_cycle_count, &status,
                      &status_message, &result_dict)) {
     status_message = kBatteryHealthRoutinePassedMessage;
-    status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
+    status = mojom::DiagnosticRoutineStatusEnum::kPassed;
   }
 
   if (!result_dict.empty()) {

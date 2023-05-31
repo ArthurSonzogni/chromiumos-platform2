@@ -22,7 +22,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 using ::testing::_;
 using ::testing::Invoke;
@@ -46,15 +46,15 @@ class GatewayCanBePingedRoutineTest : public testing::Test {
     routine_ = CreateGatewayCanBePingedRoutine(network_diagnostics_adapter());
   }
 
-  mojo_ipc::RoutineUpdatePtr RunRoutineAndWaitForExit() {
+  mojom::RoutineUpdatePtr RunRoutineAndWaitForExit() {
     DCHECK(routine_);
-    mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                   mojo_ipc::RoutineUpdateUnionPtr()};
+    mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                                mojom::RoutineUpdateUnionPtr()};
     routine_->Start();
     routine_->PopulateStatusUpdate(&update, true);
-    return mojo_ipc::RoutineUpdate::New(update.progress_percent,
-                                        std::move(update.output),
-                                        std::move(update.routine_update_union));
+    return mojom::RoutineUpdate::New(update.progress_percent,
+                                     std::move(update.output),
+                                     std::move(update.routine_update_union));
   }
 
   MockNetworkDiagnosticsAdapter* network_diagnostics_adapter() {
@@ -79,9 +79,9 @@ TEST_F(GatewayCanBePingedRoutineTest, RoutineSuccess) {
         std::move(callback).Run(std::move(result));
       }));
 
-  mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
+  mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+                             mojom::DiagnosticRoutineStatusEnum::kPassed,
                              kPingRoutineNoProblemMessage);
 }
 
@@ -98,9 +98,9 @@ TEST_F(GatewayCanBePingedRoutineTest, RoutineNotRun) {
         std::move(callback).Run(std::move(result));
       }));
 
-  mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
+  mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun,
+                             mojom::DiagnosticRoutineStatusEnum::kNotRun,
                              kPingRoutineNotRunMessage);
 }
 
@@ -131,9 +131,9 @@ TEST_P(GatewayCanBePingedProblemTest, HandleGatewayCanBePingedProblem) {
         std::move(callback).Run(std::move(result));
       }));
 
-  mojo_ipc::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
+  mojom::RoutineUpdatePtr routine_update = RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(routine_update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+                             mojom::DiagnosticRoutineStatusEnum::kFailed,
                              params().failure_message);
 }
 

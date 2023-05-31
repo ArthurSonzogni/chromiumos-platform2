@@ -23,7 +23,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kTmpPath[] = "/var/cache/diagnostics";
 constexpr char kTestFileName[] = "fio-test-file";
@@ -34,7 +34,7 @@ constexpr uint32_t kSpaceLowMB = 1024;
 }  // namespace
 
 std::unique_ptr<DiagnosticRoutine> CreateDiskReadRoutine(
-    mojo_ipc::DiskReadRoutineTypeEnum type,
+    mojom::DiskReadRoutineTypeEnum type,
     base::TimeDelta exec_duration,
     uint32_t file_size_mb) {
   std::vector<std::string> prepare_cmd{
@@ -53,9 +53,8 @@ std::unique_ptr<DiagnosticRoutine> CreateDiskReadRoutine(
       "--time_based=1",
       "--runtime=" + base::NumberToString(exec_duration.InSeconds()),
       "--direct=1",
-      (type == mojo_ipc::DiskReadRoutineTypeEnum::kLinearRead)
-          ? "--rw=read"
-          : "--rw=randread"};
+      (type == mojom::DiskReadRoutineTypeEnum::kLinearRead) ? "--rw=read"
+                                                            : "--rw=randread"};
 
   auto subproc_routine_ptr = std::make_unique<SubprocRoutine>(
       std::list<base::CommandLine>{base::CommandLine(prepare_cmd),

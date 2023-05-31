@@ -35,11 +35,11 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
-using PhysicalCpuMap = std::map<int, mojo_ipc::PhysicalCpuInfoPtr>;
+using PhysicalCpuMap = std::map<int, mojom::PhysicalCpuInfoPtr>;
 using VulnerabilityInfoMap =
-    base::flat_map<std::string, mojo_ipc::VulnerabilityInfoPtr>;
+    base::flat_map<std::string, mojom::VulnerabilityInfoPtr>;
 
 // Regex used to parse kPresentFileName.
 constexpr char kPresentFileRegex[] = R"((\d+)-(\d+))";
@@ -103,7 +103,7 @@ struct ParsedStatContents {
 // |true| iff there was at least one sensor value in given |sensor_dir|.
 bool ReadTemperatureSensorInfo(
     const base::FilePath& sensor_dir,
-    std::vector<mojo_ipc::CpuTemperatureChannelPtr>* out_contents) {
+    std::vector<mojom::CpuTemperatureChannelPtr>* out_contents) {
   bool has_data = false;
 
   base::FileEnumerator enumerator(
@@ -135,7 +135,7 @@ bool ReadTemperatureSensorInfo(
       // Convert from millidegree Celsius to Celsius.
       temperature /= 1000;
 
-      mojo_ipc::CpuTemperatureChannel channel;
+      mojom::CpuTemperatureChannel channel;
       if (!label.empty())
         channel.label = label;
       channel.temperature_celsius = temperature;
@@ -150,9 +150,9 @@ bool ReadTemperatureSensorInfo(
 
 // Gets the time spent in each C-state for the logical processor whose ID is
 // |logical_id|. Returns std::nullopt if a required sysfs node was not found.
-std::optional<std::vector<mojo_ipc::CpuCStateInfoPtr>> GetCStates(
+std::optional<std::vector<mojom::CpuCStateInfoPtr>> GetCStates(
     const base::FilePath& root_dir, int logical_id) {
-  std::vector<mojo_ipc::CpuCStateInfoPtr> c_states;
+  std::vector<mojom::CpuCStateInfoPtr> c_states;
   // Find all directories matching /sys/devices/system/cpu/cpuN/cpudidle/stateX.
   base::FileEnumerator c_state_it(
       GetCStateDirectoryPath(root_dir, logical_id), false,
@@ -161,7 +161,7 @@ std::optional<std::vector<mojo_ipc::CpuCStateInfoPtr>> GetCStates(
       kCStateDirectoryMatcher);
   for (base::FilePath c_state_dir = c_state_it.Next(); !c_state_dir.empty();
        c_state_dir = c_state_it.Next()) {
-    mojo_ipc::CpuCStateInfo c_state;
+    mojom::CpuCStateInfo c_state;
     if (!ReadAndTrimString(c_state_dir, kCStateNameFileName, &c_state.name) ||
         !ReadInteger(c_state_dir, kCStateTimeFileName, &base::StringToUint64,
                      &c_state.time_in_state_since_last_boot_us)) {
@@ -415,25 +415,25 @@ class State {
                               bool is_all_callback_called);
 
   // Callback function to handle ReadMsr() call reading vmx registers.
-  void HandleVmxReadMsr(uint32_t index, mojo_ipc::NullableUint64Ptr val);
+  void HandleVmxReadMsr(uint32_t index, mojom::NullableUint64Ptr val);
 
   // Callback function to handle ReadMsr() call reading svm registers.
-  void HandleSvmReadMsr(uint32_t index, mojo_ipc::NullableUint64Ptr val);
+  void HandleSvmReadMsr(uint32_t index, mojom::NullableUint64Ptr val);
 
   // Calls ReadMsr based on the virtualization capability of each physical cpu.
   void FetchPhysicalCpusVirtualizationInfo(CallbackBarrier& barrier);
 
   // Logs |message| and sets |error_|. Only do the logging if |error_| has been
   // set.
-  void LogAndSetError(mojo_ipc::ErrorType type, const std::string& message);
+  void LogAndSetError(mojom::ErrorType type, const std::string& message);
 
   // Stores the context received from Fetch.
   Context* const context_;
   // Stores the error that will be returned. HandleCallbackComplete will report
   // error if this is set.
-  mojo_ipc::ProbeErrorPtr error_;
+  mojom::ProbeErrorPtr error_;
   // Stores the final cpu info that will be returned.
-  mojo_ipc::CpuInfoPtr cpu_info_;
+  mojom::CpuInfoPtr cpu_info_;
 
   // Maintains a map that maps each physical cpu id to its first corresponding
   // logical cpu id.
@@ -443,7 +443,7 @@ class State {
 };
 
 State::State(Context* context)
-    : context_(context), cpu_info_(mojo_ipc::CpuInfo::New()) {}
+    : context_(context), cpu_info_(mojom::CpuInfo::New()) {}
 
 State::~State() = default;
 
@@ -453,7 +453,7 @@ bool State::FetchNumTotalThreads() {
   std::string cpu_present;
   auto cpu_dir = root_dir.Append(kRelativeCpuDir);
   if (!ReadAndTrimString(cpu_dir, kPresentFileName, &cpu_present)) {
-    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+    LogAndSetError(mojom::ErrorType::kFileReadError,
                    "Unable to read CPU present file: " +
                        cpu_dir.Append(kPresentFileName).value());
     return false;
@@ -490,7 +490,7 @@ bool State::FetchNumTotalThreads() {
       continue;
     }
 
-    LogAndSetError(mojo_ipc::ErrorType::kParseError,
+    LogAndSetError(mojom::ErrorType::kParseError,
                    "Unable to parse CPU present file: " + cpu_present);
     return false;
   }
@@ -503,25 +503,25 @@ bool State::FetchNumTotalThreads() {
 bool State::FetchArchitecture() {
   struct utsname buf;
   if (context_->system_utils()->Uname(&buf)) {
-    cpu_info_->architecture = mojo_ipc::CpuArchitectureEnum::kUnknown;
+    cpu_info_->architecture = mojom::CpuArchitectureEnum::kUnknown;
     return true;
   }
 
   std::string machine(buf.machine);
   if (machine == kUnameMachineX86_64) {
-    cpu_info_->architecture = mojo_ipc::CpuArchitectureEnum::kX86_64;
+    cpu_info_->architecture = mojom::CpuArchitectureEnum::kX86_64;
     return true;
   }
   if (machine == kUnameMachineAArch64) {
-    cpu_info_->architecture = mojo_ipc::CpuArchitectureEnum::kAArch64;
+    cpu_info_->architecture = mojom::CpuArchitectureEnum::kAArch64;
     return true;
   }
   if (machine == kUnameMachineArmv7l) {
-    cpu_info_->architecture = mojo_ipc::CpuArchitectureEnum::kArmv7l;
+    cpu_info_->architecture = mojom::CpuArchitectureEnum::kArmv7l;
     return true;
   }
 
-  cpu_info_->architecture = mojo_ipc::CpuArchitectureEnum::kUnknown;
+  cpu_info_->architecture = mojom::CpuArchitectureEnum::kUnknown;
   return true;
 }
 
@@ -533,7 +533,7 @@ bool State::FetchKeylockerInfo() {
   // Crypto file is common for all CPU architects. However, crypto algorithms
   // populated in crypto file could be hardware dependent.
   if (!ReadAndTrimString(root_dir, kRelativeCryptoFilePath, &file_contents)) {
-    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+    LogAndSetError(mojom::ErrorType::kFileReadError,
                    "Unable to read file: " +
                        root_dir.Append(kRelativeCryptoFilePath).value());
     return false;
@@ -545,7 +545,7 @@ bool State::FetchKeylockerInfo() {
     cpu_info_->keylocker_info = nullptr;
     return true;
   }
-  auto info = mojo_ipc::KeylockerInfo::New();
+  auto info = mojom::KeylockerInfo::New();
   info->keylocker_configured = true;
   cpu_info_->keylocker_info = std::move(info);
 
@@ -556,7 +556,7 @@ bool State::FetchKeylockerInfo() {
 bool State::FetchCpuTemperatures() {
   base::FilePath root_dir = context_->root_dir();
 
-  std::vector<mojo_ipc::CpuTemperatureChannelPtr> temps;
+  std::vector<mojom::CpuTemperatureChannelPtr> temps;
   // Get directories |/sys/class/hwmon/hwmon*|
   base::FileEnumerator hwmon_enumerator(root_dir.AppendASCII(kHwmonDir), false,
                                         base::FileEnumerator::DIRECTORIES,
@@ -585,7 +585,7 @@ bool State::FetchPhysicalCpus() {
       GetParsedStatContents(root_dir);
   if (parsed_stat_contents == std::nullopt) {
     LogAndSetError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Unable to parse stat file: " + GetProcStatPath(root_dir).value());
     return false;
   }
@@ -595,7 +595,7 @@ bool State::FetchPhysicalCpus() {
   std::optional<std::vector<std::string>> processor_info_opt =
       GetProcCpuInfoContent(root_dir);
   if (processor_info_opt == std::nullopt) {
-    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+    LogAndSetError(mojom::ErrorType::kFileReadError,
                    "Unable to read CPU info file: " +
                        GetProcCpuInfoPath(root_dir).value());
     return false;
@@ -611,7 +611,7 @@ bool State::FetchPhysicalCpus() {
     std::string model_name;
     std::vector<std::string> cpu_flags;
     if (!ParseProcessor(processor, processor_id, model_name, cpu_flags)) {
-      LogAndSetError(mojo_ipc::ErrorType::kParseError,
+      LogAndSetError(mojom::ErrorType::kParseError,
                      "Unable to parse processor string: " + processor);
       return false;
     }
@@ -619,7 +619,7 @@ bool State::FetchPhysicalCpus() {
     int physical_id;
     if (!ReadInteger(GetPhysicalPackageIdPath(root_dir, processor_id),
                      &base::StringToInt, &physical_id)) {
-      LogAndSetError(mojo_ipc::ErrorType::kParseError,
+      LogAndSetError(mojom::ErrorType::kParseError,
                      "Unable to parse physical ID for cpu " +
                          base::NumberToString(processor_id));
       return false;
@@ -630,8 +630,7 @@ bool State::FetchPhysicalCpus() {
     auto itr = physical_cpus.find(physical_id);
     if (itr == physical_cpus.end()) {
       physical_id_to_first_logical_id_[physical_id] = processor_id;
-      mojo_ipc::PhysicalCpuInfoPtr physical_cpu =
-          mojo_ipc::PhysicalCpuInfo::New();
+      mojom::PhysicalCpuInfoPtr physical_cpu = mojom::PhysicalCpuInfo::New();
       if (model_name.empty()) {
         // It may be Arm CPU. We will return SoC model name instead.
         GetArmSoCModelName(root_dir, &model_name);
@@ -648,11 +647,11 @@ bool State::FetchPhysicalCpus() {
     }
 
     // Populate the logical CPU info values.
-    mojo_ipc::LogicalCpuInfo logical_cpu;
+    mojom::LogicalCpuInfo logical_cpu;
     const auto parsed_stat_itr =
         logical_ids_to_stat_contents.find(processor_id);
     if (parsed_stat_itr == logical_ids_to_stat_contents.end()) {
-      LogAndSetError(mojo_ipc::ErrorType::kParseError,
+      LogAndSetError(mojom::ErrorType::kParseError,
                      "No parsed stat contents for logical ID: " +
                          base::NumberToString(processor_id));
       return false;
@@ -664,7 +663,7 @@ bool State::FetchPhysicalCpus() {
 
     auto c_states = GetCStates(root_dir, processor_id);
     if (c_states == std::nullopt) {
-      LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+      LogAndSetError(mojom::ErrorType::kFileReadError,
                      "Unable to read C States.");
       return false;
     }
@@ -680,7 +679,7 @@ bool State::FetchPhysicalCpus() {
     } else {
       if (!ReadInteger(cpufreq_dir, kCpuinfoMaxFreqFileName,
                        &base::StringToUint, &logical_cpu.max_clock_speed_khz)) {
-        LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+        LogAndSetError(mojom::ErrorType::kFileReadError,
                        "Unable to read max CPU frequency file to integer: " +
                            cpufreq_dir.Append(kCpuinfoMaxFreqFileName).value());
         return false;
@@ -690,7 +689,7 @@ bool State::FetchPhysicalCpus() {
                        &base::StringToUint,
                        &logical_cpu.scaling_max_frequency_khz)) {
         LogAndSetError(
-            mojo_ipc::ErrorType::kFileReadError,
+            mojom::ErrorType::kFileReadError,
             "Unable to read scaling max frequency file to integer: " +
                 cpufreq_dir.Append(kScalingMaxFreqFileName).value());
         return false;
@@ -700,7 +699,7 @@ bool State::FetchPhysicalCpus() {
                        &base::StringToUint,
                        &logical_cpu.scaling_current_frequency_khz)) {
         LogAndSetError(
-            mojo_ipc::ErrorType::kFileReadError,
+            mojom::ErrorType::kFileReadError,
             "Unable to read scaling current frequency file to integer: " +
                 cpufreq_dir.Append(kScalingCurFreqFileName).value());
         return false;
@@ -709,7 +708,7 @@ bool State::FetchPhysicalCpus() {
 
     if (!ReadInteger(GetCoreIdPath(root_dir, processor_id), &base::StringToUint,
                      &logical_cpu.core_id)) {
-      LogAndSetError(mojo_ipc::ErrorType::kParseError,
+      LogAndSetError(mojom::ErrorType::kParseError,
                      "Unable to parse core ID for cpu " +
                          base::NumberToString(processor_id));
       return false;
@@ -729,7 +728,7 @@ bool State::FetchPhysicalCpus() {
 bool State::FetchVirtualization() {
   base::FilePath root_dir = context_->root_dir();
 
-  cpu_info_->virtualization = mojo_ipc::VirtualizationInfo::New();
+  cpu_info_->virtualization = mojom::VirtualizationInfo::New();
   cpu_info_->virtualization->has_kvm_device =
       base::PathExists(root_dir.Append(kRelativeKvmFilePath));
 
@@ -739,7 +738,7 @@ bool State::FetchVirtualization() {
   if (!base::PathExists(smt_dir)) {
     cpu_info_->virtualization->is_smt_active = false;
     cpu_info_->virtualization->smt_control =
-        mojo_ipc::VirtualizationInfo::SMTControl::kNotImplemented;
+        mojom::VirtualizationInfo::SMTControl::kNotImplemented;
     return true;
   }
 
@@ -748,7 +747,7 @@ bool State::FetchVirtualization() {
   uint32_t active;
   if (!ReadInteger(smt_active_path, base::StringToUint, &active) ||
       active > 1) {
-    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+    LogAndSetError(mojom::ErrorType::kFileReadError,
                    "Unable to read smt active file.");
     return false;
   }
@@ -759,28 +758,28 @@ bool State::FetchVirtualization() {
   base::FilePath smt_control_path = smt_dir.Append(kSmtControlFileName);
 
   if (!ReadAndTrimString(smt_control_path, &control)) {
-    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+    LogAndSetError(mojom::ErrorType::kFileReadError,
                    "Unable to read smt control file.");
     return false;
   }
 
   if (control == kSmtControlOnContent) {
     cpu_info_->virtualization->smt_control =
-        mojo_ipc::VirtualizationInfo::SMTControl::kOn;
+        mojom::VirtualizationInfo::SMTControl::kOn;
   } else if (control == kSmtControlOffContent) {
     cpu_info_->virtualization->smt_control =
-        mojo_ipc::VirtualizationInfo::SMTControl::kOff;
+        mojom::VirtualizationInfo::SMTControl::kOff;
   } else if (control == kSmtControlForceOffContent) {
     cpu_info_->virtualization->smt_control =
-        mojo_ipc::VirtualizationInfo::SMTControl::kForceOff;
+        mojom::VirtualizationInfo::SMTControl::kForceOff;
   } else if (control == kSmtControlNotSupportedContent) {
     cpu_info_->virtualization->smt_control =
-        mojo_ipc::VirtualizationInfo::SMTControl::kNotSupported;
+        mojom::VirtualizationInfo::SMTControl::kNotSupported;
   } else if (control == kSmtControlNotImplementedContent) {
     cpu_info_->virtualization->smt_control =
-        mojo_ipc::VirtualizationInfo::SMTControl::kNotImplemented;
+        mojom::VirtualizationInfo::SMTControl::kNotImplemented;
   } else {
-    LogAndSetError(mojo_ipc::ErrorType::kParseError,
+    LogAndSetError(mojom::ErrorType::kParseError,
                    "Unable to parse smt control file.");
     return false;
   }
@@ -800,11 +799,11 @@ bool State::FetchVulnerabilities() {
                           /*recursive=*/false, base::FileEnumerator::FILES);
   for (base::FilePath vulnerability_file = it.Next();
        !vulnerability_file.empty(); vulnerability_file = it.Next()) {
-    auto vulnerability = mojo_ipc::VulnerabilityInfo::New();
+    auto vulnerability = mojom::VulnerabilityInfo::New();
 
     if (!ReadAndTrimString(vulnerability_file, &vulnerability->message)) {
       LogAndSetError(
-          mojo_ipc::ErrorType::kFileReadError,
+          mojom::ErrorType::kFileReadError,
           "Unable to read vulnerability file: " + vulnerability_file.value());
       return false;
     }
@@ -825,14 +824,14 @@ void State::FetchPhysicalCpusVirtualizationInfo(CallbackBarrier& barrier) {
   for (uint32_t physical_id = 0; physical_id < cpu_info_->physical_cpus.size();
        ++physical_id) {
     uint32_t logical_id = physical_id_to_first_logical_id_[physical_id];
-    mojo_ipc::PhysicalCpuInfoPtr& physical_cpu =
+    mojom::PhysicalCpuInfoPtr& physical_cpu =
         cpu_info_->physical_cpus[physical_id];
 
-    physical_cpu->virtualization = mojo_ipc::CpuVirtualizationInfo::New();
+    physical_cpu->virtualization = mojom::CpuVirtualizationInfo::New();
     const std::vector<std::string>& flags = physical_cpu->flags.value();
     if (std::find(flags.begin(), flags.end(), "vmx") != flags.end()) {
       physical_cpu->virtualization->type =
-          mojo_ipc::CpuVirtualizationInfo::Type::kVMX;
+          mojom::CpuVirtualizationInfo::Type::kVMX;
       context_->executor()->ReadMsr(
           cpu_msr::kIA32FeatureControl, logical_id,
           barrier.Depend(base::BindOnce(&State::HandleVmxReadMsr,
@@ -840,7 +839,7 @@ void State::FetchPhysicalCpusVirtualizationInfo(CallbackBarrier& barrier) {
                                         physical_id)));
     } else if (std::find(flags.begin(), flags.end(), "svm") != flags.end()) {
       physical_cpu->virtualization->type =
-          mojo_ipc::CpuVirtualizationInfo::Type::kSVM;
+          mojom::CpuVirtualizationInfo::Type::kSVM;
       context_->executor()->ReadMsr(
           cpu_msr::kVmCr, logical_id,
           barrier.Depend(base::BindOnce(&State::HandleSvmReadMsr,
@@ -854,9 +853,9 @@ void State::FetchPhysicalCpusVirtualizationInfo(CallbackBarrier& barrier) {
 }
 
 void State::HandleSvmReadMsr(uint32_t physical_id,
-                             mojo_ipc::NullableUint64Ptr val) {
+                             mojom::NullableUint64Ptr val) {
   if (val.is_null()) {
-    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+    LogAndSetError(mojom::ErrorType::kFileReadError,
                    "Error while reading svm msr register");
     return;
   }
@@ -867,9 +866,9 @@ void State::HandleSvmReadMsr(uint32_t physical_id,
 }
 
 void State::HandleVmxReadMsr(uint32_t physical_id,
-                             mojo_ipc::NullableUint64Ptr val) {
+                             mojom::NullableUint64Ptr val) {
   if (val.is_null()) {
-    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+    LogAndSetError(mojom::ErrorType::kFileReadError,
                    "Error while reading vmx msr register");
     return;
   }
@@ -883,20 +882,19 @@ void State::HandleVmxReadMsr(uint32_t physical_id,
 void State::HandleCallbackComplete(FetchCpuInfoCallback callback,
                                    bool is_all_callback_called) {
   if (!is_all_callback_called) {
-    LogAndSetError(mojo_ipc::ErrorType::kServiceUnavailable,
+    LogAndSetError(mojom::ErrorType::kServiceUnavailable,
                    "Not all Fetch Cpu Virtualization Callbacks "
                    "have been sucessfully called");
   }
   std::move(callback).Run(
-      error_ ? mojo_ipc::CpuResult::NewError(std::move(error_))
-             : mojo_ipc::CpuResult::NewCpuInfo(std::move(cpu_info_)));
+      error_ ? mojom::CpuResult::NewError(std::move(error_))
+             : mojom::CpuResult::NewCpuInfo(std::move(cpu_info_)));
 }
 
-void State::LogAndSetError(mojo_ipc::ErrorType type,
-                           const std::string& message) {
+void State::LogAndSetError(mojom::ErrorType type, const std::string& message) {
   LOG(ERROR) << message;
   if (error_.is_null())
-    error_ = mojo_ipc::ProbeError::New(type, message);
+    error_ = mojom::ProbeError::New(type, message);
 }
 
 void State::Fetch(Context* context, FetchCpuInfoCallback callback) {
@@ -965,7 +963,7 @@ base::FilePath GetCoreIdPath(const base::FilePath& root_dir, int logical_id) {
       .Append(core_id_filename);
 }
 
-mojo_ipc::VulnerabilityInfo::Status GetVulnerabilityStatusFromMessage(
+mojom::VulnerabilityInfo::Status GetVulnerabilityStatusFromMessage(
     const std::string& message) {
   // Messages in the |iTLB multihit| vulnerability takes a different form with
   // |KVM: Vulberable|, |KVM: Mitigation: $msg| and |Processor vulnerable|. We
@@ -974,21 +972,21 @@ mojo_ipc::VulnerabilityInfo::Status GetVulnerabilityStatusFromMessage(
   //
   // https://www.kernel.org/doc/html/latest/admin-guide/hw-vuln/multihit.html
   if (message == vulnerability::kNotAffectedContent) {
-    return mojo_ipc::VulnerabilityInfo::Status::kNotAffected;
+    return mojom::VulnerabilityInfo::Status::kNotAffected;
   }
   if (base::StartsWith(message, vulnerability::kVulnerablePrefix) ||
       base::StartsWith(message, vulnerability::kKvmVulnerablePrefix) ||
       message == vulnerability::kProcessorVulnerableContent) {
-    return mojo_ipc::VulnerabilityInfo::Status::kVulnerable;
+    return mojom::VulnerabilityInfo::Status::kVulnerable;
   }
   if (base::StartsWith(message, vulnerability::kMitigationPrefix) ||
       base::StartsWith(message, vulnerability::kKvmMitigationPrefix)) {
-    return mojo_ipc::VulnerabilityInfo::Status::kMitigation;
+    return mojom::VulnerabilityInfo::Status::kMitigation;
   }
   if (base::StartsWith(message, vulnerability::kUnknownPrefix)) {
-    return mojo_ipc::VulnerabilityInfo::Status::kUnknown;
+    return mojom::VulnerabilityInfo::Status::kUnknown;
   }
-  return mojo_ipc::VulnerabilityInfo::Status::kUnrecognized;
+  return mojom::VulnerabilityInfo::Status::kUnrecognized;
 }
 
 void FetchCpuInfo(Context* context, FetchCpuInfoCallback callback) {

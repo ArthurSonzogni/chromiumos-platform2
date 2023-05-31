@@ -30,7 +30,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 // The name of the Smart Battery manufacture date metric.
 constexpr char kManufactureDateSmart[] = "manufacture_date_smart";
@@ -54,46 +54,46 @@ std::string ConvertSmartBatteryManufactureDate(uint32_t manufacture_date) {
 
 }  // namespace
 
-mojo_ipc::BatteryResultPtr BatteryFetcher::FetchBatteryInfo() {
+mojom::BatteryResultPtr BatteryFetcher::FetchBatteryInfo() {
   if (!context_->system_config()->HasBattery())
-    return mojo_ipc::BatteryResult::NewBatteryInfo(mojo_ipc::BatteryInfoPtr());
+    return mojom::BatteryResult::NewBatteryInfo(mojom::BatteryInfoPtr());
 
-  mojo_ipc::BatteryInfo info;
+  mojom::BatteryInfo info;
   auto power_supply_proto =
       context_->powerd_adapter()->GetPowerSupplyProperties();
   if (!power_supply_proto) {
-    return mojo_ipc::BatteryResult::NewError(CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kSystemUtilityError,
+    return mojom::BatteryResult::NewError(CreateAndLogProbeError(
+        mojom::ErrorType::kSystemUtilityError,
         "Failed to obtain power supply properties from powerd"));
   }
 
   auto error =
       PopulateBatteryInfoFromPowerdResponse(power_supply_proto.value(), &info);
   if (error.has_value()) {
-    return mojo_ipc::BatteryResult::NewError(std::move(error.value()));
+    return mojom::BatteryResult::NewError(std::move(error.value()));
   }
 
   if (context_->system_config()->HasSmartBattery()) {
     error = PopulateSmartBatteryInfo(&info);
     if (error.has_value()) {
-      return mojo_ipc::BatteryResult::NewError(std::move(error.value()));
+      return mojom::BatteryResult::NewError(std::move(error.value()));
     }
   }
 
-  return mojo_ipc::BatteryResult::NewBatteryInfo(info.Clone());
+  return mojom::BatteryResult::NewBatteryInfo(info.Clone());
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr>
+std::optional<mojom::ProbeErrorPtr>
 BatteryFetcher::PopulateBatteryInfoFromPowerdResponse(
     const power_manager::PowerSupplyProperties& power_supply_proto,
-    mojo_ipc::BatteryInfo* info) {
+    mojom::BatteryInfo* info) {
   DCHECK(info);
 
   if (!power_supply_proto.has_battery_state() ||
       power_supply_proto.battery_state() ==
           power_manager::PowerSupplyProperties_BatteryState_NOT_PRESENT) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kSystemUtilityError,
+        mojom::ErrorType::kSystemUtilityError,
         "PowerSupplyProperties protobuf indicates battery is not present");
   }
 
@@ -113,8 +113,8 @@ BatteryFetcher::PopulateBatteryInfoFromPowerdResponse(
   return std::nullopt;
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr> BatteryFetcher::PopulateSmartBatteryInfo(
-    mojo_ipc::BatteryInfo* info) {
+std::optional<mojom::ProbeErrorPtr> BatteryFetcher::PopulateSmartBatteryInfo(
+    mojom::BatteryInfo* info) {
   uint32_t manufacture_date;
   auto convert_hex_string_to_uint32 =
       base::BindOnce([](const base::StringPiece& input, uint32_t* output) {
@@ -138,13 +138,13 @@ std::optional<mojo_ipc::ProbeErrorPtr> BatteryFetcher::PopulateSmartBatteryInfo(
   if (error.has_value()) {
     return error;
   }
-  info->temperature = mojo_ipc::NullableUint64::New(temperature);
+  info->temperature = mojom::NullableUint64::New(temperature);
 
   return std::nullopt;
 }
 
 template <typename T>
-std::optional<mojo_ipc::ProbeErrorPtr> BatteryFetcher::GetSmartBatteryMetric(
+std::optional<mojom::ProbeErrorPtr> BatteryFetcher::GetSmartBatteryMetric(
     const std::string& metric_name,
     base::OnceCallback<bool(const base::StringPiece& input, T* output)>
         convert_string_to_num,
@@ -153,7 +153,7 @@ std::optional<mojo_ipc::ProbeErrorPtr> BatteryFetcher::GetSmartBatteryMetric(
   std::string debugd_result;
   if (!context_->debugd_proxy()->CollectSmartBatteryMetric(
           metric_name, &debugd_result, &error, kDebugdDBusTimeout)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kSystemUtilityError,
+    return CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
                                   "Failed retrieving " + metric_name +
                                       " from debugd: " + error->GetCode() +
                                       " " + error->GetMessage());
@@ -166,13 +166,13 @@ std::optional<mojo_ipc::ProbeErrorPtr> BatteryFetcher::GetSmartBatteryMetric(
   if (!RE2::PartialMatch(base::CollapseWhitespaceASCII(debugd_result, true),
                          kRegexPattern, &reg_value)) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Failed to match debugd output to regex: " + debugd_result);
   }
 
   if (!std::move(convert_string_to_num).Run(reg_value, metric_value)) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Unable to run convert string to num callback");
   }
 

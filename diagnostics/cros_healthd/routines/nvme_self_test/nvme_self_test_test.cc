@@ -24,10 +24,10 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 using OnceStringCallback = base::OnceCallback<void(const std::string& result)>;
 using OnceErrorCallback = base::OnceCallback<void(brillo::Error* error)>;
-using routine_status = mojo_ipc::DiagnosticRoutineStatusEnum;
+using routine_status = mojom::DiagnosticRoutineStatusEnum;
 using ::testing::_;
 using ::testing::StrictMock;
 using ::testing::WithArg;
@@ -53,14 +53,14 @@ class NvmeSelfTestRoutineTest : public testing::Test {
     routine_->Start();
   }
   void RunRoutineCancel() { routine_->Cancel(); }
-  mojo_ipc::RoutineUpdatePtr RunRoutinePopulate() {
-    mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                   mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdatePtr RunRoutinePopulate() {
+    mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                                mojom::RoutineUpdateUnionPtr()};
 
     routine_->PopulateStatusUpdate(&update, true);
-    return mojo_ipc::RoutineUpdate::New(update.progress_percent,
-                                        std::move(update.output),
-                                        std::move(update.routine_update_union));
+    return mojom::RoutineUpdate::New(update.progress_percent,
+                                     std::move(update.output),
+                                     std::move(update.routine_update_union));
   }
 
   StrictMock<org::chromium::debugdProxyMock> debugd_proxy_;
@@ -80,7 +80,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestPass) {
   RunRoutineStart();
 
   EXPECT_EQ(routine()->GetStatus(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kRunning);
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
 
   // Progress(byte-0): Bits 3:0, 1 means short-time test is in progress.
   // Percent(byte-1): 0x1e for 30%
@@ -99,7 +99,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestPass) {
         std::move(callback).Run(nvme_encoded_output);
       }));
   VerifyNonInteractiveUpdate(RunRoutinePopulate()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
+                             mojom::DiagnosticRoutineStatusEnum::kRunning,
                              NvmeSelfTestRoutine::kNvmeSelfTestRoutineRunning);
 
   // Progress(byte-0): Bits 3:0, 0 means test is completed.
@@ -120,7 +120,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestPass) {
       }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+      mojom::DiagnosticRoutineStatusEnum::kPassed,
       NvmeSelfTestRoutine::kSelfTestRoutineCompleteLog[0x0]);
 }
 
@@ -135,7 +135,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestStartError) {
   RunRoutineStart();
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+      mojom::DiagnosticRoutineStatusEnum::kError,
       NvmeSelfTestRoutine::kNvmeSelfTestRoutineStartError);
 }
 
@@ -168,7 +168,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestError) {
       }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+      mojom::DiagnosticRoutineStatusEnum::kFailed,
       NvmeSelfTestRoutine::kSelfTestRoutineCompleteLog[0x3]);
 }
 
@@ -201,7 +201,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidError) {
       }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+      mojom::DiagnosticRoutineStatusEnum::kFailed,
       NvmeSelfTestRoutine::kSelfTestRoutineCompleteUnknownStatus);
 }
 
@@ -234,7 +234,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidType) {
       }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+      mojom::DiagnosticRoutineStatusEnum::kError,
       NvmeSelfTestRoutine::kNvmeSelfTestRoutineGetProgressFailed);
 }
 
@@ -260,7 +260,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgress) {
       }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+      mojom::DiagnosticRoutineStatusEnum::kError,
       NvmeSelfTestRoutine::kNvmeSelfTestRoutineGetProgressFailed);
 }
 
@@ -275,7 +275,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgressLength) {
   RunRoutineStart();
 
   EXPECT_EQ(routine()->GetStatus(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kRunning);
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
 
   // 8-byte data with valid progress info.
   // Progress(byte-0): Bits 3:0, 1 means short-time test is in progress.
@@ -295,7 +295,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgressLength) {
       }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+      mojom::DiagnosticRoutineStatusEnum::kError,
       NvmeSelfTestRoutine::kNvmeSelfTestRoutineGetProgressFailed);
 }
 
@@ -318,7 +318,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestCancelPass) {
   RunRoutineCancel();
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled,
+      mojom::DiagnosticRoutineStatusEnum::kCancelled,
       NvmeSelfTestRoutine::kNvmeSelfTestRoutineCancelled);
 }
 
@@ -339,7 +339,7 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestCancelError) {
   RunRoutineCancel();
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+      mojom::DiagnosticRoutineStatusEnum::kError,
       NvmeSelfTestRoutine::kNvmeSelfTestRoutineAbortionError);
 }
 
@@ -354,7 +354,7 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestPass) {
   RunRoutineStart();
 
   EXPECT_EQ(routine()->GetStatus(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kRunning);
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
 
   // Progress(byte-0): Bits 3:0, 2 means long-time test is in progress.
   // Percent(byte-1): 0x0 for 0%
@@ -373,7 +373,7 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestPass) {
         std::move(callback).Run(nvme_encoded_output);
       }));
   VerifyNonInteractiveUpdate(RunRoutinePopulate()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
+                             mojom::DiagnosticRoutineStatusEnum::kRunning,
                              NvmeSelfTestRoutine::kNvmeSelfTestRoutineRunning);
 
   // Progress(byte-0): Bits 3:0, 0 means test is completed.
@@ -394,7 +394,7 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestPass) {
       }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+      mojom::DiagnosticRoutineStatusEnum::kPassed,
       NvmeSelfTestRoutine::kSelfTestRoutineCompleteLog[0x0]);
 }
 
@@ -427,7 +427,7 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestError) {
       }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+      mojom::DiagnosticRoutineStatusEnum::kFailed,
       NvmeSelfTestRoutine::kSelfTestRoutineCompleteLog[0x4]);
 }
 
@@ -443,7 +443,7 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdError) {
       }));
   RunRoutineStart();
   VerifyNonInteractiveUpdate(RunRoutinePopulate()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kDebugdErrorMessage);
 }
 
@@ -458,7 +458,7 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForCancelling) {
   RunRoutineStart();
 
   EXPECT_EQ(routine()->GetStatus(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kRunning);
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
 
   const char kDebugdErrorMessage[] = "Debugd mock error for cancelling";
   const brillo::ErrorPtr kError =
@@ -469,7 +469,7 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForCancelling) {
       }));
   RunRoutineCancel();
   VerifyNonInteractiveUpdate(RunRoutinePopulate()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kDebugdErrorMessage);
 }
 
@@ -484,7 +484,7 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForGettingProgress) {
   RunRoutineStart();
 
   EXPECT_EQ(routine()->GetStatus(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kRunning);
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
 
   const char kDebugdErrorMessage[] = "Debugd mock error for getting progress";
   const brillo::ErrorPtr kError =
@@ -497,7 +497,7 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForGettingProgress) {
         std::move(callback).Run(kError.get());
       }));
   VerifyNonInteractiveUpdate(RunRoutinePopulate()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kDebugdErrorMessage);
 }
 
@@ -539,7 +539,7 @@ TEST_F(NvmeSelfTestRoutineTest, RoutineStatusTransition) {
         }));
     RunRoutineStart();
     EXPECT_EQ(routine()->GetStatus(),
-              mojo_ipc::DiagnosticRoutineStatusEnum::kRunning);
+              mojom::DiagnosticRoutineStatusEnum::kRunning);
     EXPECT_TRUE(
         reinterpret_cast<NvmeSelfTestRoutine*>(routine())
             ->UpdateStatusWithProgressPercent(testcase.source_status, 100, ""));

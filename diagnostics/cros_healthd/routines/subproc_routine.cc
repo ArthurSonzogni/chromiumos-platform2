@@ -19,7 +19,7 @@
 
 namespace diagnostics {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kSubprocRoutineCancelledMessage[] = "The routine was cancelled.";
 constexpr char kSubprocRoutineErrorMessage[] =
@@ -38,26 +38,26 @@ constexpr char kSubprocRoutineSucceededMessage[] = "Routine passed.";
 
 constexpr uint32_t kSubprocRoutineFakeProgressPercentUnknown = 33;
 
-mojo_ipc::DiagnosticRoutineStatusEnum
+mojom::DiagnosticRoutineStatusEnum
 GetDiagnosticRoutineStatusFromSubprocRoutineStatus(
     SubprocRoutine::SubprocStatus subproc_status) {
   switch (subproc_status) {
     case SubprocRoutine::kSubprocStatusReady:
-      return mojo_ipc::DiagnosticRoutineStatusEnum::kReady;
+      return mojom::DiagnosticRoutineStatusEnum::kReady;
     case SubprocRoutine::kSubprocStatusLaunchFailed:
-      return mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart;
+      return mojom::DiagnosticRoutineStatusEnum::kFailedToStart;
     case SubprocRoutine::kSubprocStatusRunning:
-      return mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
+      return mojom::DiagnosticRoutineStatusEnum::kRunning;
     case SubprocRoutine::kSubprocStatusCancelling:
-      return mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling;
+      return mojom::DiagnosticRoutineStatusEnum::kCancelling;
     case SubprocRoutine::kSubprocStatusCompleteSuccess:
-      return mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
+      return mojom::DiagnosticRoutineStatusEnum::kPassed;
     case SubprocRoutine::kSubprocStatusCompleteFailure:
-      return mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
+      return mojom::DiagnosticRoutineStatusEnum::kFailed;
     case SubprocRoutine::kSubprocStatusError:
-      return mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+      return mojom::DiagnosticRoutineStatusEnum::kError;
     case SubprocRoutine::kSubprocStatusCancelled:
-      return mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled;
+      return mojom::DiagnosticRoutineStatusEnum::kCancelled;
   }
 }
 
@@ -143,24 +143,24 @@ void SubprocRoutine::Cancel() {
   KillProcess(false /*from_dtor*/);
 }
 
-void SubprocRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
+void SubprocRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
                                           bool include_output) {
   // Because the subproc_routine routine is non-interactive, we will never
   // include a user message.
   CheckProcessStatus();
 
-  auto update = mojo_ipc::NonInteractiveRoutineUpdate::New();
+  auto update = mojom::NonInteractiveRoutineUpdate::New();
   update->status =
       GetDiagnosticRoutineStatusFromSubprocRoutineStatus(subproc_status_);
   update->status_message =
       GetStatusMessageFromSubprocRoutineStatus(subproc_status_);
 
   response->routine_update_union =
-      mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
+      mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   response->progress_percent = CalculateProgressPercent();
 }
 
-mojo_ipc::DiagnosticRoutineStatusEnum SubprocRoutine::GetStatus() {
+mojom::DiagnosticRoutineStatusEnum SubprocRoutine::GetStatus() {
   CheckProcessStatus();
   return GetDiagnosticRoutineStatusFromSubprocRoutineStatus(subproc_status_);
 }

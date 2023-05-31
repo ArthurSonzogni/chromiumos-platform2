@@ -34,18 +34,18 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::UnorderedElementsAreArray;
 using VulnerabilityInfoMap =
-    base::flat_map<std::string, mojo_ipc::VulnerabilityInfoPtr>;
+    base::flat_map<std::string, mojom::VulnerabilityInfoPtr>;
 
 // POD struct for ParseCpuArchitectureTest.
 struct ParseCpuArchitectureTestParams {
   std::string uname_machine;
-  mojo_ipc::CpuArchitectureEnum expected_mojo_enum;
+  mojom::CpuArchitectureEnum expected_mojo_enum;
 };
 
 // No other logical IDs should be used, or the logic for writing C-state files
@@ -141,7 +141,7 @@ constexpr char kSoCIDContents[] = "jep106:0426:8192";
 // Workaround matchers for UnorderedElementsAreArray not accepting
 // move-only types.
 
-// This matcher expects a std::cref(mojo_ipc::CStateInfoPtr) and
+// This matcher expects a std::cref(mojom::CStateInfoPtr) and
 // checks each of the fields for equality.
 MATCHER_P(MatchesCStateInfoPtr, ptr, "") {
   return arg->name == ptr.get()->name &&
@@ -149,7 +149,7 @@ MATCHER_P(MatchesCStateInfoPtr, ptr, "") {
              ptr.get()->time_in_state_since_last_boot_us;
 }
 
-// This matcher expects a std::cref(mojo_ipc::CpuTemperatureChannelPtr) and
+// This matcher expects a std::cref(mojom::CpuTemperatureChannelPtr) and
 // checks each of the fields for equality.
 MATCHER_P(MatchesCpuTemperatureChannelPtr, ptr, "") {
   return arg->label == ptr.get()->label &&
@@ -166,7 +166,7 @@ void VerifyLogicalCpu(
     uint32_t expected_system_time_user_hz,
     uint64_t expected_idle_time_user_hz,
     const std::vector<std::pair<std::string, uint64_t>>& expected_c_states,
-    const mojo_ipc::LogicalCpuInfoPtr& actual_data) {
+    const mojom::LogicalCpuInfoPtr& actual_data) {
   ASSERT_FALSE(actual_data.is_null());
   EXPECT_EQ(actual_data->max_clock_speed_khz, expected_max_clock_speed_khz);
   EXPECT_EQ(actual_data->scaling_max_frequency_khz,
@@ -192,9 +192,9 @@ void VerifyLogicalCpu(
   } else {
     // Since fetching C-states uses base::FileEnumerator, we're not guaranteed
     // the order of the two results.
-    auto first_expected_c_state = mojo_ipc::CpuCStateInfo::New(
+    auto first_expected_c_state = mojom::CpuCStateInfo::New(
         expected_c_states[0].first, expected_c_states[0].second);
-    auto second_expected_c_state = mojo_ipc::CpuCStateInfo::New(
+    auto second_expected_c_state = mojom::CpuCStateInfo::New(
         expected_c_states[1].first, expected_c_states[1].second);
     EXPECT_THAT(
         c_states,
@@ -207,14 +207,14 @@ void VerifyLogicalCpu(
 // Verifies that the two received CPU temperature channels have the correct
 // values.
 void VerifyCpuTemps(
-    const std::vector<mojo_ipc::CpuTemperatureChannelPtr>& cpu_temps) {
+    const std::vector<mojom::CpuTemperatureChannelPtr>& cpu_temps) {
   ASSERT_EQ(cpu_temps.size(), 2);
 
   // Since fetching temperatures uses base::FileEnumerator, we're not
   // guaranteed the order of the two results.
-  auto first_expected_temp = mojo_ipc::CpuTemperatureChannel::New(
+  auto first_expected_temp = mojom::CpuTemperatureChannel::New(
       kFirstFakeCpuTemperatureLabel, kFirstFakeCpuTemperature);
-  auto second_expected_temp = mojo_ipc::CpuTemperatureChannel::New(
+  auto second_expected_temp = mojom::CpuTemperatureChannel::New(
       kSecondFakeCpuTemperatureLabel, kSecondFakeCpuTemperature);
   EXPECT_THAT(
       cpu_temps,
@@ -346,8 +346,8 @@ class CpuFetcherTest : public testing::Test {
     return mock_context_.fake_system_utils();
   }
 
-  mojo_ipc::CpuResultPtr FetchCpuInfoSync() {
-    base::test::TestFuture<mojo_ipc::CpuResultPtr> future;
+  mojom::CpuResultPtr FetchCpuInfoSync() {
+    base::test::TestFuture<mojom::CpuResultPtr> future;
     FetchCpuInfo(&mock_context_, future.GetCallback());
     return future.Take();
   }
@@ -369,7 +369,7 @@ class CpuFetcherTest : public testing::Test {
   // Verifies that the received PhysicalCpuInfoPtrs matched the expected default
   // value.
   void VerifyPhysicalCpus(
-      const std::vector<mojo_ipc::PhysicalCpuInfoPtr>& physical_cpus) {
+      const std::vector<mojom::PhysicalCpuInfoPtr>& physical_cpus) {
     ASSERT_EQ(physical_cpus.size(), 2);
     const auto& first_physical_cpu = physical_cpus[0];
     ASSERT_FALSE(first_physical_cpu.is_null());
@@ -400,11 +400,10 @@ class CpuFetcherTest : public testing::Test {
                           uint64_t expected_val) {
     EXPECT_CALL(*mock_executor(),
                 ReadMsr(expected_msr_reg, expected_logical_id, _))
-        .WillRepeatedly(Invoke(
-            [expected_val](uint32_t msr_reg, uint32_t cpu_index,
-                           mojo_ipc::Executor::ReadMsrCallback callback) {
-              std::move(callback).Run(
-                  mojo_ipc::NullableUint64::New(expected_val));
+        .WillRepeatedly(
+            Invoke([expected_val](uint32_t msr_reg, uint32_t cpu_index,
+                                  mojom::Executor::ReadMsrCallback callback) {
+              std::move(callback).Run(mojom::NullableUint64::New(expected_val));
             }));
   }
 
@@ -485,7 +484,7 @@ TEST_F(CpuFetcherTest, TestFetchCpu) {
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
   EXPECT_EQ(cpu_info->num_total_threads, kExpectedNumTotalThreads);
-  EXPECT_EQ(cpu_info->architecture, mojo_ipc::CpuArchitectureEnum::kX86_64);
+  EXPECT_EQ(cpu_info->architecture, mojom::CpuArchitectureEnum::kX86_64);
   VerifyPhysicalCpus(cpu_info->physical_cpus);
   VerifyCpuTemps(cpu_info->temperature_channels);
 }
@@ -496,7 +495,7 @@ TEST_F(CpuFetcherTest, NoPhysicalIdFile) {
 
   auto cpu_result = FetchCpuInfoSync();
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a missing cpuinfo file.
@@ -506,7 +505,7 @@ TEST_F(CpuFetcherTest, MissingCpuinfoFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle a cpuinfo file with a hardware description block.
@@ -521,7 +520,7 @@ TEST_F(CpuFetcherTest, HardwareDescriptionCpuinfoFile) {
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
   EXPECT_EQ(cpu_info->num_total_threads, kExpectedNumTotalThreads);
-  EXPECT_EQ(cpu_info->architecture, mojo_ipc::CpuArchitectureEnum::kX86_64);
+  EXPECT_EQ(cpu_info->architecture, mojom::CpuArchitectureEnum::kX86_64);
   VerifyPhysicalCpus(cpu_info->physical_cpus);
   VerifyCpuTemps(cpu_info->temperature_channels);
 }
@@ -548,7 +547,7 @@ TEST_F(CpuFetcherTest, NoCpuFlagsCpuinfoFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a cpuinfo file with valid CPU Flags.
@@ -630,7 +629,7 @@ TEST_F(CpuFetcherTest, MissingStatFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle an incorrectly-formatted stat file.
@@ -641,7 +640,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedStatFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a stat file which is missing an entry for an existing
@@ -653,7 +652,7 @@ TEST_F(CpuFetcherTest, StatFileMissingLogicalCpuEntry) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a missing present file.
@@ -664,7 +663,7 @@ TEST_F(CpuFetcherTest, MissingPresentFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle an incorrectly-formatted present file.
@@ -676,7 +675,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedPresentFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a single threaded present file.
@@ -728,7 +727,7 @@ TEST_F(CpuFetcherTest, MissingCpuinfoMaxFreqFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle an incorrectly-formatted cpuinfo_max_freq file.
@@ -741,7 +740,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedCpuinfoMaxFreqFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle a missing scaling_max_freq file.
@@ -753,7 +752,7 @@ TEST_F(CpuFetcherTest, MissingScalingMaxFreqFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle an incorrectly-formatted scaling_max_freq file.
@@ -766,7 +765,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedScalingMaxFreqFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle a missing scaling_cur_freq file.
@@ -778,7 +777,7 @@ TEST_F(CpuFetcherTest, MissingScalingCurFreqFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle an incorrectly-formatted scaling_cur_freq file.
@@ -791,7 +790,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedScalingCurFreqFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle a missing C-state name file.
@@ -804,7 +803,7 @@ TEST_F(CpuFetcherTest, MissingCStateNameFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle a missing C-state time file.
@@ -817,7 +816,7 @@ TEST_F(CpuFetcherTest, MissingCStateTimeFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle an incorrectly-formatted C-state time file.
@@ -831,7 +830,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedCStateTimeFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle missing crypto file.
@@ -841,7 +840,7 @@ TEST_F(CpuFetcherTest, MissingCryptoFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle CPU temperatures without labels.
@@ -856,7 +855,7 @@ TEST_F(CpuFetcherTest, CpuTemperatureWithoutLabel) {
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
   EXPECT_EQ(cpu_info->num_total_threads, kExpectedNumTotalThreads);
-  EXPECT_EQ(cpu_info->architecture, mojo_ipc::CpuArchitectureEnum::kX86_64);
+  EXPECT_EQ(cpu_info->architecture, mojom::CpuArchitectureEnum::kX86_64);
   VerifyPhysicalCpus(cpu_info->physical_cpus);
 
   const auto& cpu_temps = cpu_info->temperature_channels;
@@ -864,9 +863,9 @@ TEST_F(CpuFetcherTest, CpuTemperatureWithoutLabel) {
 
   // Since fetching temperatures uses base::FileEnumerator, we're not
   // guaranteed the order of the two results.
-  auto first_expected_temp = mojo_ipc::CpuTemperatureChannel::New(
-      std::nullopt, kFirstFakeCpuTemperature);
-  auto second_expected_temp = mojo_ipc::CpuTemperatureChannel::New(
+  auto first_expected_temp =
+      mojom::CpuTemperatureChannel::New(std::nullopt, kFirstFakeCpuTemperature);
+  auto second_expected_temp = mojom::CpuTemperatureChannel::New(
       kSecondFakeCpuTemperatureLabel, kSecondFakeCpuTemperature);
   EXPECT_THAT(
       cpu_temps,
@@ -888,7 +887,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedTemperature) {
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
   EXPECT_EQ(cpu_info->num_total_threads, kExpectedNumTotalThreads);
-  EXPECT_EQ(cpu_info->architecture, mojo_ipc::CpuArchitectureEnum::kX86_64);
+  EXPECT_EQ(cpu_info->architecture, mojom::CpuArchitectureEnum::kX86_64);
   VerifyPhysicalCpus(cpu_info->physical_cpus);
 
   // We shouldn't have data corresponding to the first fake temperature values,
@@ -910,21 +909,21 @@ TEST_F(CpuFetcherTest, UnameFailure) {
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   EXPECT_EQ(cpu_result->get_cpu_info()->architecture,
-            mojo_ipc::CpuArchitectureEnum::kUnknown);
+            mojom::CpuArchitectureEnum::kUnknown);
 }
 
 // Test that we handle normal vulnerability files.
 TEST_F(CpuFetcherTest, NormalVulnerabilityFile) {
   VulnerabilityInfoMap expected;
   SetVulnerabiility("Vulnerability1", "Not affected");
-  expected["Vulnerability1"] = mojo_ipc::VulnerabilityInfo::New(
-      mojo_ipc::VulnerabilityInfo::Status::kNotAffected, "Not affected");
+  expected["Vulnerability1"] = mojom::VulnerabilityInfo::New(
+      mojom::VulnerabilityInfo::Status::kNotAffected, "Not affected");
   SetVulnerabiility("Vulnerability2", "Vulnerable");
-  expected["Vulnerability2"] = mojo_ipc::VulnerabilityInfo::New(
-      mojo_ipc::VulnerabilityInfo::Status::kVulnerable, "Vulnerable");
+  expected["Vulnerability2"] = mojom::VulnerabilityInfo::New(
+      mojom::VulnerabilityInfo::Status::kVulnerable, "Vulnerable");
   SetVulnerabiility("Vulnerability3", "Mitigation: Fake Mitigation Effect");
-  expected["Vulnerability3"] = mojo_ipc::VulnerabilityInfo::New(
-      mojo_ipc::VulnerabilityInfo::Status::kMitigation,
+  expected["Vulnerability3"] = mojom::VulnerabilityInfo::New(
+      mojom::VulnerabilityInfo::Status::kMitigation,
       "Mitigation: Fake Mitigation Effect");
 
   auto cpu_result = FetchCpuInfoSync();
@@ -936,24 +935,24 @@ TEST_F(CpuFetcherTest, NormalVulnerabilityFile) {
 
 // Test that we can parse status from vulnerability messages correctly.
 TEST_F(CpuFetcherTest, ParseVulnerabilityMessageForStatus) {
-  std::vector<std::pair<std::string, mojo_ipc::VulnerabilityInfo::Status>>
+  std::vector<std::pair<std::string, mojom::VulnerabilityInfo::Status>>
       message_to_expected_status = {
-          {"Not affected", mojo_ipc::VulnerabilityInfo::Status::kNotAffected},
-          {"Vulnerable", mojo_ipc::VulnerabilityInfo::Status::kVulnerable},
+          {"Not affected", mojom::VulnerabilityInfo::Status::kNotAffected},
+          {"Vulnerable", mojom::VulnerabilityInfo::Status::kVulnerable},
           {"Mitigation: Fake Mitigation Effect",
-           mojo_ipc::VulnerabilityInfo::Status::kMitigation},
+           mojom::VulnerabilityInfo::Status::kMitigation},
           {"Vulnerable: Vulnerable with message",
-           mojo_ipc::VulnerabilityInfo::Status::kVulnerable},
+           mojom::VulnerabilityInfo::Status::kVulnerable},
           {"Unknown: Unknown status",
-           mojo_ipc::VulnerabilityInfo::Status::kUnknown},
+           mojom::VulnerabilityInfo::Status::kUnknown},
           {"KVM: Vulnerable: KVM vulnerability",
-           mojo_ipc::VulnerabilityInfo::Status::kVulnerable},
+           mojom::VulnerabilityInfo::Status::kVulnerable},
           {"KVM: Mitigation: KVM mitigation",
-           mojo_ipc::VulnerabilityInfo::Status::kMitigation},
+           mojom::VulnerabilityInfo::Status::kMitigation},
           {"Processor vulnerable",
-           mojo_ipc::VulnerabilityInfo::Status::kVulnerable},
+           mojom::VulnerabilityInfo::Status::kVulnerable},
           {"Random unrecognized message",
-           mojo_ipc::VulnerabilityInfo::Status::kUnrecognized}};
+           mojom::VulnerabilityInfo::Status::kUnrecognized}};
 
   for (const auto& message_status : message_to_expected_status) {
     ASSERT_EQ(GetVulnerabilityStatusFromMessage(message_status.first),
@@ -992,7 +991,7 @@ TEST_F(CpuFetcherTest, MissingSmtActiveFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle Incorrectly Formatted SMT Active file.
@@ -1005,7 +1004,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedSMTActiveFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle Active SMT Active file.
@@ -1048,7 +1047,7 @@ TEST_F(CpuFetcherTest, MissingSmtControlFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle Incorrectly Formatted SMT Control file.
@@ -1062,13 +1061,13 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedSMTControlFile) {
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // POD struct for ParseSmtControlTest.
 struct ParseSmtControlTestParams {
   std::string smt_control_content;
-  mojo_ipc::VirtualizationInfo::SMTControl expected_mojo_enum;
+  mojom::VirtualizationInfo::SMTControl expected_mojo_enum;
 };
 
 // Tests that CpuFetcher can correctly parse each known SMT Control.
@@ -1105,18 +1104,18 @@ INSTANTIATE_TEST_SUITE_P(
     ,
     ParseSmtControlTest,
     testing::Values(
+        ParseSmtControlTestParams{"on",
+                                  mojom::VirtualizationInfo::SMTControl::kOn},
+        ParseSmtControlTestParams{"off",
+                                  mojom::VirtualizationInfo::SMTControl::kOff},
         ParseSmtControlTestParams{
-            "on", mojo_ipc::VirtualizationInfo::SMTControl::kOn},
-        ParseSmtControlTestParams{
-            "off", mojo_ipc::VirtualizationInfo::SMTControl::kOff},
-        ParseSmtControlTestParams{
-            "forceoff", mojo_ipc::VirtualizationInfo::SMTControl::kForceOff},
+            "forceoff", mojom::VirtualizationInfo::SMTControl::kForceOff},
         ParseSmtControlTestParams{
             "notsupported",
-            mojo_ipc::VirtualizationInfo::SMTControl::kNotSupported},
+            mojom::VirtualizationInfo::SMTControl::kNotSupported},
         ParseSmtControlTestParams{
             "notimplemented",
-            mojo_ipc::VirtualizationInfo::SMTControl::kNotImplemented}));
+            mojom::VirtualizationInfo::SMTControl::kNotImplemented}));
 
 // Tests that CpuFetcher can correctly parse each known architecture.
 //
@@ -1151,13 +1150,13 @@ INSTANTIATE_TEST_SUITE_P(
     ParseCpuArchitectureTest,
     testing::Values(
         ParseCpuArchitectureTestParams{kUnameMachineX86_64,
-                                       mojo_ipc::CpuArchitectureEnum::kX86_64},
+                                       mojom::CpuArchitectureEnum::kX86_64},
         ParseCpuArchitectureTestParams{kUnameMachineAArch64,
-                                       mojo_ipc::CpuArchitectureEnum::kAArch64},
+                                       mojom::CpuArchitectureEnum::kAArch64},
         ParseCpuArchitectureTestParams{kUnameMachineArmv7l,
-                                       mojo_ipc::CpuArchitectureEnum::kArmv7l},
-        ParseCpuArchitectureTestParams{
-            "Unknown uname machine", mojo_ipc::CpuArchitectureEnum::kUnknown}));
+                                       mojom::CpuArchitectureEnum::kArmv7l},
+        ParseCpuArchitectureTestParams{"Unknown uname machine",
+                                       mojom::CpuArchitectureEnum::kUnknown}));
 
 // Test that we handle cpu with no virtualization.
 TEST_F(CpuFetcherTest, NoVirtualizationEnabled) {
@@ -1201,7 +1200,7 @@ TEST_F(CpuFetcherTest, TestVmxVirtualizationFlags) {
     ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 2);
     ASSERT_EQ(
         cpu_result->get_cpu_info()->physical_cpus[1]->virtualization->type,
-        mojo_ipc::CpuVirtualizationInfo::Type::kVMX);
+        mojom::CpuVirtualizationInfo::Type::kVMX);
     ASSERT_EQ(
         cpu_result->get_cpu_info()->physical_cpus[1]->virtualization->is_locked,
         std::get<1>(msr_test));
@@ -1239,7 +1238,7 @@ TEST_F(CpuFetcherTest, TestSvmVirtualizationFlags) {
     ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 2);
     ASSERT_EQ(
         cpu_result->get_cpu_info()->physical_cpus[1]->virtualization->type,
-        mojo_ipc::CpuVirtualizationInfo::Type::kSVM);
+        mojom::CpuVirtualizationInfo::Type::kSVM);
     ASSERT_EQ(
         cpu_result->get_cpu_info()->physical_cpus[1]->virtualization->is_locked,
         std::get<1>(msr_test));
@@ -1268,9 +1267,9 @@ TEST_F(CpuFetcherTest, TestMultipleCpuVirtualization) {
   ASSERT_TRUE(cpu_result->is_cpu_info());
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 2);
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus[0]->virtualization->type,
-            mojo_ipc::CpuVirtualizationInfo::Type::kVMX);
+            mojom::CpuVirtualizationInfo::Type::kVMX);
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus[1]->virtualization->type,
-            mojo_ipc::CpuVirtualizationInfo::Type::kSVM);
+            mojom::CpuVirtualizationInfo::Type::kSVM);
 }
 
 TEST_F(CpuFetcherTest, TestParseCpuFlags) {
@@ -1321,7 +1320,7 @@ TEST_F(CpuFetcherTest, InvalidCoreIdFile) {
 
   auto cpu_result = FetchCpuInfoSync();
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a cpuinfo file for processors without core_id.
@@ -1330,7 +1329,7 @@ TEST_F(CpuFetcherTest, NoCoreIdFile) {
 
   auto cpu_result = FetchCpuInfoSync();
   ASSERT_TRUE(cpu_result->is_error());
-  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 }  // namespace
 }  // namespace diagnostics

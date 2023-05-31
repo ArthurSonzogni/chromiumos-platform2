@@ -17,20 +17,20 @@
 
 namespace diagnostics {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
-mojo_ipc::GraphicsResultPtr GraphicsFetcher::FetchGraphicsInfo(
+mojom::GraphicsResultPtr GraphicsFetcher::FetchGraphicsInfo(
     std::unique_ptr<EglManager> egl_manager) {
-  auto graphics_info = mojo_ipc::GraphicsInfo::New();
+  auto graphics_info = mojom::GraphicsInfo::New();
 
   auto& gles_info = graphics_info->gles_info;
   auto& egl_info = graphics_info->egl_info;
   auto error = FetchGraphicsInfo(std::move(egl_manager), &gles_info, &egl_info);
   if (error.has_value()) {
-    return mojo_ipc::GraphicsResult::NewError(std::move(error.value()));
+    return mojom::GraphicsResult::NewError(std::move(error.value()));
   }
 
-  return mojo_ipc::GraphicsResult::NewGraphicsInfo(std::move(graphics_info));
+  return mojom::GraphicsResult::NewGraphicsInfo(std::move(graphics_info));
 }
 
 std::unique_ptr<EglManager> EglManager::Create() {
@@ -80,8 +80,8 @@ EglManager::~EglManager() {
   eglDestroyContext(egl_display_, egl_context_);
 }
 
-mojo_ipc::GLESInfoPtr EglManager::FetchGLESInfo() {
-  auto gles_info = mojo_ipc::GLESInfo::New();
+mojom::GLESInfoPtr EglManager::FetchGLESInfo() {
+  auto gles_info = mojom::GLESInfo::New();
   gles_info->version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
   gles_info->shading_version =
       reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION));
@@ -95,8 +95,8 @@ mojo_ipc::GLESInfoPtr EglManager::FetchGLESInfo() {
   return gles_info;
 }
 
-mojo_ipc::EGLInfoPtr EglManager::FetchEGLInfo() {
-  auto egl_info = mojo_ipc::EGLInfo::New();
+mojom::EGLInfoPtr EglManager::FetchEGLInfo() {
+  auto egl_info = mojom::EGLInfo::New();
   egl_info->version =
       reinterpret_cast<const char*>(eglQueryString(egl_display_, EGL_VERSION));
   egl_info->vendor =
@@ -111,15 +111,15 @@ mojo_ipc::EGLInfoPtr EglManager::FetchEGLInfo() {
   return egl_info;
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr> GraphicsFetcher::FetchGraphicsInfo(
+std::optional<mojom::ProbeErrorPtr> GraphicsFetcher::FetchGraphicsInfo(
     std::unique_ptr<EglManager> egl_manager,
-    mojo_ipc::GLESInfoPtr* out_gles_info,
-    mojo_ipc::EGLInfoPtr* out_egl_info) {
+    mojom::GLESInfoPtr* out_gles_info,
+    mojom::EGLInfoPtr* out_egl_info) {
   if (!egl_manager) {
     egl_manager = EglManager::Create();
   }
   if (!egl_manager) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kSystemUtilityError,
+    return CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
                                   "Failed to initialze EglManager.");
   }
 

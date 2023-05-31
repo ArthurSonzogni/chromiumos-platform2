@@ -21,7 +21,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 // Conversion factor from Ah to mAh.
 constexpr uint32_t kAhTomAhMultiplier = 1000;
@@ -33,7 +33,7 @@ SimpleRoutine::RoutineResult GetBatteryCapacityResult(Context* const context,
 
   if (low_mah > high_mah) {
     return {
-        .status = mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+        .status = mojom::DiagnosticRoutineStatusEnum::kError,
         .status_message = kBatteryCapacityRoutineParametersInvalidMessage,
     };
   }
@@ -42,7 +42,7 @@ SimpleRoutine::RoutineResult GetBatteryCapacityResult(Context* const context,
       context->powerd_adapter()->GetPowerSupplyProperties();
   if (!response.has_value()) {
     return {
-        .status = mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+        .status = mojom::DiagnosticRoutineStatusEnum::kError,
         .status_message = kPowerdPowerSupplyPropertiesFailedMessage,
     };
   }
@@ -57,13 +57,13 @@ SimpleRoutine::RoutineResult GetBatteryCapacityResult(Context* const context,
   if (!(charge_full_design_mah >= low_mah) ||
       !(charge_full_design_mah <= high_mah)) {
     return {
-        .status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+        .status = mojom::DiagnosticRoutineStatusEnum::kFailed,
         .status_message = kBatteryCapacityRoutineFailedMessage,
     };
   }
 
   return {
-      .status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+      .status = mojom::DiagnosticRoutineStatusEnum::kPassed,
       .status_message = kBatteryCapacityRoutineSucceededMessage,
   };
 }

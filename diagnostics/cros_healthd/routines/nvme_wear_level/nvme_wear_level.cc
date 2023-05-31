@@ -20,7 +20,7 @@
 
 namespace diagnostics {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char NvmeWearLevelRoutine::kNvmeWearLevelRoutineThresholdError[] =
     "Wear-level status: ERROR, threshold in percentage should be non-empty and "
@@ -50,22 +50,22 @@ void NvmeWearLevelRoutine::Start() {
   if (!wear_level_threshold_.has_value()) {
     LOG(ERROR) << "Threshold value is null. "
                   "Be sure to provide one if not set in cros-config.";
-    UpdateStatusWithProgressPercent(
-        mojo_ipc::DiagnosticRoutineStatusEnum::kError,
-        /*percent=*/100, kNvmeWearLevelRoutineThresholdError);
+    UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kError,
+                                    /*percent=*/100,
+                                    kNvmeWearLevelRoutineThresholdError);
     return;
   }
 
   if (wear_level_threshold_.value() >= 100) {
     LOG(ERROR) << "Invalid threshold value (valid: 0-99): "
                << wear_level_threshold_.value();
-    UpdateStatusWithProgressPercent(
-        mojo_ipc::DiagnosticRoutineStatusEnum::kError,
-        /*percent=*/100, kNvmeWearLevelRoutineThresholdError);
+    UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kError,
+                                    /*percent=*/100,
+                                    kNvmeWearLevelRoutineThresholdError);
     return;
   }
 
-  UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, "");
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
 
   auto result_callback =
       base::BindOnce(&NvmeWearLevelRoutine::OnDebugdResultCallback,
@@ -85,30 +85,30 @@ void NvmeWearLevelRoutine::Resume() {}
 void NvmeWearLevelRoutine::Cancel() {}
 
 void NvmeWearLevelRoutine::UpdateStatusWithProgressPercent(
-    mojo_ipc::DiagnosticRoutineStatusEnum status,
+    mojom::DiagnosticRoutineStatusEnum status,
     uint32_t percent,
     std::string msg) {
   UpdateStatus(status, std::move(msg));
   percent_ = percent;
 }
 
-void NvmeWearLevelRoutine::PopulateStatusUpdate(
-    mojo_ipc::RoutineUpdate* response, bool include_output) {
+void NvmeWearLevelRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
+                                                bool include_output) {
   auto status = GetStatus();
 
-  auto update = mojo_ipc::NonInteractiveRoutineUpdate::New();
+  auto update = mojom::NonInteractiveRoutineUpdate::New();
   update->status = status;
   update->status_message = GetStatusMessage();
 
   response->routine_update_union =
-      mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
+      mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   response->progress_percent = percent_;
 
   if (include_output && !output_dict_.empty()) {
     // If routine status is not at completed/cancelled then prints the debugd
     // raw data with output.
-    if (status != mojo_ipc::DiagnosticRoutineStatusEnum::kPassed &&
-        status != mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled) {
+    if (status != mojom::DiagnosticRoutineStatusEnum::kPassed &&
+        status != mojom::DiagnosticRoutineStatusEnum::kCancelled) {
       std::string json;
       base::JSONWriter::Write(output_dict_, &json);
       response->output =
@@ -125,18 +125,18 @@ void NvmeWearLevelRoutine::OnDebugdResultCallback(const std::string& result) {
 
   if (!base::Base64Decode(result, &decoded_output)) {
     LOG(ERROR) << "Base64 decoding failed. Base64 data: " << result;
-    UpdateStatusWithProgressPercent(
-        mojo_ipc::DiagnosticRoutineStatusEnum::kError,
-        /*percent=*/100, kNvmeWearLevelRoutineGetInfoError);
+    UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kError,
+                                    /*percent=*/100,
+                                    kNvmeWearLevelRoutineGetInfoError);
     return;
   }
 
   if (decoded_output.length() != kNvmeLogDataLength) {
     LOG(ERROR) << "String size is not as expected(" << kNvmeLogDataLength
                << "). Size: " << decoded_output.length();
-    UpdateStatusWithProgressPercent(
-        mojo_ipc::DiagnosticRoutineStatusEnum::kError,
-        /*percent=*/100, kNvmeWearLevelRoutineGetInfoError);
+    UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kError,
+                                    /*percent=*/100,
+                                    kNvmeWearLevelRoutineGetInfoError);
     return;
   }
 
@@ -145,23 +145,22 @@ void NvmeWearLevelRoutine::OnDebugdResultCallback(const std::string& result) {
   if (level >= wear_level_threshold_) {
     LOG(INFO) << "Wear level status is higher than threshold. Level: " << level
               << ", threshold: " << wear_level_threshold_.value();
-    UpdateStatusWithProgressPercent(
-        mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
-        /*percent=*/100, kNvmeWearLevelRoutineFailed);
+    UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                                    /*percent=*/100,
+                                    kNvmeWearLevelRoutineFailed);
     return;
   }
 
-  UpdateStatusWithProgressPercent(
-      mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
-      /*percent=*/100, kNvmeWearLevelRoutineSuccess);
+  UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kPassed,
+                                  /*percent=*/100,
+                                  kNvmeWearLevelRoutineSuccess);
 }
 
 void NvmeWearLevelRoutine::OnDebugdErrorCallback(brillo::Error* error) {
   if (error) {
     LOG(ERROR) << "Debugd error: " << error->GetMessage();
-    UpdateStatusWithProgressPercent(
-        mojo_ipc::DiagnosticRoutineStatusEnum::kError,
-        /*percent=*/100, error->GetMessage());
+    UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kError,
+                                    /*percent=*/100, error->GetMessage());
   }
 }
 

@@ -56,7 +56,7 @@ using internal::StringCompareFormat;
 const auto kMissingMessage =
     "It is possible that some fields are missing in GetDiffString.";
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 template <typename MojoType>
 class CompareHelper {
@@ -139,22 +139,22 @@ std::string GetDiffString<std::optional<std::string>>(
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::NullableUint64>(
-    const mojo_ipc::NullableUint64& a, const mojo_ipc::NullableUint64& b) {
+std::string GetDiffString<mojom::NullableUint64>(
+    const mojom::NullableUint64& a, const mojom::NullableUint64& b) {
   return GetDiffString(base::NumberToString(a.value),
                        base::NumberToString(b.value));
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::NullableUint16>(
-    const mojo_ipc::NullableUint16& a, const mojo_ipc::NullableUint16& b) {
+std::string GetDiffString<mojom::NullableUint16>(
+    const mojom::NullableUint16& a, const mojom::NullableUint16& b) {
   return GetDiffString(base::NumberToString(a.value),
                        base::NumberToString(b.value));
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::VpdInfo>(const mojo_ipc::VpdInfo& a,
-                                             const mojo_ipc::VpdInfo& b) {
+std::string GetDiffString<mojom::VpdInfo>(const mojom::VpdInfo& a,
+                                          const mojom::VpdInfo& b) {
   return CompareHelper(a, b)
       .FIELD(activate_date)
       .FIELD(mfg_date)
@@ -166,8 +166,8 @@ std::string GetDiffString<mojo_ipc::VpdInfo>(const mojo_ipc::VpdInfo& a,
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::DmiInfo>(const mojo_ipc::DmiInfo& a,
-                                             const mojo_ipc::DmiInfo& b) {
+std::string GetDiffString<mojom::DmiInfo>(const mojom::DmiInfo& a,
+                                          const mojom::DmiInfo& b) {
   return CompareHelper(a, b)
       .FIELD(bios_vendor)
       .FIELD(bios_version)
@@ -184,8 +184,8 @@ std::string GetDiffString<mojo_ipc::DmiInfo>(const mojo_ipc::DmiInfo& a,
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::OsVersion>(const mojo_ipc::OsVersion& a,
-                                               const mojo_ipc::OsVersion& b) {
+std::string GetDiffString<mojom::OsVersion>(const mojom::OsVersion& a,
+                                            const mojom::OsVersion& b) {
   return CompareHelper(a, b)
       .FIELD(release_milestone)
       .FIELD(build_number)
@@ -196,8 +196,8 @@ std::string GetDiffString<mojo_ipc::OsVersion>(const mojo_ipc::OsVersion& a,
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::OsInfo>(const mojo_ipc::OsInfo& a,
-                                            const mojo_ipc::OsInfo& b) {
+std::string GetDiffString<mojom::OsInfo>(const mojom::OsInfo& a,
+                                         const mojom::OsInfo& b) {
   return CompareHelper(a, b)
       .FIELD(code_name)
       .FIELD(marketing_name)
@@ -209,8 +209,8 @@ std::string GetDiffString<mojo_ipc::OsInfo>(const mojo_ipc::OsInfo& a,
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::PsrInfo>(const mojo_ipc::PsrInfo& a,
-                                             const mojo_ipc::PsrInfo& b) {
+std::string GetDiffString<mojom::PsrInfo>(const mojom::PsrInfo& a,
+                                          const mojom::PsrInfo& b) {
   return CompareHelper(a, b)
       .FIELD(log_state)
       .FIELD(uuid)
@@ -231,14 +231,14 @@ std::string GetDiffString<mojo_ipc::PsrInfo>(const mojo_ipc::PsrInfo& a,
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::PsrEvent>(const mojo_ipc::PsrEvent& a,
-                                              const mojo_ipc::PsrEvent& b) {
+std::string GetDiffString<mojom::PsrEvent>(const mojom::PsrEvent& a,
+                                           const mojom::PsrEvent& b) {
   return CompareHelper(a, b).FIELD(type).FIELD(time).FIELD(data).GetResult();
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::SystemInfo>(const mojo_ipc::SystemInfo& a,
-                                                const mojo_ipc::SystemInfo& b) {
+std::string GetDiffString<mojom::SystemInfo>(const mojom::SystemInfo& a,
+                                             const mojom::SystemInfo& b) {
   return CompareHelper(a, b)
       .FIELD(vpd_info)
       .FIELD(dmi_info)
@@ -248,8 +248,8 @@ std::string GetDiffString<mojo_ipc::SystemInfo>(const mojo_ipc::SystemInfo& a,
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::BusDevice>(const mojo_ipc::BusDevice& a,
-                                               const mojo_ipc::BusDevice& b) {
+std::string GetDiffString<mojom::BusDevice>(const mojom::BusDevice& a,
+                                            const mojom::BusDevice& b) {
   return CompareHelper(a, b)
       .FIELD(vendor_name)
       .FIELD(product_name)
@@ -259,8 +259,8 @@ std::string GetDiffString<mojo_ipc::BusDevice>(const mojo_ipc::BusDevice& a,
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::BusInfo>(const mojo_ipc::BusInfo& a,
-                                             const mojo_ipc::BusInfo& b) {
+std::string GetDiffString<mojom::BusInfo>(const mojom::BusInfo& a,
+                                          const mojom::BusInfo& b) {
   return CompareHelper(a, b)
       .UNION(pci_bus_info)
       .UNION(usb_bus_info)
@@ -269,8 +269,8 @@ std::string GetDiffString<mojo_ipc::BusInfo>(const mojo_ipc::BusInfo& a,
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::PciBusInfo>(const mojo_ipc::PciBusInfo& a,
-                                                const mojo_ipc::PciBusInfo& b) {
+std::string GetDiffString<mojom::PciBusInfo>(const mojom::PciBusInfo& a,
+                                             const mojom::PciBusInfo& b) {
   return CompareHelper(a, b)
       .FIELD(class_id)
       .FIELD(subclass_id)
@@ -284,8 +284,8 @@ std::string GetDiffString<mojo_ipc::PciBusInfo>(const mojo_ipc::PciBusInfo& a,
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::UsbBusInfo>(const mojo_ipc::UsbBusInfo& a,
-                                                const mojo_ipc::UsbBusInfo& b) {
+std::string GetDiffString<mojom::UsbBusInfo>(const mojom::UsbBusInfo& a,
+                                             const mojom::UsbBusInfo& b) {
   return CompareHelper(a, b)
       .FIELD(class_id)
       .FIELD(subclass_id)
@@ -298,9 +298,8 @@ std::string GetDiffString<mojo_ipc::UsbBusInfo>(const mojo_ipc::UsbBusInfo& a,
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::UsbBusInterfaceInfo>(
-    const mojo_ipc::UsbBusInterfaceInfo& a,
-    const mojo_ipc::UsbBusInterfaceInfo& b) {
+std::string GetDiffString<mojom::UsbBusInterfaceInfo>(
+    const mojom::UsbBusInterfaceInfo& a, const mojom::UsbBusInterfaceInfo& b) {
   return CompareHelper(a, b)
       .FIELD(interface_number)
       .FIELD(class_id)
@@ -311,16 +310,15 @@ std::string GetDiffString<mojo_ipc::UsbBusInterfaceInfo>(
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::FwupdFirmwareVersionInfo>(
-    const mojo_ipc::FwupdFirmwareVersionInfo& a,
-    const mojo_ipc::FwupdFirmwareVersionInfo& b) {
+std::string GetDiffString<mojom::FwupdFirmwareVersionInfo>(
+    const mojom::FwupdFirmwareVersionInfo& a,
+    const mojom::FwupdFirmwareVersionInfo& b) {
   return CompareHelper(a, b).FIELD(version).FIELD(version_format).GetResult();
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::ThunderboltBusInfo>(
-    const mojo_ipc::ThunderboltBusInfo& a,
-    const mojo_ipc::ThunderboltBusInfo& b) {
+std::string GetDiffString<mojom::ThunderboltBusInfo>(
+    const mojom::ThunderboltBusInfo& a, const mojom::ThunderboltBusInfo& b) {
   return CompareHelper(a, b)
       .FIELD(security_level)
       .FIELD(thunderbolt_interfaces)
@@ -328,9 +326,9 @@ std::string GetDiffString<mojo_ipc::ThunderboltBusInfo>(
 }
 
 template <>
-std::string GetDiffString<mojo_ipc::ThunderboltBusInterfaceInfo>(
-    const mojo_ipc::ThunderboltBusInterfaceInfo& a,
-    const mojo_ipc::ThunderboltBusInterfaceInfo& b) {
+std::string GetDiffString<mojom::ThunderboltBusInterfaceInfo>(
+    const mojom::ThunderboltBusInterfaceInfo& a,
+    const mojom::ThunderboltBusInterfaceInfo& b) {
   return CompareHelper(a, b)
       .FIELD(authorized)
       .FIELD(rx_speed_gbs)

@@ -17,7 +17,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 const char kFakeMountSource[] = "/dev/mmcblk0p1";
 const char kFakeFilesystem[] = "ext4";
@@ -45,7 +45,7 @@ class StatefulePartitionFetcherTest : public ::testing::Test {
 
   const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
-  mojo_ipc::StatefulPartitionResultPtr FetchStatefulPartitionInfo() {
+  mojom::StatefulPartitionResultPtr FetchStatefulPartitionInfo() {
     return stateful_partition_fetcher_.FetchStatefulPartitionInfo();
   }
 

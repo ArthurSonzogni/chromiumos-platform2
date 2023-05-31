@@ -13,7 +13,7 @@
 
 namespace diagnostics {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 FakeDiagnosticsService::FakeDiagnosticsService() = default;
 FakeDiagnosticsService::~FakeDiagnosticsService() = default;
@@ -25,14 +25,14 @@ void FakeDiagnosticsService::GetAvailableRoutines(
 
 void FakeDiagnosticsService::GetRoutineUpdate(
     int32_t id,
-    mojo_ipc::DiagnosticRoutineCommandEnum command,
+    mojom::DiagnosticRoutineCommandEnum command,
     bool include_output,
     GetRoutineUpdateCallback callback) {
   NOTIMPLEMENTED();
 }
 
 void FakeDiagnosticsService::RunUrandomRoutine(
-    mojo_ipc::NullableUint32Ptr length_seconds,
+    mojom::NullableUint32Ptr length_seconds,
     RunUrandomRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
@@ -48,32 +48,32 @@ void FakeDiagnosticsService::RunBatteryHealthRoutine(
 }
 
 void FakeDiagnosticsService::RunSmartctlCheckRoutine(
-    mojo_ipc::NullableUint32Ptr percentage_used_threshold,
+    mojom::NullableUint32Ptr percentage_used_threshold,
     RunSmartctlCheckRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
 void FakeDiagnosticsService::RunAcPowerRoutine(
-    mojo_ipc::AcPowerStatusEnum expected_status,
+    mojom::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type,
     RunAcPowerRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
 void FakeDiagnosticsService::RunCpuCacheRoutine(
-    mojo_ipc::NullableUint32Ptr length_seconds,
+    mojom::NullableUint32Ptr length_seconds,
     RunCpuCacheRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
 void FakeDiagnosticsService::RunCpuStressRoutine(
-    mojo_ipc::NullableUint32Ptr length_seconds,
+    mojom::NullableUint32Ptr length_seconds,
     RunCpuStressRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
 void FakeDiagnosticsService::RunFloatingPointAccuracyRoutine(
-    mojo_ipc::NullableUint32Ptr length_seconds,
+    mojom::NullableUint32Ptr length_seconds,
     RunFloatingPointAccuracyRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
@@ -90,13 +90,13 @@ void FakeDiagnosticsService::RunNvmeWearLevelRoutine(
 }
 
 void FakeDiagnosticsService::RunNvmeSelfTestRoutine(
-    mojo_ipc::NvmeSelfTestTypeEnum nvme_self_test_type,
+    mojom::NvmeSelfTestTypeEnum nvme_self_test_type,
     RunNvmeSelfTestRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
 void FakeDiagnosticsService::RunDiskReadRoutine(
-    mojo_ipc::DiskReadRoutineTypeEnum type,
+    mojom::DiskReadRoutineTypeEnum type,
     uint32_t length_seconds,
     uint32_t file_size_mb,
     RunDiskReadRoutineCallback callback) {
@@ -104,7 +104,7 @@ void FakeDiagnosticsService::RunDiskReadRoutine(
 }
 
 void FakeDiagnosticsService::RunPrimeSearchRoutine(
-    mojo_ipc::NullableUint32Ptr length_seconds,
+    mojom::NullableUint32Ptr length_seconds,
     RunPrimeSearchRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
@@ -226,9 +226,9 @@ void FakeDiagnosticsService::RunPrivacyScreenRoutine(
 }
 
 void FakeDiagnosticsService::RunLedLitUpRoutine(
-    mojo_ipc::LedName name,
-    mojo_ipc::LedColor color,
-    mojo::PendingRemote<mojo_ipc::LedLitUpRoutineReplier> replier,
+    mojom::LedName name,
+    mojom::LedColor color,
+    mojo::PendingRemote<mojom::LedLitUpRoutineReplier> replier,
     RunLedLitUpRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
@@ -265,7 +265,7 @@ void FakeDiagnosticsService::RunBluetoothDiscoveryRoutine(
 }
 
 void FakeDiagnosticsService::RunBluetoothScanningRoutine(
-    mojo_ipc::NullableUint32Ptr length_seconds,
+    mojom::NullableUint32Ptr length_seconds,
     RunBluetoothScanningRoutineCallback callback) {
   NOTIMPLEMENTED();
 }

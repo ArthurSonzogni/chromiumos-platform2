@@ -15,9 +15,9 @@
 
 namespace diagnostics {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
-mojo_ipc::StatefulPartitionResultPtr
+mojom::StatefulPartitionResultPtr
 StatefulPartitionFetcher::FetchStatefulPartitionInfo() {
   const auto statefulPartitionPath =
       context_->root_dir().Append(kStatefulPartitionPath);
@@ -35,15 +35,15 @@ StatefulPartitionFetcher::FetchStatefulPartitionInfo() {
 
   if (available_space < 0 || total_space < 0) {
     mnt_free_table(mtab);
-    return mojo_ipc::StatefulPartitionResult::NewError(
-        CreateAndLogProbeError(mojo_ipc::ErrorType::kSystemUtilityError,
+    return mojom::StatefulPartitionResult::NewError(
+        CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
                                "Failed to collect stateful_partition info"));
   }
 
   if (!fs || !mnt_fs_get_fstype(fs) || !mnt_fs_get_source(fs)) {
     mnt_free_table(mtab);
-    return mojo_ipc::StatefulPartitionResult::NewError(CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kSystemUtilityError,
+    return mojom::StatefulPartitionResult::NewError(CreateAndLogProbeError(
+        mojom::ErrorType::kSystemUtilityError,
         "Failed to collect stateful_partition info from mtab"));
   }
 
@@ -51,10 +51,10 @@ StatefulPartitionFetcher::FetchStatefulPartitionInfo() {
   std::string source = mnt_fs_get_source(fs);
 
   mnt_free_table(mtab);
-  return mojo_ipc::StatefulPartitionResult::NewPartitionInfo(
-      mojo_ipc::StatefulPartitionInfo::New(
-          static_cast<uint64_t>(available_space),
-          static_cast<uint64_t>(total_space), filesystem, source));
+  return mojom::StatefulPartitionResult::NewPartitionInfo(
+      mojom::StatefulPartitionInfo::New(static_cast<uint64_t>(available_space),
+                                        static_cast<uint64_t>(total_space),
+                                        filesystem, source));
 }
 
 }  // namespace diagnostics

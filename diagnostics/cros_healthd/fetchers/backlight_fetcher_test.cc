@@ -45,7 +45,7 @@ base::FilePath GetSecondFakeBacklightDirectory(const base::FilePath& root) {
 }
 
 // Workaround for UnorderedElementsAreArray not accepting move-only types - this
-// simple matcher expects a std::cref(mojo_ipc::BacklightInfoPtr) and checks
+// simple matcher expects a std::cref(mojom::BacklightInfoPtr) and checks
 // each of the three fields for equality.
 MATCHER_P(MatchesBacklightInfoPtr, ptr, "") {
   return arg->path == ptr.get()->path &&

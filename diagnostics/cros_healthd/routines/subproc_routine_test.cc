@@ -22,7 +22,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::AtMost;
@@ -36,8 +36,8 @@ constexpr base::TimeDelta kPredictedDuration = base::Seconds(10);
 
 void CheckRoutineUpdate(uint32_t progress_percent,
                         std::string status_message,
-                        mojo_ipc::DiagnosticRoutineStatusEnum status,
-                        const mojo_ipc::RoutineUpdate& update) {
+                        mojom::DiagnosticRoutineStatusEnum status,
+                        const mojom::RoutineUpdate& update) {
   EXPECT_EQ(update.progress_percent, progress_percent);
   VerifyNonInteractiveUpdate(update.routine_update_union, status,
                              status_message);
@@ -70,12 +70,12 @@ class SubprocRoutineTest : public Test {
 
   SubprocRoutine* routine() { return routine_.get(); }
 
-  mojo_ipc::RoutineUpdate* update() { return &update_; }
+  mojom::RoutineUpdate* update() { return &update_; }
 
   StrictMock<MockDiagProcessAdapter>* mock_adapter() { return mock_adapter_; }
   base::SimpleTestTickClock* tick_clock() { return tick_clock_; }
 
-  std::optional<mojo_ipc::DiagnosticRoutineStatusEnum>
+  std::optional<mojom::DiagnosticRoutineStatusEnum>
   last_received_status_change() {
     return last_received_status_change_;
   }
@@ -144,7 +144,7 @@ class SubprocRoutineTest : public Test {
 
   void DestroyRoutine() { routine_.reset(); }
 
-  void OnRoutineStatusChanged(mojo_ipc::DiagnosticRoutineStatusEnum status) {
+  void OnRoutineStatusChanged(mojom::DiagnosticRoutineStatusEnum status) {
     last_received_status_change_ = status;
   }
 
@@ -152,9 +152,9 @@ class SubprocRoutineTest : public Test {
   StrictMock<MockDiagProcessAdapter>* mock_adapter_;  // Owned by |routine_|.
   base::SimpleTestTickClock* tick_clock_;             // Owned by |routine_|.
   std::unique_ptr<SubprocRoutine> routine_;
-  mojo_ipc::RoutineUpdate update_{0, mojo::ScopedHandle(),
-                                  mojo_ipc::RoutineUpdateUnionPtr()};
-  std::optional<mojo_ipc::DiagnosticRoutineStatusEnum>
+  mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
+                               mojom::RoutineUpdateUnionPtr()};
+  std::optional<mojom::DiagnosticRoutineStatusEnum>
       last_received_status_change_;
 };
 
@@ -168,16 +168,16 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithSuccess) {
       .WillOnce(Return(base::TERMINATION_STATUS_NORMAL_TERMINATION));
   routine()->Start();
   EXPECT_EQ(last_received_status_change(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kRunning);
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
 
-  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                              mojom::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
 
   CheckRoutineUpdate(100, kSubprocRoutineSucceededMessage,
-                     mojo_ipc::DiagnosticRoutineStatusEnum::kPassed, update);
+                     mojom::DiagnosticRoutineStatusEnum::kPassed, update);
   EXPECT_EQ(last_received_status_change(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kPassed);
+            mojom::DiagnosticRoutineStatusEnum::kPassed);
 }
 
 TEST_F(SubprocRoutineTest, InvokeSubprocWithMultipleCmdsWithSuccess) {
@@ -192,15 +192,15 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithMultipleCmdsWithSuccess) {
 
   routine()->Start();
 
-  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                              mojom::RoutineUpdateUnionPtr()};
   tick_clock()->Advance(base::Seconds(5));
   routine()->PopulateStatusUpdate(&update, false);
   CheckRoutineUpdate(50, kSubprocRoutineProcessRunningMessage,
-                     mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, update);
+                     mojom::DiagnosticRoutineStatusEnum::kRunning, update);
   routine()->PopulateStatusUpdate(&update, false);
   CheckRoutineUpdate(100, kSubprocRoutineSucceededMessage,
-                     mojo_ipc::DiagnosticRoutineStatusEnum::kPassed, update);
+                     mojom::DiagnosticRoutineStatusEnum::kPassed, update);
 }
 
 TEST_F(SubprocRoutineTest, InvokeSubprocWithPreStartCallbackSuccess) {
@@ -217,11 +217,11 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithPreStartCallbackSuccess) {
 
   routine()->Start();
 
-  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                              mojom::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
   CheckRoutineUpdate(100, kSubprocRoutineSucceededMessage,
-                     mojo_ipc::DiagnosticRoutineStatusEnum::kPassed, update);
+                     mojom::DiagnosticRoutineStatusEnum::kPassed, update);
 }
 
 TEST_F(SubprocRoutineTest, InvokeSubprocWithPreStartCallbackFailure) {
@@ -235,9 +235,9 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithPreStartCallbackFailure) {
   routine()->Start();
 
   EXPECT_EQ(routine()->GetStatus(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart);
+            mojom::DiagnosticRoutineStatusEnum::kFailedToStart);
   EXPECT_EQ(last_received_status_change(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart);
+            mojom::DiagnosticRoutineStatusEnum::kFailedToStart);
 }
 
 TEST_F(SubprocRoutineTest, InvokeSubprocWithPostStopCallback) {
@@ -254,11 +254,11 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithPostStopCallback) {
 
   routine()->Start();
 
-  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                              mojom::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
   CheckRoutineUpdate(100, kSubprocRoutineSucceededMessage,
-                     mojo_ipc::DiagnosticRoutineStatusEnum::kPassed, update);
+                     mojom::DiagnosticRoutineStatusEnum::kPassed, update);
   DestroyRoutine();
 }
 
@@ -287,15 +287,15 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithMultipleCmdsAndPreStartCallback) {
 
   routine()->Start();
 
-  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                              mojom::RoutineUpdateUnionPtr()};
   tick_clock()->Advance(base::Seconds(5));
   routine()->PopulateStatusUpdate(&update, false);
   CheckRoutineUpdate(50, kSubprocRoutineProcessRunningMessage,
-                     mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, update);
+                     mojom::DiagnosticRoutineStatusEnum::kRunning, update);
   routine()->PopulateStatusUpdate(&update, false);
   CheckRoutineUpdate(100, kSubprocRoutineSucceededMessage,
-                     mojo_ipc::DiagnosticRoutineStatusEnum::kPassed, update);
+                     mojom::DiagnosticRoutineStatusEnum::kPassed, update);
 }
 
 TEST_F(SubprocRoutineTest, InvokeSubprocWithFailure) {
@@ -307,14 +307,14 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithFailure) {
       .WillOnce(Return(base::TERMINATION_STATUS_ABNORMAL_TERMINATION));
   routine()->Start();
 
-  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                              mojom::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
 
   CheckRoutineUpdate(100, kSubprocRoutineFailedMessage,
-                     mojo_ipc::DiagnosticRoutineStatusEnum::kFailed, update);
+                     mojom::DiagnosticRoutineStatusEnum::kFailed, update);
   EXPECT_EQ(last_received_status_change(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kFailed);
+            mojom::DiagnosticRoutineStatusEnum::kFailed);
 }
 
 TEST_F(SubprocRoutineTest, FailInvokingSubproc) {
@@ -323,7 +323,7 @@ TEST_F(SubprocRoutineTest, FailInvokingSubproc) {
   routine()->Start();
 
   EXPECT_EQ(routine()->GetStatus(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart);
+            mojom::DiagnosticRoutineStatusEnum::kFailedToStart);
 }
 
 TEST_F(SubprocRoutineTest, TestHalfProgressPercent) {
@@ -340,12 +340,12 @@ TEST_F(SubprocRoutineTest, TestHalfProgressPercent) {
 
   tick_clock()->Advance(base::Seconds(5));
 
-  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                              mojom::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
 
   CheckRoutineUpdate(50, kSubprocRoutineProcessRunningMessage,
-                     mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, update);
+                     mojom::DiagnosticRoutineStatusEnum::kRunning, update);
 }
 
 TEST_F(SubprocRoutineTest, TestHalfProgressThenCancel) {
@@ -364,12 +364,12 @@ TEST_F(SubprocRoutineTest, TestHalfProgressThenCancel) {
   routine()->Start();
 
   tick_clock()->Advance(base::Seconds(5));
-  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                              mojom::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
 
   CheckRoutineUpdate(50, kSubprocRoutineProcessRunningMessage,
-                     mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, update);
+                     mojom::DiagnosticRoutineStatusEnum::kRunning, update);
 
   routine()->Cancel();
 
@@ -378,18 +378,17 @@ TEST_F(SubprocRoutineTest, TestHalfProgressThenCancel) {
   routine()->PopulateStatusUpdate(&update, false);
 
   CheckRoutineUpdate(50, kSubprocRoutineProcessCancellingMessage,
-                     mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling,
-                     update);
+                     mojom::DiagnosticRoutineStatusEnum::kCancelling, update);
   EXPECT_EQ(last_received_status_change(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling);
+            mojom::DiagnosticRoutineStatusEnum::kCancelling);
 
   // Now the process should appear dead
   routine()->PopulateStatusUpdate(&update, false);
 
   CheckRoutineUpdate(50, kSubprocRoutineCancelledMessage,
-                     mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled, update);
+                     mojom::DiagnosticRoutineStatusEnum::kCancelled, update);
   EXPECT_EQ(last_received_status_change(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled);
+            mojom::DiagnosticRoutineStatusEnum::kCancelled);
 }
 
 // Test that we can handle repeated cancel commands to a process that is slow to
@@ -410,12 +409,12 @@ TEST_F(SubprocRoutineTest, RepeatedCancelCommands) {
   routine()->Start();
   routine()->Cancel();
 
-  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                              mojom::RoutineUpdateUnionPtr()};
   routine()->PopulateStatusUpdate(&update, false);
 
   VerifyNonInteractiveUpdate(update.routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling,
+                             mojom::DiagnosticRoutineStatusEnum::kCancelling,
                              kSubprocRoutineProcessCancellingMessage);
 
   routine()->Cancel();
@@ -423,7 +422,7 @@ TEST_F(SubprocRoutineTest, RepeatedCancelCommands) {
   routine()->PopulateStatusUpdate(&update, false);
 
   VerifyNonInteractiveUpdate(update.routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled,
+                             mojom::DiagnosticRoutineStatusEnum::kCancelled,
                              kSubprocRoutineCancelledMessage);
 }
 
@@ -433,20 +432,19 @@ TEST_F(SubprocRoutineTest, InvalidTerminationStatus) {
   CreateRoutine();
   RunRoutineWithTerminationStatus(static_cast<base::TerminationStatus>(-1));
   VerifyNonInteractiveUpdate(update()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kSubprocRoutineErrorMessage);
   EXPECT_EQ(last_received_status_change(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kError);
+            mojom::DiagnosticRoutineStatusEnum::kError);
 }
 
 // Test that SubprocRoutine handles a command line that fails to start.
 TEST_F(SubprocRoutineTest, FailedToStart) {
   CreateRoutine();
   RunRoutineWithTerminationStatus(base::TERMINATION_STATUS_LAUNCH_FAILED);
-  VerifyNonInteractiveUpdate(
-      update()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart,
-      kSubprocRoutineFailedToLaunchProcessMessage);
+  VerifyNonInteractiveUpdate(update()->routine_update_union,
+                             mojom::DiagnosticRoutineStatusEnum::kFailedToStart,
+                             kSubprocRoutineFailedToLaunchProcessMessage);
 }
 
 // Test that we attempt to kill a running process during destruction.
@@ -491,11 +489,11 @@ TEST(SubprocRoutineTestNoFixture, ProductionConstructor) {
       std::make_unique<SubprocRoutine>(
           base::CommandLine({"/dev/null"}),
           /*predicted_duration=*/base::TimeDelta());
-  mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                 mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                              mojom::RoutineUpdateUnionPtr()};
   prod_routine->PopulateStatusUpdate(&update, false);
   VerifyNonInteractiveUpdate(update.routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kReady,
+                             mojom::DiagnosticRoutineStatusEnum::kReady,
                              kSubprocRoutineReadyMessage);
 }
 

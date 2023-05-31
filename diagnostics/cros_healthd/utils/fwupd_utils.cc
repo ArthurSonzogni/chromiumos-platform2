@@ -24,7 +24,7 @@ namespace fwupd_utils {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 // Returns whether some instance id of |device_info| starts with |instance_id|.
 bool MatchInstanceIdPrefix(const DeviceInfo& device_info,
@@ -100,42 +100,42 @@ const std::optional<T> GetVariantOptionalValue(
 }
 
 // Converts a fwupd format enum to the corresponding mojo enum.
-mojo_ipc::FwupdVersionFormat ConvertFwupdVersionFormatToMojo(
+mojom::FwupdVersionFormat ConvertFwupdVersionFormatToMojo(
     FwupdVersionFormat version_format) {
   switch (version_format) {
     case FWUPD_VERSION_FORMAT_UNKNOWN:
-      return mojo_ipc::FwupdVersionFormat::kUnknown;
+      return mojom::FwupdVersionFormat::kUnknown;
     case FWUPD_VERSION_FORMAT_PLAIN:
-      return mojo_ipc::FwupdVersionFormat::kPlain;
+      return mojom::FwupdVersionFormat::kPlain;
     case FWUPD_VERSION_FORMAT_NUMBER:
-      return mojo_ipc::FwupdVersionFormat::kNumber;
+      return mojom::FwupdVersionFormat::kNumber;
     case FWUPD_VERSION_FORMAT_PAIR:
-      return mojo_ipc::FwupdVersionFormat::kPair;
+      return mojom::FwupdVersionFormat::kPair;
     case FWUPD_VERSION_FORMAT_TRIPLET:
-      return mojo_ipc::FwupdVersionFormat::kTriplet;
+      return mojom::FwupdVersionFormat::kTriplet;
     case FWUPD_VERSION_FORMAT_QUAD:
-      return mojo_ipc::FwupdVersionFormat::kQuad;
+      return mojom::FwupdVersionFormat::kQuad;
     case FWUPD_VERSION_FORMAT_BCD:
-      return mojo_ipc::FwupdVersionFormat::kBcd;
+      return mojom::FwupdVersionFormat::kBcd;
     case FWUPD_VERSION_FORMAT_INTEL_ME:
-      return mojo_ipc::FwupdVersionFormat::kIntelMe;
+      return mojom::FwupdVersionFormat::kIntelMe;
     case FWUPD_VERSION_FORMAT_INTEL_ME2:
-      return mojo_ipc::FwupdVersionFormat::kIntelMe2;
+      return mojom::FwupdVersionFormat::kIntelMe2;
     case FWUPD_VERSION_FORMAT_SURFACE_LEGACY:
-      return mojo_ipc::FwupdVersionFormat::kSurfaceLegacy;
+      return mojom::FwupdVersionFormat::kSurfaceLegacy;
     case FWUPD_VERSION_FORMAT_SURFACE:
-      return mojo_ipc::FwupdVersionFormat::kSurface;
+      return mojom::FwupdVersionFormat::kSurface;
     case FWUPD_VERSION_FORMAT_DELL_BIOS:
-      return mojo_ipc::FwupdVersionFormat::kDellBios;
+      return mojom::FwupdVersionFormat::kDellBios;
     case FWUPD_VERSION_FORMAT_HEX:
-      return mojo_ipc::FwupdVersionFormat::kHex;
+      return mojom::FwupdVersionFormat::kHex;
     case FWUPD_VERSION_FORMAT_LAST:
-      return mojo_ipc::FwupdVersionFormat::kUnknown;
+      return mojom::FwupdVersionFormat::kUnknown;
   }
 }
 
 // Gets the version format from |dictionary| with the given |key|.
-mojo_ipc::FwupdVersionFormat GetVersionFormat(
+mojom::FwupdVersionFormat GetVersionFormat(
     const brillo::VariantDictionary& dictionary, const std::string& key) {
   // Can not use brillo::GetVariantValueOrDefault here because when that
   // function returns 0, we cannot tell whether it represents a valid enum or
@@ -148,7 +148,7 @@ mojo_ipc::FwupdVersionFormat GetVersionFormat(
     return ConvertFwupdVersionFormatToMojo(
         static_cast<FwupdVersionFormat>(format_int.value()));
   }
-  return mojo_ipc::FwupdVersionFormat::kUnknown;
+  return mojom::FwupdVersionFormat::kUnknown;
 }
 
 }  // namespace
@@ -206,9 +206,9 @@ std::optional<std::string> InstanceIdToGuid(const std::string& instance_id) {
   return std::string(guid_c_str);
 }
 
-mojo_ipc::FwupdFirmwareVersionInfoPtr FetchUsbFirmwareVersion(
+mojom::FwupdFirmwareVersionInfoPtr FetchUsbFirmwareVersion(
     const DeviceList& device_infos, const UsbDeviceFilter& target_usb_device) {
-  std::set<std::pair<std::optional<std::string>, mojo_ipc::FwupdVersionFormat>>
+  std::set<std::pair<std::optional<std::string>, mojom::FwupdVersionFormat>>
       version_info_set;
 
   for (int i = 0; i < device_infos.size(); ++i) {
@@ -229,7 +229,7 @@ mojo_ipc::FwupdFirmwareVersionInfoPtr FetchUsbFirmwareVersion(
     return nullptr;
   }
 
-  auto info = mojo_ipc::FwupdFirmwareVersionInfo::New();
+  auto info = mojom::FwupdFirmwareVersionInfo::New();
   info->version = version.value();
   info->version_format = version_format;
 

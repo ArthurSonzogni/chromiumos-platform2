@@ -16,20 +16,20 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kLocaltimeFile[] = "var/lib/timezone/localtime";
 constexpr char kZoneInfoPath[] = "usr/share/zoneinfo";
 
 }  // namespace
 
-mojo_ipc::TimezoneResultPtr TimezoneFetcher::FetchTimezoneInfo() {
+mojom::TimezoneResultPtr TimezoneFetcher::FetchTimezoneInfo() {
   base::FilePath timezone_path;
   base::FilePath localtime_path =
       context_->root_dir().AppendASCII(kLocaltimeFile);
   if (!base::NormalizeFilePath(localtime_path, &timezone_path)) {
-    return mojo_ipc::TimezoneResult::NewError(CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
+    return mojom::TimezoneResult::NewError(CreateAndLogProbeError(
+        mojom::ErrorType::kFileReadError,
         "Unable to read symlink of localtime file: " + localtime_path.value()));
   }
 
@@ -38,20 +38,20 @@ mojo_ipc::TimezoneResultPtr TimezoneFetcher::FetchTimezoneInfo() {
       context_->root_dir().AppendASCII(kZoneInfoPath);
   if (!zone_info_path.AppendRelativePath(timezone_path,
                                          &timezone_region_path)) {
-    return mojo_ipc::TimezoneResult::NewError(CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
+    return mojom::TimezoneResult::NewError(CreateAndLogProbeError(
+        mojom::ErrorType::kFileReadError,
         "Unable to get timezone region from zone info path: " +
             timezone_path.value()));
   }
   auto posix_result = brillo::timezone::GetPosixTimezone(timezone_path);
   if (!posix_result) {
-    return mojo_ipc::TimezoneResult::NewError(CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
+    return mojom::TimezoneResult::NewError(CreateAndLogProbeError(
+        mojom::ErrorType::kFileReadError,
         "Unable to get posix timezone from timezone path: " +
             timezone_path.value()));
   }
 
-  return mojo_ipc::TimezoneResult::NewTimezoneInfo(mojo_ipc::TimezoneInfo::New(
+  return mojom::TimezoneResult::NewTimezoneInfo(mojom::TimezoneInfo::New(
       posix_result.value(), timezone_region_path.value()));
 }
 

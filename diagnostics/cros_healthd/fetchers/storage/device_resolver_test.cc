@@ -15,7 +15,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kFakeRoot[] = "cros_healthd/fetchers/storage/testdata/";
 
@@ -25,11 +25,11 @@ TEST(StorageDeviceResolverTest, GoodData) {
   ASSERT_TRUE(resolver_result.has_value());
   auto resolver = std::move(resolver_result).value();
 
-  EXPECT_EQ(mojo_ipc::StorageDevicePurpose::kUnknown,
+  EXPECT_EQ(mojom::StorageDevicePurpose::kUnknown,
             resolver->GetDevicePurpose("nvme0n1"));
-  EXPECT_EQ(mojo_ipc::StorageDevicePurpose::kBootDevice,
+  EXPECT_EQ(mojom::StorageDevicePurpose::kBootDevice,
             resolver->GetDevicePurpose("mmcblk0"));
-  EXPECT_EQ(mojo_ipc::StorageDevicePurpose::kSwapDevice,
+  EXPECT_EQ(mojom::StorageDevicePurpose::kSwapDevice,
             resolver->GetDevicePurpose("nvme0n2"));
 }
 

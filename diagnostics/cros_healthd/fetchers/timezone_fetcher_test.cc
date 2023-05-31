@@ -17,7 +17,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kLocaltimeFile[] = "var/lib/timezone/localtime";
 constexpr char kZoneInfoPath[] = "usr/share/zoneinfo";
@@ -34,7 +34,7 @@ class TimezoneFetcherTest : public ::testing::Test {
 
   const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
-  mojo_ipc::TimezoneResultPtr FetchTimezoneInfo() {
+  mojom::TimezoneResultPtr FetchTimezoneInfo() {
     return timezone_fetcher_.FetchTimezoneInfo();
   }
 
@@ -70,7 +70,7 @@ TEST_F(TimezoneFetcherTest, TestGetTimezone) {
 TEST_F(TimezoneFetcherTest, TestGetTimezoneFailure) {
   auto result = FetchTimezoneInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 }  // namespace

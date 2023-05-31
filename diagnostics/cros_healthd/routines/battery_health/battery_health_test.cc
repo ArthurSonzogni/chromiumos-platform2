@@ -21,7 +21,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr int kMaximumCycleCount = 5;
 constexpr int kPercentBatteryWearAllowed = 10;
@@ -76,7 +76,7 @@ class BatteryHealthRoutineTest : public testing::Test {
   BatteryHealthRoutineTest(const BatteryHealthRoutineTest&) = delete;
   BatteryHealthRoutineTest& operator=(const BatteryHealthRoutineTest&) = delete;
 
-  mojo_ipc::RoutineUpdate* update() { return &update_; }
+  mojom::RoutineUpdate* update() { return &update_; }
 
   void CreateRoutine(
       uint32_t maximum_cycle_count = kMaximumCycleCount,
@@ -101,8 +101,8 @@ class BatteryHealthRoutineTest : public testing::Test {
  private:
   MockContext mock_context_;
   std::unique_ptr<DiagnosticRoutine> routine_;
-  mojo_ipc::RoutineUpdate update_{0, mojo::ScopedHandle(),
-                                  mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
+                               mojom::RoutineUpdateUnionPtr()};
 };
 
 // Test that the battery health routine fails if the cycle count is too high.
@@ -117,7 +117,7 @@ TEST_F(BatteryHealthRoutineTest, HighCycleCount) {
   CreateRoutine();
   RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(update()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+                             mojom::DiagnosticRoutineStatusEnum::kFailed,
                              kBatteryHealthExcessiveCycleCountMessage);
 }
 
@@ -132,7 +132,7 @@ TEST_F(BatteryHealthRoutineTest, NoCycleCount) {
   CreateRoutine();
   RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(update()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kBatteryHealthFailedReadingCycleCountMessage);
 }
 
@@ -149,7 +149,7 @@ TEST_F(BatteryHealthRoutineTest, HighWearPercentage) {
   CreateRoutine();
   RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(update()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+                             mojom::DiagnosticRoutineStatusEnum::kFailed,
                              kBatteryHealthExcessiveWearMessage);
 }
 
@@ -164,7 +164,7 @@ TEST_F(BatteryHealthRoutineTest, NoWearPercentage) {
   RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(
       update()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+      mojom::DiagnosticRoutineStatusEnum::kError,
       kBatteryHealthFailedCalculatingWearPercentageMessage);
 }
 
@@ -181,7 +181,7 @@ TEST_F(BatteryHealthRoutineTest, GoodParameters) {
   CreateRoutine();
   RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(update()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+                             mojom::DiagnosticRoutineStatusEnum::kPassed,
                              kBatteryHealthRoutinePassedMessage);
 
   EXPECT_EQ(GetStringFromValidReadOnlySharedMemoryMapping(
@@ -198,7 +198,7 @@ TEST_F(BatteryHealthRoutineTest, InvalidParameters) {
   CreateRoutine(kMaximumCycleCount, kInvalidMaximumWearPercentage);
   RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(update()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kBatteryHealthInvalidParametersMessage);
 }
 
@@ -221,7 +221,7 @@ TEST_F(BatteryHealthRoutineTest, CapacityExceedsDesignCapacity) {
   CreateRoutine(kMaximumCycleCount, kNotWornPercentage);
   RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(update()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+                             mojom::DiagnosticRoutineStatusEnum::kPassed,
                              kBatteryHealthRoutinePassedMessage);
 }
 
@@ -232,7 +232,7 @@ TEST_F(BatteryHealthRoutineTest, PowerdError) {
   CreateRoutine();
   RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(update()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kPowerdPowerSupplyPropertiesFailedMessage);
 }
 

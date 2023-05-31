@@ -20,7 +20,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
 std::string GetProblemMessage(network_diagnostics_ipc::ArcPingProblem problem) {
@@ -55,19 +55,19 @@ SimpleRoutine::RoutineResult ParseArcPingResult(
   switch (result->verdict) {
     case network_diagnostics_ipc::RoutineVerdict::kNoProblem:
       return {
-          .status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+          .status = mojom::DiagnosticRoutineStatusEnum::kPassed,
           .status_message = kArcPingRoutineNoProblemMessage,
       };
     case network_diagnostics_ipc::RoutineVerdict::kNotRun:
       return {
-          .status = mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun,
+          .status = mojom::DiagnosticRoutineStatusEnum::kNotRun,
           .status_message = kArcPingRoutineNotRunMessage,
       };
     case network_diagnostics_ipc::RoutineVerdict::kProblem:
       auto problems = result->problems->get_arc_ping_problems();
       DCHECK(!problems.empty());
       return {
-          .status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+          .status = mojom::DiagnosticRoutineStatusEnum::kFailed,
           .status_message = GetProblemMessage(problems[0]),
       };
   }

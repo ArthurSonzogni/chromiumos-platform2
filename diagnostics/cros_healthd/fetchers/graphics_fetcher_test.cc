@@ -16,7 +16,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::ByMove;
 using ::testing::Return;
@@ -41,8 +41,8 @@ class MockEglManager final : public EglManager {
   MockEglManager& operator=(const MockEglManager&) = delete;
   ~MockEglManager() override = default;
 
-  MOCK_METHOD(mojo_ipc::GLESInfoPtr, FetchGLESInfo, (), ());
-  MOCK_METHOD(mojo_ipc::EGLInfoPtr, FetchEGLInfo, (), ());
+  MOCK_METHOD(mojom::GLESInfoPtr, FetchGLESInfo, (), ());
+  MOCK_METHOD(mojom::EGLInfoPtr, FetchEGLInfo, (), ());
 };
 
 class GraphicsFetcherTest : public ::testing::Test {
@@ -51,7 +51,7 @@ class GraphicsFetcherTest : public ::testing::Test {
   GraphicsFetcherTest(const GraphicsFetcherTest&) = delete;
   GraphicsFetcherTest& operator=(const GraphicsFetcherTest&) = delete;
 
-  mojo_ipc::GraphicsResultPtr FetchGraphicsInfo(
+  mojom::GraphicsResultPtr FetchGraphicsInfo(
       std::unique_ptr<EglManager> mock_egl_manager) {
     return graphics_fetcher_.FetchGraphicsInfo(std::move(mock_egl_manager));
   }
@@ -62,7 +62,7 @@ class GraphicsFetcherTest : public ::testing::Test {
 };
 
 TEST_F(GraphicsFetcherTest, FetchGraphicsInfo) {
-  auto gles_info = mojo_ipc::GLESInfo::New();
+  auto gles_info = mojom::GLESInfo::New();
   gles_info->version = kFakeOpenGLESVersion;
   gles_info->shading_version = kFakeOpenGLESShadingVersion;
   gles_info->vendor = kFakeOpenGLESVendor;
@@ -72,7 +72,7 @@ TEST_F(GraphicsFetcherTest, FetchGraphicsInfo) {
                         base::SPLIT_WANT_NONEMPTY);
   gles_info->extensions = expected_gles_extensions;
 
-  auto egl_info = mojo_ipc::EGLInfo::New();
+  auto egl_info = mojom::EGLInfo::New();
   egl_info->version = kFakeEGLVersion;
   egl_info->vendor = kFakeEGLVendor;
   egl_info->client_api = kFakeEGLClientApi;

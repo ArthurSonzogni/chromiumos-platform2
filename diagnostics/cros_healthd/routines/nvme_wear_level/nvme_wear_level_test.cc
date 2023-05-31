@@ -22,7 +22,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 using OnceStringCallback = base::OnceCallback<void(const std::string& result)>;
 using OnceErrorCallback = base::OnceCallback<void(brillo::Error* error)>;
 using ::testing::_;
@@ -56,16 +56,16 @@ class NvmeWearLevelRoutineTest : public testing::Test {
                                                       wear_level_threshold);
   }
 
-  mojo_ipc::RoutineUpdatePtr RunRoutineAndWaitForExit() {
+  mojom::RoutineUpdatePtr RunRoutineAndWaitForExit() {
     DCHECK(routine_);
-    mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                   mojo_ipc::RoutineUpdateUnionPtr()};
+    mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                                mojom::RoutineUpdateUnionPtr()};
 
     routine_->Start();
     routine_->PopulateStatusUpdate(&update, true);
-    return mojo_ipc::RoutineUpdate::New(update.progress_percent,
-                                        std::move(update.output),
-                                        std::move(update.routine_update_union));
+    return mojom::RoutineUpdate::New(update.progress_percent,
+                                     std::move(update.output),
+                                     std::move(update.routine_update_union));
   }
 
   StrictMock<org::chromium::debugdProxyMock> debugd_proxy_;
@@ -91,12 +91,11 @@ TEST_F(NvmeWearLevelRoutineTest, Pass) {
         std::move(callback).Run(nvme_encoded_output);
       }));
 
-  EXPECT_EQ(routine()->GetStatus(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kReady);
+  EXPECT_EQ(routine()->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
 
   VerifyNonInteractiveUpdate(
       RunRoutineAndWaitForExit()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+      mojom::DiagnosticRoutineStatusEnum::kPassed,
       NvmeWearLevelRoutine::kNvmeWearLevelRoutineSuccess);
 }
 
@@ -117,7 +116,7 @@ TEST_F(NvmeWearLevelRoutineTest, HighWearLevel) {
         std::move(callback).Run(nvme_encoded_output);
       }));
   VerifyNonInteractiveUpdate(RunRoutineAndWaitForExit()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+                             mojom::DiagnosticRoutineStatusEnum::kFailed,
                              NvmeWearLevelRoutine::kNvmeWearLevelRoutineFailed);
 }
 
@@ -127,7 +126,7 @@ TEST_F(NvmeWearLevelRoutineTest, InvalidThreshold) {
   CreateWearLevelRoutine(kThreshold105);
   VerifyNonInteractiveUpdate(
       RunRoutineAndWaitForExit()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+      mojom::DiagnosticRoutineStatusEnum::kError,
       NvmeWearLevelRoutine::kNvmeWearLevelRoutineThresholdError);
 }
 
@@ -137,7 +136,7 @@ TEST_F(NvmeWearLevelRoutineTest, NullThreshold) {
   CreateWearLevelRoutine(kThresholdNull);
   VerifyNonInteractiveUpdate(
       RunRoutineAndWaitForExit()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+      mojom::DiagnosticRoutineStatusEnum::kError,
       NvmeWearLevelRoutine::kNvmeWearLevelRoutineThresholdError);
 }
 
@@ -153,7 +152,7 @@ TEST_F(NvmeWearLevelRoutineTest, InvalidWearLevel) {
       }));
   VerifyNonInteractiveUpdate(
       RunRoutineAndWaitForExit()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+      mojom::DiagnosticRoutineStatusEnum::kError,
       NvmeWearLevelRoutine::kNvmeWearLevelRoutineGetInfoError);
 }
 
@@ -175,7 +174,7 @@ TEST_F(NvmeWearLevelRoutineTest, InvalidLength) {
       }));
   VerifyNonInteractiveUpdate(
       RunRoutineAndWaitForExit()->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+      mojom::DiagnosticRoutineStatusEnum::kError,
       NvmeWearLevelRoutine::kNvmeWearLevelRoutineGetInfoError);
 }
 
@@ -193,7 +192,7 @@ TEST_F(NvmeWearLevelRoutineTest, DebugdError) {
         std::move(callback).Run(kError.get());
       }));
   VerifyNonInteractiveUpdate(RunRoutineAndWaitForExit()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kDebugdErrorMessage);
 }
 

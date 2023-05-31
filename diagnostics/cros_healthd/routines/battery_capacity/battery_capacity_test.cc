@@ -18,7 +18,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr uint32_t kLowmAh = 1000;
 constexpr uint32_t kHighmAh = 10000;
@@ -32,7 +32,7 @@ class BatteryCapacityRoutineTest : public testing::Test {
   BatteryCapacityRoutineTest& operator=(const BatteryCapacityRoutineTest&) =
       delete;
 
-  mojo_ipc::RoutineUpdate* update() { return &update_; }
+  mojom::RoutineUpdate* update() { return &update_; }
 
   void CreateRoutine(uint32_t low_mah = kLowmAh, uint32_t high_mah = kHighmAh) {
     routine_ = CreateBatteryCapacityRoutine(&mock_context_, low_mah, high_mah);
@@ -53,8 +53,8 @@ class BatteryCapacityRoutineTest : public testing::Test {
  private:
   MockContext mock_context_;
   std::unique_ptr<DiagnosticRoutine> routine_;
-  mojo_ipc::RoutineUpdate update_{0, mojo::ScopedHandle(),
-                                  mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
+                               mojom::RoutineUpdateUnionPtr()};
 };
 
 // Test that the battery routine fails if charge_full_design is outside the
@@ -67,7 +67,7 @@ TEST_F(BatteryCapacityRoutineTest, LowChargeFullDesign) {
   fake_powerd_adapter()->SetPowerSupplyProperties(power_supply_proto);
   RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(update()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+                             mojom::DiagnosticRoutineStatusEnum::kFailed,
                              kBatteryCapacityRoutineFailedMessage);
 }
 
@@ -81,7 +81,7 @@ TEST_F(BatteryCapacityRoutineTest, GoodChargeFullDesign) {
   fake_powerd_adapter()->SetPowerSupplyProperties(power_supply_proto);
   RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(update()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+                             mojom::DiagnosticRoutineStatusEnum::kPassed,
                              kBatteryCapacityRoutineSucceededMessage);
 }
 
@@ -91,7 +91,7 @@ TEST_F(BatteryCapacityRoutineTest, PowerdError) {
   fake_powerd_adapter()->SetPowerSupplyProperties(std::nullopt);
   RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(update()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kPowerdPowerSupplyPropertiesFailedMessage);
 }
 
@@ -102,7 +102,7 @@ TEST_F(BatteryCapacityRoutineTest, InvalidParameters) {
   CreateRoutine(kInvalidLowMah, kInvalidHighMah);
   RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(update()->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kBatteryCapacityRoutineParametersInvalidMessage);
 }
 

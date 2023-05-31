@@ -21,15 +21,14 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
-uint32_t CalculateProgressPercent(
-    mojo_ipc::DiagnosticRoutineStatusEnum status) {
+uint32_t CalculateProgressPercent(mojom::DiagnosticRoutineStatusEnum status) {
   // Since simple routines cannot be cancelled, the progress percent can only be
   // 0 or 100.
-  if (status == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
-      status == mojo_ipc::DiagnosticRoutineStatusEnum::kFailed ||
-      status == mojo_ipc::DiagnosticRoutineStatusEnum::kError)
+  if (status == mojom::DiagnosticRoutineStatusEnum::kPassed ||
+      status == mojom::DiagnosticRoutineStatusEnum::kFailed ||
+      status == mojom::DiagnosticRoutineStatusEnum::kError)
     return 100;
   return 0;
 }
@@ -41,8 +40,8 @@ SimpleRoutine::SimpleRoutine(Task task) : task_(std::move(task)) {}
 SimpleRoutine::~SimpleRoutine() = default;
 
 void SimpleRoutine::Start() {
-  DCHECK_EQ(GetStatus(), mojo_ipc::DiagnosticRoutineStatusEnum::kReady);
-  UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, "");
+  DCHECK_EQ(GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
   std::move(task_).Run(base::BindOnce(&SimpleRoutine::StoreRoutineResult,
                                       weak_ptr_factory_.GetWeakPtr()));
 }
@@ -51,17 +50,17 @@ void SimpleRoutine::Start() {
 void SimpleRoutine::Resume() {}
 void SimpleRoutine::Cancel() {}
 
-void SimpleRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
+void SimpleRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
                                          bool include_output) {
   auto status = GetStatus();
   // Because simple routines are non-interactive, we will never include a user
   // message.
-  auto update = mojo_ipc::NonInteractiveRoutineUpdate::New();
+  auto update = mojom::NonInteractiveRoutineUpdate::New();
   update->status = status;
   update->status_message = GetStatusMessage();
 
   response->routine_update_union =
-      mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
+      mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   response->progress_percent = CalculateProgressPercent(status);
 
   if (include_output && !output_dict_.empty()) {

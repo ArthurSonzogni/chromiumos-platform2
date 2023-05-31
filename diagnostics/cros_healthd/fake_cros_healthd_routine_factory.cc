@@ -21,7 +21,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 // When any of a FakeDiagnosticRoutine's |num_expected_start_calls_|,
 // |num_expected_resume_calls_| or |num_expected_cancel_calls_| is this value,
@@ -30,7 +30,7 @@ constexpr int kNumCallsNotTracked = -1;
 
 class FakeDiagnosticRoutine : public DiagnosticRoutine {
  public:
-  FakeDiagnosticRoutine(mojo_ipc::DiagnosticRoutineStatusEnum status,
+  FakeDiagnosticRoutine(mojom::DiagnosticRoutineStatusEnum status,
                         uint32_t progress_percent,
                         const std::string& output,
                         int num_expected_start_calls,
@@ -41,14 +41,14 @@ class FakeDiagnosticRoutine : public DiagnosticRoutine {
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
+  void PopulateStatusUpdate(mojom::RoutineUpdate* response,
                             bool include_output) override;
-  mojo_ipc::DiagnosticRoutineStatusEnum GetStatus() override;
+  mojom::DiagnosticRoutineStatusEnum GetStatus() override;
   void RegisterStatusChangedCallback(StatusChangedCallback callback) override;
 
  private:
   // Value returned by GetStatus().
-  const mojo_ipc::DiagnosticRoutineStatusEnum status_;
+  const mojom::DiagnosticRoutineStatusEnum status_;
   // Values used in PopulateStatusUpdate(). Common to both interactive and
   // noninteractive routines.
   const uint32_t progress_percent_;
@@ -74,7 +74,7 @@ class FakeDiagnosticRoutine : public DiagnosticRoutine {
 };
 
 FakeDiagnosticRoutine::FakeDiagnosticRoutine(
-    mojo_ipc::DiagnosticRoutineStatusEnum status,
+    mojom::DiagnosticRoutineStatusEnum status,
     uint32_t progress_percent,
     const std::string& output,
     int num_expected_start_calls,
@@ -108,15 +108,15 @@ void FakeDiagnosticRoutine::Cancel() {
   num_actual_cancel_calls_++;
 }
 
-void FakeDiagnosticRoutine::PopulateStatusUpdate(
-    mojo_ipc::RoutineUpdate* response, bool include_output) {
+void FakeDiagnosticRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
+                                                 bool include_output) {
   DCHECK(response);
 
   response->progress_percent = progress_percent_;
   response->output = CreateReadOnlySharedMemoryRegionMojoHandle(output_);
 }
 
-mojo_ipc::DiagnosticRoutineStatusEnum FakeDiagnosticRoutine::GetStatus() {
+mojom::DiagnosticRoutineStatusEnum FakeDiagnosticRoutine::GetStatus() {
   return status_;
 }
 
@@ -127,14 +127,13 @@ void FakeDiagnosticRoutine::RegisterStatusChangedCallback(
 
 class FakeNonInteractiveDiagnosticRoutine final : public FakeDiagnosticRoutine {
  public:
-  FakeNonInteractiveDiagnosticRoutine(
-      mojo_ipc::DiagnosticRoutineStatusEnum status,
-      const std::string& status_message,
-      uint32_t progress_percent,
-      const std::string& output,
-      int num_expected_start_calls,
-      int num_expected_resume_calls,
-      int num_expected_cancel_calls);
+  FakeNonInteractiveDiagnosticRoutine(mojom::DiagnosticRoutineStatusEnum status,
+                                      const std::string& status_message,
+                                      uint32_t progress_percent,
+                                      const std::string& output,
+                                      int num_expected_start_calls,
+                                      int num_expected_resume_calls,
+                                      int num_expected_cancel_calls);
   FakeNonInteractiveDiagnosticRoutine(
       const FakeNonInteractiveDiagnosticRoutine&) = delete;
   FakeNonInteractiveDiagnosticRoutine& operator=(
@@ -142,7 +141,7 @@ class FakeNonInteractiveDiagnosticRoutine final : public FakeDiagnosticRoutine {
   ~FakeNonInteractiveDiagnosticRoutine() override;
 
   // FakeDiagnosticRoutine overrides:
-  void PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
+  void PopulateStatusUpdate(mojom::RoutineUpdate* response,
                             bool include_output) override;
 
  private:
@@ -152,7 +151,7 @@ class FakeNonInteractiveDiagnosticRoutine final : public FakeDiagnosticRoutine {
 };
 
 FakeNonInteractiveDiagnosticRoutine::FakeNonInteractiveDiagnosticRoutine(
-    mojo_ipc::DiagnosticRoutineStatusEnum status,
+    mojom::DiagnosticRoutineStatusEnum status,
     const std::string& status_message,
     uint32_t progress_percent,
     const std::string& output,
@@ -171,13 +170,13 @@ FakeNonInteractiveDiagnosticRoutine::~FakeNonInteractiveDiagnosticRoutine() =
     default;
 
 void FakeNonInteractiveDiagnosticRoutine::PopulateStatusUpdate(
-    mojo_ipc::RoutineUpdate* response, bool include_output) {
+    mojom::RoutineUpdate* response, bool include_output) {
   FakeDiagnosticRoutine::PopulateStatusUpdate(response, include_output);
-  auto update = mojo_ipc::NonInteractiveRoutineUpdate::New();
+  auto update = mojom::NonInteractiveRoutineUpdate::New();
   update->status = GetStatus();
   update->status_message = status_message_;
   response->routine_update_union =
-      mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
+      mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
 }
 
 }  // namespace
@@ -198,7 +197,7 @@ void FakeCrosHealthdRoutineFactory::SetRoutineExpectations(
 }
 
 void FakeCrosHealthdRoutineFactory::SetNonInteractiveStatus(
-    mojo_ipc::DiagnosticRoutineStatusEnum status,
+    mojom::DiagnosticRoutineStatusEnum status,
     const std::string& status_message,
     uint32_t progress_percent,
     const std::string& output) {
@@ -210,7 +209,7 @@ void FakeCrosHealthdRoutineFactory::SetNonInteractiveStatus(
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeUrandomRoutine(
-    mojo_ipc::NullableUint32Ptr length_seconds) {
+    mojom::NullableUint32Ptr length_seconds) {
   return std::move(next_routine_);
 }
 
@@ -227,13 +226,13 @@ FakeCrosHealthdRoutineFactory::MakeBatteryHealthRoutine() {
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeSmartctlCheckRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
-    mojo_ipc::NullableUint32Ptr percentage_used_threshold) {
+    mojom::NullableUint32Ptr percentage_used_threshold) {
   return std::move(next_routine_);
 }
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeAcPowerRoutine(
-    mojo_ipc::AcPowerStatusEnum expected_status,
+    mojom::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type) {
   return std::move(next_routine_);
 }
@@ -267,14 +266,14 @@ FakeCrosHealthdRoutineFactory::MakeNvmeWearLevelRoutine(
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeNvmeSelfTestRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
-    mojo_ipc::NvmeSelfTestTypeEnum nvme_self_test_type) {
+    mojom::NvmeSelfTestTypeEnum nvme_self_test_type) {
   DCHECK(debugd_proxy);
   return std::move(next_routine_);
 }
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeDiskReadRoutine(
-    mojo_ipc::DiskReadRoutineTypeEnum type,
+    mojom::DiskReadRoutineTypeEnum type,
     base::TimeDelta exec_duration,
     uint32_t file_size_mb) {
   return std::move(next_routine_);

@@ -18,7 +18,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 // Path to the power_supply directory. All subdirectories will be searched to
 // try and find the path to a connected AC adapter.
@@ -53,7 +53,7 @@ const char kAcPowerRoutineCancelledMessage[] = "AC Power routine cancelled.";
 const uint32_t kAcPowerRoutineWaitingProgressPercent = 33;
 
 AcPowerRoutine::AcPowerRoutine(
-    mojo_ipc::AcPowerStatusEnum expected_status,
+    mojom::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type,
     const base::FilePath& root_dir)
     : expected_power_status_(expected_status),
@@ -63,48 +63,48 @@ AcPowerRoutine::AcPowerRoutine(
 AcPowerRoutine::~AcPowerRoutine() = default;
 
 void AcPowerRoutine::Start() {
-  DCHECK_EQ(GetStatus(), mojo_ipc::DiagnosticRoutineStatusEnum::kReady);
+  DCHECK_EQ(GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
   // Transition to waiting so the user can plug or unplug the AC adapter as
   // necessary.
-  UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting, "");
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kWaiting, "");
   CalculateProgressPercent();
 }
 
 void AcPowerRoutine::Resume() {
-  DCHECK_EQ(GetStatus(), mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting);
+  DCHECK_EQ(GetStatus(), mojom::DiagnosticRoutineStatusEnum::kWaiting);
   RunAcPowerRoutine();
-  if (GetStatus() != mojo_ipc::DiagnosticRoutineStatusEnum::kPassed)
+  if (GetStatus() != mojom::DiagnosticRoutineStatusEnum::kPassed)
     LOG(ERROR) << "Routine failed: " << GetStatusMessage();
 }
 
 void AcPowerRoutine::Cancel() {
   // Only cancel the routine if it's in the waiting state. Otherwise, it either
   // hasn't begun or has already finished.
-  if (GetStatus() == mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting) {
-    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled,
+  if (GetStatus() == mojom::DiagnosticRoutineStatusEnum::kWaiting) {
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kCancelled,
                  kAcPowerRoutineCancelledMessage);
   }
 }
 
-void AcPowerRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
+void AcPowerRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
                                           bool include_output) {
   auto status = GetStatus();
-  if (status == mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting) {
-    auto interactive_update = mojo_ipc::InteractiveRoutineUpdate::New();
+  if (status == mojom::DiagnosticRoutineStatusEnum::kWaiting) {
+    auto interactive_update = mojom::InteractiveRoutineUpdate::New();
     interactive_update->user_message =
-        (expected_power_status_ == mojo_ipc::AcPowerStatusEnum::kConnected)
-            ? mojo_ipc::DiagnosticRoutineUserMessageEnum::kPlugInACPower
-            : mojo_ipc::DiagnosticRoutineUserMessageEnum::kUnplugACPower;
+        (expected_power_status_ == mojom::AcPowerStatusEnum::kConnected)
+            ? mojom::DiagnosticRoutineUserMessageEnum::kPlugInACPower
+            : mojom::DiagnosticRoutineUserMessageEnum::kUnplugACPower;
     response->routine_update_union =
-        mojo_ipc::RoutineUpdateUnion::NewInteractiveUpdate(
+        mojom::RoutineUpdateUnion::NewInteractiveUpdate(
             std::move(interactive_update));
   } else {
-    auto noninteractive_update = mojo_ipc::NonInteractiveRoutineUpdate::New();
+    auto noninteractive_update = mojom::NonInteractiveRoutineUpdate::New();
     noninteractive_update->status = status;
     noninteractive_update->status_message = GetStatusMessage();
 
     response->routine_update_union =
-        mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(
+        mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(
             std::move(noninteractive_update));
   }
 
@@ -116,10 +116,10 @@ void AcPowerRoutine::CalculateProgressPercent() {
   auto status = GetStatus();
   // If the routine has been started and is waiting, assign a reasonable
   // progress percentage that signifies the routine has been started.
-  if (status == mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting) {
+  if (status == mojom::DiagnosticRoutineStatusEnum::kWaiting) {
     progress_percent_ = kAcPowerRoutineWaitingProgressPercent;
-  } else if (status == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
-             status == mojo_ipc::DiagnosticRoutineStatusEnum::kFailed) {
+  } else if (status == mojom::DiagnosticRoutineStatusEnum::kPassed ||
+             status == mojom::DiagnosticRoutineStatusEnum::kFailed) {
     // The routine has finished, so report 100.
     progress_percent_ = 100;
   }
@@ -172,21 +172,21 @@ void AcPowerRoutine::RunAcPowerRoutine() {
   }
 
   if (!valid_path_found) {
-    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
                  kAcPowerRoutineNoValidPowerSupplyMessage);
     return;
   }
 
   // Test the contents of the path's online file against the input value.
-  if (expected_power_status_ == mojo_ipc::AcPowerStatusEnum::kConnected &&
+  if (expected_power_status_ == mojom::AcPowerStatusEnum::kConnected &&
       contents.online != "1") {
-    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
                  kAcPowerRoutineFailedNotOnlineMessage);
     return;
   } else if (expected_power_status_ ==
-                 mojo_ipc::AcPowerStatusEnum::kDisconnected &&
+                 mojom::AcPowerStatusEnum::kDisconnected &&
              contents.online != "0") {
-    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
                  kAcPowerRoutineFailedNotOfflineMessage);
     return;
   }
@@ -196,12 +196,12 @@ void AcPowerRoutine::RunAcPowerRoutine() {
   // specified.
   if (expected_power_type_.has_value() &&
       expected_power_type_.value() != contents.type) {
-    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
                  kAcPowerRoutineFailedMismatchedPowerTypesMessage);
     return;
   }
 
-  UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kPassed,
                kAcPowerRoutineSucceededMessage);
 }
 

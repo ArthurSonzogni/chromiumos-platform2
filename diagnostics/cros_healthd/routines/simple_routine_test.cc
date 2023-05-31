@@ -19,15 +19,15 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 // Test data.
-constexpr auto kExpectedStatus = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
+constexpr auto kExpectedStatus = mojom::DiagnosticRoutineStatusEnum::kPassed;
 constexpr char kExpectedStatusMessage[] = "This is a status message!";
 
 // POD struct for ReportProgressPercentTest.
 struct ReportProgressPercentTestParams {
-  mojo_ipc::DiagnosticRoutineStatusEnum status;
+  mojom::DiagnosticRoutineStatusEnum status;
   uint32_t expected_progress_percent;
 };
 
@@ -52,7 +52,7 @@ FakeExpectedOutput GetFakeExpectedOutput() {
 }
 
 // Task for a SimpleRoutine to run.
-void FakeRoutineTask(mojo_ipc::DiagnosticRoutineStatusEnum status_in,
+void FakeRoutineTask(mojom::DiagnosticRoutineStatusEnum status_in,
                      const std::string& status_message_in,
                      base::Value::Dict output_dict_in,
                      SimpleRoutine::RoutineResultCallback callback) {
@@ -71,11 +71,11 @@ class SimpleRoutineTest : public testing::Test {
 
   DiagnosticRoutine* routine() { return routine_.get(); }
 
-  mojo_ipc::RoutineUpdate* update() { return &update_; }
+  mojom::RoutineUpdate* update() { return &update_; }
 
   void CreateRoutine(base::Value::Dict desired_output,
-                     mojo_ipc::DiagnosticRoutineStatusEnum desired_status =
-                         mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+                     mojom::DiagnosticRoutineStatusEnum desired_status =
+                         mojom::DiagnosticRoutineStatusEnum::kFailed,
                      const std::string& desired_status_message = "") {
     routine_ = std::make_unique<SimpleRoutine>(base::BindOnce(
         &FakeRoutineTask, desired_status, std::move(desired_status_message),
@@ -92,8 +92,8 @@ class SimpleRoutineTest : public testing::Test {
 
  private:
   std::unique_ptr<SimpleRoutine> routine_;
-  mojo_ipc::RoutineUpdate update_{0, mojo::ScopedHandle(),
-                                  mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
+                               mojom::RoutineUpdateUnionPtr()};
 };
 
 // Test that we can run a noninteractive routine and retrieve its status update.
@@ -148,8 +148,7 @@ TEST_F(SimpleRoutineTest, GetStatus) {
   auto output = GetFakeExpectedOutput();
   CreateRoutine(std::move(output.output_dict));
 
-  EXPECT_EQ(routine()->GetStatus(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kReady);
+  EXPECT_EQ(routine()->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
 }
 
 // Tests that progress is reported correctly for each possible status.
@@ -188,29 +187,29 @@ INSTANTIATE_TEST_SUITE_P(
     ReportProgressPercentTest,
     testing::Values(
         ReportProgressPercentTestParams{
-            mojo_ipc::DiagnosticRoutineStatusEnum::kReady, 0},
+            mojom::DiagnosticRoutineStatusEnum::kReady, 0},
         ReportProgressPercentTestParams{
-            mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, 0},
+            mojom::DiagnosticRoutineStatusEnum::kRunning, 0},
         ReportProgressPercentTestParams{
-            mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting, 0},
+            mojom::DiagnosticRoutineStatusEnum::kWaiting, 0},
         ReportProgressPercentTestParams{
-            mojo_ipc::DiagnosticRoutineStatusEnum::kPassed, 100},
+            mojom::DiagnosticRoutineStatusEnum::kPassed, 100},
         ReportProgressPercentTestParams{
-            mojo_ipc::DiagnosticRoutineStatusEnum::kFailed, 100},
+            mojom::DiagnosticRoutineStatusEnum::kFailed, 100},
         ReportProgressPercentTestParams{
-            mojo_ipc::DiagnosticRoutineStatusEnum::kError, 100},
+            mojom::DiagnosticRoutineStatusEnum::kError, 100},
         ReportProgressPercentTestParams{
-            mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled, 0},
+            mojom::DiagnosticRoutineStatusEnum::kCancelled, 0},
         ReportProgressPercentTestParams{
-            mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart, 0},
+            mojom::DiagnosticRoutineStatusEnum::kFailedToStart, 0},
         ReportProgressPercentTestParams{
-            mojo_ipc::DiagnosticRoutineStatusEnum::kRemoved, 0},
+            mojom::DiagnosticRoutineStatusEnum::kRemoved, 0},
         ReportProgressPercentTestParams{
-            mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling, 0},
+            mojom::DiagnosticRoutineStatusEnum::kCancelling, 0},
         ReportProgressPercentTestParams{
-            mojo_ipc::DiagnosticRoutineStatusEnum::kUnsupported, 0},
+            mojom::DiagnosticRoutineStatusEnum::kUnsupported, 0},
         ReportProgressPercentTestParams{
-            mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun, 0}));
+            mojom::DiagnosticRoutineStatusEnum::kNotRun, 0}));
 
 }  // namespace
 }  // namespace diagnostics

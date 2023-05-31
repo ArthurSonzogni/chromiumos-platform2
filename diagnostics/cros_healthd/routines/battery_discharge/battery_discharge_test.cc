@@ -23,7 +23,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr double kStartingChargePercent = 80;
 constexpr double kEndingChargePercent = 55;
@@ -72,17 +72,17 @@ class BatteryDischargeRoutineTest : public testing::Test {
     auto update = GetUpdate();
     VerifyInteractiveUpdate(
         update->routine_update_union,
-        mojo_ipc::DiagnosticRoutineUserMessageEnum::kUnplugACPower);
+        mojom::DiagnosticRoutineUserMessageEnum::kUnplugACPower);
     EXPECT_EQ(update->progress_percent, 0);
   }
 
-  mojo_ipc::RoutineUpdatePtr GetUpdate() {
-    mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
-                                   mojo_ipc::RoutineUpdateUnionPtr()};
+  mojom::RoutineUpdatePtr GetUpdate() {
+    mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
+                                mojom::RoutineUpdateUnionPtr()};
     routine_->PopulateStatusUpdate(&update, true);
-    return mojo_ipc::RoutineUpdate::New(update.progress_percent,
-                                        std::move(update.output),
-                                        std::move(update.routine_update_union));
+    return mojom::RoutineUpdate::New(update.progress_percent,
+                                     std::move(update.output),
+                                     std::move(update.routine_update_union));
   }
 
   void FastForwardBy(base::TimeDelta time) {
@@ -106,7 +106,7 @@ class BatteryDischargeRoutineTest : public testing::Test {
 TEST_F(BatteryDischargeRoutineTest, DefaultConstruction) {
   BatteryDischargeRoutine routine{mock_context(), kFullDuration,
                                   kPassingPercent};
-  EXPECT_EQ(routine.GetStatus(), mojo_ipc::DiagnosticRoutineStatusEnum::kReady);
+  EXPECT_EQ(routine.GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
 }
 
 // Test that the routine passes when the battery discharges less than
@@ -122,7 +122,7 @@ TEST_F(BatteryDischargeRoutineTest, RoutineSuccess) {
   FastForwardBy(kHalfDuration);
   auto update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
+                             mojom::DiagnosticRoutineStatusEnum::kRunning,
                              kBatteryDischargeRoutineRunningMessage);
   EXPECT_EQ(update->progress_percent, 50);
 
@@ -132,7 +132,7 @@ TEST_F(BatteryDischargeRoutineTest, RoutineSuccess) {
   FastForwardBy(kHalfDuration);
   update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+                             mojom::DiagnosticRoutineStatusEnum::kPassed,
                              kBatteryDischargeRoutineSucceededMessage);
   EXPECT_EQ(update->progress_percent, 100);
 }
@@ -150,7 +150,7 @@ TEST_F(BatteryDischargeRoutineTest, ExceedMaxDischargeFailure) {
   FastForwardBy(kHalfDuration);
   auto update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
+                             mojom::DiagnosticRoutineStatusEnum::kRunning,
                              kBatteryDischargeRoutineRunningMessage);
   EXPECT_EQ(update->progress_percent, 50);
 
@@ -160,8 +160,7 @@ TEST_F(BatteryDischargeRoutineTest, ExceedMaxDischargeFailure) {
   FastForwardBy(kHalfDuration);
   update = GetUpdate();
   VerifyNonInteractiveUpdate(
-      update->routine_update_union,
-      mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+      update->routine_update_union, mojom::DiagnosticRoutineStatusEnum::kFailed,
       kBatteryDischargeRoutineFailedExcessiveDischargeMessage);
   EXPECT_EQ(update->progress_percent, 100);
 }
@@ -178,7 +177,7 @@ TEST_F(BatteryDischargeRoutineTest, InvalidParameters) {
   routine()->Resume();
   auto update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kBatteryDischargeRoutineInvalidParametersMessage);
   EXPECT_EQ(update->progress_percent, 0);
 }
@@ -196,7 +195,7 @@ TEST_F(BatteryDischargeRoutineTest, BatteryNotDischarging) {
   routine()->Resume();
   auto update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kBatteryDischargeRoutineNotDischargingMessage);
   EXPECT_EQ(update->progress_percent, 0);
 }
@@ -215,7 +214,7 @@ TEST_F(BatteryDischargeRoutineTest, EndingChargeHigherThanStartingCharge) {
   FastForwardBy(kHalfDuration);
   auto update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
+                             mojom::DiagnosticRoutineStatusEnum::kRunning,
                              kBatteryDischargeRoutineRunningMessage);
   EXPECT_EQ(update->progress_percent, 50);
 
@@ -225,7 +224,7 @@ TEST_F(BatteryDischargeRoutineTest, EndingChargeHigherThanStartingCharge) {
   FastForwardBy(kHalfDuration);
   update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kBatteryDischargeRoutineNotDischargingMessage);
   EXPECT_EQ(update->progress_percent, 50);
 }
@@ -241,7 +240,7 @@ TEST_F(BatteryDischargeRoutineTest, PowerdError) {
   FastForwardBy(kHalfDuration);
   auto update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kPowerdPowerSupplyPropertiesFailedMessage);
   EXPECT_EQ(update->progress_percent, 0);
 }
@@ -259,7 +258,7 @@ TEST_F(BatteryDischargeRoutineTest, DelayedTaskPowerdError) {
   FastForwardBy(kHalfDuration);
   auto update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
+                             mojom::DiagnosticRoutineStatusEnum::kRunning,
                              kBatteryDischargeRoutineRunningMessage);
   EXPECT_EQ(update->progress_percent, 50);
 
@@ -268,7 +267,7 @@ TEST_F(BatteryDischargeRoutineTest, DelayedTaskPowerdError) {
   FastForwardBy(kHalfDuration);
   update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kPowerdPowerSupplyPropertiesFailedMessage);
   EXPECT_EQ(update->progress_percent, 50);
 }
@@ -282,20 +281,20 @@ TEST_F(BatteryDischargeRoutineTest, CancelWhileWaiting) {
   routine()->Start();
 
   EXPECT_EQ(routine()->GetStatus(),
-            mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting);
+            mojom::DiagnosticRoutineStatusEnum::kWaiting);
 
   routine()->Cancel();
 
   auto update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled,
+                             mojom::DiagnosticRoutineStatusEnum::kCancelled,
                              kBatteryDischargeRoutineCancelledMessage);
   EXPECT_EQ(update->progress_percent, 0);
 
   FastForwardBy(kFullDuration);
   update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled,
+                             mojom::DiagnosticRoutineStatusEnum::kCancelled,
                              kBatteryDischargeRoutineCancelledMessage);
   EXPECT_EQ(update->progress_percent, 0);
 }
@@ -312,7 +311,7 @@ TEST_F(BatteryDischargeRoutineTest, CancelWhileRunning) {
   FastForwardBy(kHalfDuration);
   auto update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
+                             mojom::DiagnosticRoutineStatusEnum::kRunning,
                              kBatteryDischargeRoutineRunningMessage);
   EXPECT_EQ(update->progress_percent, 50);
 
@@ -321,14 +320,14 @@ TEST_F(BatteryDischargeRoutineTest, CancelWhileRunning) {
 
   update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled,
+                             mojom::DiagnosticRoutineStatusEnum::kCancelled,
                              kBatteryDischargeRoutineCancelledMessage);
   EXPECT_EQ(update->progress_percent, 75);
 
   FastForwardBy(kQuarterDuration);
   update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled,
+                             mojom::DiagnosticRoutineStatusEnum::kCancelled,
                              kBatteryDischargeRoutineCancelledMessage);
   EXPECT_EQ(update->progress_percent, 75);
 }
@@ -343,7 +342,7 @@ TEST_F(BatteryDischargeRoutineTest, CancelWhileInErrorState) {
   routine()->Resume();
   auto update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kPowerdPowerSupplyPropertiesFailedMessage);
   EXPECT_EQ(update->progress_percent, 0);
 
@@ -352,7 +351,7 @@ TEST_F(BatteryDischargeRoutineTest, CancelWhileInErrorState) {
 
   update = GetUpdate();
   VerifyNonInteractiveUpdate(update->routine_update_union,
-                             mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kPowerdPowerSupplyPropertiesFailedMessage);
   EXPECT_EQ(update->progress_percent, 0);
 }
