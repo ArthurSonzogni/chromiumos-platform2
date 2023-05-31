@@ -196,14 +196,11 @@ int MemoryV2Main(int argc, char** argv) {
 }
 
 int CpuStressV2Main(int argc, char** argv) {
-  DEFINE_uint32(length_seconds, 0, "Number of seconds to run.");
+  DEFINE_uint32(length_seconds, 10, "Number of seconds to run.");
   COMMON_V2_ROUTINE_FLAGS("Cpu stress v2 routine")
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   auto argument = mojom::CpuStressRoutineArgument::New();
-  if (command_line->HasSwitch("length_seconds")) {
-    argument->exec_duration = base::Seconds(FLAGS_length_seconds);
-  }
+  argument->exec_duration = base::Seconds(FLAGS_length_seconds);
 
   COMMON_V2_ROUTINE_MAIN(CpuStress);
 }
@@ -220,14 +217,31 @@ int CpuCacheV2Main(int argc, char** argv) {
   DEFINE_uint32(length_seconds, 10,
                 "Number of seconds to run the routine for.");
   COMMON_V2_ROUTINE_FLAGS("Cpu cache V2 routine");
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   auto argument = mojom::CpuCacheRoutineArgument::New();
-  if (command_line->HasSwitch("length_seconds")) {
-    argument->exec_duration = base::Seconds(FLAGS_length_seconds);
-  }
+  argument->exec_duration = base::Seconds(FLAGS_length_seconds);
 
   COMMON_V2_ROUTINE_MAIN(CpuCache);
+}
+
+int DiskReadV2Main(int argc, char** argv) {
+  DEFINE_string(type, "linear",
+                "Type of how disk reading is performed: [linear, random].");
+  DEFINE_uint32(length_seconds, 10,
+                "Number of seconds to run the routine for.");
+  DEFINE_uint32(file_size_mib, 1, "Test file size in megabytes (MiB).");
+  COMMON_V2_ROUTINE_FLAGS("Disk read V2 routine");
+
+  auto argument = mojom::DiskReadRoutineArgument::New();
+  if (FLAGS_type == "linear") {
+    argument->type = mojom::DiskReadTypeEnum::kLinearRead;
+  } else if (FLAGS_type == "random") {
+    argument->type = mojom::DiskReadTypeEnum::kRandomRead;
+  }
+  argument->disk_read_duration = base::Seconds(FLAGS_length_seconds);
+  argument->file_size_mib = FLAGS_file_size_mib;
+
+  COMMON_V2_ROUTINE_MAIN(DiskRead);
 }
 
 #define COMMON_LEGACY_ROUTINE_FLAGS                                            \
@@ -767,6 +781,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"cpu_stress_v2", CpuStressV2Main},
     {"ufs_lifetime", UfsLifetimeMain},
     {"cpu_cache_v2", CpuCacheV2Main},
+    {"disk_read_v2", DiskReadV2Main},
     // V1 routines.
     {"battery_capacity", BatteryCapacityMain},
     {"battery_health", BatteryHealthMain},
