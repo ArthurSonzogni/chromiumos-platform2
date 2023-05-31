@@ -237,8 +237,8 @@ base::expected<std::string, std::string> ParsePanicInfo(
         warning + base::StringPrintf("ERROR: Panic reserve is not 0 (%d).\n",
                                      pdata.reserved));
 
-  /* Validate flag is within BIT(0) to BIT(6). */
-  if (pdata.flags >> 6)
+  /* Validate flag is within BIT(0) to BIT(6) inclusive. */
+  if (pdata.flags >> 7)
     return base::unexpected(
         warning +
         base::StringPrintf("ERROR: Incorrect flag (%d).\n", pdata.flags));
