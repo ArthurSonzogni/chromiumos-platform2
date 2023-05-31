@@ -499,16 +499,16 @@ if (use.test) {
 if (use.fuzzer) {
   static_library("fuzz-helpers") {
     sources = [
-      "fuzzers/blob_mutator.cc",
       "fuzzers/fuzzed_platform.cc",
       "fuzzers/fuzzed_proto_generator.cc",
     ]
     configs += [ ":target_defaults" ]
-    deps = [ "libs:libcryptohome_platform" ]
+    libs = [ "hwsec-foundation" ]
     pkg_deps = [
       "libbrillo",
       "libchrome",
     ]
+    deps = [ "libs:libcryptohome_platform" ]
   }
 
   executable("cryptohome_cryptolib_rsa_oaep_decrypt_fuzzer") {

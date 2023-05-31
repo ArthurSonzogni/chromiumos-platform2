@@ -70,6 +70,9 @@ shared_library("libhwsec-foundation") {
     "utility/crypto.cc",
     "vpd_reader/vpd_reader_impl.cc",
   ]
+  if (use.fuzzer) {
+    sources += [ "fuzzers/blob_mutator.cc" ]
+  }
   pkg_deps = [
     "libmetrics",
     "libtpm_manager-client",
@@ -194,9 +197,11 @@ install_config("install_test_syscaller_headers") {
   install_path = "/usr/include/libhwsec-foundation/syscaller"
 }
 
-install_config("install_fuzzer_headers") {
-  sources = [ "fuzzed_trousers_utils.h" ]
-  install_path = "/usr/include/libhwsec-foundation"
+if (use.fuzzer) {
+  install_config("install_fuzzer_headers") {
+    sources = [ "fuzzed_trousers_utils.h" ]
+    install_path = "/usr/include/libhwsec-foundation"
+  }
 }
 
 if (use.test) {

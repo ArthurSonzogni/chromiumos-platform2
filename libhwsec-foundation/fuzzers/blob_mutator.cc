@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/fuzzers/blob_mutator.h"
+#include "libhwsec-foundation/fuzzers/blob_mutator.h"
 
 #include <stdint.h>
 
@@ -85,6 +85,8 @@ BlobMutatorCommand ReadCommandFromFuzzedData(uint8_t current_byte,
 
 }  // namespace
 
+namespace hwsec_foundation {
+
 Blob MutateBlob(const Blob& input_blob,
                 int min_length,
                 int max_length,
@@ -156,3 +158,5 @@ Blob MutateBlob(const Blob& input_blob,
   CHECK_LE(fuzzed_blob.size(), max_length);
   return fuzzed_blob;
 }
+
+}  // namespace hwsec_foundation

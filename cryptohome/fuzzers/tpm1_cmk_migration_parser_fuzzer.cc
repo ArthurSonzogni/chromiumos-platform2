@@ -19,6 +19,7 @@
 #include <libhwsec/overalls/overalls.h>
 #include <libhwsec/overalls/overalls_api.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libhwsec-foundation/fuzzers/blob_mutator.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
@@ -27,14 +28,13 @@
 #include <trousers/trousers.h>
 #include <trousers/tss.h>
 
-#include "cryptohome/fuzzers/blob_mutator.h"
-
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using crypto::ScopedRSA;
 using hwsec::overalls::GetOveralls;
+using hwsec_foundation::MutateBlob;
 using hwsec_foundation::Sha1;
 
 namespace {

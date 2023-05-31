@@ -14,18 +14,18 @@
 #include <crypto/scoped_openssl_types.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <libhwsec-foundation/crypto/rsa.h>
+#include <libhwsec-foundation/fuzzers/blob_mutator.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#include "cryptohome/fuzzers/blob_mutator.h"
-
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::SecureBlob;
 using crypto::ScopedRSA;
+using hwsec_foundation::MutateBlob;
 using hwsec_foundation::RsaOaepDecrypt;
 
 namespace {

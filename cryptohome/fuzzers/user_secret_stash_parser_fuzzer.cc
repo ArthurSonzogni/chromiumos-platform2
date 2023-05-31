@@ -14,12 +14,12 @@
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/fuzzers/blob_mutator.h>
 #include <openssl/err.h>
 
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
-#include "cryptohome/fuzzers/blob_mutator.h"
 #include "cryptohome/user_secret_stash/user_secret_stash.h"
 
 using brillo::Blob;
@@ -31,6 +31,7 @@ using cryptohome::UserSecretStashContainer;
 using cryptohome::UserSecretStashPayload;
 using hwsec_foundation::AesGcmEncrypt;
 using hwsec_foundation::kAesGcm256KeySize;
+using hwsec_foundation::MutateBlob;
 
 namespace {
 
