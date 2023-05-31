@@ -88,8 +88,6 @@ const std::set<base::StringPiece> kEmptyEntries{
     "logcat",
     "lsblk",
     "lsmod",
-    "lspci",
-    "lsusb",
     "mali_memory",
     "memd clips",
     "memd.parameters",

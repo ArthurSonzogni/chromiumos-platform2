@@ -322,7 +322,11 @@ Information about connected printer and scanner devices produced by `lpstat -l
 
 ## lspci
 
+Lists PCI devices. Contains output for `lspci`.
+
 ## lsusb
+
+Lists USB devices. Contains output for `lsusb` and `lsusb -t` for topology.
 
 ## lvs
 
