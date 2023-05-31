@@ -10,12 +10,15 @@
 #include <string>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
+#include <attestation/proto_bindings/database.pb.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
+#include "libhwsec/structures/key.h"
+#include "libhwsec/structures/operation_policy.h"
 
 using brillo::BlobFromString;
 using brillo::BlobToString;
@@ -27,6 +30,10 @@ namespace {
 
 constexpr unsigned int kDigestSize = sizeof(TPM_DIGEST);
 constexpr size_t kSelectBitmapSize = 2;
+
+std::string TSSBufferAsString(const BYTE* buffer, size_t length) {
+  return std::string(reinterpret_cast<const char*>(buffer), length);
+}
 
 // Builds the serialized TPM_PCR_COMPOSITE stream, where |pcr_index| is the PCR
 // index, and |quoted_pcr_value| is the value of the register.
@@ -159,6 +166,104 @@ StatusOr<bool> AttestationTpm1::IsQuoted(DeviceConfigs device_configs,
     return false;
   }
   return true;
+}
+
+StatusOr<AttestationTpm1::CertifyKeyResult> AttestationTpm1::CertifyKey(
+    Key key, Key identity_key, const std::string& external_data) {
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
+  ASSIGN_OR_RETURN(const KeyTpm1& key_data, key_management_.GetKeyData(key),
+                   _.WithStatus<TPMError>("Failed to get the key data"));
+  ASSIGN_OR_RETURN(
+      const KeyTpm1& identity_key_data,
+      key_management_.GetKeyData(identity_key),
+      _.WithStatus<TPMError>("Failed to get the identity key data"));
+  TSS_HKEY key_handle = key_data.key_handle;
+  TSS_HKEY identity_key_handle = identity_key_data.key_handle;
+
+  TSS_VALIDATION validation;
+  memset(&validation, 0, sizeof(validation));
+  validation.ulExternalDataLength = external_data.size();
+  brillo::Blob mutable_external_data = BlobFromString(external_data);
+  validation.rgbExternalData = mutable_external_data.data();
+
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Key_CertifyKey(
+                      key_handle, identity_key_handle, &validation)))
+      .WithStatus<TPMError>("Failed to call Ospi_Key_CertifyKey");
+  ScopedTssMemory scoped_certified_data(overalls_, context, validation.rgbData);
+  ScopedTssMemory scoped_proof(overalls_, context,
+                               validation.rgbValidationData);
+
+  return CertifyKeyResult{
+      .certify_info =
+          TSSBufferAsString(validation.rgbData, validation.ulDataLength),
+      .signature = TSSBufferAsString(validation.rgbValidationData,
+                                     validation.ulValidationDataLength)};
+}
+
+StatusOr<attestation::CertifiedKey> AttestationTpm1::CreateCertifiedKey(
+    Key identity_key,
+    attestation::KeyType key_type,
+    attestation::KeyUsage key_usage,
+    KeyRestriction restriction,
+    EndorsementAuth endorsement_auth,
+    const std::string& external_data) {
+  KeyAlgoType key_algo;
+  switch (key_type) {
+    case attestation::KeyType::KEY_TYPE_RSA:
+      key_algo = hwsec::KeyAlgoType::kRsa;
+      break;
+    default:
+      return MakeStatus<TPMError>("Unsupported key algorithm type",
+                                  TPMRetryAction::kNoRetry);
+  }
+  if (restriction == KeyRestriction::kRestricted) {
+    return MakeStatus<TPMError>("Unsupported restricted key",
+                                TPMRetryAction::kNoRetry);
+  }
+  if (endorsement_auth == EndorsementAuth::kEndorsement) {
+    return MakeStatus<TPMError>("Unsupported using endorsement hierarchy",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  ASSIGN_OR_RETURN(
+      const KeyManagement::CreateKeyResult& create_key_result,
+      key_management_.CreateKey(
+          OperationPolicySetting{}, key_algo,
+          KeyManagement::LoadKeyOptions{.auto_reload = true},
+          KeyManagement::CreateKeyOptions{
+              .allow_software_gen = false,
+              .allow_decrypt =
+                  key_usage == attestation::KeyUsage::KEY_USAGE_DECRYPT,
+              .allow_sign = key_usage == attestation::KeyUsage::KEY_USAGE_SIGN,
+          }),
+      _.WithStatus<TPMError>("Failed to create key"));
+  const ScopedKey& key = create_key_result.key;
+  const brillo::Blob& key_blob = create_key_result.key_blob;
+
+  ASSIGN_OR_RETURN(const CertifyKeyResult& certify_key_result,
+                   CertifyKey(key.GetKey(), identity_key, external_data),
+                   _.WithStatus<TPMError>("Failed to certify key"));
+
+  ASSIGN_OR_RETURN(const KeyTpm1& key_data,
+                   key_management_.GetKeyData(key.GetKey()),
+                   _.WithStatus<TPMError>("Failed to get key data"));
+  std::string serialized_public_key = BlobToString(key_data.cache.pubkey_blob);
+
+  ASSIGN_OR_RETURN(
+      const brillo::Blob& public_key_der,
+      key_management_.GetPublicKeyDer(key.GetKey()),
+      _.WithStatus<TPMError>("Failed to get public key in DER format"));
+
+  attestation::CertifiedKey certified_key;
+  certified_key.set_key_blob(BlobToString(key_blob));
+  certified_key.set_public_key(BlobToString(public_key_der));
+  certified_key.set_public_key_tpm_format(serialized_public_key);
+  certified_key.set_certified_key_info(certify_key_result.certify_info);
+  certified_key.set_certified_key_proof(certify_key_result.signature);
+  certified_key.set_key_type(key_type);
+  certified_key.set_key_usage(key_usage);
+
+  return certified_key;
 }
 
 }  // namespace hwsec

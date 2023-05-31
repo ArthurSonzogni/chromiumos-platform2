@@ -20,7 +20,7 @@ enum class KeyAlgoType {
   kEcc,
 };
 
-enum class KeyRestriction {
+enum class KeyRestriction : bool {
   kUnrestricted,
   kRestricted,
 };

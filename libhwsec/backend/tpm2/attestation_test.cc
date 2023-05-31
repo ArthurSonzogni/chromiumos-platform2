@@ -333,4 +333,120 @@ TEST_F(BackendAttestationTpm2Test, IsQuotedWrongFormat) {
   ASSERT_NOT_OK(is_quoted_result);
 }
 
+TEST_F(BackendAttestationTpm2Test, CreateCertifiedKey) {
+  const uint32_t kFakeIdentityHandle = 0x1773;
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const size_t kFakeSize = 32;
+  const brillo::SecureBlob kFakeData(kFakeSize, 'X');
+  const std::string kFakeKeyName = "fake_key_name";
+  const std::string kFakeIdentityName = "fake_identity_name";
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const trunks::TPMT_PUBLIC kFakePublic = {
+      .type = trunks::TPM_ALG_RSA,
+      .name_alg = trunks::TPM_ALG_SHA256,
+      .object_attributes = trunks::kFixedTPM | trunks::kFixedParent,
+      .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
+      .parameters =
+          trunks::TPMU_PUBLIC_PARMS{
+              .rsa_detail =
+                  trunks::TPMS_RSA_PARMS{
+                      .symmetric =
+                          trunks::TPMT_SYM_DEF_OBJECT{
+                              .algorithm = trunks::TPM_ALG_NULL,
+                          },
+                      .scheme =
+                          trunks::TPMT_RSA_SCHEME{
+                              .scheme = trunks::TPM_ALG_NULL,
+                          },
+                      .key_bits = 2048,
+                      .exponent = 0,
+                  },
+          },
+      .unique =
+          trunks::TPMU_PUBLIC_ID{
+              .rsa =
+                  trunks::TPM2B_PUBLIC_KEY_RSA{
+                      .size = 10,
+                      .buffer = "9876543210",
+                  },
+          },
+  };
+  const std::string kFakeCertifyInfoString = "fake_certify_info";
+  const std::string kFakeSignatureString = "fake_signature";
+  const trunks::TPM2B_ATTEST kFakeCertifyInfo =
+      trunks::Make_TPM2B_ATTEST(kFakeCertifyInfoString);
+  const trunks::TPMT_SIGNATURE kFakeSignature = {
+      .sig_alg = trunks::TPM_ALG_RSASSA,
+      .signature.rsassa.sig =
+          trunks::Make_TPM2B_PUBLIC_KEY_RSA(kFakeSignatureString),
+  };
+  const attestation::KeyType kFakeKeyType = attestation::KeyType::KEY_TYPE_RSA;
+  const attestation::KeyUsage kFakeKeyUsage =
+      attestation::KeyUsage::KEY_USAGE_DECRYPT;
+
+  // Load the identity key.
+  auto load_key_result = LoadFakeRSAKey(kFakeIdentityHandle);
+  ASSERT_OK(load_key_result);
+  const ScopedKey& fake_identity_key = load_key_result.value();
+
+  // Setup RandomSecureBlob
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              GenerateRandom(kFakeSize, nullptr, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeData.to_string()),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  // Setup CreateKey
+  EXPECT_CALL(
+      proxy_->GetMockTpmUtility(),
+      CreateRSAKeyPair(trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey, _,
+                       _, _, _, false, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<8>(kFakeKeyBlob),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  // Setup CertifyKey
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(kFakeKeyHandle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kFakeKeyName), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(kFakeIdentityHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakeIdentityName), Return(TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMockTpm(),
+              CertifySync(kFakeKeyHandle, kFakeKeyName, kFakeIdentityHandle,
+                          kFakeIdentityName, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<6>(kFakeCertifyInfo),
+                      SetArgPointee<7>(kFakeSignature),
+                      Return(TPM_RC_SUCCESS)));
+
+  std::string external_data = "external_data";
+  auto result = backend_->GetAttestationTpm2().CreateCertifiedKey(
+      fake_identity_key.GetKey(), kFakeKeyType, kFakeKeyUsage,
+      KeyRestriction::kUnrestricted, EndorsementAuth::kEndorsement,
+      external_data);
+
+  std::string serialized_public_key;
+  EXPECT_EQ(trunks::Serialize_TPMT_PUBLIC(kFakePublic, &serialized_public_key),
+            TPM_RC_SUCCESS);
+
+  ASSERT_OK(result);
+  ASSERT_TRUE(result->has_key_blob());
+  ASSERT_TRUE(result->has_public_key());
+  ASSERT_TRUE(result->has_public_key_tpm_format());
+  ASSERT_TRUE(result->has_certified_key_info());
+  ASSERT_TRUE(result->has_certified_key_proof());
+  ASSERT_TRUE(result->has_key_type());
+  ASSERT_TRUE(result->has_key_usage());
+  EXPECT_EQ(result->key_blob(), kFakeKeyBlob);
+  EXPECT_EQ(result->public_key_tpm_format(), serialized_public_key);
+  EXPECT_EQ(result->certified_key_info(), kFakeCertifyInfoString);
+  EXPECT_EQ(result->certified_key_proof(), kFakeSignatureString);
+  EXPECT_EQ(result->key_type(), kFakeKeyType);
+  EXPECT_EQ(result->key_usage(), kFakeKeyUsage);
+}
+
 }  // namespace hwsec

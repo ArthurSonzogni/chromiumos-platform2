@@ -9,12 +9,14 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <trunks/tpm_generated.h>
 
 #include "libhwsec/backend/key_management.h"
@@ -115,6 +117,15 @@ class KeyManagementTpm2 : public KeyManagement {
       trunks::TPM_ALG_ID scheme,
       trunks::TPM_ALG_ID hash_alg);
 
+  // Gets public key in DER format as string from the |key|. The format of
+  // public key is SubjectPublicKeyInfo for ECC, RSAPublicKey for RSA.
+  // If |use_rsa_subject_key_info| is true, the format would be
+  // SubjectPublicKeyInfo for RSA, too.
+  // TODO(b/172213969): We should get rid of |use_rsa_subject_key_info|
+  //                    once the bug is resolved.
+  StatusOr<brillo::Blob> GetPublicKeyDer(Key key,
+                                         bool use_rsa_subject_key_info);
+
  private:
   StatusOr<CreateKeyResult> CreateRsaKey(
       const OperationPolicySetting& policy,
@@ -135,6 +146,8 @@ class KeyManagementTpm2 : public KeyManagement {
       std::optional<KeyReloadDataTpm2> reload_data);
   Status FlushTransientKey(Key key, KeyTpm2& key_data);
   Status FlushKeyTokenAndHandle(KeyToken token, trunks::TPM_HANDLE handle);
+  StatusOr<crypto::ScopedEC_KEY> GetEccPublicKey(Key key);
+  StatusOr<crypto::ScopedRSA> GetRsaPublicKey(Key key);
 
   TrunksContext& context_;
   ConfigTpm2& config_;

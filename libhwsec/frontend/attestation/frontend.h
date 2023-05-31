@@ -5,9 +5,14 @@
 #ifndef LIBHWSEC_FRONTEND_ATTESTATION_FRONTEND_H_
 #define LIBHWSEC_FRONTEND_ATTESTATION_FRONTEND_H_
 
+#include <string>
+
 #include <attestation/proto_bindings/attestation_ca.pb.h>
+#include <attestation/proto_bindings/database.pb.h>
+#include <attestation/proto_bindings/keystore.pb.h>
 #include <brillo/secure_blob.h>
 
+#include "libhwsec/backend/key_management.h"
 #include "libhwsec/frontend/frontend.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
@@ -18,6 +23,7 @@ namespace hwsec {
 
 class AttestationFrontend : public Frontend {
  public:
+  using CreateKeyResult = KeyManagement::CreateKeyResult;
   ~AttestationFrontend() override = default;
   virtual StatusOr<brillo::SecureBlob> Unseal(
       const brillo::Blob& sealed_data) const = 0;
@@ -31,6 +37,13 @@ class AttestationFrontend : public Frontend {
   GetCurrentBootMode() const = 0;
   virtual StatusOr<attestation::Quote> CertifyNV(
       RoSpace space, const brillo::Blob& key_blob) const = 0;
+  virtual StatusOr<attestation::CertifiedKey> CreateCertifiedKey(
+      const brillo::Blob& identity_key_blob,
+      attestation::KeyType key_type,
+      attestation::KeyUsage key_usage,
+      KeyRestriction restriction,
+      EndorsementAuth endorsement_auth,
+      const std::string& external_data) const = 0;
 };
 
 }  // namespace hwsec

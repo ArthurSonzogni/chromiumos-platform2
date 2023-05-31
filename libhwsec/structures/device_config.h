@@ -52,6 +52,11 @@ class DeviceConfigs : public std::bitset<kDeviceConfigArraySize> {
   }
 };
 
+enum class EndorsementAuth : bool {
+  kNoEndorsement = false,
+  kEndorsement = true,
+};
+
 struct DeviceConfigSettings {
   struct BootModeSetting {
     struct Mode {
@@ -78,6 +83,9 @@ struct DeviceConfigSettings {
   std::optional<BootModeSetting> boot_mode;
   std::optional<DeviceModelSetting> device_model;
   std::optional<CurrentUserSetting> current_user;
+
+  // Uses endorsement password to authorize.
+  bool use_endorsement_auth = false;
 };
 
 }  // namespace hwsec

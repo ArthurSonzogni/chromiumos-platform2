@@ -38,6 +38,7 @@ class KeyManagement {
     bool allow_software_gen = false;
     bool allow_decrypt = false;
     bool allow_sign = false;
+    bool restricted = false;
     std::optional<uint32_t> rsa_modulus_bits;
     std::optional<brillo::Blob> rsa_exponent;
     std::optional<uint32_t> ecc_nid;

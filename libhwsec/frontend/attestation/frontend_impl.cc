@@ -4,7 +4,11 @@
 
 #include "libhwsec/frontend/attestation/frontend_impl.h"
 
+#include <string>
+#include <utility>
+
 #include <attestation/proto_bindings/attestation_ca.pb.h>
+#include <attestation/proto_bindings/database.pb.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
@@ -76,6 +80,23 @@ StatusOr<attestation::Quote> AttestationFrontendImpl::CertifyNV(
           Backend::KeyManagement::LoadKeyOptions{.auto_reload = true}));
 
   return middleware_.CallSync<&Backend::RoData::Certify>(space, key.GetKey());
+}
+
+StatusOr<attestation::CertifiedKey> AttestationFrontendImpl::CreateCertifiedKey(
+    const brillo::Blob& identity_key_blob,
+    attestation::KeyType key_type,
+    attestation::KeyUsage key_usage,
+    KeyRestriction restriction,
+    EndorsementAuth endorsement_auth,
+    const std::string& external_data) const {
+  ASSIGN_OR_RETURN(
+      const ScopedKey& identity_key,
+      middleware_.CallSync<&Backend::KeyManagement::LoadKey>(
+          OperationPolicy{}, identity_key_blob,
+          Backend::KeyManagement::LoadKeyOptions{.auto_reload = true}));
+  return middleware_.CallSync<&Backend::Attestation::CreateCertifiedKey>(
+      identity_key.GetKey(), key_type, key_usage, restriction, endorsement_auth,
+      external_data);
 }
 
 }  // namespace hwsec

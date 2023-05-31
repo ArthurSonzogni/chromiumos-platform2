@@ -5,7 +5,10 @@
 #ifndef LIBHWSEC_BACKEND_TPM1_ATTESTATION_H_
 #define LIBHWSEC_BACKEND_TPM1_ATTESTATION_H_
 
+#include <string>
+
 #include <attestation/proto_bindings/attestation_ca.pb.h>
+#include <attestation/proto_bindings/database.pb.h>
 
 #include "libhwsec/backend/attestation.h"
 #include "libhwsec/backend/tpm1/config.h"
@@ -32,8 +35,20 @@ class AttestationTpm1 : public Attestation {
                                      Key key) override;
   StatusOr<bool> IsQuoted(DeviceConfigs device_configs,
                           const attestation::Quote& quote) override;
+  StatusOr<attestation::CertifiedKey> CreateCertifiedKey(
+      Key identity_key,
+      attestation::KeyType key_type,
+      attestation::KeyUsage key_usage,
+      KeyRestriction restriction,
+      EndorsementAuth endorsement_auth,
+      const std::string& external_data) override;
 
  private:
+  // Certifies the |key| by the |identity_key| with |external_data|.
+  StatusOr<CertifyKeyResult> CertifyKey(Key key,
+                                        Key identity_key,
+                                        const std::string& external_data);
+
   overalls::Overalls& overalls_;
   TssHelper& tss_helper_;
   ConfigTpm1& config_;

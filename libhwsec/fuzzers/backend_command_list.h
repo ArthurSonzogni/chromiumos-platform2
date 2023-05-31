@@ -39,6 +39,7 @@ class CommandList {
 using FuzzCommandList =
     CommandList<&Backend::Attestation::Quote,
                 &Backend::Attestation::IsQuoted,
+                &Backend::Attestation::CreateCertifiedKey,
                 &Backend::Config::ToOperationPolicy,
                 &Backend::Config::SetCurrentUser,
                 &Backend::Config::IsCurrentUserSet,

@@ -17,6 +17,8 @@
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec-foundation/crypto/big_num_util.h>
+#include <libhwsec-foundation/crypto/openssl.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
@@ -36,6 +38,12 @@
 
 using brillo::BlobFromString;
 using brillo::BlobToString;
+using hwsec_foundation::CreateRSAFromNumber;
+using hwsec_foundation::ECCSubjectPublicKeyInfoToString;
+using hwsec_foundation::kWellKnownExponent;
+using hwsec_foundation::RSAPublicKeyToString;
+using hwsec_foundation::RSASubjectPublicKeyInfoToString;
+using hwsec_foundation::SecureBlobToBigNum;
 using hwsec_foundation::Sha256;
 using hwsec_foundation::status::MakeStatus;
 
@@ -44,7 +52,6 @@ namespace hwsec {
 namespace {
 
 constexpr uint32_t kDefaultTpmRsaKeyBits = 2048;
-constexpr uint32_t kDefaultTpmPublicExponent = 0x10001;
 constexpr trunks::TPMI_ECC_CURVE kDefaultTpmCurveId = trunks::TPM_ECC_NIST_P256;
 constexpr uint32_t kMaxPasswordLength = sizeof(trunks::TPMU_HA);
 constexpr uint32_t kMaxRsaPublicKeySize = 256;
@@ -297,6 +304,10 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
     const OperationPolicySetting& policy,
     const CreateKeyOptions& options,
     const LoadKeyOptions& load_key_options) {
+  if (options.restricted) {
+    return MakeStatus<TPMError>("Unsupported creating restricted RSA key",
+                                TPMRetryAction::kNoRetry);
+  }
   ASSIGN_OR_RETURN(const std::string& policy_digest,
                    config_.GetPolicyDigest(policy),
                    _.WithStatus<TPMError>("Failed to get policy digest"));
@@ -311,13 +322,14 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
 
   bool use_only_policy_authorization = false;
 
-  if (!policy_digest.empty()) {
+  if (!policy_digest.empty() &&
+      !policy.device_config_settings.use_endorsement_auth) {
     // We should not allow using the key without policy when the policy had been
-    // set.
+    // set unless we are using endorsement hierarchy.
     use_only_policy_authorization = true;
   }
 
-  uint32_t exponent = kDefaultTpmPublicExponent;
+  uint32_t exponent = kWellKnownExponent;
   if (options.rsa_exponent.has_value()) {
     ASSIGN_OR_RETURN(exponent,
                      GetIntegerExponent(options.rsa_exponent.value()));
@@ -435,7 +447,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::WrapRSAKey(
     return MakeStatus<TPMError>("Auth value too large", TPMRetryAction::kLater);
   }
 
-  uint32_t exponent = kDefaultTpmPublicExponent;
+  uint32_t exponent = kWellKnownExponent;
   if (options.rsa_exponent.has_value()) {
     ASSIGN_OR_RETURN(exponent,
                      GetIntegerExponent(options.rsa_exponent.value()));
@@ -557,9 +569,10 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
                    config_.GetPolicyDigest(policy),
                    _.WithStatus<TPMError>("Failed to get policy digest"));
 
-  if (!policy_digest.empty()) {
+  if (!policy_digest.empty() &&
+      !policy.device_config_settings.use_endorsement_auth) {
     // We should not allow using the key without policy when the policy had been
-    // set.
+    // set unless we are using endorsement hierarchy.
     use_only_policy_authorization = true;
   }
 
@@ -588,12 +601,22 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
 
   std::string tpm_key_blob;
 
-  RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context_.GetTpmUtility().CreateECCKeyPair(
-          usage, curve, auth_value, policy_digest,
-          use_only_policy_authorization, /*creation_pcr_indexes=*/{},
-          delegate.get(), &tpm_key_blob, /*creation_blob=*/nullptr)))
-      .WithStatus<TPMError>("Failed to create ECC key");
+  if (options.restricted) {
+    RETURN_IF_ERROR(
+        MakeStatus<TPM2Error>(
+            context_.GetTpmUtility().CreateRestrictedECCKeyPair(
+                usage, curve, auth_value, policy_digest,
+                use_only_policy_authorization, /*creation_pcr_indexes=*/{},
+                delegate.get(), &tpm_key_blob, /*creation_blob=*/nullptr)))
+        .WithStatus<TPMError>("Failed to create ECC key");
+  } else {
+    RETURN_IF_ERROR(
+        MakeStatus<TPM2Error>(context_.GetTpmUtility().CreateECCKeyPair(
+            usage, curve, auth_value, policy_digest,
+            use_only_policy_authorization, /*creation_pcr_indexes=*/{},
+            delegate.get(), &tpm_key_blob, /*creation_blob=*/nullptr)))
+        .WithStatus<TPMError>("Failed to create ECC key");
+  }
 
   brillo::Blob key_blob = BlobFromString(tpm_key_blob);
 
@@ -994,6 +1017,86 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadPublicKeyFromSpki(
   return LoadKeyInternal(OperationPolicy{}, KeyTpm2::Type::kTransientKey,
                          key_handle,
                          /*reload_data=*/std::nullopt);
+}
+
+StatusOr<brillo::Blob> KeyManagementTpm2::GetPublicKeyDer(
+    Key key, bool use_rsa_subject_key_info) {
+  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
+  std::string public_key_der;
+  switch (key_data.cache.public_area.type) {
+    case trunks::TPM_ALG_RSA: {
+      ASSIGN_OR_RETURN(const crypto::ScopedRSA& public_key,
+                       GetRsaPublicKey(key));
+      public_key_der = use_rsa_subject_key_info
+                           ? RSASubjectPublicKeyInfoToString(public_key)
+                           : RSAPublicKeyToString(public_key);
+      break;
+    }
+    case trunks::TPM_ALG_ECC: {
+      ASSIGN_OR_RETURN(const crypto::ScopedEC_KEY& public_key,
+                       GetEccPublicKey(key));
+      public_key_der = ECCSubjectPublicKeyInfoToString(public_key);
+      break;
+    }
+    default:
+      return MakeStatus<TPMError>("Unsupported key algorithm",
+                                  TPMRetryAction::kNoRetry);
+  }
+  if (public_key_der.empty()) {
+    return MakeStatus<TPMError>("Failed to DER-encode public key",
+                                TPMRetryAction::kNoRetry);
+  }
+  return BlobFromString(public_key_der);
+}
+
+// Convert TPMT_PUBLIC TPM public area of ECC |key| to a OpenSSL EC key.
+StatusOr<crypto::ScopedEC_KEY> KeyManagementTpm2::GetEccPublicKey(Key key) {
+  ASSIGN_OR_RETURN(const ECCPublicInfo& public_info, GetECCPublicInfo(key));
+
+  crypto::ScopedEC_Key public_key(EC_KEY_new_by_curve_name(public_info.nid));
+  if (!public_key) {
+    return MakeStatus<TPMError>("Failed to create EC_Key",
+                                TPMRetryAction::kNoRetry);
+  }
+  // Ensure that the curve is recorded in the key by reference to its ASN.1
+  // object ID rather than explicitly by value.
+  EC_KEY_set_asn1_flag(public_key.get(), OPENSSL_EC_NAMED_CURVE);
+
+  const crypto::ScopedBIGNUM x =
+      SecureBlobToBigNum(brillo::SecureBlob(public_info.x_point));
+  const crypto::ScopedBIGNUM y =
+      SecureBlobToBigNum(brillo::SecureBlob(public_info.y_point));
+  if (!x || !y) {
+    return MakeStatus<TPMError>("Failed to convert points to BIGNUM",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  if (!EC_KEY_set_public_key_affine_coordinates(public_key.get(), x.get(),
+                                                y.get())) {
+    return MakeStatus<TPMError>(
+        "Failed to call EC_KEY_set_public_key_affine_coordinates",
+        TPMRetryAction::kNoRetry);
+  }
+  if (!EC_KEY_check_key(public_key.get())) {
+    return MakeStatus<TPMError>(
+        "Bad ECC key created from TPM public key object",
+        TPMRetryAction::kNoRetry);
+  }
+
+  return public_key;
+}
+
+// Convert TPMT_PUBLIC TPM public area of RSA |key| to a OpenSSL RSA key.
+StatusOr<crypto::ScopedRSA> KeyManagementTpm2::GetRsaPublicKey(Key key) {
+  ASSIGN_OR_RETURN(const KeyTpm2& key_data, GetKeyData(key));
+  brillo::Blob modulus = BlobFromString(
+      StringFrom_TPM2B_PUBLIC_KEY_RSA(key_data.cache.public_area.unique.rsa));
+  crypto::ScopedRSA rsa = CreateRSAFromNumber(modulus, kWellKnownExponent);
+  if (rsa == nullptr) {
+    return MakeStatus<TPMError>("Failed to create RSA",
+                                TPMRetryAction::kNoRetry);
+  }
+  return rsa;
 }
 
 }  // namespace hwsec

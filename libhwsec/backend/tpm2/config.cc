@@ -355,6 +355,10 @@ StatusOr<trunks::TPMS_PCR_SELECTION> ConfigTpm2::ToPcrSelection(
 
 StatusOr<std::string> ConfigTpm2::GetPolicyDigest(
     const OperationPolicySetting& policy) {
+  if (policy.device_config_settings.use_endorsement_auth) {
+    // Use the auth policy templates for endorsement key.
+    return trunks::GetEkTemplateAuthPolicy();
+  }
   ASSIGN_OR_RETURN(const PcrMap& pcr_map,
                    ToSettingsPcrMap(policy.device_config_settings),
                    _.WithStatus<TPMError>("Failed to get PCR map"));

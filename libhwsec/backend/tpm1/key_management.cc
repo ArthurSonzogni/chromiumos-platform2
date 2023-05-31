@@ -10,8 +10,10 @@
 #include <vector>
 
 #include <base/functional/callback_helpers.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec-foundation/crypto/openssl.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
@@ -21,6 +23,7 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
+#include "libhwsec/backend/tpm1/static_utils.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
@@ -194,6 +197,10 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateKey(
     KeyAlgoType key_algo,
     const LoadKeyOptions& load_key_options,
     const CreateKeyOptions& options) {
+  if (policy.device_config_settings.use_endorsement_auth) {
+    return MakeStatus<TPMError>("Unsupported endorsement key creation",
+                                TPMRetryAction::kNoRetry);
+  }
   switch (key_algo) {
     case KeyAlgoType::kRsa:
       return CreateRsaKey(policy, options, load_key_options);
@@ -874,6 +881,21 @@ StatusOr<ScopedKey> KeyManagementTpm1::LoadPublicKeyFromSpki(
       public_key.key_modulus,
       TSS_KEY_VOLATILE | TSS_KEY_TYPE_SIGNING | key_size_flag, signature_scheme,
       encryption_scheme);
+}
+
+StatusOr<brillo::Blob> KeyManagementTpm1::GetPublicKeyDer(Key key) {
+  ASSIGN_OR_RETURN(const KeyTpm1& key_data, GetKeyData(key));
+  brillo::Blob pubkey_blob = key_data.cache.pubkey_blob;
+
+  ASSIGN_OR_RETURN(const crypto::ScopedRSA& rsa,
+                   ParseRsaFromTpmPubkeyBlob(overalls_, pubkey_blob));
+
+  std::string public_key_der = hwsec_foundation::RSAPublicKeyToString(rsa);
+  if (public_key_der.empty()) {
+    return MakeStatus<TPMError>("Failed to DER-encode public key",
+                                TPMRetryAction::kNoRetry);
+  }
+  return BlobFromString(public_key_der);
 }
 
 }  // namespace hwsec

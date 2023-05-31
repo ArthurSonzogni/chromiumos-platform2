@@ -8,6 +8,7 @@
 #include <string>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
+#include <attestation/proto_bindings/database.pb.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -38,6 +39,15 @@ class MockAttestation : public Attestation {
   MOCK_METHOD(StatusOr<bool>,
               IsQuoted,
               (DeviceConfigs device_configs, const attestation::Quote& quote),
+              (override));
+  MOCK_METHOD(StatusOr<attestation::CertifiedKey>,
+              CreateCertifiedKey,
+              (Key identity_key,
+               attestation::KeyType key_type,
+               attestation::KeyUsage key_usage,
+               KeyRestriction restriction,
+               EndorsementAuth endorsement_auth,
+               const std::string& external_data),
               (override));
 
  private:

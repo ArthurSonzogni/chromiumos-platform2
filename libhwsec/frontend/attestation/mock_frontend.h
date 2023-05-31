@@ -5,7 +5,10 @@
 #ifndef LIBHWSEC_FRONTEND_ATTESTATION_MOCK_FRONTEND_H_
 #define LIBHWSEC_FRONTEND_ATTESTATION_MOCK_FRONTEND_H_
 
+#include <string>
+
 #include <attestation/proto_bindings/attestation_ca.pb.h>
+#include <attestation/proto_bindings/database.pb.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
@@ -43,6 +46,15 @@ class MockAttestationFrontend : public MockFrontend,
   MOCK_METHOD(StatusOr<attestation::Quote>,
               CertifyNV,
               (RoSpace space, const brillo::Blob& key_blob),
+              (const override));
+  MOCK_METHOD(StatusOr<attestation::CertifiedKey>,
+              CreateCertifiedKey,
+              (const brillo::Blob& identity_key_blob,
+               attestation::KeyType key_type,
+               attestation::KeyUsage key_usage,
+               KeyRestriction restriction,
+               EndorsementAuth endorsement_auth,
+               const std::string& external_data),
               (const override));
 };
 
