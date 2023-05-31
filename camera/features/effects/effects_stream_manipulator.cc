@@ -1256,7 +1256,7 @@ bool EffectsStreamManipulatorImpl::SetupGlThread(
               base::FilePath(kOverrideEffectsConfigFile),
       });
   if (!config_->IsValid()) {
-    LOGF(ERROR) << "Cannot load valid config. Turning off feature by default";
+    LOGF(WARNING) << "Cannot load valid config";
   }
   config_->SetCallback(base::BindRepeating(
       &EffectsStreamManipulatorImpl::OnOptionsUpdated, base::Unretained(this)));
