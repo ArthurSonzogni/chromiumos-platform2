@@ -1,0 +1,6 @@
+include_dir=@INCLUDE_DIR@
+
+Name: libdevice_management-client
+Version: @PV@
+Description: Device Management client interface library
+Cflags: -I${include_dir}

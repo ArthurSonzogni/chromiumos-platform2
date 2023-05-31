@@ -8,6 +8,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":device_management_client",
     ":device_managementd",
     ":install_init",
     ":install_minijail_conf",
@@ -126,6 +127,24 @@ source_set("proto_library") {
     ":target_defaults",
   ]
   public_deps = [ ":print_proto_library" ]
+}
+
+executable("device_management_client") {
+  sources = [
+    "client/client.cc",
+    "client/tool.cc",
+  ]
+  configs += [
+    ":local_print_proto_include",
+    ":target_defaults",
+  ]
+  pkg_deps = [
+    "protobuf",
+    "system_api",
+  ]
+  libs = [ "hwsec-foundation" ]
+  deps = [ ":proto_library" ]
+  install_path = "/usr/sbin"
 }
 
 # Main programs.

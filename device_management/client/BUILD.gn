@@ -1,0 +1,18 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-proxies.gni")
+
+generate_dbus_proxies("libdevice_management-client-headers") {
+  dbus_service_config =
+      "../dbus_bindings/dbus-service-config-device_management.json"
+  proxy_output_file = "include/device_management/dbus-proxies.h"
+  mock_output_file = "include/device_management/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "device_management/dbus-proxies.h"
+  sources = [ "../dbus_bindings/org.chromium.DeviceManagement.xml" ]
+}
+
+group("all") {
+  deps = [ ":libdevice_management-client-headers" ]
+}
