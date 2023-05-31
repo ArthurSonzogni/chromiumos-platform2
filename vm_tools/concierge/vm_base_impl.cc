@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/concierge/crosvm_control.h"
 #include "vm_tools/concierge/vm_util.h"
@@ -163,9 +164,11 @@ void VmBaseImpl::MakeRtVcpu() {
 }
 
 void VmBaseImpl::HandleSwapVmRequest(const SwapVmRequest& request,
-                                     SwapVmResponse& response) {
+                                     SwapVmCallback callback) {
+  SwapVmResponse response;
   response.set_success(false);
   response.set_failure_reason("vmm-swap is not supported on this vm");
+  std::move(callback).Run(response);
 }
 
 void VmBaseImpl::InflateAggressiveBalloon(AggressiveBalloonCallback callback) {

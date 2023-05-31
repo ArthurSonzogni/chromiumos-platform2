@@ -583,7 +583,7 @@
       <tp:docstring>
         Handles a request to change VM swap state.
       </tp:docstring>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::SwapVmRequest"/>

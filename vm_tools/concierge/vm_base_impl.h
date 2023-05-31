@@ -100,6 +100,7 @@ class VmBaseImpl {
     bool storage_ballooning;
   };
 
+  using SwapVmCallback = base::OnceCallback<void(SwapVmResponse response)>;
   using AggressiveBalloonCallback =
       base::OnceCallback<void(AggressiveBalloonResponse response)>;
 
@@ -202,7 +203,7 @@ class VmBaseImpl {
   virtual void MakeRtVcpu();
 
   virtual void HandleSwapVmRequest(const SwapVmRequest& request,
-                                   SwapVmResponse& response);
+                                   SwapVmCallback callback);
 
   // Inflate balloon until perceptible processes are tried to kill.
   virtual void InflateAggressiveBalloon(AggressiveBalloonCallback callback);

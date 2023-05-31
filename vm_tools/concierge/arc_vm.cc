@@ -41,6 +41,7 @@
 #include <chromeos/patchpanel/net_util.h>
 #include <vboot/crossystem.h>
 #include <vm_applications/apps.pb.h>
+#include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/balloon_policy.h"
@@ -846,8 +847,9 @@ vm_tools::concierge::DiskImageStatus ArcVm::GetDiskResizeStatus(
 }
 
 void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
-                                SwapVmResponse& response) {
+                                SwapVmCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  SwapVmResponse response;
   switch (request.operation()) {
     case SwapOperation::ENABLE:
       LOG(INFO) << "Enable vmm-swap";
@@ -870,6 +872,7 @@ void ArcVm::HandleSwapVmRequest(const SwapVmRequest& request,
       response.set_failure_reason("Unknown operation");
       break;
   }
+  std::move(callback).Run(response);
 }
 
 void ArcVm::InflateAggressiveBalloon(AggressiveBalloonCallback callback) {

@@ -4727,26 +4727,36 @@ bool Service::GetVmLogs(brillo::ErrorPtr* error,
   return true;
 }
 
-SwapVmResponse Service::SwapVm(const SwapVmRequest& request) {
+void Service::SwapVm(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<SwapVmResponse>>
+        response_sender,
+    const SwapVmRequest& request) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   SwapVmResponse response;
 
   if (!ValidateVmNameAndOwner(request, response)) {
-    return response;
+    response_sender->Return(response);
+    return;
   }
 
   auto iter = FindVm(request.owner_id(), request.name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
     response.set_failure_reason("Requested VM does not exist");
-    return response;
+    response_sender->Return(response);
+    return;
   }
 
-  iter->second->HandleSwapVmRequest(request, response);
-
-  return response;
+  iter->second->HandleSwapVmRequest(
+      request, base::BindOnce(
+                   [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                          SwapVmResponse>> response_sender,
+                      SwapVmResponse response) {
+                     std::move(response_sender)->Return(response);
+                   },
+                   std::move(response_sender)));
 }
 
 void Service::NotifyVmSwapping(const VmId& vm_id) {

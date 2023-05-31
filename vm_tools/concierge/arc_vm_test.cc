@@ -5,9 +5,12 @@
 #include "vm_tools/concierge/arc_vm.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/containers/contains.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/page_size.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -881,10 +884,17 @@ class ArcVmTest : public ::testing::Test {
 
   bool HandleSwapVmRequest(SwapOperation operation) {
     SwapVmRequest request;
-    SwapVmResponse response;
     request.set_operation(operation);
-    vm_->HandleSwapVmRequest(request, response);
-    return response.success();
+    vm_->HandleSwapVmRequest(
+        request, base::BindOnce(&ArcVmTest::HandleSwapVmRequestCallback,
+                                base::Unretained(this)));
+    EXPECT_TRUE(latest_swap_vm_response_.has_value());
+    return latest_swap_vm_response_.has_value() &&
+           latest_swap_vm_response_.value().success();
+  }
+
+  void HandleSwapVmRequestCallback(SwapVmResponse response) {
+    latest_swap_vm_response_ = response;
   }
 
   bool EnableVmmSwap() { return HandleSwapVmRequest(SwapOperation::ENABLE); }
@@ -911,6 +921,8 @@ class ArcVmTest : public ::testing::Test {
  protected:
   // Actual virtual machine being tested.
   std::unique_ptr<ArcVm> vm_;
+
+  std::optional<SwapVmResponse> latest_swap_vm_response_;
 
   base::MockOneShotTimer* swap_policy_timer_;
   base::MockRepeatingTimer* swap_state_monitor_timer_;

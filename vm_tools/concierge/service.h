@@ -250,7 +250,10 @@ class Service final : public org::chromium::VmConciergeInterface,
                  GetVmLogsResponse* response) override;
 
   // Handles a request to change VM swap state.
-  SwapVmResponse SwapVm(const SwapVmRequest& request) override;
+  void SwapVm(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<SwapVmResponse>>
+          response_sender,
+      const SwapVmRequest& request) override;
 
   void NotifyVmSwapping(const VmId& vm_id);
 

@@ -160,7 +160,7 @@ class ArcVm final : public VmBaseImpl {
       std::string* failure_reason) override;
 
   void HandleSwapVmRequest(const SwapVmRequest& request,
-                           SwapVmResponse& response) override;
+                           SwapVmCallback callback) override;
   void InflateAggressiveBalloon(AggressiveBalloonCallback callback) override;
   void StopAggressiveBalloon(AggressiveBalloonResponse& response) override;
   // Public for testing purpose.
