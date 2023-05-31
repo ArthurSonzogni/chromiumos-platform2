@@ -57,7 +57,8 @@ enum SuspendAbortReason {
     InsufficientFreeMemory = 1,
     InsufficientDiskSpace = 2,
     UpdateEngineActive = 3,
-    Count = 4,
+    NoHiberimage = 4,
+    Count = 5,
 }
 
 /// The SuspendConductor weaves a delicate baton to guide us through the
@@ -111,7 +112,7 @@ impl SuspendConductor {
         }
 
         if !self.volume_manager.hiberimage_exists() {
-            // Self::log_suspend_abort(SuspendAbortReason::TODO);
+            Self::log_suspend_abort(SuspendAbortReason::NoHiberimage);
             info!("'hiberimage' does not exist, aborting hibernate attempt");
             return Err(HibernateError::NoHiberimageError().into());
         }
