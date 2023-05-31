@@ -80,6 +80,11 @@ bool CrosvmControlImpl::BalloonStats(const char* socket_path,
   return crosvm_client_balloon_stats(socket_path, stats, actual);
 }
 
+bool CrosvmControlImpl::SetBalloonWorkingSetConfig(
+    const char* socket_path, const BalloonWssConfigFfi* config) {
+  return crosvm_client_balloon_wss_config(socket_path, config);
+}
+
 bool CrosvmControlImpl::BalloonWorkingSet(const char* socket_path,
                                           struct BalloonWSSFfi* working_set,
                                           uint64_t* actual) {

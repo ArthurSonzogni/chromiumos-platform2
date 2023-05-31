@@ -56,6 +56,9 @@ class FakeCrosvmControl : public CrosvmControl {
                     struct BalloonStatsFfi* stats,
                     uint64_t* actual) override;
 
+  bool SetBalloonWorkingSetConfig(const char* socket_path,
+                                  const BalloonWssConfigFfi* config) override;
+
   bool BalloonWorkingSet(const char* socket_path,
                          struct BalloonWSSFfi* stats,
                          uint64_t* actual) override;

@@ -104,6 +104,12 @@ bool FakeCrosvmControl::BalloonWorkingSet(const char* socket_path,
   return result_balloon_working_set_;
 }
 
+bool FakeCrosvmControl::SetBalloonWorkingSetConfig(
+    const char* socket_path, const BalloonWssConfigFfi* config) {
+  target_socket_path_ = socket_path;
+  return true;
+}
+
 bool FakeCrosvmControl::EnableVmmSwap(const char* socket_path) {
   target_socket_path_ = socket_path;
   count_enable_vmm_swap_ += 1;

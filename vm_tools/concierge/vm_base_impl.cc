@@ -49,6 +49,11 @@ bool VmBaseImpl::SetBalloonSize(int64_t byte_size) {
   return result;
 }
 
+bool VmBaseImpl::SetBalloonWorkingSetConfig(const BalloonWssConfigFfi* config) {
+  return CrosvmControl::Get()->SetBalloonWorkingSetConfig(
+      GetVmSocketPath().c_str(), config);
+}
+
 const std::unique_ptr<BalloonPolicyInterface>& VmBaseImpl::GetBalloonPolicy(
     const MemoryMargins& margins, const std::string& vm) {
   if (!balloon_policy_) {

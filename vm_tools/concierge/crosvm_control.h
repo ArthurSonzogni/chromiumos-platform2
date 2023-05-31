@@ -135,6 +135,11 @@ class CrosvmControl {
                             struct BalloonStatsFfi* stats,
                             uint64_t* actual) = 0;
 
+  // Set working set config in guest.
+  // The function returns true on success or false if an error occurred.
+  virtual bool SetBalloonWorkingSetConfig(
+      const char* socket_path, const BalloonWssConfigFfi* config) = 0;
+
   // Returns guest working set of the crosvm instance whose control socket is
   // listening on `socket_path`.
   //
