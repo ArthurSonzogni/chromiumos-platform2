@@ -32,7 +32,7 @@ constexpr size_t kSelectBitmapSize = 2;
 // index, and |quoted_pcr_value| is the value of the register.
 StatusOr<std::string> buildPcrComposite(uint32_t pcr_index,
                                         const std::string& quoted_pcr_value) {
-  if (pcr_index < kSelectBitmapSize * 8) {
+  if (pcr_index >= kSelectBitmapSize * 8) {
     return MakeStatus<TPMError>("PCR index is out of range",
                                 TPMRetryAction::kNoRetry);
   }

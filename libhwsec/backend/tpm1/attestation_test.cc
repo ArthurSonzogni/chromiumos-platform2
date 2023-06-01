@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
+#include <base/hash/sha1.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -192,6 +193,30 @@ TEST_F(BackendAttestationTpm1Test, QuoteFailure) {
   auto result = backend_->GetAttestationTpm1().Quote(kFakeDeviceConfigs,
                                                      fake_key.GetKey());
   ASSERT_NOT_OK(result);
+}
+
+TEST_F(BackendAttestationTpm1Test, IsQuoted) {
+  const DeviceConfigs kFakeDeviceConfigs =
+      DeviceConfigs{DeviceConfig::kBootMode};
+  const std::string kFakePcrValue = "fake_pcr_value";
+  const uint8_t value_size = static_cast<unsigned char>(kFakePcrValue.size());
+  const uint8_t kFakeCompositeHeaderBuffer[] = {
+      0, 2,                 // select_size = 2 (big-endian)
+      1, 0,                 // select_bitmap = bit 0 selected
+      0, 0, 0, value_size,  // value_size = kFakePcrValue.size() (big-endian)
+  };
+  const std::string kFakeCompositeHeader(std::begin(kFakeCompositeHeaderBuffer),
+                                         std::end(kFakeCompositeHeaderBuffer));
+  const std::string kFakePcrComposite = kFakeCompositeHeader + kFakePcrValue;
+  const std::string kFakePcrDigest = base::SHA1HashString(kFakePcrComposite);
+  const std::string kQuotedData = std::string('x', 8) + kFakePcrDigest;
+
+  attestation::Quote fake_quote;
+  fake_quote.set_quoted_pcr_value(kFakePcrValue);
+  fake_quote.set_quoted_data(kQuotedData);
+  auto result =
+      backend_->GetAttestationTpm1().IsQuoted(kFakeDeviceConfigs, fake_quote);
+  ASSERT_OK(result);
 }
 
 }  // namespace hwsec
