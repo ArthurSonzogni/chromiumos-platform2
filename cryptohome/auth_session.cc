@@ -519,14 +519,14 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
     user_data_auth::StatusInfo status_info;
     *auth_factor_with_status.mutable_auth_factor() =
         std::move(*auth_factor_proto);
-    auto supported_intents =
-        GetSupportedIntents(auth_factor, *auth_factor_driver_manager_);
+    auto supported_intents = GetSupportedIntents(
+        obfuscated_username_, auth_factor, *auth_factor_driver_manager_);
     for (const auto& auth_intent : supported_intents) {
       auth_factor_with_status.add_available_for_intents(
           AuthIntentToProto(auth_intent));
     }
 
-    auto delay = driver.GetFactorDelay(auth_factor);
+    auto delay = driver.GetFactorDelay(obfuscated_username_, auth_factor);
     if (delay.ok()) {
       if (delay->is_max()) {
         status_info.set_time_available_in(std::numeric_limits<uint64_t>::max());

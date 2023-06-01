@@ -103,7 +103,7 @@ class AuthFactorDriver {
   // availability delay is. Returns a not-OK status if the delay cannot be
   // determined or the type does not support delay.
   virtual CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
-      const AuthFactor& factor) = 0;
+      const ObfuscatedUsername& username, const AuthFactor& factor) = 0;
 
   // Return an enum indicating the label arity of the auth factor (e.g. does the
   // factor support single-label authentication or multi-label authentication).

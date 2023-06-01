@@ -44,7 +44,7 @@ class PinAuthFactorDriver final
   bool NeedsRateLimiter() const override;
   bool IsDelaySupported() const override;
   CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
-      const AuthFactor& factor) override;
+      const ObfuscatedUsername& username, const AuthFactor& factor) override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(

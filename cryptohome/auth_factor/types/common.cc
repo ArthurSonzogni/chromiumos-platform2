@@ -55,7 +55,7 @@ bool AfDriverFullAuthUnsupported::IsFullAuthAllowed(
 }
 
 CryptohomeStatusOr<base::TimeDelta> AfDriverNoDelay::GetFactorDelay(
-    const AuthFactor& factor) {
+    const ObfuscatedUsername& username, const AuthFactor& factor) {
   return MakeStatus<CryptohomeError>(
       CRYPTOHOME_ERR_LOC(kLocAuthFactorCommonGetFactorDelayUnsupported),
       ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),

@@ -197,7 +197,7 @@ class AfDriverNoDelay : public virtual AuthFactorDriver {
  private:
   bool IsDelaySupported() const final { return false; }
   CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
-      const AuthFactor& factor) final;
+      const ObfuscatedUsername& username, const AuthFactor& factor) final;
 };
 
 }  // namespace cryptohome

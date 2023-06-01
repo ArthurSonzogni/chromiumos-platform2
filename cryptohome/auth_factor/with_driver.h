@@ -23,7 +23,9 @@ namespace cryptohome {
 
 // Compute the set of auth intents supported by the given AuthFactor.
 base::flat_set<AuthIntent> GetSupportedIntents(
-    const AuthFactor& auth_factor, AuthFactorDriverManager& driver_manager);
+    const ObfuscatedUsername& username,
+    const AuthFactor& auth_factor,
+    AuthFactorDriverManager& driver_manager);
 
 }  // namespace cryptohome
 

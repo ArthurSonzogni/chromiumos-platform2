@@ -124,6 +124,7 @@ void ReplyWithStatus(base::OnceCallback<void(const ReplyType&)> on_done,
 // type and calls various library functions needed to convert AuthFactor to a
 // proto for a persistent user.
 std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
+    const ObfuscatedUsername& username,
     AuthFactorDriverManager* auth_factor_driver_manager,
     const AuthFactor& auth_factor) {
   const AuthFactorDriver& factor_driver =
@@ -137,7 +138,7 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
   *auth_factor_with_status.mutable_auth_factor() =
       std::move(*auth_factor_proto);
   auto supported_intents =
-      GetSupportedIntents(auth_factor, *auth_factor_driver_manager);
+      GetSupportedIntents(username, auth_factor, *auth_factor_driver_manager);
   for (const auto& auth_intent : supported_intents) {
     auth_factor_with_status.add_available_for_intents(
         AuthIntentToProto(auth_intent));
@@ -149,6 +150,7 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
 // takes into account type and calls various library functions needed to convert
 // AuthFactor to a proto.
 std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
+    const ObfuscatedUsername& username,
     AuthFactorDriverManager* auth_factor_driver_manager,
     const CredentialVerifier* verifier) {
   const AuthFactorDriver& factor_driver =
@@ -199,13 +201,14 @@ void ReplyWithAuthFactorStatus(
   if (auth_session->ephemeral_user()) {
     DCHECK(user_session);
     auth_factor_with_status = GetAuthFactorWithStatus(
-        auth_factor_driver_manager,
+        auth_session->obfuscated_username(), auth_factor_driver_manager,
         user_session->FindCredentialVerifier(auth_factor.label()));
   } else {
     auth_factor_with_status = GetAuthFactorWithStatus(
-        auth_factor_driver_manager, auth_session->auth_factor_map()
-                                        .Find(auth_factor.label())
-                                        ->auth_factor());
+        auth_session->obfuscated_username(), auth_factor_driver_manager,
+        auth_session->auth_factor_map()
+            .Find(auth_factor.label())
+            ->auth_factor());
   }
 
   if (!auth_factor_with_status.has_value()) {
@@ -2257,7 +2260,8 @@ void UserDataAuth::StartAuthSession(
       // Only populate reply with AuthFactors that support the intended form of
       // authentication.
       auto supported_intents =
-          GetSupportedIntents(auth_factor, *auth_factor_driver_manager_);
+          GetSupportedIntents(auth_session->obfuscated_username(), auth_factor,
+                              *auth_factor_driver_manager_);
       std::optional<AuthIntent> requested_intent =
           AuthIntentFromProto(request.intent());
       if (requested_intent && supported_intents.contains(*requested_intent)) {
@@ -3069,7 +3073,7 @@ void UserDataAuth::ListAuthFactors(
     // Populate the response from the items in the AuthFactorMap.
     for (AuthFactorMap::ValueView item : auth_factor_map) {
       auto auth_factor_with_status = GetAuthFactorWithStatus(
-          auth_factor_driver_manager_, item.auth_factor());
+          obfuscated_username, auth_factor_driver_manager_, item.auth_factor());
       if (auth_factor_with_status.has_value()) {
         *reply.add_configured_auth_factors_with_status() =
             std::move(auth_factor_with_status.value());
@@ -3124,8 +3128,8 @@ void UserDataAuth::ListAuthFactors(
     if (user_session) {
       for (const CredentialVerifier* verifier :
            user_session->GetCredentialVerifiers()) {
-        auto auth_factor_with_status =
-            GetAuthFactorWithStatus(auth_factor_driver_manager_, verifier);
+        auto auth_factor_with_status = GetAuthFactorWithStatus(
+            obfuscated_username, auth_factor_driver_manager_, verifier);
         if (auth_factor_with_status.has_value()) {
           *reply.add_configured_auth_factors_with_status() =
               std::move(auth_factor_with_status.value());

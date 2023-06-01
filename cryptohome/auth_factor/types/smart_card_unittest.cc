@@ -208,7 +208,7 @@ TEST_F(SmartCardDriverTest, GetDelayFails) {
                         {.public_key_spki_der = kPublicKey}),
                     {.state = ChallengeCredentialAuthBlockState()});
 
-  auto delay_in_ms = driver.GetFactorDelay(factor);
+  auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, NotOk());
   EXPECT_THAT(delay_in_ms.status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));

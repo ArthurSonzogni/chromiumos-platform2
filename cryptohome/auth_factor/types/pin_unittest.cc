@@ -171,7 +171,7 @@ TEST_F(PinDriverTest, GetDelayFailsWithWrongFactorType) {
                     CreateMetadataWithType<PasswordAuthFactorMetadata>(),
                     {.state = TpmEccAuthBlockState()});
 
-  auto delay_in_ms = driver.GetFactorDelay(factor);
+  auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, NotOk());
   EXPECT_THAT(delay_in_ms.status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
@@ -185,7 +185,7 @@ TEST_F(PinDriverTest, GetDelayFailsWithoutLeLabel) {
                     CreateMetadataWithType<PinAuthFactorMetadata>(),
                     {.state = PinWeaverAuthBlockState()});
 
-  auto delay_in_ms = driver.GetFactorDelay(factor);
+  auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, NotOk());
   EXPECT_THAT(delay_in_ms.status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
@@ -201,7 +201,7 @@ TEST_F(PinDriverTest, GetDelayInfinite) {
   EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(std::numeric_limits<uint32_t>::max()));
 
-  auto delay_in_ms = driver.GetFactorDelay(factor);
+  auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, IsOk());
   EXPECT_THAT(delay_in_ms->is_max(), IsTrue());
 }
@@ -216,7 +216,7 @@ TEST_F(PinDriverTest, GetDelayFinite) {
   EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(10));
 
-  auto delay_in_ms = driver.GetFactorDelay(factor);
+  auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, IsOk());
   EXPECT_THAT(*delay_in_ms, Eq(base::Seconds(10)));
 }
@@ -231,7 +231,7 @@ TEST_F(PinDriverTest, GetDelayZero) {
   EXPECT_CALL(*le_manager_, GetDelayInSeconds(kLeLabel))
       .WillOnce(ReturnValue(0));
 
-  auto delay_in_ms = driver.GetFactorDelay(factor);
+  auto delay_in_ms = driver.GetFactorDelay(kObfuscatedUser, factor);
   ASSERT_THAT(delay_in_ms, IsOk());
   EXPECT_THAT(delay_in_ms->is_zero(), IsTrue());
 }
