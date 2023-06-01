@@ -15,6 +15,9 @@ group("all") {
     ":install_systemd",
     ":install_tmpfiles_config",
   ]
+  if (use.test) {
+    deps += [ ":device_management_testrunner" ]
+  }
 }
 
 config("local_proto_include") {
@@ -135,4 +138,39 @@ executable("device_managementd") {
   ]
 
   install_path = "/usr/sbin"
+}
+
+if (use.test) {
+  pkg_config("device_management_testrunner_config") {
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+      "libmetrics",
+    ]
+  }
+  executable("device_management_testrunner") {
+    sources = [
+      "device_management_testrunner.cc",
+      "fwmp/firmware_management_parameters_test.cc",
+    ]
+    libs = [
+      "hwsec_test",
+      "policy",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":device_management_testrunner_config",
+      ":local_proto_include",
+      ":target_defaults",
+    ]
+    run_test = true
+    pkg_deps = [
+      "protobuf-lite",
+      "system_api",
+    ]
+    deps = [
+      ":device_management_server_library",
+      ":proto_library",
+    ]
+  }
 }
