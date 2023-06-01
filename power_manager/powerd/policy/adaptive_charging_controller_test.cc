@@ -50,7 +50,7 @@ class FakeDelegate : public AdaptiveChargingControllerInterface::Delegate {
     return true;
   }
 
-  bool SetBatteryChargeLimit(uint32_t limit_mA) override {
+  bool SetBatterySlowCharging(uint32_t limit_mA) override {
     fake_limit = limit_mA;
     return true;
   }

@@ -56,14 +56,15 @@ const double kDefaultMaxDelayPercentile = 0.3;
 
 const int64_t kBatterySustainDisabled = -1;
 
-// Value passed to `SetChargeLimit` to disable the EC's charge limit logic.
+// Value passed to `SetSlowCharging` to disable the EC's charge current
+// limit logic.
 const uint32_t kSlowChargingDisabled = std::numeric_limits<uint32_t>::max();
 
 // Battery design-capacity multiplier used to calculate the battery charge
 // current limit to use when slow charging. 0.1 (10% of battery design-capacity)
 // is multiplied by 1000 as the `battery_charge_full_design` stored in
 // `PowerStatus` is in Amperes (A) while charge limit is in milliamperes (mA).
-const uint32_t kChargeLimitBatteryCapacityMultiplier = 0.1 * 1000;
+const uint32_t kSlowChargingBatteryCapacityMultiplier = 0.1 * 1000;
 
 const base::TimeDelta kDefaultAlarmInterval = base::Minutes(30);
 const int64_t kDefaultHoldPercent = 80;
@@ -855,7 +856,7 @@ void AdaptiveChargingController::Init(
 
   // Check if the EC supports setting a charge limit, and simultaneously remove
   // any existing limit that may already be in place.
-  slow_charging_supported_ = SetChargeLimit(kSlowChargingDisabled);
+  slow_charging_supported_ = SetSlowCharging(kSlowChargingDisabled);
 
   if (charge_limit_enabled_ && adaptive_charging_enabled_) {
     LOG(ERROR) << "Charge Limit and Adaptive Charging are enabled at Init. The "
@@ -1309,8 +1310,8 @@ bool AdaptiveChargingController::SetSustain(int64_t lower, int64_t upper) {
   return success;
 }
 
-bool AdaptiveChargingController::SetChargeLimit(uint32_t limit_mA) {
-  bool success = delegate_->SetBatteryChargeLimit(limit_mA);
+bool AdaptiveChargingController::SetSlowCharging(uint32_t limit_mA) {
+  bool success = delegate_->SetBatterySlowCharging(limit_mA);
   if (!success) {
     LOG(ERROR) << "Failed to set battery charge current limit: " << limit_mA
                << "mA";
@@ -1553,8 +1554,8 @@ void AdaptiveChargingController::StartSlowCharging() {
   hold_percent_end_time_ = clock_.GetCurrentBootTime();
   const system::PowerStatus status = power_supply_->GetPowerStatus();
   LOG(INFO) << "Slow charging started.";
-  SetChargeLimit(status.battery_charge_full_design *
-                 kChargeLimitBatteryCapacityMultiplier);
+  SetSlowCharging(status.battery_charge_full_design *
+                  kSlowChargingBatteryCapacityMultiplier);
 
   charge_alarm_->Stop();
   SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
@@ -1614,7 +1615,7 @@ void AdaptiveChargingController::StopAdaptiveCharging() {
   }
 
   is_sustain_set_ = false;
-  SetChargeLimit(kSlowChargingDisabled);
+  SetSlowCharging(kSlowChargingDisabled);
   power_supply_->ClearAdaptiveChargingChargeDelay();
 }
 

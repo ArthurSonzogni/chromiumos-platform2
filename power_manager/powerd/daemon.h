@@ -198,7 +198,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
 
   // Overridden from policy::AdaptiveChargingControllerInterface::Delegate:
   bool SetBatterySustain(int lower, int upper) override;
-  bool SetBatteryChargeLimit(uint32_t limit_mA) override;
+  bool SetBatterySlowCharging(uint32_t limit_mA) override;
   void GetAdaptiveChargingPrediction(const assist_ranker::RankerExample& proto,
                                      bool async) override;
   void GenerateAdaptiveChargingUnplugMetrics(

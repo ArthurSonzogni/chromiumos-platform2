@@ -1172,10 +1172,11 @@ TEST_F(DaemonTest, SetBatterySustain) {
   EXPECT_TRUE(daemon_->SetBatterySustain(70, 80));
 }
 
-TEST_F(DaemonTest, SetBatteryChargeLimit) {
+TEST_F(DaemonTest, SetBatterySlowCharging) {
   Init();
 
-  // `Daemon::SetBatteryChargeLimit` expects `cros_ec_path_` to already exist.
+  // `Daemon::SetBatterySlowCharging` expects `cros_ec_path_` to already
+  // exist.
   EXPECT_EQ(0, base::WriteFile(cros_ec_path_, "", 0));
 
   // Verify that the ChargeCurrentLimitSetCommand is Run once and check the Req.
@@ -1186,7 +1187,7 @@ TEST_F(DaemonTest, SetBatteryChargeLimit) {
         EXPECT_CALL(*cmd, Run(_)).WillOnce(Return(true));
         return cmd;
       });
-  EXPECT_TRUE(daemon_->SetBatteryChargeLimit(1000));
+  EXPECT_TRUE(daemon_->SetBatterySlowCharging(1000));
 }
 
 TEST_F(DaemonTest, PrepareToSuspendAndResume) {

@@ -1138,7 +1138,7 @@ bool Daemon::SetBatterySustain(int lower, int upper) {
   return success;
 }
 
-bool Daemon::SetBatteryChargeLimit(uint32_t limit_mA) {
+bool Daemon::SetBatterySlowCharging(uint32_t limit_mA) {
   auto cmd = ec_command_factory_->ChargeCurrentLimitSetCommand(limit_mA);
 
   bool success = RunEcCommand(*cmd);
