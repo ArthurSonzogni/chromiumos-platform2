@@ -22,7 +22,11 @@ int FakeCrossystem::VbGetSystemPropertyString(const char* name,
   if (string_map_.find(name) == string_map_.end())
     return -1;
 
-  string_map_[name].copy(dest, size);
+  // Max length of data to copy is size - 1 so we reserve a char for null
+  // termination. This matches the behavior we are faking from
+  // `platform/vboot_reference/host/include/crossystem.h`.
+  auto len = string_map_[name].copy(dest, size - 1);
+  dest[len] = '\0';
   return 0;
 }
 
